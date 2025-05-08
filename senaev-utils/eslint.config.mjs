@@ -231,6 +231,10 @@ export default [
                 'error',
                 { after: true },
             ],
+            curly: [
+                'error',
+                'all',
+            ],
             'react/jsx-curly-spacing': [
                 'error',
                 {

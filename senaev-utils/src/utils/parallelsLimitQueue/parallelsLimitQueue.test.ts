@@ -177,7 +177,9 @@ describe('parallelsLimitQueue', () => {
 
     it('should handle errors properly', async () => {
         const callback = vi.fn(async (param: number) => {
-            if (param === 2) throw new Error('Test error');
+            if (param === 2) {
+                throw new Error('Test error');
+            }
             return param * 2;
         });
 
@@ -223,7 +225,9 @@ describe('parallelsLimitQueue', () => {
     it('should continue processing after an error', async () => {
         const successfulOperations: number[] = [];
         const callback = vi.fn(async (param: number) => {
-            if (param === 2) throw new Error('Test error');
+            if (param === 2) {
+                throw new Error('Test error');
+            }
             successfulOperations.push(param);
             return param;
         });
