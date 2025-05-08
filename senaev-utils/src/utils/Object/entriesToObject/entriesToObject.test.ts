@@ -57,7 +57,7 @@ describe('entriesToObject', () => {
 
     test('reverse logic', () => {
         class TestClass {
-            constructor(public readonly prop1: unknown, public readonly prop2: unknown) {}
+            public constructor(public readonly prop1: unknown, public readonly prop2: unknown) {}
 
             public method() {
                 //

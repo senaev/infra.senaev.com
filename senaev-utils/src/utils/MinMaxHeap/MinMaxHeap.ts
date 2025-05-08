@@ -5,7 +5,7 @@ export class MinMaxHeap<T> {
     private _heap: MinMaxHeapTuple<T>[];
     private _compare: MinMaxHeapCompareFunction;
 
-    constructor(compare: MinMaxHeapCompareFunction) {
+    public constructor(compare: MinMaxHeapCompareFunction) {
         this._heap = [];
         this._compare = compare;
     }

@@ -36,9 +36,6 @@ export default [
                 'error',
                 {
                     accessibility: 'explicit',
-                    overrides: {
-                        constructors: 'no-public',
-                    },
                 },
             ],
             'spaced-comment': [
