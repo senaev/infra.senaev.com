@@ -5,7 +5,7 @@ import {
     vi,
 } from 'vitest';
 
-import { promiseTimeout } from '../timers/promiseTimeout';
+import { promiseTimeout } from '../timers/promiseTimeout/promiseTimeout';
 
 import { createSimultaneousOperationsHandler, SimultaneousOperationsHandlerParams } from './createSimultaneousOperationsHandler';
 

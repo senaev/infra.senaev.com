@@ -1,6 +1,5 @@
-import { Milliseconds } from '../types/Time/Milliseconds';
-
-import { AbortableProcess } from './AbortableProcess';
+import { Milliseconds } from '../../../types/Time/Milliseconds';
+import { AbortableProcess } from '../../AbortableProcess';
 
 export function promiseTimeout(timeoutMs: Milliseconds, {
     abortable,
