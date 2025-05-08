@@ -5,9 +5,9 @@ import {
     vi,
 } from 'vitest';
 
-import { promiseTimeout } from '../../promiseTimeout';
 import { AnyFunction } from '../../types/AnyFunction';
-import { waitForFunction } from '../../waitForFunction/waitForFunction';
+import { promiseTimeout } from '../promiseTimeout';
+import { waitForFunction } from '../waitForFunction/waitForFunction';
 
 import { parallelsLimitQueue } from './parallelsLimitQueue';
 

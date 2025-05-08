@@ -1,37 +1,41 @@
-export class MinMaxHeap {
-    constructor (compare) {
+export type MinMaxHeapTuple<T> = [number, T];
+export type MinMaxHeapCompareFunction = (a: number, b: number) => number;
+
+export class MinMaxHeap<T> {
+    private _heap: MinMaxHeapTuple<T>[];
+    private _compare: MinMaxHeapCompareFunction;
+
+    constructor(compare: MinMaxHeapCompareFunction) {
         this._heap = [];
         this._compare = compare;
     }
 
-    push(value) {
+    public push(value: MinMaxHeapTuple<T>): void {
         this._heap.push(value);
-
         this._bubbleUp();
     }
 
-    getFirst() {
+    public getFirst(): MinMaxHeapTuple<T> | undefined {
         return this._heap[0];
     }
 
-    getSize() {
+    public getSize(): number {
         return this._heap.length;
     }
 
-    pop() {
+    public pop(): MinMaxHeapTuple<T> | undefined {
         if (this._heap.length <= 1) {
             return this._heap.pop();
         }
 
         const top = this._heap[0];
-
-        this._heap[0] = this._heap.pop();
+        this._heap[0] = this._heap.pop()!;
         this._bubbleDown();
 
         return top;
     }
 
-    _bubbleUp() {
+    private _bubbleUp(): void {
         let idx = this._heap.length - 1;
         while (idx > 0) {
             const parentIdx = Math.floor((idx - 1) / 2);
@@ -49,7 +53,7 @@ export class MinMaxHeap {
         }
     }
 
-    _bubbleDown() {
+    private _bubbleDown(): void {
         let idx = 0;
         while (true) {
             const leftIdx = 2 * idx + 1;

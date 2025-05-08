@@ -28,6 +28,37 @@ export default [
                 'error',
                 'never',
             ],
+            '@stylistic/max-statements-per-line': [
+                'error',
+                { max: 1 },
+            ],
+            '@typescript-eslint/explicit-member-accessibility': [
+                'error',
+                {
+                    accessibility: 'explicit',
+                    overrides: {
+                        constructors: 'no-public',
+                    },
+                },
+            ],
+            'spaced-comment': [
+                'error',
+                'always',
+                {
+                    line: {
+                        markers: ['/'],
+                        exceptions: [
+                            '-',
+                            '+',
+                        ],
+                    },
+                    block: {
+                        markers: ['!'],
+                        exceptions: ['*'],
+                        balanced: true,
+                    },
+                },
+            ],
             'import-x/no-unresolved': 'off',
             'import-x/named': 'off',
             'import-x/no-named-as-default': 'off',

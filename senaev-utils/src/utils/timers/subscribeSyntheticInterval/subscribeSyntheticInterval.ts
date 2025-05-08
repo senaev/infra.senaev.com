@@ -1,6 +1,6 @@
-import { Milliseconds } from '../../../src/types/Time/Milliseconds';
-import { callFunctions } from '../../../src/util/Function/callFunctions/callFunctions';
-import { UnsignedInteger } from '../../../src/util/Number/UnsignedInteger';
+import { Milliseconds } from '../../../types/Time/Milliseconds';
+import { callFunctions } from '../../Function/callFunctions/callFunctions';
+import { UnsignedInteger } from '../../Number/UnsignedInteger';
 
 type IntervalSubscription = {
     intervalId: UnsignedInteger;
