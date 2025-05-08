@@ -5,7 +5,7 @@ import {
     vi,
 } from 'vitest';
 
-import { promiseTimeout } from '../promiseTimeout';
+import { promiseTimeout } from '../timers/promiseTimeout';
 
 import { makeAsyncFunctionCallsSimultaneous } from './makeAsyncFunctionCallsSimultaneous';
 

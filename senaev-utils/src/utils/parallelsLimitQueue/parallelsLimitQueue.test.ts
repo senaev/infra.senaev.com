@@ -6,7 +6,7 @@ import {
 } from 'vitest';
 
 import { AnyFunction } from '../../types/AnyFunction';
-import { promiseTimeout } from '../promiseTimeout';
+import { promiseTimeout } from '../timers/promiseTimeout';
 import { waitForFunction } from '../waitForFunction/waitForFunction';
 
 import { parallelsLimitQueue } from './parallelsLimitQueue';
