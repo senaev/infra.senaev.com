@@ -1,0 +1,35 @@
+{
+  "name": "10x10",
+  "version": "1.0.0",
+  "description": "10x10 =====",
+  "main": "index.js",
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "npx eslint . --fix",
+    "typecheck": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/senaev/10x10.git"
+  },
+  "author": "gsacryfice@gmail.com",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/senaev/10x10/issues"
+  },
+  "homepage": "https://github.com/senaev/10x10#readme",
+  "devDependencies": {
+    "@eslint/js": "9.17.0",
+    "@stylistic/eslint-plugin": "2.12.1",
+    "eslint": "9.17.0",
+    "eslint-config-prettier": "9.1.0",
+    "eslint-plugin-import-x": "^4.6.1",
+    "eslint-plugin-no-only-tests": "^3.3.0",
+    "eslint-plugin-prettier": "5.2.1",
+    "eslint-plugin-react": "7.37.3",
+    "lefthook": "^1.10.10",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.32.0",
+    "vitest": "^3.1.3"
+  }
+}

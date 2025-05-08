@@ -1,0 +1,162 @@
+import {
+    describe,
+    expect,
+    it,
+    vi,
+} from 'vitest';
+
+import { Signal } from '..';
+import { deepEqual } from '../../Object/deepEqual/deepEqual';
+
+import { combineSignalsIntoNewOne } from './combineSignalsIntoNewOne';
+
+describe('combineSignalsIntoNewOne', () => {
+    it('should combine value signal considering equality function', () => {
+        const firstSignal = new Signal(1);
+        const secondSignal = new Signal(2);
+        const thirdSignal = new Signal(3);
+
+        let equalityCheckerResult = false;
+        const calls: unknown[] = [];
+        const equalityChecker = (...args: unknown[]) => {
+            calls.push([...args]);
+
+            return equalityCheckerResult;
+        };
+
+        const { signal, teardown } = combineSignalsIntoNewOne(
+            [
+                firstSignal,
+                secondSignal,
+                thirdSignal,
+            ],
+            (a, b, c) => a + b + c,
+            equalityChecker
+        );
+
+        expect(signal.value()).toEqual(6);
+        expect(calls.length).toEqual(0);
+
+        thirdSignal.next(66);
+
+        expect(signal.value()).toEqual(69);
+        expect(calls).toEqual([
+            [
+                6,
+                69,
+            ],
+        ]);
+
+        equalityCheckerResult = true;
+
+        firstSignal.next(11);
+
+        expect(signal.value()).toStrictEqual(69);
+        expect(calls).toEqual([
+            [
+                6,
+                69,
+            ],
+            [
+                69,
+                79,
+            ],
+        ]);
+
+        equalityCheckerResult = false;
+
+        firstSignal.next(12);
+
+        expect(signal.value()).toStrictEqual(80);
+        expect(calls).toEqual([
+            [
+                6,
+                69,
+            ],
+            [
+                69,
+                79,
+            ],
+            [
+                69,
+                80,
+            ],
+        ]);
+
+        // После вызова teardown ничего не происходит
+        teardown();
+        firstSignal.next(666);
+        firstSignal.next(666);
+
+        expect(signal.value()).toStrictEqual(80);
+        expect(calls).toEqual([
+            [
+                6,
+                69,
+            ],
+            [
+                69,
+                79,
+            ],
+            [
+                69,
+                80,
+            ],
+        ]);
+    });
+
+    it('is able to combine only one signal', () => {
+        const spy = vi.fn();
+        const originalSignal = new Signal<number[]>([
+            1,
+            2,
+            3,
+            4,
+            5,
+        ], deepEqual);
+
+        function isArraySumEven(arr: number[]) {
+            return arr.reduce((prev, curr) => prev + curr, 0) % 2 === 0;
+        }
+
+        const { signal, teardown } = combineSignalsIntoNewOne([originalSignal], isArraySumEven);
+
+        signal.subscribe(spy);
+
+        expect(signal.value()).toEqual(false);
+        expect(spy.mock.calls.length).toEqual(0);
+
+        originalSignal.next([
+            1,
+            2,
+            3,
+            4,
+            5,
+        ]);
+
+        expect(signal.value()).toEqual(false);
+        expect(spy.mock.calls.length).toEqual(0);
+
+        originalSignal.next([1]);
+
+        expect(signal.value()).toEqual(false);
+        expect(spy.mock.calls.length).toEqual(0);
+
+        originalSignal.next([
+            1,
+            2,
+            3,
+            4,
+        ]);
+
+        expect(signal.value()).toEqual(true);
+        expect(spy.mock.calls.length).toEqual(1);
+
+        teardown();
+
+        originalSignal.next([1]);
+
+        expect(signal.value()).toEqual(true);
+        expect(spy.mock.calls.length).toEqual(1);
+    });
+});
