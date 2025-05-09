@@ -232,6 +232,16 @@ export default [
                 { after: true },
             ],
             '@typescript-eslint/member-ordering': 'error',
+            'operator-linebreak': [
+                'error',
+                'none',
+                {
+                    overrides: {
+                        '?': 'before',
+                        ':': 'before',
+                    },
+                },
+            ],
             curly: [
                 'error',
                 'all',
