@@ -231,6 +231,22 @@ export default [
                 'error',
                 { after: true },
             ],
+            '@typescript-eslint/member-ordering': [
+                'error',
+                {
+                    default: {
+                        memberTypes: [
+                            'public-static-field',
+                            'private-static-field',
+                            'public-instance-field',
+                            'private-instance-field',
+                            'constructor',
+                            'public-instance-method',
+                            'private-instance-method',
+                        ],
+                    },
+                },
+            ],
             curly: [
                 'error',
                 'all',

@@ -9,12 +9,10 @@ export class MinMaxHeap<T> {
         this._heap = [];
         this._compare = compare;
     }
-
     public push(value: MinMaxHeapTuple<T>): void {
         this._heap.push(value);
         this._bubbleUp();
     }
-
     public getFirst(): MinMaxHeapTuple<T> | undefined {
         return this._heap[0];
     }

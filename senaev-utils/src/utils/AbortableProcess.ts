@@ -50,10 +50,13 @@ export class AbortableProcess {
     public readonly id = incrementalIntegerGenerator();
 
     private readonly abortLatch = new Latch<AbortableProcessAbortReason>();
+
     private readonly children = new Set<AbortableProcess>();
+
     private readonly startTimestamp: UnixTimeMs = Date.now();
 
     private _status = new Signal<AbortableProcessStatus>('');
+
     private _visualizedProcessesTreeSubscribers = new Set<VisualizedProcessesTreeChangeCallback>();
 
     public constructor(private readonly name: string) {
@@ -136,10 +139,6 @@ export class AbortableProcess {
         };
     }
 
-    private readonly dispatchVisualizedProcessesTreeChange = (change: VisualizedProcessesTreeChange): void => {
-        callFunctions(this._visualizedProcessesTreeSubscribers, change);
-    };
-
     public toJSON(): VisualizedProcessesTree {
         const result: VisualizedProcessesTree = {
             name: this.name,
@@ -154,4 +153,9 @@ export class AbortableProcess {
 
         return result;
     }
+
+    private readonly dispatchVisualizedProcessesTreeChange = (change: VisualizedProcessesTreeChange): void => {
+        callFunctions(this._visualizedProcessesTreeSubscribers, change);
+    };
+
 }
