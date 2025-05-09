@@ -1,5 +1,7 @@
 {
-    "cSpell.words": [],
+    "cSpell.words": [
+        "senaev"
+    ],
     "cSpell.language": "en,ru",
     "search.exclude": {
         "**/node_modules": true,
