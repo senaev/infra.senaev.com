@@ -235,6 +235,15 @@ export default [
                 'error',
                 'all',
             ],
+            'prefer-template': 'error',
+            '@stylistic/template-tag-spacing': [
+                'error',
+                'never',
+            ],
+            '@stylistic/template-curly-spacing': [
+                'error',
+                'never',
+            ],
             'react/jsx-curly-spacing': [
                 'error',
                 {
