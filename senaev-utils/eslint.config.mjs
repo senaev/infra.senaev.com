@@ -73,6 +73,12 @@ export default [
                 },
             ],
             'import-x/no-empty-named-blocks': 'error',
+            'import-x/newline-after-import': [
+                'error',
+                {
+                    count: 1,
+                },
+            ],
             '@stylistic/indent': [
                 'error',
                 INDENT,
