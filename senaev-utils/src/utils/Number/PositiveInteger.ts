@@ -1,4 +1,5 @@
 import { PositiveNumber } from '../../types/Number/PositiveNumber';
+
 import { Integer } from './Integer';
 
 /**
