@@ -1,4 +1,4 @@
-import { Integer } from '../Number/Integer';
+import { Integer } from '../../utils/Number/Integer';
 
 /**
  * Количество дней
