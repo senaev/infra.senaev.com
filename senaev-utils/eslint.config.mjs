@@ -72,6 +72,7 @@ export default [
                     'newlines-between': 'always',
                 },
             ],
+            'consistent-return': 'error',
             'import-x/no-empty-named-blocks': 'error',
             'import-x/newline-after-import': [
                 'error',

@@ -1,4 +1,4 @@
-import { tryCatch } from '../tryCatch/tryCatch';
+import { tryCatch } from '../Function/tryCatch/tryCatch';
 
 export function waitForFunction(
     condition: () => boolean,
