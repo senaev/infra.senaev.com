@@ -5,8 +5,8 @@ import {
     vi,
 } from 'vitest';
 
-import { Signal } from '..';
 import { deepEqual } from '../../Object/deepEqual/deepEqual';
+import { Signal } from '../Signal';
 
 import { combineSignalsIntoNewOne } from './combineSignalsIntoNewOne';
 

@@ -1,4 +1,4 @@
-import { Signal } from '..';
+import { Signal } from '../Signal';
 
 export type CombineSignalsIntoNewOneResult<T> = {
     signal: Signal<T>;

@@ -5,7 +5,7 @@ import { callFunctions } from './Function/callFunctions/callFunctions';
 import { Latch, LatchCallback } from './Latch/Latch';
 import { PositiveInteger } from './Number/PositiveInteger';
 import { UnsignedInteger } from './Number/UnsignedInteger';
-import { Signal } from './Signal';
+import { Signal } from './Signal/Signal';
 
 export type AbortableProcessAbortReason = string | undefined;
 

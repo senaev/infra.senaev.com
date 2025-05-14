@@ -21,13 +21,11 @@ export class Signal<T> {
         return this._value;
     }
 
-    public subscribe(...callbacks: SignalCallback<T>[]): VoidFunction {
-        for (const callback of callbacks) {
-            this.callbacks.add(callback);
-        }
+    public subscribe(callback: SignalCallback<T>): VoidFunction {
+        this.callbacks.add(callback);
 
         return () => {
-            this.unsubscribe(...callbacks);
+            this.unsubscribe(callback);
         };
     }
 
@@ -43,9 +41,7 @@ export class Signal<T> {
         }
     }
 
-    public unsubscribe(...callbacks: SignalCallback<T>[]): void {
-        for (const callback of callbacks) {
-            this.callbacks.delete(callback);
-        }
+    public unsubscribe(callback: SignalCallback<T>): void {
+        this.callbacks.delete(callback);
     }
 }
