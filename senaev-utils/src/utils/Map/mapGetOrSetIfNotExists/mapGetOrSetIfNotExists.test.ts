@@ -4,12 +4,12 @@ import {
     it,
 } from 'vitest';
 
-import { mapSetIfNotExists } from './mapSetIfNotExists';
+import { mapGetOrSetIfNotExists } from './mapGetOrSetIfNotExists';
 
-describe('mapSetIfNotExists', () => {
+describe('mapGetOrSetIfNotExists', () => {
     it('should add a new key-value pair when the key does not exist', () => {
         const map = new Map<string, number>();
-        const value = mapSetIfNotExists(map, 'test', 42);
+        const value = mapGetOrSetIfNotExists(map, 'test', 42);
 
         expect(map.has('test')).toBe(true);
         expect(map.get('test')).toBe(42);
@@ -20,7 +20,7 @@ describe('mapSetIfNotExists', () => {
         const map = new Map<string, number>();
         map.set('test', 42);
 
-        const value = mapSetIfNotExists(map, 'test', 100);
+        const value = mapGetOrSetIfNotExists(map, 'test', 100);
 
         expect(map.get('test')).toBe(42);
         expect(value).toBe(42);
@@ -28,7 +28,7 @@ describe('mapSetIfNotExists', () => {
 
     it('should work with different types of keys and values', () => {
         const map = new Map<number, string>();
-        const value = mapSetIfNotExists(map, 1, 'hello');
+        const value = mapGetOrSetIfNotExists(map, 1, 'hello');
 
         expect(map.has(1)).toBe(true);
         expect(map.get(1)).toBe('hello');
@@ -38,7 +38,7 @@ describe('mapSetIfNotExists', () => {
     it('should work with object keys', () => {
         const map = new Map<object, string>();
         const key = { id: 1 };
-        const value = mapSetIfNotExists(map, key, 'object value');
+        const value = mapGetOrSetIfNotExists(map, key, 'object value');
 
         expect(map.has(key)).toBe(true);
         expect(map.get(key)).toBe('object value');
