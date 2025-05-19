@@ -39,4 +39,12 @@ describe('createArray', () => {
         const result = createArray(0, 'test');
         expect(result).toEqual([]);
     });
+
+    it('can work without second param', () => {
+        const result = createArray(2);
+        expect(result).toEqual([
+            undefined,
+            undefined,
+        ]);
+    });
 });
