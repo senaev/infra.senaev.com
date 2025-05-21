@@ -289,6 +289,18 @@ export default [
                 'error',
                 'last',
             ],
+            '@stylistic/padding-line-between-statements': [
+                'error',
+                {
+                    blankLine: 'always',
+                    prev: '*',
+                    next: [
+                        'enum',
+                        'interface',
+                        'type',
+                    ],
+                },
+            ],
             '@stylistic/space-infix-ops': ['error'],
             'react/jsx-curly-brace-presence': [
                 'error',

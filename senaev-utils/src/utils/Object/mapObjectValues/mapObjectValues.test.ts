@@ -41,6 +41,7 @@ describe('mapObjectValues', () => {
         type A = {
             foo: 'bar';
         };
+
         type B = {
             foo: 'baz';
         };
