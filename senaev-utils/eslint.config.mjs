@@ -289,10 +289,7 @@ export default [
                 'error',
                 'last',
             ],
-            '@stylistic/space-infix-ops': [
-                'error',
-                { int32Hint: false },
-            ],
+            '@stylistic/space-infix-ops': ['error'],
             'react/jsx-curly-brace-presence': [
                 'error',
                 {
