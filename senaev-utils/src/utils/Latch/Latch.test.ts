@@ -89,7 +89,7 @@ describe('Latch', () => {
         expect(spy.mock.calls[0][0]).to.equal(undefined);
     });
 
-    test('can pass callback into constructor', async () => {
+    test('can pass callback into constructor', () => {
         const constructorCallback = vi.fn();
         const additionalCallback1 = vi.fn();
         const additionalCallback2 = vi.fn();

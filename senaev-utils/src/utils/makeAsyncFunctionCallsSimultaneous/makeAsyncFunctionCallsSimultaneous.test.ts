@@ -68,6 +68,8 @@ describe('makeAsyncFunctionCallsSimultaneous', () => {
         const executionOrder: number[] = [];
 
         const asyncOperation = vi.fn(async (num: number) => {
+            await Promise.resolve();
+
             if (num === 1) {
                 throw new Error('Test error');
             }

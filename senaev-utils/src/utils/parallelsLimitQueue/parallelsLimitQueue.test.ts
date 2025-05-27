@@ -177,6 +177,8 @@ describe('parallelsLimitQueue', () => {
 
     it('should handle errors properly', async () => {
         const callback = vi.fn(async (param: number) => {
+            await Promise.resolve();
+
             if (param === 2) {
                 throw new Error('Test error');
             }
@@ -209,7 +211,10 @@ describe('parallelsLimitQueue', () => {
     });
 
     it('should handle empty queue gracefully', async () => {
-        const callback = vi.fn(async (param: number) => param);
+        const callback = vi.fn(async (param: number) => {
+            await Promise.resolve();
+            return param;
+        });
 
         parallelsLimitQueue({
             callback,
@@ -225,6 +230,8 @@ describe('parallelsLimitQueue', () => {
     it('should continue processing after an error', async () => {
         const successfulOperations: number[] = [];
         const callback = vi.fn(async (param: number) => {
+            await Promise.resolve();
+
             if (param === 2) {
                 throw new Error('Test error');
             }

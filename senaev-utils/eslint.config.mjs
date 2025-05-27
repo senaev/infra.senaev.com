@@ -126,6 +126,7 @@ export default [
                 'as-needed',
             ],
             'no-alert': 'error',
+            'require-await': 'error',
             '@stylistic/key-spacing': [
                 'error',
                 {
