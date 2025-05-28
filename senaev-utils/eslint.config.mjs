@@ -398,6 +398,79 @@ export default [
                     maxBOF: 0, // No blank lines at the beginning of a file
                 },
             ],
+
+            /// /////////
+
+            'prefer-destructuring': [
+                'error',
+                {
+                    VariableDeclarator: {
+                        object: true,
+                    },
+                    AssignmentExpression: {},
+                },
+                { enforceForRenamedProperties: false },
+            ],
+            'no-new': 'error',
+            'no-throw-literal': 'error',
+            'prefer-promise-reject-errors': 'error',
+            'max-params': [
+                'error',
+                4,
+            ],
+            'no-useless-return': 'error',
+            'no-void': [
+                'error',
+                { allowAsStatement: true },
+            ],
+
+            'valid-typeof': 'error',
+            'no-unneeded-ternary': 'error',
+            'no-nested-ternary': 'error',
+            eqeqeq: 'error',
+            'no-return-assign': [
+                'error',
+                'always',
+            ],
+            '@typescript-eslint/no-unused-expressions': [
+                'error',
+                {
+                    allowTernary: true,
+                    allowShortCircuit: true,
+                },
+            ],
+            'no-shadow-restricted-names': 'error',
+            'no-restricted-globals': 'error',
+            'prefer-arrow-callback': 'error',
+            'no-duplicate-imports': 'error',
+            '@typescript-eslint/no-shadow': 'error',
+            '@typescript-eslint/ban-ts-comment': [
+                'error',
+                { 'ts-ignore': 'allow-with-description' },
+            ],
+            // TS handles it
+            'no-undef': 'off',
+            'no-empty': [
+                'error',
+                { allowEmptyCatch: true },
+            ],
+            'no-restricted-syntax': [
+                'error',
+                {
+                    selector: 'CallExpression[callee.name=onBeforeMount]',
+                    message: 'Affecting template in onBeforeMount can lead to rehydration mismatches',
+                },
+                {
+                    selector:
+                        'MemberExpression[property.name!=NODE_ENV][property.name!=DISABLE_HOT_RELOAD][object.property.name=env][object.object.name=process], VariableDeclarator[id.type="ObjectPattern"][init.object.name="process"][init.property.name="env"]',
+                    message:
+                        'Reading from process.env is forbidden. Use "useConfig()" in Vue, or "serverConfig" in server code.',
+                },
+                {
+                    selector: 'ImportSpecifier[imported.name="hydrateOnInteraction"]',
+                    message: 'Avoid this hydration strategy, as it may flicker on locale change.',
+                },
+            ],
         },
     },
 ];

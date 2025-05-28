@@ -18,7 +18,9 @@ describe('forOwn', () => {
         });
         expect(obj.a).to.eql(a);
         expect(obj.b).to.eql(b);
-        forOwn(obj, (elem) => (sum += elem));
+        forOwn(obj, (elem) => {
+            sum += elem;
+        });
         expect(sum).to.eql(b + a);
     });
 
