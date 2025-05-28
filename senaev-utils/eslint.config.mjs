@@ -134,6 +134,7 @@ export default [
                     afterColon: true,
                 },
             ],
+            'class-methods-use-this': 'error',
             '@stylistic/type-annotation-spacing': [
                 'error',
                 {

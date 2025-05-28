@@ -8,6 +8,7 @@ describe('getObjectEntries', () => {
     class TestClass {
         public constructor(public readonly prop1: unknown, public readonly prop2: unknown) {}
 
+        // eslint-disable-next-line class-methods-use-this
         public method() {
             //
         }
