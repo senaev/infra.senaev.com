@@ -1,7 +1,7 @@
 import {
     describe,
     expect,
-    it
+    it,
 } from 'vitest';
 
 import { getUniqueValues } from './getUniqueValues';
