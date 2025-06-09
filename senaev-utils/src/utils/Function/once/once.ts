@@ -1,21 +1,21 @@
 /**
- * Обертка для функции, которая вызовется не больше одного раза
+ * Wrapper for a function that will be called no more than once
  *
- * Контекст вызова сохраняется
+ * Call context is preserved
  *
- * При повторных вызовах возвращается результат первого вызова
+ * Subsequent calls return the result of the first call
  *
- * Повторные рекурсивные вызовы срабатывать тоже не будут
+ * Subsequent recursive calls will not be executed either
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function once<T extends (this: any, ...args: any[]) => any>(this: any, fn: T): T {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let onceFn = function (this: any) {
-        // Заранее создаем переменную, чтобы при вызове не было ошибки обращения к несуществующей константе
+        // Create variable in advance to avoid errors when accessing non-existent constant during call
         // eslint-disable-next-line prefer-const, @typescript-eslint/no-explicit-any
         let result: any;
 
-        // Заранее перезаписываем функцию, чтобы избежать рекурсивного вызова внутри once
+        // Overwrite function in advance to avoid recursive call inside once
         onceFn = () => result;
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any, prefer-rest-params
