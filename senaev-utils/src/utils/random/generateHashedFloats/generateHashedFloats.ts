@@ -3,19 +3,22 @@ import crypto from 'node:crypto';
 /**
  * Get independent values from hash sized for experiments
  */
-export function generateHashedFloats(seed: string, count: number, bytesPerFloat = 8): number[] {
+export function generateHashedFloats(seed: string, count: number): number[] {
+    // 6 bytes is the maximum for buffer.readUIntBE method
+    const BYTES_PER_INT = 6;
+    const MAX_INT = 2 ** (BYTES_PER_INT * 8) - 1;
+
     // Get exact number of bytes needed
-    const hash = crypto
-        .createHash('shake256', { outputLength: count * bytesPerFloat })
+    const buffer = crypto
+        .createHash('shake256', { outputLength: count * BYTES_PER_INT })
         .update(seed)
         .digest();
 
     const floats: number[] = [];
     for (let i = 0; i < count; i++) {
-        const slice = hash.subarray(i * bytesPerFloat, (i + 1) * bytesPerFloat);
-        const intValue = BigInt(`0x${slice.toString('hex')}`);
-        const max = BigInt(`0x1${'0'.repeat(bytesPerFloat * 2)}`);
-        const float = Number(intValue) / Number(max);
+        const offset = i * BYTES_PER_INT;
+        const intValue = buffer.readUIntBE(offset, BYTES_PER_INT);
+        const float = intValue / MAX_INT;
 
         floats.push(float);
     }

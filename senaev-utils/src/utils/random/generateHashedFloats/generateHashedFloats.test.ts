@@ -61,19 +61,4 @@ describe('generateHashedFloats', () => {
             expect(count).toBeLessThan(300); // 30% of 1000
         });
     });
-
-    it('should consider third param (bytesPerFloat)', () => {
-        expect(generateHashedFloats('test-seed', 2)).toEqual([
-            0.27823380451893975,
-            0.3564400570033258,
-        ]);
-        expect(generateHashedFloats('test-seed', 2, 4)).toEqual([
-            0.27823380450718105,
-            0.05050335009582341,
-        ]);
-        expect(generateHashedFloats('test-seed', 2, 1)).toEqual([
-            0.27734375,
-            0.2265625,
-        ]);
-    });
 });
