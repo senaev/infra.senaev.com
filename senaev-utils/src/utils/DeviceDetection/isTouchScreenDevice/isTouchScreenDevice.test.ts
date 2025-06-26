@@ -10,6 +10,6 @@ describe('isTouchScreenDevice', () => {
     // остальные кейсы с моками покрыты в дочерних утилитах
     it('returns false with current window', () => {
         // В Jest используется кастомный testEnvironment c jsdom, см. custom-test-env.ts
-        expect(isTouchScreenDevice(window)).to.eql(false);
+        expect(isTouchScreenDevice({})).to.eql(false);
     });
 });
