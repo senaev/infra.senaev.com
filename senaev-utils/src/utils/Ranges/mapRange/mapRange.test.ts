@@ -15,6 +15,7 @@ describe('mapRange', () => {
             5,
         ];
         const result = mapRange(input, (n) => n * 2);
+
         expect(result).toEqual([
             2,
             10,
@@ -27,6 +28,7 @@ describe('mapRange', () => {
             5,
         ];
         const result = mapRange(input, (n) => n.toString());
+
         expect(result).toEqual([
             '1',
             '5',
@@ -39,8 +41,10 @@ describe('mapRange', () => {
             5,
         ];
         const indices: number[] = [];
+
         mapRange(input, (n, index) => {
             indices.push(index);
+
             return n;
         });
         expect(indices).toEqual([
@@ -55,6 +59,7 @@ describe('mapRange', () => {
             'z',
         ];
         const result = mapRange(input, (str) => str.toUpperCase());
+
         expect(result).toEqual([
             'A',
             'Z',
@@ -72,6 +77,7 @@ describe('mapRange', () => {
                 isEnd: i === 1,
             };
         });
+
         expect(result).toEqual([
             {
                 value: 1,
@@ -90,6 +96,7 @@ describe('mapRange', () => {
             5,
         ];
         const result = mapRange(input, (n) => n * 2);
+
         expect(result.length).toBe(2);
     });
 });

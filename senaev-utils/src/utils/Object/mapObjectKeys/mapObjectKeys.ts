@@ -17,6 +17,7 @@ export function mapObjectKeys<T extends Record<string, any>, S extends string>(
 
     getObjectKeys(object).forEach((key) => {
         const newKey = mapFunction(key, object[key]);
+
         resultObject[newKey] = object[key];
     });
 

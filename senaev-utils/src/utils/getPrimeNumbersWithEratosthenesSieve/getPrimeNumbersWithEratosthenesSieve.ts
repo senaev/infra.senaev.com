@@ -10,6 +10,7 @@ export function getPrimeNumbersWithEratosthenesSieve(max: PositiveInteger): Posi
     }
 
     const primes = [];
+
     for (let i = 2; i <= max; i++) {
         if (!sieve[i]) {
             primes.push(i);

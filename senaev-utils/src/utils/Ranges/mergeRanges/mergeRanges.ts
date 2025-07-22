@@ -10,6 +10,7 @@ export function mergeRanges(ranges: Range[]): Range[] {
     const sorted = [...ranges].sort((a, b) => a[0] - b[0]);
 
     const firstRange = sorted[0];
+
     stack.push([
         firstRange[0],
         firstRange[1],
@@ -30,4 +31,6 @@ export function mergeRanges(ranges: Range[]): Range[] {
     }
 
     return stack;
-};
+}
+
+;

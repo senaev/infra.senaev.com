@@ -28,6 +28,7 @@ describe('mapObjectValues', () => {
             },
         ],
     ];
+
     testCases.forEach(([
         obj,
         ret,
@@ -45,6 +46,7 @@ describe('mapObjectValues', () => {
         type B = {
             foo: 'baz';
         };
+
         const expectB = (_b: B) => undefined;
 
         const a: A = { foo: 'bar' };
@@ -52,6 +54,7 @@ describe('mapObjectValues', () => {
             if (key === 'foo') {
                 return 'baz' as const;
             }
+
             return undefined;
         });
 

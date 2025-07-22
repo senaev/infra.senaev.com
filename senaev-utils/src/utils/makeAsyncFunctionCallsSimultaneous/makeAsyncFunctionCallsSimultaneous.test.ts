@@ -73,6 +73,7 @@ describe('makeAsyncFunctionCallsSimultaneous', () => {
             if (num === 1) {
                 throw new Error('Test error');
             }
+
             executionOrder.push(num);
 
             return num;

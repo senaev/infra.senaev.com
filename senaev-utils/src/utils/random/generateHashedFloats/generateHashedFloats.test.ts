@@ -8,11 +8,13 @@ describe('generateHashedFloats', () => {
     it('should return the correct number of floats', () => {
         const count = 5;
         const result = generateHashedFloats('test-seed', count);
+
         expect(result).toHaveLength(count);
     });
 
     it('should return floats between 0 and 1', () => {
         const result = generateHashedFloats('test-seed', 100);
+
         result.forEach((float) => {
             expect(float).toBeGreaterThanOrEqual(0);
             expect(float).toBeLessThan(1);
@@ -23,12 +25,14 @@ describe('generateHashedFloats', () => {
         const seed = 'test-seed';
         const result1 = generateHashedFloats(seed, 10);
         const result2 = generateHashedFloats(seed, 10);
+
         expect(result1).toEqual(result2);
     });
 
     it('should return different sequences for different seeds', () => {
         const result1 = generateHashedFloats('seed1', 10);
         const result2 = generateHashedFloats('seed2', 10);
+
         expect(result1).not.toEqual(result2);
     });
 

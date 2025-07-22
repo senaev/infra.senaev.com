@@ -20,6 +20,7 @@ export function binarySearchClosest<T>(
         const midValue = sortedArray[midIndex];
 
         const compareResult = compareFunction(midValue);
+
         if (compareResult === 0) {
             return midIndex;
         }

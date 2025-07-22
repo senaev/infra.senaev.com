@@ -11,6 +11,7 @@ import { fnv1a } from './fnv1a';
 describe('fnv1a', () => {
     it('should return the same hash for the same string', () => {
         const str = 'hello world';
+
         expect(fnv1a(str)).toBe(fnv1a(str));
     });
 
@@ -53,6 +54,7 @@ describe('fnv1a', () => {
             1024243015,
             1007465396,
         ];
+
         expect(createArray(10).map((_, i) => Number(fnv1a(String(i)))))
             .toEqual(SMALL_NUMBER_EXPECTATIONS);
 
@@ -68,6 +70,7 @@ describe('fnv1a', () => {
             924604332,
             941381951,
         ];
+
         expect(createArray(10).map((_, i) => Number(fnv1a(String(1_000_000_000 + i)))))
             .toEqual(BIG_NUMBER_EXPECTATIONS);
 
@@ -83,6 +86,7 @@ describe('fnv1a', () => {
             393405734,
             410183353,
         ];
+
         expect(createArray(10).map((_, i) => Number(fnv1a(`hello! ${i}`))))
             .toEqual(STRING_EXPECTATIONS);
     });

@@ -21,6 +21,7 @@ describe('mapDateRangeToISODateStringRange', () => {
         ];
 
         const result = mapDateRangeToISODateStringRange(input);
+
         expect(result).toEqual(expected);
     });
 
@@ -37,6 +38,7 @@ describe('mapDateRangeToISODateStringRange', () => {
         ];
 
         const result = mapDateRangeToISODateStringRange(input);
+
         expect(result).toEqual(expected);
     });
 
@@ -52,6 +54,7 @@ describe('mapDateRangeToISODateStringRange', () => {
         ];
 
         const result = mapDateRangeToISODateStringRange(input);
+
         expect(result).toEqual(expected);
     });
 
@@ -67,6 +70,7 @@ describe('mapDateRangeToISODateStringRange', () => {
         ];
 
         const result = mapDateRangeToISODateStringRange(input);
+
         expect(result).toEqual(expected);
     });
 });

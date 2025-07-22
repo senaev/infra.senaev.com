@@ -55,6 +55,7 @@ describe('Latch', () => {
 
         const latch = new Latch<{}>();
         const unsubscribe = latch.subscribe(spy1);
+
         latch.subscribe(spy2);
 
         unsubscribe();
@@ -76,6 +77,7 @@ describe('Latch', () => {
     test('should handle latch with undefined', () => {
         const spy = vi.fn();
         const latch = new Latch();
+
         latch.subscribe(spy);
 
         expect(latch.isDispatched()).to.equal(false);
@@ -94,6 +96,7 @@ describe('Latch', () => {
         const additionalCallback1 = vi.fn();
         const additionalCallback2 = vi.fn();
         const latch = new Latch<string>(constructorCallback);
+
         latch.subscribe(additionalCallback1);
 
         expect(constructorCallback.mock.calls.length).toBe(0);

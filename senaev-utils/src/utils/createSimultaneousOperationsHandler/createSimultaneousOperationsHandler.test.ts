@@ -25,6 +25,7 @@ describe('createSimultaneousOperationsHandler', () => {
         ]);
 
         const result = await promise;
+
         expect(result).toEqual({
             paramsList: [
                 {
@@ -67,6 +68,7 @@ describe('createSimultaneousOperationsHandler', () => {
         ]);
 
         const results = await Promise.all(promises);
+
         expect(results).toEqual([
             {
                 paramsList: [
@@ -190,6 +192,7 @@ describe('createSimultaneousOperationsHandler', () => {
             ],
             result: undefined,
         };
+
         expect(results).toEqual([
             expectedResult,
             expectedResult,
@@ -241,6 +244,7 @@ describe('createSimultaneousOperationsHandler', () => {
             ],
             result: undefined,
         };
+
         expect(results).toEqual([
             {
                 paramsList: [
@@ -261,13 +265,17 @@ describe('createSimultaneousOperationsHandler', () => {
         const handler = createSimultaneousOperationsHandler<number, string>(callback);
 
         const promise3 = handler(1, 3);
+
         await promiseTimeout(10);
         const promise2 = handler(1, 2);
+
         await promiseTimeout(10);
         const promise1 = handler(1, 1);
+
         await promiseTimeout(10);
 
         let throwErrorIfResolved = true;
+
         await Promise.race([
             promise3.then(() => {
                 if (throwErrorIfResolved) {

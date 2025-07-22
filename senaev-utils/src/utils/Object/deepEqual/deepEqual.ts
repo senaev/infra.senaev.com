@@ -26,6 +26,7 @@ export function deepEqual<T>(actual: unknown, expected: T): actual is T {
 
     const actualKeys = getObjectKeys(actual);
     const expectedKeys = getObjectKeys(expected);
+
     if (actualKeys.length !== expectedKeys.length) {
         return false;
     }
@@ -39,5 +40,6 @@ export function deepEqual<T>(actual: unknown, expected: T): actual is T {
             return false;
         }
     }
+
     return true;
 }

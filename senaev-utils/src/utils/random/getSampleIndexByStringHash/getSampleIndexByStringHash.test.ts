@@ -12,11 +12,13 @@ describe('getSampleIndexByStringHash', () => {
     it('should return the same index for the same string and maxInteger', () => {
         const str = 'hello world';
         const maxInteger = 10;
+
         expect(getSampleIndexByStringHash(str, maxInteger)).toBe(getSampleIndexByStringHash(str, maxInteger));
     });
 
     it('should return different indices for different strings', () => {
         const maxInteger = 10;
+
         expect(getSampleIndexByStringHash('foo', maxInteger)).not.toBe(getSampleIndexByStringHash('bar', maxInteger));
     });
 
@@ -24,28 +26,33 @@ describe('getSampleIndexByStringHash', () => {
         const str = 'test';
         const maxInteger = 5;
         const index = getSampleIndexByStringHash(str, maxInteger);
+
         expect(index).toBeGreaterThanOrEqual(0);
         expect(index).toBeLessThan(maxInteger);
     });
 
     it('should handle empty string', () => {
         const maxInteger = 10;
+
         expect(getSampleIndexByStringHash('', maxInteger)).toBe(1);
     });
 
     it('should handle unicode characters', () => {
         const maxInteger = 10;
+
         expect(getSampleIndexByStringHash('😀', maxInteger)).toBe(getSampleIndexByStringHash('😀', maxInteger));
         expect(getSampleIndexByStringHash('��', maxInteger)).not.toBe(getSampleIndexByStringHash('😁', maxInteger));
     });
 
     it('should handle maxInteger of 1', () => {
         const str = 'test';
+
         expect(getSampleIndexByStringHash(str, 1)).toBe(0);
     });
 
     it('should handle maxInteger of 0', () => {
         const str = 'test';
+
         expect(getSampleIndexByStringHash(str, 0)).toBe(NaN);
     });
 
@@ -154,6 +161,7 @@ describe('getSampleIndexByStringHash', () => {
         ];
 
         const result = createArray(100).map((_, i) => getSampleIndexByStringHash(String(i), 10));
+
         expect(result).toEqual(expectedValues);
     });
 });

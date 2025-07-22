@@ -17,6 +17,7 @@ describe('binarySearchClosest', () => {
         ];
         const compareFunction = (a: number) => a - 3;
         const result = binarySearchClosest(arr, compareFunction);
+
         expect(result).toBe(2);
     });
 
@@ -40,6 +41,7 @@ describe('binarySearchClosest', () => {
         const arr = [3];
         const compareFunction = (a: number) => a - 3;
         const result = binarySearchClosest(arr, compareFunction);
+
         expect(result).toBe(0);
     });
 
@@ -50,6 +52,7 @@ describe('binarySearchClosest', () => {
         ];
         const compareFunction = (a: number) => a - 2;
         const result = binarySearchClosest(arr, compareFunction);
+
         expect(result).toBe(0);
     });
 
@@ -58,6 +61,7 @@ describe('binarySearchClosest', () => {
             1,
             3,
         ];
+
         expect(binarySearchClosest(arr, (a: number) => a - 2.0001)).toBe(1);
         expect(binarySearchClosest(arr, (a: number) => a - 1.99999)).toBe(0);
     });
@@ -68,6 +72,7 @@ describe('binarySearchClosest', () => {
             1,
             3,
         ];
+
         expect(binarySearchClosest(arr, (a: number) => a - 2.0001)).toBe(2);
         expect(binarySearchClosest(arr, (a: number) => a - 1.99999)).toBe(1);
     });
@@ -86,6 +91,7 @@ describe('binarySearchClosest', () => {
             9,
             10,
         ];
+
         expect(binarySearchClosest(arr, (a) => a / 3.001 - 3)).toBe(9);
         expect(binarySearchClosest(arr, (a) => a / 2.5 - 2)).toBe(5);
     });

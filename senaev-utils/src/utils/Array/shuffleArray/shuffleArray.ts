@@ -5,6 +5,7 @@ export function shuffleArray <T>(array: T[]) {
 
         // Pick a remaining element...
         const randomIndex = Math.floor(Math.random() * currentIndex);
+
         currentIndex--;
 
         [

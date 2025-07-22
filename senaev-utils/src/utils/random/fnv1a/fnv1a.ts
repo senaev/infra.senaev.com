@@ -50,6 +50,7 @@ function fnv1aEncodeInto(string: string, size: number, utf8Buffer: Uint8Array) {
 
     while (remaining.length > 0) {
         const result = cachedEncoder.encodeInto(remaining, utf8Buffer);
+
         remaining = remaining.slice(result.read);
         for (let index = 0; index < result.written; index++) {
             hash ^= BigInt(utf8Buffer[index]);

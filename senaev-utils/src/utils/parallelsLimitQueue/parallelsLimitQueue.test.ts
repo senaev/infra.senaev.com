@@ -19,6 +19,7 @@ describe('parallelsLimitQueue', () => {
             await new Promise((resolve) => {
                 resolvers.push(resolve);
             });
+
             return param * 2;
         });
 
@@ -113,6 +114,7 @@ describe('parallelsLimitQueue', () => {
             await new Promise((resolve) => {
                 resolvers.push(resolve);
             });
+
             return param * 2;
         });
 
@@ -122,6 +124,7 @@ describe('parallelsLimitQueue', () => {
         });
 
         const promises = [];
+
         for (let i = 0; i < 100; i++) {
             promises.push(queueFn(i));
         }
@@ -182,6 +185,7 @@ describe('parallelsLimitQueue', () => {
             if (param === 2) {
                 throw new Error('Test error');
             }
+
             return param * 2;
         });
 
@@ -213,6 +217,7 @@ describe('parallelsLimitQueue', () => {
     it('should handle empty queue gracefully', async () => {
         const callback = vi.fn(async (param: number) => {
             await Promise.resolve();
+
             return param;
         });
 
@@ -235,7 +240,9 @@ describe('parallelsLimitQueue', () => {
             if (param === 2) {
                 throw new Error('Test error');
             }
+
             successfulOperations.push(param);
+
             return param;
         });
 

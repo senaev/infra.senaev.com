@@ -5,6 +5,7 @@ import { deepEqual } from './deepEqual';
 function func1() {
     //
 }
+
 function func2() {
     //
 }

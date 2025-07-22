@@ -37,6 +37,7 @@ describe('isObject', () => {
             output: false,
         },
     ];
+
     testCases.forEach(({ input, output }) => {
         test(`isObject(${JSON.stringify(input)}) -> ${output}`, () => {
             expect(isObject(input)).to.eql(output);

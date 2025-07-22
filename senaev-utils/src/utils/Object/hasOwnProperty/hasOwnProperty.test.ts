@@ -15,6 +15,7 @@ describe('hasOwnProperty', () => {
 
     it('should return true if checks own property in object without proto', () => {
         const obj = Object.create(null);
+
         obj.a = 1;
 
         expect(hasOwnProperty(obj, 'a')).to.equal(true);

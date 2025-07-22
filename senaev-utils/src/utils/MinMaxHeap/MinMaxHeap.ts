@@ -27,6 +27,7 @@ export class MinMaxHeap<T> {
         }
 
         const top = this._heap[0];
+
         this._heap[0] = this._heap.pop()!;
         this._bubbleDown();
 
@@ -35,6 +36,7 @@ export class MinMaxHeap<T> {
 
     private _bubbleUp(): void {
         let idx = this._heap.length - 1;
+
         while (idx > 0) {
             const parentIdx = Math.floor((idx - 1) / 2);
             const current = this._heap[idx];
@@ -53,6 +55,7 @@ export class MinMaxHeap<T> {
 
     private _bubbleDown(): void {
         let idx = 0;
+
         while (true) {
             const leftIdx = 2 * idx + 1;
             const rightIdx = 2 * idx + 2;
@@ -63,6 +66,7 @@ export class MinMaxHeap<T> {
 
             let smallestIdx = leftIdx;
             const hasRight = rightIdx < this._heap.length;
+
             if (hasRight) {
                 const rightIsPrior = this._compare(this._heap[rightIdx][0], this._heap[leftIdx][0]) < 0;
 
@@ -73,6 +77,7 @@ export class MinMaxHeap<T> {
 
             const value = this._heap[idx];
             const smallestValue = this._heap[smallestIdx];
+
             if (this._compare(value[0], smallestValue[0]) < 0) {
                 break;
             }

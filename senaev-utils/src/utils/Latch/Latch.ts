@@ -38,6 +38,7 @@ export class Latch<T = undefined> {
     public subscribe(callback: LatchCallback<T>): VoidFunction {
         if (this._isDispatched) {
             callback(this.value!);
+
             return noop;
         }
 

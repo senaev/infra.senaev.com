@@ -22,6 +22,7 @@ export function makeAsyncFunctionCallsSimultaneous<T, R>(callback: (param: T) =>
 
         if (!operation) {
             isAsyncOperationRunning = false;
+
             return;
         }
 

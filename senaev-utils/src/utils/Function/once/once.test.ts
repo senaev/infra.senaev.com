@@ -38,9 +38,11 @@ describe('function', () => {
             expect(fn.mock.calls.length).toEqual(0);
 
             const result: number = onceFn(1, 2);
+
             expect(result).to.eql(3);
 
             const nextResult: number = onceFn(4, 5);
+
             expect(nextResult).to.eql(3);
 
             expect(fn.mock.calls.length).toEqual(1);
@@ -59,6 +61,7 @@ describe('function', () => {
 
         test('generic should work', () => {
             type Func<T> = (variable: T) => T;
+
             const func: Func<{
                 x: number;
                 y: string;
@@ -87,6 +90,7 @@ describe('function', () => {
                 func();
 
                 callsCount++;
+
                 return 123;
             });
 

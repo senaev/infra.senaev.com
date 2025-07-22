@@ -27,6 +27,7 @@ export function excludeRanges(initialRange: Range, sortedRangesToExclude: Range[
                 meetingStart,
             ]);
         }
+
         currentNumber = Math.max(currentNumber, meetingEnd);
     }
 

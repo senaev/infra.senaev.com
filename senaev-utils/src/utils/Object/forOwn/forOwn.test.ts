@@ -16,6 +16,7 @@ describe('forOwn', () => {
             a,
             b,
         });
+
         expect(obj.a).to.eql(a);
         expect(obj.b).to.eql(b);
         forOwn(obj, (elem) => {
@@ -30,6 +31,7 @@ describe('forOwn', () => {
             b,
             c,
         };
+
         forOwn(testObj, (elem, key, obj) => {
             if (obj[key] !== elem) {
                 throw new Error('element has not been passed');

@@ -257,6 +257,7 @@ describe('mergeRanges', () => {
             ],
         ];
         const originalInput = JSON.parse(JSON.stringify(input));
+
         mergeRanges(input);
         expect(input).toEqual(originalInput);
     });

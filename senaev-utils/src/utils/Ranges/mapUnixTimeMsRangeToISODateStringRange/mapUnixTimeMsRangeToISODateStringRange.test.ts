@@ -22,6 +22,7 @@ describe('mapUnixTimeMsRangeToISODateStringRange', () => {
         ];
 
         const result = mapUnixTimeMsRangeToISODateStringRange(input);
+
         expect(result).toEqual(expected);
     });
 
@@ -38,6 +39,7 @@ describe('mapUnixTimeMsRangeToISODateStringRange', () => {
         ];
 
         const result = mapUnixTimeMsRangeToISODateStringRange(input);
+
         expect(result).toEqual(expected);
     });
 
@@ -53,6 +55,7 @@ describe('mapUnixTimeMsRangeToISODateStringRange', () => {
         ];
 
         const result = mapUnixTimeMsRangeToISODateStringRange(input);
+
         expect(result).toEqual(expected);
     });
 
@@ -68,6 +71,7 @@ describe('mapUnixTimeMsRangeToISODateStringRange', () => {
         ];
 
         const result = mapUnixTimeMsRangeToISODateStringRange(input);
+
         expect(result).toEqual(expected);
     });
 });

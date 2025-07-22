@@ -18,6 +18,7 @@ describe('mapGetOrSet', () => {
 
     it('should not modify the map when the key already exists', () => {
         const map = new Map<string, number>();
+
         map.set('test', 42);
 
         const value = mapGetOrSet(map, 'test', 100);

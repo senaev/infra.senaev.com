@@ -15,6 +15,7 @@ export function generateHashedFloats(seed: string, count: number): number[] {
         .digest();
 
     const floats: number[] = [];
+
     for (let i = 0; i < count; i++) {
         const offset = i * BYTES_PER_INT;
         const intValue = buffer.readUIntBE(offset, BYTES_PER_INT);

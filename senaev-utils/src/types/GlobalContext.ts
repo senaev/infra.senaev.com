@@ -4,5 +4,5 @@
  * и `Window` в более ранних версия ts
  * @see https://github.com/microsoft/TypeScript/wiki/Breaking-Changes#dom-updates
  */
-// eslint-disable-next-line no-restricted-globals
+
 export type GlobalContext = typeof window;

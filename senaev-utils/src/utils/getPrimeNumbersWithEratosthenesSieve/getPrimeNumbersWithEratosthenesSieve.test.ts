@@ -48,6 +48,7 @@ describe('getPrimeNumbersWithEratosthenesSieve', () => {
         ]);
 
         const primesOf700_000 = getPrimeNumbersWithEratosthenesSieve(700_000);
+
         expect(primesOf700_000.length).toBe(56543);
     });
 });
