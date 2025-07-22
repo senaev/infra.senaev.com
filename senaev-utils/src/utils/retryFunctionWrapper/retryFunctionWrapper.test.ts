@@ -149,4 +149,26 @@ describe('retryFunctionWrapper', () => {
         expect(onFailAttempt).toHaveBeenNthCalledWith(2, error2, 1);
         expect(onFailAttempt).toHaveBeenNthCalledWith(3, error3, 2);
     });
+
+    it('should handle function types', async () => {
+        const wrapped = retryFunctionWrapper({
+            fn: (a: number, b: string) => `${a} ${b}`,
+            attempts: 3,
+            delay: 10,
+        });
+
+        // @ts-expect-error - we're testing the function type
+        wrapped();
+
+        const result = wrapped(1, 'test');
+
+        expect(result).instanceOf(Promise);
+        expect(await result).toBe('1 test');
+
+        // @ts-expect-error - we're testing the function type
+        wrapped(1, 2);
+
+        // @ts-expect-error - we're testing the function type
+        wrapped(1);
+    });
 });

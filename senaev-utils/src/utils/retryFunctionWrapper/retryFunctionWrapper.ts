@@ -1,6 +1,7 @@
 import { promiseTimeout } from '../timers/promiseTimeout/promiseTimeout';
 
-export function retryFunctionWrapper<T extends (...args: unknown[]) => Promise<unknown>>({
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function retryFunctionWrapper<T extends (...args: any[]) => any>({
     fn,
     attempts,
     delay,
@@ -16,9 +17,9 @@ export function retryFunctionWrapper<T extends (...args: unknown[]) => Promise<u
             let attemptIndex = 0;
             const makeAttempt = async () => {
                 try {
-                    const attemptPromise = fn(...args);
+                    const fnReturnValue = fn(...args);
 
-                    const result = await attemptPromise as ReturnType<T>;
+                    const result = await fnReturnValue as ReturnType<T>;
 
                     resolve(result);
                 } catch (error) {
