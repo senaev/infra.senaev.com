@@ -2,6 +2,8 @@ import {
     describe, expect, it, vi,
 } from 'vitest';
 
+import { noop } from '../Function/noop';
+
 import { retryFunctionWrapper } from './retryFunctionWrapper';
 
 describe('retryFunctionWrapper', () => {
@@ -152,7 +154,7 @@ describe('retryFunctionWrapper', () => {
 
     it('should handle function types', async () => {
         const wrapped = retryFunctionWrapper({
-            fn: (a: number, b: string) => `${a} ${b}`,
+            fn: (a: number, b: string) => `${a} ${b}` as unknown as Promise<string>,
             attempts: 3,
             delay: 10,
         });
@@ -160,10 +162,21 @@ describe('retryFunctionWrapper', () => {
         // @ts-expect-error - we're testing the function type
         wrapped();
 
-        const result = wrapped(1, 'test');
+        const promise = wrapped(1, 'test');
 
-        expect(result).instanceOf(Promise);
-        expect(await result).toBe('1 test');
+        expect(promise).instanceOf(Promise);
+        const result = await promise;
+
+        expect(result).toBe('1 test');
+
+        let tempString: string = '';
+        let tempNumber: number = 0;
+
+        tempString = result;
+        // @ts-expect-error - result is a string while tempNumber is a number
+        tempNumber = result;
+        noop(tempString);
+        noop(tempNumber);
 
         // @ts-expect-error - we're testing the function type
         wrapped(1, 2);
