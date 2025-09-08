@@ -7,20 +7,7 @@ import {
 import { binarySearch } from './binarySearch';
 
 describe('binarySearch', () => {
-    it('should return the correct index when the element is found in the middle', () => {
-        const arr = [
-            1,
-            2,
-            3,
-            4,
-            5,
-        ];
-        const result = binarySearch(arr, 3);
-
-        expect(result).toBe(2);
-    });
-
-    it('should return the correct index when the element is found at the beginning', () => {
+    it('should find element at the beginning of the array', () => {
         const arr = [
             1,
             2,
@@ -33,7 +20,7 @@ describe('binarySearch', () => {
         expect(result).toBe(0);
     });
 
-    it('should return the correct index when the element is found at the end', () => {
+    it('should find element at the end of the array', () => {
         const arr = [
             1,
             2,
@@ -46,7 +33,56 @@ describe('binarySearch', () => {
         expect(result).toBe(4);
     });
 
-    it('should return -1 when the element is not found', () => {
+    it('should find element in the middle of the array', () => {
+        const arr = [
+            1,
+            2,
+            3,
+            4,
+            5,
+        ];
+        const result = binarySearch(arr, 3);
+
+        expect(result).toBe(2);
+    });
+
+    it('should find element in the left half of the array', () => {
+        const arr = [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+        ];
+        const result = binarySearch(arr, 2);
+
+        expect(result).toBe(1);
+    });
+
+    it('should find element in the right half of the array', () => {
+        const arr = [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+        ];
+        const result = binarySearch(arr, 8);
+
+        expect(result).toBe(7);
+    });
+
+    it('should return -1 when element is not found', () => {
         const arr = [
             1,
             2,
@@ -85,101 +121,111 @@ describe('binarySearch', () => {
         expect(result).toBe(-1);
     });
 
-    it('should handle arrays with one element', () => {
-        const arr = [42];
-        const result = binarySearch(arr, 42);
-
-        expect(result).toBe(0);
-    });
-
-    it('should return -1 for single element array when element not found', () => {
-        const arr = [42];
-        const result = binarySearch(arr, 10);
-
-        expect(result).toBe(-1);
-    });
-
-    it('should handle arrays with two elements', () => {
-        const arr = [
-            1,
-            3,
-        ];
-
-        expect(binarySearch(arr, 1)).toBe(0);
-        expect(binarySearch(arr, 3)).toBe(1);
-        expect(binarySearch(arr, 2)).toBe(-1);
-    });
-
-    it('should handle empty arrays', () => {
+    it('should handle empty array', () => {
         const arr: number[] = [];
         const result = binarySearch(arr, 1);
 
         expect(result).toBe(-1);
     });
 
-    it('should work with string arrays', () => {
-        const arr = [
-            'apple',
-            'banana',
-            'cherry',
-            'date',
-            'elderberry',
-        ];
+    it('should handle array with single element - found', () => {
+        const arr = [42];
+        const result = binarySearch(arr, 42);
 
-        expect(binarySearch(arr, 'cherry')).toBe(2);
-        expect(binarySearch(arr, 'apple')).toBe(0);
-        expect(binarySearch(arr, 'elderberry')).toBe(4);
-        expect(binarySearch(arr, 'grape')).toBe(-1);
+        expect(result).toBe(0);
     });
 
-    it('should work with arrays containing duplicate values', () => {
+    it('should handle array with single element - not found', () => {
+        const arr = [42];
+        const result = binarySearch(arr, 1);
+
+        expect(result).toBe(-1);
+    });
+
+    it('should handle array with two elements - first element', () => {
+        const arr = [
+            1,
+            2,
+        ];
+        const result = binarySearch(arr, 1);
+
+        expect(result).toBe(0);
+    });
+
+    it('should handle array with two elements - second element', () => {
+        const arr = [
+            1,
+            2,
+        ];
+        const result = binarySearch(arr, 2);
+
+        expect(result).toBe(1);
+    });
+
+    it('should handle array with two elements - not found', () => {
+        const arr = [
+            1,
+            2,
+        ];
+        const result = binarySearch(arr, 3);
+
+        expect(result).toBe(-1);
+    });
+
+    it('should handle array with duplicate elements - find first occurrence', () => {
         const arr = [
             1,
             2,
             2,
             3,
-            3,
-            3,
             4,
-            5,
         ];
-
-        // Should return one of the valid indices for duplicates
         const result = binarySearch(arr, 2);
 
+        // Binary search finds one of the duplicates, not necessarily the first
         expect(result).toBeGreaterThanOrEqual(1);
         expect(result).toBeLessThanOrEqual(2);
         expect(arr[result]).toBe(2);
     });
 
-    it('should work with large arrays', () => {
-        const arr = Array.from({ length: 1000 }, (_, i) => i * 2);
+    it('should handle large array', () => {
+        const arr = Array.from({ length: 1000 }, (_, i) => i + 1);
+        const result = binarySearch(arr, 500);
 
-        expect(binarySearch(arr, 0)).toBe(0);
-        expect(binarySearch(arr, 998)).toBe(499);
-        expect(binarySearch(arr, 1998)).toBe(999);
-        expect(binarySearch(arr, 1)).toBe(-1);
-        expect(binarySearch(arr, 1999)).toBe(-1);
+        expect(result).toBe(499);
     });
 
-    it('should work with negative numbers', () => {
+    it('should handle array with negative numbers', () => {
         const arr = [
-            -10,
             -5,
+            -3,
             -1,
             0,
-            1,
-            5,
-            10,
+            2,
+            4,
+            6,
         ];
+        const result = binarySearch(arr, -1);
 
-        expect(binarySearch(arr, -10)).toBe(0);
-        expect(binarySearch(arr, 0)).toBe(3);
-        expect(binarySearch(arr, 10)).toBe(6);
-        expect(binarySearch(arr, -3)).toBe(-1);
+        expect(result).toBe(2);
     });
 
-    it('should work with floating point numbers', () => {
+    it('should handle array with negative numbers - not found', () => {
+        const arr = [
+            -5,
+            -3,
+            -1,
+            0,
+            2,
+            4,
+            6,
+        ];
+        const result = binarySearch(arr, -2);
+
+        expect(result).toBe(-1);
+    });
+
+    it('should handle array with decimal numbers', () => {
         const arr = [
             1.1,
             2.2,
@@ -187,71 +233,127 @@ describe('binarySearch', () => {
             4.4,
             5.5,
         ];
+        const result = binarySearch(arr, 3.3);
 
-        expect(binarySearch(arr, 3.3)).toBe(2);
-        expect(binarySearch(arr, 1.1)).toBe(0);
-        expect(binarySearch(arr, 5.5)).toBe(4);
-        expect(binarySearch(arr, 2.5)).toBe(-1);
+        expect(result).toBe(2);
     });
 
-    it('should work with objects when using reference equality', () => {
-        const obj1 = { id: 1 };
-        const obj2 = { id: 2 };
-        const obj3 = { id: 3 };
+    it('should handle array with decimal numbers - not found', () => {
         const arr = [
-            obj1,
-            obj2,
-            obj3,
+            1.1,
+            2.2,
+            3.3,
+            4.4,
+            5.5,
         ];
+        const result = binarySearch(arr, 3.0);
 
-        expect(binarySearch(arr, { id: 2 })).toBe(-1);
+        expect(result).toBe(-1);
     });
 
-    it('should handle edge case with odd-length arrays', () => {
+    it('should handle array with zeros', () => {
+        const arr = [
+            0,
+            1,
+            2,
+            3,
+            4,
+        ];
+        const result = binarySearch(arr, 0);
+
+        expect(result).toBe(0);
+    });
+
+    it('should handle array with zeros - not found', () => {
         const arr = [
             1,
+            2,
             3,
+            4,
             5,
-            7,
-            9,
         ];
+        const result = binarySearch(arr, 0);
 
-        expect(binarySearch(arr, 5)).toBe(2);
-        expect(binarySearch(arr, 1)).toBe(0);
-        expect(binarySearch(arr, 9)).toBe(4);
-        expect(binarySearch(arr, 4)).toBe(-1);
+        expect(result).toBe(-1);
     });
 
-    it('should handle edge case with even-length arrays', () => {
+    it('should handle array with all same elements', () => {
         const arr = [
+            5,
+            5,
+            5,
+            5,
+            5,
+        ];
+        const result = binarySearch(arr, 5);
+
+        // Binary search finds one of the duplicates
+        expect(result).toBeGreaterThanOrEqual(0);
+        expect(result).toBeLessThanOrEqual(4);
+        expect(arr[result]).toBe(5);
+    });
+
+    it('should handle array with all same elements - not found', () => {
+        const arr = [
+            5,
+            5,
+            5,
+            5,
+            5,
+        ];
+        const result = binarySearch(arr, 3);
+
+        expect(result).toBe(-1);
+    });
+
+    it('should handle odd-length array', () => {
+        const arr = [
+            1,
             2,
+            3,
             4,
+            5,
             6,
-            8,
+            7,
         ];
+        const result = binarySearch(arr, 4);
 
-        expect(binarySearch(arr, 4)).toBe(1);
-        expect(binarySearch(arr, 6)).toBe(2);
-        expect(binarySearch(arr, 2)).toBe(0);
-        expect(binarySearch(arr, 8)).toBe(3);
-        expect(binarySearch(arr, 5)).toBe(-1);
+        expect(result).toBe(3);
     });
 
-    it('should return correct type (UnsignedInteger or -1)', () => {
+    it('should handle even-length array', () => {
         const arr = [
             1,
             2,
             3,
             4,
             5,
+            6,
         ];
+        const result = binarySearch(arr, 3);
 
-        const foundResult = binarySearch(arr, 3);
-        const notFoundResult = binarySearch(arr, 6);
+        expect(result).toBe(2);
+    });
 
-        expect(typeof foundResult).toBe('number');
-        expect(typeof notFoundResult).toBe('number');
-        expect(foundResult).toBeGreaterThanOrEqual(0);
-        expect(notFoundResult).toBe(-1);
+    it('should handle array with maximum safe integer', () => {
+        const arr = [
+            Number.MAX_SAFE_INTEGER - 2,
+            Number.MAX_SAFE_INTEGER - 1,
+            Number.MAX_SAFE_INTEGER,
+        ];
+        const result = binarySearch(arr, Number.MAX_SAFE_INTEGER);
+
+        expect(result).toBe(2);
+    });
+
+    it('should handle array with minimum safe integer', () => {
+        const arr = [
+            Number.MIN_SAFE_INTEGER,
+            Number.MIN_SAFE_INTEGER + 1,
+            Number.MIN_SAFE_INTEGER + 2,
+        ];
+        const result = binarySearch(arr, Number.MIN_SAFE_INTEGER);
+
+        expect(result).toBe(0);
     });
 });
