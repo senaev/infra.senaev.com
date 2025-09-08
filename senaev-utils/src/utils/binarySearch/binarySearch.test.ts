@@ -6,7 +6,6 @@ import {
 
 import { binarySearch } from './binarySearch';
 
-
 describe('binarySearch', () => {
     it('should return the correct index when the element is found in the middle', () => {
         const arr = [
