@@ -436,6 +436,13 @@ export default [
                 'error',
                 { 'ts-ignore': 'allow-with-description' },
             ],
+            'react/self-closing-comp': [
+                'error',
+                {
+                    component: true,
+                    html: true,
+                },
+            ],
             '@stylistic/padding-line-between-statements': [
                 'error',
                 {
