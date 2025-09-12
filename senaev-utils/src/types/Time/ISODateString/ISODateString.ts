@@ -8,8 +8,8 @@ export function isISODateString(date: string): boolean {
     return !isNaN(parsedDate.getTime()) && date === parsedDate.toISOString();
 }
 
-export function assertISODateString(date: string): asserts date is ISODateString {
+export function assertISODateString(date: string, errorMessage: string): asserts date is ISODateString {
     if (!isISODateString(date)) {
-        throw new Error(`date=[${date}] is not a valid ISO date string`);
+        throw new Error(`date=[${date}] is not a valid ISO date string errorMessage=[${errorMessage}]`);
     }
 }
