@@ -61,7 +61,7 @@ describe('ISODateString', () => {
             ];
 
             invalidDates.forEach((date) => {
-                expect(() => assertISODateString(date)).toThrow(`date=[${date}] is not a valid ISO date string`);
+                expect(() => assertISODateString(date, 'errorMessage')).toThrow(`date=[${date}] is not a valid ISO date string errorMessage=[errorMessage]`);
             });
         });
     });
