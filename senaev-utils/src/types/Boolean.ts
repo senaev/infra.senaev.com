@@ -7,4 +7,3 @@ export function assertBoolean(value: unknown, errorMessage?: string): asserts va
         throw new Error(`assert boolean error${errorMessage ? ` errorMessage=[${errorMessage}]` : ''}`);
     }
 }
-
