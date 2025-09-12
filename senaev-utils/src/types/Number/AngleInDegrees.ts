@@ -1,3 +1,3 @@
-import { Integer } from '../../utils/Number/Integer';
+import { Integer } from './Integer';
 
 export type AngleInDegrees = Integer;

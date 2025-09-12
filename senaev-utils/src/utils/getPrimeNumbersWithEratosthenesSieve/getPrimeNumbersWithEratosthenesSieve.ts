@@ -1,4 +1,4 @@
-import { PositiveInteger } from '../Number/PositiveInteger';
+import { PositiveInteger } from '../../types/Number/PositiveInteger';
 
 export function getPrimeNumbersWithEratosthenesSieve(max: PositiveInteger): PositiveInteger[] {
     const sieve = Array.from({ length: max + 1 });

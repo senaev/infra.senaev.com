@@ -1,6 +1,6 @@
-import { Integer } from '../Integer';
-import { PositiveInteger } from '../PositiveInteger';
-import { UnsignedInteger } from '../UnsignedInteger';
+import { Integer } from '../../../types/Number/Integer';
+import { PositiveInteger } from '../../../types/Number/PositiveInteger';
+import { UnsignedInteger } from '../../../types/Number/UnsignedInteger';
 
 type IntegerSequence = {
     start: UnsignedInteger;

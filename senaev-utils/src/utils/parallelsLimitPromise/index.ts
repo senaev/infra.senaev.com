@@ -1,6 +1,6 @@
 import { parallelLimit } from 'async';
 
-import { PositiveInteger } from '../Number/PositiveInteger';
+import { PositiveInteger } from '../../types/Number/PositiveInteger';
 
 export function parallelsLimitPromise<T>(functions: (() => Promise<T>)[], limit: PositiveInteger): Promise<T[]> {
     return new Promise<T[]>((resolve, reject) => {

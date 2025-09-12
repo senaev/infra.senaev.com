@@ -1,4 +1,4 @@
-import { UnsignedInteger } from '../../Number/UnsignedInteger';
+import { UnsignedInteger } from '../../../types/Number/UnsignedInteger';
 
 interface CreateArray {
     (length: UnsignedInteger): undefined[];

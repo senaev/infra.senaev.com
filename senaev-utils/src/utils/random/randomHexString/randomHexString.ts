@@ -1,4 +1,4 @@
-import { UnsignedInteger } from '../../Number/UnsignedInteger';
+import { UnsignedInteger } from '../../../types/Number/UnsignedInteger';
 import { HexString } from '../../String/HexString/HexString';
 
 export function randomHexString(length: UnsignedInteger): HexString {

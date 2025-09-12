@@ -1,10 +1,10 @@
+import { PositiveInteger } from '../types/Number/PositiveInteger';
+import { UnsignedInteger } from '../types/Number/UnsignedInteger';
 import { UnixTimeMs } from '../types/Time/UnixTimeMs';
 
 import { createIncrementalIntegerGenerator } from './createIncrementalIntegerGenerator';
 import { callFunctions } from './Function/callFunctions/callFunctions';
 import { Latch, LatchCallback } from './Latch/Latch';
-import { PositiveInteger } from './Number/PositiveInteger';
-import { UnsignedInteger } from './Number/UnsignedInteger';
 import { Signal } from './Signal/Signal';
 
 export type AbortableProcessAbortReason = string | undefined;

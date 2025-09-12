@@ -1,5 +1,5 @@
-import { PositiveInteger } from '../../Number/PositiveInteger';
-import { UnsignedInteger } from '../../Number/UnsignedInteger';
+import { PositiveInteger } from '../../../types/Number/PositiveInteger';
+import { UnsignedInteger } from '../../../types/Number/UnsignedInteger';
 import { fnv1a } from '../fnv1a/fnv1a';
 
 export function getSampleIndexByStringHash(str: string, samplesCount: PositiveInteger): UnsignedInteger {
