@@ -1,5 +1,5 @@
-import { PositiveInteger } from '../Number/PositiveInteger';
-import { UnsignedInteger } from '../Number/UnsignedInteger';
+import { PositiveInteger } from '../../types/Number/PositiveInteger';
+import { UnsignedInteger } from '../../types/Number/UnsignedInteger';
 
 import { DEFAULT_PAGE } from './DEFAULT_PAGE';
 

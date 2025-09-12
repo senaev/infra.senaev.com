@@ -1,6 +1,6 @@
+import { PositiveInteger } from '../../types/Number/PositiveInteger';
+import { UnsignedInteger } from '../../types/Number/UnsignedInteger';
 import { isPromise } from '../isPromise/isPromise';
-import { PositiveInteger } from '../Number/PositiveInteger';
-import { UnsignedInteger } from '../Number/UnsignedInteger';
 
 export function parallelsLimitQueue<T, R>({
     callback,
