@@ -499,16 +499,6 @@ export default [
                     selector: 'CallExpression[callee.name=onBeforeMount]',
                     message: 'Affecting template in onBeforeMount can lead to rehydration mismatches',
                 },
-                {
-                    selector:
-                        'MemberExpression[property.name!=NODE_ENV][property.name!=DISABLE_HOT_RELOAD][object.property.name=env][object.object.name=process], VariableDeclarator[id.type="ObjectPattern"][init.object.name="process"][init.property.name="env"]',
-                    message:
-                        'Reading from process.env is forbidden. Use "useConfig()" in Vue, or "serverConfig" in server code.',
-                },
-                {
-                    selector: 'ImportSpecifier[imported.name="hydrateOnInteraction"]',
-                    message: 'Avoid this hydration strategy, as it may flicker on locale change.',
-                },
             ],
         },
     },
