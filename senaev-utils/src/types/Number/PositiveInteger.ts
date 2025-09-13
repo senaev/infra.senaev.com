@@ -15,9 +15,9 @@ export function isPositiveInteger(value: unknown): value is PositiveInteger {
     return (value as Integer) > 0;
 }
 
-export function assertPositiveInteger(value: unknown): asserts value is PositiveInteger {
+export function assertPositiveInteger(value: unknown, errorMessage?: string): asserts value is PositiveInteger {
     if (!isPositiveInteger(value)) {
-        throw new Error(`value=[${value}] is not a positive integer`);
+        throw new Error(`value=[${value}] is not a positive integer${errorMessage ? ` errorMessage=[${errorMessage}]` : ''}`);
     }
 }
 
