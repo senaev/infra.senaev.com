@@ -1,7 +1,8 @@
-import { noop } from 'senaev-utils/src/utils/Function/noop';
 import {
     describe, expect, it,
 } from 'vitest';
+
+import { noop } from '../Function/noop';
 
 import { Deque } from './Deque';
 

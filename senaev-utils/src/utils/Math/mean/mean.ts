@@ -1,4 +1,4 @@
-import { IterableWithIndexAccess } from '../../IterableWithIndexAccess';
+import { IterableWithIndexAccess } from '../../../types/IterableWithIndexAccess';
 import { sum } from '../sum/sum';
 
 /**

@@ -1,4 +1,4 @@
-import { IterableWithIndexAccess } from '../IterableWithIndexAccess';
+import { IterableWithIndexAccess } from '../../types/IterableWithIndexAccess';
 
 function _nextPowerOf2(num: number): number {
     const log2 = Math.log(num) / Math.log(2);

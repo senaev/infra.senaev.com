@@ -1,5 +1,4 @@
-import { PositiveInteger } from 'senaev-utils/src/types/Number/PositiveInteger';
-
+import { PositiveInteger } from '../../../types/Number/PositiveInteger';
 import { mean } from '../mean/mean';
 
 export function createSimpleMovingAverageSeries({
