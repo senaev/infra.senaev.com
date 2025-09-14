@@ -1,4 +1,4 @@
 /**
- * Целое положительное число
+ * Положительное число
  */
 export type PositiveNumber = number;

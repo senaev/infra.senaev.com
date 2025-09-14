@@ -14,9 +14,9 @@ export function sum(x: IterableWithIndexAccess<number>): number {
     let sumResult = x.at(0);
 
     // Keeping track of the floating-point error correction
-    let correction = 0;
+    let correction: number = 0;
 
-    let transition;
+    let transition: number;
 
     if (typeof sumResult !== 'number') {
         return Number.NaN;
