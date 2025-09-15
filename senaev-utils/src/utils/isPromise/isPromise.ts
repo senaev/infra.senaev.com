@@ -1,5 +1,5 @@
+import { isObject } from '../../types/Object/Object';
 import { isFunction } from '../Function/isFunction';
-import { isObject } from '../Object/isObject/isObject';
 
 const isPromiseLike = (maybePromise: unknown): boolean => {
     if (!isObject(maybePromise)) {

@@ -1,5 +1,5 @@
+import { isObject } from '../../../types/Object/Object';
 import { getObjectKeys } from '../getObjectKeys/getObjectKeys';
-import { isObject } from '../isObject/isObject';
 
 /**
  * Код взят отсюда https://gist.github.com/egardner/efd34f270cc33db67c0246e837689cb9
