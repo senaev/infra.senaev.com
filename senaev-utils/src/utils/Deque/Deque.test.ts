@@ -472,7 +472,7 @@ describe('Denque.prototype.unshift', () => {
         ]);
     });
 
-    it.only('should respect capacity', () => {
+    it('should respect capacity', () => {
         const a = new Deque([
             1,
             2,
@@ -480,8 +480,6 @@ describe('Denque.prototype.unshift', () => {
         ], { capacity: 3 });
 
         a.unshift(0);
-
-        console.log(a);
 
         expect(a.length).toBe(3);
         expect(a.at(0)).toBe(0);
