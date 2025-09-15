@@ -9,7 +9,10 @@ pre-push:
   commands:
     lint:
       run: npm run lint
+      glob: "**/*"  # Run on all files, not just staged
     test:
       run: npm run test:ci
+      glob: "**/*"  # Run on all files, not just staged
     typecheck:
       run: npm run typecheck
+      glob: "**/*"  # Run on all files, not just staged
