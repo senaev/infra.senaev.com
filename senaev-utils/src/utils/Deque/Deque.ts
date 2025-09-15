@@ -99,7 +99,7 @@ export class Deque<T> implements IterableWithIndexAccess<T> {
         i = (this._head + i) & this._capacityMask;
 
         return this._list[i];
-    };
+    }
 
     public peek(): T | undefined {
         if (this._head === this._tail) {
@@ -107,7 +107,7 @@ export class Deque<T> implements IterableWithIndexAccess<T> {
         }
 
         return this._list[this._head];
-    };
+    }
 
     public peekBack(): T | undefined {
         return this.at(-1);

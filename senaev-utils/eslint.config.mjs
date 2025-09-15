@@ -500,6 +500,11 @@ export default [
                     message: 'Affecting template in onBeforeMount can lead to rehydration mismatches',
                 },
             ],
+            'no-extra-semi': 'error',
+            semi: [
+                'error',
+                'always',
+            ],
         },
     },
 ];

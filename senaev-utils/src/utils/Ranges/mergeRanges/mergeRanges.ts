@@ -32,5 +32,3 @@ export function mergeRanges(ranges: Range[]): Range[] {
 
     return stack;
 }
-
-;
