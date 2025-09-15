@@ -7,6 +7,8 @@ function _nextPowerOf2(num: number): number {
     return Math.max(nextPow2, 4);
 }
 
+const DEFAULT_CAPACITY = 4;
+
 /**
  * Stolen from here
  * https://github.com/invertase/denque/blob/539105bb57854e997dd469221cdc52a0ad80e0a2/index.js#L6
@@ -19,7 +21,12 @@ export class Deque<T> implements IterableWithIndexAccess<T> {
     public _capacityMask: number;
     public _list: (T | undefined)[];
 
-    public constructor(array?: T[], options: { capacity?: number } = {}) {
+    public constructor(array?: T[], options: {
+        /**
+         * The capacity (maximum amount of elements) of the deque
+         */
+        capacity?: number;
+    } = {}) {
         this._capacity = options.capacity;
 
         this._head = 0;
@@ -37,8 +44,8 @@ export class Deque<T> implements IterableWithIndexAccess<T> {
                 this._list[i] = array[i];
             }
         } else {
-            this._capacityMask = 0x3;
-            this._list = new Array(4);
+            this._list = new Array(DEFAULT_CAPACITY);
+            this._capacityMask = DEFAULT_CAPACITY - 1;
         }
     }
 
@@ -49,9 +56,9 @@ export class Deque<T> implements IterableWithIndexAccess<T> {
 
         if (this._head < this._tail) {
             return this._tail - this._head;
-        } else {
-            return this._capacityMask + 1 - (this._head - this._tail);
         }
+
+        return this._capacityMask + 1 - (this._head - this._tail);
     }
 
     public *[Symbol.iterator](): Iterator<T> {

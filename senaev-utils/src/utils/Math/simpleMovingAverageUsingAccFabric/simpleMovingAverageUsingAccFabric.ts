@@ -6,27 +6,23 @@ import { Deque } from '../../Deque/Deque';
  * Can have small floating point errors
  */
 export function simpleMovingAverageUsingAccFabric(windowSize: PositiveInteger): (value: number) => number | undefined {
-    const buffer = new Deque<number>();
+    const queue = new Deque<number>([], { capacity: windowSize });
     let accumulator = 0;
 
     return (newValue: number) => {
         let diff = newValue;
 
-        buffer.push(newValue);
-
-        if (buffer.length < windowSize) {
-            accumulator += diff / windowSize;
-
-            return undefined;
+        if (queue.length === windowSize) {
+            diff -= queue.shift()!;
         }
 
-        if (buffer.length > windowSize) {
-            const removed = buffer.shift()!;
-
-            diff -= removed;
-        }
+        queue.push(newValue);
 
         accumulator += diff / windowSize;
+
+        if (queue.length < windowSize) {
+            return undefined;
+        }
 
         return accumulator;
     };
