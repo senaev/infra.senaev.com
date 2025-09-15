@@ -2,9 +2,9 @@ import {
     describe, expect, test,
 } from 'vitest';
 
-import { isObject } from './isObject';
+import { assertObject, isObject } from './Object';
 
-describe('isObject', () => {
+describe('Object', () => {
     const testCases = [
         {
             input: {},
@@ -40,7 +40,15 @@ describe('isObject', () => {
 
     testCases.forEach(({ input, output }) => {
         test(`isObject(${JSON.stringify(input)}) -> ${output}`, () => {
-            expect(isObject(input)).to.eql(output);
+            const isObjectResult = isObject(input);
+
+            expect(isObjectResult).to.eql(output);
+
+            if (isObjectResult) {
+                expect(() => assertObject(input)).to.not.throw();
+            } else {
+                expect(() => assertObject(input)).to.throw();
+            }
         });
     });
 });
