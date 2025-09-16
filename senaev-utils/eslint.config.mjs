@@ -505,6 +505,18 @@ export default [
                 'error',
                 'always',
             ],
+            'react/jsx-wrap-multilines': [
+                'error',
+                {
+                    declaration: 'never',
+                    assignment: 'never',
+                    return: 'never',
+                    arrow: 'never',
+                    condition: 'never',
+                    logical: 'never',
+                    prop: 'never',
+                },
+            ],
         },
     },
 ];
