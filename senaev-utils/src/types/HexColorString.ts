@@ -6,4 +6,4 @@
  *
  * (6 hexadecimal symbols)
  */
-export type HexColorString = string;
+export type HexColorString = `#${string}`;
