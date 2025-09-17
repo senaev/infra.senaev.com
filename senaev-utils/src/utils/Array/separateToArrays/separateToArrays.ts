@@ -1,17 +1,21 @@
-export function separateArray<T>(
-    array: ReadonlyArray<T>,
-    separateFunction: (value: T, index: number, currentArray: ReadonlyArray<T>) => boolean
+export function separateToArrays<T>(
+    array: Iterable<T>,
+    separateFunction: (value: T, index: number, currentArray: Iterable<T>) => boolean
 ): [T[], T[]] {
     const appropriate: T[] = [];
     const inappropriate: T[] = [];
 
-    array.forEach((value, index) => {
+    let index = 0;
+
+    for (const value of array) {
         if (separateFunction(value, index, array)) {
             appropriate.push(value as T);
         } else {
             inappropriate.push(value);
         }
-    });
+
+        index++;
+    }
 
     return [
         appropriate,
