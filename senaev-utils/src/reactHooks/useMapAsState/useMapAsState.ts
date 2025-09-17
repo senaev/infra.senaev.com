@@ -4,15 +4,14 @@ import { UnsignedInteger } from '../../types/Number/UnsignedInteger';
 import { useReload } from '../useReload';
 
 export type MapAsState<K, V> = {
-    reloadIndex: UnsignedInteger;
     get: Map<K, V>['get'];
-    set: (key: K, value: V) => void;
+    set: (key: K, value: V) => MapAsState<K, V>;
     keys: Map<K, V>['keys'];
     entries: Map<K, V>['entries'];
     delete: Map<K, V>['delete'];
 };
 
-export function useMapAsState<K, V>(initialValue: Map<K, V>): MapAsState<K, V> {
+export function useMapAsState<K, V>(initialValue: Map<K, V>): [MapAsState<K, V>, UnsignedInteger] {
     const [
         reloadIndex,
         reload,
@@ -20,7 +19,7 @@ export function useMapAsState<K, V>(initialValue: Map<K, V>): MapAsState<K, V> {
 
     const mapRef = useRef<Map<K, V>>(initialValue);
 
-    return {
+    const mapAsState = {
         reloadIndex,
         get: (key: K) => mapRef.current.get(key),
         set: (key: K, value: V) => {
@@ -31,6 +30,8 @@ export function useMapAsState<K, V>(initialValue: Map<K, V>): MapAsState<K, V> {
             if (value !== previousValue) {
                 reload();
             }
+
+            return mapAsState;
         },
         keys: () => mapRef.current.keys(),
         entries: () => mapRef.current.entries(),
@@ -44,4 +45,9 @@ export function useMapAsState<K, V>(initialValue: Map<K, V>): MapAsState<K, V> {
             return isDeleted;
         },
     };
+
+    return [
+        mapAsState,
+        reloadIndex,
+    ];
 }
