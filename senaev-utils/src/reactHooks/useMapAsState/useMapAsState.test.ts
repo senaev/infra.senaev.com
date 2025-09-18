@@ -173,6 +173,27 @@ describe('useMapAsState', () => {
         ]);
     });
 
+    it('should provide values iterator', () => {
+        const initialMap = new Map([
+            [
+                'key1',
+                'value1',
+            ],
+            [
+                'key2',
+                'value2',
+            ],
+        ]);
+        const { result } = renderHook(() => useMapAsState(initialMap));
+
+        const values = Array.from(result.current[0].values());
+
+        expect(values).toEqual([
+            'value1',
+            'value2',
+        ]);
+    });
+
     it('should work with different data types', () => {
         const initialMap = new Map<unknown, unknown>([
             [
