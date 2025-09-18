@@ -11,13 +11,13 @@ export type MapAsState<K, V> = {
     delete: Map<K, V>['delete'];
 };
 
-export function useMapAsState<K, V>(initialValue: Map<K, V>): [MapAsState<K, V>, UnsignedInteger] {
+export function useMapAsState<K, V>(initialValue?: Iterable<readonly [K, V]> | null): [MapAsState<K, V>, UnsignedInteger] {
     const [
         reloadIndex,
         reload,
     ] = useReload();
 
-    const mapRef = useRef<Map<K, V>>(initialValue);
+    const mapRef = useRef<Map<K, V>>(new Map(initialValue));
 
     const mapAsState = {
         reloadIndex,
