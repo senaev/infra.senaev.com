@@ -23,5 +23,5 @@ export function isoDateStringToUnixTimeMs(date: ISODateString): UnixTimeMs {
 }
 
 export function isoDateStringToUnixTimeSec(date: ISODateString): UnixTimeSec {
-    return isoDateStringToUnixTimeMs(date) / 1000;
+    return Math.floor(isoDateStringToUnixTimeMs(date) / 1000);
 }
