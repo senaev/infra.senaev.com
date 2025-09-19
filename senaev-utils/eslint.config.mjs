@@ -517,6 +517,10 @@ export default [
                     prop: 'never',
                 },
             ],
+            '@stylistic/space-unary-ops': [
+                'error',
+                {},
+            ],
         },
     },
 ];
