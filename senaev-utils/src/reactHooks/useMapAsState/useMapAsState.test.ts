@@ -194,6 +194,40 @@ describe('useMapAsState', () => {
         ]);
     });
 
+    it('should provide forEach method', () => {
+        const initialMap = new Map([
+            [
+                'key1',
+                'value1',
+            ],
+            [
+                'key2',
+                'value2',
+            ],
+        ]);
+        const { result } = renderHook(() => useMapAsState(initialMap));
+
+        const forEachResults: Array<[string, string]> = [];
+
+        result.current[0].forEach((value, key) => {
+            forEachResults.push([
+                key,
+                value,
+            ]);
+        });
+
+        expect(forEachResults).toEqual([
+            [
+                'key1',
+                'value1',
+            ],
+            [
+                'key2',
+                'value2',
+            ],
+        ]);
+    });
+
     it('should work with different data types', () => {
         const initialMap = new Map<unknown, unknown>([
             [

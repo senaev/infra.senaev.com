@@ -9,6 +9,7 @@ export type MapAsState<K, V> = {
     keys: Map<K, V>['keys'];
     values: Map<K, V>['values'];
     entries: Map<K, V>['entries'];
+    forEach: Map<K, V>['forEach'];
     delete: Map<K, V>['delete'];
 };
 
@@ -37,6 +38,7 @@ export function useMapAsState<K, V>(initialValue?: Iterable<readonly [K, V]> | n
         keys: () => mapRef.current.keys(),
         values: () => mapRef.current.values(),
         entries: () => mapRef.current.entries(),
+        forEach: (callback: Parameters<Map<K, V>['forEach']>[0]) => mapRef.current.forEach(callback),
         delete: (key: K) => {
             const isDeleted = mapRef.current.delete(key);
 
