@@ -290,7 +290,7 @@ describe('findMapsDifferences', () => {
             ],
             [
                 false,
-                'value4',
+                'value3',
             ],
         ]);
 

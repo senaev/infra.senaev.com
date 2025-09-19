@@ -14,24 +14,24 @@ export function findMapsDifferences<K, V, V2>(originalMap: MapAsState<K, V>, tar
     const originalMapKeys = new Set(originalMap.keys());
     const targetMapKeys = new Set(targetMap.keys());
 
-    // Add series that has been added to settings but not to chart yet
-    originalMapKeys.difference(targetMapKeys).forEach((id) => {
+    // Value added to the original map
+    targetMapKeys.difference(originalMapKeys).forEach((id) => {
         result.added.push(id);
     });
 
-    // Replace series on chart if settings has been changed
-    originalMapKeys.intersection(targetMapKeys).forEach((id) => {
-        const originalValue = originalMap.get(id);
-        const targetValue = targetMap.get(id);
+    originalMapKeys.forEach((id) => {
+        if (targetMapKeys.has(id)) {
+            const originalValue = originalMap.get(id);
+            const targetValue = targetMap.get(id);
 
-        if (originalValue !== targetValue) {
-            result.updated.push(id);
+            // Value has been changed
+            if (originalValue !== targetValue) {
+                result.updated.push(id);
+            }
+        } else {
+            // Value is not represented in settings anymore
+            result.deleted.push(id);
         }
-    });
-
-    // Remove all series that are not represented in settings anymore
-    targetMapKeys.difference(originalMapKeys).forEach((id) => {
-        result.deleted.push(id);
     });
 
     return result;
