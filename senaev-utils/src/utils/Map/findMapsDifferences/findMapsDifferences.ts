@@ -11,16 +11,15 @@ export function findMapsDifferences<K, V, V2>(originalMap: MapAsState<K, V>, tar
         deleted: [] as K[],
     };
 
-    const originalMapKeys = new Set(originalMap.keys());
-    const targetMapKeys = new Set(targetMap.keys());
-
     // Value added to the original map
-    targetMapKeys.difference(originalMapKeys).forEach((id) => {
-        result.added.push(id);
+    targetMap.forEach((_, id) => {
+        if (!originalMap.has(id)) {
+            result.added.push(id);
+        }
     });
 
-    originalMapKeys.forEach((id) => {
-        if (targetMapKeys.has(id)) {
+    originalMap.forEach((_, id) => {
+        if (targetMap.has(id)) {
             const originalValue = originalMap.get(id);
             const targetValue = targetMap.get(id);
 

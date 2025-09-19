@@ -228,6 +228,24 @@ describe('useMapAsState', () => {
         ]);
     });
 
+    it('should check if key exists with has method', () => {
+        const initialMap = new Map([
+            [
+                'key1',
+                'value1',
+            ],
+            [
+                'key2',
+                'value2',
+            ],
+        ]);
+        const { result } = renderHook(() => useMapAsState(initialMap));
+
+        expect(result.current[0].has('key1')).toBe(true);
+        expect(result.current[0].has('key2')).toBe(true);
+        expect(result.current[0].has('nonExistentKey')).toBe(false);
+    });
+
     it('should work with different data types', () => {
         const initialMap = new Map<unknown, unknown>([
             [

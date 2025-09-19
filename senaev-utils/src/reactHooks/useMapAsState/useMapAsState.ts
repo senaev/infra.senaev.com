@@ -6,6 +6,7 @@ import { useReload } from '../useReload';
 export type MapAsState<K, V> = {
     get: Map<K, V>['get'];
     set: (key: K, value: V) => MapAsState<K, V>;
+    has: Map<K, V>['has'];
     keys: Map<K, V>['keys'];
     values: Map<K, V>['values'];
     entries: Map<K, V>['entries'];
@@ -35,6 +36,7 @@ export function useMapAsState<K, V>(initialValue?: Iterable<readonly [K, V]> | n
 
             return mapAsState;
         },
+        has: (key: K) => mapRef.current.has(key),
         keys: () => mapRef.current.keys(),
         values: () => mapRef.current.values(),
         entries: () => mapRef.current.entries(),
