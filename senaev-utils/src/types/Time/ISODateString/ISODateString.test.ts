@@ -5,7 +5,7 @@ import {
 } from 'vitest';
 
 import {
-    assertISODateString, isISODateString, isoDateStringToUnixTimeMs, isoDateStringToUnixTimeSec
+    assertISODateString, isISODateString, isoDateStringToUnixTimeMs, isoDateStringToUnixTimeSec,
 } from './ISODateString';
 
 describe('ISODateString', () => {
