@@ -310,7 +310,8 @@ describe('createTimescaleRequestWindow', () => {
 
         expect(loadNextObjects.mock.calls.length).toEqual(3);
 
-        const result5 = await window.getNextObjects(600);
+        expect(() => window.getNextObjects(600)).rejects.toThrow('requestedCount=[600] must be less than bufferSize=[50]');
+        const result5 = await window.getNextObjects(50);
 
         expect(result5).toEqual({
             isLast: true,
@@ -506,12 +507,62 @@ describe('createTimescaleRequestWindow', () => {
         const result3 = await window.getNextObjects(9);
 
         expect(result3.objects.join(',')).toEqual('13,14,15,16,17,18,19,20,21');
-        // expect(window.getWindow().join(',')).toEqual('4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23');
 
-        // const result4 = await window.getNextObjects(30);
+        expect(() => window.getNextObjects(21)).rejects.toThrow('requestedCount=[21] must be less than bufferSize=[20]');
 
-        // expect(result4.objects.length).toEqual(30);
-        // expect(result4.objects.join(',')).toEqual('22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51');
-        // expect(window.getWindow().join(',')).toEqual('32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51');
+        const result4 = await window.getNextObjects(20);
+
+        expect(result4.objects.length).toEqual(20);
+        expect(result4.objects.join(',')).toEqual('22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41');
+    });
+
+    it('should be able to handle an empty array in the last call', async () => {
+        let returnValue: TimescaleRequestWindowLoadNextObjectsReturnType<number> = {
+            objects: [
+                1,
+                2,
+                3,
+            ],
+            isLast: false,
+        };
+
+        const window = createTimescaleRequestWindow({
+            bufferSize: 1000,
+            minObjectsToLoad: 1,
+            loadNextObjects: (): Promise<TimescaleRequestWindowLoadNextObjectsReturnType<number>> => Promise.resolve(returnValue),
+        });
+
+        await expect(window.getNextObjects(4)).rejects.toThrow('loadNextObjects for isLast=false returned wrong objects count=[3] expected=[4]');
+        await expect(window.getNextObjects(2)).rejects.toThrow('loadNextObjects for isLast=false returned wrong objects count=[3] expected=[2]');
+
+        const result = await window.getNextObjects(3);
+
+        expect(result).toEqual({
+            objects: [
+                1,
+                2,
+                3,
+            ],
+            isLast: false,
+        });
+
+        returnValue = {
+            objects: [],
+            isLast: true,
+        };
+
+        const result2 = await window.getNextObjects(3);
+
+        expect(result2).toEqual({
+            objects: [],
+            isLast: true,
+        });
+
+        const result3 = await window.getNextObjects(3);
+
+        expect(result3).toEqual({
+            objects: [],
+            isLast: true,
+        });
     });
 });

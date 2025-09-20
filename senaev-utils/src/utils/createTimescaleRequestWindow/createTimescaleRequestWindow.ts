@@ -40,62 +40,48 @@ export function createTimescaleRequestWindow<T>({
     }
 
     const buffer = new CircularBuffer<T>(bufferSize);
-    let isEndReached = false;
+    let isRemoteDataFinished = false;
     let lastItemPushed: T | undefined = undefined;
-
-    const getObjectsFromBuffer = (count: PositiveInteger): T[] => {
-        const items: T[] = [];
-
-        for (let i = 0; i < count; i++) {
-            const item = buffer.shift()!;
-
-            items.push(item);
-        }
-
-        return items;
-    };
 
     const timescaleWindow: TimescaleRequestWindow<T> = {
         getNextObjects: async (requestedCount) => {
             assertPositiveInteger(requestedCount);
 
+            if (requestedCount > bufferSize) {
+                throw new Error(`requestedCount=[${requestedCount}] must be less than bufferSize=[${bufferSize}]`);
+            }
+
             const remainingItemsNeeded = requestedCount - buffer.length;
 
-            if (remainingItemsNeeded <= 0 || isEndReached) {
+            if (remainingItemsNeeded <= 0 || isRemoteDataFinished) {
                 return {
-                    objects: getObjectsFromBuffer(Math.min(requestedCount, buffer.length)),
-                    isLast: isEndReached && remainingItemsNeeded >= 0,
+                    objects: buffer.shiftCount(Math.min(requestedCount, buffer.length)),
+                    isLast: isRemoteDataFinished && remainingItemsNeeded >= 0,
                 };
             }
 
-            const batchSize = Math.max(minObjectsToLoad, remainingItemsNeeded);
+            const countToLoad = Math.max(minObjectsToLoad, remainingItemsNeeded);
 
-            const { isLast, objects: newItems } = await loadNextObjects({
-                count: batchSize,
+            const { isLast, objects } = await loadNextObjects({
+                count: countToLoad,
                 lastObject: lastItemPushed,
             });
 
-            let itemsToReturn = requestedCount;
-
             if (isLast) {
-                isEndReached = true;
-                const surplus = newItems.length - remainingItemsNeeded;
-
-                if (surplus < 0) {
-                    itemsToReturn += surplus;
-                }
-            } else if (newItems.length !== batchSize) {
-                throw new Error(`loadNextObjects for isLast=false returned wrong objects count=[${newItems.length}] expected=[${batchSize}]`);
+                isRemoteDataFinished = true;
+            } else if (objects.length !== countToLoad) {
+                throw new Error(`loadNextObjects for isLast=false returned wrong objects count=[${objects.length}] expected=[${countToLoad}]`);
             }
 
-            for (const item of newItems) {
+            for (const item of objects) {
                 buffer.push(item);
-                lastItemPushed = item;
             }
+
+            lastItemPushed = objects.at(-1);
 
             const result: TimescaleRequestWindowLoadNextObjectsReturnType<T> = {
-                objects: getObjectsFromBuffer(itemsToReturn),
-                isLast: isEndReached && buffer.length === 0,
+                objects: buffer.shiftCount(requestedCount),
+                isLast: isRemoteDataFinished && buffer.length === 0,
             };
 
             return result;
