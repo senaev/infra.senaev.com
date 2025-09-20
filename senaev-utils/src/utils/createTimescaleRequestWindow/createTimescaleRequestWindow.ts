@@ -1,11 +1,11 @@
 import { assertPositiveInteger, PositiveInteger } from '../../types/Number/PositiveInteger';
+import { CircularBuffer } from '../CircularBuffer/CircularBuffer';
 
 export type TimescaleRequestWindow<T> = {
     getNextObjects: (count: PositiveInteger) => Promise<{
         objects: T[];
         isLast: boolean;
     }>;
-    getWindow: () => T[];
 };
 export type TimescaleRequestWindowLoadNextObjectsParams<T> = {
     lastObject: T | undefined;
@@ -18,14 +18,14 @@ export type TimescaleRequestWindowLoadNextObjectsReturnType<T> = {
 export type TimescaleRequestWindowLoadNextObjectsFunction<T> = (params: TimescaleRequestWindowLoadNextObjectsParams<T>) => Promise<TimescaleRequestWindowLoadNextObjectsReturnType<T>>;
 
 export function createTimescaleRequestWindow<T>({
-    maxWindowSize,
+    bufferSize,
     minObjectsToLoad,
     loadNextObjects,
 }: {
     /**
      * How much objects we can keep in the memory.
      */
-    maxWindowSize: PositiveInteger;
+    bufferSize: PositiveInteger;
     /**
      * Required for data loading efficiency, when the client requests small portions of data, but we want load data in larger chunks.
      */
@@ -35,45 +35,44 @@ export function createTimescaleRequestWindow<T>({
      */
     loadNextObjects: TimescaleRequestWindowLoadNextObjectsFunction<T>;
 }): TimescaleRequestWindow<T> {
-    if (minObjectsToLoad > maxWindowSize / 2) {
+    if (minObjectsToLoad > bufferSize / 2) {
         throw new Error('minObjectsToLoad must be less than half of maxWindowSize');
     }
 
-    let currentPosition = 0;
-    const buffer: T[] = [];
+    const buffer = new CircularBuffer<T>(bufferSize);
     let isEndReached = false;
+    let lastItemPushed: T | undefined = undefined;
 
-    const getObjectsFromBuffer = (requestedCount: PositiveInteger): T[] => {
-        const items = buffer.slice(currentPosition, currentPosition + requestedCount);
+    const getObjectsFromBuffer = (count: PositiveInteger): T[] => {
+        const items: T[] = [];
 
-        currentPosition += requestedCount;
+        for (let i = 0; i < count; i++) {
+            const item = buffer.shift()!;
+
+            items.push(item);
+        }
 
         return items;
-    };
-
-    const removeOldItems = (count: PositiveInteger): void => {
-        buffer.splice(0, count);
-        currentPosition -= count;
     };
 
     const timescaleWindow: TimescaleRequestWindow<T> = {
         getNextObjects: async (requestedCount) => {
             assertPositiveInteger(requestedCount);
 
-            const remainingItemsNeeded = currentPosition + requestedCount - buffer.length;
+            const remainingItemsNeeded = requestedCount - buffer.length;
 
             if (remainingItemsNeeded <= 0 || isEndReached) {
                 return {
-                    objects: getObjectsFromBuffer(requestedCount),
+                    objects: getObjectsFromBuffer(Math.min(requestedCount, buffer.length)),
                     isLast: isEndReached && remainingItemsNeeded >= 0,
                 };
             }
 
             const batchSize = Math.max(minObjectsToLoad, remainingItemsNeeded);
-            const lastItem = buffer.at(-1);
+
             const { isLast, objects: newItems } = await loadNextObjects({
                 count: batchSize,
-                lastObject: lastItem,
+                lastObject: lastItemPushed,
             });
 
             let itemsToReturn = requestedCount;
@@ -89,22 +88,18 @@ export function createTimescaleRequestWindow<T>({
                 throw new Error(`loadNextObjects for isLast=false returned wrong objects count=[${newItems.length}] expected=[${batchSize}]`);
             }
 
-            buffer.push(...newItems);
-
-            const result = {
-                objects: getObjectsFromBuffer(itemsToReturn),
-                isLast: isEndReached && currentPosition === buffer.length,
-            };
-
-            const itemsToRemove = Math.max(0, buffer.length - maxWindowSize);
-
-            if (itemsToRemove > 0) {
-                removeOldItems(itemsToRemove);
+            for (const item of newItems) {
+                buffer.push(item);
+                lastItemPushed = item;
             }
+
+            const result: TimescaleRequestWindowLoadNextObjectsReturnType<T> = {
+                objects: getObjectsFromBuffer(itemsToReturn),
+                isLast: isEndReached && buffer.length === 0,
+            };
 
             return result;
         },
-        getWindow: () => buffer,
     };
 
     return timescaleWindow;

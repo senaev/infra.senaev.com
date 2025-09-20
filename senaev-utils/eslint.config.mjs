@@ -521,6 +521,14 @@ export default [
                 'error',
                 {},
             ],
+            '@stylistic/padded-blocks': [
+                'error',
+                {
+                    blocks: 'never',
+                    classes: 'never',
+                    switches: 'never',
+                },
+            ],
         },
     },
 ];

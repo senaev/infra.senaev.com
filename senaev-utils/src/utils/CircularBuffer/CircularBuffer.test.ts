@@ -1019,4 +1019,776 @@ describe('CircularBuffer', () => {
             ]);
         });
     });
+
+    describe('shiftCount', () => {
+        it('should return empty array when count is 0', () => {
+            const buffer = new CircularBuffer<number>(3);
+
+            buffer.push(1);
+            buffer.push(2);
+
+            const result = buffer.shiftCount(0);
+
+            expect(result).toEqual([]);
+            expect(buffer.length).toBe(2);
+            expect([...buffer]).toEqual([
+                1,
+                2,
+            ]);
+        });
+
+        it('should return empty array when buffer is empty', () => {
+            const buffer = new CircularBuffer<number>(3);
+
+            const result = buffer.shiftCount(2);
+
+            expect(result).toEqual([]);
+            expect(buffer.length).toBe(0);
+        });
+
+        it('should remove and return single item from beginning', () => {
+            const buffer = new CircularBuffer<number>(3);
+
+            buffer.push(1);
+            buffer.push(2);
+            buffer.push(3);
+
+            const result = buffer.shiftCount(1);
+
+            expect(result).toEqual([1]);
+            expect(buffer.length).toBe(2);
+            expect([...buffer]).toEqual([
+                2,
+                3,
+            ]);
+        });
+
+        it('should remove and return multiple items from beginning', () => {
+            const buffer = new CircularBuffer<number>(5);
+
+            buffer.push(1);
+            buffer.push(2);
+            buffer.push(3);
+            buffer.push(4);
+            buffer.push(5);
+
+            const result = buffer.shiftCount(3);
+
+            expect(result).toEqual([
+                1,
+                2,
+                3,
+            ]);
+            expect(buffer.length).toBe(2);
+            expect([...buffer]).toEqual([
+                4,
+                5,
+            ]);
+        });
+
+        it('should remove all items when count equals buffer length', () => {
+            const buffer = new CircularBuffer<number>(3);
+
+            buffer.push(1);
+            buffer.push(2);
+            buffer.push(3);
+
+            const result = buffer.shiftCount(3);
+
+            expect(result).toEqual([
+                1,
+                2,
+                3,
+            ]);
+            expect(buffer.length).toBe(0);
+            expect([...buffer]).toEqual([]);
+        });
+
+        it('should remove only available items when count exceeds buffer length', () => {
+            const buffer = new CircularBuffer<number>(3);
+
+            buffer.push(1);
+            buffer.push(2);
+
+            const result = buffer.shiftCount(5);
+
+            expect(result).toEqual([
+                1,
+                2,
+            ]);
+            expect(buffer.length).toBe(0);
+            expect([...buffer]).toEqual([]);
+        });
+
+        it('should work with circular buffer that has wrapped around', () => {
+            const buffer = new CircularBuffer<number>(3);
+
+            // Fill buffer and cause wrap-around
+            buffer.push(1);
+            buffer.push(2);
+            buffer.push(3);
+            buffer.push(4); // This should overwrite 1
+            buffer.push(5); // This should overwrite 2
+
+            const result = buffer.shiftCount(2);
+
+            expect(result).toEqual([
+                3,
+                4,
+            ]);
+            expect(buffer.length).toBe(1);
+            expect([...buffer]).toEqual([5]);
+        });
+
+        it('should work with different data types', () => {
+            const buffer = new CircularBuffer<string>(3);
+
+            buffer.push('a');
+            buffer.push('b');
+            buffer.push('c');
+
+            const result = buffer.shiftCount(2);
+
+            expect(result).toEqual([
+                'a',
+                'b',
+            ]);
+            expect(buffer.length).toBe(1);
+            expect([...buffer]).toEqual(['c']);
+        });
+
+        it('should work with objects', () => {
+            const buffer = new CircularBuffer<{ id: number; name: string }>(3);
+
+            buffer.push({
+                id: 1,
+                name: 'first',
+            });
+            buffer.push({
+                id: 2,
+                name: 'second',
+            });
+            buffer.push({
+                id: 3,
+                name: 'third',
+            });
+
+            const result = buffer.shiftCount(2);
+
+            expect(result).toEqual([
+                {
+                    id: 1,
+                    name: 'first',
+                },
+                {
+                    id: 2,
+                    name: 'second',
+                },
+            ]);
+            expect(buffer.length).toBe(1);
+            expect([...buffer]).toEqual([
+                {
+                    id: 3,
+                    name: 'third',
+                },
+            ]);
+        });
+
+        it('should handle capacity 1 buffer', () => {
+            const buffer = new CircularBuffer<number>(1);
+
+            buffer.push(1);
+            buffer.push(2); // Should overwrite 1
+
+            const result = buffer.shiftCount(1);
+
+            expect(result).toEqual([2]);
+            expect(buffer.length).toBe(0);
+            expect([...buffer]).toEqual([]);
+        });
+
+        it('should work correctly with mixed operations', () => {
+            const buffer = new CircularBuffer<number>(4);
+
+            buffer.push(1);
+            buffer.push(2);
+            buffer.unshift(0);
+            buffer.push(3);
+
+            const result = buffer.shiftCount(2);
+
+            expect(result).toEqual([
+                0,
+                1,
+            ]);
+            expect(buffer.length).toBe(2);
+            expect([...buffer]).toEqual([
+                2,
+                3,
+            ]);
+        });
+
+        it('should work correctly with big value', () => {
+            const buffer = new CircularBuffer<number>(8);
+
+            buffer.push(1);
+            buffer.push(2);
+
+            const result = buffer.shiftCount(8);
+
+            expect(result).toEqual([
+                1,
+                2,
+            ]);
+
+            expect(buffer.length).toBe(0);
+            expect([...buffer]).toEqual([]);
+        });
+    });
+
+    describe('popCount', () => {
+        it('should return empty array when count is 0', () => {
+            const buffer = new CircularBuffer<number>(3);
+
+            buffer.push(1);
+            buffer.push(2);
+
+            const result = buffer.popCount(0);
+
+            expect(result).toEqual([]);
+            expect(buffer.length).toBe(2);
+            expect([...buffer]).toEqual([
+                1,
+                2,
+            ]);
+        });
+
+        it('should return empty array when buffer is empty', () => {
+            const buffer = new CircularBuffer<number>(3);
+
+            const result = buffer.popCount(2);
+
+            expect(result).toEqual([]);
+            expect(buffer.length).toBe(0);
+        });
+
+        it('should remove and return single item from end', () => {
+            const buffer = new CircularBuffer<number>(3);
+
+            buffer.push(1);
+            buffer.push(2);
+            buffer.push(3);
+
+            const result = buffer.popCount(1);
+
+            expect(result).toEqual([3]);
+            expect(buffer.length).toBe(2);
+            expect([...buffer]).toEqual([
+                1,
+                2,
+            ]);
+        });
+
+        it('should remove and return multiple items from end', () => {
+            const buffer = new CircularBuffer<number>(5);
+
+            buffer.push(1);
+            buffer.push(2);
+            buffer.push(3);
+            buffer.push(4);
+            buffer.push(5);
+
+            const result = buffer.popCount(3);
+
+            expect(result).toEqual([
+                5,
+                4,
+                3,
+            ]);
+            expect(buffer.length).toBe(2);
+            expect([...buffer]).toEqual([
+                1,
+                2,
+            ]);
+        });
+
+        it('should remove all items when count equals buffer length', () => {
+            const buffer = new CircularBuffer<number>(3);
+
+            buffer.push(1);
+            buffer.push(2);
+            buffer.push(3);
+
+            const result = buffer.popCount(3);
+
+            expect(result).toEqual([
+                3,
+                2,
+                1,
+            ]);
+            expect(buffer.length).toBe(0);
+            expect([...buffer]).toEqual([]);
+        });
+
+        it('should remove only available items when count exceeds buffer length', () => {
+            const buffer = new CircularBuffer<number>(3);
+
+            buffer.push(1);
+            buffer.push(2);
+
+            const result = buffer.popCount(5);
+
+            expect(result).toEqual([
+                2,
+                1,
+            ]);
+            expect(buffer.length).toBe(0);
+            expect([...buffer]).toEqual([]);
+        });
+
+        it('should work with circular buffer that has wrapped around', () => {
+            const buffer = new CircularBuffer<number>(3);
+
+            // Fill buffer and cause wrap-around
+            buffer.push(1);
+            buffer.push(2);
+            buffer.push(3);
+            buffer.push(4); // This should overwrite 1
+            buffer.push(5); // This should overwrite 2
+
+            const result = buffer.popCount(2);
+
+            expect(result).toEqual([
+                5,
+                4,
+            ]);
+            expect(buffer.length).toBe(1);
+            expect([...buffer]).toEqual([3]);
+        });
+
+        it('should work with different data types', () => {
+            const buffer = new CircularBuffer<string>(3);
+
+            buffer.push('a');
+            buffer.push('b');
+            buffer.push('c');
+
+            const result = buffer.popCount(2);
+
+            expect(result).toEqual([
+                'c',
+                'b',
+            ]);
+            expect(buffer.length).toBe(1);
+            expect([...buffer]).toEqual(['a']);
+        });
+
+        it('should work with objects', () => {
+            const buffer = new CircularBuffer<{ id: number; name: string }>(3);
+
+            buffer.push({
+                id: 1,
+                name: 'first',
+            });
+            buffer.push({
+                id: 2,
+                name: 'second',
+            });
+            buffer.push({
+                id: 3,
+                name: 'third',
+            });
+
+            const result = buffer.popCount(2);
+
+            expect(result).toEqual([
+                {
+                    id: 3,
+                    name: 'third',
+                },
+                {
+                    id: 2,
+                    name: 'second',
+                },
+            ]);
+            expect(buffer.length).toBe(1);
+            expect([...buffer]).toEqual([
+                {
+                    id: 1,
+                    name: 'first',
+                },
+            ]);
+        });
+
+        it('should handle capacity 1 buffer', () => {
+            const buffer = new CircularBuffer<number>(1);
+
+            buffer.push(1);
+            buffer.push(2); // Should overwrite 1
+
+            const result = buffer.popCount(1);
+
+            expect(result).toEqual([2]);
+            expect(buffer.length).toBe(0);
+            expect([...buffer]).toEqual([]);
+        });
+
+        it('should work correctly with mixed operations', () => {
+            const buffer = new CircularBuffer<number>(4);
+
+            buffer.push(1);
+            buffer.push(2);
+            buffer.unshift(0);
+            buffer.push(3);
+
+            const result = buffer.popCount(2);
+
+            expect(result).toEqual([
+                3,
+                2,
+            ]);
+            expect(buffer.length).toBe(2);
+            expect([...buffer]).toEqual([
+                0,
+                1,
+            ]);
+        });
+
+        it('should work correctly with big value', () => {
+            const buffer = new CircularBuffer<number>(8);
+
+            buffer.push(1);
+            buffer.push(2);
+
+            const result = buffer.popCount(8);
+
+            expect(result).toEqual([
+                2,
+                1,
+            ]);
+
+            expect(buffer.length).toBe(0);
+            expect([...buffer]).toEqual([]);
+        });
+
+        it('should handle undefined values', () => {
+            const buffer = new CircularBuffer<number | undefined>(3);
+
+            buffer.push(1);
+            buffer.push(undefined);
+            buffer.push(3);
+
+            const result = buffer.popCount(2);
+
+            expect(result).toEqual([
+                3,
+                undefined,
+            ]);
+            expect(buffer.length).toBe(1);
+            expect([...buffer]).toEqual([1]);
+        });
+
+        it('should handle null values', () => {
+            const buffer = new CircularBuffer<number | null>(3);
+
+            buffer.push(1);
+            buffer.push(null);
+            buffer.push(3);
+
+            const result = buffer.popCount(2);
+
+            expect(result).toEqual([
+                3,
+                null,
+            ]);
+            expect(buffer.length).toBe(1);
+            expect([...buffer]).toEqual([1]);
+        });
+
+        it('should maintain LIFO order', () => {
+            const buffer = new CircularBuffer<number>(5);
+
+            buffer.push(1);
+            buffer.push(2);
+            buffer.push(3);
+            buffer.push(4);
+            buffer.push(5);
+
+            const result = buffer.popCount(4);
+
+            expect(result).toEqual([
+                5,
+                4,
+                3,
+                2,
+            ]);
+            expect(buffer.length).toBe(1);
+            expect([...buffer]).toEqual([1]);
+        });
+
+        it('should work with alternating push and pop operations', () => {
+            const buffer = new CircularBuffer<number>(4);
+
+            buffer.push(1);
+            buffer.push(2);
+            buffer.push(3);
+
+            const result1 = buffer.popCount(1);
+
+            expect(result1).toEqual([3]);
+            expect([...buffer]).toEqual([
+                1,
+                2,
+            ]);
+
+            buffer.push(4);
+            buffer.push(5);
+
+            const result2 = buffer.popCount(2);
+
+            expect(result2).toEqual([
+                5,
+                4,
+            ]);
+            expect([...buffer]).toEqual([
+                1,
+                2,
+            ]);
+        });
+    });
+
+    describe('at', () => {
+        it('should return undefined for empty buffer', () => {
+            const buffer = new CircularBuffer<number>(3);
+
+            expect(buffer.at(0)).toBeUndefined();
+            expect(buffer.at(-1)).toBeUndefined();
+            expect(buffer.at(1)).toBeUndefined();
+        });
+
+        it('should return correct item for positive indices', () => {
+            const buffer = new CircularBuffer<number>(3);
+
+            buffer.push(1);
+            buffer.push(2);
+            buffer.push(3);
+
+            expect(buffer.at(0)).toBe(1);
+            expect(buffer.at(1)).toBe(2);
+            expect(buffer.at(2)).toBe(3);
+        });
+
+        it('should return correct item for negative indices', () => {
+            const buffer = new CircularBuffer<number>(3);
+
+            buffer.push(1);
+            buffer.push(2);
+            buffer.push(3);
+
+            expect(buffer.at(-1)).toBe(3);
+            expect(buffer.at(-2)).toBe(2);
+            expect(buffer.at(-3)).toBe(1);
+        });
+
+        it('should return undefined for out of bounds positive indices', () => {
+            const buffer = new CircularBuffer<number>(3);
+
+            buffer.push(1);
+            buffer.push(2);
+
+            expect(buffer.at(2)).toBeUndefined();
+            expect(buffer.at(3)).toBeUndefined();
+            expect(buffer.at(10)).toBeUndefined();
+        });
+
+        it('should return undefined for out of bounds negative indices', () => {
+            const buffer = new CircularBuffer<number>(3);
+
+            buffer.push(1);
+            buffer.push(2);
+
+            expect(buffer.at(-3)).toBeUndefined();
+            expect(buffer.at(-4)).toBeUndefined();
+            expect(buffer.at(-10)).toBeUndefined();
+        });
+
+        it('should work with capacity 1 buffer', () => {
+            const buffer = new CircularBuffer<string>(1);
+
+            buffer.push('single');
+
+            expect(buffer.at(0)).toBe('single');
+            expect(buffer.at(-1)).toBe('single');
+            expect(buffer.at(1)).toBeUndefined();
+            expect(buffer.at(-2)).toBeUndefined();
+        });
+
+        it('should work with circular buffer that has wrapped around', () => {
+            const buffer = new CircularBuffer<number>(3);
+
+            // Fill buffer and cause wrap-around
+            buffer.push(1);
+            buffer.push(2);
+            buffer.push(3);
+            buffer.push(4); // This should overwrite 1
+            buffer.push(5); // This should overwrite 2
+
+            expect(buffer.at(0)).toBe(3);
+            expect(buffer.at(1)).toBe(4);
+            expect(buffer.at(2)).toBe(5);
+            expect(buffer.at(-1)).toBe(5);
+            expect(buffer.at(-2)).toBe(4);
+            expect(buffer.at(-3)).toBe(3);
+        });
+
+        it('should work with different data types', () => {
+            const buffer = new CircularBuffer<string>(3);
+
+            buffer.push('a');
+            buffer.push('b');
+            buffer.push('c');
+
+            expect(buffer.at(0)).toBe('a');
+            expect(buffer.at(-1)).toBe('c');
+            expect(buffer.at(1)).toBe('b');
+        });
+
+        it('should work with objects', () => {
+            const buffer = new CircularBuffer<{ id: number; name: string }>(3);
+
+            const obj1 = {
+                id: 1,
+                name: 'first',
+            };
+            const obj2 = {
+                id: 2,
+                name: 'second',
+            };
+            const obj3 = {
+                id: 3,
+                name: 'third',
+            };
+
+            buffer.push(obj1);
+            buffer.push(obj2);
+            buffer.push(obj3);
+
+            expect(buffer.at(0)).toBe(obj1);
+            expect(buffer.at(-1)).toBe(obj3);
+            expect(buffer.at(1)).toBe(obj2);
+        });
+
+        it('should handle undefined values', () => {
+            const buffer = new CircularBuffer<number | undefined>(3);
+
+            buffer.push(1);
+            buffer.push(undefined);
+            buffer.push(3);
+
+            expect(buffer.at(0)).toBe(1);
+            expect(buffer.at(1)).toBe(undefined);
+            expect(buffer.at(2)).toBe(3);
+            expect(buffer.at(-1)).toBe(3);
+            expect(buffer.at(-2)).toBe(undefined);
+            expect(buffer.at(-3)).toBe(1);
+        });
+
+        it('should handle null values', () => {
+            const buffer = new CircularBuffer<number | null>(3);
+
+            buffer.push(1);
+            buffer.push(null);
+            buffer.push(3);
+
+            expect(buffer.at(0)).toBe(1);
+            expect(buffer.at(1)).toBe(null);
+            expect(buffer.at(2)).toBe(3);
+            expect(buffer.at(-1)).toBe(3);
+            expect(buffer.at(-2)).toBe(null);
+            expect(buffer.at(-3)).toBe(1);
+        });
+
+        it('should work correctly with mixed operations', () => {
+            const buffer = new CircularBuffer<number>(4);
+
+            buffer.push(1);
+            buffer.push(2);
+            buffer.unshift(0);
+            buffer.push(3);
+
+            expect(buffer.at(0)).toBe(0);
+            expect(buffer.at(1)).toBe(1);
+            expect(buffer.at(2)).toBe(2);
+            expect(buffer.at(3)).toBe(3);
+            expect(buffer.at(-1)).toBe(3);
+            expect(buffer.at(-2)).toBe(2);
+            expect(buffer.at(-3)).toBe(1);
+            expect(buffer.at(-4)).toBe(0);
+        });
+
+        it('should work with large negative indices', () => {
+            const buffer = new CircularBuffer<number>(5);
+
+            buffer.push(1);
+            buffer.push(2);
+            buffer.push(3);
+
+            expect(buffer.at(-100)).toBeUndefined();
+            expect(buffer.at(-4)).toBeUndefined();
+            expect(buffer.at(-3)).toBe(1);
+            expect(buffer.at(-2)).toBe(2);
+            expect(buffer.at(-1)).toBe(3);
+        });
+
+        it('should work with large positive indices', () => {
+            const buffer = new CircularBuffer<number>(5);
+
+            buffer.push(1);
+            buffer.push(2);
+            buffer.push(3);
+
+            expect(buffer.at(0)).toBe(1);
+            expect(buffer.at(1)).toBe(2);
+            expect(buffer.at(2)).toBe(3);
+            expect(buffer.at(3)).toBeUndefined();
+            expect(buffer.at(100)).toBeUndefined();
+        });
+
+        it('should maintain consistency after operations', () => {
+            const buffer = new CircularBuffer<number>(3);
+
+            buffer.push(1);
+            buffer.push(2);
+            buffer.push(3);
+
+            expect(buffer.at(0)).toBe(1);
+            expect(buffer.at(-1)).toBe(3);
+
+            buffer.shift(); // Remove first element
+
+            expect(buffer.at(0)).toBe(2);
+            expect(buffer.at(1)).toBe(3);
+            expect(buffer.at(-1)).toBe(3);
+            expect(buffer.at(-2)).toBe(2);
+
+            buffer.pop(); // Remove last element
+
+            expect(buffer.at(0)).toBe(2);
+            expect(buffer.at(-1)).toBe(2);
+            expect(buffer.at(1)).toBeUndefined();
+        });
+
+        it('should work with fractional indices (should be treated as out of bounds)', () => {
+            const buffer = new CircularBuffer<number>(3);
+
+            buffer.push(1);
+            buffer.push(2);
+            buffer.push(3);
+
+            expect(buffer.at(0.5)).toBeUndefined();
+            expect(buffer.at(1.7)).toBeUndefined();
+            expect(buffer.at(-0.5)).toBeUndefined();
+            expect(buffer.at(-1.3)).toBeUndefined();
+        });
+    });
 });
