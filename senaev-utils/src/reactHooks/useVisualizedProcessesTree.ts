@@ -75,7 +75,6 @@ function addNodeToAllNodesMap(allNodesMap: AllNodesMap, change: VisualizedProces
         parentId,
         node: newNode,
     });
-
 }
 
 function deleteNodeFromAllNodesMap(allNodesMap: AllNodesMap, change: VisualizedProcessesTreeChangeDelete): void {

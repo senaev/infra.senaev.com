@@ -7,7 +7,6 @@ import { noop } from '../Function/noop';
 import { Deque } from './Deque';
 
 describe('Denque is iterable', () => {
-
     it('should not iterate empty deque', () => {
         const a = new Deque();
 
@@ -120,7 +119,6 @@ describe('Denque.prototype.constructor', () => {
         // console.log(denque.length);
         // console.log(denque._head);
         // console.log(denque._tail);
-
     });
 });
 
@@ -312,11 +310,9 @@ describe('Denque.prototype.push', () => {
         expect(a.at(1)).toBe(3);
         expect(a.at(2)).toBe(4);
     });
-
 });
 
 describe('Denque.prototype.unshift', () => {
-
     it('Should do nothing if no arguments', () => {
         const a = new Deque();
         const before = a.length;
@@ -486,7 +482,6 @@ describe('Denque.prototype.unshift', () => {
         expect(a.at(1)).toBe(1);
         expect(a.at(2)).toBe(2);
     });
-
 });
 
 describe('Denque.prototype.pop', () => {
@@ -698,7 +693,6 @@ describe('Denque.prototype.removeOne', () => {
         expect(a.removeOne({})).toBeUndefined();
         expect(a.length).toBe(0);
     });
-
 });
 
 describe('Denque.prototype.remove', () => {

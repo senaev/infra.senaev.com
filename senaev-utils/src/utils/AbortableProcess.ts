@@ -157,5 +157,4 @@ export class AbortableProcess {
     private readonly dispatchVisualizedProcessesTreeChange = (change: VisualizedProcessesTreeChange): void => {
         callFunctions(this._visualizedProcessesTreeSubscribers, change);
     };
-
 }

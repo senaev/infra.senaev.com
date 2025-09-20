@@ -14,7 +14,6 @@ const DEFAULT_CAPACITY = 4;
  * https://github.com/invertase/denque/blob/539105bb57854e997dd469221cdc52a0ad80e0a2/index.js#L6
  */
 export class Deque<T> implements IterableWithIndexAccess<T> {
-
     public readonly _capacity: number | undefined;
     public _head: number;
     public _tail: number;
@@ -528,5 +527,4 @@ export class Deque<T> implements IterableWithIndexAccess<T> {
         this._list.length >>>= 1;
         this._capacityMask >>>= 1;
     }
-
 }
