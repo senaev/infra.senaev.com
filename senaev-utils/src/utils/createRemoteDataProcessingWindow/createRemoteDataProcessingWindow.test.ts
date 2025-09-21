@@ -5,564 +5,615 @@ import {
     vi,
 } from 'vitest';
 
-import { callTimes } from '../Function/callTimes/callTimes';
+import { createArray } from '../Array/createArray/createArray';
 import { promiseTimeout } from '../timers/promiseTimeout/promiseTimeout';
 
 import {
-    createRemoteDataProcessingWindow, RemoteDataProcessingWindowLoadNextItemsFunction, RemoteDataProcessingWindowLoadNextItemsReturnType,
+    createRemoteDataProcessingWindow,
 } from './createRemoteDataProcessingWindow';
 
 describe('createRemoteDataProcessingWindow', () => {
-    it('should request normal lastItem', async () => {
-        const loadNextItems = vi.fn<RemoteDataProcessingWindowLoadNextItemsFunction<string>>(({
-            lastItem,
-            count,
-        }): Promise<RemoteDataProcessingWindowLoadNextItemsReturnType<string>> => {
-            const nextNumber = lastItem === undefined
-                ? 0
-                : (Number(lastItem) + 1);
-
-            return Promise.resolve({
-                items: [...Array(count)].map((_, i) => String(i + nextNumber)),
-                isLast: false,
-            });
-        });
-
-        const window = createRemoteDataProcessingWindow({
-            bufferSize: 100,
-            minItemsToLoad: 10,
-            loadNextItems,
-        });
-
-        expect(loadNextItems).toHaveBeenCalledTimes(0);
-        const promise1 = window.getNextItems(5);
-
-        expect(loadNextItems).toHaveBeenCalledTimes(1);
-        expect(await promise1).toEqual({
-            isLast: false,
-            items: [
-                '0',
-                '1',
-                '2',
-                '3',
-                '4',
-            ],
-        });
-
-        expect(loadNextItems).toHaveBeenCalledTimes(1);
-        const promise2 = window.getNextItems(5);
-
-        expect(loadNextItems).toHaveBeenCalledTimes(1);
-        expect(await promise2).toEqual({
-            isLast: false,
-            items: [
-                '5',
-                '6',
-                '7',
-                '8',
-                '9',
-            ],
-        });
-
-        expect(loadNextItems).toHaveBeenCalledTimes(1);
-        const promise3 = window.getNextItems(1);
-
-        expect(loadNextItems).toHaveBeenCalledTimes(2);
-        expect(await promise3).toEqual({
-            isLast: false,
-            items: ['10'],
-        });
-
-        const promise4 = window.getNextItems(33);
-
-        expect(loadNextItems).toHaveBeenCalledTimes(3);
-        expect(await promise4).toEqual({
-            isLast: false,
-            items: [
-                '11',
-                '12',
-                '13',
-                '14',
-                '15',
-                '16',
-                '17',
-                '18',
-                '19',
-                '20',
-                '21',
-                '22',
-                '23',
-                '24',
-                '25',
-                '26',
-                '27',
-                '28',
-                '29',
-                '30',
-                '31',
-                '32',
-                '33',
-                '34',
-                '35',
-                '36',
-                '37',
-                '38',
-                '39',
-                '40',
-                '41',
-                '42',
-                '43',
-            ],
-        });
-
-        const promise5 = window.getNextItems(2);
-
-        expect(loadNextItems).toHaveBeenCalledTimes(4);
-        expect(await promise5).toEqual({
-            isLast: false,
-            items: [
-                '44',
-                '45',
-            ],
-        });
-
-        expect(loadNextItems.mock.calls).toEqual([
-            [
-                {
-                    count: 10,
-                    lastItem: undefined,
-                },
-            ],
-            [
-                {
-                    count: 10,
-                    lastItem: '9',
-                },
-            ],
-            [
-                {
-                    count: 24,
-                    lastItem: '19',
-                },
-            ],
-            [
-                {
-                    count: 10,
-                    lastItem: '43',
-                },
-            ],
-        ]);
-    });
-
-    it('minItemsToLoad should not be bigger than half of maxWindowSize', () => {
-        expect(() => createRemoteDataProcessingWindow({
-            bufferSize: 100,
-            minItemsToLoad: 51,
-            loadNextItems: vi.fn(),
-        })).toThrow();
-
-        expect(() => createRemoteDataProcessingWindow({
-            bufferSize: 100,
-            minItemsToLoad: 50,
-            loadNextItems: vi.fn(),
-        })).not.toThrow();
-    });
-
-    it('should correctly handle limits', async () => {
-        const loadNextItems = vi.fn<RemoteDataProcessingWindowLoadNextItemsFunction<number>>(({
-            lastItem,
-            count,
-        }): Promise<RemoteDataProcessingWindowLoadNextItemsReturnType<number>> => {
-            const nextNumber = lastItem === undefined
-                ? 0
-                : (lastItem + 1);
-
-            let isLast = false;
-            const items: number[] = [];
-
-            for (let i = 0; i < count; i++) {
-                const number = i + nextNumber;
-
-                if (number >= 50) {
-                    isLast = true;
-                    break;
-                }
-
-                items.push(number);
-            }
+    it('should request data from remote source', async () => {
+        const loadNextItems = vi.fn(({ count }) => {
+            const items = createArray(count, 0);
 
             return Promise.resolve({
                 items,
-                isLast,
+                isLast: false,
             });
         });
 
-        const window = createRemoteDataProcessingWindow({
-            bufferSize: 50,
-            minItemsToLoad: 10,
+        const extractItems = createRemoteDataProcessingWindow({
+            bufferSize: 10,
             loadNextItems,
         });
 
-        const result1 = await window.getNextItems(35);
+        expect(extractItems).toBeTypeOf('function');
 
-        expect(result1).toEqual({
-            isLast: false,
+        expect(loadNextItems).toHaveBeenCalledTimes(1);
+        expect(loadNextItems).toHaveBeenCalledWith({
+            count: 10,
+            lastItem: undefined,
+        });
+
+        await promiseTimeout(10);
+
+        expect(loadNextItems).toHaveBeenCalledTimes(1);
+
+        const result = await extractItems(5);
+
+        expect(result).toEqual({
             items: [
                 0,
+                0,
+                0,
+                0,
+                0,
+            ],
+            isLast: false,
+        });
+
+        expect(loadNextItems).toHaveBeenCalledTimes(2);
+        expect(loadNextItems).toHaveBeenCalledWith({
+            count: 5,
+            lastItem: 0,
+        });
+    });
+
+    it('should handle empty remote data source (isLast=true immediately)', async () => {
+        const loadNextItems = vi.fn().mockResolvedValue({
+            items: [],
+            isLast: true,
+        });
+
+        const extractItems = createRemoteDataProcessingWindow({
+            bufferSize: 5,
+            loadNextItems,
+        });
+
+        await promiseTimeout(10);
+
+        const result = await extractItems(3);
+
+        expect(result).toEqual({
+            items: [],
+            isLast: true,
+        });
+
+        expect(loadNextItems).toHaveBeenCalledTimes(1);
+        expect(loadNextItems).toHaveBeenCalledWith({
+            count: 5,
+            lastItem: undefined,
+        });
+
+        expect(await extractItems(3)).toEqual({
+            items: [],
+            isLast: true,
+        });
+
+        expect(loadNextItems).toHaveBeenCalledTimes(1);
+    });
+
+    it('should handle partial data from remote source if data in remote source is finished', async () => {
+        let callCount = 0;
+        const loadNextItems = vi.fn().mockImplementation(() => {
+            callCount++;
+            if (callCount === 1) {
+                return Promise.resolve({
+                    items: [
+                        1,
+                        2,
+                        3,
+                    ], // Only 3 items when 5 were requested
+                    isLast: true,
+                });
+            }
+
+            return Promise.resolve({
+                items: [],
+                isLast: true,
+            });
+        });
+
+        const extractItems = createRemoteDataProcessingWindow({
+            bufferSize: 5,
+            loadNextItems,
+        });
+
+        await promiseTimeout(10);
+
+        const result = await extractItems(2);
+
+        expect(result).toEqual({
+            items: [
+                1,
+                2,
+            ],
+            isLast: false,
+        });
+
+        expect(loadNextItems).toHaveBeenCalledTimes(1);
+
+        const result2 = await extractItems(2);
+
+        expect(result2).toEqual({
+            items: [3],
+            isLast: true,
+        });
+
+        expect(loadNextItems).toHaveBeenCalledTimes(1);
+
+        const result3 = await extractItems(2);
+
+        expect(result3).toEqual({
+            items: [],
+            isLast: true,
+        });
+    });
+
+    it('should handle multiple sequential extractions', async () => {
+        const items = [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+        ];
+        let itemIndex = 0;
+
+        const loadNextItems = vi.fn().mockImplementation(({ count }) => {
+            const batch = items.slice(itemIndex, itemIndex + count);
+
+            itemIndex += count;
+
+            return Promise.resolve({
+                items: batch,
+                isLast: itemIndex >= items.length,
+            });
+        });
+
+        const extractItems = createRemoteDataProcessingWindow({
+            bufferSize: 8,
+            loadNextItems,
+        });
+
+        expect(loadNextItems).toHaveBeenCalledTimes(1);
+        expect(loadNextItems).nthCalledWith(1, {
+            count: 8,
+            lastItem: undefined,
+        });
+
+        await promiseTimeout(10);
+
+        // First extraction
+        const result1 = await extractItems(3);
+
+        expect(result1).toEqual({
+            items: [
                 1,
                 2,
                 3,
+            ],
+            isLast: false,
+        });
+
+        expect(loadNextItems).toHaveBeenCalledTimes(2);
+        expect(loadNextItems).nthCalledWith(2, {
+            count: 3,
+            lastItem: 8,
+        });
+
+        // Second extraction
+        const result2 = await extractItems(4);
+
+        expect(result2).toEqual({
+            items: [
                 4,
                 5,
                 6,
                 7,
+            ],
+            isLast: false,
+        });
+
+        // Third extraction - should trigger new remote request
+        const result3 = await extractItems(2);
+
+        expect(result3).toEqual({
+            items: [
                 8,
                 9,
+            ],
+            isLast: false,
+        });
+
+        expect(loadNextItems).toHaveBeenCalledTimes(3);
+        expect(loadNextItems).nthCalledWith(3, {
+            count: 4,
+            lastItem: 11,
+        });
+
+        const result4 = await extractItems(8);
+
+        expect(result4).toEqual({
+            items: [
                 10,
                 11,
                 12,
-                13,
-                14,
-                15,
-                16,
-                17,
-                18,
-                19,
-                20,
-                21,
-                22,
-                23,
-                24,
-                25,
-                26,
-                27,
-                28,
-                29,
-                30,
-                31,
-                32,
-                33,
-                34,
             ],
-        });
-
-        const result2 = await window.getNextItems(5);
-
-        expect(result2).toEqual({
-            isLast: false,
-            items: [
-                35,
-                36,
-                37,
-                38,
-                39,
-            ],
-        });
-
-        expect(loadNextItems.mock.calls).toEqual([
-            [
-                {
-                    count: 35,
-                    lastItem: undefined,
-                },
-            ],
-            [
-                {
-                    count: 10,
-                    lastItem: 34,
-                },
-            ],
-        ]);
-
-        const result3 = await window.getNextItems(6);
-
-        expect(result3).toEqual({
-            isLast: false,
-            items: [
-                40,
-                41,
-                42,
-                43,
-                44,
-                45,
-            ],
-        });
-
-        expect(loadNextItems.mock.calls.length).toEqual(3);
-        expect(loadNextItems.mock.calls[2]).toEqual([
-            {
-                count: 10,
-                lastItem: 44,
-            },
-        ]);
-
-        const result4 = await window.getNextItems(6);
-
-        expect(result4).toEqual({
             isLast: true,
-            items: [
-                46,
-                47,
-                48,
-                49,
-            ],
         });
 
-        expect(loadNextItems.mock.calls.length).toEqual(3);
-
-        expect(() => window.getNextItems(600)).rejects.toThrow('requestedItemsCount=[600] must be less than bufferSize=[50]');
-        const result5 = await window.getNextItems(50);
-
-        expect(result5).toEqual({
-            isLast: true,
-            items: [],
-        });
-        expect(loadNextItems.mock.calls.length).toEqual(3);
-
-        const result6 = await window.getNextItems(1);
-
-        expect(result6).toEqual({
-            isLast: true,
-            items: [],
-        });
-        expect(loadNextItems.mock.calls.length).toEqual(3);
+        expect(loadNextItems).toHaveBeenCalledTimes(3);
     });
 
-    it('should return isLast=true with empty result if loadNextItems returns empty array', async () => {
-        const resolvers: ((value: RemoteDataProcessingWindowLoadNextItemsReturnType<number>) => void)[] = [];
-        const loadNextItems = vi.fn<RemoteDataProcessingWindowLoadNextItemsFunction<number>>((): Promise<RemoteDataProcessingWindowLoadNextItemsReturnType<number>> => new Promise((resolve) => {
-            resolvers.push(resolve);
-        }));
+    it('should handle extraction of all remaining items when remote data is finished', async () => {
+        const loadNextItems = vi.fn().mockResolvedValue({
+            items: [
+                1,
+                2,
+                3,
+                4,
+                5,
+            ],
+            isLast: true,
+        });
 
-        expect(resolvers.length).toEqual(0);
-
-        const window = createRemoteDataProcessingWindow({
-            bufferSize: 1000,
-            minItemsToLoad: 10,
+        const extractItems = createRemoteDataProcessingWindow({
+            bufferSize: 5,
             loadNextItems,
         });
 
-        const promise1 = window.getNextItems(10);
+        await promiseTimeout(10);
 
-        await Promise.race([
-            promise1.then(() => {
-                throw new Error('should not be called before resolver call');
-            }),
-            promiseTimeout(5),
-        ]);
-
-        resolvers[0]({
-            items: [
-                1,
-                2,
-                3,
-                4,
-                5,
-                6,
-                7,
-                8,
-                9,
-                10,
-            ],
-            isLast: false,
-        });
-
-        expect(await promise1).toEqual({
-            items: [
-                1,
-                2,
-                3,
-                4,
-                5,
-                6,
-                7,
-                8,
-                9,
-                10,
-            ],
-            isLast: false,
-        });
-
-        const promise2 = window.getNextItems(10);
-
-        await Promise.race([
-            promise2.then(() => {
-                throw new Error('promise2 should not be called before resolver call');
-            }),
-            promiseTimeout(5),
-        ]);
-
-        resolvers[1]({
-            items: [],
-            isLast: true,
-        });
-
-        expect(await promise2).toEqual({
-            items: [],
-            isLast: true,
-        });
-    });
-
-    it('should throw error is loadNextItems returns wrong isLast parameter in first call', async () => {
-        const window = createRemoteDataProcessingWindow({
-            bufferSize: 1000,
-            minItemsToLoad: 10,
-            loadNextItems: (): Promise<RemoteDataProcessingWindowLoadNextItemsReturnType<number>> => Promise.resolve({
-                items: [
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                ],
-                isLast: false,
-            }),
-        });
-
-        await expect(window.getNextItems(10)).rejects.toThrow('loadNextItems for isLast=false returned wrong items count=[5] expected=[10]');
-    });
-
-    it('should throw error is loadNextItems returns wrong isLast parameter in second call', async () => {
-        const window = createRemoteDataProcessingWindow({
-            bufferSize: 1000,
-            minItemsToLoad: 10,
-            loadNextItems: (): Promise<RemoteDataProcessingWindowLoadNextItemsReturnType<number>> => Promise.resolve({
-                items: [
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                ],
-                isLast: false,
-            }),
-
-        });
-
-        await expect(window.getNextItems(5)).resolves.toEqual({
-            items: [
-                1,
-                2,
-                3,
-                4,
-                5,
-            ],
-            isLast: false,
-        });
-
-        await expect(window.getNextItems(60)).rejects.toThrow('loadNextItems for isLast=false returned wrong items count=[10] expected=[55]');
-    });
-
-    it('should throw error if wrong items count is requested', async () => {
-        const window = createRemoteDataProcessingWindow({
-            bufferSize: 1000,
-            minItemsToLoad: 1,
-            loadNextItems: (): Promise<RemoteDataProcessingWindowLoadNextItemsReturnType<number>> => Promise.resolve({
-                items: [1],
-                isLast: false,
-            }),
-        });
-
-        await expect(window.getNextItems(-2)).rejects.toThrow('value=[-2] is not a positive integer');
-        await expect(window.getNextItems(0.5)).rejects.toThrow('value=[0.5] is not a positive integer');
-        await expect(window.getNextItems(0)).rejects.toThrow('value=[0] is not a positive integer');
-        await expect(window.getNextItems(1)).resolves.toEqual({
-            items: [1],
-            isLast: false,
-        });
-    });
-
-    it('remove start of the window if there are too many items', async () => {
-        let currentNumber = 0;
-        const window = createRemoteDataProcessingWindow({
-            bufferSize: 20,
-            minItemsToLoad: 7,
-            loadNextItems: ({ count }): Promise<RemoteDataProcessingWindowLoadNextItemsReturnType<number>> => {
-                const numbers: number[] = [];
-
-                callTimes(count, () => {
-                    numbers.push(currentNumber++);
-                });
-
-                return Promise.resolve({
-                    items: numbers,
-                    isLast: false,
-                });
-            },
-        });
-
-        const result1 = await window.getNextItems(10);
-
-        expect(result1.items.join(',')).toEqual('0,1,2,3,4,5,6,7,8,9');
-
-        const result2 = await window.getNextItems(3);
-
-        expect(result2.items.join(',')).toEqual('10,11,12');
-
-        const result3 = await window.getNextItems(9);
-
-        expect(result3.items.join(',')).toEqual('13,14,15,16,17,18,19,20,21');
-
-        expect(() => window.getNextItems(21)).rejects.toThrow('requestedItemsCount=[21] must be less than bufferSize=[20]');
-
-        const result4 = await window.getNextItems(20);
-
-        expect(result4.items.length).toEqual(20);
-        expect(result4.items.join(',')).toEqual('22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41');
-    });
-
-    it('should be able to handle an empty array in the last call', async () => {
-        let returnValue: RemoteDataProcessingWindowLoadNextItemsReturnType<number> = {
-            items: [
-                1,
-                2,
-                3,
-            ],
-            isLast: false,
-        };
-
-        const window = createRemoteDataProcessingWindow({
-            bufferSize: 1000,
-            minItemsToLoad: 1,
-            loadNextItems: (): Promise<RemoteDataProcessingWindowLoadNextItemsReturnType<number>> => Promise.resolve(returnValue),
-        });
-
-        await expect(window.getNextItems(4)).rejects.toThrow('loadNextItems for isLast=false returned wrong items count=[3] expected=[4]');
-        await expect(window.getNextItems(2)).rejects.toThrow('loadNextItems for isLast=false returned wrong items count=[3] expected=[2]');
-
-        const result = await window.getNextItems(3);
+        const result = await extractItems(5);
 
         expect(result).toEqual({
             items: [
                 1,
                 2,
                 3,
+                4,
+                5,
             ],
-            isLast: false,
+            isLast: true,
         });
 
-        returnValue = {
-            items: [],
-            isLast: true,
-        };
-
-        const result2 = await window.getNextItems(3);
+        // Try to extract more items after all data is consumed
+        const result2 = await extractItems(1);
 
         expect(result2).toEqual({
             items: [],
             isLast: true,
         });
 
-        const result3 = await window.getNextItems(3);
+        expect(loadNextItems).toHaveBeenCalledTimes(1);
+    });
 
-        expect(result3).toEqual({
-            items: [],
+    it('should handle slow remote data loading', async () => {
+        const loadNextItems = vi.fn().mockImplementation(({ count }) => new Promise((resolve) => {
+            setTimeout(() => {
+                resolve({
+                    items: createArray(count, Math.random()),
+                    isLast: false,
+                });
+            }, 10);
+        }));
+
+        const extractItems = createRemoteDataProcessingWindow({
+            bufferSize: 10,
+            loadNextItems,
+        });
+
+        // Try to extract before data is loaded
+        const extractionPromise = extractItems(5);
+
+        expect(loadNextItems).toHaveBeenCalledTimes(1);
+
+        await extractionPromise;
+
+        const result = await extractionPromise;
+
+        expect(result.items).toHaveLength(5);
+        expect(result.isLast).toBe(false);
+    });
+
+    it('should handle invalid requestedItemsCount (greater than bufferSize)', async () => {
+        const loadNextItems = vi.fn().mockResolvedValue({
+            items: [
+                1,
+                2,
+                3,
+                4,
+                5,
+            ],
+            isLast: false,
+        });
+
+        const extractItems = createRemoteDataProcessingWindow({
+            bufferSize: 5,
+            loadNextItems,
+        });
+
+        await expect(() => extractItems(10)).rejects.toThrow('requestedItemsCount=[10] must be less than bufferSize=[5]');
+    });
+
+    it('should handle invalid requestedItemsCount (non-positive integer)', async () => {
+        const loadNextItems = vi.fn().mockResolvedValue({
+            items: [
+                1,
+                2,
+                3,
+                4,
+                5,
+            ],
+            isLast: false,
+        });
+
+        const extractItems = createRemoteDataProcessingWindow({
+            bufferSize: 5,
+            loadNextItems,
+        });
+
+        await promiseTimeout(10);
+
+        await expect(extractItems(0)).rejects.toThrow();
+        await expect(extractItems(-1)).rejects.toThrow();
+    });
+
+    it('should handle wrong items count from remote source when isLast=false', async () => {
+        const loadNextItems = vi.fn().mockResolvedValue({
+            items: [
+                1,
+                2,
+                3,
+            ], // Only 3 items when 5 were requested
+            isLast: false, // But claiming it's not the last batch
+        });
+
+        const extractItems = createRemoteDataProcessingWindow({
+            bufferSize: 5,
+            loadNextItems,
+        });
+
+        await promiseTimeout(10);
+
+        await expect(extractItems(2)).rejects.toThrow('loadNextItems for isLast=false returned wrong items count=[3] expected=[5]');
+    });
+
+    it('should handle remote data loading errors', async () => {
+        const loadNextItems = vi.fn().mockRejectedValue(new Error('Network error'));
+
+        const extractItems = createRemoteDataProcessingWindow({
+            bufferSize: 5,
+            loadNextItems,
+        });
+
+        await promiseTimeout(10);
+
+        await expect(extractItems(3)).rejects.toThrow('Network error');
+        expect(loadNextItems).toHaveBeenCalledTimes(1);
+    });
+
+    it('should handle string items instead of numbers', async () => {
+        const loadNextItems = vi.fn().mockResolvedValue({
+            items: [
+                'apple',
+                'banana',
+                'cherry',
+                'date',
+                'elderberry',
+            ],
             isLast: true,
         });
+
+        const extractItems = createRemoteDataProcessingWindow({
+            bufferSize: 5,
+            loadNextItems,
+        });
+
+        const result = await extractItems(3);
+
+        expect(result).toEqual({
+            items: [
+                'apple',
+                'banana',
+                'cherry',
+            ],
+            isLast: false,
+        });
+    });
+
+    it('should handle object items', async () => {
+        const items = [
+            {
+                id: 1,
+                name: 'Alice',
+            },
+            {
+                id: 2,
+                name: 'Bob',
+            },
+            {
+                id: 3,
+                name: 'Charlie',
+            },
+            {
+                id: 4,
+                name: 'Diana',
+            },
+            {
+                id: 5,
+                name: 'Eve',
+            },
+        ];
+
+        const loadNextItems = vi.fn().mockResolvedValue({
+            items,
+            isLast: true,
+        });
+
+        const extractItems = createRemoteDataProcessingWindow({
+            bufferSize: 5,
+            loadNextItems,
+        });
+
+        await promiseTimeout(10);
+
+        const result = await extractItems(2);
+
+        expect(result).toEqual({
+            items: [
+                {
+                    id: 1,
+                    name: 'Alice',
+                },
+                {
+                    id: 2,
+                    name: 'Bob',
+                },
+            ],
+            isLast: false,
+        });
+    });
+
+    it('should handle buffer size of 1', async () => {
+        const loadNextItems = vi.fn().mockImplementation(({ count }) => Promise.resolve({
+            items: createArray(count, 'item'),
+            isLast: false,
+        }));
+
+        const extractItems = createRemoteDataProcessingWindow({
+            bufferSize: 1,
+            loadNextItems,
+        });
+
+        await promiseTimeout(10);
+
+        const result1 = await extractItems(1);
+
+        expect(result1).toEqual({
+            items: ['item'],
+            isLast: false,
+        });
+
+        const result2 = await extractItems(1);
+
+        expect(result2).toEqual({
+            items: ['item'],
+            isLast: false,
+        });
+
+        expect(loadNextItems).toHaveBeenCalledTimes(3); // Initial + 2 refills
+    });
+
+    it('should reject next call if previous one is not finished', async () => {
+        const loadNextItems = vi.fn().mockImplementation(({ count }) => Promise.resolve({
+            items: createArray(count, 'item'),
+            isLast: false,
+        }));
+
+        const extractItems = createRemoteDataProcessingWindow({
+            bufferSize: 1,
+            loadNextItems,
+        });
+
+        const promise1 = extractItems(1);
+
+        await expect(() => extractItems(1)).toThrow('restrictParallelCalls errorMessage=[createRemoteDataProcessingWindow] previous call is not finished, do not call function in paralle');
+
+        const result1 = await promise1;
+
+        expect(result1).toEqual({
+            items: ['item'],
+            isLast: false,
+        });
+
+        const promise2 = extractItems(1);
+
+        const result2 = await promise2;
+
+        expect(result2).toEqual({
+            items: ['item'],
+            isLast: false,
+        });
+    });
+
+    it('should fulfill buffer without parallel requests', async () => {
+        let promise: Promise<unknown> | undefined = undefined;
+
+        const loadNextItems = vi.fn().mockImplementation(({ count }) => {
+            promise = Promise.resolve({
+                items: createArray(count, 'item'),
+                isLast: false,
+            }).then(async (result) => {
+                await promiseTimeout(30);
+
+                return result;
+            });
+
+            return promise;
+        });
+
+        const extractItems = createRemoteDataProcessingWindow({
+            bufferSize: 100,
+            loadNextItems,
+        });
+
+        await promise;
+
+        expect(loadNextItems).toHaveBeenCalledTimes(1);
+
+        const promise1 = extractItems(1);
+
+        expect(loadNextItems).toHaveBeenCalledTimes(2);
+        const result1 = await promise1;
+
+        expect(loadNextItems).toHaveBeenCalledTimes(2);
+
+        const promise2 = extractItems(2);
+
+        expect(loadNextItems).toHaveBeenCalledTimes(2);
+        const result2 = await promise2;
+
+        expect(loadNextItems).toHaveBeenCalledTimes(2);
+
+        const promise3 = extractItems(3);
+
+        expect(loadNextItems).toHaveBeenCalledTimes(2);
+        const result3 = await promise3;
+
+        expect(loadNextItems).toHaveBeenCalledTimes(2);
+
+        expect(result1).toEqual({
+            items: ['item'],
+            isLast: false,
+        });
+        expect(result2).toEqual({
+            items: [
+                'item',
+                'item',
+            ],
+            isLast: false,
+        });
+        expect(result3).toEqual({
+            items: [
+                'item',
+                'item',
+                'item',
+            ],
+            isLast: false,
+        });
+
+        await promise;
+
+        expect(loadNextItems).toHaveBeenCalledTimes(3);
     });
 });

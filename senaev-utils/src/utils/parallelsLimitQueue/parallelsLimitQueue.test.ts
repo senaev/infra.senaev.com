@@ -5,7 +5,7 @@ import {
     vi,
 } from 'vitest';
 
-import { AnyFunction } from '../../types/AnyFunction';
+import { AnyFunction } from '../../types/any/AnyFunction';
 import { promiseTimeout } from '../timers/promiseTimeout/promiseTimeout';
 import { waitForFunction } from '../waitForFunction/waitForFunction';
 
