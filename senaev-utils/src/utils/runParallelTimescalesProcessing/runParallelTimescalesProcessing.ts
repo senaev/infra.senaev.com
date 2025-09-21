@@ -67,14 +67,10 @@ export function runParallelTimescalesProcessing<T extends ObjectWithTime[]>({
                 } = buffer;
                 const { time } = array[index];
 
-                console.log({ time });
-
                 if (time === minTime) {
                     portion[i] = array[index];
 
                     const nextIndex = index + 1;
-
-                    console.log({ nextIndex });
 
                     buffer.index = nextIndex;
 
@@ -102,8 +98,6 @@ export function runParallelTimescalesProcessing<T extends ObjectWithTime[]>({
                     lastItem,
                     count: bufferSize,
                 });
-
-                console.log(`update array index=[${index}]`, items);
 
                 buffers[index].array = items;
                 buffers[index].index = 0;
