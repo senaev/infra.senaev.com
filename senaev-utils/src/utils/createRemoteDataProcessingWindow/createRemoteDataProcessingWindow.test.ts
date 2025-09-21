@@ -6,11 +6,12 @@ import {
 } from 'vitest';
 
 import { createArray } from '../Array/createArray/createArray';
+import { callFirstThenOther } from '../Function/callFirstThenOther/callFirstThenOther';
+import { restrictParallelCalls } from '../Promise/restrictParallelCalls/restrictParallelCalls';
+import { getRandomIntegerInARange } from '../random/getRandomIntegerInARange/getRandomIntegerInARange';
 import { promiseTimeout } from '../timers/promiseTimeout/promiseTimeout';
 
-import {
-    createRemoteDataProcessingWindow,
-} from './createRemoteDataProcessingWindow';
+import { createRemoteDataProcessingWindow, RemoteDataProcessingWindowLoadNextItemsReturnType } from './createRemoteDataProcessingWindow';
 
 describe('createRemoteDataProcessingWindow', () => {
     it('should request data from remote source', async () => {
@@ -549,18 +550,20 @@ describe('createRemoteDataProcessingWindow', () => {
     it('should fulfill buffer without parallel requests', async () => {
         let promise: Promise<unknown> | undefined = undefined;
 
-        const loadNextItems = vi.fn().mockImplementation(({ count }) => {
-            promise = Promise.resolve({
-                items: createArray(count, 'item'),
-                isLast: false,
-            }).then(async (result) => {
-                await promiseTimeout(30);
+        const loadNextItems = vi.fn().mockImplementation(restrictParallelCalls(({ count }) => {
+            promise = Promise
+                .resolve({
+                    items: createArray(count, 'item'),
+                    isLast: false,
+                })
+                .then(async (result) => {
+                    await promiseTimeout(30);
 
-                return result;
-            });
+                    return result;
+                });
 
             return promise;
-        });
+        }));
 
         const extractItems = createRemoteDataProcessingWindow({
             bufferSize: 100,
@@ -568,6 +571,7 @@ describe('createRemoteDataProcessingWindow', () => {
         });
 
         await promise;
+        await promiseTimeout(0);
 
         expect(loadNextItems).toHaveBeenCalledTimes(1);
 
@@ -614,6 +618,189 @@ describe('createRemoteDataProcessingWindow', () => {
 
         await promise;
 
+        await promiseTimeout(0);
         expect(loadNextItems).toHaveBeenCalledTimes(3);
+    });
+
+    it('should wait for enough data in buffer to extract', async () => {
+        let promise: Promise<unknown> | undefined = undefined;
+
+        const loadNextItems = vi.fn(({ count }) => {
+            promise = promiseTimeout(25).then(() => {
+                return {
+                    items: createArray(count, 0),
+                    isLast: false,
+                };
+            });
+
+            return promise as Promise<RemoteDataProcessingWindowLoadNextItemsReturnType<unknown>>;
+        });
+
+        const extractItems = createRemoteDataProcessingWindow({
+            bufferSize: 100,
+            loadNextItems,
+        });
+
+        expect(loadNextItems).toHaveBeenCalledTimes(1);
+
+        // Wait for buffer to be filled
+        // 1. Request 100 items
+        await promise;
+
+        expect(loadNextItems).toHaveBeenCalledTimes(1);
+        expect(loadNextItems).lastCalledWith({
+            count: 100,
+            lastItem: undefined,
+        });
+
+        // Extract some data and wait for request started
+        const promise1 = extractItems(50);
+
+        // 2. Request 50 items, 50 items in buffer
+        expect(loadNextItems).toHaveBeenCalledTimes(2);
+        expect(loadNextItems).lastCalledWith({
+            count: 50,
+            lastItem: 0,
+        });
+
+        await promise1;
+        expect(loadNextItems).toHaveBeenCalledTimes(2);
+
+        // Extract additional data while previous request is in progress, but we still have enough data in buffer
+        const promise2 = extractItems(25);
+
+        // 2.1. 50 items request is still in progress, 25 items is still in buffer
+        expect(loadNextItems).toHaveBeenCalledTimes(2);
+
+        await promise2;
+
+        expect(loadNextItems).toHaveBeenCalledTimes(2);
+
+        // Not enough data in buffer, wait for request to be finished
+        // 3. when 50 items request is finished, there will be 75 items in buffer and 25 items had to be loaded
+        // 4. then, we extract 100 items, and, as buffer is empty, one more 100 candles request is needed
+        const promise3 = extractItems(100);
+
+        expect(loadNextItems).toHaveBeenCalledTimes(2);
+
+        await promise3;
+        await promise;
+
+        // Should made two more requests to fill the buffer
+        expect(loadNextItems).toHaveBeenCalledTimes(4);
+        expect(loadNextItems).nthCalledWith(3, {
+            count: 25,
+            lastItem: 0,
+        });
+        expect(loadNextItems).nthCalledWith(4, {
+            count: 100,
+            lastItem: 0,
+        });
+    });
+
+    it('load testing', async () => {
+        const loadNextItems = vi.fn().mockImplementation(restrictParallelCalls(async ({ count }) => {
+            const response = {
+                items: createArray(count, 0),
+                isLast: false,
+            };
+
+            if (Math.random() < 0.1) {
+                await promiseTimeout(Math.random() * 4);
+            }
+
+            return response;
+        }));
+
+        const extractItems = createRemoteDataProcessingWindow({
+            bufferSize: 10000,
+            loadNextItems,
+        });
+
+        for (let i = 0; i < 50; i++) {
+            await extractItems(getRandomIntegerInARange(1, 10));
+
+            if (Math.random() < 0.1) {
+                await promiseTimeout(Math.random() * 4);
+            }
+        }
+    });
+
+    it('should return successfully loaded items before error', async () => {
+        const loadNextItems = callFirstThenOther(
+            () => Promise.resolve({
+                items: createArray(5, 0),
+                isLast: false,
+            }),
+            () => {
+                throw new Error('Network error');
+            }
+        );
+
+        const extractItems = createRemoteDataProcessingWindow({
+            bufferSize: 5,
+            loadNextItems,
+        });
+
+        const result = await extractItems(5);
+
+        expect(result).toEqual({
+            items: [
+                0,
+                0,
+                0,
+                0,
+                0,
+            ],
+            isLast: false,
+        });
+
+        await expect(extractItems(1)).rejects.toThrow('Network error');
+    });
+
+    it('should NOT return items after load error', async () => {
+        let i = 0;
+        const loadNextItems = ({ count }: { count: number }) => {
+            i++;
+
+            if (i === 3) {
+                throw new Error('Network error');
+            }
+
+            return Promise.resolve({
+                items: createArray(count, 'ITEM'),
+                isLast: false,
+            });
+        };
+
+        const extractItems = createRemoteDataProcessingWindow({
+            bufferSize: 10,
+            loadNextItems,
+        });
+
+        await extractItems(10);
+        await extractItems(1);
+
+        await promiseTimeout(10);
+
+        await expect(extractItems(1)).rejects.toThrow('Network error');
+
+        await promiseTimeout(10);
+
+        await expect(extractItems(1)).rejects.toThrow('Network error');
+        await expect(extractItems(1)).rejects.toThrow('Network error');
+        await expect(extractItems(1)).rejects.toThrow('Network error');
+    });
+
+    it('undefined error protection', async () => {
+        const extractItems = createRemoteDataProcessingWindow({
+            bufferSize: 10,
+            loadNextItems: () => {
+                // eslint-disable-next-line no-throw-literal
+                throw undefined;
+            },
+        });
+
+        await expect(extractItems(1)).rejects.toThrow();
     });
 });

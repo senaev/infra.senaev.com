@@ -1,7 +1,6 @@
-import { Subject } from 'rxjs';
-
 import { assertPositiveInteger, PositiveInteger } from '../../types/Number/PositiveInteger';
 import { CircularBuffer } from '../CircularBuffer/CircularBuffer';
+import { noop } from '../Function/noop';
 import { restrictParallelCalls } from '../Promise/restrictParallelCalls/restrictParallelCalls';
 
 export type RemoteDataProcessingWindowLoadNextItemsReturnType<T> = {
@@ -40,15 +39,17 @@ export function createRemoteDataProcessingWindow<T>({
     let isRemoteDataFinished = false;
     let lastItemPushedToBuffer: T | undefined = undefined;
 
-    // ❗️ use callback variable as parallel calls are restricted
-    const itemsPushedToBufferSubject = new Subject<Error | undefined>();
+    let processingCallback: VoidFunction = noop;
 
     // One error is enough to stop the whole process
-    let error: Error | undefined = undefined;
-    let requestRemoveItemsIsRunning = false;
+    let error: {
+        error: Error;
+    } | undefined = undefined;
 
-    function requestRemoteItemsToFillBuffer() {
-        if (requestRemoveItemsIsRunning || isRemoteDataFinished) {
+    let isRequestInProgress = false;
+
+    async function requestRemoteItemsToFillBuffer() {
+        if (isRequestInProgress || isRemoteDataFinished) {
             return;
         }
 
@@ -58,71 +59,58 @@ export function createRemoteDataProcessingWindow<T>({
             return;
         }
 
-        requestRemoveItemsIsRunning = true;
-        console.log('loadNextItems start');
-        loadNextItems({
-            count: countToLoad,
-            lastItem: lastItemPushedToBuffer,
-        })
-            .then(({ isLast, items }) => {
-                console.log('loadNextItems finished');
-                requestRemoveItemsIsRunning = false;
+        isRequestInProgress = true;
 
-                if (isLast) {
-                    isRemoteDataFinished = true;
-                } else if (items.length !== countToLoad) {
-                    throw new Error(`loadNextItems for isLast=false returned wrong items count=[${items.length}] expected=[${countToLoad}]`);
-                }
-
-                for (const item of items) {
-                    buffer.push(item);
-                }
-
-                lastItemPushedToBuffer = items.at(-1);
-
-                itemsPushedToBufferSubject.next(undefined);
-                requestRemoteItemsToFillBuffer();
-            })
-            .catch((e) => {
-                error = e;
-                console.log('loadNextItems error');
-                requestRemoveItemsIsRunning = false;
-                itemsPushedToBufferSubject.next(e);
+        try {
+            const { isLast, items } = await loadNextItems({
+                count: countToLoad,
+                lastItem: lastItemPushedToBuffer,
             });
+
+            isRequestInProgress = false;
+
+            if (isLast) {
+                isRemoteDataFinished = true;
+            } else if (items.length !== countToLoad) {
+                throw new Error(`loadNextItems for isLast=false returned wrong items count=[${items.length}] expected=[${countToLoad}]`);
+            }
+
+            for (const item of items) {
+                buffer.push(item);
+            }
+
+            lastItemPushedToBuffer = items.at(-1);
+
+            requestRemoteItemsToFillBuffer();
+        } catch (e) {
+            isRequestInProgress = false;
+            error = {
+                error: e as Error,
+            };
+        } finally {
+            processingCallback();
+        }
     }
 
     requestRemoteItemsToFillBuffer();
 
     // eslint-disable-next-line require-await
     return restrictParallelCalls(async (requestedItemsCount): Promise<RemoteDataProcessingWindowLoadNextItemsReturnType<T>> => {
+        if (error) {
+            throw error.error;
+        }
+
         assertPositiveInteger(requestedItemsCount);
 
         if (requestedItemsCount > bufferSize) {
             throw new Error(`requestedItemsCount=[${requestedItemsCount}] must be less than bufferSize=[${bufferSize}]`);
         }
 
-        if (error) {
-            throw error;
-        }
-
-        // Last chunk of remove and buffer data has been extracted
-        if (isRemoteDataFinished && buffer.length === 0) {
-            console.log('NO MORE DATA: isRemoteDataFinished && buffer.length === 0');
-
-            return {
-                items: [],
-                isLast: true,
-            };
-        }
-
         // Has enough items to extract
         if (buffer.length >= requestedItemsCount) {
-            console.log('HAS ENOUGH DATA: buffer.length >= requestedItemsCount');
             const items = buffer.shiftCount(requestedItemsCount);
 
-            if (!isRemoteDataFinished) {
-                requestRemoteItemsToFillBuffer();
-            }
+            requestRemoteItemsToFillBuffer();
 
             return {
                 items,
@@ -132,7 +120,6 @@ export function createRemoteDataProcessingWindow<T>({
 
         // No more data in remote, nothing to wait
         if (isRemoteDataFinished) {
-            console.log('NO MORE DATA IN REMOTE, NOTHING TO WAIT, extract what we have');
             const items = buffer.shiftCount(requestedItemsCount);
 
             return {
@@ -142,26 +129,29 @@ export function createRemoteDataProcessingWindow<T>({
         }
 
         return new Promise<RemoteDataProcessingWindowLoadNextItemsReturnType<T>>((resolve, reject) => {
-            const subscription = itemsPushedToBufferSubject.subscribe((error) => {
+            processingCallback = () => {
                 if (error) {
-                    reject(error);
+                    reject(error.error);
 
                     return;
                 }
 
-                console.log('itemsPushedToBufferSubject updated');
                 if (buffer.length < requestedItemsCount) {
                     return;
                 }
 
-                subscription.unsubscribe();
+                processingCallback = noop;
+
+                const items = buffer.shiftCount(requestedItemsCount);
+                const isLast = isRemoteDataFinished && buffer.length === 0;
 
                 requestRemoteItemsToFillBuffer();
+
                 resolve({
-                    items: buffer.shiftCount(requestedItemsCount),
-                    isLast: isRemoteDataFinished && buffer.length === 0,
+                    items,
+                    isLast,
                 });
-            });
+            };
         });
     }, 'createRemoteDataProcessingWindow');
 }
