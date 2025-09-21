@@ -9,7 +9,7 @@ import { waitForFunction } from '../waitForFunction/waitForFunction';
 import { runParallelTimescalesProcessing } from './runParallelTimescalesProcessing';
 
 describe('runParallelTimescalesProcessing', () => {
-    it('should work with one simple timescale', async () => {
+    it('should work with small portion of data', async () => {
         const callback = vi.fn();
 
         runParallelTimescalesProcessing<[{ time: number }]>({
