@@ -5,7 +5,7 @@ export function waitForFunction(
     {
         timeout = 250,
         interval = 10,
-        message = `waitForFunction timeout ${timeout}ms`,
+        message = `waitForFunction timeout=[${timeout}]ms`,
     }: Partial<
         Readonly<{
             timeout: number;
