@@ -1,8 +1,5 @@
 // use date.toISOString() method to convert date to this type
 
-import { UnixTimeMs } from '../UnixTimeMs';
-import { UnixTimeSec } from '../UnixTimeSec';
-
 // 💁‍♂️ 2025-01-01T07:29:12.263Z
 export type ISODateString = ReturnType<Date['toISOString']>;
 
@@ -16,12 +13,4 @@ export function assertISODateString(date: string, errorMessage?: string): assert
     if (!isISODateString(date)) {
         throw new Error(`date=[${date}] is not a valid ISO date string${errorMessage ? ` errorMessage=[${errorMessage}]` : ''}`);
     }
-}
-
-export function isoDateStringToUnixTimeMs(date: ISODateString): UnixTimeMs {
-    return new Date(date).getTime();
-}
-
-export function isoDateStringToUnixTimeSec(date: ISODateString): UnixTimeSec {
-    return Math.floor(isoDateStringToUnixTimeMs(date) / 1000);
 }
