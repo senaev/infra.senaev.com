@@ -1,6 +1,6 @@
 import { assertPositiveInteger, PositiveInteger } from '../../types/Number/PositiveInteger';
 import { UnsignedInteger } from '../../types/Number/UnsignedInteger';
-import { RemoteDataProcessingWindowLoadNextItemsFunction } from '../createRemoteDataProcessingWindow/createRemoteDataProcessingWindow';
+import { RemoteDataProcessingWindowExtractItemsFunction } from '../createRemoteDataProcessingWindow/createRemoteDataProcessingWindow';
 import { MinHeapUniqueNumber } from '../MinHeapUniqueNumber/MinHeapUniqueNumber';
 
 type ObjectWithTime = {
@@ -8,7 +8,7 @@ type ObjectWithTime = {
 };
 
 type ExtractItemsFunctions<T extends ObjectWithTime[]> = {
-    [K in keyof T]: RemoteDataProcessingWindowLoadNextItemsFunction<T[K]>;
+    [K in keyof T]: RemoteDataProcessingWindowExtractItemsFunction<T[K]>;
 };
 
 type ObjectsWithTimePortion<T extends ObjectWithTime[]> = {
@@ -42,7 +42,7 @@ export async function runParallelTimescalesProcessing<T extends ObjectWithTime[]
 
     const notFinishedBuffers: Set<UnsignedInteger> = new Set();
     const buffersToLoadData: UnsignedInteger[] = [];
-    const buffers = extractItemsFunctions.map(<O extends ObjectWithTime>(_: RemoteDataProcessingWindowLoadNextItemsFunction<O>, i: UnsignedInteger) => {
+    const buffers = extractItemsFunctions.map(<O extends ObjectWithTime>(_: RemoteDataProcessingWindowExtractItemsFunction<O>, i: UnsignedInteger) => {
         notFinishedBuffers.add(i);
         buffersToLoadData.push(i);
 
@@ -60,12 +60,7 @@ export async function runParallelTimescalesProcessing<T extends ObjectWithTime[]
     while (true) {
         if (buffersToLoadData.length > 0) {
             await Promise.all(buffersToLoadData.map(async (index) => {
-                const lastItem = buffers[index].array.at(-1);
-
-                const { items, isLast } = await extractItemsFunctions[index]({
-                    lastItem,
-                    count: bufferSize,
-                });
+                const { items, isLast } = await extractItemsFunctions[index](bufferSize);
 
                 if (isLast) {
                     buffers[index].isLast = true;

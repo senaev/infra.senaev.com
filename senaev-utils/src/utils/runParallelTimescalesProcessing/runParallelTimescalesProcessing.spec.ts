@@ -5,14 +5,14 @@ import {
 } from 'vitest';
 
 import { UnsignedInteger } from '../../types/Number/UnsignedInteger';
-import { RemoteDataProcessingWindowLoadNextItemsFunction } from '../createRemoteDataProcessingWindow/createRemoteDataProcessingWindow';
+import { RemoteDataProcessingWindowExtractItemsFunction } from '../createRemoteDataProcessingWindow/createRemoteDataProcessingWindow';
 
 import { runParallelTimescalesProcessing } from './runParallelTimescalesProcessing';
 
-function createTimescale<T extends { time: number }>(callback: (index: UnsignedInteger) => T | undefined): Mock<RemoteDataProcessingWindowLoadNextItemsFunction<T>> {
+function createTimescale<T extends { time: number }>(callback: (index: UnsignedInteger) => T | undefined): Mock<RemoteDataProcessingWindowExtractItemsFunction<T>> {
     let i = 0;
 
-    return vi.fn(({ count }) => {
+    return vi.fn((count) => {
         const items: T[] = [];
 
         for (let c = 0; c < count; c++) {
@@ -390,65 +390,16 @@ describe('runParallelTimescalesProcessing', () => {
 
         expect(extractItemsFunctions.map((extractItemsFunction) => extractItemsFunction.mock.calls)).toEqual([
             [
-                [
-                    {
-                        count: 3,
-                        lastItem: undefined,
-                    },
-                ],
-                [
-                    {
-                        count: 3,
-                        lastItem: {
-                            time: 2,
-                            value: '2',
-                        },
-                    },
-                ],
-                [
-                    {
-                        count: 3,
-                        lastItem: {
-                            time: 5,
-                            value: '5',
-                        },
-                    },
-                ],
-                [
-                    {
-                        count: 3,
-                        lastItem: {
-                            time: 8,
-                            value: '8',
-                        },
-                    },
-                ],
+                [3],
+                [3],
+                [3],
+                [3],
             ],
             [
-                [
-                    {
-                        count: 3,
-                        lastItem: undefined,
-                    },
-                ],
-                [
-                    {
-                        count: 3,
-                        lastItem: {
-                            time: 2,
-                            value: '2',
-                        },
-                    },
-                ],
+                [3],
+                [3],
             ],
-            [
-                [
-                    {
-                        count: 3,
-                        lastItem: undefined,
-                    },
-                ],
-            ],
+            [[3]],
         ]);
 
         const resultPromisesArrays = extractItemsFunctions.map((extractItemsFunction) => extractItemsFunction.mock.results.map((result) => result.value));
