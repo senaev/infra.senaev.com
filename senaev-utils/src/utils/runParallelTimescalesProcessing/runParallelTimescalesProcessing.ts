@@ -1,7 +1,6 @@
 import { PositiveInteger } from '../../types/Number/PositiveInteger';
 import { UnsignedInteger } from '../../types/Number/UnsignedInteger';
 import { RemoteDataProcessingWindowLoadNextItemsFunction } from '../createRemoteDataProcessingWindow/createRemoteDataProcessingWindow';
-import { MinHeapUniqueNumber } from '../MinHeapUniqueNumber/MinHeapUniqueNumber';
 import { promiseAll } from '../Promise/promiseAll/promiseAll';
 
 type ObjectWithTime = {
@@ -26,7 +25,7 @@ type TimescalesBuffersInfo<T extends ObjectWithTime[]> = {
     [K in keyof T]: TimescaleBufferInfo<T[K]>;
 };
 
-export function runParallelTimescalesProcessing<T extends ObjectWithTime[]>({
+export async function runParallelTimescalesProcessing<T extends ObjectWithTime[]>({
     extractItemsFunctions,
     callback,
     bufferSize,
@@ -34,7 +33,7 @@ export function runParallelTimescalesProcessing<T extends ObjectWithTime[]>({
     extractItemsFunctions: ExtractItemsFunctions<T>;
     callback: (args: ObjectsWithTimePortion<T>) => unknown;
     bufferSize: PositiveInteger;
-}): void {
+}): Promise<void> {
     const timescalesCount = extractItemsFunctions.length;
     const buffers = extractItemsFunctions.map(<O extends ObjectWithTime>() => {
         const bufferInfo: TimescaleBufferInfo<O> = {
@@ -46,52 +45,42 @@ export function runParallelTimescalesProcessing<T extends ObjectWithTime[]>({
         return bufferInfo;
     }) as TimescalesBuffersInfo<T>;
 
-    // undefined if timescale is finished
-    const timesMinHeap = new MinHeapUniqueNumber();
+    while (true) {
+        const portion = new Array(timescalesCount) as ObjectsWithTimePortion<T>;
+        const traversedBuffers: UnsignedInteger[] = [];
+        let allFinished = true;
+        let hasPortion = false;
 
-    async function startProcessing() {
-        while (true) {
-            const portion = new Array(timescalesCount) as ObjectsWithTimePortion<T>;
-            const minTime = timesMinHeap.pop();
+        for (let i = 0; i < timescalesCount; i++) {
+            const buffer = buffers[i];
 
-            if (minTime === undefined) {
-                break;
+            const item = buffer.array.at(buffer.index);
+
+            if (item || !buffer.isFinished) {
+                allFinished = false;
             }
 
-            const traversedArraysIndexes: UnsignedInteger[] = [];
-
-            for (let i = 0; i < timescalesCount; i++) {
-                const buffer = buffers[i];
-                const {
-                    array, index,
-                } = buffer;
-                const { time } = array[index];
-
-                if (time === minTime) {
-                    portion[i] = array[index];
-
-                    const nextIndex = index + 1;
-
-                    buffer.index = nextIndex;
-
-                    const nextValue = buffer.array[nextIndex];
-
-                    if (nextValue) {
-                        timesMinHeap.push(nextValue.time);
-                    } else {
-                        if (buffer.isFinished) {
-                            buffer.array = [];
-                            buffer.index = 0;
-                        } else {
-                            traversedArraysIndexes.push(i);
-                        }
-                    }
+            if (item) {
+                portion[i] = item;
+                buffer.index++;
+                hasPortion = true;
+            } else {
+                if (!buffer.isFinished) {
+                    traversedBuffers.push(i);
                 }
             }
+        }
 
+        if (hasPortion) {
             callback(portion);
+        }
 
-            await promiseAll(traversedArraysIndexes.map(async (index) => {
+        if (allFinished) {
+            return;
+        }
+
+        if (traversedBuffers.length > 0) {
+            await promiseAll(traversedBuffers.map(async (index) => {
                 const lastItem = buffers[index].array.at(-1);
 
                 const { items, isLast } = await extractItemsFunctions[index]({
@@ -99,35 +88,13 @@ export function runParallelTimescalesProcessing<T extends ObjectWithTime[]>({
                     count: bufferSize,
                 });
 
-                buffers[index].array = items;
-                buffers[index].index = 0;
-
                 if (isLast) {
                     buffers[index].isFinished = true;
                 }
+
+                buffers[index].array = items;
+                buffers[index].index = 0;
             }));
         }
     }
-
-    promiseAll(extractItemsFunctions.map((extractItemsFunction) => extractItemsFunction({
-        lastItem: undefined,
-        count: bufferSize,
-    })))
-        .then((firstTimescalesData) => {
-            firstTimescalesData.forEach(({ items, isLast }, index) => {
-                if (isLast) {
-                    buffers[index].isFinished = true;
-                }
-
-                buffers[index].array = items;
-
-                const firstItem = items.at(0);
-
-                if (firstItem) {
-                    timesMinHeap.push(firstItem.time);
-                }
-            });
-
-            startProcessing();
-        });
 }
