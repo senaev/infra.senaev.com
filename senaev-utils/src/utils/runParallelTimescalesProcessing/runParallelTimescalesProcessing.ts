@@ -1,7 +1,7 @@
 import { assertPositiveInteger, PositiveInteger } from '../../types/Number/PositiveInteger';
 import { UnsignedInteger } from '../../types/Number/UnsignedInteger';
 import { RemoteDataProcessingWindowLoadNextItemsFunction } from '../createRemoteDataProcessingWindow/createRemoteDataProcessingWindow';
-import { promiseAll } from '../Promise/promiseAll/promiseAll';
+import { MinHeapUniqueNumber } from '../MinHeapUniqueNumber/MinHeapUniqueNumber';
 
 type ObjectWithTime = {
     time: number;
@@ -40,7 +40,12 @@ export async function runParallelTimescalesProcessing<T extends ObjectWithTime[]
 
     assertPositiveInteger(timescalesCount, 'runParallelTimescalesProcessing extractItemsFunctions should array should NOT be empty');
 
-    const buffers = extractItemsFunctions.map(<O extends ObjectWithTime>() => {
+    const notFinishedBuffers: Set<UnsignedInteger> = new Set();
+    const buffersToLoadData: UnsignedInteger[] = [];
+    const buffers = extractItemsFunctions.map(<O extends ObjectWithTime>(_: RemoteDataProcessingWindowLoadNextItemsFunction<O>, i: UnsignedInteger) => {
+        notFinishedBuffers.add(i);
+        buffersToLoadData.push(i);
+
         const bufferInfo: TimescaleBufferInfo<O> = {
             array: [],
             index: 0,
@@ -50,41 +55,11 @@ export async function runParallelTimescalesProcessing<T extends ObjectWithTime[]
         return bufferInfo;
     }) as TimescalesBuffersInfo<T>;
 
+    const minHeapUniqueNumber = new MinHeapUniqueNumber();
+
     while (true) {
-        // Check if all buffers are finished
-        let allFinished = true;
-
-        for (let i = 0; i < timescalesCount; i++) {
-            const buffer = buffers[i];
-
-            const item = buffer.array.at(buffer.index);
-
-            if (item || !buffer.isLast) {
-                allFinished = false;
-            }
-        }
-
-        if (allFinished) {
-            return;
-        }
-
-        // Look for buffers that have to load items
-        const traversedBuffers: UnsignedInteger[] = [];
-
-        for (let i = 0; i < timescalesCount; i++) {
-            const buffer = buffers[i];
-            const item = buffer.array.at(buffer.index);
-
-            if (!item) {
-                if (!buffer.isLast) {
-                    traversedBuffers.push(i);
-                }
-            }
-        }
-
-        // Load items for buffers that have to load items
-        if (traversedBuffers.length > 0) {
-            await promiseAll(traversedBuffers.map(async (index) => {
+        if (buffersToLoadData.length > 0) {
+            await Promise.all(buffersToLoadData.map(async (index) => {
                 const lastItem = buffers[index].array.at(-1);
 
                 const { items, isLast } = await extractItemsFunctions[index]({
@@ -98,27 +73,20 @@ export async function runParallelTimescalesProcessing<T extends ObjectWithTime[]
 
                 buffers[index].array = items;
                 buffers[index].index = 0;
+
+                if (items[0]) {
+                    minHeapUniqueNumber.push(items[0].time);
+                }
             }));
+
+            buffersToLoadData.length = 0;
         }
 
-        // Find the minimum time of the buffers that are not finished
-        let minTime = Infinity;
+        const minTime = minHeapUniqueNumber.pop();
 
-        for (let i = 0; i < timescalesCount; i++) {
-            const buffer = buffers[i];
-
-            const item = buffer.array.at(buffer.index);
-
-            if (item) {
-                minTime = Math.min(minTime, item.time);
-            }
-        }
-
-        // Create a portion of data
-        let hasPortion = false;
         const portion = new Array(timescalesCount) as ObjectsWithTimePortion<T>;
 
-        for (let i = 0; i < timescalesCount; i++) {
+        for (const i of notFinishedBuffers.values()) {
             const buffer = buffers[i];
 
             const item = buffer.array.at(buffer.index);
@@ -127,13 +95,24 @@ export async function runParallelTimescalesProcessing<T extends ObjectWithTime[]
                 if (item.time === minTime) {
                     portion[i] = item;
                     buffer.index++;
-                    hasPortion = true;
+
+                    const nextItem = buffer.array.at(buffer.index);
+
+                    if (nextItem) {
+                        minHeapUniqueNumber.push(nextItem.time);
+                    } else if (!buffer.isLast) {
+                        buffersToLoadData.push(i);
+                    }
                 }
+            } else if (buffer.isLast) {
+                notFinishedBuffers.delete(i);
             }
         }
 
-        if (hasPortion) {
-            callback(portion);
+        if (notFinishedBuffers.size === 0) {
+            return;
         }
+
+        callback(portion);
     }
 }

@@ -1765,4 +1765,64 @@ describe('runParallelTimescalesProcessing', () => {
             ],
         ]);
     });
+
+    it('should handle strange intersections', async () => {
+        const callback = vi.fn();
+
+        const extractItemsFunctions = [
+            // createTimescale((i) => {
+            //     if (i > 1000) {
+            //         return undefined;
+            //     }
+
+            //     return {
+            //         time: i,
+            //     };
+            // }),
+            createTimescale((i) => {
+                if (i > 800) {
+                    return undefined;
+                }
+
+                return {
+                    time: i * 2,
+                };
+            }),
+            createTimescale((i) => {
+                if (i > 500) {
+                    return undefined;
+                }
+
+                return {
+                    time: i * 3,
+                };
+            }),
+            createTimescale((i) => {
+                if (i > 500) {
+                    return undefined;
+                }
+
+                return {
+                    time: i * 5,
+                };
+            }),
+            createTimescale((i) => {
+                if (i > 500) {
+                    return undefined;
+                }
+
+                return {
+                    time: i * 7,
+                };
+            }),
+        ];
+
+        await runParallelTimescalesProcessing<{ time: number }[]>({
+            extractItemsFunctions,
+            callback,
+            bufferSize: 17,
+        });
+
+        expect(callback.mock.calls.length).toEqual(1649);
+    });
 });
