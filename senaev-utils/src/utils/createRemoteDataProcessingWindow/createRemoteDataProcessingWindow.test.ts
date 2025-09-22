@@ -343,7 +343,7 @@ describe('createRemoteDataProcessingWindow', () => {
             loadNextItems,
         });
 
-        await expect(() => extractItems(10)).rejects.toThrow('requestedItemsCount=[10] must be less than bufferSize=[5]');
+        await expect(() => extractItems(10)).rejects.toThrow('createRemoteDataProcessingWindow: requestedItemsCount=[10] must be less than bufferSize=[5]');
     });
 
     it('should handle invalid requestedItemsCount (non-positive integer)', async () => {
@@ -386,7 +386,7 @@ describe('createRemoteDataProcessingWindow', () => {
 
         await promiseTimeout(10);
 
-        await expect(extractItems(2)).rejects.toThrow('loadNextItems for isLast=false returned wrong items count=[3] expected=[5]');
+        await expect(extractItems(2)).rejects.toThrow('createRemoteDataProcessingWindow: loadNextItems for isLast=false returned wrong items count=[3] expected=[5]');
     });
 
     it('should handle remote data loading errors', async () => {

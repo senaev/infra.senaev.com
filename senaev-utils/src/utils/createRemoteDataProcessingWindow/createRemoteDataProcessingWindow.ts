@@ -72,7 +72,7 @@ export function createRemoteDataProcessingWindow<T>({
             if (isLast) {
                 isRemoteDataFinished = true;
             } else if (items.length !== countToLoad) {
-                throw new Error(`loadNextItems for isLast=false returned wrong items count=[${items.length}] expected=[${countToLoad}]`);
+                throw new Error(`createRemoteDataProcessingWindow: loadNextItems for isLast=false returned wrong items count=[${items.length}] expected=[${countToLoad}]`);
             }
 
             for (const item of items) {
@@ -103,7 +103,7 @@ export function createRemoteDataProcessingWindow<T>({
         assertPositiveInteger(requestedItemsCount);
 
         if (requestedItemsCount > bufferSize) {
-            throw new Error(`requestedItemsCount=[${requestedItemsCount}] must be less than bufferSize=[${bufferSize}]`);
+            throw new Error(`createRemoteDataProcessingWindow: requestedItemsCount=[${requestedItemsCount}] must be less than bufferSize=[${bufferSize}]`);
         }
 
         // Has enough items to extract
