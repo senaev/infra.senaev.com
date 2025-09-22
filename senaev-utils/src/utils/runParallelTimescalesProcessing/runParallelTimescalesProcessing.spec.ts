@@ -6,7 +6,6 @@ import {
 
 import { UnsignedInteger } from '../../types/Number/UnsignedInteger';
 import { RemoteDataProcessingWindowLoadNextItemsFunction } from '../createRemoteDataProcessingWindow/createRemoteDataProcessingWindow';
-import { waitForFunction } from '../waitForFunction/waitForFunction';
 
 import { runParallelTimescalesProcessing } from './runParallelTimescalesProcessing';
 
@@ -37,7 +36,7 @@ describe('runParallelTimescalesProcessing', () => {
     it('should work with small portion of data', async () => {
         const callback = vi.fn();
 
-        const promise = runParallelTimescalesProcessing<[{ time: number }]>({
+        await runParallelTimescalesProcessing<[{ time: number }]>({
             extractItemsFunctions: [
                 () => Promise.resolve({
                     items: [
@@ -60,8 +59,6 @@ describe('runParallelTimescalesProcessing', () => {
             bufferSize: 1000,
         });
 
-        await waitForFunction(() => callback.mock.calls.length > 2);
-
         expect(callback).toHaveBeenCalledTimes(3);
         expect(callback).toHaveBeenNthCalledWith(1, [
             {
@@ -80,8 +77,6 @@ describe('runParallelTimescalesProcessing', () => {
                 time: 3,
             },
         ]);
-
-        await promise;
     });
 
     it('should work with multiple different timescales', async () => {
@@ -111,13 +106,11 @@ describe('runParallelTimescalesProcessing', () => {
             createTimescale<{ time: number; value: string }>(() => undefined),
         ];
 
-        runParallelTimescalesProcessing<{ time: number; value: string }[]>({
+        await runParallelTimescalesProcessing<{ time: number; value: string }[]>({
             extractItemsFunctions,
             callback,
             bufferSize: 1000,
         });
-
-        await waitForFunction(() => callback.mock.calls.length > 0);
 
         expect(callback.mock.calls).toEqual([
             [
@@ -271,13 +264,11 @@ describe('runParallelTimescalesProcessing', () => {
             createTimescale<{ time: number; value: string }>(() => undefined),
         ];
 
-        runParallelTimescalesProcessing<{ time: number; value: string }[]>({
+        await runParallelTimescalesProcessing<{ time: number; value: string }[]>({
             extractItemsFunctions,
             callback,
             bufferSize: 3,
         });
-
-        await waitForFunction(() => callback.mock.calls.length === 10);
 
         expect(callback.mock.calls).toEqual([
             [
@@ -565,5 +556,114 @@ describe('runParallelTimescalesProcessing', () => {
                 },
             ],
         ]);
+    });
+
+    it('should not put different time scales in the same callback', async () => {
+        const callback = vi.fn();
+
+        const extractItemsFunctions = [
+            createTimescale((i) => {
+                if (i > 3) {
+                    return undefined;
+                }
+
+                return {
+                    time: i,
+                };
+            }),
+            createTimescale((i) => {
+                if (i > 4) {
+                    return undefined;
+                }
+
+                return {
+                    time: i / 2,
+                };
+            }),
+        ];
+
+        await runParallelTimescalesProcessing<{ time: number }[]>({
+            extractItemsFunctions,
+            callback,
+            bufferSize: 2,
+        });
+
+        expect(callback.mock.calls).toEqual([
+            [
+                [
+                    {
+                        time: 0,
+                    },
+                    {
+                        time: 0,
+                    },
+                ],
+            ],
+            [
+                [
+                    undefined,
+                    {
+                        time: 0.5,
+                    },
+                ],
+            ],
+            [
+                [
+                    {
+                        time: 1,
+                    },
+                    {
+                        time: 1,
+                    },
+                ],
+            ],
+            [
+                [
+                    undefined,
+                    {
+                        time: 1.5,
+                    },
+                ],
+            ],
+            [
+                [
+                    {
+                        time: 2,
+                    },
+                    {
+                        time: 2,
+                    },
+                ],
+            ],
+            [
+                [
+                    {
+                        time: 3,
+                    },
+                    undefined,
+                ],
+            ],
+        ]);
+
+        expect(extractItemsFunctions.map((extractItemsFunction) => extractItemsFunction.mock.calls.length)).toEqual([
+            3,
+            3,
+        ]);
+    });
+
+    it('should throw error if bufferSize is not a positive integer', async () => {
+        await expect(() => runParallelTimescalesProcessing<{ time: number }[]>({
+            extractItemsFunctions: [createTimescale(() => undefined)],
+            callback: vi.fn(),
+            bufferSize: 0,
+        })).rejects.toThrow('value=[0] is not a positive integer errorMessage=[runParallelTimescalesProcessing bufferSize should be a positive integer]');
+    });
+
+    it('should throw error if there is no extract functions', async () => {
+        await expect(() => runParallelTimescalesProcessing<{ time: number }[]>({
+            extractItemsFunctions: [],
+            callback: vi.fn(),
+            bufferSize: 10,
+        })).rejects.toThrow('value=[0] is not a positive integer errorMessage=[runParallelTimescalesProcessing extractItemsFunctions should array should NOT be empty]');
     });
 });
