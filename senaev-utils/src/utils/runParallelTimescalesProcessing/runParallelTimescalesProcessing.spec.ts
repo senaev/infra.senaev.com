@@ -666,4 +666,198 @@ describe('runParallelTimescalesProcessing', () => {
             bufferSize: 10,
         })).rejects.toThrow('value=[0] is not a positive integer errorMessage=[runParallelTimescalesProcessing extractItemsFunctions should array should NOT be empty]');
     });
+
+    it('should handle empty remote data', async () => {
+        const callback = vi.fn();
+
+        const extractItemsFunctions = Array.from({ length: 5 }, () => createTimescale(() => undefined));
+
+        await runParallelTimescalesProcessing<{ time: number }[]>({
+            extractItemsFunctions,
+            callback,
+            bufferSize: 10,
+        });
+
+        expect(callback).toHaveBeenCalledTimes(0);
+
+        expect(extractItemsFunctions.map((extractItemsFunction) => extractItemsFunction.mock.calls.length)).toEqual([
+            1,
+            1,
+            1,
+            1,
+            1,
+        ]);
+    });
+
+    it('should handle strange intersections', async () => {
+        const callback = vi.fn();
+
+        const extractItemsFunctions = [
+            createTimescale((i) => {
+                if (i > 5) {
+                    return undefined;
+                }
+
+                return {
+                    time: i - 3,
+                };
+            }),
+            createTimescale((i) => {
+                if (i > 4) {
+                    return undefined;
+                }
+
+                return {
+                    time: i,
+                };
+            }),
+            createTimescale((i) => {
+                if (i > 4) {
+                    return undefined;
+                }
+
+                return {
+                    time: i + 1000,
+                };
+            }),
+        ];
+
+        await runParallelTimescalesProcessing<{ time: number }[]>({
+            extractItemsFunctions,
+            callback,
+            bufferSize: 2,
+        });
+
+        expect(callback.mock.calls).toEqual([
+            [
+                [
+                    {
+                        time: -3,
+                    },
+                    undefined,
+                    undefined,
+                ],
+            ],
+            [
+                [
+                    {
+                        time: -2,
+                    },
+                    undefined,
+                    undefined,
+                ],
+            ],
+            [
+                [
+                    {
+                        time: -1,
+                    },
+                    undefined,
+                    undefined,
+                ],
+            ],
+            [
+                [
+                    {
+                        time: 0,
+                    },
+                    {
+                        time: 0,
+                    },
+                    undefined,
+                ],
+            ],
+            [
+                [
+                    {
+                        time: 1,
+                    },
+                    {
+                        time: 1,
+                    },
+                    undefined,
+                ],
+            ],
+            [
+                [
+                    {
+                        time: 2,
+                    },
+                    {
+                        time: 2,
+                    },
+                    undefined,
+                ],
+            ],
+            [
+                [
+                    undefined,
+                    {
+                        time: 3,
+                    },
+                    undefined,
+                ],
+            ],
+            [
+                [
+                    undefined,
+                    {
+                        time: 4,
+                    },
+                    undefined,
+                ],
+            ],
+            [
+                [
+                    undefined,
+                    undefined,
+                    {
+                        time: 1000,
+                    },
+                ],
+            ],
+            [
+                [
+                    undefined,
+                    undefined,
+                    {
+                        time: 1001,
+                    },
+                ],
+            ],
+            [
+                [
+                    undefined,
+                    undefined,
+                    {
+                        time: 1002,
+                    },
+                ],
+            ],
+            [
+                [
+                    undefined,
+                    undefined,
+                    {
+                        time: 1003,
+                    },
+                ],
+            ],
+            [
+                [
+                    undefined,
+                    undefined,
+                    {
+                        time: 1004,
+                    },
+                ],
+            ],
+        ]);
+
+        expect(extractItemsFunctions.map((extractItemsFunction) => extractItemsFunction.mock.calls.length)).toEqual([
+            4,
+            3,
+            3,
+        ]);
+    });
 });
