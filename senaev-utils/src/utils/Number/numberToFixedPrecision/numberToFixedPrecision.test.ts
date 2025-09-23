@@ -1,0 +1,91 @@
+import {
+    describe,
+    expect,
+    it,
+} from 'vitest';
+
+import { numberToFixedPrecision } from './numberToFixedPrecision';
+
+describe('numberToFixedPrecision', () => {
+    it('should normally convert', () => {
+        const testCases = [
+            {
+                input: 1000000,
+                expected: '1000000',
+            },
+            {
+                input: 100000,
+                expected: '100000',
+            },
+            {
+                input: 10000,
+                expected: '10000',
+            },
+            {
+                input: 1000,
+                expected: '1000.0',
+            },
+            {
+                input: 100,
+                expected: '100.00',
+            },
+            {
+                input: 10,
+                expected: '10.000',
+            },
+            {
+                input: 1,
+                expected: '1.0000',
+            },
+            {
+                input: 0.1,
+                expected: '0.10000',
+            },
+            {
+                input: 0.01,
+                expected: '0.010000',
+            },
+            {
+                input: 0.001,
+                expected: '0.0010000',
+            },
+            {
+                input: 0.0001,
+                expected: '0.00010000',
+            },
+            {
+                input: 0.0001,
+                expected: '0.00010000',
+            },
+            {
+                input: 0.0001,
+                expected: '0.00010000',
+            },
+        ];
+
+        testCases.forEach(({ input, expected }) => {
+            expect(numberToFixedPrecision(input)).toBe(expected);
+        });
+    });
+
+    it('should handle numbers with many decimal places correctly', () => {
+        const testCases = [
+            {
+                input: 3.141592653589793,
+                expected: '3.1416',
+            },
+            {
+                input: 2.718281828459045,
+                expected: '2.7183',
+            },
+            {
+                input: 1.4142135623730951,
+                expected: '1.4142',
+            },
+        ];
+
+        testCases.forEach(({ input, expected }) => {
+            expect(numberToFixedPrecision(input)).toBe(expected);
+        });
+    });
+});
