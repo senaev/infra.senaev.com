@@ -136,7 +136,7 @@ export function createRemoteDataProcessingWindow<T>({
                     return;
                 }
 
-                if (buffer.length < requestedItemsCount) {
+                if (buffer.length < requestedItemsCount && !isRemoteDataFinished) {
                     return;
                 }
 

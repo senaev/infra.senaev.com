@@ -11,7 +11,9 @@ import { restrictParallelCalls } from '../Promise/restrictParallelCalls/restrict
 import { getRandomIntegerInARange } from '../random/getRandomIntegerInARange/getRandomIntegerInARange';
 import { promiseTimeout } from '../timers/promiseTimeout/promiseTimeout';
 
-import { createRemoteDataProcessingWindow, RemoteDataProcessingWindowLoadNextItemsReturnType } from './createRemoteDataProcessingWindow';
+import {
+    createRemoteDataProcessingWindow, RemoteDataProcessingWindowExtractItemsFunction, RemoteDataProcessingWindowLoadNextItemsReturnType,
+} from './createRemoteDataProcessingWindow';
 
 describe('createRemoteDataProcessingWindow', () => {
     it('should request data from remote source', async () => {
@@ -802,5 +804,50 @@ describe('createRemoteDataProcessingWindow', () => {
         });
 
         await expect(extractItems(1)).rejects.toThrow();
+    });
+
+    it('should handle last data with lack of items on async waiting for data status', async () => {
+        let i = -1;
+        const results = [
+            // First buffer fill
+            {
+                items: createArray(100, 0),
+                isLast: false,
+            },
+            // Lack of candles in the last response
+            {
+                items: createArray(60, 0),
+                isLast: true,
+            },
+        ];
+        const extractItems = await new Promise<RemoteDataProcessingWindowExtractItemsFunction<number>>((resolve) => {
+            const extractItemsFunction = createRemoteDataProcessingWindow<number>({
+                bufferSize: 100,
+                loadNextItems: async () => {
+                    i++;
+
+                    await promiseTimeout(10);
+
+                    resolve(extractItemsFunction);
+
+                    return results[i];
+                },
+            });
+        });
+
+        // Wait for buffer to be filled
+        await promiseTimeout(0);
+
+        // Cause empty buffer and data loading
+        expect(await extractItems(90)).toEqual({
+            items: createArray(90, 0),
+            isLast: false,
+        });
+
+        // Cause waiting for the next items
+        expect(await extractItems(99)).toEqual({
+            items: createArray(70, 0),
+            isLast: true,
+        });
     });
 });
