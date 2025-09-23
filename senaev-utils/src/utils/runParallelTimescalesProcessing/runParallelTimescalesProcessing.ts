@@ -31,7 +31,7 @@ export async function runParallelTimescalesProcessing<T extends ObjectWithTime[]
     bufferSize,
 }: {
     extractItemsFunctions: ExtractItemsFunctions<T>;
-    callback: (args: ObjectsWithTimePortion<T>) => unknown;
+    callback: (pointsInfo: ObjectsWithTimePortion<T>, time: ObjectWithTime['time']) => unknown;
     bufferSize: PositiveInteger;
 }): Promise<void> {
     assertPositiveInteger(bufferSize, 'runParallelTimescalesProcessing bufferSize should be a positive integer');
@@ -108,6 +108,6 @@ export async function runParallelTimescalesProcessing<T extends ObjectWithTime[]
             return;
         }
 
-        callback(portion);
+        callback(portion, minTime!);
     }
 }

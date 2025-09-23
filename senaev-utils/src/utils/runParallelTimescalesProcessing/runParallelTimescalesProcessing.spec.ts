@@ -65,18 +65,18 @@ describe('runParallelTimescalesProcessing', () => {
                 time: 1,
                 value: 1,
             },
-        ]);
+        ], 1);
         expect(callback).toHaveBeenNthCalledWith(2, [
             {
                 time: 2,
                 abc: 'def',
             },
-        ]);
+        ], 2);
         expect(callback).toHaveBeenNthCalledWith(3, [
             {
                 time: 3,
             },
-        ]);
+        ], 3);
     });
 
     it('should work with multiple different timescales', async () => {
@@ -125,6 +125,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                0,
             ],
             [
                 [
@@ -138,6 +139,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                1,
             ],
             [
                 [
@@ -151,6 +153,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                2,
             ],
             [
                 [
@@ -164,6 +167,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                3,
             ],
             [
                 [
@@ -177,6 +181,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                4,
             ],
             [
                 [
@@ -187,6 +192,7 @@ describe('runParallelTimescalesProcessing', () => {
                     undefined,
                     undefined,
                 ],
+                5,
             ],
             [
                 [
@@ -197,6 +203,7 @@ describe('runParallelTimescalesProcessing', () => {
                     undefined,
                     undefined,
                 ],
+                6,
             ],
             [
                 [
@@ -207,6 +214,7 @@ describe('runParallelTimescalesProcessing', () => {
                     undefined,
                     undefined,
                 ],
+                7,
             ],
             [
                 [
@@ -217,6 +225,7 @@ describe('runParallelTimescalesProcessing', () => {
                     undefined,
                     undefined,
                 ],
+                8,
             ],
             [
                 [
@@ -227,6 +236,7 @@ describe('runParallelTimescalesProcessing', () => {
                     undefined,
                     undefined,
                 ],
+                9,
             ],
         ]);
 
@@ -283,6 +293,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                0,
             ],
             [
                 [
@@ -296,6 +307,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                1,
             ],
             [
                 [
@@ -309,6 +321,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                2,
             ],
             [
                 [
@@ -322,6 +335,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                3,
             ],
             [
                 [
@@ -335,6 +349,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                4,
             ],
             [
                 [
@@ -345,6 +360,7 @@ describe('runParallelTimescalesProcessing', () => {
                     undefined,
                     undefined,
                 ],
+                5,
             ],
             [
                 [
@@ -355,6 +371,7 @@ describe('runParallelTimescalesProcessing', () => {
                     undefined,
                     undefined,
                 ],
+                6,
             ],
             [
                 [
@@ -365,6 +382,7 @@ describe('runParallelTimescalesProcessing', () => {
                     undefined,
                     undefined,
                 ],
+                7,
             ],
             [
                 [
@@ -375,6 +393,7 @@ describe('runParallelTimescalesProcessing', () => {
                     undefined,
                     undefined,
                 ],
+                8,
             ],
             [
                 [
@@ -385,6 +404,7 @@ describe('runParallelTimescalesProcessing', () => {
                     undefined,
                     undefined,
                 ],
+                9,
             ],
         ]);
 
@@ -549,6 +569,7 @@ describe('runParallelTimescalesProcessing', () => {
                         time: 0,
                     },
                 ],
+                0,
             ],
             [
                 [
@@ -557,6 +578,7 @@ describe('runParallelTimescalesProcessing', () => {
                         time: 0.5,
                     },
                 ],
+                0.5,
             ],
             [
                 [
@@ -567,6 +589,7 @@ describe('runParallelTimescalesProcessing', () => {
                         time: 1,
                     },
                 ],
+                1,
             ],
             [
                 [
@@ -575,6 +598,7 @@ describe('runParallelTimescalesProcessing', () => {
                         time: 1.5,
                     },
                 ],
+                1.5,
             ],
             [
                 [
@@ -585,6 +609,7 @@ describe('runParallelTimescalesProcessing', () => {
                         time: 2,
                     },
                 ],
+                2,
             ],
             [
                 [
@@ -593,6 +618,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                3,
             ],
         ]);
 
@@ -688,6 +714,7 @@ describe('runParallelTimescalesProcessing', () => {
                     undefined,
                     undefined,
                 ],
+                -3,
             ],
             [
                 [
@@ -697,6 +724,7 @@ describe('runParallelTimescalesProcessing', () => {
                     undefined,
                     undefined,
                 ],
+                -2,
             ],
             [
                 [
@@ -706,6 +734,7 @@ describe('runParallelTimescalesProcessing', () => {
                     undefined,
                     undefined,
                 ],
+                -1,
             ],
             [
                 [
@@ -717,6 +746,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                0,
             ],
             [
                 [
@@ -728,6 +758,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                1,
             ],
             [
                 [
@@ -739,6 +770,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                2,
             ],
             [
                 [
@@ -748,6 +780,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                3,
             ],
             [
                 [
@@ -757,6 +790,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                4,
             ],
             [
                 [
@@ -766,6 +800,7 @@ describe('runParallelTimescalesProcessing', () => {
                         time: 1000,
                     },
                 ],
+                1000,
             ],
             [
                 [
@@ -775,6 +810,7 @@ describe('runParallelTimescalesProcessing', () => {
                         time: 1001,
                     },
                 ],
+                1001,
             ],
             [
                 [
@@ -784,6 +820,7 @@ describe('runParallelTimescalesProcessing', () => {
                         time: 1002,
                     },
                 ],
+                1002,
             ],
             [
                 [
@@ -793,6 +830,7 @@ describe('runParallelTimescalesProcessing', () => {
                         time: 1003,
                     },
                 ],
+                1003,
             ],
             [
                 [
@@ -802,6 +840,7 @@ describe('runParallelTimescalesProcessing', () => {
                         time: 1004,
                     },
                 ],
+                1004,
             ],
         ]);
 
@@ -914,6 +953,7 @@ describe('runParallelTimescalesProcessing', () => {
                         value: 'b0',
                     },
                 ],
+                0,
             ],
             [
                 [
@@ -926,6 +966,7 @@ describe('runParallelTimescalesProcessing', () => {
                         value: 'b1',
                     },
                 ],
+                1,
             ],
             [
                 [
@@ -935,6 +976,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                2,
             ],
         ]);
 
@@ -988,6 +1030,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                -9,
             ],
             [
                 [
@@ -1000,6 +1043,7 @@ describe('runParallelTimescalesProcessing', () => {
                         value: 'neg-8',
                     },
                 ],
+                -8,
             ],
             [
                 [
@@ -1009,6 +1053,7 @@ describe('runParallelTimescalesProcessing', () => {
                         value: 'neg-6',
                     },
                 ],
+                -6,
             ],
         ]);
     });
@@ -1057,6 +1102,7 @@ describe('runParallelTimescalesProcessing', () => {
                         value: 'alsoZero0',
                     },
                 ],
+                0,
             ],
             [
                 [
@@ -1069,6 +1115,7 @@ describe('runParallelTimescalesProcessing', () => {
                         value: 'alsoZero1',
                     },
                 ],
+                0,
             ],
         ]);
     });
@@ -1114,6 +1161,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                0,
             ],
             [
                 [
@@ -1123,6 +1171,7 @@ describe('runParallelTimescalesProcessing', () => {
                         value: 'floatOffset0',
                     },
                 ],
+                0.05,
             ],
             [
                 [
@@ -1132,6 +1181,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                0.1,
             ],
             [
                 [
@@ -1141,6 +1191,7 @@ describe('runParallelTimescalesProcessing', () => {
                         value: 'floatOffset1',
                     },
                 ],
+                0.15000000000000002,
             ],
             [
                 [
@@ -1150,6 +1201,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                0.2,
             ],
         ]);
     });
@@ -1196,6 +1248,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                largeTime,
             ],
             [
                 [
@@ -1208,6 +1261,7 @@ describe('runParallelTimescalesProcessing', () => {
                         value: 'largeOffset1',
                     },
                 ],
+                largeTime + 1,
             ],
             [
                 [
@@ -1217,6 +1271,7 @@ describe('runParallelTimescalesProcessing', () => {
                         value: 'largeOffset2',
                     },
                 ],
+                largeTime + 2,
             ],
         ]);
     });
@@ -1287,6 +1342,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                0,
             ],
             [
                 [
@@ -1296,6 +1352,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                1,
             ],
         ]);
     });
@@ -1353,6 +1410,7 @@ describe('runParallelTimescalesProcessing', () => {
                         value: 'partial0',
                     },
                 ],
+                0,
             ],
             [
                 [
@@ -1365,6 +1423,7 @@ describe('runParallelTimescalesProcessing', () => {
                         value: 'partial1',
                     },
                 ],
+                1,
             ],
             [
                 [
@@ -1374,6 +1433,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                2,
             ],
             [
                 [
@@ -1383,6 +1443,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                3,
             ],
         ]);
     });
@@ -1465,6 +1526,7 @@ describe('runParallelTimescalesProcessing', () => {
                         value: 'delayed0',
                     },
                 ],
+                0,
             ],
             [
                 [
@@ -1474,6 +1536,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                1,
             ],
         ]);
     });
@@ -1536,6 +1599,7 @@ describe('runParallelTimescalesProcessing', () => {
                         value: 'thirdSameTime0',
                     },
                 ],
+                5,
             ],
             [
                 [
@@ -1552,6 +1616,7 @@ describe('runParallelTimescalesProcessing', () => {
                         value: 'thirdSameTime1',
                     },
                 ],
+                5,
             ],
             [
                 [
@@ -1562,6 +1627,7 @@ describe('runParallelTimescalesProcessing', () => {
                     undefined,
                     undefined,
                 ],
+                5,
             ],
         ]);
     });
@@ -1596,6 +1662,7 @@ describe('runParallelTimescalesProcessing', () => {
                         value: 'item0',
                     },
                 ],
+                0,
             ],
             [
                 [
@@ -1604,6 +1671,7 @@ describe('runParallelTimescalesProcessing', () => {
                         value: 'item1',
                     },
                 ],
+                1,
             ],
         ]);
 
@@ -1641,6 +1709,7 @@ describe('runParallelTimescalesProcessing', () => {
                         value: 'single',
                     },
                 ],
+                42,
             ],
         ]);
     });
@@ -1686,6 +1755,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                0,
             ],
             [
                 [
@@ -1695,6 +1765,7 @@ describe('runParallelTimescalesProcessing', () => {
                     },
                     undefined,
                 ],
+                1,
             ],
             [
                 [
@@ -1704,6 +1775,7 @@ describe('runParallelTimescalesProcessing', () => {
                         value: 'second0',
                     },
                 ],
+                100,
             ],
             [
                 [
@@ -1713,6 +1785,7 @@ describe('runParallelTimescalesProcessing', () => {
                         value: 'second1',
                     },
                 ],
+                101,
             ],
         ]);
     });
