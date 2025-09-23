@@ -88,4 +88,32 @@ describe('numberToFixedPrecision', () => {
             expect(numberToFixedPrecision(input)).toBe(expected);
         });
     });
+
+    it('consider precision level', () => {
+        const testCases = [
+            {
+                input: 3.141592653589793,
+                expected2: '3.14',
+                expected5: '3.14159',
+            },
+            {
+                input: 2.718281828459045,
+                expected2: '2.72',
+                expected5: '2.71828',
+            },
+            {
+                input: 1.4142135623730951,
+                expected2: '1.41',
+                expected5: '1.41421',
+            },
+        ];
+
+        testCases.forEach(({ input, expected2 }) => {
+            expect(numberToFixedPrecision(input, 2)).toBe(expected2);
+        });
+
+        testCases.forEach(({ input, expected5 }) => {
+            expect(numberToFixedPrecision(input, 5)).toBe(expected5);
+        });
+    });
 });
