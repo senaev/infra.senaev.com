@@ -16,8 +16,8 @@ export type MapAsState<K, V> = {
 
 export function useMapAsState<K, V>(initialValue?: Iterable<readonly [K, V]> | null): [MapAsState<K, V>, UnsignedInteger] {
     const [
-        reloadIndex,
         reload,
+        reloadIndex,
     ] = useReload();
 
     const mapRef = useRef<Map<K, V>>(new Map(initialValue));

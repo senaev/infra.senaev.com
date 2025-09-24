@@ -7,8 +7,8 @@ import { useReload } from './useReload';
 
 export function useObjectDeepChangesCounter(object: unknown): PositiveInteger {
     const [
-        reloadIndex,
         reload,
+        reloadIndex,
     ] = useReload();
 
     const objectRef = useRef(object);
