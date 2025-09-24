@@ -177,4 +177,10 @@ describe('numberToFixedPrecision', () => {
             expect(numberToFixedPrecision(input)).toBe(expected);
         });
     });
+
+    it('should handle zero correctly', () => {
+        expect(numberToFixedPrecision(0)).toBe('0');
+        expect(numberToFixedPrecision(0, 2)).toBe('0');
+        expect(numberToFixedPrecision(0, 5)).toBe('0');
+    });
 });
