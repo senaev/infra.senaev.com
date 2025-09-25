@@ -36,9 +36,9 @@ describe('getDistanceToRange', () => {
             10,
         ];
 
-        expect(getDistanceToRange(range, 0)).toBe(5);
-        expect(getDistanceToRange(range, 2)).toBe(3);
-        expect(getDistanceToRange(range, 4)).toBe(1);
+        expect(getDistanceToRange(range, 0)).toBe(-5);
+        expect(getDistanceToRange(range, 2)).toBe(-3);
+        expect(getDistanceToRange(range, 4)).toBe(-1);
     });
 
     it('should return positive distance when value is above range', () => {
@@ -64,8 +64,8 @@ describe('getDistanceToRange', () => {
         expect(getDistanceToRange(range, -5)).toBe(0);
 
         // Value below range
-        expect(getDistanceToRange(range, -15)).toBe(5);
-        expect(getDistanceToRange(range, -12)).toBe(2);
+        expect(getDistanceToRange(range, -15)).toBe(-5);
+        expect(getDistanceToRange(range, -12)).toBe(-2);
 
         // Value above range
         expect(getDistanceToRange(range, -4)).toBe(1);
@@ -84,8 +84,8 @@ describe('getDistanceToRange', () => {
         expect(getDistanceToRange(range, 5)).toBe(0);
 
         // Value below range
-        expect(getDistanceToRange(range, -10)).toBe(5);
-        expect(getDistanceToRange(range, -7)).toBe(2);
+        expect(getDistanceToRange(range, -10)).toBe(-5);
+        expect(getDistanceToRange(range, -7)).toBe(-2);
 
         // Value above range
         expect(getDistanceToRange(range, 7)).toBe(2);
@@ -99,7 +99,7 @@ describe('getDistanceToRange', () => {
         ];
 
         expect(getDistanceToRange(range, 5)).toBe(0);
-        expect(getDistanceToRange(range, 3)).toBe(2);
+        expect(getDistanceToRange(range, 3)).toBe(-2);
         expect(getDistanceToRange(range, 7)).toBe(2);
     });
 
@@ -115,8 +115,8 @@ describe('getDistanceToRange', () => {
         expect(getDistanceToRange(range, 3.7)).toBe(0);
 
         // Value below range
-        expect(getDistanceToRange(range, 0.5)).toBe(1);
-        expect(getDistanceToRange(range, 1.2)).toBe(0.30000000000000004);
+        expect(getDistanceToRange(range, 0.5)).toBe(-1);
+        expect(getDistanceToRange(range, 1.2)).toBe(-0.30000000000000004);
 
         // Value above range
         expect(getDistanceToRange(range, 4.0)).toBe(0.2999999999999998);
@@ -132,7 +132,7 @@ describe('getDistanceToRange', () => {
         expect(getDistanceToRange(range, 1000000)).toBe(0);
         expect(getDistanceToRange(range, 1500000)).toBe(0);
         expect(getDistanceToRange(range, 2000000)).toBe(0);
-        expect(getDistanceToRange(range, 500000)).toBe(500000);
+        expect(getDistanceToRange(range, 500000)).toBe(-500000);
         expect(getDistanceToRange(range, 3000000)).toBe(1000000);
     });
 
@@ -145,7 +145,7 @@ describe('getDistanceToRange', () => {
         expect(getDistanceToRange(range, 0.0001)).toBe(0);
         expect(getDistanceToRange(range, 0.00015)).toBe(0);
         expect(getDistanceToRange(range, 0.0002)).toBe(0);
-        expect(getDistanceToRange(range, 0.00005)).toBe(0.00005);
+        expect(getDistanceToRange(range, 0.00005)).toBe(-0.00005);
         expect(getDistanceToRange(range, 0.0003)).toBe(0.00009999999999999996);
     });
 });

@@ -8,7 +8,7 @@ export function getDistanceToRange(range: RangeTuple<FiniteNumber>, value: Finit
     }
 
     if (value < range[0]) {
-        return range[0] - value;
+        return value - range[0];
     }
 
     return value - range[1];
