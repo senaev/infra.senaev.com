@@ -6,8 +6,6 @@ export function callFunctions<T extends unknown[]>(
     ...args: T
 ): void {
     for (const func of functions) {
-        if (typeof func === 'function') {
-            func(...args);
-        }
+        func(...args);
     }
 }

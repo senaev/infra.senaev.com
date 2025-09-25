@@ -1,11 +1,13 @@
 import {
-    describe, expect, test, vi,
+    describe, expect,
+    it,
+    vi,
 } from 'vitest';
 
 import { callFunctions } from './callFunctions';
 
 describe('callFunctions', () => {
-    test('simple case', () => {
+    it('simple case', () => {
         const functions = [
             vi.fn(),
             vi.fn(),
@@ -25,36 +27,7 @@ describe('callFunctions', () => {
         });
     });
 
-    test('do not throw error if some array elements are not functions', () => {
-        const functions = [
-            undefined,
-            vi.fn(),
-            213,
-            vi.fn(),
-            'hello',
-            vi.fn(),
-            null,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ] as any[];
-
-        callFunctions(functions);
-
-        functions.forEach((func) => {
-            if (func && func.calls) {
-                expect(func.getCalls().length).to.eql(1);
-            }
-        });
-
-        callFunctions(functions);
-
-        functions.forEach((func) => {
-            if (func && func.calls) {
-                expect(func.getCalls().length).to.eql(2);
-            }
-        });
-    });
-
-    test('call with arguments', () => {
+    it('call with arguments', () => {
         const functions = [
             vi.fn(),
             vi.fn(),
