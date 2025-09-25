@@ -1,6 +1,4 @@
-import { MapAsState } from '../../../reactHooks/useMapAsState/useMapAsState';
-
-export function findMapsDifferences<K, V, V2>(originalMap: MapAsState<K, V>, targetMap: MapAsState<K, V2>): {
+export function findMapsDifferences<K, V, V2>(originalMap: Map<K, V>, targetMap: Map<K, V2>): {
     added: K[];
     updated: K[];
     deleted: K[];
