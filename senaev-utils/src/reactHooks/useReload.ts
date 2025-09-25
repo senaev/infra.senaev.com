@@ -10,7 +10,7 @@ export function useReload(): [VoidFunction, UnsignedInteger] {
 
     return [
         () => {
-            setReloadIndex(reloadIndex + 1);
+            setReloadIndex((prevIndex) => prevIndex + 1);
         },
         reloadIndex,
     ];

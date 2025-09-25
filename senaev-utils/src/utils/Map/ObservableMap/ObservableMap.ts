@@ -26,13 +26,17 @@ export class ObservableMap<K, V> extends Map<K, V> {
     }
 
     public set (key: K, value: V): this {
+        const previousValue = this.get(key);
+
         super.set(key, value);
 
-        callFunctions(this._callbacks ?? [], {
-            type: 'set',
-            key,
-            value,
-        });
+        if (value !== previousValue) {
+            callFunctions(this._callbacks ?? [], {
+                type: 'set',
+                key,
+                value,
+            });
+        }
 
         return this;
     }
