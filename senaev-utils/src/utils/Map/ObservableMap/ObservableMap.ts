@@ -25,24 +25,24 @@ export class ObservableMap<K, V> extends Map<K, V> {
         };
     }
 
-    public set = (key: K, value: V): this => {
+    public set (key: K, value: V): this {
         super.set(key, value);
 
-        callFunctions(this._callbacks, {
+        callFunctions(this._callbacks ?? [], {
             type: 'set',
             key,
             value,
         });
 
         return this;
-    };
+    }
 
-    public delete = (key: K): boolean => {
+    public delete (key: K): boolean {
         const value = this.get(key);
         const result = super.delete(key);
 
         if (result) {
-            callFunctions(this._callbacks, {
+            callFunctions(this._callbacks ?? [], {
                 type: 'delete',
                 key,
                 value,
@@ -50,5 +50,5 @@ export class ObservableMap<K, V> extends Map<K, V> {
         }
 
         return result;
-    };
+    }
 }
