@@ -9,10 +9,7 @@ pre-push:
   commands:
     lint:
       run: npm run lint
-      files: "**/*"
     test:
       run: npm run test:ci
-      files: "**/*"
     typecheck:
       run: npm run typecheck
-      files: "**/*"
