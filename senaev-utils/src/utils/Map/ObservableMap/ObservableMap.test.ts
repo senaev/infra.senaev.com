@@ -193,7 +193,6 @@ describe('ObservableMap', () => {
             expect(callback).toHaveBeenCalledWith({
                 type: 'delete',
                 key: 'key',
-                value: 42,
             });
         });
 
@@ -242,7 +241,6 @@ describe('ObservableMap', () => {
             expect(callback).toHaveBeenCalledWith({
                 type: 'delete',
                 key: 123,
-                value: 'test',
             });
         });
     });
@@ -326,7 +324,6 @@ describe('ObservableMap', () => {
             expect(deleteCallback).toHaveBeenCalledWith({
                 type: 'delete',
                 key: 'key',
-                value: 42,
             });
         });
     });

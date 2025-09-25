@@ -9,7 +9,6 @@ type ObservableMapEvent<K, V> =
 | {
     type: 'delete';
     key: K;
-    value: V | undefined;
 };
 
 type ObservableMapCallback<K, V> = (event: ObservableMapEvent<K, V>) => void;
@@ -42,14 +41,12 @@ export class ObservableMap<K, V> extends Map<K, V> {
     }
 
     public delete (key: K): boolean {
-        const value = this.get(key);
         const result = super.delete(key);
 
         if (result) {
             callFunctions(this._callbacks ?? [], {
                 type: 'delete',
                 key,
-                value,
             });
         }
 
