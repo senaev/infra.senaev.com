@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ❗️ TODO: move to Makefile
-
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 set -a; source "$SCRIPT_DIR/provisioning/k8s/scripts/.env"; set +a
 set -a; source "$SCRIPT_DIR/.env"; set +a
