@@ -1,5 +1,7 @@
 ## Install tools
 
+Setup ubuntu shell (real SETUP_UBUNTU_SHELL.md)
+
 Install `helm`
 
 ```shell
