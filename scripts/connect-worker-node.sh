@@ -17,12 +17,6 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 set -a; source "$ROOT_DIR/.env"; set +a
 
-# Extract host from URL (e.g. https://10.0.0.11:6443 -> 10.0.0.11)
-if [[ "$ADDRESS" =~ ^https?://([^:/]+) ]]; then
-  HOST="${BASH_REMATCH[1]}"
-else
-  HOST="$ADDRESS"
-fi
-
-SSH_TARGET="${REMOTE_USERNAME}@${HOST}"
-ssh "$SSH_TARGET" "echo NODE_TOKEN=\"$NODE_TOKEN\" ADDRESS=\"$ADDRESS\" LABELS=\"$LABELS\""
+echo "👉 Connecting to node=[$ADDRESS] with labels=[${LABELS}]"
+ssh "$ADDRESS" "echo NODE_TOKEN=\"$NODE_TOKEN\" ADDRESS=\"$ADDRESS\" LABELS=\"$LABELS\""
+echo "✅ Connected to node=[$ADDRESS] with labels=[${LABELS}]"
