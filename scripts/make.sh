@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "$0")" && cd .. && pwd)"
+ROOT_DIR="$(cd "$(dirname "$0")/../" && pwd)"
 set -a; source "$ROOT_DIR/provisioning/k8s/scripts/.env"; set +a
 set -a; source "$ROOT_DIR/.env"; set +a
 
