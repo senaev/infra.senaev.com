@@ -1,6 +1,6 @@
 SCRIPT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
-.PHONY: deploy sync deploy-k8s
+.PHONY: deploy rsync deploy-k8s
 
 deploy:
 	@echo "👉 Starting deployment to production server"
@@ -20,5 +20,5 @@ deploy-k8s:
 	@echo "👉 Deploying k8s cluster to server" && \
 	set -a && . "$(SCRIPT_DIR)provisioning/k8s/scripts/.env" && set +a && \
 	set -a && . "$(SCRIPT_DIR).env" && set +a && \
-	ssh "$$REMOTE_SERVER_ADDRESS" "$$PROVISIONING_PATH/k8s/scripts/deploy-k8s.sh" && \
+	ssh "$$REMOTE_SERVER_ADDRESS" "cd $$PROVISIONING_PATH/k8s/scripts && make deploy" && \
 	echo "✅ k8s cluster deployed to server"
