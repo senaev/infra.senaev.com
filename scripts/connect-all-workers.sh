@@ -10,7 +10,7 @@ echo "👉 [connect-all-workers] Getting NODE_TOKEN from control plane address=[
 NODE_TOKEN=$(ssh "$CONTROL_PLANE_SERVER_ADDRESS" "cat /var/lib/rancher/k3s/server/node-token")
 echo "✅ [connect-all-workers] NODE_TOKEN.length=[${#NODE_TOKEN}]"
 
-echo "👉 [connect-all-workers] Connecting to worked nodes"
+echo "👉 [connect-all-workers] Connecting to worker nodes"
 while read -r addr labels; do
   [[ -z "$addr" ]] && continue
   echo "👉 [connect-all-workers] Connecting to node=[$addr] with labels=[${labels}]"
@@ -19,4 +19,4 @@ while read -r addr labels; do
 
   echo "✅ [connect-all-workers] Connected to node=[$addr] with labels=[${labels}]"
 done <<< "$WORKERS"
-echo "✅ [connect-all-workers] Connected to worked nodes"
+echo "✅ [connect-all-workers] Connected to worker nodes"
