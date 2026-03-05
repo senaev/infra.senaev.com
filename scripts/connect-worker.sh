@@ -16,10 +16,10 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 set -a; source "$ROOT_DIR/.env"; set +a
 
-echo "👉 Rsyncing provisioning files for worker=[$ADDRESS]"
+echo "👉 [connect-worker] Rsyncing provisioning files for worker=[$ADDRESS]"
 "$ROOT_DIR/scripts/rsync-provisioning.sh" "$ADDRESS"
-echo "✅ Provisioning files synced for worker=[$ADDRESS]"
+echo "✅ [connect-worker] Provisioning files synced for worker=[$ADDRESS]"
 
-echo "👉 Running bootstrap script on node=[$ADDRESS] with labels=[${LABELS}]"
-ssh "$ADDRESS" "sudo $PROVISIONING_PATH_LOCAL_TO_REMOTE/worker/bootstrap-worker.sh"
-echo "✅ Bootstrap script run on node=[$ADDRESS] with labels=[${LABELS}]"
+echo "👉 [connect-worker] Running bootstrap script on node=[$ADDRESS] with labels=[${LABELS}]"
+ssh "$ADDRESS" "sudo $PROVISIONING_PATH_LOCAL_TO_REMOTE/worker/bootstrap-worker.sh $NODE_TOKEN $LABELS"
+echo "✅ [connect-worker] Bootstrap script run on node=[$ADDRESS] with labels=[${LABELS}]"
