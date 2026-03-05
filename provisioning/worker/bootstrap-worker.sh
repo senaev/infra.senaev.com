@@ -19,6 +19,8 @@ echo "👉 [bootstrap-worker] Bootstrapping worker with labels=[${LABELS}]"
 if bash "$SCRIPT_DIR/check-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN" "$LABELS"; then
   echo "✅ [bootstrap-worker] Worker is OK"
   exit 0
+else
+  echo "❌ [bootstrap-worker] Worker is NOT OK"
 fi
 
 if [[ -f /usr/local/bin/k3s-agent-uninstall.sh ]]; then
