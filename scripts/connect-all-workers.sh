@@ -4,8 +4,9 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/../" && pwd)"
 set -a; source "$ROOT_DIR/.env"; set +a
 
-echo "👉 [connect-all-workers] Getting NODE_TOKEN from control plane node"
-NODE_TOKEN=$(ssh "$REMOTE_SERVER_ADDRESS" "cat /var/lib/rancher/k3s/server/node-token")
+CONTROL_PLANE_SERVER_ADDRESS="$CONTROL_PLANE_SERVER_USERNAME@$CONTROL_PLANE_SERVER_IP"
+echo "👉 [connect-all-workers] Getting NODE_TOKEN from control plane node=[$CONTROL_PLANE_SERVER_ADDRESS]"
+NODE_TOKEN=$(ssh "$CONTROL_PLANE_SERVER_ADDRESS" "cat /var/lib/rancher/k3s/server/node-token")
 echo "✅ [connect-all-workers] NODE_TOKEN=[${NODE_TOKEN:0:4}...${NODE_TOKEN: -4}]"
 
 echo "👉 [connect-all-workers] Connecting to worked nodes"

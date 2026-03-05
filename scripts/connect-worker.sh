@@ -12,8 +12,7 @@ NODE_TOKEN="$1"
 ADDRESS="$2"
 LABELS="$3"
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "$0")/../" && pwd)"
 set -a; source "$ROOT_DIR/.env"; set +a
 
 echo "👉 [connect-worker] Rsyncing provisioning files for worker=[$ADDRESS]"
