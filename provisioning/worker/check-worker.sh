@@ -47,29 +47,31 @@ else
 fi
 
 if [[ "$CONTROL_PLANE_SERVER_URL" != "$EXISTING_SERVER_URL" ]]; then
-  echo "❌ [check-worker] CONTROL_PLANE_SERVER_URL mismatch (expected=[${CONTROL_PLANE_SERVER_URL}], existing=[${EXISTING_SERVER_URL}])"
+  echo "❌ [check-worker] CONTROL_PLANE_SERVER_URL mismatch expected=[${CONTROL_PLANE_SERVER_URL}], existing=[${EXISTING_SERVER_URL}]"
   exit 1
 else
   echo "✅ [check-worker] CONTROL_PLANE_SERVER_URL matches"
 fi
 
 if [[ "$NODE_TOKEN" != "$EXISTING_NODE_TOKEN" ]]; then
-  echo "❌ [check-worker] NODE_TOKEN mismatch (expected=[${NODE_TOKEN:0:4}...${NODE_TOKEN: -4}], existing=[${EXISTING_NODE_TOKEN:0:4}...${EXISTING_NODE_TOKEN: -4}])"
+  echo "❌ [check-worker] NODE_TOKEN mismatch expected=[${NODE_TOKEN:0:4}...${NODE_TOKEN: -4}], existing=[${EXISTING_NODE_TOKEN:0:4}...${EXISTING_NODE_TOKEN: -4}]"
   exit 1
 else
   echo "✅ [check-worker] NODE_TOKEN matches"
 fi
 
-EXISTING_LABELS_RAW=$(sudo sed -n "/'--node-label'/{n;p}" /etc/systemd/system/k3s-agent.service 2>/dev/null | sed "s/'//g" | paste -sd ',' -)
+EXISTING_LABELS=$(sudo sed -n "/'--node-label'/{n;p}" /etc/systemd/system/k3s-agent.service 2>/dev/null | sed "s/'//g" | paste -sd ',' -)
 normalize_labels() {
-  tr ',' '\n' <<< "${1:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*\\[[:space:]]*$//' | grep -v '^$' | sort -u | paste -sd ',' -
+  tr ',' '\n' <<< "${1:-}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/\\$//' -e 's/[[:space:]]*$//' | grep -v '^$' | sort -u | paste -sd ',' -
 }
-EXISTING_LABELS=$(normalize_labels "$EXISTING_LABELS_RAW")
-if [[ "${EXPECTED_LABELS}" != "${EXISTING_LABELS}" ]]; then
-  echo "❌ [check-worker] LABELS mismatch (expected=[${EXPECTED_LABELS}], existing=[${EXISTING_LABELS}])"
+
+EXISTING_LABELS_NORMALIZED=$(normalize_labels "$EXISTING_LABELS")
+EXPECTED_LABELS_NORMALIZED=$(normalize_labels "$EXPECTED_LABELS")
+if [[ "${EXPECTED_LABELS_NORMALIZED}" != "${EXISTING_LABELS_NORMALIZED}" ]]; then
+  echo "❌ [check-worker] LABELS mismatch expected=[${EXPECTED_LABELS_NORMALIZED}], existing=[${EXISTING_LABELS_NORMALIZED}]"
   exit 1
 else
-  echo "✅ [check-worker] LABELS match expected=[${EXPECTED_LABELS}] existing=[${EXISTING_LABELS}]"
+  echo "✅ [check-worker] LABELS match expected=[${EXPECTED_LABELS_NORMALIZED}] existing=[${EXISTING_LABELS_NORMALIZED}]"
 fi
 
 echo "✅ [check-worker] Worker is OK"
