@@ -8,7 +8,7 @@ CONTROL_PLANE_SERVER_ADDRESS="$CONTROL_PLANE_SERVER_USERNAME@$CONTROL_PLANE_SERV
 CONTROL_PLANE_SERVER_URL="https://$CONTROL_PLANE_SERVER_IP:$CONTROL_PLANE_SERVER_PORT"
 echo "👉 [connect-all-workers] Getting NODE_TOKEN from control plane address=[$CONTROL_PLANE_SERVER_ADDRESS] url=[$CONTROL_PLANE_SERVER_URL]"
 NODE_TOKEN=$(ssh "$CONTROL_PLANE_SERVER_ADDRESS" "cat /var/lib/rancher/k3s/server/node-token")
-echo "✅ [connect-all-workers] NODE_TOKEN=[${NODE_TOKEN:0:4}...${NODE_TOKEN: -4}]"
+echo "✅ [connect-all-workers] NODE_TOKEN.length=[${#NODE_TOKEN}]"
 
 echo "👉 [connect-all-workers] Connecting to worked nodes"
 while read -r addr labels; do

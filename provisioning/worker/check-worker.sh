@@ -54,7 +54,7 @@ else
 fi
 
 if [[ "$NODE_TOKEN" != "$EXISTING_NODE_TOKEN" ]]; then
-  echo "❌ [check-worker] NODE_TOKEN mismatch expected=[${NODE_TOKEN:0:4}...${NODE_TOKEN: -4}], existing=[${EXISTING_NODE_TOKEN:0:4}...${EXISTING_NODE_TOKEN: -4}]"
+  echo "❌ [check-worker] NODE_TOKEN mismatch expected.length=[${#NODE_TOKEN}], existing.length=[${#EXISTING_NODE_TOKEN}]"
   exit 1
 else
   echo "✅ [check-worker] NODE_TOKEN matches"
