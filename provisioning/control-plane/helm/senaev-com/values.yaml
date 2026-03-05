@@ -13,6 +13,7 @@ webdav:
 xray:
   enabled: true
   image: teddysun/xray:latest
+  zone: ru
 
 testEcho:
   enabled: true

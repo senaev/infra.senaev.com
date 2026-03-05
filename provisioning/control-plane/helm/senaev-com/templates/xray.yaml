@@ -18,7 +18,7 @@ spec:
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
     spec:
       nodeSelector:
-        zone: de
+        zone: {{ .Values.xray.zone }}
       # TODO: Try to proxy via Traefik on 443 port
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
@@ -35,7 +35,7 @@ spec:
                   key: XRAY_CONFIG
                   optional: false
           ports:
-            - containerPort: 8443
+            - containerPort: 443
           volumeMounts:
             - name: config-volume
               mountPath: /etc/xray
@@ -58,6 +58,6 @@ spec:
   selector:
     app: xray
   ports:
-    - port: 8443
-      targetPort: 8443
+    - port: 443
+      targetPort: 443
 {{- end }}

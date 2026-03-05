@@ -45,7 +45,7 @@ Hash32: OsNIAHa3wxgtWyroFpq6W0SoCSDYT1Z--UrNox6I2SA
 Заполнить макросы и скопировать ссылку:
 
 ```
-vless://{USER_UUID}:8443?type=tcp&security=reality&encryption=none&flow=xtls-rprx-vision&sni=www.google.com&fp=chrome&pbk={REALITY_PUBLIC_KEY}&sid=0123456789abcdef#senaev.com
+vless://{USER_UUID}:443?type=tcp&security=reality&encryption=none&flow=xtls-rprx-vision&sni=www.google.com&fp=chrome&pbk={REALITY_PUBLIC_KEY}&sid=0123456789abcdef#senaev.com
 ```
 
 В приложении `Add new` → `Import from clipboard`
