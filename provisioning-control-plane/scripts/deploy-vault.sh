@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ❗️ Use something like terraform to deploy vault configuration
+# TODO: Use something like terraform to deploy vault configuration
 
 if ! command -v jq &>/dev/null; then
   echo "👉 Installing jq"

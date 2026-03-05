@@ -31,7 +31,7 @@ fi
 
 upgrade_namespace() {
   local NS="$1"
-  local CHART_PATH="$PROVISIONING_PATH/k8s/helm/$NS"
+  local CHART_PATH="$PROVISIONING_PATH/helm/$NS"
 
   echo "👉 Checking namespace=[$NS]"
   kubectl create namespace "$NS" --dry-run=client -o yaml | kubectl apply -f -

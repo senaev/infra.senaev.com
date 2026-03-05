@@ -19,7 +19,7 @@ spec:
     spec:
       nodeSelector:
         location: de
-      # ❗️ Try to proxy via Traefik on 443 port
+      # TODO: Try to proxy via Traefik on 443 port
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
       containers:

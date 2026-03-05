@@ -1,4 +1,4 @@
-# ❗️ Remove duplications using helmfile
+# TODO: Remove duplications using helmfile
 userRootPath: /root
 
 nextjs:
