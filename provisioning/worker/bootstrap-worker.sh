@@ -21,12 +21,12 @@ if bash "$SCRIPT_DIR/check-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN" 
   exit 0
 fi
 
-echo "👉 [bootstrap-worker] Reinstalling k3s agent..."
-
 if [[ -f /usr/local/bin/k3s-agent-uninstall.sh ]]; then
   echo "👉 [bootstrap-worker] Uninstalling existing k3s agent"
   sudo /usr/local/bin/k3s-agent-uninstall.sh
   echo "✅ [bootstrap-worker] Uninstalled existing k3s agent"
+else
+  echo "✅ [bootstrap-worker] k3s-agent-uninstall.sh not found"
 fi
 
 echo "👉 [bootstrap-worker] Parsing labels=[${LABELS}]"
