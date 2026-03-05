@@ -37,10 +37,6 @@ upgrade_namespace() {
   kubectl create namespace "$NS" --dry-run=client -o yaml | kubectl apply -f -
   echo "✅ [bootstrap-control-plane] Namespace=[$NS] exists"
 
-  echo "👉 [bootstrap-control-plane] Updating Helm dependencies for namespace=[$NS]"
-  helm dependency update "$CHART_PATH" || true
-  echo "✅ [bootstrap-control-plane] Helm dependencies updated for namespace=[$NS]"
-
   echo "👉 [bootstrap-control-plane] Helm upgrade namespace=[$NS]"
   helm upgrade --install "$NS" $CHART_PATH \
     -n "$NS" \
