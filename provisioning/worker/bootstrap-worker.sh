@@ -16,7 +16,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "👉 [bootstrap-worker] Bootstrapping worker with labels=[${LABELS}]"
 
-if bash "$SCRIPT_DIR/check-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN"; then
+if bash "$SCRIPT_DIR/check-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN" "$LABELS"; then
   echo "✅ [bootstrap-worker] Worker is OK"
   exit 0
 fi
