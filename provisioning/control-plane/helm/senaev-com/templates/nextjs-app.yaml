@@ -16,6 +16,8 @@ spec:
       labels:
         app: nextjs-app
     spec:
+      nodeSelector:
+        zone: {{ .Values.nextjs.zone }}
       containers:
         - name: nextjs-app
           image: {{ .Values.nextjs.image }}

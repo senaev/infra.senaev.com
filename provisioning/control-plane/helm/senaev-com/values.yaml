@@ -4,11 +4,13 @@ userRootPath: /root
 nextjs:
   enabled: true
   image: ghcr.io/senaev/senaev.com:latest
+  zone: de
 
 webdav:
   enabled: true
   image: bytemark/webdav
   volumePath: k3s-cluster/volumes/webdav
+  zone: de
 
 xray:
   enabled: true
@@ -18,6 +20,7 @@ xray:
 testEcho:
   enabled: true
   image: hashicorp/http-echo:0.2.3
+  zone: de
 
 ingress:
   className: traefik

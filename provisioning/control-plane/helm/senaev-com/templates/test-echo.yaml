@@ -16,6 +16,8 @@ spec:
       labels:
         app: test-echo
     spec:
+      nodeSelector:
+        zone: {{ .Values.testEcho.zone }}
       containers:
         - name: test-echo
           image: "{{ .Values.testEcho.image }}"

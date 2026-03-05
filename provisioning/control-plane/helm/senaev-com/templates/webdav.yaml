@@ -18,6 +18,8 @@ spec:
       annotations:
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
     spec:
+      nodeSelector:
+        zone: {{ .Values.webdav.zone }}
       containers:
         - name: webdav
           image: {{ .Values.webdav.image }}
