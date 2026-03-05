@@ -7,9 +7,8 @@ set -a; source "$ROOT_DIR/$PROVISIONING_PATH_LOCAL/.env"; set +a
 
 echo "👉 Starting deployment to production server"
 
-echo "👉 Syncing provisioning files to server"
-ssh "$REMOTE_SERVER_ADDRESS" "mkdir -p $K3S_CLUSTER_PATH"
-rsync -avz --delete -e ssh "$ROOT_DIR/$PROVISIONING_PATH_LOCAL/" "$REMOTE_SERVER_ADDRESS:$PROVISIONING_PATH_REMOTE/"
+echo "👉 Rsyncing provisioning files to server"
+$ROOT_DIR/scripts/rsync-provisioning.sh "$REMOTE_SERVER_ADDRESS"
 echo "✅ Provisioning files synced"
 
 echo "👉 Deploying k8s cluster to server"
