@@ -23,5 +23,10 @@ sudo chmod +x /usr/local/bin/k9s
 ## Deploy cluster
 
 ```shell
-npm run k3s:deploy
+make
 ```
+
+Some services will not start, it's needed to provide Vault secrets:
+- Get root token on a control plane node `cat ~/k3s-cluster/vault-unseal-keys.json | jq .root_token`
+- Create new version of the secret with required keys https://vault.senaev.com/ui/vault/secrets/kv/kv/senaev-com-kv
+- Wait a few minutes for kubelet to reconciliation
