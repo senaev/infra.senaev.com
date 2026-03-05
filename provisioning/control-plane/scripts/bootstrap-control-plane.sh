@@ -12,7 +12,7 @@ if ! command -v k3s &>/dev/null; then
     --disable traefik \
     --write-kubeconfig-mode 644 \
     --node-label node=control-plane \
-    --node-label location=de \
+    --node-label zone=de \
     " \
     sh -
   echo "✅ k3s installed"

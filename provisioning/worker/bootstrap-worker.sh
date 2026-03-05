@@ -16,12 +16,10 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "👉 [bootstrap-worker] Bootstrapping worker with labels=[${LABELS}]"
 
-if bash "sudo $SCRIPT_DIR/check-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN"; then
+if bash "$SCRIPT_DIR/check-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN"; then
   echo "✅ [bootstrap-worker] Worker is OK"
   exit 0
 fi
-
-exit 1
 
 echo "👉 [bootstrap-worker] Reinstalling k3s agent..."
 
