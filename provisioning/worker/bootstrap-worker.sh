@@ -40,11 +40,16 @@ if [[ -n "$LABELS" ]]; then
     [[ -n "$p" ]] && NODE_LABEL_ARGS+=(--node-label "$p")
   done
 fi
-echo "✅ [bootstrap-worker] NODE_LABEL_ARGS=[${NODE_LABEL_ARGS[*]}]"
+NODE_LABEL_ARGS_STR="${NODE_LABEL_ARGS[*]}"
+echo "✅ [bootstrap-worker] NODE_LABEL_ARGS=[${NODE_LABEL_ARGS_STR}]"
 
 echo "👉 [bootstrap-worker] Installing k3s agent"
 curl -sfL https://get.k3s.io | \
   K3S_URL="$CONTROL_PLANE_SERVER_URL" \
   K3S_TOKEN="$NODE_TOKEN" \
-  sh -s - agent "${NODE_LABEL_ARGS[@]}"
+  INSTALL_K3S_EXEC=" \
+    agent \
+    $NODE_LABEL_ARGS_STR \
+  " \
+  sh -
 echo "✅ [bootstrap-worker] Installed k3s agent"

@@ -5,11 +5,15 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 set -a; source "$SCRIPT_DIR/../../.env"; set +a
 
 if ! command -v k3s &>/dev/null; then
+  # Flannel VXLAN (UDP port 8472) doesn't work in Yandex Cloud, so use wireguard-native
+  FLANNEL_BACKEND="wireguard-native"
+
   echo "👉 [bootstrap-control-plane] k3s not found, installing..."
   curl -sfL https://get.k3s.io | \
     INSTALL_K3S_EXEC=" \
     server \
     --disable traefik \
+    --flannel-backend=$FLANNEL_BACKEND \
     --write-kubeconfig-mode 644 \
     --node-label node=control-plane \
     --node-label zone=de \
