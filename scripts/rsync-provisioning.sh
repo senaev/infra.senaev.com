@@ -4,18 +4,17 @@ set -euo pipefail
 # Syncs provisioning files to server.
 if [[ $# -lt 1 ]]; then
   echo "Usage: $0 <address>" >&2
-  echo "Example: $0 ubuntu@11.111.111.111" >&2
+  echo "Example: $0 root@11.111.111.111" >&2
   exit 1
 fi
 
 ADDRESS="$1"
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 set -a; source "$ROOT_DIR/.env"; set +a
 
-REMOTE_FULL_PATH="$REMOTE_SERVER_ADDRESS:$PROVISIONING_PATH_REMOTE/"
-echo "👉 Rsyncing provisioning files to server=[$REMOTE_FULL_PATH]"
-ssh "$REMOTE_SERVER_ADDRESS" "mkdir -p $K3S_CLUSTER_PATH"
-rsync -avz --delete -e ssh "$ROOT_DIR/$PROVISIONING_PATH_LOCAL/" "$REMOTE_FULL_PATH"
-echo "✅ Provisioning files rsynced to server=[$REMOTE_FULL_PATH]"
+REMOTE_DEST="$ADDRESS:$PROVISIONING_PATH_LOCAL_TO_REMOTE/"
+echo "👉 Rsyncing provisioning files to [$REMOTE_DEST]"
+ssh "$ADDRESS" "mkdir -p $PROVISIONING_PATH_LOCAL_TO_REMOTE"
+rsync -avz --delete -e ssh "$ROOT_DIR/$PROVISIONING_PATH_LOCAL/" "$REMOTE_DEST"
+echo "✅ Provisioning files rsynced to [$REMOTE_DEST]"

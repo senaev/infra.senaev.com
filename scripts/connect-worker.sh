@@ -4,7 +4,7 @@ set -euo pipefail
 # Connects to the worker at address and runs echo with the given parameters on the remote.
 if [[ $# -lt 3 ]]; then
   echo "Usage: $0 <node_token> <address> <labels>" >&2
-  echo "Example: $0 K106...7b53 ubuntu@11.111.111.111 label1=value1,label2=value2" >&2
+  echo "Example: $0 K106...7b53 root@11.111.111.111 label1=value1,label2=value2" >&2
   exit 1
 fi
 
