@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-set -a; source "$SCRIPT_DIR/.env"; set +a
+set -a; source "$SCRIPT_DIR/../../.env"; set +a
 
 if ! command -v k3s &>/dev/null; then
   echo "👉 k3s not found, installing..."
@@ -31,7 +31,7 @@ fi
 
 upgrade_namespace() {
   local NS="$1"
-  local CHART_PATH="$PROVISIONING_PATH/helm/$NS"
+  local CHART_PATH="$PROVISIONING_PATH_REMOTE/control-plane/helm/$NS"
 
   echo "👉 Checking namespace=[$NS]"
   kubectl create namespace "$NS" --dry-run=client -o yaml | kubectl apply -f -

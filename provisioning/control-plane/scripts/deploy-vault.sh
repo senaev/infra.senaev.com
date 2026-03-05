@@ -10,7 +10,7 @@ if ! command -v jq &>/dev/null; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-set -a; source "$SCRIPT_DIR/.env"; set +a
+set -a; source "$SCRIPT_DIR/../../.env"; set +a
 
 cd $K3S_CLUSTER_PATH
 
