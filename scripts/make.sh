@@ -12,7 +12,7 @@ $ROOT_DIR/scripts/rsync-provisioning.sh "$REMOTE_SERVER_ADDRESS"
 echo "✅ Provisioning files synced"
 
 echo "👉 Deploying k8s cluster to server"
-ssh "$REMOTE_SERVER_ADDRESS" "$PROVISIONING_PATH_REMOTE/control-plane/scripts/deploy-k8s.sh"
+ssh "$REMOTE_SERVER_ADDRESS" "$PROVISIONING_PATH_REMOTE/control-plane/scripts/bootstrap-control-plane.sh"
 echo "✅ k8s cluster deployed to server"
 
 echo "🏁 Deployment completed successfully!"

@@ -60,7 +60,7 @@ echo "✅ ESO webhook ready"
 upgrade_namespace $VAULT_NS
 
 echo "👉 Deploying vault"
-$SCRIPT_DIR/deploy-vault.sh
+$SCRIPT_DIR/bootstrap-vault.sh
 echo "✅ Vault deployed"
 
 upgrade_namespace $VICTORIA_METRICS_OPERATOR_NS

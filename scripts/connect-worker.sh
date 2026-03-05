@@ -16,6 +16,10 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 set -a; source "$ROOT_DIR/.env"; set +a
 
+echo "👉 Rsyncing provisioning files for worker=[$ADDRESS]"
+"$ROOT_DIR/scripts/rsync-provisioning.sh" "$ADDRESS"
+echo "✅ Provisioning files synced for worker=[$ADDRESS]"
+
 echo "👉 Connecting to node=[$ADDRESS] with labels=[${LABELS}]"
 ssh "$ADDRESS" "echo NODE_TOKEN=\"$NODE_TOKEN\" ADDRESS=\"$ADDRESS\" LABELS=\"$LABELS\""
 echo "✅ Connected to node=[$ADDRESS] with labels=[${LABELS}]"
