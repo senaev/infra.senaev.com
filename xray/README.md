@@ -1,4 +1,4 @@
-❗️ update readme
+<!-- TODO: update readme -->
 
 # Xray — VLESS + Reality
 
