@@ -20,7 +20,7 @@ if bash "$SCRIPT_DIR/check-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN" 
   echo "✅ [bootstrap-worker] Worker is OK"
   exit 0
 else
-  echo "❌ [bootstrap-worker] Worker is NOT OK"
+  echo "👉 [bootstrap-worker] Worker is NOT OK, requiring reinstall"
 fi
 
 if [[ -f /usr/local/bin/k3s-agent-uninstall.sh ]]; then
