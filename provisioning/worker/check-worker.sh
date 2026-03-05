@@ -6,12 +6,13 @@ echo "👉 [check-worker] Starting check"
 # Exit 0 if all conditions are satisfied (worker is OK). Exit 1 if any condition fails (reinstall needed).
 if [[ $# -lt 3 ]]; then
   echo "Usage: $0 <control_plane_server_url> <node_token> <labels>" >&2
+  echo "Example: $0 https://11.111.111.111:6443 K106...7b53 label1=value1,label2=value2" >&2
   exit 2
 fi
 
 CONTROL_PLANE_SERVER_URL="$1"
 NODE_TOKEN="$2"
-EXPECTED_LABELS="${3:-}"
+EXPECTED_LABELS="$3"
 
 if ! command -v k3s &>/dev/null; then
   echo "❌ [check-worker] k3s is not installed"
