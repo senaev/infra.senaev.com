@@ -5,4 +5,4 @@ node_modules
 .eslintcache
 tsconfig.tsbuildinfo
 .env.local
-.env
+/.env

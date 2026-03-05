@@ -14,7 +14,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 set -a; source "$ROOT_DIR/.env"; set +a
 
-echo "👉 Rsyncing provisioning files to server=[$ADDRESS]"
+REMOTE_FULL_PATH="$REMOTE_SERVER_ADDRESS:$PROVISIONING_PATH_REMOTE/"
+echo "👉 Rsyncing provisioning files to server=[$REMOTE_FULL_PATH]"
 ssh "$REMOTE_SERVER_ADDRESS" "mkdir -p $K3S_CLUSTER_PATH"
-rsync -avz --delete -e ssh "$ROOT_DIR/$PROVISIONING_PATH_LOCAL/" "$REMOTE_SERVER_ADDRESS:$PROVISIONING_PATH_REMOTE/"
-echo "✅ Provisioning files rsynced to server=[$ADDRESS]"
+rsync -avz --delete -e ssh "$ROOT_DIR/$PROVISIONING_PATH_LOCAL/" "$REMOTE_FULL_PATH"
+echo "✅ Provisioning files rsynced to server=[$REMOTE_FULL_PATH]"

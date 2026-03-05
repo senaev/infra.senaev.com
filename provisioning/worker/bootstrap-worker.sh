@@ -1,0 +1,1 @@
+echo "👉 Bootstraping WORKER!!!!"

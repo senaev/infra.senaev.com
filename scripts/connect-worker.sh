@@ -21,5 +21,5 @@ echo "👉 Rsyncing provisioning files for worker=[$ADDRESS]"
 echo "✅ Provisioning files synced for worker=[$ADDRESS]"
 
 echo "👉 Connecting to node=[$ADDRESS] with labels=[${LABELS}]"
-ssh "$ADDRESS" "echo NODE_TOKEN=\"$NODE_TOKEN\" ADDRESS=\"$ADDRESS\" LABELS=\"$LABELS\""
+"$PROVISIONING_PATH_REMOTE/worker/bootstrap-worker.sh"
 echo "✅ Connected to node=[$ADDRESS] with labels=[${LABELS}]"
