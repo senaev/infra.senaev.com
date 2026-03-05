@@ -47,14 +47,14 @@ else
 fi
 
 if [[ "$CONTROL_PLANE_SERVER_URL" != "$EXISTING_SERVER_URL" ]]; then
-  echo "❌ [check-worker] CONTROL_PLANE_SERVER_URL mismatch (expected=[${EXISTING_SERVER_URL}])"
+  echo "❌ [check-worker] CONTROL_PLANE_SERVER_URL mismatch (expected=[${CONTROL_PLANE_SERVER_URL}], existing=[${EXISTING_SERVER_URL}])"
   exit 1
 else
   echo "✅ [check-worker] CONTROL_PLANE_SERVER_URL matches"
 fi
 
 if [[ "$NODE_TOKEN" != "$EXISTING_NODE_TOKEN" ]]; then
-  echo "❌ [check-worker] NODE_TOKEN mismatch"
+  echo "❌ [check-worker] NODE_TOKEN mismatch (expected=[${NODE_TOKEN:0:4}...${NODE_TOKEN: -4}], existing=[${EXISTING_NODE_TOKEN:0:4}...${EXISTING_NODE_TOKEN: -4}])"
   exit 1
 else
   echo "✅ [check-worker] NODE_TOKEN matches"
