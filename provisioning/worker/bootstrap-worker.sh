@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Connects to the worker at address and runs echo with the given parameters on the remote.
+# Bootstrap k3s worker. If all conditions are satisfied, do nothing; otherwise uninstall and reinstall.
 if [[ $# -lt 3 ]]; then
   echo "Usage: $0 <control_plane_server_url> <node_token> <labels>" >&2
   echo "Example: $0 https://11.111.111.111:6443 K106...7b53 label1=value1,label2=value2" >&2
@@ -12,17 +12,39 @@ CONTROL_PLANE_SERVER_URL="$1"
 NODE_TOKEN="$2"
 LABELS="$3"
 
-echo "👉 [bootstrap-worker] Bootstraping worker with labels=[${LABELS}]"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-mapfile -t _k3s_env < <(sudo bash -c 'source /etc/systemd/system/k3s-agent.service.env && echo "$K3S_TOKEN" && echo "$K3S_URL"')
-EXISTING_NODE_TOKEN="${_k3s_env[0]}"
-EXISTING_SERVER_URL="${_k3s_env[1]}"
+echo "👉 [bootstrap-worker] Bootstrapping worker with labels=[${LABELS}]"
 
-# sudo curl -sfL https://get.k3s.io | K3S_URL="https://46.225.174.102:6443" K3S_TOKEN="K106ee9db4e0273d8811e91711470a74f74acddc3c49c7b74aa4600e95f9fd83a63::server:667cdaa00b52462d15e276f455aac14b"  sh -
+if bash "sudo $SCRIPT_DIR/check-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN"; then
+  echo "✅ [bootstrap-worker] Worker is OK"
+  exit 0
+fi
 
-echo "👉 [bootstrap-worker] CONTROL_PLANE_SERVER_URL=[${CONTROL_PLANE_SERVER_URL}]"
-echo "👉 [bootstrap-worker] NODE_TOKEN=[${NODE_TOKEN}]"
-echo "👉 [bootstrap-worker] EXISTING_SERVER_URL=[${EXISTING_SERVER_URL}]"
-echo "👉 [bootstrap-worker] EXISTING_NODE_TOKEN=[${EXISTING_NODE_TOKEN}]"
+exit 1
 
-echo "✅ [bootstrap-worker] Bootstrapped worker with labels=[${LABELS}]"
+echo "👉 [bootstrap-worker] Reinstalling k3s agent..."
+
+if [[ -f /usr/local/bin/k3s-agent-uninstall.sh ]]; then
+  echo "👉 [bootstrap-worker] Uninstalling existing k3s agent"
+  sudo /usr/local/bin/k3s-agent-uninstall.sh
+  echo "✅ [bootstrap-worker] Uninstalled existing k3s agent"
+fi
+
+echo "👉 [bootstrap-worker] Parsing labels=[${LABELS}]"
+NODE_LABEL_ARGS=()
+if [[ -n "$LABELS" ]]; then
+  IFS=',' read -ra parts <<< "$LABELS"
+  for p in "${parts[@]}"; do
+    p="${p// /}"
+    [[ -n "$p" ]] && NODE_LABEL_ARGS+=(--node-label "$p")
+  done
+fi
+echo "👉 [bootstrap-worker] NODE_LABEL_ARGS=[${NODE_LABEL_ARGS[*]}]"
+
+echo "👉 [bootstrap-worker] Installing k3s agent"
+curl -sfL https://get.k3s.io | \
+  K3S_URL="$CONTROL_PLANE_SERVER_URL" \
+  K3S_TOKEN="$NODE_TOKEN" \
+  sh -s - agent "${NODE_LABEL_ARGS[@]}"
+echo "✅ [bootstrap-worker] Installed k3s agent"
