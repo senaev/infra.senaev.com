@@ -21,9 +21,9 @@ ec4249b8-12aa-4ca3-a4cb-693dc48147be
 Сгенерировать `{REALITY_PRIVATE_KEY}` и `{REALITY_PUBLIC_KEY}` ключ командой внутри pos XRAY `xray x25519`, вывод будет типа такого:
 
 ```text
-PrivateKey: XXXXX
-Password: XXXXX
-Hash32: XXXXX
+PrivateKey: XXX
+Password: XXX
+Hash32: XXX
 ```
 
 Редактируем конфиг:
