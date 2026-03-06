@@ -4,6 +4,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 set -a; source "$SCRIPT_DIR/../../.env"; set +a
 
+echo "👉 [bootstrap-control-plane] Preparing node"
+$SCRIPT_DIR/../../scripts/prepare-node.sh
+echo "✅ [bootstrap-control-plane] Node prepared"
+
 if ! command -v k3s &>/dev/null; then
   # Flannel VXLAN (UDP port 8472) doesn't work in Yandex Cloud, so use wireguard-native
   FLANNEL_BACKEND="wireguard-native"
