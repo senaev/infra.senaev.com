@@ -15,6 +15,10 @@ spec:
       labels:
         app: traefik
     spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        vps: {{ .Values.vps }}
       serviceAccountName: traefik-ingress-controller
       containers:
         - name: traefik

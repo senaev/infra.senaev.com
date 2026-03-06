@@ -16,6 +16,8 @@ spec:
       labels:
         app: nextjs-app
     spec:
+      nodeSelector:
+        vps: {{ .Values.nextjs.vps }}
       containers:
         - name: nextjs-app
           image: {{ .Values.nextjs.image }}

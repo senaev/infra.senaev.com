@@ -16,6 +16,8 @@ spec:
       labels:
         app: test-echo
     spec:
+      nodeSelector:
+        vps: {{ .Values.testEcho.vps }}
       containers:
         - name: test-echo
           image: "{{ .Values.testEcho.image }}"
