@@ -3,6 +3,12 @@ ingress:
   host: vault.senaev.com
   className: traefik
 
+reloader:
+  reloader:
+    deployment:
+      nodeSelector:
+        vps: hetzner
+
 vault:
   fullnameOverride: "vault"
 
@@ -31,3 +37,6 @@ vault:
     dataStorage:
       enabled: true
       size: 1Gi
+
+    nodeSelector:
+      vps: hetzner
