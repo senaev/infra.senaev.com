@@ -1,4 +1,9 @@
+-include .env
+export
+
+CONTROL_PLANE_SERVER_ADDRESS := $(CONTROL_PLANE_SERVER_USERNAME)@$(CONTROL_PLANE_SERVER_IP)
+
 .PHONY: default
 
 default:
-	./scripts/make.sh
+	./scripts/make.sh "$(CONTROL_PLANE_SERVER_ADDRESS)"

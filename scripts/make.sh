@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/../" && pwd)"
 set -a; source "$ROOT_DIR/.env"; set +a
 
-CONTROL_PLANE_SERVER_ADDRESS="$CONTROL_PLANE_SERVER_USERNAME@$CONTROL_PLANE_SERVER_IP"
+CONTROL_PLANE_SERVER_ADDRESS="${1}"
 echo "👉 [make] Starting deployment to server=[$CONTROL_PLANE_SERVER_ADDRESS]"
 
 echo "👉 [make] Rsyncing provisioning files to server"
