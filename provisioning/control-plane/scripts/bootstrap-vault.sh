@@ -3,12 +3,6 @@ set -euo pipefail
 
 # TODO: Use something like terraform to deploy vault configuration
 
-if ! command -v jq &>/dev/null; then
-  echo "👉 [bootstrap-vault] Installing jq"
-  sudo apt-get update && sudo apt-get install -y jq
-  echo "✅ [bootstrap-vault] jq installed"
-fi
-
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 set -a; source "$SCRIPT_DIR/../../.env"; set +a
 

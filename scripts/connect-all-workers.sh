@@ -11,12 +11,21 @@ NODE_TOKEN=$(ssh "$CONTROL_PLANE_SERVER_ADDRESS" "cat /var/lib/rancher/k3s/serve
 echo "✅ [connect-all-workers] NODE_TOKEN.length=[${#NODE_TOKEN}]"
 
 echo "👉 [connect-all-workers] Connecting to worker nodes"
-while read -r addr labels; do
-  [[ -z "$addr" ]] && continue
+
+worker_objs=()
+while IFS= read -r line; do
+  worker_objs+=( "$line" )
+done < <(echo "$WORKERS" | jq -c '.[]')
+echo "✅ [connect-all-workers] worker_objs.length=[${#worker_objs[@]}]"
+
+for obj in "${worker_objs[@]}"; do
+  addr="$(echo "$obj" | jq -r '"\(.username)@\(.host)"')"
+  labels="$(echo "$obj" | jq -r '.labels')"
+  [[ -z "$addr" || "$addr" == "null" ]] && continue
   echo "👉 [connect-all-workers] Connecting to node=[$addr] with labels=[${labels}]"
 
   "$ROOT_DIR/scripts/connect-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN" "$addr" "$labels"
 
   echo "✅ [connect-all-workers] Connected to node=[$addr] with labels=[${labels}]"
-done <<< "$WORKERS"
+done
 echo "✅ [connect-all-workers] Connected to worker nodes"

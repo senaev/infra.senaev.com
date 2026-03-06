@@ -13,7 +13,12 @@ NODE_TOKEN="$2"
 LABELS="$3"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-set -a; source "$SCRIPT_DIR/../.env"; set +a
+set -a; source "$SCRIPT_DIR/../../.env"; set +a
+
+
+echo "👉 [bootstrap-worker] Preparing node"
+$SCRIPT_DIR/../../scripts/prepare-node.sh
+echo "✅ [bootstrap-worker] Node prepared"
 
 echo "👉 [bootstrap-worker] Bootstrapping worker with labels=[${LABELS}]"
 
