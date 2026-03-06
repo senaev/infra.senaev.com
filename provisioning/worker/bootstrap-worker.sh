@@ -13,6 +13,7 @@ NODE_TOKEN="$2"
 LABELS="$3"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+set -a; source "$SCRIPT_DIR/../.env"; set +a
 
 echo "👉 [bootstrap-worker] Bootstrapping worker with labels=[${LABELS}]"
 
@@ -43,8 +44,9 @@ fi
 NODE_LABEL_ARGS_STR="${NODE_LABEL_ARGS[*]}"
 echo "✅ [bootstrap-worker] NODE_LABEL_ARGS=[${NODE_LABEL_ARGS_STR}]"
 
-echo "👉 [bootstrap-worker] Installing k3s agent"
+echo "👉 [bootstrap-worker] Installing k3s=[${K3S_VERSION}] agent"
 curl -sfL https://get.k3s.io | \
+  INSTALL_K3S_VERSION="${K3S_VERSION}" \
   K3S_URL="$CONTROL_PLANE_SERVER_URL" \
   K3S_TOKEN="$NODE_TOKEN" \
   INSTALL_K3S_EXEC=" \

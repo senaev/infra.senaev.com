@@ -11,7 +11,7 @@ victoria-metrics-k8s-stack:
     enabled: true
     # TODO: Remove duplications using helmfile
     nodeSelector:
-      node: control-plane
+      vps: hetzner
     annotations:
       secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
     admin:
@@ -38,32 +38,32 @@ victoria-metrics-k8s-stack:
     spec:
       # TODO: Remove duplications using helmfile
       nodeSelector:
-        node: control-plane
+        vps: hetzner
 
   vmagent:
     spec:
       # TODO: Remove duplications using helmfile
       nodeSelector:
-        node: control-plane
+        vps: hetzner
 
   alertmanager:
     spec:
       # TODO: Remove duplications using helmfile
       nodeSelector:
-        node: control-plane
+        vps: hetzner
 
   vmalert:
     spec:
       # TODO: Remove duplications using helmfile
       nodeSelector:
-        node: control-plane
+        vps: hetzner
 
   prometheus-node-exporter:
     # TODO: Remove duplications using helmfile
     nodeSelector:
-      node: control-plane
+      vps: hetzner
 
   kube-state-metrics:
     # TODO: Remove duplications using helmfile
     nodeSelector:
-      node: control-plane
+      vps: hetzner

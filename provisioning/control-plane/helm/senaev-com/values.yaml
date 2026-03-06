@@ -15,12 +15,12 @@ webdav:
 xray:
   enabled: true
   image: teddysun/xray:latest
-  vps: hetzner
+  vps: ionos
 
 testEcho:
   enabled: true
   image: hashicorp/http-echo:0.2.3
-  vps: yandex-cloud
+  vps: hetzner
 
 ingress:
   className: traefik
