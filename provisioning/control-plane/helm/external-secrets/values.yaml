@@ -1,2 +1,13 @@
 external-secrets:
   installCRDs: true
+
+  nodeSelector:
+    vps: hetzner
+
+  certController:
+    nodeSelector:
+      vps: hetzner
+  
+  webhook:
+    nodeSelector:
+      vps: hetzner
