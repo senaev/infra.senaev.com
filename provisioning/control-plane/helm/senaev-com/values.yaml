@@ -4,23 +4,23 @@ userRootPath: /root
 nextjs:
   enabled: true
   image: ghcr.io/senaev/senaev.com:latest
-  zone: de
+  vps: hetzner
 
 webdav:
   enabled: true
   image: bytemark/webdav
   volumePath: k3s-cluster/volumes/webdav
-  zone: de
+  vps: hetzner
 
 xray:
   enabled: true
   image: teddysun/xray:latest
-  zone: ru
+  vps: hetzner
 
 testEcho:
   enabled: true
   image: hashicorp/http-echo:0.2.3
-  zone: de
+  vps: yandex-cloud
 
 ingress:
   className: traefik

@@ -17,7 +17,7 @@ spec:
         app: test-echo
     spec:
       nodeSelector:
-        zone: {{ .Values.testEcho.zone }}
+        vps: {{ .Values.testEcho.vps }}
       containers:
         - name: test-echo
           image: "{{ .Values.testEcho.image }}"

@@ -17,7 +17,7 @@ spec:
         app: nextjs-app
     spec:
       nodeSelector:
-        zone: {{ .Values.nextjs.zone }}
+        vps: {{ .Values.nextjs.vps }}
       containers:
         - name: nextjs-app
           image: {{ .Values.nextjs.image }}

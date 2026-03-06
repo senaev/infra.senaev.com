@@ -16,7 +16,7 @@ if ! command -v k3s &>/dev/null; then
     --flannel-backend=$FLANNEL_BACKEND \
     --write-kubeconfig-mode 644 \
     --node-label node=control-plane \
-    --node-label zone=de \
+    --node-label vps=hetzner \
     " \
     sh -
   echo "✅ [bootstrap-control-plane] k3s installed"

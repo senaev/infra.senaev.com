@@ -18,8 +18,7 @@ spec:
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
     spec:
       nodeSelector:
-        zone: {{ .Values.xray.zone }}
-      # TODO: Try to proxy via Traefik on 443 port
+        vps: {{ .Values.xray.vps }}
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
       containers:

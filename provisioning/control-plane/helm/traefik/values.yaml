@@ -6,4 +6,4 @@ image: traefik:v3.2
 acme:
   email: andrei.senaev@gmail.com
 
-zone: de
+vps: hetzner
