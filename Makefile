@@ -4,7 +4,7 @@ export
 CONTROL_PLANE_SERVER_ADDRESS := $(CONTROL_PLANE_SERVER_USERNAME)@$(CONTROL_PLANE_SERVER_IP)
 
 default:
-	@echo "👉 [Makefile] Starting deployment to control-plane=[$(CONTROL_PLANE_SERVER_ADDRESS)]"
+	@echo "🚀 [Makefile] Starting deployment to control-plane=[$(CONTROL_PLANE_SERVER_ADDRESS)]"
 	@make cluster
 	@make services
 	@echo "🏁 [Makefile] Deployment completed successfully!"
