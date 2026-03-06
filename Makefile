@@ -5,13 +5,13 @@ CONTROL_PLANE_SERVER_ADDRESS := $(CONTROL_PLANE_SERVER_USERNAME)@$(CONTROL_PLANE
 
 default:
 	@echo "🚀 [Makefile] Starting deployment to control-plane=[$(CONTROL_PLANE_SERVER_ADDRESS)]"
-	@make cluster
-	@make services
+	@$(MAKE) cluster
+	@$(MAKE) services
 	@echo "🏁 [Makefile] Deployment completed successfully!"
 
 cluster:
-	@make control-plane
-	@make workers
+	@$(MAKE) control-plane
+	@$(MAKE) workers
 
 rsync:
 	@echo "👉 [Makefile] Rsyncing provisioning files to server"
@@ -19,7 +19,7 @@ rsync:
 	@echo "✅ [Makefile] Provisioning files synced"
 
 control-plane:
-	@make rsync
+	@$(MAKE) rsync
 
 	@echo "👉 [Makefile] Deploying k8s cluster to server"
 	@ssh "$(CONTROL_PLANE_SERVER_ADDRESS)" "~/k3s-cluster/provisioning/control-plane/scripts/bootstrap-control-plane.sh"
@@ -31,7 +31,7 @@ workers:
 	@echo "✅ [Makefile] Worker nodes connected"
 
 services:
-	@make rsync
+	@$(MAKE) rsync
 
 	@echo "👉 [Makefile] Deploying k8s services on control-plane=[$(CONTROL_PLANE_SERVER_ADDRESS)]"
 	@ssh "$(CONTROL_PLANE_SERVER_ADDRESS)" "~/k3s-cluster/provisioning/control-plane/scripts/bootstrap-services.sh"
