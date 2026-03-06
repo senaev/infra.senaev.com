@@ -14,16 +14,16 @@
 
 Сгенерировать `{USER_UUID}` командой `uuidgen`, вывод будет типа такого:
 
-```
+```text
 ec4249b8-12aa-4ca3-a4cb-693dc48147be
 ```
 
 Сгенерировать `{REALITY_PRIVATE_KEY}` и `{REALITY_PUBLIC_KEY}` ключ командой внутри pos XRAY `xray x25519`, вывод будет типа такого:
 
-```
-PrivateKey: SP0lzPHP7KjtLxbm5M4tnV7Ml1PYIkqQIjp1Vjt_b34
-Password: pccxOUh_Xo4smRMsRKrg3pXcRmM5U8ozGzaeKGAkN3A
-Hash32: OsNIAHa3wxgtWyroFpq6W0SoCSDYT1Z--UrNox6I2SA
+```text
+PrivateKey: XXXXX
+Password: XXXXX
+Hash32: XXXXX
 ```
 
 Редактируем конфиг:
@@ -40,7 +40,7 @@ Hash32: OsNIAHa3wxgtWyroFpq6W0SoCSDYT1Z--UrNox6I2SA
 
 Заполнить макросы и скопировать ссылку:
 
-```
+```text
 vless://{USER_UUID}@{SERVER_HOST}:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=www.google.com&pbk={REALITY_PUBLIC_KEY}&sid=0123456789abcdef#%F0%9F%87%A9%F0%9F%87%AA%20senaev.com%20(ionos)
 ```
 
