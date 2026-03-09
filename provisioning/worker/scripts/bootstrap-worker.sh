@@ -20,13 +20,12 @@ echo "👉 [bootstrap-worker] Preparing node"
 $SCRIPT_DIR/../../scripts/prepare-node.sh
 echo "✅ [bootstrap-worker] Node prepared"
 
-echo "👉 [bootstrap-worker] Bootstrapping worker with labels=[${LABELS}]"
-
+echo "👉 [bootstrap-worker] Bootstrapping worker with labels=[${LABELS}] to control plane=[$CONTROL_PLANE_SERVER_URL]"
 if bash "$SCRIPT_DIR/check-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN" "$LABELS"; then
   echo "✅ [bootstrap-worker] Worker is OK"
   exit 0
 else
-  echo "👉 [bootstrap-worker] Worker is NOT OK, requiring reinstall"
+  echo "👉 [bootstrap-worker] Worker is NOT OK, k3s needs to be reinstalled"
 fi
 
 if [[ -f /usr/local/bin/k3s-agent-uninstall.sh ]]; then
@@ -49,6 +48,11 @@ fi
 NODE_LABEL_ARGS_STR="${NODE_LABEL_ARGS[*]}"
 echo "✅ [bootstrap-worker] NODE_LABEL_ARGS=[${NODE_LABEL_ARGS_STR}]"
 
+# TODO: remove duplications
+echo "👉 [bootstrap-worker] getting internal tailnet IP"
+TAILNET_IP=$(tailscale ip -4)
+echo "✅ [bootstrap-worker] TAILNET_IP=[${TAILNET_IP}]"
+
 echo "👉 [bootstrap-worker] Installing k3s=[${K3S_VERSION}] agent"
 curl -sfL https://get.k3s.io | \
   INSTALL_K3S_VERSION="${K3S_VERSION}" \
@@ -57,6 +61,7 @@ curl -sfL https://get.k3s.io | \
   INSTALL_K3S_EXEC=" \
     agent \
     $NODE_LABEL_ARGS_STR \
+    --node-ip=$TAILNET_IP \
   " \
   sh -
 echo "✅ [bootstrap-worker] Installed k3s agent"

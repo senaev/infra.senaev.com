@@ -8,17 +8,19 @@ echo "👉 [bootstrap-control-plane] Preparing node"
 $SCRIPT_DIR/../../scripts/prepare-node.sh
 echo "✅ [bootstrap-control-plane] Node prepared"
 
-if ! command -v k3s &>/dev/null; then
-  # Flannel VXLAN (UDP port 8472) doesn't work in Yandex Cloud, so use wireguard-native
-  FLANNEL_BACKEND="wireguard-native"
+# TODO: remove duplications
+echo "👉 [bootstrap-control-plane] getting internal tailnet IP"
+TAILNET_IP=$(tailscale ip -4)
+echo "✅ [bootstrap-control-plane] TAILNET_IP=[${TAILNET_IP}]"
 
+if ! command -v k3s &>/dev/null; then
   echo "👉 [bootstrap-control-plane] k3s not found, installing k3s=[${K3S_VERSION}]"
   curl -sfL https://get.k3s.io | \
     INSTALL_K3S_VERSION="${K3S_VERSION}" \
     INSTALL_K3S_EXEC=" \
     server \
     --disable traefik \
-    --flannel-backend=$FLANNEL_BACKEND \
+    --node-ip=$TAILNET_IP \
     --write-kubeconfig-mode 644 \
     --node-label vps=hetzner \
     " \
