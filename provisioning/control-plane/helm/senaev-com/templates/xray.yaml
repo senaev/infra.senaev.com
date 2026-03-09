@@ -23,7 +23,7 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: xray
-          image: "{{ .Values.xray.image }}"
+          image: teddysun/xray:latest
           # Dummy env var to force CreateContainerConfigError if secret is missing
           # (to avoid initialization without secret and run when secret is in Vault)
           env:
