@@ -14,6 +14,12 @@ xray:
   enabled: true
   vps: yandex-cloud
 
+qbittorrent:
+  enabled: true
+  volumePath: k3s-cluster/volumes/qbittorrent
+  vps: yandex-cloud
+  webuiPort: 9001
+
 testEcho:
   enabled: true
   vps: hetzner
@@ -26,6 +32,7 @@ ingress:
       - senaev.ru
       - webdav.senaev.com
       - test.senaev.com
+      - qbittorrent.senaev.com
   hosts:
     - host: senaev.com
       service: nextjs-app
@@ -39,4 +46,8 @@ ingress:
     - host: test.senaev.com
       service: test-echo
       port: 80
+    - host: qbittorrent.senaev.com
+      service: qbittorrent
+      # TODO: Remove this once qbittorrent.webuiPort is used in template
+      port: 9001
 
