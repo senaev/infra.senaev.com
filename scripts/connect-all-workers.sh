@@ -5,10 +5,18 @@ ROOT_DIR="$(cd "$(dirname "$0")/../" && pwd)"
 set -a; source "$ROOT_DIR/.env"; set +a
 
 CONTROL_PLANE_SERVER_ADDRESS="$CONTROL_PLANE_SERVER_USERNAME@$CONTROL_PLANE_SERVER_IP"
-CONTROL_PLANE_SERVER_URL="https://$CONTROL_PLANE_SERVER_IP:$CONTROL_PLANE_SERVER_PORT"
-echo "👉 [connect-all-workers] Getting NODE_TOKEN from control plane address=[$CONTROL_PLANE_SERVER_ADDRESS] url=[$CONTROL_PLANE_SERVER_URL]"
+
+echo "👉 [connect-all-workers] Connect all workers to the control plane with address=[$CONTROL_PLANE_SERVER_ADDRESS]"
+
+echo "👉 [connect-all-workers] Getting NODE_TOKEN from control plane"
 NODE_TOKEN=$(ssh "$CONTROL_PLANE_SERVER_ADDRESS" "cat /var/lib/rancher/k3s/server/node-token")
 echo "✅ [connect-all-workers] NODE_TOKEN.length=[${#NODE_TOKEN}]"
+
+echo "👉 [connect-all-workers] Getting tailnet address of the control plane"
+TAILNET_ADDRESS=$(ssh "$CONTROL_PLANE_SERVER_ADDRESS" "tailscale ip -4")
+echo "✅ [connect-all-workers] TAILNET_ADDRESS=[${TAILNET_ADDRESS}]"
+
+CONTROL_PLANE_SERVER_URL="https://$TAILNET_ADDRESS:$CONTROL_PLANE_SERVER_PORT"
 
 echo "👉 [connect-all-workers] Connecting to worker nodes"
 

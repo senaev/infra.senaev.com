@@ -58,11 +58,6 @@ victoria-metrics-k8s-stack:
       nodeSelector:
         vps: hetzner
 
-  prometheus-node-exporter:
-    # TODO: Remove duplications using helmfile
-    nodeSelector:
-      vps: hetzner
-
   kube-state-metrics:
     # TODO: Remove duplications using helmfile
     nodeSelector:

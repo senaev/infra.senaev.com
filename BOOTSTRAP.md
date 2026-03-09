@@ -2,6 +2,9 @@
 
 Setup ubuntu shell (read SETUP_UBUNTU_SHELL.md)
 
+Add new machine to the tailnet
+https://login.tailscale.com/admin/machines/new-linux
+
 Install `helm`
 
 ```shell
