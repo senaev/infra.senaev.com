@@ -1,6 +1,8 @@
 # TODO: Remove duplications using helmfile
 userRootPath: /root
 
+enabled: true
+
 image: traefik:v3.2
 
 acme:
