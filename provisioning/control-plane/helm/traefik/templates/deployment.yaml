@@ -15,8 +15,6 @@ spec:
       labels:
         app: traefik
     spec:
-      hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
       nodeSelector:
         vps: {{ .Values.vps }}
       serviceAccountName: traefik-ingress-controller
@@ -39,8 +37,10 @@ spec:
           ports:
             - name: web
               containerPort: 80
+              hostPort: 80
             - name: websecure
               containerPort: 443
+              hostPort: 443
           volumeMounts:
             - name: acme-data
               mountPath: /acme-data
