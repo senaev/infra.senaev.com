@@ -21,6 +21,8 @@ if ! command -v k3s &>/dev/null; then
     server \
     --disable traefik \
     --node-ip=$TAILNET_IP \
+    --advertise-address=$TAILNET_IP \
+    --flannel-iface=tailscale0 \
     --write-kubeconfig-mode 644 \
     --node-label vps=hetzner \
     " \
