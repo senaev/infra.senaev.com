@@ -25,6 +25,10 @@ testEcho:
   enabled: true
   vps: hetzner
 
+helper:
+  enabled: true
+  vps: hetzner
+
 ingress:
   className: traefik
   tls:
