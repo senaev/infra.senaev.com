@@ -22,6 +22,11 @@ qbittorrent:
   webuiPort: 9001
   torrentPort: 6881
 
+filebrowser:
+  enabled: true
+  vps: yandex-cloud
+  volumePath: k3s-cluster/volumes/filebrowser/config
+
 testEcho:
   enabled: true
   vps: hetzner
@@ -39,6 +44,7 @@ ingress:
       - webdav.senaev.com
       - test.senaev.com
       - qbittorrent.senaev.com
+      - filebrowser.senaev.com
   hosts:
     - host: senaev.com
       service: nextjs-app
@@ -56,4 +62,7 @@ ingress:
       service: qbittorrent
       # TODO: Remove this once qbittorrent.webuiPort is used in template
       port: 9001
+    - host: filebrowser.senaev.com
+      service: filebrowser
+      port: 8080
 
