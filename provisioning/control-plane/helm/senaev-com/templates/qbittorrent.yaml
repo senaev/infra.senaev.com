@@ -31,15 +31,17 @@ spec:
             - name: WEBUI_PORT
               value: "{{ .Values.qbittorrent.webuiPort }}"
             - name: TORRENTING_PORT
-              value: "6881"
+              value: "{{ .Values.qbittorrent.torrentPort }}"
           ports:
-            - containerPort: {{ .Values.qbittorrent.webuiPort }}
-              name: webui
-            - containerPort: 6881
-              name: torrent-tcp
-            - containerPort: 6881
-              name: torrent-udp
+            - name: webui
+              containerPort: {{ .Values.qbittorrent.webuiPort }} 
+            - name: torrent-tcp
+              containerPort: {{ .Values.qbittorrent.torrentPort }}
+              hostPort: {{ .Values.qbittorrent.torrentPort }}
+            - name: torrent-udp
               protocol: UDP
+              containerPort: {{ .Values.qbittorrent.torrentPort }}
+              hostPort: {{ .Values.qbittorrent.torrentPort }}
           volumeMounts:
             - name: config
               mountPath: /config
@@ -69,10 +71,10 @@ spec:
       port: {{ .Values.qbittorrent.webuiPort }}
       targetPort: {{ .Values.qbittorrent.webuiPort }}
     - name: torrent-tcp
-      port: 6881
-      targetPort: 6881
+      port: {{ .Values.qbittorrent.torrentPort }}
+      targetPort: {{ .Values.qbittorrent.torrentPort }}
     - name: torrent-udp
-      port: 6881
-      targetPort: 6881
+      port: {{ .Values.qbittorrent.torrentPort }}
+      targetPort: {{ .Values.qbittorrent.torrentPort }}
       protocol: UDP
 {{- end }}

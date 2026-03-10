@@ -31,8 +31,16 @@ workers:
 	@echo "✅ [Makefile] Worker nodes connected"
 
 services:
-	@$(MAKE) rsync
-
 	@echo "👉 [Makefile] Deploying k8s services on control-plane=[$(CONTROL_PLANE_SERVER_ADDRESS)]"
-	@ssh "$(CONTROL_PLANE_SERVER_ADDRESS)" "~/k3s-cluster/provisioning/control-plane/scripts/bootstrap-services.sh"
+	@$(MAKE) rsync
+	@ssh "$(CONTROL_PLANE_SERVER_ADDRESS)" "~/k3s-cluster/provisioning/control-plane/scripts/upgrade-namespace.sh traefik"
+	@ssh "$(CONTROL_PLANE_SERVER_ADDRESS)" "~/k3s-cluster/provisioning/control-plane/scripts/bootstrap-secrets.sh"
+	@ssh "$(CONTROL_PLANE_SERVER_ADDRESS)" "~/k3s-cluster/provisioning/control-plane/scripts/bootstrap-telemetry.sh"
+	@$(MAKE) senaev-com
 	@echo "✅ [Makefile] k8s services deployed"
+
+senaev-com:
+	@echo "👉 [Makefile] Deploying senaev-com services on control-plane=[$(CONTROL_PLANE_SERVER_ADDRESS)]"
+	@$(MAKE) rsync
+	@ssh "$(CONTROL_PLANE_SERVER_ADDRESS)" "~/k3s-cluster/provisioning/control-plane/scripts/upgrade-namespace.sh senaev-com"
+	@echo "✅ [Makefile] senaev-com services deployed"

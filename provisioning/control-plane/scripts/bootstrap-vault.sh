@@ -8,6 +8,7 @@ set -a; source "$SCRIPT_DIR/../../.env"; set +a
 
 cd $K3S_CLUSTER_PATH
 
+VAULT_NS=vault
 POD="$VAULT_NS-0"
 
 vault_exec() {
@@ -136,6 +137,7 @@ path \"${KV_SECRETS_ENGINE_PATH}/metadata/*\" {
 echo "$EXTERNAL_SECRETS_POLICY" | kubectl exec -i -n "$VAULT_NS" "$POD" -- env VAULT_TOKEN="$ROOT_TOKEN" vault policy write "$EXTERNAL_SECRETS_POLICY_NAME" -
 echo "✅ [bootstrap-vault] Policy $EXTERNAL_SECRETS_POLICY_NAME written."
 
+EXTERNAL_SECRETS_NS=external-secrets
 EXTERNAL_SECRETS_ROLE_NAME="external-secrets-role"
 echo "👉 [bootstrap-vault] Writing Kubernetes role"
 vault_exec_with_token write auth/kubernetes/role/$EXTERNAL_SECRETS_ROLE_NAME \

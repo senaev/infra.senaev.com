@@ -1,0 +1,71 @@
+{{- if .Values.filebrowser.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: filebrowser
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: filebrowser
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: filebrowser
+  template:
+    metadata:
+      labels:
+        app: filebrowser
+      annotations:
+        secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
+    spec:
+      nodeSelector:
+        vps: {{ .Values.filebrowser.vps }}
+      containers:
+        - name: filebrowser
+          image: hurlenko/filebrowser:latest
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: Etc/UTC
+            - name: FB_USERNAME
+              value: filebrowser_admin
+            - name: FB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: FILEBROWSER_PASSWORD_HASH
+                  optional: false
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: config
+          hostPath:
+            path: {{ .Values.mediaServerUserRootPath }}/{{ .Values.filebrowser.volumePath }}
+            type: DirectoryOrCreate
+        - name: data
+          hostPath:
+            path: {{ .Values.mediaServerUserRootPath }}/{{ .Values.qbittorrent.volumePath }}/downloads
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: filebrowser
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: filebrowser
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+{{- end }}
