@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Bootstrap k3s worker. If all conditions are satisfied, do nothing; otherwise uninstall and reinstall.
+# Upgrade namespace with helm chart.
 if [[ $# -lt 1 ]]; then
   echo "Usage: $0 <namespace>" >&2
   echo "Example: $0 senaev-com" >&2
   exit 1
 fi
-
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 set -a; source "$SCRIPT_DIR/../../.env"; set +a
