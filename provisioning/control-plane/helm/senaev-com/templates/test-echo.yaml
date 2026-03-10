@@ -20,7 +20,7 @@ spec:
         vps: {{ .Values.testEcho.vps }}
       containers:
         - name: test-echo
-          image: "{{ .Values.testEcho.image }}"
+          image: hashicorp/http-echo:0.2.3
           args:
             - -listen=:80
             - -text=Hello World from Traefik (TLS ok)\n

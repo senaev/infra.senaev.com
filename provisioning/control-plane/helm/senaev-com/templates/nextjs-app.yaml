@@ -20,7 +20,7 @@ spec:
         vps: {{ .Values.nextjs.vps }}
       containers:
         - name: nextjs-app
-          image: {{ .Values.nextjs.image }}
+          image: ghcr.io/senaev/senaev.com:latest
           imagePullPolicy: Always
           env:
             - name: NODE_ENV
@@ -46,7 +46,7 @@ spec:
       volumes:
         - name: notes
           hostPath:
-            path: {{ .Values.userRootPath }}/{{ .Values.webdav.volumePath }}/data/notes-folder
+            path: {{ .Values.controlPlaneUserRootPath }}/{{ .Values.webdav.volumePath }}/data/notes-folder
             type: DirectoryOrCreate
 ---
 apiVersion: v1

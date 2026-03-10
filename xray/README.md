@@ -41,7 +41,7 @@ Hash32: XXX
 Заполнить макросы и скопировать ссылку:
 
 ```text
-vless://{USER_UUID}@{SERVER_HOST}:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=www.google.com&pbk={REALITY_PUBLIC_KEY}&sid=0123456789abcdef#%F0%9F%87%A9%F0%9F%87%AA%20senaev.com%20(ionos)
+vless://{USER_UUID}@{SERVER_HOST}:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=www.google.com&pbk={REALITY_PUBLIC_KEY}&sid=0123456789abcdef#%F0%9F%87%A9%F0%9F%87%AA%20senaev.com%20
 ```
 
 В приложении `Add new` → `Import from clipboard`

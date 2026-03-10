@@ -22,7 +22,7 @@ spec:
         vps: {{ .Values.webdav.vps }}
       containers:
         - name: webdav
-          image: {{ .Values.webdav.image }}
+          image: bytemark/webdav
           env:
             - name: AUTH_TYPE
               value: Digest
@@ -41,7 +41,7 @@ spec:
       volumes:
         - name: data
           hostPath:
-            path: {{ .Values.userRootPath }}/{{ .Values.webdav.volumePath }}
+            path: {{ .Values.controlPlaneUserRootPath }}/{{ .Values.webdav.volumePath }}
             type: DirectoryOrCreate
 ---
 apiVersion: v1

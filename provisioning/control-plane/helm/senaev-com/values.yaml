@@ -1,25 +1,32 @@
 # TODO: Remove duplications using helmfile
-userRootPath: /root
+controlPlaneUserRootPath: /root
+mediaServerUserRootPath: /home/ubuntu
 
 nextjs:
   enabled: true
-  image: ghcr.io/senaev/senaev.com:latest
   vps: hetzner
 
 webdav:
   enabled: true
-  image: bytemark/webdav
   volumePath: k3s-cluster/volumes/webdav
   vps: hetzner
 
 xray:
   enabled: true
-  image: teddysun/xray:latest
-  vps: ionos
+  vps: yandex-cloud
+
+qbittorrent:
+  enabled: true
+  volumePath: k3s-cluster/volumes/qbittorrent
+  vps: yandex-cloud
+  webuiPort: 9001
 
 testEcho:
   enabled: true
-  image: hashicorp/http-echo:0.2.3
+  vps: hetzner
+
+helper:
+  enabled: true
   vps: hetzner
 
 ingress:
@@ -30,6 +37,7 @@ ingress:
       - senaev.ru
       - webdav.senaev.com
       - test.senaev.com
+      - qbittorrent.senaev.com
   hosts:
     - host: senaev.com
       service: nextjs-app
@@ -43,4 +51,8 @@ ingress:
     - host: test.senaev.com
       service: test-echo
       port: 80
+    - host: qbittorrent.senaev.com
+      service: qbittorrent
+      # TODO: Remove this once qbittorrent.webuiPort is used in template
+      port: 9001
 
