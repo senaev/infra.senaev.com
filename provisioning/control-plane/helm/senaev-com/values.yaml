@@ -20,6 +20,7 @@ qbittorrent:
   volumePath: k3s-cluster/volumes/qbittorrent
   vps: yandex-cloud
   webuiPort: 9001
+  torrentPort: 6881
 
 testEcho:
   enabled: true
