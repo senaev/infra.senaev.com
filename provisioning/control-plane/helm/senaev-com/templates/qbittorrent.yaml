@@ -48,11 +48,11 @@ spec:
       volumes:
         - name: config
           hostPath:
-            path: {{ .Values.userRootPath }}/{{ .Values.qbittorrent.volumePath }}/config
+            path: {{ .Values.mediaServerUserRootPath }}/{{ .Values.qbittorrent.volumePath }}/config
             type: DirectoryOrCreate
         - name: downloads
           hostPath:
-            path: {{ .Values.userRootPath }}/{{ .Values.qbittorrent.volumePath }}/downloads
+            path: {{ .Values.mediaServerUserRootPath }}/{{ .Values.qbittorrent.volumePath }}/downloads
             type: DirectoryOrCreate
 ---
 apiVersion: v1

@@ -1,5 +1,6 @@
 # TODO: Remove duplications using helmfile
-userRootPath: /root
+controlPlaneUserRootPath: /root
+mediaServerUserRootPath: /home/ubuntu
 
 nextjs:
   enabled: true
