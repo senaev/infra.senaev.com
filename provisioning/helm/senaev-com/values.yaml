@@ -16,6 +16,7 @@ webdavSenaevRu:
   vps: yandex-cloud
 
 xray:
+  # TODO: Enable and setup VPN
   enabled: false
   vps: yandex-cloud
 
