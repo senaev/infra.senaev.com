@@ -13,8 +13,13 @@ cluster:
 	@$(MAKE) control-plane
 	@$(MAKE) workers
 
-control-plane:
+rsync:
+	@echo "👉 [Makefile] Rsyncing provisioning files to server"
 	@$(CURDIR)/scripts/rsync-provisioning.sh "$(CONTROL_PLANE_SERVER_ADDRESS)"
+	@echo "✅ [Makefile] Provisioning files synced"
+
+control-plane:
+	@$(MAKE) rsync
 
 	@echo "👉 [Makefile] Deploying k8s cluster to server"
 	@ssh "$(CONTROL_PLANE_SERVER_ADDRESS)" "~/k3s-cluster/provisioning/control-plane/bootstrap-control-plane.sh"
@@ -27,7 +32,7 @@ workers:
 
 services:
 	@echo "👉 [Makefile] Deploying k8s services on control-plane=[$(CONTROL_PLANE_SERVER_ADDRESS)]"
-	@$(CURDIR)/scripts/rsync-provisioning.sh "$(CONTROL_PLANE_SERVER_ADDRESS)"
+	@$(MAKE) rsync
 	@ssh "$(CONTROL_PLANE_SERVER_ADDRESS)" "~/k3s-cluster/provisioning/control-plane/upgrade-namespace.sh traefik"
 	@ssh "$(CONTROL_PLANE_SERVER_ADDRESS)" "~/k3s-cluster/provisioning/control-plane/bootstrap-secrets.sh"
 	@ssh "$(CONTROL_PLANE_SERVER_ADDRESS)" "~/k3s-cluster/provisioning/control-plane/bootstrap-telemetry.sh"
@@ -36,6 +41,6 @@ services:
 
 senaev-com:
 	@echo "👉 [Makefile] Deploying senaev-com services on control-plane=[$(CONTROL_PLANE_SERVER_ADDRESS)]"
-	@$(CURDIR)/scripts/rsync-provisioning.sh "$(CONTROL_PLANE_SERVER_ADDRESS)"
+	@$(MAKE) rsync
 	@ssh "$(CONTROL_PLANE_SERVER_ADDRESS)" "~/k3s-cluster/provisioning/control-plane/upgrade-namespace.sh senaev-com"
 	@echo "✅ [Makefile] senaev-com services deployed"
