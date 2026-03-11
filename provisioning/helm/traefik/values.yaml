@@ -1,11 +1,14 @@
-# TODO: Remove duplications using helmfile
-userRootPath: /root
 
 enabled: true
+
+acmeStoragePath: /var/lib/k3s-cluster/volumes/traefik-acme
 
 image: traefik:v3.2
 
 acme:
   email: andrei.senaev@gmail.com
 
-vps: hetzner
+nodeSelector:
+  vps:
+    - hetzner
+    - yandex-cloud

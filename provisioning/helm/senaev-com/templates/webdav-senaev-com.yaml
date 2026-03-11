@@ -1,0 +1,59 @@
+{{- if .Values.webdavSenaevCom.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webdav-senaev-com
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: webdav-senaev-com
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: webdav-senaev-com
+  template:
+    metadata:
+      labels:
+        app: webdav-senaev-com
+      annotations:
+        secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
+    spec:
+      nodeSelector:
+        vps: {{ .Values.webdavSenaevCom.vps }}
+      containers:
+        - name: webdav
+          image: bytemark/webdav
+          env:
+            - name: AUTH_TYPE
+              value: Digest
+            - name: USERNAME
+              value: webdav_admin
+            - name: PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: WEBDAV_COM_PASSWORD
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/dav
+      volumes:
+        - name: data
+          hostPath:
+            path: {{ .Values.controlPlaneUserRootPath }}/{{ .Values.webdavSenaevCom.volumePath }}
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webdav-senaev-com
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: webdav-senaev-com
+  ports:
+    - port: 80
+      targetPort: 80
+{{- end }}
