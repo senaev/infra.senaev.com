@@ -49,14 +49,6 @@ ingress:
   entries:
     - name: senaev-com
       className: traefik-hetzner
-      tls:
-        hosts:
-          - senaev.com
-          - webdav.senaev.com
-          - test.senaev.com
-          - qbittorrent.senaev.com
-          - filebrowser.senaev.com
-          - jellyfin.senaev.com
       hosts:
         - host: senaev.com
           service: nextjs-app
@@ -78,10 +70,6 @@ ingress:
           port: 8096
     - name: senaev-ru
       className: traefik-yandex-cloud
-      tls:
-        hosts:
-          - senaev.ru
-          - webdav.senaev.ru
       hosts:
         - host: senaev.ru
           service: nextjs-app

@@ -15,8 +15,8 @@ spec:
   ingressClassName: {{ .className }}
   tls:
     - hosts:
-        {{- range .tls.hosts }}
-        - {{ . }}
+        {{- range .hosts }}
+        - {{ .host }}
         {{- end }}
   rules:
     {{- range .hosts }}
