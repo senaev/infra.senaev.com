@@ -9,10 +9,10 @@ if [[ $# -lt 1 ]]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-set -a; source "$SCRIPT_DIR/../../.env"; set +a
+set -a; source "$SCRIPT_DIR/../common/.env"; set +a
 
 NS="$1"
-CHART_PATH="$PROVISIONING_PATH_REMOTE/control-plane/helm/$NS"
+CHART_PATH="$PROVISIONING_PATH_REMOTE/helm/$NS"
 
 echo "👉 [upgrade-namespace] Checking namespace=[$NS]"
 kubectl create namespace "$NS" --dry-run=client -o yaml | kubectl apply -f -
