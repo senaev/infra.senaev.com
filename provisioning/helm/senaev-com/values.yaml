@@ -6,13 +6,13 @@ nextjs:
   enabled: true
   vps: hetzner
 
-webdav:
+webdavSenaevCom:
   enabled: true
   volumePath: k3s-cluster/volumes/webdav
   vps: hetzner
 
 xray:
-  enabled: true
+  enabled: false
   vps: yandex-cloud
 
 qbittorrent:
@@ -60,7 +60,7 @@ ingress:
       service: nextjs-app
       port: 3000
     - host: webdav.senaev.com
-      service: webdav
+      service: webdav-senaev-com
       port: 80
     - host: test.senaev.com
       service: test-echo

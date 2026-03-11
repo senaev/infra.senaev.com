@@ -1,25 +1,25 @@
-{{- if .Values.webdav.enabled }}
+{{- if .Values.webdavSenaevCom.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: webdav
+  name: webdav-senaev-com
   namespace: {{ .Release.Namespace }}
   labels:
-    app: webdav
+    app: webdav-senaev-com
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: webdav
+      app: webdav-senaev-com
   template:
     metadata:
       labels:
-        app: webdav
+        app: webdav-senaev-com
       annotations:
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
     spec:
       nodeSelector:
-        vps: {{ .Values.webdav.vps }}
+        vps: {{ .Values.webdavSenaevCom.vps }}
       containers:
         - name: webdav
           image: bytemark/webdav
@@ -41,18 +41,18 @@ spec:
       volumes:
         - name: data
           hostPath:
-            path: {{ .Values.controlPlaneUserRootPath }}/{{ .Values.webdav.volumePath }}
+            path: {{ .Values.controlPlaneUserRootPath }}/{{ .Values.webdavSenaevCom.volumePath }}
             type: DirectoryOrCreate
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: webdav
+  name: webdav-senaev-com
   namespace: {{ .Release.Namespace }}
 spec:
   type: ClusterIP
   selector:
-    app: webdav
+    app: webdav-senaev-com
   ports:
     - port: 80
       targetPort: 80
