@@ -39,3 +39,7 @@ https://filebrowser.senaev.com/
 Right after the installation, go to the WEB UI https://jellyfin.senaev.com/ and setup:
 - Login/password
 - Media library
+
+## WebDav
+
+https://webdav.senaev.ru/

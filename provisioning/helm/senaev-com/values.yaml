@@ -11,6 +11,10 @@ webdavSenaevCom:
   volumePath: k3s-cluster/volumes/webdav
   vps: hetzner
 
+webdavSenaevRu:
+  enabled: true
+  vps: yandex-cloud
+
 xray:
   enabled: false
   vps: yandex-cloud
@@ -52,6 +56,7 @@ ingress:
       - qbittorrent.senaev.com
       - filebrowser.senaev.com
       - jellyfin.senaev.com
+      - webdav.senaev.ru
   hosts:
     - host: senaev.com
       service: nextjs-app
@@ -75,4 +80,7 @@ ingress:
     - host: jellyfin.senaev.com
       service: jellyfin
       port: 8096
+    - host: webdav.senaev.ru
+      service: webdav-senaev-ru
+      port: 80
 

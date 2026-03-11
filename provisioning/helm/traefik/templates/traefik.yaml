@@ -1,13 +1,12 @@
 {{- if .Values.enabled }}
 apiVersion: apps/v1
-kind: Deployment
+kind: DaemonSet
 metadata:
   name: traefik
   namespace: {{ .Release.Namespace }}
   labels:
     app: traefik
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app: traefik
@@ -16,8 +15,17 @@ spec:
       labels:
         app: traefik
     spec:
-      nodeSelector:
-        vps: {{ .Values.vps }}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: vps
+                    operator: In
+                    values:
+                      {{- range .Values.nodeSelector.vps }}
+                      - {{ . }}
+                      {{- end }}
       serviceAccountName: traefik-ingress-controller
       containers:
         - name: traefik
@@ -49,7 +57,7 @@ spec:
       volumes:
         - name: acme-data
           hostPath:
-            path: {{ .Values.userRootPath }}/k3s-cluster/volumes/traefik-acme
+            path: {{ .Values.acmeStoragePath }}
             type: DirectoryOrCreate
 ---
 apiVersion: v1
