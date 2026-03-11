@@ -9,7 +9,7 @@ After deploying main cluster, you have to set up components of the media server
 Login on the page https://qbittorrent.senaev.com/ with password from Qbittorrent output
 
 ```shell
-ssh root@46.225.174.102 "kubectl -n senaev-com logs deploy/qbittorrent | grep password"
+ssh $control_plane_user@$control_plane_ip "kubectl -n senaev-com logs deploy/qbittorrent | grep password"
 ```
 
 ### Add notifications
