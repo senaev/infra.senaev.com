@@ -16,7 +16,7 @@ ssh $control_plane_user@$control_plane_ip "kubectl -n senaev-com logs deploy/qbi
 
 Go to Tools → Options → Downloads
 
-✅ Run on torrent finished:
+✅ Run on torrent added:
 ```shell
 curl -X POST http://helper.senaev-com.svc.cluster.local/tg -H "Content-Type: text/plain" -d "🚀 Download started: name=[%N] rootPath=[%R] savePath=[%D] size(bytes)=[%Z]"
 ```
