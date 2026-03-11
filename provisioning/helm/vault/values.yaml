@@ -1,7 +1,7 @@
 ingress:
   enabled: true
   host: vault.senaev.com
-  className: traefik
+  className: traefik-hetzner
 
 reloader:
   reloader:

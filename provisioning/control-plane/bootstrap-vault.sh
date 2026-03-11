@@ -41,7 +41,7 @@ SEALED="$(echo "$STATUS_JSON" | jq -r '.sealed')"
 
 echo "✅ [bootstrap-vault] INITIALIZED=[$INITIALIZED], SEALED=[$SEALED]"
 
-INIT_FILE="$K3S_CLUSTER_PATH/vault-unseal-keys.json"
+INIT_FILE="$K3S_CLUSTER_PATH/vault_unseal_key.json"
 if [[ "$INITIALIZED" != "true" ]]; then
   echo "👉 [bootstrap-vault] Vault is NOT initialised. Initialising with Shamir config"
   INIT_JSON="$(vault_exec operator init -key-shares=1 -key-threshold=1 -format=json)"

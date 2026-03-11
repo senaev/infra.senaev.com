@@ -1,23 +1,25 @@
-{{- if .Values.ingress.hosts }}
+{{- if .Values.ingress.entries }}
+{{- range .Values.ingress.entries }}
+---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ .Release.Name }}
-  namespace: {{ .Release.Namespace }}
+  name: {{ $.Release.Name }}-{{ .name }}
+  namespace: {{ $.Release.Namespace }}
   # TODO: Remove duplications using helmfile
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
     traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
 spec:
-  ingressClassName: {{ .Values.ingress.className }}
+  ingressClassName: {{ .className }}
   tls:
     - hosts:
-        {{- range .Values.ingress.tls.hosts }}
-        - {{ . }}
+        {{- range .hosts }}
+        - {{ .host }}
         {{- end }}
   rules:
-    {{- range .Values.ingress.hosts }}
+    {{- range .hosts }}
     - host: {{ .host }}
       http:
         paths:
@@ -29,4 +31,5 @@ spec:
                 port:
                   number: {{ .port }}
     {{- end }}
+{{- end }}
 {{- end }}

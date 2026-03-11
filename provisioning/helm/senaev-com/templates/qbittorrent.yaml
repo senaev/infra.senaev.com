@@ -16,8 +16,26 @@ spec:
       labels:
         app: qbittorrent
     spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       nodeSelector:
         vps: {{ .Values.qbittorrent.vps }}
+      initContainers:
+        - name: fix-permissions
+          image: busybox:latest
+          securityContext:
+            runAsUser: 0
+          command:
+            - sh
+            - -c
+            - chown -R 1000:1000 /config /downloads
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: downloads
+              mountPath: /downloads
       containers:
         - name: qbittorrent
           image: lscr.io/linuxserver/qbittorrent:latest
@@ -50,11 +68,11 @@ spec:
       volumes:
         - name: config
           hostPath:
-            path: {{ .Values.mediaServerUserRootPath }}/{{ .Values.qbittorrent.volumePath }}/config
+            path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}/config
             type: DirectoryOrCreate
         - name: downloads
           hostPath:
-            path: {{ .Values.mediaServerUserRootPath }}/{{ .Values.qbittorrent.volumePath }}/downloads
+            path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}/downloads
             type: DirectoryOrCreate
 ---
 apiVersion: v1

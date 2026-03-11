@@ -1,6 +1,5 @@
 # TODO: Remove duplications using helmfile
-controlPlaneUserRootPath: /root
-mediaServerUserRootPath: /home/ubuntu
+clusterRootPath: /k3s-cluster
 
 nextjs:
   enabled: true
@@ -8,7 +7,7 @@ nextjs:
 
 webdavSenaevCom:
   enabled: true
-  volumePath: k3s-cluster/volumes/webdav
+  volumePath: volumes/webdav
   vps: hetzner
 
 webdavSenaevRu:
@@ -22,7 +21,7 @@ xray:
 
 qbittorrent:
   enabled: true
-  volumePath: k3s-cluster/volumes/qbittorrent
+  volumePath: volumes/qbittorrent
   vps: yandex-cloud
   webuiPort: 9001
   torrentPort: 6881
@@ -30,11 +29,11 @@ qbittorrent:
 filebrowser:
   enabled: true
   vps: yandex-cloud
-  volumePath: k3s-cluster/volumes/filebrowser/config
+  volumePath: volumes/filebrowser/config
 
 jellyfin:
   enabled: true
-  volumePath: k3s-cluster/volumes/jellyfin
+  volumePath: volumes/jellyfin
   vps: yandex-cloud
   webuiPort: 8096
 
@@ -47,41 +46,35 @@ helper:
   vps: hetzner
 
 ingress:
-  className: traefik
-  tls:
-    hosts:
-      - senaev.com
-      - senaev.ru
-      - webdav.senaev.com
-      - test.senaev.com
-      - qbittorrent.senaev.com
-      - filebrowser.senaev.com
-      - jellyfin.senaev.com
-      - webdav.senaev.ru
-  hosts:
-    - host: senaev.com
-      service: nextjs-app
-      port: 3000
-    - host: senaev.ru
-      service: nextjs-app
-      port: 3000
-    - host: webdav.senaev.com
-      service: webdav-senaev-com
-      port: 80
-    - host: test.senaev.com
-      service: test-echo
-      port: 80
-    - host: qbittorrent.senaev.com
-      service: qbittorrent
-      # TODO: Remove this once qbittorrent.webuiPort is used in template
-      port: 9001
-    - host: filebrowser.senaev.com
-      service: filebrowser
-      port: 8080
-    - host: jellyfin.senaev.com
-      service: jellyfin
-      port: 8096
-    - host: webdav.senaev.ru
-      service: webdav-senaev-ru
-      port: 80
+  entries:
+    - name: senaev-com
+      className: traefik-hetzner
+      hosts:
+        - host: senaev.com
+          service: nextjs-app
+          port: 3000
+        - host: webdav.senaev.com
+          service: webdav-senaev-com
+          port: 80
+        - host: test.senaev.com
+          service: test-echo
+          port: 80
+        - host: qbittorrent.senaev.com
+          service: qbittorrent
+          port: 9001
+        - host: filebrowser.senaev.com
+          service: filebrowser
+          port: 8080
+        - host: jellyfin.senaev.com
+          service: jellyfin
+          port: 8096
+    - name: senaev-ru
+      className: traefik-yandex-cloud
+      hosts:
+        - host: senaev.ru
+          service: nextjs-app
+          port: 3000
+        - host: webdav.senaev.ru
+          service: webdav-senaev-ru
+          port: 80
 
