@@ -4,7 +4,7 @@ set -euo pipefail
 # TODO: Use something like terraform to deploy vault configuration
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-set -a; source "$SCRIPT_DIR/../../.env"; set +a
+set -a; source "$SCRIPT_DIR/../.env"; set +a
 
 cd $K3S_CLUSTER_PATH
 
