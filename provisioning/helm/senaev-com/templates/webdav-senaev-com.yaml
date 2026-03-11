@@ -37,7 +37,7 @@ spec:
             - containerPort: 80
           volumeMounts:
             - name: data
-              mountPath: /var/lib/dav
+              mountPath: /var/lib/dav/data
       volumes:
         - name: data
           hostPath:
