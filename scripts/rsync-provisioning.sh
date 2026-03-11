@@ -3,8 +3,8 @@ set -euo pipefail
 
 # Syncs provisioning files to server.
 if [[ $# -lt 1 ]]; then
-  echo "Usage: $0 <address>" >&2
-  echo "Example: $0 root@11.111.111.111" >&2
+  echo "Usage: $0 <address> <provisioning_folder>" >&2
+  echo "Example: $0 root@11.111.111.111 control-plane" >&2
   exit 1
 fi
 
