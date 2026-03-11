@@ -32,7 +32,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: WEBDAV_PASSWORD
+                  key: WEBDAV_COM_PASSWORD
           ports:
             - containerPort: 80
           volumeMounts:
