@@ -39,11 +39,11 @@ spec:
       volumes:
         - name: config
           hostPath:
-            path: {{ .Values.mediaServerUserRootPath }}/{{ .Values.jellyfin.volumePath }}/config
+            path: {{ .Values.clusterRootPath }}/{{ .Values.jellyfin.volumePath }}/config
             type: DirectoryOrCreate
         - name: media
           hostPath:
-            path: {{ .Values.mediaServerUserRootPath }}/{{ .Values.qbittorrent.volumePath }}/downloads
+            path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}/downloads
             type: DirectoryOrCreate
 ---
 apiVersion: v1

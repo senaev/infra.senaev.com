@@ -1,6 +1,5 @@
 # TODO: Remove duplications using helmfile
-controlPlaneUserRootPath: /root
-mediaServerUserRootPath: /home/ubuntu
+clusterRootPath: /k3s-cluster
 
 nextjs:
   enabled: true
@@ -8,7 +7,7 @@ nextjs:
 
 webdavSenaevCom:
   enabled: true
-  volumePath: k3s-cluster/volumes/webdav
+  volumePath: volumes/webdav
   vps: hetzner
 
 webdavSenaevRu:
@@ -22,7 +21,7 @@ xray:
 
 qbittorrent:
   enabled: true
-  volumePath: k3s-cluster/volumes/qbittorrent
+  volumePath: volumes/qbittorrent
   vps: yandex-cloud
   webuiPort: 9001
   torrentPort: 6881
@@ -30,11 +29,11 @@ qbittorrent:
 filebrowser:
   enabled: true
   vps: yandex-cloud
-  volumePath: k3s-cluster/volumes/filebrowser/config
+  volumePath: volumes/filebrowser/config
 
 jellyfin:
   enabled: true
-  volumePath: k3s-cluster/volumes/jellyfin
+  volumePath: volumes/jellyfin
   vps: yandex-cloud
   webuiPort: 8096
 

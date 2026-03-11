@@ -41,7 +41,7 @@ spec:
       volumes:
         - name: data
           hostPath:
-            path: {{ .Values.controlPlaneUserRootPath }}/{{ .Values.webdavSenaevCom.volumePath }}
+            path: {{ .Values.clusterRootPath }}/{{ .Values.webdavSenaevCom.volumePath }}
             type: DirectoryOrCreate
 ---
 apiVersion: v1

@@ -1,7 +1,7 @@
 
 enabled: true
 
-acmeStoragePath: /var/lib/k3s-cluster/volumes/traefik-acme
+acmeStoragePath: /k3s-cluster/volumes/traefik-acme
 
 image: traefik:v3.2
 
