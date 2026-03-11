@@ -46,7 +46,7 @@ spec:
       volumes:
         - name: notes
           hostPath:
-            path: {{ .Values.clusterRootPath }}/{{ .Values.webdavSenaevCom.volumePath }}/data/notes-folder
+            path: {{ .Values.clusterRootPath }}/{{ .Values.webdavSenaevCom.volumePath }}/notes-folder
             type: DirectoryOrCreate
 ---
 apiVersion: v1
