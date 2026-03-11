@@ -1,46 +1,43 @@
 {{- if .Values.enabled }}
+{{- range .Values.deployments }}
+---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: traefik
-  namespace: {{ .Release.Namespace }}
+  name: traefik-{{ .vps }}
+  namespace: {{ $.Release.Namespace }}
   labels:
     app: traefik
+    traefik-deployment: {{ .vps }}
 spec:
   selector:
     matchLabels:
       app: traefik
+      traefik-deployment: {{ .vps }}
   template:
     metadata:
       labels:
         app: traefik
+        traefik-deployment: {{ .vps }}
     spec:
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-              - matchExpressions:
-                  - key: vps
-                    operator: In
-                    values:
-                      {{- range .Values.nodeSelector.vps }}
-                      - {{ . }}
-                      {{- end }}
+      nodeSelector:
+        vps: {{ .vps }}
       serviceAccountName: traefik-ingress-controller
       containers:
         - name: traefik
-          image: "{{ .Values.image }}"
+          image: "{{ $.Values.image }}"
           args:
             - "--log.level=INFO"
             - "--accesslog=true"
             - "--accesslog.filepath=/dev/stdout"
             - "--providers.kubernetesingress=true"
+            - "--providers.kubernetesingress.ingressclass=traefik-{{ .vps }}"
             - "--entrypoints.web.address=:80"
             - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
             - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
             - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
             - "--entrypoints.websecure.address=:443"
-            - "--certificatesresolvers.letsencrypt.acme.email={{ .Values.acme.email }}"
+            - "--certificatesresolvers.letsencrypt.acme.email={{ $.Values.acme.email }}"
             - "--certificatesresolvers.letsencrypt.acme.storage=/acme-data/acme.json"
             - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
           ports:
@@ -57,20 +54,22 @@ spec:
       volumes:
         - name: acme-data
           hostPath:
-            path: {{ .Values.acmeStoragePath }}
+            path: {{ $.Values.acmeStoragePath }}
             type: DirectoryOrCreate
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: traefik
-  namespace: {{ .Release.Namespace }}
+  name: traefik-{{ .vps }}
+  namespace: {{ $.Release.Namespace }}
   labels:
     app: traefik
+    traefik-deployment: {{ .vps }}
 spec:
   type: ClusterIP
   selector:
     app: traefik
+    traefik-deployment: {{ .vps }}
   ports:
     - name: web
       port: 80
@@ -82,11 +81,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: IngressClass
 metadata:
-  name: traefik
+  name: traefik-{{ .vps }}
   labels:
     app: traefik
+    traefik-deployment: {{ .vps }}
 spec:
   controller: traefik.io/ingress-controller
+{{- end }}
 ---
 apiVersion: v1
 kind: ServiceAccount

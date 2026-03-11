@@ -1,14 +1,13 @@
 
 enabled: true
 
-acmeStoragePath: /k3s-cluster/volumes/traefik-acme
+deployments:
+  - vps: yandex-cloud
+  - vps: hetzner
+
+acmeStoragePath: /k3s-cluster/volumes/traefik/acme
 
 image: traefik:v3.2
 
 acme:
   email: andrei.senaev@gmail.com
-
-nodeSelector:
-  vps:
-    - hetzner
-    - yandex-cloud

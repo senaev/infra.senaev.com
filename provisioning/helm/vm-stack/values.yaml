@@ -20,7 +20,7 @@ victoria-metrics-k8s-stack:
       passwordKey: GRAFANA_ADMIN_PASSWORD
     ingress:
       enabled: true
-      ingressClassName: traefik
+      ingressClassName: traefik-hetzner
       path: /
       pathType: Prefix
       hosts:
