@@ -1,0 +1,62 @@
+{{- if .Values.jellyfin.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jellyfin
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: jellyfin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jellyfin
+  template:
+    metadata:
+      labels:
+        app: jellyfin
+    spec:
+      nodeSelector:
+        vps: {{ .Values.jellyfin.vps }}
+      containers:
+        - name: jellyfin
+          image: lscr.io/linuxserver/jellyfin:latest
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: Etc/UTC
+          ports:
+            - name: webui
+              containerPort: {{ .Values.jellyfin.webuiPort }}
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: media
+              mountPath: /media/downloads
+      volumes:
+        - name: config
+          hostPath:
+            path: {{ .Values.mediaServerUserRootPath }}/{{ .Values.jellyfin.volumePath }}/config
+            type: DirectoryOrCreate
+        - name: media
+          hostPath:
+            path: {{ .Values.mediaServerUserRootPath }}/{{ .Values.qbittorrent.volumePath }}/downloads
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jellyfin
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: jellyfin
+  ports:
+    - name: webui
+      port: {{ .Values.jellyfin.webuiPort }}
+      targetPort: {{ .Values.jellyfin.webuiPort }}
+{{- end }}

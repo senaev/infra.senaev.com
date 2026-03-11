@@ -27,6 +27,12 @@ filebrowser:
   vps: yandex-cloud
   volumePath: k3s-cluster/volumes/filebrowser/config
 
+jellyfin:
+  enabled: true
+  volumePath: k3s-cluster/volumes/jellyfin
+  vps: yandex-cloud
+  webuiPort: 8096
+
 testEcho:
   enabled: true
   vps: hetzner
@@ -45,6 +51,7 @@ ingress:
       - test.senaev.com
       - qbittorrent.senaev.com
       - filebrowser.senaev.com
+      - jellyfin.senaev.com
   hosts:
     - host: senaev.com
       service: nextjs-app
@@ -65,4 +72,7 @@ ingress:
     - host: filebrowser.senaev.com
       service: filebrowser
       port: 8080
+    - host: jellyfin.senaev.com
+      service: jellyfin
+      port: 8096
 
