@@ -10,13 +10,14 @@ data:
   config.yml: |
     address: 0.0.0.0
     port: 80
-    auth: true
-    scope: .
-    modify: true
+    prefix: /
     directory: /data
+    permissions: CRUD
+
     users:
       - username: webdav_admin
         password: "{env}WEBDAV_RU_PASSWORD"
+        permissions: CRUD
 ---
 apiVersion: apps/v1
 kind: Deployment
