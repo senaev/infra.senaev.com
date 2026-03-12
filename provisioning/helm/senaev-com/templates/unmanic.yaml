@@ -1,0 +1,90 @@
+{{- if .Values.unmanic.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unmanic
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: unmanic
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: unmanic
+  template:
+    metadata:
+      labels:
+        app: unmanic
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      nodeSelector:
+        vps: {{ .Values.unmanic.vps }}
+      initContainers:
+        - name: fix-permissions
+          image: busybox:latest
+          securityContext:
+            runAsUser: 0
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p /config /downloads /converted-for-mobile
+              chown -R 1000:1000 /config /downloads /converted-for-mobile
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: downloads
+              mountPath: /downloads
+            - name: converted-for-mobile
+              mountPath: /converted-for-mobile
+      containers:
+        - name: unmanic
+          image: josh5/unmanic:latest
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: Etc/UTC
+          ports:
+            - name: webui
+              containerPort: 8888
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: downloads
+              mountPath: /downloads
+            - name: converted-for-mobile
+              mountPath: /converted-for-mobile
+      volumes:
+        - name: config
+          hostPath:
+            path: {{ .Values.clusterRootPath }}/{{ .Values.unmanic.volumePath }}/config
+            type: DirectoryOrCreate
+        - name: downloads
+          hostPath:
+            path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}/downloads
+            type: DirectoryOrCreate
+        - name: converted-for-mobile
+          hostPath:
+            path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}/converted-for-mobile
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: unmanic
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: unmanic
+  ports:
+    - name: webui
+      port: 8888
+      targetPort: 8888
+{{- end }}
