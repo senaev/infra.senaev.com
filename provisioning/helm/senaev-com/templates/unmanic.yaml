@@ -1,4 +1,35 @@
 {{- if .Values.unmanic.enabled }}
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: unmanic-basicauth
+  namespace: {{ .Release.Namespace }}
+spec:
+  refreshInterval: 5s
+  secretStoreRef:
+    name: vault-cluster-secret-store
+    kind: ClusterSecretStore
+  target:
+    name: unmanic-basicauth
+    creationPolicy: Owner
+    deletionPolicy: Delete
+  data:
+    - secretKey: users
+      remoteRef:
+        key: senaev-com-kv
+        property: UNMANIC_HTPASSWD_HASH_WITH_USERNAME
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: unmanic-basicauth
+  namespace: {{ .Release.Namespace }}
+spec:
+  basicAuth:
+    secret: unmanic-basicauth
+    removeHeader: true
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:

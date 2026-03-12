@@ -73,6 +73,10 @@ ingress:
         - host: jellyfin.senaev.com
           service: jellyfin
           port: 8096
+    - name: senaev-com-unmanic
+      className: traefik-hetzner
+      middleware: unmanic-basicauth
+      hosts:
         - host: unmanic.senaev.com
           service: unmanic
           port: 8888

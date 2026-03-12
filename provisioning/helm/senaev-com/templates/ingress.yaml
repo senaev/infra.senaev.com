@@ -11,6 +11,9 @@ metadata:
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
     traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+    {{- if .middleware }}
+    traefik.ingress.kubernetes.io/router.middlewares: {{ $.Release.Namespace }}-{{ .middleware }}@kubernetescrd
+    {{- end }}
 spec:
   ingressClassName: {{ .className }}
   tls:
