@@ -18,6 +18,10 @@ spec:
       annotations:
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
     spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       nodeSelector:
         vps: {{ .Values.filebrowser.vps }}
       containers:
@@ -52,7 +56,7 @@ spec:
             type: DirectoryOrCreate
         - name: data
           hostPath:
-            path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}/downloads
+            path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}
             type: DirectoryOrCreate
 ---
 apiVersion: v1

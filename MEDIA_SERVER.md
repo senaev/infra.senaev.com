@@ -12,9 +12,19 @@ Login on the page https://qbittorrent.senaev.com/ with password from Qbittorrent
 ssh $control_plane_user@$control_plane_ip "kubectl -n senaev-com logs deploy/qbittorrent | grep password"
 ```
 
+### Setup folders
+
+Tools → Options → Downloads
+- Default Save Path: `/downloads/complete`
+- ✅ Keep incomplete torrents in: `/downloads/incomplete`
+- ✅ Copy .torrent files for finished downloads to: `/downloads/archive-torrent-files`
+- Automatically add torrents from:
+    - Monitored Folder: `/watch-torrent-files`
+    - Override Save Location: `Default save location`
+
 ### Add notifications
 
-Go to Tools → Options → Downloads
+Tools → Options → Downloads
 
 ✅ Run on torrent added:
 ```shell

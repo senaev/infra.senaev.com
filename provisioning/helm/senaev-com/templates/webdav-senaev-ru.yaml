@@ -18,6 +18,8 @@ spec:
       annotations:
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
     spec:
+      securityContext:
+        fsGroup: 1000
       nodeSelector:
         vps: {{ .Values.webdavSenaevRu.vps }}
       containers:

@@ -43,7 +43,7 @@ spec:
             type: DirectoryOrCreate
         - name: media
           hostPath:
-            path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}/downloads
+            path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}/downloads/complete
             type: DirectoryOrCreate
 ---
 apiVersion: v1
