@@ -1,5 +1,7 @@
 # Send telegram messages to channel:
-# # curl -X POST http://helper.senaev-com.svc.cluster.local/tg -H "Content-Type: text/plain" -d "Hello, world!"
+# curl -X POST http://helper.senaev-com.svc.cluster.local/tg -H "Content-Type: text/plain" -d "Hello, world!"
+# inside of namespace
+# curl -X POST helper/tg -H "Content-Type: text/plain" -d "Hello, world!"
 {{- if .Values.helper.enabled }}
 apiVersion: apps/v1
 kind: Deployment

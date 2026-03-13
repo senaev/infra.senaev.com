@@ -37,8 +37,11 @@ data:
       ],
       "outbounds": [
         {
-          "protocol": "freedom",
-          "tag": "direct"
+          "protocol": "socks",
+          "settings": {
+            "address": "xray-socks",
+            "port": 1080
+          }
         }
       ]
     }
