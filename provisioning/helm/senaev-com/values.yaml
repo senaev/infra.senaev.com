@@ -28,6 +28,12 @@ qbittorrent:
   vps: yandex-cloud
   webuiPort: 9001
   torrentPort: 6881
+  paths:
+    complete: /downloads/complete
+    incomplete: /downloads/incomplete
+    watch: /downloads/watch-torrent-files
+    archiveTorrents: /downloads/archive-torrent-files
+    convertedForMobile: /downloads/converted-for-mobile
 
 filebrowser:
   enabled: true
