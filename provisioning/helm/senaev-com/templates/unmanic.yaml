@@ -62,15 +62,13 @@ spec:
             - sh
             - -c
             - |
-              mkdir -p /config /downloads /converted-for-mobile
-              chown -R 1000:1000 /config /downloads /converted-for-mobile
+              mkdir -p /config /downloads
+              chown -R 1000:1000 /config /downloads
           volumeMounts:
             - name: config
               mountPath: /config
             - name: downloads
               mountPath: /downloads
-            - name: converted-for-mobile
-              mountPath: /converted-for-mobile
       containers:
         - name: unmanic
           image: josh5/unmanic:latest
@@ -89,8 +87,6 @@ spec:
               mountPath: /config
             - name: downloads
               mountPath: /downloads
-            - name: converted-for-mobile
-              mountPath: /converted-for-mobile
       volumes:
         - name: config
           hostPath:
@@ -99,10 +95,6 @@ spec:
         - name: downloads
           hostPath:
             path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}/downloads
-            type: DirectoryOrCreate
-        - name: converted-for-mobile
-          hostPath:
-            path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}/converted-for-mobile
             type: DirectoryOrCreate
 ---
 apiVersion: v1

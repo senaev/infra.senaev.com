@@ -37,7 +37,7 @@ spec:
             - sh
             - -c
             - |
-              mkdir -p /downloads/complete /downloads/incomplete /downloads/watch-torrent-files /downloads/archive-torrent-files
+              mkdir -p /downloads/complete /downloads/incomplete /downloads/watch-torrent-files /downloads/archive-torrent-files /downloads/converted-for-mobile
               chown -R 1000:1000 /config /downloads
           volumeMounts:
             - name: config
