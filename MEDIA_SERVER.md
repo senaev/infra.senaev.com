@@ -12,19 +12,17 @@ Login on the page https://qbittorrent.senaev.com/ with password from Qbittorrent
 ssh $control_plane_user@$control_plane_ip "kubectl -n senaev-com logs deploy/qbittorrent | grep password"
 ```
 
-### Setup folders
+### Setup Downloads (Tools → Options → Downloads)
 
-Tools → Options → Downloads
+Setup folders:
 - Default Save Path: `/downloads/complete`
 - ✅ Keep incomplete torrents in: `/downloads/incomplete`
 - ✅ Copy .torrent files for finished downloads to: `/downloads/archive-torrent-files`
 - Automatically add torrents from:
-    - Monitored Folder: `/watch-torrent-files`
+    - Monitored Folder: `/downloads/watch-torrent-files`
     - Override Save Location: `Default save location`
 
-### Add notifications
-
-Tools → Options → Downloads
+### Add Notifications (Tools → Options → Downloads)
 
 ✅ Run on torrent added:
 ```shell
@@ -36,9 +34,9 @@ curl -X POST http://helper.senaev-com.svc.cluster.local/tg -H "Content-Type: tex
 curl -X POST http://helper.senaev-com.svc.cluster.local/tg -H "Content-Type: text/plain" -d "🏁 Download finished: name=[%N] rootPath=[%R] savePath=[%D] size(bytes)=[%Z]"
 ```
 
-### For removing torrents after downloading
+### Removing Torrents After Downloading (Tools → Options → BitTorrent)
 
-Tools → Options → BitTorrent → Seeding Limits → ✅ When total seeding time reaches `1` minutes
+Seeding Limits → ✅ When total seeding time reaches `1` minutes
 
 ## Filebrowser
 
