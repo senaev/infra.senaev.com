@@ -46,7 +46,7 @@ spec:
         vps: {{ .Values.webdavSenaevRu.vps }}
       containers:
         - name: webdav
-          image: docker.io/hacdias/webdav@sha256:158ed1aa0acc4be807d2a8c1a80feaf500a1f06e38e1796ff99cd990ada9a20d
+          image: hacdias/webdav:v5.11
           args:
             - -c
             - /config/config.yml
