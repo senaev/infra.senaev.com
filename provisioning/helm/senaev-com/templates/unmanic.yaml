@@ -71,7 +71,7 @@ spec:
               mountPath: /downloads
       containers:
         - name: unmanic
-          image: jdocker.io/josh5/unmanic@sha256:c339725246b69425c663c7182e6703e3ba07cbd8340ea23f4c38946802c8c4de
+          image: josh5/unmanic:latest
           env:
             - name: PUID
               value: "1000"
