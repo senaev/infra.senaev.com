@@ -8,7 +8,7 @@ data:
   config.json: |
     {
       "log": {
-        "loglevel": "debug"
+        "loglevel": "warning"
       },
       "inbounds": [
         {
