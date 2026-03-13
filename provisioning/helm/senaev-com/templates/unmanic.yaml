@@ -6,7 +6,7 @@ metadata:
   name: unmanic-basicauth
   namespace: {{ .Release.Namespace }}
 spec:
-  refreshInterval: 5s
+  refreshInterval: 30s
   secretStoreRef:
     name: vault-cluster-secret-store
     kind: ClusterSecretStore
