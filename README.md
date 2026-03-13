@@ -42,3 +42,7 @@ Some services will not start, it's needed to provide Vault secrets:
 ## Setup media server
 
 Read MEDIA_SERVER.md
+
+## Setup VPN
+
+Read XRAY_VPN.md

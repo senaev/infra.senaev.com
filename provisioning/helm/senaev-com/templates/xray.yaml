@@ -1,4 +1,53 @@
 {{- if .Values.xray.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: xray-config-template
+  namespace: {{ .Release.Namespace }}
+data:
+  config.json: |
+    {
+      "log": {
+        "loglevel": "debug"
+      },
+      "inbounds": [
+        {
+          "port": 443,
+          "protocol": "vless",
+          "settings": {
+            "clients": [
+              {
+                "id": "{XRAY_USER_UUID}",
+                "flow": "xtls-rprx-vision"
+              }
+            ],
+            "decryption": "none"
+          },
+          "streamSettings": {
+            "network": "tcp",
+            "security": "reality",
+            "realitySettings": {
+              "dest": "www.google.com:443",
+              "serverNames": ["www.google.com"],
+              "privateKey": "{XRAY_REALITY_PRIVATE_KEY}",
+              "shortIds": ["", "0123456789abcdef"]
+            }
+          },
+          "sniffing": {
+            "enabled": true,
+            "destOverride": ["http", "tls", "quic"],
+            "routeOnly": true
+          }
+        }
+      ],
+      "outbounds": [
+        {
+          "protocol": "freedom",
+          "tag": "direct"
+        }
+      ]
+    }
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -14,7 +63,6 @@ spec:
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      # hostPort might interrupt pod redeployment, so scale down old pod before creating new one
       maxSurge: 0
       maxUnavailable: 1
   template:
@@ -26,32 +74,49 @@ spec:
     spec:
       nodeSelector:
         vps: {{ .Values.xray.vps }}
-      containers:
-        - name: xray
-          image: teddysun/xray:26.2.6
-          # Dummy env var to force CreateContainerConfigError if secret is missing
-          # (to avoid initialization without secret and run when secret is in Vault)
+      initContainers:
+        - name: xray-config-subst
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              sed "s/{XRAY_USER_UUID}/$XRAY_USER_UUID/g" /template/config.json | sed "s|{XRAY_REALITY_PRIVATE_KEY}|$XRAY_REALITY_PRIVATE_KEY|g" > /out/config.json
           env:
-            - name: _REQUIRED_SECRET
+            - name: XRAY_USER_UUID
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: XRAY_CONFIG
+                  key: XRAY_USER_UUID
                   optional: false
+            - name: XRAY_REALITY_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: XRAY_REALITY_PRIVATE_KEY
+                  optional: false
+          volumeMounts:
+            - name: config-template
+              mountPath: /template
+              readOnly: true
+            - name: xray-config
+              mountPath: /out
+      containers:
+        - name: xray
+          image: teddysun/xray:26.2.6
           ports:
             - containerPort: 443
               hostPort: 443
           volumeMounts:
-            - name: config-volume
+            - name: xray-config
               mountPath: /etc/xray
               readOnly: true
       volumes:
-        - name: config-volume
-          secret:
-            secretName: senaev-com-kv-secrets
-            items:
-              - key: XRAY_CONFIG
-                path: config.json
+        - name: config-template
+          configMap:
+            name: xray-config-template
+        - name: xray-config
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
