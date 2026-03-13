@@ -15,8 +15,7 @@ webdavSenaevRu:
   vps: yandex-cloud
 
 xray:
-  # TODO: Enable and setup VPN
-  enabled: false
+  enabled: true
   vps: yandex-cloud
 
 qbittorrent:
@@ -73,6 +72,12 @@ ingress:
         - host: jellyfin.senaev.com
           service: jellyfin
           port: 8096
+        - host: senaev.ru
+          service: nextjs-app
+          port: 3000
+        - host: webdav.senaev.ru
+          service: webdav-senaev-ru
+          port: 80
     - name: senaev-com-unmanic
       className: traefik-hetzner
       middleware: unmanic-basicauth
@@ -80,13 +85,4 @@ ingress:
         - host: unmanic.senaev.com
           service: unmanic
           port: 8888
-    - name: senaev-ru
-      className: traefik-yandex-cloud
-      hosts:
-        - host: senaev.ru
-          service: nextjs-app
-          port: 3000
-        - host: webdav.senaev.ru
-          service: webdav-senaev-ru
-          port: 80
 
