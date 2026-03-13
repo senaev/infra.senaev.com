@@ -19,12 +19,13 @@ kubectl create namespace "$NS" --dry-run=client -o yaml | kubectl apply -f -
 echo "✅ [upgrade-namespace] Namespace=[$NS] exists"
 
 if [[ -d "$CHART_PATH/crds" ]]; then
-  echo "👉 [upgrade-namespace] Installing CRDs from $CHART_PATH/crds"
   for f in "$CHART_PATH"/crds/*.yml "$CHART_PATH"/crds/*.yaml; do
     [[ -e "$f" ]] || continue
-    kubectl apply -f "$f" --server-side=true 2>/dev/null || kubectl apply -f "$f"
+
+    echo "👉 [upgrade-namespace] Applying CRD=[$f]"
+    kubectl apply -f "$f" --server-side=true
+    echo "✅ [upgrade-namespace] CRD=[$f] applied"
   done
-  echo "✅ [upgrade-namespace] CRDs applied"
 fi
 
 echo "👉 [upgrade-namespace] Helm upgrade namespace=[$NS]"
