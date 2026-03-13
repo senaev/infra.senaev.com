@@ -1,7 +1,0 @@
-{
-  "force_processing_all_files": false,
-  "destination_directory": "/library",
-  "recreate_directory_structure": true,
-  "include_library_structure": true,
-  "remove_source_file": false
-}
