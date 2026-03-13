@@ -1,0 +1,131 @@
+{{- if .Values.xrayVpn.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: xray-vpn-config-template
+  namespace: {{ .Release.Namespace }}
+data:
+  config.json: |
+    {
+      "log": {
+        "loglevel": "warning"
+      },
+      "inbounds": [
+        {
+          "port": 443,
+          "protocol": "vless",
+          "settings": {
+            "clients": [
+              {
+                "id": "{XRAY_USER_UUID}",
+                "flow": "xtls-rprx-vision"
+              }
+            ],
+            "decryption": "none"
+          },
+          "streamSettings": {
+            "network": "tcp",
+            "security": "reality",
+            "realitySettings": {
+              "dest": "ya.ru:443",
+              "serverNames": ["ya.ru"],
+              "privateKey": "{XRAY_REALITY_PRIVATE_KEY}",
+              "shortIds": ["", "0123456789abcdef"]
+            }
+          }
+        }
+      ],
+      "outbounds": [
+        {
+          "protocol": "socks",
+          "settings": {
+            "address": "xray-socks",
+            "port": 1080
+          }
+        }
+      ]
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: xray-vpn
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: xray-vpn
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: xray-vpn
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: xray-vpn
+      annotations:
+        secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
+    spec:
+      nodeSelector:
+        vps: {{ .Values.xrayVpn.vps }}
+      initContainers:
+        - name: xray-vpn-config-subst
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              sed "s/{XRAY_USER_UUID}/$XRAY_USER_UUID/g" /template/config.json | sed "s|{XRAY_REALITY_PRIVATE_KEY}|$XRAY_REALITY_PRIVATE_KEY|g" > /out/config.json
+          env:
+            - name: XRAY_USER_UUID
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: XRAY_USER_UUID
+                  optional: false
+            - name: XRAY_REALITY_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: XRAY_REALITY_PRIVATE_KEY
+                  optional: false
+          volumeMounts:
+            - name: xray-vpn-config-template
+              mountPath: /template
+              readOnly: true
+            - name: xray-vpn-config
+              mountPath: /out
+      containers:
+        - name: xray-vpn
+          image: teddysun/xray:26.2.6
+          ports:
+            - containerPort: 443
+              hostPort: 443
+          volumeMounts:
+            - name: xray-vpn-config
+              mountPath: /etc/xray
+              readOnly: true
+      volumes:
+        - name: xray-vpn-config-template
+          configMap:
+            name: xray-vpn-config-template
+        - name: xray-vpn-config
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: xray-vpn
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: xray-vpn
+  ports:
+    - port: 443
+      targetPort: 443
+{{- end }}

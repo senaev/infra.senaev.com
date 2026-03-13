@@ -14,7 +14,6 @@ spec:
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      # hostPort 6881 is used; avoid two pods on same node — scale down old pod before creating new one
       maxSurge: 0
       maxUnavailable: 1
   template:
