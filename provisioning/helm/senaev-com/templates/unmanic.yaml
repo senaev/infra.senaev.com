@@ -1,5 +1,42 @@
 {{- if .Values.unmanic.enabled }}
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: unmanic-default-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: unmanic
+data:
+  settings.json: |
+{{ tpl (.Files.Get "config/unmanic/settings.json") . | nindent 4 }}
+  ignore_video_file_under_size_settings.json: |
+{{ tpl (.Files.Get "config/unmanic/userdata/ignore_video_file_under_size/settings.json") . | nindent 4 }}
+  ignore_video_file_under_size_settings.1.json: |
+{{ tpl (.Files.Get "config/unmanic/userdata/ignore_video_file_under_size/settings.1.json") . | nindent 4 }}
+  mover2_settings.json: |
+{{ tpl (.Files.Get "config/unmanic/userdata/mover2/settings.json") . | nindent 4 }}
+  mover2_settings.1.json: |
+{{ tpl (.Files.Get "config/unmanic/userdata/mover2/settings.1.json") . | nindent 4 }}
+  video_transcoder_settings.json: |
+{{ tpl (.Files.Get "config/unmanic/userdata/video_transcoder/settings.json") . | nindent 4 }}
+  video_transcoder_settings.1.json: |
+{{ tpl (.Files.Get "config/unmanic/userdata/video_transcoder/settings.1.json") . | nindent 4 }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: unmanic-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: unmanic
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
@@ -54,6 +91,28 @@ spec:
       nodeSelector:
         vps: {{ .Values.unmanic.vps }}
       initContainers:
+        - name: init-config
+          image: busybox:1.37.0-uclibc
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p /config/.unmanic/config /config/.unmanic/userdata/ignore_video_file_under_size /config/.unmanic/userdata/mover2 /config/.unmanic/userdata/video_transcoder
+              if [ ! -f /config/.unmanic/config/settings.json ]; then
+                cp /default-config/settings.json /config/.unmanic/config/
+                cp /default-config/ignore_video_file_under_size_settings.json /config/.unmanic/userdata/ignore_video_file_under_size/settings.json
+                cp /default-config/ignore_video_file_under_size_settings.1.json /config/.unmanic/userdata/ignore_video_file_under_size/settings.1.json
+                cp /default-config/mover2_settings.json /config/.unmanic/userdata/mover2/settings.json
+                cp /default-config/mover2_settings.1.json /config/.unmanic/userdata/mover2/settings.1.json
+                cp /default-config/video_transcoder_settings.json /config/.unmanic/userdata/video_transcoder/settings.json
+                cp /default-config/video_transcoder_settings.1.json /config/.unmanic/userdata/video_transcoder/settings.1.json
+              fi
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: default-config
+              mountPath: /default-config
+              readOnly: true
         - name: fix-permissions
           image: busybox:1.37.0-uclibc
           securityContext:
@@ -89,9 +148,11 @@ spec:
               mountPath: /downloads
       volumes:
         - name: config
-          hostPath:
-            path: {{ .Values.clusterRootPath }}/{{ .Values.unmanic.volumePath }}/config
-            type: DirectoryOrCreate
+          persistentVolumeClaim:
+            claimName: unmanic-config
+        - name: default-config
+          configMap:
+            name: unmanic-default-config
         - name: downloads
           hostPath:
             path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}/downloads

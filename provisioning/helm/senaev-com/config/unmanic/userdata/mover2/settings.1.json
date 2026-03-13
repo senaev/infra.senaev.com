@@ -1,0 +1,7 @@
+{
+  "force_processing_all_files": false,
+  "destination_directory": "/downloads/converted-for-mobile",
+  "recreate_directory_structure": true,
+  "include_library_structure": false,
+  "remove_source_file": false
+}
