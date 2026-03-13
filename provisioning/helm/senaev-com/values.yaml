@@ -14,7 +14,7 @@ webdavSenaevRu:
   enabled: true
   vps: yandex-cloud
 
-xray:
+xrayVpn:
   enabled: true
   vps: yandex-cloud
 
