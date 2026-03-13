@@ -71,7 +71,7 @@ Settings → Library → Libraries → ➕:
 - Enable file monitor for this library ✅
 - Plugins:
     - Ignore video files under size
-        - `0.3GB/h`
+        - Minimal file size (assuming 1080p): `0.3GB/h`
     - Mover v2
         - ❌ Force processing of all files
         - Destination directory: `/downloads/converted-for-mobile`
