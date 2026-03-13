@@ -1,4 +1,31 @@
 {{- if .Values.qbittorrent.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: qbittorrent-default-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: qbittorrent
+data:
+  qBittorrent.conf: |
+{{ tpl (.Files.Get "config/qbittorrent/qBittorrent.conf") . | nindent 4 }}
+  watched_folders.json: |
+{{ tpl (.Files.Get "config/qbittorrent/watched_folders.json") . | nindent 4 }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: qbittorrent-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: qbittorrent
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -28,6 +55,23 @@ spec:
       nodeSelector:
         vps: {{ .Values.qbittorrent.vps }}
       initContainers:
+        - name: init-config
+          image: busybox:1.37.0-uclibc
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p /config/qBittorrent
+              if [ ! -f /config/qBittorrent/qBittorrent.conf ]; then
+                cp /default-config/qBittorrent.conf /config/qBittorrent/
+                cp /default-config/watched_folders.json /config/qBittorrent/
+              fi
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: default-config
+              mountPath: /default-config
+              readOnly: true
         - name: fix-permissions
           image: busybox:1.37.0-uclibc
           securityContext:
@@ -36,8 +80,8 @@ spec:
             - sh
             - -c
             - |
-              mkdir -p /downloads/complete /downloads/incomplete /downloads/watch-torrent-files /downloads/archive-torrent-files /downloads/converted-for-mobile
-              chown -R 1000:1000 /config /downloads
+              mkdir -p {{ .Values.qbittorrent.paths.complete }} {{ .Values.qbittorrent.paths.incomplete }} {{ .Values.qbittorrent.paths.watch }} {{ .Values.qbittorrent.paths.archiveTorrents }} {{ .Values.qbittorrent.paths.convertedForMobile }}
+              chown -R 1000:1000 /downloads
           volumeMounts:
             - name: config
               mountPath: /config
@@ -74,9 +118,11 @@ spec:
               mountPath: /downloads
       volumes:
         - name: config
-          hostPath:
-            path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}/config
-            type: DirectoryOrCreate
+          persistentVolumeClaim:
+            claimName: qbittorrent-config
+        - name: default-config
+          configMap:
+            name: qbittorrent-default-config
         - name: downloads
           hostPath:
             path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}/downloads
