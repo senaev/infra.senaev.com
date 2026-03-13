@@ -45,8 +45,10 @@ https://filebrowser.senaev.com/
 ## Jellyfin
 
 Right after the installation, go to the WEB UI https://jellyfin.senaev.com/ and setup:
-- Login/password
+- Login/password (From Vault)
 - Media library
+    - Content type: Home Videos And Photos (preserves folders structure)
+    - Folders → ➕ → `/media/downloads`
 
 ## WebDav
 
@@ -54,16 +56,16 @@ https://webdav.senaev.ru/
 
 ## Unmanic
 
-Settings → Library → Enable periodic library scans → ✅ `5` minutes
+Settings → Library → Enable periodic library scans → ✅ `5` minutes → SUBMIT
 
 Settings → Plugins → INSTALL PLUGIN FROM REPO ➕ → REFRESH REPOSITORIES
 
-Install plugins (some plugins might require external repo: ADD REPOSITORY → BROWSE COMMUNITY REPOS):
-- Ignore video files under size
-- Mover v2
-- Transcode Video Files
+Install plugins:
+- `Ignore video files under size`
+- `Mover v2`
+- `Transcode Video Files`
 
-Settings → Library → Libraries → ➕:
+Settings → Library → Libraries → and configure default library:
 - Name: `Convert files to mobile format`
 - Library path: `/downloads/complete`
 - Configure Library for receiving remote files only ❌
@@ -80,18 +82,20 @@ Settings → Library → Libraries → ➕:
         - ❌ Remove source files
     - Transcode Video Files
         - Config mode: `Standard`
-        - Max input stream packet buffer: `≈2000`
+        - Max input stream packet buffer: `≈2048`
         - Video Codec: `HEVC/H265`
             - ❌ Force transcoding even if the file is already using the desired video codec
-        - Video Encoder: `CPU`
+        - Video Encoder: `CPU - libx265`
             - Encoder quality preset: `Medium`
-            - CRF (Constant Rate Factor) - `28`
+            - CRF (Constant Rate Factor) - `23`
         - ❌ Keep the same container
-            - `mkv`
+            - `.mkv - Matroska`
         - ✅ Enable plugin's smart video filters
             - ❌ Autocrop black bars
             - `720p`
             - ✅ Strip data streams
             - ✅ Strip attachment streams
 
-Settings → Workers → Worker groups → ➕ → Worker count: `1`
+Settings → Workers → Worker groups → ➕
+- Name: `Worker`
+- Worker count: `1`
