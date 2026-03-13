@@ -18,6 +18,10 @@ xray:
   enabled: true
   vps: yandex-cloud
 
+xraySocks:
+  enabled: true
+  vps: hetzner
+
 qbittorrent:
   enabled: true
   volumePath: volumes/qbittorrent

@@ -1,0 +1,74 @@
+{{- if .Values.xraySocks.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: xray-socks-config
+  namespace: {{ .Release.Namespace }}
+data:
+  config.json: |
+    {
+      "log": { "loglevel": "warning" },
+      "inbounds": [
+        {
+          "port": 1080,
+          "protocol": "socks",
+          "settings": {
+            "auth": "noauth",
+            "udp": true
+          }
+        }
+      ],
+      "outbounds": [
+        {
+          "protocol": "freedom"
+        }
+      ]
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: xray-socks
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: xray-socks
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: xray-socks
+  template:
+    metadata:
+      labels:
+        app: xray-socks
+    spec:
+      nodeSelector:
+        vps: {{ .Values.xraySocks.vps }}
+      containers:
+        - name: xray
+          image: teddysun/xray:26.2.6
+          ports:
+            - containerPort: 1080
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/xray
+              readOnly: true
+      volumes:
+        - name: config-volume
+          configMap:
+            name: xray-socks-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: xray-socks
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: xray-socks
+  ports:
+    - name: socks
+      port: 1080
+      targetPort: 1080
+{{- end }}
