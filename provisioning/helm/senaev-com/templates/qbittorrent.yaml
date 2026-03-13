@@ -30,7 +30,7 @@ spec:
         vps: {{ .Values.qbittorrent.vps }}
       initContainers:
         - name: fix-permissions
-          image: busybox:stable-uclibc
+          image: busybox:1.37.0-uclibc
           securityContext:
             runAsUser: 0
           command:
