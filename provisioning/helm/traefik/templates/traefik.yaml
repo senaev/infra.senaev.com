@@ -32,6 +32,7 @@ spec:
             - "--accesslog.filepath=/dev/stdout"
             - "--providers.kubernetesingress=true"
             - "--providers.kubernetesingress.ingressclass=traefik-{{ .vps }}"
+            - "--providers.kubernetescrd=true"
             - "--entrypoints.web.address=:80"
             - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
             - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
@@ -112,6 +113,9 @@ rules:
   - apiGroups: [extensions, networking.k8s.io]
     resources: [ingresses/status]
     verbs: [update]
+  - apiGroups: [traefik.io]
+    resources: [middlewares, middlewaretcps, ingressroutes, traefikservices, ingressroutetcps, ingressrouteudps, tlsoptions, tlsstores, serverstransports, serverstransporttcps]
+    verbs: [get, list, watch]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

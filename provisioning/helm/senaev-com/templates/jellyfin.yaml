@@ -20,7 +20,7 @@ spec:
         vps: {{ .Values.jellyfin.vps }}
       containers:
         - name: jellyfin
-          image: lscr.io/linuxserver/jellyfin:latest
+          image: lscr.io/linuxserver/jellyfin:10.11.6
           env:
             - name: PUID
               value: "1000"
@@ -43,7 +43,7 @@ spec:
             type: DirectoryOrCreate
         - name: media
           hostPath:
-            path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}/downloads
+            path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}/downloads/complete
             type: DirectoryOrCreate
 ---
 apiVersion: v1

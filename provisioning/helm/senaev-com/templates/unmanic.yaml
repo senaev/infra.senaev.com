@@ -1,0 +1,113 @@
+{{- if .Values.unmanic.enabled }}
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: unmanic-basicauth
+  namespace: {{ .Release.Namespace }}
+spec:
+  refreshInterval: 30s
+  secretStoreRef:
+    name: vault-cluster-secret-store
+    kind: ClusterSecretStore
+  target:
+    name: unmanic-basicauth
+    creationPolicy: Owner
+    deletionPolicy: Delete
+  data:
+    - secretKey: users
+      remoteRef:
+        key: senaev-com-kv
+        property: UNMANIC_HTPASSWD_HASH_WITH_USERNAME
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: unmanic-basicauth
+  namespace: {{ .Release.Namespace }}
+spec:
+  basicAuth:
+    secret: unmanic-basicauth
+    removeHeader: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unmanic
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: unmanic
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: unmanic
+  template:
+    metadata:
+      labels:
+        app: unmanic
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      nodeSelector:
+        vps: {{ .Values.unmanic.vps }}
+      initContainers:
+        - name: fix-permissions
+          image: busybox:1.37.0-uclibc
+          securityContext:
+            runAsUser: 0
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p /config /downloads
+              chown -R 1000:1000 /config /downloads
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: downloads
+              mountPath: /downloads
+      containers:
+        - name: unmanic
+          image: josh5/unmanic:0.4.0.post1
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: Etc/UTC
+          ports:
+            - name: webui
+              containerPort: 8888
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: downloads
+              mountPath: /downloads
+      volumes:
+        - name: config
+          hostPath:
+            path: {{ .Values.clusterRootPath }}/{{ .Values.unmanic.volumePath }}/config
+            type: DirectoryOrCreate
+        - name: downloads
+          hostPath:
+            path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}/downloads
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: unmanic
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: unmanic
+  ports:
+    - name: webui
+      port: 8888
+      targetPort: 8888
+{{- end }}

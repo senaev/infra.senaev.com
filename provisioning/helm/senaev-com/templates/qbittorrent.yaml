@@ -11,6 +11,12 @@ spec:
   selector:
     matchLabels:
       app: qbittorrent
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # hostPort 6881 is used; avoid two pods on same node — scale down old pod before creating new one
+      maxSurge: 0
+      maxUnavailable: 1
   template:
     metadata:
       labels:
@@ -24,13 +30,15 @@ spec:
         vps: {{ .Values.qbittorrent.vps }}
       initContainers:
         - name: fix-permissions
-          image: busybox:latest
+          image: busybox:1.37.0-uclibc
           securityContext:
             runAsUser: 0
           command:
             - sh
             - -c
-            - chown -R 1000:1000 /config /downloads
+            - |
+              mkdir -p /downloads/complete /downloads/incomplete /downloads/watch-torrent-files /downloads/archive-torrent-files /downloads/converted-for-mobile
+              chown -R 1000:1000 /config /downloads
           volumeMounts:
             - name: config
               mountPath: /config
@@ -38,7 +46,7 @@ spec:
               mountPath: /downloads
       containers:
         - name: qbittorrent
-          image: lscr.io/linuxserver/qbittorrent:latest
+          image: lscr.io/linuxserver/qbittorrent:5.1.4
           env:
             - name: PUID
               value: "1000"

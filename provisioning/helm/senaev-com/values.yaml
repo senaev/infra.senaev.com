@@ -31,6 +31,11 @@ filebrowser:
   vps: yandex-cloud
   volumePath: volumes/filebrowser/config
 
+unmanic:
+  enabled: true
+  vps: yandex-cloud
+  volumePath: volumes/unmanic
+
 jellyfin:
   enabled: true
   volumePath: volumes/jellyfin
@@ -68,6 +73,13 @@ ingress:
         - host: jellyfin.senaev.com
           service: jellyfin
           port: 8096
+    - name: senaev-com-unmanic
+      className: traefik-hetzner
+      middleware: unmanic-basicauth
+      hosts:
+        - host: unmanic.senaev.com
+          service: unmanic
+          port: 8888
     - name: senaev-ru
       className: traefik-yandex-cloud
       hosts:
