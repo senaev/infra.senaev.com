@@ -12,7 +12,7 @@ Login on the page https://qbittorrent.senaev.com/ with password from Qbittorrent
 ssh $control_plane_user@$control_plane_ip "kubectl -n senaev-com logs deploy/qbittorrent | grep password"
 ```
 
-### Setup Downloads (Tools → Options → Downloads)
+### Setup Download Folders (Tools → Options → Downloads)
 
 Setup folders:
 - Default Save Path: `/downloads/complete`
