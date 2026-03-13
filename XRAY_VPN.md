@@ -18,7 +18,7 @@ Password: XRAY_REALITY_PUBLIC_KEY
 Hash32: XXX
 ```
 
-В секрет Vault `senaev-com-kv` вставляем ключи/значения значения для `XRAY_REALITY_PRIVATE_KEY` и `XRAY_USER_UUID`.
+В секрет Vault `senaev-com-kv` вставляем ключи/значения для `XRAY_REALITY_PRIVATE_KEY` и `XRAY_USER_UUID`.
 
 После этого необходимо подождать пару минут, чтобы кублет прогрузил секреты в pod.
 
