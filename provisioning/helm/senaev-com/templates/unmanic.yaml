@@ -55,7 +55,7 @@ spec:
         vps: {{ .Values.unmanic.vps }}
       initContainers:
         - name: fix-permissions
-          image: busybox:latest
+          image: busybox:stable-uclibc
           securityContext:
             runAsUser: 0
           command:
@@ -71,7 +71,7 @@ spec:
               mountPath: /downloads
       containers:
         - name: unmanic
-          image: josh5/unmanic:latest
+          image: josh5/unmanic:0.4.0.post1
           env:
             - name: PUID
               value: "1000"
