@@ -135,8 +135,6 @@ spec:
           resources:
             requests:
               cpu: "500m"
-            limits:
-              cpu: "2"
           volumeMounts:
             - name: config
               mountPath: /config
