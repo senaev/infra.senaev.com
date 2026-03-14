@@ -30,6 +30,10 @@ ssh $control_plane_user@$control_plane_ip "kubectl -n senaev-com logs deploy/qbi
 
 https://webdav.senaev.ru/
 
+### Filebrowser
+
+https://filebrowser.senaev.com/
+
 ### Unmanic
 
 Settings → Plugins → INSTALL PLUGIN FROM REPO ➕ → REFRESH REPOSITORIES → Install plugins:
