@@ -1,8 +1,20 @@
 # senaev.com media server
 
+## How to use
+
+Desktop: use Jellyfin web interface or download files via WebDAV.
+
+Android: use VidHub to connect both Jellyfin and WebDAV https://play.google.com/store/apps/details?id=com.oumi.utility.media.hub
+
+## Services
+
 After deploying main cluster, you have to set up components of the media server
 
-## Qbittorrent
+### Jellyfin
+
+Login https://jellyfin.senaev.com/
+
+### Qbittorrent
 
 Login on the page https://qbittorrent.senaev.com/ with password from Qbittorrent output
 
@@ -10,11 +22,11 @@ Login on the page https://qbittorrent.senaev.com/ with password from Qbittorrent
 ssh $control_plane_user@$control_plane_ip "kubectl -n senaev-com logs deploy/qbittorrent | grep password"
 ```
 
-## WebDav
+### WebDav
 
 https://webdav.senaev.ru/
 
-## Unmanic
+### Unmanic
 
 Settings → Plugins → INSTALL PLUGIN FROM REPO ➕ → REFRESH REPOSITORIES → Install plugins:
 - `Ignore video files under size`
