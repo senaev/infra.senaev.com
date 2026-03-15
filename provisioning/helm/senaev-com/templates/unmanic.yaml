@@ -133,8 +133,9 @@ spec:
             - name: webui
               containerPort: 8888
           resources:
-            requests:
+            limits:
               cpu: "500m"
+              memory: "1Gi"
           volumeMounts:
             - name: config
               mountPath: /config
