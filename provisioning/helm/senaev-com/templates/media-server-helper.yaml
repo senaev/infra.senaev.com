@@ -58,6 +58,10 @@ spec:
                   name: senaev-com-kv-secrets
                   key: TG_CHANNEL_ID
                   optional: false
+            - WATCH_TORRENT_FILES_DIR
+              value: /watch-torrent-files
+            - WEBHOOK_DOMAIN
+              value: telegram-webhook-endpoint.senaev.com
           ports:
             - containerPort: 80
               name: internal
