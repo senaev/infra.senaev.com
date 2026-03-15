@@ -7,5 +7,5 @@ RUN npm ci --omit=dev
 
 COPY . .
 
-EXPOSE 80
+EXPOSE 3000 8080
 CMD ["npm", "start"]
