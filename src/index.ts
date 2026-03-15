@@ -8,9 +8,9 @@ const HOST = "0.0.0.0"
 const INTERNAL_PORT = 80
 const PUBLIC_PORT = 3000
 
-const WEBHOOK_BASE_URL = "https://telegram-webhook-endpoint.senaev.com"
+const WEBHOOK_DOMAIN = process.env.WEBHOOK_DOMAIN
 const WEBHOOK_PATH = "/telegram-webhook"
-const WEBHOOK_URL = `${WEBHOOK_BASE_URL}${WEBHOOK_PATH}`
+const WEBHOOK_URL = `https://${WEBHOOK_DOMAIN}${WEBHOOK_PATH}`
 
 const webhookSecretToken = randomBytes(32).toString("hex")
 

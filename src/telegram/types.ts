@@ -20,6 +20,14 @@ export interface ReactionCount {
   total_count: number
 }
 
+export interface TelegramFile {
+  file_id: string
+  file_unique_id: string
+  file_name?: string
+  file_size?: number
+  mime_type?: string
+}
+
 export interface TelegramMessage {
   message_id: number
   chat: TelegramChat
@@ -27,6 +35,7 @@ export interface TelegramMessage {
   text?: string
   from?: TelegramUser
   reaction?: ReactionCount[]
+  document?: TelegramFile
 }
 
 export interface TelegramUpdate {
@@ -44,4 +53,9 @@ export interface GetMeResult {
 export interface GetUpdatesResult {
   ok: boolean
   result: TelegramUpdate[]
+}
+
+export interface GetFileResult {
+  ok: boolean
+  result?: { file_path: string; file_id: string }
 }
