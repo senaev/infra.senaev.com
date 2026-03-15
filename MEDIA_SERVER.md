@@ -7,8 +7,8 @@ Desktop
 - or download files via WebDAV.
 
 Android:
-- use VidHub to connect both Jellyfin and WebDAV https://play.google.com/store/apps/details?id=com.oumi.utility.media.hub
-- File Manager is perfect for copying files from WebDAV server (converted-for-mobile) to local folder before the flight https://play.google.com/store/apps/details?id=com.alphainventor.filemanager
+- use [VidHub](https://play.google.com/store/apps/details?id=com.oumi.utility.media.hub) to connect both Jellyfin and WebDAV
+- [File Manager](https://play.google.com/store/apps/details?id=com.alphainventor.filemanager) is perfect for copying files from WebDAV server (converted-for-mobile) to local folder before the flight
 
 ## Services
 
@@ -26,7 +26,7 @@ Login on the page https://qbittorrent.senaev.com/ with password from Qbittorrent
 ssh $control_plane_user@$control_plane_ip "kubectl -n senaev-com logs deploy/qbittorrent | grep password"
 ```
 
-### WebDav
+### WebDAV
 
 https://webdav.senaev.ru/
 

@@ -55,9 +55,9 @@ testEcho:
   enabled: true
   vps: hetzner
 
-helper:
+mediaServerHelper:
   enabled: true
-  vps: hetzner
+  vps: yandex-cloud
 
 ingress:
   entries:
