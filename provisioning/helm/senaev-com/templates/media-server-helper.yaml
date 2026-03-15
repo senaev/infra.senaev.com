@@ -22,8 +22,26 @@ spec:
       annotations:
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
     spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       nodeSelector:
         vps: {{ .Values.mediaServerHelper.vps }}
+      initContainers:
+        - name: fix-watch-folder-permissions
+          image: busybox:1.37.0-uclibc
+          securityContext:
+            runAsUser: 0
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p /watch-torrent-files
+              chown -R 1000:1000 /watch-torrent-files
+          volumeMounts:
+            - name: watch-torrent-files
+              mountPath: /watch-torrent-files
       containers:
         - name: media-server-helper
           image: ghcr.io/senaev/media-server-helper.senaev.com:latest
@@ -45,6 +63,14 @@ spec:
               name: internal
             - containerPort: 3000
               name: webhook
+          volumeMounts:
+            - name: watch-torrent-files
+              mountPath: /watch-torrent-files
+      volumes:
+        - name: watch-torrent-files
+          hostPath:
+            path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.watch }}
+            type: DirectoryOrCreate
 ---
 apiVersion: v1
 kind: Service
