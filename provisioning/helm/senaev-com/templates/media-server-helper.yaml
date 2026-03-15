@@ -42,6 +42,9 @@ spec:
                   optional: false
           ports:
             - containerPort: 80
+              name: internal
+            - containerPort: 3000
+              name: webhook
 ---
 apiVersion: v1
 kind: Service
@@ -53,7 +56,10 @@ spec:
   selector:
     app: media-server-helper
   ports:
-    - name: media-server-helper
+    - name: internal
       port: 80
       targetPort: 80
+    - name: webhook
+      port: 3000
+      targetPort: 3000
 {{- end }}

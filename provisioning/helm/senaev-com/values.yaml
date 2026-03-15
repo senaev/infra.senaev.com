@@ -82,6 +82,9 @@ ingress:
         - host: jellyfin.senaev.com
           service: jellyfin
           port: 8096
+        - host: telegram-webhook-endpoint.senaev.com
+          service: media-server-helper
+          port: 3000
         - host: senaev.ru
           service: nextjs-app
           port: 3000
