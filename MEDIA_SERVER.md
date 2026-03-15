@@ -51,4 +51,4 @@ Settings → Library → Libraries → and configure default library:
 
 Settings → Workers → Worker groups → ➕
 - Name: `Worker`
-- Worker count: `2`
+- Worker count: `1`
