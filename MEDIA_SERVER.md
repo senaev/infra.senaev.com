@@ -2,7 +2,7 @@
 
 ## How to use
 
-Desktop
+Desktop:
 - use Jellyfin web interface
 - or download files via WebDAV.
 
