@@ -1,14 +1,7 @@
 import Fastify from "fastify"
-import {
-  getMe,
-  getUpdates,
-  setWebhook,
-  sendTelegramMessage,
-} from "./telegram/api"
+import { getMe, setWebhook, sendTelegramMessage } from "./telegram/api"
 import type { TelegramUpdate } from "./telegram/types"
-import { TG_CHANNEL_ID } from "./const/TG_CHANNEL_ID"
 import { processChannelPost } from "./telegram/processChannelPost"
-import { TelegramLastUpdateId } from "./telegram/TelegramLastUpdateId"
 import { randomBytes } from "crypto"
 
 const HOST = "0.0.0.0"
@@ -40,23 +33,6 @@ publicServer.get("/*", async (_request, reply) => {
   reply.send("publicServer OK")
 })
 
-async function runCatchUp(botUserId: number): Promise<void> {
-  let offset = TelegramLastUpdateId.load() + 1
-  for (;;) {
-    const updates = await getUpdates(offset)
-    if (updates.length === 0) break
-    for (const u of updates) {
-      offset = Math.max(offset, u.update_id + 1)
-      const msg = u.channel_post ?? u.edited_channel_post
-      if (msg && String(msg.chat.id) === TG_CHANNEL_ID) {
-        await processChannelPost(msg, botUserId)
-      }
-    }
-    TelegramLastUpdateId.save(offset - 1)
-  }
-  TelegramLastUpdateId.save(offset > 0 ? offset - 1 : 0)
-}
-
 async function main(): Promise<void> {
   const botUser = await getMe()
   
@@ -83,12 +59,6 @@ async function main(): Promise<void> {
 
   await publicServer.listen({ port: PUBLIC_PORT, host: HOST })
   console.log(`[media-server-helper-public] listening on port ${PUBLIC_PORT}`)
-
-  try {
-    await runCatchUp(botUser.id)
-  } catch (err) {
-    console.warn("[catch-up] failed (continuing):", err)
-  }
 
   await setWebhook(WEBHOOK_URL, webhookSecretToken)
   console.log(`[webhook] set to ${WEBHOOK_URL}`)
