@@ -6,8 +6,8 @@ on:
   workflow_dispatch: # Allow manual run from Actions tab
 
 env:
-  IMAGE_NAME: helper.senaev.com
-  REGISTRY_IMAGE: ghcr.io/senaev/helper.senaev.com
+  IMAGE_NAME: media-server-helper.senaev.com
+  REGISTRY_IMAGE: ghcr.io/senaev/media-server-helper.senaev.com
 
 jobs:
   build-and-push:

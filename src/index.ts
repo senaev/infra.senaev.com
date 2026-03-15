@@ -6,7 +6,7 @@ const fastify = Fastify({
 })
 
 fastify.get('/*', async (request, reply) => {
-    reply.send('Hello, this is helper.senaev.com service')
+    reply.send('Hello, this is media-server-helper.senaev.com service')
 })
 
 // curl -X POST http://localhost/tg -H "Content-Type: text/plain" -d 'Hello, world!'
@@ -28,5 +28,7 @@ const HOST = '0.0.0.0'
 fastify.listen({ port: PORT, host: HOST }, (err) => {
   if (err) throw err
   console.log(`🚀 Server is running on port=[${PORT}]`)
+
+  sendTelegramMessage(`🟢 Media server helper is ready`)
 })
 

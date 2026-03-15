@@ -1,4 +1,4 @@
-# helper.senaev.com
+# senaev.com cluster.senaev.com
 
-Some internal helper utils for my cluster
+Internal media server helper utils for my cluster
 https://github.com/senaev/infra.senaev.com
