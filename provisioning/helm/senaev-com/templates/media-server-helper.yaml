@@ -1,0 +1,95 @@
+# Send telegram messages to channel:
+# curl -X POST http://media-server-helper.senaev-com.svc.cluster.local/tg -H "Content-Type: text/plain" -d "Hello, world!"
+# inside of namespace
+# curl -X POST media-server-helper/tg -H "Content-Type: text/plain" -d "Hello, world!"
+{{- if .Values.mediaServerHelper.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: media-server-helper
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: media-server-helper
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: media-server-helper
+  template:
+    metadata:
+      labels:
+        app: media-server-helper
+      annotations:
+        secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      nodeSelector:
+        vps: {{ .Values.mediaServerHelper.vps }}
+      initContainers:
+        - name: fix-watch-folder-permissions
+          image: busybox:1.37.0-uclibc
+          securityContext:
+            runAsUser: 0
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p /watch-torrent-files
+              chown -R 1000:1000 /watch-torrent-files
+          volumeMounts:
+            - name: watch-torrent-files
+              mountPath: /watch-torrent-files
+      containers:
+        - name: media-server-helper
+          image: ghcr.io/senaev/media-server-helper.senaev.com:latest
+          env:
+            - name: TOKEN_senaev_com_bot
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: TOKEN_senaev_com_bot
+                  optional: false
+            - name: TG_CHANNEL_ID
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: TG_CHANNEL_ID
+                  optional: false
+            - name: WATCH_TORRENT_FILES_DIR
+              value: /watch-torrent-files
+            - name: WEBHOOK_DOMAIN
+              value: telegram-webhook-endpoint.senaev.com
+          ports:
+            - containerPort: 80
+              name: internal
+            - containerPort: 3000
+              name: webhook
+          volumeMounts:
+            - name: watch-torrent-files
+              mountPath: /watch-torrent-files
+      volumes:
+        - name: watch-torrent-files
+          hostPath:
+            path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.watch }}
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: media-server-helper
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: media-server-helper
+  ports:
+    - name: internal
+      port: 80
+      targetPort: 80
+    - name: webhook
+      port: 3000
+      targetPort: 3000
+{{- end }}
