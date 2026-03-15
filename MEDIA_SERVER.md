@@ -50,5 +50,5 @@ Settings → Library → Libraries → and configure default library:
 - Plugins → ➕ → Add all plugins
 
 Settings → Workers → Worker groups → ➕
-- Name: `Worker`
+- Group name: `Worker`
 - Worker count: `1`
