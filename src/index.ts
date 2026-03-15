@@ -5,8 +5,8 @@ import { processChannelPost } from "./telegram/processChannelPost"
 import { randomBytes } from "crypto"
 
 const HOST = "0.0.0.0"
-const INTERNAL_PORT = 3000
-const PUBLIC_PORT = 8080
+const INTERNAL_PORT = 80
+const PUBLIC_PORT = 3000
 
 const WEBHOOK_BASE_URL = "https://telegram-webhook-endpoint.senaev.com"
 const WEBHOOK_PATH = "/telegram-webhook"
