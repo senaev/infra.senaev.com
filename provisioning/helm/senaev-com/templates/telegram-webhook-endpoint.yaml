@@ -49,6 +49,14 @@ spec:
           env:
             - name: KAFKA_BROKERS
               value: redpanda.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.redpanda.kafkaPort }}
+            - name: WEBHOOK_DOMAIN
+              value: {{ .Values.telegramWebhookEndpoint.webhookDomain }}
+            - name: TELEGRAM_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: TOKEN_senaev_com_bot
+                  optional: false
           volumeMounts:
             - name: app
               mountPath: /app
@@ -58,3 +66,18 @@ spec:
             name: telegram-webhook-endpoint-scripts
         - name: app
           emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: telegram-webhook-endpoint
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: telegram-webhook-endpoint
+spec:
+  type: ClusterIP
+  selector:
+    app: telegram-webhook-endpoint
+  ports:
+    - port: 3000
+      targetPort: 3000
