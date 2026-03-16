@@ -1,72 +1,64 @@
-import Fastify from "fastify"
-import { getMe, setWebhook, sendTelegramMessage } from "./telegram/api"
-import type { TelegramUpdate } from "./telegram/types"
-import { processChannelPost } from "./telegram/processChannelPost"
-import { randomBytes } from "crypto"
+import Fastify from "fastify";
+import { Kafka, type EachMessagePayload } from "kafkajs";
+import { getMe, sendTelegramMessage } from "./telegram/api";
+import { processChannelPost } from "./telegram/processChannelPost";
+import type { TelegramUpdate } from "./telegram/types";
 
-const HOST = "0.0.0.0"
-const INTERNAL_PORT = 80
-const PUBLIC_PORT = 3000
+const HOST = "0.0.0.0";
+const PORT = 80;
+const KAFKA_BROKERS = process.env.KAFKA_BROKERS!;
+const KAFKA_TOPIC = process.env.KAFKA_TOPIC!;
 
-const WEBHOOK_DOMAIN = process.env.WEBHOOK_DOMAIN
-const WEBHOOK_PATH = "/telegram-webhook"
-const WEBHOOK_URL = `https://${WEBHOOK_DOMAIN}${WEBHOOK_PATH}`
+const server = Fastify({ logger: true });
+server.get("/*", async (_request, reply) => {
+  reply.send("server OK");
+});
 
-const webhookSecretToken = randomBytes(32).toString("hex")
-
-const internalServer = Fastify({ logger: true })
-internalServer.get("/*", async (_request, reply) => {
-  reply.send("internalServer OK")
-})
-
-internalServer.post<{ Body: string }>("/tg", async (request, reply) => {
-  const message = request.body as string
+server.post<{ Body: string }>("/tg", async (request, reply) => {
+  const message = request.body as string;
   if (!message) {
-    throw new Error("Message is required")
+    throw new Error("Message is required");
   }
-  await sendTelegramMessage(message)
-  reply.send({ status: "ok" })
-})
-
-const publicServer = Fastify({ logger: true })
-publicServer.get("/*", async (_request, reply) => {
-  reply.send("publicServer OK")
-})
+  await sendTelegramMessage(message);
+  reply.send({ status: "ok" });
+});
 
 async function main(): Promise<void> {
-  const botUser = await getMe()
-  
-  publicServer.post<{ Body: unknown; headers: { "x-telegram-bot-api-secret-token"?: string } }>(
-    WEBHOOK_PATH,
-    async (request, reply) => {
-      const secret = request.headers["x-telegram-bot-api-secret-token"]
-      if (!secret || secret !== webhookSecretToken) {
-        return reply.status(401).send({ error: "Unauthorized" })
+  const botUser = await getMe();
+
+  const kafka = new Kafka({ brokers: [KAFKA_BROKERS] });
+  const consumer = kafka.consumer({ groupId: "media-server-helper" });
+
+  await consumer.connect();
+  await consumer.subscribe({ topic: KAFKA_TOPIC, fromBeginning: false });
+
+  await consumer.run({
+    eachMessage: async ({ message }: EachMessagePayload) => {
+      if (!message.value) {
+        console.error("Consumed message with no value");
+        return;
       }
-      const body = request.body as TelegramUpdate
-      const message = body.channel_post ?? body.edited_channel_post
-      if (message) {
-        processChannelPost(message, botUser.id).catch((err) =>
-          request.log.error(err, "processChannelPost failed")
-        )
+      const update = JSON.parse(message.value.toString()) as TelegramUpdate;
+      const post = update.channel_post;
+      if (post) {
+        processChannelPost(post, botUser.id).catch((err) =>
+          console.error("processChannelPost failed", err),
+        );
+
+        return;
       }
-      reply.send({ ok: true })
-    }
-  )
 
-  await internalServer.listen({ port: INTERNAL_PORT, host: HOST })
-  console.log(`[media-server-helper-internal] listening on port ${INTERNAL_PORT}`)
+      console.error("Received message is not a channel_post");
+    },
+  });
 
-  await publicServer.listen({ port: PUBLIC_PORT, host: HOST })
-  console.log(`[media-server-helper-public] listening on port ${PUBLIC_PORT}`)
+  await server.listen({ port: PORT, host: HOST });
+  console.log(`[media-server-helper] listening on port ${PORT}`);
 
-  await setWebhook(WEBHOOK_URL, webhookSecretToken)
-  console.log(`[webhook] set to ${WEBHOOK_URL}`)
-
-  await sendTelegramMessage("🟢 Media server helper is ready")
+  await sendTelegramMessage("🟢 Media server helper is ready");
 }
 
 main().catch((err) => {
-  console.error(err)
-  process.exit(1)
-})
+  console.error(err);
+  process.exit(1);
+});

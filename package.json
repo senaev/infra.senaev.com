@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "fastify": "^5.8.2",
+    "kafkajs": "2.2.4",
     "tsx": "4.21.0"
   }
 }
