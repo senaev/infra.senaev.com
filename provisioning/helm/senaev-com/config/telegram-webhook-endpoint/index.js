@@ -28,7 +28,13 @@ function telegramApiCall(method, payload) {
       (res) => {
         let responseBody = "";
         res.on("data", (chunk) => (responseBody += chunk));
-        res.on("end", () => resolve(JSON.parse(responseBody)));
+        res.on("end", () => {
+          try {
+            resolve(JSON.parse(responseBody));
+          } catch {
+            reject(new Error(`Invalid JSON from Telegram API: ${responseBody}`));
+          }
+        });
       },
     );
     req.on("error", reject);
