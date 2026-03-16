@@ -28,7 +28,7 @@ spec:
         app: telegram-webhook-endpoint
     spec:
       nodeSelector:
-        vps: {{ .Values.redpanda.vps }}
+        vps: {{ .Values.telegramWebhookEndpoint.vps }}
       initContainers:
         - name: npm-install
           image: node:22-alpine

@@ -61,6 +61,7 @@ mediaServerHelper:
 
 telegramWebhookEndpoint:
   enabled: true
+  vps: hetzner
   webhookDomain: telegram-webhook-endpoint.senaev.com
 
 redpanda:
