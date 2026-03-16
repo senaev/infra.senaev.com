@@ -60,6 +60,7 @@ mediaServerHelper:
   vps: yandex-cloud
 
 telegramWebhookEndpoint:
+  enabled: true
   webhookDomain: telegram-webhook-endpoint.senaev.com
 
 redpanda:

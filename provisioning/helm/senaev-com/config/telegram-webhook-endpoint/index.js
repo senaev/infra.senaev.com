@@ -6,14 +6,16 @@ const { Kafka } = require("kafkajs");
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const WEBHOOK_DOMAIN = process.env.WEBHOOK_DOMAIN;
 const KAFKA_BROKERS = process.env.KAFKA_BROKERS;
+const KAFKA_TOPIC = process.env.KAFKA_TOPIC;
 const PORT = 3000;
 const WEBHOOK_PATH = "/telegram-webhook";
+const MAX_BODY_SIZE = 1_000_000;
 
 const webhookSecretToken = randomBytes(32).toString("hex");
 
-function telegramApiCall(method, body) {
+function telegramApiCall(method, payload) {
   return new Promise((resolve, reject) => {
-    const data = JSON.stringify(body);
+    const data = JSON.stringify(payload);
     const req = https.request(
       {
         hostname: "api.telegram.org",
@@ -24,9 +26,9 @@ function telegramApiCall(method, body) {
         },
       },
       (res) => {
-        let body = "";
-        res.on("data", (chunk) => (body += chunk));
-        res.on("end", () => resolve(JSON.parse(body)));
+        let responseBody = "";
+        res.on("data", (chunk) => (responseBody += chunk));
+        res.on("end", () => resolve(JSON.parse(responseBody)));
       },
     );
     req.on("error", reject);
@@ -54,11 +56,19 @@ const server = http.createServer((req, res) => {
     }
 
     let body = "";
-    req.on("data", (chunk) => (body += chunk));
+    req.on("data", (chunk) => {
+      body += chunk;
+      if (body.length > MAX_BODY_SIZE) {
+        req.destroy();
+        res.writeHead(413);
+        res.end("Payload Too Large");
+      }
+    });
     req.on("end", () => {
+      if (body.length > MAX_BODY_SIZE) return;
       producer
         .send({
-          topic: "telegram-webhook-data",
+          topic: KAFKA_TOPIC,
           messages: [{ value: body }],
         })
         .then(() => {
@@ -94,6 +104,17 @@ async function main() {
     `✅ Webhook set to url=[${webhookUrl}] with webhookSecretToken=[${webhookSecretToken}]`,
   );
 }
+
+function shutdown() {
+  console.log("Shutting down...");
+  server.close(() => {
+    producer.disconnect().then(() => process.exit(0));
+  });
+  setTimeout(() => process.exit(1), 5000);
+}
+
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
 
 main().catch((err) => {
   console.error(err);

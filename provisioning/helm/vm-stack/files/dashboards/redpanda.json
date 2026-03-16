@@ -1,4 +1,5 @@
 {
+  "_comment": "Stock Redpanda Grafana dashboard exported from https://grafana.com/grafana/dashboards/. Can be regenerated from the official Redpanda dashboard template.",
   "__inputs": [
     {
       "name": "DS_PROMETHEUS",
