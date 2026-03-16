@@ -59,6 +59,21 @@ mediaServerHelper:
   enabled: true
   vps: yandex-cloud
 
+telegramWebhookEndpoint:
+  enabled: true
+  vps: hetzner
+  webhookDomain: telegram-webhook-endpoint.senaev.com
+
+redpanda:
+  enabled: true
+  vps: hetzner
+  storage: 2Gi
+  memory: 400M
+  kafkaPort: 9092
+  topics:
+    - name: telegram-webhook-data
+      partitions: 1
+
 ingress:
   entries:
     - name: senaev-com
@@ -83,7 +98,7 @@ ingress:
           service: jellyfin
           port: 8096
         - host: telegram-webhook-endpoint.senaev.com
-          service: media-server-helper
+          service: telegram-webhook-endpoint
           port: 3000
         - host: senaev.ru
           service: nextjs-app
@@ -98,4 +113,3 @@ ingress:
         - host: unmanic.senaev.com
           service: unmanic
           port: 8888
-

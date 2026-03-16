@@ -60,8 +60,10 @@ spec:
                   optional: false
             - name: WATCH_TORRENT_FILES_DIR
               value: /watch-torrent-files
-            - name: WEBHOOK_DOMAIN
-              value: telegram-webhook-endpoint.senaev.com
+            - name: KAFKA_BROKERS
+              value: redpanda.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.redpanda.kafkaPort }}
+            - name: KAFKA_TOPIC
+              value: telegram-webhook-data
           ports:
             - containerPort: 80
               name: internal
