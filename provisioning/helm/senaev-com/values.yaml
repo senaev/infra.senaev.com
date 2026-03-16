@@ -64,6 +64,9 @@ redpanda:
   vps: hetzner
   storage: 2Gi
   memory: 400M
+  topics:
+    - name: telegram-webhook-data
+      partitions: 1
 
 ingress:
   entries:

@@ -110,4 +110,46 @@ spec:
     - name: admin
       port: 9644
       targetPort: 9644
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMServiceScrape
+metadata:
+  name: redpanda
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: redpanda
+  endpoints:
+    - path: /public_metrics
+      port: admin
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: redpanda-create-topics
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      nodeSelector:
+        vps: {{ .Values.redpanda.vps }}
+      containers:
+        - name: rpk
+          image: redpandadata/redpanda:v25.3.10
+          command:
+            - sh
+            - -c
+            - |
+              {{- range .Values.redpanda.topics }}
+              rpk topic create {{ .name }} \
+                --brokers redpanda.{{ $.Release.Namespace }}.svc.cluster.local:9092 \
+                --partitions {{ .partitions }} \
+                --replicas 1 \
+                --if-not-exists
+              {{- end }}
 {{- end }}
