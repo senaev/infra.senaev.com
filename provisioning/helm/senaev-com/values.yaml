@@ -63,7 +63,7 @@ redpanda:
   enabled: true
   vps: hetzner
   storage: 2Gi
-  memory: 128M
+  memory: 400M
 
 ingress:
   entries:

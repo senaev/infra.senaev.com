@@ -21,12 +21,12 @@ spec:
         vps: {{ .Values.redpanda.vps }}
       containers:
         - name: redpanda
-          image: redpandadata/redpanda:v24.3.1
+          image: redpandadata/redpanda:v25.3.10
           command:
             - sh
             - -c
             - |
-              redpanda start \
+              rpk redpanda start \
                 --mode dev-container \
                 --kafka-addr PLAINTEXT://0.0.0.0:9092 \
                 --advertise-kafka-addr PLAINTEXT://redpanda.{{ .Release.Namespace }}.svc.cluster.local:9092 \
@@ -46,15 +46,13 @@ spec:
             - name: rpc
               containerPort: 33145
           livenessProbe:
-            httpGet:
-              path: /v1/health/ready
-              port: 9644
+            tcpSocket:
+              port: 9092
             initialDelaySeconds: 30
             periodSeconds: 10
           readinessProbe:
-            httpGet:
-              path: /v1/health/ready
-              port: 9644
+            tcpSocket:
+              port: 9092
             initialDelaySeconds: 20
             periodSeconds: 5
           volumeMounts:
