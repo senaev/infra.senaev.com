@@ -28,8 +28,8 @@ spec:
             - |
               rpk redpanda start \
                 --mode dev-container \
-                --kafka-addr PLAINTEXT://0.0.0.0:9092 \
-                --advertise-kafka-addr PLAINTEXT://redpanda.{{ .Release.Namespace }}.svc.cluster.local:9092 \
+                --kafka-addr PLAINTEXT://0.0.0.0:{{ .Values.redpanda.kafkaPort }} \
+                --advertise-kafka-addr PLAINTEXT://redpanda.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.redpanda.kafkaPort }} \
                 --pandaproxy-addr 0.0.0.0:8082 \
                 --advertise-pandaproxy-addr http://redpanda.{{ .Release.Namespace }}.svc.cluster.local:8082 \
                 --rpc-addr 0.0.0.0:33145 \
@@ -38,7 +38,7 @@ spec:
                 --default-log-level=info
           ports:
             - name: kafka
-              containerPort: 9092
+              containerPort: {{ .Values.redpanda.kafkaPort }}
             - name: http
               containerPort: 8082
             - name: admin
@@ -47,12 +47,12 @@ spec:
               containerPort: 33145
           livenessProbe:
             tcpSocket:
-              port: 9092
+              port: {{ .Values.redpanda.kafkaPort }}
             initialDelaySeconds: 30
             periodSeconds: 10
           readinessProbe:
             tcpSocket:
-              port: 9092
+              port: {{ .Values.redpanda.kafkaPort }}
             initialDelaySeconds: 20
             periodSeconds: 5
           volumeMounts:
@@ -81,7 +81,7 @@ spec:
     app: redpanda
   ports:
     - name: kafka
-      port: 9092
+      port: {{ .Values.redpanda.kafkaPort }}
     - name: http
       port: 8082
     - name: admin
@@ -102,8 +102,8 @@ spec:
     app: redpanda
   ports:
     - name: kafka
-      port: 9092
-      targetPort: 9092
+      port: {{ .Values.redpanda.kafkaPort }}
+      targetPort: {{ .Values.redpanda.kafkaPort }}
     - name: http
       port: 8082
       targetPort: 8082
@@ -147,7 +147,7 @@ spec:
             - |
               {{- range .Values.redpanda.topics }}
               rpk topic create {{ .name }} \
-                --brokers redpanda.{{ $.Release.Namespace }}.svc.cluster.local:9092 \
+                --brokers redpanda.{{ $.Release.Namespace }}.svc.cluster.local:{{ $.Values.redpanda.kafkaPort }} \
                 --partitions {{ .partitions }} \
                 --replicas 1 \
                 --if-not-exists

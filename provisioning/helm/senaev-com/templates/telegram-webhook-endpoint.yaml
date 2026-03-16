@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: telegram-webhook-endpoint-scripts
+  namespace: {{ .Release.Namespace }}
+data:
+  package.json: |
+{{ .Files.Get "config/telegram-webhook-endpoint/package.json" | indent 4 }}
+  index.js: |
+{{ .Files.Get "config/telegram-webhook-endpoint/index.js" | indent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telegram-webhook-endpoint
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: telegram-webhook-endpoint
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: telegram-webhook-endpoint
+  template:
+    metadata:
+      labels:
+        app: telegram-webhook-endpoint
+    spec:
+      nodeSelector:
+        vps: {{ .Values.redpanda.vps }}
+      initContainers:
+        - name: npm-install
+          image: node:22-alpine
+          command:
+            - sh
+            - -c
+            - cp /scripts/* /app/ && cd /app && npm install
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+            - name: app
+              mountPath: /app
+      containers:
+        - name: producer
+          image: node:22-alpine
+          command:
+            - node
+            - /app/index.js
+          env:
+            - name: KAFKA_BROKERS
+              value: redpanda.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.redpanda.kafkaPort }}
+          volumeMounts:
+            - name: app
+              mountPath: /app
+      volumes:
+        - name: scripts
+          configMap:
+            name: telegram-webhook-endpoint-scripts
+        - name: app
+          emptyDir: {}

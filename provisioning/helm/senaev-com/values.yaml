@@ -64,6 +64,7 @@ redpanda:
   vps: hetzner
   storage: 2Gi
   memory: 400M
+  kafkaPort: 9092
   topics:
     - name: telegram-webhook-data
       partitions: 1
