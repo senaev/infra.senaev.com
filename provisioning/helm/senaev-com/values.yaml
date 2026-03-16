@@ -59,6 +59,12 @@ mediaServerHelper:
   enabled: true
   vps: yandex-cloud
 
+redpanda:
+  enabled: true
+  vps: hetzner
+  storage: 2Gi
+  memory: 128M
+
 ingress:
   entries:
     - name: senaev-com
@@ -98,4 +104,3 @@ ingress:
         - host: unmanic.senaev.com
           service: unmanic
           port: 8888
-

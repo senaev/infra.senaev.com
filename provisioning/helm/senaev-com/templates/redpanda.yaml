@@ -1,0 +1,115 @@
+{{- if .Values.redpanda.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redpanda
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: redpanda
+spec:
+  serviceName: redpanda-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redpanda
+  template:
+    metadata:
+      labels:
+        app: redpanda
+    spec:
+      nodeSelector:
+        vps: {{ .Values.redpanda.vps }}
+      containers:
+        - name: redpanda
+          image: redpandadata/redpanda:v24.3.1
+          command:
+            - sh
+            - -c
+            - |
+              redpanda start \
+                --mode dev-container \
+                --kafka-addr PLAINTEXT://0.0.0.0:9092 \
+                --advertise-kafka-addr PLAINTEXT://redpanda.{{ .Release.Namespace }}.svc.cluster.local:9092 \
+                --pandaproxy-addr 0.0.0.0:8082 \
+                --advertise-pandaproxy-addr http://redpanda.{{ .Release.Namespace }}.svc.cluster.local:8082 \
+                --rpc-addr 0.0.0.0:33145 \
+                --advertise-rpc-addr redpanda-0.redpanda-headless.{{ .Release.Namespace }}.svc.cluster.local:33145 \
+                --memory {{ .Values.redpanda.memory }} \
+                --default-log-level=info
+          ports:
+            - name: kafka
+              containerPort: 9092
+            - name: http
+              containerPort: 8082
+            - name: admin
+              containerPort: 9644
+            - name: rpc
+              containerPort: 33145
+          livenessProbe:
+            httpGet:
+              path: /v1/health/ready
+              port: 9644
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /v1/health/ready
+              port: 9644
+            initialDelaySeconds: 20
+            periodSeconds: 5
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/redpanda/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ .Values.redpanda.storage }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redpanda-headless
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: redpanda
+spec:
+  clusterIP: None
+  selector:
+    app: redpanda
+  ports:
+    - name: kafka
+      port: 9092
+    - name: http
+      port: 8082
+    - name: admin
+      port: 9644
+    - name: rpc
+      port: 33145
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redpanda
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: redpanda
+spec:
+  type: ClusterIP
+  selector:
+    app: redpanda
+  ports:
+    - name: kafka
+      port: 9092
+      targetPort: 9092
+    - name: http
+      port: 8082
+      targetPort: 8082
+    - name: admin
+      port: 9644
+      targetPort: 9644
+{{- end }}
