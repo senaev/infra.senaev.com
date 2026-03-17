@@ -150,8 +150,11 @@ The rewritten service maintains identical external behavior:
 - On startup: connects Kafka producer, starts HTTP server, generates random `webhookSecretToken` and registers it with Telegram via `setWebhook` API call
 - On SIGTERM/SIGINT: graceful shutdown (close server, disconnect producer)
 
+### Additional improvements
+
+- Add `secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"` annotation to the Deployment template so secret rotations trigger a pod restart (matches `media-server-helper` pattern)
+- Add health check / readiness probes (HTTP GET on port 3000)
+
 ## Out of scope
 
-- Adding `secret.reloader.stakater.com/reload` annotation (the current template doesn't have it; can be added as a follow-up)
 - Changing from `:latest` tag to SHA-based tags
-- Adding health check / readiness probes
