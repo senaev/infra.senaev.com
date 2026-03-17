@@ -38,18 +38,6 @@ spec:
                   name: senaev-com-kv-secrets
                   key: TOKEN_senaev_com_bot
                   optional: false
-          livenessProbe:
-            httpGet:
-              path: /
-              port: 3000
-            initialDelaySeconds: 10
-            periodSeconds: 30
-          readinessProbe:
-            httpGet:
-              path: /
-              port: 3000
-            initialDelaySeconds: 5
-            periodSeconds: 10
 ---
 apiVersion: v1
 kind: Service
