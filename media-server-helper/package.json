@@ -1,14 +1,15 @@
 {
-  "name": "media-server-helper.senaev.com",
+  "name": "media-server-helper",
   "version": "1.0.0",
   "description": "Helper for senaev.com cluster media server",
-  "homepage": "https://github.com/senaev/media-server-helper.senaev.com#readme",
+  "homepage": "https://github.com/senaev/infra.senaev.com#readme",
   "bugs": {
-    "url": "https://github.com/senaev/media-server-helper.senaev.com/issues"
+    "url": "https://github.com/senaev/infra.senaev.com/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/senaev/media-server-helper.senaev.com.git"
+    "url": "git+ssh://git@github.com/senaev/infra.senaev.com.git",
+    "directory": "media-server-helper"
   },
   "license": "ISC",
   "author": "andrei.senaev@gmail.com",

@@ -40,10 +40,7 @@ async function main(): Promise<void> {
       const update = JSON.parse(message.value.toString()) as TelegramUpdate;
       const post = update.channel_post;
       if (post) {
-        processChannelPost(post, botUser.id).catch((err) =>
-          console.error("processChannelPost failed", err),
-        );
-
+        await processChannelPost(post, botUser.id);
         return;
       }
 

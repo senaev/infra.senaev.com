@@ -44,12 +44,8 @@ export interface TelegramUpdate {
   channel_post?: TelegramMessage;
 }
 
-export interface GetMeResult {
+export interface TelegramApiResponse<T> {
   ok: boolean;
-  result: TelegramUser;
-}
-
-export interface GetFileResult {
-  ok: boolean;
-  result?: { file_path: string; file_id: string };
+  result?: T;
+  description?: string;
 }

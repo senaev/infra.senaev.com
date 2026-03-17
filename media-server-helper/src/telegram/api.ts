@@ -1,32 +1,35 @@
 import { TG_CHANNEL_ID, TOKEN_senaev_com_bot } from "../env";
-import type {
-  GetFileResult,
-  GetMeResult,
-  ReactionTypeEmoji,
-  TelegramUser,
-} from "./types";
+import type { ReactionTypeEmoji, TelegramApiResponse, TelegramUser } from "./types";
 
 const BASE = `https://api.telegram.org/bot${TOKEN_senaev_com_bot}`;
 const FILE_BASE = `https://api.telegram.org/file/bot${TOKEN_senaev_com_bot}`;
 
-export async function sendTelegramMessage(text: string): Promise<void> {
-  const res = await fetch(`${BASE}/sendMessage`, {
+async function callApi<T>(method: string, body?: object): Promise<T> {
+  const res = await fetch(`${BASE}/${method}`, body ? {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: TG_CHANNEL_ID, text }),
-  });
+    body: JSON.stringify(body),
+  } : undefined);
+
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Telegram API error: ${res.status} ${err}`);
+    const text = await res.text();
+    throw new Error(`Telegram ${method} HTTP ${res.status}: ${text}`);
   }
+
+  const data = (await res.json()) as TelegramApiResponse<T>;
+  if (!data.ok || data.result === undefined) {
+    throw new Error(`Telegram ${method} failed: ${data.description ?? "unknown error"}`);
+  }
+
+  return data.result;
+}
+
+export async function sendTelegramMessage(text: string): Promise<void> {
+  await callApi("sendMessage", { chat_id: TG_CHANNEL_ID, text });
 }
 
 export async function getMe(): Promise<TelegramUser> {
-  const response = await fetch(`${BASE}/getMe`);
-  const responseJson = await response.json();
-  const data = responseJson as GetMeResult;
-  if (!data.ok || !data.result) throw new Error("getMe failed");
-  return data.result;
+  return callApi<TelegramUser>("getMe");
 }
 
 export async function setMessageReaction(
@@ -34,26 +37,18 @@ export async function setMessageReaction(
   messageId: number,
   reaction: ReactionTypeEmoji[],
 ): Promise<void> {
-  const res = await fetch(`${BASE}/setMessageReaction`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, message_id: messageId, reaction }),
+  await callApi("setMessageReaction", {
+    chat_id: chatId,
+    message_id: messageId,
+    reaction,
   });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`setMessageReaction failed: ${res.status} ${err}`);
-  }
 }
 
 export async function getFile(fileId: string): Promise<{ file_path: string }> {
-  const res = await fetch(`${BASE}/getFile`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ file_id: fileId }),
+  const result = await callApi<{ file_path: string; file_id: string }>("getFile", {
+    file_id: fileId,
   });
-  const data = (await res.json()) as GetFileResult;
-  if (!data.ok || !data.result?.file_path) throw new Error("getFile failed");
-  return { file_path: data.result.file_path };
+  return { file_path: result.file_path };
 }
 
 export async function downloadFile(fileId: string): Promise<ArrayBuffer> {
