@@ -24,8 +24,15 @@ async function callApi<T>(method: string, body?: object): Promise<T> {
   return data.result;
 }
 
-export async function sendTelegramMessage(text: string): Promise<void> {
-  await callApi("sendMessage", { chat_id: TG_CHANNEL_ID, text });
+export async function sendTelegramMessage(
+  text: string,
+  parseMode?: "HTML" | "MarkdownV2",
+): Promise<void> {
+  await callApi("sendMessage", {
+    chat_id: TG_CHANNEL_ID,
+    text,
+    ...(parseMode && { parse_mode: parseMode }),
+  });
 }
 
 export async function getMe(): Promise<TelegramUser> {

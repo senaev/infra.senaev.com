@@ -1,7 +1,5 @@
-# Send telegram messages to channel:
-# curl -X POST http://media-server-helper.senaev-com.svc.cluster.local/tg -H "Content-Type: text/plain" -d "Hello, world!"
-# inside of namespace
-# curl -X POST media-server-helper/tg -H "Content-Type: text/plain" -d "Hello, world!"
+# Send telegram messages to channel via Kafka (pandaproxy):
+# curl -X POST redpanda/topics/tg-send -H "Content-Type: application/vnd.kafka.json.v2+json" -d '{"records":[{"value":"Hello, world!"}]}'
 {{- if .Values.mediaServerHelper.enabled }}
 apiVersion: apps/v1
 kind: Deployment
@@ -63,7 +61,9 @@ spec:
             - name: KAFKA_BROKERS
               value: redpanda.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.redpanda.kafkaPort }}
             - name: KAFKA_TOPIC
-              value: telegram-webhook-data
+              value: {{ (index .Values.redpanda.topics 0).name }}
+            - name: TG_SEND_TOPIC
+              value: {{ (index .Values.redpanda.topics 1).name }}
           ports:
             - containerPort: 80
               name: internal

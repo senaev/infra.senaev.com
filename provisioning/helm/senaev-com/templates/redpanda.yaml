@@ -30,8 +30,8 @@ spec:
                 --mode dev-container \
                 --kafka-addr PLAINTEXT://0.0.0.0:{{ .Values.redpanda.kafkaPort }} \
                 --advertise-kafka-addr PLAINTEXT://redpanda.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.redpanda.kafkaPort }} \
-                --pandaproxy-addr 0.0.0.0:8082 \
-                --advertise-pandaproxy-addr http://redpanda.{{ .Release.Namespace }}.svc.cluster.local:8082 \
+                --pandaproxy-addr 0.0.0.0:{{ .Values.redpanda.pandaproxyPort }} \
+                --advertise-pandaproxy-addr http://redpanda.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.redpanda.pandaproxyPort }} \
                 --rpc-addr 0.0.0.0:33145 \
                 --advertise-rpc-addr redpanda-0.redpanda-headless.{{ .Release.Namespace }}.svc.cluster.local:33145 \
                 --memory {{ .Values.redpanda.memory }} \
@@ -40,7 +40,7 @@ spec:
             - name: kafka
               containerPort: {{ .Values.redpanda.kafkaPort }}
             - name: http
-              containerPort: 8082
+              containerPort: {{ .Values.redpanda.pandaproxyPort }}
             - name: admin
               containerPort: 9644
             - name: rpc
@@ -83,7 +83,7 @@ spec:
     - name: kafka
       port: {{ .Values.redpanda.kafkaPort }}
     - name: http
-      port: 8082
+      port: {{ .Values.redpanda.pandaproxyPort }}
     - name: admin
       port: 9644
     - name: rpc
@@ -105,8 +105,8 @@ spec:
       port: {{ .Values.redpanda.kafkaPort }}
       targetPort: {{ .Values.redpanda.kafkaPort }}
     - name: http
-      port: 8082
-      targetPort: 8082
+      port: {{ .Values.redpanda.pandaproxyPort }}
+      targetPort: {{ .Values.redpanda.pandaproxyPort }}
     - name: admin
       port: 9644
       targetPort: 9644
