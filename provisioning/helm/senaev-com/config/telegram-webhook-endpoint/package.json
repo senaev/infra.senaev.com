@@ -1,7 +1,0 @@
-{
-  "name": "telegram-webhook-endpoint",
-  "version": "1.0.0",
-  "dependencies": {
-    "kafkajs": "2.2.4"
-  }
-}
