@@ -8,11 +8,11 @@ set -a; source "$SCRIPT_DIR/../common/.env"; set +a
 
 cd $K3S_CLUSTER_PATH
 
-VAULT_NS=vault
-POD="$VAULT_NS-0"
+NAMESPACE_NAME=vault
+POD="$NAMESPACE_NAME-0"
 
 vault_exec() {
-  kubectl exec -n "$VAULT_NS" "$POD" -- vault "$@"
+  kubectl exec -n "$NAMESPACE_NAME" "$POD" -- vault "$@"
 }
 
 status_json() {
@@ -97,13 +97,13 @@ if [[ -z "$ROOT_TOKEN" || "$ROOT_TOKEN" == "null" ]]; then
   exit 1
 fi
 vault_exec_with_token() {
-  kubectl exec -n "$VAULT_NS" "$POD" -- env VAULT_TOKEN="$ROOT_TOKEN" vault "$@"
+  kubectl exec -n "$NAMESPACE_NAME" "$POD" -- env VAULT_TOKEN="$ROOT_TOKEN" vault "$@"
 }
 echo "✅ [bootstrap-vault] Root token is ready"
 
 
 echo "👉 [bootstrap-vault] Setting up Vault Kubernetes auth for External Secrets Operator (auth method + KV store + ACL policy)"
-K8S_HOST="https://$(kubectl exec -n "$VAULT_NS" "$POD" -- sh -c 'echo "${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}"')"
+K8S_HOST="https://$(kubectl exec -n "$NAMESPACE_NAME" "$POD" -- sh -c 'echo "${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}"')"
 if ! vault_exec_with_token auth list -format=json 2>/dev/null | jq -e '.["kubernetes/"]' &>/dev/null; then
   vault_exec_with_token auth enable kubernetes
   echo "✅ [bootstrap-vault] Kubernetes auth enabled."
@@ -134,18 +134,18 @@ path \"${KV_SECRETS_ENGINE_PATH}/metadata/*\" {
   capabilities = [\"read\", \"list\"]
 }
 "
-echo "$EXTERNAL_SECRETS_POLICY" | kubectl exec -i -n "$VAULT_NS" "$POD" -- env VAULT_TOKEN="$ROOT_TOKEN" vault policy write "$EXTERNAL_SECRETS_POLICY_NAME" -
+echo "$EXTERNAL_SECRETS_POLICY" | kubectl exec -i -n "$NAMESPACE_NAME" "$POD" -- env VAULT_TOKEN="$ROOT_TOKEN" vault policy write "$EXTERNAL_SECRETS_POLICY_NAME" -
 echo "✅ [bootstrap-vault] Policy $EXTERNAL_SECRETS_POLICY_NAME written."
 
-EXTERNAL_SECRETS_NS=external-secrets
+EXTERNAL_SECRETS_SA_NAME="external-secrets"
 EXTERNAL_SECRETS_ROLE_NAME="external-secrets-role"
 echo "👉 [bootstrap-vault] Writing Kubernetes role"
 vault_exec_with_token write auth/kubernetes/role/$EXTERNAL_SECRETS_ROLE_NAME \
-  bound_service_account_names="$EXTERNAL_SECRETS_NS" \
-  bound_service_account_namespaces="$EXTERNAL_SECRETS_NS" \
+  bound_service_account_names="$EXTERNAL_SECRETS_SA_NAME" \
+  bound_service_account_namespaces="$NAMESPACE_NAME" \
   policies="$EXTERNAL_SECRETS_POLICY_NAME" \
   ttl=1h
-echo "✅ [bootstrap-vault] Vault External Secrets Operator setup done role=[$EXTERNAL_SECRETS_ROLE_NAME] policy=[$EXTERNAL_SECRETS_POLICY_NAME] SA=[$EXTERNAL_SECRETS_NS]"
+echo "✅ [bootstrap-vault] Vault External Secrets Operator setup done role=[$EXTERNAL_SECRETS_ROLE_NAME] policy=[$EXTERNAL_SECRETS_POLICY_NAME] namespace=[$NAMESPACE_NAME] SA=[$EXTERNAL_SECRETS_SA_NAME]"
 
 KV_SECRET="$KV_SECRETS_ENGINE_PATH/senaev-com-kv"
 echo "👉 [bootstrap-vault] Ensuring secret $KV_SECRET exists"

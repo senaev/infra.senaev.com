@@ -1,6 +1,6 @@
 apiVersion: v2
 name: vault
-description: HashiCorp Vault (server only, no injector). ESO is installed separately first.
+description: HashiCorp Vault (server only, no injector). ESO is deployed into the same namespace separately first to install CRDs.
 type: application
 version: 0.1.0
 appVersion: "1"

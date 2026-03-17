@@ -33,7 +33,7 @@ workers:
 services:
 	@echo "👉 [Makefile] Deploying k8s services on control-plane=[$(CONTROL_PLANE_SERVER_ADDRESS)]"
 	@$(MAKE) rsync
-	@ssh "$(CONTROL_PLANE_SERVER_ADDRESS)" "$(K3S_CLUSTER_PATH)/provisioning/control-plane/upgrade-namespace.sh traefik"
+	@ssh "$(CONTROL_PLANE_SERVER_ADDRESS)" "$(K3S_CLUSTER_PATH)/provisioning/control-plane/upgrade-namespace.sh traefik traefik"
 	@ssh "$(CONTROL_PLANE_SERVER_ADDRESS)" "$(K3S_CLUSTER_PATH)/provisioning/control-plane/bootstrap-secrets.sh"
 	@ssh "$(CONTROL_PLANE_SERVER_ADDRESS)" "$(K3S_CLUSTER_PATH)/provisioning/control-plane/bootstrap-telemetry.sh"
 	@$(MAKE) senaev-com
@@ -42,5 +42,5 @@ services:
 senaev-com:
 	@echo "👉 [Makefile] Deploying senaev-com services on control-plane=[$(CONTROL_PLANE_SERVER_ADDRESS)]"
 	@$(MAKE) rsync
-	@ssh "$(CONTROL_PLANE_SERVER_ADDRESS)" "$(K3S_CLUSTER_PATH)/provisioning/control-plane/upgrade-namespace.sh senaev-com"
+	@ssh "$(CONTROL_PLANE_SERVER_ADDRESS)" "$(K3S_CLUSTER_PATH)/provisioning/control-plane/upgrade-namespace.sh senaev-com senaev-com"
 	@echo "✅ [Makefile] senaev-com services deployed"

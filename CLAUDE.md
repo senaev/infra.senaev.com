@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-Kubernetes Infrastructure-as-Code for a personal multi-VPS cluster (infra.senaev.com). Runs K3s across Hetzner, Yandex Cloud, and IONOS nodes connected via Tailscale VPN. Services include a personal website, media server stack, VPN, monitoring, and Kafka-based Telegram integration.
+Kubernetes Infrastructure-as-Code for a personal multi-VPS cluster (infra.senaev.com). Runs K3s across different nodes connected via Tailscale VPN. Services include a personal website, media server stack, VPN, monitoring, and Kafka-based Telegram integration.
 
 ## Deployment Commands
 
@@ -28,17 +28,16 @@ Local machine → `make` → rsync to control-plane → SSH runs shell scripts �
 
 ### Namespace Layout
 
-| Namespace | Purpose | Chart path |
-|---|---|---|
-| `traefik` | Ingress controller (Traefik v3.2, Let's Encrypt ACME) | `provisioning/helm/traefik/` |
-| `vault` | HashiCorp Vault (standalone, file storage, KV v2) | `provisioning/helm/vault/` |
-| `external-secrets` | Syncs Vault secrets → K8s Secrets | `provisioning/helm/external-secrets/` |
-| `vm-stack` | Victoria Metrics monitoring (Grafana, VMAgent) | `provisioning/helm/vm-stack/` |
-| `senaev-com` | All application services (15+ services) | `provisioning/helm/senaev-com/` |
+| Namespace    | Purpose                                                  | Chart(s)                                                          |
+| ------------ | -------------------------------------------------------- | ----------------------------------------------------------------- |
+| `traefik`    | Ingress controller (Traefik v3.2, Let's Encrypt ACME)    | `provisioning/helm/traefik/`                                      |
+| `vault`      | HashiCorp Vault + External Secrets Operator              | `provisioning/helm/vault/`, `provisioning/helm/external-secrets/` |
+| `telemetry`  | Victoria Metrics monitoring (Operator, Grafana, VMAgent) | `provisioning/helm/vm-operator/`, `provisioning/helm/vm-stack/`   |
+| `senaev-com` | All application services (15+ services)                  | `provisioning/helm/senaev-com/`                                   |
 
 ### Multi-VPS Scheduling
 
-Services are pinned to specific VPS nodes via `nodeSelector` with label `vps=hetzner|yandex-cloud|ionos`. Each service in `values.yaml` declares its target VPS.
+Services are pinned to specific VPS nodes via `nodeSelector` with label `vps=hetzner|yandex-cloud|home`. Each service in `values.yaml` declares its target VPS.
 
 ### Secrets Flow
 
@@ -51,8 +50,8 @@ Telegram webhook → `telegram-webhook-endpoint` (Node.js, port 3000) → Redpan
 ## Key Patterns
 
 - **Adding/modifying a service**: Edit `provisioning/helm/senaev-com/values.yaml` (toggle `enabled`, set `vps`, configure ports/paths), then add/edit corresponding template in `provisioning/helm/senaev-com/templates/`.
-- **Namespace deployment**: `provisioning/control-plane/upgrade-namespace.sh <namespace>` — creates namespace, applies CRDs if present, runs `helm upgrade --install`.
-- **Bootstrap order matters**: traefik → vault + external-secrets → telemetry → senaev-com. The Makefile `services` target enforces this.
+- **Namespace deployment**: `provisioning/control-plane/upgrade-namespace.sh <chart> <namespace>` — creates namespace, applies CRDs if present, runs `helm upgrade --install`. Multiple charts can deploy into the same namespace.
+- **Bootstrap order matters**: traefik → vault (external-secrets + vault) → telemetry (vm-operator + vm-stack) → senaev-com. The Makefile `services` target enforces this.
 - **Shell scripts use `set -euo pipefail`** and source env from `provisioning/common/.env`.
 
 ## Project Structure
@@ -62,7 +61,7 @@ provisioning/
   common/           # Shared .env (K3S_VERSION, K3S_CLUSTER_PATH) and prepare-node.sh
   control-plane/    # Bootstrap scripts (control-plane, vault, secrets, telemetry, upgrade-namespace)
   worker/           # Worker node bootstrap and health check
-  helm/             # One chart per namespace (senaev-com, traefik, vault, external-secrets, vm-stack, vm-operator)
+  helm/             # Helm charts (multiple charts can deploy into one namespace via upgrade-namespace.sh)
 scripts/            # Local-side helpers (rsync, worker connection)
 Makefile            # Top-level orchestration, reads .env
 .env                # Server IPs, usernames, WORKERS JSON array (not committed — use .env.example)
