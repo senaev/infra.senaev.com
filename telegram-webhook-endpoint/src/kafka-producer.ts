@@ -1,7 +1,7 @@
 import { Kafka } from "kafkajs";
 import { KAFKA_BROKERS } from "./env.js";
 
-const kafka = new Kafka({ brokers: [KAFKA_BROKERS] });
+const kafka = new Kafka({ brokers: KAFKA_BROKERS });
 const producer = kafka.producer();
 
 export async function connectProducer(): Promise<void> {
