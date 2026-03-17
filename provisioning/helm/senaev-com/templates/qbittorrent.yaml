@@ -9,6 +9,8 @@ metadata:
 data:
   qBittorrent.conf: |
 {{ tpl (.Files.Get "config/qbittorrent/qBittorrent.conf") . | nindent 4 }}
+  tg-notify.sh: |
+{{ .Files.Get "config/qbittorrent/tg-notify.sh" | nindent 4 }}
   watched_folders.json: |
 {{ tpl (.Files.Get "config/qbittorrent/watched_folders.json") . | nindent 4 }}
 ---
@@ -62,10 +64,8 @@ spec:
             - -c
             - |
               mkdir -p /config/qBittorrent
-              if [ ! -f /config/qBittorrent/qBittorrent.conf ]; then
-                cp /default-config/qBittorrent.conf /config/qBittorrent/
-                cp /default-config/watched_folders.json /config/qBittorrent/
-              fi
+              cp /default-config/qBittorrent.conf /config/qBittorrent/
+              cp /default-config/watched_folders.json /config/qBittorrent/
           volumeMounts:
             - name: config
               mountPath: /config
@@ -116,6 +116,10 @@ spec:
               mountPath: /config
             - name: downloads
               mountPath: /downloads
+            - name: tg-notify
+              mountPath: /scripts/tg-notify.sh
+              subPath: tg-notify.sh
+              readOnly: true
       volumes:
         - name: config
           persistentVolumeClaim:
@@ -123,6 +127,13 @@ spec:
         - name: default-config
           configMap:
             name: qbittorrent-default-config
+        - name: tg-notify
+          configMap:
+            name: qbittorrent-default-config
+            items:
+              - key: tg-notify.sh
+                path: tg-notify.sh
+                mode: 0755
         - name: downloads
           hostPath:
             path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}/downloads
