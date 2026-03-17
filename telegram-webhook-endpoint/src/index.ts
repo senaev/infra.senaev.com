@@ -1,70 +1,39 @@
-import http from "node:http";
-import {
-  PORT,
-  WEBHOOK_PATH,
-  WEBHOOK_DOMAIN,
-  KAFKA_TOPIC,
-  MAX_BODY_SIZE,
-  webhookSecretToken,
-} from "./config.js";
-import { telegramApiCall } from "./telegram-api.js";
+import Fastify from "fastify";
+import { randomBytes } from "node:crypto";
+import { KAFKA_TOPIC, WEBHOOK_DOMAIN } from "./env.js";
 import {
   connectProducer,
-  sendMessage,
   disconnectProducer,
+  sendMessage,
 } from "./kafka-producer.js";
+import { telegramApiCall } from "./telegram-api.js";
 
-const server = http.createServer((req, res) => {
-  if (req.method === "GET") {
-    res.writeHead(200);
-    res.end("Telegram Webhook Endpoint Works!");
-    return;
+export const PORT = 3000;
+export const WEBHOOK_PATH = "/telegram-webhook";
+
+export const webhookSecretToken = randomBytes(32).toString("hex");
+
+const server = Fastify({ logger: true });
+
+server.get("/*", async () => {
+  return "Telegram Webhook Endpoint Works!";
+});
+
+server.post(WEBHOOK_PATH, async (request, reply) => {
+  const secret = request.headers["x-telegram-bot-api-secret-token"];
+  if (secret !== webhookSecretToken) {
+    return reply.code(401).send("Unauthorized");
   }
 
-  if (req.method === "POST" && req.url === WEBHOOK_PATH) {
-    const secret = req.headers["x-telegram-bot-api-secret-token"];
-    if (secret !== webhookSecretToken) {
-      res.writeHead(401);
-      res.end("Unauthorized");
-      return;
-    }
-
-    let body = "";
-    req.on("data", (chunk: Buffer) => {
-      body += chunk;
-      if (body.length > MAX_BODY_SIZE) {
-        req.destroy();
-        res.writeHead(413);
-        res.end("Payload Too Large");
-      }
-    });
-    req.on("end", () => {
-      if (body.length > MAX_BODY_SIZE) return;
-      sendMessage(KAFKA_TOPIC, body)
-        .then(() => {
-          res.writeHead(200);
-          res.end("OK");
-        })
-        .catch((err: unknown) => {
-          console.error("Failed to send to Kafka:", err);
-          res.writeHead(500);
-          res.end("Error");
-        });
-    });
-    return;
-  }
-
-  res.writeHead(404);
-  res.end("Not Found");
+  await sendMessage(KAFKA_TOPIC, JSON.stringify(request.body));
+  return reply.send("OK");
 });
 
 async function main(): Promise<void> {
   await connectProducer();
   console.log("Connected to Kafka");
 
-  await new Promise<void>((resolve) =>
-    server.listen(PORT, "0.0.0.0", resolve),
-  );
+  await server.listen({ port: PORT, host: "0.0.0.0" });
   console.log(`Server listening on port=${PORT}`);
 
   const webhookUrl = `https://${WEBHOOK_DOMAIN}${WEBHOOK_PATH}`;
@@ -75,12 +44,11 @@ async function main(): Promise<void> {
   console.log(`Webhook set to url=${webhookUrl}`);
 }
 
-function shutdown(): void {
+async function shutdown(): Promise<void> {
   console.log("Shutting down...");
-  server.close(() => {
-    disconnectProducer().then(() => process.exit(0));
-  });
-  setTimeout(() => process.exit(1), 5000);
+  await server.close();
+  await disconnectProducer();
+  process.exit(0);
 }
 
 process.on("SIGTERM", shutdown);

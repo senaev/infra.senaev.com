@@ -1,4 +1,4 @@
-import { TELEGRAM_BOT_TOKEN } from "./config.js";
+import { TELEGRAM_BOT_TOKEN } from "./env.js";
 
 export async function telegramApiCall(
   method: string,
