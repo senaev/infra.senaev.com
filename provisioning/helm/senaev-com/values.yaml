@@ -70,8 +70,11 @@ redpanda:
   storage: 2Gi
   memory: 400M
   kafkaPort: 9092
+  pandaproxyPort: 80
   topics:
     - name: telegram-webhook-data
+      partitions: 1
+    - name: tg-send
       partitions: 1
 
 ingress:

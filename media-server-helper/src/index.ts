@@ -1,6 +1,10 @@
 import Fastify from "fastify";
 import { Kafka, type EachMessagePayload } from "kafkajs";
-import { KAFKA_BROKERS, KAFKA_TOPIC } from "./env";
+import { KAFKA_BROKERS, KAFKA_TOPIC, TG_SEND_TOPIC } from "./env";
+import {
+  formatTorrentEvent,
+  isTorrentEvent,
+} from "./qbittorrent/formatTorrentEvent";
 import { getMe, sendTelegramMessage } from "./telegram/api";
 import { processChannelPost } from "./telegram/processChannelPost";
 import type { TelegramUpdate } from "./telegram/types";
@@ -13,14 +17,22 @@ server.get("/*", async (_request, reply) => {
   reply.send("server OK");
 });
 
-server.post<{ Body: string }>("/tg", async (request, reply) => {
-  const message = request.body as string;
-  if (!message) {
-    throw new Error("Message is required");
+async function handleTgSend(raw: string): Promise<void> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    await sendTelegramMessage(raw);
+    return;
   }
-  await sendTelegramMessage(message);
-  reply.send({ status: "ok" });
-});
+
+  if (isTorrentEvent(parsed)) {
+    await sendTelegramMessage(formatTorrentEvent(parsed), "HTML");
+    return;
+  }
+
+  await sendTelegramMessage(raw);
+}
 
 async function main(): Promise<void> {
   const botUser = await getMe();
@@ -30,13 +42,20 @@ async function main(): Promise<void> {
 
   await consumer.connect();
   await consumer.subscribe({ topic: KAFKA_TOPIC, fromBeginning: false });
+  await consumer.subscribe({ topic: TG_SEND_TOPIC, fromBeginning: false });
 
   await consumer.run({
-    eachMessage: async ({ message }: EachMessagePayload) => {
+    eachMessage: async ({ topic, message }: EachMessagePayload) => {
       if (!message.value) {
         console.error("Consumed message with no value");
         return;
       }
+
+      if (topic === TG_SEND_TOPIC) {
+        await handleTgSend(message.value.toString());
+        return;
+      }
+
       const update = JSON.parse(message.value.toString()) as TelegramUpdate;
       const post = update.channel_post;
       if (post) {
