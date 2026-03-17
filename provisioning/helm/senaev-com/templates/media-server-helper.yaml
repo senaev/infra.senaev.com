@@ -44,7 +44,7 @@ spec:
               mountPath: /watch-torrent-files
       containers:
         - name: media-server-helper
-          image: ghcr.io/senaev/media-server-helper.senaev.com:latest
+          image: ghcr.io/senaev/media-server-helper:latest
           env:
             - name: TOKEN_senaev_com_bot
               valueFrom:
