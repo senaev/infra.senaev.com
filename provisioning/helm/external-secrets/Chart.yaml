@@ -1,6 +1,6 @@
 apiVersion: v2
 name: external-secrets
-description: External Secrets Operator (installed before vault so CRDs exist)
+description: External Secrets Operator (deployed into vault namespace before vault chart so CRDs exist)
 type: application
 version: 0.1.0
 kubeVersion: ">=1.25.0"

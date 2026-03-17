@@ -11,6 +11,6 @@ spec:
       app.kubernetes.io/name: victoria-metrics-operator
   namespaceSelector:
     matchNames:
-      - vm-operator
+      - telemetry
   endpoints:
     - port: http

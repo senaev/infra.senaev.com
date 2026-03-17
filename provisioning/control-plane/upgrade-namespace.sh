@@ -1,22 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Upgrade namespace with helm chart.
-if [[ $# -lt 1 ]]; then
-  echo "Usage: $0 <namespace>" >&2
-  echo "Example: $0 senaev-com" >&2
+# Upgrade helm chart in a given namespace.
+if [[ $# -lt 2 ]]; then
+  echo "Usage: $0 <chart> <namespace_name>" >&2
+  echo "Example: $0 senaev-com senaev-com" >&2
   exit 1
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 set -a; source "$SCRIPT_DIR/../common/.env"; set +a
 
-NS="$1"
-CHART_PATH="$K3S_CLUSTER_PATH/provisioning/helm/$NS"
+CHART_NAME="$1"
+NAMESPACE_NAME="$2"
+CHART_PATH="$K3S_CLUSTER_PATH/provisioning/helm/$CHART_NAME"
 
-echo "👉 [upgrade-namespace] Checking namespace=[$NS]"
-kubectl create namespace "$NS" --dry-run=client -o yaml | kubectl apply -f -
-echo "✅ [upgrade-namespace] Namespace=[$NS] exists"
+echo "👉 [upgrade-namespace] Checking namespace=[$NAMESPACE_NAME]"
+kubectl create namespace "$NAMESPACE_NAME" --dry-run=client -o yaml | kubectl apply -f -
+echo "✅ [upgrade-namespace] Namespace=[$NAMESPACE_NAME] exists"
 
 if [[ -d "$CHART_PATH/crds" ]]; then
   for f in "$CHART_PATH"/crds/*.yml "$CHART_PATH"/crds/*.yaml; do
@@ -28,9 +29,9 @@ if [[ -d "$CHART_PATH/crds" ]]; then
   done
 fi
 
-echo "👉 [upgrade-namespace] Helm upgrade namespace=[$NS]"
-helm upgrade --install "$NS" $CHART_PATH \
--n "$NS" \
+echo "👉 [upgrade-namespace] Helm upgrade chart=[$CHART_NAME] namespace=[$NAMESPACE_NAME]"
+helm upgrade --install "$CHART_NAME" $CHART_PATH \
+-n "$NAMESPACE_NAME" \
 -f $CHART_PATH/values.yaml \
 --take-ownership
-echo "✅ [upgrade-namespace] Helm upgrade namespace=[$NS]"
+echo "✅ [upgrade-namespace] Helm upgrade chart=[$CHART_NAME] namespace=[$NAMESPACE_NAME]"
