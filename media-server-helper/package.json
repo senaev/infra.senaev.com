@@ -1,0 +1,30 @@
+{
+  "name": "media-server-helper",
+  "version": "1.0.0",
+  "description": "Helper for senaev.com cluster media server",
+  "homepage": "https://github.com/senaev/infra.senaev.com#readme",
+  "bugs": {
+    "url": "https://github.com/senaev/infra.senaev.com/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/senaev/infra.senaev.com.git",
+    "directory": "media-server-helper"
+  },
+  "license": "ISC",
+  "author": "andrei.senaev@gmail.com",
+  "type": "commonjs",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "tsx src/index.ts"
+  },
+  "devDependencies": {
+    "@types/node": "25.4.0",
+    "typescript": "5.9.3"
+  },
+  "dependencies": {
+    "fastify": "^5.8.2",
+    "kafkajs": "2.2.4",
+    "tsx": "4.21.0"
+  }
+}
