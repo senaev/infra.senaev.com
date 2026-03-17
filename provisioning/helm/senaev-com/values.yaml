@@ -64,6 +64,10 @@ telegramWebhookEndpoint:
   vps: hetzner
   webhookDomain: telegram-webhook-endpoint.senaev.com
 
+redpandaConsole:
+  enabled: true
+  vps: hetzner
+
 redpanda:
   enabled: true
   vps: hetzner
@@ -116,3 +120,10 @@ ingress:
         - host: unmanic.senaev.com
           service: unmanic
           port: 8888
+    - name: senaev-com-redpanda-console
+      className: traefik-hetzner
+      middleware: redpanda-console-basicauth
+      hosts:
+        - host: kafka.senaev.com
+          service: redpanda-console
+          port: 8080
