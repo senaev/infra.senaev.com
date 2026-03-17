@@ -1,14 +1,9 @@
 import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
-import { TG_CHANNEL_ID } from "../const/TG_CHANNEL_ID";
+import { TG_CHANNEL_ID, WATCH_TORRENT_FILES_DIR } from "../env";
 import { downloadFile, sendTelegramMessage, setMessageReaction } from "./api";
 import { EYES_REACTION } from "./EYES_REACTION";
 import type { ReactionCount, TelegramMessage } from "./types";
-
-const WATCH_TORRENT_FILES_DIR = process.env.WATCH_TORRENT_FILES_DIR as string;
-if (typeof WATCH_TORRENT_FILES_DIR !== "string") {
-  throw new Error("WATCH_TORRENT_FILES_DIR is not a string");
-}
 
 function hasEyesReaction(reaction?: ReactionCount[]): boolean {
   if (!reaction || !Array.isArray(reaction)) return false;

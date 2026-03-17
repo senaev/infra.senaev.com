@@ -1,5 +1,4 @@
-import { TOKEN_senaev_com_bot } from "../const/TOKEN_senaev_com_bot";
-import { TG_CHANNEL_ID } from "../const/TG_CHANNEL_ID";
+import { TG_CHANNEL_ID, TOKEN_senaev_com_bot } from "../env";
 import type {
   GetFileResult,
   GetMeResult,

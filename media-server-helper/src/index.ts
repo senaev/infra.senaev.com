@@ -1,13 +1,12 @@
 import Fastify from "fastify";
 import { Kafka, type EachMessagePayload } from "kafkajs";
+import { KAFKA_BROKERS, KAFKA_TOPIC } from "./env";
 import { getMe, sendTelegramMessage } from "./telegram/api";
 import { processChannelPost } from "./telegram/processChannelPost";
 import type { TelegramUpdate } from "./telegram/types";
 
 const HOST = "0.0.0.0";
 const PORT = 80;
-const KAFKA_BROKERS = process.env.KAFKA_BROKERS!;
-const KAFKA_TOPIC = process.env.KAFKA_TOPIC!;
 
 const server = Fastify({ logger: true });
 server.get("/*", async (_request, reply) => {
@@ -26,7 +25,7 @@ server.post<{ Body: string }>("/tg", async (request, reply) => {
 async function main(): Promise<void> {
   const botUser = await getMe();
 
-  const kafka = new Kafka({ brokers: [KAFKA_BROKERS] });
+  const kafka = new Kafka({ brokers: KAFKA_BROKERS });
   const consumer = kafka.consumer({ groupId: "media-server-helper" });
 
   await consumer.connect();
