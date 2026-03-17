@@ -1,15 +1,4 @@
 {{- if .Values.telegramWebhookEndpoint.enabled }}
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: telegram-webhook-endpoint-scripts
-  namespace: {{ .Release.Namespace }}
-data:
-  package.json: |
-{{ .Files.Get "config/telegram-webhook-endpoint/package.json" | indent 4 }}
-  index.js: |
-{{ .Files.Get "config/telegram-webhook-endpoint/index.js" | indent 4 }}
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -26,27 +15,16 @@ spec:
     metadata:
       labels:
         app: telegram-webhook-endpoint
+      annotations:
+        secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
     spec:
       nodeSelector:
         vps: {{ .Values.telegramWebhookEndpoint.vps }}
-      initContainers:
-        - name: npm-install
-          image: node:22-alpine
-          command:
-            - sh
-            - -c
-            - cp /scripts/* /app/ && cd /app && npm install
-          volumeMounts:
-            - name: scripts
-              mountPath: /scripts
-            - name: app
-              mountPath: /app
       containers:
-        - name: producer
-          image: node:22-alpine
-          command:
-            - node
-            - /app/index.js
+        - name: telegram-webhook-endpoint
+          image: ghcr.io/senaev/telegram-webhook-endpoint:latest
+          ports:
+            - containerPort: 3000
           env:
             - name: KAFKA_BROKERS
               value: redpanda.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.redpanda.kafkaPort }}
@@ -60,15 +38,18 @@ spec:
                   name: senaev-com-kv-secrets
                   key: TOKEN_senaev_com_bot
                   optional: false
-          volumeMounts:
-            - name: app
-              mountPath: /app
-      volumes:
-        - name: scripts
-          configMap:
-            name: telegram-webhook-endpoint-scripts
-        - name: app
-          emptyDir: {}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
 ---
 apiVersion: v1
 kind: Service
