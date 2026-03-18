@@ -1,10 +1,19 @@
 {
-  "cSpell.language": "en,ru",
-  "cSpell.words": [
-    "Andrei",
-    "MERRIWEATHER",
-    "MERRIWEATRER",
-    "Metrika",
-    "SENAEV"
-  ]
+    "cSpell.language": "en,ru",
+    "cSpell.words": [
+        "Andrei",
+        "basicauth",
+        "jellyfin",
+        "MERRIWEATHER",
+        "MERRIWEATRER",
+        "Metrika",
+        "nextjs",
+        "pandaproxy",
+        "qbittorrent",
+        "redpanda",
+        "SENAEV",
+        "unmanic",
+        "webdav",
+        "webui"
+    ]
 }
