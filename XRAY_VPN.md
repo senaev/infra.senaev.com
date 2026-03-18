@@ -1,35 +1,55 @@
 # Xray — VLESS + Reality
 
-Сервер настроен на протокол VLESS с Reality: трафик выглядит как обычный TLS до популярного сервиса, что помогает обходить блокировки.
+Сервер настроен на протокол VLESS с Reality: трафик выглядит как обычный TLS до `senaev.ru`, что помогает обходить блокировки.
+
+## Архитектура
+
+```
+Клиент ──VLESS+Reality──→ yandex-cloud:443 (XRAY)
+                               │
+                               ├─ VPN-клиент (есть Reality-маркеры) → xray-socks:1080 (hetzner) → Интернет
+                               │
+                               └─ Обычный HTTPS (нет маркеров) → traefik-hetzner:443 → nextjs-app:3000
+                                  (камуфляж: цензор видит настоящий сайт senaev.ru)
+
+HTTP (порт 80) → XRAY dokodemo-door → traefik-hetzner:80
+                  (ACME-челленджи Let's Encrypt + редирект на HTTPS)
+```
+
+Reality анализирует TLS ClientHello: если в Session ID есть зашифрованные маркеры (расшифровываются `privateKey`), соединение обрабатывается как VPN. Если маркеров нет — сырой TCP проксируется в `dest` (Traefik), который отвечает настоящим сайтом с настоящим сертификатом Let's Encrypt.
 
 ## Как генерировать ключи
 
-Сгенерировать `XRAY_USER_UUID` командой `uuidgen`, вывод будет типа такого:
+Сгенерировать `XRAY_USER_UUID`:
 
-```text
-ec4249b8-12aa-4ca3-a4cb-693dc48147be
+```bash
+uuidgen
+# ec4249b8-12aa-4ca3-a4cb-693dc48147be
 ```
 
-Сгенерировать `{REALITY_PRIVATE_KEY}` и `{XRAY_REALITY_PUBLIC_KEY}` ключ командой внутри pod XRAY `xray x25519`, вывод будет типа такого:
+Сгенерировать пару ключей Reality (внутри pod XRAY):
 
-```text
-PrivateKey: REALITY_PRIVATE_KEY
-Password: XRAY_REALITY_PUBLIC_KEY
-Hash32: XXX
+```bash
+xray x25519
+# PrivateKey: <XRAY_REALITY_PRIVATE_KEY>  ← в Vault
+# PublicKey:  <XRAY_REALITY_PUBLIC_KEY>   ← в ссылку клиента
 ```
 
-В секрет Vault `senaev-com-kv` вставляем ключи/значения для `XRAY_REALITY_PRIVATE_KEY` и `XRAY_USER_UUID`.
+В секрет Vault `senaev-com-kv` вставляем:
 
-После этого необходимо подождать пару минут, чтобы кублет прогрузил секреты в pod.
+- `XRAY_REALITY_PRIVATE_KEY` — приватный ключ
+- `XRAY_USER_UUID` — UUID клиента
+
+После этого необходимо подождать пару минут, чтобы кублет прогрузил секреты в pod.
 
 ## Настройки клиента
 
-Установить Happ https://www.happ.su/main
+Установить [Hiddify](https://hiddify.com/) или [Happ](https://www.happ.su/main).
 
 Заполнить макросы и скопировать ссылку:
 
 ```text
-vless://{XRAY_USER_UUID}@{SERVER_HOST}:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=www.google.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid=0123456789abcdef#vpn.senaev.com
+vless://{XRAY_USER_UUID}@{SERVER_HOST}:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid=0123456789abcdef#connection_name
 ```
 
-В приложении `Add new` → `Import from clipboard`
+В приложении `Add new` → `Import from clipboard`.
