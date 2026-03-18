@@ -27,11 +27,20 @@ data:
             "network": "tcp",
             "security": "reality",
             "realitySettings": {
-              "dest": "ya.ru:443",
-              "serverNames": ["ya.ru"],
+              "dest": "traefik-hetzner.traefik.svc.cluster.local:443",
+              "serverNames": ["senaev.ru"],
               "privateKey": "{XRAY_REALITY_PRIVATE_KEY}",
               "shortIds": ["", "0123456789abcdef"]
             }
+          }
+        },
+        {
+          "port": 80,
+          "protocol": "dokodemo-door",
+          "settings": {
+            "address": "traefik-hetzner.traefik.svc.cluster.local",
+            "port": 80,
+            "network": "tcp"
           }
         }
       ],
@@ -105,6 +114,8 @@ spec:
           ports:
             - containerPort: 443
               hostPort: 443
+            - containerPort: 80
+              hostPort: 80
           volumeMounts:
             - name: xray-vpn-config
               mountPath: /etc/xray
