@@ -29,7 +29,7 @@ Hash32: XXX
 Заполнить макросы и скопировать ссылку:
 
 ```text
-vless://{XRAY_USER_UUID}@{SERVER_HOST}:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=www.google.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid=0123456789abcdef#vpn.senaev.com
+vless://{XRAY_USER_UUID}@{SERVER_HOST}:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni={SNI_ADDRESS_FOR_TLS}&pbk={XRAY_REALITY_PUBLIC_KEY}&sid=0123456789abcdef#vpn_connection_name
 ```
 
 В приложении `Add new` → `Import from clipboard`
