@@ -49,7 +49,7 @@ xray x25519
 Заполнить макросы и скопировать ссылку:
 
 ```text
-vless://{XRAY_USER_UUID}@{SERVER_HOST}:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni={SNI_ADDRESS_FOR_TLS}&pbk={XRAY_REALITY_PUBLIC_KEY}&sid=0123456789abcdef#connection_name
+vless://{XRAY_USER_UUID}@{SERVER_HOST}:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid=0123456789abcdef#connection_name
 ```
 
 В приложении `Add new` → `Import from clipboard`.
