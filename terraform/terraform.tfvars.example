@@ -1,2 +1,2 @@
-hcloud_token      = "your-hetzner-cloud-api-token"
-tailscale_api_key = "tskey-api-your-tailscale-api-key"
+hcloud_token      = "your_hetzner_cloud_api_token"
+tailscale_api_key = "tskey_api_your_tailscale_api_key"
