@@ -64,6 +64,10 @@ telegramWebhookEndpoint:
   vps: hetzner
   webhookDomain: telegram-webhook-endpoint.senaev.com
 
+redpandaConsole:
+  enabled: true
+  vps: hetzner
+
 ingress:
   entries:
     - name: senaev-com
