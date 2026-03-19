@@ -1,4 +1,4 @@
-import { TG_MEDIA_SERVER_CHANNEL_ID, TOKEN_senaev_com_bot } from "../env";
+import { TOKEN_senaev_com_bot } from "../env";
 import type {
   ReactionTypeEmoji,
   TelegramApiResponse,
@@ -35,12 +35,17 @@ async function callApi<T>(method: string, body?: object): Promise<T> {
   return data.result;
 }
 
-export async function sendTelegramMessage(
-  text: string,
-  parseMode?: "HTML" | "MarkdownV2",
-): Promise<void> {
+export async function sendTelegramMessage({
+  text,
+  chatId,
+  parseMode,
+}: {
+  text: string;
+  chatId: string;
+  parseMode?: "HTML" | "MarkdownV2";
+}): Promise<void> {
   await callApi("sendMessage", {
-    chat_id: TG_MEDIA_SERVER_CHANNEL_ID,
+    chat_id: chatId,
     text,
     ...(parseMode && { parse_mode: parseMode }),
   });

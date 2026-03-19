@@ -28,8 +28,6 @@ spec:
           env:
             - name: KAFKA_BROKERS
               value: redpanda.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.redpanda.kafkaPort }}
-            - name: KAFKA_TOPIC
-              value: {{ (index .Values.redpanda.topics 0).name }}
             - name: WEBHOOK_DOMAIN
               value: {{ .Values.telegramWebhookEndpoint.webhookDomain }}
             - name: TELEGRAM_BOT_TOKEN
