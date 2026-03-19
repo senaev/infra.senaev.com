@@ -9,10 +9,10 @@ resource "hcloud_ssh_key" "ed25519" {
 }
 
 resource "hcloud_server" "control_plane" {
-  name        = var.server_name
-  server_type = var.server_type
-  location    = var.server_location
-  image       = var.server_image
+  name        = "hetzner"
+  server_type = "cx22"
+  location    = "nbg1"
+  image       = "ubuntu-24.04"
   ssh_keys    = [hcloud_ssh_key.ecdsa.id, hcloud_ssh_key.ed25519.id]
 
   user_data = templatefile("${path.module}/cloud-init.yaml.tpl", {
