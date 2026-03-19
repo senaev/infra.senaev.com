@@ -14,7 +14,7 @@ terraform {
 }
 
 provider "hcloud" {
-  token = var.hcloud_token
+  token = var.hetzner_token
 }
 
 provider "tailscale" {

@@ -1,4 +1,4 @@
 # https://console.hetzner.cloud/projects → Select project → Security → API tokens → Generate API token
-hcloud_token      = "your_hetzner_cloud_api_token"
+hetzner_token     = "your_hetzner_cloud_api_token"
 # https://login.tailscale.com/admin/settings/keys → API access tokens → Generate access token…
 tailscale_api_key = "tskey_api_your_tailscale_api_key"
