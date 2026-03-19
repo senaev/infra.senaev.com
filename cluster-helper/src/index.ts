@@ -1,10 +1,14 @@
 import Fastify from "fastify";
 import { Kafka, type EachMessagePayload } from "kafkajs";
-import { KAFKA_BROKERS, TG_MEDIA_SERVER_CHANNEL_ID } from "./env";
+import { KAFKA_BROKERS, TG_CLUSTER_CHAT_ID, TG_MEDIA_SERVER_CHANNEL_ID } from "./env";
 import { formatTorrentEvent, isTorrentEvent } from "./qbittorrent/formatTorrentEvent";
 import { getMe, sendTelegramMessage } from "./telegram/api";
 import { processMediaServerChannelPost } from "./telegram/processMediaServerChannelPost";
 import type { TelegramUpdate } from "./telegram/types";
+
+function escapeMarkdownV2(text: string): string {
+    return text.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, "\\$&");
+}
 
 const HOST = "0.0.0.0";
 const PORT = 80;
@@ -16,6 +20,7 @@ server.get("/*", async (_request, reply) => {
 
 export const TELEGRAM_WEBHOOK_KAFKA_TOPIC = "telegram-webhook-data-topic";
 export const TG_SEND_KAFKA_TOPIC = "tg-send-to-media-server-topic";
+export const VAULT_UNSEAL_KAFKA_TOPIC = "vault-unseal-topic";
 
 async function handleTgSendToMediaServerChat(raw: string): Promise<void> {
     let parsed: unknown;
@@ -56,6 +61,10 @@ async function main(): Promise<void> {
         topic: TG_SEND_KAFKA_TOPIC,
         fromBeginning: false,
     });
+    await consumer.subscribe({
+        topic: VAULT_UNSEAL_KAFKA_TOPIC,
+        fromBeginning: false,
+    });
 
     await consumer.run({
         eachMessage: async ({ topic, message }: EachMessagePayload) => {
@@ -66,6 +75,16 @@ async function main(): Promise<void> {
 
             if (topic === TG_SEND_KAFKA_TOPIC) {
                 await handleTgSendToMediaServerChat(message.value.toString());
+                return;
+            }
+
+            if (topic === VAULT_UNSEAL_KAFKA_TOPIC) {
+                const token = message.value.toString();
+                await sendTelegramMessage({
+                    text: `New vault unseal token:\n||${escapeMarkdownV2(token)}||`,
+                    chatId: TG_CLUSTER_CHAT_ID,
+                    parseMode: "MarkdownV2",
+                });
                 return;
             }
 
