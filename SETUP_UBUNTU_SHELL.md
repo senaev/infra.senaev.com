@@ -50,7 +50,7 @@ plugins=(
 )
 ```
 
-Install fornt on a local machine and set it in iTerm
+Install font on a local machine and set it in iTerm
 
 - https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf
 - https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Bold.ttf
