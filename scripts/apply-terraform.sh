@@ -35,9 +35,8 @@ if ! terraform apply -auto-approve 2>&1; then
   echo "👉 [apply-terraform] Requesting SSH key IDs"
   SSH_KEYS=$(curl -s -H "$AUTH" "$API/ssh_keys")
   echo "✅ [apply-terraform] SSH keys retrieved from Hetzner API"
-  ECDSA_ID=$(echo "$SSH_KEYS" | jq -r '.ssh_keys[] | select(.name=="senaev@yandex-team") | .id')
-  ED25519_ID=$(echo "$SSH_KEYS" | jq -r '.ssh_keys[] | select(.name=="senaev@personal-mac") | .id')
 
+  ECDSA_ID=$(echo "$SSH_KEYS" | jq -r '.ssh_keys[] | select(.name=="senaev@yandex-team") | .id')
   if [ -n "$ECDSA_ID" ]; then
     echo "👉 [apply-terraform] Importing ECDSA SSH key (ID: $ECDSA_ID)"
     terraform import hcloud_ssh_key.ecdsa "$ECDSA_ID" || true
@@ -46,6 +45,7 @@ if ! terraform apply -auto-approve 2>&1; then
     echo "⚠️  [apply-terraform] ECDSA SSH key not found in Hetzner API — it will be recreated"
   fi
 
+  ED25519_ID=$(echo "$SSH_KEYS" | jq -r '.ssh_keys[] | select(.name=="senaev@personal-mac") | .id')
   if [ -n "$ED25519_ID" ]; then
     echo "👉 [apply-terraform] Importing Ed25519 SSH key (ID: $ED25519_ID)"
     terraform import hcloud_ssh_key.ed25519 "$ED25519_ID" || true
