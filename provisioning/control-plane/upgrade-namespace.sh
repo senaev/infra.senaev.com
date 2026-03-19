@@ -50,9 +50,9 @@ if [[ -d "$CHART_PATH/crds" ]]; then
 fi
 
 echo "👉 [upgrade-namespace] Helm upgrade chart=[$CHART_NAME] namespace=[$NAMESPACE_NAME]"
-helm upgrade --install "$CHART_NAME" $CHART_PATH \
+helm upgrade --install "$CHART_NAME" "$CHART_PATH" \
 -n "$NAMESPACE_NAME" \
 -f "$COMMON_VALUES" \
--f $CHART_PATH/values.yaml \
+-f "$CHART_PATH/values.yaml" \
 --take-ownership $HELM_EXTRA_ARGS
 echo "✅ [upgrade-namespace] Helm upgrade chart=[$CHART_NAME] namespace=[$NAMESPACE_NAME]"
