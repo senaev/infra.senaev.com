@@ -57,7 +57,7 @@ testEcho:
 
 clusterHelper:
   enabled: true
-  vps: yandex-cloud
+  vps: hetzner
 
 telegramWebhookEndpoint:
   enabled: true

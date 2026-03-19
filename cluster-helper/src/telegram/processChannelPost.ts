@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
-import { TG_CHANNEL_ID, WATCH_TORRENT_FILES_DIR } from "../env";
+import { TG_MEDIA_SERVER_CHANNEL_ID, WATCH_TORRENT_FILES_DIR } from "../env";
 import { downloadFile, sendTelegramMessage, setMessageReaction } from "./api";
 import { EYES_REACTION } from "./EYES_REACTION";
 import type { ReactionCount, TelegramMessage } from "./types";
@@ -25,7 +25,7 @@ export async function processChannelPost(
     return;
   }
   const chatIdStr = String(message.chat.id);
-  if (chatIdStr !== TG_CHANNEL_ID) {
+  if (chatIdStr !== TG_MEDIA_SERVER_CHANNEL_ID) {
     console.error(`Processing message is from another channel=[${chatIdStr}]`);
     return;
   }

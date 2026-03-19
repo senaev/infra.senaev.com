@@ -50,11 +50,11 @@ spec:
                   name: senaev-com-kv-secrets
                   key: TOKEN_senaev_com_bot
                   optional: false
-            - name: TG_CHANNEL_ID
+            - name: TG_MEDIA_SERVER_CHANNEL_ID
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: TG_CHANNEL_ID
+                  key: TG_MEDIA_SERVER_CHANNEL_ID
                   optional: false
             - name: WATCH_TORRENT_FILES_DIR
               value: /watch-torrent-files

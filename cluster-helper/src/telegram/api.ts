@@ -1,15 +1,24 @@
-import { TG_CHANNEL_ID, TOKEN_senaev_com_bot } from "../env";
-import type { ReactionTypeEmoji, TelegramApiResponse, TelegramUser } from "./types";
+import { TG_MEDIA_SERVER_CHANNEL_ID, TOKEN_senaev_com_bot } from "../env";
+import type {
+  ReactionTypeEmoji,
+  TelegramApiResponse,
+  TelegramUser,
+} from "./types";
 
 const BASE = `https://api.telegram.org/bot${TOKEN_senaev_com_bot}`;
 const FILE_BASE = `https://api.telegram.org/file/bot${TOKEN_senaev_com_bot}`;
 
 async function callApi<T>(method: string, body?: object): Promise<T> {
-  const res = await fetch(`${BASE}/${method}`, body ? {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  } : undefined);
+  const res = await fetch(
+    `${BASE}/${method}`,
+    body
+      ? {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        }
+      : undefined,
+  );
 
   if (!res.ok) {
     const text = await res.text();
@@ -18,7 +27,9 @@ async function callApi<T>(method: string, body?: object): Promise<T> {
 
   const data = (await res.json()) as TelegramApiResponse<T>;
   if (!data.ok || data.result === undefined) {
-    throw new Error(`Telegram ${method} failed: ${data.description ?? "unknown error"}`);
+    throw new Error(
+      `Telegram ${method} failed: ${data.description ?? "unknown error"}`,
+    );
   }
 
   return data.result;
@@ -29,7 +40,7 @@ export async function sendTelegramMessage(
   parseMode?: "HTML" | "MarkdownV2",
 ): Promise<void> {
   await callApi("sendMessage", {
-    chat_id: TG_CHANNEL_ID,
+    chat_id: TG_MEDIA_SERVER_CHANNEL_ID,
     text,
     ...(parseMode && { parse_mode: parseMode }),
   });
@@ -52,9 +63,12 @@ export async function setMessageReaction(
 }
 
 export async function getFile(fileId: string): Promise<{ file_path: string }> {
-  const result = await callApi<{ file_path: string; file_id: string }>("getFile", {
-    file_id: fileId,
-  });
+  const result = await callApi<{ file_path: string; file_id: string }>(
+    "getFile",
+    {
+      file_id: fileId,
+    },
+  );
   return { file_path: result.file_path };
 }
 
