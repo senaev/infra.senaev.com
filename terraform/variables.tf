@@ -9,8 +9,3 @@ variable "tailscale_api_key" {
   type        = string
   sensitive   = true
 }
-
-variable "tailscale_tailnet" {
-  description = "Tailscale tailnet name (e.g. andrei.senaev@gmail.com)"
-  type        = string
-}
