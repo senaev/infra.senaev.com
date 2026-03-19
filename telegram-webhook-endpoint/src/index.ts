@@ -29,17 +29,18 @@ server.post(WEBHOOK_PATH, async (request, reply) => {
 
 async function main(): Promise<void> {
     await connectProducer();
-    console.log("Connected to Kafka");
+    console.log(`✅ Connected to Kafka`);
 
     await server.listen({ port: PORT, host: "0.0.0.0" });
-    console.log(`Server listening on port=${PORT}`);
+    console.log(`✅ Server listening on port=${PORT}`);
 
     const webhookUrl = `https://${WEBHOOK_DOMAIN}${WEBHOOK_PATH}`;
     await telegramApiCall("setWebhook", {
         url: webhookUrl,
         secret_token: webhookSecretToken,
+        allowed_updates: ["message", "channel_post"],
     });
-    console.log(`Webhook set to url=${webhookUrl}`);
+    console.log(`✅ Webhook set to url=${webhookUrl}`);
 }
 
 async function shutdown(): Promise<void> {
