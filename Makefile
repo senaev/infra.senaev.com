@@ -13,9 +13,7 @@ default:
 	@echo "🏁 [Makefile] Deployment completed successfully!"
 
 terraform:
-	@echo "👉 [Makefile] Running Terraform to ensure infrastructure is up-to-date"
-	@cd $(CURDIR)/terraform && terraform init -input=false && terraform apply -auto-approve
-	@echo "✅ [Makefile] Infrastructure is up-to-date"
+	@$(CURDIR)/scripts/apply-terraform.sh
 
 cluster:
 	@$(MAKE) control-plane
