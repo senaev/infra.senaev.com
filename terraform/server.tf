@@ -10,7 +10,7 @@ import {
 
 import {
   to = hcloud_server.control_plane
-  id = "121692883"
+  id = "124209329"
 }
 
 resource "hcloud_ssh_key" "ecdsa" {
