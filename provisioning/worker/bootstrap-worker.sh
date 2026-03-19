@@ -15,10 +15,12 @@ LABELS="$3"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 set -a; source "$SCRIPT_DIR/../common/.env"; set +a
 
-
-echo "👉 [bootstrap-worker] Preparing node"
-$SCRIPT_DIR/../common/prepare-node.sh
-echo "✅ [bootstrap-worker] Node prepared"
+# TODO: remove when get rig of JSON WORKERS config
+if ! command -v jq &>/dev/null; then
+  echo "👉 [bootstrap-worker] Installing jq"
+  sudo apt-get update && sudo apt-get install -y jq
+  echo "✅ [bootstrap-worker] jq installed"
+fi
 
 echo "👉 [bootstrap-worker] Bootstrapping worker with labels=[${LABELS}] to control plane=[$CONTROL_PLANE_SERVER_URL]"
 if bash "$SCRIPT_DIR/check-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN" "$LABELS"; then
