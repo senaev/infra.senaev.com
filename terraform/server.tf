@@ -1,10 +1,25 @@
+import {
+  to = hcloud_ssh_key.ecdsa
+  id = "107890686"
+}
+
+import {
+  to = hcloud_ssh_key.ed25519
+  id = "107890647"
+}
+
+import {
+  to = hcloud_server.control_plane
+  id = "121692883"
+}
+
 resource "hcloud_ssh_key" "ecdsa" {
-  name       = "ecdsa-key"
+  name       = "senaev@yandex-team"
   public_key = "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOx9ZqfcNbREx55m3iBB7n91NvU7mynTteeCVIG7lxxpS4dGE9wROwzGpXMHpYfPYUpzQd29hr7I1yJgI5JSFpY="
 }
 
 resource "hcloud_ssh_key" "ed25519" {
-  name       = "ed25519-key"
+  name       = "senaev@personal-mac"
   public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKDeqfqHdivt+fz5AANznl3k9oTDKi/md8rKXn/NLJzD"
 }
 
