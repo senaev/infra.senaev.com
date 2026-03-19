@@ -34,3 +34,7 @@ until ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts 2>/dev/null; do
   sleep 5
 done
 echo "✅ [apply-terraform] SSH is available for $SERVER_IP"
+
+echo "👉 [apply-terraform] Waiting for cloud-init to finish"
+ssh "root@$SERVER_IP" "cloud-init status --wait"
+echo "✅ [apply-terraform] cloud-init finished"
