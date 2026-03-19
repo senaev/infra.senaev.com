@@ -23,6 +23,6 @@ JSON=$(printf '{"records":[{"value":{"event":"%s","name":"%s","category":"%s","t
   "$(json_escape "$SIZE_BYTES")" \
   "$(json_escape "$TRACKER")")
 
-curl -s -X POST redpanda/topics/tg-send \
+curl -s -X POST redpanda/topics/tg-send-to-media-server-topic \
   -H "Content-Type: application/vnd.kafka.json.v2+json" \
   -d "$JSON"

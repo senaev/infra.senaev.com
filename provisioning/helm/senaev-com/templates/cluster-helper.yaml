@@ -1,5 +1,5 @@
 # Send telegram messages to channel via Kafka (pandaproxy):
-# curl -X POST redpanda/topics/tg-send -H "Content-Type: application/vnd.kafka.json.v2+json" -d '{"records":[{"value":"Hello, world!"}]}'
+# curl -X POST redpanda/topics/tg-send-to-media-server-topic -H "Content-Type: application/vnd.kafka.json.v2+json" -d '{"records":[{"value":"Hello, world!"}]}'
 {{- if .Values.clusterHelper.enabled }}
 apiVersion: apps/v1
 kind: Deployment
@@ -50,20 +50,16 @@ spec:
                   name: senaev-com-kv-secrets
                   key: TOKEN_senaev_com_bot
                   optional: false
-            - name: TG_CHANNEL_ID
+            - name: TG_MEDIA_SERVER_CHANNEL_ID
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: TG_CHANNEL_ID
+                  key: TG_MEDIA_SERVER_CHANNEL_ID
                   optional: false
             - name: WATCH_TORRENT_FILES_DIR
               value: /watch-torrent-files
             - name: KAFKA_BROKERS
               value: redpanda.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.redpanda.kafkaPort }}
-            - name: KAFKA_TOPIC
-              value: {{ (index .Values.redpanda.topics 0).name }}
-            - name: TG_SEND_TOPIC
-              value: {{ (index .Values.redpanda.topics 1).name }}
           ports:
             - containerPort: 80
               name: internal

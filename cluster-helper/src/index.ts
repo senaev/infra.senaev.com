@@ -1,12 +1,9 @@
 import Fastify from "fastify";
 import { Kafka, type EachMessagePayload } from "kafkajs";
-import { KAFKA_BROKERS, KAFKA_TOPIC, TG_SEND_TOPIC } from "./env";
-import {
-  formatTorrentEvent,
-  isTorrentEvent,
-} from "./qbittorrent/formatTorrentEvent";
+import { KAFKA_BROKERS, TG_MEDIA_SERVER_CHANNEL_ID } from "./env";
+import { formatTorrentEvent, isTorrentEvent } from "./qbittorrent/formatTorrentEvent";
 import { getMe, sendTelegramMessage } from "./telegram/api";
-import { processChannelPost } from "./telegram/processChannelPost";
+import { processMediaServerChannelPost } from "./telegram/processMediaServerChannelPost";
 import type { TelegramUpdate } from "./telegram/types";
 
 const HOST = "0.0.0.0";
@@ -14,66 +11,87 @@ const PORT = 80;
 
 const server = Fastify({ logger: true });
 server.get("/*", async (_request, reply) => {
-  reply.send("server OK");
+    reply.send("server OK");
 });
 
-async function handleTgSend(raw: string): Promise<void> {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    await sendTelegramMessage(raw);
-    return;
-  }
+export const TELEGRAM_WEBHOOK_KAFKA_TOPIC = "telegram-webhook-data-topic";
+export const TG_SEND_KAFKA_TOPIC = "tg-send-to-media-server-topic";
 
-  if (isTorrentEvent(parsed)) {
-    await sendTelegramMessage(formatTorrentEvent(parsed), "HTML");
-    return;
-  }
+async function handleTgSendToMediaServerChat(raw: string): Promise<void> {
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(raw);
+    } catch {
+        await sendTelegramMessage({
+            text: raw,
+            chatId: TG_MEDIA_SERVER_CHANNEL_ID,
+        });
+        return;
+    }
 
-  await sendTelegramMessage(raw);
+    if (isTorrentEvent(parsed)) {
+        await sendTelegramMessage({
+            text: formatTorrentEvent(parsed),
+            chatId: TG_MEDIA_SERVER_CHANNEL_ID,
+            parseMode: "HTML",
+        });
+        return;
+    }
+
+    await sendTelegramMessage({ text: raw, chatId: TG_MEDIA_SERVER_CHANNEL_ID });
 }
 
 async function main(): Promise<void> {
-  const botUser = await getMe();
+    const botUser = await getMe();
 
-  const kafka = new Kafka({ brokers: KAFKA_BROKERS });
-  const consumer = kafka.consumer({ groupId: "cluster-helper" });
+    const kafka = new Kafka({ brokers: KAFKA_BROKERS });
+    const consumer = kafka.consumer({ groupId: "cluster-helper" });
 
-  await consumer.connect();
-  await consumer.subscribe({ topic: KAFKA_TOPIC, fromBeginning: false });
-  await consumer.subscribe({ topic: TG_SEND_TOPIC, fromBeginning: false });
+    await consumer.connect();
+    await consumer.subscribe({
+        topic: TELEGRAM_WEBHOOK_KAFKA_TOPIC,
+        fromBeginning: false,
+    });
+    await consumer.subscribe({
+        topic: TG_SEND_KAFKA_TOPIC,
+        fromBeginning: false,
+    });
 
-  await consumer.run({
-    eachMessage: async ({ topic, message }: EachMessagePayload) => {
-      if (!message.value) {
-        console.error("Consumed message with no value");
-        return;
-      }
+    await consumer.run({
+        eachMessage: async ({ topic, message }: EachMessagePayload) => {
+            if (!message.value) {
+                console.error("Consumed message with no value");
+                return;
+            }
 
-      if (topic === TG_SEND_TOPIC) {
-        await handleTgSend(message.value.toString());
-        return;
-      }
+            if (topic === TG_SEND_KAFKA_TOPIC) {
+                await handleTgSendToMediaServerChat(message.value.toString());
+                return;
+            }
 
-      const update = JSON.parse(message.value.toString()) as TelegramUpdate;
-      const post = update.channel_post;
-      if (post) {
-        await processChannelPost(post, botUser.id);
-        return;
-      }
+            if (topic === TELEGRAM_WEBHOOK_KAFKA_TOPIC) {
+                const update = JSON.parse(message.value.toString()) as TelegramUpdate;
+                const post = update.channel_post;
+                if (post) {
+                    await processMediaServerChannelPost(post, botUser.id);
+                    return;
+                }
+            }
 
-      console.error("Received message is not a channel_post");
-    },
-  });
+            console.error(`Received message for unknown topic=[${topic}]`);
+        },
+    });
 
-  await server.listen({ port: PORT, host: HOST });
-  console.log(`[cluster-helper] listening on port ${PORT}`);
+    await server.listen({ port: PORT, host: HOST });
+    console.log(`[cluster-helper] listening on port ${PORT}`);
 
-  await sendTelegramMessage("🟢 Cluster helper is ready");
+    await sendTelegramMessage({
+        text: "🟢 Cluster helper is ready",
+        chatId: TG_MEDIA_SERVER_CHANNEL_ID,
+    });
 }
 
 main().catch((err) => {
-  console.error(err);
-  process.exit(1);
+    console.error(err);
+    process.exit(1);
 });

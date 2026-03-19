@@ -1,15 +1,16 @@
 import Fastify from "fastify";
 import { randomBytes } from "node:crypto";
-import { KAFKA_TOPIC, WEBHOOK_DOMAIN } from "./env.js";
+import { WEBHOOK_DOMAIN } from "./env.js";
 import {
-  connectProducer,
-  disconnectProducer,
-  sendMessage,
+    connectProducer,
+    disconnectProducer,
+    sendMessage,
 } from "./kafka-producer.js";
 import { telegramApiCall } from "./telegram-api.js";
 
 export const PORT = 3000;
 export const WEBHOOK_PATH = "/telegram-webhook";
+export const KAFKA_TOPIC = 'telegram-webhook-data-topic';
 
 export const webhookSecretToken = randomBytes(32).toString("hex");
 
