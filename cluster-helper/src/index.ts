@@ -38,7 +38,7 @@ async function main(): Promise<void> {
   const botUser = await getMe();
 
   const kafka = new Kafka({ brokers: KAFKA_BROKERS });
-  const consumer = kafka.consumer({ groupId: "media-server-helper" });
+  const consumer = kafka.consumer({ groupId: "cluster-helper" });
 
   await consumer.connect();
   await consumer.subscribe({ topic: KAFKA_TOPIC, fromBeginning: false });
@@ -68,9 +68,9 @@ async function main(): Promise<void> {
   });
 
   await server.listen({ port: PORT, host: HOST });
-  console.log(`[media-server-helper] listening on port ${PORT}`);
+  console.log(`[cluster-helper] listening on port ${PORT}`);
 
-  await sendTelegramMessage("🟢 Media server helper is ready");
+  await sendTelegramMessage("🟢 Cluster helper is ready");
 }
 
 main().catch((err) => {

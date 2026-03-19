@@ -55,7 +55,7 @@ testEcho:
   enabled: true
   vps: hetzner
 
-mediaServerHelper:
+clusterHelper:
   enabled: true
   vps: yandex-cloud
 
