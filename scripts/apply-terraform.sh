@@ -36,9 +36,7 @@ if ! terraform apply -auto-approve 2>&1; then
   SSH_KEYS=$(curl -s -H "$AUTH" "$API/ssh_keys")
   echo "✅ [apply-terraform] SSH keys retrieved from Hetzner API"
   ECDSA_ID=$(echo "$SSH_KEYS" | jq -r '.ssh_keys[] | select(.name=="senaev@yandex-team") | .id')
-  echo "✅ [apply-terraform] ECDSA SSH key ID: $ECDSA_ID"
   ED25519_ID=$(echo "$SSH_KEYS" | jq -r '.ssh_keys[] | select(.name=="senaev@personal-mac") | .id')
-  echo "✅ [apply-terraform] Ed25519 SSH key ID: $ED25519_ID"
 
   if [ -n "$ECDSA_ID" ]; then
     echo "👉 [apply-terraform] Importing ECDSA SSH key (ID: $ECDSA_ID)"
