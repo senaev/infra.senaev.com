@@ -64,23 +64,6 @@ telegramWebhookEndpoint:
   vps: hetzner
   webhookDomain: telegram-webhook-endpoint.senaev.com
 
-redpandaConsole:
-  enabled: true
-  vps: hetzner
-
-redpanda:
-  enabled: true
-  vps: hetzner
-  storage: 2Gi
-  memory: 400M
-  kafkaPort: 9092
-  pandaproxyPort: 80
-  topics:
-    - name: telegram-webhook-data
-      partitions: 1
-    - name: tg-send
-      partitions: 1
-
 ingress:
   entries:
     - name: senaev-com
