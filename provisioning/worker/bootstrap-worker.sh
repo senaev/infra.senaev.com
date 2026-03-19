@@ -15,11 +15,6 @@ LABELS="$3"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 set -a; source "$SCRIPT_DIR/../common/.env"; set +a
 
-
-echo "👉 [bootstrap-worker] Preparing node"
-$SCRIPT_DIR/../common/prepare-node.sh
-echo "✅ [bootstrap-worker] Node prepared"
-
 echo "👉 [bootstrap-worker] Bootstrapping worker with labels=[${LABELS}] to control plane=[$CONTROL_PLANE_SERVER_URL]"
 if bash "$SCRIPT_DIR/check-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN" "$LABELS"; then
   echo "✅ [bootstrap-worker] Worker is OK"

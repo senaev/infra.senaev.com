@@ -1,13 +1,19 @@
-include .env
+-include .env
 export
+
+.PHONY: default terraform cluster rsync control-plane workers services senaev-com
 
 CONTROL_PLANE_SERVER_ADDRESS := $(CONTROL_PLANE_SERVER_USERNAME)@$(CONTROL_PLANE_SERVER_IP)
 
 default:
-	@echo "🚀 [Makefile] Starting deployment to control-plane=[$(CONTROL_PLANE_SERVER_ADDRESS)]"
+	@echo "🚀 [Makefile] Starting deployment"
+	@$(MAKE) terraform
 	@$(MAKE) cluster
 	@$(MAKE) services
 	@echo "🏁 [Makefile] Deployment completed successfully!"
+
+terraform:
+	@$(CURDIR)/scripts/apply-terraform.sh
 
 cluster:
 	@$(MAKE) control-plane

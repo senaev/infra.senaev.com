@@ -4,6 +4,8 @@
         "Andrei",
         "basicauth",
         "jellyfin",
+        "keygen",
+        "kubelet",
         "MERRIWEATHER",
         "MERRIWEATRER",
         "Metrika",
@@ -12,6 +14,7 @@
         "qbittorrent",
         "redpanda",
         "SENAEV",
+        "tfvars",
         "unmanic",
         "webdav",
         "webui"

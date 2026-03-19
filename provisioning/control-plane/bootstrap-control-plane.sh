@@ -4,10 +4,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 set -a; source "$SCRIPT_DIR/../common/.env"; set +a
 
-echo "👉 [bootstrap-control-plane] Preparing node"
-$SCRIPT_DIR/../common/prepare-node.sh
-echo "✅ [bootstrap-control-plane] Node prepared"
-
 # TODO: remove duplications
 echo "👉 [bootstrap-control-plane] getting internal tailnet IP"
 TAILNET_IP=$(tailscale ip -4)
