@@ -24,3 +24,13 @@ echo "👉 [apply-terraform] Applying server IP from Terraform output"
 SERVER_IP=$(terraform output -raw server_ip)
 sed -i '' "s/^CONTROL_PLANE_SERVER_IP=.*/CONTROL_PLANE_SERVER_IP=$SERVER_IP/" "$ENV_FILE"
 echo "✅ [apply-terraform] CONTROL_PLANE_SERVER_IP set to $SERVER_IP"
+
+echo "👉 [apply-terraform] Updating known_hosts for $SERVER_IP"
+ssh-keygen -R "$SERVER_IP" 2>/dev/null || true
+echo "✅ [apply-terraform] known_hosts updated for $SERVER_IP"
+
+echo "👉 [apply-terraform] Waiting for SSH to become available"
+until ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts 2>/dev/null; do
+  sleep 5
+done
+echo "✅ [apply-terraform] SSH is available for $SERVER_IP"

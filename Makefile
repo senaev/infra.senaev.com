@@ -1,4 +1,4 @@
-include .env
+-include .env
 export
 
 .PHONY: default terraform cluster rsync control-plane workers services senaev-com
