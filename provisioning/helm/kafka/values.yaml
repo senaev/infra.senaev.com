@@ -1,0 +1,6 @@
+redpanda:
+  enabled: true
+  vps: hetzner
+  storage: 2Gi
+  memory: 400M
+  pandaproxyPort: 80

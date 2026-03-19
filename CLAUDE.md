@@ -45,7 +45,7 @@ Vault (bootstrap-vault.sh) → External Secrets Operator → K8s Secret `senaev-
 
 ### Kafka/Telegram Integration
 
-Telegram webhook → `telegram-webhook-endpoint` (Node.js, port 3000) → Redpanda Kafka topic `telegram-webhook-data` → `media-server-helper` consumer → actions (torrent downloads, notifications).
+Telegram webhook → `telegram-webhook-endpoint` (Node.js, port 3000) → Redpanda Kafka topic `telegram-webhook-data` → `cluster-helper` consumer → actions (torrent downloads, notifications).
 
 ## Key Patterns
 

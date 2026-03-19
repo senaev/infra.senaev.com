@@ -1,22 +1,22 @@
 # Send telegram messages to channel via Kafka (pandaproxy):
 # curl -X POST redpanda/topics/tg-send -H "Content-Type: application/vnd.kafka.json.v2+json" -d '{"records":[{"value":"Hello, world!"}]}'
-{{- if .Values.mediaServerHelper.enabled }}
+{{- if .Values.clusterHelper.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: media-server-helper
+  name: cluster-helper
   namespace: {{ .Release.Namespace }}
   labels:
-    app: media-server-helper
+    app: cluster-helper
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: media-server-helper
+      app: cluster-helper
   template:
     metadata:
       labels:
-        app: media-server-helper
+        app: cluster-helper
       annotations:
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
     spec:
@@ -25,7 +25,7 @@ spec:
         runAsGroup: 1000
         fsGroup: 1000
       nodeSelector:
-        vps: {{ .Values.mediaServerHelper.vps }}
+        vps: {{ .Values.clusterHelper.vps }}
       initContainers:
         - name: fix-watch-folder-permissions
           image: busybox:1.37.0-uclibc
@@ -41,8 +41,8 @@ spec:
             - name: watch-torrent-files
               mountPath: /watch-torrent-files
       containers:
-        - name: media-server-helper
-          image: ghcr.io/senaev/media-server-helper:latest
+        - name: cluster-helper
+          image: ghcr.io/senaev/cluster-helper:latest
           env:
             - name: TOKEN_senaev_com_bot
               valueFrom:
@@ -81,12 +81,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: media-server-helper
+  name: cluster-helper
   namespace: {{ .Release.Namespace }}
 spec:
   type: ClusterIP
   selector:
-    app: media-server-helper
+    app: cluster-helper
   ports:
     - name: internal
       port: 80

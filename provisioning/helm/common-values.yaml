@@ -1,0 +1,9 @@
+redpanda:
+  kafkaPort: 9092
+  topics:
+    - name: telegram-webhook-data
+      partitions: 1
+    - name: tg-send
+      partitions: 1
+    - name: vault-unseal
+      partitions: 1

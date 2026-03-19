@@ -46,13 +46,15 @@ spec:
             - name: rpc
               containerPort: 33145
           livenessProbe:
-            tcpSocket:
-              port: {{ .Values.redpanda.kafkaPort }}
+            httpGet:
+              path: /v1/status/ready
+              port: admin
             initialDelaySeconds: 30
             periodSeconds: 10
           readinessProbe:
-            tcpSocket:
-              port: {{ .Values.redpanda.kafkaPort }}
+            httpGet:
+              path: /v1/status/ready
+              port: admin
             initialDelaySeconds: 20
             periodSeconds: 5
           volumeMounts:
