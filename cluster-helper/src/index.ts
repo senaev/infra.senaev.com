@@ -78,7 +78,7 @@ async function main(): Promise<void> {
                 }
             }
 
-            throw new Error(`Received message for unknown topic=[${topic}]`);
+            console.error(`Received message for unknown topic=[${topic}]`);
         },
     });
 
