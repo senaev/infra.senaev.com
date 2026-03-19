@@ -20,6 +20,6 @@ resource "hcloud_server" "control_plane" {
   })
 
   lifecycle {
-    ignore_changes = [user_data]
+    ignore_changes = [user_data, ssh_keys]
   }
 }

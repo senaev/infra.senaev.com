@@ -11,7 +11,53 @@ cd "$TERRAFORM_DIR" && terraform init -input=false
 echo "✅ [apply-terraform] Terraform initialized"
 
 echo "👉 [apply-terraform] Applying Terraform configuration"
-terraform apply -auto-approve
+if ! terraform apply -auto-approve 2>&1; then
+  echo "❌ [apply-terraform] Apply failed, attempting to import existing Hetzner resources"
+
+  HCLOUD_TOKEN=$(grep 'hetzner_token' "$TERRAFORM_DIR/terraform.tfvars" | sed 's/.*"\(.*\)".*/\1/')
+  API="https://api.hetzner.cloud/v1"
+  AUTH="Authorization: Bearer $HCLOUD_TOKEN"
+
+  # Import server by name
+  echo "👉 [apply-terraform] Requesting server ID"
+  SERVER_ID=$(curl -s -H "$AUTH" "$API/servers" | jq -r '.servers[] | select(.name=="hetzner") | .id')
+  echo "✅ [apply-terraform] Server ID: $SERVER_ID"
+
+  if [ -n "$SERVER_ID" ]; then
+    echo "👉 [apply-terraform] Importing server (ID: $SERVER_ID)"
+    terraform import hcloud_server.control_plane "$SERVER_ID" || true
+    echo "✅ [apply-terraform] Server imported"
+  else
+    echo "⚠️  [apply-terraform] Server not found in Hetzner API — it will be recreated"
+  fi
+
+  # Import SSH keys by name
+  echo "👉 [apply-terraform] Requesting SSH key IDs"
+  SSH_KEYS=$(curl -s -H "$AUTH" "$API/ssh_keys")
+  ECDSA_ID=$(echo "$SSH_KEYS" | jq -r '.ssh_keys[] | select(.name=="senaev@yandex-team") | .id')
+  ED25519_ID=$(echo "$SSH_KEYS" | jq -r '.ssh_keys[] | select(.name=="senaev@personal-mac") | .id')
+  echo "✅ [apply-terraform] ECDSA SSH key ID: $ECDSA_ID"
+  echo "✅ [apply-terraform] Ed25519 SSH key ID: $ED25519_ID"
+
+  if [ -n "$ECDSA_ID" ]; then
+    echo "👉 [apply-terraform] Importing ECDSA SSH key (ID: $ECDSA_ID)"
+    terraform import hcloud_ssh_key.ecdsa "$ECDSA_ID" || true
+    echo "✅ [apply-terraform] ECDSA SSH key imported"
+  else
+    echo "⚠️  [apply-terraform] ECDSA SSH key not found in Hetzner API — it will be recreated"
+  fi
+
+  if [ -n "$ED25519_ID" ]; then
+    echo "👉 [apply-terraform] Importing Ed25519 SSH key (ID: $ED25519_ID)"
+    terraform import hcloud_ssh_key.ed25519 "$ED25519_ID" || true
+    echo "✅ [apply-terraform] Ed25519 SSH key imported"
+  else
+    echo "⚠️  [apply-terraform] Ed25519 SSH key not found in Hetzner API — it will be recreated"
+  fi
+
+  echo "👉 [apply-terraform] Retrying apply after import"
+  terraform apply -auto-approve
+fi
 echo "✅ [apply-terraform] Terraform configuration applied"
 
 if [ ! -f "$ENV_FILE" ]; then
@@ -35,6 +81,6 @@ until ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts 2>/dev/null; do
 done
 echo "✅ [apply-terraform] SSH is available for $SERVER_IP"
 
-echo "👉 [apply-terraform] Waiting for cloud-init to finish"
+echo "👉 [apply-terraform] Waiting for cloud-init to finish (⚠️ might take a few minutes)"
 ssh "root@$SERVER_IP" "cloud-init status --wait"
 echo "✅ [apply-terraform] cloud-init finished"
