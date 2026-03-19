@@ -1,13 +1,21 @@
 include .env
 export
 
+.PHONY: default terraform cluster rsync control-plane workers services senaev-com
+
 CONTROL_PLANE_SERVER_ADDRESS := $(CONTROL_PLANE_SERVER_USERNAME)@$(CONTROL_PLANE_SERVER_IP)
 
 default:
 	@echo "🚀 [Makefile] Starting deployment to control-plane=[$(CONTROL_PLANE_SERVER_ADDRESS)]"
+	@$(MAKE) terraform
 	@$(MAKE) cluster
 	@$(MAKE) services
 	@echo "🏁 [Makefile] Deployment completed successfully!"
+
+terraform:
+	@echo "👉 [Makefile] Running Terraform to ensure infrastructure is up-to-date"
+	@cd $(CURDIR)/terraform && terraform init -input=false && terraform apply -auto-approve
+	@echo "✅ [Makefile] Infrastructure is up-to-date"
 
 cluster:
 	@$(MAKE) control-plane
