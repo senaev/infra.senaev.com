@@ -40,9 +40,15 @@ services:
 	@echo "👉 [Makefile] Deploying k8s services on control-plane=[$(CONTROL_PLANE_SERVER_ADDRESS)]"
 	@$(MAKE) rsync
 	@ssh "$(CONTROL_PLANE_SERVER_ADDRESS)" "$(K3S_CLUSTER_PATH)/provisioning/control-plane/upgrade-namespace.sh traefik traefik"
+	@echo "👉 [Makefile] Deploying vm-operator (provides VMServiceScrape CRDs for kafka)"
+	@ssh "$(CONTROL_PLANE_SERVER_ADDRESS)" "$(K3S_CLUSTER_PATH)/provisioning/control-plane/upgrade-namespace.sh vm-operator telemetry"
+	@ssh "$(CONTROL_PLANE_SERVER_ADDRESS)" "kubectl rollout status deployment/vm-operator-victoria-metrics-operator -n telemetry --timeout=120s"
+	@echo "👉 [Makefile] Deploying kafka (must be ready before vault bootstrap for unseal notification)"
+	@ssh "$(CONTROL_PLANE_SERVER_ADDRESS)" "$(K3S_CLUSTER_PATH)/provisioning/control-plane/upgrade-namespace.sh kafka senaev-com --wait"
 	@ssh "$(CONTROL_PLANE_SERVER_ADDRESS)" "$(K3S_CLUSTER_PATH)/provisioning/control-plane/bootstrap-secrets.sh"
-	@ssh "$(CONTROL_PLANE_SERVER_ADDRESS)" "$(K3S_CLUSTER_PATH)/provisioning/control-plane/bootstrap-telemetry.sh"
-	@$(MAKE) senaev-com
+	@echo "👉 [Makefile] Deploying vm-stack (needs vm-operator CRDs + vault secrets)"
+	@ssh "$(CONTROL_PLANE_SERVER_ADDRESS)" "$(K3S_CLUSTER_PATH)/provisioning/control-plane/upgrade-namespace.sh vm-stack telemetry"
+	@ssh "$(CONTROL_PLANE_SERVER_ADDRESS)" "$(K3S_CLUSTER_PATH)/provisioning/control-plane/upgrade-namespace.sh senaev-com senaev-com"
 	@echo "✅ [Makefile] k8s services deployed"
 
 senaev-com:
