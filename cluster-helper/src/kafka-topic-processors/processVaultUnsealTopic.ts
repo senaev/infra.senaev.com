@@ -14,9 +14,9 @@ export async function processVaultUnsealTopic({
         return;
     }
 
-    const token = JSON.parse(value.toString());
+    const token = JSON.parse(value.toString()).root_token;
     await sendTelegramMessage({
-        text: `New vault unseal token:\n||${escapeMarkdownV2(JSON.stringify(token, null, 2))}||`,
+        text: `New vault unseal token:\n||\`\`\`\n${escapeMarkdownV2(token)}\n\`\`\`||`,
         chatId: TG_CLUSTER_CHAT_ID,
         parseMode: "MarkdownV2",
     });
