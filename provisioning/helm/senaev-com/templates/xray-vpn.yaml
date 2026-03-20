@@ -78,6 +78,7 @@ spec:
         app: xray-vpn
       annotations:
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
+        configmap.reloader.stakater.com/reload: "xray-vpn-config-template"
     spec:
       nodeSelector:
         vps: {{ .Values.xrayVpn.vps }}
