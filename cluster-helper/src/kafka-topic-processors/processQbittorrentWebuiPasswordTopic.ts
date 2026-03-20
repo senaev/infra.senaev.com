@@ -44,7 +44,7 @@ export async function processQbittorrentWebuiPasswordTopic({
   }
 
   await sendTelegramMessage({
-    text: `qBittorrent WebUI password for ${parsed.podName}:\n||${escapeMarkdownV2(parsed.password)}||`,
+    text: `qBittorrent WebUI password for ${escapeMarkdownV2(parsed.podName)}:\n||${escapeMarkdownV2(parsed.password)}||`,
     chatId: TG_CLUSTER_CHAT_ID,
     parseMode: "MarkdownV2",
     replyMarkup: {
