@@ -150,7 +150,7 @@ export function renderInstructionsPage(subscriptionUrl: string): string {
         </div>
       </li>
     </ol>
-    <div class="code">${escapedHappLink}</div>
+    <div class="code">${subscriptionUrl}</div>
   </main>
   <script>
     const subscriptionUrl = ${JSON.stringify(subscriptionUrl)};
