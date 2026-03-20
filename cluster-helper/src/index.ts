@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import { CompressionCodecs, CompressionTypes, Kafka, type EachMessagePayload } from "kafkajs";
 import { KAFKA_BROKERS, TG_CLUSTER_CHAT_ID } from "./env";
+import { connectProducer, disconnectProducer } from "./kafka/producer";
 import { KafkaTopicProcessorArgument } from "./kafka-topic-processors/KafkaTopicProcessorArgument";
 import { processTelegramWebhookDataTopic } from "./kafka-topic-processors/processTelegramWebhookDataTopic";
 import { processQbittorrentWebuiPasswordTopic } from "./kafka-topic-processors/processQbittorrentWebuiPasswordTopic";
@@ -32,6 +33,10 @@ const KAFKA_TOPIC_HANDLERS: Record<
 
 async function main(): Promise<void> {
     const botUser: TelegramUser = await getMe();
+
+    console.log("👉 Connecting Kafka producer");
+    await connectProducer();
+    console.log("✅ Connected Kafka producer");
 
     const kafka = new Kafka({ brokers: KAFKA_BROKERS });
     const consumer = kafka.consumer({ groupId: "cluster-helper" });
@@ -81,6 +86,16 @@ async function main(): Promise<void> {
     });
     console.log("✅ Cluster helper is ready");
 }
+
+process.on("SIGTERM", async () => {
+    await disconnectProducer();
+    process.exit(0);
+});
+
+process.on("SIGINT", async () => {
+    await disconnectProducer();
+    process.exit(0);
+});
 
 main().catch((err) => {
     console.error(err);

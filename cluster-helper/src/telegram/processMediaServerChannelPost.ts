@@ -1,17 +1,15 @@
-import { existsSync, mkdirSync, writeFileSync } from "fs";
-import { join } from "path";
-import { TG_MEDIA_SERVER_CHANNEL_ID, WATCH_TORRENT_FILES_DIR } from "../env";
+import { TG_MEDIA_SERVER_CHANNEL_ID } from "../env";
+import { sendMessage as sendKafkaMessage } from "../kafka/producer";
 import { downloadFile, sendTelegramMessage, setMessageReaction } from "./api";
-import { EYES_REACTION } from "./EYES_REACTION";
 import type { ReactionCount, TelegramMessage } from "./types";
+
+const TORRENT_FILES_TOPIC = "torrent-files-topic";
+const EYES_REACTION = "👀";
+const THUMBS_UP_REACTION = "👍";
 
 function hasEyesReaction(reaction?: ReactionCount[]): boolean {
     if (!reaction || !Array.isArray(reaction)) return false;
-    return reaction.some((r) => r.type?.type === "emoji" && r.type?.emoji === EYES_REACTION.emoji);
-}
-
-function safeFileName(name: string): string {
-    return name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    return reaction.some((r) => r.type?.type === "emoji" && r.type?.emoji === EYES_REACTION);
 }
 
 export async function processMediaServerChannelPost(
@@ -44,12 +42,13 @@ export async function processMediaServerChannelPost(
         return;
     }
 
-    if (!existsSync(WATCH_TORRENT_FILES_DIR)) {
-        mkdirSync(WATCH_TORRENT_FILES_DIR, { recursive: true });
-    }
-
     const fileName = message.document.file_name ?? message.document.file_id;
-    const buffer = await downloadFile(message.document.file_id);
-    const path = join(WATCH_TORRENT_FILES_DIR, safeFileName(fileName));
-    writeFileSync(path, Buffer.from(buffer));
+    const buffer = Buffer.from(await downloadFile(message.document.file_id));
+    await sendKafkaMessage(TORRENT_FILES_TOPIC, buffer, {
+        fileName,
+        telegramFileId: message.document.file_id,
+        telegramMessageId: String(message.message_id),
+        telegramChatId: String(message.chat.id),
+    });
+    await setMessageReaction(message.chat.id, message.message_id, [THUMBS_UP_REACTION]);
 }

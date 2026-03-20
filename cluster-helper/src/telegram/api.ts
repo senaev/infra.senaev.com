@@ -1,6 +1,5 @@
 import { TOKEN_senaev_com_bot } from "../env";
 import type {
-  ReactionTypeEmoji,
   TelegramApiResponse,
   TelegramUser,
 } from "./types";
@@ -77,12 +76,12 @@ export async function getMe(): Promise<TelegramUser> {
 export async function setMessageReaction(
   chatId: string | number,
   messageId: number,
-  reaction: ReactionTypeEmoji[],
+  reaction: string[],
 ): Promise<void> {
   await callApi("setMessageReaction", {
     chat_id: chatId,
     message_id: messageId,
-    reaction,
+    reaction: reaction.map((emoji) => ({ type: "emoji", emoji })),
   });
 }
 
