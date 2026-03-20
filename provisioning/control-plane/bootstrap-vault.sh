@@ -47,7 +47,7 @@ if [[ "$INITIALIZED" != "true" ]]; then
   INIT_JSON="$(vault_exec operator init -key-shares=1 -key-threshold=1 -format=json)"
 
   echo "$INIT_JSON" > "$INIT_FILE"
-
+  VAULT_FRESHLY_INITIALIZED=true
   echo "✅ [bootstrap-vault] Saved unseal keys to: $INIT_FILE"
   echo "⚠️ [bootstrap-vault] IMPORTANT: Back it up securely (password manager / encrypted storage)."
 else
@@ -154,4 +154,16 @@ if ! vault_exec_with_token kv get "$KV_SECRET" &>/dev/null; then
   echo "✅ [bootstrap-vault] Secret $KV_SECRET created."
 else
   echo "✅ [bootstrap-vault] Secret $KV_SECRET already exists."
+fi
+
+if [[ "${VAULT_FRESHLY_INITIALIZED:-}" == "true" ]]; then
+  echo "👉 [bootstrap-vault] Sending unseal keys to Kafka topic"
+  SENAEV_COM_NAMESPACE="senaev-com"
+  REDPANDA_POD="redpanda-0"
+  VAULT_UNSEAL_TOPIC="vault-unseal-topic"
+
+  echo "$INIT_JSON" | kubectl exec -i -n "$SENAEV_COM_NAMESPACE" "$REDPANDA_POD" -- \
+    rpk topic produce "$VAULT_UNSEAL_TOPIC" \
+    --brokers "localhost:9092"
+  echo "✅ [bootstrap-vault] Unseal keys sent to $VAULT_UNSEAL_TOPIC"
 fi
