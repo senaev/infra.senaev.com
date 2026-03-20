@@ -80,7 +80,7 @@ async function main(): Promise<void> {
     console.log("✅ Connected to Kafka brokers");
 
     console.log(`👉 Subscribing to Kafka topic=[${TOPIC}]`);
-    await consumer.subscribe({ topic: TOPIC, fromBeginning: false });
+    await consumer.subscribe({ topic: TOPIC, fromBeginning: true });
     console.log(`✅ Subscribed to topic=[${TOPIC}]`);
 
     console.log("👉 Running Kafka consumer");
