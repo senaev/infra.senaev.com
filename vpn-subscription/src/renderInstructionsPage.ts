@@ -132,6 +132,7 @@ export function renderInstructionsPage(subscriptionUrl: string): string {
       line-height: 1.55;
       color: var(--muted);
     }
+
   </style>
 </head>
 <body>
