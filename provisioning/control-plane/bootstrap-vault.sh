@@ -22,6 +22,7 @@ status_json() {
 echo "👉 [bootstrap-vault] Checking vault status"
 MAX_ATTEMPTS=100
 STATUS_JSON=""
+INIT_JSON=""
 for i in $(seq 1 "$MAX_ATTEMPTS"); do
   STATUS_JSON="$(status_json)"
   if [[ -n "$STATUS_JSON" ]]; then
@@ -164,6 +165,7 @@ if [[ "${VAULT_FRESHLY_INITIALIZED:-}" == "true" ]]; then
 
   echo "$INIT_JSON" | kubectl exec -i -n "$SENAEV_COM_NAMESPACE" "$REDPANDA_POD" -- \
     rpk topic produce "$VAULT_UNSEAL_TOPIC" \
-    --brokers "localhost:9092"
+    --brokers "localhost:9092" \
+    || { echo "❌ [bootstrap-vault] Failed to send unseal keys to $VAULT_UNSEAL_TOPIC"; exit 1; }
   echo "✅ [bootstrap-vault] Unseal keys sent to $VAULT_UNSEAL_TOPIC"
 fi
