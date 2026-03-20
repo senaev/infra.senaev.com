@@ -10,8 +10,7 @@ export async function processTgSendToMediaServerTopic({
     message: { value },
 }: KafkaTopicProcessorArgument): Promise<void> {
     if (!value) {
-        console.error("❌ Consumed message with no value from Tg Send topic");
-        return;
+        throw new Error("❌ Consumed message with no value from Tg Send topic");
     }
 
     const raw = value.toString();

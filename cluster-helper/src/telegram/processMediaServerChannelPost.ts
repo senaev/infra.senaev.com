@@ -17,14 +17,15 @@ export async function processMediaServerChannelPost(
     botUserId: number,
 ): Promise<void> {
     if (message.from?.id === botUserId) {
-        console.error("❌ Processing message is from bot");
+        console.error("❌ Ignoring message sent by the bot itself");
         return;
     }
+
     const chatIdStr = String(message.chat.id);
     if (chatIdStr !== TG_MEDIA_SERVER_CHANNEL_ID) {
-        console.error(`❌ Processing message is from another channel=[${chatIdStr}]`);
-        return;
+        throw new Error(`❌ Processing message is from another channel=[${chatIdStr}]`);
     }
+
     if (hasEyesReaction(message.reaction)) {
         console.error(`❌ Processed message is already processed`);
         return;
@@ -43,12 +44,26 @@ export async function processMediaServerChannelPost(
     }
 
     const fileName = message.document.file_name ?? message.document.file_id;
+    console.log(
+        `📥 Processing new document message with fileName=[${fileName}] from Telegram channel`,
+    );
     const buffer = Buffer.from(await downloadFile(message.document.file_id));
+    console.log(
+        `✅ Downloaded file from Telegram, size=[${buffer.length}] bytes, sending to Kafka topic...`,
+    );
+
+    console.log(
+        `📤 Sending file to Kafka topic [${TORRENT_FILES_TOPIC}] with metadata: fileName=[${fileName}], telegramFileId=[${message.document.file_id}], telegramMessageId=[${message.message_id}], telegramChatId=[${message.chat.id}]`,
+    );
     await sendKafkaMessage(TORRENT_FILES_TOPIC, buffer, {
         fileName,
         telegramFileId: message.document.file_id,
         telegramMessageId: String(message.message_id),
         telegramChatId: String(message.chat.id),
     });
+    console.log(`✅ File sent to Kafka topic [${TORRENT_FILES_TOPIC}] successfully`);
+
+    console.log(`👉 Setting thumbs up reaction to the message...`);
     await setMessageReaction(message.chat.id, message.message_id, [THUMBS_UP_REACTION]);
+    console.log(`✅ Thumbs up reaction set successfully`);
 }

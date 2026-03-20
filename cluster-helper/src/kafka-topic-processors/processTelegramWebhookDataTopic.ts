@@ -9,13 +9,15 @@ export async function processTelegramWebhookDataTopic({
     botUser,
 }: KafkaTopicProcessorArgument): Promise<void> {
     if (!value) {
-        console.error("❌ Consumed message with no value from Telegram Webhook Data topic");
-        return;
+        throw new Error("❌ Consumed message with no value from Telegram Webhook Data topic");
     }
 
     const update = JSON.parse(value.toString()) as TelegramUpdate;
     const post = update.channel_post;
     if (post) {
+        console.log(
+            `👉 Processing Telegram channel post with id=[${post.message_id}] from chat id=[${post.chat.id}]`,
+        );
         await processMediaServerChannelPost(post, botUser.id);
         console.log("✅ Processed Telegram channel post");
         return;
@@ -37,7 +39,10 @@ export async function processTelegramWebhookDataTopic({
             throw new Error(`❌ Received Telegram message from unexpected chat id=[${chat.id}]`);
         }
 
-        sendTelegramMessage({
+        console.log(
+            `👉 Received Telegram message with id=[${message.message_id}] in cluster chat from user id=[${message.from?.id}]`,
+        );
+        await sendTelegramMessage({
             chatId: TG_CLUSTER_CHAT_ID,
             text: `🤷 Don't know how to answer to your message`,
             replyToMessageId: message.message_id,
