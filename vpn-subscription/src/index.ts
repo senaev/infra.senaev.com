@@ -35,6 +35,13 @@ const subscriptionBody = `${SUBSCRIPTION_ENTRIES.map((entry) =>
 ).join("\n")}\n`;
 
 server.get<{ Params: { secret: string } }>("/:secret", async (request, reply) => {
+    request.log.info(
+        {
+            userAgent: request.headers["user-agent"] ?? null,
+        },
+        "VPN subscription request received",
+    );
+
     if (request.params.secret !== VPN_SUBSCRIPTION_SECRET) {
         return reply.code(403).type("text/plain; charset=utf-8").send("❌ Forbidden");
     }
