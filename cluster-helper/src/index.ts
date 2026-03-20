@@ -19,7 +19,7 @@ server.get("/*", async (_request, reply) => {
 });
 
 export const TELEGRAM_WEBHOOK_KAFKA_TOPIC = "telegram-webhook-data-topic";
-export const TG_SEND_KAFKA_TOPIC = "tg-send-to-media-server-topic";
+export const TG_SEND_TO_MEDIA_SERVER_KAFKA_TOPIC = "tg-send-to-media-server-topic";
 export const VAULT_UNSEAL_KAFKA_TOPIC = "vault-unseal-topic";
 
 async function handleTgSendToMediaServerChat(raw: string): Promise<void> {
@@ -58,7 +58,7 @@ async function main(): Promise<void> {
         fromBeginning: false,
     });
     await consumer.subscribe({
-        topic: TG_SEND_KAFKA_TOPIC,
+        topic: TG_SEND_TO_MEDIA_SERVER_KAFKA_TOPIC,
         fromBeginning: false,
     });
     await consumer.subscribe({
@@ -75,8 +75,9 @@ async function main(): Promise<void> {
 
             console.log(`New message in topic=[${topic}] message.length=[${message.value.length}]`);
 
-            if (topic === TG_SEND_KAFKA_TOPIC) {
+            if (topic === TG_SEND_TO_MEDIA_SERVER_KAFKA_TOPIC) {
                 await handleTgSendToMediaServerChat(message.value.toString());
+                console.log("✅ Message sent to Telegram Media Server Channel");
                 return;
             }
 
@@ -87,6 +88,7 @@ async function main(): Promise<void> {
                     chatId: TG_CLUSTER_CHAT_ID,
                     parseMode: "MarkdownV2",
                 });
+                console.log("✅ Vault unseal token sent to Telegram Cluster Chat");
                 return;
             }
 
@@ -95,7 +97,10 @@ async function main(): Promise<void> {
                 const post = update.channel_post;
                 if (post) {
                     await processMediaServerChannelPost(post, botUser.id);
+                    console.log("✅ Processed Telegram channel post");
                     return;
+                } else {
+                    console.error("🤔 Received Telegram update other than channel_post");
                 }
             }
 

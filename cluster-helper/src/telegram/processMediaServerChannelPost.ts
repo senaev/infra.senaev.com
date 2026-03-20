@@ -19,27 +19,28 @@ export async function processMediaServerChannelPost(
     botUserId: number,
 ): Promise<void> {
     if (message.from?.id === botUserId) {
-        console.error("Processing message is from bot");
+        console.error("❌ Processing message is from bot");
         return;
     }
     const chatIdStr = String(message.chat.id);
     if (chatIdStr !== TG_MEDIA_SERVER_CHANNEL_ID) {
-        console.error(`Processing message is from another channel=[${chatIdStr}]`);
+        console.error(`❌ Processing message is from another channel=[${chatIdStr}]`);
         return;
     }
     if (hasEyesReaction(message.reaction)) {
-        console.error(`Processed message is already processed`);
+        console.error(`❌ Processed message is already processed`);
         return;
     }
 
     await setMessageReaction(message.chat.id, message.message_id, [EYES_REACTION]);
 
     if (!message.document) {
-        console.error(`Processed message has no documents`);
+        console.error(`❌ Processed message has no documents`);
         await sendTelegramMessage({
             text: "Sorry, I can only process documents (torrent files) 🤷",
             chatId: TG_MEDIA_SERVER_CHANNEL_ID,
         });
+        console.log("✅ Sent message about unsupported content type");
         return;
     }
 
