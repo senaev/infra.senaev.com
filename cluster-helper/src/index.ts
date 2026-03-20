@@ -38,7 +38,7 @@ async function main(): Promise<void> {
     console.log(`👉 Subscribing to Kafka topics=[${Object.keys(KAFKA_TOPIC_HANDLERS).join(",")}]`);
     await Promise.all(
         Object.keys(KAFKA_TOPIC_HANDLERS).map((topic) =>
-            consumer.subscribe({ topic, fromBeginning: false }).then(() => {
+            consumer.subscribe({ topic, fromBeginning: true }).then(() => {
                 console.log(`✅ Subscribed to topic=[${topic}]`);
             }),
         ),
