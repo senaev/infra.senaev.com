@@ -13,7 +13,7 @@ export const webhookSecretToken = randomBytes(32).toString("hex");
 const server = Fastify({ logger: true });
 
 server.get("/*", async () => {
-    return "Telegram Webhook Endpoint Works!";
+    return "🟢 Telegram Webhook Endpoint is running";
 });
 
 server.post(WEBHOOK_PATH, async (request, reply) => {
