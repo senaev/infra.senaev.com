@@ -39,7 +39,7 @@ export async function processTelegramWebhookDataTopic({
 
         sendTelegramMessage({
             chatId: TG_CLUSTER_CHAT_ID,
-            text: `Received message in Webhook Data topic:\n\n${text}`,
+            text: `🤷 Don't know how to answer to your message`,
         });
         console.log("✅ Processed Telegram message");
         return;
