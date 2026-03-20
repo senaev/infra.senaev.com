@@ -1,5 +1,4 @@
 import Fastify from "fastify";
-import { timingSafeEqual } from "node:crypto";
 import {
     PORT,
     SUBSCRIPTION_ENTRIES,
@@ -31,21 +30,13 @@ function withName(link: string, name: string): string {
     return `${baseLink}#${encodeURIComponent(name)}`;
 }
 
-function isSecretValid(secret: string): boolean {
-    const provided = Buffer.from(secret);
-    const expected = Buffer.from(VPN_SUBSCRIPTION_SECRET);
-    return provided.length === expected.length && timingSafeEqual(provided, expected);
-}
-
 const subscriptionBody = `${SUBSCRIPTION_ENTRIES.map((entry) =>
-    withName(replaceMacros(entry.link), replaceMacros(entry.name)),
+    withName(replaceMacros(entry.link), entry.name),
 ).join("\n")}\n`;
 
-server.get("/", async () => "VPN subscription endpoint is running");
-
 server.get<{ Params: { secret: string } }>("/:secret", async (request, reply) => {
-    if (!isSecretValid(request.params.secret)) {
-        return reply.code(403).type("text/plain; charset=utf-8").send("Forbidden");
+    if (request.params.secret !== VPN_SUBSCRIPTION_SECRET) {
+        return reply.code(403).type("text/plain; charset=utf-8").send("❌ Forbidden");
     }
 
     return reply
@@ -56,7 +47,7 @@ server.get<{ Params: { secret: string } }>("/:secret", async (request, reply) =>
 
 async function main(): Promise<void> {
     await server.listen({ port: PORT, host: "0.0.0.0" });
-    console.log(`VPN subscription server listening on port=${PORT}`);
+    console.log(`✅ VPN subscription server listening on port=${PORT}`);
 }
 
 async function shutdown(): Promise<void> {
