@@ -72,7 +72,7 @@ vpnSubscription:
   enabled: true
   vps: hetzner
   entries:
-    - name: "💻 → senaev.ru(yandex-cloud) → hetzner → 🌐 (VLESS+REALITY)"
+    - name: "💻 → senaev.ru(yandex-cloud)(VLESS+REALITY) → hetzner(socks) → 🌐"
       link: "vless://{XRAY_USER_UUID}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid=0123456789abcdef"
 
 redpandaConsole:
