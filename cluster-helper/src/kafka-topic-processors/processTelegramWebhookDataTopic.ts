@@ -1,3 +1,5 @@
+import { TG_MEDIA_SERVER_CHANNEL_ID } from "../env";
+import { sendTelegramMessage } from "../telegram/api";
 import { processMediaServerChannelPost } from "../telegram/processMediaServerChannelPost";
 import { TelegramUpdate } from "../telegram/types";
 import { KafkaTopicProcessorArgument } from "./KafkaTopicProcessorArgument";
@@ -21,7 +23,25 @@ export async function processTelegramWebhookDataTopic({
 
     const message = update.message;
     if (message) {
-        console.log(`new message: ${JSON.stringify(message, null, 2)}`);
+        const { text, chat } = message;
+
+        if (!chat) {
+            throw new Error("❌ Telegram message has no chat information");
+        }
+
+        if (!text) {
+            throw new Error("❌ Received Telegram message with no text content");
+        }
+
+        if (String(chat.id) !== TG_MEDIA_SERVER_CHANNEL_ID) {
+            throw new Error(`❌ Received Telegram message from unexpected chat id=[${chat.id}]`);
+        }
+
+        sendTelegramMessage({
+            chatId: TG_MEDIA_SERVER_CHANNEL_ID,
+            text: `Received message in Webhook Data topic:\n\n${text}`,
+        });
+        console.log("✅ Processed Telegram message");
         return;
     }
 

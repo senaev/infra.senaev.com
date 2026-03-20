@@ -44,6 +44,7 @@ async function main(): Promise<void> {
         ),
     );
 
+    console.log("👉 Running Kafka consumer");
     await consumer.run({
         eachMessage: async ({ topic, message }: EachMessagePayload) => {
             console.log(
@@ -64,6 +65,7 @@ async function main(): Promise<void> {
             }
         },
     });
+    console.log("✅ Kafka consumer is running");
 
     await server.listen({ port: PORT, host: HOST });
     console.log(`✅ [cluster-helper] listening on port=[${PORT}]`);
