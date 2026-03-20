@@ -1,4 +1,4 @@
-import { TG_MEDIA_SERVER_CHANNEL_ID } from "../env";
+import { TG_CLUSTER_CHAT_ID } from "../env";
 import { sendTelegramMessage } from "../telegram/api";
 import { processMediaServerChannelPost } from "../telegram/processMediaServerChannelPost";
 import { TelegramUpdate } from "../telegram/types";
@@ -33,12 +33,12 @@ export async function processTelegramWebhookDataTopic({
             throw new Error("❌ Received Telegram message with no text content");
         }
 
-        if (String(chat.id) !== TG_MEDIA_SERVER_CHANNEL_ID) {
+        if (String(chat.id) !== TG_CLUSTER_CHAT_ID) {
             throw new Error(`❌ Received Telegram message from unexpected chat id=[${chat.id}]`);
         }
 
         sendTelegramMessage({
-            chatId: TG_MEDIA_SERVER_CHANNEL_ID,
+            chatId: TG_CLUSTER_CHAT_ID,
             text: `Received message in Webhook Data topic:\n\n${text}`,
         });
         console.log("✅ Processed Telegram message");
