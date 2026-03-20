@@ -62,6 +62,5 @@ services:
 senaev-com:
 	@echo "👉 [Makefile] Deploying senaev-com services on control-plane=[$(CONTROL_PLANE_SERVER_ADDRESS)]"
 	@$(MAKE) rsync
-	$(REMOTE) "$(DEPLOY) kafka senaev-com --wait"
 	$(REMOTE) "$(DEPLOY) senaev-com senaev-com"
 	@echo "✅ [Makefile] senaev-com services deployed"

@@ -1,17 +1,13 @@
 import { TG_CLUSTER_CHAT_ID } from "../env";
 import { sendTelegramMessage } from "../telegram/api";
+import { escapeMarkdownV2 } from "../telegram/escapeMarkdownV2";
 import { KafkaTopicProcessorArgument } from "./KafkaTopicProcessorArgument";
-
-function escapeMarkdownV2(text: string): string {
-    return text.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, "\\$&");
-}
 
 export async function processVaultUnsealTopic({
     message: { value },
 }: KafkaTopicProcessorArgument): Promise<void> {
     if (!value) {
-        console.error("❌ Consumed message with no value from Vault Unseal topic");
-        return;
+        throw new Error("Consumed message with no value from Vault Unseal topic");
     }
 
     const token = JSON.parse(value.toString()).root_token;

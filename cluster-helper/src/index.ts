@@ -3,6 +3,7 @@ import { CompressionCodecs, CompressionTypes, Kafka, type EachMessagePayload } f
 import { KAFKA_BROKERS, TG_CLUSTER_CHAT_ID } from "./env";
 import { KafkaTopicProcessorArgument } from "./kafka-topic-processors/KafkaTopicProcessorArgument";
 import { processTelegramWebhookDataTopic } from "./kafka-topic-processors/processTelegramWebhookDataTopic";
+import { processQbittorrentWebuiPasswordTopic } from "./kafka-topic-processors/processQbittorrentWebuiPasswordTopic";
 import { processTgSendToMediaServerTopic } from "./kafka-topic-processors/processTgSendToMediaServerTopic";
 import { processVaultUnsealTopic } from "./kafka-topic-processors/processVaultUnsealTopic";
 import { getMe, sendTelegramMessage } from "./telegram/api";
@@ -24,6 +25,7 @@ const KAFKA_TOPIC_HANDLERS: Record<
     (message: KafkaTopicProcessorArgument) => Promise<void>
 > = {
     "telegram-webhook-data-topic": processTelegramWebhookDataTopic,
+    "qbittorrent-webui-password-topic": processQbittorrentWebuiPasswordTopic,
     "tg-send-to-media-server-topic": processTgSendToMediaServerTopic,
     "vault-unseal-topic": processVaultUnsealTopic,
 };

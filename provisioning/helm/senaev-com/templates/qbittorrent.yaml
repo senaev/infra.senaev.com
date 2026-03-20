@@ -11,6 +11,49 @@ data:
 {{ tpl (.Files.Get "config/qbittorrent/qBittorrent.conf") . | nindent 4 }}
   tg-notify.sh: |
 {{ .Files.Get "config/qbittorrent/tg-notify.sh" | nindent 4 }}
+  notify-webui-password.sh: |
+    #!/bin/sh
+    set -eu
+
+    STATE_FILE="/password-notify-state/webui-password-sent"
+    if [ -f "$STATE_FILE" ]; then
+      tail -f /dev/null
+    fi
+
+    K8S_HOST="https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT_HTTPS:-443}"
+    SA_TOKEN="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"
+    CA_CERT="/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+    LOGS_URL="${K8S_HOST}/api/v1/namespaces/${POD_NAMESPACE}/pods/${POD_NAME}/log?container=qbittorrent"
+
+    json_escape() {
+      printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+    }
+
+    attempt=0
+    while [ "$attempt" -lt 120 ]; do
+      LOGS="$(curl -fsS --cacert "$CA_CERT" -H "Authorization: Bearer $SA_TOKEN" "$LOGS_URL" || true)"
+      PASSWORD="$(printf '%s\n' "$LOGS" | sed -n 's/.*temporary password is provided for this session: \(.*\)$/\1/p' | tail -n 1)"
+
+      if [ -n "$PASSWORD" ]; then
+        JSON="$(printf '{"records":[{"value":{"podName":"%s","password":"%s"}}]}' \
+          "$(json_escape "$POD_NAME")" \
+          "$(json_escape "$PASSWORD")")"
+
+        curl -fsS -X POST redpanda/topics/qbittorrent-webui-password-topic \
+          -H "Content-Type: application/vnd.kafka.json.v2+json" \
+          -d "$JSON"
+
+        touch "$STATE_FILE"
+        echo "✅ qBittorrent WebUI temporary password published"
+        tail -f /dev/null
+      fi
+
+      attempt=$((attempt + 1))
+      sleep 5
+    done
+
+    echo "⚠️ qBittorrent WebUI temporary password was not found in pod logs"
+    tail -f /dev/null
   watched_folders.json: |
 {{ tpl (.Files.Get "config/qbittorrent/watched_folders.json") . | nindent 4 }}
 ---
@@ -27,6 +70,42 @@ spec:
   resources:
     requests:
       storage: 1Gi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: qbittorrent-log-reader
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: qbittorrent
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: qbittorrent-log-reader
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: qbittorrent
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: qbittorrent-log-reader
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: qbittorrent
+subjects:
+  - kind: ServiceAccount
+    name: qbittorrent-log-reader
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: qbittorrent-log-reader
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -50,6 +129,7 @@ spec:
       labels:
         app: qbittorrent
     spec:
+      serviceAccountName: qbittorrent-log-reader
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
@@ -120,6 +200,27 @@ spec:
               mountPath: /scripts/tg-notify.sh
               subPath: tg-notify.sh
               readOnly: true
+        - name: webui-password-notifier
+          image: curlimages/curl:8.12.1
+          command:
+            - sh
+            - /scripts/notify-webui-password.sh
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          volumeMounts:
+            - name: notify-webui-password
+              mountPath: /scripts/notify-webui-password.sh
+              subPath: notify-webui-password.sh
+              readOnly: true
+            - name: password-notify-state
+              mountPath: /password-notify-state
       volumes:
         - name: config
           persistentVolumeClaim:
@@ -134,6 +235,15 @@ spec:
               - key: tg-notify.sh
                 path: tg-notify.sh
                 mode: 0755
+        - name: notify-webui-password
+          configMap:
+            name: qbittorrent-default-config
+            items:
+              - key: notify-webui-password.sh
+                path: notify-webui-password.sh
+                mode: 0755
+        - name: password-notify-state
+          emptyDir: {}
         - name: downloads
           hostPath:
             path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}/downloads

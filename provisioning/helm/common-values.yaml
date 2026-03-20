@@ -7,3 +7,5 @@ redpanda:
       partitions: 1
     - name: vault-unseal-topic
       partitions: 1
+    - name: qbittorrent-webui-password-topic
+      partitions: 1
