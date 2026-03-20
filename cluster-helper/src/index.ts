@@ -31,10 +31,16 @@ async function main(): Promise<void> {
     const kafka = new Kafka({ brokers: KAFKA_BROKERS });
     const consumer = kafka.consumer({ groupId: "cluster-helper" });
 
+    console.log(`👉 Connecting to Kafka brokers=[${KAFKA_BROKERS.join(",")}`);
     await consumer.connect();
+    console.log("✅ Connected to Kafka brokers");
+
+    console.log(`👉 Subscribing to Kafka topics=[${Object.keys(KAFKA_TOPIC_HANDLERS).join(",")}]`);
     await Promise.all(
         Object.keys(KAFKA_TOPIC_HANDLERS).map((topic) =>
-            consumer.subscribe({ topic, fromBeginning: false }),
+            consumer.subscribe({ topic, fromBeginning: false }).then(() => {
+                console.log(`✅ Subscribed to topic=[${topic}]`);
+            }),
         ),
     );
 
@@ -60,12 +66,13 @@ async function main(): Promise<void> {
     });
 
     await server.listen({ port: PORT, host: HOST });
-    console.log(`[cluster-helper] listening on port ${PORT}`);
+    console.log(`✅ [cluster-helper] listening on port=[${PORT}]`);
 
     await sendTelegramMessage({
         text: "🟢 Cluster helper is ready",
         chatId: TG_MEDIA_SERVER_CHANNEL_ID,
     });
+    console.log("✅ Cluster helper is ready");
 }
 
 main().catch((err) => {

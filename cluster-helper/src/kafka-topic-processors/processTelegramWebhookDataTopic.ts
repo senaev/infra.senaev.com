@@ -17,7 +17,13 @@ export async function processTelegramWebhookDataTopic({
         await processMediaServerChannelPost(post, botUser.id);
         console.log("✅ Processed Telegram channel post");
         return;
-    } else {
-        console.error("🤔 Received Telegram update other than channel_post");
     }
+
+    const message = update.message;
+    if (message) {
+        console.log(`new message: ${JSON.stringify(message, null, 2)}`);
+        return;
+    }
+
+    throw new Error("❌ Unsupported Telegram update type received in Webhook Data topic");
 }
