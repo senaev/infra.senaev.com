@@ -87,6 +87,8 @@ async function main(): Promise<void> {
     await consumer.run({
         eachMessage: async ({ topic, message }: EachMessagePayload) => {
             try {
+                console.log(`🆕 New message in topic=[${topic}]`);
+
                 if (topic !== TOPIC) {
                     throw new Error(`Received message from unexpected topic=[${topic}]`);
                 }
@@ -100,6 +102,7 @@ async function main(): Promise<void> {
                     throw new Error("Received torrent file message with no fileName header");
                 }
 
+                console.log("👉 Processing torrent file message");
                 const path = writeTorrentFile(message.value, fileName);
                 console.log(`✅ Wrote torrent file to path=[${path}]`);
             } catch (error) {
@@ -113,6 +116,7 @@ async function main(): Promise<void> {
             }
         },
     });
+    console.log("✅ Kafka consumer is running");
 }
 
 main().catch((error) => {
