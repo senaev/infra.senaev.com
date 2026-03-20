@@ -48,7 +48,6 @@ if [[ "$INITIALIZED" != "true" ]]; then
 
   echo "$INIT_JSON" > "$INIT_FILE"
   echo "✅ [bootstrap-vault] Saved unseal keys to: $INIT_FILE"
-  echo "⚠️ [bootstrap-vault] IMPORTANT: Back it up securely (password manager / encrypted storage)."
 
   echo "👉 [bootstrap-vault] Sending unseal keys to Kafka topic"
   SENAEV_COM_NAMESPACE="senaev-com"
