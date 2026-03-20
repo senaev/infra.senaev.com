@@ -19,12 +19,14 @@
     "start": "tsx src/index.ts"
   },
   "devDependencies": {
+    "@types/kafkajs-snappy": "1.0.0",
     "@types/node": "25.4.0",
     "typescript": "5.9.3"
   },
   "dependencies": {
-    "fastify": "^5.8.2",
+    "fastify": "5.8.2",
     "kafkajs": "2.2.4",
+    "kafkajs-snappy": "1.1.0",
     "tsx": "4.21.0"
   }
 }
