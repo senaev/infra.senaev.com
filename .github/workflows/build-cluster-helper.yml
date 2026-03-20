@@ -62,4 +62,5 @@ jobs:
 
           curl -sS -X POST "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendMessage" \
             --data-urlencode "chat_id=${{ secrets.TG_CLUSTER_CHAT_ID }}" \
+            --data-urlencode "disable_web_page_preview=true" \
             --data-urlencode "text=${TEXT}"
