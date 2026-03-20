@@ -1,0 +1,55 @@
+{{- if .Values.torrentFilesWriter.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: torrent-files-writer
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: torrent-files-writer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: torrent-files-writer
+  template:
+    metadata:
+      labels:
+        app: torrent-files-writer
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      nodeSelector:
+        vps: {{ .Values.torrentFilesWriter.vps }}
+      initContainers:
+        - name: fix-watch-folder-permissions
+          image: busybox:1.37.0-uclibc
+          securityContext:
+            runAsUser: 0
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p /watch-torrent-files
+              chown -R 1000:1000 /watch-torrent-files
+          volumeMounts:
+            - name: watch-torrent-files
+              mountPath: /watch-torrent-files
+      containers:
+        - name: torrent-files-writer
+          image: ghcr.io/senaev/torrent-files-writer:latest
+          env:
+            - name: KAFKA_BROKERS
+              value: redpanda.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.redpanda.kafkaPort }}
+            - name: TORRENT_FILES_DIR
+              value: /watch-torrent-files
+          volumeMounts:
+            - name: watch-torrent-files
+              mountPath: /watch-torrent-files
+      volumes:
+        - name: watch-torrent-files
+          hostPath:
+            path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.watch }}
+            type: DirectoryOrCreate
+{{- end }}

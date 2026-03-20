@@ -1,27 +1,31 @@
 {
-    "cSpell.language": "en,ru",
-    "cSpell.words": [
-        "Andrei",
-        "basicauth",
-        "jellyfin",
-        "keygen",
-        "kubelet",
-        "MERRIWEATHER",
-        "MERRIWEATRER",
-        "Metrika",
-        "nextjs",
-        "pandaproxy",
-        "qbittorrent",
-        "redpanda",
-        "SENAEV",
-        "tfvars",
-        "unmanic",
-        "webdav",
-        "webui"
-    ],
-    "editor.formatOnSave": true,
-    "editor.defaultFormatter": "esbenp.prettier-vscode",  
-    "editor.codeActionsOnSave": {
-        "source.fixAll.eslint": "explicit",
-    },
+  "cSpell.language": "en,ru",
+  "cSpell.words": [
+    "Andrei",
+    "basicauth",
+    "Buildx",
+    "jellyfin",
+    "kafkajs",
+    "keygen",
+    "kubelet",
+    "MERRIWEATHER",
+    "MERRIWEATRER",
+    "Metrika",
+    "nextjs",
+    "pandaproxy",
+    "qbittorrent",
+    "redpanda",
+    "SENAEV",
+    "tfvars",
+    "uclibc",
+    "unmanic",
+    "urlencode",
+    "webdav",
+    "webui"
+  ],
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  }
 }

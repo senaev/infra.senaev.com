@@ -1,0 +1,20 @@
+{
+  "name": "torrent-files-writer",
+  "version": "1.0.0",
+  "description": "Consumes torrent files from Kafka and writes them to disk",
+  "type": "commonjs",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "tsx src/index.ts"
+  },
+  "devDependencies": {
+    "@types/kafkajs-snappy": "1.0.0",
+    "@types/node": "25.4.0",
+    "typescript": "5.9.3"
+  },
+  "dependencies": {
+    "kafkajs": "2.2.4",
+    "kafkajs-snappy": "1.1.0",
+    "tsx": "4.21.0"
+  }
+}

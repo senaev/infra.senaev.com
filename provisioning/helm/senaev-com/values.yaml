@@ -59,6 +59,10 @@ clusterHelper:
   enabled: true
   vps: hetzner
 
+torrentFilesWriter:
+  enabled: true
+  vps: yandex-cloud
+
 telegramWebhookEndpoint:
   enabled: true
   vps: hetzner
