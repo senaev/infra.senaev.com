@@ -39,15 +39,20 @@ export async function sendTelegramMessage({
   text,
   chatId,
   parseMode,
+  replyToMessageId,
 }: {
   text: string;
   chatId: string;
   parseMode?: "HTML" | "MarkdownV2";
+  replyToMessageId?: number;
 }): Promise<void> {
   await callApi("sendMessage", {
     chat_id: chatId,
     text,
     ...(parseMode && { parse_mode: parseMode }),
+    ...(replyToMessageId && {
+      reply_parameters: { message_id: replyToMessageId },
+    }),
   });
 }
 
