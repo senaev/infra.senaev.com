@@ -73,15 +73,17 @@ async function main(): Promise<void> {
                 return;
             }
 
+            console.log(`New message in topic=[${topic}] message.length=[${message.value.length}]`);
+
             if (topic === TG_SEND_KAFKA_TOPIC) {
                 await handleTgSendToMediaServerChat(message.value.toString());
                 return;
             }
 
             if (topic === VAULT_UNSEAL_KAFKA_TOPIC) {
-                const token = message.value.toString();
+                const token = JSON.parse(message.value.toString());
                 await sendTelegramMessage({
-                    text: `New vault unseal token:\n||${escapeMarkdownV2(token)}||`,
+                    text: `New vault unseal token:\n||${escapeMarkdownV2(JSON.stringify(token, null, 2))}||`,
                     chatId: TG_CLUSTER_CHAT_ID,
                     parseMode: "MarkdownV2",
                 });
