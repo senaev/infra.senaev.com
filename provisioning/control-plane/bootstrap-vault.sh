@@ -54,7 +54,7 @@ if [[ "$INITIALIZED" != "true" ]]; then
   REDPANDA_POD="redpanda-0"
   VAULT_UNSEAL_TOPIC="vault-unseal-topic"
 
-  echo "$INIT_JSON" | kubectl exec -i -n "$SENAEV_COM_NAMESPACE" "$REDPANDA_POD" -- \
+  echo "$INIT_JSON" | jq -c . | kubectl exec -i -n "$SENAEV_COM_NAMESPACE" "$REDPANDA_POD" -- \
     rpk topic produce "$VAULT_UNSEAL_TOPIC" \
     --brokers "localhost:9092" \
     || { echo "❌ [bootstrap-vault] Failed to send unseal keys to $VAULT_UNSEAL_TOPIC"; exit 1; }
