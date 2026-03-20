@@ -41,3 +41,25 @@ jobs:
           tags: ${{ env.REGISTRY_IMAGE }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Notify Telegram
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            STATUS_ICON="✅"
+            STATUS_TEXT="finished successfully"
+          else
+            STATUS_ICON="❌"
+            STATUS_TEXT="failed"
+          fi
+
+          TEXT="${STATUS_ICON} ${GITHUB_WORKFLOW} ${STATUS_TEXT}
+          Image: ${REGISTRY_IMAGE}:latest
+          Repo: ${GITHUB_REPOSITORY}
+          Ref: ${GITHUB_REF_NAME}
+          Commit: ${GITHUB_SHA}
+          Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+          curl -sS -X POST "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendMessage" \
+            --data-urlencode "chat_id=${{ secrets.TG_CLUSTER_CHAT_ID }}" \
+            --data-urlencode "text=${TEXT}"
