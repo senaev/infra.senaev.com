@@ -132,19 +132,11 @@ export function renderInstructionsPage(subscriptionUrl: string): string {
       line-height: 1.55;
       color: var(--muted);
     }
-
-    .hint {
-      margin-top: 12px;
-      min-height: 20px;
-      font-family: "Helvetica Neue", Helvetica, sans-serif;
-      font-size: 14px;
-      color: var(--muted);
-    }
   </style>
 </head>
 <body>
   <main class="card">
-    <h1><a href="https://senaev.com" target="_blank">Senaev</a> VPN</h1>
+    <h1>Senaev VPN</h1>
     <ol>
       <li>
         Install Happ:
@@ -158,30 +150,15 @@ export function renderInstructionsPage(subscriptionUrl: string): string {
         </div>
       </li>
     </ol>
-    <div class="hint" id="copy-subscription-status"></div>
     <div class="code">${escapedHappLink}</div>
   </main>
   <script>
     const subscriptionUrl = ${JSON.stringify(subscriptionUrl)};
     const copyButton = document.getElementById("copy-subscription-button");
-    const copyStatus = document.getElementById("copy-subscription-status");
-
-    async function copySubscriptionUrl() {
-      try {
-        await navigator.clipboard.writeText(subscriptionUrl);
-        if (copyStatus) {
-          copyStatus.textContent = "Subscription URL copied.";
-        }
-      } catch {
-        if (copyStatus) {
-          copyStatus.textContent = "Copy failed. Copy it manually from the page URL.";
-        }
-      }
-    }
 
     if (copyButton) {
       copyButton.addEventListener("click", () => {
-        void copySubscriptionUrl();
+        navigator.clipboard.writeText(subscriptionUrl);
       });
     }
   </script>
