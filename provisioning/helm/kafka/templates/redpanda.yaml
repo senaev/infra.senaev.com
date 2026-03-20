@@ -35,7 +35,8 @@ spec:
                 --rpc-addr 0.0.0.0:33145 \
                 --advertise-rpc-addr redpanda-0.redpanda-headless.{{ .Release.Namespace }}.svc.cluster.local:33145 \
                 --memory {{ .Values.redpanda.memory }} \
-                --default-log-level=info
+                --default-log-level=info \
+                --set redpanda.log_compression_type=none
           ports:
             - name: kafka
               containerPort: {{ .Values.redpanda.kafkaPort }}
