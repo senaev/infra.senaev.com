@@ -16,9 +16,12 @@ export async function processVaultUnsealTopic({
 
     const token = JSON.parse(value.toString()).root_token;
     await sendTelegramMessage({
-        text: `New vault unseal token:\n||\`\`\`\n${escapeMarkdownV2(token)}\n\`\`\`||`,
+        text: `New vault unseal token:\n||${escapeMarkdownV2(token)}||`,
         chatId: TG_CLUSTER_CHAT_ID,
         parseMode: "MarkdownV2",
+        replyMarkup: {
+            inline_keyboard: [[{ text: "Copy", copy_text: { text: token } }]],
+        },
     });
     console.log("✅ Vault unseal token sent to Telegram Cluster Chat");
 }

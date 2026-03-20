@@ -40,16 +40,30 @@ export async function sendTelegramMessage({
   chatId,
   parseMode,
   replyToMessageId,
+  replyMarkup,
 }: {
   text: string;
   chatId: string;
   parseMode?: "HTML" | "MarkdownV2";
   replyToMessageId?: number;
+  replyMarkup?: {
+    inline_keyboard: Array<
+      Array<
+        | {
+            text: string;
+            copy_text: {
+              text: string;
+            };
+          }
+      >
+    >;
+  };
 }): Promise<void> {
   await callApi("sendMessage", {
     chat_id: chatId,
     text,
     ...(parseMode && { parse_mode: parseMode }),
+    ...(replyMarkup && { reply_markup: replyMarkup }),
     ...(replyToMessageId && {
       reply_parameters: { message_id: replyToMessageId },
     }),
