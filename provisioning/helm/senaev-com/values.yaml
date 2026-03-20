@@ -68,6 +68,13 @@ telegramWebhookEndpoint:
   vps: hetzner
   webhookDomain: telegram-webhook-endpoint.senaev.com
 
+vpnSubscription:
+  enabled: true
+  vps: hetzner
+  entries:
+    - name: main
+      link: "vless://{XRAY_USER_UUID}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid=0123456789abcdef"
+
 redpandaConsole:
   enabled: true
   vps: hetzner
@@ -97,6 +104,9 @@ ingress:
           port: 8096
         - host: telegram-webhook-endpoint.senaev.com
           service: telegram-webhook-endpoint
+          port: 3000
+        - host: vpn-subscription.senaev.com
+          service: vpn-subscription
           port: 3000
         - host: senaev.ru
           service: nextjs-app

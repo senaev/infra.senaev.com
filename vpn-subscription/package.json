@@ -1,0 +1,17 @@
+{
+  "name": "vpn-subscription",
+  "version": "1.0.0",
+  "type": "commonjs",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "fastify": "5.8.2",
+    "tsx": "4.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "25.4.0",
+    "typescript": "5.9.3"
+  }
+}

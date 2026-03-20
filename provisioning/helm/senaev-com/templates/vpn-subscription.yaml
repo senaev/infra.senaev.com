@@ -1,0 +1,82 @@
+{{- if .Values.vpnSubscription.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vpn-subscription-config
+  namespace: {{ .Release.Namespace }}
+data:
+  entries.json: |
+{{ toJson .Values.vpnSubscription.entries | indent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vpn-subscription
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: vpn-subscription
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vpn-subscription
+  template:
+    metadata:
+      labels:
+        app: vpn-subscription
+      annotations:
+        secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
+        configmap.reloader.stakater.com/reload: "vpn-subscription-config"
+    spec:
+      nodeSelector:
+        vps: {{ .Values.vpnSubscription.vps }}
+      containers:
+        - name: vpn-subscription
+          image: ghcr.io/senaev/vpn-subscription:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: SUBSCRIPTION_ENTRIES_PATH
+              value: /app/config/entries.json
+            - name: VPN_SUBSCRIPTION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: VPN_SUBSCRIPTION_SECRET
+                  optional: false
+            - name: XRAY_USER_UUID
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: XRAY_USER_UUID
+                  optional: false
+            - name: XRAY_REALITY_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: XRAY_REALITY_PUBLIC_KEY
+                  optional: false
+          volumeMounts:
+            - name: vpn-subscription-config
+              mountPath: /app/config
+              readOnly: true
+      volumes:
+        - name: vpn-subscription-config
+          configMap:
+            name: vpn-subscription-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vpn-subscription
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: vpn-subscription
+spec:
+  type: ClusterIP
+  selector:
+    app: vpn-subscription
+  ports:
+    - port: 3000
+      targetPort: 3000
+{{- end }}
