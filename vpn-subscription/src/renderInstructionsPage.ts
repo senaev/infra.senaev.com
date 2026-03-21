@@ -16,13 +16,14 @@ export function renderInstructionsPage({
 }): string {
     const happLink = `happ://add/${subscriptionUrl}`;
     const escapedHappLink = escapeHtml(happLink);
+    const escapedTitle = escapeHtml(title);
 
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${title}</title>
+  <title>${escapedTitle}</title>
   <style>
     :root {
       color-scheme: light;
@@ -143,7 +144,7 @@ export function renderInstructionsPage({
 </head>
 <body>
   <main class="card">
-    <h1>${title}</h1>
+    <h1>${escapedTitle}</h1>
     <ol>
       <li>
         Install Happ:
