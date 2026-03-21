@@ -12,11 +12,11 @@ webdavSenaevCom:
 
 webdavSenaevRu:
   enabled: true
-  vps: yandex-cloud
+  vps: yc
 
 xrayVpn:
   enabled: true
-  vps: yandex-cloud
+  vps: yc
 
 xraySocks:
   enabled: true
@@ -25,7 +25,7 @@ xraySocks:
 qbittorrent:
   enabled: true
   volumePath: volumes/qbittorrent
-  vps: yandex-cloud
+  vps: yc
   webuiPort: 9001
   torrentPort: 6881
   paths:
@@ -37,18 +37,18 @@ qbittorrent:
 
 filebrowser:
   enabled: true
-  vps: yandex-cloud
+  vps: yc
   volumePath: volumes/filebrowser/config
 
 unmanic:
   enabled: true
-  vps: yandex-cloud
+  vps: yc
   volumePath: volumes/unmanic
 
 jellyfin:
   enabled: true
   volumePath: volumes/jellyfin
-  vps: yandex-cloud
+  vps: yc
   webuiPort: 8096
 
 testEcho:
@@ -61,7 +61,7 @@ clusterHelper:
 
 torrentFilesWriter:
   enabled: true
-  vps: yandex-cloud
+  vps: yc
 
 telegramWebhookEndpoint:
   enabled: true
@@ -72,7 +72,7 @@ vpnSubscription:
   enabled: true
   vps: hetzner
   entries:
-    - name: "💻 → senaev.ru(yc) → hetzner(socks) → 🌐(VLESS+REALITY)"
+    - name: "senaev.ru|yc → socks|hetzner → 🌐|VLESS+REALITY"
       link: "vless://{XRAY_USER_UUID}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
 
 redpandaConsole:
