@@ -17,7 +17,7 @@ data:
           "settings": {
             "clients": [
               {
-                "id": "{XRAY_USER_UUID}",
+                "id": "{XRAY_USER_UUID:1}",
                 "flow": "xtls-rprx-vision"
               }
             ],
@@ -30,7 +30,7 @@ data:
               "dest": "traefik-hetzner.traefik.svc.cluster.local:443",
               "serverNames": ["senaev.ru"],
               "privateKey": "{XRAY_REALITY_PRIVATE_KEY}",
-              "shortIds": ["", "0123456789abcdef"]
+              "shortIds": [""]
             }
           }
         },
@@ -84,12 +84,46 @@ spec:
         vps: {{ .Values.xrayVpn.vps }}
       initContainers:
         - name: xray-vpn-config-subst
-          image: busybox:1.36
+          image: node:22-alpine
           command:
             - sh
             - -c
             - |
-              sed "s/{XRAY_USER_UUID}/$XRAY_USER_UUID/g" /template/config.json | sed "s|{XRAY_REALITY_PRIVATE_KEY}|$XRAY_REALITY_PRIVATE_KEY|g" > /out/config.json
+              cat <<'EOF' >/tmp/render-config.mjs
+              import { createHash } from "node:crypto";
+              import { readFileSync, writeFileSync } from "node:fs";
+
+              const macroValues = {
+                XRAY_REALITY_PRIVATE_KEY: process.env.XRAY_REALITY_PRIVATE_KEY,
+                XRAY_USER_UUID: process.env.XRAY_USER_UUID,
+              };
+
+              function deriveUuid(baseValue, seed) {
+                const derivedSeed = createHash("sha256")
+                  .update(`${baseValue}:${seed}`)
+                  .digest("hex")
+                  .substring(0, 32);
+
+                return `${derivedSeed.substr(0, 8)}-${derivedSeed.substr(8, 4)}-${derivedSeed.substr(12, 4)}-${derivedSeed.substr(16, 4)}-${derivedSeed.substr(20)}`;
+              }
+
+              const template = readFileSync("/template/config.json", "utf8");
+              const rendered = template.replace(/\{([A-Z0-9_]+)(?::([^}]*))?\}/g, (match, macroName, seed) => {
+                if (macroName === "XRAY_USER_UUID" && seed !== undefined) {
+                  return deriveUuid(macroValues.XRAY_USER_UUID, seed);
+                }
+
+                const replacement = macroValues[macroName];
+                if (replacement === undefined) {
+                  throw new Error(`Unsupported macro: ${match}`);
+                }
+
+                return replacement;
+              });
+
+              writeFileSync("/out/config.json", rendered);
+              EOF
+              node /tmp/render-config.mjs
           env:
             - name: XRAY_USER_UUID
               valueFrom:
