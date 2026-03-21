@@ -37,7 +37,7 @@
   )
 ) -}}
 {{- $inbounds = append $inbounds (dict
-  "tag" "socks"
+  "tag" "inbound-socks"
   "port" 1080
   "protocol" "socks"
   "settings" (dict
@@ -71,6 +71,11 @@
 {{- $outbounds = append $outbounds (dict
   "tag" "outbound-freedom"
   "protocol" "freedom"
+) -}}
+{{- $rules = append $rules (dict
+  "type" "field"
+  "inboundTag" (list "inbound-socks")
+  "outboundTag" "outbound-freedom"
 ) -}}
 {{- $config := dict
   "log" (dict "loglevel" "warning")
