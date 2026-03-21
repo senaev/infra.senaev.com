@@ -5,6 +5,7 @@
     "basicauth",
     "Buildx",
     "happ",
+    "Hiddify",
     "jellyfin",
     "kafkajs",
     "keygen",

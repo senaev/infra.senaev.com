@@ -73,7 +73,7 @@ vpnSubscription:
   vps: hetzner
   entries:
     - name: "senaev.ru💻yc → socks🌐hetzner VLESS+REALITY"
-      link: "vless://{XRAY_USER_UUID}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
+      link: "vless://{XRAY_USER_UUID:1}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
 
 redpandaConsole:
   enabled: true
