@@ -5,6 +5,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 set -a; source "$SCRIPT_DIR/../common/.env"; set +a
+TOKEN_SENAEV_COM_BOT="${1:?bootstrap-vault.sh requires TOKEN_senaev_com_bot as the first argument}"
+TG_CLUSTER_CHAT_ID="${2:?bootstrap-vault.sh requires TG_CLUSTER_CHAT_ID as the second argument}"
 
 cd $K3S_CLUSTER_PATH
 
@@ -17,6 +19,64 @@ vault_exec() {
 
 status_json() {
   vault_exec status -format=json 2>/dev/null || true
+}
+
+send_telegram_message() {
+  local text="$1"
+  local copy_text="$2"
+  local parse_mode="$3"
+  local payload
+  local response
+  local http_code
+
+  payload="$(jq -n \
+    --arg chat_id "$TG_CLUSTER_CHAT_ID" \
+    --arg text "$text" \
+    --arg copy_text "$copy_text" \
+    --arg parse_mode "$parse_mode" \
+    '{
+      chat_id: $chat_id,
+      text: $text,
+      parse_mode: $parse_mode,
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: "Copy",
+              copy_text: {
+                text: $copy_text
+              }
+            }
+          ]
+        ]
+      }
+    }')"
+
+  response="$(mktemp)"
+  http_code="$(
+    curl -sS \
+      -o "$response" \
+      -w "%{http_code}" \
+      -X POST \
+      -H "Content-Type: application/json" \
+      -d "$payload" \
+      "https://api.telegram.org/bot${TOKEN_SENAEV_COM_BOT}/sendMessage"
+  )"
+
+  if [[ "$http_code" != "200" ]]; then
+    echo "❌ [bootstrap-vault] Telegram sendMessage failed with HTTP $http_code: $(cat "$response")"
+    rm -f "$response"
+    return 1
+  fi
+
+  rm -f "$response"
+}
+
+escape_html() {
+  printf '%s' "$1" \
+    | sed -e 's/&/\&amp;/g' \
+          -e 's/</\&lt;/g' \
+          -e 's/>/\&gt;/g'
 }
 
 echo "👉 [bootstrap-vault] Checking vault status"
@@ -49,16 +109,13 @@ if [[ "$INITIALIZED" != "true" ]]; then
   echo "$INIT_JSON" > "$INIT_FILE"
   echo "✅ [bootstrap-vault] Saved unseal keys to: $INIT_FILE"
 
-  echo "👉 [bootstrap-vault] Sending unseal keys to Kafka topic"
-  SENAEV_COM_NAMESPACE="senaev-com"
-  REDPANDA_POD="redpanda-0"
-  VAULT_UNSEAL_TOPIC="vault-unseal-topic"
-
-  echo "$INIT_JSON" | jq -c . | kubectl exec -i -n "$SENAEV_COM_NAMESPACE" "$REDPANDA_POD" -- \
-    rpk topic produce "$VAULT_UNSEAL_TOPIC" \
-    --brokers "localhost:9092" \
-    || { echo "❌ [bootstrap-vault] Failed to send unseal keys to $VAULT_UNSEAL_TOPIC"; exit 1; }
-  echo "✅ [bootstrap-vault] Unseal keys sent to $VAULT_UNSEAL_TOPIC"
+  echo "👉 [bootstrap-vault] Sending Vault init secrets to Telegram"
+  ROOT_TOKEN="$(echo "$INIT_JSON" | jq -r '.root_token')"
+  ROOT_TOKEN_HTML="$(escape_html "$ROOT_TOKEN")"
+  TELEGRAM_MESSAGE=$'Vault initialized.\nCopy root token: <tg-spoiler>'"$ROOT_TOKEN_HTML"$'</tg-spoiler>\nGo to Vault: https://vault.senaev.com/ui/vault/secrets/kv/kv/senaev-com-kv/details/edit\nAnd paste secret: https://t.me/c/1593601675/8'
+  send_telegram_message "$TELEGRAM_MESSAGE" "$ROOT_TOKEN" "HTML" \
+    || { echo "❌ [bootstrap-vault] Failed to send Vault root token to Telegram"; exit 1; }
+  echo "✅ [bootstrap-vault] Vault root token sent to Telegram"
 else
   echo "✅ [bootstrap-vault] Vault is already initialised."
 fi

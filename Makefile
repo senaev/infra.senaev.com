@@ -52,7 +52,7 @@ services:
 	@echo "✅ [Makefile] vm-operator webhook ready"
 
 	$(REMOTE) "$(DEPLOY) kafka senaev-com --wait"
-	$(REMOTE) "$(CONTROL_PLANE_SCRIPTS)/bootstrap-secrets.sh"
+	$(REMOTE) "$(CONTROL_PLANE_SCRIPTS)/bootstrap-secrets.sh '$(TOKEN_senaev_com_bot)' '$(TG_CLUSTER_CHAT_ID)'"
 
 	$(REMOTE) "$(DEPLOY) vm-stack telemetry"
 	$(REMOTE) "$(DEPLOY) senaev-com senaev-com"

@@ -85,3 +85,47 @@
 -}}
 {{- $config | toPrettyJson -}}
 {{- end -}}
+
+# Bootstrap config is used to allow users to connect
+# to services then VPN is not ready yet.
+{{- define "senaev-com.xrayVpnBootstrapConfig" -}}
+{{- $outbounds := list -}}
+{{- $rules := list -}}
+{{- $inbounds := list -}}
+{{- $inbounds = append $inbounds (dict
+  "tag" "https-fallback"
+  "port" 443
+  "protocol" "dokodemo-door"
+  "settings" (dict
+    "address" "traefik-hetzner.traefik.svc.cluster.local"
+    "port" 443
+    "network" "tcp"
+  )
+) -}}
+{{- $inbounds = append $inbounds (dict
+  "tag" "http-fallback"
+  "port" 80
+  "protocol" "dokodemo-door"
+  "settings" (dict
+    "address" "traefik-hetzner.traefik.svc.cluster.local"
+    "port" 80
+    "network" "tcp"
+  )
+) -}}
+{{- $outbounds = append $outbounds (dict
+  "tag" "outbound-freedom"
+  "protocol" "freedom"
+) -}}
+{{- $rules = append $rules (dict
+  "type" "field"
+  "inboundTag" (list "https-fallback" "http-fallback")
+  "outboundTag" "outbound-freedom"
+) -}}
+{{- $config := dict
+  "log" (dict "loglevel" "warning")
+  "inbounds" $inbounds
+  "outbounds" $outbounds
+  "routing" (dict "rules" $rules)
+-}}
+{{- $config | toPrettyJson -}}
+{{- end -}}

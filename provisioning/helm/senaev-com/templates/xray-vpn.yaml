@@ -7,8 +7,10 @@ metadata:
   name: {{ $instance.name }}-config-template
   namespace: {{ $root.Release.Namespace }}
 data:
-  config.json: |
+  full-config.json: |
 {{ include "senaev-com.xrayVpnConfig" (dict "root" $root "instance" $instance) | nindent 4 }}
+  bootstrap-config.json: |
+{{ include "senaev-com.xrayVpnBootstrapConfig" $root | nindent 4 }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -32,6 +34,9 @@ spec:
       labels:
         app: {{ $instance.name }}
       annotations:
+        # TODO: did NOT restart automatically when secrets appeared
+        # TODO: move xray closer to terraform
+        # TODO: remove extra kafka topics and service code, maybe initialize redpanda with others
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
         configmap.reloader.stakater.com/reload: "{{ $instance.name }}-config-template"
     spec:
@@ -52,6 +57,9 @@ spec:
                 XRAY_REALITY_PRIVATE_KEY: process.env.XRAY_REALITY_PRIVATE_KEY,
                 XRAY_USER_UUID: process.env.XRAY_USER_UUID,
               };
+              const hasSecrets = Boolean(
+                macroValues.XRAY_REALITY_PRIVATE_KEY && macroValues.XRAY_USER_UUID,
+              );
 
               function deriveUuid(baseValue, seed) {
                 const derivedSeed = createHash("sha256")
@@ -62,7 +70,16 @@ spec:
                 return `${derivedSeed.substr(0, 8)}-${derivedSeed.substr(8, 4)}-${derivedSeed.substr(12, 4)}-${derivedSeed.substr(16, 4)}-${derivedSeed.substr(20)}`;
               }
 
-              const template = readFileSync("/template/config.json", "utf8");
+              const templatePath = hasSecrets
+                ? "/template/full-config.json"
+                : "/template/bootstrap-config.json";
+              const template = readFileSync(templatePath, "utf8");
+              if (!hasSecrets) {
+                console.log("XRAY bootstrap mode: secrets not found, proxying 80/443 to Traefik");
+                writeFileSync("/out/config.json", template);
+                process.exit(0);
+              }
+
               const rendered = template.replace(/\{([A-Z0-9_]+)(?::([^}]*))?\}/g, (match, macroName, seed) => {
                 if (macroName === "XRAY_USER_UUID" && seed !== undefined) {
                   return deriveUuid(macroValues.XRAY_USER_UUID, seed);
@@ -85,13 +102,13 @@ spec:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
                   key: XRAY_USER_UUID
-                  optional: false
+                  optional: true
             - name: XRAY_REALITY_PRIVATE_KEY
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
                   key: XRAY_REALITY_PRIVATE_KEY
-                  optional: false
+                  optional: true
           volumeMounts:
             - name: xray-vpn-config-template
               mountPath: /template
