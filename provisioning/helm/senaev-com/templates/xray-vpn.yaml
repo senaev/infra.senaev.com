@@ -30,7 +30,7 @@ data:
               "dest": "traefik-hetzner.traefik.svc.cluster.local:443",
               "serverNames": ["senaev.ru"],
               "privateKey": "{XRAY_REALITY_PRIVATE_KEY}",
-              "shortIds": ["", "0123456789abcdef"]
+              "shortIds": [""]
             }
           }
         },
