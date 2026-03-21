@@ -158,7 +158,7 @@ export function renderInstructionsPage({
         </div>
       </li>
     </ol>
-    <div class="code">${subscriptionUrl}</div>
+    <div class="code">${escapeHtml(subscriptionUrl)}</div>
   </main>
   <script>
     const subscriptionUrl = ${JSON.stringify(subscriptionUrl)};
