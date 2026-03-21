@@ -1,72 +1,27 @@
 {{- if .Values.xrayVpn.enabled }}
+{{- $root := . }}
+{{- range $instance := .Values.xrayVpn.instances }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: xray-vpn-config-template
-  namespace: {{ .Release.Namespace }}
+  name: {{ $instance.name }}-config-template
+  namespace: {{ $root.Release.Namespace }}
 data:
   config.json: |
-    {
-      "log": {
-        "loglevel": "warning"
-      },
-      "inbounds": [
-        {
-          "port": 443,
-          "protocol": "vless",
-          "settings": {
-            "clients": [
-              {
-                "id": "{XRAY_USER_UUID:1}",
-                "flow": "xtls-rprx-vision"
-              }
-            ],
-            "decryption": "none"
-          },
-          "streamSettings": {
-            "network": "tcp",
-            "security": "reality",
-            "realitySettings": {
-              "dest": "traefik-hetzner.traefik.svc.cluster.local:443",
-              "serverNames": ["senaev.ru"],
-              "privateKey": "{XRAY_REALITY_PRIVATE_KEY}",
-              "shortIds": [""]
-            }
-          }
-        },
-        {
-          "port": 80,
-          "protocol": "dokodemo-door",
-          "settings": {
-            "address": "traefik-hetzner.traefik.svc.cluster.local",
-            "port": 80,
-            "network": "tcp"
-          }
-        }
-      ],
-      "outbounds": [
-        {
-          "protocol": "socks",
-          "settings": {
-            "address": "xray-socks",
-            "port": 1080
-          }
-        }
-      ]
-    }
+{{ include "senaev-com.xrayVpnConfig" (dict "root" $root "instance" $instance) | nindent 4 }}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: xray-vpn
-  namespace: {{ .Release.Namespace }}
+  name: {{ $instance.name }}
+  namespace: {{ $root.Release.Namespace }}
   labels:
-    app: xray-vpn
+    app: {{ $instance.name }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: xray-vpn
+      app: {{ $instance.name }}
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -75,13 +30,13 @@ spec:
   template:
     metadata:
       labels:
-        app: xray-vpn
+        app: {{ $instance.name }}
       annotations:
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
-        configmap.reloader.stakater.com/reload: "xray-vpn-config-template"
+        configmap.reloader.stakater.com/reload: "{{ $instance.name }}-config-template"
     spec:
       nodeSelector:
-        vps: {{ .Values.xrayVpn.vps }}
+        vps: {{ $instance.vps }}
       initContainers:
         - name: xray-vpn-config-subst
           image: node:22-alpine
@@ -151,6 +106,7 @@ spec:
               hostPort: 443
             - containerPort: 80
               hostPort: 80
+            - containerPort: 1080
           volumeMounts:
             - name: xray-vpn-config
               mountPath: /etc/xray
@@ -158,20 +114,23 @@ spec:
       volumes:
         - name: xray-vpn-config-template
           configMap:
-            name: xray-vpn-config-template
+            name: {{ $instance.name }}-config-template
         - name: xray-vpn-config
           emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: xray-vpn
-  namespace: {{ .Release.Namespace }}
+  name: {{ $instance.name }}
+  namespace: {{ $root.Release.Namespace }}
 spec:
   type: ClusterIP
   selector:
-    app: xray-vpn
+    app: {{ $instance.name }}
   ports:
-    - port: 443
-      targetPort: 443
+    - name: socks
+      port: 1080
+      targetPort: 1080
+---
+{{- end }}
 {{- end }}

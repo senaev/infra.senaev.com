@@ -7,16 +7,23 @@ function escapeHtml(value: string): string {
         .replaceAll("'", "&#39;");
 }
 
-export function renderInstructionsPage(subscriptionUrl: string): string {
+export function renderInstructionsPage({
+    subscriptionUrl,
+    title,
+}: {
+    subscriptionUrl: string;
+    title: string;
+}): string {
     const happLink = `happ://add/${subscriptionUrl}`;
     const escapedHappLink = escapeHtml(happLink);
+    const escapedTitle = escapeHtml(title);
 
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Install VPN</title>
+  <title>${escapedTitle}</title>
   <style>
     :root {
       color-scheme: light;
@@ -137,7 +144,7 @@ export function renderInstructionsPage(subscriptionUrl: string): string {
 </head>
 <body>
   <main class="card">
-    <h1>Senaev VPN</h1>
+    <h1>${escapedTitle}</h1>
     <ol>
       <li>
         Install Happ:
@@ -151,7 +158,7 @@ export function renderInstructionsPage(subscriptionUrl: string): string {
         </div>
       </li>
     </ol>
-    <div class="code">${subscriptionUrl}</div>
+    <div class="code">${escapeHtml(subscriptionUrl)}</div>
   </main>
   <script>
     const subscriptionUrl = ${JSON.stringify(subscriptionUrl)};

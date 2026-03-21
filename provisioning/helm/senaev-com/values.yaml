@@ -16,11 +16,27 @@ webdavSenaevRu:
 
 xrayVpn:
   enabled: true
-  vps: yc
-
-xraySocks:
-  enabled: true
-  vps: hetzner
+  instances:
+    - name: xray-vpn-yc
+      vps: yc
+      serverName: senaev.ru
+      profiles:
+        - user: user-socks
+          uuidMacro: "{XRAY_USER_UUID:1}"
+          outbound: outbound-hetzner
+        - user: user-freedom
+          uuidMacro: "{XRAY_USER_UUID:2}"
+          outbound: outbound-freedom
+    - name: xray-vpn-hetzner
+      vps: hetzner
+      serverName: senaev.com
+      profiles:
+        - user: user-socks
+          uuidMacro: "{XRAY_USER_UUID:3}"
+          outbound: outbound-yc
+        - user: user-freedom
+          uuidMacro: "{XRAY_USER_UUID:4}"
+          outbound: outbound-freedom
 
 qbittorrent:
   enabled: true
@@ -70,10 +86,16 @@ telegramWebhookEndpoint:
 
 vpnSubscription:
   enabled: true
-  vps: hetzner
   entries:
-    - name: "senaev.ru💻yc → socks🌐hetzner VLESS+REALITY"
+    - name: "🇩🇪 senaev.ru💻yc → socks🌐hetzner"
       link: "vless://{XRAY_USER_UUID:1}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
+    - name: "🇷🇺 senaev.ru💻yc → freedom🌐yc"
+      link: "vless://{XRAY_USER_UUID:2}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
+    - name: "🇷🇺 senaev.com💻hetzner → socks🌐yc"
+      link: "vless://{XRAY_USER_UUID:3}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
+    - name: "🇩🇪 senaev.com💻hetzner → freedom🌐hetzner"
+      link: "vless://{XRAY_USER_UUID:4}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
+  vps: hetzner
 
 redpandaConsole:
   enabled: true

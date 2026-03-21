@@ -44,6 +44,12 @@ spec:
                   name: senaev-com-kv-secrets
                   key: VPN_SUBSCRIPTION_SECRET
                   optional: false
+            - name: VPN_SUBSCRIPTION_CHAT
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: VPN_SUBSCRIPTION_CHAT
+                  optional: false
             - name: XRAY_USER_UUID
               valueFrom:
                 secretKeyRef:
