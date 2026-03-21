@@ -76,7 +76,8 @@ function toBase64HeaderValue(value: string): string {
     return `base64:${Buffer.from(value, "utf8").toString("base64")}`;
 }
 
-function getClosestBirthday(now: Date = new Date()): string {
+function getClosestBirthday(): string {
+    const now = new Date();
     const year = now.getUTCFullYear();
     const januaryTenthThisYear = Date.UTC(year, 0, 10, 0, 0, 0);
     if (now.getTime() < januaryTenthThisYear) {
