@@ -17,7 +17,13 @@ data:
           "settings": {
             "clients": [
               {
+                "email": "hetzner-socks",
                 "id": "{XRAY_USER_UUID:1}",
+                "flow": "xtls-rprx-vision"
+              },
+              {
+                "email": "freedom",
+                "id": "{XRAY_USER_UUID:2}",
                 "flow": "xtls-rprx-vision"
               }
             ],
@@ -46,13 +52,36 @@ data:
       ],
       "outbounds": [
         {
+          "tag": "proxy-hetzner",
           "protocol": "socks",
           "settings": {
-            "address": "xray-socks",
-            "port": 1080
+            "servers": [
+              {
+                "address": "xray-socks",
+                "port": 1080
+              }
+            ]
           }
+        },
+        {
+          "tag": "freedom",
+          "protocol": "freedom"
         }
-      ]
+      ],
+      "routing": {
+        "rules": [
+          {
+            "type": "field",
+            "user": ["hetzner-socks"],
+            "outboundTag": "proxy-hetzner"
+          },
+          {
+            "type": "field",
+            "user": ["freedom"],
+            "outboundTag": "freedom"
+          }
+        ]
+      }
     }
 ---
 apiVersion: apps/v1
