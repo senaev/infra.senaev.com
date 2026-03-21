@@ -32,7 +32,14 @@
     "VLESS",
     "webdav",
     "webui",
-    "xtls"
+    "xtls",
+    "Добавляйтесь",
+    "качать",
+    "нельзя",
+    "своих",
+    "телеги",
+    "только",
+    "Торренты"
   ],
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "esbenp.prettier-vscode",

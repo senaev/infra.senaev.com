@@ -7,7 +7,13 @@ function escapeHtml(value: string): string {
         .replaceAll("'", "&#39;");
 }
 
-export function renderInstructionsPage(subscriptionUrl: string): string {
+export function renderInstructionsPage({
+    subscriptionUrl,
+    title,
+}: {
+    subscriptionUrl: string;
+    title: string;
+}): string {
     const happLink = `happ://add/${subscriptionUrl}`;
     const escapedHappLink = escapeHtml(happLink);
 
@@ -16,7 +22,7 @@ export function renderInstructionsPage(subscriptionUrl: string): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Install VPN</title>
+  <title>${title}</title>
   <style>
     :root {
       color-scheme: light;
@@ -137,7 +143,7 @@ export function renderInstructionsPage(subscriptionUrl: string): string {
 </head>
 <body>
   <main class="card">
-    <h1>Senaev VPN</h1>
+    <h1>${title}</h1>
     <ol>
       <li>
         Install Happ:

@@ -3,11 +3,17 @@ import { createHash } from "node:crypto";
 import {
     PORT,
     SUBSCRIPTION_ENTRIES,
+    VPN_SUBSCRIPTION_CHAT,
     VPN_SUBSCRIPTION_SECRET,
     XRAY_REALITY_PUBLIC_KEY,
     XRAY_USER_UUID,
 } from "./env.js";
 import { renderInstructionsPage } from "./renderInstructionsPage.js";
+
+const TITLE = "Senaev🔐VPN";
+const ANNOUNCE =
+    "🚀 Добавляйтесь в чат телеги. ❌ Торренты качать нельзя. 🐅 VPN только для своих.";
+const subscriptionUrl = `https://vpn-subscription.senaev.com/${VPN_SUBSCRIPTION_SECRET}`;
 
 const server = Fastify({ logger: true });
 
@@ -66,6 +72,24 @@ function isVpnUserAgent(userAgent: string): boolean {
     return false;
 }
 
+function toBase64HeaderValue(value: string): string {
+    return `base64:${Buffer.from(value, "utf8").toString("base64")}`;
+}
+
+let configRequestsCount = 0;
+let htmlRequestsCount = 0;
+
+// https://www.happ.su/main/dev-docs/app-management
+const HAPP_SUBSCRIPTION_HEADERS = {
+    "profile-title": toBase64HeaderValue(TITLE),
+    "profile-update-interval": "12",
+    "profile-web-page-url": subscriptionUrl,
+    "subscription-refill-date": "1775002200",
+    "subscription-userinfo": `upload=${htmlRequestsCount}; download=${configRequestsCount}; total=0; expire=0`,
+    "support-url": VPN_SUBSCRIPTION_CHAT,
+    announce: toBase64HeaderValue(ANNOUNCE),
+};
+
 const subscriptionBody = `${SUBSCRIPTION_ENTRIES.map((entry) =>
     withName(replaceMacros(entry.link), entry.name),
 ).join("\n")}\n`;
@@ -80,19 +104,25 @@ server.get<{ Params: { secret: string } }>("/:secret", async (request, reply) =>
     const isVpnApp = isVpnUserAgent(userAgent);
 
     if (isVpnApp) {
+        configRequestsCount++;
+        Object.entries(HAPP_SUBSCRIPTION_HEADERS).forEach(([header, value]) => {
+            reply.header(header, value);
+        });
         return reply
             .header("Cache-Control", "no-store")
             .type("text/plain; charset=utf-8")
             .send(subscriptionBody);
     }
 
+    htmlRequestsCount++;
     return reply
         .header("Cache-Control", "no-store")
         .type("text/html; charset=utf-8")
         .send(
-            renderInstructionsPage(
-                `https://vpn-subscription.senaev.com/${VPN_SUBSCRIPTION_SECRET}`,
-            ),
+            renderInstructionsPage({
+                title: TITLE,
+                subscriptionUrl,
+            }),
         );
 });
 
