@@ -76,7 +76,7 @@ function toBase64HeaderValue(value: string): string {
     return `base64:${Buffer.from(value, "utf8").toString("base64")}`;
 }
 
-function getClosestFutureJanuaryTenthTimestamp(now: Date = new Date()): string {
+function getClosestBirthday(now: Date = new Date()): string {
     const year = now.getUTCFullYear();
     const januaryTenthThisYear = Date.UTC(year, 0, 10, 0, 0, 0);
     if (now.getTime() < januaryTenthThisYear) {
@@ -95,9 +95,9 @@ const HAPP_SUBSCRIPTION_HEADERS: Record<string, HeaderValue> = {
     "profile-title": toBase64HeaderValue(TITLE),
     "profile-update-interval": "12",
     "profile-web-page-url": subscriptionUrl,
-    "subscription-refill-date": getClosestFutureJanuaryTenthTimestamp,
+    "subscription-refill-date": getClosestBirthday,
     "subscription-userinfo": () =>
-        `upload=${htmlRequestsCount}; download=${configRequestsCount}; total=0; expire=${getClosestFutureJanuaryTenthTimestamp()}`,
+        `upload=${htmlRequestsCount}; download=${configRequestsCount}; total=0; expire=${getClosestBirthday()}`,
     "support-url": VPN_SUBSCRIPTION_CHAT,
     announce: toBase64HeaderValue(ANNOUNCE),
 };
