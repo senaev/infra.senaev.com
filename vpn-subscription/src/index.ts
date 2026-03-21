@@ -76,16 +76,28 @@ function toBase64HeaderValue(value: string): string {
     return `base64:${Buffer.from(value, "utf8").toString("base64")}`;
 }
 
+function getClosestFutureJanuaryTenthTimestamp(now: Date = new Date()): string {
+    const year = now.getUTCFullYear();
+    const januaryTenthThisYear = Date.UTC(year, 0, 10, 0, 0, 0);
+    if (now.getTime() < januaryTenthThisYear) {
+        return String(Math.floor(januaryTenthThisYear / 1000));
+    }
+
+    return String(Math.floor(Date.UTC(year + 1, 0, 10, 0, 0, 0) / 1000));
+}
+
 let configRequestsCount = 0;
 let htmlRequestsCount = 0;
 
+type HeaderValue = string | (() => string);
 // https://www.happ.su/main/dev-docs/app-management
-const HAPP_SUBSCRIPTION_HEADERS = {
+const HAPP_SUBSCRIPTION_HEADERS: Record<string, HeaderValue> = {
     "profile-title": toBase64HeaderValue(TITLE),
     "profile-update-interval": "12",
     "profile-web-page-url": subscriptionUrl,
-    "subscription-refill-date": "1775002200",
-    "subscription-userinfo": `upload=${htmlRequestsCount}; download=${configRequestsCount}; total=0; expire=0`,
+    "subscription-refill-date": getClosestFutureJanuaryTenthTimestamp,
+    "subscription-userinfo": () =>
+        `upload=${htmlRequestsCount}; download=${configRequestsCount}; total=0; expire=${getClosestFutureJanuaryTenthTimestamp()}`,
     "support-url": VPN_SUBSCRIPTION_CHAT,
     announce: toBase64HeaderValue(ANNOUNCE),
 };
@@ -106,7 +118,7 @@ server.get<{ Params: { secret: string } }>("/:secret", async (request, reply) =>
     if (isVpnApp) {
         configRequestsCount++;
         Object.entries(HAPP_SUBSCRIPTION_HEADERS).forEach(([header, value]) => {
-            reply.header(header, value);
+            reply.header(header, typeof value === "function" ? value() : value);
         });
         return reply
             .header("Cache-Control", "no-store")
