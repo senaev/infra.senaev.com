@@ -87,7 +87,7 @@
 {{- end -}}
 
 # Bootstrap config is used to allow users to connect
-# to services then VPN is not ready yet.
+# to services when VPN is not ready yet.
 {{- define "senaev-com.xrayVpnBootstrapConfig" -}}
 {{- $outbounds := list -}}
 {{- $rules := list -}}
