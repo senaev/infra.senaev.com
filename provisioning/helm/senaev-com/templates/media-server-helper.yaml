@@ -1,27 +1,27 @@
-{{- if .Values.torrentFilesWriter.enabled }}
+{{- if .Values.mediaServerHelper.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: torrent-files-writer
+  name: media-server-helper
   namespace: {{ .Release.Namespace }}
   labels:
-    app: torrent-files-writer
+    app: media-server-helper
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: torrent-files-writer
+      app: media-server-helper
   template:
     metadata:
       labels:
-        app: torrent-files-writer
+        app: media-server-helper
     spec:
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
         fsGroup: 1000
       nodeSelector:
-        vps: {{ .Values.torrentFilesWriter.vps }}
+        vps: {{ .Values.mediaServerHelper.vps }}
       initContainers:
         - name: fix-watch-folder-permissions
           image: busybox:1.37.0-uclibc
@@ -37,8 +37,8 @@ spec:
             - name: watch-torrent-files
               mountPath: /watch-torrent-files
       containers:
-        - name: torrent-files-writer
-          image: ghcr.io/senaev/torrent-files-writer:latest
+        - name: media-server-helper
+          image: ghcr.io/senaev/media-server-helper:latest
           env:
             - name: KAFKA_BROKERS
               value: redpanda.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.redpanda.kafkaPort }}

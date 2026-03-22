@@ -13,7 +13,7 @@ import SnappyCodec = require("kafkajs-snappy");
 CompressionCodecs[CompressionTypes.Snappy] = SnappyCodec;
 
 const TOPIC = "torrent-files-topic";
-const GROUP_ID = "torrent-files-writer";
+const GROUP_ID = "media-server-helper";
 
 function sanitizeFileName(name: string): string {
     return name.replace(/[^a-zA-Z0-9._-]/g, "_");

@@ -75,7 +75,7 @@ clusterHelper:
   enabled: true
   vps: hetzner
 
-torrentFilesWriter:
+mediaServerHelper:
   enabled: true
   vps: yc
 

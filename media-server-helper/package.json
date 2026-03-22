@@ -1,5 +1,5 @@
 {
-  "name": "torrent-files-writer",
+  "name": "media-server-helper",
   "version": "1.0.0",
   "description": "Consumes torrent files from Kafka and writes them to disk",
   "type": "commonjs",
