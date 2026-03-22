@@ -1,12 +1,11 @@
 import Fastify from "fastify";
 import { CompressionCodecs, CompressionTypes, Kafka, type EachMessagePayload } from "kafkajs";
 import { KAFKA_BROKERS, TG_CLUSTER_CHAT_ID } from "./env";
-import { connectProducer, disconnectProducer } from "./kafka/producer";
 import { KafkaTopicProcessorArgument } from "./kafka-topic-processors/KafkaTopicProcessorArgument";
-import { processTelegramWebhookDataTopic } from "./kafka-topic-processors/processTelegramWebhookDataTopic";
 import { processQbittorrentWebuiPasswordTopic } from "./kafka-topic-processors/processQbittorrentWebuiPasswordTopic";
+import { processTelegramWebhookDataTopic } from "./kafka-topic-processors/processTelegramWebhookDataTopic";
 import { processTgSendToMediaServerTopic } from "./kafka-topic-processors/processTgSendToMediaServerTopic";
-import { processVaultUnsealTopic } from "./kafka-topic-processors/processVaultUnsealTopic";
+import { connectProducer, disconnectProducer } from "./kafka/producer";
 import { getMe, sendTelegramMessage } from "./telegram/api";
 import type { TelegramUser } from "./telegram/types";
 
@@ -28,7 +27,6 @@ const KAFKA_TOPIC_HANDLERS: Record<
     "telegram-webhook-data-topic": processTelegramWebhookDataTopic,
     "qbittorrent-webui-password-topic": processQbittorrentWebuiPasswordTopic,
     "tg-send-to-media-server-topic": processTgSendToMediaServerTopic,
-    "vault-unseal-topic": processVaultUnsealTopic,
 };
 
 async function main(): Promise<void> {
