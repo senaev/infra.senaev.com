@@ -3,6 +3,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 NAMESPACE_NAME=vault
+TOKEN_SENAEV_COM_BOT="${1:?bootstrap-secrets.sh requires TOKEN_senaev_com_bot as the first argument}"
+TG_CLUSTER_CHAT_ID="${2:?bootstrap-secrets.sh requires TG_CLUSTER_CHAT_ID as the second argument}"
 
 $SCRIPT_DIR/upgrade-namespace.sh external-secrets "$NAMESPACE_NAME"
 
@@ -13,5 +15,5 @@ echo "✅ [bootstrap-secrets] ESO webhook ready"
 $SCRIPT_DIR/upgrade-namespace.sh vault "$NAMESPACE_NAME"
 
 echo "👉 [bootstrap-secrets] Deploying vault"
-$SCRIPT_DIR/bootstrap-vault.sh
+$SCRIPT_DIR/bootstrap-vault.sh "$TOKEN_SENAEV_COM_BOT" "$TG_CLUSTER_CHAT_ID"
 echo "✅ [bootstrap-secrets] Vault deployed"

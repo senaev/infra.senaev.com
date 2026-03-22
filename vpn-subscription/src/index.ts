@@ -11,8 +11,12 @@ import {
 import { renderInstructionsPage } from "./renderInstructionsPage.js";
 
 const TITLE = "Senaev🔐VPN";
-const ANNOUNCE =
-    "🚀 Добавляйтесь в чат телеги. ❌ Торренты качать нельзя. 🐅 VPN только для своих.";
+const ANNOUNCEMENTS = [
+    "🚀 Добавляйтесь в чат телеги.",
+    "❌ Торренты качать нельзя.",
+    "🐅 VPN только для своих.",
+];
+const announcement = ANNOUNCEMENTS.join(" ");
 const subscriptionUrl = `https://vpn-subscription.senaev.com/${VPN_SUBSCRIPTION_SECRET}`;
 
 const server = Fastify({ logger: true });
@@ -100,7 +104,7 @@ const HAPP_SUBSCRIPTION_HEADERS: Record<string, HeaderValue> = {
     "subscription-userinfo": () =>
         `upload=${htmlRequestsCount}; download=${configRequestsCount}; total=0; expire=${getClosestBirthday()}`,
     "support-url": VPN_SUBSCRIPTION_CHAT,
-    announce: toBase64HeaderValue(ANNOUNCE),
+    announce: toBase64HeaderValue(announcement),
 };
 
 const subscriptionBody = `${SUBSCRIPTION_ENTRIES.map((entry) =>
@@ -135,6 +139,8 @@ server.get<{ Params: { secret: string } }>("/:secret", async (request, reply) =>
             renderInstructionsPage({
                 title: TITLE,
                 subscriptionUrl,
+                announcements: ANNOUNCEMENTS,
+                telegramChatUrl: VPN_SUBSCRIPTION_CHAT,
             }),
         );
 });

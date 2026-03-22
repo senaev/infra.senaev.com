@@ -6,6 +6,44 @@ TERRAFORM_DIR="$ROOT_DIR/terraform"
 ENV_FILE="$ROOT_DIR/.env"
 ENV_EXAMPLE="$ROOT_DIR/.env.example"
 
+get_tfvar() {
+  local key="$1"
+
+  awk -F '=' -v key="$key" '
+    $1 ~ "^[[:space:]]*" key "[[:space:]]*$" {
+      value = $2
+      sub(/^[[:space:]]*"/, "", value)
+      sub(/"[[:space:]]*$/, "", value)
+      print value
+      exit
+    }
+  ' "$TERRAFORM_DIR/terraform.tfvars"
+}
+
+upsert_env_var() {
+  local file="$1"
+  local key="$2"
+  local value="$3"
+  local tmp_file
+
+  tmp_file="$(mktemp)"
+  awk -v key="$key" -v value="$value" '
+    BEGIN { updated = 0 }
+    $0 ~ "^" key "=" {
+      print key "=" value
+      updated = 1
+      next
+    }
+    { print }
+    END {
+      if (!updated) {
+        print key "=" value
+      }
+    }
+  ' "$file" > "$tmp_file"
+  mv "$tmp_file" "$file"
+}
+
 echo "👉 [apply-terraform] Initializing Terraform"
 cd "$TERRAFORM_DIR" && terraform init -input=false
 echo "✅ [apply-terraform] Terraform initialized"
@@ -67,8 +105,15 @@ fi
 
 echo "👉 [apply-terraform] Applying server IP from Terraform output"
 SERVER_IP=$(terraform output -raw server_ip)
-sed -i '' "s/^CONTROL_PLANE_SERVER_IP=.*/CONTROL_PLANE_SERVER_IP=$SERVER_IP/" "$ENV_FILE"
+upsert_env_var "$ENV_FILE" "CONTROL_PLANE_SERVER_IP" "$SERVER_IP"
 echo "✅ [apply-terraform] CONTROL_PLANE_SERVER_IP set to $SERVER_IP"
+
+echo "👉 [apply-terraform] Applying Telegram secrets from terraform.tfvars"
+TG_CLUSTER_CHAT_ID=$(get_tfvar "TG_CLUSTER_CHAT_ID")
+TOKEN_senaev_com_bot=$(get_tfvar "TOKEN_senaev_com_bot")
+upsert_env_var "$ENV_FILE" "TG_CLUSTER_CHAT_ID" "$TG_CLUSTER_CHAT_ID"
+upsert_env_var "$ENV_FILE" "TOKEN_senaev_com_bot" "$TOKEN_senaev_com_bot"
+echo "✅ [apply-terraform] Telegram secrets written to .env"
 
 echo "👉 [apply-terraform] Updating known_hosts for $SERVER_IP"
 ssh-keygen -R "$SERVER_IP" 2>/dev/null || true
