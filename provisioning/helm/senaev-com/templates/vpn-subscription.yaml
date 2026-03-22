@@ -1,13 +1,4 @@
 {{- if .Values.vpnSubscription.enabled }}
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: vpn-subscription-config
-  namespace: {{ .Release.Namespace }}
-data:
-  entries.json: |
-{{ toJson .Values.vpnSubscription.entries | indent 4 }}
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -26,7 +17,6 @@ spec:
         app: vpn-subscription
       annotations:
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
-        configmap.reloader.stakater.com/reload: "vpn-subscription-config"
     spec:
       nodeSelector:
         vps: {{ .Values.vpnSubscription.vps }}
@@ -36,8 +26,8 @@ spec:
           ports:
             - containerPort: 3000
           env:
-            - name: SUBSCRIPTION_ENTRIES_PATH
-              value: /app/config/entries.json
+            - name: SUBSCRIPTION_ENTRIES
+              value: {{ toJson .Values.vpnSubscription.entries | quote }}
             - name: VPN_SUBSCRIPTION_SECRET
               valueFrom:
                 secretKeyRef:
@@ -62,14 +52,6 @@ spec:
                   name: senaev-com-kv-secrets
                   key: XRAY_REALITY_PUBLIC_KEY
                   optional: false
-          volumeMounts:
-            - name: vpn-subscription-config
-              mountPath: /app/config
-              readOnly: true
-      volumes:
-        - name: vpn-subscription-config
-          configMap:
-            name: vpn-subscription-config
 ---
 apiVersion: v1
 kind: Service
