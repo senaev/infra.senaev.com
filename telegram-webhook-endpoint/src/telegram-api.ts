@@ -1,36 +1,34 @@
-import { TELEGRAM_BOT_TOKEN } from "./env.js";
+import { TG_TOKEN_SENAEV_COM_BOT } from "./env.js";
 
 interface TelegramResponse {
-  ok: boolean;
-  description?: string;
+    ok: boolean;
+    description?: string;
 }
 
 export async function telegramApiCall(
-  method: string,
-  payload: Record<string, unknown>,
+    method: string,
+    payload: Record<string, unknown>,
 ): Promise<TelegramResponse> {
-  const response = await fetch(
-    `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/${method}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    },
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      `Telegram API ${method} failed: HTTP ${response.status} ${response.statusText}`,
+    const response = await fetch(
+        `https://api.telegram.org/bot${TG_TOKEN_SENAEV_COM_BOT}/${method}`,
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        },
     );
-  }
 
-  const data = (await response.json()) as TelegramResponse;
+    if (!response.ok) {
+        throw new Error(
+            `Telegram API ${method} failed: HTTP ${response.status} ${response.statusText}`,
+        );
+    }
 
-  if (!data.ok) {
-    throw new Error(
-      `Telegram API ${method} returned error: ${data.description ?? "unknown"}`,
-    );
-  }
+    const data = (await response.json()) as TelegramResponse;
 
-  return data;
+    if (!data.ok) {
+        throw new Error(`Telegram API ${method} returned error: ${data.description ?? "unknown"}`);
+    }
+
+    return data;
 }

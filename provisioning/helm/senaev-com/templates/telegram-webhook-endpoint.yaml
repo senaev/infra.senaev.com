@@ -30,7 +30,7 @@ spec:
               value: redpanda.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.redpanda.kafkaPort }}
             - name: WEBHOOK_DOMAIN
               value: {{ .Values.telegramWebhookEndpoint.webhookDomain }}
-            - name: TELEGRAM_BOT_TOKEN
+            - name: TG_TOKEN_SENAEV_COM_BOT
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
