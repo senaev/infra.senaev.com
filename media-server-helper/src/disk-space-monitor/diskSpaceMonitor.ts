@@ -1,7 +1,7 @@
 import { PERCENT_REMOVE_TARGET, PERCENT_TRIGGER_TO_REMOVE } from "../env";
 import { formatBytes } from "./formatBytes";
-import { getFilesToRemove } from "./getFilesToRemove";
 import { getDiskUsage } from "./getDiskUsage";
+import { getFilesToRemove } from "./getFilesToRemove";
 import { getSpaceInfoToRemove } from "./getSpaceInfoToRemove";
 import {
     removeFiles,
@@ -33,7 +33,7 @@ async function checkDiskSpace(): Promise<void> {
     const totalBytes = totalBlocks * blockSize;
     const usedBytes = (totalBlocks - availableBlocks) * blockSize;
     console.log(
-        `✅ Disk usage=[${occupiedPercent.toFixed(2)}]% total=[${formatBytes(totalBytes)}] used=[${formatBytes(usedBytes)}] blockSize=[${formatBytes(blockSize)}]`,
+        `✅ Disk usage=[${occupiedPercent.toFixed(2)}]% limit=[${PERCENT_TRIGGER_TO_REMOVE}]% total=[${formatBytes(totalBytes)}] used=[${formatBytes(usedBytes)}] blockSize=[${formatBytes(blockSize)}]`,
     );
     if (!removeInfo) {
         isRemovingFiles = false;
