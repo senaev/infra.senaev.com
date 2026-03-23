@@ -6,6 +6,8 @@ kind: IngressRouteTCP
 metadata:
   name: {{ $instance.name }}-passthrough
   namespace: {{ $.Release.Namespace }}
+  annotations:
+    kubernetes.io/ingress.class: traefik-{{ $instance.vps }}
 spec:
   entryPoints:
     - websecure

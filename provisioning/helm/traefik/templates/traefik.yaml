@@ -33,6 +33,7 @@ spec:
             - "--providers.kubernetesingress=true"
             - "--providers.kubernetesingress.ingressclass=traefik-{{ .vps }}"
             - "--providers.kubernetescrd=true"
+            - "--providers.kubernetescrd.ingressclass=traefik-{{ .vps }}"
             - "--entrypoints.web.address=:80"
             - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
             - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
