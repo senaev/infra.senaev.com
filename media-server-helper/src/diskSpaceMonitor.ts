@@ -3,6 +3,10 @@ import { join } from "path";
 
 const DOWNLOADS_DIR = "/downloads";
 
+// Root /downloads folder is in-pod container
+// We should take one of the folders mounded as a hostPath
+const FOLDER_TO_CHECK_USAGE = `${DOWNLOADS_DIR}/complete`;
+
 const CHECK_INTERVAL_MS = 10_000;
 const PERCENT_TRIGGER_TO_REMOVE = 70;
 const PERCENT_REMOVE_TARGET = 60;
@@ -45,8 +49,17 @@ async function getDiskUsage(path: string): Promise<DisksUsage> {
     };
 }
 
-async function removeOldFiles(bytesToRemove: number): Promise<void> {
-    const dirEntries = await readdir(DOWNLOADS_DIR, {
+async function getFilesToRemove({
+    bytesToRemove,
+    pathToRemoveFiles,
+}: {
+    bytesToRemove: number;
+    pathToRemoveFiles: string;
+}): Promise<{
+    filesToRemove: FileToRemove[];
+    filesToRemoveSizeBytes: number;
+}> {
+    const dirEntries = await readdir(pathToRemoveFiles, {
         recursive: true,
         withFileTypes: true,
     });
@@ -67,53 +80,104 @@ async function removeOldFiles(bytesToRemove: number): Promise<void> {
     const sortedFiles = files.sort((a, b) => a.modifiedAtMs - b.modifiedAtMs);
 
     const filesToRemove: FileToRemove[] = [];
-    let selectedBytes = 0;
+    let filesToRemoveSizeBytes = 0;
     for (const file of sortedFiles) {
         filesToRemove.push(file);
-        selectedBytes += file.size;
+        filesToRemoveSizeBytes += file.size;
 
-        if (selectedBytes >= bytesToRemove) {
+        if (filesToRemoveSizeBytes >= bytesToRemove) {
             break;
         }
     }
 
-    console.log(
-        `🗂️ Selected files to remove count=[${filesToRemove.length}] size=[${formatBytes(selectedBytes)}]`,
-    );
-    for (const file of filesToRemove) {
-        console.log(`🗂️ file=[${file.path}] size=[${formatBytes(file.size)}]`);
+    return { filesToRemove, filesToRemoveSizeBytes };
+}
+
+async function getSpaceInfoToRemove({
+    folderToCheckUsage,
+    percentTriggerToRemove,
+    percentRemoveTarget,
+}: {
+    folderToCheckUsage: string;
+    percentTriggerToRemove: number;
+    percentRemoveTarget: number;
+}): Promise<{
+    usage: DisksUsage;
+    occupiedPercent: number;
+    removeInfo?: {
+        percentToRemove: number;
+        bytesToRemove: number;
+    };
+}> {
+    const usage = await getDiskUsage(folderToCheckUsage);
+    const { totalBlocks, availableBlocks, blockSize } = usage;
+    const usedBlocks = totalBlocks - availableBlocks;
+    const occupiedPercent = (usedBlocks / totalBlocks) * 100;
+
+    if (occupiedPercent < percentTriggerToRemove) {
+        return {
+            usage,
+            occupiedPercent,
+        };
     }
 
-    if (selectedBytes < bytesToRemove) {
-        console.warn(
-            `⚠️ Not enough files to remove. Selected=[${formatBytes(
-                selectedBytes,
-            )}] needed=[${formatBytes(bytesToRemove)}]`,
-        );
-    }
+    const percentToRemove = occupiedPercent - percentRemoveTarget;
+    const bytesToRemove = ((totalBlocks * percentToRemove) / 100) * blockSize;
+    return {
+        usage,
+        occupiedPercent,
+        removeInfo: {
+            percentToRemove,
+            bytesToRemove,
+        },
+    };
 }
 
 async function checkDiskSpace(): Promise<void> {
-    const { totalBlocks, availableBlocks, blockSize } = await getDiskUsage(DOWNLOADS_DIR);
-    const usedBlocks = totalBlocks - availableBlocks;
-    const totalBytes = totalBlocks * blockSize;
-    const usedBytes = usedBlocks * blockSize;
-    const occupiedPercent = (usedBlocks / totalBlocks) * 100;
+    const {
+        usage: { totalBlocks, availableBlocks, blockSize },
+        occupiedPercent,
+        removeInfo,
+    } = await getSpaceInfoToRemove({
+        folderToCheckUsage: FOLDER_TO_CHECK_USAGE,
+        percentRemoveTarget: PERCENT_REMOVE_TARGET,
+        percentTriggerToRemove: PERCENT_TRIGGER_TO_REMOVE,
+    });
 
+    const totalBytes = totalBlocks * blockSize;
+    const usedBytes = (totalBlocks - availableBlocks) * blockSize;
     console.log(
         `✅ Disk usage=[${occupiedPercent.toFixed(2)}]% total=[${formatBytes(totalBytes)}] used=[${formatBytes(usedBytes)}] blockSize=[${formatBytes(blockSize)}]`,
     );
-    if (occupiedPercent < PERCENT_TRIGGER_TO_REMOVE) {
+    if (!removeInfo) {
         return;
     }
 
-    const percentToRemove = occupiedPercent - PERCENT_REMOVE_TARGET;
-    const bytesToRemove = ((totalBlocks * percentToRemove) / 100) * blockSize;
-    console.log(
-        `💽 Need to remove [${percentToRemove.toFixed(2)}]% size=[${formatBytes(bytesToRemove)}]`,
+    const { percentToRemove, bytesToRemove } = removeInfo;
+    console.warn(
+        `👉 Disk usage above threshold=[${PERCENT_TRIGGER_TO_REMOVE}%], need to remove=[${percentToRemove.toFixed(2)}]% bytes=[${formatBytes(bytesToRemove)}]`,
     );
 
-    await removeOldFiles(bytesToRemove);
+    const { filesToRemove, filesToRemoveSizeBytes } = await getFilesToRemove({
+        bytesToRemove,
+        pathToRemoveFiles: FOLDER_TO_CHECK_USAGE,
+    });
+
+    console.log(
+        `🗑️ Selected files to remove count=[${filesToRemove.length}] size=[${formatBytes(filesToRemoveSizeBytes)}]`,
+    );
+
+    if (filesToRemoveSizeBytes < bytesToRemove) {
+        console.warn(
+            `⚠️ Not enough files to remove. Selected=[${formatBytes(
+                filesToRemoveSizeBytes,
+            )}] needed=[${formatBytes(bytesToRemove)}]`,
+        );
+    }
+
+    for (const file of filesToRemove) {
+        console.log(`🗂️ file=[${file.path}] size=[${formatBytes(file.size)}]`);
+    }
 }
 
 async function runDiskSpaceMonitor(): Promise<void> {
