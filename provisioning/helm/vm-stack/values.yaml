@@ -44,7 +44,21 @@ victoria-metrics-k8s-stack:
 
   # TODO: implement alerting
   alertmanager:
+    ingress:
+      enabled: true
+      ingressClassName: traefik-hetzner
+      annotations:
+        traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+        traefik.ingress.kubernetes.io/router.tls: "true"
+        traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+        traefik.ingress.kubernetes.io/router.middlewares: '{{ .Release.Namespace }}-alertmanager-basicauth@kubernetescrd'
+      hosts:
+        - alertmanager.senaev.com
+      tls:
+        - hosts:
+            - alertmanager.senaev.com
     spec:
+      externalURL: https://alertmanager.senaev.com
       nodeSelector:
         vps: hetzner
 
