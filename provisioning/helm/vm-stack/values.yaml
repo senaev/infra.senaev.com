@@ -51,7 +51,7 @@ victoria-metrics-k8s-stack:
         traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
         traefik.ingress.kubernetes.io/router.tls: "true"
         traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
-        traefik.ingress.kubernetes.io/router.middlewares: '{{ .Release.Namespace }}-alertmanager-basicauth@kubernetescrd'
+        traefik.ingress.kubernetes.io/router.middlewares: "{{ .Release.Namespace }}-alertmanager-basicauth@kubernetescrd"
       hosts:
         - alertmanager.senaev.com
       tls:
@@ -61,6 +61,7 @@ victoria-metrics-k8s-stack:
       externalURL: https://alertmanager.senaev.com
       nodeSelector:
         vps: hetzner
+    useManagedConfig: true
     config:
       route:
         receiver: blackhole
@@ -71,8 +72,13 @@ victoria-metrics-k8s-stack:
       receivers:
         - name: blackhole
         - name: telegram-alerts-receiver
-          webhook_configs:
-            - url: http://cluster-helper.senaev-com.svc.cluster.local/alertmanager/webhook
+          telegram_configs:
+            - bot_token:
+                name: senaev-com-kv-secrets
+                key: TG_TOKEN_SENAEV_COM_BOT
+              chat_id: -5238510786
+              parse_mode: HTML
+              send_resolved: true
 
   vmalert:
     spec:

@@ -55,7 +55,7 @@ services:
 	# installing kafka before the whole cluster to make sure that no message is lost during services initialization
 	$(REMOTE) "$(DEPLOY) kafka senaev-com --wait"
 
-	$(REMOTE) "$(CONTROL_PLANE_SCRIPTS)/bootstrap-secrets.sh '$(TG_TOKEN_SENAEV_COM_BOT)' '$(TG_CLUSTER_CHAT_ID)'"
+	$(REMOTE) "$(CONTROL_PLANE_SCRIPTS)/bootstrap-secrets.sh '$(TG_TOKEN_SENAEV_COM_BOT)'"
 
 	# vm-stack requires ExternalSecret CRDs for Grafana
 	$(REMOTE) "$(DEPLOY) vm-stack telemetry"

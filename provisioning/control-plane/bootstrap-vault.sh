@@ -4,7 +4,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 set -a; source "$SCRIPT_DIR/../common/.env"; set +a
 TOKEN_SENAEV_COM_BOT="${1:?bootstrap-vault.sh requires TG_TOKEN_SENAEV_COM_BOT as the first argument}"
-TG_CLUSTER_CHAT_ID="${2:?bootstrap-vault.sh requires TG_CLUSTER_CHAT_ID as the second argument}"
 
 cd $K3S_CLUSTER_PATH
 
@@ -28,7 +27,7 @@ send_telegram_message() {
   local http_code
 
   payload="$(jq -n \
-    --arg chat_id "$TG_CLUSTER_CHAT_ID" \
+    --arg chat_id "-5238510786" \
     --arg text "$text" \
     --arg copy_text "$copy_text" \
     --arg parse_mode "$parse_mode" \
@@ -214,9 +213,7 @@ echo "✅ [bootstrap-vault] Vault External Secrets Operator setup done role=[$EX
 KV_SECRET="$KV_SECRETS_ENGINE_PATH/senaev-com-kv"
 echo "👉 [bootstrap-vault] Ensuring secret $KV_SECRET exists"
 if ! vault_exec_with_token kv get "$KV_SECRET" &>/dev/null; then
-  vault_exec_with_token kv put "$KV_SECRET" \
-    TG_CLUSTER_CHAT_ID="$TG_CLUSTER_CHAT_ID" \
-    TG_TOKEN_SENAEV_COM_BOT="$TOKEN_SENAEV_COM_BOT"
+  vault_exec_with_token kv put "$KV_SECRET" TG_TOKEN_SENAEV_COM_BOT="$TOKEN_SENAEV_COM_BOT"
   echo "✅ [bootstrap-vault] Secret $KV_SECRET created."
 else
   echo "✅ [bootstrap-vault] Secret $KV_SECRET already exists."

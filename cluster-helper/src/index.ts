@@ -15,57 +15,9 @@ CompressionCodecs[CompressionTypes.Snappy] = SnappyCodec;
 const HOST = "0.0.0.0";
 const PORT = 80;
 
-type AlertmanagerWebhookAlert = {
-    status: string;
-    labels?: Record<string, string>;
-    annotations?: Record<string, string>;
-    startsAt?: string;
-};
-
-type AlertmanagerWebhookPayload = {
-    receiver?: string;
-    status?: string;
-    externalURL?: string;
-    alerts?: AlertmanagerWebhookAlert[];
-};
-
 const server = Fastify({ logger: true });
 server.get("/*", async (_request, reply) => {
     reply.send("🟢 Cluster helper is running");
-});
-server.post<{ Body: AlertmanagerWebhookPayload }>("/alertmanager/webhook", async (request, reply) => {
-    const payload = request.body;
-    const alerts = payload.alerts ?? [];
-
-    if (alerts.length === 0) {
-        request.log.warn("Received Alertmanager webhook with no alerts");
-        reply.code(204).send();
-        return;
-    }
-
-    for (const alert of alerts) {
-        const labels = alert.labels ?? {};
-        const annotations = alert.annotations ?? {};
-        const summary = annotations.summary ?? labels.alertname ?? "Alert";
-        const description = annotations.description ?? "No description";
-        const statusIcon = alert.status === "resolved" ? "✅" : "🚨";
-
-        await sendTelegramMessage({
-            chatId: TG_CLUSTER_CHAT_ID,
-            text: [
-                `${statusIcon} ${summary}`,
-                `Status: ${alert.status ?? payload.status ?? "unknown"}`,
-                `Severity: ${labels.severity ?? "unknown"}`,
-                `Alert: ${labels.alertname ?? "unknown"}`,
-                `Description: ${description}`,
-                payload.externalURL ? `Alertmanager: ${payload.externalURL}` : undefined,
-            ]
-                .filter((line): line is string => Boolean(line))
-                .join("\n"),
-        });
-    }
-
-    reply.code(204).send();
 });
 
 const KAFKA_TOPIC_HANDLERS: Record<

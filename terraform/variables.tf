@@ -10,12 +10,6 @@ variable "TAILSCALE_API_KEY" {
   sensitive   = true
 }
 
-variable "TG_CLUSTER_CHAT_ID" {
-  description = "Telegram chat ID for cluster notifications"
-  type        = string
-  sensitive   = true
-}
-
 variable "TG_TOKEN_SENAEV_COM_BOT" {
   description = "Telegram bot token for senaev.com bot"
   type        = string

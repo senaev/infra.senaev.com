@@ -1,3 +1,5 @@
+telegramClusterChatId: "-5238510786"
+
 redpanda:
   kafkaPort: 9092
   topics:
