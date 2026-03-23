@@ -80,6 +80,14 @@ async function removeOldFiles(bytesToRemove: number): Promise<void> {
     for (const file of filesToRemove) {
         console.log(`🗂️ file=[${file.path}] size=[${formatBytes(file.size)}]`);
     }
+
+    if (selectedBytes < bytesToRemove) {
+        console.warn(
+            `⚠️ Not enough files to remove. Selected=[${formatBytes(
+                selectedBytes,
+            )}] needed=[${formatBytes(bytesToRemove)}]`,
+        );
+    }
 }
 
 async function checkDiskSpace(): Promise<void> {
@@ -99,7 +107,7 @@ async function checkDiskSpace(): Promise<void> {
     const percentToRemove = occupiedPercent - PERCENT_REMOVE_TARGET;
     const bytesToRemove = ((totalBlocks * percentToRemove) / 100) * blockSize;
     console.log(
-        `💽 Need to remove [${occupiedPercent.toFixed(2)}]% size=[${formatBytes(bytesToRemove)}]`,
+        `💽 Need to remove [${percentToRemove.toFixed(2)}]% size=[${formatBytes(bytesToRemove)}]`,
     );
 
     await removeOldFiles(bytesToRemove);
