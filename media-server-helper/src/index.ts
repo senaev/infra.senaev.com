@@ -1,4 +1,4 @@
-import { startDiskSpaceMonitor } from "./diskSpaceMonitor";
+import { startDiskSpaceMonitor } from "./disk-space-monitor/diskSpaceMonitor";
 import { runKafkaConsumer } from "./kafka";
 import { writeTorrentFile } from "./torrentFileStorage";
 
