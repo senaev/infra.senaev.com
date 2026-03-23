@@ -9,7 +9,6 @@ victoria-metrics-k8s-stack:
 
   grafana:
     enabled: true
-    # TODO: Remove duplications using helmfile
     nodeSelector:
       vps: hetzner
     annotations:
@@ -25,7 +24,6 @@ victoria-metrics-k8s-stack:
       pathType: Prefix
       hosts:
         - grafana.senaev.com
-      # TODO: Remove duplications using helmfile
       annotations:
         traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
         traefik.ingress.kubernetes.io/router.tls: "true"
@@ -36,29 +34,25 @@ victoria-metrics-k8s-stack:
 
   vmsingle:
     spec:
-      # TODO: Remove duplications using helmfile
       nodeSelector:
         vps: hetzner
 
   vmagent:
     spec:
-      # TODO: Remove duplications using helmfile
       nodeSelector:
         vps: hetzner
 
+  # TODO: implement alerting
   alertmanager:
     spec:
-      # TODO: Remove duplications using helmfile
       nodeSelector:
         vps: hetzner
 
   vmalert:
     spec:
-      # TODO: Remove duplications using helmfile
       nodeSelector:
         vps: hetzner
 
   kube-state-metrics:
-    # TODO: Remove duplications using helmfile
     nodeSelector:
       vps: hetzner

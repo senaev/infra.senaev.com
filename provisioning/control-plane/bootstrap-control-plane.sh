@@ -4,7 +4,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 set -a; source "$SCRIPT_DIR/../common/.env"; set +a
 
-# TODO: remove duplications
 echo "👉 [bootstrap-control-plane] getting internal tailnet IP"
 TAILNET_IP=$(tailscale ip -4)
 echo "✅ [bootstrap-control-plane] TAILNET_IP=[${TAILNET_IP}]"

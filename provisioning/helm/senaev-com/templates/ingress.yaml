@@ -6,7 +6,6 @@ kind: Ingress
 metadata:
   name: {{ $.Release.Name }}-{{ .name }}
   namespace: {{ $.Release.Namespace }}
-  # TODO: Remove duplications using helmfile
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: {{ default "web,websecure" .entrypoints }}
     traefik.ingress.kubernetes.io/router.tls: "true"

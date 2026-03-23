@@ -2,6 +2,7 @@
   "cSpell.language": "en,ru",
   "cSpell.words": [
     "accesslog",
+    "alertmanager",
     "Andrei",
     "basicauth",
     "bavail",
@@ -49,6 +50,9 @@
     "unmanic",
     "urlencode",
     "VLESS",
+    "vmagent",
+    "vmalert",
+    "vmsingle",
     "webdav",
     "websecure",
     "webui",
