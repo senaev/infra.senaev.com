@@ -6,24 +6,22 @@ import { type FileToRemove } from "./getFilesToRemove";
 const TELEGRAM_MESSAGE_LIMIT = 4096;
 
 function formatDate(timestampMs: number): string {
-    return new Intl.DateTimeFormat("en", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-        timeZone: "UTC",
-    }).format(new Date(timestampMs));
+    const date = new Date(timestampMs);
+    const day = String(date.getUTCDate()).padStart(2, "0");
+    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const year = date.getUTCFullYear();
+    const hours = String(date.getUTCHours()).padStart(2, "0");
+    const minutes = String(date.getUTCMinutes()).padStart(2, "0");
+
+    return `${day}-${month}-${year} ${hours}:${minutes}`;
 }
 
 function buildFileLine(file: FileToRemove): string {
     return [
         "•",
         `<code>${formatBytes(file.size)}</code>`,
-        `<b>${formatDate(file.createdAtMs)}</b>`,
-        `<code>${escapeHtml(file.path)}</code>`,
-        `<b>${escapeHtml(file.name)}</b>`,
+        `(${formatDate(file.createdAtMs)})`,
+        `${escapeHtml(file.path)}`,
     ].join(" ");
 }
 
@@ -57,12 +55,12 @@ export async function sendRemovalNotification({
     const summaryLines = [
         "<b>🗑️ Media Server Cleanup</b>",
         "",
-        `<b>Removed files:</b> <code>${removedFiles.length}</code>`,
-        `<b>Removed size:</b> <code>${formatBytes(removedBytes)}</code>`,
-        `<b>Requested size:</b> <code>${formatBytes(bytesToRemove)}</code>`,
-        `<b>Disk used before:</b> <code>${formatBytes(usedBytesBefore)}</code> (${occupiedPercentBefore.toFixed(2)}%)`,
-        `<b>Disk used after:</b> <code>${formatBytes(usedBytesAfter)}</code> (${occupiedPercentAfter.toFixed(2)}%)`,
-        `<b>Total disk size:</b> <code>${formatBytes(totalBytes)}</code>`,
+        `<b>Removed files:</b> ${removedFiles.length}`,
+        `<b>Removed size:</b> ${formatBytes(removedBytes)}`,
+        `<b>Requested size:</b> ${formatBytes(bytesToRemove)}`,
+        `<b>Disk used before:</b> ${formatBytes(usedBytesBefore)} (${occupiedPercentBefore.toFixed(2)}%)`,
+        `<b>Disk used after:</b> ${formatBytes(usedBytesAfter)} (${occupiedPercentAfter.toFixed(2)}%)`,
+        `<b>Total disk size:</b> ${formatBytes(totalBytes)}`,
     ];
     const fileLines = removedFiles.map(buildFileLine);
     const message = [...summaryLines, "", ...fileLines].join("\n");
