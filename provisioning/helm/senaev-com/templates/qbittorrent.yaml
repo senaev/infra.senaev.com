@@ -146,7 +146,9 @@ spec:
             - sh
             - -c
             - |
+              mkdir -p /config
               mkdir -p {{ .Values.qbittorrent.paths.complete }} {{ .Values.qbittorrent.paths.incomplete }} {{ .Values.qbittorrent.paths.watch }} {{ .Values.qbittorrent.paths.archiveTorrents }} {{ .Values.qbittorrent.paths.convertedForMobile }}
+              chown -R 1000:1000 /config
               chown -R 1000:1000 /downloads
           volumeMounts:
             - name: config
@@ -209,7 +211,9 @@ spec:
               mountPath: /password-notify-state
       volumes:
         - name: config
-          emptyDir: {}
+          hostPath:
+            path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}/config
+            type: DirectoryOrCreate
         - name: default-config
           configMap:
             name: qbittorrent-default-config
