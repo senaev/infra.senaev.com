@@ -43,7 +43,7 @@ spec:
                   key: TG_MEDIA_SERVER_CHANNEL_ID
                   optional: false
             - name: TG_CLUSTER_CHAT_ID
-              value: {{ .Values.telegramClusterChatId }}
+              value: {{ .Values.telegramClusterChatId | quote }}
             - name: KAFKA_BROKERS
               value: redpanda.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.redpanda.kafkaPort }}
           ports:
