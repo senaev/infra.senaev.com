@@ -2,7 +2,11 @@ import { PERCENT_REMOVE_TARGET, PERCENT_TRIGGER_TO_REMOVE } from "../env";
 import { formatBytes } from "./formatBytes";
 import { getFilesToRemove } from "./getFilesToRemove";
 import { getSpaceInfoToRemove } from "./getSpaceInfoToRemove";
-import { removeFiles, sendRemovalNotification } from "./removeFilesAndNotify";
+import {
+    removeFiles,
+    sendManualCleanupRequiredNotification,
+    sendRemovalNotification,
+} from "./removeFilesAndNotify";
 
 const DOWNLOADS_DIR = "/downloads";
 
@@ -31,6 +35,7 @@ async function checkDiskSpace(): Promise<void> {
         `✅ Disk usage=[${occupiedPercent.toFixed(2)}]% total=[${formatBytes(totalBytes)}] used=[${formatBytes(usedBytes)}] blockSize=[${formatBytes(blockSize)}]`,
     );
     if (!removeInfo) {
+        isRemovingFiles = false;
         return;
     }
 
@@ -62,29 +67,37 @@ async function checkDiskSpace(): Promise<void> {
     }
 
     isRemovingFiles = true;
+    try {
+        const notEnoughFilesToRemove = filesToRemoveSizeBytes < bytesToRemove;
 
-    const notEnoughFilesToRemove = filesToRemoveSizeBytes < bytesToRemove;
+        await removeFiles(filesToRemove);
 
-    await removeFiles(filesToRemove);
+        await sendRemovalNotification({
+            removedFiles: filesToRemove,
+            removedBytes: filesToRemoveSizeBytes,
+            bytesToRemove,
+            occupiedPercentBefore: occupiedPercent,
+            occupiedPercentAfter: spaceAfterRemovalBytesPercent,
+            totalBytes,
+            usedBytesBefore: usedBytes,
+            usedBytesAfter: spaceAfterRemovalBytes,
+        });
 
-    await sendRemovalNotification({
-        removedFiles: filesToRemove,
-        removedBytes: filesToRemoveSizeBytes,
-        bytesToRemove,
-        occupiedPercentBefore: occupiedPercent,
-        occupiedPercentAfter: spaceAfterRemovalBytesPercent,
-        totalBytes,
-        usedBytesBefore: usedBytes,
-        usedBytesAfter: spaceAfterRemovalBytes,
-    });
-
-    if (notEnoughFilesToRemove) {
-        console.warn(
-            `⚠️ Not enough files to remove. Selected=[${formatBytes(
-                filesToRemoveSizeBytes,
-            )}] needed=[${formatBytes(bytesToRemove)}]`,
-        );
-    } else {
+        if (notEnoughFilesToRemove) {
+            console.warn(
+                `⚠️ Not enough files to remove. Selected=[${formatBytes(
+                    filesToRemoveSizeBytes,
+                )}] needed=[${formatBytes(bytesToRemove)}]`,
+            );
+            await sendManualCleanupRequiredNotification({
+                bytesToRemove,
+                removableBytes: filesToRemoveSizeBytes,
+                totalBytes,
+                usedBytes: spaceAfterRemovalBytes,
+                occupiedPercent: spaceAfterRemovalBytesPercent,
+            });
+        }
+    } finally {
         isRemovingFiles = false;
     }
 }

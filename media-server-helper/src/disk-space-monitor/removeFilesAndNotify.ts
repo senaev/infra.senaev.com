@@ -5,17 +5,6 @@ import { type FileToRemove } from "./getFilesToRemove";
 
 const TELEGRAM_MESSAGE_LIMIT = 4096;
 
-type SendRemovalNotificationArgs = {
-    removedFiles: FileToRemove[];
-    removedBytes: number;
-    bytesToRemove: number;
-    occupiedPercentBefore: number;
-    occupiedPercentAfter: number;
-    totalBytes: number;
-    usedBytesBefore: number;
-    usedBytesAfter: number;
-};
-
 function formatDate(timestampMs: number): string {
     return new Intl.DateTimeFormat("en", {
         year: "numeric",
@@ -55,7 +44,16 @@ export async function sendRemovalNotification({
     totalBytes,
     usedBytesBefore,
     usedBytesAfter,
-}: SendRemovalNotificationArgs): Promise<void> {
+}: {
+    removedFiles: FileToRemove[];
+    removedBytes: number;
+    bytesToRemove: number;
+    occupiedPercentBefore: number;
+    occupiedPercentAfter: number;
+    totalBytes: number;
+    usedBytesBefore: number;
+    usedBytesAfter: number;
+}): Promise<void> {
     const summaryLines = [
         "<b>🗑️ Media Server Cleanup</b>",
         "",
@@ -68,6 +66,33 @@ export async function sendRemovalNotification({
     ];
     const fileLines = removedFiles.map(buildFileLine);
     const message = [...summaryLines, "", ...fileLines].join("\n");
+    await sendTelegramHtmlMessage(truncateForTelegram(message));
+}
+
+export async function sendManualCleanupRequiredNotification({
+    bytesToRemove,
+    removableBytes,
+    totalBytes,
+    usedBytes,
+    occupiedPercent,
+}: {
+    bytesToRemove: number;
+    removableBytes: number;
+    totalBytes: number;
+    usedBytes: number;
+    occupiedPercent: number;
+}): Promise<void> {
+    const message = [
+        "<b>⚠️ Manual cleanup required</b>",
+        "",
+        "Automatic cleanup could not free enough space.",
+        `<b>Needed to remove:</b> <code>${formatBytes(bytesToRemove)}</code>`,
+        `<b>Can remove automatically:</b> <code>${formatBytes(removableBytes)}</code>`,
+        `<b>Disk used now:</b> <code>${formatBytes(usedBytes)}</code> (${occupiedPercent.toFixed(2)}%)`,
+        `<b>Total disk size:</b> <code>${formatBytes(totalBytes)}</code>`,
+        "❗️❗️❗️ Please free additional space manually.",
+    ].join("\n");
+
     await sendTelegramHtmlMessage(truncateForTelegram(message));
 }
 
