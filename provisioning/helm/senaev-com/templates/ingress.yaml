@@ -8,7 +8,7 @@ metadata:
   namespace: {{ $.Release.Namespace }}
   # TODO: Remove duplications using helmfile
   annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.entrypoints: {{ default "web,websecure" .entrypoints }}
     traefik.ingress.kubernetes.io/router.tls: "true"
     traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
     {{- if .middleware }}

@@ -98,5 +98,7 @@ export async function removeFiles(filesToRemove: FileToRemove[]): Promise<void> 
     for (const file of filesToRemove) {
         await unlink(file.path);
         console.log(`🗑️ Removed file path=[${file.path}] size=[${formatBytes(file.size)}]`);
+
+        // TODO: if folder is empty after file removal - remove it as well
     }
 }

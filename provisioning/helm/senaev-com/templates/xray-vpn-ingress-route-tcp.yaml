@@ -1,0 +1,20 @@
+{{- if .Values.xrayVpn.enabled }}
+{{- range $instance := .Values.xrayVpn.instances }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRouteTCP
+metadata:
+  name: {{ $instance.name }}-passthrough
+  namespace: {{ $.Release.Namespace }}
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: HostSNI(`{{ $instance.serverName }}`)
+      services:
+        - name: {{ $instance.name }}
+          port: 443
+  tls:
+    passthrough: true
+{{- end }}
+{{- end }}
