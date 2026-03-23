@@ -99,12 +99,6 @@ vpnSubscription:
   vps: hetzner
 
 redpanda:
-  enabled: true
-  vps: hetzner
-  storage: 2Gi
-  memory: 400M
-  pandaproxyPort: 80
-
 redpandaConsole:
   enabled: true
   vps: hetzner

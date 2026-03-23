@@ -51,6 +51,10 @@ services:
 	$(REMOTE) "kubectl rollout status deployment/vm-operator-victoria-metrics-operator -n telemetry --timeout=120s"
 	@echo "✅ [Makefile] vm-operator webhook ready"
 
+	# kafka requires Scraper CRDs for vm-operator
+	# installing kafka before the whole cluster to make sure that no message is lost during services initialization
+	$(REMOTE) "$(DEPLOY) kafka senaev-com --wait"
+
 	$(REMOTE) "$(CONTROL_PLANE_SCRIPTS)/bootstrap-secrets.sh '$(TG_TOKEN_SENAEV_COM_BOT)' '$(TG_CLUSTER_CHAT_ID)'"
 
 	# vm-stack requires ExternalSecret CRDs for Grafana
