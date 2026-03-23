@@ -1,0 +1,25 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: node-disk-space-low
+  namespace: telemetry
+spec:
+  groups:
+    - name: node-disk
+      rules:
+        - alert: NodeDiskSpaceLow
+          expr: |
+            (
+              node_filesystem_avail_bytes{mountpoint="/", fstype!="", job="node-exporter"}
+              /
+              node_filesystem_size_bytes{mountpoint="/", fstype!="", job="node-exporter"}
+            ) < 0.99
+            and
+            node_filesystem_readonly{mountpoint="/", fstype!="", job="node-exporter"} == 0
+          for: 10s
+          labels:
+            route: senaev-com-alerts
+            severity: warning
+          annotations:
+            summary: "Node disk space is low"
+            description: 'Node {{`{{`}} $labels.instance {{`}}`}} has less than 99% free disk space on /.'

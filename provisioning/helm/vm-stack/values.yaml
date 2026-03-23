@@ -67,7 +67,7 @@ victoria-metrics-k8s-stack:
         receiver: blackhole
         routes:
           - matchers:
-              - alertname="TelegramTestAlert"
+              - route="senaev-com-alerts"
             receiver: telegram-alerts-receiver
       receivers:
         - name: blackhole
