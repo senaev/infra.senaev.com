@@ -78,8 +78,8 @@ clusterHelper:
 mediaServerHelper:
   enabled: true
   vps: yc
-  percentTriggerToRemove: 78
-  percentRemoveTarget: 77
+  percentTriggerToRemove: 90
+  percentRemoveTarget: 80
 
 telegramWebhookEndpoint:
   enabled: true
