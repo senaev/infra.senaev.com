@@ -1,6 +1,7 @@
 import { PERCENT_REMOVE_TARGET, PERCENT_TRIGGER_TO_REMOVE } from "../env";
 import { formatBytes } from "./formatBytes";
 import { getFilesToRemove } from "./getFilesToRemove";
+import { getDiskUsage } from "./getDiskUsage";
 import { getSpaceInfoToRemove } from "./getSpaceInfoToRemove";
 import {
     removeFiles,
@@ -53,8 +54,6 @@ async function checkDiskSpace(): Promise<void> {
         bytesToRemove,
         pathToRemoveFiles: DOWNLOADS_DIR,
     });
-    const spaceAfterRemovalBytes = totalBytes - (usedBytes - filesToRemoveSizeBytes);
-    const spaceAfterRemovalBytesPercent = (spaceAfterRemovalBytes / totalBytes) * 100;
 
     console.log(
         `🗑️ Selected files to remove count=[${filesToRemove.length}] size=[${formatBytes(filesToRemoveSizeBytes)}]`,
@@ -71,16 +70,25 @@ async function checkDiskSpace(): Promise<void> {
         const notEnoughFilesToRemove = filesToRemoveSizeBytes < bytesToRemove;
 
         await removeFiles(filesToRemove);
+        const usageAfterRemoval = await getDiskUsage(FOLDER_TO_CHECK_USAGE);
+        const totalBytesAfterRemoval = usageAfterRemoval.totalBlocks * usageAfterRemoval.blockSize;
+        const usedBytesAfterRemoval =
+            (usageAfterRemoval.totalBlocks - usageAfterRemoval.availableBlocks) *
+            usageAfterRemoval.blockSize;
+        const occupiedPercentAfterRemoval =
+            ((usageAfterRemoval.totalBlocks - usageAfterRemoval.availableBlocks) /
+                usageAfterRemoval.totalBlocks) *
+            100;
 
         await sendRemovalNotification({
             removedFiles: filesToRemove,
             removedBytes: filesToRemoveSizeBytes,
             bytesToRemove,
             occupiedPercentBefore: occupiedPercent,
-            occupiedPercentAfter: spaceAfterRemovalBytesPercent,
-            totalBytes,
+            occupiedPercentAfter: occupiedPercentAfterRemoval,
+            totalBytes: totalBytesAfterRemoval,
             usedBytesBefore: usedBytes,
-            usedBytesAfter: spaceAfterRemovalBytes,
+            usedBytesAfter: usedBytesAfterRemoval,
         });
 
         if (notEnoughFilesToRemove) {
@@ -92,9 +100,9 @@ async function checkDiskSpace(): Promise<void> {
             await sendManualCleanupRequiredNotification({
                 bytesToRemove,
                 removableBytes: filesToRemoveSizeBytes,
-                totalBytes,
-                usedBytes: spaceAfterRemovalBytes,
-                occupiedPercent: spaceAfterRemovalBytesPercent,
+                totalBytes: totalBytesAfterRemoval,
+                usedBytes: usedBytesAfterRemoval,
+                occupiedPercent: occupiedPercentAfterRemoval,
             });
         }
     } finally {
