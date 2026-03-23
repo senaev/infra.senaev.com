@@ -33,7 +33,7 @@ spec:
             - |
               mkdir -p /watch-torrent-files
               mkdir -p /downloads/complete /downloads/converted-for-mobile
-              chown -R 1000:1000 /watch-torrent-files /downloads/complete /downloads/converted-for-mobile
+              chown -R 1000:1000 /watch-torrent-files /downloads
           volumeMounts:
             - name: watch-torrent-files
               mountPath: /watch-torrent-files
