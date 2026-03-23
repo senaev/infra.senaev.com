@@ -32,10 +32,15 @@ spec:
             - -c
             - |
               mkdir -p /watch-torrent-files
-              chown -R 1000:1000 /watch-torrent-files
+              mkdir -p /downloads/complete /downloads/converted-for-mobile
+              chown -R 1000:1000 /watch-torrent-files /downloads/complete /downloads/converted-for-mobile
           volumeMounts:
             - name: watch-torrent-files
               mountPath: /watch-torrent-files
+            - name: downloads-complete
+              mountPath: /downloads/complete
+            - name: downloads-converted-for-mobile
+              mountPath: /downloads/converted-for-mobile
       containers:
         - name: media-server-helper
           image: ghcr.io/senaev/media-server-helper:latest
@@ -47,9 +52,21 @@ spec:
           volumeMounts:
             - name: watch-torrent-files
               mountPath: /watch-torrent-files
+            - name: downloads-complete
+              mountPath: /downloads/complete
+            - name: downloads-converted-for-mobile
+              mountPath: /downloads/converted-for-mobile
       volumes:
         - name: watch-torrent-files
           hostPath:
             path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.watch }}
+            type: DirectoryOrCreate
+        - name: downloads-complete
+          hostPath:
+            path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.complete }}
+            type: DirectoryOrCreate
+        - name: downloads-converted-for-mobile
+          hostPath:
+            path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.convertedForMobile }}
             type: DirectoryOrCreate
 {{- end }}
