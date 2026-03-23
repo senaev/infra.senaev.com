@@ -63,8 +63,13 @@ victoria-metrics-k8s-stack:
         vps: hetzner
     config:
       route:
-        receiver: telegram-alerts-receiver
+        receiver: blackhole
+        routes:
+          - matchers:
+              - alertname="TelegramTestAlert"
+            receiver: telegram-alerts-receiver
       receivers:
+        - name: blackhole
         - name: telegram-alerts-receiver
           webhook_configs:
             - url: http://cluster-helper.senaev-com.svc.cluster.local/alertmanager/webhook
