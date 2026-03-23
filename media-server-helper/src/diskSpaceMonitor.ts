@@ -25,6 +25,11 @@ async function checkDiskSpace(): Promise<void> {
 
     const occupiedPercent = (usedBlocks / totalBlocks) * 100;
 
+    console.log(`✅ Disk usage=[${occupiedPercent.toFixed(2)}]%`);
+    if (occupiedPercent < 80) {
+        return;
+    }
+
     console.log(
         `💽 Disk usage path=[${TORRENT_FILES_DIR}] occupied=[${occupiedPercent.toFixed(2)}%]`,
     );
