@@ -52,7 +52,7 @@ echo "👉 [apply-terraform] Applying Terraform configuration"
 if ! terraform apply -auto-approve 2>&1; then
   echo "❌ [apply-terraform] Apply failed, attempting to import existing Hetzner resources"
 
-  HCLOUD_TOKEN=$(grep 'hetzner_token' "$TERRAFORM_DIR/terraform.tfvars" | sed 's/.*"\(.*\)".*/\1/')
+  HCLOUD_TOKEN=$(grep 'HETZNER_TOKEN' "$TERRAFORM_DIR/terraform.tfvars" | sed 's/.*"\(.*\)".*/\1/')
   API="https://api.hetzner.cloud/v1"
   AUTH="Authorization: Bearer $HCLOUD_TOKEN"
 
@@ -110,9 +110,9 @@ echo "✅ [apply-terraform] CONTROL_PLANE_SERVER_IP set to $SERVER_IP"
 
 echo "👉 [apply-terraform] Applying Telegram secrets from terraform.tfvars"
 TG_CLUSTER_CHAT_ID=$(get_tfvar "TG_CLUSTER_CHAT_ID")
-TOKEN_senaev_com_bot=$(get_tfvar "TOKEN_senaev_com_bot")
+TG_TOKEN_SENAEV_COM_BOT=$(get_tfvar "TG_TOKEN_SENAEV_COM_BOT")
 upsert_env_var "$ENV_FILE" "TG_CLUSTER_CHAT_ID" "$TG_CLUSTER_CHAT_ID"
-upsert_env_var "$ENV_FILE" "TOKEN_senaev_com_bot" "$TOKEN_senaev_com_bot"
+upsert_env_var "$ENV_FILE" "TG_TOKEN_SENAEV_COM_BOT" "$TG_TOKEN_SENAEV_COM_BOT"
 echo "✅ [apply-terraform] Telegram secrets written to .env"
 
 echo "👉 [apply-terraform] Updating known_hosts for $SERVER_IP"

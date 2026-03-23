@@ -1,10 +1,10 @@
 # 🔐 https://t.me/c/1593601675/7
 
 # https://console.hetzner.cloud/projects → Select project → Security → API tokens → Generate API token
-hetzner_token     = "your_hetzner_cloud_api_token"
+HETZNER_TOKEN     = "your_hetzner_cloud_api_token"
 # https://login.tailscale.com/admin/settings/keys → API access tokens → Generate access token…
-tailscale_api_key = "tskey_api_your_tailscale_api_key"
+TAILSCALE_API_KEY = "tskey_api_your_tailscale_api_key"
 # Telegram chat ID that should receive cluster notifications
 TG_CLUSTER_CHAT_ID = "-111111111111"
 # https://t.me/BotFather → /newbot or /token
-TOKEN_senaev_com_bot = "111111111:your_telegram_bot_token"
+TG_TOKEN_SENAEV_COM_BOT = "111111111:your_telegram_bot_token"

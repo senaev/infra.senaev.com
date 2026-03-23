@@ -57,7 +57,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: TOKEN_senaev_com_bot
+                  key: TG_TOKEN_SENAEV_COM_BOT
                   optional: false
             - name: TG_MEDIA_SERVER_CHANNEL_ID
               valueFrom:

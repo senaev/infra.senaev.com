@@ -14,10 +14,10 @@ terraform {
 }
 
 provider "hcloud" {
-  token = var.hetzner_token
+  token = var.HETZNER_TOKEN
 }
 
 provider "tailscale" {
-  api_key = var.tailscale_api_key
+  api_key = var.TAILSCALE_API_KEY
   tailnet = "andrei.senaev@gmail.com"
 }
