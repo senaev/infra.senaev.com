@@ -46,12 +46,15 @@ async function getDiskUsage(path: string): Promise<DisksUsage> {
 }
 
 async function removeOldFiles(bytesToRemove: number): Promise<void> {
-    const dirEntries = await readdir(DOWNLOADS_DIR, { withFileTypes: true });
+    const dirEntries = await readdir(DOWNLOADS_DIR, {
+        recursive: true,
+        withFileTypes: true,
+    });
     const files = await Promise.all(
         dirEntries
             .filter((entry) => entry.isFile())
             .map(async (entry): Promise<FileToRemove> => {
-                const path = join(DOWNLOADS_DIR, entry.name);
+                const path = join(entry.parentPath, entry.name);
                 const fileStats = await stat(path);
 
                 return {
@@ -61,7 +64,6 @@ async function removeOldFiles(bytesToRemove: number): Promise<void> {
                 };
             }),
     );
-
     const sortedFiles = files.sort((a, b) => a.modifiedAtMs - b.modifiedAtMs);
 
     const filesToRemove: FileToRemove[] = [];
