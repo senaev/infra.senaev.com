@@ -1,6 +1,7 @@
 import { renameSync, writeFileSync } from "fs";
 import { join } from "path";
-import { TORRENT_FILES_DIR } from "./env";
+
+export const TORRENT_FILES_DIR = "/watch-torrent-files";
 
 function sanitizeFileName(name: string): string {
     return name.replace(/[^a-zA-Z0-9._-]/g, "_");

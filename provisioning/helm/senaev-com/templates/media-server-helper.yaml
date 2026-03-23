@@ -15,6 +15,8 @@ spec:
     metadata:
       labels:
         app: media-server-helper
+      annotations:
+        secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
     spec:
       securityContext:
         runAsUser: 1000
@@ -47,8 +49,18 @@ spec:
           env:
             - name: KAFKA_BROKERS
               value: redpanda.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.redpanda.kafkaPort }}
-            - name: TORRENT_FILES_DIR
-              value: /watch-torrent-files
+            - name: TELEGRAM_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: TOKEN_senaev_com_bot
+                  optional: false
+            - name: TG_MEDIA_SERVER_CHANNEL_ID
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: TG_MEDIA_SERVER_CHANNEL_ID
+                  optional: false
           volumeMounts:
             - name: watch-torrent-files
               mountPath: /watch-torrent-files

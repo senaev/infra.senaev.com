@@ -1,6 +1,7 @@
 import { readdir, stat, statfs } from "fs/promises";
 import { join } from "path";
-import { TORRENT_FILES_DIR } from "./env";
+
+const DOWNLOADS_DIR = "/downloads";
 
 const CHECK_INTERVAL_MS = 10_000;
 const PERCENT_TRIGGER_TO_REMOVE = 70;
@@ -45,12 +46,12 @@ async function getDiskUsage(path: string): Promise<DisksUsage> {
 }
 
 async function removeOldFiles(bytesToRemove: number): Promise<void> {
-    const dirEntries = await readdir(TORRENT_FILES_DIR, { withFileTypes: true });
+    const dirEntries = await readdir(DOWNLOADS_DIR, { withFileTypes: true });
     const files = await Promise.all(
         dirEntries
             .filter((entry) => entry.isFile())
             .map(async (entry): Promise<FileToRemove> => {
-                const path = join(TORRENT_FILES_DIR, entry.name);
+                const path = join(DOWNLOADS_DIR, entry.name);
                 const fileStats = await stat(path);
 
                 return {
@@ -91,7 +92,7 @@ async function removeOldFiles(bytesToRemove: number): Promise<void> {
 }
 
 async function checkDiskSpace(): Promise<void> {
-    const { totalBlocks, availableBlocks, blockSize } = await getDiskUsage(TORRENT_FILES_DIR);
+    const { totalBlocks, availableBlocks, blockSize } = await getDiskUsage(DOWNLOADS_DIR);
     const usedBlocks = totalBlocks - availableBlocks;
     const totalBytes = totalBlocks * blockSize;
     const usedBytes = usedBlocks * blockSize;
