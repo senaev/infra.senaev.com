@@ -31,6 +31,11 @@ else
   echo "✅ [bootstrap-worker] k3s-agent-uninstall.sh not found"
 fi
 
+echo "👉 [bootstrap-worker] Cleaning stale k3s worker state"
+sudo systemctl stop k3s-agent 2>/dev/null || true
+sudo systemctl reset-failed k3s-agent 2>/dev/null || true
+echo "✅ [bootstrap-worker] Cleaned stale k3s worker state"
+
 echo "👉 [bootstrap-worker] Parsing labels=[${LABELS}]"
 NODE_LABEL_ARGS=()
 if [[ -n "$LABELS" ]]; then
@@ -46,6 +51,13 @@ echo "✅ [bootstrap-worker] NODE_LABEL_ARGS=[${NODE_LABEL_ARGS_STR}]"
 echo "👉 [bootstrap-worker] getting internal tailnet IP"
 TAILNET_IP=$(tailscale ip -4)
 echo "✅ [bootstrap-worker] TAILNET_IP=[${TAILNET_IP}]"
+
+echo "👉 [bootstrap-worker] Checking control plane reachability"
+if ! curl -skf --connect-timeout 10 "${CONTROL_PLANE_SERVER_URL}/ping" >/dev/null; then
+  echo "❌ [bootstrap-worker] Control plane is not reachable at [${CONTROL_PLANE_SERVER_URL}]"
+  exit 1
+fi
+echo "✅ [bootstrap-worker] Control plane is reachable"
 
 echo "👉 [bootstrap-worker] Installing k3s=[${K3S_VERSION}] agent"
 curl -sfL https://get.k3s.io | \
