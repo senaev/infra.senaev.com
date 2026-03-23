@@ -1,5 +1,6 @@
 import { readdir, stat, statfs } from "fs/promises";
 import { join } from "path";
+import { PERCENT_REMOVE_TARGET, PERCENT_TRIGGER_TO_REMOVE } from "./env";
 
 const DOWNLOADS_DIR = "/downloads";
 
@@ -8,8 +9,6 @@ const DOWNLOADS_DIR = "/downloads";
 const FOLDER_TO_CHECK_USAGE = `${DOWNLOADS_DIR}/complete`;
 
 const CHECK_INTERVAL_MS = 10_000;
-const PERCENT_TRIGGER_TO_REMOVE = 70;
-const PERCENT_REMOVE_TARGET = 60;
 
 type DisksUsage = {
     totalBlocks: number;

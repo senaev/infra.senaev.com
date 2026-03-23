@@ -49,6 +49,10 @@ spec:
           env:
             - name: KAFKA_BROKERS
               value: redpanda.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.redpanda.kafkaPort }}
+            - name: PERCENT_TRIGGER_TO_REMOVE
+              value: {{ .Values.mediaServerHelper.percentTriggerToRemove }}
+            - name: PERCENT_REMOVE_TARGET
+              value: {{ .Values.mediaServerHelper.percentRemoveTarget }}
             - name: TELEGRAM_BOT_TOKEN
               valueFrom:
                 secretKeyRef:
