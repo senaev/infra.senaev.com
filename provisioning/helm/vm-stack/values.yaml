@@ -61,6 +61,13 @@ victoria-metrics-k8s-stack:
       externalURL: https://alertmanager.senaev.com
       nodeSelector:
         vps: hetzner
+    config:
+      route:
+        receiver: telegram-alerts-receiver
+      receivers:
+        - name: telegram-alerts-receiver
+          webhook_configs:
+            - url: http://cluster-helper.senaev-com.svc.cluster.local/alertmanager/webhook
 
   vmalert:
     spec:
