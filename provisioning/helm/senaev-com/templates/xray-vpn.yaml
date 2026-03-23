@@ -32,9 +32,6 @@ spec:
       labels:
         app: {{ $instance.name }}
       annotations:
-        # TODO: move xray closer to terraform
-        # TODO: maybe initialize redpanda with other services
-        # TODO: remove secrets duplication
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
         configmap.reloader.stakater.com/reload: "{{ $instance.name }}-config-template"
     spec:

@@ -6,7 +6,7 @@ function requireEnv(name: string): string {
     return value;
 }
 
-export const TOKEN_senaev_com_bot = requireEnv("TOKEN_senaev_com_bot");
+export const TG_TOKEN_SENAEV_COM_BOT = requireEnv("TG_TOKEN_SENAEV_COM_BOT");
 export const TG_MEDIA_SERVER_CHANNEL_ID = requireEnv("TG_MEDIA_SERVER_CHANNEL_ID");
 export const TG_CLUSTER_CHAT_ID = requireEnv("TG_CLUSTER_CHAT_ID");
 export const KAFKA_BROKERS = requireEnv("KAFKA_BROKERS").split(",");

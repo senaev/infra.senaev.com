@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# TODO: Use something like terraform to deploy vault configuration
-
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 set -a; source "$SCRIPT_DIR/../common/.env"; set +a
-TOKEN_SENAEV_COM_BOT="${1:?bootstrap-vault.sh requires TOKEN_senaev_com_bot as the first argument}"
+TOKEN_SENAEV_COM_BOT="${1:?bootstrap-vault.sh requires TG_TOKEN_SENAEV_COM_BOT as the first argument}"
 TG_CLUSTER_CHAT_ID="${2:?bootstrap-vault.sh requires TG_CLUSTER_CHAT_ID as the second argument}"
 
 cd $K3S_CLUSTER_PATH
@@ -216,7 +214,9 @@ echo "✅ [bootstrap-vault] Vault External Secrets Operator setup done role=[$EX
 KV_SECRET="$KV_SECRETS_ENGINE_PATH/senaev-com-kv"
 echo "👉 [bootstrap-vault] Ensuring secret $KV_SECRET exists"
 if ! vault_exec_with_token kv get "$KV_SECRET" &>/dev/null; then
-  vault_exec_with_token kv put "$KV_SECRET" _placeholder=""
+  vault_exec_with_token kv put "$KV_SECRET" \
+    TG_CLUSTER_CHAT_ID="$TG_CLUSTER_CHAT_ID" \
+    TG_TOKEN_SENAEV_COM_BOT="$TOKEN_SENAEV_COM_BOT"
   echo "✅ [bootstrap-vault] Secret $KV_SECRET created."
 else
   echo "✅ [bootstrap-vault] Secret $KV_SECRET already exists."

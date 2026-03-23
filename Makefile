@@ -45,16 +45,15 @@ services:
 	@$(MAKE) rsync
 
 	$(REMOTE) "$(DEPLOY) traefik traefik"
-	$(REMOTE) "$(DEPLOY) vm-operator telemetry"
 
+	$(REMOTE) "$(DEPLOY) vm-operator telemetry"
 	@echo "👉 [Makefile] Waiting for vm-operator webhook to be ready (required for vm-stack CRs)"
 	$(REMOTE) "kubectl rollout status deployment/vm-operator-victoria-metrics-operator -n telemetry --timeout=120s"
 	@echo "✅ [Makefile] vm-operator webhook ready"
-
-	$(REMOTE) "$(DEPLOY) kafka senaev-com --wait"
-	$(REMOTE) "$(CONTROL_PLANE_SCRIPTS)/bootstrap-secrets.sh '$(TOKEN_senaev_com_bot)' '$(TG_CLUSTER_CHAT_ID)'"
-
 	$(REMOTE) "$(DEPLOY) vm-stack telemetry"
+
+	$(REMOTE) "$(CONTROL_PLANE_SCRIPTS)/bootstrap-secrets.sh '$(TG_TOKEN_SENAEV_COM_BOT)' '$(TG_CLUSTER_CHAT_ID)'"
+
 	$(REMOTE) "$(DEPLOY) senaev-com senaev-com"
 
 	@echo "✅ [Makefile] k8s services deployed"

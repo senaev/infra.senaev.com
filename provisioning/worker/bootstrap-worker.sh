@@ -43,7 +43,6 @@ fi
 NODE_LABEL_ARGS_STR="${NODE_LABEL_ARGS[*]}"
 echo "✅ [bootstrap-worker] NODE_LABEL_ARGS=[${NODE_LABEL_ARGS_STR}]"
 
-# TODO: remove duplications
 echo "👉 [bootstrap-worker] getting internal tailnet IP"
 TAILNET_IP=$(tailscale ip -4)
 echo "✅ [bootstrap-worker] TAILNET_IP=[${TAILNET_IP}]"

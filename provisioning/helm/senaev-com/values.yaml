@@ -1,4 +1,3 @@
-# TODO: Remove duplications using helmfile
 clusterRootPath: /k3s-cluster
 
 nextjs:
@@ -88,7 +87,6 @@ telegramWebhookEndpoint:
 
 vpnSubscription:
   enabled: true
-  # TODO: remove duplication with xrayVpn.instances[].profiles
   entries:
     - name: "🇩🇪 senaev.ru💻yc → socks🌐hetzner"
       link: "vless://{XRAY_USER_UUID:1}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
@@ -99,6 +97,13 @@ vpnSubscription:
     - name: "🇩🇪 senaev.com💻hetzner → freedom🌐hetzner"
       link: "vless://{XRAY_USER_UUID:4}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
   vps: hetzner
+
+redpanda:
+  enabled: true
+  vps: hetzner
+  storage: 2Gi
+  memory: 400M
+  pandaproxyPort: 80
 
 redpandaConsole:
   enabled: true
