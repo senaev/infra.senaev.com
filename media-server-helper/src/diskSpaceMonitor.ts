@@ -1,38 +1,108 @@
-import { statfs } from "fs/promises";
+import { readdir, stat, statfs } from "fs/promises";
+import { join } from "path";
 import { TORRENT_FILES_DIR } from "./env";
 
 const CHECK_INTERVAL_MS = 10_000;
+const PERCENT_TRIGGER_TO_REMOVE = 70;
+const PERCENT_REMOVE_TARGET = 60;
 
 type DisksUsage = {
     totalBlocks: number;
     availableBlocks: number;
+    blockSize: number;
 };
 
+type FileToRemove = {
+    path: string;
+    size: number;
+    modifiedAtMs: number;
+};
+
+function formatBytes(bytes: number): string {
+    const units = ["B", "KB", "MB", "GB", "TB"];
+    let value = bytes;
+    let unitIndex = 0;
+
+    while (value >= 1024 && unitIndex < units.length - 1) {
+        value /= 1024;
+        unitIndex += 1;
+    }
+
+    return `${value.toFixed(2)} ${units[unitIndex]}`;
+}
+
 async function getDiskUsage(path: string): Promise<DisksUsage> {
-    const stats = await statfs(TORRENT_FILES_DIR);
+    const stats = await statfs(path);
     const totalBlocks = Number(stats.blocks);
     const availableBlocks = Number(stats.bavail);
+    const blockSize = Number(stats.bsize);
 
     return {
         totalBlocks,
         availableBlocks,
+        blockSize,
     };
 }
 
-async function checkDiskSpace(): Promise<void> {
-    const { totalBlocks, availableBlocks } = await getDiskUsage(TORRENT_FILES_DIR);
-    const usedBlocks = totalBlocks - availableBlocks;
+async function removeOldFiles(bytesToRemove: number): Promise<void> {
+    const dirEntries = await readdir(TORRENT_FILES_DIR, { withFileTypes: true });
+    const files = await Promise.all(
+        dirEntries
+            .filter((entry) => entry.isFile())
+            .map(async (entry): Promise<FileToRemove> => {
+                const path = join(TORRENT_FILES_DIR, entry.name);
+                const fileStats = await stat(path);
 
-    const occupiedPercent = (usedBlocks / totalBlocks) * 100;
+                return {
+                    path,
+                    size: fileStats.size,
+                    modifiedAtMs: fileStats.mtimeMs,
+                };
+            }),
+    );
 
-    console.log(`✅ Disk usage=[${occupiedPercent.toFixed(2)}]%`);
-    if (occupiedPercent < 80) {
-        return;
+    const sortedFiles = files.sort((a, b) => a.modifiedAtMs - b.modifiedAtMs);
+
+    const filesToRemove: FileToRemove[] = [];
+    let selectedBytes = 0;
+    for (const file of sortedFiles) {
+        filesToRemove.push(file);
+        selectedBytes += file.size;
+
+        if (selectedBytes >= bytesToRemove) {
+            break;
+        }
     }
 
     console.log(
-        `💽 Disk usage path=[${TORRENT_FILES_DIR}] occupied=[${occupiedPercent.toFixed(2)}%]`,
+        `🗂️ Selected files to remove count=[${filesToRemove.length}] size=[${formatBytes(selectedBytes)}]`,
     );
+    for (const file of filesToRemove) {
+        console.log(`🗂️ file=[${file.path}] size=[${formatBytes(file.size)}]`);
+    }
+}
+
+async function checkDiskSpace(): Promise<void> {
+    const { totalBlocks, availableBlocks, blockSize } = await getDiskUsage(TORRENT_FILES_DIR);
+    const usedBlocks = totalBlocks - availableBlocks;
+    const totalBytes = totalBlocks * blockSize;
+    const usedBytes = usedBlocks * blockSize;
+    const occupiedPercent = (usedBlocks / totalBlocks) * 100;
+
+    console.log(
+        `✅ Disk usage=[${occupiedPercent.toFixed(2)}]% total=[${formatBytes(totalBytes)}] used=[${formatBytes(usedBytes)}] blockSize=[${formatBytes(blockSize)}]`,
+    );
+    if (occupiedPercent < PERCENT_TRIGGER_TO_REMOVE) {
+        return;
+    }
+
+    const percentToRemove = occupiedPercent - PERCENT_REMOVE_TARGET;
+    const bytesToRemove = ((totalBlocks * percentToRemove) / 100) * blockSize;
+    console.log(
+        `💽 Need to remove [${occupiedPercent.toFixed(2)}]% size=[${formatBytes(bytesToRemove)}]`,
+    );
+
+    await removeOldFiles(bytesToRemove);
 }
 
 async function runDiskSpaceMonitor(): Promise<void> {
