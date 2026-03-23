@@ -1,4 +1,3 @@
-# TODO: Remove duplications using helmfile
 clusterRootPath: /k3s-cluster
 
 nextjs:
