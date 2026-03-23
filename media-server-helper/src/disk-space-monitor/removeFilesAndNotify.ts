@@ -1,4 +1,5 @@
-import { unlink } from "fs/promises";
+import { rmdir, unlink } from "fs/promises";
+import { dirname } from "path";
 import { escapeHtml, sendTelegramHtmlMessage } from "../telegram";
 import { formatBytes } from "./formatBytes";
 import { type FileToRemove } from "./getFilesToRemove";
@@ -98,7 +99,11 @@ export async function removeFiles(filesToRemove: FileToRemove[]): Promise<void> 
     for (const file of filesToRemove) {
         await unlink(file.path);
         console.log(`🗑️ Removed file path=[${file.path}] size=[${formatBytes(file.size)}]`);
-
-        // TODO: if folder is empty after file removal - remove it as well
+        try {
+            await rmdir(dirname(file.path));
+            console.log(`🗑️ Removed empty folder path=[${dirname(file.path)}]`);
+        } catch {
+            // Ignore directories that still contain files or cannot be removed.
+        }
     }
 }
