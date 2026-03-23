@@ -123,21 +123,6 @@ spec:
       nodeSelector:
         vps: {{ .Values.qbittorrent.vps }}
       initContainers:
-        - name: init-config
-          image: busybox:1.37.0-uclibc
-          command:
-            - sh
-            - -c
-            - |
-              mkdir -p /config/qBittorrent
-              cp /default-config/qBittorrent.conf /config/qBittorrent/
-              cp /default-config/watched_folders.json /config/qBittorrent/
-          volumeMounts:
-            - name: config
-              mountPath: /config
-            - name: default-config
-              mountPath: /default-config
-              readOnly: true
         - name: fix-permissions
           image: busybox:1.37.0-uclibc
           securityContext:
@@ -155,6 +140,21 @@ spec:
               mountPath: /config
             - name: downloads
               mountPath: /downloads
+        - name: init-config
+          image: busybox:1.37.0-uclibc
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p /config/qBittorrent
+              cp /default-config/qBittorrent.conf /config/qBittorrent/
+              cp /default-config/watched_folders.json /config/qBittorrent/
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: default-config
+              mountPath: /default-config
+              readOnly: true
       containers:
         - name: qbittorrent
           image: lscr.io/linuxserver/qbittorrent:5.1.4
