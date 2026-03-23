@@ -58,20 +58,6 @@ data:
 {{ tpl (.Files.Get "config/qbittorrent/watched_folders.json") . | nindent 4 }}
 ---
 apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: qbittorrent-config
-  namespace: {{ .Release.Namespace }}
-  labels:
-    app: qbittorrent
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
----
-apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: qbittorrent-log-reader
@@ -223,8 +209,7 @@ spec:
               mountPath: /password-notify-state
       volumes:
         - name: config
-          persistentVolumeClaim:
-            claimName: qbittorrent-config
+          emptyDir: {}
         - name: default-config
           configMap:
             name: qbittorrent-default-config
