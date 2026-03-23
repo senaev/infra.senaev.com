@@ -88,6 +88,7 @@ telegramWebhookEndpoint:
 
 vpnSubscription:
   enabled: true
+  # TODO: remove duplication with xrayVpn.instances[].profiles
   entries:
     - name: "🇩🇪 senaev.ru💻yc → socks🌐hetzner"
       link: "vless://{XRAY_USER_UUID:1}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
@@ -105,12 +106,9 @@ redpandaConsole:
 
 ingress:
   entries:
-    - name: senaev-com
+    - name: senaev-com-direct
       className: traefik-hetzner
       hosts:
-        - host: senaev.com
-          service: nextjs-app
-          port: 3000
         - host: webdav.senaev.com
           service: webdav-senaev-com
           port: 80
@@ -132,12 +130,26 @@ ingress:
         - host: vpn-subscription.senaev.com
           service: vpn-subscription
           port: 3000
-        - host: senaev.ru
+    - name: senaev-com-xray-fallback
+      className: traefik-hetzner
+      entrypoints: websecure-xray
+      hosts:
+        - host: senaev.com
           service: nextjs-app
           port: 3000
+    - name: senaev-ru-direct
+      className: traefik-yc
+      hosts:
         - host: webdav.senaev.ru
           service: webdav-senaev-ru
           port: 80
+    - name: senaev-ru-xray-fallback
+      className: traefik-yc
+      entrypoints: websecure-xray
+      hosts:
+        - host: senaev.ru
+          service: nextjs-app
+          port: 3000
     - name: senaev-com-unmanic
       className: traefik-hetzner
       middleware: unmanic-basicauth

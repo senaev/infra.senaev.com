@@ -33,19 +33,25 @@ spec:
             - "--providers.kubernetesingress=true"
             - "--providers.kubernetesingress.ingressclass=traefik-{{ .vps }}"
             - "--providers.kubernetescrd=true"
+            - "--providers.kubernetescrd.ingressclass=traefik-{{ .vps }}"
             - "--entrypoints.web.address=:80"
             - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
             - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
             - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
             - "--entrypoints.websecure.address=:443"
+            - "--entrypoints.websecure-xray.address=:8443"
             - "--certificatesresolvers.letsencrypt.acme.email={{ $.Values.acme.email }}"
             - "--certificatesresolvers.letsencrypt.acme.storage=/acme-data/acme.json"
             - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
           ports:
             - name: web
               containerPort: 80
+              hostPort: 80
             - name: websecure
               containerPort: 443
+              hostPort: 443
+            - name: websecure-xray
+              containerPort: 8443
           volumeMounts:
             - name: acme-data
               mountPath: /acme-data
@@ -76,6 +82,9 @@ spec:
     - name: websecure
       port: 443
       targetPort: 443
+    - name: websecure-xray
+      port: 8443
+      targetPort: 8443
 ---
 apiVersion: networking.k8s.io/v1
 kind: IngressClass

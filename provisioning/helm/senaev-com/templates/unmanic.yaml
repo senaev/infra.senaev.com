@@ -121,7 +121,7 @@ spec:
               containerPort: 8888
           resources:
             limits:
-              cpu: "1000m"
+              cpu: "500m"
               memory: "2Gi"
           volumeMounts:
             - name: config
