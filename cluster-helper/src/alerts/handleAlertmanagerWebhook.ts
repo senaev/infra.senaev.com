@@ -20,7 +20,7 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): string[
         throw new Error("❌ Received Alertmanager webhook with no alerts");
     }
 
-    const sentMessages: string[] = [];
+    const messages: string[] = [];
 
     for (const alert of alerts) {
         const labels = alert.labels ?? {};
@@ -43,9 +43,9 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): string[
             externalURL ? `Alertmanager: ${externalURL}` : undefined,
         ].filter((line): line is string => line !== undefined);
 
-        sentMessages.push(lines.join("\n"));
+        messages.push(lines.join("\n"));
     }
-    return sentMessages;
+    return messages;
 }
 
 export async function handleAlertmanagerWebhook(requestBody: unknown): Promise<void> {
