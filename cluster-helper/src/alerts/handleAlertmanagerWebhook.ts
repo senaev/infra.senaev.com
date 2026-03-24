@@ -1,5 +1,5 @@
 import { TG_CLUSTER_CHAT_ID } from "../env";
-import { sendTelegramDocument, sendTelegramMessage } from "../telegram/api";
+import { sendTelegramMessage } from "../telegram/api";
 import { escapeHtml } from "../utils/escapeHtml";
 
 function formatDate(dateString: string): string {
@@ -144,11 +144,9 @@ export async function handleAlertmanagerWebhook(requestBody: unknown): Promise<v
 
         for (const { message } of items) {
             console.log("👉 Sending alert to Telegram");
-            await sendTelegramDocument({
+            await sendTelegramMessage({
                 chatId: TG_CLUSTER_CHAT_ID,
-                filename: "alert.json",
-                content: requestBodyJson,
-                caption: message,
+                text: message,
                 parseMode: "HTML",
             });
             console.log("✅ Alert sent to Telegram");
