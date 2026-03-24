@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import { CompressionCodecs, CompressionTypes, Kafka, type EachMessagePayload } from "kafkajs";
+import { handleAlertmanagerWebhook } from "./alerts/handleAlertmanagerWebhook";
 import { KAFKA_BROKERS, TG_CLUSTER_CHAT_ID } from "./env";
 import { KafkaTopicProcessorArgument } from "./kafka-topic-processors/KafkaTopicProcessorArgument";
 import { processQbittorrentWebuiPasswordTopic } from "./kafka-topic-processors/processQbittorrentWebuiPasswordTopic";
@@ -18,6 +19,12 @@ const PORT = 80;
 const server = Fastify({ logger: true });
 server.get("/*", async (_request, reply) => {
     reply.send("🟢 Cluster helper is running");
+});
+
+server.post<{ Body: unknown }>("/alertmanager/webhook", async (request, reply) => {
+    handleAlertmanagerWebhook(request.body);
+
+    reply.code(204).send();
 });
 
 const KAFKA_TOPIC_HANDLERS: Record<

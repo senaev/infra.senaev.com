@@ -76,50 +76,8 @@ victoria-metrics-k8s-stack:
       receivers:
         - name: blackhole
         - name: telegram-alerts-receiver
-          telegram_configs:
-            - bot_token:
-                name: senaev-com-kv-secrets
-                key: TG_TOKEN_SENAEV_COM_BOT
-              chat_id: -5238510786
-              message: |-
-                <b>{{ if eq .Status "firing" }}🚨 Alert{{ else }}✅ Resolved{{ end }}</b>
-                <b>Name:</b> {{ .CommonLabels.alertname }}
-                <b>Severity:</b> {{ .CommonLabels.severity }}
-                {{- if .CommonLabels.instance }}
-                <b>Instance:</b> {{ .CommonLabels.instance }}
-                {{- end }}
-                {{- if .CommonLabels.mountpoint }}
-                <b>Mountpoint:</b> {{ .CommonLabels.mountpoint }}
-                {{- end }}
-                {{- if .CommonLabels.device }}
-                <b>Device:</b> {{ .CommonLabels.device }}
-                {{- end }}
-                {{- if .CommonLabels.fstype }}
-                <b>Filesystem:</b> {{ .CommonLabels.fstype }}
-                {{- end }}
-                {{- if .CommonLabels.namespace }}
-                <b>Namespace:</b> {{ .CommonLabels.namespace }}
-                {{- end }}
-                {{- if .CommonLabels.pod }}
-                <b>Pod:</b> {{ .CommonLabels.pod }}
-                {{- end }}
-                {{- if .CommonLabels.job }}
-                <b>Job:</b> {{ .CommonLabels.job }}
-                {{- end }}
-
-                <b>Summary:</b>
-                {{ .CommonAnnotations.summary }}
-
-                {{- if .CommonAnnotations.description }}
-                <b>Description:</b>
-                {{ .CommonAnnotations.description }}
-                {{- end }}
-
-                {{- if gt (len .Alerts) 0 }}
-                <a href="{{ (index .Alerts 0).GeneratorURL }}">Source</a>
-                {{- end }}
-                <a href="{{ .ExternalURL }}">Alertmanager</a>
-              parse_mode: HTML
+          webhook_configs:
+            - url: http://cluster-helper.senaev-com.svc.cluster.local/alertmanager/webhook
               send_resolved: true
 
   vmalert:
