@@ -1,6 +1,6 @@
 import Fastify from "fastify";
 import { randomBytes } from "node:crypto";
-import { WEBHOOK_DOMAIN } from "./env.js";
+import { ALISA_WEBHOOK_SECRET, WEBHOOK_DOMAIN } from "./env.js";
 import { connectProducer, disconnectProducer, sendMessage } from "./kafka-producer.js";
 import { telegramApiCall } from "./telegram-api.js";
 
@@ -12,19 +12,32 @@ export const webhookSecretToken = randomBytes(32).toString("hex");
 
 const server = Fastify({ logger: true });
 
-server.get("/*", async () => {
-    return "🟢 Telegram Webhook Endpoint is running";
+server.get("/*", async (request, reply) => {
+    return reply.code(401).send("Unauthorized");
 });
 
 server.post(WEBHOOK_PATH, async (request, reply) => {
-    console.log("Received Telegram update:", request.body);
+    console.log("🆕 Received Telegram update:", request.body);
     const secret = request.headers["x-telegram-bot-api-secret-token"];
     if (secret !== webhookSecretToken) {
+        console.log(`❌ Unauthorized request=[${WEBHOOK_PATH}] with invalid secret token`);
         return reply.code(401).send("Unauthorized");
     }
 
     await sendMessage(KAFKA_TOPIC, JSON.stringify(request.body));
     return reply.send("OK");
+});
+
+server.post(`/${ALISA_WEBHOOK_SECRET}`, async (request, reply) => {
+    console.log("🆕 Received Alisa update:", request.body);
+
+    return reply.send({
+        version: "1.0",
+        response: {
+            text: "Добавила",
+            end_session: false,
+        },
+    });
 });
 
 async function main(): Promise<void> {

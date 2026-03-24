@@ -36,6 +36,12 @@ spec:
                   name: senaev-com-kv-secrets
                   key: TG_TOKEN_SENAEV_COM_BOT
                   optional: false
+            - name: ALISA_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: ALISA_WEBHOOK_SECRET
+                  optional: false
 ---
 apiVersion: v1
 kind: Service
