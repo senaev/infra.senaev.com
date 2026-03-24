@@ -1,6 +1,6 @@
 import { TG_CLUSTER_CHAT_ID } from "../env";
 import { sendTelegramMessage } from "../telegram/api";
-import { escapeMarkdownV2 } from "../telegram/escapeMarkdownV2";
+import { escapeHtml } from "../utils/escapeHtml";
 
 function formatDate(dateString: string): string {
     const date = new Date(dateString);
@@ -23,10 +23,6 @@ function normalizeGrafanaUrl(urlString: string): string {
 
     url.search = normalizedSearchParams.toString();
     return url.toString();
-}
-
-function escapeMarkdownV2CodeBlock(text: string): string {
-    return text.replaceAll("\\", "\\\\").replaceAll("```", "\\`\\`\\`");
 }
 
 const ALERT_STATUSES = {
@@ -133,21 +129,19 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): AlertIt
 
         const severityEmoji = ALERT_SEVERITIES[severity as keyof typeof ALERT_SEVERITIES];
 
-        const escapedAlertJson = escapeMarkdownV2CodeBlock(JSON.stringify(alert, null, 2));
-        const escapedAlertname = escapeMarkdownV2(alertname);
-        const escapedJob = escapeMarkdownV2(job);
-        const escapedPod = escapeMarkdownV2(pod);
+        const escapedAlertJson = escapeHtml(JSON.stringify(alert, null, 2));
+        const escapedAlertname = escapeHtml(alertname);
+        const escapedJob = escapeHtml(job);
+        const escapedPod = escapeHtml(pod);
         const normalizedGeneratorUrl = normalizeGrafanaUrl(generatorURL);
-        const escapedGeneratorUrl = escapeMarkdownV2(normalizedGeneratorUrl);
+        const escapedGeneratorUrl = escapeHtml(normalizedGeneratorUrl);
 
         const lines = [
-            `${statusEmoji}${severityEmoji} ${escapedAlertname} [🔗](${escapedGeneratorUrl})`,
-            `*Time:* ${escapeMarkdownV2(`${formatDate(startsAt)} - ${formatDate(endsAt)}`)}`,
-            `*Job:* \`${escapedJob}\``,
-            `*Pod:* \`${escapedPod}\``,
-            "```json",
-            escapedAlertJson,
-            "```",
+            `${statusEmoji}${severityEmoji} <b>${escapedAlertname}</b> <a href="${escapedGeneratorUrl}">🔗</a>`,
+            `<b>Time:</b> ${escapeHtml(`${formatDate(startsAt)} - ${formatDate(endsAt)}`)}`,
+            `<b>Job:</b> <code>${escapedJob}</code>`,
+            `<b>Pod:</b> <code>${escapedPod}</code>`,
+            `<blockquote expandable>${escapedAlertJson}</blockquote>`,
         ];
 
         items.push({ message: lines.join("\n") });
@@ -165,7 +159,7 @@ export async function handleAlertmanagerWebhook(requestBody: unknown): Promise<v
             await sendTelegramMessage({
                 chatId: TG_CLUSTER_CHAT_ID,
                 text: message,
-                parseMode: "MarkdownV2",
+                parseMode: "HTML",
             });
             console.log("✅ Alert sent to Telegram");
         }
