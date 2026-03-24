@@ -19,3 +19,4 @@ spec:
           for: 10s
           labels:
             severity: warning
+            route: senaev-com-alerts

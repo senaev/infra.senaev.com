@@ -1,5 +1,6 @@
 import { TG_CLUSTER_CHAT_ID } from "../env";
 import { sendTelegramMessage } from "../telegram/api";
+import { escapeHtml } from "../utils/escapeHtml";
 
 function formatDate(dateString: string): string {
     const date = new Date(dateString);
@@ -23,7 +24,12 @@ const ALERT_SEVERITIES = {
     critical: "🚨",
 } as const;
 
-export function handleAlertmanagerWebhookInternal(requestBody: unknown): string[] {
+type AlertItem = {
+    message: string;
+    alertJson: unknown;
+};
+
+export function handleAlertmanagerWebhookInternal(requestBody: unknown): AlertItem[] {
     console.log("⬇️⬇️⬇️ Processing Alertmanager webhook");
     console.log(requestBody);
     console.log("⬆️⬆️⬆️");
@@ -50,20 +56,14 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): string[
         throw new Error("❌ Received Alertmanager webhook with no alerts");
     }
 
-    const messages: string[] = [];
+    const items: AlertItem[] = [];
 
     for (const alert of alerts) {
         console.log("⬇️⬇️⬇️ Processing alert");
         console.log(alert);
         console.log("⬆️⬆️⬆️");
 
-        const { status, startsAt, endsAt, labels, annotations } = alert;
-
-        if (typeof labels !== "object" || labels === null) {
-            throw new Error(
-                `❌ Received Alertmanager webhook with invalid alert labels=[${labels}]`,
-            );
-        }
+        const { status, startsAt, endsAt, labels, annotations, generatorURL } = alert;
 
         if (typeof annotations !== "object" || annotations === null) {
             throw new Error(
@@ -84,40 +84,87 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): string[
             );
         }
 
-        const severityEmoji = ALERT_SEVERITIES[labels.severity as keyof typeof ALERT_SEVERITIES];
+        if (typeof generatorURL !== "string") {
+            throw new Error(
+                `❌ Received Alertmanager webhook with invalid alert generatorURL=[${generatorURL}]`,
+            );
+        }
+
+        if (typeof labels !== "object" || labels === null) {
+            throw new Error(
+                `❌ Received Alertmanager webhook with invalid alert labels=[${labels}]`,
+            );
+        }
+
+        const { severity, alertname, alertgroup, instance, job, pod } = labels;
+
+        if (typeof alertname !== "string") {
+            throw new Error(
+                `❌ Received Alertmanager webhook with invalid alertname label=[${alertname}]`,
+            );
+        }
+
+        if (typeof alertgroup !== "string") {
+            throw new Error(
+                `❌ Received Alertmanager webhook with invalid alertgroup label=[${alertgroup}]`,
+            );
+        }
+
+        if (typeof instance !== "string") {
+            throw new Error(
+                `❌ Received Alertmanager webhook with invalid instance label=[${instance}]`,
+            );
+        }
+
+        if (typeof job !== "string") {
+            throw new Error(`❌ Received Alertmanager webhook with invalid job label=[${job}]`);
+        }
+
+        if (typeof pod !== "string") {
+            throw new Error(`❌ Received Alertmanager webhook with invalid pod label=[${pod}]`);
+        }
+
+        const severityEmoji = ALERT_SEVERITIES[severity as keyof typeof ALERT_SEVERITIES];
 
         const lines = [
-            `${statusEmoji}${severityEmoji}`,
+            `${statusEmoji}${severityEmoji} <b>${escapeHtml(alertname)}</b> <a href="${escapeHtml(generatorURL)}">🔗</a>`,
             `${formatDate(startsAt)} - ${formatDate(endsAt)}`,
 
-            `Name: ${labels.alertname ?? "unknown"}`,
-            labels.instance ? `Instance: ${labels.instance}` : undefined,
-            labels.mountpoint ? `Mountpoint: ${labels.mountpoint}` : undefined,
-            labels.device ? `Device: ${labels.device}` : undefined,
-            labels.fstype ? `Filesystem: ${labels.fstype}` : undefined,
-            labels.namespace ? `Namespace: ${labels.namespace}` : undefined,
-            labels.pod ? `Pod: ${labels.pod}` : undefined,
-            labels.job ? `Job: ${labels.job}` : undefined,
-            "",
-            `Summary: ${annotations.summary ?? "No summary"}`,
-            annotations.description ? `Description: ${annotations.description}` : undefined,
-            alert.generatorURL ? `Source: ${alert.generatorURL}` : undefined,
-            externalURL ? `Alertmanager: ${externalURL}` : undefined,
+            `Group: <a href="https://vmalert.senaev.com/vmalert/groups?search=${escapeHtml(alertgroup)}">${escapeHtml(alertgroup)}</a>`,
+            `Job: ${job}`,
+            `Pod: ${pod}`,
+            `<a href="${escapeHtml(generatorURL)}">alertmanager</a>`,
         ].filter((line): line is string => line !== undefined);
 
-        messages.push(lines.join("\n"));
+        items.push({
+            message: lines.join("\n"),
+            alertJson: alert,
+        });
     }
-    return messages;
+    return items;
 }
 
 export async function handleAlertmanagerWebhook(requestBody: unknown): Promise<void> {
     try {
         const messages = handleAlertmanagerWebhookInternal(requestBody);
-        for (const message of messages) {
+        for (const { message, alertJson } of messages) {
             console.log("👉 Sending alert to Telegram");
             await sendTelegramMessage({
                 text: message,
                 chatId: TG_CLUSTER_CHAT_ID,
+                parseMode: "HTML",
+                replyMarkup: {
+                    inline_keyboard: [
+                        [
+                            {
+                                text: "Copy JSON",
+                                copy_text: {
+                                    text: JSON.stringify(alertJson, null, 2),
+                                },
+                            },
+                        ],
+                    ],
+                },
             });
             console.log("✅ Alert sent to Telegram");
         }
@@ -126,9 +173,8 @@ export async function handleAlertmanagerWebhook(requestBody: unknown): Promise<v
 
         console.log("👉 Sending error to Telegram");
         await sendTelegramMessage({
-            text: `❌ Error handling Alertmanager webhook:\n${err instanceof Error ? err.message : String(err)}`,
+            text: `❌ Error handling Alertmanager webhook:\n${err instanceof Error ? err.message : String(err)}\n\nReceived body:\n${JSON.stringify(requestBody)}`,
             chatId: TG_CLUSTER_CHAT_ID,
-            parseMode: "HTML",
         });
         console.log("✅ Error sent to Telegram");
     }

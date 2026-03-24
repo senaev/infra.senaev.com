@@ -2,6 +2,7 @@
   "cSpell.language": "en,ru",
   "cSpell.words": [
     "accesslog",
+    "alertgroup",
     "alertmanager",
     "alertname",
     "Andrei",
@@ -14,6 +15,7 @@
     "configmap",
     "crds",
     "dokodemo",
+    "fstype",
     "happ",
     "Hiddify",
     "httpchallenge",
