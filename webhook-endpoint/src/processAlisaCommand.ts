@@ -7,9 +7,13 @@ export async function processAlisaCommand(command: string): Promise<string> {
     const parsed = await parseAlisaCommandWithOpenRouter(command);
     console.log(`✅ Response for command=[${command}], parsed=[${JSON.stringify(parsed)}]`);
 
-    const result =
-        parsed.error === null ? `Добавила: ${parsed.items.join(", ")}` : `Ошибка: ${parsed.error}`;
+    if (parsed.error !== null) {
+        console.log(`🤷 Completed with error=[${parsed.error}]`);
+        return `Ошибка: ${parsed.error}`;
+    }
 
-    console.log(`✅ Finished processing command=[${command}], result=[${result}]`);
-    return result;
+    const itemsString = parsed.items.join(", ");
+    console.log(`✅ Successfully parsed list=[${itemsString}]`);
+
+    return `Добавила: ${itemsString}`;
 }
