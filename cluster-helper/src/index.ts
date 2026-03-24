@@ -17,8 +17,19 @@ const HOST = "0.0.0.0";
 const PORT = 80;
 
 const server = Fastify({ logger: true });
-server.get("/*", async (_request, reply) => {
-    reply.send("🟢 Cluster helper is running");
+let isReady = false;
+
+server.get("/health/live", async (_request, reply) => {
+    reply.code(200).send({ status: "ok" });
+});
+
+server.get("/health/ready", async (_request, reply) => {
+    if (!isReady) {
+        reply.code(503).send({ status: "not-ready" });
+        return;
+    }
+
+    reply.code(200).send({ status: "ready" });
 });
 
 server.post<{ Body: unknown }>("/alertmanager/webhook", async (request, reply) => {
@@ -90,6 +101,8 @@ async function main(): Promise<void> {
         chatId: TG_CLUSTER_CHAT_ID,
     });
     console.log("✅ Cluster helper is ready");
+
+    isReady = true;
 }
 
 process.on("SIGTERM", async () => {
