@@ -137,7 +137,6 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): string[
             "```json",
             escapedAlertJson,
             "```",
-            `[alertmanager](${generatorURL}) | [vmalert](${vmalertUrl}) | [grafana](${grafanaUrl})`,
         ];
 
         items.push(lines.join("\n"));
