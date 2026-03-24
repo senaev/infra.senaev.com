@@ -37,6 +37,7 @@ export async function parseAlisaCommandWithOpenRouter(
                         "You are processing the Yandex Alisa skill named 'Список Бати'.",
                         "This skill is dedicated to managing a single shopping list.",
                         "If the user asks to add something to the shopping list, return only the list of items to add.",
+                        "All the items in the response should be in initial form.",
                         "If the user asks for anything else, return an error.",
                         "Answer strictly in JSON that matches the provided schema.",
                         "Preserve item names and error message in Russian when the user speaks Russian.",

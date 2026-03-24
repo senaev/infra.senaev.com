@@ -1,13 +1,13 @@
 import Fastify from "fastify";
 import { CompressionCodecs, CompressionTypes, Kafka, type EachMessagePayload } from "kafkajs";
 import { handleAlertmanagerWebhook } from "./alerts/handleAlertmanagerWebhook";
-import { KAFKA_BROKERS, TG_CLUSTER_CHAT_ID } from "./env";
+import { KAFKA_BROKERS } from "./env";
 import { KafkaTopicProcessorArgument } from "./kafka-topic-processors/KafkaTopicProcessorArgument";
 import { processQbittorrentWebuiPasswordTopic } from "./kafka-topic-processors/processQbittorrentWebuiPasswordTopic";
 import { processTelegramWebhookDataTopic } from "./kafka-topic-processors/processTelegramWebhookDataTopic";
 import { processTgSendToMediaServerTopic } from "./kafka-topic-processors/processTgSendToMediaServerTopic";
 import { connectProducer, disconnectProducer } from "./kafka/producer";
-import { getMe, sendTelegramMessage } from "./telegram/api";
+import { getMe } from "./telegram/api";
 import type { TelegramUser } from "./telegram/types";
 
 import SnappyCodec = require("kafkajs-snappy");
