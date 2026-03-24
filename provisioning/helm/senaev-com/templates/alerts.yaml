@@ -13,7 +13,7 @@ spec:
               node_filesystem_avail_bytes{mountpoint="/", fstype!="", job="node-exporter"}
               /
               node_filesystem_size_bytes{mountpoint="/", fstype!="", job="node-exporter"}
-            ) < 0.05
+            ) < 0.10
             and
             node_filesystem_readonly{mountpoint="/", fstype!="", job="node-exporter"} == 0
           for: 10s
@@ -24,13 +24,7 @@ spec:
       rules:
         - alert: node-connectivity-failed-to-node-yc
           expr: |
-            (
-              (up{job="node-exporter", namespace="telemetry"} == 0)
-              * on(pod, namespace) group_left(node)
-              kube_pod_info{namespace="telemetry"}
-            )
-            and on(node)
-            kube_node_labels{label_vps="yc"}
+            kube_node_status_condition{node="{{ .Values.mediaServerNodeName }}", condition="Ready", status=~"false|unknown"}
           for: 60s
           labels:
             severity: critical
