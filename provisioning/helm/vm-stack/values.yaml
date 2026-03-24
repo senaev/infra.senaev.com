@@ -43,7 +43,6 @@ victoria-metrics-k8s-stack:
       nodeSelector:
         vps: hetzner
 
-  # TODO: implement alerting
   alertmanager:
     ingress:
       enabled: true
