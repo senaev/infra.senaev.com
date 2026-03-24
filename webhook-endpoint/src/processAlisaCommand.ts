@@ -1,6 +1,7 @@
 import { parseAlisaCommandWithOpenRouter } from "./openrouter.js";
 
 export async function processAlisaCommand(command: string): Promise<string> {
+    const startTime = Date.now();
     console.log(`👉 Start processing command=[${command}]`);
 
     console.log("👉 Request openRouter");
@@ -13,7 +14,9 @@ export async function processAlisaCommand(command: string): Promise<string> {
     }
 
     const itemsString = parsed.items.join(", ");
-    console.log(`✅ Successfully parsed list=[${itemsString}]`);
+    console.log(
+        `✅ Successfully parsed list=[${itemsString}] during=[${((Date.now() - startTime) / 1000).toFixed(2)}]s`,
+    );
 
     return `Добавила: ${itemsString}`;
 }

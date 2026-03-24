@@ -47,10 +47,20 @@ server.post(`/${ALISA_WEBHOOK_SECRET}`, async ({ body }, reply) => {
         throw new Error("Missing command field in request");
     }
 
+    const responseText = await Promise.race<string>([
+        processAlisaCommand(command),
+        // There's a timeout from Yandex, so it's better
+        // to answer quickly and continue work in the background
+        new Promise((resolve) => {
+            // TODO: use constant name
+            setTimeout(() => resolve("Хитрый Батя сказал, что сделает"), 2000);
+        }),
+    ]);
+
     return reply.send({
         version: "1.0",
         response: {
-            text: await processAlisaCommand(command),
+            text: responseText,
             end_session: true,
         },
     });
