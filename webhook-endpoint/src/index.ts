@@ -49,7 +49,7 @@ server.post(`/${ALISA_WEBHOOK_SECRET}`, async ({ body }, reply) => {
         version: "1.0",
         response: {
             text: await processAlisaCommand(command),
-            end_session: false,
+            end_session: true,
         },
     });
 });
