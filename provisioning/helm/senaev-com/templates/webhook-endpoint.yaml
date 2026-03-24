@@ -1,35 +1,35 @@
-{{- if .Values.telegramWebhookEndpoint.enabled }}
+{{- if .Values.webhookEndpoint.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: telegram-webhook-endpoint
+  name: webhook-endpoint
   namespace: {{ .Release.Namespace }}
   labels:
-    app: telegram-webhook-endpoint
+    app: webhook-endpoint
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: telegram-webhook-endpoint
+      app: webhook-endpoint
   template:
     metadata:
       labels:
-        app: telegram-webhook-endpoint
+        app: webhook-endpoint
       annotations:
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
     spec:
       nodeSelector:
-        vps: {{ .Values.telegramWebhookEndpoint.vps }}
+        vps: {{ .Values.webhookEndpoint.vps }}
       containers:
-        - name: telegram-webhook-endpoint
-          image: ghcr.io/senaev/telegram-webhook-endpoint:latest
+        - name: webhook-endpoint
+          image: ghcr.io/senaev/webhook-endpoint:latest
           ports:
             - containerPort: 3000
           env:
             - name: KAFKA_BROKERS
               value: redpanda.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.redpanda.kafkaPort }}
             - name: WEBHOOK_DOMAIN
-              value: {{ .Values.telegramWebhookEndpoint.webhookDomain }}
+              value: {{ .Values.webhookEndpoint.webhookDomain }}
             - name: TG_TOKEN_SENAEV_COM_BOT
               valueFrom:
                 secretKeyRef:
@@ -40,14 +40,14 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: telegram-webhook-endpoint
+  name: webhook-endpoint
   namespace: {{ .Release.Namespace }}
   labels:
-    app: telegram-webhook-endpoint
+    app: webhook-endpoint
 spec:
   type: ClusterIP
   selector:
-    app: telegram-webhook-endpoint
+    app: webhook-endpoint
   ports:
     - port: 3000
       targetPort: 3000

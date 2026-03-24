@@ -80,10 +80,10 @@ mediaServerHelper:
   percentTriggerToRemove: 90
   percentRemoveTarget: 80
 
-telegramWebhookEndpoint:
+webhookEndpoint:
   enabled: true
   vps: hetzner
-  webhookDomain: telegram-webhook-endpoint.senaev.com
+  webhookDomain: webhook-endpoint.senaev.com
 
 vpnSubscription:
   enabled: true
@@ -122,8 +122,8 @@ ingress:
         - host: jellyfin.senaev.com
           service: jellyfin
           port: 8096
-        - host: telegram-webhook-endpoint.senaev.com
-          service: telegram-webhook-endpoint
+        - host: webhook-endpoint.senaev.com
+          service: webhook-endpoint
           port: 3000
         - host: vpn-subscription.senaev.com
           service: vpn-subscription

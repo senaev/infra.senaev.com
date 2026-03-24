@@ -1,5 +1,5 @@
 {
-  "name": "telegram-webhook-endpoint",
+  "name": "webhook-endpoint",
   "version": "1.0.0",
   "type": "commonjs",
   "main": "src/index.ts",
