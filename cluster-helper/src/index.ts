@@ -96,10 +96,6 @@ async function main(): Promise<void> {
     await server.listen({ port: PORT, host: HOST });
     console.log(`✅ [cluster-helper] listening on port=[${PORT}]`);
 
-    await sendTelegramMessage({
-        text: "✅ Cluster helper is ready",
-        chatId: TG_CLUSTER_CHAT_ID,
-    });
     console.log("✅ Cluster helper is ready");
 
     isReady = true;
