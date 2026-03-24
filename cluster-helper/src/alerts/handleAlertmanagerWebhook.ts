@@ -1,6 +1,6 @@
 import { TG_CLUSTER_CHAT_ID } from "../env";
 import { sendTelegramMessage } from "../telegram/api";
-import { escapeHtml } from "../utils/escapeHtml";
+import { escapeMarkdownV2 } from "../telegram/escapeMarkdownV2";
 
 function formatDate(dateString: string): string {
     const date = new Date(dateString);
@@ -121,14 +121,24 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): string[
 
         const severityEmoji = ALERT_SEVERITIES[severity as keyof typeof ALERT_SEVERITIES];
 
+        const escapedAlertJson = escapeMarkdownV2(JSON.stringify(alert, null, 2));
+        const escapedAlertname = escapeMarkdownV2(alertname);
+        const escapedJob = escapeMarkdownV2(job);
+        const escapedPod = escapeMarkdownV2(pod);
+        const escapedAlertgroup = encodeURIComponent(alertgroup);
+        const vmalertUrl = `https://vmalert.senaev.com/vmalert/groups?search=${escapedAlertgroup}`;
+        const grafanaUrl = "https://grafana.senaev.com/explore";
+
         const lines = [
-            `${statusEmoji}${severityEmoji} <b>${escapeHtml(alertname)}</b> <a href="${escapeHtml(generatorURL)}">🔗</a>`,
-            `Time: ${formatDate(startsAt)} - ${formatDate(endsAt)}`,
-            `Job: ${job}`,
-            `Pod: ${pod}`,
-            `<code>${escapeHtml(JSON.stringify(alert, null, 2))}</code>`,
-            `<a href="${escapeHtml(generatorURL)}">alertmanager</a> | <a href="https://vmalert.senaev.com/vmalert/groups?search=${escapeHtml(alertgroup)}">vmalert</a>`,
-        ].filter((line): line is string => line !== undefined);
+            `${statusEmoji}${severityEmoji} *${escapedAlertname}* [🔗](${generatorURL})`,
+            `*Time:* ${escapeMarkdownV2(`${formatDate(startsAt)} - ${formatDate(endsAt)}`)}`,
+            `*Job:* \`${escapedJob}\``,
+            `*Pod:* \`${escapedPod}\``,
+            "```json",
+            escapedAlertJson,
+            "```",
+            `[alertmanager](${generatorURL}) | [vmalert](${vmalertUrl}) | [grafana](${grafanaUrl})`,
+        ];
 
         items.push(lines.join("\n"));
     }
@@ -143,7 +153,7 @@ export async function handleAlertmanagerWebhook(requestBody: unknown): Promise<v
             await sendTelegramMessage({
                 text: message,
                 chatId: TG_CLUSTER_CHAT_ID,
-                parseMode: "HTML",
+                parseMode: "MarkdownV2",
             });
             console.log("✅ Alert sent to Telegram");
         }
