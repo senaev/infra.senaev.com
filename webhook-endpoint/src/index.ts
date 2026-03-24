@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import { randomBytes } from "node:crypto";
 import { ALISA_WEBHOOK_SECRET, WEBHOOK_DOMAIN } from "./env.js";
 import { connectProducer, disconnectProducer, sendMessage } from "./kafka-producer.js";
+import { processAlisaCommand } from "./processAlisaCommand.js";
 import { telegramApiCall } from "./telegram-api.js";
 
 export const PORT = 3000;
@@ -28,13 +29,26 @@ server.post(WEBHOOK_PATH, async (request, reply) => {
     return reply.send("OK");
 });
 
-server.post(`/${ALISA_WEBHOOK_SECRET}`, async (request, reply) => {
-    console.log("🆕 Received Alisa update:", request.body);
+server.post(`/${ALISA_WEBHOOK_SECRET}`, async ({ body }, reply) => {
+    if (!body) {
+        throw new Error("Missing request body");
+    }
+
+    const { request } = body as Record<string, unknown>;
+    if (!request) {
+        throw new Error("Missing request field in body");
+    }
+
+    const { command } = request as Record<string, unknown>;
+
+    if (typeof command !== "string") {
+        throw new Error("Missing command field in request");
+    }
 
     return reply.send({
         version: "1.0",
         response: {
-            text: "Добавила",
+            text: await processAlisaCommand(command),
             end_session: false,
         },
     });
