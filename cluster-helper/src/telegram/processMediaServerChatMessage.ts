@@ -1,37 +1,12 @@
 import { TG_MEDIA_SERVER_CHAT_ID } from "../env";
 import { sendMessage as sendKafkaMessage } from "../kafka/producer";
 import { downloadFile, sendTelegramMessage, setMessageReaction } from "./api";
-import type { ReactionCount, TelegramMessage } from "./types";
+import type { TelegramMessage } from "./types";
 
 const TORRENT_FILES_TOPIC = "torrent-files-topic";
-const EYES_REACTION = "👀";
-const THUMBS_UP_REACTION = "👍";
 
-function hasEyesReaction(reaction?: ReactionCount[]): boolean {
-    if (!reaction || !Array.isArray(reaction)) return false;
-    return reaction.some((r) => r.type?.type === "emoji" && r.type?.emoji === EYES_REACTION);
-}
-
-export async function processMediaServerChannelPost(
-    message: TelegramMessage,
-    botUserId: number,
-): Promise<void> {
-    if (message.from?.id === botUserId) {
-        console.error("❌ Ignoring message sent by the bot itself");
-        return;
-    }
-
-    const chatIdStr = String(message.chat.id);
-    if (chatIdStr !== TG_MEDIA_SERVER_CHAT_ID) {
-        throw new Error(`❌ Processing message is from another channel=[${chatIdStr}]`);
-    }
-
-    if (hasEyesReaction(message.reaction)) {
-        console.error(`❌ Processed message is already processed`);
-        return;
-    }
-
-    await setMessageReaction(message.chat.id, message.message_id, [EYES_REACTION]);
+export async function processMediaServerChatMessage(message: TelegramMessage): Promise<void> {
+    await setMessageReaction(message.chat.id, message.message_id, ["👀"]);
 
     if (!message.document) {
         console.error(`❌ Processed message has no documents`);
@@ -64,6 +39,6 @@ export async function processMediaServerChannelPost(
     console.log(`✅ File sent to Kafka topic [${TORRENT_FILES_TOPIC}] successfully`);
 
     console.log(`👉 Setting thumbs up reaction to the message...`);
-    await setMessageReaction(message.chat.id, message.message_id, [THUMBS_UP_REACTION]);
+    await setMessageReaction(message.chat.id, message.message_id, ["👍"]);
     console.log(`✅ Thumbs up reaction set successfully`);
 }

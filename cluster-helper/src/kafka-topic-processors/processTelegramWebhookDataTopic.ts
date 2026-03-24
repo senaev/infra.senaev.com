@@ -1,6 +1,6 @@
-import { TG_CLUSTER_CHAT_ID } from "../env";
-import { setMessageReaction } from "../telegram/api";
-import { processMediaServerChannelPost } from "../telegram/processMediaServerChannelPost";
+import { TG_CLUSTER_CHAT_ID, TG_MEDIA_SERVER_CHAT_ID } from "../env";
+import { processClusterChatMessage } from "../telegram/processClusterChatMessage";
+import { processMediaServerChatMessage } from "../telegram/processMediaServerChatMessage";
 import { TelegramUpdate } from "../telegram/types";
 import { KafkaTopicProcessorArgument } from "./KafkaTopicProcessorArgument";
 
@@ -13,39 +13,48 @@ export async function processTelegramWebhookDataTopic({
     }
 
     const update = JSON.parse(value.toString()) as TelegramUpdate;
-    const post = update.channel_post;
-    if (post) {
-        console.log(
-            `👉 Processing Telegram channel post with id=[${post.message_id}] from chat id=[${post.chat.id}]`,
-        );
-        await processMediaServerChannelPost(post, botUser.id);
-        console.log("✅ Processed Telegram channel post");
-        return;
-    }
-
     const message = update.message;
-    if (message) {
-        const { text, chat } = message;
 
-        if (!chat) {
-            throw new Error("❌ Telegram message has no chat information");
-        }
-
-        if (!text) {
-            throw new Error("❌ Received Telegram message with no text content");
-        }
-
-        if (String(chat.id) !== TG_CLUSTER_CHAT_ID) {
-            throw new Error(`❌ Received Telegram message from unexpected chat id=[${chat.id}]`);
-        }
-
-        console.log(
-            `👉 Received Telegram message with id=[${message.message_id}] in cluster chat from user id=[${message.from?.id}]`,
+    if (!message) {
+        throw new Error(
+            `❌ Unsupported Telegram update type received in Webhook Data topic [${JSON.stringify(update)}]`,
         );
-        await setMessageReaction(TG_CLUSTER_CHAT_ID, message.message_id, ["🤷"]);
-        console.log("✅ Processed Telegram message");
+    }
+
+    const { chat, from } = message;
+
+    if (!from) {
+        throw new Error("❌ Telegram message has no sender information");
+    }
+
+    const senderId = from.id;
+    if (!senderId) {
+        throw new Error("❌ Telegram message sender has no id");
+    }
+
+    if (senderId === botUser.id) {
+        console.error("🤖 Ignoring message sent by the bot itself");
         return;
     }
 
-    throw new Error("❌ Unsupported Telegram update type received in Webhook Data topic");
+    if (!chat) {
+        throw new Error("❌ Telegram message has no chat information");
+    }
+
+    const chatIdStr = String(chat.id);
+    if (!chatIdStr) {
+        throw new Error("❌ Telegram message chat has no id");
+    }
+
+    if (chatIdStr === TG_MEDIA_SERVER_CHAT_ID) {
+        processMediaServerChatMessage(message);
+        return;
+    }
+
+    if (chatIdStr === TG_CLUSTER_CHAT_ID) {
+        processClusterChatMessage(message);
+        return;
+    }
+
+    throw new Error(`❌ Received Telegram message from unexpected chat id=[${chat.id}]`);
 }
