@@ -1,5 +1,5 @@
 import { TG_CLUSTER_CHAT_ID } from "../env";
-import { sendTelegramMessage } from "../telegram/api";
+import { setMessageReaction } from "../telegram/api";
 import { processMediaServerChannelPost } from "../telegram/processMediaServerChannelPost";
 import { TelegramUpdate } from "../telegram/types";
 import { KafkaTopicProcessorArgument } from "./KafkaTopicProcessorArgument";
@@ -42,11 +42,7 @@ export async function processTelegramWebhookDataTopic({
         console.log(
             `👉 Received Telegram message with id=[${message.message_id}] in cluster chat from user id=[${message.from?.id}]`,
         );
-        await sendTelegramMessage({
-            chatId: TG_CLUSTER_CHAT_ID,
-            text: `🤷 Don't know how to answer to your message`,
-            replyToMessageId: message.message_id,
-        });
+        await setMessageReaction(TG_CLUSTER_CHAT_ID, message.message_id, ["🤷"]);
         console.log("✅ Processed Telegram message");
         return;
     }
