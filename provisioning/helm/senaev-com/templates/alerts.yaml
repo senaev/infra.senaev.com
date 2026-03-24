@@ -24,7 +24,7 @@ spec:
       rules:
         - alert: node-connectivity-failed-to-node-yc
           expr: |
-            kube_node_status_condition{node="{{ .Values.mediaServerNodeName }}", condition="Ready", status=~"false|unknown"}
+            kube_node_status_condition{node="{{ .Values.mediaServerNodeName }}", condition="Ready", status="true"} != 1
           for: 60s
           labels:
             severity: critical
