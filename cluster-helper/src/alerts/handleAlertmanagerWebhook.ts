@@ -13,6 +13,18 @@ function formatDate(dateString: string): string {
     return `${day}-${month}-${year} ${hours}:${minutes}`;
 }
 
+function normalizeUrl(urlString: string): string {
+    const url = new URL(urlString);
+    const normalizedSearchParams = new URLSearchParams();
+
+    for (const [key, value] of url.searchParams.entries()) {
+        normalizedSearchParams.append(key, value);
+    }
+
+    url.search = normalizedSearchParams.toString();
+    return url.toString();
+}
+
 const ALERT_STATUSES = {
     firing: "🔴",
     resolved: "🟢",
@@ -121,7 +133,7 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): AlertIt
         const escapedAlertname = escapeHtml(alertname);
         const escapedJob = escapeHtml(job);
         const escapedPod = escapeHtml(pod);
-        const normalizedGeneratorUrl = new URL(generatorURL).toString();
+        const normalizedGeneratorUrl = normalizeUrl(generatorURL);
         const escapedGeneratorUrl = escapeHtml(normalizedGeneratorUrl);
 
         const lines = [
@@ -141,7 +153,6 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): AlertIt
 export async function handleAlertmanagerWebhook(requestBody: unknown): Promise<void> {
     try {
         const items = handleAlertmanagerWebhookInternal(requestBody);
-        const requestBodyJson = JSON.stringify(requestBody, null, 2);
 
         for (const { message } of items) {
             console.log("👉 Sending alert to Telegram");
