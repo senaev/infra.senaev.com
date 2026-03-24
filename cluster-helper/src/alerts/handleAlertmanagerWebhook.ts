@@ -1,6 +1,6 @@
 import { TG_CLUSTER_CHAT_ID } from "../env";
-import { sendTelegramMessage } from "../telegram/api";
-import { escapeMarkdownV2 } from "../telegram/escapeMarkdownV2";
+import { sendTelegramDocument, sendTelegramMessage } from "../telegram/api";
+import { escapeHtml } from "../utils/escapeHtml";
 
 function formatDate(dateString: string): string {
     const date = new Date(dateString);
@@ -24,7 +24,11 @@ const ALERT_SEVERITIES = {
     critical: "🚨",
 } as const;
 
-export function handleAlertmanagerWebhookInternal(requestBody: unknown): string[] {
+type AlertItem = {
+    message: string;
+};
+
+export function handleAlertmanagerWebhookInternal(requestBody: unknown): AlertItem[] {
     console.log("⬇️⬇️⬇️ Processing Alertmanager webhook");
     console.log(requestBody);
     console.log("⬆️⬆️⬆️");
@@ -33,15 +37,7 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): string[
         throw new Error(`❌ Received Alertmanager webhook with invalid body=[${requestBody}]`);
     }
 
-    const {
-        receiver,
-        alerts,
-        groupLabels,
-        commonLabels,
-        commonAnnotations,
-        externalURL,
-        groupKey,
-    } = requestBody as Record<string, unknown>;
+    const { alerts } = requestBody as Record<string, unknown>;
 
     if (!Array.isArray(alerts)) {
         throw new Error(`❌ Received Alertmanager webhook with invalid alerts=[${alerts}]`);
@@ -51,7 +47,7 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): string[
         throw new Error("❌ Received Alertmanager webhook with no alerts");
     }
 
-    const items: string[] = [];
+    const items: AlertItem[] = [];
 
     for (const alert of alerts) {
         console.log("⬇️⬇️⬇️ Processing alert");
@@ -121,38 +117,39 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): string[
 
         const severityEmoji = ALERT_SEVERITIES[severity as keyof typeof ALERT_SEVERITIES];
 
-        const escapedAlertJson = escapeMarkdownV2(JSON.stringify(alert, null, 2));
-        const escapedAlertname = escapeMarkdownV2(alertname);
-        const escapedJob = escapeMarkdownV2(job);
-        const escapedPod = escapeMarkdownV2(pod);
-        const escapedAlertgroup = encodeURIComponent(alertgroup);
-        const vmalertUrl = `https://vmalert.senaev.com/vmalert/groups?search=${escapedAlertgroup}`;
-        const grafanaUrl = "https://grafana.senaev.com/explore";
+        const escapedAlertJson = escapeHtml(JSON.stringify(alert, null, 2));
+        const escapedAlertname = escapeHtml(alertname);
+        const escapedJob = escapeHtml(job);
+        const escapedPod = escapeHtml(pod);
+        const escapedGeneratorUrl = escapeHtml(generatorURL);
 
         const lines = [
-            `${statusEmoji}${severityEmoji} *${escapedAlertname}* [🔗](${generatorURL})`,
-            `*Time:* ${escapeMarkdownV2(`${formatDate(startsAt)} - ${formatDate(endsAt)}`)}`,
-            `*Job:* \`${escapedJob}\``,
-            `*Pod:* \`${escapedPod}\``,
-            "```json",
-            escapedAlertJson,
-            "```",
+            `${statusEmoji}${severityEmoji} <b>${escapedAlertname}</b> <a href="${escapedGeneratorUrl}">🔗</a>`,
+            `<b>Time:</b> ${escapeHtml(`${formatDate(startsAt)} - ${formatDate(endsAt)}`)}`,
+            `<b>Job:</b> <code>${escapedJob}</code>`,
+            `<b>Pod:</b> <code>${escapedPod}</code>`,
+            `<blockquote><pre>${escapedAlertJson}</pre></blockquote>`,
         ];
 
-        items.push(lines.join("\n"));
+        items.push({ message: lines.join("\n") });
     }
+
     return items;
 }
 
 export async function handleAlertmanagerWebhook(requestBody: unknown): Promise<void> {
     try {
-        const messages = handleAlertmanagerWebhookInternal(requestBody);
-        for (const message of messages) {
+        const items = handleAlertmanagerWebhookInternal(requestBody);
+        const requestBodyJson = JSON.stringify(requestBody, null, 2);
+
+        for (const { message } of items) {
             console.log("👉 Sending alert to Telegram");
-            await sendTelegramMessage({
-                text: message,
+            await sendTelegramDocument({
                 chatId: TG_CLUSTER_CHAT_ID,
-                parseMode: "MarkdownV2",
+                filename: "alert.json",
+                content: requestBodyJson,
+                caption: message,
+                parseMode: "HTML",
             });
             console.log("✅ Alert sent to Telegram");
         }
