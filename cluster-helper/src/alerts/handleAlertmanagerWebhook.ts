@@ -10,7 +10,8 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): string[
         throw new Error(`❌ Received Alertmanager webhook with invalid body=[${requestBody}]`);
     }
 
-    const { alerts, externalURL } = requestBody as Record<string, unknown>;
+    const { alerts, externalURL, receiver, commonLabels, commonAnnotations, groupKey } =
+        requestBody as Record<string, unknown>;
 
     if (!Array.isArray(alerts)) {
         throw new Error(`❌ Received Alertmanager webhook with invalid alerts=[${alerts}]`);

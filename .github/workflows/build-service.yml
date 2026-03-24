@@ -47,6 +47,17 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Restart deployment via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.REMOTE_SSH_KEY }}
+          script: |
+            set -e
+            kubectl -n senaev-com rollout restart deployment/${{ inputs.deployment_name }}
+            kubectl -n senaev-com rollout status deployment/${{ inputs.deployment_name }} --timeout=180s
+
       - name: Notify Telegram
         if: always()
         run: |
@@ -63,14 +74,3 @@ jobs:
             --data-urlencode "parse_mode=HTML" \
             --data-urlencode "disable_web_page_preview=true" \
             --data-urlencode "text=${TEXT}"
-
-      - name: Restart deployment via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.REMOTE_HOST }}
-          username: ${{ secrets.REMOTE_USER }}
-          key: ${{ secrets.REMOTE_SSH_KEY }}
-          script: |
-            set -e
-            kubectl -n senaev-com rollout restart deployment/${{ inputs.deployment_name }}
-            kubectl -n senaev-com rollout status deployment/${{ inputs.deployment_name }} --timeout=180s
