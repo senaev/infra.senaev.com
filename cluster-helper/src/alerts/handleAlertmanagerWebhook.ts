@@ -105,7 +105,7 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): string[
             externalURL ? `Alertmanager: ${externalURL}` : undefined,
         ].filter((line): line is string => line !== undefined);
 
-        messages.push(lines.join(" "));
+        messages.push(lines.join("\n"));
     }
     return messages;
 }

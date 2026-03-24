@@ -1,7 +1,7 @@
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMRule
 metadata:
-  name: node-disk-space-low
+  name: senaev-com-alerts
   namespace: telemetry
 spec:
   groups:
@@ -18,8 +18,4 @@ spec:
             node_filesystem_readonly{mountpoint="/", fstype!="", job="node-exporter"} == 0
           for: 10s
           labels:
-            route: senaev-com-alerts
             severity: warning
-          annotations:
-            summary: "Node disk space is low"
-            description: 'Node {{`{{`}} $labels.instance {{`}}`}} has less than 01% free disk space on /.'
