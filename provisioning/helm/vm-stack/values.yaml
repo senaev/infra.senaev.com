@@ -70,7 +70,6 @@ victoria-metrics-k8s-stack:
           - matchers:
               - route="senaev-com-alerts"
             receiver: telegram-alerts-receiver
-            group_by: ["..."]
             group_wait: 0s
             group_interval: 10s
             repeat_interval: 1h
@@ -82,6 +81,19 @@ victoria-metrics-k8s-stack:
               send_resolved: true
 
   vmalert:
+    ingress:
+      enabled: true
+      ingressClassName: traefik-hetzner
+      annotations:
+        traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+        traefik.ingress.kubernetes.io/router.tls: "true"
+        traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+        traefik.ingress.kubernetes.io/router.middlewares: "{{ .Release.Namespace }}-vmalert-basicauth@kubernetescrd"
+      hosts:
+        - vmalert.senaev.com
+      tls:
+        - hosts:
+            - vmalert.senaev.com
     spec:
       evaluationInterval: 15s
       nodeSelector:

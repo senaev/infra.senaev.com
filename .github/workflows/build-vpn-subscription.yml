@@ -17,4 +17,5 @@ jobs:
       workflow_title: Build VPN Subscription
       context: ./vpn-subscription
       registry_image: ghcr.io/senaev/vpn-subscription
+      deployment_name: vpn-subscription
     secrets: inherit

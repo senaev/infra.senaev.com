@@ -30,3 +30,35 @@ spec:
     secret: alertmanager-basicauth
     removeHeader: true
 {{- end }}
+{{- if $vm.vmalert.ingress.enabled }}
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: vmalert-basicauth
+  namespace: {{ .Release.Namespace }}
+spec:
+  refreshInterval: 30s
+  secretStoreRef:
+    name: vault-cluster-secret-store
+    kind: ClusterSecretStore
+  target:
+    name: vmalert-basicauth
+    creationPolicy: Owner
+    deletionPolicy: Delete
+  data:
+    - secretKey: users
+      remoteRef:
+        key: senaev-com-kv
+        property: VMALERT_HTPASSWD_HASH_WITH_USERNAME
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: vmalert-basicauth
+  namespace: {{ .Release.Namespace }}
+spec:
+  basicAuth:
+    secret: vmalert-basicauth
+    removeHeader: true
+{{- end }}

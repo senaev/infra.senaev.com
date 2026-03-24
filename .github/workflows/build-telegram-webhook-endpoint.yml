@@ -17,4 +17,5 @@ jobs:
       workflow_title: telegram-webhook-endpoint
       context: ./telegram-webhook-endpoint
       registry_image: ghcr.io/senaev/telegram-webhook-endpoint
+      deployment_name: telegram-webhook-endpoint
     secrets: inherit

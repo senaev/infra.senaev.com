@@ -17,4 +17,5 @@ jobs:
       workflow_title: cluster-helper
       context: ./cluster-helper
       registry_image: ghcr.io/senaev/cluster-helper
+      deployment_name: cluster-helper
     secrets: inherit

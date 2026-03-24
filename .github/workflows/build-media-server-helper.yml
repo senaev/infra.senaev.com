@@ -17,4 +17,5 @@ jobs:
       workflow_title: media-server-helper
       context: ./media-server-helper
       registry_image: ghcr.io/senaev/media-server-helper
+      deployment_name: media-server-helper
     secrets: inherit
