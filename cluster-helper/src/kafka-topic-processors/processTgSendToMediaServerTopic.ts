@@ -1,4 +1,4 @@
-import { TG_MEDIA_SERVER_CHANNEL_ID } from "../env";
+import { TG_MEDIA_SERVER_CHAT_ID } from "../env";
 import { formatTorrentEvent, isTorrentEvent } from "../qbittorrent/formatTorrentEvent";
 import { sendTelegramMessage } from "../telegram/api";
 import { KafkaTopicProcessorArgument } from "./KafkaTopicProcessorArgument";
@@ -21,7 +21,7 @@ export async function processTgSendToMediaServerTopic({
     } catch {
         await sendTelegramMessage({
             text: raw,
-            chatId: TG_MEDIA_SERVER_CHANNEL_ID,
+            chatId: TG_MEDIA_SERVER_CHAT_ID,
         });
         return;
     }
@@ -29,11 +29,11 @@ export async function processTgSendToMediaServerTopic({
     if (isTorrentEvent(parsed)) {
         await sendTelegramMessage({
             text: formatTorrentEvent(parsed),
-            chatId: TG_MEDIA_SERVER_CHANNEL_ID,
+            chatId: TG_MEDIA_SERVER_CHAT_ID,
             parseMode: "HTML",
         });
         return;
     }
 
-    await sendTelegramMessage({ text: raw, chatId: TG_MEDIA_SERVER_CHANNEL_ID });
+    await sendTelegramMessage({ text: raw, chatId: TG_MEDIA_SERVER_CHAT_ID });
 }

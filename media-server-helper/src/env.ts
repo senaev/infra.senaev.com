@@ -17,6 +17,6 @@ function requirePercentEnv(name: string): number {
 
 export const KAFKA_BROKERS = requireEnv("KAFKA_BROKERS").split(",");
 export const TG_TOKEN_SENAEV_COM_BOT = requireEnv("TG_TOKEN_SENAEV_COM_BOT");
-export const TG_MEDIA_SERVER_CHANNEL_ID = requireEnv("TG_MEDIA_SERVER_CHANNEL_ID");
+export const TG_MEDIA_SERVER_CHAT_ID = requireEnv("TG_MEDIA_SERVER_CHAT_ID");
 export const PERCENT_TRIGGER_TO_REMOVE = requirePercentEnv("PERCENT_TRIGGER_TO_REMOVE");
 export const PERCENT_REMOVE_TARGET = requirePercentEnv("PERCENT_REMOVE_TARGET");

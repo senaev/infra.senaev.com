@@ -36,14 +36,10 @@ spec:
                   name: senaev-com-kv-secrets
                   key: TG_TOKEN_SENAEV_COM_BOT
                   optional: false
-            - name: TG_MEDIA_SERVER_CHANNEL_ID
-              valueFrom:
-                secretKeyRef:
-                  name: senaev-com-kv-secrets
-                  key: TG_MEDIA_SERVER_CHANNEL_ID
-                  optional: false
             - name: TG_CLUSTER_CHAT_ID
               value: {{ .Values.telegramClusterChatId | quote }}
+            - name: TG_MEDIA_SERVER_CHAT_ID
+              value: {{ .Values.telegramMediaServerChatId | quote }}
             - name: KAFKA_BROKERS
               value: redpanda.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.redpanda.kafkaPort }}
           ports:

@@ -1,4 +1,4 @@
-import { TG_MEDIA_SERVER_CHANNEL_ID } from "../env";
+import { TG_MEDIA_SERVER_CHAT_ID } from "../env";
 import { sendMessage as sendKafkaMessage } from "../kafka/producer";
 import { downloadFile, sendTelegramMessage, setMessageReaction } from "./api";
 import type { ReactionCount, TelegramMessage } from "./types";
@@ -22,7 +22,7 @@ export async function processMediaServerChannelPost(
     }
 
     const chatIdStr = String(message.chat.id);
-    if (chatIdStr !== TG_MEDIA_SERVER_CHANNEL_ID) {
+    if (chatIdStr !== TG_MEDIA_SERVER_CHAT_ID) {
         throw new Error(`❌ Processing message is from another channel=[${chatIdStr}]`);
     }
 
@@ -37,7 +37,7 @@ export async function processMediaServerChannelPost(
         console.error(`❌ Processed message has no documents`);
         await sendTelegramMessage({
             text: "Sorry, I can only process documents (torrent files) 🤷",
-            chatId: TG_MEDIA_SERVER_CHANNEL_ID,
+            chatId: TG_MEDIA_SERVER_CHAT_ID,
         });
         console.log("✅ Sent message about unsupported content type");
         return;

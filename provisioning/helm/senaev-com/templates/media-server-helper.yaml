@@ -59,12 +59,8 @@ spec:
                   name: senaev-com-kv-secrets
                   key: TG_TOKEN_SENAEV_COM_BOT
                   optional: false
-            - name: TG_MEDIA_SERVER_CHANNEL_ID
-              valueFrom:
-                secretKeyRef:
-                  name: senaev-com-kv-secrets
-                  key: TG_MEDIA_SERVER_CHANNEL_ID
-                  optional: false
+            - name: TG_MEDIA_SERVER_CHAT_ID
+              value: {{ .Values.telegramMediaServerChatId | quote }}
           volumeMounts:
             - name: watch-torrent-files
               mountPath: /watch-torrent-files

@@ -1,4 +1,4 @@
-import { TG_MEDIA_SERVER_CHANNEL_ID, TG_TOKEN_SENAEV_COM_BOT } from "./env";
+import { TG_MEDIA_SERVER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from "./env";
 
 type TelegramApiResponse<T> = {
     ok: boolean;
@@ -33,7 +33,7 @@ async function callTelegramApi<T>(method: string, body: object): Promise<T> {
 
 export async function sendTelegramHtmlMessage(html: string): Promise<void> {
     await callTelegramApi("sendMessage", {
-        chat_id: TG_MEDIA_SERVER_CHANNEL_ID,
+        chat_id: TG_MEDIA_SERVER_CHAT_ID,
         text: html,
         parse_mode: "HTML",
     });

@@ -7,13 +7,13 @@ spec:
   groups:
     - name: node-disk
       rules:
-        - alert: NodeDiskSpaceLow
+        - alert: node-disk-space-low
           expr: |
             (
               node_filesystem_avail_bytes{mountpoint="/", fstype!="", job="node-exporter"}
               /
               node_filesystem_size_bytes{mountpoint="/", fstype!="", job="node-exporter"}
-            ) < 0.05
+            ) < 0.99
             and
             node_filesystem_readonly{mountpoint="/", fstype!="", job="node-exporter"} == 0
           for: 10s
@@ -22,4 +22,4 @@ spec:
             severity: warning
           annotations:
             summary: "Node disk space is low"
-            description: 'Node {{`{{`}} $labels.instance {{`}}`}} has less than 5% free disk space on /.'
+            description: 'Node {{`{{`}} $labels.instance {{`}}`}} has less than 99% free disk space on /.'

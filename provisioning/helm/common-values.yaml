@@ -1,4 +1,5 @@
 telegramClusterChatId: "-5238510786"
+telegramMediaServerChatId: "-1003897659442"
 
 redpanda:
   kafkaPort: 9092
