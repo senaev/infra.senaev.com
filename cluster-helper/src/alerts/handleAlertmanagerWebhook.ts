@@ -24,12 +24,7 @@ const ALERT_SEVERITIES = {
     critical: "🚨",
 } as const;
 
-type AlertItem = {
-    message: string;
-    alertJson: unknown;
-};
-
-export function handleAlertmanagerWebhookInternal(requestBody: unknown): AlertItem[] {
+export function handleAlertmanagerWebhookInternal(requestBody: unknown): string[] {
     console.log("⬇️⬇️⬇️ Processing Alertmanager webhook");
     console.log(requestBody);
     console.log("⬆️⬆️⬆️");
@@ -56,7 +51,7 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): AlertIt
         throw new Error("❌ Received Alertmanager webhook with no alerts");
     }
 
-    const items: AlertItem[] = [];
+    const items: string[] = [];
 
     for (const alert of alerts) {
         console.log("⬇️⬇️⬇️ Processing alert");
@@ -128,18 +123,14 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): AlertIt
 
         const lines = [
             `${statusEmoji}${severityEmoji} <b>${escapeHtml(alertname)}</b> <a href="${escapeHtml(generatorURL)}">🔗</a>`,
-            `${formatDate(startsAt)} - ${formatDate(endsAt)}`,
-
-            `Group: <a href="https://vmalert.senaev.com/vmalert/groups?search=${escapeHtml(alertgroup)}">${escapeHtml(alertgroup)}</a>`,
+            `Time: ${formatDate(startsAt)} - ${formatDate(endsAt)}`,
             `Job: ${job}`,
             `Pod: ${pod}`,
-            `<a href="${escapeHtml(generatorURL)}">alertmanager</a>`,
+            `<code>${escapeHtml(JSON.stringify(alert, null, 2))}</code>`,
+            `<a href="${escapeHtml(generatorURL)}">alertmanager</a> | <a href="https://vmalert.senaev.com/vmalert/groups?search=${escapeHtml(alertgroup)}">vmalert</a>`,
         ].filter((line): line is string => line !== undefined);
 
-        items.push({
-            message: lines.join("\n"),
-            alertJson: alert,
-        });
+        items.push(lines.join("\n"));
     }
     return items;
 }
@@ -147,24 +138,12 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): AlertIt
 export async function handleAlertmanagerWebhook(requestBody: unknown): Promise<void> {
     try {
         const messages = handleAlertmanagerWebhookInternal(requestBody);
-        for (const { message, alertJson } of messages) {
+        for (const message of messages) {
             console.log("👉 Sending alert to Telegram");
             await sendTelegramMessage({
                 text: message,
                 chatId: TG_CLUSTER_CHAT_ID,
                 parseMode: "HTML",
-                replyMarkup: {
-                    inline_keyboard: [
-                        [
-                            {
-                                text: "Copy JSON",
-                                copy_text: {
-                                    text: JSON.stringify(alertJson, null, 2),
-                                },
-                            },
-                        ],
-                    ],
-                },
             });
             console.log("✅ Alert sent to Telegram");
         }
