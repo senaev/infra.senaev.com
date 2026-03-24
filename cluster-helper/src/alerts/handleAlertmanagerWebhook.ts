@@ -13,7 +13,7 @@ function formatDate(dateString: string): string {
     return `${day}-${month}-${year} ${hours}:${minutes}`;
 }
 
-function normalizeUrl(urlString: string): string {
+function normalizeGrafanaUrl(urlString: string): string {
     const url = new URL(urlString);
     const normalizedSearchParams = new URLSearchParams();
 
@@ -133,7 +133,7 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): AlertIt
         const escapedAlertname = escapeHtml(alertname);
         const escapedJob = escapeHtml(job);
         const escapedPod = escapeHtml(pod);
-        const normalizedGeneratorUrl = normalizeUrl(generatorURL);
+        const normalizedGeneratorUrl = normalizeGrafanaUrl(generatorURL);
         const escapedGeneratorUrl = escapeHtml(normalizedGeneratorUrl);
 
         const lines = [
