@@ -121,7 +121,8 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): AlertIt
         const escapedAlertname = escapeHtml(alertname);
         const escapedJob = escapeHtml(job);
         const escapedPod = escapeHtml(pod);
-        const escapedGeneratorUrl = escapeHtml(encodeURI(generatorURL));
+        const normalizedGeneratorUrl = new URL(generatorURL).toString();
+        const escapedGeneratorUrl = escapeHtml(normalizedGeneratorUrl);
 
         const lines = [
             `${statusEmoji}${severityEmoji} <a href="${escapedGeneratorUrl}">${escapedAlertname}</a>`,
