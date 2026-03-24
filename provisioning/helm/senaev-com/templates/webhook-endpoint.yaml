@@ -42,6 +42,12 @@ spec:
                   name: senaev-com-kv-secrets
                   key: ALISA_WEBHOOK_SECRET
                   optional: false
+            - name: OPENROUTER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: OPENROUTER_API_KEY
+                  optional: false
 ---
 apiVersion: v1
 kind: Service

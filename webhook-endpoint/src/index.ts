@@ -34,6 +34,8 @@ server.post(`/${ALISA_WEBHOOK_SECRET}`, async ({ body }, reply) => {
         throw new Error("Missing request body");
     }
 
+    console.log("🆕 Received Alisa command:", body);
+
     const { request } = body as Record<string, unknown>;
     if (!request) {
         throw new Error("Missing request field in body");
