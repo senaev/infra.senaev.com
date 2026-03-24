@@ -121,14 +121,14 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): AlertIt
         const escapedAlertname = escapeHtml(alertname);
         const escapedJob = escapeHtml(job);
         const escapedPod = escapeHtml(pod);
-        const escapedGeneratorUrl = escapeHtml(generatorURL);
+        const escapedGeneratorUrl = escapeHtml(encodeURI(generatorURL));
 
         const lines = [
             `${statusEmoji}${severityEmoji} <a href="${escapedGeneratorUrl}">${escapedAlertname}</a>`,
             `<b>Time:</b> ${escapeHtml(`${formatDate(startsAt)} - ${formatDate(endsAt)}`)}`,
             `<b>Job:</b> <code>${escapedJob}</code>`,
             `<b>Pod:</b> <code>${escapedPod}</code>`,
-            `<blockquote>${escapedAlertJson}</blockquote>`,
+            `<blockquote expandable>${escapedAlertJson}</blockquote>`,
         ];
 
         items.push({ message: lines.join("\n") });
