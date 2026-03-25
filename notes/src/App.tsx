@@ -191,9 +191,11 @@ export default function App() {
             });
     }
 
-    function updateItemTitle(id: number, title: string) {
-        setItems((current) => current.map((item) => (item.id === id ? { ...item, title } : item)));
-        persistItem(id, { title });
+    function updateItem(id: number, params: { title?: string; checked?: boolean }) {
+        setItems((current) =>
+            current.map((item) => (item.id === id ? { ...item, ...params } : item)),
+        );
+        persistItem(id, params);
     }
 
     function createItemAfter({
@@ -216,16 +218,12 @@ export default function App() {
 
         const nextPosition = currentItem.position + 1;
 
-        updateItemTitle(id, titleBefore);
+        updateItem(id, { title: titleBefore, checked: titleBefore.trim() ? checked : false });
         insertItem({
             title: titleAfter,
-            checked,
+            checked: titleAfter.trim() ? checked : false,
             position: nextPosition,
         });
-    }
-
-    function updateItem(id: number, title: string) {
-        persistItem(id, { title });
     }
 
     function toggleChecked(id: number, isChecked: boolean) {
@@ -355,7 +353,7 @@ export default function App() {
                                             }
                                         }}
                                         onBlur={(event) => {
-                                            updateItem(item.id, event.target.value);
+                                            updateItem(item.id, { title: event.target.value });
                                         }}
                                         onChange={(event) =>
                                             handleItemChange(item.id, event.target.value)
