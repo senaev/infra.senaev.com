@@ -1,6 +1,6 @@
 import "./App.css";
 
-import { KeyboardEvent, useEffect, useState } from "react";
+import { KeyboardEvent, useEffect, useRef, useState } from "react";
 import { supabase } from "./utils/supabase";
 
 type GroceryItem = {
@@ -22,6 +22,8 @@ const generateNewItemId = () => --newItemId;
 export default function App() {
     const [items, setItems] = useState<GroceryItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [pendingFocusId, setPendingFocusId] = useState<number | null>(null);
+    const inputRefs = useRef(new Map<number, HTMLInputElement>());
 
     const [errors, setErrors] = useState<string[]>([]);
     function addError(error: string) {
@@ -46,6 +48,20 @@ export default function App() {
                 setIsLoading(false);
             });
     }, []);
+
+    useEffect(() => {
+        if (pendingFocusId == null) {
+            return;
+        }
+
+        const input = inputRefs.current.get(pendingFocusId);
+        if (!input) {
+            return;
+        }
+
+        input.focus();
+        setPendingFocusId(null);
+    }, [items, pendingFocusId]);
 
     function persistItem(
         id: number,
@@ -93,6 +109,7 @@ export default function App() {
                 deleted: null,
             },
         ]);
+        setPendingFocusId(id);
 
         supabase
             .from(TABLE_NAME)
@@ -192,6 +209,13 @@ export default function App() {
                                 <input
                                     id={`input-${item.id}`}
                                     className={`item-input${item.bought ? " is-bought" : ""}`}
+                                    ref={(node) => {
+                                        if (node) {
+                                            inputRefs.current.set(item.id, node);
+                                        } else {
+                                            inputRefs.current.delete(item.id);
+                                        }
+                                    }}
                                     onBlur={(event) => {
                                         updateItem(item.id, event.target.value);
                                     }}
