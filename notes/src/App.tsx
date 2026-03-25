@@ -20,11 +20,14 @@ const generateNewItemId = () => --newItemId;
 export default function App() {
     const [items, setItems] = useState<GroceryItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+
+    const [errors, setErrors] = useState<string[]>([]);
+    function addError(error: string) {
+        setErrors((current) => [...current, error]);
+    }
 
     useEffect(() => {
         setIsLoading(true);
-        setError(null);
 
         supabase
             .from(TABLE_NAME)
@@ -33,7 +36,7 @@ export default function App() {
             .order("created", { ascending: true })
             .then((result) => {
                 if (result.error) {
-                    setError(result.error.message);
+                    addError(result.error.message);
                 } else {
                     setItems(result.data ?? []);
                 }
@@ -43,8 +46,6 @@ export default function App() {
     }, []);
 
     function createItem() {
-        setError(null);
-
         const id = generateNewItemId();
         setItems((current) => [
             ...current,
@@ -64,7 +65,7 @@ export default function App() {
             .single()
             .then((result) => {
                 if (result.error) {
-                    setError(result.error.message);
+                    addError(result.error.message);
                     return;
                 }
 
@@ -85,7 +86,7 @@ export default function App() {
             .single()
             .then((result) => {
                 if (result.error) {
-                    setError(result.error.message);
+                    addError(result.error.message);
                     return;
                 }
 
@@ -98,8 +99,6 @@ export default function App() {
     }
 
     function removeItem(id: number) {
-        setError(null);
-
         const deleted = new Date().toISOString();
         supabase
             .from(TABLE_NAME)
@@ -109,7 +108,7 @@ export default function App() {
             .single()
             .then((result) => {
                 if (result.error) {
-                    setError(result.error.message);
+                    addError(result.error.message);
                 }
             });
 
@@ -137,7 +136,12 @@ export default function App() {
             <section className="editor">
                 <h1 className="list-title">{NOTE_TITLE}</h1>
 
-                {error ? <p className="status error">{error}</p> : null}
+                {errors.length && (
+                    <p className="status error">
+                        <div>Errors:</div>
+                        <div>{errors}</div>
+                    </p>
+                )}
                 {isLoading ? (
                     <p className="status">Loading...</p>
                 ) : (
