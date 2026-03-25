@@ -228,7 +228,7 @@ export default function App() {
                                     />
                                 </label>
                                 <input
-                                    id={`input-${item.position}`}
+                                    id={`input-${item.id}`}
                                     className={`item-input${item.bought ? " is-bought" : ""}`}
                                     ref={(node) => {
                                         if (node) {
