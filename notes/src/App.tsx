@@ -60,7 +60,7 @@ export default function App() {
                 if (result.error) {
                     addError(result.error.message);
                 } else {
-                    setItems(result.data ?? []);
+                    setItems(result.data);
                 }
 
                 setIsLoading(false);
@@ -85,11 +85,6 @@ export default function App() {
         id: number,
         updates: Partial<Pick<GroceryItem, "title" | "bought" | "deleted">>,
     ): void {
-        if (id < 0) {
-            addError("Cannot update item that is not yet saved");
-            return;
-        }
-
         supabase
             .from(TABLE_NAME)
             .update(updates)
