@@ -20,19 +20,6 @@ let newItemId = -1;
 const generateNewItemId = () => --newItemId;
 const clientIdsMap = new Map<number, number>();
 
-let maxExistingPosition = 0;
-const MAX_EXISTING_POSITION = {
-    set: (next: number): void => {
-        maxExistingPosition = Math.max(maxExistingPosition, next);
-    },
-    get: (): number => maxExistingPosition,
-    new: (): number => {
-        const position = MAX_EXISTING_POSITION.get() + 2048;
-        MAX_EXISTING_POSITION.set(position);
-        return position;
-    },
-};
-
 export default function App() {
     const [items, setItems] = useState<GroceryItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -43,10 +30,6 @@ export default function App() {
     function addError(error: string) {
         setErrors((current) => [...current, error]);
     }
-
-    items.forEach((item) => {
-        MAX_EXISTING_POSITION.set(item.position);
-    });
 
     useEffect(() => {
         setIsLoading(true);
@@ -107,7 +90,6 @@ export default function App() {
 
     function createItem() {
         const tempId = generateNewItemId();
-        const position = MAX_EXISTING_POSITION.new();
         const created = new Date().toISOString();
 
         setItems((current) => [
@@ -117,7 +99,7 @@ export default function App() {
                 title: "",
                 created,
                 updated: created,
-                position,
+                position: 1,
                 bought: null,
                 deleted: null,
             },
@@ -126,7 +108,7 @@ export default function App() {
 
         supabase
             .from(TABLE_NAME)
-            .insert({ title: "", position })
+            .insert({ title: "" })
             .select("id, title, position, created, updated, bought, deleted")
             .single()
             .then(({ data, error }) => {
