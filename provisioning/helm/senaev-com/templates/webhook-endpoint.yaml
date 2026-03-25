@@ -48,6 +48,12 @@ spec:
                   name: senaev-com-kv-secrets
                   key: OPENROUTER_API_KEY
                   optional: false
+            - name: GOOGLE_KEEP_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: GOOGLE_KEEP_AUTH_TOKEN
+                  optional: false
 ---
 apiVersion: v1
 kind: Service

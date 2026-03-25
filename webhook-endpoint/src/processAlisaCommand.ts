@@ -1,4 +1,7 @@
+import { addItemToGoogleKeepList } from "./googleKeep.js";
 import { parseAlisaCommandWithOpenRouter } from "./openrouter.js";
+
+export const ALISA_SKILL_NAME = "Хитрый Батя";
 
 export async function processAlisaCommand(command: string): Promise<string> {
     console.log(`👉 Start processing command=[${command}]`);
@@ -7,13 +10,21 @@ export async function processAlisaCommand(command: string): Promise<string> {
     const parsed = await parseAlisaCommandWithOpenRouter(command);
     console.log(`✅ Response for command=[${command}], parsed=[${JSON.stringify(parsed)}]`);
 
-    if (parsed.error !== null) {
-        console.log(`🤷 Completed with error=[${parsed.error}]`);
-        return `Ошибка: ${parsed.error}`;
+    const { items, error } = parsed;
+
+    if (error !== null) {
+        console.log(`🤷 Completed with error=[${error}]`);
+        return `Ошибка: ${error}`;
     }
 
-    const itemsString = parsed.items.join(", ");
+    const itemsString = items.join(", ");
     console.log(`✅ Successfully parsed list=[${itemsString}]`);
+
+    // for (const item of items) {
+    //     console.log(`👉 Add item to Google Keep item=[${item}]`);
+    //     await addItemToGoogleKeepList(item);
+    //     console.log(`✅ Added item to Google Keep item=[${item}]`);
+    // }
 
     return `Добавила: ${itemsString}`;
 }

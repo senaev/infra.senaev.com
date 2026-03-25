@@ -1,4 +1,5 @@
 import { OPENROUTER_API_KEY, WEBHOOK_DOMAIN } from "./env.js";
+import { ALISA_SKILL_NAME } from "./processAlisaCommand.js";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_MODEL = "google/gemini-3-flash-preview";
@@ -34,7 +35,7 @@ export async function parseAlisaCommandWithOpenRouter(
                 {
                     role: "system",
                     content: [
-                        "You are processing the Yandex Alisa skill named 'Список Бати'.",
+                        `You are processing the Yandex Alisa skill named '${ALISA_SKILL_NAME}'.`,
                         "This skill is dedicated to managing a single shopping list.",
                         "If the user asks to add something to the shopping list, return only the list of items to add.",
                         "All the items in the response should be in initial form.",
