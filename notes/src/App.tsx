@@ -202,7 +202,11 @@ export default function App() {
                 {errors.length ? (
                     <p className="status error">
                         <div>Errors:</div>
-                        <div>{errors}</div>
+                        <ul>
+                            {errors.map((error, index) => (
+                                <li key={`${error}-${index}`}>{error}</li>
+                            ))}
+                        </ul>
                     </p>
                 ) : null}
 
