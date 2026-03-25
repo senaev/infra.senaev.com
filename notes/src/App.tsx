@@ -23,26 +23,23 @@ export default function App() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        async function loadItems() {
-            setIsLoading(true);
-            setError(null);
+        setIsLoading(true);
+        setError(null);
 
-            const result = await supabase
-                .from(TABLE_NAME)
-                .select("id, title, created, bought, deleted")
-                .is("deleted", null)
-                .order("created", { ascending: true });
+        supabase
+            .from(TABLE_NAME)
+            .select("id, title, created, bought, deleted")
+            .is("deleted", null)
+            .order("created", { ascending: true })
+            .then((result) => {
+                if (result.error) {
+                    setError(result.error.message);
+                } else {
+                    setItems(result.data ?? []);
+                }
 
-            if (result.error) {
-                setError(result.error.message);
-            } else {
-                setItems(result.data ?? []);
-            }
-
-            setIsLoading(false);
-        }
-
-        void loadItems();
+                setIsLoading(false);
+            });
     }, []);
 
     function createItem() {
