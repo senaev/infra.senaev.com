@@ -99,10 +99,18 @@ export default function App() {
         const nextPosition =
             items.reduce((maxPosition, item) => Math.max(maxPosition, item.position), 0) + 1;
 
-        insertItemAtPosition(nextPosition, "");
+        insertItem({ title: "", bought: null, position: nextPosition });
     }
 
-    function insertItemAtPosition(position: number, title: string) {
+    function insertItem({
+        title,
+        bought,
+        position,
+    }: {
+        title: string;
+        bought: string | null;
+        position: number;
+    }) {
         const tempId = generateNewItemId();
         const created = new Date().toISOString();
         const shiftedItems = items
@@ -124,7 +132,7 @@ export default function App() {
                 created,
                 updated: created,
                 position,
-                bought: null,
+                bought,
                 deleted: null,
             });
 
@@ -142,7 +150,7 @@ export default function App() {
 
         supabase
             .from(TABLE_NAME)
-            .insert({ title, position })
+            .insert({ title, position, bought })
             .select("id, title, position, created, updated, bought, deleted")
             .single()
             .then(({ data, error }) => {
@@ -169,7 +177,17 @@ export default function App() {
         persistItem(id, { title });
     }
 
-    function createItemAfter(id: number, titleBefore: string, titleAfter: string) {
+    function createItemAfter({
+        id,
+        bought,
+        titleBefore,
+        titleAfter,
+    }: {
+        id: number;
+        bought: string | null;
+        titleBefore: string;
+        titleAfter: string;
+    }) {
         const currentItem = items.find((item) => item.id === id);
 
         if (!currentItem) {
@@ -180,7 +198,7 @@ export default function App() {
         const nextPosition = currentItem.position + 1;
 
         updateItemTitle(id, titleBefore);
-        insertItemAtPosition(nextPosition, titleAfter);
+        insertItem({ title: titleAfter, bought, position: nextPosition });
     }
 
     function updateItem(id: number, title: string) {
@@ -209,7 +227,7 @@ export default function App() {
             const titleBefore = event.currentTarget.value.slice(0, cursorPosition);
             const titleAfter = event.currentTarget.value.slice(cursorPosition);
 
-            createItemAfter(item.id, titleBefore, titleAfter);
+            createItemAfter({ id: item.id, bought: item.bought, titleBefore, titleAfter });
         }
 
         if (event.key === "Backspace" && !event.currentTarget.value) {
