@@ -22,11 +22,5 @@ export async function processAlisaCommand(command: string): Promise<string> {
         `✅ Successfully parsed list=[${itemsString}] during=[${((Date.now() - startTime) / 1000).toFixed(2)}]s`,
     );
 
-    // for (const item of items) {
-    //     console.log(`👉 Add item to Google Keep item=[${item}]`);
-    //     await addItemToGoogleKeepList(item);
-    //     console.log(`✅ Added item to Google Keep item=[${item}]`);
-    // }
-
     return `Добавила: ${itemsString}`;
 }

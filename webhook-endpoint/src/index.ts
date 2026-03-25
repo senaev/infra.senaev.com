@@ -1,7 +1,6 @@
 import Fastify from "fastify";
 import { randomBytes } from "node:crypto";
 import { ALISA_WEBHOOK_SECRET, WEBHOOK_DOMAIN } from "./env.js";
-import { fetchAllKeepNodes } from "./googleKeep.js";
 import { handleAlisaRequest } from "./handleAlisaRequest.js";
 import { connectProducer, disconnectProducer, sendMessage } from "./kafka-producer.js";
 import { telegramApiCall } from "./telegram-api.js";
@@ -56,18 +55,6 @@ async function main(): Promise<void> {
         allowed_updates: ["message", "channel_post"],
     });
     console.log(`✅ Webhook set to url=${webhookUrl}`);
-
-    try {
-        const { nodes, version } = await fetchAllKeepNodes();
-        console.log(
-            "👉 All keep nodes fetched:",
-            JSON.stringify(nodes, null, 2),
-            "version:",
-            version,
-        );
-    } catch (err) {
-        console.error("❌ Failed to fetch keep nodes:", err);
-    }
 }
 
 async function shutdown(): Promise<void> {
