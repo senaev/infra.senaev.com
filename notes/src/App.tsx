@@ -18,6 +18,7 @@ const TABLE_NAME = "grocery_items";
 
 let newItemId = -1;
 const generateNewItemId = () => --newItemId;
+const clientIdsMap = new Map<number, number>();
 
 let maxExistingPosition = 0;
 const MAX_EXISTING_POSITION = {
@@ -110,14 +111,14 @@ export default function App() {
     }
 
     function createItem() {
-        const id = generateNewItemId();
+        const tempId = generateNewItemId();
         const position = MAX_EXISTING_POSITION.new();
         const created = new Date().toISOString();
 
         setItems((current) => [
             ...current,
             {
-                id,
+                id: tempId,
                 title: "",
                 created,
                 updated: created,
@@ -126,36 +127,35 @@ export default function App() {
                 deleted: null,
             },
         ]);
-        setPendingFocusId(id);
+        setPendingFocusId(tempId);
 
         supabase
             .from(TABLE_NAME)
             .insert({ title: "", position })
             .select("id, title, position, created, updated, bought, deleted")
             .single()
-            .then((result) => {
-                if (result.error) {
-                    addError(`createItem: ${result.error.message}`);
+            .then(({ data, error }) => {
+                if (error) {
+                    addError(`createItem: ${error.message}`);
                     return;
                 }
 
-                if (result.data) {
-                    let title = result.data.title;
-                    let bought = result.data.bought;
+                let title = data.title;
+                let bought = data.bought;
 
-                    setItems((current) =>
-                        current.map((item) => {
-                            if (item.id !== id) {
-                                return item;
-                            }
+                setItems((current) =>
+                    current.map((item) => {
+                        if (item.id !== tempId) {
+                            return item;
+                        }
 
-                            return result.data;
-                        }),
-                    );
+                        clientIdsMap.set(data.id, tempId);
+                        return data;
+                    }),
+                );
 
-                    if (title !== result.data.title || bought !== result.data.bought) {
-                        persistItem(result.data.id, { title, bought });
-                    }
+                if (title !== data.title || bought !== data.bought) {
+                    persistItem(data.id, { title, bought });
                 }
             });
     }
@@ -215,7 +215,7 @@ export default function App() {
                 ) : (
                     <div className="items">
                         {items.map((item) => (
-                            <div className="item-row" key={item.id}>
+                            <div className="item-row" key={clientIdsMap.get(item.id) || item.id}>
                                 <label className="item-checkbox-label">
                                     <input
                                         aria-label={`Mark ${item.title || "item"} as bought`}
@@ -255,9 +255,7 @@ export default function App() {
                                         removeItem(item.id);
                                     }}
                                     type="button"
-                                >
-                                    +
-                                </button>
+                                />
                             </div>
                         ))}
 
