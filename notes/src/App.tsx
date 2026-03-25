@@ -67,61 +67,54 @@ export default function App() {
         }
     }
 
-    async function updateItem(id: number, title: string) {
+    function updateItem(id: number, title: string) {
+        console.log("updateItem", { id, title });
         const nextTitle = title.trim();
-        if (!nextTitle) {
-            await removeItem(id);
-            return;
-        }
 
-        const existing = items.find((item) => item.id === id);
-        if (!existing || existing.title === nextTitle) {
-            return;
-        }
-
-        setError(null);
-
-        const result = await supabase
+        supabase
             .from("grocery_items")
             .update({ title: nextTitle })
             .eq("id", id)
             .select("id, title, created, bought, deleted")
-            .single();
+            .single()
+            .then((result) => {
+                if (result.error) {
+                    setError(result.error.message);
+                    return;
+                }
 
-        if (result.error) {
-            setError(result.error.message);
-            return;
-        }
+                if (result.data) {
+                    setItems((current) =>
+                        current.map((item) => {
+                            if (item.id === id) {
+                                return result.data;
+                            }
 
-        if (result.data) {
-            setItems((current) => current.map((item) => (item.id === id ? result.data : item)));
-        }
+                            return item;
+                        }),
+                    );
+                }
+            });
     }
 
-    async function removeItem(id: number) {
+    function removeItem(id: number) {
         setError(null);
 
         const deleted = new Date().toISOString();
-        const result = await supabase
+        supabase
             .from("grocery_items")
             .update({ deleted })
             .eq("id", id)
             .select("id")
-            .single();
-
-        if (result.error) {
-            setError(result.error.message);
-            return;
-        }
+            .single()
+            .then((result) => {
+                if (result.error) {
+                    setError(result.error.message);
+                    return;
+                }
+            });
 
         setItems((current) => current.filter((item) => item.id !== id));
-    }
-
-    function handleDraftKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-        if (event.key === "Enter") {
-            event.preventDefault();
-            void createItem();
-        }
     }
 
     function handleItemKeyDown(event: KeyboardEvent<HTMLInputElement>, item: GroceryItem) {
@@ -132,7 +125,8 @@ export default function App() {
 
         if (event.key === "Backspace" && !event.currentTarget.value) {
             event.preventDefault();
-            void removeItem(item.id);
+
+            removeItem(item.id);
         }
     }
 
@@ -154,17 +148,23 @@ export default function App() {
                             <div className="item-row" key={item.id}>
                                 <input
                                     className="item-input"
-                                    onBlur={(event) => void updateItem(item.id, event.target.value)}
+                                    onBlur={(event) => {
+                                        updateItem(item.id, event.target.value);
+                                    }}
                                     onChange={(event) =>
                                         handleItemChange(item.id, event.target.value)
                                     }
-                                    onKeyDown={(event) => handleItemKeyDown(event, item)}
+                                    onKeyDown={(event) => {
+                                        handleItemKeyDown(event, item);
+                                    }}
                                     value={item.title}
                                 />
                                 <button
                                     aria-label={`Remove ${item.title}`}
                                     className="item-remove"
-                                    onClick={() => void removeItem(item.id)}
+                                    onClick={() => {
+                                        removeItem(item.id);
+                                    }}
                                     type="button"
                                 >
                                     +
@@ -177,7 +177,12 @@ export default function App() {
                                 className="item-input"
                                 onBlur={() => void createItem()}
                                 onChange={(event) => setDraftTitle(event.target.value)}
-                                onKeyDown={handleDraftKeyDown}
+                                onKeyDown={(event) => {
+                                    if (event.key === "Enter") {
+                                        event.preventDefault();
+                                        void createItem();
+                                    }
+                                }}
                                 placeholder="+ List item"
                                 value={draftTitle}
                             />
