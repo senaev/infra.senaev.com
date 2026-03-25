@@ -71,7 +71,6 @@
     align-items: center;
     gap: 10px;
     min-height: 36px;
-    border-top: 1px solid rgb(95 99 104 / 0.35);
 }
 
 .item-checkbox-label {

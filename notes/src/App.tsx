@@ -13,6 +13,12 @@ type GroceryItem = {
     deleted: string | null;
 };
 
+type PendingFocus = {
+    id: number;
+    selectionStart: number;
+    selectionEnd: number;
+};
+
 const NOTE_TITLE = "Groceries 🛒";
 const TABLE_NAME = "grocery_items";
 
@@ -23,10 +29,11 @@ const clientIdsMap = new Map<number, number>();
 export default function App() {
     const [items, setItems] = useState<GroceryItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [pendingFocusId, setPendingFocusId] = useState<number | null>(null);
+    const [pendingFocus, setPendingFocus] = useState<PendingFocus | null>(null);
     const inputRefs = useRef(new Map<number, HTMLInputElement>());
 
     const [errors, setErrors] = useState<string[]>([]);
+
     function addError(error: string) {
         setErrors((current) => [...current, error]);
     }
@@ -38,7 +45,6 @@ export default function App() {
             .from(TABLE_NAME)
             .select("id, title, position, created, updated, bought, deleted")
             .is("deleted", null)
-            .order("created", { ascending: true })
             .then((result) => {
                 if (result.error) {
                     addError(result.error.message);
@@ -51,22 +57,23 @@ export default function App() {
     }, []);
 
     useEffect(() => {
-        if (pendingFocusId == null) {
+        if (pendingFocus == null) {
             return;
         }
 
-        const input = inputRefs.current.get(pendingFocusId);
+        const input = inputRefs.current.get(pendingFocus.id);
         if (!input) {
             return;
         }
 
         input.focus();
-        setPendingFocusId(null);
-    }, [items, pendingFocusId]);
+        input.setSelectionRange(pendingFocus.selectionStart, pendingFocus.selectionEnd);
+        setPendingFocus(null);
+    }, [items, pendingFocus]);
 
     function persistItem(
         id: number,
-        updates: Partial<Pick<GroceryItem, "title" | "bought" | "deleted">>,
+        updates: Partial<Pick<GroceryItem, "title" | "position" | "bought" | "deleted">>,
     ): void {
         supabase
             .from(TABLE_NAME)
@@ -89,36 +96,60 @@ export default function App() {
     }
 
     function createItem() {
+        const nextPosition =
+            items.reduce((maxPosition, item) => Math.max(maxPosition, item.position), 0) + 1;
+
+        insertItemAtPosition(nextPosition, "");
+    }
+
+    function insertItemAtPosition(position: number, title: string) {
         const tempId = generateNewItemId();
         const created = new Date().toISOString();
+        const shiftedItems = items
+            .filter((item) => item.position >= position)
+            .map((item) => ({ id: item.id, position: item.position + 1 }));
 
-        setItems((current) => [
-            ...current,
-            {
+        setItems((current) => {
+            const nextItems = current.map((item) => {
+                if (item.position >= position) {
+                    return { ...item, position: item.position + 1 };
+                }
+
+                return item;
+            });
+
+            nextItems.push({
                 id: tempId,
-                title: "",
+                title,
                 created,
                 updated: created,
-                position: 1,
+                position,
                 bought: null,
                 deleted: null,
-            },
-        ]);
-        setPendingFocusId(tempId);
+            });
+
+            return nextItems;
+        });
+        setPendingFocus({
+            id: tempId,
+            selectionStart: 0,
+            selectionEnd: 0,
+        });
+
+        shiftedItems.forEach((item) => {
+            persistItem(item.id, { position: item.position });
+        });
 
         supabase
             .from(TABLE_NAME)
-            .insert({ title: "" })
+            .insert({ title, position })
             .select("id, title, position, created, updated, bought, deleted")
             .single()
             .then(({ data, error }) => {
                 if (error) {
-                    addError(`createItem: ${error.message}`);
+                    addError(`insertItemAtPosition: ${error.message}`);
                     return;
                 }
-
-                let title = data.title;
-                let bought = data.bought;
 
                 setItems((current) =>
                     current.map((item) => {
@@ -130,11 +161,26 @@ export default function App() {
                         return data;
                     }),
                 );
-
-                if (title !== data.title || bought !== data.bought) {
-                    persistItem(data.id, { title, bought });
-                }
             });
+    }
+
+    function updateItemTitle(id: number, title: string) {
+        setItems((current) => current.map((item) => (item.id === id ? { ...item, title } : item)));
+        persistItem(id, { title });
+    }
+
+    function createItemAfter(id: number, titleBefore: string, titleAfter: string) {
+        const currentItem = items.find((item) => item.id === id);
+
+        if (!currentItem) {
+            addError(`createItemAfter: item with id ${id} not found`);
+            return;
+        }
+
+        const nextPosition = currentItem.position + 1;
+
+        updateItemTitle(id, titleBefore);
+        insertItemAtPosition(nextPosition, titleAfter);
     }
 
     function updateItem(id: number, title: string) {
@@ -158,7 +204,12 @@ export default function App() {
     function handleItemKeyDown(event: KeyboardEvent<HTMLInputElement>, item: GroceryItem) {
         if (event.key === "Enter") {
             event.preventDefault();
-            event.currentTarget.blur();
+            const cursorPosition =
+                event.currentTarget.selectionStart ?? event.currentTarget.value.length;
+            const titleBefore = event.currentTarget.value.slice(0, cursorPosition);
+            const titleAfter = event.currentTarget.value.slice(cursorPosition);
+
+            createItemAfter(item.id, titleBefore, titleAfter);
         }
 
         if (event.key === "Backspace" && !event.currentTarget.value) {
@@ -191,50 +242,55 @@ export default function App() {
                     <p className="status">Loading...</p>
                 ) : (
                     <div className="items">
-                        {items.map((item) => (
-                            <div className="item-row" key={clientIdsMap.get(item.id) || item.id}>
-                                <label className="item-checkbox-label">
+                        {[...items]
+                            .sort((first, second) => first.position - second.position)
+                            .map((item) => (
+                                <div
+                                    className="item-row"
+                                    key={clientIdsMap.get(item.id) || item.id}
+                                >
+                                    <label className="item-checkbox-label">
+                                        <input
+                                            aria-label={`Mark ${item.title || "item"} as bought`}
+                                            checked={Boolean(item.bought)}
+                                            className="item-checkbox"
+                                            onChange={(event) => {
+                                                toggleBought(item.id, event.target.checked);
+                                            }}
+                                            type="checkbox"
+                                        />
+                                    </label>
                                     <input
-                                        aria-label={`Mark ${item.title || "item"} as bought`}
-                                        checked={Boolean(item.bought)}
-                                        className="item-checkbox"
-                                        onChange={(event) => {
-                                            toggleBought(item.id, event.target.checked);
+                                        id={`input-${item.id}`}
+                                        className={`item-input${item.bought ? " is-bought" : ""}`}
+                                        ref={(node) => {
+                                            if (node) {
+                                                inputRefs.current.set(item.id, node);
+                                            } else {
+                                                inputRefs.current.delete(item.id);
+                                            }
                                         }}
-                                        type="checkbox"
-                                    />
-                                </label>
-                                <input
-                                    id={`input-${item.id}`}
-                                    className={`item-input${item.bought ? " is-bought" : ""}`}
-                                    ref={(node) => {
-                                        if (node) {
-                                            inputRefs.current.set(item.id, node);
-                                        } else {
-                                            inputRefs.current.delete(item.id);
+                                        onBlur={(event) => {
+                                            updateItem(item.id, event.target.value);
+                                        }}
+                                        onChange={(event) =>
+                                            handleItemChange(item.id, event.target.value)
                                         }
-                                    }}
-                                    onBlur={(event) => {
-                                        updateItem(item.id, event.target.value);
-                                    }}
-                                    onChange={(event) =>
-                                        handleItemChange(item.id, event.target.value)
-                                    }
-                                    onKeyDown={(event) => {
-                                        handleItemKeyDown(event, item);
-                                    }}
-                                    value={item.title}
-                                />
-                                <button
-                                    aria-label={`Remove ${item.title || "item"}`}
-                                    className="item-remove"
-                                    onClick={() => {
-                                        removeItem(item.id);
-                                    }}
-                                    type="button"
-                                />
-                            </div>
-                        ))}
+                                        onKeyDown={(event) => {
+                                            handleItemKeyDown(event, item);
+                                        }}
+                                        value={item.title}
+                                    />
+                                    <button
+                                        aria-label={`Remove ${item.title || "item"}`}
+                                        className="item-remove"
+                                        onClick={() => {
+                                            removeItem(item.id);
+                                        }}
+                                        type="button"
+                                    />
+                                </div>
+                            ))}
 
                         <button
                             className="add-item-button"
