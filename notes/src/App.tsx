@@ -9,8 +9,7 @@ type GroceryItem = {
     position: number;
     created: string;
     updated: string;
-    bought: string | null;
-    deleted: string | null;
+    checked: boolean;
 };
 
 type PendingFocus = {
@@ -19,8 +18,10 @@ type PendingFocus = {
     selectionEnd: number;
 };
 
-const NOTE_TITLE = "Groceries 🛒";
 const TABLE_NAME = "grocery_items";
+
+const NOTE_TITLE = "Groceries 🛒";
+const ITEM_COLUMNS = "id, title, position, created, updated, checked";
 
 let newItemId = -1;
 const generateNewItemId = () => --newItemId;
@@ -43,8 +44,7 @@ export default function App() {
 
         supabase
             .from(TABLE_NAME)
-            .select("id, title, position, created, updated, bought, deleted")
-            .is("deleted", null)
+            .select(ITEM_COLUMNS)
             .then((result) => {
                 if (result.error) {
                     addError(result.error.message);
@@ -73,13 +73,17 @@ export default function App() {
 
     function persistItem(
         id: number,
-        updates: Partial<Pick<GroceryItem, "title" | "position" | "bought" | "deleted">>,
+        updates: Partial<Pick<GroceryItem, "title" | "position" | "checked">>,
     ): void {
+        if (id < 0) {
+            return;
+        }
+
         supabase
             .from(TABLE_NAME)
             .update(updates)
             .eq("id", id)
-            .select("id, title, position, created, updated, bought, deleted")
+            .select(ITEM_COLUMNS)
             .single()
             .then((result) => {
                 if (result.error) {
@@ -89,20 +93,37 @@ export default function App() {
             });
     }
 
+    function deleteItem(id: number): void {
+        if (id < 0) {
+            addError(`deleteItem: cannot delete item with temporary id ${id}`);
+            return;
+        }
+
+        supabase
+            .from(TABLE_NAME)
+            .delete()
+            .eq("id", id)
+            .then((result) => {
+                if (result.error) {
+                    addError(`deleteItem(${id}): ${result.error.message}`);
+                }
+            });
+    }
+
     function createItem() {
         const nextPosition =
             items.reduce((maxPosition, item) => Math.max(maxPosition, item.position), 0) + 1;
 
-        insertItem({ title: "", bought: null, position: nextPosition });
+        insertItem({ title: "", checked: false, position: nextPosition });
     }
 
     function insertItem({
         title,
-        bought,
+        checked,
         position,
     }: {
         title: string;
-        bought: string | null;
+        checked: boolean;
         position: number;
     }) {
         const tempId = generateNewItemId();
@@ -126,8 +147,7 @@ export default function App() {
                 created,
                 updated: created,
                 position,
-                bought,
-                deleted: null,
+                checked,
             });
 
             return nextItems;
@@ -144,8 +164,8 @@ export default function App() {
 
         supabase
             .from(TABLE_NAME)
-            .insert({ title, position, bought })
-            .select("id, title, position, created, updated, bought, deleted")
+            .insert({ title, position, checked })
+            .select(ITEM_COLUMNS)
             .single()
             .then(({ data, error }) => {
                 if (error) {
@@ -178,12 +198,12 @@ export default function App() {
 
     function createItemAfter({
         id,
-        bought,
+        checked,
         titleBefore,
         titleAfter,
     }: {
         id: number;
-        bought: string | null;
+        checked: boolean;
         titleBefore: string;
         titleAfter: string;
     }) {
@@ -199,7 +219,7 @@ export default function App() {
         updateItemTitle(id, titleBefore);
         insertItem({
             title: titleAfter,
-            bought: titleAfter.trim() ? bought : null,
+            checked,
             position: nextPosition,
         });
     }
@@ -208,18 +228,16 @@ export default function App() {
         persistItem(id, { title });
     }
 
-    function toggleBought(id: number, checked: boolean) {
-        const bought = checked ? new Date().toISOString() : null;
-
-        setItems((current) => current.map((item) => (item.id === id ? { ...item, bought } : item)));
-        persistItem(id, { bought });
+    function toggleChecked(id: number, isChecked: boolean) {
+        setItems((current) =>
+            current.map((item) => (item.id === id ? { ...item, checked: isChecked } : item)),
+        );
+        persistItem(id, { checked: isChecked });
     }
 
     function removeItem(id: number) {
-        const deleted = new Date().toISOString();
-        persistItem(id, { deleted });
-
         setItems((current) => current.filter((item) => item.id !== id));
+        deleteItem(id);
     }
 
     function mergeItemWithPrevious(id: number) {
@@ -248,7 +266,7 @@ export default function App() {
         );
 
         persistItem(previousItem.id, { title: mergedTitle });
-        persistItem(currentItem.id, { deleted: new Date().toISOString() });
+        deleteItem(currentItem.id);
         setPendingFocus({
             id: previousItem.id,
             selectionStart: cursorPosition,
@@ -266,7 +284,7 @@ export default function App() {
 
             createItemAfter({
                 id: item.id,
-                bought: item.bought,
+                checked: item.checked,
                 titleBefore,
                 titleAfter,
             });
@@ -317,18 +335,18 @@ export default function App() {
                                 >
                                     <label className="item-checkbox-label">
                                         <input
-                                            aria-label={`Mark ${item.title || "item"} as bought`}
-                                            checked={Boolean(item.bought)}
+                                            aria-label={`Mark ${item.title || "item"} as checked`}
+                                            checked={Boolean(item.checked)}
                                             className="item-checkbox"
                                             onChange={(event) => {
-                                                toggleBought(item.id, event.target.checked);
+                                                toggleChecked(item.id, event.target.checked);
                                             }}
                                             type="checkbox"
                                         />
                                     </label>
                                     <input
                                         id={`input-${item.id}`}
-                                        className={`item-input${item.bought ? " is-bought" : ""}`}
+                                        className={`item-input${item.checked ? " is-checked" : ""}`}
                                         ref={(node) => {
                                             if (node) {
                                                 inputRefs.current.set(item.id, node);
