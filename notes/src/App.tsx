@@ -12,10 +12,13 @@ type GroceryItem = {
 };
 
 const NOTE_TITLE = "Groceries 🛒";
+const TABLE_NAME = "grocery_items";
+
+let newItemId = -1;
+const generateNewItemId = () => --newItemId;
 
 export default function App() {
     const [items, setItems] = useState<GroceryItem[]>([]);
-    const [draftTitle, setDraftTitle] = useState("");
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -25,7 +28,7 @@ export default function App() {
             setError(null);
 
             const result = await supabase
-                .from("grocery_items")
+                .from(TABLE_NAME)
                 .select("id, title, created, bought, deleted")
                 .is("deleted", null)
                 .order("created", { ascending: true });
@@ -42,38 +45,44 @@ export default function App() {
         void loadItems();
     }, []);
 
-    async function createItem() {
-        const nextTitle = draftTitle.trim();
-        if (!nextTitle) {
-            return;
-        }
-
+    function createItem() {
         setError(null);
 
-        const result = await supabase
-            .from("grocery_items")
-            .insert({ title: nextTitle })
+        const id = generateNewItemId();
+        setItems((current) => [
+            ...current,
+            {
+                id,
+                title: "",
+                created: new Date().toISOString(),
+                bought: null,
+                deleted: null,
+            },
+        ]);
+
+        supabase
+            .from(TABLE_NAME)
+            .insert({ title: "" })
             .select("id, title, created, bought, deleted")
-            .single();
+            .single()
+            .then((result) => {
+                if (result.error) {
+                    setError(result.error.message);
+                    return;
+                }
 
-        if (result.error) {
-            setError(result.error.message);
-            return;
-        }
-
-        if (result.data) {
-            setItems((current) => [...current, result.data]);
-            setDraftTitle("");
-        }
+                if (result.data) {
+                    setItems((current) =>
+                        current.map((item) => (item.id === id ? result.data : item)),
+                    );
+                }
+            });
     }
 
     function updateItem(id: number, title: string) {
-        console.log("updateItem", { id, title });
-        const nextTitle = title.trim();
-
         supabase
-            .from("grocery_items")
-            .update({ title: nextTitle })
+            .from(TABLE_NAME)
+            .update({ title })
             .eq("id", id)
             .select("id, title, created, bought, deleted")
             .single()
@@ -85,13 +94,7 @@ export default function App() {
 
                 if (result.data) {
                     setItems((current) =>
-                        current.map((item) => {
-                            if (item.id === id) {
-                                return result.data;
-                            }
-
-                            return item;
-                        }),
+                        current.map((item) => (item.id === id ? result.data : item)),
                     );
                 }
             });
@@ -102,7 +105,7 @@ export default function App() {
 
         const deleted = new Date().toISOString();
         supabase
-            .from("grocery_items")
+            .from(TABLE_NAME)
             .update({ deleted })
             .eq("id", id)
             .select("id")
@@ -110,7 +113,6 @@ export default function App() {
             .then((result) => {
                 if (result.error) {
                     setError(result.error.message);
-                    return;
                 }
             });
 
@@ -125,7 +127,6 @@ export default function App() {
 
         if (event.key === "Backspace" && !event.currentTarget.value) {
             event.preventDefault();
-
             removeItem(item.id);
         }
     }
@@ -160,7 +161,7 @@ export default function App() {
                                     value={item.title}
                                 />
                                 <button
-                                    aria-label={`Remove ${item.title}`}
+                                    aria-label={`Remove ${item.title || "item"}`}
                                     className="item-remove"
                                     onClick={() => {
                                         removeItem(item.id);
@@ -172,21 +173,15 @@ export default function App() {
                             </div>
                         ))}
 
-                        <div className="item-row item-row-draft">
-                            <input
-                                className="item-input"
-                                onBlur={() => void createItem()}
-                                onChange={(event) => setDraftTitle(event.target.value)}
-                                onKeyDown={(event) => {
-                                    if (event.key === "Enter") {
-                                        event.preventDefault();
-                                        void createItem();
-                                    }
-                                }}
-                                placeholder="+ List item"
-                                value={draftTitle}
-                            />
-                        </div>
+                        <button
+                            className="add-item-button"
+                            onClick={() => {
+                                createItem();
+                            }}
+                            type="button"
+                        >
+                            + List item
+                        </button>
                     </div>
                 )}
             </section>

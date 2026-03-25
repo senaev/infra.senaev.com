@@ -3,12 +3,13 @@
     padding: 40px 20px 80px;
     background: rgb(32 33 36);
     color: rgb(232 234 237);
+    display: flex;
+    justify-content: center;
 }
 
 .editor {
-    width: min(100%, 680px);
+    width: min(100%, 640px);
     min-height: calc(100vh - 120px);
-    margin: 0 auto;
     padding: 6px 24px 28px;
     border: 1px solid rgb(95 99 104 / 0.45);
     border-radius: 22px;
@@ -51,6 +52,17 @@
 
 .items {
     display: grid;
+}
+
+.add-item-button,
+.item-input {
+    width: 100%;
+    padding: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
 }
 
 .item-row {
@@ -103,7 +115,18 @@
     font-size: 1rem;
 }
 
-@media (max-width: 640px) {
+.add-item-button {
+    padding: 12px 0;
+    color: rgb(154 160 166);
+    text-align: left;
+    cursor: pointer;
+}
+
+.add-item-button:hover {
+    color: rgb(232 234 237);
+}
+
+@media (max-width: 740px) {
     .page {
         min-height: 100dvh;
         padding: 0;
