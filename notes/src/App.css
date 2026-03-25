@@ -1,38 +1,124 @@
-.App {
-    text-align: center;
-}
-
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
-}
-
-.App-header {
-    background-color: #282c34;
+.page {
     min-height: 100vh;
-    display: flex;
-    flex-direction: column;
+    padding: 40px 20px 80px;
+    background: rgb(32 33 36);
+    color: rgb(232 234 237);
+}
+
+.editor {
+    width: min(100%, 680px);
+    margin: 0 auto;
+    padding: 20px 24px 28px;
+    border: 1px solid rgb(95 99 104 / 0.45);
+    border-radius: 22px;
+    background: rgb(32 33 36);
+    box-shadow: none;
+    backdrop-filter: blur(10px);
+}
+
+.list-title,
+.item-input {
+    width: 100%;
+    padding: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+}
+
+.list-title {
+    margin-bottom: 14px;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.list-title::placeholder,
+.item-input::placeholder {
+    color: rgb(154 160 166);
+}
+
+.status {
+    margin: 0 0 12px;
+    font-size: 0.92rem;
+}
+
+.error {
+    color: rgb(242 139 130);
+}
+
+.items {
+    display: grid;
+}
+
+.item-row {
+    display: grid;
+    grid-template-columns: 1fr 28px;
     align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+    gap: 10px;
+    min-height: 36px;
+    border-top: 1px solid rgb(95 99 104 / 0.35);
 }
 
-.App-link {
-    color: #61dafb;
+.item-remove,
+.item-bullet {
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
+.item-remove {
+    display: inline-grid;
+    place-items: center;
+    padding: 0;
+    border: 1px solid transparent;
+    background-color: transparent;
+    background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSIjZmZmZmZmIj4KICA8cGF0aCBkPSJNMTkgNi40MUwxNy41OSA1IDEyIDEwLjU5IDYuNDEgNSA1IDYuNDEgMTAuNTkgMTIgNSAxNy41OSA2LjQxIDE5IDEyIDEzLjQxIDE3LjU5IDE5IDE5IDE3LjU5IDEzLjQxIDEyIDE5IDYuNDF6Ii8+Cjwvc3ZnPgo=");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 18px 18px;
+    cursor: pointer;
+    justify-self: end;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 140ms ease;
+    color: transparent;
+    font-size: 0;
+}
+
+.item-remove:hover {
+    background-color: rgb(154 160 166 / 0.16);
+}
+
+.item-row:hover .item-remove,
+.item-row:focus-within .item-remove {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.item-bullet {
+    box-sizing: border-box;
+    border: 1px solid rgb(154 160 166 / 0.7);
+    justify-self: end;
+}
+
+.item-input {
+    min-width: 0;
+    padding: 12px 0;
+    font-size: 1rem;
+}
+
+.item-row-draft .item-input {
+    color: rgb(154 160 166);
+}
+
+@media (max-width: 640px) {
+    .page {
+        padding: 20px 12px 48px;
     }
-    to {
-        transform: rotate(360deg);
+
+    .editor {
+        padding: 16px 18px 20px;
+        border-radius: 18px;
     }
 }
