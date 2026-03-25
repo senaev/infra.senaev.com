@@ -136,12 +136,13 @@ export default function App() {
             <section className="editor">
                 <h1 className="list-title">{NOTE_TITLE}</h1>
 
-                {errors.length && (
+                {errors.length ? (
                     <p className="status error">
                         <div>Errors:</div>
                         <div>{errors}</div>
                     </p>
-                )}
+                ) : null}
+
                 {isLoading ? (
                     <p className="status">Loading...</p>
                 ) : (
