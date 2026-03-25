@@ -7,8 +7,9 @@
 
 .editor {
     width: min(100%, 680px);
+    min-height: calc(100vh - 120px);
     margin: 0 auto;
-    padding: 20px 24px 28px;
+    padding: 6px 24px 28px;
     border: 1px solid rgb(95 99 104 / 0.45);
     border-radius: 22px;
     background: rgb(32 33 36);
@@ -29,7 +30,8 @@
 
 .list-title {
     margin-bottom: 14px;
-    font-size: 1rem;
+    margin-top: 10px;
+    font-size: 1.3rem;
     font-weight: 700;
 }
 
@@ -60,8 +62,7 @@
     border-top: 1px solid rgb(95 99 104 / 0.35);
 }
 
-.item-remove,
-.item-bullet {
+.item-remove {
     width: 26px;
     height: 26px;
     border-radius: 999px;
@@ -96,29 +97,23 @@
     pointer-events: auto;
 }
 
-.item-bullet {
-    box-sizing: border-box;
-    border: 1px solid rgb(154 160 166 / 0.7);
-    justify-self: end;
-}
-
 .item-input {
     min-width: 0;
     padding: 12px 0;
     font-size: 1rem;
 }
 
-.item-row-draft .item-input {
-    color: rgb(154 160 166);
-}
-
 @media (max-width: 640px) {
     .page {
-        padding: 20px 12px 48px;
+        min-height: 100dvh;
+        padding: 0;
     }
 
     .editor {
-        padding: 16px 18px 20px;
-        border-radius: 18px;
+        width: 100%;
+        min-height: 100dvh;
+        padding: 10px 16px 24px;
+        border: 0;
+        border-radius: 0;
     }
 }
