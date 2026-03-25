@@ -6,7 +6,9 @@ import { supabase } from "./utils/supabase";
 type GroceryItem = {
     id: number;
     title: string;
+    position: number;
     created: string;
+    updated: string;
     bought: string | null;
     deleted: string | null;
 };
@@ -31,7 +33,7 @@ export default function App() {
 
         supabase
             .from(TABLE_NAME)
-            .select("id, title, created, bought, deleted")
+            .select("id, title, position, created, updated, bought, deleted")
             .is("deleted", null)
             .order("created", { ascending: true })
             .then((result) => {
@@ -48,20 +50,21 @@ export default function App() {
     function persistItem(
         id: number,
         updates: Partial<Pick<GroceryItem, "title" | "bought" | "deleted">>,
-    ) {
+    ): void {
         if (id < 0) {
-            return Promise.resolve(null);
+            addError("Cannot update item that is not yet saved");
+            return;
         }
 
-        return supabase
+        supabase
             .from(TABLE_NAME)
             .update(updates)
             .eq("id", id)
-            .select("id, title, created, bought, deleted")
+            .select("id, title, position, created, updated, bought, deleted")
             .single()
             .then((result) => {
                 if (result.error) {
-                    addError(result.error.message);
+                    addError(`persistItem(${id}): ${result.error.message}`);
                     return null;
                 }
 
@@ -70,19 +73,22 @@ export default function App() {
                         current.map((item) => (item.id === id ? result.data : item)),
                     );
                 }
-
-                return result.data;
             });
     }
 
     function createItem() {
         const id = generateNewItemId();
+        const position = Number.MAX_SAFE_INTEGER + id;
+        const created = new Date().toISOString();
+
         setItems((current) => [
             ...current,
             {
                 id,
                 title: "",
-                created: new Date().toISOString(),
+                created,
+                updated: created,
+                position,
                 bought: null,
                 deleted: null,
             },
@@ -90,12 +96,12 @@ export default function App() {
 
         supabase
             .from(TABLE_NAME)
-            .insert({ title: "" })
-            .select("id, title, created, bought, deleted")
+            .insert({ title: "", position })
+            .select("id, title, position, created, updated, bought, deleted")
             .single()
             .then((result) => {
                 if (result.error) {
-                    addError(result.error.message);
+                    addError(`createItem: ${result.error.message}`);
                     return;
                 }
 
@@ -109,38 +115,31 @@ export default function App() {
                                 return item;
                             }
 
-                            title = item.title;
-                            bought = item.bought;
-
-                            return {
-                                ...result.data,
-                                title: item.title,
-                                bought: item.bought,
-                            };
+                            return result.data;
                         }),
                     );
 
                     if (title !== result.data.title || bought !== result.data.bought) {
-                        void persistItem(result.data.id, { title, bought });
+                        persistItem(result.data.id, { title, bought });
                     }
                 }
             });
     }
 
     function updateItem(id: number, title: string) {
-        void persistItem(id, { title });
+        persistItem(id, { title });
     }
 
     function toggleBought(id: number, checked: boolean) {
         const bought = checked ? new Date().toISOString() : null;
 
         setItems((current) => current.map((item) => (item.id === id ? { ...item, bought } : item)));
-        void persistItem(id, { bought });
+        persistItem(id, { bought });
     }
 
     function removeItem(id: number) {
         const deleted = new Date().toISOString();
-        void persistItem(id, { deleted });
+        persistItem(id, { deleted });
 
         setItems((current) => current.filter((item) => item.id !== id));
     }
