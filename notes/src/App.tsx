@@ -86,12 +86,6 @@ export default function App() {
                     addError(`persistItem(${id}): ${result.error.message}`);
                     return null;
                 }
-
-                if (result.data) {
-                    setItems((current) =>
-                        current.map((item) => (item.id === id ? result.data : item)),
-                    );
-                }
             });
     }
 
@@ -159,14 +153,19 @@ export default function App() {
                     return;
                 }
 
+                clientIdsMap.set(data.id, tempId);
                 setItems((current) =>
                     current.map((item) => {
                         if (item.id !== tempId) {
                             return item;
                         }
 
-                        clientIdsMap.set(data.id, tempId);
-                        return data;
+                        return {
+                            ...item,
+                            id: data.id,
+                            created: data.created,
+                            updated: data.updated,
+                        };
                     }),
                 );
             });
@@ -198,7 +197,11 @@ export default function App() {
         const nextPosition = currentItem.position + 1;
 
         updateItemTitle(id, titleBefore);
-        insertItem({ title: titleAfter, bought, position: nextPosition });
+        insertItem({
+            title: titleAfter,
+            bought: titleAfter.trim() ? bought : null,
+            position: nextPosition,
+        });
     }
 
     function updateItem(id: number, title: string) {
@@ -219,6 +222,40 @@ export default function App() {
         setItems((current) => current.filter((item) => item.id !== id));
     }
 
+    function mergeItemWithPrevious(id: number) {
+        const sortedItems = [...items].sort((first, second) => first.position - second.position);
+        const currentIndex = sortedItems.findIndex((item) => item.id === id);
+
+        if (currentIndex <= 0) {
+            return;
+        }
+
+        const currentItem = sortedItems[currentIndex];
+        const previousItem = sortedItems[currentIndex - 1];
+        const mergedTitle = previousItem.title + currentItem.title;
+        const cursorPosition = previousItem.title.length;
+
+        setItems((current) =>
+            current
+                .map((item) => {
+                    if (item.id === previousItem.id) {
+                        return { ...item, title: mergedTitle };
+                    }
+
+                    return item;
+                })
+                .filter((item) => item.id !== currentItem.id),
+        );
+
+        persistItem(previousItem.id, { title: mergedTitle });
+        persistItem(currentItem.id, { deleted: new Date().toISOString() });
+        setPendingFocus({
+            id: previousItem.id,
+            selectionStart: cursorPosition,
+            selectionEnd: cursorPosition,
+        });
+    }
+
     function handleItemKeyDown(event: KeyboardEvent<HTMLInputElement>, item: GroceryItem) {
         if (event.key === "Enter") {
             event.preventDefault();
@@ -227,17 +264,28 @@ export default function App() {
             const titleBefore = event.currentTarget.value.slice(0, cursorPosition);
             const titleAfter = event.currentTarget.value.slice(cursorPosition);
 
-            createItemAfter({ id: item.id, bought: item.bought, titleBefore, titleAfter });
+            createItemAfter({
+                id: item.id,
+                bought: item.bought,
+                titleBefore,
+                titleAfter,
+            });
         }
 
-        if (event.key === "Backspace" && !event.currentTarget.value) {
+        if (
+            event.key === "Backspace" &&
+            event.currentTarget.selectionStart === 0 &&
+            event.currentTarget.selectionEnd === 0
+        ) {
             event.preventDefault();
-            removeItem(item.id);
+
+            mergeItemWithPrevious(item.id);
         }
     }
 
     function handleItemChange(id: number, title: string) {
         setItems((current) => current.map((item) => (item.id === id ? { ...item, title } : item)));
+        persistItem(id, { title });
     }
 
     return (
