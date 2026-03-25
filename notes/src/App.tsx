@@ -19,6 +19,19 @@ const TABLE_NAME = "grocery_items";
 let newItemId = -1;
 const generateNewItemId = () => --newItemId;
 
+let maxExistingPosition = 0;
+const MAX_EXISTING_POSITION = {
+    set: (next: number): void => {
+        maxExistingPosition = Math.max(maxExistingPosition, next);
+    },
+    get: (): number => maxExistingPosition,
+    new: (): number => {
+        const position = MAX_EXISTING_POSITION.get() + 2048;
+        MAX_EXISTING_POSITION.set(position);
+        return position;
+    },
+};
+
 export default function App() {
     const [items, setItems] = useState<GroceryItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -29,6 +42,10 @@ export default function App() {
     function addError(error: string) {
         setErrors((current) => [...current, error]);
     }
+
+    items.forEach((item) => {
+        MAX_EXISTING_POSITION.set(item.position);
+    });
 
     useEffect(() => {
         setIsLoading(true);
@@ -94,7 +111,7 @@ export default function App() {
 
     function createItem() {
         const id = generateNewItemId();
-        const position = Number.MAX_SAFE_INTEGER + id;
+        const position = MAX_EXISTING_POSITION.new();
         const created = new Date().toISOString();
 
         setItems((current) => [
@@ -207,7 +224,7 @@ export default function App() {
                                     />
                                 </label>
                                 <input
-                                    id={`input-${item.id}`}
+                                    id={`input-${item.position}`}
                                     className={`item-input${item.bought ? " is-bought" : ""}`}
                                     ref={(node) => {
                                         if (node) {
