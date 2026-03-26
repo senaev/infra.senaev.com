@@ -88,13 +88,13 @@ webhookEndpoint:
 vpnSubscription:
   enabled: true
   entries:
-    - name: "🇩🇪 senaev.ru💻yc → socks🌐hetzner"
+    - name: "🇩🇪 1. senaev.ru💻yc → socks🌐hetzner"
       link: "vless://{XRAY_USER_UUID:1}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
-    - name: "🇷🇺 senaev.ru💻yc → freedom🌐yc"
+    - name: "🇷🇺 2. senaev.ru💻yc → freedom🌐yc"
       link: "vless://{XRAY_USER_UUID:2}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
-    - name: "🇷🇺 senaev.com💻hetzner → socks🌐yc"
+    - name: "🇷🇺 3. senaev.com💻hetzner → socks🌐yc"
       link: "vless://{XRAY_USER_UUID:3}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
-    - name: "🇩🇪 senaev.com💻hetzner → freedom🌐hetzner"
+    - name: "🇩🇪 4. senaev.com💻hetzner → freedom🌐hetzner"
       link: "vless://{XRAY_USER_UUID:4}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
   vps: hetzner
 
