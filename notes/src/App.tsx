@@ -1,6 +1,6 @@
 import "./App.css";
 
-import { KeyboardEvent, useEffect, useRef, useState } from "react";
+import { KeyboardEvent, SyntheticEvent, useEffect, useRef, useState } from "react";
 import { supabase } from "./utils/supabase";
 
 type GroceryItem = {
@@ -32,6 +32,7 @@ export default function App() {
     const [isLoading, setIsLoading] = useState(true);
     const [pendingFocus, setPendingFocus] = useState<PendingFocus | null>(null);
     const inputRefs = useRef(new Map<number, HTMLInputElement>());
+    const desiredCaretPositionRef = useRef(0);
 
     const [errors, setErrors] = useState<string[]>([]);
 
@@ -272,15 +273,7 @@ export default function App() {
         });
     }
 
-    function moveFocusBetweenItems({
-        id,
-        direction,
-        cursorPosition,
-    }: {
-        id: number;
-        direction: "up" | "down";
-        cursorPosition: number;
-    }) {
+    function moveCaretBetweenItems({ id, direction }: { id: number; direction: "up" | "down" }) {
         const sortedItems = [...items].sort((first, second) => first.position - second.position);
         const currentIndex = sortedItems.findIndex((item) => item.id === id);
 
@@ -295,12 +288,23 @@ export default function App() {
             return;
         }
 
-        const selectionPosition = Math.min(cursorPosition, targetItem.title.length);
+        const selectionPosition = Math.min(
+            desiredCaretPositionRef.current,
+            targetItem.title.length,
+        );
         setPendingFocus({
             id: targetItem.id,
             selectionStart: selectionPosition,
             selectionEnd: selectionPosition,
         });
+    }
+
+    function saveCaretPosition(event: SyntheticEvent<HTMLInputElement>) {
+        const { selectionDirection, selectionStart, selectionEnd } = event.currentTarget;
+        const caretPosition = selectionDirection === "backward" ? selectionStart : selectionEnd;
+
+        console.log("saveCaretPosition", caretPosition);
+        desiredCaretPositionRef.current = caretPosition ?? 0;
     }
 
     function handleItemKeyDown(event: KeyboardEvent<HTMLInputElement>, item: GroceryItem) {
@@ -321,15 +325,9 @@ export default function App() {
 
         if (event.key === "ArrowUp" || event.key === "ArrowDown") {
             event.preventDefault();
-
-            const { selectionDirection, selectionStart, selectionEnd } = event.currentTarget;
-
-            const cursorPosition =
-                selectionDirection === "backward" ? selectionStart : selectionEnd;
-            moveFocusBetweenItems({
+            moveCaretBetweenItems({
                 id: item.id,
                 direction: event.key === "ArrowUp" ? "up" : "down",
-                cursorPosition: cursorPosition ?? 0,
             });
         }
 
@@ -400,9 +398,10 @@ export default function App() {
                                         onBlur={(event) => {
                                             updateItem(item.id, { title: event.target.value });
                                         }}
-                                        onChange={(event) =>
-                                            handleItemChange(item.id, event.target.value)
-                                        }
+                                        onChange={(event) => {
+                                            handleItemChange(item.id, event.target.value);
+                                        }}
+                                        onSelect={saveCaretPosition}
                                         onKeyDown={(event) => {
                                             handleItemKeyDown(event, item);
                                         }}
