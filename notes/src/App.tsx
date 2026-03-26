@@ -409,18 +409,18 @@ export default function App() {
                 <h1 className="list-title">{NOTE_TITLE}</h1>
 
                 {errors.length ? (
-                    <p className="status error">
+                    <div className="status error">
                         <div>Errors:</div>
                         <ul>
                             {errors.map((error, index) => (
                                 <li key={`${error}-${index}`}>{error}</li>
                             ))}
                         </ul>
-                    </p>
+                    </div>
                 ) : null}
 
                 {isLoading ? (
-                    <p className="status">Loading...</p>
+                    <p className="status">🔄 Loading...</p>
                 ) : (
                     <div className="items">
                         {[...items]
@@ -466,13 +466,14 @@ export default function App() {
                                         rows={1}
                                         value={item.title}
                                     />
-                                    <button
+                                    <div
                                         aria-label={`Remove ${item.title || "item"}`}
                                         className="item-remove"
                                         onClick={() => {
                                             removeItem(item.id);
                                         }}
-                                        type="button"
+                                        role="button"
+                                        tabIndex={0}
                                     />
                                 </div>
                             ))}

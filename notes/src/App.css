@@ -43,7 +43,7 @@
 }
 
 .status {
-    margin: 0 0 12px;
+    margin: 0 24px 12px;
     font-size: 0.92rem;
 }
 
@@ -69,8 +69,8 @@
 .item-row {
     display: grid;
     grid-template-columns: 24px 1fr 28px;
-    padding: 0 24px;
-    align-items: center;
+    padding: 0 0 0 24px;
+    align-items: flex-start;
     gap: 10px;
     min-height: 36px;
     border-top: 1px solid transparent;
@@ -84,6 +84,7 @@
 .item-checkbox-label {
     display: grid;
     place-items: center;
+    height: 36px;
 }
 
 .item-checkbox {
@@ -121,12 +122,9 @@
     width: 26px;
     height: 26px;
     border-radius: 999px;
-}
-
-.item-remove {
     display: inline-grid;
     place-items: center;
-    padding: 0;
+    padding: 4px;
     border: 1px solid transparent;
     background-color: transparent;
     background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSIjZmZmZmZmIj4KICA8cGF0aCBkPSJNMTkgNi40MUwxNy41OSA1IDEyIDEwLjU5IDYuNDEgNSA1IDYuNDEgMTAuNTkgMTIgNSAxNy41OSA2LjQxIDE5IDEyIDEzLjQxIDE3LjU5IDE5IDE5IDE3LjU5IDEzLjQxIDEyIDE5IDYuNDF6Ii8+Cjwvc3ZnPgo=");
@@ -167,6 +165,7 @@
     resize: none;
     overflow: hidden;
     field-sizing: content;
+    margin: 5px 0;
 }
 
 .add-item-button {
