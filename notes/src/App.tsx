@@ -291,18 +291,17 @@ export default function App() {
         const cursorPosition = previousItem.title.length;
 
         setItems((current) =>
-            current
-                .map((item) => {
-                    if (item.id === previousItem.id) {
-                        return { ...item, title: mergedTitle };
-                    }
+            current.map((item) => {
+                if (item.id === previousItem.id) {
+                    return { ...item, title: mergedTitle };
+                }
 
-                    return item;
-                })
-                .filter((item) => item.id !== currentItem.id),
+                return item;
+            }),
         );
 
         persistItem(previousItem.id, { title: mergedTitle });
+        removeItemLocally(currentItem.id);
         removeItemRemotely(currentItem.id);
         setPendingFocus({
             id: previousItem.id,
@@ -366,10 +365,9 @@ export default function App() {
     }
 
     function handleItemKeyDown(event: KeyboardEvent<HTMLTextAreaElement>, item: GroceryItem) {
+        let { selectionStart, selectionEnd } = event.currentTarget;
         if (event.key === "Enter" && !event.shiftKey) {
             event.preventDefault();
-
-            let { selectionStart, selectionEnd } = event.currentTarget;
 
             if (selectionStart == null || selectionEnd == null) {
                 shoeError("Unable to determine caret position");
@@ -393,8 +391,7 @@ export default function App() {
         }
 
         if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-            const hasSelection =
-                event.currentTarget.selectionStart !== event.currentTarget.selectionEnd;
+            const hasSelection = selectionStart !== selectionEnd;
             const shouldMoveToAdjacentItem =
                 !hasSelection &&
                 (event.key === "ArrowUp"
@@ -413,11 +410,7 @@ export default function App() {
             });
         }
 
-        if (
-            event.key === "Backspace" &&
-            event.currentTarget.selectionStart === 0 &&
-            event.currentTarget.selectionEnd === 0
-        ) {
+        if (event.key === "Backspace" && selectionStart === 0 && selectionEnd === 0) {
             event.preventDefault();
 
             mergeItemWithPrevious(item.id);
