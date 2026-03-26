@@ -69,7 +69,7 @@
 }
 
 .item-row:focus-within {
-    border-color: rgb(154 160 166 / 0.45);
+    border-color: rgb(95 99 104 / 0.45);
 }
 
 .item-checkbox-label {

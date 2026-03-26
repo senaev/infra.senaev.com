@@ -4,6 +4,8 @@ import { KeyboardEvent, SyntheticEvent, useEffect, useRef, useState } from "reac
 import { ErrorToasts } from "./components/ErrorToasts";
 import { supabase } from "./utils/supabase";
 
+const debugEnabled = new URLSearchParams(window.location.search).has("debug");
+
 type GroceryItem = {
     id: number;
     todo_list_id: number;
@@ -43,7 +45,6 @@ class Note {
     private items: GroceryItem[] = [];
 
     getItems() {
-        console.log(this.items, 2);
         return this.items;
     }
 
@@ -59,18 +60,14 @@ class Note {
 
 const note = new Note();
 
-function useNote(): [
-    GroceryItem[],
-    () => GroceryItem[],
-    (callback: (currentItems: GroceryItem[]) => GroceryItem[]) => void,
-] {
+function useNote(): [GroceryItem[], () => GroceryItem[], (items: GroceryItem[]) => void] {
     const [state, setState] = useState<GroceryItem[]>([]);
 
     return [
         state,
         () => note.getItems(),
-        (callback: (currentItems: GroceryItem[]) => GroceryItem[]): void => {
-            const itemsChanged = note.setItems(callback(note.getItems()));
+        (items: GroceryItem[]): void => {
+            const itemsChanged = note.setItems(items);
 
             if (itemsChanged) {
                 setState(note.getItems());
@@ -81,7 +78,6 @@ function useNote(): [
 
 export default function App() {
     const [items, getItems, setItems] = useNote();
-    console.log(items, 3);
     const [isLoading, setIsLoading] = useState(true);
     const [pendingFocus, setPendingFocus] = useState<PendingFocus | null>(null);
     const inputRefs = useRef(new Map<number, HTMLTextAreaElement>());
@@ -107,6 +103,7 @@ export default function App() {
             .select(ITEM_COLUMNS)
             .eq("todo_list_id", TODO_LIST_ID)
             .then(async (result) => {
+                // TODO: remove timeout
                 await new Promise((resolve) => setTimeout(resolve, 300));
                 return result;
             })
@@ -114,7 +111,7 @@ export default function App() {
                 if (result.error) {
                     showError(result.error.message);
                 } else {
-                    setItems(() => result.data.map((item) => ({ ...item, persisted: true })));
+                    setItems(result.data.map((item) => ({ ...item, persisted: true })));
                 }
 
                 setIsLoading(false);
@@ -144,9 +141,7 @@ export default function App() {
     }, [items]);
 
     function changeItemLocally(id: number, updates: Partial<GroceryItem>): void {
-        setItems((current) =>
-            current.map((item) => (item.id === id ? { ...item, ...updates } : item)),
-        );
+        setItems(getItems().map((item) => (item.id === id ? { ...item, ...updates } : item)));
     }
 
     function persistItem(
@@ -176,6 +171,7 @@ export default function App() {
             .select(ITEM_COLUMNS)
             .single()
             .then(async (result) => {
+                // TODO: remove timeout
                 await new Promise((resolve) => setTimeout(resolve, 300));
                 return result;
             })
@@ -193,7 +189,8 @@ export default function App() {
                     return;
                 }
 
-                if (items.find((item) => item.id === id)) {
+                const localItem = getItems().find((item) => item.id === id);
+                if (localItem) {
                     changeItemLocally(id, { persisted: true });
                 }
             });
@@ -212,7 +209,7 @@ export default function App() {
             return;
         }
 
-        setItems((current) => current.filter((item) => item.id !== id));
+        setItems(getItems().filter((item) => item.id !== id));
     }
 
     function removeItemRemotely(id: number): void {
@@ -268,8 +265,8 @@ export default function App() {
         }
 
         shiftedItems.forEach((nextPosition, id) => {
-            setItems((current) =>
-                current.map((item) => {
+            setItems(
+                getItems().map((item) => {
                     if (item.id === id) {
                         return { ...item, position: nextPosition, persisted: false };
                     }
@@ -295,7 +292,7 @@ export default function App() {
             persisted: false,
         };
 
-        setItems((current) => [...current, newItem]);
+        setItems([...getItems(), newItem]);
 
         setPendingFocus({
             id: tempId,
@@ -394,8 +391,8 @@ export default function App() {
     }
 
     function toggleChecked(id: number, isChecked: boolean) {
-        setItems((current) =>
-            current.map((item) => (item.id === id ? { ...item, checked: isChecked } : item)),
+        setItems(
+            getItems().map((item) => (item.id === id ? { ...item, checked: isChecked } : item)),
         );
         persistItem(id, { checked: isChecked });
     }
@@ -413,8 +410,8 @@ export default function App() {
         const mergedTitle = previousItem.title + currentItem.title;
         const cursorPosition = previousItem.title.length;
 
-        setItems((current) =>
-            current.map((item) => {
+        setItems(
+            getItems().map((item) => {
                 if (item.id === previousItem.id) {
                     return { ...item, title: mergedTitle };
                 }
@@ -597,29 +594,33 @@ export default function App() {
                                             value={item.title}
                                         />
                                     </label>
-                                    <span>{item.position}</span>
-                                    <span>{item.persisted ? "✅" : "⏳"}</span>
-                                    <span
-                                        style={{
-                                            color: "blue",
-                                        }}
-                                    >
-                                        {item.update_index}
-                                    </span>
-                                    <span
-                                        style={{
-                                            color: "red",
-                                        }}
-                                    >
-                                        {tempIdsMap.get(item.id) ?? "?"}
-                                    </span>
-                                    <span
-                                        style={{
-                                            color: "green",
-                                        }}
-                                    >
-                                        {item.id}
-                                    </span>
+                                    {debugEnabled && (
+                                        <>
+                                            <span>{item.position}</span>
+                                            <span>{item.persisted ? "✅" : "⏳"}</span>
+                                            <span
+                                                style={{
+                                                    color: "blue",
+                                                }}
+                                            >
+                                                {item.update_index}
+                                            </span>
+                                            <span
+                                                style={{
+                                                    color: "red",
+                                                }}
+                                            >
+                                                {tempIdsMap.get(item.id) ?? "?"}
+                                            </span>
+                                            <span
+                                                style={{
+                                                    color: "green",
+                                                }}
+                                            >
+                                                {item.id}
+                                            </span>
+                                        </>
+                                    )}
                                     <div
                                         aria-label={`Remove ${item.title || "item"}`}
                                         className="item-remove"
