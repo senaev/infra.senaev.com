@@ -332,6 +332,11 @@ export default function App() {
             });
         }
 
+        if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === "l") {
+            event.preventDefault();
+            toggleChecked(item.id, !item.checked);
+        }
+
         if (event.key === "ArrowUp" || event.key === "ArrowDown") {
             event.preventDefault();
             moveCaretBetweenItems({
