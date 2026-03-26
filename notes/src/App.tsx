@@ -11,7 +11,9 @@ type GroceryItem = {
     position: number;
     created: string;
     updated: string;
+    update_index: number;
     checked: boolean;
+    persisted: boolean;
 };
 
 type PendingFocus = {
@@ -24,17 +26,62 @@ const TABLE_NAME = "todo_lists_items";
 const TODO_LIST_ID = 1;
 
 const NOTE_TITLE = "Groceries 🛒";
-const ITEM_COLUMNS = "id, todo_list_id, title, position, created, updated, checked";
+const ITEM_COLUMNS = "id, todo_list_id, title, position, created, updated, update_index, checked";
 
 // Temp ids are used for optimistic rendering of newly created items
 // They are also used when rendering items to avoid rerendering after getting real id
 let nextTempId = -1;
 const generateNextItemId = () => nextTempId--;
 const tempIdsMap = new Map<number, number>();
-const tempIdsRemoved = new Set<number>();
+const tempIdsRemovedSet = new Set<number>();
+const tempUpdatesMap = new Map<
+    number,
+    Partial<Pick<GroceryItem, "title" | "position" | "checked">>
+>();
+
+class Note {
+    private items: GroceryItem[] = [];
+
+    getItems() {
+        console.log(this.items, 2);
+        return this.items;
+    }
+
+    setItems(items: GroceryItem[]): boolean {
+        const itemsChanged = JSON.stringify(this.items) !== JSON.stringify(items);
+        if (itemsChanged) {
+            this.items = items;
+        }
+
+        return itemsChanged;
+    }
+}
+
+const note = new Note();
+
+function useNote(): [
+    GroceryItem[],
+    () => GroceryItem[],
+    (callback: (currentItems: GroceryItem[]) => GroceryItem[]) => void,
+] {
+    const [state, setState] = useState<GroceryItem[]>([]);
+
+    return [
+        state,
+        () => note.getItems(),
+        (callback: (currentItems: GroceryItem[]) => GroceryItem[]): void => {
+            const itemsChanged = note.setItems(callback(note.getItems()));
+
+            if (itemsChanged) {
+                setState(note.getItems());
+            }
+        },
+    ];
+}
 
 export default function App() {
-    const [items, setItems] = useState<GroceryItem[]>([]);
+    const [items, getItems, setItems] = useNote();
+    console.log(items, 3);
     const [isLoading, setIsLoading] = useState(true);
     const [pendingFocus, setPendingFocus] = useState<PendingFocus | null>(null);
     const inputRefs = useRef(new Map<number, HTMLTextAreaElement>());
@@ -43,7 +90,8 @@ export default function App() {
 
     const [errors, setErrors] = useState<string[]>([]);
 
-    function shoeError(error: string) {
+    function showError(error: string) {
+        console.error(error);
         setErrors((current) => [...current, error]);
     }
 
@@ -58,11 +106,15 @@ export default function App() {
             .from(TABLE_NAME)
             .select(ITEM_COLUMNS)
             .eq("todo_list_id", TODO_LIST_ID)
+            .then(async (result) => {
+                await new Promise((resolve) => setTimeout(resolve, 300));
+                return result;
+            })
             .then((result) => {
                 if (result.error) {
-                    shoeError(result.error.message);
+                    showError(result.error.message);
                 } else {
-                    setItems(result.data);
+                    setItems(() => result.data.map((item) => ({ ...item, persisted: true })));
                 }
 
                 setIsLoading(false);
@@ -91,24 +143,58 @@ export default function App() {
         });
     }, [items]);
 
+    function changeItemLocally(id: number, updates: Partial<GroceryItem>): void {
+        setItems((current) =>
+            current.map((item) => (item.id === id ? { ...item, ...updates } : item)),
+        );
+    }
+
     function persistItem(
         id: number,
         updates: Partial<Pick<GroceryItem, "title" | "position" | "checked">>,
     ): void {
+        const itemToUpdate = getItems().find((item) => item.id === id);
+        if (!itemToUpdate) {
+            showError(`persistItem: item with id ${id} not found`);
+            debugger;
+            return;
+        }
+
+        const previousUpdateIndex = itemToUpdate.update_index;
+        const nextUpdateIndex = previousUpdateIndex + 1;
+        changeItemLocally(id, { update_index: nextUpdateIndex });
+
         if (id < 0) {
+            tempUpdatesMap.set(id, { ...tempUpdatesMap.get(id), ...updates });
             return;
         }
 
         supabase
             .from(TABLE_NAME)
-            .update(updates)
+            .update({ ...updates, update_index: nextUpdateIndex })
             .eq("id", id)
             .select(ITEM_COLUMNS)
             .single()
-            .then((result) => {
-                if (result.error) {
-                    shoeError(`persistItem(${id}): ${result.error.message}`);
-                    return null;
+            .then(async (result) => {
+                await new Promise((resolve) => setTimeout(resolve, 300));
+                return result;
+            })
+            .then(({ error }) => {
+                if (error) {
+                    try {
+                        const json = JSON.parse(error.message);
+
+                        if (json.id === "update_index_conflict") {
+                            return;
+                        }
+                    } catch (e) {
+                        showError(`persistItem(${id}): ${error.message}`);
+                    }
+                    return;
+                }
+
+                if (items.find((item) => item.id === id)) {
+                    changeItemLocally(id, { persisted: true });
                 }
             });
     }
@@ -122,7 +208,7 @@ export default function App() {
         const itemToRemove = items.find((item) => item.id === id);
 
         if (!itemToRemove) {
-            shoeError(`removeItem: item with id ${id} not found`);
+            showError(`removeItem: item with id ${id} not found`);
             return;
         }
 
@@ -132,7 +218,7 @@ export default function App() {
     function removeItemRemotely(id: number): void {
         if (id < 0) {
             // Item has NOT been persisted yet, add to list to remove after persistence
-            tempIdsRemoved.add(id);
+            tempIdsRemovedSet.add(id);
             return;
         }
 
@@ -142,7 +228,7 @@ export default function App() {
             .eq("id", id)
             .then((result) => {
                 if (result.error) {
-                    shoeError(`deleteItem(${id}): ${result.error.message}`);
+                    showError(`deleteItem(${id}): ${result.error.message}`);
                 }
             });
     }
@@ -153,9 +239,7 @@ export default function App() {
     }
 
     function createItem() {
-        const nextPosition =
-            items.reduce((maxPosition, item) => Math.max(maxPosition, item.position), 0) + 1;
-
+        const nextPosition = Math.max(...items.map((item) => item.position), 0) + 1;
         insertItem({ title: "", checked: false, position: nextPosition });
     }
 
@@ -168,81 +252,115 @@ export default function App() {
         checked: boolean;
         position: number;
     }) {
-        const tempId = generateNextItemId();
-        const created = new Date().toISOString();
-        const shiftedItems = items
+        const itemsWithHigherPosition = items
             .filter((item) => item.position >= position)
-            .map((item) => ({ id: item.id, position: item.position + 1 }));
+            .sort((first, second) => first.position - second.position);
 
-        setItems((current) => {
-            const nextItems = current.map((item) => {
-                if (item.position >= position) {
-                    return { ...item, position: item.position + 1 };
-                }
+        let busyPosition = position;
+        const shiftedItems: Map<number, number> = new Map();
+        for (const { id, position } of itemsWithHigherPosition) {
+            if (position !== busyPosition) {
+                break;
+            }
 
-                return item;
-            });
+            busyPosition++;
+            shiftedItems.set(id, busyPosition);
+        }
 
-            nextItems.push({
-                id: tempId,
-                todo_list_id: TODO_LIST_ID,
-                title,
-                created,
-                updated: created,
-                position,
-                checked,
-            });
+        shiftedItems.forEach((nextPosition, id) => {
+            setItems((current) =>
+                current.map((item) => {
+                    if (item.id === id) {
+                        return { ...item, position: nextPosition, persisted: false };
+                    }
 
-            return nextItems;
+                    return item;
+                }),
+            );
+
+            persistItem(id, { position: nextPosition });
         });
+
+        const tempId = generateNextItemId();
+
+        const newItem: GroceryItem = {
+            id: tempId,
+            todo_list_id: TODO_LIST_ID,
+            title,
+            created: "",
+            updated: "",
+            position,
+            checked,
+            update_index: 0,
+            persisted: false,
+        };
+
+        setItems((current) => [...current, newItem]);
+
         setPendingFocus({
             id: tempId,
             selectionStart: 0,
             selectionEnd: 0,
         });
 
-        shiftedItems.forEach((item) => {
-            persistItem(item.id, { position: item.position });
-        });
-
         supabase
             .from(TABLE_NAME)
-            .insert({ todo_list_id: TODO_LIST_ID, title, position, checked })
+            .insert({
+                todo_list_id: newItem.todo_list_id,
+                title: newItem.title,
+                position: newItem.position,
+                checked: newItem.checked,
+                update_index: newItem.update_index,
+            })
             .select(ITEM_COLUMNS)
             .single()
             .then(({ data, error }) => {
                 if (error) {
-                    shoeError(`insertItemAtPosition: ${error.message}`);
+                    showError(`insertItemAtPosition: ${error.message}`);
                     return;
                 }
 
-                if (tempIdsRemoved.delete(tempId)) {
+                if (tempIdsRemovedSet.delete(tempId)) {
                     removeItemRemotely(data.id);
                     return;
                 }
 
                 tempIdsMap.set(data.id, tempId);
-                setItems((current) =>
-                    current.map((item) => {
-                        if (item.id !== tempId) {
-                            return item;
-                        }
 
-                        return {
-                            ...item,
-                            id: data.id,
-                            created: data.created,
-                            updated: data.updated,
-                        };
-                    }),
-                );
+                const tempUpdate = tempUpdatesMap.get(tempId);
+                changeItemLocally(tempId, {
+                    id: data.id,
+                    created: data.created,
+                    updated: data.updated,
+                    persisted: !tempUpdate,
+                });
+                if (tempUpdate) {
+                    tempUpdatesMap.delete(tempId);
+                    persistItem(data.id, tempUpdate);
+                }
             });
     }
 
     function updateItem(id: number, params: { title?: string; checked?: boolean }) {
-        setItems((current) =>
-            current.map((item) => (item.id === id ? { ...item, ...params } : item)),
-        );
+        const itemToUpdate = items.find((item) => item.id === id);
+
+        if (!itemToUpdate) {
+            showError(`updateItem: item not found id=[${id}]`);
+            return;
+        }
+
+        let nothingToUpdate = true;
+        for (const [key, value] of Object.entries(params)) {
+            if (itemToUpdate[key as keyof GroceryItem] !== value) {
+                nothingToUpdate = false;
+                break;
+            }
+        }
+        if (nothingToUpdate) {
+            return;
+        }
+
+        changeItemLocally(id, { ...params, persisted: false });
         persistItem(id, params);
     }
 
@@ -260,13 +378,14 @@ export default function App() {
         const currentItem = items.find((item) => item.id === id);
 
         if (!currentItem) {
-            shoeError(`createItemAfter: item with id ${id} not found`);
+            showError(`createItemAfter: item with id ${id} not found`);
             return;
         }
 
         const nextPosition = currentItem.position + 1;
 
         updateItem(id, { title: titleBefore, checked });
+
         insertItem({
             title: titleAfter,
             checked: titleAfter.trim() ? checked : false,
@@ -374,7 +493,7 @@ export default function App() {
             event.preventDefault();
 
             if (selectionStart == null || selectionEnd == null) {
-                shoeError("Unable to determine caret position");
+                showError("Unable to determine caret position");
                 return;
             }
 
@@ -422,7 +541,7 @@ export default function App() {
     }
 
     function handleItemChange(id: number, title: string) {
-        setItems((current) => current.map((item) => (item.id === id ? { ...item, title } : item)));
+        changeItemLocally(id, { title, persisted: false });
         persistItem(id, { title });
     }
 
@@ -478,6 +597,15 @@ export default function App() {
                                             value={item.title}
                                         />
                                     </label>
+                                    <span>{item.position}</span>
+                                    <span>{item.persisted ? "✅" : "⏳"}</span>
+                                    <span
+                                        style={{
+                                            color: "blue",
+                                        }}
+                                    >
+                                        {item.update_index}
+                                    </span>
                                     <span
                                         style={{
                                             color: "red",
