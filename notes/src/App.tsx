@@ -508,7 +508,9 @@ export default function App() {
                                         }}
                                         role="button"
                                         tabIndex={0}
-                                    />
+                                    >
+                                        <div className="item-remove-visual" />
+                                    </div>
                                 </div>
                             ))}
                         <button
