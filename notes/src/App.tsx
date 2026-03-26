@@ -1,6 +1,7 @@
 import "./App.css";
 
 import { KeyboardEvent, SyntheticEvent, useEffect, useRef, useState } from "react";
+import { ErrorToasts } from "./components/ErrorToasts";
 import { supabase } from "./utils/supabase";
 
 type GroceryItem = {
@@ -23,9 +24,12 @@ const TABLE_NAME = "grocery_items";
 const NOTE_TITLE = "Groceries 🛒";
 const ITEM_COLUMNS = "id, title, position, created, updated, checked";
 
-let newItemId = -1;
-const generateNewItemId = () => --newItemId;
-const clientIdsMap = new Map<number, number>();
+// Temp ids are used for optimistic rendering of newly created items
+// They are also used when rendering items to avoid rerendering after getting real id
+let nextTempId = -1;
+const generateNextItemId = () => nextTempId--;
+const tempIdsMap = new Map<number, number>();
+const tempIdsRemoved = new Set<number>();
 
 export default function App() {
     const [items, setItems] = useState<GroceryItem[]>([]);
@@ -39,6 +43,10 @@ export default function App() {
 
     function addError(error: string) {
         setErrors((current) => [...current, error]);
+    }
+
+    function removeError(indexToRemove: number) {
+        setErrors((current) => current.filter((_, index) => index !== indexToRemove));
     }
 
     useEffect(() => {
@@ -107,9 +115,23 @@ export default function App() {
         input.style.height = `${input.scrollHeight}px`;
     }
 
-    function deleteItem(id: number): void {
+    function removeItemLocally(id: number): void {
+        const itemToRemove = items.find((item) => item.id === id);
+        console.log({ itemToRemove });
+
+        if (!itemToRemove) {
+            addError(`removeItem: item with id ${id} not found`);
+            return;
+        }
+
+        setItems((current) => current.filter((item) => item.id !== id));
+    }
+
+    function removeItemRemotely(id: number): void {
         if (id < 0) {
-            addError(`deleteItem: cannot delete item with temporary id ${id}`);
+            // Item has NOT been persisted yet, add to list to remove after persistence
+            console.log(`Removing item with temp id ${id}`);
+            tempIdsRemoved.add(id);
             return;
         }
 
@@ -122,6 +144,11 @@ export default function App() {
                     addError(`deleteItem(${id}): ${result.error.message}`);
                 }
             });
+    }
+
+    function removeItem(id: number) {
+        removeItemLocally(id);
+        removeItemRemotely(id);
     }
 
     function createItem() {
@@ -140,7 +167,7 @@ export default function App() {
         checked: boolean;
         position: number;
     }) {
-        const tempId = generateNewItemId();
+        const tempId = generateNextItemId();
         const created = new Date().toISOString();
         const shiftedItems = items
             .filter((item) => item.position >= position)
@@ -187,7 +214,16 @@ export default function App() {
                     return;
                 }
 
-                clientIdsMap.set(data.id, tempId);
+                if (tempIdsRemoved.has(tempId)) {
+                    tempIdsRemoved.delete(tempId);
+                    removeItemRemotely(data.id);
+                    console.log(
+                        `Item with temp id ${tempId} was removed before it was persisted, skipping...`,
+                    );
+                    return;
+                }
+
+                tempIdsMap.set(data.id, tempId);
                 setItems((current) =>
                     current.map((item) => {
                         if (item.id !== tempId) {
@@ -247,11 +283,6 @@ export default function App() {
         persistItem(id, { checked: isChecked });
     }
 
-    function removeItem(id: number) {
-        setItems((current) => current.filter((item) => item.id !== id));
-        deleteItem(id);
-    }
-
     function mergeItemWithPrevious(id: number) {
         const sortedItems = [...items].sort((first, second) => first.position - second.position);
         const currentIndex = sortedItems.findIndex((item) => item.id === id);
@@ -278,7 +309,7 @@ export default function App() {
         );
 
         persistItem(previousItem.id, { title: mergedTitle });
-        deleteItem(currentItem.id);
+        removeItemRemotely(currentItem.id);
         setPendingFocus({
             id: previousItem.id,
             selectionStart: cursorPosition,
@@ -405,19 +436,9 @@ export default function App() {
 
     return (
         <main className="page">
+            <ErrorToasts errors={errors} onClose={removeError} />
             <section className="editor">
                 <h1 className="list-title">{NOTE_TITLE}</h1>
-
-                {errors.length ? (
-                    <div className="status error">
-                        <div>Errors:</div>
-                        <ul>
-                            {errors.map((error, index) => (
-                                <li key={`${error}-${index}`}>{error}</li>
-                            ))}
-                        </ul>
-                    </div>
-                ) : null}
 
                 {isLoading ? (
                     <p className="status">🔄 Loading...</p>
@@ -426,10 +447,7 @@ export default function App() {
                         {[...items]
                             .sort((first, second) => first.position - second.position)
                             .map((item) => (
-                                <div
-                                    className="item-row"
-                                    key={clientIdsMap.get(item.id) || item.id}
-                                >
+                                <div className="item-row" key={tempIdsMap.get(item.id) || item.id}>
                                     <label className="item-checkbox-label">
                                         <input
                                             aria-label={`Mark ${item.title || "item"} as checked`}
@@ -441,31 +459,47 @@ export default function App() {
                                             type="checkbox"
                                         />
                                     </label>
-                                    <textarea
-                                        id={`input-${item.id}`}
-                                        className={`item-input${item.checked ? " is-checked" : ""}`}
-                                        ref={(node) => {
-                                            if (node) {
-                                                inputRefs.current.set(item.id, node);
-                                                resizeTextarea(node);
-                                            } else {
-                                                inputRefs.current.delete(item.id);
-                                            }
+                                    <label className="item-textarea-label">
+                                        <textarea
+                                            id={`input-${item.id}`}
+                                            className={`item-input${item.checked ? " is-checked" : ""}`}
+                                            ref={(node) => {
+                                                if (node) {
+                                                    inputRefs.current.set(item.id, node);
+                                                    resizeTextarea(node);
+                                                } else {
+                                                    inputRefs.current.delete(item.id);
+                                                }
+                                            }}
+                                            onBlur={(event) => {
+                                                updateItem(item.id, { title: event.target.value });
+                                            }}
+                                            onChange={(event) => {
+                                                resizeTextarea(event.currentTarget);
+                                                handleItemChange(item.id, event.target.value);
+                                            }}
+                                            onSelect={saveCaretPosition}
+                                            onKeyDown={(event) => {
+                                                handleItemKeyDown(event, item);
+                                            }}
+                                            rows={1}
+                                            value={item.title}
+                                        />
+                                    </label>
+                                    <span
+                                        style={{
+                                            color: "red",
                                         }}
-                                        onBlur={(event) => {
-                                            updateItem(item.id, { title: event.target.value });
+                                    >
+                                        {tempIdsMap.get(item.id) ?? "?"}
+                                    </span>
+                                    <span
+                                        style={{
+                                            color: "green",
                                         }}
-                                        onChange={(event) => {
-                                            resizeTextarea(event.currentTarget);
-                                            handleItemChange(item.id, event.target.value);
-                                        }}
-                                        onSelect={saveCaretPosition}
-                                        onKeyDown={(event) => {
-                                            handleItemKeyDown(event, item);
-                                        }}
-                                        rows={1}
-                                        value={item.title}
-                                    />
+                                    >
+                                        {item.id}
+                                    </span>
                                     <div
                                         aria-label={`Remove ${item.title || "item"}`}
                                         className="item-remove"

@@ -1,0 +1,51 @@
+.error-toasts {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 20;
+    display: grid;
+    gap: 10px;
+    width: min(360px, calc(100vw - 32px));
+}
+
+.error-toast {
+    display: grid;
+    gap: 10px;
+    padding: 14px 16px;
+    border: 1px solid rgb(242 139 130 / 0.45);
+    border-radius: 16px;
+    background: rgb(68 23 22 / 0.95);
+    box-shadow: 0 18px 40px rgb(0 0 0 / 0.28);
+    color: rgb(255 218 214);
+}
+
+.error-toast__message {
+    font-size: 0.94rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+}
+
+.error-toast__close {
+    justify-self: end;
+    padding: 6px 10px;
+    border: 1px solid rgb(255 218 214 / 0.26);
+    border-radius: 999px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.82rem;
+    cursor: pointer;
+}
+
+.error-toast__close:hover {
+    background: rgb(255 255 255 / 0.08);
+}
+
+@media (max-width: 740px) {
+    .error-toasts {
+        top: 12px;
+        right: 12px;
+        left: 12px;
+        width: auto;
+    }
+}
