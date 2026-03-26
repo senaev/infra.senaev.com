@@ -272,6 +272,37 @@ export default function App() {
         });
     }
 
+    function moveFocusBetweenItems({
+        id,
+        direction,
+        cursorPosition,
+    }: {
+        id: number;
+        direction: "up" | "down";
+        cursorPosition: number;
+    }) {
+        const sortedItems = [...items].sort((first, second) => first.position - second.position);
+        const currentIndex = sortedItems.findIndex((item) => item.id === id);
+
+        if (currentIndex === -1) {
+            return;
+        }
+
+        const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+        const targetItem = sortedItems[targetIndex];
+
+        if (!targetItem) {
+            return;
+        }
+
+        const selectionPosition = Math.min(cursorPosition, targetItem.title.length);
+        setPendingFocus({
+            id: targetItem.id,
+            selectionStart: selectionPosition,
+            selectionEnd: selectionPosition,
+        });
+    }
+
     function handleItemKeyDown(event: KeyboardEvent<HTMLInputElement>, item: GroceryItem) {
         if (event.key === "Enter") {
             event.preventDefault();
@@ -285,6 +316,20 @@ export default function App() {
                 checked: item.checked,
                 titleBefore,
                 titleAfter,
+            });
+        }
+
+        if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+            event.preventDefault();
+
+            const { selectionDirection, selectionStart, selectionEnd } = event.currentTarget;
+
+            const cursorPosition =
+                selectionDirection === "backward" ? selectionStart : selectionEnd;
+            moveFocusBetweenItems({
+                id: item.id,
+                direction: event.key === "ArrowUp" ? "up" : "down",
+                cursorPosition: cursorPosition ?? 0,
             });
         }
 
