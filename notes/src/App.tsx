@@ -319,10 +319,15 @@ export default function App() {
     function handleItemKeyDown(event: KeyboardEvent<HTMLInputElement>, item: GroceryItem) {
         if (event.key === "Enter") {
             event.preventDefault();
-            const cursorPosition =
-                event.currentTarget.selectionStart ?? event.currentTarget.value.length;
-            const titleBefore = event.currentTarget.value.slice(0, cursorPosition);
-            const titleAfter = event.currentTarget.value.slice(cursorPosition);
+
+            let { selectionStart, selectionEnd } = event.currentTarget;
+
+            if (!selectionStart || !selectionEnd) {
+                selectionStart = selectionEnd = event.currentTarget.value.length;
+            }
+
+            const titleBefore = event.currentTarget.value.slice(0, selectionStart);
+            const titleAfter = event.currentTarget.value.slice(selectionEnd);
 
             createItemAfter({
                 id: item.id,
