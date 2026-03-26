@@ -41,7 +41,7 @@ export default function App() {
 
     const [errors, setErrors] = useState<string[]>([]);
 
-    function addError(error: string) {
+    function shoeError(error: string) {
         setErrors((current) => [...current, error]);
     }
 
@@ -57,7 +57,7 @@ export default function App() {
             .select(ITEM_COLUMNS)
             .then((result) => {
                 if (result.error) {
-                    addError(result.error.message);
+                    shoeError(result.error.message);
                 } else {
                     setItems(result.data);
                 }
@@ -104,7 +104,7 @@ export default function App() {
             .single()
             .then((result) => {
                 if (result.error) {
-                    addError(`persistItem(${id}): ${result.error.message}`);
+                    shoeError(`persistItem(${id}): ${result.error.message}`);
                     return null;
                 }
             });
@@ -117,10 +117,9 @@ export default function App() {
 
     function removeItemLocally(id: number): void {
         const itemToRemove = items.find((item) => item.id === id);
-        console.log({ itemToRemove });
 
         if (!itemToRemove) {
-            addError(`removeItem: item with id ${id} not found`);
+            shoeError(`removeItem: item with id ${id} not found`);
             return;
         }
 
@@ -130,7 +129,6 @@ export default function App() {
     function removeItemRemotely(id: number): void {
         if (id < 0) {
             // Item has NOT been persisted yet, add to list to remove after persistence
-            console.log(`Removing item with temp id ${id}`);
             tempIdsRemoved.add(id);
             return;
         }
@@ -141,7 +139,7 @@ export default function App() {
             .eq("id", id)
             .then((result) => {
                 if (result.error) {
-                    addError(`deleteItem(${id}): ${result.error.message}`);
+                    shoeError(`deleteItem(${id}): ${result.error.message}`);
                 }
             });
     }
@@ -210,16 +208,12 @@ export default function App() {
             .single()
             .then(({ data, error }) => {
                 if (error) {
-                    addError(`insertItemAtPosition: ${error.message}`);
+                    shoeError(`insertItemAtPosition: ${error.message}`);
                     return;
                 }
 
-                if (tempIdsRemoved.has(tempId)) {
-                    tempIdsRemoved.delete(tempId);
+                if (tempIdsRemoved.delete(tempId)) {
                     removeItemRemotely(data.id);
-                    console.log(
-                        `Item with temp id ${tempId} was removed before it was persisted, skipping...`,
-                    );
                     return;
                 }
 
@@ -262,7 +256,7 @@ export default function App() {
         const currentItem = items.find((item) => item.id === id);
 
         if (!currentItem) {
-            addError(`createItemAfter: item with id ${id} not found`);
+            shoeError(`createItemAfter: item with id ${id} not found`);
             return;
         }
 
@@ -377,8 +371,9 @@ export default function App() {
 
             let { selectionStart, selectionEnd } = event.currentTarget;
 
-            if (!selectionStart || !selectionEnd) {
-                selectionStart = selectionEnd = event.currentTarget.value.length;
+            if (selectionStart == null || selectionEnd == null) {
+                shoeError("Unable to determine caret position");
+                return;
             }
 
             const titleBefore = event.currentTarget.value.slice(0, selectionStart);
