@@ -60,20 +60,18 @@ class Note {
 
 const note = new Note();
 
-function useNote(): [GroceryItem[], () => GroceryItem[], (items: GroceryItem[]) => void] {
-    const [state, setState] = useState<GroceryItem[]>([]);
+function useNote(): [number, () => GroceryItem[], (items: GroceryItem[]) => void] {
+    const [itemsVer, setItemsVer] = useState<number>(0);
 
-    return [
-        state,
-        () => note.getItems(),
-        (items: GroceryItem[]): void => {
-            const itemsChanged = note.setItems(items);
+    const setItemsRef = useRef<(items: GroceryItem[]) => void>((items: GroceryItem[]): void => {
+        const itemsChanged = note.setItems(items);
 
-            if (itemsChanged) {
-                setState(note.getItems());
-            }
-        },
-    ];
+        if (itemsChanged) {
+            setItemsVer((prev) => prev + 1);
+        }
+    });
+
+    return [itemsVer, () => note.getItems(), setItemsRef.current];
 }
 
 export default function App() {
@@ -116,7 +114,7 @@ export default function App() {
 
                 setIsLoading(false);
             });
-    }, []);
+    }, [setItems]);
 
     useEffect(() => {
         if (pendingFocus == null) {
@@ -202,7 +200,7 @@ export default function App() {
     }
 
     function removeItemLocally(id: number): void {
-        const itemToRemove = items.find((item) => item.id === id);
+        const itemToRemove = getItems().find((item) => item.id === id);
 
         if (!itemToRemove) {
             showError(`removeItem: item with id ${id} not found`);
@@ -236,7 +234,7 @@ export default function App() {
     }
 
     function createItem() {
-        const nextPosition = Math.max(...items.map((item) => item.position), 0) + 1;
+        const nextPosition = Math.max(...getItems().map((item) => item.position), 0) + 1;
         insertItem({ title: "", checked: false, position: nextPosition });
     }
 
@@ -249,7 +247,7 @@ export default function App() {
         checked: boolean;
         position: number;
     }) {
-        const itemsWithHigherPosition = items
+        const itemsWithHigherPosition = getItems()
             .filter((item) => item.position >= position)
             .sort((first, second) => first.position - second.position);
 
@@ -339,7 +337,7 @@ export default function App() {
     }
 
     function updateItem(id: number, params: { title?: string; checked?: boolean }) {
-        const itemToUpdate = items.find((item) => item.id === id);
+        const itemToUpdate = getItems().find((item) => item.id === id);
 
         if (!itemToUpdate) {
             showError(`updateItem: item not found id=[${id}]`);
@@ -372,7 +370,7 @@ export default function App() {
         titleBefore: string;
         titleAfter: string;
     }) {
-        const currentItem = items.find((item) => item.id === id);
+        const currentItem = getItems().find((item) => item.id === id);
 
         if (!currentItem) {
             showError(`createItemAfter: item with id ${id} not found`);
@@ -398,7 +396,9 @@ export default function App() {
     }
 
     function mergeItemWithPrevious(id: number) {
-        const sortedItems = [...items].sort((first, second) => first.position - second.position);
+        const sortedItems = [...getItems()].sort(
+            (first, second) => first.position - second.position,
+        );
         const currentIndex = sortedItems.findIndex((item) => item.id === id);
 
         if (currentIndex <= 0) {
@@ -431,7 +431,9 @@ export default function App() {
     }
 
     function moveCaretBetweenItems({ id, direction }: { id: number; direction: "up" | "down" }) {
-        const sortedItems = [...items].sort((first, second) => first.position - second.position);
+        const sortedItems = [...getItems()].sort(
+            (first, second) => first.position - second.position,
+        );
         const currentIndex = sortedItems.findIndex((item) => item.id === id);
 
         if (currentIndex === -1) {
@@ -552,7 +554,7 @@ export default function App() {
                     <p className="status">🔄 Loading...</p>
                 ) : (
                     <div className="items">
-                        {[...items]
+                        {[...getItems()]
                             .sort((first, second) => first.position - second.position)
                             .map((item) => (
                                 <div className="item-row" key={tempIdsMap.get(item.id) || item.id}>
