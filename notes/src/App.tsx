@@ -6,7 +6,7 @@ import { supabase } from "./utils/supabase";
 
 const debugEnabled = new URLSearchParams(window.location.search).has("debug");
 
-type GroceryItem = {
+type TodoListItem = {
     id: number;
     todo_list_id: number;
     title: string;
@@ -38,17 +38,19 @@ const tempIdsMap = new Map<number, number>();
 const tempIdsRemovedSet = new Set<number>();
 const tempUpdatesMap = new Map<
     number,
-    Partial<Pick<GroceryItem, "title" | "position" | "checked">>
+    Partial<Pick<TodoListItem, "title" | "position" | "checked">>
 >();
 
-class Note {
-    private items: GroceryItem[] = [];
+class TodoList {
+    private items: TodoListItem[] = [];
+
+    public constructor(private readonly id: number) {}
 
     getItems() {
         return this.items;
     }
 
-    setItems(items: GroceryItem[]): boolean {
+    setItems(items: TodoListItem[]): boolean {
         const itemsChanged = JSON.stringify(this.items) !== JSON.stringify(items);
         if (itemsChanged) {
             this.items = items;
@@ -58,24 +60,30 @@ class Note {
     }
 }
 
-const note = new Note();
+function useTodoList(
+    todoListId: number,
+): [number, () => TodoListItem[], (items: TodoListItem[]) => void] {
+    const todoListRef = useRef<TodoList | null>(null);
+    if (!todoListRef.current) {
+        todoListRef.current = new TodoList(todoListId);
+    }
+    const todoList = todoListRef.current;
 
-function useNote(): [number, () => GroceryItem[], (items: GroceryItem[]) => void] {
     const [itemsVer, setItemsVer] = useState<number>(0);
 
-    const setItemsRef = useRef<(items: GroceryItem[]) => void>((items: GroceryItem[]): void => {
-        const itemsChanged = note.setItems(items);
+    const setItemsRef = useRef<(items: TodoListItem[]) => void>((items: TodoListItem[]): void => {
+        const itemsChanged = todoList.setItems(items);
 
         if (itemsChanged) {
             setItemsVer((prev) => prev + 1);
         }
     });
 
-    return [itemsVer, () => note.getItems(), setItemsRef.current];
+    return [itemsVer, () => todoList.getItems(), setItemsRef.current];
 }
 
 export default function App() {
-    const [items, getItems, setItems] = useNote();
+    const [items, getItems, setItems] = useTodoList(TODO_LIST_ID);
     const [isLoading, setIsLoading] = useState(true);
     const [pendingFocus, setPendingFocus] = useState<PendingFocus | null>(null);
     const inputRefs = useRef(new Map<number, HTMLTextAreaElement>());
@@ -138,13 +146,13 @@ export default function App() {
         });
     }, [items]);
 
-    function changeItemLocally(id: number, updates: Partial<GroceryItem>): void {
+    function changeItemLocally(id: number, updates: Partial<TodoListItem>): void {
         setItems(getItems().map((item) => (item.id === id ? { ...item, ...updates } : item)));
     }
 
     function persistItem(
         id: number,
-        updates: Partial<Pick<GroceryItem, "title" | "position" | "checked">>,
+        updates: Partial<Pick<TodoListItem, "title" | "position" | "checked">>,
     ): void {
         const itemToUpdate = getItems().find((item) => item.id === id);
         if (!itemToUpdate) {
@@ -278,7 +286,7 @@ export default function App() {
 
         const tempId = generateNextItemId();
 
-        const newItem: GroceryItem = {
+        const newItem: TodoListItem = {
             id: tempId,
             todo_list_id: TODO_LIST_ID,
             title,
@@ -346,7 +354,7 @@ export default function App() {
 
         let nothingToUpdate = true;
         for (const [key, value] of Object.entries(params)) {
-            if (itemToUpdate[key as keyof GroceryItem] !== value) {
+            if (itemToUpdate[key as keyof TodoListItem] !== value) {
                 nothingToUpdate = false;
                 break;
             }
@@ -486,7 +494,7 @@ export default function App() {
         return !input.value.slice(caretPosition).includes("\n");
     }
 
-    function handleItemKeyDown(event: KeyboardEvent<HTMLTextAreaElement>, item: GroceryItem) {
+    function handleItemKeyDown(event: KeyboardEvent<HTMLTextAreaElement>, item: TodoListItem) {
         let { selectionStart, selectionEnd } = event.currentTarget;
         if (event.key === "Enter" && !event.shiftKey) {
             event.preventDefault();
