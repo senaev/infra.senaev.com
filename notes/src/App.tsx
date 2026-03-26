@@ -110,35 +110,21 @@ export default function App() {
             return;
         }
 
-        supabase
-            .from(TABLE_NAME)
-            .update({ ...updates, update_index: nextUpdateIndex })
-            .eq("id", id)
-            .select(ITEM_COLUMNS)
-            .single()
-            .then(async (result) => {
-                // TODO: remove timeout
-                await new Promise((resolve) => setTimeout(resolve, 300));
-                return result;
-            })
-            .then(({ error }) => {
-                if (error) {
-                    try {
-                        const json = JSON.parse(error.message);
-
-                        if (json.id === "update_index_conflict") {
-                            return;
-                        }
-                    } catch (e) {
-                        showError(`persistItem(${id}): ${error.message}`);
-                    }
+        TodoListTable.updateTodoListItem(id, { ...updates, update_index: nextUpdateIndex })
+            .then((result) => {
+                if (result === "update_index_conflict") {
+                    // Ignore conflicts, persistent state will be delivered through server-push
                     return;
                 }
 
+                // Check that local item has not been removed during update
                 const localItem = todoList.getItems().find((item) => item.id === id);
                 if (localItem) {
                     changeItemLocally(id, { persisted: true });
                 }
+            })
+            .catch((error) => {
+                showError(error.message);
             });
     }
 
