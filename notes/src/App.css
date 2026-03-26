@@ -10,7 +10,7 @@
 .editor {
     width: min(100%, 640px);
     min-height: calc(100vh - 120px);
-    padding: 6px 24px 28px;
+    padding: 6px 0 28px;
     border: 1px solid rgb(95 99 104 / 0.45);
     border-radius: 22px;
     background: rgb(32 33 36);
@@ -34,6 +34,7 @@
     margin-top: 10px;
     font-size: 1.3rem;
     font-weight: 700;
+    padding: 0 24px;
 }
 
 .list-title::placeholder,
@@ -68,9 +69,16 @@
 .item-row {
     display: grid;
     grid-template-columns: 24px 1fr 28px;
+    padding: 0 24px;
     align-items: center;
     gap: 10px;
     min-height: 36px;
+    border-top: 1px solid transparent;
+    border-bottom: 1px solid transparent;
+}
+
+.item-row:focus-within {
+    border-color: rgb(154 160 166 / 0.45);
 }
 
 .item-checkbox-label {
@@ -144,19 +152,13 @@
     pointer-events: auto;
 }
 
-.item-input {
-    min-width: 0;
-    padding: 8px 0;
-    font-size: 1rem;
-}
-
 .item-input.is-checked {
     color: rgb(154 160 166);
     text-decoration: line-through;
 }
 
 .add-item-button {
-    padding: 12px 0;
+    padding: 12px 36px;
     color: rgb(154 160 166);
     text-align: left;
     cursor: pointer;

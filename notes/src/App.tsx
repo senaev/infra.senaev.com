@@ -221,7 +221,7 @@ export default function App() {
 
         const nextPosition = currentItem.position + 1;
 
-        updateItem(id, { title: titleBefore, checked: titleBefore.trim() ? checked : false });
+        updateItem(id, { title: titleBefore, checked });
         insertItem({
             title: titleAfter,
             checked: titleAfter.trim() ? checked : false,
@@ -431,7 +431,6 @@ export default function App() {
                                     />
                                 </div>
                             ))}
-
                         <button
                             className="add-item-button"
                             onClick={() => {
@@ -439,7 +438,7 @@ export default function App() {
                             }}
                             type="button"
                         >
-                            + List item
+                            ➕ Item
                         </button>
                     </div>
                 )}
