@@ -6,6 +6,7 @@ import { supabase } from "./utils/supabase";
 
 type GroceryItem = {
     id: number;
+    todo_list_id: number;
     title: string;
     position: number;
     created: string;
@@ -19,10 +20,11 @@ type PendingFocus = {
     selectionEnd: number;
 };
 
-const TABLE_NAME = "grocery_items";
+const TABLE_NAME = "todo_lists_items";
+const TODO_LIST_ID = 1;
 
 const NOTE_TITLE = "Groceries 🛒";
-const ITEM_COLUMNS = "id, title, position, created, updated, checked";
+const ITEM_COLUMNS = "id, todo_list_id, title, position, created, updated, checked";
 
 // Temp ids are used for optimistic rendering of newly created items
 // They are also used when rendering items to avoid rerendering after getting real id
@@ -55,6 +57,7 @@ export default function App() {
         supabase
             .from(TABLE_NAME)
             .select(ITEM_COLUMNS)
+            .eq("todo_list_id", TODO_LIST_ID)
             .then((result) => {
                 if (result.error) {
                     shoeError(result.error.message);
@@ -182,6 +185,7 @@ export default function App() {
 
             nextItems.push({
                 id: tempId,
+                todo_list_id: TODO_LIST_ID,
                 title,
                 created,
                 updated: created,
@@ -203,7 +207,7 @@ export default function App() {
 
         supabase
             .from(TABLE_NAME)
-            .insert({ title, position, checked })
+            .insert({ todo_list_id: TODO_LIST_ID, title, position, checked })
             .select(ITEM_COLUMNS)
             .single()
             .then(({ data, error }) => {
