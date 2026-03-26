@@ -1,6 +1,6 @@
 import "./App.css";
 
-import { KeyboardEvent, PointerEvent, SyntheticEvent, useEffect, useRef } from "react";
+import { KeyboardEvent, PointerEvent, SyntheticEvent, useEffect, useRef, useState } from "react";
 import { ErrorToasts } from "./components/ErrorToasts";
 import { TodoListItem } from "./TodoList/TodoList";
 import { useTodoList } from "./TodoList/useTodoList";
@@ -9,8 +9,132 @@ const debugEnabled = new URLSearchParams(window.location.search).has("debug");
 
 const TODO_LIST_ID = 1;
 
-export default function App() {
+type DragState = {
+    itemId: number;
+    pointerId: number;
+    x: number;
+    y: number;
+    width: number;
+    offsetX: number;
+    offsetY: number;
+};
+
+export function ListItem({
+    item,
+    toggleChecked,
+    onChange,
+    onSelect,
+    onKeyDown,
+    onRemove,
+    dragState,
+    dragHandlers,
+    resizeTextarea,
+    inputRefs,
+}: {
+    item: TodoListItem;
+    toggleChecked: (id: number, checked: boolean) => void;
+    onChange: (id: number, value: string) => void;
+    onSelect: (event: SyntheticEvent<HTMLTextAreaElement>) => void;
+    onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
+    onRemove: VoidFunction;
+    dragState: boolean;
+    dragHandlers: {
+        start: (event: PointerEvent<HTMLDivElement>, item: TodoListItem) => void;
+        move: (event: PointerEvent<HTMLDivElement>, item: TodoListItem) => void;
+        stop: (event: PointerEvent<HTMLDivElement>, item: TodoListItem) => void;
+    };
+    resizeTextarea: (input: HTMLTextAreaElement) => void;
+    inputRefs: React.RefObject<Map<number, HTMLTextAreaElement>>;
+}) {
+    return (
+        <div className={`item-row${dragState ? " item-row--drag-source" : ""}`}>
+            <div
+                aria-label={`Reorder ${item.title || "item"}`}
+                className="item-drag-handle"
+                onPointerCancel={(event) => {
+                    dragHandlers.stop(event, item);
+                }}
+                onPointerDown={(event) => {
+                    dragHandlers.start(event, item);
+                }}
+                onPointerMove={(event) => {
+                    dragHandlers.move(event, item);
+                }}
+                onPointerUp={(event) => {
+                    dragHandlers.stop(event, item);
+                }}
+            >
+                <span className="item-drag-handle__visual" />
+            </div>
+            <label className="item-checkbox-label">
+                <input
+                    aria-label={`Mark ${item.title || "item"} as checked`}
+                    checked={Boolean(item.checked)}
+                    className="item-checkbox"
+                    onChange={(event) => {
+                        toggleChecked(item.id, event.target.checked);
+                    }}
+                    type="checkbox"
+                />
+            </label>
+            <label className="item-textarea-label">
+                <textarea
+                    id={`input-${item.id}`}
+                    className={`item-input${item.checked ? " is-checked" : ""}`}
+                    ref={(node) => {
+                        if (node) {
+                            inputRefs.current.set(item.id, node);
+                            resizeTextarea(node);
+                        } else {
+                            inputRefs.current.delete(item.id);
+                        }
+                    }}
+                    onChange={(event) => {
+                        resizeTextarea(event.currentTarget);
+                        onChange(item.id, event.currentTarget.value);
+                    }}
+                    onSelect={onSelect}
+                    onKeyDown={onKeyDown}
+                    rows={1}
+                    value={item.title}
+                />
+            </label>
+            {debugEnabled && (
+                <>
+                    <span>{item.position}</span>
+                    <span>{item.persisted ? "✅" : "⏳"}</span>
+                    <span
+                        style={{
+                            color: "blue",
+                        }}
+                    >
+                        {item.update_index}
+                    </span>
+                    <span
+                        style={{
+                            color: "green",
+                        }}
+                    >
+                        {item.id}
+                    </span>
+                </>
+            )}
+            <div
+                aria-label={`Remove ${item.title || "item"}`}
+                className="item-remove"
+                onClick={onRemove}
+                role="button"
+                tabIndex={0}
+            >
+                <div className="item-remove-visual" />
+            </div>
+        </div>
+    );
+}
+
+export function App() {
     const [itemsVer, todoList] = useTodoList(TODO_LIST_ID);
+    const [dragState, setDragState] = useState<DragState | null>(null);
     const inputRefs = useRef(new Map<number, HTMLTextAreaElement>());
     const desiredCaretPositionRef = useRef(0);
     const ignoreNextSelectionRef = useRef(false);
@@ -159,63 +283,128 @@ export default function App() {
         todoList.persistItem(id, { title });
     }
 
-    function handleItemDragStart(event: PointerEvent<HTMLDivElement>, item: TodoListItem) {
-        activeDragRef.current = {
-            itemId: item.id,
-            pointerId: event.pointerId,
-        };
-        event.currentTarget.setPointerCapture(event.pointerId);
+    const dragHandlers = {
+        start(event: PointerEvent<HTMLDivElement>, item: TodoListItem) {
+            const row = event.currentTarget.closest(".item-row");
 
-        console.log("drag:start", {
-            itemId: item.id,
-            pointerId: event.pointerId,
-            pointerType: event.pointerType,
-            x: event.clientX,
-            y: event.clientY,
-        });
+            if (!(row instanceof HTMLDivElement)) {
+                return;
+            }
+
+            const rect = row.getBoundingClientRect();
+            activeDragRef.current = {
+                itemId: item.id,
+                pointerId: event.pointerId,
+            };
+            event.currentTarget.setPointerCapture(event.pointerId);
+            setDragState({
+                itemId: item.id,
+                pointerId: event.pointerId,
+                x: rect.left,
+                y: rect.top,
+                width: rect.width,
+                offsetX: event.clientX - rect.left,
+                offsetY: event.clientY - rect.top,
+            });
+
+            console.log("drag:start", {
+                itemId: item.id,
+                pointerId: event.pointerId,
+                pointerType: event.pointerType,
+                x: event.clientX,
+                y: event.clientY,
+            });
+        },
+
+        move(event: PointerEvent<HTMLDivElement>, item: TodoListItem) {
+            if (
+                activeDragRef.current == null ||
+                activeDragRef.current.itemId !== item.id ||
+                activeDragRef.current.pointerId !== event.pointerId
+            ) {
+                return;
+            }
+
+            setDragState((current) => {
+                if (current == null) {
+                    return null;
+                }
+
+                return {
+                    ...current,
+                    x: event.clientX - current.offsetX,
+                    y: event.clientY - current.offsetY,
+                };
+            });
+
+            console.log("drag:move", {
+                itemId: item.id,
+                pointerId: event.pointerId,
+                pointerType: event.pointerType,
+                x: event.clientX,
+                y: event.clientY,
+            });
+        },
+        stop(event: PointerEvent<HTMLDivElement>, item: TodoListItem) {
+            if (
+                activeDragRef.current == null ||
+                activeDragRef.current.itemId !== item.id ||
+                activeDragRef.current.pointerId !== event.pointerId
+            ) {
+                return;
+            }
+
+            if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                event.currentTarget.releasePointerCapture(event.pointerId);
+            }
+
+            activeDragRef.current = null;
+            setDragState(null);
+
+            console.log("drag:stop", {
+                itemId: item.id,
+                pointerId: event.pointerId,
+                pointerType: event.pointerType,
+                x: event.clientX,
+                y: event.clientY,
+            });
+        },
+    };
+
+    function renderDragOverlayItem(item: TodoListItem) {
+        return (
+            <div className="item-row item-row--drag-overlay">
+                <div className="item-drag-handle">
+                    <span className="item-drag-handle__visual" />
+                </div>
+                <label className="item-checkbox-label">
+                    <input
+                        checked={Boolean(item.checked)}
+                        className="item-checkbox"
+                        readOnly
+                        type="checkbox"
+                    />
+                </label>
+                <div className="item-textarea-label">
+                    <div
+                        className={`item-input item-input--drag-ghost${item.checked ? " is-checked" : ""}`}
+                    >
+                        {item.title || " "}
+                    </div>
+                </div>
+                <div className="item-remove">
+                    <div className="item-remove-visual" />
+                </div>
+            </div>
+        );
     }
 
-    function handleItemDragMove(event: PointerEvent<HTMLDivElement>, item: TodoListItem) {
-        if (
-            activeDragRef.current == null ||
-            activeDragRef.current.itemId !== item.id ||
-            activeDragRef.current.pointerId !== event.pointerId
-        ) {
-            return;
-        }
-
-        console.log("drag:move", {
-            itemId: item.id,
-            pointerId: event.pointerId,
-            pointerType: event.pointerType,
-            x: event.clientX,
-            y: event.clientY,
-        });
-    }
-
-    function handleItemDragStop(event: PointerEvent<HTMLDivElement>, item: TodoListItem) {
-        if (
-            activeDragRef.current == null ||
-            activeDragRef.current.itemId !== item.id ||
-            activeDragRef.current.pointerId !== event.pointerId
-        ) {
-            return;
-        }
-
-        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-            event.currentTarget.releasePointerCapture(event.pointerId);
-        }
-
-        activeDragRef.current = null;
-
-        console.log("drag:stop", {
-            itemId: item.id,
-            pointerId: event.pointerId,
-            pointerType: event.pointerType,
-            x: event.clientX,
-            y: event.clientY,
-        });
-    }
+    const sortedItems = [...todoList.getItems()].sort(
+        (first, second) => first.position - second.position,
+    );
+    const draggedItem = dragState
+        ? (sortedItems.find((item) => item.id === dragState.itemId) ?? null)
+        : null;
 
     return (
         <main className="page">
@@ -227,111 +416,29 @@ export default function App() {
                     <p className="status">🔄 Loading...</p>
                 ) : (
                     <div className="items">
-                        {[...todoList.getItems()]
-                            .sort((first, second) => first.position - second.position)
-                            .map((item) => (
-                                <div className="item-row" key={todoList.getItemClientKey(item)}>
-                                    <div
-                                        aria-label={`Reorder ${item.title || "item"}`}
-                                        className="item-drag-handle"
-                                        onPointerCancel={(event) => {
-                                            handleItemDragStop(event, item);
-                                        }}
-                                        onPointerDown={(event) => {
-                                            handleItemDragStart(event, item);
-                                        }}
-                                        onPointerMove={(event) => {
-                                            handleItemDragMove(event, item);
-                                        }}
-                                        onPointerUp={(event) => {
-                                            handleItemDragStop(event, item);
-                                        }}
-                                    >
-                                        <span className="item-drag-handle__visual" />
-                                    </div>
-                                    <label className="item-checkbox-label">
-                                        <input
-                                            aria-label={`Mark ${item.title || "item"} as checked`}
-                                            checked={Boolean(item.checked)}
-                                            className="item-checkbox"
-                                            onChange={(event) => {
-                                                todoList.toggleChecked(
-                                                    item.id,
-                                                    event.target.checked,
-                                                );
-                                            }}
-                                            type="checkbox"
-                                        />
-                                    </label>
-                                    <label className="item-textarea-label">
-                                        <textarea
-                                            id={`input-${item.id}`}
-                                            className={`item-input${item.checked ? " is-checked" : ""}`}
-                                            ref={(node) => {
-                                                if (node) {
-                                                    inputRefs.current.set(item.id, node);
-                                                    resizeTextarea(node);
-                                                } else {
-                                                    inputRefs.current.delete(item.id);
-                                                }
-                                            }}
-                                            onBlur={(event) => {
-                                                todoList.updateItem(item.id, {
-                                                    title: event.target.value,
-                                                });
-                                            }}
-                                            onChange={(event) => {
-                                                resizeTextarea(event.currentTarget);
-                                                handleItemChange(item.id, event.target.value);
-                                            }}
-                                            onSelect={saveCaretPosition}
-                                            onKeyDown={(event) => {
-                                                handleItemKeyDown(event, item);
-                                            }}
-                                            rows={1}
-                                            value={item.title}
-                                        />
-                                    </label>
-                                    {debugEnabled && (
-                                        <>
-                                            <span>{item.position}</span>
-                                            <span>{item.persisted ? "✅" : "⏳"}</span>
-                                            <span
-                                                style={{
-                                                    color: "blue",
-                                                }}
-                                            >
-                                                {item.update_index}
-                                            </span>
-                                            <span
-                                                style={{
-                                                    color: "red",
-                                                }}
-                                            >
-                                                {todoList.getItemClientKey(item)}
-                                            </span>
-                                            <span
-                                                style={{
-                                                    color: "green",
-                                                }}
-                                            >
-                                                {item.id}
-                                            </span>
-                                        </>
-                                    )}
-                                    <div
-                                        aria-label={`Remove ${item.title || "item"}`}
-                                        className="item-remove"
-                                        onClick={() => {
-                                            todoList.removeItem(item.id);
-                                        }}
-                                        role="button"
-                                        tabIndex={0}
-                                    >
-                                        <div className="item-remove-visual" />
-                                    </div>
-                                </div>
-                            ))}
+                        {sortedItems.map((item) => (
+                            <ListItem
+                                key={todoList.getItemClientKey(item)}
+                                item={item}
+                                toggleChecked={(id, checked) => {
+                                    todoList.toggleChecked(id, checked);
+                                }}
+                                onChange={(id, value) => {
+                                    handleItemChange(id, value);
+                                }}
+                                onKeyDown={(event) => {
+                                    handleItemKeyDown(event, item);
+                                }}
+                                onSelect={saveCaretPosition}
+                                onRemove={() => {
+                                    todoList.removeItem(item.id);
+                                }}
+                                dragState={dragState?.itemId === item.id}
+                                dragHandlers={dragHandlers}
+                                resizeTextarea={resizeTextarea}
+                                inputRefs={inputRefs}
+                            />
+                        ))}
                         <button
                             className="add-item-button"
                             onClick={() => {
@@ -344,6 +451,17 @@ export default function App() {
                     </div>
                 )}
             </section>
+            {dragState && draggedItem ? (
+                <div
+                    className="drag-overlay"
+                    style={{
+                        transform: `translate(${dragState.x}px, ${dragState.y}px)`,
+                        width: `${dragState.width}px`,
+                    }}
+                >
+                    {renderDragOverlayItem(draggedItem)}
+                </div>
+            ) : null}
         </main>
     );
 }

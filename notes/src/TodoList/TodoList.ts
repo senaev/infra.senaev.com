@@ -86,20 +86,18 @@ export class TodoList {
     }
 
     public changeItemLocally(id: number, updates: Partial<TodoListItem>): void {
-        this.setItems(
-            this.getItems().map((item) => (item.id === id ? { ...item, ...updates } : item)),
-        );
+        this.setItems(this.items.map((item) => (item.id === id ? { ...item, ...updates } : item)));
     }
 
     public removeItemLocally(id: number): void {
-        const itemToRemove = this.getItems().find((item) => item.id === id);
+        const itemToRemove = this.items.find((item) => item.id === id);
 
         if (!itemToRemove) {
             this.showError(`removeItem: item with id ${id} not found`);
             return;
         }
 
-        this.setItems(this.getItems().filter((item) => item.id !== id));
+        this.setItems(this.items.filter((item) => item.id !== id));
     }
 
     public removeItemRemotely(id: number): void {
@@ -123,7 +121,7 @@ export class TodoList {
         id: number,
         updates: Partial<Pick<TodoListItem, "title" | "position" | "checked">>,
     ): void {
-        const itemToUpdate = this.getItems().find((item) => item.id === id);
+        const itemToUpdate = this.items.find((item) => item.id === id);
         if (!itemToUpdate) {
             this.showError(`persistItem: item with id ${id} not found`);
             return;
@@ -146,7 +144,7 @@ export class TodoList {
                 }
 
                 // Check that local item has not been removed during update
-                const localItem = this.getItems().find((item) => item.id === id);
+                const localItem = this.items.find((item) => item.id === id);
                 if (localItem) {
                     this.changeItemLocally(id, { persisted: true });
                 }
@@ -170,7 +168,7 @@ export class TodoList {
         checked: boolean;
         position: number;
     }) {
-        const itemsWithHigherPosition = this.getItems()
+        const itemsWithHigherPosition = this.items
             .filter((item) => item.position >= position)
             .sort((first, second) => first.position - second.position);
 
@@ -187,7 +185,7 @@ export class TodoList {
 
         shiftedItems.forEach((nextPosition, id) => {
             this.setItems(
-                this.getItems().map((item) => {
+                this.items.map((item) => {
                     if (item.id === id) {
                         return { ...item, position: nextPosition, persisted: false };
                     }
@@ -213,7 +211,7 @@ export class TodoList {
             persisted: false,
         };
 
-        this.setItems([...this.getItems(), newItem]);
+        this.setItems([...this.items, newItem]);
 
         this.setPendingFocus({
             id: tempId,
@@ -249,31 +247,8 @@ export class TodoList {
     }
 
     public createItem() {
-        const nextPosition = Math.max(...this.getItems().map((item) => item.position), 0) + 1;
+        const nextPosition = Math.max(...this.items.map((item) => item.position), 0) + 1;
         this.insertItem({ title: "", checked: false, position: nextPosition });
-    }
-
-    public updateItem(id: number, params: { title?: string; checked?: boolean }) {
-        const itemToUpdate = this.getItems().find((item) => item.id === id);
-
-        if (!itemToUpdate) {
-            this.showError(`updateItem: item not found id=[${id}]`);
-            return;
-        }
-
-        let nothingToUpdate = true;
-        for (const [key, value] of Object.entries(params)) {
-            if (itemToUpdate[key as keyof TodoListItem] !== value) {
-                nothingToUpdate = false;
-                break;
-            }
-        }
-        if (nothingToUpdate) {
-            return;
-        }
-
-        this.changeItemLocally(id, { ...params, persisted: false });
-        this.persistItem(id, params);
     }
 
     public createItemAfter({
@@ -287,17 +262,20 @@ export class TodoList {
         titleBefore: string;
         titleAfter: string;
     }) {
-        const currentItem = this.getItems().find((item) => item.id === id);
+        const currentItem = this.items.find((item) => item.id === id);
 
         if (!currentItem) {
-            this.showError(`createItemAfter: item with id ${id} not found`);
+            this.showError(`createItemAfter: item not found id=[${id}]`);
+            debugger;
             return;
         }
 
+        const params = { title: titleBefore, checked };
+
+        this.changeItemLocally(id, { ...params, persisted: false });
+        this.persistItem(id, params);
+
         const nextPosition = currentItem.position + 1;
-
-        this.updateItem(id, { title: titleBefore, checked });
-
         this.insertItem({
             title: titleAfter,
             checked: titleAfter.trim() ? checked : false,
@@ -307,15 +285,13 @@ export class TodoList {
 
     public toggleChecked(id: number, isChecked: boolean) {
         this.setItems(
-            this.getItems().map((item) =>
-                item.id === id ? { ...item, checked: isChecked } : item,
-            ),
+            this.items.map((item) => (item.id === id ? { ...item, checked: isChecked } : item)),
         );
         this.persistItem(id, { checked: isChecked });
     }
 
     public mergeItemWithPrevious(id: number) {
-        const sortedItems = [...this.getItems()].sort(
+        const sortedItems = [...this.items].sort(
             (first, second) => first.position - second.position,
         );
         const currentIndex = sortedItems.findIndex((item) => item.id === id);
@@ -330,7 +306,7 @@ export class TodoList {
         const cursorPosition = previousItem.title.length;
 
         this.setItems(
-            this.getItems().map((item) => {
+            this.items.map((item) => {
                 if (item.id === previousItem.id) {
                     return { ...item, title: mergedTitle };
                 }

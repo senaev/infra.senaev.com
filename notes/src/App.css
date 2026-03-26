@@ -71,6 +71,26 @@
     border-color: rgb(95 99 104 / 0.45);
 }
 
+.item-row--drag-source {
+    opacity: 0.3;
+}
+
+.item-row--drag-overlay {
+    padding-right: 0;
+    border-radius: 16px;
+    border-color: rgb(95 99 104 / 0.45);
+    background: rgb(43 45 49 / 0.98);
+    box-shadow: 0 20px 48px rgb(0 0 0 / 0.28);
+}
+
+.drag-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 30;
+    pointer-events: none;
+}
+
 .item-drag-handle {
     display: flex;
     align-items: flex-start;
@@ -177,6 +197,10 @@
     resize: none;
     overflow: hidden;
     margin-top: 5px;
+}
+
+.item-input--drag-ghost {
+    white-space: pre-wrap;
 }
 
 .item-input.is-checked {
