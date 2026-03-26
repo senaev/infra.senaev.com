@@ -301,10 +301,10 @@ export default function App() {
             return;
         }
 
-        const selectionPosition = Math.min(
-            desiredCaretPositionRef.current,
-            targetItem.title.length,
-        );
+        const firstLineLength = targetItem.title.indexOf("\n");
+        const maxPositionInFirstLine =
+            firstLineLength === -1 ? targetItem.title.length : firstLineLength;
+        const selectionPosition = Math.min(desiredCaretPositionRef.current, maxPositionInFirstLine);
         setPendingFocus({
             id: targetItem.id,
             selectionStart: selectionPosition,
@@ -324,7 +324,10 @@ export default function App() {
         if (caretPosition == null) {
             return;
         }
-        desiredCaretPositionRef.current = caretPosition;
+
+        const lineStart = event.currentTarget.value.lastIndexOf("\n", caretPosition - 1) + 1;
+        const nextDesiredCaretPosition = caretPosition - lineStart;
+        desiredCaretPositionRef.current = nextDesiredCaretPosition;
     }
 
     function isCaretOnFirstLine(input: HTMLTextAreaElement) {
@@ -373,6 +376,7 @@ export default function App() {
                     : isCaretOnLastLine(event.currentTarget));
 
             if (!shouldMoveToAdjacentItem) {
+                ignoreNextSelectionRef.current = true;
                 return;
             }
 
