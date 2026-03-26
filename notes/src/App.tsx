@@ -1,6 +1,6 @@
 import "./App.css";
 
-import { KeyboardEvent, SyntheticEvent, useEffect, useRef } from "react";
+import { KeyboardEvent, PointerEvent, SyntheticEvent, useEffect, useRef } from "react";
 import { ErrorToasts } from "./components/ErrorToasts";
 import { TodoListItem } from "./TodoList/TodoList";
 import { useTodoList } from "./TodoList/useTodoList";
@@ -14,6 +14,7 @@ export default function App() {
     const inputRefs = useRef(new Map<number, HTMLTextAreaElement>());
     const desiredCaretPositionRef = useRef(0);
     const ignoreNextSelectionRef = useRef(false);
+    const activeDragRef = useRef<{ itemId: number; pointerId: number } | null>(null);
 
     useEffect(() => {
         if (todoList.pendingFocus == null) {
@@ -158,6 +159,64 @@ export default function App() {
         todoList.persistItem(id, { title });
     }
 
+    function handleItemDragStart(event: PointerEvent<HTMLDivElement>, item: TodoListItem) {
+        activeDragRef.current = {
+            itemId: item.id,
+            pointerId: event.pointerId,
+        };
+        event.currentTarget.setPointerCapture(event.pointerId);
+
+        console.log("drag:start", {
+            itemId: item.id,
+            pointerId: event.pointerId,
+            pointerType: event.pointerType,
+            x: event.clientX,
+            y: event.clientY,
+        });
+    }
+
+    function handleItemDragMove(event: PointerEvent<HTMLDivElement>, item: TodoListItem) {
+        if (
+            activeDragRef.current == null ||
+            activeDragRef.current.itemId !== item.id ||
+            activeDragRef.current.pointerId !== event.pointerId
+        ) {
+            return;
+        }
+
+        console.log("drag:move", {
+            itemId: item.id,
+            pointerId: event.pointerId,
+            pointerType: event.pointerType,
+            x: event.clientX,
+            y: event.clientY,
+        });
+    }
+
+    function handleItemDragStop(event: PointerEvent<HTMLDivElement>, item: TodoListItem) {
+        if (
+            activeDragRef.current == null ||
+            activeDragRef.current.itemId !== item.id ||
+            activeDragRef.current.pointerId !== event.pointerId
+        ) {
+            return;
+        }
+
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+
+        activeDragRef.current = null;
+
+        console.log("drag:stop", {
+            itemId: item.id,
+            pointerId: event.pointerId,
+            pointerType: event.pointerType,
+            x: event.clientX,
+            y: event.clientY,
+        });
+    }
+
     return (
         <main className="page">
             <ErrorToasts errors={todoList.errors} onClose={todoList.removeError} />
@@ -175,6 +234,18 @@ export default function App() {
                                     <div
                                         aria-label={`Reorder ${item.title || "item"}`}
                                         className="item-drag-handle"
+                                        onPointerCancel={(event) => {
+                                            handleItemDragStop(event, item);
+                                        }}
+                                        onPointerDown={(event) => {
+                                            handleItemDragStart(event, item);
+                                        }}
+                                        onPointerMove={(event) => {
+                                            handleItemDragMove(event, item);
+                                        }}
+                                        onPointerUp={(event) => {
+                                            handleItemDragStop(event, item);
+                                        }}
                                     >
                                         <span className="item-drag-handle__visual" />
                                     </div>
