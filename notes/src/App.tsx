@@ -2,10 +2,9 @@ import "./App.css";
 
 import { KeyboardEvent, SyntheticEvent, useEffect, useRef, useState } from "react";
 import { ErrorToasts } from "./components/ErrorToasts";
-import { ITEM_COLUMNS, TABLE_NAME, TodoListTable } from "./Tables/TodoListTable";
+import { TodoListTable } from "./Tables/TodoListTable";
 import { TodoListItem } from "./TodoList/TodoList";
 import { useTodoList } from "./TodoList/useTodoList";
-import { supabase } from "./utils/supabase";
 
 const debugEnabled = new URLSearchParams(window.location.search).has("debug");
 
@@ -50,7 +49,7 @@ export default function App() {
     useEffect(() => {
         setIsLoading(true);
 
-        TodoListTable.getAllTodosForTodoList(TODO_LIST_ID)
+        TodoListTable.readAll(TODO_LIST_ID)
             .then((data) => {
                 todoList.setItems(data.map((item) => ({ ...item, persisted: true })));
             })
@@ -110,7 +109,7 @@ export default function App() {
             return;
         }
 
-        TodoListTable.updateTodoListItem(id, { ...updates, update_index: nextUpdateIndex })
+        TodoListTable.update(id, { ...updates, update_index: nextUpdateIndex })
             .then((result) => {
                 if (result === "update_index_conflict") {
                     // Ignore conflicts, persistent state will be delivered through server-push
@@ -151,15 +150,9 @@ export default function App() {
             return;
         }
 
-        supabase
-            .from(TABLE_NAME)
-            .delete()
-            .eq("id", id)
-            .then((result) => {
-                if (result.error) {
-                    showError(`deleteItem(${id}): ${result.error.message}`);
-                }
-            });
+        TodoListTable.delete(id).catch((error) => {
+            showError(error.message);
+        });
     }
 
     function removeItem(id: number) {
@@ -233,23 +226,9 @@ export default function App() {
             selectionEnd: 0,
         });
 
-        supabase
-            .from(TABLE_NAME)
-            .insert({
-                todo_list_id: newItem.todo_list_id,
-                title: newItem.title,
-                position: newItem.position,
-                checked: newItem.checked,
-                update_index: newItem.update_index,
-            })
-            .select(ITEM_COLUMNS)
-            .single()
-            .then(({ data, error }) => {
-                if (error) {
-                    showError(`insertItemAtPosition: ${error.message}`);
-                    return;
-                }
-
+        TodoListTable.create(newItem)
+            .then((data) => {
+                // Item was deleted on the client
                 if (tempIdsRemovedSet.delete(tempId)) {
                     removeItemRemotely(data.id);
                     return;
@@ -268,6 +247,9 @@ export default function App() {
                     tempUpdatesMap.delete(tempId);
                     persistItem(data.id, tempUpdate);
                 }
+            })
+            .catch((error) => {
+                showError(error.message);
             });
     }
 

@@ -2,17 +2,42 @@ import { TodoListItem } from "../TodoList/TodoList";
 import { SplitCommaAndTrim } from "../utils/SplitCommaAndTrim";
 import { supabase } from "../utils/supabase";
 
-// TODO: remove export
-export const TABLE_NAME = "todo_lists_items";
-export const ITEM_COLUMNS =
-    "id, todo_list_id, title, position, created, updated, update_index, checked";
+const TABLE_NAME = "todo_lists_items";
+const ITEM_COLUMNS = "id, todo_list_id, title, position, created, updated, update_index, checked";
 
-type ItemColumn = SplitCommaAndTrim<typeof ITEM_COLUMNS>;
+type TableColumns = SplitCommaAndTrim<typeof ITEM_COLUMNS>;
 
 export class TodoListTable {
-    public static async getAllTodosForTodoList(
-        todoListId: number,
-    ): Promise<Pick<TodoListItem, ItemColumn>[]> {
+    public static async create({
+        todo_list_id,
+        title,
+        position,
+        checked,
+        update_index,
+    }: Pick<
+        TodoListItem,
+        "todo_list_id" | "title" | "position" | "checked" | "update_index"
+    >): Promise<Record<TableColumns, any>> {
+        const { data, error } = await supabase
+            .from(TABLE_NAME)
+            .insert({
+                todo_list_id,
+                title,
+                position,
+                checked,
+                update_index,
+            })
+            .select(ITEM_COLUMNS)
+            .single();
+
+        if (error) {
+            throw new Error(`insertItemAtPosition: ${error.message}`);
+        }
+
+        return data;
+    }
+
+    public static async readAll(todoListId: number): Promise<Pick<TodoListItem, TableColumns>[]> {
         const { error, data } = await supabase
             .from(TABLE_NAME)
             .select(ITEM_COLUMNS)
@@ -27,7 +52,7 @@ export class TodoListTable {
         return data;
     }
 
-    public static async updateTodoListItem(
+    public static async update(
         itemId: number,
         updates: Partial<Pick<TodoListItem, "title" | "position" | "checked">> & {
             update_index: number;
@@ -53,5 +78,13 @@ export class TodoListTable {
         }
 
         return undefined;
+    }
+
+    public static async delete(itemId: number): Promise<void> {
+        const { error } = await supabase.from(TABLE_NAME).delete().eq("id", itemId);
+
+        if (error) {
+            throw new Error(`deleteTodoListItem(${itemId}) error: ${error.message}`);
+        }
     }
 }
