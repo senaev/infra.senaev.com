@@ -33,6 +33,7 @@ export default function App() {
     const [pendingFocus, setPendingFocus] = useState<PendingFocus | null>(null);
     const inputRefs = useRef(new Map<number, HTMLInputElement>());
     const desiredCaretPositionRef = useRef(0);
+    const ignoreNextSelectionRef = useRef(false);
 
     const [errors, setErrors] = useState<string[]>([]);
 
@@ -67,6 +68,7 @@ export default function App() {
             return;
         }
 
+        ignoreNextSelectionRef.current = true;
         input.focus();
         input.setSelectionRange(pendingFocus.selectionStart, pendingFocus.selectionEnd);
         setPendingFocus(null);
@@ -300,11 +302,18 @@ export default function App() {
     }
 
     function saveCaretPosition(event: SyntheticEvent<HTMLInputElement>) {
+        if (ignoreNextSelectionRef.current) {
+            ignoreNextSelectionRef.current = false;
+            return;
+        }
+
         const { selectionDirection, selectionStart, selectionEnd } = event.currentTarget;
         const caretPosition = selectionDirection === "backward" ? selectionStart : selectionEnd;
 
-        console.log("saveCaretPosition", caretPosition);
-        desiredCaretPositionRef.current = caretPosition ?? 0;
+        if (caretPosition == null) {
+            return;
+        }
+        desiredCaretPositionRef.current = caretPosition;
     }
 
     function handleItemKeyDown(event: KeyboardEvent<HTMLInputElement>, item: GroceryItem) {
