@@ -44,46 +44,41 @@ const tempUpdatesMap = new Map<
 class TodoList {
     private items: TodoListItem[] = [];
 
-    public constructor(private readonly id: number) {}
+    public constructor(
+        private readonly id: number,
+        private readonly onChange: () => void,
+    ) {}
 
     getItems() {
         return this.items;
     }
 
-    setItems(items: TodoListItem[]): boolean {
+    setItems(items: TodoListItem[]): void {
         const itemsChanged = JSON.stringify(this.items) !== JSON.stringify(items);
         if (itemsChanged) {
             this.items = items;
         }
 
-        return itemsChanged;
+        if (itemsChanged) {
+            this.onChange();
+        }
     }
 }
 
-function useTodoList(
-    todoListId: number,
-): [number, () => TodoListItem[], (items: TodoListItem[]) => void] {
+function useTodoList(todoListId: number): [number, TodoList] {
+    const [itemsVer, setItemsVer] = useState<number>(0);
+
     const todoListRef = useRef<TodoList | null>(null);
     if (!todoListRef.current) {
-        todoListRef.current = new TodoList(todoListId);
+        todoListRef.current = new TodoList(todoListId, () => setItemsVer((prev) => prev + 1));
     }
     const todoList = todoListRef.current;
 
-    const [itemsVer, setItemsVer] = useState<number>(0);
-
-    const setItemsRef = useRef<(items: TodoListItem[]) => void>((items: TodoListItem[]): void => {
-        const itemsChanged = todoList.setItems(items);
-
-        if (itemsChanged) {
-            setItemsVer((prev) => prev + 1);
-        }
-    });
-
-    return [itemsVer, () => todoList.getItems(), setItemsRef.current];
+    return [itemsVer, todoList];
 }
 
 export default function App() {
-    const [items, getItems, setItems] = useTodoList(TODO_LIST_ID);
+    const [items, todoList] = useTodoList(TODO_LIST_ID);
     const [isLoading, setIsLoading] = useState(true);
     const [pendingFocus, setPendingFocus] = useState<PendingFocus | null>(null);
     const inputRefs = useRef(new Map<number, HTMLTextAreaElement>());
@@ -117,12 +112,12 @@ export default function App() {
                 if (result.error) {
                     showError(result.error.message);
                 } else {
-                    setItems(result.data.map((item) => ({ ...item, persisted: true })));
+                    todoList.setItems(result.data.map((item) => ({ ...item, persisted: true })));
                 }
 
                 setIsLoading(false);
             });
-    }, [setItems]);
+    }, [todoList]);
 
     useEffect(() => {
         if (pendingFocus == null) {
@@ -147,14 +142,16 @@ export default function App() {
     }, [items]);
 
     function changeItemLocally(id: number, updates: Partial<TodoListItem>): void {
-        setItems(getItems().map((item) => (item.id === id ? { ...item, ...updates } : item)));
+        todoList.setItems(
+            todoList.getItems().map((item) => (item.id === id ? { ...item, ...updates } : item)),
+        );
     }
 
     function persistItem(
         id: number,
         updates: Partial<Pick<TodoListItem, "title" | "position" | "checked">>,
     ): void {
-        const itemToUpdate = getItems().find((item) => item.id === id);
+        const itemToUpdate = todoList.getItems().find((item) => item.id === id);
         if (!itemToUpdate) {
             showError(`persistItem: item with id ${id} not found`);
             debugger;
@@ -195,7 +192,7 @@ export default function App() {
                     return;
                 }
 
-                const localItem = getItems().find((item) => item.id === id);
+                const localItem = todoList.getItems().find((item) => item.id === id);
                 if (localItem) {
                     changeItemLocally(id, { persisted: true });
                 }
@@ -208,14 +205,14 @@ export default function App() {
     }
 
     function removeItemLocally(id: number): void {
-        const itemToRemove = getItems().find((item) => item.id === id);
+        const itemToRemove = todoList.getItems().find((item) => item.id === id);
 
         if (!itemToRemove) {
             showError(`removeItem: item with id ${id} not found`);
             return;
         }
 
-        setItems(getItems().filter((item) => item.id !== id));
+        todoList.setItems(todoList.getItems().filter((item) => item.id !== id));
     }
 
     function removeItemRemotely(id: number): void {
@@ -242,7 +239,7 @@ export default function App() {
     }
 
     function createItem() {
-        const nextPosition = Math.max(...getItems().map((item) => item.position), 0) + 1;
+        const nextPosition = Math.max(...todoList.getItems().map((item) => item.position), 0) + 1;
         insertItem({ title: "", checked: false, position: nextPosition });
     }
 
@@ -255,7 +252,8 @@ export default function App() {
         checked: boolean;
         position: number;
     }) {
-        const itemsWithHigherPosition = getItems()
+        const itemsWithHigherPosition = todoList
+            .getItems()
             .filter((item) => item.position >= position)
             .sort((first, second) => first.position - second.position);
 
@@ -271,8 +269,8 @@ export default function App() {
         }
 
         shiftedItems.forEach((nextPosition, id) => {
-            setItems(
-                getItems().map((item) => {
+            todoList.setItems(
+                todoList.getItems().map((item) => {
                     if (item.id === id) {
                         return { ...item, position: nextPosition, persisted: false };
                     }
@@ -298,7 +296,7 @@ export default function App() {
             persisted: false,
         };
 
-        setItems([...getItems(), newItem]);
+        todoList.setItems([...todoList.getItems(), newItem]);
 
         setPendingFocus({
             id: tempId,
@@ -345,7 +343,7 @@ export default function App() {
     }
 
     function updateItem(id: number, params: { title?: string; checked?: boolean }) {
-        const itemToUpdate = getItems().find((item) => item.id === id);
+        const itemToUpdate = todoList.getItems().find((item) => item.id === id);
 
         if (!itemToUpdate) {
             showError(`updateItem: item not found id=[${id}]`);
@@ -378,7 +376,7 @@ export default function App() {
         titleBefore: string;
         titleAfter: string;
     }) {
-        const currentItem = getItems().find((item) => item.id === id);
+        const currentItem = todoList.getItems().find((item) => item.id === id);
 
         if (!currentItem) {
             showError(`createItemAfter: item with id ${id} not found`);
@@ -397,14 +395,16 @@ export default function App() {
     }
 
     function toggleChecked(id: number, isChecked: boolean) {
-        setItems(
-            getItems().map((item) => (item.id === id ? { ...item, checked: isChecked } : item)),
+        todoList.setItems(
+            todoList
+                .getItems()
+                .map((item) => (item.id === id ? { ...item, checked: isChecked } : item)),
         );
         persistItem(id, { checked: isChecked });
     }
 
     function mergeItemWithPrevious(id: number) {
-        const sortedItems = [...getItems()].sort(
+        const sortedItems = [...todoList.getItems()].sort(
             (first, second) => first.position - second.position,
         );
         const currentIndex = sortedItems.findIndex((item) => item.id === id);
@@ -418,8 +418,8 @@ export default function App() {
         const mergedTitle = previousItem.title + currentItem.title;
         const cursorPosition = previousItem.title.length;
 
-        setItems(
-            getItems().map((item) => {
+        todoList.setItems(
+            todoList.getItems().map((item) => {
                 if (item.id === previousItem.id) {
                     return { ...item, title: mergedTitle };
                 }
@@ -439,7 +439,7 @@ export default function App() {
     }
 
     function moveCaretBetweenItems({ id, direction }: { id: number; direction: "up" | "down" }) {
-        const sortedItems = [...getItems()].sort(
+        const sortedItems = [...todoList.getItems()].sort(
             (first, second) => first.position - second.position,
         );
         const currentIndex = sortedItems.findIndex((item) => item.id === id);
@@ -562,7 +562,7 @@ export default function App() {
                     <p className="status">🔄 Loading...</p>
                 ) : (
                     <div className="items">
-                        {[...getItems()]
+                        {[...todoList.getItems()]
                             .sort((first, second) => first.position - second.position)
                             .map((item) => (
                                 <div className="item-row" key={tempIdsMap.get(item.id) || item.id}>
