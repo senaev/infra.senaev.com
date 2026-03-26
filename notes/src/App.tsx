@@ -2,21 +2,12 @@ import "./App.css";
 
 import { KeyboardEvent, SyntheticEvent, useEffect, useRef, useState } from "react";
 import { ErrorToasts } from "./components/ErrorToasts";
+import { ITEM_COLUMNS, TABLE_NAME, TodoListTable } from "./Tables/TodoListTable";
+import { TodoListItem } from "./TodoList/TodoList";
+import { useTodoList } from "./TodoList/useTodoList";
 import { supabase } from "./utils/supabase";
 
 const debugEnabled = new URLSearchParams(window.location.search).has("debug");
-
-type TodoListItem = {
-    id: number;
-    todo_list_id: number;
-    title: string;
-    position: number;
-    created: string;
-    updated: string;
-    update_index: number;
-    checked: boolean;
-    persisted: boolean;
-};
 
 type PendingFocus = {
     id: number;
@@ -24,11 +15,7 @@ type PendingFocus = {
     selectionEnd: number;
 };
 
-const TABLE_NAME = "todo_lists_items";
 const TODO_LIST_ID = 1;
-
-const NOTE_TITLE = "Groceries 🛒";
-const ITEM_COLUMNS = "id, todo_list_id, title, position, created, updated, update_index, checked";
 
 // Temp ids are used for optimistic rendering of newly created items
 // They are also used when rendering items to avoid rerendering after getting real id
@@ -40,42 +27,6 @@ const tempUpdatesMap = new Map<
     number,
     Partial<Pick<TodoListItem, "title" | "position" | "checked">>
 >();
-
-class TodoList {
-    private items: TodoListItem[] = [];
-
-    public constructor(
-        private readonly id: number,
-        private readonly onChange: () => void,
-    ) {}
-
-    getItems() {
-        return this.items;
-    }
-
-    setItems(items: TodoListItem[]): void {
-        const itemsChanged = JSON.stringify(this.items) !== JSON.stringify(items);
-        if (itemsChanged) {
-            this.items = items;
-        }
-
-        if (itemsChanged) {
-            this.onChange();
-        }
-    }
-}
-
-function useTodoList(todoListId: number): [number, TodoList] {
-    const [itemsVer, setItemsVer] = useState<number>(0);
-
-    const todoListRef = useRef<TodoList | null>(null);
-    if (!todoListRef.current) {
-        todoListRef.current = new TodoList(todoListId, () => setItemsVer((prev) => prev + 1));
-    }
-    const todoList = todoListRef.current;
-
-    return [itemsVer, todoList];
-}
 
 export default function App() {
     const [items, todoList] = useTodoList(TODO_LIST_ID);
@@ -99,22 +50,14 @@ export default function App() {
     useEffect(() => {
         setIsLoading(true);
 
-        supabase
-            .from(TABLE_NAME)
-            .select(ITEM_COLUMNS)
-            .eq("todo_list_id", TODO_LIST_ID)
-            .then(async (result) => {
-                // TODO: remove timeout
-                await new Promise((resolve) => setTimeout(resolve, 300));
-                return result;
+        TodoListTable.getAllTodosForTodoList(TODO_LIST_ID)
+            .then((data) => {
+                todoList.setItems(data.map((item) => ({ ...item, persisted: true })));
             })
-            .then((result) => {
-                if (result.error) {
-                    showError(result.error.message);
-                } else {
-                    todoList.setItems(result.data.map((item) => ({ ...item, persisted: true })));
-                }
-
+            .catch((error) => {
+                showError(error.message);
+            })
+            .finally(() => {
                 setIsLoading(false);
             });
     }, [todoList]);
@@ -556,7 +499,7 @@ export default function App() {
         <main className="page">
             <ErrorToasts errors={errors} onClose={removeError} />
             <section className="editor">
-                <h1 className="list-title">{NOTE_TITLE}</h1>
+                <h1 className="list-title">{todoList.getTitle()}</h1>
 
                 {isLoading ? (
                     <p className="status">🔄 Loading...</p>
