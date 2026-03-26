@@ -172,6 +172,12 @@ export default function App() {
                             .sort((first, second) => first.position - second.position)
                             .map((item) => (
                                 <div className="item-row" key={todoList.getItemClientKey(item)}>
+                                    <div
+                                        aria-label={`Reorder ${item.title || "item"}`}
+                                        className="item-drag-handle"
+                                    >
+                                        <span className="item-drag-handle__visual" />
+                                    </div>
                                     <label className="item-checkbox-label">
                                         <input
                                             aria-label={`Mark ${item.title || "item"} as checked`}

@@ -60,9 +60,8 @@
 
 .item-row {
     display: flex;
-    padding: 0 0 0 24px;
+    padding: 0 0 0 10px;
     align-items: stretch;
-    gap: 10px;
     min-height: 36px;
     border-top: 1px solid transparent;
     border-bottom: 1px solid transparent;
@@ -72,9 +71,27 @@
     border-color: rgb(95 99 104 / 0.45);
 }
 
+.item-drag-handle {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    min-width: 28px;
+    cursor: grab;
+}
+
+.item-drag-handle__visual {
+    width: 14px;
+    height: 18px;
+    margin-top: 9px;
+    background-image: radial-gradient(circle, rgb(95 99 104 / 0.9) 2px, transparent 1.3px);
+    background-size: 7px 6px;
+    background-position: 0 0;
+    background-repeat: repeat;
+}
+
 .item-checkbox-label {
     display: flex;
-    padding: 10px 8px 0 8px;
+    padding: 10px 16px 0 8px;
 }
 
 .item-checkbox {
