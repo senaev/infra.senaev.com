@@ -29,37 +29,10 @@ const tempUpdatesMap = new Map<
 
 export default function App() {
     const [items, todoList] = useTodoList(TODO_LIST_ID);
-    const [isLoading, setIsLoading] = useState(true);
     const [pendingFocus, setPendingFocus] = useState<PendingFocus | null>(null);
     const inputRefs = useRef(new Map<number, HTMLTextAreaElement>());
     const desiredCaretPositionRef = useRef(0);
     const ignoreNextSelectionRef = useRef(false);
-
-    const [errors, setErrors] = useState<string[]>([]);
-
-    function showError(error: string) {
-        console.error(error);
-        setErrors((current) => [...current, error]);
-    }
-
-    function removeError(indexToRemove: number) {
-        setErrors((current) => current.filter((_, index) => index !== indexToRemove));
-    }
-
-    useEffect(() => {
-        setIsLoading(true);
-
-        TodoListTable.readAll(TODO_LIST_ID)
-            .then((data) => {
-                todoList.setItems(data.map((item) => ({ ...item, persisted: true })));
-            })
-            .catch((error) => {
-                showError(error.message);
-            })
-            .finally(() => {
-                setIsLoading(false);
-            });
-    }, [todoList]);
 
     useEffect(() => {
         if (pendingFocus == null) {
@@ -95,8 +68,7 @@ export default function App() {
     ): void {
         const itemToUpdate = todoList.getItems().find((item) => item.id === id);
         if (!itemToUpdate) {
-            showError(`persistItem: item with id ${id} not found`);
-            debugger;
+            todoList.showError(`persistItem: item with id ${id} not found`);
             return;
         }
 
@@ -123,7 +95,7 @@ export default function App() {
                 }
             })
             .catch((error) => {
-                showError(error.message);
+                todoList.showError(error.message);
             });
     }
 
@@ -136,7 +108,7 @@ export default function App() {
         const itemToRemove = todoList.getItems().find((item) => item.id === id);
 
         if (!itemToRemove) {
-            showError(`removeItem: item with id ${id} not found`);
+            todoList.showError(`removeItem: item with id ${id} not found`);
             return;
         }
 
@@ -151,7 +123,7 @@ export default function App() {
         }
 
         TodoListTable.delete(id).catch((error) => {
-            showError(error.message);
+            todoList.showError(error.message);
         });
     }
 
@@ -249,7 +221,7 @@ export default function App() {
                 }
             })
             .catch((error) => {
-                showError(error.message);
+                todoList.showError(error.message);
             });
     }
 
@@ -257,7 +229,7 @@ export default function App() {
         const itemToUpdate = todoList.getItems().find((item) => item.id === id);
 
         if (!itemToUpdate) {
-            showError(`updateItem: item not found id=[${id}]`);
+            todoList.showError(`updateItem: item not found id=[${id}]`);
             return;
         }
 
@@ -290,7 +262,7 @@ export default function App() {
         const currentItem = todoList.getItems().find((item) => item.id === id);
 
         if (!currentItem) {
-            showError(`createItemAfter: item with id ${id} not found`);
+            todoList.showError(`createItemAfter: item with id ${id} not found`);
             return;
         }
 
@@ -411,7 +383,7 @@ export default function App() {
             event.preventDefault();
 
             if (selectionStart == null || selectionEnd == null) {
-                showError("Unable to determine caret position");
+                todoList.showError("Unable to determine caret position");
                 return;
             }
 
@@ -465,11 +437,11 @@ export default function App() {
 
     return (
         <main className="page">
-            <ErrorToasts errors={errors} onClose={removeError} />
+            <ErrorToasts errors={todoList.errors} onClose={todoList.removeError} />
             <section className="editor">
                 <h1 className="list-title">{todoList.getTitle()}</h1>
 
-                {isLoading ? (
+                {todoList.isLoading ? (
                     <p className="status">🔄 Loading...</p>
                 ) : (
                     <div className="items">
