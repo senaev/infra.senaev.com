@@ -157,6 +157,18 @@
     text-decoration: line-through;
 }
 
+.item-input {
+    display: block;
+    min-width: 0;
+    min-height: 1.5em;
+    padding: 0;
+    font-size: 1rem;
+    line-height: 1.5;
+    resize: none;
+    overflow: hidden;
+    field-sizing: content;
+}
+
 .add-item-button {
     padding: 12px 36px;
     color: rgb(154 160 166);

@@ -31,7 +31,7 @@ export default function App() {
     const [items, setItems] = useState<GroceryItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [pendingFocus, setPendingFocus] = useState<PendingFocus | null>(null);
-    const inputRefs = useRef(new Map<number, HTMLInputElement>());
+    const inputRefs = useRef(new Map<number, HTMLTextAreaElement>());
     const desiredCaretPositionRef = useRef(0);
     const ignoreNextSelectionRef = useRef(false);
 
@@ -74,6 +74,12 @@ export default function App() {
         setPendingFocus(null);
     }, [items, pendingFocus]);
 
+    useEffect(() => {
+        inputRefs.current.forEach((input) => {
+            resizeTextarea(input);
+        });
+    }, [items]);
+
     function persistItem(
         id: number,
         updates: Partial<Pick<GroceryItem, "title" | "position" | "checked">>,
@@ -94,6 +100,11 @@ export default function App() {
                     return null;
                 }
             });
+    }
+
+    function resizeTextarea(input: HTMLTextAreaElement) {
+        input.style.height = "auto";
+        input.style.height = `${input.scrollHeight}px`;
     }
 
     function deleteItem(id: number): void {
@@ -301,7 +312,7 @@ export default function App() {
         });
     }
 
-    function saveCaretPosition(event: SyntheticEvent<HTMLInputElement>) {
+    function saveCaretPosition(event: SyntheticEvent<HTMLTextAreaElement>) {
         if (ignoreNextSelectionRef.current) {
             ignoreNextSelectionRef.current = false;
             return;
@@ -316,8 +327,18 @@ export default function App() {
         desiredCaretPositionRef.current = caretPosition;
     }
 
-    function handleItemKeyDown(event: KeyboardEvent<HTMLInputElement>, item: GroceryItem) {
-        if (event.key === "Enter") {
+    function isCaretOnFirstLine(input: HTMLTextAreaElement) {
+        const caretPosition = input.selectionStart ?? 0;
+        return !input.value.slice(0, caretPosition).includes("\n");
+    }
+
+    function isCaretOnLastLine(input: HTMLTextAreaElement) {
+        const caretPosition = input.selectionEnd ?? input.value.length;
+        return !input.value.slice(caretPosition).includes("\n");
+    }
+
+    function handleItemKeyDown(event: KeyboardEvent<HTMLTextAreaElement>, item: GroceryItem) {
+        if (event.key === "Enter" && !event.shiftKey) {
             event.preventDefault();
 
             let { selectionStart, selectionEnd } = event.currentTarget;
@@ -343,6 +364,18 @@ export default function App() {
         }
 
         if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+            const hasSelection =
+                event.currentTarget.selectionStart !== event.currentTarget.selectionEnd;
+            const shouldMoveToAdjacentItem =
+                !hasSelection &&
+                (event.key === "ArrowUp"
+                    ? isCaretOnFirstLine(event.currentTarget)
+                    : isCaretOnLastLine(event.currentTarget));
+
+            if (!shouldMoveToAdjacentItem) {
+                return;
+            }
+
             event.preventDefault();
             moveCaretBetweenItems({
                 id: item.id,
@@ -404,12 +437,13 @@ export default function App() {
                                             type="checkbox"
                                         />
                                     </label>
-                                    <input
+                                    <textarea
                                         id={`input-${item.id}`}
                                         className={`item-input${item.checked ? " is-checked" : ""}`}
                                         ref={(node) => {
                                             if (node) {
                                                 inputRefs.current.set(item.id, node);
+                                                resizeTextarea(node);
                                             } else {
                                                 inputRefs.current.delete(item.id);
                                             }
@@ -418,12 +452,14 @@ export default function App() {
                                             updateItem(item.id, { title: event.target.value });
                                         }}
                                         onChange={(event) => {
+                                            resizeTextarea(event.currentTarget);
                                             handleItemChange(item.id, event.target.value);
                                         }}
                                         onSelect={saveCaretPosition}
                                         onKeyDown={(event) => {
                                             handleItemKeyDown(event, item);
                                         }}
+                                        rows={1}
                                         value={item.title}
                                     />
                                     <button
