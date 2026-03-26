@@ -1,324 +1,47 @@
 import "./App.css";
 
-import { KeyboardEvent, SyntheticEvent, useEffect, useRef, useState } from "react";
+import { KeyboardEvent, SyntheticEvent, useEffect, useRef } from "react";
 import { ErrorToasts } from "./components/ErrorToasts";
-import { TodoListTable } from "./Tables/TodoListTable";
 import { TodoListItem } from "./TodoList/TodoList";
 import { useTodoList } from "./TodoList/useTodoList";
 
 const debugEnabled = new URLSearchParams(window.location.search).has("debug");
 
-type PendingFocus = {
-    id: number;
-    selectionStart: number;
-    selectionEnd: number;
-};
-
 const TODO_LIST_ID = 1;
 
-// Temp ids are used for optimistic rendering of newly created items
-// They are also used when rendering items to avoid rerendering after getting real id
-let nextTempId = -1;
-const generateNextItemId = () => nextTempId--;
-const tempIdsMap = new Map<number, number>();
-const tempIdsRemovedSet = new Set<number>();
-const tempUpdatesMap = new Map<
-    number,
-    Partial<Pick<TodoListItem, "title" | "position" | "checked">>
->();
-
 export default function App() {
-    const [items, todoList] = useTodoList(TODO_LIST_ID);
-    const [pendingFocus, setPendingFocus] = useState<PendingFocus | null>(null);
+    const [itemsVer, todoList] = useTodoList(TODO_LIST_ID);
     const inputRefs = useRef(new Map<number, HTMLTextAreaElement>());
     const desiredCaretPositionRef = useRef(0);
     const ignoreNextSelectionRef = useRef(false);
 
     useEffect(() => {
-        if (pendingFocus == null) {
+        if (todoList.pendingFocus == null) {
             return;
         }
 
-        const input = inputRefs.current.get(pendingFocus.id);
+        const { selectionEnd, selectionStart, id } = todoList.pendingFocus;
+
+        const input = inputRefs.current.get(id);
         if (!input) {
             return;
         }
 
         ignoreNextSelectionRef.current = true;
         input.focus();
-        input.setSelectionRange(pendingFocus.selectionStart, pendingFocus.selectionEnd);
-        setPendingFocus(null);
-    }, [items, pendingFocus]);
+        input.setSelectionRange(selectionStart, selectionEnd);
+        todoList.setPendingFocus(null);
+    }, [itemsVer, todoList]);
 
     useEffect(() => {
         inputRefs.current.forEach((input) => {
             resizeTextarea(input);
         });
-    }, [items]);
-
-    function changeItemLocally(id: number, updates: Partial<TodoListItem>): void {
-        todoList.setItems(
-            todoList.getItems().map((item) => (item.id === id ? { ...item, ...updates } : item)),
-        );
-    }
-
-    function persistItem(
-        id: number,
-        updates: Partial<Pick<TodoListItem, "title" | "position" | "checked">>,
-    ): void {
-        const itemToUpdate = todoList.getItems().find((item) => item.id === id);
-        if (!itemToUpdate) {
-            todoList.showError(`persistItem: item with id ${id} not found`);
-            return;
-        }
-
-        const previousUpdateIndex = itemToUpdate.update_index;
-        const nextUpdateIndex = previousUpdateIndex + 1;
-        changeItemLocally(id, { update_index: nextUpdateIndex });
-
-        if (id < 0) {
-            tempUpdatesMap.set(id, { ...tempUpdatesMap.get(id), ...updates });
-            return;
-        }
-
-        TodoListTable.update(id, { ...updates, update_index: nextUpdateIndex })
-            .then((result) => {
-                if (result === "update_index_conflict") {
-                    // Ignore conflicts, persistent state will be delivered through server-push
-                    return;
-                }
-
-                // Check that local item has not been removed during update
-                const localItem = todoList.getItems().find((item) => item.id === id);
-                if (localItem) {
-                    changeItemLocally(id, { persisted: true });
-                }
-            })
-            .catch((error) => {
-                todoList.showError(error.message);
-            });
-    }
+    }, [itemsVer]);
 
     function resizeTextarea(input: HTMLTextAreaElement) {
         input.style.height = "auto";
         input.style.height = `${input.scrollHeight}px`;
-    }
-
-    function removeItemLocally(id: number): void {
-        const itemToRemove = todoList.getItems().find((item) => item.id === id);
-
-        if (!itemToRemove) {
-            todoList.showError(`removeItem: item with id ${id} not found`);
-            return;
-        }
-
-        todoList.setItems(todoList.getItems().filter((item) => item.id !== id));
-    }
-
-    function removeItemRemotely(id: number): void {
-        if (id < 0) {
-            // Item has NOT been persisted yet, add to list to remove after persistence
-            tempIdsRemovedSet.add(id);
-            return;
-        }
-
-        TodoListTable.delete(id).catch((error) => {
-            todoList.showError(error.message);
-        });
-    }
-
-    function removeItem(id: number) {
-        removeItemLocally(id);
-        removeItemRemotely(id);
-    }
-
-    function createItem() {
-        const nextPosition = Math.max(...todoList.getItems().map((item) => item.position), 0) + 1;
-        insertItem({ title: "", checked: false, position: nextPosition });
-    }
-
-    function insertItem({
-        title,
-        checked,
-        position,
-    }: {
-        title: string;
-        checked: boolean;
-        position: number;
-    }) {
-        const itemsWithHigherPosition = todoList
-            .getItems()
-            .filter((item) => item.position >= position)
-            .sort((first, second) => first.position - second.position);
-
-        let busyPosition = position;
-        const shiftedItems: Map<number, number> = new Map();
-        for (const { id, position } of itemsWithHigherPosition) {
-            if (position !== busyPosition) {
-                break;
-            }
-
-            busyPosition++;
-            shiftedItems.set(id, busyPosition);
-        }
-
-        shiftedItems.forEach((nextPosition, id) => {
-            todoList.setItems(
-                todoList.getItems().map((item) => {
-                    if (item.id === id) {
-                        return { ...item, position: nextPosition, persisted: false };
-                    }
-
-                    return item;
-                }),
-            );
-
-            persistItem(id, { position: nextPosition });
-        });
-
-        const tempId = generateNextItemId();
-
-        const newItem: TodoListItem = {
-            id: tempId,
-            todo_list_id: TODO_LIST_ID,
-            title,
-            created: "",
-            updated: "",
-            position,
-            checked,
-            update_index: 0,
-            persisted: false,
-        };
-
-        todoList.setItems([...todoList.getItems(), newItem]);
-
-        setPendingFocus({
-            id: tempId,
-            selectionStart: 0,
-            selectionEnd: 0,
-        });
-
-        TodoListTable.create(newItem)
-            .then((data) => {
-                // Item was deleted on the client
-                if (tempIdsRemovedSet.delete(tempId)) {
-                    removeItemRemotely(data.id);
-                    return;
-                }
-
-                tempIdsMap.set(data.id, tempId);
-
-                const tempUpdate = tempUpdatesMap.get(tempId);
-                changeItemLocally(tempId, {
-                    id: data.id,
-                    created: data.created,
-                    updated: data.updated,
-                    persisted: !tempUpdate,
-                });
-                if (tempUpdate) {
-                    tempUpdatesMap.delete(tempId);
-                    persistItem(data.id, tempUpdate);
-                }
-            })
-            .catch((error) => {
-                todoList.showError(error.message);
-            });
-    }
-
-    function updateItem(id: number, params: { title?: string; checked?: boolean }) {
-        const itemToUpdate = todoList.getItems().find((item) => item.id === id);
-
-        if (!itemToUpdate) {
-            todoList.showError(`updateItem: item not found id=[${id}]`);
-            return;
-        }
-
-        let nothingToUpdate = true;
-        for (const [key, value] of Object.entries(params)) {
-            if (itemToUpdate[key as keyof TodoListItem] !== value) {
-                nothingToUpdate = false;
-                break;
-            }
-        }
-        if (nothingToUpdate) {
-            return;
-        }
-
-        changeItemLocally(id, { ...params, persisted: false });
-        persistItem(id, params);
-    }
-
-    function createItemAfter({
-        id,
-        checked,
-        titleBefore,
-        titleAfter,
-    }: {
-        id: number;
-        checked: boolean;
-        titleBefore: string;
-        titleAfter: string;
-    }) {
-        const currentItem = todoList.getItems().find((item) => item.id === id);
-
-        if (!currentItem) {
-            todoList.showError(`createItemAfter: item with id ${id} not found`);
-            return;
-        }
-
-        const nextPosition = currentItem.position + 1;
-
-        updateItem(id, { title: titleBefore, checked });
-
-        insertItem({
-            title: titleAfter,
-            checked: titleAfter.trim() ? checked : false,
-            position: nextPosition,
-        });
-    }
-
-    function toggleChecked(id: number, isChecked: boolean) {
-        todoList.setItems(
-            todoList
-                .getItems()
-                .map((item) => (item.id === id ? { ...item, checked: isChecked } : item)),
-        );
-        persistItem(id, { checked: isChecked });
-    }
-
-    function mergeItemWithPrevious(id: number) {
-        const sortedItems = [...todoList.getItems()].sort(
-            (first, second) => first.position - second.position,
-        );
-        const currentIndex = sortedItems.findIndex((item) => item.id === id);
-
-        if (currentIndex <= 0) {
-            return;
-        }
-
-        const currentItem = sortedItems[currentIndex];
-        const previousItem = sortedItems[currentIndex - 1];
-        const mergedTitle = previousItem.title + currentItem.title;
-        const cursorPosition = previousItem.title.length;
-
-        todoList.setItems(
-            todoList.getItems().map((item) => {
-                if (item.id === previousItem.id) {
-                    return { ...item, title: mergedTitle };
-                }
-
-                return item;
-            }),
-        );
-
-        persistItem(previousItem.id, { title: mergedTitle });
-        removeItemLocally(currentItem.id);
-        removeItemRemotely(currentItem.id);
-        setPendingFocus({
-            id: previousItem.id,
-            selectionStart: cursorPosition,
-            selectionEnd: cursorPosition,
-        });
     }
 
     function moveCaretBetweenItems({ id, direction }: { id: number; direction: "up" | "down" }) {
@@ -342,7 +65,7 @@ export default function App() {
         const maxPositionInFirstLine =
             firstLineLength === -1 ? targetItem.title.length : firstLineLength;
         const selectionPosition = Math.min(desiredCaretPositionRef.current, maxPositionInFirstLine);
-        setPendingFocus({
+        todoList.setPendingFocus({
             id: targetItem.id,
             selectionStart: selectionPosition,
             selectionEnd: selectionPosition,
@@ -390,7 +113,7 @@ export default function App() {
             const titleBefore = event.currentTarget.value.slice(0, selectionStart);
             const titleAfter = event.currentTarget.value.slice(selectionEnd);
 
-            createItemAfter({
+            todoList.createItemAfter({
                 id: item.id,
                 checked: item.checked,
                 titleBefore,
@@ -400,7 +123,7 @@ export default function App() {
 
         if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === "l") {
             event.preventDefault();
-            toggleChecked(item.id, !item.checked);
+            todoList.toggleChecked(item.id, !item.checked);
         }
 
         if (event.key === "ArrowUp" || event.key === "ArrowDown") {
@@ -426,13 +149,13 @@ export default function App() {
         if (event.key === "Backspace" && selectionStart === 0 && selectionEnd === 0) {
             event.preventDefault();
 
-            mergeItemWithPrevious(item.id);
+            todoList.mergeItemWithPrevious(item.id);
         }
     }
 
     function handleItemChange(id: number, title: string) {
-        changeItemLocally(id, { title, persisted: false });
-        persistItem(id, { title });
+        todoList.changeItemLocally(id, { title, persisted: false });
+        todoList.persistItem(id, { title });
     }
 
     return (
@@ -448,14 +171,17 @@ export default function App() {
                         {[...todoList.getItems()]
                             .sort((first, second) => first.position - second.position)
                             .map((item) => (
-                                <div className="item-row" key={tempIdsMap.get(item.id) || item.id}>
+                                <div className="item-row" key={todoList.getItemClientKey(item)}>
                                     <label className="item-checkbox-label">
                                         <input
                                             aria-label={`Mark ${item.title || "item"} as checked`}
                                             checked={Boolean(item.checked)}
                                             className="item-checkbox"
                                             onChange={(event) => {
-                                                toggleChecked(item.id, event.target.checked);
+                                                todoList.toggleChecked(
+                                                    item.id,
+                                                    event.target.checked,
+                                                );
                                             }}
                                             type="checkbox"
                                         />
@@ -473,7 +199,9 @@ export default function App() {
                                                 }
                                             }}
                                             onBlur={(event) => {
-                                                updateItem(item.id, { title: event.target.value });
+                                                todoList.updateItem(item.id, {
+                                                    title: event.target.value,
+                                                });
                                             }}
                                             onChange={(event) => {
                                                 resizeTextarea(event.currentTarget);
@@ -503,7 +231,7 @@ export default function App() {
                                                     color: "red",
                                                 }}
                                             >
-                                                {tempIdsMap.get(item.id) ?? "?"}
+                                                {todoList.getItemClientKey(item)}
                                             </span>
                                             <span
                                                 style={{
@@ -518,7 +246,7 @@ export default function App() {
                                         aria-label={`Remove ${item.title || "item"}`}
                                         className="item-remove"
                                         onClick={() => {
-                                            removeItem(item.id);
+                                            todoList.removeItem(item.id);
                                         }}
                                         role="button"
                                         tabIndex={0}
@@ -530,7 +258,7 @@ export default function App() {
                         <button
                             className="add-item-button"
                             onClick={() => {
-                                createItem();
+                                todoList.createItem();
                             }}
                             type="button"
                         >
