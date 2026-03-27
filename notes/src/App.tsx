@@ -5,6 +5,7 @@ import { KeyboardEvent, PointerEvent, SyntheticEvent, useEffect, useRef, useStat
 import { ErrorToasts } from "./components/ErrorToasts";
 import { TodoListItem } from "./TodoList/TodoList";
 import { useTodoList } from "./TodoList/useTodoList";
+import { noop } from "./utils/noop";
 
 const debugEnabled = new URLSearchParams(window.location.search).has("debug");
 
@@ -20,6 +21,18 @@ type DragState = {
     offsetY: number;
 };
 
+type DragHandlers = {
+    start: (event: PointerEvent<HTMLDivElement>, item: TodoListItem) => void;
+    move: (event: PointerEvent<HTMLDivElement>, item: TodoListItem) => void;
+    stop: (event: PointerEvent<HTMLDivElement>, item: TodoListItem) => void;
+};
+
+const NOOP_DRAG_HANDLERS: DragHandlers = {
+    start: noop,
+    move: noop,
+    stop: noop,
+};
+
 export function ListItem({
     item,
     toggleChecked,
@@ -31,6 +44,7 @@ export function ListItem({
     dragHandlers,
     resizeTextarea,
     inputRefs,
+    readonly,
 }: {
     item: TodoListItem;
     toggleChecked: (id: number, checked: boolean) => void;
@@ -38,19 +52,17 @@ export function ListItem({
     onSelect: (event: SyntheticEvent<HTMLTextAreaElement>) => void;
     onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
     onRemove: VoidFunction;
-    dragState: boolean;
-    dragHandlers: {
-        start: (event: PointerEvent<HTMLDivElement>, item: TodoListItem) => void;
-        move: (event: PointerEvent<HTMLDivElement>, item: TodoListItem) => void;
-        stop: (event: PointerEvent<HTMLDivElement>, item: TodoListItem) => void;
-    };
+    dragState?: "ghost" | "source";
+    dragHandlers: DragHandlers;
     resizeTextarea: (input: HTMLTextAreaElement) => void;
     inputRefs: React.RefObject<Map<number, HTMLTextAreaElement>>;
+    readonly?: boolean;
 }) {
     return (
         <div
             className={classNames("item-row", {
-                "item-row--drag-source": dragState,
+                "item-row--drag-source": dragState === "source",
+                "item-row--drag-overlay": dragState === "ghost",
             })}
         >
             <div
@@ -79,32 +91,43 @@ export function ListItem({
                     onChange={(event) => {
                         toggleChecked(item.id, event.target.checked);
                     }}
+                    readOnly={readonly}
                     type="checkbox"
                 />
             </label>
             <label className="item-textarea-label">
-                <textarea
-                    id={`input-${item.id}`}
-                    className={classNames("item-input", {
-                        "is-checked": item.checked,
-                    })}
-                    ref={(node) => {
-                        if (node) {
-                            inputRefs.current.set(item.id, node);
-                            resizeTextarea(node);
-                        } else {
-                            inputRefs.current.delete(item.id);
-                        }
-                    }}
-                    onChange={(event) => {
-                        resizeTextarea(event.currentTarget);
-                        onChange(item.id, event.currentTarget.value);
-                    }}
-                    onSelect={onSelect}
-                    onKeyDown={onKeyDown}
-                    rows={1}
-                    value={item.title}
-                />
+                {readonly ? (
+                    <div
+                        className={classNames("item-input", "item-input--drag-ghost", {
+                            "is-checked": item.checked,
+                        })}
+                    >
+                        {item.title || " "}
+                    </div>
+                ) : (
+                    <textarea
+                        id={`input-${item.id}`}
+                        className={classNames("item-input", {
+                            "is-checked": item.checked,
+                        })}
+                        ref={(node) => {
+                            if (node) {
+                                inputRefs.current.set(item.id, node);
+                                resizeTextarea(node);
+                            } else {
+                                inputRefs.current.delete(item.id);
+                            }
+                        }}
+                        onChange={(event) => {
+                            resizeTextarea(event.currentTarget);
+                            onChange(item.id, event.currentTarget.value);
+                        }}
+                        onSelect={onSelect}
+                        onKeyDown={onKeyDown}
+                        rows={1}
+                        value={item.title}
+                    />
+                )}
             </label>
             {debugEnabled && (
                 <>
@@ -380,29 +403,19 @@ export function App() {
 
     function renderDragOverlayItem(item: TodoListItem) {
         return (
-            <div className="item-row item-row--drag-overlay">
-                <div className="item-drag-handle">
-                    <span className="item-drag-handle__visual" />
-                </div>
-                <label className="item-checkbox-label">
-                    <input
-                        checked={Boolean(item.checked)}
-                        className="item-checkbox"
-                        readOnly
-                        type="checkbox"
-                    />
-                </label>
-                <div className="item-textarea-label">
-                    <div
-                        className={`item-input item-input--drag-ghost${item.checked ? " is-checked" : ""}`}
-                    >
-                        {item.title || " "}
-                    </div>
-                </div>
-                <div className="item-remove">
-                    <div className="item-remove-visual" />
-                </div>
-            </div>
+            <ListItem
+                dragHandlers={NOOP_DRAG_HANDLERS}
+                dragState="ghost"
+                inputRefs={inputRefs}
+                item={item}
+                onChange={noop}
+                onKeyDown={noop}
+                onRemove={noop}
+                onSelect={noop}
+                readonly
+                resizeTextarea={resizeTextarea}
+                toggleChecked={noop}
+            />
         );
     }
 
@@ -440,7 +453,7 @@ export function App() {
                                 onRemove={() => {
                                     todoList.removeItem(item.id);
                                 }}
-                                dragState={dragState?.itemId === item.id}
+                                dragState={dragState?.itemId === item.id ? "source" : undefined}
                                 dragHandlers={dragHandlers}
                                 resizeTextarea={resizeTextarea}
                                 inputRefs={inputRefs}
