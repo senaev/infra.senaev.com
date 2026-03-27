@@ -1,5 +1,6 @@
 import "./App.css";
 
+import classNames from "classnames";
 import { KeyboardEvent, PointerEvent, SyntheticEvent, useEffect, useRef, useState } from "react";
 import { ErrorToasts } from "./components/ErrorToasts";
 import { TodoListItem } from "./TodoList/TodoList";
@@ -47,7 +48,11 @@ export function ListItem({
     inputRefs: React.RefObject<Map<number, HTMLTextAreaElement>>;
 }) {
     return (
-        <div className={`item-row${dragState ? " item-row--drag-source" : ""}`}>
+        <div
+            className={classNames("item-row", {
+                "item-row--drag-source": dragState,
+            })}
+        >
             <div
                 aria-label={`Reorder ${item.title || "item"}`}
                 className="item-drag-handle"
@@ -80,7 +85,9 @@ export function ListItem({
             <label className="item-textarea-label">
                 <textarea
                     id={`input-${item.id}`}
-                    className={`item-input${item.checked ? " is-checked" : ""}`}
+                    className={classNames("item-input", {
+                        "is-checked": item.checked,
+                    })}
                     ref={(node) => {
                         if (node) {
                             inputRefs.current.set(item.id, node);
