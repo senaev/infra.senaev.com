@@ -6,25 +6,24 @@ const NOTE_TITLE = "Groceries 🛒";
 export type PendingFocus = { id: number; selectionStart: number; selectionEnd: number };
 
 export class TodoList {
-    public errors: string[] = [];
-
     pendingFocus: PendingFocus | null = null;
 
     private items: TodoListItem[] = [];
 
     public constructor(
-        private readonly todoListId: number,
-        private readonly onChange: () => void,
+        private readonly params: {
+            todoListId: number;
+            onChange: () => void;
+            showError: (message: string) => void;
+        },
     ) {
-        TodoListTable.readAll(this.todoListId)
+        TodoListTable.readAll(this.params.todoListId)
             .then((data) => {
                 this.setItems(data.map((item) => ({ ...item, persisted: true })));
+                this.params.onChange();
             })
             .catch((error) => {
-                this.errors.push(error.message);
-            })
-            .finally(() => {
-                this.onChange();
+                this.params.showError(error.message);
             });
     }
 
@@ -44,17 +43,6 @@ export class TodoList {
         return this.tempIdsMap.get(item.id) || item.id;
     }
 
-    // TODO: move errors logic to an external component
-    public readonly showError = (message: string) => {
-        this.errors.push(message);
-        this.onChange();
-    };
-
-    public readonly removeError = (index: number) => {
-        this.errors.splice(index, 1);
-        this.onChange();
-    };
-
     public getItems() {
         return this.items;
     }
@@ -70,7 +58,7 @@ export class TodoList {
         }
 
         if (itemsChanged) {
-            this.onChange();
+            this.params.onChange();
         }
     }
 
@@ -82,7 +70,7 @@ export class TodoList {
         const itemToRemove = this.items.find((item) => item.id === id);
 
         if (!itemToRemove) {
-            this.showError(`removeItem: item with id ${id} not found`);
+            this.params.showError(`removeItem: item with id ${id} not found`);
             return;
         }
 
@@ -97,7 +85,7 @@ export class TodoList {
         }
 
         TodoListTable.delete(id).catch((error) => {
-            this.showError(error.message);
+            this.params.showError(error.message);
         });
     }
 
@@ -112,7 +100,7 @@ export class TodoList {
     ): void {
         const itemToUpdate = this.items.find((item) => item.id === id);
         if (!itemToUpdate) {
-            this.showError(`persistItem: item with id ${id} not found`);
+            this.params.showError(`persistItem: item with id ${id} not found`);
             return;
         }
 
@@ -139,13 +127,13 @@ export class TodoList {
                 }
             })
             .catch((error) => {
-                this.showError(error.message);
+                this.params.showError(error.message);
             });
     }
 
     public setPendingFocus(focus: PendingFocus | null) {
         this.pendingFocus = focus;
-        this.onChange();
+        this.params.onChange();
     }
 
     public insertItem({
@@ -190,7 +178,7 @@ export class TodoList {
 
         const newItem: TodoListItem = {
             id: tempId,
-            todo_list_id: this.todoListId,
+            todo_list_id: this.params.todoListId,
             title,
             created: "",
             updated: "",
@@ -232,7 +220,7 @@ export class TodoList {
                 }
             })
             .catch((error) => {
-                this.showError(error.message);
+                this.params.showError(error.message);
             });
     }
 
@@ -255,7 +243,7 @@ export class TodoList {
         const currentItem = this.items.find((item) => item.id === id);
 
         if (!currentItem) {
-            this.showError(`createItemAfter: item not found id=[${id}]`);
+            this.params.showError(`createItemAfter: item not found id=[${id}]`);
             debugger;
             return;
         }

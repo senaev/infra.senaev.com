@@ -2,10 +2,10 @@ import "./App.css";
 
 import { KeyboardEvent, SyntheticEvent, useEffect, useRef, useState } from "react";
 import { useTodoList } from "../../TodoList/useTodoList";
+import { useErrorsContext } from "../../contexts/ErrorsContext";
 import { TodoListItem } from "../../types/TodoListItem";
 import { noop } from "../../utils/noop";
 import { startDragAndDrop } from "../../utils/startDragAndDrop";
-import { ErrorToasts } from "../ErrorToasts/ErrorToasts";
 import { ListItem } from "../ListItem/ListItem";
 
 const TODO_LIST_ID = 1;
@@ -23,7 +23,8 @@ type DragState = {
 };
 
 export function App() {
-    const [itemsVer, todoList] = useTodoList(TODO_LIST_ID);
+    const { showError } = useErrorsContext();
+    const [itemsVer, todoList] = useTodoList({ todoListId: TODO_LIST_ID, showError });
     const [dragState, setDragState] = useState<DragState | null>(null);
     const inputRefs = useRef(new Map<number, HTMLTextAreaElement>());
     const desiredCaretPositionRef = useRef(0);
@@ -126,7 +127,7 @@ export function App() {
             event.preventDefault();
 
             if (selectionStart == null || selectionEnd == null) {
-                todoList.showError("Unable to determine caret position");
+                showError("Unable to determine caret position");
                 return;
             }
 
@@ -192,7 +193,6 @@ export function App() {
 
     return (
         <main className="page">
-            <ErrorToasts errors={todoList.errors} onClose={todoList.removeError} />
             <section className="editor">
                 <h1 className="list-title">{todoList.getTitle()}</h1>
 
