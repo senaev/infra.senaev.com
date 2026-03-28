@@ -323,6 +323,7 @@ export function App() {
                                                     ? dropIndex + sourceCount
                                                     : dropIndex,
                                             childCandidate,
+                                            count: sourceCount,
                                         });
 
                                         return;

@@ -141,11 +141,19 @@ export class TodoList {
         {
             dropIndex,
             childCandidate,
+            count,
         }: {
             dropIndex: number;
             childCandidate: boolean;
+            count: number;
         },
     ) {
+        const itemToMove = this.items.find((item) => item.id === id);
+        if (!itemToMove) {
+            this.params.showError(`moveItem: item with id ${id} not found`);
+            return;
+        }
+
         const sortedItems = [...this.items].sort(
             (first, second) => first.position - second.position,
         );
@@ -156,18 +164,12 @@ export class TodoList {
 
         const parent_id = childCandidate && dropIndex !== 0 ? sortedItems[dropIndex - 1].id : null;
 
-        const itemToMove = this.items.find((item) => item.id === id);
-        if (!itemToMove) {
-            this.params.showError(`moveItem: item with id ${id} not found`);
-            return;
-        }
-
-        this.shiftElementsToInsertOnPosition(position);
+        this.shiftElementsToInsertOnPosition(position, count);
         this.changeItemLocally(id, { position, parent_id, persisted: false });
         this.persistItem(id, { position, parent_id });
     }
 
-    private shiftElementsToInsertOnPosition(position: number) {
+    private shiftElementsToInsertOnPosition(position: number, count: number) {
         const itemsWithHigherPosition = this.items
             .filter((item) => item.position >= position)
             .sort((first, second) => first.position - second.position);
@@ -209,7 +211,7 @@ export class TodoList {
         position: number;
         parent_id: number | null;
     }) {
-        this.shiftElementsToInsertOnPosition(position);
+        this.shiftElementsToInsertOnPosition(position, 1);
 
         const tempId = this.generateNextItemId();
 
