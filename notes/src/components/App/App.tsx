@@ -3,6 +3,7 @@ import "./App.css";
 import { KeyboardEvent, PointerEvent, SyntheticEvent, useEffect, useRef, useState } from "react";
 import { NOOP_DRAG_HANDLERS } from "../../const/NOOP_DRAG_HANDLERS";
 import { useTodoList } from "../../TodoList/useTodoList";
+import { DragHandlers } from "../../types/DragHandlers";
 import { TodoListItem } from "../../types/TodoListItem";
 import { noop } from "../../utils/noop";
 import { ErrorToasts } from "../ErrorToasts/ErrorToasts";
@@ -27,6 +28,11 @@ type DragState = {
     width: number;
     offsetX: number;
     offsetY: number;
+    // TODO: remove
+    activeDragElement: {
+        itemId: number;
+        pointerId: number;
+    };
 };
 
 export function App() {
@@ -35,7 +41,6 @@ export function App() {
     const inputRefs = useRef(new Map<number, HTMLTextAreaElement>());
     const desiredCaretPositionRef = useRef(0);
     const ignoreNextSelectionRef = useRef(false);
-    const activeDragRef = useRef<{ itemId: number; pointerId: number } | null>(null);
     const editorRef = useRef<HTMLElement>(null);
 
     const sortedItems: TodoListItem[] = [...todoList.getItems()].sort(
@@ -49,12 +54,10 @@ export function App() {
 
         for (let index = 0; index < dragLayout.length; index++) {
             if (pointerY < dragLayout[index].midpointY) {
-                console.log("Found drop index", { index });
                 return index;
             }
         }
 
-        console.log("Drop index is at the end", { index: dragLayout.length });
         return dragLayout.length;
     }
 
@@ -201,34 +204,32 @@ export function App() {
         todoList.persistItem(id, { title });
     }
 
-    const dragHandlers = {
+    const dragHandlers: DragHandlers = {
         start(event: PointerEvent<HTMLDivElement>, item: TodoListItem) {
-            const row = event.currentTarget.closest(".item-row");
+            const dragItemElement = event.currentTarget.closest(".item-row")!;
 
-            if (!(row instanceof HTMLDivElement)) {
-                return;
-            }
-
-            const rect = row.getBoundingClientRect();
-            activeDragRef.current = {
+            const rect = dragItemElement.getBoundingClientRect();
+            const activeDragElement = {
                 itemId: item.id,
                 pointerId: event.pointerId,
             };
 
-            const dragLayout = Array.from(editorRef.current?.querySelectorAll(".item-row") ?? [])
-                .filter((row): row is HTMLDivElement => row instanceof HTMLDivElement)
-                .map((row) => {
-                    const rowItemId = Number(row.dataset.itemId);
+            const offsetY = event.clientY - rect.top;
+            const dragReorderOffset = offsetY - rect.height / 2;
 
-                    if (rowItemId === item.id || Number.isNaN(rowItemId)) {
-                        return null;
-                    }
+            const allListItemElements = Array.from(
+                editorRef.current!.querySelectorAll(".item-row"),
+            );
 
-                    const rect = row.getBoundingClientRect();
+            const dragLayout = allListItemElements
+                .map((listItemElement) => {
+                    const rowItemId = Number((listItemElement as HTMLDivElement).dataset.itemId);
+
+                    const rect = listItemElement.getBoundingClientRect();
 
                     return {
                         itemId: rowItemId,
-                        midpointY: rect.top + rect.height / 2,
+                        midpointY: rect.top + rect.height / 2 + dragReorderOffset,
                     };
                 })
                 .filter((row): row is DragLayoutRow => row != null);
@@ -244,15 +245,21 @@ export function App() {
                 y: rect.top,
                 width: rect.width,
                 offsetX: event.clientX - rect.left,
-                offsetY: event.clientY - rect.top,
+                offsetY,
+                activeDragElement,
             });
         },
-
+        // TODO: remove item passing
+        // TODO: use special util for drag and drop
         move(event: PointerEvent<HTMLDivElement>, item: TodoListItem) {
+            if (dragState == null) {
+                return;
+            }
+
+            const { activeDragElement } = dragState;
             if (
-                activeDragRef.current == null ||
-                activeDragRef.current.itemId !== item.id ||
-                activeDragRef.current.pointerId !== event.pointerId
+                activeDragElement.itemId !== item.id ||
+                activeDragElement.pointerId !== event.pointerId
             ) {
                 return;
             }
@@ -271,10 +278,14 @@ export function App() {
             });
         },
         stop(event: PointerEvent<HTMLDivElement>, item: TodoListItem) {
+            if (dragState == null) {
+                return;
+            }
+
+            const { activeDragElement } = dragState;
             if (
-                activeDragRef.current == null ||
-                activeDragRef.current.itemId !== item.id ||
-                activeDragRef.current.pointerId !== event.pointerId
+                activeDragElement.itemId !== item.id ||
+                activeDragElement.pointerId !== event.pointerId
             ) {
                 return;
             }
@@ -283,7 +294,6 @@ export function App() {
                 event.currentTarget.releasePointerCapture(event.pointerId);
             }
 
-            activeDragRef.current = null;
             setDragState(null);
         },
     };
