@@ -1,12 +1,12 @@
 import "./App.css";
 
 import { KeyboardEvent, PointerEvent, SyntheticEvent, useEffect, useRef, useState } from "react";
-import { ErrorToasts } from "./components/ErrorToasts/ErrorToasts";
-import { ListItem } from "./components/ListItem/ListItem";
-import { NOOP_DRAG_HANDLERS } from "./const/NOOP_DRAG_HANDLERS";
-import { useTodoList } from "./TodoList/useTodoList";
-import { TodoListItem } from "./types/TodoListItem";
-import { noop } from "./utils/noop";
+import { NOOP_DRAG_HANDLERS } from "../../const/NOOP_DRAG_HANDLERS";
+import { useTodoList } from "../../TodoList/useTodoList";
+import { TodoListItem } from "../../types/TodoListItem";
+import { noop } from "../../utils/noop";
+import { ErrorToasts } from "../ErrorToasts/ErrorToasts";
+import { ListItem } from "../ListItem/ListItem";
 
 const TODO_LIST_ID = 1;
 
