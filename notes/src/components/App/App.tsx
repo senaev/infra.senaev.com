@@ -23,13 +23,9 @@ type DragState = {
     sourceIndex: number;
     dropIndex: number;
     childCandidate: boolean;
-    dragLayout: DragLayoutRow[];
-    pointerId: number;
     x: number;
     y: number;
     width: number;
-    offsetX: number;
-    offsetY: number;
 };
 
 export function App() {
@@ -253,8 +249,10 @@ export function App() {
 
                                     const rect = dragItemElement.getBoundingClientRect();
 
-                                    const offsetY = event.clientY - rect.top;
-                                    const dragReorderOffset = offsetY - rect.height / 2;
+                                    const initialOffsetY = event.clientY - rect.top;
+                                    const initialOffsetX = event.clientX - rect.left;
+                                    const width = rect.width;
+                                    const dragReorderOffset = initialOffsetY - rect.height / 2;
 
                                     const allListItemElements = Array.from(
                                         editorElement.querySelectorAll(".item-row"),
@@ -283,14 +281,10 @@ export function App() {
                                     let dragState: DragState = {
                                         sourceIndex,
                                         dropIndex: sourceIndex,
-                                        dragLayout,
-                                        pointerId: event.pointerId,
+                                        childCandidate: item.parent_id != null,
                                         x: rect.left,
                                         y: rect.top,
-                                        width: rect.width,
-                                        offsetX: event.clientX - rect.left,
-                                        offsetY,
-                                        childCandidate: item.parent_id != null,
+                                        width,
                                     };
                                     setDragState(dragState);
 
@@ -323,12 +317,13 @@ export function App() {
                                             return dragLayout.length;
                                         })();
 
-                                        const nextDragState = {
-                                            ...dragState,
-                                            x: event.clientX - dragState.offsetX,
-                                            y: event.clientY - dragState.offsetY,
+                                        const nextDragState: DragState = {
+                                            sourceIndex,
+                                            width,
                                             dropIndex,
                                             childCandidate,
+                                            x: event.clientX - initialOffsetX,
+                                            y: event.clientY - initialOffsetY,
                                         };
 
                                         dragState = nextDragState;
