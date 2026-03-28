@@ -32,6 +32,7 @@ export class TodoList {
 
     // Temp ids are used for optimistic rendering of newly created items
     // They are also used when rendering items to avoid rerendering after getting real id
+    // TODO: make global
     private nextTempId = -1;
     private readonly generateNextItemId = () => this.nextTempId--;
     private readonly tempIdsMap = new Map<number, number>();
