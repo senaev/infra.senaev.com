@@ -181,15 +181,22 @@ export function App() {
         todoList.persistItem(id, { title });
     }
 
-    const sortedItemsWithPlaceholder = [...sortedItems];
+    const sortedItemsWithPlaceholder: (TodoListItem & {
+        sortedIndex: number;
+    })[] = [...sortedItems.map((item, index) => ({ ...item, sortedIndex: index }))];
     if (dragState) {
-        const { sourceIndex, dropIndex } = dragState;
+        const { sourceIndex, sourceCount, dropIndex } = dragState;
         if (dropIndex !== sourceIndex) {
-            const placeholder = {
-                ...sortedItems[sourceIndex],
-                id: PLACEHOLDER_ITEM_ID,
-            };
-            sortedItemsWithPlaceholder.splice(dropIndex, 0, placeholder);
+            Array.from({ length: sourceCount }).forEach((_, i) => {
+                const placeholder = {
+                    ...sortedItems[sourceIndex + i],
+                    id: PLACEHOLDER_ITEM_ID - i,
+                    sortedIndex: -1,
+                };
+                const placeholderIndex =
+                    dropIndex > sourceIndex ? dropIndex + sourceCount : dropIndex;
+                sortedItemsWithPlaceholder.splice(placeholderIndex, 0, placeholder);
+            });
         }
     }
 
@@ -221,13 +228,18 @@ export function App() {
                                     return undefined;
                                 }
 
-                                if (item.id === PLACEHOLDER_ITEM_ID) {
+                                if (item.id <= PLACEHOLDER_ITEM_ID) {
                                     return "placeholder";
                                 }
 
-                                const { sourceIndex, dropIndex } = dragState;
-                                if (sortedItems[sourceIndex].id !== item.id) {
-                                    return undefined;
+                                const { sourceIndex, sourceCount, dropIndex } = dragState;
+                                if (item.sortedIndex >= 0) {
+                                    if (
+                                        item.sortedIndex < sourceIndex ||
+                                        item.sortedIndex >= sourceIndex + sourceCount
+                                    ) {
+                                        return undefined;
+                                    }
                                 }
 
                                 if (dropIndex === sourceIndex) {
@@ -256,8 +268,6 @@ export function App() {
                                 const initialItemContainerOffsetY =
                                     dragItemRect.top - itemsContainerRect.top;
 
-                                const otherItemsVerticalCenters: number[] = [];
-
                                 const sourceIndex = sortedItems.findIndex((i) => i.id === item.id);
                                 let sourceCount = 1;
                                 if (item.parent_id == null) {
@@ -270,6 +280,7 @@ export function App() {
                                     }
                                 }
 
+                                const otherItemsVerticalCenters: number[] = [];
                                 const itemElements = Array.from(
                                     itemsContainer.querySelectorAll(".item-row"),
                                 );
@@ -332,8 +343,6 @@ export function App() {
                                         y: event.clientY - itemsContainerRect.top,
                                     };
 
-                                    console.log(offset.x - initialCursorOffset.x);
-
                                     const dropIndex = (() => {
                                         const moveOffset =
                                             offset.y -
@@ -343,11 +352,7 @@ export function App() {
                                         for (let i = 0; i < otherItemsVerticalCenters.length; i++) {
                                             const center = otherItemsVerticalCenters[i];
                                             if (moveOffset < center) {
-                                                if (i < sourceIndex) {
-                                                    return i;
-                                                } else {
-                                                    return i + sourceCount;
-                                                }
+                                                return i;
                                             }
                                         }
 

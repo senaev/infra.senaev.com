@@ -146,8 +146,6 @@ export class TodoList {
             parent_id: number | null;
         },
     ) {
-        console.log("moveItem", { id, position, parent_id });
-
         const itemToMove = this.items.find((item) => item.id === id);
         if (!itemToMove) {
             this.params.showError(`moveItem: item with id ${id} not found`);
