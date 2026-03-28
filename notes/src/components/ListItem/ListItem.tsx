@@ -35,6 +35,7 @@ export function ListItem({
                 "item-row--drag-source": dragState === "source",
                 "item-row--drag-overlay": dragState === "overlay",
             })}
+            data-item-id={item.id}
         >
             <div
                 aria-label={`Reorder item`}

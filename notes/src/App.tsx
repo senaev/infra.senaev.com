@@ -18,6 +18,7 @@ type DragState = {
     width: number;
     offsetX: number;
     offsetY: number;
+    dropIndex: number;
 };
 
 export function App() {
@@ -28,6 +29,26 @@ export function App() {
     const ignoreNextSelectionRef = useRef(false);
     const activeDragRef = useRef<{ itemId: number; pointerId: number } | null>(null);
     const editorRef = useRef<HTMLElement>(null);
+
+    function getDropIndex({ itemId, pointerY }: { itemId: number; pointerY: number }) {
+        const itemRows = Array.from(editorRef.current?.querySelectorAll(".item-row") ?? []).filter(
+            (row): row is HTMLDivElement => row instanceof HTMLDivElement,
+        );
+
+        const candidateRows = itemRows.filter((row) => Number(row.dataset.itemId) !== itemId);
+
+        for (let index = 0; index < candidateRows.length; index++) {
+            const row = candidateRows[index];
+            const rect = row.getBoundingClientRect();
+            const midpointY = rect.top + rect.height / 2;
+
+            if (pointerY < midpointY) {
+                return index;
+            }
+        }
+
+        return candidateRows.length;
+    }
 
     useEffect(() => {
         if (todoList.pendingFocus == null) {
@@ -194,6 +215,7 @@ export function App() {
                 width: rect.width,
                 offsetX: event.clientX - rect.left,
                 offsetY: event.clientY - rect.top,
+                dropIndex: getDropIndex({ itemId: item.id, pointerY: event.clientY }),
             });
 
             console.log("drag:start", {
@@ -223,6 +245,7 @@ export function App() {
                     ...current,
                     x: event.clientX - current.offsetX,
                     y: event.clientY - current.offsetY,
+                    dropIndex: getDropIndex({ itemId: item.id, pointerY: event.clientY }),
                 };
             });
 
