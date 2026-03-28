@@ -315,15 +315,12 @@ export function App() {
                     className="drag-overlay"
                     style={{
                         transform: (() => {
-                            const editorElement = editorRef.current!;
-                            const editorOffsetX = editorElement.offsetLeft;
-                            const editorWidth = editorElement.offsetWidth;
+                            const editorOffsetX = editorRef.current!.offsetLeft;
                             const offsetX = dragState.x - editorOffsetX;
-                            const offsetForChildren = Math.min(100, editorWidth / 4);
-
-                            const makeChild = offsetX >= offsetForChildren;
-
                             const CHILD_OFFSET = 25;
+
+                            const makeChild = offsetX >= CHILD_OFFSET;
+
                             const overlayPositionX = makeChild
                                 ? editorOffsetX + CHILD_OFFSET
                                 : editorOffsetX;
