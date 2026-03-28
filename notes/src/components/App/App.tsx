@@ -16,6 +16,7 @@ const CHILD_OFFSET = 50;
 
 type DragState = {
     sourceIndex: number;
+    sourceCount: number;
     dropIndex: number;
     childCandidate: boolean;
     x: number;
@@ -266,8 +267,6 @@ export function App() {
                                     }
                                 }
 
-                                console.log({ sourceCount });
-
                                 const itemElements = Array.from(
                                     itemsContainer.querySelectorAll(".item-row"),
                                 );
@@ -289,6 +288,7 @@ export function App() {
 
                                 let dragState: DragState = {
                                     sourceIndex,
+                                    sourceCount,
                                     dropIndex: sourceIndex,
                                     childCandidate: item.parent_id != null,
                                     x: dragItemRect.left - itemsContainerRect.left,
@@ -351,6 +351,7 @@ export function App() {
 
                                     const nextDragState: DragState = {
                                         sourceIndex,
+                                        sourceCount,
                                         dropIndex,
                                         childCandidate,
                                         x: offset.x - cursorToDragElementOffset.x,
@@ -383,25 +384,45 @@ export function App() {
                                 transform: `translateY(${dragState.y}px)`,
                             }}
                         >
-                            <ListItem
-                                dragState="overlay"
-                                inputRefs={inputRefs}
-                                item={{
-                                    ...sortedItems[dragState.sourceIndex],
-                                    parent_id:
-                                        dragState.childCandidate && dragState.dropIndex !== 0
-                                            ? 1
-                                            : null,
-                                }}
-                                onChange={noop}
-                                onKeyDown={noop}
-                                onRemove={noop}
-                                onSelect={noop}
-                                onDragStart={noop}
-                                readonly
-                                resizeTextarea={resizeTextarea}
-                                toggleChecked={noop}
-                            />
+                            {[...Array.from({ length: dragState.sourceCount }, (_, i) => i)].map(
+                                (i) => {
+                                    const item = sortedItems[dragState.sourceIndex + i];
+                                    const parent_id = (() => {
+                                        if (i > 0) {
+                                            return 1;
+                                        }
+
+                                        if (dragState.dropIndex === 0) {
+                                            return null;
+                                        }
+
+                                        if (dragState.childCandidate) {
+                                            return 1;
+                                        }
+
+                                        return null;
+                                    })();
+
+                                    return (
+                                        <ListItem
+                                            dragState="overlay"
+                                            inputRefs={inputRefs}
+                                            item={{
+                                                ...item,
+                                                parent_id,
+                                            }}
+                                            onChange={noop}
+                                            onKeyDown={noop}
+                                            onRemove={noop}
+                                            onSelect={noop}
+                                            onDragStart={noop}
+                                            readonly
+                                            resizeTextarea={resizeTextarea}
+                                            toggleChecked={noop}
+                                        />
+                                    );
+                                },
+                            )}
                         </div>
                     ) : null}
                 </div>
