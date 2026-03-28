@@ -96,7 +96,7 @@ export class TodoList {
 
     public persistItem(
         id: number,
-        updates: Partial<Pick<TodoListItem, "title" | "position" | "checked">>,
+        updates: Partial<Pick<TodoListItem, "title" | "position" | "checked" | "parent_id">>,
     ): void {
         const itemToUpdate = this.items.find((item) => item.id === id);
         if (!itemToUpdate) {
@@ -136,15 +136,30 @@ export class TodoList {
         this.params.onChange();
     }
 
-    public insertItem({
-        title,
-        checked,
-        position,
-    }: {
-        title: string;
-        checked: boolean;
-        position: number;
-    }) {
+    public moveItem(
+        id: number,
+        {
+            position,
+            parent_id,
+        }: {
+            position: number;
+            parent_id: number | null;
+        },
+    ) {
+        console.log("moveItem", { id, position, parent_id });
+
+        const itemToMove = this.items.find((item) => item.id === id);
+        if (!itemToMove) {
+            this.params.showError(`moveItem: item with id ${id} not found`);
+            return;
+        }
+
+        this.shiftElementsToInsertOnPosition(position);
+        this.changeItemLocally(id, { position, parent_id, persisted: false });
+        this.persistItem(id, { position, parent_id });
+    }
+
+    private shiftElementsToInsertOnPosition(position: number) {
         const itemsWithHigherPosition = this.items
             .filter((item) => item.position >= position)
             .sort((first, second) => first.position - second.position);
@@ -173,6 +188,18 @@ export class TodoList {
 
             this.persistItem(id, { position: nextPosition });
         });
+    }
+
+    public insertItem({
+        title,
+        checked,
+        position,
+    }: {
+        title: string;
+        checked: boolean;
+        position: number;
+    }) {
+        this.shiftElementsToInsertOnPosition(position);
 
         const tempId = this.generateNextItemId();
 

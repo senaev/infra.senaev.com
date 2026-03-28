@@ -62,7 +62,6 @@
 .item-row {
     display: flex;
     align-items: stretch;
-    transition: margin-left 80ms ease;
 }
 
 .item-row:focus-within {
@@ -99,6 +98,7 @@
     border-color: rgb(95 99 104);
     background: rgb(43 45 49);
     opacity: 0.8;
+    transition: margin-left 80ms ease;
 }
 
 .item-row--child {

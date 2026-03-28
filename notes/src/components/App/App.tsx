@@ -286,6 +286,25 @@ export function App() {
                                     if (isStop) {
                                         setDragState(null);
 
+                                        const { dropIndex, childCandidate } = dragState;
+                                        const previousItem = sortedItems[dropIndex - 1];
+
+                                        console.log(previousItem);
+
+                                        const position = previousItem
+                                            ? previousItem.position + 1
+                                            : 1;
+
+                                        const parent_id =
+                                            childCandidate && dropIndex !== 0
+                                                ? sortedItems[dropIndex - 1].id
+                                                : null;
+
+                                        todoList.moveItem(item.id, {
+                                            position,
+                                            parent_id: parent_id,
+                                        });
+
                                         return;
                                     }
 
