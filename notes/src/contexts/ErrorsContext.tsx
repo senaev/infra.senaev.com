@@ -30,6 +30,7 @@ export function ErrorsProvider({ children }: PropsWithChildren) {
         <ErrorsContext.Provider
             value={{
                 showError: (error) => {
+                    console.error(error);
                     setErrors((current) => [...current, error]);
                 },
                 hideError,

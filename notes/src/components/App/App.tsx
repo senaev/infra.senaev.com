@@ -12,7 +12,7 @@ const TODO_LIST_ID = 1;
 
 const PLACEHOLDER_ITEM_ID = -1_000_000_000;
 
-const CHILD_OFFSET = 25;
+const CHILD_OFFSET = 50;
 
 type DragState = {
     sourceIndex: number;
@@ -255,6 +255,19 @@ export function App() {
                                 const otherItemsVerticalCenters: number[] = [];
 
                                 const sourceIndex = sortedItems.findIndex((i) => i.id === item.id);
+                                let sourceCount = 1;
+                                if (item.parent_id == null) {
+                                    for (let i = sourceIndex + 1; i < sortedItems.length; i++) {
+                                        if (sortedItems[i].parent_id != null) {
+                                            sourceCount++;
+                                        } else {
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                console.log({ sourceCount });
+
                                 const itemElements = Array.from(
                                     itemsContainer.querySelectorAll(".item-row"),
                                 );
@@ -307,17 +320,16 @@ export function App() {
                                         return;
                                     }
 
-                                    const editorOffsetX = itemsContainer.offsetLeft;
-                                    const offsetX = dragState.x - editorOffsetX;
-
-                                    const childCandidate: boolean = offsetX >= CHILD_OFFSET;
-
                                     const itemsContainerRect =
                                         itemsContainer.getBoundingClientRect();
+                                    const offset = {
+                                        x: event.clientX - itemsContainerRect.left,
+                                        y: event.clientY - itemsContainerRect.top,
+                                    };
+
                                     const dropIndex = (() => {
                                         const moveOffset =
-                                            event.clientY -
-                                            itemsContainerRect.top -
+                                            offset.y -
                                             initialCursorOffsetY +
                                             initialItemContainerOffsetY;
 
@@ -335,18 +347,14 @@ export function App() {
                                         return otherItemsVerticalCenters.length + 1;
                                     })();
 
+                                    const childCandidate: boolean = offset.x >= CHILD_OFFSET;
+
                                     const nextDragState: DragState = {
                                         sourceIndex,
                                         dropIndex,
                                         childCandidate,
-                                        x:
-                                            event.clientX -
-                                            itemsContainerRect.left -
-                                            cursorToDragElementOffset.x,
-                                        y:
-                                            event.clientY -
-                                            itemsContainerRect.top -
-                                            cursorToDragElementOffset.y,
+                                        x: offset.x - cursorToDragElementOffset.x,
+                                        y: offset.y - cursorToDragElementOffset.y,
                                     };
 
                                     dragState = nextDragState;
