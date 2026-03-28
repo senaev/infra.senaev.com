@@ -12,9 +12,15 @@ const TODO_LIST_ID = 1;
 
 const PLACEHOLDER_ITEM_ID = -1_000_000_000;
 
+type DragLayoutRow = {
+    itemId: number;
+    midpointY: number;
+};
+
 type DragState = {
     sourceIndex: number;
     dropIndex: number;
+    dragLayout: DragLayoutRow[];
     pointerId: number;
     x: number;
     y: number;
@@ -36,26 +42,20 @@ export function App() {
         (first, second) => first.position - second.position,
     );
 
-    function getDropIndex({ itemId, pointerY }: { itemId: number; pointerY: number }) {
-        const itemRows = Array.from(editorRef.current?.querySelectorAll(".item-row") ?? []).filter(
-            (row): row is HTMLDivElement => row instanceof HTMLDivElement,
-        );
+    function getDropIndex(dragLayout: DragLayoutRow[], pointerY: number) {
+        if (dragLayout.length === 0) {
+            return 0;
+        }
 
-        const candidateRows = itemRows.filter((row) => Number(row.dataset.itemId) !== itemId);
-
-        for (let index = 0; index < candidateRows.length; index++) {
-            const row = candidateRows[index];
-            const rect = row.getBoundingClientRect();
-            const midpointY = rect.top + rect.height / 2;
-
-            if (pointerY < midpointY) {
+        for (let index = 0; index < dragLayout.length; index++) {
+            if (pointerY < dragLayout[index].midpointY) {
                 console.log("Found drop index", { index });
                 return index;
             }
         }
 
-        console.log("Drop index is at the end", { index: candidateRows.length });
-        return candidateRows.length;
+        console.log("Drop index is at the end", { index: dragLayout.length });
+        return dragLayout.length;
     }
 
     useEffect(() => {
@@ -214,16 +214,37 @@ export function App() {
                 itemId: item.id,
                 pointerId: event.pointerId,
             };
+
+            const dragLayout = Array.from(editorRef.current?.querySelectorAll(".item-row") ?? [])
+                .filter((row): row is HTMLDivElement => row instanceof HTMLDivElement)
+                .map((row) => {
+                    const rowItemId = Number(row.dataset.itemId);
+
+                    if (rowItemId === item.id || Number.isNaN(rowItemId)) {
+                        return null;
+                    }
+
+                    const rect = row.getBoundingClientRect();
+
+                    return {
+                        itemId: rowItemId,
+                        midpointY: rect.top + rect.height / 2,
+                    };
+                })
+                .filter((row): row is DragLayoutRow => row != null);
+
             event.currentTarget.setPointerCapture(event.pointerId);
+            const sourceIndex = sortedItems.findIndex((i) => i.id === item.id);
             setDragState({
-                sourceIndex: sortedItems.findIndex((i) => i.id === item.id),
+                sourceIndex,
+                dropIndex: sourceIndex,
+                dragLayout,
                 pointerId: event.pointerId,
                 x: rect.left,
                 y: rect.top,
                 width: rect.width,
                 offsetX: event.clientX - rect.left,
                 offsetY: event.clientY - rect.top,
-                dropIndex: getDropIndex({ itemId: item.id, pointerY: event.clientY }),
             });
         },
 
@@ -245,7 +266,7 @@ export function App() {
                     ...current,
                     x: event.clientX - current.offsetX,
                     y: event.clientY - current.offsetY,
-                    dropIndex: getDropIndex({ itemId: item.id, pointerY: event.clientY }),
+                    dropIndex: getDropIndex(current.dragLayout, event.clientY),
                 };
             });
         },
