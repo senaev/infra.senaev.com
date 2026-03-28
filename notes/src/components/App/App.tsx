@@ -254,23 +254,24 @@ export function App() {
                                 const otherItemsVerticalCenters: number[] = [];
 
                                 const sourceIndex = sortedItems.findIndex((i) => i.id === item.id);
-                                Array.from(itemsContainer.querySelectorAll(".item-row")).forEach(
-                                    (otherItemElement, i) => {
-                                        const rect = otherItemElement.getBoundingClientRect();
-                                        if (i === sourceIndex) {
-                                            return;
-                                        }
-
-                                        let center =
-                                            rect.top + rect.height / 2 - itemsContainerRect.top;
-
-                                        if (i > sourceIndex) {
-                                            center -= dragItemRect.height;
-                                        }
-
-                                        otherItemsVerticalCenters.push(center);
-                                    },
+                                const itemElements = Array.from(
+                                    itemsContainer.querySelectorAll(".item-row"),
                                 );
+                                itemElements.forEach((otherItemElement, i) => {
+                                    const rect = otherItemElement.getBoundingClientRect();
+                                    if (i === sourceIndex) {
+                                        return;
+                                    }
+
+                                    let center =
+                                        rect.top + rect.height / 2 - itemsContainerRect.top;
+
+                                    if (i > sourceIndex) {
+                                        center -= dragItemRect.height;
+                                    }
+
+                                    otherItemsVerticalCenters.push(center);
+                                });
 
                                 let dragState: DragState = {
                                     sourceIndex,
@@ -312,7 +313,7 @@ export function App() {
                                             }
                                         }
 
-                                        return sourceIndex;
+                                        return otherItemsVerticalCenters.length + 1;
                                     })();
 
                                     const nextDragState: DragState = {
