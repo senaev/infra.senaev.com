@@ -240,9 +240,10 @@ export function App() {
 
                                 const dragItemRect = dragItemElement.getBoundingClientRect();
 
-                                const initialOffsetY = event.clientY - dragItemRect.top;
-                                const initialOffsetX = event.clientX - dragItemRect.left;
-                                console.log(initialOffsetX, initialOffsetY);
+                                const cursorToDragElementOffset = {
+                                    x: event.clientX - dragItemRect.left,
+                                    y: event.clientY - dragItemRect.top,
+                                };
 
                                 const itemsContainerRect = itemsContainer.getBoundingClientRect();
                                 const initialCursorOffsetY = event.clientY - itemsContainerRect.top;
@@ -318,8 +319,14 @@ export function App() {
                                         sourceIndex,
                                         dropIndex,
                                         childCandidate,
-                                        x: event.clientX - initialOffsetX - itemsContainerRect.left,
-                                        y: event.clientY - initialOffsetY - itemsContainerRect.top,
+                                        x:
+                                            event.clientX -
+                                            itemsContainerRect.left -
+                                            cursorToDragElementOffset.x,
+                                        y:
+                                            event.clientY -
+                                            itemsContainerRect.top -
+                                            cursorToDragElementOffset.y,
                                     };
 
                                     dragState = nextDragState;
