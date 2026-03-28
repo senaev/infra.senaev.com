@@ -12,7 +12,7 @@ const TODO_LIST_ID = 1;
 
 const PLACEHOLDER_ITEM_ID = -1_000_000_000;
 
-const CHILD_OFFSET = 50;
+const CHILD_OFFSET = 25;
 
 type DragState = {
     sourceIndex: number;
@@ -248,7 +248,10 @@ export function App() {
                                 };
 
                                 const itemsContainerRect = itemsContainer.getBoundingClientRect();
-                                const initialCursorOffsetY = event.clientY - itemsContainerRect.top;
+                                const initialCursorOffset = {
+                                    x: event.clientX - itemsContainerRect.left,
+                                    y: event.clientY - itemsContainerRect.top,
+                                };
 
                                 const initialItemContainerOffsetY =
                                     dragItemRect.top - itemsContainerRect.top;
@@ -270,9 +273,11 @@ export function App() {
                                 const itemElements = Array.from(
                                     itemsContainer.querySelectorAll(".item-row"),
                                 );
+                                let movingItemsHeight = 0;
                                 itemElements.forEach((otherItemElement, i) => {
                                     const rect = otherItemElement.getBoundingClientRect();
-                                    if (i === sourceIndex) {
+                                    if (i >= sourceIndex && i < sourceIndex + sourceCount) {
+                                        movingItemsHeight += rect.height;
                                         return;
                                     }
 
@@ -280,7 +285,7 @@ export function App() {
                                         rect.top + rect.height / 2 - itemsContainerRect.top;
 
                                     if (i > sourceIndex) {
-                                        center -= dragItemRect.height;
+                                        center -= movingItemsHeight;
                                     }
 
                                     otherItemsVerticalCenters.push(center);
@@ -327,10 +332,12 @@ export function App() {
                                         y: event.clientY - itemsContainerRect.top,
                                     };
 
+                                    console.log(offset.x - initialCursorOffset.x);
+
                                     const dropIndex = (() => {
                                         const moveOffset =
                                             offset.y -
-                                            initialCursorOffsetY +
+                                            initialCursorOffset.y +
                                             initialItemContainerOffsetY;
 
                                         for (let i = 0; i < otherItemsVerticalCenters.length; i++) {
@@ -339,7 +346,7 @@ export function App() {
                                                 if (i < sourceIndex) {
                                                     return i;
                                                 } else {
-                                                    return i + 1;
+                                                    return i + sourceCount;
                                                 }
                                             }
                                         }
@@ -347,7 +354,18 @@ export function App() {
                                         return otherItemsVerticalCenters.length + 1;
                                     })();
 
-                                    const childCandidate: boolean = offset.x >= CHILD_OFFSET;
+                                    const dragRight = offset.x - cursorToDragElementOffset.x;
+                                    const childCandidate: boolean = (() => {
+                                        if (dragRight >= CHILD_OFFSET) {
+                                            return true;
+                                        }
+
+                                        if (dragRight < -CHILD_OFFSET) {
+                                            return false;
+                                        }
+
+                                        return item.parent_id != null;
+                                    })();
 
                                     const nextDragState: DragState = {
                                         sourceIndex,
@@ -405,6 +423,7 @@ export function App() {
 
                                     return (
                                         <ListItem
+                                            key={i}
                                             dragState="overlay"
                                             inputRefs={inputRefs}
                                             item={{
