@@ -283,9 +283,25 @@ export function App() {
         },
     };
 
-    const sortedItems: TodoListItem[] = [...todoList.getItems()].sort(
+    const sortedByPosition = [...todoList.getItems()].sort(
         (first, second) => first.position - second.position,
     );
+
+    const sortedItems: TodoListItem[] = [...todoList.getItems()].sort((first, second) => {
+        function getRenderPosition(item: TodoListItem) {
+            if (dragState?.itemId === item.id) {
+                const { dropIndex } = dragState;
+
+                const itemBefore = sortedByPosition[dropIndex - 1];
+
+                return itemBefore ? itemBefore.position + 0.5 : 0;
+            }
+
+            return item.position;
+        }
+
+        return getRenderPosition(first) - getRenderPosition(second);
+    });
 
     return (
         <main className="page">
