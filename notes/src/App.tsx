@@ -27,6 +27,7 @@ export function App() {
     const desiredCaretPositionRef = useRef(0);
     const ignoreNextSelectionRef = useRef(false);
     const activeDragRef = useRef<{ itemId: number; pointerId: number } | null>(null);
+    const editorRef = useRef<HTMLElement>(null);
 
     useEffect(() => {
         if (todoList.pendingFocus == null) {
@@ -266,7 +267,7 @@ export function App() {
     return (
         <main className="page">
             <ErrorToasts errors={todoList.errors} onClose={todoList.removeError} />
-            <section className="editor">
+            <section className="editor" ref={editorRef}>
                 <h1 className="list-title">{todoList.getTitle()}</h1>
 
                 {todoList.isLoading ? (
@@ -314,8 +315,20 @@ export function App() {
                     className="drag-overlay"
                     style={{
                         transform: (() => {
-                            console.log({ x: dragState.x, offsetX: dragState.offsetX });
-                            return `translate(${dragState.x}px, ${dragState.y}px)`;
+                            const editorElement = editorRef.current!;
+                            const editorOffsetX = editorElement.offsetLeft;
+                            const editorWidth = editorElement.offsetWidth;
+                            const offsetX = dragState.x - editorOffsetX;
+                            const offsetForChildren = Math.min(100, editorWidth / 4);
+
+                            const makeChild = offsetX >= offsetForChildren;
+
+                            const CHILD_OFFSET = 25;
+                            const overlayPositionX = makeChild
+                                ? editorOffsetX + CHILD_OFFSET
+                                : editorOffsetX;
+
+                            return `translate(${overlayPositionX}px, ${dragState.y}px)`;
                         })(),
                         width: `${dragState.width}px`,
                     }}
