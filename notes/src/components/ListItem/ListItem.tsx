@@ -4,12 +4,13 @@ import { DEBUG_ENABLED } from "../../const/DEBUG_ENABLED";
 import { DragHandlers } from "../../types/DragHandlers";
 import { TodoListItem } from "../../types/TodoListItem";
 
-type DragState = "overlay" | "source" | "source-collapsed";
+type DragState = "overlay" | "source" | "source-collapsed" | "placeholder";
 
 const DRAG_STATE_CLASSES: Record<DragState, string[]> = {
     overlay: ["item-row--drag-overlay"],
     source: ["item-row--drag-source"],
     "source-collapsed": ["item-row--drag-source", "item-row--drag-collapsed"],
+    placeholder: ["item-row--drag-source"],
 };
 
 export function ListItem({
@@ -31,7 +32,7 @@ export function ListItem({
     onSelect: (event: SyntheticEvent<HTMLTextAreaElement>) => void;
     onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
     onRemove: VoidFunction;
-    dragState: "overlay" | "source" | "source-collapsed" | undefined;
+    dragState: DragState | undefined;
     dragHandlers: DragHandlers;
     resizeTextarea: (input: HTMLTextAreaElement) => void;
     inputRefs: React.RefObject<Map<number, HTMLTextAreaElement>>;

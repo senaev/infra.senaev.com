@@ -10,15 +10,17 @@ import { noop } from "./utils/noop";
 
 const TODO_LIST_ID = 1;
 
+const PLACEHOLDER_ITEM_ID = -1_000_000_000;
+
 type DragState = {
-    itemId: number;
+    sourceIndex: number;
+    dropIndex: number;
     pointerId: number;
     x: number;
     y: number;
     width: number;
     offsetX: number;
     offsetY: number;
-    dropIndex: number;
 };
 
 export function App() {
@@ -29,6 +31,10 @@ export function App() {
     const ignoreNextSelectionRef = useRef(false);
     const activeDragRef = useRef<{ itemId: number; pointerId: number } | null>(null);
     const editorRef = useRef<HTMLElement>(null);
+
+    const sortedItems: TodoListItem[] = [...todoList.getItems()].sort(
+        (first, second) => first.position - second.position,
+    );
 
     function getDropIndex({ itemId, pointerY }: { itemId: number; pointerY: number }) {
         const itemRows = Array.from(editorRef.current?.querySelectorAll(".item-row") ?? []).filter(
@@ -208,7 +214,7 @@ export function App() {
             };
             event.currentTarget.setPointerCapture(event.pointerId);
             setDragState({
-                itemId: item.id,
+                sourceIndex: sortedItems.findIndex((i) => i.id === item.id),
                 pointerId: event.pointerId,
                 x: rect.left,
                 y: rect.top,
@@ -259,9 +265,17 @@ export function App() {
         },
     };
 
-    const sortedItems: TodoListItem[] = [...todoList.getItems()].sort(
-        (first, second) => first.position - second.position,
-    );
+    const sortedItemsWithPlaceholder = [...sortedItems];
+    if (dragState) {
+        const { sourceIndex, dropIndex } = dragState;
+        if (dropIndex !== sourceIndex) {
+            const placeholder = {
+                ...sortedItems[sourceIndex],
+                id: PLACEHOLDER_ITEM_ID,
+            };
+            sortedItemsWithPlaceholder.splice(dropIndex, 0, placeholder);
+        }
+    }
 
     return (
         <main className="page">
@@ -273,7 +287,7 @@ export function App() {
                     <p className="status">🔄 Loading...</p>
                 ) : (
                     <div className="items">
-                        {sortedItems.map((item) => (
+                        {sortedItemsWithPlaceholder.map((item) => (
                             <ListItem
                                 key={todoList.getItemClientKey(item)}
                                 item={item}
@@ -295,17 +309,16 @@ export function App() {
                                         return undefined;
                                     }
 
-                                    const { itemId, dropIndex } = dragState;
-                                    if (itemId !== item.id) {
+                                    if (item.id === PLACEHOLDER_ITEM_ID) {
+                                        return "placeholder";
+                                    }
+
+                                    const { sourceIndex, dropIndex } = dragState;
+                                    if (sortedItems[sourceIndex].id !== item.id) {
                                         return undefined;
                                     }
 
-                                    if (
-                                        dropIndex ===
-                                        sortedItems.findIndex(
-                                            (sortedItem) => sortedItem.id === item.id,
-                                        )
-                                    ) {
+                                    if (dropIndex === sourceIndex) {
                                         return "source";
                                     }
 
@@ -353,7 +366,7 @@ export function App() {
                         dragHandlers={NOOP_DRAG_HANDLERS}
                         dragState="overlay"
                         inputRefs={inputRefs}
-                        item={sortedItems.find((item) => item.id === dragState.itemId)!}
+                        item={sortedItems[dragState.sourceIndex]}
                         onChange={noop}
                         onKeyDown={noop}
                         onRemove={noop}
