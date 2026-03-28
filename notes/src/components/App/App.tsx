@@ -12,6 +12,8 @@ const TODO_LIST_ID = 1;
 
 const PLACEHOLDER_ITEM_ID = -1_000_000_000;
 
+const CHILD_OFFSET = 25;
+
 type DragLayoutRow = {
     itemId: number;
     midpointY: number;
@@ -20,6 +22,7 @@ type DragLayoutRow = {
 type DragState = {
     sourceIndex: number;
     dropIndex: number;
+    childCandidate: boolean;
     dragLayout: DragLayoutRow[];
     pointerId: number;
     x: number;
@@ -27,10 +30,6 @@ type DragState = {
     width: number;
     offsetX: number;
     offsetY: number;
-    // TODO: remove
-    activeDragElement: {
-        itemId: number;
-    };
 };
 
 export function App() {
@@ -40,24 +39,11 @@ export function App() {
     const desiredCaretPositionRef = useRef(0);
     const ignoreNextSelectionRef = useRef(false);
     const editorRef = useRef<HTMLElement>(null);
+    const editorElement = editorRef.current!;
 
     const sortedItems: TodoListItem[] = [...todoList.getItems()].sort(
         (first, second) => first.position - second.position,
     );
-
-    function getDropIndex(dragLayout: DragLayoutRow[], pointerY: number) {
-        if (dragLayout.length === 0) {
-            return 0;
-        }
-
-        for (let index = 0; index < dragLayout.length; index++) {
-            if (pointerY < dragLayout[index].midpointY) {
-                return index;
-            }
-        }
-
-        return dragLayout.length;
-    }
 
     useEffect(() => {
         if (todoList.pendingFocus == null) {
@@ -262,119 +248,91 @@ export function App() {
                                     return "source-collapsed";
                                 })()}
                                 onDragStart={(event) => {
-                                    let dragState: DragState | null = null;
+                                    const dragElement = event.target as HTMLElement;
+                                    const dragItemElement = dragElement.closest(".item-row")!;
 
-                                    const dragHandlers = {
-                                        start(event: PointerEvent, item: TodoListItem) {
-                                            const dragElement = event.target as HTMLElement;
-                                            const dragItemElement =
-                                                dragElement.closest(".item-row")!;
+                                    const rect = dragItemElement.getBoundingClientRect();
 
-                                            const rect = dragItemElement.getBoundingClientRect();
-                                            const activeDragElement = {
-                                                itemId: item.id,
-                                            };
+                                    const offsetY = event.clientY - rect.top;
+                                    const dragReorderOffset = offsetY - rect.height / 2;
 
-                                            const offsetY = event.clientY - rect.top;
-                                            const dragReorderOffset = offsetY - rect.height / 2;
+                                    const allListItemElements = Array.from(
+                                        editorElement.querySelectorAll(".item-row"),
+                                    );
 
-                                            const allListItemElements = Array.from(
-                                                editorRef.current!.querySelectorAll(".item-row"),
+                                    const dragLayout = allListItemElements
+                                        .map((listItemElement) => {
+                                            const rowItemId = Number(
+                                                (listItemElement as HTMLDivElement).dataset.itemId,
                                             );
 
-                                            const dragLayout = allListItemElements
-                                                .map((listItemElement) => {
-                                                    const rowItemId = Number(
-                                                        (listItemElement as HTMLDivElement).dataset
-                                                            .itemId,
-                                                    );
+                                            const rect = listItemElement.getBoundingClientRect();
 
-                                                    const rect =
-                                                        listItemElement.getBoundingClientRect();
-
-                                                    return {
-                                                        itemId: rowItemId,
-                                                        midpointY:
-                                                            rect.top +
-                                                            rect.height / 2 +
-                                                            dragReorderOffset,
-                                                    };
-                                                })
-                                                .filter((row): row is DragLayoutRow => row != null);
-
-                                            const sourceIndex = sortedItems.findIndex(
-                                                (i) => i.id === item.id,
-                                            );
-                                            console.log("setDragState");
-                                            const newDragState: DragState = {
-                                                sourceIndex,
-                                                dropIndex: sourceIndex,
-                                                dragLayout,
-                                                pointerId: event.pointerId,
-                                                x: rect.left,
-                                                y: rect.top,
-                                                width: rect.width,
-                                                offsetX: event.clientX - rect.left,
-                                                offsetY,
-                                                activeDragElement,
+                                            return {
+                                                itemId: rowItemId,
+                                                midpointY:
+                                                    rect.top + rect.height / 2 + dragReorderOffset,
                                             };
-                                            setDragState(newDragState);
-                                            dragState = newDragState;
-                                        },
-                                        // TODO: remove item passing
-                                        // TODO: use special util for drag and drop
-                                        move(event: PointerEvent, item: TodoListItem) {
-                                            if (dragState == null) {
-                                                console.log(1);
-                                                return;
-                                            }
+                                        })
+                                        .filter((row): row is DragLayoutRow => row != null);
 
-                                            const { activeDragElement } = dragState;
-                                            if (activeDragElement.itemId !== item.id) {
-                                                console.log(2);
-                                                return;
-                                            }
+                                    const sourceIndex = sortedItems.findIndex(
+                                        (i) => i.id === item.id,
+                                    );
 
-                                            const nextDragState = {
-                                                ...dragState,
-                                                x: event.clientX - dragState.offsetX,
-                                                y: event.clientY - dragState.offsetY,
-                                                dropIndex: getDropIndex(
-                                                    dragState.dragLayout,
-                                                    event.clientY,
-                                                ),
-                                            };
-
-                                            dragState = nextDragState;
-                                            setDragState((current) => {
-                                                if (current == null) {
-                                                    return null;
-                                                }
-
-                                                return nextDragState;
-                                            });
-                                        },
-                                        stop(event: PointerEvent, item: TodoListItem) {
-                                            if (dragState == null) {
-                                                return;
-                                            }
-
-                                            const { activeDragElement } = dragState;
-                                            if (activeDragElement.itemId !== item.id) {
-                                                return;
-                                            }
-
-                                            setDragState(null);
-                                        },
+                                    let dragState: DragState = {
+                                        sourceIndex,
+                                        dropIndex: sourceIndex,
+                                        dragLayout,
+                                        pointerId: event.pointerId,
+                                        x: rect.left,
+                                        y: rect.top,
+                                        width: rect.width,
+                                        offsetX: event.clientX - rect.left,
+                                        offsetY,
+                                        childCandidate: item.parent_id != null,
                                     };
+                                    setDragState(dragState);
 
-                                    dragHandlers.start(event.nativeEvent, item);
                                     startDragAndDrop(event.nativeEvent, (event, isStop) => {
                                         if (isStop) {
-                                            dragHandlers.stop(event, item);
-                                        } else {
-                                            dragHandlers.move(event, item);
+                                            setDragState(null);
+                                            return;
                                         }
+
+                                        const editorOffsetX = editorElement.offsetLeft;
+                                        const offsetX = dragState.x - editorOffsetX;
+
+                                        const childCandidate: boolean = offsetX >= CHILD_OFFSET;
+
+                                        const dropIndex = (() => {
+                                            if (dragLayout.length === 0) {
+                                                return 0;
+                                            }
+
+                                            for (
+                                                let index = 0;
+                                                index < dragLayout.length;
+                                                index++
+                                            ) {
+                                                if (event.clientY < dragLayout[index].midpointY) {
+                                                    return index;
+                                                }
+                                            }
+
+                                            return dragLayout.length;
+                                        })();
+
+                                        const nextDragState = {
+                                            ...dragState,
+                                            x: event.clientX - dragState.offsetX,
+                                            y: event.clientY - dragState.offsetY,
+                                            dropIndex,
+                                            childCandidate,
+                                        };
+
+                                        dragState = nextDragState;
+                                        setDragState(nextDragState);
                                     });
                                 }}
                                 resizeTextarea={resizeTextarea}
@@ -399,13 +357,8 @@ export function App() {
                     className="drag-overlay"
                     style={{
                         transform: (() => {
-                            const editorOffsetX = editorRef.current!.offsetLeft;
-                            const offsetX = dragState.x - editorOffsetX;
-                            const CHILD_OFFSET = 25;
-
-                            const makeChild = offsetX >= CHILD_OFFSET;
-
-                            const overlayPositionX = makeChild
+                            const editorOffsetX = editorElement.offsetLeft;
+                            const overlayPositionX = dragState.childCandidate
                                 ? editorOffsetX + CHILD_OFFSET
                                 : editorOffsetX;
 

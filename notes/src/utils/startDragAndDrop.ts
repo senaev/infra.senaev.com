@@ -5,15 +5,10 @@ export function startDragAndDrop<T extends HTMLElement>(
     const dragElement = event.target as T;
     const window = dragElement.ownerDocument.defaultView!;
     const { pointerId } = event;
-    console.log("start", {
-        dragElement,
-        pointerId,
-    });
 
     dragElement.setPointerCapture(pointerId);
 
     function handlePointerMove(nextEvent: PointerEvent) {
-        console.log("move");
         if (nextEvent.pointerId !== pointerId) {
             return;
         }
@@ -22,7 +17,6 @@ export function startDragAndDrop<T extends HTMLElement>(
     }
 
     function handlePointerStop(nextEvent: PointerEvent) {
-        console.log("stop");
         if (nextEvent.pointerId !== pointerId) {
             return;
         }
