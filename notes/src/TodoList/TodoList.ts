@@ -6,7 +6,6 @@ const NOTE_TITLE = "Groceries 🛒";
 export type PendingFocus = { id: number; selectionStart: number; selectionEnd: number };
 
 export class TodoList {
-    public isLoading = true;
     public errors: string[] = [];
 
     pendingFocus: PendingFocus | null = null;
@@ -25,7 +24,6 @@ export class TodoList {
                 this.errors.push(error.message);
             })
             .finally(() => {
-                this.isLoading = false;
                 this.onChange();
             });
     }

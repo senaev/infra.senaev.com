@@ -39,7 +39,9 @@ export function ListItem({
 }) {
     return (
         <div
-            className={classNames("item-row", DRAG_STATE_CLASSES[dragState as DragState])}
+            className={classNames("item-row", DRAG_STATE_CLASSES[dragState as DragState], {
+                "item-row--child": item.parent_id !== null,
+            })}
             data-item-id={item.id}
         >
             <div

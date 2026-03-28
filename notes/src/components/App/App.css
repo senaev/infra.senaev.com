@@ -46,11 +46,6 @@
     color: rgb(154 160 166);
 }
 
-.status {
-    margin: 0 24px 12px;
-    font-size: 0.92rem;
-}
-
 .add-item-button,
 .item-input {
     width: 100%;
@@ -84,6 +79,19 @@
     overflow: hidden;
 }
 
+.drag-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 30;
+    pointer-events: none;
+}
+
+.items {
+    position: relative;
+}
+
 .item-row--drag-overlay {
     padding-right: 0;
     border-color: rgb(95 99 104);
@@ -91,12 +99,8 @@
     opacity: 0.8;
 }
 
-.drag-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    z-index: 30;
-    pointer-events: none;
+.item-row--child {
+    margin-left: 30px;
 }
 
 .item-drag-handle {
