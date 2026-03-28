@@ -136,16 +136,26 @@ export class TodoList {
         this.params.onChange();
     }
 
-    public moveItem(
+    public moveItems(
         id: number,
         {
-            position,
-            parent_id,
+            dropIndex,
+            childCandidate,
         }: {
-            position: number;
-            parent_id: number | null;
+            dropIndex: number;
+            childCandidate: boolean;
         },
     ) {
+        const sortedItems = [...this.items].sort(
+            (first, second) => first.position - second.position,
+        );
+
+        const previousItem = sortedItems[dropIndex - 1];
+
+        const position = previousItem ? previousItem.position + 1 : 1;
+
+        const parent_id = childCandidate && dropIndex !== 0 ? sortedItems[dropIndex - 1].id : null;
+
         const itemToMove = this.items.find((item) => item.id === id);
         if (!itemToMove) {
             this.params.showError(`moveItem: item with id ${id} not found`);
