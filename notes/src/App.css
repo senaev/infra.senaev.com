@@ -75,6 +75,12 @@
     opacity: 0.3;
 }
 
+.item-row--drag-collapsed {
+    height: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
 .item-row--drag-overlay {
     padding-right: 0;
     border-radius: 16px;
@@ -98,6 +104,10 @@
     min-width: 28px;
     cursor: grab;
     touch-action: none;
+}
+
+.item-row--drag-source .item-drag-handle {
+    cursor: grabbing;
 }
 
 .item-drag-handle__visual {

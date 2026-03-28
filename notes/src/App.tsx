@@ -217,14 +217,6 @@ export function App() {
                 offsetY: event.clientY - rect.top,
                 dropIndex: getDropIndex({ itemId: item.id, pointerY: event.clientY }),
             });
-
-            console.log("drag:start", {
-                itemId: item.id,
-                pointerId: event.pointerId,
-                pointerType: event.pointerType,
-                x: event.clientX,
-                y: event.clientY,
-            });
         },
 
         move(event: PointerEvent<HTMLDivElement>, item: TodoListItem) {
@@ -248,14 +240,6 @@ export function App() {
                     dropIndex: getDropIndex({ itemId: item.id, pointerY: event.clientY }),
                 };
             });
-
-            console.log("drag:move", {
-                itemId: item.id,
-                pointerId: event.pointerId,
-                pointerType: event.pointerType,
-                x: event.clientX,
-                y: event.clientY,
-            });
         },
         stop(event: PointerEvent<HTMLDivElement>, item: TodoListItem) {
             if (
@@ -272,36 +256,12 @@ export function App() {
 
             activeDragRef.current = null;
             setDragState(null);
-
-            console.log("drag:stop", {
-                itemId: item.id,
-                pointerId: event.pointerId,
-                pointerType: event.pointerType,
-                x: event.clientX,
-                y: event.clientY,
-            });
         },
     };
 
-    const sortedByPosition = [...todoList.getItems()].sort(
+    const sortedItems: TodoListItem[] = [...todoList.getItems()].sort(
         (first, second) => first.position - second.position,
     );
-
-    const sortedItems: TodoListItem[] = [...todoList.getItems()].sort((first, second) => {
-        function getRenderPosition(item: TodoListItem) {
-            if (dragState?.itemId === item.id) {
-                const { dropIndex } = dragState;
-
-                const itemBefore = sortedByPosition[dropIndex - 1];
-
-                return itemBefore ? itemBefore.position + 0.5 : 0;
-            }
-
-            return item.position;
-        }
-
-        return getRenderPosition(first) - getRenderPosition(second);
-    });
 
     return (
         <main className="page">
@@ -330,7 +290,27 @@ export function App() {
                                 onRemove={() => {
                                     todoList.removeItem(item.id);
                                 }}
-                                dragState={dragState?.itemId === item.id ? "source" : undefined}
+                                dragState={(() => {
+                                    if (!dragState) {
+                                        return undefined;
+                                    }
+
+                                    const { itemId, dropIndex } = dragState;
+                                    if (itemId !== item.id) {
+                                        return undefined;
+                                    }
+
+                                    if (
+                                        dropIndex ===
+                                        sortedItems.findIndex(
+                                            (sortedItem) => sortedItem.id === item.id,
+                                        )
+                                    ) {
+                                        return "source";
+                                    }
+
+                                    return "source-collapsed";
+                                })()}
                                 dragHandlers={dragHandlers}
                                 resizeTextarea={resizeTextarea}
                                 inputRefs={inputRefs}
