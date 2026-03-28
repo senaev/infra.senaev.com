@@ -14,18 +14,12 @@ const PLACEHOLDER_ITEM_ID = -1_000_000_000;
 
 const CHILD_OFFSET = 25;
 
-type DragLayoutRow = {
-    itemId: number;
-    midpointY: number;
-};
-
 type DragState = {
     sourceIndex: number;
     dropIndex: number;
     childCandidate: boolean;
     x: number;
     y: number;
-    width: number;
 };
 
 export function App() {
@@ -244,43 +238,47 @@ export function App() {
                                 const dragElement = event.target as HTMLElement;
                                 const dragItemElement = dragElement.closest(".item-row")!;
 
-                                const rect = dragItemElement.getBoundingClientRect();
+                                const dragItemRect = dragItemElement.getBoundingClientRect();
 
-                                const initialOffsetY = event.clientY - rect.top;
-                                const initialOffsetX = event.clientX - rect.left;
-                                const width = rect.width;
-                                const dragReorderOffset = initialOffsetY - rect.height / 2;
-
-                                const allListItemElements = Array.from(
-                                    itemsContainer.querySelectorAll(".item-row"),
-                                );
-
-                                const dragLayout = allListItemElements
-                                    .map((listItemElement) => {
-                                        const rowItemId = Number(
-                                            (listItemElement as HTMLDivElement).dataset.itemId,
-                                        );
-
-                                        const rect = listItemElement.getBoundingClientRect();
-
-                                        return {
-                                            itemId: rowItemId,
-                                            midpointY:
-                                                rect.top + rect.height / 2 + dragReorderOffset,
-                                        };
-                                    })
-                                    .filter((row): row is DragLayoutRow => row != null);
-
-                                const sourceIndex = sortedItems.findIndex((i) => i.id === item.id);
+                                const initialOffsetY = event.clientY - dragItemRect.top;
+                                const initialOffsetX = event.clientX - dragItemRect.left;
 
                                 const itemsContainerRect = itemsContainer.getBoundingClientRect();
+                                const initialCursorOffsetY = event.clientY - itemsContainerRect.top;
+
+                                const initialItemContainerOffsetY =
+                                    dragItemRect.top - itemsContainerRect.top;
+
+                                const otherItemsVerticalCenters: number[] = [];
+
+                                const sourceIndex = sortedItems.findIndex((i) => i.id === item.id);
+                                Array.from(itemsContainer.querySelectorAll(".item-row")).forEach(
+                                    (otherItemElement, i) => {
+                                        const rect = otherItemElement.getBoundingClientRect();
+                                        if (i === sourceIndex) {
+                                            console.log(rect);
+                                            return;
+                                        }
+
+                                        let center =
+                                            rect.top + rect.height / 2 - itemsContainerRect.top;
+
+                                        if (i > sourceIndex) {
+                                            center -= dragItemRect.height;
+                                        }
+
+                                        otherItemsVerticalCenters.push(center);
+                                    },
+                                );
+
+                                console.log(otherItemsVerticalCenters);
+
                                 let dragState: DragState = {
                                     sourceIndex,
                                     dropIndex: sourceIndex,
                                     childCandidate: item.parent_id != null,
-                                    x: rect.left - itemsContainerRect.left,
-                                    y: rect.top - itemsContainerRect.top,
-                                    width,
+                                    x: dragItemRect.left - itemsContainerRect.left,
+                                    y: dragItemRect.top - itemsContainerRect.top,
                                 };
                                 setDragState(dragState);
 
@@ -295,25 +293,32 @@ export function App() {
 
                                     const childCandidate: boolean = offsetX >= CHILD_OFFSET;
 
+                                    const itemsContainerRect =
+                                        itemsContainer.getBoundingClientRect();
                                     const dropIndex = (() => {
-                                        if (dragLayout.length === 0) {
-                                            return 0;
-                                        }
+                                        const moveOffset =
+                                            event.clientY -
+                                            itemsContainerRect.top -
+                                            initialCursorOffsetY +
+                                            initialItemContainerOffsetY;
 
-                                        for (let index = 0; index < dragLayout.length; index++) {
-                                            if (event.clientY < dragLayout[index].midpointY) {
-                                                return index;
+                                        console.log(moveOffset);
+                                        for (let i = 0; i < otherItemsVerticalCenters.length; i++) {
+                                            const center = otherItemsVerticalCenters[i];
+                                            if (moveOffset < center) {
+                                                if (i < sourceIndex) {
+                                                    return i;
+                                                } else {
+                                                    return i + 1;
+                                                }
                                             }
                                         }
 
-                                        return dragLayout.length;
+                                        return sourceIndex;
                                     })();
 
-                                    const itemsContainerRect =
-                                        itemsContainer.getBoundingClientRect();
                                     const nextDragState: DragState = {
                                         sourceIndex,
-                                        width,
                                         dropIndex,
                                         childCandidate,
                                         x: event.clientX - initialOffsetX - itemsContainerRect.left,

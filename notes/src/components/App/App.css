@@ -110,6 +110,7 @@
     min-width: 28px;
     cursor: grab;
     touch-action: none;
+    user-select: none;
 }
 
 .item-row--drag-source .item-drag-handle {
