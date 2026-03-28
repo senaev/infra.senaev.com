@@ -280,11 +280,11 @@ export function App() {
                             <ListItem
                                 key={todoList.getItemClientKey(item)}
                                 item={item}
-                                toggleChecked={(id, checked) => {
-                                    todoList.toggleChecked(id, checked);
+                                toggleChecked={(checked) => {
+                                    todoList.toggleChecked(item.id, checked);
                                 }}
-                                onChange={(id, value) => {
-                                    handleItemChange(id, value);
+                                onChange={(value) => {
+                                    handleItemChange(item.id, value);
                                 }}
                                 onKeyDown={(event) => {
                                     handleItemKeyDown(event, item);

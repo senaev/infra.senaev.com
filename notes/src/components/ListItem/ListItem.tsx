@@ -18,8 +18,8 @@ export function ListItem({
     readonly,
 }: {
     item: TodoListItem;
-    toggleChecked: (id: number, checked: boolean) => void;
-    onChange: (id: number, value: string) => void;
+    toggleChecked: (checked: boolean) => void;
+    onChange: (value: string) => void;
     onSelect: (event: SyntheticEvent<HTMLTextAreaElement>) => void;
     onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
     onRemove: VoidFunction;
@@ -37,7 +37,7 @@ export function ListItem({
             })}
         >
             <div
-                aria-label={`Reorder ${item.title || "item"}`}
+                aria-label={`Reorder item`}
                 className="item-drag-handle"
                 onPointerCancel={(event) => {
                     dragHandlers.stop(event, item);
@@ -60,7 +60,7 @@ export function ListItem({
                     checked={Boolean(item.checked)}
                     className="item-checkbox"
                     onChange={(event) => {
-                        toggleChecked(item.id, event.target.checked);
+                        toggleChecked(event.target.checked);
                     }}
                     readOnly={readonly}
                     type="checkbox"
@@ -91,7 +91,7 @@ export function ListItem({
                         }}
                         onChange={(event) => {
                             resizeTextarea(event.currentTarget);
-                            onChange(item.id, event.currentTarget.value);
+                            onChange(event.currentTarget.value);
                         }}
                         onSelect={onSelect}
                         onKeyDown={onKeyDown}
