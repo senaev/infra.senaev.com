@@ -242,6 +242,7 @@ export function App() {
 
                                 const initialOffsetY = event.clientY - dragItemRect.top;
                                 const initialOffsetX = event.clientX - dragItemRect.left;
+                                console.log(initialOffsetX, initialOffsetY);
 
                                 const itemsContainerRect = itemsContainer.getBoundingClientRect();
                                 const initialCursorOffsetY = event.clientY - itemsContainerRect.top;
@@ -256,7 +257,6 @@ export function App() {
                                     (otherItemElement, i) => {
                                         const rect = otherItemElement.getBoundingClientRect();
                                         if (i === sourceIndex) {
-                                            console.log(rect);
                                             return;
                                         }
 
@@ -270,8 +270,6 @@ export function App() {
                                         otherItemsVerticalCenters.push(center);
                                     },
                                 );
-
-                                console.log(otherItemsVerticalCenters);
 
                                 let dragState: DragState = {
                                     sourceIndex,
@@ -302,7 +300,6 @@ export function App() {
                                             initialCursorOffsetY +
                                             initialItemContainerOffsetY;
 
-                                        console.log(moveOffset);
                                         for (let i = 0; i < otherItemsVerticalCenters.length; i++) {
                                             const center = otherItemsVerticalCenters[i];
                                             if (moveOffset < center) {

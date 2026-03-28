@@ -59,7 +59,6 @@
 
 .item-row {
     display: flex;
-    padding: 0 0 0 10px;
     align-items: stretch;
 }
 
@@ -107,6 +106,7 @@
     display: flex;
     align-items: flex-start;
     justify-content: center;
+    padding-left: 6px;
     min-width: 28px;
     cursor: grab;
     touch-action: none;
