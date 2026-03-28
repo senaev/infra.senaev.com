@@ -23,11 +23,11 @@ export function ListItem({
     onSelect: (event: SyntheticEvent<HTMLTextAreaElement>) => void;
     onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
     onRemove: VoidFunction;
-    dragState?: "overlay" | "source";
+    dragState: "overlay" | "source" | undefined;
     dragHandlers: DragHandlers;
     resizeTextarea: (input: HTMLTextAreaElement) => void;
     inputRefs: React.RefObject<Map<number, HTMLTextAreaElement>>;
-    readonly?: boolean;
+    readonly: boolean;
 }) {
     return (
         <div

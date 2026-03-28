@@ -199,6 +199,7 @@ export class TodoList {
             checked,
             update_index: 0,
             persisted: false,
+            parent_id: null,
         };
 
         this.setItems([...this.items, newItem]);

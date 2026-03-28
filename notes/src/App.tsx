@@ -259,12 +259,9 @@ export function App() {
         },
     };
 
-    const sortedItems = [...todoList.getItems()].sort(
+    const sortedItems: TodoListItem[] = [...todoList.getItems()].sort(
         (first, second) => first.position - second.position,
     );
-    const draggedItem = dragState
-        ? (sortedItems.find((item) => item.id === dragState.itemId) ?? null)
-        : null;
 
     return (
         <main className="page">
@@ -297,6 +294,7 @@ export function App() {
                                 dragHandlers={dragHandlers}
                                 resizeTextarea={resizeTextarea}
                                 inputRefs={inputRefs}
+                                readonly={false}
                             />
                         ))}
                         <button
@@ -311,11 +309,14 @@ export function App() {
                     </div>
                 )}
             </section>
-            {dragState && draggedItem ? (
+            {dragState ? (
                 <div
                     className="drag-overlay"
                     style={{
-                        transform: `translate(${dragState.x}px, ${dragState.y}px)`,
+                        transform: (() => {
+                            console.log({ x: dragState.x, offsetX: dragState.offsetX });
+                            return `translate(${dragState.x}px, ${dragState.y}px)`;
+                        })(),
                         width: `${dragState.width}px`,
                     }}
                 >
@@ -323,7 +324,7 @@ export function App() {
                         dragHandlers={NOOP_DRAG_HANDLERS}
                         dragState="overlay"
                         inputRefs={inputRefs}
-                        item={draggedItem}
+                        item={sortedItems.find((item) => item.id === dragState.itemId)!}
                         onChange={noop}
                         onKeyDown={noop}
                         onRemove={noop}

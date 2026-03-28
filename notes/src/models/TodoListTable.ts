@@ -3,7 +3,8 @@ import { TodoListItem } from "../types/TodoListItem";
 import { SplitCommaAndTrim } from "../utils/SplitCommaAndTrim";
 
 const TABLE_NAME = "todo_lists_items";
-const ITEM_COLUMNS = "id, todo_list_id, title, position, created, updated, update_index, checked";
+const ITEM_COLUMNS =
+    "id, todo_list_id, parent_id, title, position, created, updated, update_index, checked";
 
 type TableColumns = SplitCommaAndTrim<typeof ITEM_COLUMNS>;
 
