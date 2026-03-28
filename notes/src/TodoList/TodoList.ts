@@ -1,18 +1,7 @@
-import { TodoListTable } from "../Tables/TodoListTable";
+import { TodoListTable } from "../models/TodoListTable";
+import { TodoListItem } from "../types/TodoListItem";
 
 const NOTE_TITLE = "Groceries 🛒";
-
-export type TodoListItem = {
-    id: number;
-    todo_list_id: number;
-    title: string;
-    position: number;
-    created: string;
-    updated: string;
-    update_index: number;
-    checked: boolean;
-    persisted: boolean;
-};
 
 export type PendingFocus = { id: number; selectionStart: number; selectionEnd: number };
 

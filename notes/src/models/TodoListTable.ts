@@ -1,6 +1,6 @@
-import { TodoListItem } from "../TodoList/TodoList";
+import { supabase } from "../supabase/supabase";
+import { TodoListItem } from "../types/TodoListItem";
 import { SplitCommaAndTrim } from "../utils/SplitCommaAndTrim";
-import { supabase } from "../utils/supabase";
 
 const TABLE_NAME = "todo_lists_items";
 const ITEM_COLUMNS = "id, todo_list_id, title, position, created, updated, update_index, checked";
