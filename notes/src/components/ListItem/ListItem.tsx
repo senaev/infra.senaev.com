@@ -1,7 +1,6 @@
 import classNames from "classnames";
-import { KeyboardEvent, SyntheticEvent } from "react";
+import { KeyboardEvent, PointerEvent, SyntheticEvent } from "react";
 import { DEBUG_ENABLED } from "../../const/DEBUG_ENABLED";
-import { DragHandlers } from "../../types/DragHandlers";
 import { TodoListItem } from "../../types/TodoListItem";
 
 type DragState = "overlay" | "source" | "source-collapsed" | "placeholder";
@@ -21,7 +20,7 @@ export function ListItem({
     onKeyDown,
     onRemove,
     dragState,
-    dragHandlers,
+    onDragStart,
     resizeTextarea,
     inputRefs,
     readonly,
@@ -33,7 +32,7 @@ export function ListItem({
     onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
     onRemove: VoidFunction;
     dragState: DragState | undefined;
-    dragHandlers: DragHandlers;
+    onDragStart: (event: PointerEvent<HTMLDivElement>) => void;
     resizeTextarea: (input: HTMLTextAreaElement) => void;
     inputRefs: React.RefObject<Map<number, HTMLTextAreaElement>>;
     readonly: boolean;
@@ -46,17 +45,8 @@ export function ListItem({
             <div
                 aria-label={`Reorder item`}
                 className="item-drag-handle"
-                onPointerCancel={(event) => {
-                    dragHandlers.stop(event, item);
-                }}
                 onPointerDown={(event) => {
-                    dragHandlers.start(event, item);
-                }}
-                onPointerMove={(event) => {
-                    dragHandlers.move(event, item);
-                }}
-                onPointerUp={(event) => {
-                    dragHandlers.stop(event, item);
+                    onDragStart(event);
                 }}
             >
                 <span className="item-drag-handle__visual" />
