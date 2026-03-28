@@ -49,10 +49,12 @@ export function App() {
             const midpointY = rect.top + rect.height / 2;
 
             if (pointerY < midpointY) {
+                console.log("Found drop index", { index });
                 return index;
             }
         }
 
+        console.log("Drop index is at the end", { index: candidateRows.length });
         return candidateRows.length;
     }
 
