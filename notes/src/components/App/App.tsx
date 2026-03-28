@@ -285,6 +285,7 @@ export function App() {
                                 startDragAndDrop(event.nativeEvent, (event, isStop) => {
                                     if (isStop) {
                                         setDragState(null);
+
                                         return;
                                     }
 
@@ -361,8 +362,10 @@ export function App() {
                                 inputRefs={inputRefs}
                                 item={{
                                     ...sortedItems[dragState.sourceIndex],
-                                    // Simulate child item
-                                    parent_id: dragState.childCandidate ? 1 : null,
+                                    parent_id:
+                                        dragState.childCandidate && dragState.dropIndex !== 0
+                                            ? 1
+                                            : null,
                                 }}
                                 onChange={noop}
                                 onKeyDown={noop}

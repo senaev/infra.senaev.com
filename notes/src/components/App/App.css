@@ -62,6 +62,7 @@
 .item-row {
     display: flex;
     align-items: stretch;
+    transition: margin-left 80ms ease;
 }
 
 .item-row:focus-within {
@@ -101,7 +102,7 @@
 }
 
 .item-row--child {
-    margin-left: 30px;
+    margin-left: 25px;
 }
 
 .item-drag-handle {
