@@ -137,6 +137,7 @@ export function App() {
             todoList.createItemAfter({
                 id: item.id,
                 checked: item.checked,
+                parent_id: item.parent_id,
                 titleBefore,
                 titleAfter,
             });
@@ -289,8 +290,6 @@ export function App() {
                                         const { dropIndex, childCandidate } = dragState;
                                         const previousItem = sortedItems[dropIndex - 1];
 
-                                        console.log(previousItem);
-
                                         const position = previousItem
                                             ? previousItem.position + 1
                                             : 1;
@@ -362,7 +361,7 @@ export function App() {
                     <button
                         className="add-item-button"
                         onClick={() => {
-                            todoList.createItem();
+                            todoList.createNewItemAtTheEnd();
                         }}
                         type="button"
                     >

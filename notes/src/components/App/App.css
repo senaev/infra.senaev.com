@@ -98,11 +98,11 @@
     border-color: rgb(95 99 104);
     background: rgb(43 45 49);
     opacity: 0.8;
-    transition: margin-left 80ms ease;
+    transition: padding-left 80ms ease;
 }
 
 .item-row--child {
-    margin-left: 25px;
+    padding-left: 25px;
 }
 
 .item-drag-handle {

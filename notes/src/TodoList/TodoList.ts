@@ -194,10 +194,12 @@ export class TodoList {
         title,
         checked,
         position,
+        parent_id,
     }: {
         title: string;
         checked: boolean;
         position: number;
+        parent_id: number | null;
     }) {
         this.shiftElementsToInsertOnPosition(position);
 
@@ -213,7 +215,7 @@ export class TodoList {
             checked,
             update_index: 0,
             persisted: false,
-            parent_id: null,
+            parent_id,
         };
 
         this.setItems([...this.items, newItem]);
@@ -251,19 +253,21 @@ export class TodoList {
             });
     }
 
-    public createItem() {
+    public createNewItemAtTheEnd() {
         const nextPosition = Math.max(...this.items.map((item) => item.position), 0) + 1;
-        this.insertItem({ title: "", checked: false, position: nextPosition });
+        this.insertItem({ title: "", checked: false, position: nextPosition, parent_id: null });
     }
 
     public createItemAfter({
         id,
         checked,
+        parent_id,
         titleBefore,
         titleAfter,
     }: {
         id: number;
         checked: boolean;
+        parent_id: number | null;
         titleBefore: string;
         titleAfter: string;
     }) {
@@ -271,7 +275,6 @@ export class TodoList {
 
         if (!currentItem) {
             this.params.showError(`createItemAfter: item not found id=[${id}]`);
-            debugger;
             return;
         }
 
@@ -283,6 +286,7 @@ export class TodoList {
         const nextPosition = currentItem.position + 1;
         this.insertItem({
             title: titleAfter,
+            parent_id,
             checked: titleAfter.trim() ? checked : false,
             position: nextPosition,
         });
