@@ -3,8 +3,8 @@ import "./App.css";
 import { KeyboardEvent, PointerEvent, SyntheticEvent, useEffect, useRef, useState } from "react";
 import { ErrorToasts } from "./components/ErrorToasts/ErrorToasts";
 import { ListItem } from "./components/ListItem/ListItem";
+import { NOOP_DRAG_HANDLERS } from "./const/NOOP_DRAG_HANDLERS";
 import { useTodoList } from "./TodoList/useTodoList";
-import { DragHandlers } from "./types/DragHandlers";
 import { TodoListItem } from "./types/TodoListItem";
 import { noop } from "./utils/noop";
 
@@ -18,12 +18,6 @@ type DragState = {
     width: number;
     offsetX: number;
     offsetY: number;
-};
-
-const NOOP_DRAG_HANDLERS: DragHandlers = {
-    start: noop,
-    move: noop,
-    stop: noop,
 };
 
 export function App() {
@@ -327,7 +321,7 @@ export function App() {
                 >
                     <ListItem
                         dragHandlers={NOOP_DRAG_HANDLERS}
-                        dragState="ghost"
+                        dragState="overlay"
                         inputRefs={inputRefs}
                         item={draggedItem}
                         onChange={noop}

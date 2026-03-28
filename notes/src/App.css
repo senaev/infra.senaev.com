@@ -197,9 +197,6 @@
     resize: none;
     overflow: hidden;
     margin-top: 5px;
-}
-
-.item-input--drag-ghost {
     white-space: pre-wrap;
 }
 

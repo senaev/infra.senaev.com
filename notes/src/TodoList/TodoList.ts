@@ -45,6 +45,7 @@ export class TodoList {
         return this.tempIdsMap.get(item.id) || item.id;
     }
 
+    // TODO: move errors logic to an external component
     public readonly showError = (message: string) => {
         this.errors.push(message);
         this.onChange();

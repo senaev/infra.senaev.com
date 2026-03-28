@@ -23,7 +23,7 @@ export function ListItem({
     onSelect: (event: SyntheticEvent<HTMLTextAreaElement>) => void;
     onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
     onRemove: VoidFunction;
-    dragState?: "ghost" | "source";
+    dragState?: "overlay" | "source";
     dragHandlers: DragHandlers;
     resizeTextarea: (input: HTMLTextAreaElement) => void;
     inputRefs: React.RefObject<Map<number, HTMLTextAreaElement>>;
@@ -33,7 +33,7 @@ export function ListItem({
         <div
             className={classNames("item-row", {
                 "item-row--drag-source": dragState === "source",
-                "item-row--drag-overlay": dragState === "ghost",
+                "item-row--drag-overlay": dragState === "overlay",
             })}
         >
             <div
@@ -69,7 +69,7 @@ export function ListItem({
             <label className="item-textarea-label">
                 {readonly ? (
                     <div
-                        className={classNames("item-input", "item-input--drag-ghost", {
+                        className={classNames("item-input", {
                             "is-checked": item.checked,
                         })}
                     >
