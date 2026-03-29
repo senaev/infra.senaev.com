@@ -1,8 +1,10 @@
 export function shiftItemsToInsertOnPosition<T extends { id: number; position: number }>(
-    itemsSorted: T[],
+    items: T[],
     position: number,
     count: number,
 ): Map<number, number> {
+    const itemsSorted = [...items].sort((a, b) => a.position - b.position);
+
     let itemIndex = 0;
     while (itemsSorted[itemIndex]?.position < position) {
         itemIndex++;
@@ -10,7 +12,7 @@ export function shiftItemsToInsertOnPosition<T extends { id: number; position: n
 
     const shiftedItemsQueue: number[] = [];
     for (let i = 0; i < count; i++) {
-        if (itemsSorted[itemIndex]?.position === position + i) {
+        while (itemsSorted[itemIndex]?.position === position + i) {
             shiftedItemsQueue.push(itemsSorted[itemIndex].id);
             itemIndex++;
         }
@@ -19,7 +21,7 @@ export function shiftItemsToInsertOnPosition<T extends { id: number; position: n
     const shiftedItems: Map<number, number> = new Map();
     let potentialPosition = position + count;
     while (shiftedItemsQueue.length > 0) {
-        if (itemsSorted[itemIndex]?.position === potentialPosition) {
+        while (itemsSorted[itemIndex]?.position === potentialPosition) {
             shiftedItemsQueue.push(itemsSorted[itemIndex].id);
             itemIndex++;
         }

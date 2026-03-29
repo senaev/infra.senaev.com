@@ -166,6 +166,7 @@ describe("shiftItemsToInsertOnPosition", () => {
 
         expect(toObject(shiftedItems)).toEqual({});
     });
+
     it("custom test 6", () => {
         const shiftedItems = shiftItemsToInsertOnPosition(
             [
@@ -182,6 +183,69 @@ describe("shiftItemsToInsertOnPosition", () => {
 
         expect(toObject(shiftedItems)).toEqual({
             8: 107,
+        });
+    });
+
+    it("initially duplicated positions", () => {
+        const shiftedItems = shiftItemsToInsertOnPosition(
+            [
+                { id: 0, position: 0 },
+                { id: 1, position: 1 },
+                { id: 2, position: 1 },
+                { id: 3, position: 2 },
+                { id: 4, position: 3 },
+                { id: 5, position: 8 },
+            ],
+            0,
+            3,
+        );
+
+        expect(toObject(shiftedItems)).toEqual({
+            0: 3,
+            1: 4,
+            2: 5,
+            3: 6,
+            4: 7,
+        });
+    });
+
+    it("initially duplicated positions 1", () => {
+        const shiftedItems = shiftItemsToInsertOnPosition(
+            [
+                { id: 0, position: 0 },
+                { id: 1, position: 1 },
+                { id: 2, position: 1 },
+                { id: 3, position: 2 },
+                { id: 4, position: 2 },
+                { id: 5, position: 8 },
+            ],
+            2,
+            2,
+        );
+
+        expect(toObject(shiftedItems)).toEqual({
+            3: 4,
+            4: 5,
+        });
+    });
+
+    it("unsorted and duplicated positions", () => {
+        const shiftedItems = shiftItemsToInsertOnPosition(
+            [
+                { id: 3, position: 2 },
+                { id: 4, position: 2 },
+                { id: 1, position: 1 },
+                { id: 5, position: 8 },
+                { id: 2, position: 1 },
+                { id: 0, position: 0 },
+            ],
+            2,
+            2,
+        );
+
+        expect(toObject(shiftedItems)).toEqual({
+            3: 4,
+            4: 5,
         });
     });
 });

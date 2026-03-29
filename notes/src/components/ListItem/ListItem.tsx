@@ -99,24 +99,31 @@ export function ListItem({
                 )}
             </label>
             {DEBUG_ENABLED && (
-                <>
-                    <span>{item.position}</span>
-                    <span>{item.persisted ? "✅" : "⏳"}</span>
+                <span
+                    style={{
+                        fontSize: "10px",
+                        fontFamily: "monospace",
+                        gap: "2px",
+                        whiteSpace: "nowrap",
+                    }}
+                >
+                    <span>pos=[{item.position}]</span>
                     <span
                         style={{
                             color: "blue",
                         }}
                     >
-                        {item.update_index}
+                        upd=[{item.update_index}]
                     </span>
                     <span
                         style={{
                             color: "green",
                         }}
                     >
-                        {item.id}
+                        id=[{item.id}]
                     </span>
-                </>
+                    <span>{item.persisted ? "✅" : "⏳"}</span>
+                </span>
             )}
             <div
                 aria-label={`Remove ${item.title || "item"}`}

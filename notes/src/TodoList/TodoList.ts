@@ -1,5 +1,6 @@
 import { TodoListTable } from "../models/TodoListTable";
 import { TodoListItem } from "../types/TodoListItem";
+import { shiftItemsToInsertOnPosition } from "../utils/shiftItemsToInsertOnPosition/shiftItemsToInsertOnPosition";
 
 const NOTE_TITLE = "Groceries 🛒";
 
@@ -148,9 +149,10 @@ export class TodoList {
             count: number;
         },
     ) {
-        const itemToMove = this.items.find((item) => item.id === id);
-        if (!itemToMove) {
-            this.params.showError(`moveItem: item with id ${id} not found`);
+        console.log("moveItems", { id, dropIndex, childCandidate, count });
+        const sourceIndex = this.items.findIndex((item) => item.id === id);
+        if (sourceIndex === -1) {
+            this.params.showError(`moveItem: item not found with id=[${id}]`);
             return;
         }
 
@@ -158,32 +160,48 @@ export class TodoList {
             (first, second) => first.position - second.position,
         );
 
+        const firstItem = sortedItems[sourceIndex];
+
+        if (!firstItem) {
+            this.params.showError(`moveItem: item not found on sourceIndex=[${sourceIndex}]`);
+            return;
+        }
+
         const previousItem = sortedItems[dropIndex - 1];
 
-        const position = previousItem ? previousItem.position + 1 : 1;
+        const startPosition = previousItem ? previousItem.position + 1 : 1;
+        this.shiftElementsToInsertOnPosition(startPosition, count);
 
-        const parent_id = childCandidate && dropIndex !== 0 ? sortedItems[dropIndex - 1].id : null;
+        const firstItemParentId = childCandidate && dropIndex !== 0 ? previousItem.id : null;
 
-        this.shiftElementsToInsertOnPosition(position, count);
-        this.changeItemLocally(id, { position, parent_id, persisted: false });
-        this.persistItem(id, { position, parent_id });
+        console.log({
+            sourceIndex,
+            dropIndex,
+            startPosition,
+            firstItemParentId,
+        });
+
+        for (let i = 0; i < count; i++) {
+            const item = sortedItems[sourceIndex + i];
+
+            const position = startPosition + i;
+            const parent_id = i === 0 ? firstItemParentId : firstItem.id;
+
+            this.changeItemLocally(item.id, {
+                position,
+                parent_id,
+                persisted: false,
+            });
+            this.persistItem(id, { position, parent_id });
+        }
     }
 
     private shiftElementsToInsertOnPosition(position: number, count: number) {
-        const itemsWithHigherPosition = this.items
-            .filter((item) => item.position >= position)
-            .sort((first, second) => first.position - second.position);
-
-        let busyPosition = position;
-        const shiftedItems: Map<number, number> = new Map();
-        for (const { id, position } of itemsWithHigherPosition) {
-            if (position !== busyPosition) {
-                break;
-            }
-
-            busyPosition++;
-            shiftedItems.set(id, busyPosition);
-        }
+        const shiftedItems: Map<number, number> = shiftItemsToInsertOnPosition(
+            this.items,
+            position,
+            count,
+        );
 
         shiftedItems.forEach((nextPosition, id) => {
             this.setItems(
