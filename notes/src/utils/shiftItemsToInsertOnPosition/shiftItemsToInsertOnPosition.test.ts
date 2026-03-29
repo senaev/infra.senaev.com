@@ -107,4 +107,81 @@ describe("shiftItemsToInsertOnPosition", () => {
             7: 9,
         });
     });
+
+    it("custom test 3", () => {
+        const shiftedItems = shiftItemsToInsertOnPosition(
+            [
+                { id: 2, position: 2 },
+                { id: 4, position: 4 },
+                { id: 6, position: 6 },
+                { id: 8, position: 8 },
+            ],
+            2,
+            4,
+        );
+
+        expect(toObject(shiftedItems)).toEqual({
+            2: 6,
+            4: 7,
+            6: 8,
+            8: 9,
+        });
+    });
+
+    it("custom test 4", () => {
+        const shiftedItems = shiftItemsToInsertOnPosition(
+            [
+                { id: 0, position: 0 },
+                { id: 1, position: 1 },
+                { id: 2, position: 2 },
+                { id: 4, position: 4 },
+                { id: 6, position: 6 },
+                { id: 8, position: 8 },
+            ],
+            2,
+            4,
+        );
+
+        expect(toObject(shiftedItems)).toEqual({
+            2: 6,
+            4: 7,
+            6: 8,
+            8: 9,
+        });
+    });
+
+    it("custom test 5", () => {
+        const shiftedItems = shiftItemsToInsertOnPosition(
+            [
+                { id: 0, position: 0 },
+                { id: 1, position: 1 },
+                { id: 2, position: 2 },
+                { id: 4, position: 4 },
+                { id: 6, position: 6 },
+                { id: 8, position: 8 },
+            ],
+            9,
+            100,
+        );
+
+        expect(toObject(shiftedItems)).toEqual({});
+    });
+    it("custom test 6", () => {
+        const shiftedItems = shiftItemsToInsertOnPosition(
+            [
+                { id: 0, position: 0 },
+                { id: 1, position: 1 },
+                { id: 2, position: 2 },
+                { id: 4, position: 4 },
+                { id: 6, position: 6 },
+                { id: 8, position: 8 },
+            ],
+            7,
+            100,
+        );
+
+        expect(toObject(shiftedItems)).toEqual({
+            8: 107,
+        });
+    });
 });

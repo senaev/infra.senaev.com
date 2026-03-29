@@ -4,6 +4,9 @@ export function shiftItemsToInsertOnPosition<T extends { id: number; position: n
     count: number,
 ): Map<number, number> {
     let itemIndex = 0;
+    while (itemsSorted[itemIndex]?.position < position) {
+        itemIndex++;
+    }
 
     const shiftedItemsQueue: number[] = [];
     for (let i = 0; i < count; i++) {
