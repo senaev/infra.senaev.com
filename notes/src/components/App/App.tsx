@@ -4,8 +4,8 @@ import { KeyboardEvent, SyntheticEvent, useEffect, useRef, useState } from "reac
 import { useList } from "../../List/useList";
 import { useErrorsContext } from "../../contexts/ErrorsContext";
 import { ListItem } from "../../types/ListItem";
+import { captureDragAndDrop } from "../../utils/captureDragAndDrop";
 import { noop } from "../../utils/noop";
-import { startDragAndDrop } from "../../utils/startDragAndDrop";
 import { ListItemElement } from "../ListItemElement/ListItemElement";
 
 const LIST_ID = 1;
@@ -310,7 +310,7 @@ export function App() {
                                 };
                                 setDragState(dragState);
 
-                                startDragAndDrop(event.nativeEvent, (event, isStop) => {
+                                captureDragAndDrop(event.nativeEvent, (event, isStop) => {
                                     if (isStop) {
                                         setDragState(null);
 

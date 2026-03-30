@@ -1,4 +1,4 @@
-export function startDragAndDrop<T extends HTMLElement>(
+export function captureDragAndDrop<T extends HTMLElement>(
     event: PointerEvent,
     callback: (event: PointerEvent, isStop: boolean) => void,
 ) {
