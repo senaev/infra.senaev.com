@@ -105,16 +105,16 @@ export class List {
             return;
         }
 
-        const previousUpdateIndex = itemToUpdate.update_index;
-        const nextUpdateIndex = previousUpdateIndex + 1;
-        this.changeItemLocally(id, { update_index: nextUpdateIndex, persisted: false });
+        const update_index = itemToUpdate.update_index + 1;
+        const updated = new Date().toISOString();
+        this.changeItemLocally(id, { update_index, updated, persisted: false });
 
         if (id < 0) {
             this.tempUpdatesMap.set(id, { ...this.tempUpdatesMap.get(id), ...updates });
             return;
         }
 
-        ListTable.update(id, { ...updates, update_index: nextUpdateIndex })
+        ListTable.update(id, { ...updates, update_index })
             .then((result) => {
                 if (result === "update_index_conflict") {
                     // Ignore conflicts, persistent state will be delivered through server-push
@@ -124,7 +124,7 @@ export class List {
                 // Check that local item has not been removed during update
                 const localItem = this.items.find((item) => item.id === id);
                 if (localItem) {
-                    this.changeItemLocally(id, { persisted: true });
+                    this.changeItemLocally(id, { updated: result.updated, persisted: true });
                 }
             })
             .catch((error) => {

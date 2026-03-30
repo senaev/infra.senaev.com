@@ -55,8 +55,13 @@ export class ListTable {
         updates: Partial<Pick<ListItem, "title" | "position" | "checked">> & {
             update_index: number;
         },
-    ): Promise<"update_index_conflict" | undefined> {
-        const { error } = await supabase
+    ): Promise<
+        | "update_index_conflict"
+        | {
+              updated: string;
+          }
+    > {
+        const { error, data } = await supabase
             .from(TABLE_NAME)
             .update(updates)
             .eq("id", itemId)
@@ -75,7 +80,9 @@ export class ListTable {
             throw new Error(`updateListItem(${itemId}) error: ${error.message}`);
         }
 
-        return undefined;
+        return {
+            updated: data.updated,
+        };
     }
 
     public static async delete(itemId: number): Promise<void> {
