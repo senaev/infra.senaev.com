@@ -182,6 +182,11 @@ export function ListPageElement({ listId }: { listId: number }) {
         list.persistItem(id, { title });
     }
 
+    function handleListTitleChange(title: string) {
+        lists?.changeTitleLocally(listId, title);
+        lists?.persistTitle(listId, title);
+    }
+
     type ListItemWithSortedIndex = ListItem & {
         sortedIndex: number;
     };
@@ -208,8 +213,14 @@ export function ListPageElement({ listId }: { listId: number }) {
 
     return (
         <>
-            {/* TODO: make it editable */}
-            <h1 className="list-title">{listTitle}</h1>
+            <input
+                className="list-title"
+                value={listTitle ?? ""}
+                onChange={(event) => {
+                    handleListTitleChange(event.currentTarget.value);
+                }}
+                placeholder="Untitled"
+            />
 
             <div className="items" ref={itemsContainerRef}>
                 {sortedItemsWithPlaceholders.map((item) => (

@@ -32,4 +32,28 @@ export class Lists {
 
         return newList;
     }
+
+    public changeTitleLocally(id: number, title: string): void {
+        if (!this.items) {
+            return;
+        }
+
+        this.items = this.items.map((item) => {
+            if (item.id !== id) {
+                return item;
+            }
+
+            return { ...item, title };
+        });
+        this.params.onChange();
+    }
+
+    public async persistTitle(id: number, title: string): Promise<void> {
+        try {
+            await ListsTable.update(id, { title });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            this.params.showError(`Failed to update list title: ${message}`);
+        }
+    }
 }
