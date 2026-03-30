@@ -171,13 +171,25 @@ export class List {
             return;
         }
 
-        const previousItem = sortedItems[dropIndex - 1];
         const itemsToMove = sortedItems.slice(sourceIndex, sourceIndex + count);
 
-        const startPosition = previousItem ? previousItem.position + 1 : 1;
-        this.shiftElementsToInsertOnPosition(startPosition, count);
+        let startPosition = 1;
+        let firstItemParentId = null;
+        if (dropIndex > 0) {
+            const previousItem = sortedItems[dropIndex - 1];
+            if (!previousItem) {
+                this.params.showError(`moveItem: no previousItem for dropIndex=[${dropIndex}]`);
+                return;
+            }
 
-        const firstItemParentId = makeChild && dropIndex !== 0 ? previousItem.id : null;
+            startPosition = previousItem.position + 1;
+
+            if (makeChild) {
+                firstItemParentId = previousItem.id;
+            }
+        }
+
+        this.shiftElementsToInsertOnPosition(startPosition, count);
 
         for (let i = 0; i < count; i++) {
             const item = itemsToMove[i];
@@ -202,15 +214,10 @@ export class List {
         );
 
         shiftedItems.forEach((nextPosition, id) => {
-            this.setItems(
-                this.items.map((item) => {
-                    if (item.id === id) {
-                        return { ...item, position: nextPosition, persisted: false };
-                    }
-
-                    return item;
-                }),
-            );
+            this.changeItemLocally(id, {
+                position: nextPosition,
+                persisted: false,
+            });
 
             this.persistItem(id, { position: nextPosition });
         });

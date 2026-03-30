@@ -349,7 +349,7 @@ export function App() {
                                             }
                                         }
 
-                                        return otherItemsVerticalCenters.length + 1;
+                                        return otherItemsVerticalCenters.length;
                                     })();
 
                                     const dragRight = offset.x - cursorToDragElementOffset.x;
