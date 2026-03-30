@@ -462,7 +462,7 @@ export function App() {
                                         list.removeItem(item.id);
                                     }}
                                     dragState={undefined}
-                                    onDragStart={noop}
+                                    onDragStart={undefined}
                                     resizeTextarea={resizeTextarea}
                                     inputRefs={inputRefs}
                                     readonly={false}

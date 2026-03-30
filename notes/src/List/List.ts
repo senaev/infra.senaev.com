@@ -196,11 +196,12 @@ export class List {
             count: number;
         },
     ) {
-        const sortedCheckedItems = this.getItemsSplit().checked;
+        const sortedCheckedItems = this.getItemsSplit().unchecked;
 
         const sourceIndex = sortedCheckedItems.findIndex((item) => item.id === id);
         if (sourceIndex === -1) {
             this.params.showError(`moveItem: item not found with id=[${id}]`);
+            debugger;
             return;
         }
 

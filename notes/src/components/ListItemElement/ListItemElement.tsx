@@ -12,6 +12,8 @@ const DRAG_STATE_CLASSES: Record<DragState, string[]> = {
     placeholder: ["item-row--drag-source"],
 };
 
+export type DragStartCallback = (event: PointerEvent<HTMLDivElement>) => void;
+
 export function ListItemElement({
     item,
     toggleChecked,
@@ -32,7 +34,7 @@ export function ListItemElement({
     onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
     onRemove: VoidFunction;
     dragState: DragState | undefined;
-    onDragStart: (event: PointerEvent<HTMLDivElement>) => void;
+    onDragStart: DragStartCallback | undefined;
     resizeTextarea: (input: HTMLTextAreaElement) => void;
     inputRefs: React.RefObject<Map<number, HTMLTextAreaElement>>;
     readonly: boolean;
@@ -45,11 +47,12 @@ export function ListItemElement({
             })}
         >
             <div
-                aria-label={`Reorder item`}
-                className="item-drag-handle"
-                onPointerDown={(event) => {
-                    onDragStart(event);
-                }}
+                className={classNames("item-drag-handle", {
+                    "item-drag-handle--disabled": !onDragStart,
+                })}
+                role={onDragStart ? "button" : undefined}
+                tabIndex={onDragStart ? 0 : undefined}
+                onPointerDown={onDragStart}
                 onContextMenu={(event) => {
                     event.preventDefault();
                 }}

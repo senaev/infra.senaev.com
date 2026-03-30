@@ -98,6 +98,11 @@
     user-select: none;
 }
 
+.item-drag-handle--disabled {
+    cursor: default;
+    opacity: 0;
+}
+
 .item-row--drag-source .item-drag-handle {
     cursor: grabbing;
 }
@@ -115,6 +120,7 @@
 .item-checkbox-label {
     display: flex;
     padding: 10px 16px 0 0px;
+    height: 24px;
 }
 
 .item-checkbox {
