@@ -177,7 +177,7 @@ export class List {
         const itemsToMove = sortedItems.slice(sourceIndex, sourceIndex + count);
 
         let startPosition = 1;
-        let firstItemParentId = null;
+        let firstItemIsChild = false;
         if (dropIndex > 0) {
             const previousItem = sortedItems[dropIndex - 1];
             if (!previousItem) {
@@ -188,7 +188,7 @@ export class List {
             startPosition = previousItem.position + 1;
 
             if (makeChild) {
-                firstItemParentId = previousItem.id;
+                firstItemIsChild = true;
             }
         }
 
@@ -198,7 +198,7 @@ export class List {
             const item = itemsToMove[i];
 
             const position = startPosition + i;
-            const parent_id = i === 0 ? firstItemParentId : sourceItem.id;
+            const parent_id = i === 0 ? (firstItemIsChild ? 1 : null) : 1;
 
             this.changeItemLocally(item.id, {
                 position,
@@ -230,12 +230,12 @@ export class List {
         title,
         checked,
         position,
-        parent_id,
+        isChild,
     }: {
         title: string;
         checked: boolean;
         position: number;
-        parent_id: number | null;
+        isChild: boolean;
     }) {
         this.shiftElementsToInsertOnPosition(position, 1);
 
@@ -251,7 +251,7 @@ export class List {
             checked,
             update_index: 0,
             persisted: false,
-            parent_id,
+            parent_id: isChild ? 1 : null,
         };
 
         this.setItems([...this.items, newItem]);
@@ -291,19 +291,19 @@ export class List {
 
     public createNewItemAtTheEnd() {
         const nextPosition = Math.max(...this.items.map((item) => item.position), 0) + 1;
-        this.insertItem({ title: "", checked: false, position: nextPosition, parent_id: null });
+        this.insertItem({ title: "", checked: false, position: nextPosition, isChild: false });
     }
 
     public createItemAfter({
         id,
         checked,
-        parent_id,
+        isChild,
         titleBefore,
         titleAfter,
     }: {
         id: number;
         checked: boolean;
-        parent_id: number | null;
+        isChild: boolean;
         titleBefore: string;
         titleAfter: string;
     }) {
@@ -322,7 +322,7 @@ export class List {
         const nextPosition = currentItem.position + 1;
         this.insertItem({
             title: titleAfter,
-            parent_id,
+            isChild,
             checked: titleAfter.trim() ? checked : false,
             position: nextPosition,
         });

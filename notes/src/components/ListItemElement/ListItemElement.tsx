@@ -70,7 +70,7 @@ export function ListItemElement({
             </label>
             <label className="item-textarea-label">
                 {readonly ? (
-                    <div className={"item-input"}>{item.title || " "}</div>
+                    <div className={"item-input"}>{item.title}</div>
                 ) : (
                     <textarea
                         id={`input-${item.id}`}

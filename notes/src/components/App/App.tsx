@@ -136,7 +136,7 @@ export function App() {
             list.createItemAfter({
                 id: item.id,
                 checked: item.checked,
-                parent_id: item.parent_id,
+                isChild: item.parent_id != null,
                 titleBefore,
                 titleAfter,
             });
