@@ -29,7 +29,7 @@ create table if not exists public.lists_items (
     position integer not null,
     created timestamptz not null default timezone('utc', now()),
     updated timestamptz not null default timezone('utc', now()),
-    checked boolean not null default false,
+    check_time timestamp default null,
     update_index bigint not null
 );
 

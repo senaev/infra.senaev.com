@@ -4,7 +4,7 @@ import { SplitCommaAndTrim } from "../utils/SplitCommaAndTrim";
 
 const TABLE_NAME = "lists_items";
 const TABLE_COLUMNS =
-    "id, list_id, child, title, position, created, updated, update_index, checked";
+    "id, list_id, child, title, position, created, updated, update_index, check_time";
 type TableColumns = SplitCommaAndTrim<typeof TABLE_COLUMNS>;
 
 export class ListTable {
@@ -12,12 +12,12 @@ export class ListTable {
         list_id,
         title,
         position,
-        checked,
+        check_time,
         update_index,
         child,
     }: Pick<
         ListItem,
-        "list_id" | "title" | "position" | "checked" | "update_index" | "child"
+        "list_id" | "title" | "position" | "check_time" | "update_index" | "child"
     >): Promise<Record<TableColumns, any>> {
         const { data, error } = await supabase
             .from(TABLE_NAME)
@@ -25,7 +25,7 @@ export class ListTable {
                 list_id,
                 title,
                 position,
-                checked,
+                check_time,
                 update_index,
                 child,
             })
@@ -54,7 +54,7 @@ export class ListTable {
 
     public static async update(
         itemId: number,
-        updates: Partial<Pick<ListItem, "title" | "position" | "checked">> & {
+        updates: Partial<Pick<ListItem, "title" | "position" | "check_time">> & {
             update_index: number;
         },
     ): Promise<

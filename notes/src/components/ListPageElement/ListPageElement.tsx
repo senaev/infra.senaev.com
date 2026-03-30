@@ -144,7 +144,7 @@ export function ListPageElement({ listId }: { listId: number }) {
 
         if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === "l") {
             event.preventDefault();
-            list.toggleChecked(item.id, !item.checked);
+            list.toggleChecked(item.id, !item.check_time);
         }
 
         if (event.key === "ArrowUp" || event.key === "ArrowDown") {

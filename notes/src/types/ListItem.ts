@@ -6,7 +6,7 @@ export type ListItem = {
     created: string;
     updated: string;
     update_index: number;
-    checked: boolean;
+    check_time: string | null;
     persisted: boolean;
     child: boolean;
 };

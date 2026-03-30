@@ -46,7 +46,7 @@ export class List {
     private readonly tempIdsRemovedSet = new Set<number>();
     private readonly tempUpdatesMap = new Map<
         number,
-        Partial<Pick<ListItem, "title" | "position" | "checked">>
+        Partial<Pick<ListItem, "title" | "position" | "check_time">>
     >();
 
     public getItemsSorted(): ListItem[] {
@@ -78,12 +78,19 @@ export class List {
 
         for (const group of groupedByParent) {
             const { parent, children } = group;
-            if (parent.checked && children.every((child) => child.checked)) {
+            if (parent.check_time && children.every((child) => child.check_time)) {
                 checked.push(group);
             } else {
                 unchecked.push(group);
             }
         }
+
+        checked.sort((first, second) => {
+            const firstCheckTime = new Date(first.parent.check_time!).getTime();
+            const secondCheckTime = new Date(second.parent.check_time!).getTime();
+
+            return secondCheckTime - firstCheckTime;
+        });
 
         return { checked, unchecked };
     }
@@ -145,7 +152,7 @@ export class List {
 
     public persistItem(
         id: number,
-        updates: Partial<Pick<ListItem, "title" | "position" | "checked" | "child">>,
+        updates: Partial<Pick<ListItem, "title" | "position" | "check_time" | "child">>,
     ): void {
         const itemToUpdate = this.items.find((item) => item.id === id);
         if (!itemToUpdate) {
@@ -274,12 +281,12 @@ export class List {
 
     public insertItem({
         title,
-        checked,
+        check_time,
         position,
         child,
     }: {
         title: string;
-        checked: boolean;
+        check_time: string | null;
         position: number;
         child: boolean;
     }) {
@@ -294,7 +301,7 @@ export class List {
             created: "",
             updated: "",
             position,
-            checked,
+            check_time,
             update_index: 0,
             persisted: false,
             child,
@@ -341,7 +348,7 @@ export class List {
 
     public createNewItemAtTheEnd() {
         const nextPosition = this.getPositionAtTheEnd();
-        this.insertItem({ title: "", checked: false, position: nextPosition, child: false });
+        this.insertItem({ title: "", check_time: null, position: nextPosition, child: false });
     }
 
     public createItemAfter({
@@ -371,7 +378,7 @@ export class List {
         this.insertItem({
             title: titleNew,
             child: currentItem.child,
-            checked: currentItem.checked,
+            check_time: currentItem.check_time,
             position: nextPosition,
         });
     }
@@ -391,11 +398,12 @@ export class List {
             return;
         }
 
+        const check_time = checked ? new Date().toISOString() : null;
         this.changeItemLocally(id, {
-            checked,
+            check_time,
             persisted: false,
         });
-        this.persistItem(id, { checked });
+        this.persistItem(id, { check_time });
 
         if (item.child) {
             let parentItem: ListItem | undefined;

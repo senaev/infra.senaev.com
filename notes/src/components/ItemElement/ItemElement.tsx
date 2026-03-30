@@ -43,7 +43,7 @@ export function ListItemElement({
         <div
             className={classNames("item-row", DRAG_STATE_CLASSES[dragState as DragState], {
                 "item-row--child": item.child,
-                "is-checked": item.checked,
+                "is-checked": Boolean(item.check_time),
             })}
         >
             <div
@@ -62,7 +62,7 @@ export function ListItemElement({
             <label className="item-checkbox-label">
                 <input
                     aria-label={`Mark ${item.title || "item"} as checked`}
-                    checked={Boolean(item.checked)}
+                    checked={Boolean(item.check_time)}
                     className="item-checkbox"
                     onChange={(event) => {
                         toggleChecked(event.target.checked);
