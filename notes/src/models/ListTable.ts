@@ -3,9 +3,9 @@ import { ListItem } from "../types/ListItem";
 import { SplitCommaAndTrim } from "../utils/SplitCommaAndTrim";
 
 const TABLE_NAME = "lists_items";
-const ITEM_COLUMNS = "id, list_id, child, title, position, created, updated, update_index, checked";
-
-type TableColumns = SplitCommaAndTrim<typeof ITEM_COLUMNS>;
+const TABLE_COLUMNS =
+    "id, list_id, child, title, position, created, updated, update_index, checked";
+type TableColumns = SplitCommaAndTrim<typeof TABLE_COLUMNS>;
 
 export class ListTable {
     public static async create({
@@ -29,11 +29,11 @@ export class ListTable {
                 update_index,
                 child,
             })
-            .select(ITEM_COLUMNS)
+            .select(TABLE_COLUMNS)
             .single();
 
         if (error) {
-            throw new Error(`insertItemAtPosition: ${error.message}`);
+            throw new Error(`ListTable.create: ${error.message}`);
         }
 
         return data;
@@ -42,7 +42,7 @@ export class ListTable {
     public static async readAll(listId: number): Promise<Pick<ListItem, TableColumns>[]> {
         const { error, data } = await supabase
             .from(TABLE_NAME)
-            .select(ITEM_COLUMNS)
+            .select(TABLE_COLUMNS)
             .eq("list_id", listId);
 
         if (error) {
@@ -67,7 +67,7 @@ export class ListTable {
             .from(TABLE_NAME)
             .update(updates)
             .eq("id", itemId)
-            .select(ITEM_COLUMNS)
+            .select(TABLE_COLUMNS)
             .single();
 
         if (error) {
@@ -79,7 +79,7 @@ export class ListTable {
                 }
             } catch (e) {}
 
-            throw new Error(`updateListItem(${itemId}) error: ${error.message}`);
+            throw new Error(`ListTable.update(${itemId}) error: ${error.message}`);
         }
 
         return {
@@ -91,7 +91,7 @@ export class ListTable {
         const { error } = await supabase.from(TABLE_NAME).delete().eq("id", itemId);
 
         if (error) {
-            throw new Error(`deleteListItem(${itemId}) error: ${error.message}`);
+            throw new Error(`ListTable.delete(${itemId}) error: ${error.message}`);
         }
     }
 }
