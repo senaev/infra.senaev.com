@@ -6,7 +6,7 @@ import { useErrorsContext } from "../../contexts/ErrorsContext";
 import { ListItem } from "../../types/ListItem";
 import { noop } from "../../utils/noop";
 import { startDragAndDrop } from "../../utils/startDragAndDrop";
-import { ListItemElement } from "../ListItem/ListItem";
+import { ListItemElement } from "../ListItemElement/ListItemElement";
 
 const LIST_ID = 1;
 
@@ -33,9 +33,7 @@ export function App() {
     const itemsContainerRef = useRef<HTMLDivElement>(null);
     const itemsContainer = itemsContainerRef.current!;
 
-    const sortedItems: ListItem[] = [...list.getItems()].sort(
-        (first, second) => first.position - second.position,
-    );
+    const sortedItems: ListItem[] = list.getEditingItemsSorted();
 
     useEffect(() => {
         if (list.pendingFocus == null) {

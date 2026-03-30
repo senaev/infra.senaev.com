@@ -101,7 +101,7 @@
     display: flex;
     align-items: flex-start;
     justify-content: center;
-    padding-left: 6px;
+    padding: 0 8px 0 6px;
     min-width: 28px;
     cursor: grab;
     touch-action: none;
@@ -124,7 +124,7 @@
 
 .item-checkbox-label {
     display: flex;
-    padding: 10px 16px 0 8px;
+    padding: 10px 16px 0 0px;
 }
 
 .item-checkbox {
@@ -212,7 +212,7 @@
     white-space: pre-wrap;
 }
 
-.item-input.is-checked {
+.item-row.is-checked {
     color: rgb(154 160 166);
     text-decoration: line-through;
 }

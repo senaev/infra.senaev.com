@@ -41,6 +41,7 @@ export function ListItemElement({
         <div
             className={classNames("item-row", DRAG_STATE_CLASSES[dragState as DragState], {
                 "item-row--child": item.parent_id !== null,
+                "is-checked": item.checked,
             })}
         >
             <div
@@ -48,6 +49,9 @@ export function ListItemElement({
                 className="item-drag-handle"
                 onPointerDown={(event) => {
                     onDragStart(event);
+                }}
+                onContextMenu={(event) => {
+                    event.preventDefault();
                 }}
             >
                 <span className="item-drag-handle__visual" />
@@ -66,19 +70,11 @@ export function ListItemElement({
             </label>
             <label className="item-textarea-label">
                 {readonly ? (
-                    <div
-                        className={classNames("item-input", {
-                            "is-checked": item.checked,
-                        })}
-                    >
-                        {item.title || " "}
-                    </div>
+                    <div className={"item-input"}>{item.title || " "}</div>
                 ) : (
                     <textarea
                         id={`input-${item.id}`}
-                        className={classNames("item-input", {
-                            "is-checked": item.checked,
-                        })}
+                        className={classNames("item-input")}
                         ref={(node) => {
                             if (node) {
                                 inputRefs.current.set(item.id, node);

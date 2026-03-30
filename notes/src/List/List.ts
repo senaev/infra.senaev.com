@@ -137,6 +137,10 @@ export class List {
         this.params.onChange();
     }
 
+    public getEditingItemsSorted(): ListItem[] {
+        return [...this.items].sort((first, second) => first.position - second.position);
+    }
+
     public moveItems(
         id: number,
         {
@@ -149,9 +153,7 @@ export class List {
             count: number;
         },
     ) {
-        const sortedItems = [...this.items].sort(
-            (first, second) => first.position - second.position,
-        );
+        const sortedItems = this.getEditingItemsSorted();
 
         const sourceIndex = sortedItems.findIndex((item) => item.id === id);
         if (sourceIndex === -1) {
