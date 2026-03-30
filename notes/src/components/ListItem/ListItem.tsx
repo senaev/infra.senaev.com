@@ -107,17 +107,23 @@ export function ListItemElement({
                         whiteSpace: "nowrap",
                     }}
                 >
-                    <span>pos=[{item.position}]</span>
                     <span
                         style={{
-                            color: "blue",
+                            color: "#FFCA98",
+                        }}
+                    >
+                        pos=[{item.position}]
+                    </span>
+                    <span
+                        style={{
+                            color: "#989AFF",
                         }}
                     >
                         upd=[{item.update_index}]
                     </span>
                     <span
                         style={{
-                            color: "green",
+                            color: "#98FFAE",
                         }}
                     >
                         id=[{item.id}]

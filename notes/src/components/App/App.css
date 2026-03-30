@@ -30,11 +30,9 @@
 }
 
 .list-title {
-    margin-bottom: 14px;
-    margin-top: 10px;
+    margin: 10px 24px 14px;
     font-size: 1.3rem;
     font-weight: 700;
-    padding: 0 24px;
 }
 
 .list-title::placeholder,
@@ -161,6 +159,7 @@
 }
 
 .item-remove {
+    display: none;
     width: 26px;
     height: 26px;
     place-items: center;
@@ -168,9 +167,7 @@
     border: 1px solid transparent;
     cursor: pointer;
     justify-self: end;
-    opacity: 0;
     pointer-events: none;
-    transition: opacity 140ms ease;
     color: transparent;
     font-size: 0;
 }
@@ -192,7 +189,7 @@
 
 .item-row:hover .item-remove,
 .item-row:focus-within .item-remove {
-    opacity: 1;
+    display: block;
     pointer-events: auto;
 }
 

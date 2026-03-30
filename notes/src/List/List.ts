@@ -107,7 +107,7 @@ export class List {
 
         const previousUpdateIndex = itemToUpdate.update_index;
         const nextUpdateIndex = previousUpdateIndex + 1;
-        this.changeItemLocally(id, { update_index: nextUpdateIndex });
+        this.changeItemLocally(id, { update_index: nextUpdateIndex, persisted: false });
 
         if (id < 0) {
             this.tempUpdatesMap.set(id, { ...this.tempUpdatesMap.get(id), ...updates });
@@ -325,11 +325,23 @@ export class List {
         });
     }
 
-    public toggleChecked(id: number, isChecked: boolean) {
-        this.setItems(
-            this.items.map((item) => (item.id === id ? { ...item, checked: isChecked } : item)),
-        );
-        this.persistItem(id, { checked: isChecked });
+    public toggleChecked(id: number, checked: boolean): void {
+        const item = this.items.find((item) => item.id === id);
+        if (!item) {
+            this.params.showError(`toggleChecked: item not found id=[${id}]`);
+            return;
+        }
+
+        this.changeItemLocally(id, {
+            checked,
+            persisted: false,
+        });
+        this.persistItem(id, { checked });
+
+        // Update parent index to make it bubble in "done" list
+        if (item.parent_id !== null) {
+            this.persistItem(item.parent_id, {});
+        }
     }
 
     public mergeItemWithPrevious(id: number) {
