@@ -150,15 +150,20 @@ export class TodoList {
         },
     ) {
         console.log("moveItems", { id, dropIndex, childCandidate, count });
-        const sourceIndex = this.items.findIndex((item) => item.id === id);
+
+        const sortedItems = [...this.items].sort(
+            (first, second) => first.position - second.position,
+        );
+
+        const sourceIndex = sortedItems.findIndex((item) => item.id === id);
         if (sourceIndex === -1) {
             this.params.showError(`moveItem: item not found with id=[${id}]`);
             return;
         }
 
-        const sortedItems = [...this.items].sort(
-            (first, second) => first.position - second.position,
-        );
+        const previousItem = sortedItems[dropIndex - 1];
+        const itemsToMove = sortedItems.slice(sourceIndex, sourceIndex + count);
+        console.log("itemsToMove", itemsToMove);
 
         const firstItem = sortedItems[sourceIndex];
 
@@ -166,8 +171,6 @@ export class TodoList {
             this.params.showError(`moveItem: item not found on sourceIndex=[${sourceIndex}]`);
             return;
         }
-
-        const previousItem = sortedItems[dropIndex - 1];
 
         const startPosition = previousItem ? previousItem.position + 1 : 1;
         this.shiftElementsToInsertOnPosition(startPosition, count);
@@ -182,7 +185,9 @@ export class TodoList {
         });
 
         for (let i = 0; i < count; i++) {
-            const item = sortedItems[sourceIndex + i];
+            const item = itemsToMove[i];
+
+            console.log(item);
 
             const position = startPosition + i;
             const parent_id = i === 0 ? firstItemParentId : firstItem.id;
@@ -192,7 +197,7 @@ export class TodoList {
                 parent_id,
                 persisted: false,
             });
-            this.persistItem(id, { position, parent_id });
+            this.persistItem(item.id, { position, parent_id });
         }
     }
 
