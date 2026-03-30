@@ -440,7 +440,8 @@ export function App() {
                             )}
                         </div>
                     ) : null}
-
+                </div>
+                <div>
                     {checked.length > 0 && (
                         <>
                             <hr className="items-separator" />
