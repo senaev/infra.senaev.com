@@ -112,6 +112,13 @@ export function ListItemElement({
                     </span>
                     <span
                         style={{
+                            color: "#FF98FA",
+                        }}
+                    >
+                        par=[{item.parent_id}]
+                    </span>
+                    <span
+                        style={{
                             color: "#989AFF",
                         }}
                     >

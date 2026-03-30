@@ -139,6 +139,7 @@ export class List {
 
     public getEditingItemsSorted(): ListItem[] {
         return [...this.items].sort((first, second) => first.position - second.position);
+        // .filter((item) => !item.checked);
     }
 
     public moveItems(
@@ -340,8 +341,10 @@ export class List {
         });
         this.persistItem(id, { checked });
 
-        // Update parent index to make it bubble in "done" list
-        if (item.parent_id !== null) {
+        if (item.parent_id === null) {
+            const children = this.items.filter((child) => child.parent_id === id);
+            console.log("children", children);
+        } else {
             this.persistItem(item.parent_id, {});
         }
     }
