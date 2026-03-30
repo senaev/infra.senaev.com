@@ -6,6 +6,8 @@ const NOTE_TITLE = "Groceries 🛒";
 
 export type PendingFocus = { id: number; selectionStart: number; selectionEnd: number };
 
+export type GroupWithParent = { parent: ListItem; children: ListItem[] };
+
 export class List {
     pendingFocus: PendingFocus | null = null;
 
@@ -39,6 +41,51 @@ export class List {
         number,
         Partial<Pick<ListItem, "title" | "position" | "checked">>
     >();
+
+    public getItemsSorted(): ListItem[] {
+        return [...this.items].sort((first, second) => first.position - second.position);
+    }
+
+    public getItemsSortedGroupedByParent(): GroupWithParent[] {
+        const sorted = this.getItemsSorted();
+
+        const grouped: GroupWithParent[] = [];
+        let currentGroup: GroupWithParent | null = null;
+        for (const item of sorted) {
+            if (item.child) {
+                if (!currentGroup) {
+                    this.params.showError(
+                        `getItemsSortedGroupedByParent: child item without parent id=[${item.id}]`,
+                    );
+                    continue;
+                }
+
+                currentGroup.children.push(item);
+            } else {
+                currentGroup = { parent: item, children: [] };
+                grouped.push(currentGroup);
+            }
+        }
+
+        return grouped;
+    }
+
+    public getItemsSplit(): { checked: ListItem[]; unchecked: ListItem[] } {
+        const groupedByParent = this.getItemsSortedGroupedByParent();
+
+        const checked: ListItem[] = [];
+        const unchecked: ListItem[] = [];
+
+        for (const { parent, children } of groupedByParent) {
+            if (parent.checked && children.every((child) => child.checked)) {
+                checked.push(parent, ...children);
+            } else {
+                unchecked.push(parent, ...children);
+            }
+        }
+
+        return { checked, unchecked };
+    }
 
     public getItemClientKey(item: ListItem): number {
         return this.tempIdsMap.get(item.id) || item.id;
@@ -137,11 +184,6 @@ export class List {
         this.params.onChange();
     }
 
-    public getEditingItemsSorted(): ListItem[] {
-        return [...this.items].sort((first, second) => first.position - second.position);
-        // .filter((item) => !item.checked);
-    }
-
     public moveItems(
         id: number,
         {
@@ -154,15 +196,15 @@ export class List {
             count: number;
         },
     ) {
-        const sortedItems = this.getEditingItemsSorted();
+        const sortedCheckedItems = this.getItemsSplit().checked;
 
-        const sourceIndex = sortedItems.findIndex((item) => item.id === id);
+        const sourceIndex = sortedCheckedItems.findIndex((item) => item.id === id);
         if (sourceIndex === -1) {
             this.params.showError(`moveItem: item not found with id=[${id}]`);
             return;
         }
 
-        const sourceItem = sortedItems[sourceIndex];
+        const sourceItem = sortedCheckedItems[sourceIndex];
         if (!sourceItem) {
             this.params.showError(`moveItem: item not found on sourceIndex=[${sourceIndex}]`);
             return;
@@ -172,12 +214,12 @@ export class List {
             return;
         }
 
-        const itemsToMove = sortedItems.slice(sourceIndex, sourceIndex + count);
+        const itemsToMove = sortedCheckedItems.slice(sourceIndex, sourceIndex + count);
 
         let startPosition = 1;
         let firstItemIsChild = false;
         if (dropIndex > 0) {
-            const previousItem = sortedItems[dropIndex - 1];
+            const previousItem = sortedCheckedItems[dropIndex - 1];
             if (!previousItem) {
                 this.params.showError(`moveItem: no previousItem for dropIndex=[${dropIndex}]`);
                 return;
@@ -287,8 +329,12 @@ export class List {
             });
     }
 
+    public getPositionAtTheEnd(): number {
+        return Math.max(...this.items.map((item) => item.position), 0) + 1;
+    }
+
     public createNewItemAtTheEnd() {
-        const nextPosition = Math.max(...this.items.map((item) => item.position), 0) + 1;
+        const nextPosition = this.getPositionAtTheEnd();
         this.insertItem({ title: "", checked: false, position: nextPosition, child: false });
     }
 
@@ -327,7 +373,15 @@ export class List {
     }
 
     public toggleChecked(id: number, checked: boolean): void {
-        const item = this.items.find((item) => item.id === id);
+        const itemsSorted = this.getItemsSorted();
+
+        const itemIndex = itemsSorted.findIndex((item) => item.id === id);
+        if (itemIndex === -1) {
+            this.params.showError(`toggleChecked: item not found id=[${id}]`);
+            return;
+        }
+
+        const item = itemsSorted[itemIndex];
         if (!item) {
             this.params.showError(`toggleChecked: item not found id=[${id}]`);
             return;
@@ -340,10 +394,21 @@ export class List {
         this.persistItem(id, { checked });
 
         if (item.child) {
-            // this.persistItem(item.parent_id, {});
-        } else {
-            // const children = this.items.filter((child) => child.parent_id === id);
-            // console.log("children", children);
+            let parentItem: ListItem | undefined;
+            for (let i = itemIndex - 1; i >= 0; i--) {
+                const isParent = !itemsSorted[i].child;
+                if (isParent) {
+                    parentItem = itemsSorted[i];
+                    break;
+                }
+            }
+
+            if (!parentItem) {
+                this.params.showError(`toggleChecked: parent item not found for id=[${id}]`);
+                return;
+            }
+
+            this.persistItem(parentItem.id, {});
         }
     }
 

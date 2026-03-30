@@ -16,7 +16,7 @@ export function ListItemElement({
     item,
     toggleChecked,
     onChange,
-    onSelect,
+    onTextSelectionChange,
     onKeyDown,
     onRemove,
     dragState,
@@ -28,7 +28,7 @@ export function ListItemElement({
     item: ListItem;
     toggleChecked: (checked: boolean) => void;
     onChange: (value: string) => void;
-    onSelect: (event: SyntheticEvent<HTMLTextAreaElement>) => void;
+    onTextSelectionChange: (event: SyntheticEvent<HTMLTextAreaElement>) => void;
     onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
     onRemove: VoidFunction;
     dragState: DragState | undefined;
@@ -87,7 +87,7 @@ export function ListItemElement({
                             resizeTextarea(event.currentTarget);
                             onChange(event.currentTarget.value);
                         }}
-                        onSelect={onSelect}
+                        onSelect={onTextSelectionChange}
                         onKeyDown={onKeyDown}
                         rows={1}
                         value={item.title}

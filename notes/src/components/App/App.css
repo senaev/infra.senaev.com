@@ -2,6 +2,7 @@
 
 :root {
     --textarea-margin-vertical: 6px;
+    --border-color: rgb(95 99 104 / 0.45);
 }
 
 .page {
@@ -14,7 +15,7 @@
 .editor {
     width: min(100%, 640px);
     padding: 6px 0 28px;
-    border: 1px solid rgb(95 99 104 / 0.45);
+    border: 1px solid var(--border-color);
     border-radius: 22px;
 }
 
@@ -47,8 +48,8 @@
 
 .item-row:focus-within {
     box-shadow:
-        inset 0 1px 0 rgb(95 99 104 / 0.45),
-        inset 0 -1px 0 rgb(95 99 104 / 0.45);
+        inset 0 1px 0 var(--border-color),
+        inset 0 -1px 0 var(--border-color);
 }
 
 .item-row--drag-source {
@@ -216,6 +217,15 @@
 
 .add-item-button:hover {
     color: rgb(232 234 237);
+}
+
+.items-separator {
+    width: calc(100% - 30px);
+    border-bottom: none;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    border-top: 1px solid var(--border-color);
 }
 
 @media (max-width: 740px) {

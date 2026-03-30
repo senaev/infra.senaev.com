@@ -33,7 +33,7 @@ export function App() {
     const itemsContainerRef = useRef<HTMLDivElement>(null);
     const itemsContainer = itemsContainerRef.current!;
 
-    const sortedItems: ListItem[] = list.getEditingItemsSorted();
+    const { unchecked, checked } = list.getItemsSplit();
 
     useEffect(() => {
         if (list.pendingFocus == null) {
@@ -181,13 +181,13 @@ export function App() {
 
     const sortedItemsWithPlaceholder: (ListItem & {
         sortedIndex: number;
-    })[] = [...sortedItems.map((item, index) => ({ ...item, sortedIndex: index }))];
+    })[] = [...unchecked.map((item, index) => ({ ...item, sortedIndex: index }))];
     if (dragState) {
         const { sourceIndex, sourceCount, dropIndex } = dragState;
         if (dropIndex !== sourceIndex) {
             Array.from({ length: sourceCount }).forEach((_, i) => {
                 const placeholder = {
-                    ...sortedItems[sourceIndex + i],
+                    ...unchecked[sourceIndex + i],
                     id: PLACEHOLDER_ITEM_ID - i,
                     sortedIndex: -1,
                 };
@@ -217,7 +217,7 @@ export function App() {
                             onKeyDown={(event) => {
                                 handleItemKeyDown(event, item);
                             }}
-                            onSelect={saveCaretPosition}
+                            onTextSelectionChange={saveCaretPosition}
                             onRemove={() => {
                                 list.removeItem(item.id);
                             }}
@@ -266,11 +266,11 @@ export function App() {
                                 const initialItemContainerOffsetY =
                                     dragItemRect.top - itemsContainerRect.top;
 
-                                const sourceIndex = sortedItems.findIndex((i) => i.id === item.id);
+                                const sourceIndex = unchecked.findIndex((i) => i.id === item.id);
                                 let sourceCount = 1;
                                 if (!item.child) {
-                                    for (let i = sourceIndex + 1; i < sortedItems.length; i++) {
-                                        if (sortedItems[i].child) {
+                                    for (let i = sourceIndex + 1; i < unchecked.length; i++) {
+                                        if (unchecked[i].child) {
                                             sourceCount++;
                                         } else {
                                             break;
@@ -400,7 +400,7 @@ export function App() {
                         >
                             {[...Array.from({ length: dragState.sourceCount }, (_, i) => i)].map(
                                 (i) => {
-                                    const item = sortedItems[dragState.sourceIndex + i];
+                                    const item = unchecked[dragState.sourceIndex + i];
                                     const child: boolean = (() => {
                                         if (i > 0) {
                                             return true;
@@ -429,7 +429,7 @@ export function App() {
                                             onChange={noop}
                                             onKeyDown={noop}
                                             onRemove={noop}
-                                            onSelect={noop}
+                                            onTextSelectionChange={noop}
                                             onDragStart={noop}
                                             readonly
                                             resizeTextarea={resizeTextarea}
@@ -440,6 +440,36 @@ export function App() {
                             )}
                         </div>
                     ) : null}
+
+                    {checked.length > 0 && (
+                        <>
+                            <hr className="items-separator" />
+                            {checked.map((item) => (
+                                <ListItemElement
+                                    key={list.getItemClientKey(item)}
+                                    item={item}
+                                    toggleChecked={(checked) => {
+                                        list.toggleChecked(item.id, checked);
+                                    }}
+                                    onChange={(value) => {
+                                        handleItemChange(item.id, value);
+                                    }}
+                                    onKeyDown={(event) => {
+                                        handleItemKeyDown(event, item);
+                                    }}
+                                    onTextSelectionChange={saveCaretPosition}
+                                    onRemove={() => {
+                                        list.removeItem(item.id);
+                                    }}
+                                    dragState={undefined}
+                                    onDragStart={noop}
+                                    resizeTextarea={resizeTextarea}
+                                    inputRefs={inputRefs}
+                                    readonly={false}
+                                />
+                            ))}
+                        </>
+                    )}
                 </div>
             </section>
         </main>
