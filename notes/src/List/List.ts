@@ -103,10 +103,6 @@ export class List {
         return this.items;
     }
 
-    public getTitle() {
-        return NOTE_TITLE;
-    }
-
     public setItems(items: ListItem[]): void {
         const itemsChanged = JSON.stringify(this.items) !== JSON.stringify(items);
         if (itemsChanged) {

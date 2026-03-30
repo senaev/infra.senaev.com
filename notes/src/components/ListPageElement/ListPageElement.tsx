@@ -4,6 +4,7 @@ import { KeyboardEvent, SyntheticEvent, useEffect, useRef, useState } from "reac
 import { flattenGroups } from "../../List/List";
 import { useList } from "../../List/useList";
 import { useErrorsContext } from "../../contexts/ErrorsContext";
+import { useListsContext } from "../../contexts/ListsContext";
 import { ListItem } from "../../types/ListItem";
 import { captureDragAndDrop } from "../../utils/captureDragAndDrop";
 import { noop } from "../../utils/noop";
@@ -35,6 +36,8 @@ export function ListPageElement({ listId }: { listId: number }) {
     const parentGroups = list.getItemGroupsSplit();
     const unchecked = flattenGroups(parentGroups.unchecked);
     const checked = flattenGroups(parentGroups.checked);
+
+    const lists = useListsContext();
 
     useEffect(() => {
         if (list.pendingFocus == null) {
@@ -201,9 +204,12 @@ export function ListPageElement({ listId }: { listId: number }) {
         }
     }
 
+    const listTitle = lists?.items?.find((list) => list.id === listId)?.title;
+
     return (
         <>
-            <h1 className="list-title">{list.getTitle()}</h1>
+            {/* TODO: make it editable */}
+            <h1 className="list-title">{listTitle}</h1>
 
             <div className="items" ref={itemsContainerRef}>
                 {sortedItemsWithPlaceholders.map((item) => (

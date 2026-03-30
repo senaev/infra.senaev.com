@@ -1,12 +1,12 @@
 import { ListsTable } from "../models/ListsTable";
 
-export type List = {
+export type OneList = {
     id: number;
     title: string;
 };
 
 export class Lists {
-    public items: List[] | undefined = undefined;
+    public items: OneList[] | undefined = undefined;
 
     constructor(
         private readonly params: {
@@ -25,5 +25,11 @@ export class Lists {
             .catch((err) => {
                 this.params.showError(`Failed to load lists: ${err.message}`);
             });
+    }
+
+    public async createNewOne(): Promise<OneList> {
+        const newList = await ListsTable.create({ title: "New List" });
+
+        return newList;
     }
 }
