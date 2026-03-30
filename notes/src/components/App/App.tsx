@@ -65,12 +65,14 @@ export function App() {
     }
 
     function moveCaretBetweenItems({ id, direction }: { id: number; direction: "up" | "down" }) {
-        const sortedItems = [...list.getItems()].sort(
-            (first, second) => first.position - second.position,
-        );
+        const { unchecked, checked } = list.getItemsSplit();
+
+        const sortedItems = unchecked.find((item) => item.id === id) ? unchecked : checked;
+
         const currentIndex = sortedItems.findIndex((item) => item.id === id);
 
         if (currentIndex === -1) {
+            showError("Unable to find item to move caret from");
             return;
         }
 
