@@ -5,9 +5,7 @@
 }
 
 .page {
-    min-height: 100vh;
     padding: 40px 20px 80px;
-    background: rgb(32 33 36);
     color: rgb(232 234 237);
     display: flex;
     justify-content: center;
@@ -15,13 +13,9 @@
 
 .editor {
     width: min(100%, 640px);
-    min-height: calc(100vh - 120px);
     padding: 6px 0 28px;
     border: 1px solid rgb(95 99 104 / 0.45);
     border-radius: 22px;
-    background: rgb(32 33 36);
-    box-shadow: none;
-    backdrop-filter: blur(10px);
 }
 
 .list-title,
@@ -239,14 +233,12 @@
 
 @media (max-width: 740px) {
     .page {
-        min-height: 100dvh;
         padding: 0;
     }
 
     .editor {
         width: 100%;
-        min-height: 100dvh;
-        padding: 10px 0 24px;
+        padding: 10px 0 100px;
         border: 0;
         border-radius: 0;
     }
