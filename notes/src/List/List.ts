@@ -190,7 +190,10 @@ export class List {
                 }
             })
             .catch((error) => {
-                this.params.showError(error.message);
+                const itemStillExists = this.items.some((item) => item.id === id);
+                this.params.showError(
+                    `persistItem: error id=[${id}] [${error.message}] itemStillExists=[${itemStillExists}]`,
+                );
             });
     }
 
