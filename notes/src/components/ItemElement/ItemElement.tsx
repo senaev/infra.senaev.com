@@ -18,26 +18,26 @@ export function ListItemElement({
     item,
     toggleChecked,
     onChange,
-    onTextSelectionChange,
     onKeyDown,
     onRemove,
     dragState,
     onDragStart,
     resizeTextarea,
     inputRefs,
-    readonly,
+    onTextSelectionChange,
+    readonlyText,
 }: {
     item: ListItem;
     toggleChecked: (checked: boolean) => void;
     onChange: (value: string) => void;
-    onTextSelectionChange: (event: SyntheticEvent<HTMLTextAreaElement>) => void;
     onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
     onRemove: VoidFunction;
     dragState: DragState | undefined;
     onDragStart: DragStartCallback | undefined;
     resizeTextarea: (input: HTMLTextAreaElement) => void;
     inputRefs: React.RefObject<Map<number, HTMLTextAreaElement>>;
-    readonly: boolean;
+    readonlyText: boolean;
+    onTextSelectionChange: (event: SyntheticEvent<HTMLTextAreaElement>) => void;
 }) {
     return (
         <div
@@ -67,12 +67,12 @@ export function ListItemElement({
                     onChange={(event) => {
                         toggleChecked(event.target.checked);
                     }}
-                    readOnly={readonly}
+                    readOnly={readonlyText}
                     type="checkbox"
                 />
             </label>
             <label className="item-textarea-label">
-                {readonly ? (
+                {readonlyText ? (
                     <div className={"item-input"}>{item.title}</div>
                 ) : (
                     <textarea

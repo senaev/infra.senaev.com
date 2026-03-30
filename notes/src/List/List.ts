@@ -59,14 +59,7 @@ export class List {
         const grouped: ItemParentGroup[] = [];
         let currentGroup: ItemParentGroup | null = null;
         for (const item of sorted) {
-            if (item.child) {
-                if (!currentGroup) {
-                    this.params.showError(
-                        `getItemsSortedGroupedByParent: child item without parent id=[${item.id}]`,
-                    );
-                    continue;
-                }
-
+            if (item.child && currentGroup) {
                 currentGroup.children.push(item);
             } else {
                 currentGroup = { parent: item, children: [] };
@@ -91,13 +84,6 @@ export class List {
                 unchecked.push(group);
             }
         }
-
-        checked.sort((first, second) => {
-            const firstParentUpdated = new Date(first.parent.updated).getTime();
-            const secondParentUpdated = new Date(second.parent.updated).getTime();
-
-            return secondParentUpdated - firstParentUpdated;
-        });
 
         return { checked, unchecked };
     }
@@ -360,16 +346,12 @@ export class List {
 
     public createItemAfter({
         id,
-        checked,
-        child,
-        titleBefore,
-        titleAfter,
+        selectionStart,
+        selectionEnd,
     }: {
         id: number;
-        checked: boolean;
-        child: boolean;
-        titleBefore: string;
-        titleAfter: string;
+        selectionStart: number;
+        selectionEnd: number;
     }) {
         const currentItem = this.items.find((item) => item.id === id);
 
@@ -378,16 +360,18 @@ export class List {
             return;
         }
 
-        const params = { title: titleBefore, checked };
+        const titlePrevious = currentItem.title.slice(0, selectionStart);
+        const titleNew = currentItem.title.slice(selectionEnd);
 
-        this.changeItemLocally(id, { ...params, persisted: false });
-        this.persistItem(id, params);
+        const previousParams = { title: titlePrevious };
+        this.changeItemLocally(id, { ...previousParams, persisted: false });
+        this.persistItem(id, previousParams);
 
         const nextPosition = currentItem.position + 1;
         this.insertItem({
-            title: titleAfter,
-            child,
-            checked: titleAfter.trim() ? checked : false,
+            title: titleNew,
+            child: currentItem.child,
+            checked: currentItem.checked,
             position: nextPosition,
         });
     }
