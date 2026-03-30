@@ -1,7 +1,7 @@
 import classNames from "classnames";
 import { KeyboardEvent, PointerEvent, SyntheticEvent } from "react";
 import { DEBUG_ENABLED } from "../../const/DEBUG_ENABLED";
-import { TodoListItem } from "../../types/TodoListItem";
+import { ListItem } from "../../types/ListItem";
 
 type DragState = "overlay" | "source" | "source-collapsed" | "placeholder";
 
@@ -12,7 +12,7 @@ const DRAG_STATE_CLASSES: Record<DragState, string[]> = {
     placeholder: ["item-row--drag-source"],
 };
 
-export function ListItem({
+export function ListItemElement({
     item,
     toggleChecked,
     onChange,
@@ -25,7 +25,7 @@ export function ListItem({
     inputRefs,
     readonly,
 }: {
-    item: TodoListItem;
+    item: ListItem;
     toggleChecked: (checked: boolean) => void;
     onChange: (value: string) => void;
     onSelect: (event: SyntheticEvent<HTMLTextAreaElement>) => void;

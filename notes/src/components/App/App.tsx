@@ -1,14 +1,14 @@
 import "./App.css";
 
 import { KeyboardEvent, SyntheticEvent, useEffect, useRef, useState } from "react";
-import { useTodoList } from "../../TodoList/useTodoList";
+import { useList } from "../../List/useList";
 import { useErrorsContext } from "../../contexts/ErrorsContext";
-import { TodoListItem } from "../../types/TodoListItem";
+import { ListItem } from "../../types/ListItem";
 import { noop } from "../../utils/noop";
 import { startDragAndDrop } from "../../utils/startDragAndDrop";
-import { ListItem } from "../ListItem/ListItem";
+import { ListItemElement } from "../ListItem/ListItem";
 
-const TODO_LIST_ID = 1;
+const LIST_ID = 1;
 
 const PLACEHOLDER_ITEM_ID = -1_000_000_000;
 
@@ -18,14 +18,14 @@ type DragState = {
     sourceIndex: number;
     sourceCount: number;
     dropIndex: number;
-    childCandidate: boolean;
+    makeChild: boolean;
     x: number;
     y: number;
 };
 
 export function App() {
     const { showError } = useErrorsContext();
-    const [itemsVer, todoList] = useTodoList({ todoListId: TODO_LIST_ID, showError });
+    const [itemsVer, list] = useList({ listId: LIST_ID, showError });
     const [dragState, setDragState] = useState<DragState | null>(null);
     const inputRefs = useRef(new Map<number, HTMLTextAreaElement>());
     const desiredCaretPositionRef = useRef(0);
@@ -33,16 +33,16 @@ export function App() {
     const itemsContainerRef = useRef<HTMLDivElement>(null);
     const itemsContainer = itemsContainerRef.current!;
 
-    const sortedItems: TodoListItem[] = [...todoList.getItems()].sort(
+    const sortedItems: ListItem[] = [...list.getItems()].sort(
         (first, second) => first.position - second.position,
     );
 
     useEffect(() => {
-        if (todoList.pendingFocus == null) {
+        if (list.pendingFocus == null) {
             return;
         }
 
-        const { selectionEnd, selectionStart, id } = todoList.pendingFocus;
+        const { selectionEnd, selectionStart, id } = list.pendingFocus;
 
         const input = inputRefs.current.get(id);
         if (!input) {
@@ -52,8 +52,8 @@ export function App() {
         ignoreNextSelectionRef.current = true;
         input.focus();
         input.setSelectionRange(selectionStart, selectionEnd);
-        todoList.setPendingFocus(null);
-    }, [itemsVer, todoList]);
+        list.setPendingFocus(null);
+    }, [itemsVer, list]);
 
     useEffect(() => {
         inputRefs.current.forEach((input) => {
@@ -67,7 +67,7 @@ export function App() {
     }
 
     function moveCaretBetweenItems({ id, direction }: { id: number; direction: "up" | "down" }) {
-        const sortedItems = [...todoList.getItems()].sort(
+        const sortedItems = [...list.getItems()].sort(
             (first, second) => first.position - second.position,
         );
         const currentIndex = sortedItems.findIndex((item) => item.id === id);
@@ -87,7 +87,7 @@ export function App() {
         const maxPositionInFirstLine =
             firstLineLength === -1 ? targetItem.title.length : firstLineLength;
         const selectionPosition = Math.min(desiredCaretPositionRef.current, maxPositionInFirstLine);
-        todoList.setPendingFocus({
+        list.setPendingFocus({
             id: targetItem.id,
             selectionStart: selectionPosition,
             selectionEnd: selectionPosition,
@@ -122,7 +122,7 @@ export function App() {
         return !input.value.slice(caretPosition).includes("\n");
     }
 
-    function handleItemKeyDown(event: KeyboardEvent<HTMLTextAreaElement>, item: TodoListItem) {
+    function handleItemKeyDown(event: KeyboardEvent<HTMLTextAreaElement>, item: ListItem) {
         let { selectionStart, selectionEnd } = event.currentTarget;
         if (event.key === "Enter" && !event.shiftKey) {
             event.preventDefault();
@@ -135,7 +135,7 @@ export function App() {
             const titleBefore = event.currentTarget.value.slice(0, selectionStart);
             const titleAfter = event.currentTarget.value.slice(selectionEnd);
 
-            todoList.createItemAfter({
+            list.createItemAfter({
                 id: item.id,
                 checked: item.checked,
                 parent_id: item.parent_id,
@@ -146,7 +146,7 @@ export function App() {
 
         if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === "l") {
             event.preventDefault();
-            todoList.toggleChecked(item.id, !item.checked);
+            list.toggleChecked(item.id, !item.checked);
         }
 
         if (event.key === "ArrowUp" || event.key === "ArrowDown") {
@@ -172,16 +172,16 @@ export function App() {
         if (event.key === "Backspace" && selectionStart === 0 && selectionEnd === 0) {
             event.preventDefault();
 
-            todoList.mergeItemWithPrevious(item.id);
+            list.mergeItemWithPrevious(item.id);
         }
     }
 
     function handleItemChange(id: number, title: string) {
-        todoList.changeItemLocally(id, { title, persisted: false });
-        todoList.persistItem(id, { title });
+        list.changeItemLocally(id, { title, persisted: false });
+        list.persistItem(id, { title });
     }
 
-    const sortedItemsWithPlaceholder: (TodoListItem & {
+    const sortedItemsWithPlaceholder: (ListItem & {
         sortedIndex: number;
     })[] = [...sortedItems.map((item, index) => ({ ...item, sortedIndex: index }))];
     if (dragState) {
@@ -203,15 +203,15 @@ export function App() {
     return (
         <main className="page">
             <section className="editor">
-                <h1 className="list-title">{todoList.getTitle()}</h1>
+                <h1 className="list-title">{list.getTitle()}</h1>
 
                 <div className="items" ref={itemsContainerRef}>
                     {sortedItemsWithPlaceholder.map((item) => (
-                        <ListItem
-                            key={todoList.getItemClientKey(item)}
+                        <ListItemElement
+                            key={list.getItemClientKey(item)}
                             item={item}
                             toggleChecked={(checked) => {
-                                todoList.toggleChecked(item.id, checked);
+                                list.toggleChecked(item.id, checked);
                             }}
                             onChange={(value) => {
                                 handleItemChange(item.id, value);
@@ -221,7 +221,7 @@ export function App() {
                             }}
                             onSelect={saveCaretPosition}
                             onRemove={() => {
-                                todoList.removeItem(item.id);
+                                list.removeItem(item.id);
                             }}
                             dragState={(() => {
                                 if (!dragState) {
@@ -306,7 +306,7 @@ export function App() {
                                     sourceIndex,
                                     sourceCount,
                                     dropIndex: sourceIndex,
-                                    childCandidate: item.parent_id != null,
+                                    makeChild: item.parent_id != null,
                                     x: dragItemRect.left - itemsContainerRect.left,
                                     y: dragItemRect.top - itemsContainerRect.top,
                                 };
@@ -316,13 +316,13 @@ export function App() {
                                     if (isStop) {
                                         setDragState(null);
 
-                                        const { dropIndex, childCandidate } = dragState;
-                                        todoList.moveItems(item.id, {
+                                        const { dropIndex, makeChild } = dragState;
+                                        list.moveItems(item.id, {
                                             dropIndex:
                                                 dropIndex > sourceIndex
                                                     ? dropIndex + sourceCount
                                                     : dropIndex,
-                                            childCandidate,
+                                            makeChild,
                                             count: sourceCount,
                                         });
 
@@ -353,7 +353,7 @@ export function App() {
                                     })();
 
                                     const dragRight = offset.x - cursorToDragElementOffset.x;
-                                    const childCandidate: boolean = (() => {
+                                    const makeChild: boolean = (() => {
                                         if (dragRight >= CHILD_OFFSET) {
                                             return true;
                                         }
@@ -369,7 +369,7 @@ export function App() {
                                         sourceIndex,
                                         sourceCount,
                                         dropIndex,
-                                        childCandidate,
+                                        makeChild,
                                         x: offset.x - cursorToDragElementOffset.x,
                                         y: offset.y - cursorToDragElementOffset.y,
                                     };
@@ -386,7 +386,7 @@ export function App() {
                     <button
                         className="add-item-button"
                         onClick={() => {
-                            todoList.createNewItemAtTheEnd();
+                            list.createNewItemAtTheEnd();
                         }}
                         type="button"
                     >
@@ -412,7 +412,7 @@ export function App() {
                                             return null;
                                         }
 
-                                        if (dragState.childCandidate) {
+                                        if (dragState.makeChild) {
                                             return 1;
                                         }
 
@@ -420,7 +420,7 @@ export function App() {
                                     })();
 
                                     return (
-                                        <ListItem
+                                        <ListItemElement
                                             key={i}
                                             dragState="overlay"
                                             inputRefs={inputRefs}

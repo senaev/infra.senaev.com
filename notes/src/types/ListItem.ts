@@ -1,6 +1,6 @@
-export type TodoListItem = {
+export type ListItem = {
     id: number;
-    todo_list_id: number;
+    list_id: number;
     title: string;
     position: number;
     created: string;

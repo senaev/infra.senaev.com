@@ -1,24 +1,24 @@
-import { TodoListTable } from "../models/TodoListTable";
-import { TodoListItem } from "../types/TodoListItem";
+import { ListTable } from "../models/ListTable";
+import { ListItem } from "../types/ListItem";
 import { shiftItemsToInsertOnPosition } from "../utils/shiftItemsToInsertOnPosition/shiftItemsToInsertOnPosition";
 
 const NOTE_TITLE = "Groceries 🛒";
 
 export type PendingFocus = { id: number; selectionStart: number; selectionEnd: number };
 
-export class TodoList {
+export class List {
     pendingFocus: PendingFocus | null = null;
 
-    private items: TodoListItem[] = [];
+    private items: ListItem[] = [];
 
     public constructor(
         private readonly params: {
-            todoListId: number;
+            listId: number;
             onChange: () => void;
             showError: (message: string) => void;
         },
     ) {
-        TodoListTable.readAll(this.params.todoListId)
+        ListTable.readAll(this.params.listId)
             .then((data) => {
                 this.setItems(data.map((item) => ({ ...item, persisted: true })));
                 this.params.onChange();
@@ -37,10 +37,10 @@ export class TodoList {
     private readonly tempIdsRemovedSet = new Set<number>();
     private readonly tempUpdatesMap = new Map<
         number,
-        Partial<Pick<TodoListItem, "title" | "position" | "checked">>
+        Partial<Pick<ListItem, "title" | "position" | "checked">>
     >();
 
-    public getItemClientKey(item: TodoListItem): number {
+    public getItemClientKey(item: ListItem): number {
         return this.tempIdsMap.get(item.id) || item.id;
     }
 
@@ -52,7 +52,7 @@ export class TodoList {
         return NOTE_TITLE;
     }
 
-    public setItems(items: TodoListItem[]): void {
+    public setItems(items: ListItem[]): void {
         const itemsChanged = JSON.stringify(this.items) !== JSON.stringify(items);
         if (itemsChanged) {
             this.items = items;
@@ -63,7 +63,7 @@ export class TodoList {
         }
     }
 
-    public changeItemLocally(id: number, updates: Partial<TodoListItem>): void {
+    public changeItemLocally(id: number, updates: Partial<ListItem>): void {
         this.setItems(this.items.map((item) => (item.id === id ? { ...item, ...updates } : item)));
     }
 
@@ -85,7 +85,7 @@ export class TodoList {
             return;
         }
 
-        TodoListTable.delete(id).catch((error) => {
+        ListTable.delete(id).catch((error) => {
             this.params.showError(error.message);
         });
     }
@@ -97,7 +97,7 @@ export class TodoList {
 
     public persistItem(
         id: number,
-        updates: Partial<Pick<TodoListItem, "title" | "position" | "checked" | "parent_id">>,
+        updates: Partial<Pick<ListItem, "title" | "position" | "checked" | "parent_id">>,
     ): void {
         const itemToUpdate = this.items.find((item) => item.id === id);
         if (!itemToUpdate) {
@@ -114,7 +114,7 @@ export class TodoList {
             return;
         }
 
-        TodoListTable.update(id, { ...updates, update_index: nextUpdateIndex })
+        ListTable.update(id, { ...updates, update_index: nextUpdateIndex })
             .then((result) => {
                 if (result === "update_index_conflict") {
                     // Ignore conflicts, persistent state will be delivered through server-push
@@ -141,16 +141,14 @@ export class TodoList {
         id: number,
         {
             dropIndex,
-            childCandidate,
+            makeChild,
             count,
         }: {
             dropIndex: number;
-            childCandidate: boolean;
+            makeChild: boolean;
             count: number;
         },
     ) {
-        console.log("moveItems", { id, dropIndex, childCandidate, count });
-
         const sortedItems = [...this.items].sort(
             (first, second) => first.position - second.position,
         );
@@ -161,36 +159,31 @@ export class TodoList {
             return;
         }
 
-        const previousItem = sortedItems[dropIndex - 1];
-        const itemsToMove = sortedItems.slice(sourceIndex, sourceIndex + count);
-        console.log("itemsToMove", itemsToMove);
-
-        const firstItem = sortedItems[sourceIndex];
-
-        if (!firstItem) {
+        const sourceItem = sortedItems[sourceIndex];
+        if (!sourceItem) {
             this.params.showError(`moveItem: item not found on sourceIndex=[${sourceIndex}]`);
             return;
         }
 
+        const isSourceChild = sourceItem.parent_id != null;
+
+        if (sourceIndex === dropIndex && isSourceChild === makeChild) {
+            return;
+        }
+
+        const previousItem = sortedItems[dropIndex - 1];
+        const itemsToMove = sortedItems.slice(sourceIndex, sourceIndex + count);
+
         const startPosition = previousItem ? previousItem.position + 1 : 1;
         this.shiftElementsToInsertOnPosition(startPosition, count);
 
-        const firstItemParentId = childCandidate && dropIndex !== 0 ? previousItem.id : null;
-
-        console.log({
-            sourceIndex,
-            dropIndex,
-            startPosition,
-            firstItemParentId,
-        });
+        const firstItemParentId = makeChild && dropIndex !== 0 ? previousItem.id : null;
 
         for (let i = 0; i < count; i++) {
             const item = itemsToMove[i];
 
-            console.log(item);
-
             const position = startPosition + i;
-            const parent_id = i === 0 ? firstItemParentId : firstItem.id;
+            const parent_id = i === 0 ? firstItemParentId : sourceItem.id;
 
             this.changeItemLocally(item.id, {
                 position,
@@ -238,9 +231,9 @@ export class TodoList {
 
         const tempId = this.generateNextItemId();
 
-        const newItem: TodoListItem = {
+        const newItem: ListItem = {
             id: tempId,
-            todo_list_id: this.params.todoListId,
+            list_id: this.params.listId,
             title,
             created: "",
             updated: "",
@@ -259,7 +252,7 @@ export class TodoList {
             selectionEnd: 0,
         });
 
-        TodoListTable.create(newItem)
+        ListTable.create(newItem)
             .then((data) => {
                 // Item was deleted on the client
                 if (this.tempIdsRemovedSet.delete(tempId)) {

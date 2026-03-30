@@ -1,28 +1,27 @@
 import { supabase } from "../supabase/supabase";
-import { TodoListItem } from "../types/TodoListItem";
+import { ListItem } from "../types/ListItem";
 import { SplitCommaAndTrim } from "../utils/SplitCommaAndTrim";
 
-const TABLE_NAME = "todo_lists_items";
+const TABLE_NAME = "lists_items";
 const ITEM_COLUMNS =
-    "id, todo_list_id, parent_id, title, position, created, updated, update_index, checked";
+    "id, list_id, parent_id, title, position, created, updated, update_index, checked";
 
 type TableColumns = SplitCommaAndTrim<typeof ITEM_COLUMNS>;
 
-export class TodoListTable {
+export class ListTable {
     public static async create({
-        todo_list_id,
+        list_id,
         title,
         position,
         checked,
         update_index,
-    }: Pick<
-        TodoListItem,
-        "todo_list_id" | "title" | "position" | "checked" | "update_index"
-    >): Promise<Record<TableColumns, any>> {
+    }: Pick<ListItem, "list_id" | "title" | "position" | "checked" | "update_index">): Promise<
+        Record<TableColumns, any>
+    > {
         const { data, error } = await supabase
             .from(TABLE_NAME)
             .insert({
-                todo_list_id,
+                list_id,
                 title,
                 position,
                 checked,
@@ -38,16 +37,14 @@ export class TodoListTable {
         return data;
     }
 
-    public static async readAll(todoListId: number): Promise<Pick<TodoListItem, TableColumns>[]> {
+    public static async readAll(listId: number): Promise<Pick<ListItem, TableColumns>[]> {
         const { error, data } = await supabase
             .from(TABLE_NAME)
             .select(ITEM_COLUMNS)
-            .eq("todo_list_id", todoListId);
+            .eq("list_id", listId);
 
         if (error) {
-            throw new Error(
-                `Error loading todo list items for id=[${todoListId}] error=[${error.message}]`,
-            );
+            throw new Error(`Error loading list items for id=[${listId}] error=[${error.message}]`);
         }
 
         return data;
@@ -55,7 +52,7 @@ export class TodoListTable {
 
     public static async update(
         itemId: number,
-        updates: Partial<Pick<TodoListItem, "title" | "position" | "checked">> & {
+        updates: Partial<Pick<ListItem, "title" | "position" | "checked">> & {
             update_index: number;
         },
     ): Promise<"update_index_conflict" | undefined> {
@@ -75,7 +72,7 @@ export class TodoListTable {
                 }
             } catch (e) {}
 
-            throw new Error(`updateTodoListItem(${itemId}) error: ${error.message}`);
+            throw new Error(`updateListItem(${itemId}) error: ${error.message}`);
         }
 
         return undefined;
@@ -85,7 +82,7 @@ export class TodoListTable {
         const { error } = await supabase.from(TABLE_NAME).delete().eq("id", itemId);
 
         if (error) {
-            throw new Error(`deleteTodoListItem(${itemId}) error: ${error.message}`);
+            throw new Error(`deleteListItem(${itemId}) error: ${error.message}`);
         }
     }
 }
