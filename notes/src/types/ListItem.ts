@@ -8,5 +8,5 @@ export type ListItem = {
     update_index: number;
     checked: boolean;
     persisted: boolean;
-    parent_id: number | null;
+    child: boolean;
 };

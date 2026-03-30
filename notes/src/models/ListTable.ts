@@ -3,8 +3,7 @@ import { ListItem } from "../types/ListItem";
 import { SplitCommaAndTrim } from "../utils/SplitCommaAndTrim";
 
 const TABLE_NAME = "lists_items";
-const ITEM_COLUMNS =
-    "id, list_id, parent_id, title, position, created, updated, update_index, checked";
+const ITEM_COLUMNS = "id, list_id, child, title, position, created, updated, update_index, checked";
 
 type TableColumns = SplitCommaAndTrim<typeof ITEM_COLUMNS>;
 
@@ -15,9 +14,11 @@ export class ListTable {
         position,
         checked,
         update_index,
-    }: Pick<ListItem, "list_id" | "title" | "position" | "checked" | "update_index">): Promise<
-        Record<TableColumns, any>
-    > {
+        child,
+    }: Pick<
+        ListItem,
+        "list_id" | "title" | "position" | "checked" | "update_index" | "child"
+    >): Promise<Record<TableColumns, any>> {
         const { data, error } = await supabase
             .from(TABLE_NAME)
             .insert({
@@ -26,6 +27,7 @@ export class ListTable {
                 position,
                 checked,
                 update_index,
+                child,
             })
             .select(ITEM_COLUMNS)
             .single();

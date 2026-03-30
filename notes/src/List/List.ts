@@ -97,7 +97,7 @@ export class List {
 
     public persistItem(
         id: number,
-        updates: Partial<Pick<ListItem, "title" | "position" | "checked" | "parent_id">>,
+        updates: Partial<Pick<ListItem, "title" | "position" | "checked" | "child">>,
     ): void {
         const itemToUpdate = this.items.find((item) => item.id === id);
         if (!itemToUpdate) {
@@ -146,11 +146,11 @@ export class List {
         id: number,
         {
             dropIndex,
-            makeChild,
+            child,
             count,
         }: {
             dropIndex: number;
-            makeChild: boolean;
+            child: boolean;
             count: number;
         },
     ) {
@@ -168,9 +168,7 @@ export class List {
             return;
         }
 
-        const isSourceChild = sourceItem.parent_id != null;
-
-        if (sourceIndex === dropIndex && isSourceChild === makeChild) {
+        if (sourceIndex === dropIndex && sourceItem.child === child) {
             return;
         }
 
@@ -187,7 +185,7 @@ export class List {
 
             startPosition = previousItem.position + 1;
 
-            if (makeChild) {
+            if (child) {
                 firstItemIsChild = true;
             }
         }
@@ -198,14 +196,14 @@ export class List {
             const item = itemsToMove[i];
 
             const position = startPosition + i;
-            const parent_id = i === 0 ? (firstItemIsChild ? 1 : null) : 1;
+            const child = i === 0 ? firstItemIsChild : true;
 
             this.changeItemLocally(item.id, {
                 position,
-                parent_id,
+                child,
                 persisted: false,
             });
-            this.persistItem(item.id, { position, parent_id });
+            this.persistItem(item.id, { position, child });
         }
     }
 
@@ -230,12 +228,12 @@ export class List {
         title,
         checked,
         position,
-        isChild,
+        child,
     }: {
         title: string;
         checked: boolean;
         position: number;
-        isChild: boolean;
+        child: boolean;
     }) {
         this.shiftElementsToInsertOnPosition(position, 1);
 
@@ -251,7 +249,7 @@ export class List {
             checked,
             update_index: 0,
             persisted: false,
-            parent_id: isChild ? 1 : null,
+            child,
         };
 
         this.setItems([...this.items, newItem]);
@@ -291,19 +289,19 @@ export class List {
 
     public createNewItemAtTheEnd() {
         const nextPosition = Math.max(...this.items.map((item) => item.position), 0) + 1;
-        this.insertItem({ title: "", checked: false, position: nextPosition, isChild: false });
+        this.insertItem({ title: "", checked: false, position: nextPosition, child: false });
     }
 
     public createItemAfter({
         id,
         checked,
-        isChild,
+        child,
         titleBefore,
         titleAfter,
     }: {
         id: number;
         checked: boolean;
-        isChild: boolean;
+        child: boolean;
         titleBefore: string;
         titleAfter: string;
     }) {
@@ -322,7 +320,7 @@ export class List {
         const nextPosition = currentItem.position + 1;
         this.insertItem({
             title: titleAfter,
-            isChild,
+            child,
             checked: titleAfter.trim() ? checked : false,
             position: nextPosition,
         });
@@ -341,11 +339,11 @@ export class List {
         });
         this.persistItem(id, { checked });
 
-        if (item.parent_id === null) {
-            const children = this.items.filter((child) => child.parent_id === id);
-            console.log("children", children);
+        if (item.child) {
+            // this.persistItem(item.parent_id, {});
         } else {
-            this.persistItem(item.parent_id, {});
+            // const children = this.items.filter((child) => child.parent_id === id);
+            // console.log("children", children);
         }
     }
 

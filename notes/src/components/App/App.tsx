@@ -18,7 +18,7 @@ type DragState = {
     sourceIndex: number;
     sourceCount: number;
     dropIndex: number;
-    makeChild: boolean;
+    child: boolean;
     x: number;
     y: number;
 };
@@ -136,7 +136,7 @@ export function App() {
             list.createItemAfter({
                 id: item.id,
                 checked: item.checked,
-                isChild: item.parent_id != null,
+                child: item.child,
                 titleBefore,
                 titleAfter,
             });
@@ -268,9 +268,9 @@ export function App() {
 
                                 const sourceIndex = sortedItems.findIndex((i) => i.id === item.id);
                                 let sourceCount = 1;
-                                if (item.parent_id == null) {
+                                if (!item.child) {
                                     for (let i = sourceIndex + 1; i < sortedItems.length; i++) {
-                                        if (sortedItems[i].parent_id != null) {
+                                        if (sortedItems[i].child) {
                                             sourceCount++;
                                         } else {
                                             break;
@@ -304,7 +304,7 @@ export function App() {
                                     sourceIndex,
                                     sourceCount,
                                     dropIndex: sourceIndex,
-                                    makeChild: item.parent_id != null,
+                                    child: item.child,
                                     x: dragItemRect.left - itemsContainerRect.left,
                                     y: dragItemRect.top - itemsContainerRect.top,
                                 };
@@ -314,13 +314,13 @@ export function App() {
                                     if (isStop) {
                                         setDragState(null);
 
-                                        const { dropIndex, makeChild } = dragState;
+                                        const { dropIndex, child } = dragState;
                                         list.moveItems(item.id, {
                                             dropIndex:
                                                 dropIndex > sourceIndex
                                                     ? dropIndex + sourceCount
                                                     : dropIndex,
-                                            makeChild,
+                                            child,
                                             count: sourceCount,
                                         });
 
@@ -351,7 +351,7 @@ export function App() {
                                     })();
 
                                     const dragRight = offset.x - cursorToDragElementOffset.x;
-                                    const makeChild: boolean = (() => {
+                                    const child: boolean = (() => {
                                         if (dragRight >= CHILD_OFFSET) {
                                             return true;
                                         }
@@ -360,14 +360,14 @@ export function App() {
                                             return false;
                                         }
 
-                                        return item.parent_id != null;
+                                        return item.child;
                                     })();
 
                                     const nextDragState: DragState = {
                                         sourceIndex,
                                         sourceCount,
                                         dropIndex,
-                                        makeChild,
+                                        child,
                                         x: offset.x - cursorToDragElementOffset.x,
                                         y: offset.y - cursorToDragElementOffset.y,
                                     };
@@ -401,20 +401,20 @@ export function App() {
                             {[...Array.from({ length: dragState.sourceCount }, (_, i) => i)].map(
                                 (i) => {
                                     const item = sortedItems[dragState.sourceIndex + i];
-                                    const parent_id = (() => {
+                                    const child: boolean = (() => {
                                         if (i > 0) {
-                                            return 1;
+                                            return true;
                                         }
 
                                         if (dragState.dropIndex === 0) {
-                                            return null;
+                                            return false;
                                         }
 
-                                        if (dragState.makeChild) {
-                                            return 1;
+                                        if (dragState.child) {
+                                            return true;
                                         }
 
-                                        return null;
+                                        return false;
                                     })();
 
                                     return (
@@ -424,7 +424,7 @@ export function App() {
                                             inputRefs={inputRefs}
                                             item={{
                                                 ...item,
-                                                parent_id,
+                                                child,
                                             }}
                                             onChange={noop}
                                             onKeyDown={noop}

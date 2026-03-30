@@ -40,7 +40,7 @@ export function ListItemElement({
     return (
         <div
             className={classNames("item-row", DRAG_STATE_CLASSES[dragState as DragState], {
-                "item-row--child": item.parent_id !== null,
+                "item-row--child": item.child,
                 "is-checked": item.checked,
             })}
         >
@@ -109,13 +109,6 @@ export function ListItemElement({
                         }}
                     >
                         pos=[{item.position}]
-                    </span>
-                    <span
-                        style={{
-                            color: "#FF98FA",
-                        }}
-                    >
-                        par=[{item.parent_id}]
                     </span>
                     <span
                         style={{
