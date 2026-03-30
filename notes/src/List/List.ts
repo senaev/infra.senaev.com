@@ -6,7 +6,14 @@ const NOTE_TITLE = "Groceries 🛒";
 
 export type PendingFocus = { id: number; selectionStart: number; selectionEnd: number };
 
-export type GroupWithParent = { parent: ListItem; children: ListItem[] };
+export type ItemParentGroup = { parent: ListItem; children: ListItem[] };
+
+export function flattenGroups(groups: ItemParentGroup[]): ListItem[] {
+    return groups.reduce<ListItem[]>((acc, group) => {
+        acc.push(group.parent, ...group.children);
+        return acc;
+    }, []);
+}
 
 export class List {
     pendingFocus: PendingFocus | null = null;
@@ -46,11 +53,11 @@ export class List {
         return [...this.items].sort((first, second) => first.position - second.position);
     }
 
-    public getItemsSortedGroupedByParent(): GroupWithParent[] {
+    public getItemsSortedGroupedByParent(): ItemParentGroup[] {
         const sorted = this.getItemsSorted();
 
-        const grouped: GroupWithParent[] = [];
-        let currentGroup: GroupWithParent | null = null;
+        const grouped: ItemParentGroup[] = [];
+        let currentGroup: ItemParentGroup | null = null;
         for (const item of sorted) {
             if (item.child) {
                 if (!currentGroup) {
@@ -70,19 +77,27 @@ export class List {
         return grouped;
     }
 
-    public getItemsSplit(): { checked: ListItem[]; unchecked: ListItem[] } {
+    public getItemGroupsSplit(): { checked: ItemParentGroup[]; unchecked: ItemParentGroup[] } {
         const groupedByParent = this.getItemsSortedGroupedByParent();
 
-        const checked: ListItem[] = [];
-        const unchecked: ListItem[] = [];
+        const checked: ItemParentGroup[] = [];
+        const unchecked: ItemParentGroup[] = [];
 
-        for (const { parent, children } of groupedByParent) {
+        for (const group of groupedByParent) {
+            const { parent, children } = group;
             if (parent.checked && children.every((child) => child.checked)) {
-                checked.push(parent, ...children);
+                checked.push(group);
             } else {
-                unchecked.push(parent, ...children);
+                unchecked.push(group);
             }
         }
+
+        checked.sort((first, second) => {
+            const firstParentUpdated = new Date(first.parent.updated).getTime();
+            const secondParentUpdated = new Date(second.parent.updated).getTime();
+
+            return secondParentUpdated - firstParentUpdated;
+        });
 
         return { checked, unchecked };
     }
@@ -196,16 +211,17 @@ export class List {
             count: number;
         },
     ) {
-        const sortedCheckedItems = this.getItemsSplit().unchecked;
+        const uncheckedGroups = this.getItemGroupsSplit();
 
-        const sourceIndex = sortedCheckedItems.findIndex((item) => item.id === id);
+        const unchecked = flattenGroups(uncheckedGroups.unchecked);
+
+        const sourceIndex = unchecked.findIndex((item) => item.id === id);
         if (sourceIndex === -1) {
             this.params.showError(`moveItem: item not found with id=[${id}]`);
-            debugger;
             return;
         }
 
-        const sourceItem = sortedCheckedItems[sourceIndex];
+        const sourceItem = unchecked[sourceIndex];
         if (!sourceItem) {
             this.params.showError(`moveItem: item not found on sourceIndex=[${sourceIndex}]`);
             return;
@@ -215,12 +231,12 @@ export class List {
             return;
         }
 
-        const itemsToMove = sortedCheckedItems.slice(sourceIndex, sourceIndex + count);
+        const itemsToMove = unchecked.slice(sourceIndex, sourceIndex + count);
 
         let startPosition = 1;
         let firstItemIsChild = false;
         if (dropIndex > 0) {
-            const previousItem = sortedCheckedItems[dropIndex - 1];
+            const previousItem = unchecked[dropIndex - 1];
             if (!previousItem) {
                 this.params.showError(`moveItem: no previousItem for dropIndex=[${dropIndex}]`);
                 return;

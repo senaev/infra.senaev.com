@@ -1,6 +1,7 @@
 import "./App.css";
 
 import { KeyboardEvent, SyntheticEvent, useEffect, useRef, useState } from "react";
+import { flattenGroups } from "../../List/List";
 import { useList } from "../../List/useList";
 import { useErrorsContext } from "../../contexts/ErrorsContext";
 import { ListItem } from "../../types/ListItem";
@@ -33,7 +34,9 @@ export function App() {
     const itemsContainerRef = useRef<HTMLDivElement>(null);
     const itemsContainer = itemsContainerRef.current!;
 
-    const { unchecked, checked } = list.getItemsSplit();
+    const parentGroups = list.getItemGroupsSplit();
+    const unchecked = flattenGroups(parentGroups.unchecked);
+    const checked = flattenGroups(parentGroups.checked);
 
     useEffect(() => {
         if (list.pendingFocus == null) {
@@ -65,7 +68,9 @@ export function App() {
     }
 
     function moveCaretBetweenItems({ id, direction }: { id: number; direction: "up" | "down" }) {
-        const { unchecked, checked } = list.getItemsSplit();
+        const parentGroups = list.getItemGroupsSplit();
+        const unchecked = flattenGroups(parentGroups.unchecked);
+        const checked = flattenGroups(parentGroups.checked);
 
         const sortedItems = unchecked.find((item) => item.id === id) ? unchecked : checked;
 
@@ -181,21 +186,24 @@ export function App() {
         list.persistItem(id, { title });
     }
 
-    const sortedItemsWithPlaceholder: (ListItem & {
+    type ListItemWithSortedIndex = ListItem & {
         sortedIndex: number;
-    })[] = [...unchecked.map((item, index) => ({ ...item, sortedIndex: index }))];
+    };
+    const sortedItemsWithPlaceholders: ListItemWithSortedIndex[] = [
+        ...unchecked.map((item, index) => ({ ...item, sortedIndex: index })),
+    ];
     if (dragState) {
         const { sourceIndex, sourceCount, dropIndex } = dragState;
         if (dropIndex !== sourceIndex) {
             Array.from({ length: sourceCount }).forEach((_, i) => {
-                const placeholder = {
+                const placeholder: ListItemWithSortedIndex = {
                     ...unchecked[sourceIndex + i],
                     id: PLACEHOLDER_ITEM_ID - i,
                     sortedIndex: -1,
                 };
                 const placeholderIndex =
                     dropIndex > sourceIndex ? dropIndex + sourceCount : dropIndex;
-                sortedItemsWithPlaceholder.splice(placeholderIndex, 0, placeholder);
+                sortedItemsWithPlaceholders.splice(placeholderIndex, 0, placeholder);
             });
         }
     }
@@ -206,7 +214,7 @@ export function App() {
                 <h1 className="list-title">{list.getTitle()}</h1>
 
                 <div className="items" ref={itemsContainerRef}>
-                    {sortedItemsWithPlaceholder.map((item) => (
+                    {sortedItemsWithPlaceholders.map((item) => (
                         <ListItemElement
                             key={list.getItemClientKey(item)}
                             item={item}

@@ -127,6 +127,13 @@ export function ListItemElement({
                     >
                         id=[{item.id}]
                     </span>
+                    <span
+                        style={{
+                            color: "#C1FF98",
+                        }}
+                    >
+                        updated=[{new Date(item.updated).getTime()}]
+                    </span>
                     <span>{item.persisted ? "✅" : "⏳"}</span>
                 </span>
             )}
