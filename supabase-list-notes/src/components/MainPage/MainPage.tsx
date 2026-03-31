@@ -1,6 +1,7 @@
 import "./MainPage.css";
 
-import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { UNTITLED_PLACEHOLDER } from "../../const/UNTITLED_PLACEHOLDER";
 import { useNotesListContext } from "../../contexts/NotesListContext";
 import { FullPageContent } from "../FullPageContent/FullPageContent";
@@ -69,8 +70,25 @@ function MainPageContent({ createNewNote }: { createNewNote: VoidFunction }) {
 
 export function MainPage() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const notes = useNotesListContext();
 
     const lists = useNotesListContext();
+    useEffect(() => {
+        console.log(location.state);
+        const deleteListId = location.state?.deleteListId;
+        if (deleteListId == null) {
+            return;
+        }
+
+        notes.delete(deleteListId);
+
+        navigate(location.pathname, {
+            replace: true,
+            state: null,
+        });
+    }, [location, navigate, notes]);
+
     const createNewNote = async () => {
         const { id } = await lists.createNewOne();
 

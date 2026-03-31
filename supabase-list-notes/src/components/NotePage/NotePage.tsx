@@ -219,7 +219,7 @@ export function NotePage({ listId }: { listId: number }) {
 
     return (
         <>
-            <PageHeader homeButtonIcon="⬅️">
+            <PageHeader homeButtonIcon="💾">
                 <input
                     className="list-title"
                     value={listTitle ?? ""}
@@ -230,8 +230,9 @@ export function NotePage({ listId }: { listId: number }) {
                 />
                 <button
                     onClick={() => {
-                        navigate(ROUTES.home);
-                        notes.delete(listId);
+                        navigate(ROUTES.home, {
+                            state: { deleteListId: listId },
+                        });
                     }}
                 >
                     🗑️
