@@ -1,19 +1,14 @@
 import "./NotePage.css";
 
-import { ArrowLeftIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { KeyboardEvent, SyntheticEvent, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { flattenGroups } from "../../Note/Note";
 import { useNote } from "../../Note/useNote";
-import { ROUTES } from "../../const/ROUTES";
-import { UNTITLED_PLACEHOLDER } from "../../const/UNTITLED_PLACEHOLDER";
 import { useErrorsContext } from "../../contexts/ErrorsContext";
-import { useNotesListContext } from "../../contexts/NotesListContext";
 import { NoteItem } from "../../types/NoteItem";
 import { captureDragAndDrop } from "../../utils/captureDragAndDrop";
 import { noop } from "../../utils/noop";
+import { NoteHeader } from "../NoteHeader/NoteHeader";
 import { NoteItemElement } from "../NoteItemElement/NoteItemElement";
-import { PageHeader } from "../PageHeader/PageHeader";
 
 const PLACEHOLDER_ITEM_ID = -1_000_000_000;
 
@@ -28,9 +23,9 @@ type DragState = {
     y: number;
 };
 
-export function NotePage({ listId }: { listId: number }) {
+export function NotePage({ noteId }: { noteId: number }) {
     const { showError } = useErrorsContext();
-    const [itemsVer, list] = useNote({ listId, showError });
+    const [itemsVer, list] = useNote({ listId: noteId, showError });
     const [dragState, setDragState] = useState<DragState | null>(null);
     const inputRefs = useRef(new Map<number, HTMLTextAreaElement>());
     const desiredCaretPositionRef = useRef(0);
@@ -41,10 +36,6 @@ export function NotePage({ listId }: { listId: number }) {
     const parentGroups = list.getItemGroupsSplit();
     const unchecked = flattenGroups(parentGroups.unchecked);
     const checked = flattenGroups(parentGroups.checked);
-
-    const navigate = useNavigate();
-
-    const notes = useNotesListContext();
 
     useEffect(() => {
         if (list.pendingFocus == null) {
@@ -189,11 +180,6 @@ export function NotePage({ listId }: { listId: number }) {
         list.persistItem(id, { title });
     }
 
-    function handleListTitleChange(title: string) {
-        notes.changeTitleLocally(listId, title);
-        notes.persistTitle(listId, title);
-    }
-
     type ListItemWithSortedIndex = NoteItem & {
         sortedIndex: number;
     };
@@ -216,31 +202,8 @@ export function NotePage({ listId }: { listId: number }) {
         }
     }
 
-    const listTitle = notes.items?.find((list) => list.id === listId)?.title;
-
     return (
         <>
-            <PageHeader homeButtonIcon={<ArrowLeftIcon className="NotePageHeader__icon" />}>
-                <input
-                    className="list-title"
-                    value={listTitle}
-                    onChange={(event) => {
-                        handleListTitleChange(event.currentTarget.value);
-                    }}
-                    placeholder={UNTITLED_PLACEHOLDER}
-                    autoFocus={listTitle?.trim() === ""}
-                />
-                <button
-                    onClick={() => {
-                        navigate(ROUTES.home, {
-                            state: { deleteListId: listId },
-                        });
-                    }}
-                >
-                    <TrashIcon className="NotePageHeader__icon" />
-                </button>
-            </PageHeader>
-
             <div className="items" ref={itemsContainerRef}>
                 {sortedItemsWithPlaceholders.map((item) => (
                     <NoteItemElement

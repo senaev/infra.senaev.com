@@ -7,19 +7,14 @@ import { useNotesListContext } from "../../contexts/NotesListContext";
 import { FullPageContent } from "../FullPageContent/FullPageContent";
 import { MainPageHeader } from "../MainPageHeader/MainPageHeader";
 
-import { ArrowPathRoundedSquareIcon } from "@heroicons/react/24/outline";
+import { LoadingPageContent } from "../LoadingPageContent/LoadingPageContent";
 
 function MainPageContent({ createNewNote }: { createNewNote: VoidFunction }) {
     const { items } = useNotesListContext();
     const navigate = useNavigate();
 
     if (items === undefined) {
-        return (
-            <FullPageContent>
-                <ArrowPathRoundedSquareIcon className="MainPage__fullPageContent__loadingIcon" />
-                <span className="MainPage__fullPageContent__title">Loading notes…</span>
-            </FullPageContent>
-        );
+        return <LoadingPageContent />;
     }
 
     if (items.length === 0) {

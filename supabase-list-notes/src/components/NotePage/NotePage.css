@@ -4,11 +4,6 @@
     --textarea-margin-vertical: 6px;
 }
 
-.NotePageHeader__icon {
-    width: 24px;
-    height: 24px;
-}
-
 .list-title::placeholder,
 .item-input::placeholder {
     color: rgb(154 160 166);

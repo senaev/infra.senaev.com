@@ -6,26 +6,31 @@ import { useErrorsContext } from "../../contexts/ErrorsContext";
 import { NotesListContext, useNotesListContext } from "../../contexts/NotesListContext";
 import { NotesList } from "../../NotesList/NotesList";
 import { MainPage } from "../MainPage/MainPage";
+import { NoteHeader } from "../NoteHeader/NoteHeader";
 import { NotePage } from "../NotePage/NotePage";
 import { Page404 } from "../Page404/Page404";
 
 function ListRouteElement() {
-    const { listId } = useParams<{ listId: string }>();
+    const { noteId } = useParams<{ noteId: string }>();
     const lists = useNotesListContext();
 
-    const numberListId = Number(listId);
-    if (!Number.isInteger(numberListId) || numberListId <= 0) {
-        console.log(1);
+    const numberNoteId = Number(noteId);
+    if (!Number.isInteger(numberNoteId) || numberNoteId <= 0) {
         return <Page404 />;
     }
 
-    const listExists = lists.items?.some((list) => list.id === numberListId);
+    const listExists = lists.items?.some((list) => list.id === numberNoteId);
     if (!listExists) {
         console.log(2);
         return <Page404 />;
     }
 
-    return <NotePage listId={numberListId} />;
+    return (
+        <>
+            <NoteHeader noteId={numberNoteId} />
+            <NotePage noteId={numberNoteId} />
+        </>
+    );
 }
 
 export function App() {
@@ -49,7 +54,7 @@ export function App() {
                 <main className="main-container">
                     <Routes>
                         <Route path="/" element={<MainPage />} />
-                        <Route path="/:listId" element={<ListRouteElement />} />
+                        <Route path="/:noteId" element={<ListRouteElement />} />
                         <Route path="*" element={<Page404 />} />
                     </Routes>
                 </main>
