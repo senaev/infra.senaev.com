@@ -79,7 +79,6 @@ export function MainPage() {
 
     const lists = useNotesListContext();
     useEffect(() => {
-        console.log(location.state);
         const deleteListId = location.state?.deleteListId;
         if (deleteListId == null) {
             return;
