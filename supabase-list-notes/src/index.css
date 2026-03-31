@@ -25,3 +25,9 @@ body {
 code {
     font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
 }
+
+button {
+    user-select: none;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+}

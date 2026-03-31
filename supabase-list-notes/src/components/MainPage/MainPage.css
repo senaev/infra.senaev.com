@@ -52,6 +52,10 @@
     font: inherit;
 }
 
+.MainPage__fullPageContent__icon {
+    font-size: 6rem;
+}
+
 .MainPage__fullPageContent__title {
     font-size: 24px;
     font-weight: 600;
