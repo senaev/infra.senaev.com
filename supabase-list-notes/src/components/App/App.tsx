@@ -48,7 +48,7 @@ export function App() {
             <div className="page">
                 <main className="main-container">
                     <Routes>
-                        <Route path="/" element={<MainPage lists={notesList} />} />
+                        <Route path="/" element={<MainPage />} />
                         <Route path="/:listId" element={<ListRouteElement />} />
                         <Route path="*" element={<Page404 />} />
                     </Routes>

@@ -6,11 +6,11 @@ type NotesListContextType = NotesList | undefined;
 export const NotesListContext = createContext<NotesListContextType>(undefined);
 NotesListContext.displayName = "NotesListContext";
 
-export const useNotesListContext = () => {
-    const lists = useContext(NotesListContext);
-    if (!lists) {
+export const useNotesListContext = (): NotesList => {
+    const notesList = useContext(NotesListContext);
+    if (!notesList) {
         throw new Error("useNotesListContext must be used inside NotesListContext.Provider");
     }
 
-    return lists;
+    return notesList;
 };

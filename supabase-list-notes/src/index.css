@@ -1,5 +1,7 @@
 :root {
     --background-color: rgb(32 33 36);
+    --textarea-margin-vertical: 6px;
+    --border-color: rgb(95 99 104 / 0.45);
 }
 
 html,

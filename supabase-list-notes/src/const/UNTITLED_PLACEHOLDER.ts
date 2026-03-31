@@ -1,1 +1,1 @@
-export const UNTITLED_PLACEHOLDER = "🤷 Untitled";
+export const UNTITLED_PLACEHOLDER = "Untitled";

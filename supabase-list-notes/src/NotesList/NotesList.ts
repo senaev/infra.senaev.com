@@ -31,15 +31,24 @@ export class NotesList {
                 this.params.onChange();
             })
             .catch((err) => {
-                this.params.showError(`Failed to load lists: ${err.message}`);
+                this.params.showError(`Failed to load notes: ${err.message}`);
             });
     }
 
     public async createNewOne(): Promise<NoteRecord> {
-        const newList = await NotesListTable.create({ title: "" });
+        const newNote = await NotesListTable.create({ title: "" });
+
+        this.items = [
+            ...this.items!,
+            {
+                ...newNote,
+                items_count: 0,
+                undone_items_count: 0,
+            },
+        ];
 
         return {
-            ...newList,
+            ...newNote,
             items_count: 0,
             undone_items_count: 0,
         };
@@ -61,7 +70,26 @@ export class NotesList {
             await NotesListTable.update(id, { title });
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
-            this.params.showError(`Failed to update list title: ${message}`);
+            this.params.showError(`Failed to update note title: ${message}`);
+        }
+    }
+
+    public async delete(id: number): Promise<void> {
+        const { items } = this;
+
+        if (!items) {
+            this.params.showError("Notes are not loaded yet");
+            return;
+        }
+
+        try {
+            this.items = items.filter((item) => item.id !== id);
+            this.params.onChange();
+
+            await NotesListTable.delete(id);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            this.params.showError(`Failed to delete note: ${message}`);
         }
     }
 }

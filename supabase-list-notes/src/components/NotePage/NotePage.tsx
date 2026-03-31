@@ -1,8 +1,10 @@
 import "./NotePage.css";
 
 import { KeyboardEvent, SyntheticEvent, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { flattenGroups } from "../../Note/Note";
 import { useNote } from "../../Note/useNote";
+import { ROUTES } from "../../const/ROUTES";
 import { UNTITLED_PLACEHOLDER } from "../../const/UNTITLED_PLACEHOLDER";
 import { useErrorsContext } from "../../contexts/ErrorsContext";
 import { useNotesListContext } from "../../contexts/NotesListContext";
@@ -38,6 +40,8 @@ export function NotePage({ listId }: { listId: number }) {
     const parentGroups = list.getItemGroupsSplit();
     const unchecked = flattenGroups(parentGroups.unchecked);
     const checked = flattenGroups(parentGroups.checked);
+
+    const navigate = useNavigate();
 
     const notes = useNotesListContext();
 
@@ -185,8 +189,8 @@ export function NotePage({ listId }: { listId: number }) {
     }
 
     function handleListTitleChange(title: string) {
-        notes?.changeTitleLocally(listId, title);
-        notes?.persistTitle(listId, title);
+        notes.changeTitleLocally(listId, title);
+        notes.persistTitle(listId, title);
     }
 
     type ListItemWithSortedIndex = NoteItem & {
@@ -211,11 +215,11 @@ export function NotePage({ listId }: { listId: number }) {
         }
     }
 
-    const listTitle = notes?.items?.find((list) => list.id === listId)?.title;
+    const listTitle = notes.items?.find((list) => list.id === listId)?.title;
 
     return (
         <>
-            <PageHeader homeButtonIcon="🏠">
+            <PageHeader homeButtonIcon="⬅️">
                 <input
                     className="list-title"
                     value={listTitle ?? ""}
@@ -225,8 +229,9 @@ export function NotePage({ listId }: { listId: number }) {
                     placeholder={UNTITLED_PLACEHOLDER}
                 />
                 <button
-                    onClick={(event) => {
-                        // TODO: remove list and navigate to main page
+                    onClick={() => {
+                        navigate(ROUTES.home);
+                        notes.delete(listId);
                     }}
                 >
                     🗑️

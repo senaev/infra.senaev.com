@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import "./PageHeader.css";
+import { ROUTES } from "../../const/ROUTES";
 
 export function PageHeader({
     children,
@@ -14,7 +15,7 @@ export function PageHeader({
         <header className="PageHeader">
             <button
                 onClick={() => {
-                    navigate("/");
+                    navigate(ROUTES.home);
                 }}
             >
                 {homeButtonIcon}
