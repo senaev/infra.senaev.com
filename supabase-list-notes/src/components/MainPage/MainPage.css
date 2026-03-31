@@ -52,12 +52,12 @@
     font: inherit;
 }
 
-.MainPage__fullPageContent__icon {
-    font-size: 96px;
-    line-height: 1;
-}
-
 .MainPage__fullPageContent__title {
     font-size: 24px;
     font-weight: 600;
+}
+
+.MainPage__fullPageContent__loadingIcon {
+    width: 96px;
+    height: 96px;
 }

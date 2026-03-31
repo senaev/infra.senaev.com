@@ -8,3 +8,8 @@
     margin: 0;
     font-size: 1.3rem;
 }
+
+.MainPageHeader__addNoteIcon {
+    width: 24px;
+    height: 24px;
+}

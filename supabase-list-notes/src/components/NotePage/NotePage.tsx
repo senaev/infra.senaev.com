@@ -1,5 +1,6 @@
 import "./NotePage.css";
 
+import { ArrowLeftIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { KeyboardEvent, SyntheticEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { flattenGroups } from "../../Note/Note";
@@ -219,14 +220,15 @@ export function NotePage({ listId }: { listId: number }) {
 
     return (
         <>
-            <PageHeader homeButtonIcon="💾">
+            <PageHeader homeButtonIcon={<ArrowLeftIcon className="NotePageHeader__icon" />}>
                 <input
                     className="list-title"
-                    value={listTitle ?? ""}
+                    value={listTitle}
                     onChange={(event) => {
                         handleListTitleChange(event.currentTarget.value);
                     }}
                     placeholder={UNTITLED_PLACEHOLDER}
+                    autoFocus={listTitle?.trim() === ""}
                 />
                 <button
                     onClick={() => {
@@ -235,7 +237,7 @@ export function NotePage({ listId }: { listId: number }) {
                         });
                     }}
                 >
-                    🗑️
+                    <TrashIcon className="NotePageHeader__icon" />
                 </button>
             </PageHeader>
 

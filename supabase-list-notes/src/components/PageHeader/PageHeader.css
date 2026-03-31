@@ -11,6 +11,5 @@
     background-color: transparent;
     border: 0;
     cursor: pointer;
-    font-size: 1.6rem;
-    color: rgb(232 234 237);
+    color: var(--text-color);
 }
