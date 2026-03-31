@@ -1,4 +1,4 @@
-.error-toasts {
+.ErrorToasts {
     position: fixed;
     top: 20px;
     right: 20px;
@@ -8,7 +8,7 @@
     width: min(360px, calc(100vw - 32px));
 }
 
-.error-toast {
+.ErrorToasts__toast {
     display: grid;
     gap: 10px;
     padding: 14px 16px;
@@ -19,13 +19,13 @@
     color: rgb(255 218 214);
 }
 
-.error-toast__message {
+.ErrorToasts__message {
     font-size: 0.94rem;
     line-height: 1.4;
     white-space: pre-wrap;
 }
 
-.error-toast__close {
+.ErrorToasts__close {
     justify-self: end;
     padding: 6px 10px;
     border: 1px solid rgb(255 218 214 / 0.26);
@@ -37,12 +37,12 @@
     cursor: pointer;
 }
 
-.error-toast__close:hover {
+.ErrorToasts__close:hover {
     background: rgb(255 255 255 / 0.08);
 }
 
 @media (max-width: 740px) {
-    .error-toasts {
+    .ErrorToasts {
         top: 12px;
         right: 12px;
         left: 12px;

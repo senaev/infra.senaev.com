@@ -5,12 +5,13 @@ import { Route, Routes, useParams } from "react-router-dom";
 import { useErrorsContext } from "../../contexts/ErrorsContext";
 import { NotesListContext, useNotesListContext } from "../../contexts/NotesListContext";
 import { NotesList } from "../../NotesList/NotesList";
+import { LoadingPageContent } from "../LoadingPageContent/LoadingPageContent";
 import { MainPage } from "../MainPage/MainPage";
 import { NoteHeader } from "../NoteHeader/NoteHeader";
 import { NotePage } from "../NotePage/NotePage";
 import { Page404 } from "../Page404/Page404";
 
-function ListRouteElement() {
+function NoteRouteElement() {
     const { noteId } = useParams<{ noteId: string }>();
     const lists = useNotesListContext();
 
@@ -19,9 +20,19 @@ function ListRouteElement() {
         return <Page404 />;
     }
 
-    const listExists = lists.items?.some((list) => list.id === numberNoteId);
+    const { items } = lists;
+
+    if (items === undefined) {
+        return (
+            <>
+                <NoteHeader noteId={numberNoteId} />
+                <LoadingPageContent />
+            </>
+        );
+    }
+
+    const listExists = items.some((list) => list.id === numberNoteId);
     if (!listExists) {
-        console.log(2);
         return <Page404 />;
     }
 
@@ -54,7 +65,7 @@ export function App() {
                 <main className="App__main">
                     <Routes>
                         <Route path="/" element={<MainPage />} />
-                        <Route path="/:noteId" element={<ListRouteElement />} />
+                        <Route path="/:noteId" element={<NoteRouteElement />} />
                         <Route path="*" element={<Page404 />} />
                     </Routes>
                 </main>

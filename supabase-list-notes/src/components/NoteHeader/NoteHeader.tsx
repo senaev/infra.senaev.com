@@ -16,18 +16,20 @@ export function NoteHeader({ noteId }: { noteId: number }) {
         notes.persistTitle(noteId, title);
     }
 
-    const listTitle = notes.items?.find((list) => list.id === noteId)?.title;
+    const noteItem = notes.items?.find((list) => list.id === noteId);
     return (
         <PageHeader homeButtonIcon={<ArrowLeftIcon className="NoteHeader__icon" />}>
-            <input
-                className="list-title"
-                value={listTitle}
-                onChange={(event) => {
-                    handleListTitleChange(event.currentTarget.value);
-                }}
-                placeholder={UNTITLED_PLACEHOLDER}
-                autoFocus={listTitle?.trim() === ""}
-            />
+            {noteItem ? (
+                <input
+                    className="list-title"
+                    value={noteItem.title}
+                    onChange={(event) => {
+                        handleListTitleChange(event.currentTarget.value);
+                    }}
+                    placeholder={UNTITLED_PLACEHOLDER}
+                    autoFocus={!noteItem.title.trim()}
+                />
+            ) : null}
             <button
                 onClick={() => {
                     navigate(ROUTES.home, {

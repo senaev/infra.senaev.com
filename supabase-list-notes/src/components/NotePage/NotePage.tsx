@@ -7,7 +7,6 @@ import { useErrorsContext } from "../../contexts/ErrorsContext";
 import { NoteItem } from "../../types/NoteItem";
 import { captureDragAndDrop } from "../../utils/captureDragAndDrop";
 import { noop } from "../../utils/noop";
-import { NoteHeader } from "../NoteHeader/NoteHeader";
 import { NoteItemElement } from "../NoteItemElement/NoteItemElement";
 
 const PLACEHOLDER_ITEM_ID = -1_000_000_000;
@@ -204,7 +203,7 @@ export function NotePage({ noteId }: { noteId: number }) {
 
     return (
         <>
-            <div className="items" ref={itemsContainerRef}>
+            <div className="NotePage__items" ref={itemsContainerRef}>
                 {sortedItemsWithPlaceholders.map((item) => (
                     <NoteItemElement
                         key={list.getItemClientKey(item)}

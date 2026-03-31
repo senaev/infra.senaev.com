@@ -11,13 +11,13 @@ export function ErrorToasts({ errors, onClose }: ErrorToastsProps) {
     }
 
     return (
-        <div className="error-toasts" aria-live="polite" aria-label="Error notifications">
+        <div className="ErrorToasts" aria-live="polite" aria-label="Error notifications">
             {errors.map((error, index) => (
-                <div className="error-toast" key={`${error}-${index}`} role="alert">
-                    <div className="error-toast__message">{error}</div>
+                <div className="ErrorToasts__toast" key={`${error}-${index}`} role="alert">
+                    <div className="ErrorToasts__message">{error}</div>
                     <button
                         aria-label={`Dismiss error ${index + 1}`}
-                        className="error-toast__close"
+                        className="ErrorToasts__close"
                         onClick={() => {
                             onClose(index);
                         }}
