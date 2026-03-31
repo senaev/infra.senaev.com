@@ -6,19 +6,12 @@ import { ListsContext } from "../../contexts/ListsContext";
 import { useLists } from "../../Lists/useLists";
 import { MainPage } from "../MainPage/MainPage";
 import { ListPageElement } from "../NotePage/NotePage";
+import { Page404 } from "../Page404/Page404";
 
 function ListRouteElement() {
     const { listId } = useParams<{ listId: string }>();
 
     return <ListPageElement listId={Number(listId)} />;
-}
-
-export function Page404() {
-    return (
-        <div className="page-404">
-            <h1 className="page-404__title">404: Page not found</h1>
-        </div>
-    );
 }
 
 export function App() {

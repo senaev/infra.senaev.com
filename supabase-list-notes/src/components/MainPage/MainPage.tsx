@@ -3,9 +3,7 @@ import "./MainPage.css";
 import { useNavigate } from "react-router-dom";
 import { UNTITLED_PLACEHOLDER } from "../../const/UNTITLED_PLACEHOLDER";
 import { Lists } from "../../Lists/Lists";
-import { PageHeader } from "../PageHeader/PageHeader";
-
-const APP_NAME = "Supabase ListNotes";
+import { MainPageHeader } from "../MainPageHeader/MainPageHeader";
 
 export function MainPage({ lists }: { lists: Lists }) {
     const navigate = useNavigate();
@@ -22,16 +20,7 @@ export function MainPage({ lists }: { lists: Lists }) {
 
     return (
         <div className="lists-page">
-            <PageHeader
-                homeButtonIcon={
-                    <img className="supabase-logo" src="/supabase-logo.svg" alt="Home" />
-                }
-            >
-                <h1 className="lists-page__title">{APP_NAME}</h1>
-                <button type="button" aria-label="Add list" onClick={createNewList}>
-                    🆕
-                </button>
-            </PageHeader>
+            <MainPageHeader createNewList={createNewList} />
 
             {lists.items.length === 0 ? (
                 <div className="lists-page-empty-state">
