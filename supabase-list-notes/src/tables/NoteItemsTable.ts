@@ -1,4 +1,4 @@
-import { supabase } from "../supabase/supabase";
+import { supabase } from "../contexts/SupabaseClientContext";
 import { NoteItem } from "../types/NoteItem";
 import { SplitCommaAndTrim } from "../utils/SplitCommaAndTrim";
 

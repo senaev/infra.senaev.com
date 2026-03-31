@@ -1,5 +1,5 @@
 import { NoteRecord } from "../NotesList/NotesList";
-import { supabase } from "../supabase/supabase";
+import { supabase } from "../contexts/SupabaseClientContext";
 import { SplitCommaAndTrim } from "../utils/SplitCommaAndTrim";
 
 const TABLE_NAME = "notes";
