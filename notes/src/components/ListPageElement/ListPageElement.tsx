@@ -1,6 +1,7 @@
 import "./ListPageElement.css";
 
 import { KeyboardEvent, SyntheticEvent, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { flattenGroups } from "../../List/List";
 import { useList } from "../../List/useList";
 import { useErrorsContext } from "../../contexts/ErrorsContext";
@@ -9,6 +10,7 @@ import { ListItem } from "../../types/ListItem";
 import { captureDragAndDrop } from "../../utils/captureDragAndDrop";
 import { noop } from "../../utils/noop";
 import { ListItemElement } from "../ItemElement/ItemElement";
+import { PageHeader } from "../PageHeader/PageHeader";
 
 const PLACEHOLDER_ITEM_ID = -1_000_000_000;
 
@@ -38,6 +40,7 @@ export function ListPageElement({ listId }: { listId: number }) {
     const checked = flattenGroups(parentGroups.checked);
 
     const lists = useListsContext();
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (list.pendingFocus == null) {
@@ -213,14 +216,23 @@ export function ListPageElement({ listId }: { listId: number }) {
 
     return (
         <>
-            <input
-                className="list-title"
-                value={listTitle ?? ""}
-                onChange={(event) => {
-                    handleListTitleChange(event.currentTarget.value);
-                }}
-                placeholder="Untitled"
-            />
+            <PageHeader homeButtonIcon="🏠">
+                <input
+                    className="list-title"
+                    value={listTitle ?? ""}
+                    onChange={(event) => {
+                        handleListTitleChange(event.currentTarget.value);
+                    }}
+                    placeholder="Untitled"
+                />
+                <button
+                    onClick={(event) => {
+                        // TODO: remove list and navigate to main page
+                    }}
+                >
+                    🗑️
+                </button>
+            </PageHeader>
 
             <div className="items" ref={itemsContainerRef}>
                 {sortedItemsWithPlaceholders.map((item) => (

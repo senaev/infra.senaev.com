@@ -1,6 +1,6 @@
 import "./App.css";
 
-import { Navigate, Route, Routes, useParams } from "react-router-dom";
+import { Route, Routes, useParams } from "react-router-dom";
 import { useErrorsContext } from "../../contexts/ErrorsContext";
 import { ListsContext } from "../../contexts/ListsContext";
 import { useLists } from "../../Lists/useLists";
@@ -11,6 +11,14 @@ function ListRouteElement() {
     const { listId } = useParams<{ listId: string }>();
 
     return <ListPageElement listId={Number(listId)} />;
+}
+
+export function Page404() {
+    return (
+        <div className="page-404">
+            <h1 className="page-404__title">404: Page not found</h1>
+        </div>
+    );
 }
 
 export function App() {
@@ -27,7 +35,7 @@ export function App() {
                     <Routes>
                         <Route path="/" element={<ListsPageElement lists={lists} />} />
                         <Route path="/:listId" element={<ListRouteElement />} />
-                        <Route path="*" element={<Navigate to="/" replace />} />
+                        <Route path="*" element={<Page404 />} />
                     </Routes>
                 </main>
             </div>

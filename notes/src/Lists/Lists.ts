@@ -34,11 +34,7 @@ export class Lists {
     }
 
     public changeTitleLocally(id: number, title: string): void {
-        if (!this.items) {
-            return;
-        }
-
-        this.items = this.items.map((item) => {
+        this.items = this.items!.map((item) => {
             if (item.id !== id) {
                 return item;
             }

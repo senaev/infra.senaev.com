@@ -1,28 +1,17 @@
+.supabase-logo {
+    width: 24px;
+    height: 24px;
+}
+
 .lists-page {
     display: flex;
     flex-direction: column;
-    gap: 24px;
-}
-
-.lists-page__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
 }
 
 .lists-page__title {
+    flex: 1;
     margin: 0;
-}
-
-.lists-page__add-button {
-    border: 1px solid currentColor;
-    border-radius: 999px;
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
-    font: inherit;
-    padding: 10px 16px;
+    font-size: 1.3rem;
 }
 
 .lists-page__items {

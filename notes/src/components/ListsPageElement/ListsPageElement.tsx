@@ -2,6 +2,9 @@ import "./ListsPageElement.css";
 
 import { useNavigate } from "react-router-dom";
 import { Lists } from "../../Lists/Lists";
+import { PageHeader } from "../PageHeader/PageHeader";
+
+const APP_NAME = "Supabase ListNotes";
 
 export function ListsPageElement({ lists }: { lists: Lists }) {
     const navigate = useNavigate();
@@ -36,17 +39,16 @@ export function ListsPageElement({ lists }: { lists: Lists }) {
 
     return (
         <div className="lists-page">
-            <div className="lists-page__header">
-                <h1 className="lists-page__title">Lists</h1>
-                <button
-                    type="button"
-                    className="lists-page__add-button"
-                    aria-label="Add list"
-                    onClick={createNewList}
-                >
-                    + New list
+            <PageHeader
+                homeButtonIcon={
+                    <img className="supabase-logo" src="/supabase-logo.svg" alt="Home" />
+                }
+            >
+                <h1 className="lists-page__title">{APP_NAME}</h1>
+                <button type="button" aria-label="Add list" onClick={createNewList}>
+                    ➕ Add
                 </button>
-            </div>
+            </PageHeader>
 
             <div className="lists-page__items">
                 {lists.items.map((list) => (
