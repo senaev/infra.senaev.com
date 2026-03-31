@@ -4,13 +4,13 @@ import { KeyboardEvent, SyntheticEvent, useEffect, useRef, useState } from "reac
 import { useNavigate } from "react-router-dom";
 import { flattenGroups } from "../../List/List";
 import { useList } from "../../List/useList";
+import { UNTITLED_PLACEHOLDER } from "../../const/UNTITLED_PLACEHOLDER";
 import { useErrorsContext } from "../../contexts/ErrorsContext";
 import { useListsContext } from "../../contexts/ListsContext";
 import { ListItem } from "../../types/ListItem";
 import { captureDragAndDrop } from "../../utils/captureDragAndDrop";
 import { noop } from "../../utils/noop";
 import { ListItemElement } from "../ItemElement/ItemElement";
-import { UNTITLED_PLACEHOLDER } from "../ListsPageElement/ListsPageElement";
 import { PageHeader } from "../PageHeader/PageHeader";
 
 const PLACEHOLDER_ITEM_ID = -1_000_000_000;

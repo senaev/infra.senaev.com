@@ -1,14 +1,13 @@
-import "./ListsPageElement.css";
+import "./MainPage.css";
 
 import { useNavigate } from "react-router-dom";
+import { UNTITLED_PLACEHOLDER } from "../../const/UNTITLED_PLACEHOLDER";
 import { Lists } from "../../Lists/Lists";
 import { PageHeader } from "../PageHeader/PageHeader";
 
 const APP_NAME = "Supabase ListNotes";
 
-export const UNTITLED_PLACEHOLDER = "🤷 Untitled";
-
-export function ListsPageElement({ lists }: { lists: Lists }) {
+export function MainPage({ lists }: { lists: Lists }) {
     const navigate = useNavigate();
 
     const createNewList = async () => {

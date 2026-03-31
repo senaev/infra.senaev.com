@@ -5,7 +5,7 @@ import { useErrorsContext } from "../../contexts/ErrorsContext";
 import { ListsContext } from "../../contexts/ListsContext";
 import { useLists } from "../../Lists/useLists";
 import { ListPageElement } from "../ListPageElement/ListPageElement";
-import { ListsPageElement } from "../ListsPageElement/ListsPageElement";
+import { MainPage } from "../MainPage/MainPage";
 
 function ListRouteElement() {
     const { listId } = useParams<{ listId: string }>();
@@ -33,7 +33,7 @@ export function App() {
             <div className="page">
                 <main className="main-container">
                     <Routes>
-                        <Route path="/" element={<ListsPageElement lists={lists} />} />
+                        <Route path="/" element={<MainPage lists={lists} />} />
                         <Route path="/:listId" element={<ListRouteElement />} />
                         <Route path="*" element={<Page404 />} />
                     </Routes>
