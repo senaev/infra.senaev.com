@@ -4,8 +4,8 @@ import { Route, Routes, useParams } from "react-router-dom";
 import { useErrorsContext } from "../../contexts/ErrorsContext";
 import { ListsContext } from "../../contexts/ListsContext";
 import { useLists } from "../../Lists/useLists";
-import { ListPageElement } from "../ListPageElement/ListPageElement";
 import { MainPage } from "../MainPage/MainPage";
+import { ListPageElement } from "../NotePage/NotePage";
 
 function ListRouteElement() {
     const { listId } = useParams<{ listId: string }>();
