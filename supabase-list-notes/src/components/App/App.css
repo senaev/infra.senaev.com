@@ -1,22 +1,23 @@
-.page {
+.App__page {
     padding: 40px 20px 80px;
     display: flex;
     justify-content: center;
 }
 
-.main-container {
+.App__main {
     width: min(100%, 640px);
     padding: 6px 0 28px;
     border: 1px solid var(--border-color);
     border-radius: 22px;
+    min-height: 70vh;
 }
 
 @media (max-width: 740px) {
-    .page {
+    .App__page {
         padding: 0;
     }
 
-    .main-container {
+    .App__main {
         width: 100%;
         padding: 10px 0 100px;
         border: 0;

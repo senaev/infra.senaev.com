@@ -50,8 +50,8 @@ export function App() {
 
     return (
         <NotesListContext.Provider value={notesList}>
-            <div className="page">
-                <main className="main-container">
+            <div className="App__page">
+                <main className="App__main">
                     <Routes>
                         <Route path="/" element={<MainPage />} />
                         <Route path="/:noteId" element={<ListRouteElement />} />
