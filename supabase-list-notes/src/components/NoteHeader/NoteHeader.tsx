@@ -6,7 +6,7 @@ import { useNotesListContext } from "../../contexts/NotesListContext";
 import { PageHeader } from "../PageHeader/PageHeader";
 import "./NoteHeader.css";
 
-export function NoteHeader({ noteId }: { noteId: number }) {
+export function NoteHeader({ noteId, jumpToEdit }: { noteId: number; jumpToEdit: VoidFunction }) {
     const navigate = useNavigate();
 
     const notes = useNotesListContext();
@@ -25,6 +25,13 @@ export function NoteHeader({ noteId }: { noteId: number }) {
                     value={noteItem.title}
                     onChange={(event) => {
                         handleListTitleChange(event.currentTarget.value);
+                    }}
+                    onKeyDown={(event) => {
+                        if (event.key === "Enter" && !event.shiftKey) {
+                            event.preventDefault();
+
+                            jumpToEdit();
+                        }
                     }}
                     placeholder={UNTITLED_PLACEHOLDER}
                     autoFocus={!noteItem.title.trim()}

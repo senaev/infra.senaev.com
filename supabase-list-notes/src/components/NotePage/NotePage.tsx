@@ -450,19 +450,15 @@ export function NotePage({ noteId }: { noteId: number }) {
                                 toggleChecked={(checked) => {
                                     list.toggleChecked(item.id, checked);
                                 }}
-                                onChange={(value) => {
-                                    handleItemChange(item.id, value);
-                                }}
-                                onKeyDown={(event) => {
-                                    handleItemKeyDown(event, item);
-                                }}
+                                onChange={noop}
+                                onKeyDown={noop}
                                 onTextSelectionChange={saveCaretPosition}
                                 onRemove={() => {
                                     list.removeItem(item.id);
                                 }}
                                 dragState={undefined}
                                 onDragStart={undefined}
-                                resizeTextarea={resizeTextarea}
+                                resizeTextarea={noop}
                                 inputRefs={inputRefs}
                                 readonlyText={true}
                             />

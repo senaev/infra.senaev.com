@@ -39,7 +39,12 @@ function NoteRouteElement() {
 
     return (
         <>
-            <NoteHeader noteId={numberNoteId} />
+            <NoteHeader
+                noteId={numberNoteId}
+                jumpToEdit={() => {
+                    // TODO: implement
+                }}
+            />
             <NotePage noteId={numberNoteId} />
         </>
     );
