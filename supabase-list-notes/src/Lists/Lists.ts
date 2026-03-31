@@ -28,7 +28,7 @@ export class Lists {
     }
 
     public async createNewOne(): Promise<OneList> {
-        const newList = await ListsTable.create({ title: "New List" });
+        const newList = await ListsTable.create({ title: "" });
 
         return newList;
     }

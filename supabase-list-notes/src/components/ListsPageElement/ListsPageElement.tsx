@@ -46,7 +46,7 @@ export function ListsPageElement({ lists }: { lists: Lists }) {
             >
                 <h1 className="lists-page__title">{APP_NAME}</h1>
                 <button type="button" aria-label="Add list" onClick={createNewList}>
-                    ➕ Add
+                    🆕
                 </button>
             </PageHeader>
 
