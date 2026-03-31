@@ -1,0 +1,10 @@
+.MainPageHeader__supabaseLogo {
+    width: 24px;
+    height: 24px;
+}
+
+.MainPageHeader__appTitle {
+    flex: 1;
+    margin: 0;
+    font-size: 1.3rem;
+}

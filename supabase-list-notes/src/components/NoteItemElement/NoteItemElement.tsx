@@ -1,7 +1,7 @@
 import classNames from "classnames";
 import { KeyboardEvent, PointerEvent, SyntheticEvent } from "react";
 import { DEBUG_ENABLED } from "../../const/DEBUG_ENABLED";
-import { ListItem } from "../../types/ListItem";
+import { NoteItem } from "../../types/NoteItem";
 
 type DragState = "overlay" | "source" | "source-collapsed" | "placeholder";
 
@@ -14,7 +14,7 @@ const DRAG_STATE_CLASSES: Record<DragState, string[]> = {
 
 export type DragStartCallback = (event: PointerEvent<HTMLDivElement>) => void;
 
-export function ListItemElement({
+export function NoteItemElement({
     item,
     toggleChecked,
     onChange,
@@ -27,7 +27,7 @@ export function ListItemElement({
     onTextSelectionChange,
     readonlyText,
 }: {
-    item: ListItem;
+    item: NoteItem;
     toggleChecked: (checked: boolean) => void;
     onChange: (value: string) => void;
     onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;

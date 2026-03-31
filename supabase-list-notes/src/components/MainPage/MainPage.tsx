@@ -2,13 +2,13 @@ import "./MainPage.css";
 
 import { useNavigate } from "react-router-dom";
 import { UNTITLED_PLACEHOLDER } from "../../const/UNTITLED_PLACEHOLDER";
-import { Lists } from "../../Lists/Lists";
+import { NotesList } from "../../NotesList/NotesList";
 import { MainPageHeader } from "../MainPageHeader/MainPageHeader";
 
-export function MainPage({ lists }: { lists: Lists }) {
+export function MainPage({ lists }: { lists: NotesList }) {
     const navigate = useNavigate();
 
-    const createNewList = async () => {
+    const createNewNote = async () => {
         const { id } = await lists.createNewOne();
 
         navigate(`/${id}`);
@@ -19,39 +19,39 @@ export function MainPage({ lists }: { lists: Lists }) {
     }
 
     return (
-        <div className="lists-page">
-            <MainPageHeader createNewList={createNewList} />
+        <div className="MainPage">
+            <MainPageHeader createNewNote={createNewNote} />
 
             {lists.items.length === 0 ? (
-                <div className="lists-page-empty-state">
+                <div className="MainPage__emptyState">
                     <button
                         type="button"
-                        className="lists-page-add-first-list-button"
+                        className="MainPage__addFirstListButton"
                         aria-label="Add my first list"
-                        onClick={createNewList}
+                        onClick={createNewNote}
                     >
-                        <span className="lists-page-add-first-list-button__icon">🆕</span>
-                        <span className="lists-page-add-first-list-button__title">
-                            Add my first list
+                        <span className="MainPage__addFirstListButton__icon">🆕</span>
+                        <span className="MainPage__addFirstListButton__title">
+                            Create first note
                         </span>
                     </button>
                 </div>
             ) : (
-                <div className="lists-page__items">
+                <div className="MainPage__items">
                     {lists.items.map((list) => (
                         <button
                             key={list.id}
                             type="button"
-                            className="lists-page__item"
+                            className="MainPage__item"
                             onClick={() => {
                                 navigate(`/${list.id}`);
                             }}
                         >
                             {list.title.trim() ? (
-                                <span className="lists-page__item-title">{list.title}</span>
+                                <span className="MainPage__itemTitle">{list.title}</span>
                             ) : (
                                 <span
-                                    className="lists-page__item-title"
+                                    className="MainPage__itemTitle"
                                     style={{
                                         opacity: 0.7,
                                     }}
@@ -59,7 +59,7 @@ export function MainPage({ lists }: { lists: Lists }) {
                                     {UNTITLED_PLACEHOLDER}
                                 </span>
                             )}
-                            <span className="lists-page__item-meta">
+                            <span className="MainPage__itemMeta">
                                 <span>{`${list.items_count - list.undone_items_count}/${list.items_count}`}</span>
                             </span>
                         </button>

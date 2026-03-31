@@ -1,24 +1,13 @@
-.supabase-logo {
-    width: 24px;
-    height: 24px;
-}
-
-.lists-page {
+.MainPage {
     display: flex;
     flex-direction: column;
 }
 
-.lists-page__title {
-    flex: 1;
-    margin: 0;
-    font-size: 1.3rem;
-}
-
-.lists-page__items {
+.MainPage__items {
     display: grid;
 }
 
-.lists-page__item {
+.MainPage__item {
     width: 100%;
     display: flex;
     flex-direction: column;
@@ -31,30 +20,30 @@
     padding: 10px 10px 10px 24px;
 }
 
-.lists-page__item:hover {
+.MainPage__item:hover {
     box-shadow:
         inset 0 1px 0 var(--border-color),
         inset 0 -1px 0 var(--border-color);
 }
 
-.lists-page__item-title {
+.MainPage__itemTitle {
     font-size: 18px;
     font-weight: 600;
 }
 
-.lists-page__item-meta {
+.MainPage__itemMeta {
     font-size: 14px;
     opacity: 0.72;
 }
 
-.lists-page-empty-state {
+.MainPage__emptyState {
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 60vh;
 }
 
-.lists-page-add-first-list-button {
+.MainPage__addFirstListButton {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -70,12 +59,12 @@
     font: inherit;
 }
 
-.lists-page-add-first-list-button__icon {
+.MainPage__addFirstListButton__icon {
     font-size: 96px;
     line-height: 1;
 }
 
-.lists-page-add-first-list-button__title {
+.MainPage__addFirstListButton__title {
     font-size: 24px;
     font-weight: 600;
 }

@@ -1,5 +1,5 @@
 import { supabase } from "../supabase/supabase";
-import { ListItem } from "../types/ListItem";
+import { NoteItem } from "../types/NoteItem";
 import { SplitCommaAndTrim } from "../utils/SplitCommaAndTrim";
 
 const TABLE_NAME = "lists_items";
@@ -7,7 +7,7 @@ const TABLE_COLUMNS =
     "id, list_id, child, title, position, created, updated, update_index, check_time";
 type TableColumns = SplitCommaAndTrim<typeof TABLE_COLUMNS>;
 
-export class ListTable {
+export class NoteItemsTable {
     public static async create({
         list_id,
         title,
@@ -16,7 +16,7 @@ export class ListTable {
         update_index,
         child,
     }: Pick<
-        ListItem,
+        NoteItem,
         "list_id" | "title" | "position" | "check_time" | "update_index" | "child"
     >): Promise<Record<TableColumns, any>> {
         const { data, error } = await supabase
@@ -33,20 +33,22 @@ export class ListTable {
             .single();
 
         if (error) {
-            throw new Error(`ListTable.create: ${error.message}`);
+            throw new Error(`NoteItemsTable.create: ${error.message}`);
         }
 
         return data;
     }
 
-    public static async readAll(listId: number): Promise<Pick<ListItem, TableColumns>[]> {
+    public static async readAll(listId: number): Promise<Pick<NoteItem, TableColumns>[]> {
         const { error, data } = await supabase
             .from(TABLE_NAME)
             .select(TABLE_COLUMNS)
             .eq("list_id", listId);
 
         if (error) {
-            throw new Error(`Error loading list items for id=[${listId}] error=[${error.message}]`);
+            throw new Error(
+                `NoteItemsTable.readAll: Error loading list items for id=[${listId}] error=[${error.message}]`,
+            );
         }
 
         return data;
@@ -54,7 +56,7 @@ export class ListTable {
 
     public static async update(
         itemId: number,
-        updates: Partial<Pick<ListItem, "title" | "position" | "check_time">> & {
+        updates: Partial<Pick<NoteItem, "title" | "position" | "check_time">> & {
             update_index: number;
         },
     ): Promise<
@@ -79,7 +81,7 @@ export class ListTable {
                 }
             } catch (e) {}
 
-            throw new Error(`ListTable.update(${itemId}) error: ${error.message}`);
+            throw new Error(`NoteItemsTable.update(${itemId}) error: ${error.message}`);
         }
 
         return {
@@ -91,7 +93,7 @@ export class ListTable {
         const { error } = await supabase.from(TABLE_NAME).delete().eq("id", itemId);
 
         if (error) {
-            throw new Error(`ListTable.delete(${itemId}) error: ${error.message}`);
+            throw new Error(`NoteItemsTable.delete(${itemId}) error: ${error.message}`);
         }
     }
 }

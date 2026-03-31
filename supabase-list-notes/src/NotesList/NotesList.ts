@@ -1,6 +1,6 @@
-import { ListsTable } from "../models/ListsTable";
+import { NotesListTable } from "../tables/NotesListTable";
 
-export type OneList = {
+export type NoteRecord = {
     id: number;
     title: string;
     created: string;
@@ -9,8 +9,8 @@ export type OneList = {
     undone_items_count: number;
 };
 
-export class Lists {
-    public items: OneList[] | undefined = undefined;
+export class NotesList {
+    public items: NoteRecord[] | undefined = undefined;
 
     constructor(
         private readonly params: {
@@ -18,7 +18,7 @@ export class Lists {
             showError: (message: string) => void;
         },
     ) {
-        ListsTable.readAll()
+        NotesListTable.readAll()
             .then((data) => {
                 this.items = data.map((item) => ({
                     id: item.id,
@@ -35,8 +35,8 @@ export class Lists {
             });
     }
 
-    public async createNewOne(): Promise<OneList> {
-        const newList = await ListsTable.create({ title: "" });
+    public async createNewOne(): Promise<NoteRecord> {
+        const newList = await NotesListTable.create({ title: "" });
 
         return {
             ...newList,
@@ -58,7 +58,7 @@ export class Lists {
 
     public async persistTitle(id: number, title: string): Promise<void> {
         try {
-            await ListsTable.update(id, { title });
+            await NotesListTable.update(id, { title });
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             this.params.showError(`Failed to update list title: ${message}`);

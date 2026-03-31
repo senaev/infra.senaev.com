@@ -1,4 +1,4 @@
-export type ListItem = {
+export type NoteItem = {
     id: number;
     list_id: number;
     title: string;

@@ -1,16 +1,15 @@
 import "./NotePage.css";
 
 import { KeyboardEvent, SyntheticEvent, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { flattenGroups } from "../../List/List";
-import { useList } from "../../List/useList";
+import { flattenGroups } from "../../Note/Note";
+import { useNote } from "../../Note/useNote";
 import { UNTITLED_PLACEHOLDER } from "../../const/UNTITLED_PLACEHOLDER";
 import { useErrorsContext } from "../../contexts/ErrorsContext";
-import { useListsContext } from "../../contexts/ListsContext";
-import { ListItem } from "../../types/ListItem";
+import { useNotesListContext } from "../../contexts/NotesListContext";
+import { NoteItem } from "../../types/NoteItem";
 import { captureDragAndDrop } from "../../utils/captureDragAndDrop";
 import { noop } from "../../utils/noop";
-import { ListItemElement } from "../ItemElement/ItemElement";
+import { NoteItemElement } from "../NoteItemElement/NoteItemElement";
 import { PageHeader } from "../PageHeader/PageHeader";
 
 const PLACEHOLDER_ITEM_ID = -1_000_000_000;
@@ -26,9 +25,9 @@ type DragState = {
     y: number;
 };
 
-export function ListPageElement({ listId }: { listId: number }) {
+export function NotePage({ listId }: { listId: number }) {
     const { showError } = useErrorsContext();
-    const [itemsVer, list] = useList({ listId, showError });
+    const [itemsVer, list] = useNote({ listId, showError });
     const [dragState, setDragState] = useState<DragState | null>(null);
     const inputRefs = useRef(new Map<number, HTMLTextAreaElement>());
     const desiredCaretPositionRef = useRef(0);
@@ -40,8 +39,7 @@ export function ListPageElement({ listId }: { listId: number }) {
     const unchecked = flattenGroups(parentGroups.unchecked);
     const checked = flattenGroups(parentGroups.checked);
 
-    const lists = useListsContext();
-    const navigate = useNavigate();
+    const notes = useNotesListContext();
 
     useEffect(() => {
         if (list.pendingFocus == null) {
@@ -132,7 +130,7 @@ export function ListPageElement({ listId }: { listId: number }) {
         return !input.value.slice(caretPosition).includes("\n");
     }
 
-    function handleItemKeyDown(event: KeyboardEvent<HTMLTextAreaElement>, item: ListItem) {
+    function handleItemKeyDown(event: KeyboardEvent<HTMLTextAreaElement>, item: NoteItem) {
         let { selectionStart, selectionEnd } = event.currentTarget;
         if (event.key === "Enter" && !event.shiftKey) {
             event.preventDefault();
@@ -187,11 +185,11 @@ export function ListPageElement({ listId }: { listId: number }) {
     }
 
     function handleListTitleChange(title: string) {
-        lists?.changeTitleLocally(listId, title);
-        lists?.persistTitle(listId, title);
+        notes?.changeTitleLocally(listId, title);
+        notes?.persistTitle(listId, title);
     }
 
-    type ListItemWithSortedIndex = ListItem & {
+    type ListItemWithSortedIndex = NoteItem & {
         sortedIndex: number;
     };
     const sortedItemsWithPlaceholders: ListItemWithSortedIndex[] = [
@@ -213,7 +211,7 @@ export function ListPageElement({ listId }: { listId: number }) {
         }
     }
 
-    const listTitle = lists?.items?.find((list) => list.id === listId)?.title;
+    const listTitle = notes?.items?.find((list) => list.id === listId)?.title;
 
     return (
         <>
@@ -237,7 +235,7 @@ export function ListPageElement({ listId }: { listId: number }) {
 
             <div className="items" ref={itemsContainerRef}>
                 {sortedItemsWithPlaceholders.map((item) => (
-                    <ListItemElement
+                    <NoteItemElement
                         key={list.getItemClientKey(item)}
                         item={item}
                         toggleChecked={(checked) => {
@@ -448,7 +446,7 @@ export function ListPageElement({ listId }: { listId: number }) {
                                 })();
 
                                 return (
-                                    <ListItemElement
+                                    <NoteItemElement
                                         key={i}
                                         dragState="overlay"
                                         inputRefs={inputRefs}
@@ -476,7 +474,7 @@ export function ListPageElement({ listId }: { listId: number }) {
                     <>
                         <hr className="items-separator" />
                         {checked.map((item) => (
-                            <ListItemElement
+                            <NoteItemElement
                                 key={list.getItemClientKey(item)}
                                 item={item}
                                 toggleChecked={(checked) => {

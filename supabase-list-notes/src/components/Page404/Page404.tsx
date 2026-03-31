@@ -9,7 +9,7 @@ export function Page404() {
 
             <div className="Page404__content">
                 <span className="Page404__content_emoji">🤷</span>
-                <h1>404: Page not found</h1>
+                <h1>404: Not found</h1>
             </div>
         </div>
     );

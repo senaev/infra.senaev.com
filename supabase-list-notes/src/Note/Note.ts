@@ -1,24 +1,22 @@
-import { ListTable } from "../models/ListTable";
-import { ListItem } from "../types/ListItem";
+import { NoteItemsTable } from "../tables/NoteItemsTable";
+import { NoteItem } from "../types/NoteItem";
 import { shiftItemsToInsertOnPosition } from "../utils/shiftItemsToInsertOnPosition/shiftItemsToInsertOnPosition";
-
-const NOTE_TITLE = "Groceries 🛒";
 
 export type PendingFocus = { id: number; selectionStart: number; selectionEnd: number };
 
-export type ItemParentGroup = { parent: ListItem; children: ListItem[] };
+export type ItemParentGroup = { parent: NoteItem; children: NoteItem[] };
 
-export function flattenGroups(groups: ItemParentGroup[]): ListItem[] {
-    return groups.reduce<ListItem[]>((acc, group) => {
+export function flattenGroups(groups: ItemParentGroup[]): NoteItem[] {
+    return groups.reduce<NoteItem[]>((acc, group) => {
         acc.push(group.parent, ...group.children);
         return acc;
     }, []);
 }
 
-export class List {
+export class Note {
     pendingFocus: PendingFocus | null = null;
 
-    private items: ListItem[] = [];
+    private items: NoteItem[] = [];
 
     public constructor(
         private readonly params: {
@@ -27,7 +25,7 @@ export class List {
             showError: (message: string) => void;
         },
     ) {
-        ListTable.readAll(this.params.listId)
+        NoteItemsTable.readAll(this.params.listId)
             .then((data) => {
                 this.setItems(data.map((item) => ({ ...item, persisted: true })));
                 this.params.onChange();
@@ -39,17 +37,16 @@ export class List {
 
     // Temp ids are used for optimistic rendering of newly created items
     // They are also used when rendering items to avoid rerendering after getting real id
-    // TODO: make global
     private nextTempId = -1;
     private readonly generateNextItemId = () => this.nextTempId--;
     private readonly tempIdsMap = new Map<number, number>();
     private readonly tempIdsRemovedSet = new Set<number>();
     private readonly tempUpdatesMap = new Map<
         number,
-        Partial<Pick<ListItem, "title" | "position" | "check_time">>
+        Partial<Pick<NoteItem, "title" | "position" | "check_time">>
     >();
 
-    public getItemsSorted(): ListItem[] {
+    public getItemsSorted(): NoteItem[] {
         return [...this.items].sort((first, second) => first.position - second.position);
     }
 
@@ -95,7 +92,7 @@ export class List {
         return { checked, unchecked };
     }
 
-    public getItemClientKey(item: ListItem): number {
+    public getItemClientKey(item: NoteItem): number {
         return this.tempIdsMap.get(item.id) || item.id;
     }
 
@@ -103,7 +100,7 @@ export class List {
         return this.items;
     }
 
-    public setItems(items: ListItem[]): void {
+    public setItems(items: NoteItem[]): void {
         const itemsChanged = JSON.stringify(this.items) !== JSON.stringify(items);
         if (itemsChanged) {
             this.items = items;
@@ -114,7 +111,7 @@ export class List {
         }
     }
 
-    public changeItemLocally(id: number, updates: Partial<ListItem>): void {
+    public changeItemLocally(id: number, updates: Partial<NoteItem>): void {
         this.setItems(this.items.map((item) => (item.id === id ? { ...item, ...updates } : item)));
     }
 
@@ -136,7 +133,7 @@ export class List {
             return;
         }
 
-        ListTable.delete(id).catch((error) => {
+        NoteItemsTable.delete(id).catch((error) => {
             this.params.showError(error.message);
         });
     }
@@ -148,7 +145,7 @@ export class List {
 
     public persistItem(
         id: number,
-        updates: Partial<Pick<ListItem, "title" | "position" | "check_time" | "child">>,
+        updates: Partial<Pick<NoteItem, "title" | "position" | "check_time" | "child">>,
     ): void {
         const itemToUpdate = this.items.find((item) => item.id === id);
         if (!itemToUpdate) {
@@ -165,7 +162,7 @@ export class List {
             return;
         }
 
-        ListTable.update(id, { ...updates, update_index })
+        NoteItemsTable.update(id, { ...updates, update_index })
             .then((result) => {
                 if (result === "update_index_conflict") {
                     // Ignore conflicts, persistent state will be delivered through server-push
@@ -290,7 +287,7 @@ export class List {
 
         const tempId = this.generateNextItemId();
 
-        const newItem: ListItem = {
+        const newItem: NoteItem = {
             id: tempId,
             list_id: this.params.listId,
             title,
@@ -311,7 +308,7 @@ export class List {
             selectionEnd: 0,
         });
 
-        ListTable.create(newItem)
+        NoteItemsTable.create(newItem)
             .then((data) => {
                 // Item was deleted on the client
                 if (this.tempIdsRemovedSet.delete(tempId)) {
@@ -402,7 +399,7 @@ export class List {
         this.persistItem(id, { check_time });
 
         if (item.child) {
-            let parentItem: ListItem | undefined;
+            let parentItem: NoteItem | undefined;
             for (let i = itemIndex - 1; i >= 0; i--) {
                 const isParent = !itemsSorted[i].child;
                 if (isParent) {
