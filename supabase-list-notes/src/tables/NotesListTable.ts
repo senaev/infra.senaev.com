@@ -2,11 +2,11 @@ import { NoteRecord } from "../NotesList/NotesList";
 import { supabase } from "../supabase/supabase";
 import { SplitCommaAndTrim } from "../utils/SplitCommaAndTrim";
 
-const TABLE_NAME = "lists";
+const TABLE_NAME = "notes";
 const TABLE_COLUMNS = "id, title, created, updated";
 type TableColumns = SplitCommaAndTrim<typeof TABLE_COLUMNS>;
 
-const VIEW_NAME = "lists_with_counts";
+const VIEW_NAME = "notes_with_counts";
 const VIEW_COLUMNS = "id, title, created, updated, items_count, undone_items_count";
 type ViewColumns = SplitCommaAndTrim<typeof VIEW_COLUMNS>;
 

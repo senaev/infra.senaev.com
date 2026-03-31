@@ -2,7 +2,7 @@ import { supabase } from "../supabase/supabase";
 import { NoteItem } from "../types/NoteItem";
 import { SplitCommaAndTrim } from "../utils/SplitCommaAndTrim";
 
-const TABLE_NAME = "lists_items";
+const TABLE_NAME = "notes_items";
 const TABLE_COLUMNS =
     "id, list_id, child, title, position, created, updated, update_index, check_time";
 type TableColumns = SplitCommaAndTrim<typeof TABLE_COLUMNS>;
