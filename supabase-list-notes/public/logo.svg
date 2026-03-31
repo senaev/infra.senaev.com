@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <!-- body gradient -->
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#eafff3"/>
+      <stop offset="100%" stop-color="#c9f7dc"/>
+    </linearGradient>
+
+    <!-- header gradient (same palette, slightly darker) -->
+    <linearGradient id="header" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3ee98a"/>
+      <stop offset="100%" stop-color="#20c56b"/>
+    </linearGradient>
+  </defs>
+
+  <!-- background card -->
+  <rect x="12" y="12" width="104" height="104" rx="26" fill="url(#body)"/>
+
+  <!-- header -->
+  <path d="
+M 12 39 Q 12 12 38 12 H 90 Q 116 12 116 39 Z
+  " fill="url(#header)" />
+
+  <!-- list -->
+  <rect x="30" y="60" width="68" height="5" rx="3" fill="#22c55e"/>
+  <rect x="30" y="85" width="68" height="5" rx="3" fill="#22c55e"/>
+</svg>

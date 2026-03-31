@@ -7,9 +7,7 @@ import { PageHeader } from "../PageHeader/PageHeader";
 export function MainPageHeader({ createNewNote }: { createNewNote?: VoidFunction }) {
     return (
         <PageHeader
-            homeButtonIcon={
-                <img className="MainPageHeader__supabaseLogo" src="/supabase-logo.svg" alt="Home" />
-            }
+            homeButtonIcon={<img className="MainPageHeader__logo" src="/logo.svg" alt="Home" />}
         >
             <h1 className="MainPageHeader__appTitle">{APP_TITLE}</h1>
             {createNewNote ? (
