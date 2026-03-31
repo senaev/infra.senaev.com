@@ -6,6 +6,8 @@ import { PageHeader } from "../PageHeader/PageHeader";
 
 const APP_NAME = "Supabase ListNotes";
 
+export const UNTITLED_PLACEHOLDER = "🤷 Untitled";
+
 export function ListsPageElement({ lists }: { lists: Lists }) {
     const navigate = useNavigate();
 
@@ -17,24 +19,6 @@ export function ListsPageElement({ lists }: { lists: Lists }) {
 
     if (lists.items === undefined) {
         return <div className="preloader">🔄 Loading lists...</div>;
-    }
-
-    if (lists.items.length === 0) {
-        return (
-            <div className="lists-page-empty-state">
-                <button
-                    type="button"
-                    className="lists-page-add-first-list-button"
-                    aria-label="Add my first list"
-                    onClick={createNewList}
-                >
-                    <span className="lists-page-add-first-list-button__icon">+</span>
-                    <span className="lists-page-add-first-list-button__title">
-                        Add my first list
-                    </span>
-                </button>
-            </div>
-        );
     }
 
     return (
@@ -50,20 +34,50 @@ export function ListsPageElement({ lists }: { lists: Lists }) {
                 </button>
             </PageHeader>
 
-            <div className="lists-page__items">
-                {lists.items.map((list) => (
+            {lists.items.length === 0 ? (
+                <div className="lists-page-empty-state">
                     <button
-                        key={list.id}
                         type="button"
-                        className="lists-page__item"
-                        onClick={() => {
-                            navigate(`/${list.id}`);
-                        }}
+                        className="lists-page-add-first-list-button"
+                        aria-label="Add my first list"
+                        onClick={createNewList}
                     >
-                        <span className="lists-page__item-title">{list.title}</span>
+                        <span className="lists-page-add-first-list-button__icon">🆕</span>
+                        <span className="lists-page-add-first-list-button__title">
+                            Add my first list
+                        </span>
                     </button>
-                ))}
-            </div>
+                </div>
+            ) : (
+                <div className="lists-page__items">
+                    {lists.items.map((list) => (
+                        <button
+                            key={list.id}
+                            type="button"
+                            className="lists-page__item"
+                            onClick={() => {
+                                navigate(`/${list.id}`);
+                            }}
+                        >
+                            {list.title.trim() ? (
+                                <span className="lists-page__item-title">{list.title}</span>
+                            ) : (
+                                <span
+                                    className="lists-page__item-title"
+                                    style={{
+                                        opacity: 0.7,
+                                    }}
+                                >
+                                    {UNTITLED_PLACEHOLDER}
+                                </span>
+                            )}
+                            <span className="lists-page__item-meta">
+                                <span>{`${list.items_count - list.undone_items_count}/${list.items_count}`}</span>
+                            </span>
+                        </button>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

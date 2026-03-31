@@ -10,6 +10,7 @@ import { ListItem } from "../../types/ListItem";
 import { captureDragAndDrop } from "../../utils/captureDragAndDrop";
 import { noop } from "../../utils/noop";
 import { ListItemElement } from "../ItemElement/ItemElement";
+import { UNTITLED_PLACEHOLDER } from "../ListsPageElement/ListsPageElement";
 import { PageHeader } from "../PageHeader/PageHeader";
 
 const PLACEHOLDER_ITEM_ID = -1_000_000_000;
@@ -223,7 +224,7 @@ export function ListPageElement({ listId }: { listId: number }) {
                     onChange={(event) => {
                         handleListTitleChange(event.currentTarget.value);
                     }}
-                    placeholder="Untitled"
+                    placeholder={UNTITLED_PLACEHOLDER}
                 />
                 <button
                     onClick={(event) => {

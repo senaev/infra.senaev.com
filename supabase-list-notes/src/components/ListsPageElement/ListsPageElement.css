@@ -16,24 +16,35 @@
 
 .lists-page__items {
     display: grid;
-    gap: 12px;
 }
 
 .lists-page__item {
     width: 100%;
+    display: flex;
+    flex-direction: column;
     text-align: left;
-    border: 1px solid rgba(127, 127, 127, 0.35);
-    border-radius: 16px;
+    border: 0;
     background: transparent;
     color: inherit;
     cursor: pointer;
     font: inherit;
-    padding: 16px 20px;
+    padding: 10px 10px 10px 24px;
+}
+
+.lists-page__item:hover {
+    box-shadow:
+        inset 0 1px 0 var(--border-color),
+        inset 0 -1px 0 var(--border-color);
 }
 
 .lists-page__item-title {
     font-size: 18px;
     font-weight: 600;
+}
+
+.lists-page__item-meta {
+    font-size: 14px;
+    opacity: 0.72;
 }
 
 .lists-page-empty-state {

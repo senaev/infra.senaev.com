@@ -1,14 +1,17 @@
+import { OneList } from "../Lists/Lists";
 import { supabase } from "../supabase/supabase";
-import { ListItem } from "../types/ListItem";
 import { SplitCommaAndTrim } from "../utils/SplitCommaAndTrim";
 
 const TABLE_NAME = "lists";
 const TABLE_COLUMNS = "id, title, created, updated";
-
 type TableColumns = SplitCommaAndTrim<typeof TABLE_COLUMNS>;
 
+const VIEW_NAME = "lists_with_counts";
+const VIEW_COLUMNS = "id, title, created, updated, items_count, undone_items_count";
+type ViewColumns = SplitCommaAndTrim<typeof VIEW_COLUMNS>;
+
 export class ListsTable {
-    public static async create({ title }: { title: string }): Promise<Record<TableColumns, any>> {
+    public static async create({ title }: { title: string }): Promise<Pick<OneList, TableColumns>> {
         const { data, error } = await supabase
             .from(TABLE_NAME)
             .insert({ title })
@@ -22,8 +25,8 @@ export class ListsTable {
         return data;
     }
 
-    public static async readAll(): Promise<Pick<ListItem, TableColumns>[]> {
-        const { error, data } = await supabase.from(TABLE_NAME).select(TABLE_COLUMNS);
+    public static async readAll(): Promise<Pick<OneList, ViewColumns>[]> {
+        const { error, data } = await supabase.from(VIEW_NAME).select(VIEW_COLUMNS);
 
         if (error) {
             throw new Error(`ListsTable.readAll error: ${error.message}`);

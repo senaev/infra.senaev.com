@@ -3,6 +3,10 @@ import { ListsTable } from "../models/ListsTable";
 export type OneList = {
     id: number;
     title: string;
+    created: string;
+    updated: string;
+    items_count: number;
+    undone_items_count: number;
 };
 
 export class Lists {
@@ -19,6 +23,10 @@ export class Lists {
                 this.items = data.map((item) => ({
                     id: item.id,
                     title: item.title,
+                    created: item.created,
+                    updated: item.updated,
+                    items_count: item.items_count,
+                    undone_items_count: item.undone_items_count,
                 }));
                 this.params.onChange();
             })
@@ -30,7 +38,11 @@ export class Lists {
     public async createNewOne(): Promise<OneList> {
         const newList = await ListsTable.create({ title: "" });
 
-        return newList;
+        return {
+            ...newList,
+            items_count: 0,
+            undone_items_count: 0,
+        };
     }
 
     public changeTitleLocally(id: number, title: string): void {
