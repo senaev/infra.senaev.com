@@ -33,9 +33,16 @@ function MainPageContent({ createNewNote }: { createNewNote: VoidFunction }) {
         );
     }
 
+    const itemsSorted = [...items].sort((a, b) => {
+        const aUpdated = new Date(a.updated).getTime();
+        const bUpdated = new Date(b.updated).getTime();
+
+        return bUpdated - aUpdated;
+    });
+
     return (
         <div className="MainPage__items">
-            {items.map((list) => (
+            {itemsSorted.map((list) => (
                 <button
                     key={list.id}
                     type="button"
