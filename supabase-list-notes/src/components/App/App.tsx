@@ -7,6 +7,7 @@ import { NotesListContext, useNotesListContext } from "../../contexts/NotesListC
 import { NotesList } from "../../NotesList/NotesList";
 import { LoadingPageContent } from "../LoadingPageContent/LoadingPageContent";
 import { MainPage } from "../MainPage/MainPage";
+import { MainPageHeader } from "../MainPageHeader/MainPageHeader";
 import { NoteHeader } from "../NoteHeader/NoteHeader";
 import { NotePage } from "../NotePage/NotePage";
 import { Page404 } from "../Page404/Page404";
@@ -25,7 +26,7 @@ function NoteRouteElement() {
     if (items === undefined) {
         return (
             <>
-                <NoteHeader noteId={numberNoteId} />
+                <MainPageHeader />
                 <LoadingPageContent />
             </>
         );
