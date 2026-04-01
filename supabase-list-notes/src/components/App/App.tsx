@@ -1,10 +1,18 @@
 import "./App.css";
 
+import { SupabaseClient } from "@supabase/supabase-js";
 import { useRef, useState } from "react";
 import { Route, Routes, useParams } from "react-router-dom";
 import { useErrorsContext } from "../../contexts/ErrorsContext";
 import { NotesListContext, useNotesListContext } from "../../contexts/NotesListContext";
+import {
+    SupabaseClientContextProvider,
+    useSupabaseClientContext,
+} from "../../contexts/SupabaseClientContext";
+import { TablesContext, TablesContextType } from "../../contexts/TablesContext";
 import { NotesList } from "../../NotesList/NotesList";
+import { NoteItemsTable } from "../../tables/NoteItemsTable";
+import { NotesListTable } from "../../tables/NotesListTable";
 import { LoadingPageContent } from "../LoadingPageContent/LoadingPageContent";
 import { MainPage } from "../MainPage/MainPage";
 import { MainPageHeader } from "../MainPageHeader/MainPageHeader";
@@ -14,14 +22,12 @@ import { Page404 } from "../Page404/Page404";
 
 function NoteRouteElement() {
     const { noteId } = useParams<{ noteId: string }>();
-    const lists = useNotesListContext();
+    const { items } = useNotesListContext();
 
     const numberNoteId = Number(noteId);
     if (!Number.isInteger(numberNoteId) || numberNoteId <= 0) {
         return <Page404 />;
     }
-
-    const { items } = lists;
 
     if (items === undefined) {
         return (
@@ -50,13 +56,23 @@ function NoteRouteElement() {
     );
 }
 
-export function App() {
+export function NotesWithApp({ supabaseClient }: { supabaseClient: SupabaseClient }) {
     const { showError } = useErrorsContext();
-    const [, setNotesListVer] = useState<number>(0);
 
+    const tablesRef = useRef<TablesContextType | null>(null);
+    if (!tablesRef.current) {
+        tablesRef.current = {
+            notesListTable: new NotesListTable(supabaseClient),
+            noteItemsTable: new NoteItemsTable(supabaseClient),
+        };
+    }
+    const tables = tablesRef.current;
+
+    const [, setNotesListVer] = useState<number>(0);
     const notesListRef = useRef<NotesList | null>(null);
     if (!notesListRef.current) {
         notesListRef.current = new NotesList({
+            notesListTable: tables.notesListTable,
             showError,
             onChange: () => {
                 setNotesListVer((prev) => prev + 1);
@@ -66,16 +82,40 @@ export function App() {
     const notesList = notesListRef.current;
 
     return (
-        <NotesListContext.Provider value={notesList}>
-            <div className="App__page">
-                <main className="App__main">
-                    <Routes>
-                        <Route path="/" element={<MainPage />} />
-                        <Route path="/:noteId" element={<NoteRouteElement />} />
-                        <Route path="*" element={<Page404 />} />
-                    </Routes>
-                </main>
-            </div>
-        </NotesListContext.Provider>
+        <TablesContext.Provider value={tables}>
+            <NotesListContext.Provider value={notesList}>
+                <Routes>
+                    <Route path="/" element={<MainPage />} />
+                    <Route path="/:noteId" element={<NoteRouteElement />} />
+                    <Route path="*" element={<Page404 />} />
+                </Routes>
+            </NotesListContext.Provider>
+        </TablesContext.Provider>
+    );
+}
+
+export function AuthApp() {
+    return <div className="App__page">AUTH!</div>;
+}
+
+export function NotesWithAuthApp() {
+    const supabaseClientContext = useSupabaseClientContext();
+
+    if (supabaseClientContext.status === "ready") {
+        return <NotesWithApp supabaseClient={supabaseClientContext.client} />;
+    }
+
+    return <AuthApp />;
+}
+
+export function App() {
+    return (
+        <div className="App__page">
+            <main className="App__main">
+                <SupabaseClientContextProvider>
+                    <NotesWithAuthApp />
+                </SupabaseClientContextProvider>
+            </main>
+        </div>
     );
 }

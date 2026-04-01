@@ -14,11 +14,13 @@ export class NotesList {
 
     constructor(
         private readonly params: {
+            notesListTable: NotesListTable;
             onChange: () => void;
             showError: (message: string) => void;
         },
     ) {
-        NotesListTable.readAll()
+        this.params.notesListTable
+            .readAll()
             .then((data) => {
                 this.items = data.map((item) => ({
                     id: item.id,
@@ -36,7 +38,7 @@ export class NotesList {
     }
 
     public async createNewOne(): Promise<NoteRecord> {
-        const newNote = await NotesListTable.create({ title: "" });
+        const newNote = await this.params.notesListTable.create({ title: "" });
 
         this.items = [
             ...this.items!,
@@ -67,7 +69,7 @@ export class NotesList {
 
     public async persistTitle(id: number, title: string): Promise<void> {
         try {
-            await NotesListTable.update(id, { title });
+            await this.params.notesListTable.update(id, { title });
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             this.params.showError(`Failed to update note title: ${message}`);
@@ -86,7 +88,7 @@ export class NotesList {
             this.items = items.filter((item) => item.id !== id);
             this.params.onChange();
 
-            await NotesListTable.delete(id);
+            await this.params.notesListTable.delete(id);
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             this.params.showError(`Failed to delete note: ${message}`);

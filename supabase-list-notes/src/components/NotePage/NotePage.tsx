@@ -4,6 +4,7 @@ import { KeyboardEvent, SyntheticEvent, useEffect, useRef, useState } from "reac
 import { flattenGroups } from "../../Note/Note";
 import { useNote } from "../../Note/useNote";
 import { useErrorsContext } from "../../contexts/ErrorsContext";
+import { NoteItemsTable } from "../../tables/NoteItemsTable";
 import { NoteItem } from "../../types/NoteItem";
 import { captureDragAndDrop } from "../../utils/captureDragAndDrop";
 import { noop } from "../../utils/noop";
@@ -22,7 +23,11 @@ type DragState = {
     y: number;
 };
 
-export function NotePage({ noteId }: { noteId: number }) {
+export function NotePage({
+    noteId,
+}: {
+    noteId: number;
+}) {
     const { showError } = useErrorsContext();
     const [itemsVer, list] = useNote({ listId: noteId, showError });
     const [dragState, setDragState] = useState<DragState | null>(null);

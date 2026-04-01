@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useTablesContext } from "../contexts/TablesContext";
 import { Note } from "./Note";
 
 export function useNote(params: {
@@ -7,10 +8,13 @@ export function useNote(params: {
 }): [number, Note] {
     const [noteVer, setNoteVer] = useState<number>(0);
 
+    const { noteItemsTable } = useTablesContext();
+
     const noteRef = useRef<Note | null>(null);
     if (!noteRef.current) {
         noteRef.current = new Note({
             ...params,
+            noteItemsTable,
             onChange: () => {
                 setNoteVer((prev) => prev + 1);
             },

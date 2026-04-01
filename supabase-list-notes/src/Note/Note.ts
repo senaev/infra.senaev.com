@@ -20,12 +20,14 @@ export class Note {
 
     public constructor(
         private readonly params: {
+            noteItemsTable: NoteItemsTable;
             listId: number;
             onChange: () => void;
             showError: (message: string) => void;
         },
     ) {
-        NoteItemsTable.readAll(this.params.listId)
+        this.params.noteItemsTable
+            .readAll(this.params.listId)
             .then((data) => {
                 this.setItems(data.map((item) => ({ ...item, persisted: true })));
                 this.params.onChange();
@@ -133,7 +135,7 @@ export class Note {
             return;
         }
 
-        NoteItemsTable.delete(id).catch((error) => {
+        this.params.noteItemsTable.delete(id).catch((error) => {
             this.params.showError(error.message);
         });
     }
@@ -162,7 +164,8 @@ export class Note {
             return;
         }
 
-        NoteItemsTable.update(id, { ...updates, update_index })
+        this.params.noteItemsTable
+            .update(id, { ...updates, update_index })
             .then((result) => {
                 if (result === "update_index_conflict") {
                     // Ignore conflicts, persistent state will be delivered through server-push
@@ -308,7 +311,8 @@ export class Note {
             selectionEnd: 0,
         });
 
-        NoteItemsTable.create(newItem)
+        this.params.noteItemsTable
+            .create(newItem)
             .then((data) => {
                 // Item was deleted on the client
                 if (this.tempIdsRemovedSet.delete(tempId)) {

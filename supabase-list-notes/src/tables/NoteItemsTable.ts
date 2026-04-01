@@ -1,4 +1,4 @@
-import { supabase } from "../contexts/SupabaseClientContext";
+import { SupabaseClient } from "@supabase/supabase-js";
 import { NoteItem } from "../types/NoteItem";
 import { SplitCommaAndTrim } from "../utils/SplitCommaAndTrim";
 
@@ -8,7 +8,9 @@ const TABLE_COLUMNS =
 type TableColumns = SplitCommaAndTrim<typeof TABLE_COLUMNS>;
 
 export class NoteItemsTable {
-    public static async create({
+    constructor(private readonly supabase: SupabaseClient) {}
+
+    public async create({
         list_id,
         title,
         position,
@@ -19,7 +21,7 @@ export class NoteItemsTable {
         NoteItem,
         "list_id" | "title" | "position" | "check_time" | "update_index" | "child"
     >): Promise<Record<TableColumns, any>> {
-        const { data, error } = await supabase
+        const { data, error } = await this.supabase
             .from(TABLE_NAME)
             .insert({
                 list_id,
@@ -39,8 +41,8 @@ export class NoteItemsTable {
         return data;
     }
 
-    public static async readAll(listId: number): Promise<Pick<NoteItem, TableColumns>[]> {
-        const { error, data } = await supabase
+    public async readAll(listId: number): Promise<Pick<NoteItem, TableColumns>[]> {
+        const { error, data } = await this.supabase
             .from(TABLE_NAME)
             .select(TABLE_COLUMNS)
             .eq("list_id", listId);
@@ -54,7 +56,7 @@ export class NoteItemsTable {
         return data;
     }
 
-    public static async update(
+    public async update(
         itemId: number,
         updates: Partial<Pick<NoteItem, "title" | "position" | "check_time">> & {
             update_index: number;
@@ -65,7 +67,7 @@ export class NoteItemsTable {
               updated: string;
           }
     > {
-        const { error, data } = await supabase
+        const { error, data } = await this.supabase
             .from(TABLE_NAME)
             .update(updates)
             .eq("id", itemId)
@@ -89,8 +91,8 @@ export class NoteItemsTable {
         };
     }
 
-    public static async delete(itemId: number): Promise<void> {
-        const { error } = await supabase.from(TABLE_NAME).delete().eq("id", itemId);
+    public async delete(itemId: number): Promise<void> {
+        const { error } = await this.supabase.from(TABLE_NAME).delete().eq("id", itemId);
 
         if (error) {
             throw new Error(`NoteItemsTable.delete(${itemId}) error: ${error.message}`);
