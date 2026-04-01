@@ -7,6 +7,7 @@ import { useErrorsContext } from "../../contexts/ErrorsContext";
 import { NotesListContext, useNotesListContext } from "../../contexts/NotesListContext";
 import {
     SupabaseClientContextProvider,
+    SupabaseClientStatusObjectNotReady,
     useSupabaseClientContext,
 } from "../../contexts/SupabaseClientContext";
 import { TablesContext, TablesContextType } from "../../contexts/TablesContext";
@@ -20,7 +21,7 @@ import { NoteHeader } from "../NoteHeader/NoteHeader";
 import { NotePage } from "../NotePage/NotePage";
 import { Page404 } from "../Page404/Page404";
 
-function NoteRouteElement() {
+export function NoteRouteElement() {
     const { noteId } = useParams<{ noteId: string }>();
     const { items } = useNotesListContext();
 
@@ -56,7 +57,7 @@ function NoteRouteElement() {
     );
 }
 
-export function NotesWithApp({ supabaseClient }: { supabaseClient: SupabaseClient }) {
+export function NotesApp({ supabaseClient }: { supabaseClient: SupabaseClient }) {
     const { showError } = useErrorsContext();
 
     const tablesRef = useRef<TablesContextType | null>(null);
@@ -94,18 +95,35 @@ export function NotesWithApp({ supabaseClient }: { supabaseClient: SupabaseClien
     );
 }
 
-export function AuthApp() {
-    return <div className="App__page">AUTH!</div>;
+const SUPABASE_DASHBOARD_LINK = "https://supabase.com/dashboard";
+
+export function AuthPage({ statusObject }: { statusObject: SupabaseClientStatusObjectNotReady }) {
+    return (
+        <>
+            <MainPageHeader />
+            <section>
+                <h3>1. Create database</h3>
+                <p>
+                    Log in to your Supabase account and create a new project on{" "}
+                    <a href={SUPABASE_DASHBOARD_LINK} target="_blank" rel="noopener noreferrer">
+                        dashboard
+                    </a>
+                    .
+                </p>
+                <p>Create tables using the SQL request.</p>
+            </section>
+        </>
+    );
 }
 
 export function NotesWithAuthApp() {
     const supabaseClientContext = useSupabaseClientContext();
 
     if (supabaseClientContext.status === "ready") {
-        return <NotesWithApp supabaseClient={supabaseClientContext.client} />;
+        return <NotesApp supabaseClient={supabaseClientContext.client} />;
     }
 
-    return <AuthApp />;
+    return <AuthPage statusObject={supabaseClientContext} />;
 }
 
 export function App() {

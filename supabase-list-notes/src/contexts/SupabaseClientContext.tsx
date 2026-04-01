@@ -1,17 +1,18 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { createContext, PropsWithChildren, useContext, useRef } from "react";
 
-type SupabaseClientContextType =
-    | {
-          status: "require-credentials";
-      }
-    | {
-          status: "wrong-credentials";
-      }
-    | {
-          status: "ready";
-          client: SupabaseClient;
-      };
+export type SupabaseClientStatusObjectNotReady = {
+    status: "require-credentials" | "wrong-credentials";
+};
+
+export type SupabaseClientStatusObjectReady = {
+    status: "ready";
+    client: SupabaseClient;
+};
+
+export type SupabaseClientContextType =
+    | SupabaseClientStatusObjectNotReady
+    | SupabaseClientStatusObjectReady;
 
 const CONTEXT_VALUE_REQUIRE_CREDENTIALS = {
     status: "require-credentials",
