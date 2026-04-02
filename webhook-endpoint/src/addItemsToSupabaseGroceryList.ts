@@ -7,7 +7,7 @@ export async function addItemsToSupabaseGroceryList(items: string[]): Promise<vo
         list_id: SUPABASE_LIST_ID,
         child: false,
         title,
-        position: 1,
+        position: 0,
         update_index: 1,
     }));
 
