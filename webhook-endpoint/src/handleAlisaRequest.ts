@@ -73,7 +73,10 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
                     telegramApiCall("sendMessage", {
                         chat_id: TRICKY_DAD_DEBUG_CHAT_ID,
                         parse_mode: "MarkdownV2",
-                        text: `⌛️ Time limit=${ALISA_RESPONSE_TIME_LIMIT} reached\nResponse: ${responseText}`,
+                        text: [
+                            `⌛️ Time limit\\=${ALISA_RESPONSE_TIME_LIMIT} reached`,
+                            `Response: ${escapeTelegramMarkdownV2(responseText)}`,
+                        ].join("\n"),
                     }).catch((err) => {
                         console.error("❌ Failed to send success message to Telegram:", err);
                     });

@@ -18,13 +18,15 @@ export async function telegramApiCall(
         },
     );
 
+    const rawBody = await response.text();
+
     if (!response.ok) {
         throw new Error(
-            `Telegram API ${method} failed: HTTP ${response.status} ${response.statusText}`,
+            `Telegram API ${method} failed: HTTP ${response.status} ${response.statusText}${rawBody ? ` - ${rawBody}` : ""}`,
         );
     }
 
-    const data = (await response.json()) as TelegramResponse;
+    const data = JSON.parse(rawBody) as TelegramResponse;
 
     if (!data.ok) {
         throw new Error(`Telegram API ${method} returned error: ${data.description ?? "unknown"}`);
