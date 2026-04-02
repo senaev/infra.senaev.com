@@ -19,6 +19,8 @@ const ANNOUNCEMENTS = [
 const announcement = ANNOUNCEMENTS.join(" ");
 const subscriptionUrl = `https://vpn-subscription.senaev.com/${VPN_SUBSCRIPTION_SECRET}`;
 
+const VPN_SUBSCRIPTION_CHAT_ID = -1003702952069;
+
 const server = Fastify({ logger: true });
 
 const macroValues: Record<string, string> = {

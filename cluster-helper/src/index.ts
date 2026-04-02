@@ -4,6 +4,7 @@ import { handleAlertmanagerWebhook } from "./alerts/handleAlertmanagerWebhook";
 import { KAFKA_BROKERS } from "./env";
 import { KafkaTopicProcessorArgument } from "./kafka-topic-processors/KafkaTopicProcessorArgument";
 import { processQbittorrentWebuiPasswordTopic } from "./kafka-topic-processors/processQbittorrentWebuiPasswordTopic";
+import { processTgSendTopic } from "./kafka-topic-processors/processTgSendTopic";
 import { processTelegramWebhookDataTopic } from "./kafka-topic-processors/processTelegramWebhookDataTopic";
 import { processTgSendToMediaServerTopic } from "./kafka-topic-processors/processTgSendToMediaServerTopic";
 import { connectProducer, disconnectProducer } from "./kafka/producer";
@@ -44,6 +45,7 @@ const KAFKA_TOPIC_HANDLERS: Record<
 > = {
     "telegram-webhook-data-topic": processTelegramWebhookDataTopic,
     "qbittorrent-webui-password-topic": processQbittorrentWebuiPasswordTopic,
+    "tg-send-topic": processTgSendTopic,
     "tg-send-to-media-server-topic": processTgSendToMediaServerTopic,
 };
 

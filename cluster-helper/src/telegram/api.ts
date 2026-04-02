@@ -29,6 +29,11 @@ async function callApi<T>(method: string, body?: object): Promise<T> {
     return data.result;
 }
 
+export type TelegramForwardPayload = {
+    method: string;
+    body?: Record<string, unknown>;
+};
+
 export async function sendTelegramMessage({
     text,
     chatId,
@@ -100,6 +105,13 @@ export async function sendTelegramDocument({
 
 export async function getMe(): Promise<TelegramUser> {
     return callApi<TelegramUser>("getMe");
+}
+
+export async function forwardTelegramApiCall({
+    method,
+    body,
+}: TelegramForwardPayload): Promise<unknown> {
+    return callApi(method, body);
 }
 
 export async function setMessageReaction(

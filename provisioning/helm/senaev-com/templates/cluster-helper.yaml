@@ -1,5 +1,3 @@
-# Send telegram messages to channel via Kafka (pandaproxy):
-# curl -X POST redpanda/topics/tg-send-to-media-server-topic -H "Content-Type: application/vnd.kafka.json.v2+json" -d '{"records":[{"value":"Hello, world!"}]}'
 {{- if .Values.clusterHelper.enabled }}
 apiVersion: apps/v1
 kind: Deployment
