@@ -12,7 +12,7 @@ import { renderInstructionsPage } from "./renderInstructionsPage.js";
 
 const TITLE = "Senaev🔐VPN";
 const ANNOUNCEMENTS = [
-    "🚀 Добавляйтесь в чат телеги.",
+    "🚀 Обязательно добавляйтесь в чат телеги.",
     "❌ Торренты качать нельзя.",
     "🐅 VPN только для своих.",
 ];
