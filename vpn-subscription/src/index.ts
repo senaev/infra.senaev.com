@@ -122,6 +122,21 @@ function validateSecret(secret: string, reply: FastifyReply) {
     return true;
 }
 
+function getClientIpAddress(
+    headers: Record<string, string | string[] | undefined>,
+    ip: string,
+): string {
+    const forwardedFor = headers["x-forwarded-for"];
+    const forwardedForValue = Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor;
+    const forwardedIp = forwardedForValue?.split(",")[0]?.trim();
+
+    if (forwardedIp) {
+        return forwardedIp;
+    }
+
+    return ip;
+}
+
 server.get<{ Params: { secret: string } }>("/:secret", async (request, reply) => {
     if (!validateSecret(request.params.secret, reply)) {
         return;
@@ -159,6 +174,62 @@ server.get<{ Params: { secret: string } }>("/:secret", async (request, reply) =>
 server.post<{ Params: { secret: string } }>("/:secret", async (request, reply) => {
     if (!validateSecret(request.params.secret, reply)) {
         return;
+    }
+
+    const { body } = request;
+
+    if (!body || typeof body !== "object") {
+        return reply
+            .code(400)
+            .type("application/json; charset=utf-8")
+            .send({ status: "error", message: "Invalid request body" });
+    }
+
+    const { message } = body as { message?: unknown };
+
+    if (!message || typeof message !== "string") {
+        return reply.code(400).type("application/json; charset=utf-8").send({
+            status: "error",
+            message: "Missing or invalid 'message' field in request body",
+        });
+    }
+
+    const senderIpAddress = getClientIpAddress(request.headers, request.ip);
+    const telegramMessage = [
+        "⚠️ Новое сообщение об ошибке",
+        "",
+        `🛰️ IP: ${senderIpAddress}`,
+        `🧭 User-Agent: ${request.headers["user-agent"] ?? "unknown"}`,
+        "",
+        "💬 Текст сообщения:",
+        message,
+    ].join("\n");
+
+    const redpandaResponse = await fetch("http://redpanda/topics/tg-send-topic", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/vnd.kafka.json.v2+json",
+        },
+        body: JSON.stringify({
+            records: [
+                {
+                    value: {
+                        method: "sendMessage",
+                        body: {
+                            chat_id: VPN_SUBSCRIPTION_CHAT_ID,
+                            text: telegramMessage,
+                        },
+                    },
+                },
+            ],
+        }),
+    });
+
+    if (!redpandaResponse.ok) {
+        return reply.code(500).type("application/json; charset=utf-8").send({
+            status: "error",
+            message: "Cannot write to Redpanda topic",
+        });
     }
 
     return reply.type("application/json; charset=utf-8").send({ status: "ok" });
