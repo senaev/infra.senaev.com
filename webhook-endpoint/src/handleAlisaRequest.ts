@@ -42,7 +42,8 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
                         `Command: \`${escapeTelegramMarkdownV2(command)}\``,
                         `Type: \`${escapeTelegramMarkdownV2(responseType)}\``,
                         `Text: ${escapeTelegramMarkdownV2(result.responseTextForUser)}`,
-                        `OpenRouter time: ${result.openRouterResponseTime + "ms"}`,
+                        `OpenRouter time: ${result.openRouterResponseTime}`,
+                        `Supabase time: ${result.supabaseResponseTime}`,
                         `Duration: \`${escapeTelegramMarkdownV2(`${((Date.now() - startTime) / 1000).toFixed(2)}s`)}\``,
                     ].join("\n"),
                 }).catch((err) => {
