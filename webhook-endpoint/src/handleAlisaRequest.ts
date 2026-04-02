@@ -32,7 +32,9 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
         let responseType: "full" | "short" | "not-responded-yet" = "not-responded-yet";
         const responseText = await Promise.race<string>([
             processAlisaCommand(command).then((result) => {
-                responseType = "full";
+                if (responseType !== "full") {
+                    responseType = "full";
+                }
 
                 telegramApiCall("sendMessage", {
                     chat_id: TRICKY_DAD_DEBUG_CHAT_ID,
@@ -63,10 +65,14 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
                     responseType = "short";
                     const responseText = getRandomValueFromArray([
                         "Батя сказал что сделает",
-                        "Батя убежал записывать",
+                        "Батя побежал записывать",
                         "Опять? Ну ладно, записал",
                         "Эх, опять расходы",
                         "Батя постарается",
+                        "Батя вроде бы запомнил и постарается записать",
+                        "О, новая работёнка для Бати",
+                        "Чуть что сразу батя, ну ладно, записал",
+                        "Не батькай мне тут, но я записал",
                     ]);
 
                     console.log(

@@ -44,7 +44,7 @@ export async function parseAlisaCommandWithOpenRouter(
                         "Answer strictly in JSON that matches the provided schema.",
                         "Preserve item names and error message in Russian.",
                         "## Errors",
-                        "If the user asks for anything else, return an error.",
+                        "If the user asks for anything else, return an error and short explanation.",
                     ].join(" "),
                 },
                 {

@@ -27,7 +27,15 @@ export async function processAlisaCommand(command: string): Promise<HandleTricky
     if (error !== null) {
         console.log(`❌ Completed with error=[${error}]`);
         return {
-            responseTextForUser: `Ошибка искусственного интеллекта: ${error}`,
+            responseTextForUser: `${getRandomValueFromArray([
+                "Ошибка искусственного интеллекта",
+                "Роботы восстали и не хотят работать",
+                "Вы сломали все компьютеры в мире, и они вернули ошибку",
+                "Батя опять поругался с искусственным интеллектом, и он не хочет работать, говорит что-то про ошибку",
+                "Искусственный интеллект сказал, что не может понять эту команду, и выдал ошибку",
+                "Батя пытался поговорить с искусственным интеллектом",
+                "Искусственный интеллект на такое не способен",
+            ])}: ${error}`,
             openRouterResponseTime,
             supabaseResponseTime: null,
         };
@@ -36,7 +44,7 @@ export async function processAlisaCommand(command: string): Promise<HandleTricky
     if (items.length === 0) {
         console.log(`❌ Completed with error=[${error}]`);
         return {
-            responseTextForUser: `Батя на понял, что нужно добавить`,
+            responseTextForUser: `Батя не понял, что нужно добавить`,
             openRouterResponseTime,
             supabaseResponseTime: null,
         };
