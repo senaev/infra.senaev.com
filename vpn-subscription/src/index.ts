@@ -1,4 +1,4 @@
-import Fastify from "fastify";
+import Fastify, { type FastifyReply } from "fastify";
 import { createHash } from "node:crypto";
 import {
     PORT,
@@ -111,9 +111,18 @@ const subscriptionBody = `${SUBSCRIPTION_ENTRIES.map((entry) =>
     withName(replaceMacros(entry.link), entry.name),
 ).join("\n")}\n`;
 
+function validateSecret(secret: string, reply: FastifyReply) {
+    if (secret !== VPN_SUBSCRIPTION_SECRET) {
+        reply.code(403).type("text/plain; charset=utf-8").send("❌ Forbidden");
+        return false;
+    }
+
+    return true;
+}
+
 server.get<{ Params: { secret: string } }>("/:secret", async (request, reply) => {
-    if (request.params.secret !== VPN_SUBSCRIPTION_SECRET) {
-        return reply.code(403).type("text/plain; charset=utf-8").send("❌ Forbidden");
+    if (!validateSecret(request.params.secret, reply)) {
+        return;
     }
 
     const userAgent = request.headers["user-agent"] ?? "";
@@ -143,6 +152,14 @@ server.get<{ Params: { secret: string } }>("/:secret", async (request, reply) =>
                 telegramChatUrl: VPN_SUBSCRIPTION_CHAT,
             }),
         );
+});
+
+server.post<{ Params: { secret: string } }>("/:secret", async (request, reply) => {
+    if (!validateSecret(request.params.secret, reply)) {
+        return;
+    }
+
+    return reply.type("application/json; charset=utf-8").send({ status: "ok" });
 });
 
 async function main(): Promise<void> {
