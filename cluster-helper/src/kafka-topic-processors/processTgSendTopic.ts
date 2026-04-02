@@ -1,12 +1,6 @@
 import { forwardTelegramApiCall, type TelegramForwardPayload } from "../telegram/api";
 import { KafkaTopicProcessorArgument } from "./KafkaTopicProcessorArgument";
 
-/**
- * Forward Telegram API request from Kafka to Telegram API as-is.
- *
- * Expected Kafka message value:
- * {"method":"sendMessage","body":{"chat_id":"123","text":"Hello"}}
- */
 export async function processTgSendTopic({
     message: { value },
 }: KafkaTopicProcessorArgument): Promise<void> {
