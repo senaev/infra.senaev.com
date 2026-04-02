@@ -53,6 +53,9 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
             }),
             new Promise<string>((resolve) => {
                 setTimeout(() => {
+                    console.log(
+                        `⌛️ Time limit of ${ALISA_RESPONSE_TIME_LIMIT}ms reached for Alisa response, sending fallback response`,
+                    );
                     responseType = "short";
                     const responseText = getRandomValueFromArray([
                         "Батя сказал что сделает",
@@ -61,6 +64,10 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
                         "Эх, опять расходы",
                         "Батя постарается",
                     ]);
+
+                    console.log(
+                        `✅ Sending fallback response for Alisa command, responseText=[${responseText}]`,
+                    );
                     resolve(responseText);
 
                     telegramApiCall("sendMessage", {
