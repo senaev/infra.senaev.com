@@ -59,7 +59,7 @@ if ! curl -skf --connect-timeout 10 "${CONTROL_PLANE_SERVER_URL}/ping" >/dev/nul
 fi
 echo "✅ [bootstrap-worker] Control plane is reachable"
 
-echo "👉 [bootstrap-worker] Installing k3s=[${K3S_VERSION}] agent"
+echo "👉 [bootstrap-worker] Installing k3s=[${K3S_VERSION}] agent ⚠️ might take a while, wait"
 curl -sfL https://get.k3s.io | \
   INSTALL_K3S_VERSION="${K3S_VERSION}" \
   K3S_URL="$CONTROL_PLANE_SERVER_URL" \
@@ -67,8 +67,7 @@ curl -sfL https://get.k3s.io | \
   INSTALL_K3S_EXEC=" \
     agent \
     $NODE_LABEL_ARGS_STR \
-    --node-ip=$TAILNET_IP \
-    --flannel-iface=tailscale0 \
+    --node-external-ip=$TAILNET_IP \
   " \
   sh -
 echo "✅ [bootstrap-worker] Installed k3s agent"

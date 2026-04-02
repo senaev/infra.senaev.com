@@ -15,9 +15,9 @@ if ! command -v k3s &>/dev/null; then
     INSTALL_K3S_EXEC=" \
     server \
     --disable traefik \
-    --node-ip=$TAILNET_IP \
     --advertise-address=$TAILNET_IP \
-    --flannel-iface=tailscale0 \
+    --node-external-ip=$TAILNET_IP \
+    --flannel-external-ip \
     --write-kubeconfig-mode 644 \
     --node-label vps=hetzner \
     " \
