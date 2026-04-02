@@ -53,6 +53,10 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
             }),
             new Promise<string>((resolve) => {
                 setTimeout(() => {
+                    if (responseType === "full") {
+                        return;
+                    }
+
                     console.log(
                         `⌛️ Time limit of ${ALISA_RESPONSE_TIME_LIMIT}ms reached for Alisa response, sending fallback response`,
                     );
