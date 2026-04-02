@@ -197,11 +197,11 @@ server.post<{ Params: { secret: string } }>("/:secret", async (request, reply) =
     const senderIpAddress = getClientIpAddress(request.headers, request.ip);
     const telegramMessage = [
         "⚠️ Новое сообщение об ошибке",
+        `🛰️ IP: \`${senderIpAddress}\``,
+        `🧭 User-Agent: \`${request.headers["user-agent"] ?? "unknown"}\``,
         "",
-        `🛰️ IP: ${senderIpAddress}`,
-        `🧭 User-Agent: ${request.headers["user-agent"] ?? "unknown"}`,
+        "---",
         "",
-        "💬 Текст сообщения:",
         message,
     ].join("\n");
 
@@ -218,6 +218,7 @@ server.post<{ Params: { secret: string } }>("/:secret", async (request, reply) =
                         body: {
                             chat_id: VPN_SUBSCRIPTION_CHAT_ID,
                             text: telegramMessage,
+                            parse_mode: "Markdown",
                         },
                     },
                 },
