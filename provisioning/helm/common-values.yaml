@@ -8,6 +8,8 @@ redpanda:
   topics:
     - name: telegram-webhook-data-topic
       partitions: 1
+    - name: tg-send-topic
+      partitions: 1
     - name: tg-send-to-media-server-topic
       partitions: 1
     - name: torrent-files-topic

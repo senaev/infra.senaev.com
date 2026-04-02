@@ -1,4 +1,4 @@
-import Fastify from "fastify";
+import Fastify, { type FastifyReply } from "fastify";
 import { createHash } from "node:crypto";
 import {
     PORT,
@@ -12,12 +12,14 @@ import { renderInstructionsPage } from "./renderInstructionsPage.js";
 
 const TITLE = "Senaev🔐VPN";
 const ANNOUNCEMENTS = [
-    "🚀 Добавляйтесь в чат телеги.",
+    "🚀 Обязательно добавляйтесь в чат телеги.",
     "❌ Торренты качать нельзя.",
     "🐅 VPN только для своих.",
 ];
 const announcement = ANNOUNCEMENTS.join(" ");
 const subscriptionUrl = `https://vpn-subscription.senaev.com/${VPN_SUBSCRIPTION_SECRET}`;
+
+const VPN_SUBSCRIPTION_CHAT_ID = -1003702952069;
 
 const server = Fastify({ logger: true });
 
@@ -111,9 +113,18 @@ const subscriptionBody = `${SUBSCRIPTION_ENTRIES.map((entry) =>
     withName(replaceMacros(entry.link), entry.name),
 ).join("\n")}\n`;
 
+function validateSecret(secret: string, reply: FastifyReply) {
+    if (secret !== VPN_SUBSCRIPTION_SECRET) {
+        reply.code(403).type("text/plain; charset=utf-8").send("❌ Forbidden");
+        return false;
+    }
+
+    return true;
+}
+
 server.get<{ Params: { secret: string } }>("/:secret", async (request, reply) => {
-    if (request.params.secret !== VPN_SUBSCRIPTION_SECRET) {
-        return reply.code(403).type("text/plain; charset=utf-8").send("❌ Forbidden");
+    if (!validateSecret(request.params.secret, reply)) {
+        return;
     }
 
     const userAgent = request.headers["user-agent"] ?? "";
@@ -143,6 +154,14 @@ server.get<{ Params: { secret: string } }>("/:secret", async (request, reply) =>
                 telegramChatUrl: VPN_SUBSCRIPTION_CHAT,
             }),
         );
+});
+
+server.post<{ Params: { secret: string } }>("/:secret", async (request, reply) => {
+    if (!validateSecret(request.params.secret, reply)) {
+        return;
+    }
+
+    return reply.type("application/json; charset=utf-8").send({ status: "ok" });
 });
 
 async function main(): Promise<void> {
