@@ -38,7 +38,6 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
                     chat_id: TRICKY_DAD_DEBUG_CHAT_ID,
                     parse_mode: "MarkdownV2",
                     text: [
-                        "Processed Alisa command",
                         `Command: \`${escapeTelegramMarkdownV2(command)}\``,
                         `Type: \`${escapeTelegramMarkdownV2(responseType)}\``,
                         `Text: ${escapeTelegramMarkdownV2(result.responseTextForUser)}`,
