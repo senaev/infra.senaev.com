@@ -68,6 +68,7 @@ curl -sfL https://get.k3s.io | \
     agent \
     $NODE_LABEL_ARGS_STR \
     --node-external-ip=$TAILNET_IP \
+    --flannel-iface=tailscale0 \
   " \
   sh -
 echo "✅ [bootstrap-worker] Installed k3s agent"

@@ -17,6 +17,7 @@ if ! command -v k3s &>/dev/null; then
     --disable traefik \
     --advertise-address=$TAILNET_IP \
     --node-external-ip=$TAILNET_IP \
+    --flannel-iface=tailscale0 \
     --flannel-external-ip \
     --write-kubeconfig-mode 644 \
     --node-label vps=hetzner \
