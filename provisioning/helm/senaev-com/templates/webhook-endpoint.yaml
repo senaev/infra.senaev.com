@@ -48,6 +48,18 @@ spec:
                   name: senaev-com-kv-secrets
                   key: OPENROUTER_API_KEY
                   optional: false
+            - name: SUPABASE_PROJECT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: SUPABASE_PROJECT_URL
+                  optional: false
+            - name: SUPABASE_PUBLISHABLE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: SUPABASE_PUBLISHABLE_KEY
+                  optional: false
 ---
 apiVersion: v1
 kind: Service
