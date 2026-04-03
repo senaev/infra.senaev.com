@@ -119,18 +119,14 @@ ssh-keygen -R "$SERVER_IP" 2>/dev/null || true
 echo "✅ [apply-terraform] known_hosts updated for $SERVER_IP"
 
 echo "👉 [apply-terraform] Waiting for SSH host key to become available"
-until ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts 2>/dev/null; do
+SSH_HOST_KEY=""
+until SSH_HOST_KEY="$(ssh-keyscan -H "$SERVER_IP" 2>/dev/null)"; do
   echo "⏳ [apply-terraform] SSH host key is not available yet, retrying in 1s"
   sleep 1
 done
+printf '%s\n' "$SSH_HOST_KEY" >> ~/.ssh/known_hosts
 echo "✅ [apply-terraform] SSH host key is available for $SERVER_IP"
 
-echo "👉 [apply-terraform] Waiting until SSH login works"
-until ssh "${SSH_OPTS[@]}" "root@$SERVER_IP" "true" >/dev/null 2>&1; do
-  echo "⏳ [apply-terraform] SSH login is not ready yet, retrying in 5s"
-  sleep 5
-done
-echo "✅ [apply-terraform] SSH login works for $SERVER_IP"
 
 echo "👉 [apply-terraform] Waiting for cloud-init to finish (⚠️ might take a few minutes on first boot)"
 CONSECUTIVE_QUERY_FAILURES=0
