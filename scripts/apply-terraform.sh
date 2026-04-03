@@ -50,6 +50,10 @@ sync_tfvar_to_env() {
   local value
 
   value="$(get_tfvar "$key")"
+  if [[ -z "$value" ]]; then
+    echo "❌ [apply-terraform] Missing required value for [$key] in terraform.tfvars" >&2
+    exit 1
+  fi
   upsert_env_var "$ENV_FILE" "$key" "$value"
 }
 
