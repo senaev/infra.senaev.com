@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 TERRAFORM_DIR="$ROOT_DIR/terraform"
 ENV_FILE="$ROOT_DIR/.env"
 ENV_EXAMPLE="$ROOT_DIR/.env.example"
+SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=yes)
 
 get_tfvar() {
   local key="$1"
@@ -117,16 +118,23 @@ echo "👉 [apply-terraform] Updating known_hosts for $SERVER_IP"
 ssh-keygen -R "$SERVER_IP" 2>/dev/null || true
 echo "✅ [apply-terraform] known_hosts updated for $SERVER_IP"
 
-echo "👉 [apply-terraform] Waiting for SSH to become available"
+echo "👉 [apply-terraform] Waiting for SSH host key to become available"
 until ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts 2>/dev/null; do
+  echo "⏳ [apply-terraform] SSH host key is not available yet, retrying in 1s"
+  sleep 1
+done
+echo "✅ [apply-terraform] SSH host key is available for $SERVER_IP"
+
+echo "👉 [apply-terraform] Waiting until SSH login works"
+until ssh "${SSH_OPTS[@]}" "root@$SERVER_IP" "true" >/dev/null 2>&1; do
+  echo "⏳ [apply-terraform] SSH login is not ready yet, retrying in 5s"
   sleep 5
 done
-echo "✅ [apply-terraform] SSH is available for $SERVER_IP"
+echo "✅ [apply-terraform] SSH login works for $SERVER_IP"
 
 echo "👉 [apply-terraform] Waiting for cloud-init to finish (⚠️ might take a few minutes on first boot)"
 CONSECUTIVE_QUERY_FAILURES=0
 MAX_CONSECUTIVE_QUERY_FAILURES=6
-SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=yes)
 while true; do
   CLOUD_INIT_STATUS="$(ssh "${SSH_OPTS[@]}" "root@$SERVER_IP" "cloud-init status --format=json || true" 2>/dev/null)" || {
     CONSECUTIVE_QUERY_FAILURES=$((CONSECUTIVE_QUERY_FAILURES + 1))

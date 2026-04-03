@@ -1,4 +1,3 @@
-// TODO: add in shell script??
 resource "hcloud_ssh_key" "ecdsa" {
   name       = "senaev@yandex-team"
   public_key = "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOx9ZqfcNbREx55m3iBB7n91NvU7mynTteeCVIG7lxxpS4dGE9wROwzGpXMHpYfPYUpzQd29hr7I1yJgI5JSFpY="
