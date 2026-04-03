@@ -16,18 +16,18 @@ variable "TG_TOKEN_SENAEV_COM_BOT" {
   sensitive   = true
 }
 
-variable "VPS_YC_HOST" {
-  description = "YC worker host"
+variable "VPS_MEDIA_HOST" {
+  description = "Media worker host"
   type        = string
 }
 
-variable "VPS_YC_USERNAME" {
-  description = "YC worker SSH username"
+variable "VPS_MEDIA_USERNAME" {
+  description = "Media worker SSH username"
   type        = string
 }
 
-variable "VPS_YC_LABEL" {
-  description = "YC worker VPS label"
+variable "VPS_MEDIA_LABEL" {
+  description = "Media worker VPS label"
   type        = string
 }
 

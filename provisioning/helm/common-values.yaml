@@ -1,7 +1,7 @@
 telegramClusterChatId: "-5238510786"
 telegramMediaServerChatId: "-5020737666"
 
-mediaServerNodeName: "compute-vm-4-4-128-ssd-1772141617672"
+mediaServerNodeName: "media"
 
 redpanda:
   kafkaPort: 9092

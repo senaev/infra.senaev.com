@@ -20,10 +20,10 @@ CONTROL_PLANE_SERVER_URL="https://$TAILNET_ADDRESS:$CONTROL_PLANE_SERVER_PORT"
 
 echo "👉 [connect-all-workers] Connecting to worker nodes"
 
-YC_ADDR="${VPS_YC_USERNAME}@${VPS_YC_HOST}"
-echo "👉 [connect-all-workers] Connecting to node=[$YC_ADDR] with vps=[${VPS_YC_LABEL}]"
-"$ROOT_DIR/scripts/connect-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN" "$YC_ADDR" "$VPS_YC_LABEL"
-echo "✅ [connect-all-workers] Connected to node=[$YC_ADDR] with vps=[${VPS_YC_LABEL}]"
+MEDIA_ADDR="${VPS_MEDIA_USERNAME}@${VPS_MEDIA_HOST}"
+echo "👉 [connect-all-workers] Connecting to node=[$MEDIA_ADDR] with vps=[${VPS_MEDIA_LABEL}]"
+"$ROOT_DIR/scripts/connect-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN" "$MEDIA_ADDR" "$VPS_MEDIA_LABEL"
+echo "✅ [connect-all-workers] Connected to node=[$MEDIA_ADDR] with vps=[${VPS_MEDIA_LABEL}]"
 
 RU_ADDR="${VPS_RU_USERNAME}@${VPS_RU_HOST}"
 echo "👉 [connect-all-workers] Connecting to node=[$RU_ADDR] with vps=[${VPS_RU_LABEL}]"

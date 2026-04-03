@@ -124,9 +124,9 @@ echo "✅ [apply-terraform] CONTROL_PLANE_SERVER_IP set to $SERVER_IP"
 echo "👉 [apply-terraform] Applying values from terraform.tfvars to .env"
 for key in \
   TG_TOKEN_SENAEV_COM_BOT \
-  VPS_YC_HOST \
-  VPS_YC_USERNAME \
-  VPS_YC_LABEL \
+  VPS_MEDIA_HOST \
+  VPS_MEDIA_USERNAME \
+  VPS_MEDIA_LABEL \
   VPS_RU_HOST \
   VPS_RU_USERNAME \
   VPS_RU_LABEL

@@ -1,9 +1,8 @@
-
 enabled: true
 
 deployments:
   - vps: hetzner
-  - vps: yc
+  - vps: ru
 
 acmeStoragePath: /k3s-cluster/volumes/traefik/acme
 

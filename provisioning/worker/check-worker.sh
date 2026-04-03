@@ -6,7 +6,7 @@ echo "👉 [check-worker] Starting check"
 # Exit 0 if all conditions are satisfied (worker is OK). Exit 1 if any condition fails (reinstall needed).
 if [[ $# -lt 3 ]]; then
   echo "Usage: $0 <control_plane_server_url> <node_token> <vps>" >&2
-  echo "Example: $0 https://11.111.111.111:6443 K106...7b53 yc" >&2
+  echo "Example: $0 https://11.111.111.111:6443 K106...7b53 vps_name" >&2
   exit 2
 fi
 
