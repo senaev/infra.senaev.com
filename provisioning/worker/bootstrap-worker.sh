@@ -59,15 +59,39 @@ fi
 echo "✅ $LOG_PREFIX Control plane is reachable"
 
 echo "👉 $LOG_PREFIX Installing k3s=[${K3S_VERSION}] agent ⚠️ might take a while, wait"
-curl -sfL https://get.k3s.io | \
-  INSTALL_K3S_VERSION="${K3S_VERSION}" \
-  K3S_URL="$CONTROL_PLANE_SERVER_URL" \
-  K3S_TOKEN="$NODE_TOKEN" \
-  INSTALL_K3S_EXEC=" \
-    agent \
-    $NODE_LABEL_ARGS_STR \
-    --node-external-ip=$TAILNET_IP \
-    --flannel-iface=tailscale0 \
-  " \
-  sh -
+
+install_k3s_agent() {
+  curl -sfL https://get.k3s.io | \
+    INSTALL_K3S_VERSION="${K3S_VERSION}" \
+    K3S_URL="$CONTROL_PLANE_SERVER_URL" \
+    K3S_TOKEN="$NODE_TOKEN" \
+    INSTALL_K3S_EXEC=" \
+      agent \
+      $NODE_LABEL_ARGS_STR \
+      --node-external-ip=$TAILNET_IP \
+      --flannel-iface=tailscale0 \
+    " \
+    sh -
+}
+
+wait_for_k3s_agent_start() {
+  local deadline
+  deadline=$((SECONDS + 120))
+
+  while (( SECONDS < deadline )); do
+    if sudo systemctl is-active --quiet k3s-agent; then
+      return 0
+    fi
+    sleep 5
+  done
+
+  return 1
+}
+
+if ! install_k3s_agent || ! wait_for_k3s_agent_start; then
+  echo "⚠️ $LOG_PREFIX k3s agent did not start within 2 minutes, retrying once"
+  install_k3s_agent
+  wait_for_k3s_agent_start
+fi
+
 echo "✅ $LOG_PREFIX Installed k3s agent"
