@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+TAILSCALE_AUTH_KEY="$${1:?bootstrap-server.sh requires tailscale auth key as the first argument}"
+SERVER_NAME="$${2:?bootstrap-server.sh requires server name as the second argument}"
+
+echo "👉 [bootstrap-server] Setting server name to [$SERVER_NAME]"
+hostnamectl set-hostname "$SERVER_NAME"
+echo "✅ [bootstrap-server] Server name set"
+
 echo "👉 [bootstrap-server] Installing necessary packages"
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
@@ -28,7 +35,7 @@ echo "✅ [bootstrap-server] Powerlevel10k theme set up"
 
 echo "👉 [bootstrap-server] Installing Tailscale"
 curl -fsSL https://tailscale.com/install.sh | sh
-tailscale up --auth-key=${tailscale_auth_key}
+tailscale up --auth-key="$TAILSCALE_AUTH_KEY" --hostname="$SERVER_NAME"
 echo "✅ [bootstrap-server] Tailscale installed and connected"
 
 echo "👉 [bootstrap-server] Installing Helm"
