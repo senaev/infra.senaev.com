@@ -16,7 +16,9 @@ resource "hcloud_server" "control_plane" {
   ssh_keys    = [hcloud_ssh_key.ecdsa.id, hcloud_ssh_key.ed25519.id]
 
   user_data = templatefile("${path.module}/cloud-init.yaml.tpl", {
-    tailscale_auth_key = tailscale_tailnet_key.hetzner.key
+    bootstrap_server_script = templatefile("${path.module}/bootstrap-server.sh.tpl", {})
+    server_name             = "hetzner"
+    tailscale_auth_key      = tailscale_tailnet_key.hetzner.key
   })
 
   lifecycle {

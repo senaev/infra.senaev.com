@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 TERRAFORM_DIR="$ROOT_DIR/terraform"
 ENV_FILE="$ROOT_DIR/.env"
 ENV_EXAMPLE="$ROOT_DIR/.env.example"
+SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=yes)
 
 get_tfvar() {
   local key="$1"
@@ -117,12 +118,58 @@ echo "👉 [apply-terraform] Updating known_hosts for $SERVER_IP"
 ssh-keygen -R "$SERVER_IP" 2>/dev/null || true
 echo "✅ [apply-terraform] known_hosts updated for $SERVER_IP"
 
-echo "👉 [apply-terraform] Waiting for SSH to become available"
-until ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts 2>/dev/null; do
+echo "👉 [apply-terraform] Waiting for SSH host key to become available"
+SSH_HOST_KEY=""
+until SSH_HOST_KEY="$(ssh-keyscan -H "$SERVER_IP" 2>/dev/null)"; do
+  echo "⏳ [apply-terraform] SSH host key is not available yet, retrying in 1s"
+  sleep 1
+done
+printf '%s\n' "$SSH_HOST_KEY" >> ~/.ssh/known_hosts
+echo "✅ [apply-terraform] SSH host key is available for $SERVER_IP"
+
+
+echo "👉 [apply-terraform] Waiting for cloud-init to finish (⚠️ might take a few minutes on first boot)"
+CONSECUTIVE_QUERY_FAILURES=0
+MAX_CONSECUTIVE_QUERY_FAILURES=6
+while true; do
+  CLOUD_INIT_STATUS="$(ssh "${SSH_OPTS[@]}" "root@$SERVER_IP" "cloud-init status --format=json || true" 2>/dev/null)" || {
+    CONSECUTIVE_QUERY_FAILURES=$((CONSECUTIVE_QUERY_FAILURES + 1))
+    echo "⚠️  [apply-terraform] Failed to query cloud-init status (attempt $CONSECUTIVE_QUERY_FAILURES/$MAX_CONSECUTIVE_QUERY_FAILURES), retrying in 5s"
+
+    if [ "$CONSECUTIVE_QUERY_FAILURES" -ge "$MAX_CONSECUTIVE_QUERY_FAILURES" ]; then
+      echo "❌ [apply-terraform] Could not reconnect to the server to read cloud-init status"
+      echo "ℹ️  [apply-terraform] Try: ssh root@$SERVER_IP"
+      exit 1
+    fi
+
+    sleep 5
+    continue
+  }
+  CONSECUTIVE_QUERY_FAILURES=0
+
+  if [ -z "$CLOUD_INIT_STATUS" ]; then
+    echo "⚠️  [apply-terraform] cloud-init returned empty status payload, retrying in 5s"
+    sleep 5
+    continue
+  fi
+
+  STATUS="$(echo "$CLOUD_INIT_STATUS" | jq -r '.status')"
+  EXTENDED_STATUS="$(echo "$CLOUD_INIT_STATUS" | jq -r '.extended_status // ""')"
+
+  echo "⏳ [apply-terraform] cloud-init status=[$STATUS] extended_status=[$EXTENDED_STATUS]"
+
+  if [ "$STATUS" = "done" ]; then
+    break
+  fi
+
+  if [ "$STATUS" = "error" ]; then
+    echo "❌ [apply-terraform] cloud-init failed, collecting diagnostics"
+    ssh "${SSH_OPTS[@]}" "root@$SERVER_IP" "cloud-init status --long || true"
+    ssh "${SSH_OPTS[@]}" "root@$SERVER_IP" "echo; echo '--- /var/log/cloud-init-output.log ---'; tail -n 200 /var/log/cloud-init-output.log || true"
+    ssh "${SSH_OPTS[@]}" "root@$SERVER_IP" "echo; echo '--- /var/log/cloud-init.log ---'; tail -n 200 /var/log/cloud-init.log || true"
+    exit 1
+  fi
+
   sleep 5
 done
-echo "✅ [apply-terraform] SSH is available for $SERVER_IP"
-
-echo "👉 [apply-terraform] Waiting for cloud-init to finish (⚠️ might take a few minutes when need to create machine)"
-ssh "root@$SERVER_IP" "cloud-init status --wait"
 echo "✅ [apply-terraform] cloud-init finished"
