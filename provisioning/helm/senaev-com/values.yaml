@@ -11,13 +11,13 @@ webdavSenaevCom:
 
 webdavSenaevRu:
   enabled: true
-  vps: yc
+  vps: media
 
 xrayVpn:
   enabled: true
   instances:
-    - name: xray-vpn-yc
-      vps: yc
+    - name: xray-vpn-ru
+      vps: ru
       serverName: senaev.ru
       profiles:
         - user: user-socks
@@ -32,7 +32,7 @@ xrayVpn:
       profiles:
         - user: user-socks
           uuidMacro: "{XRAY_USER_UUID:3}"
-          outbound: outbound-yc
+          outbound: outbound-ru
         - user: user-freedom
           uuidMacro: "{XRAY_USER_UUID:4}"
           outbound: outbound-freedom
@@ -40,7 +40,7 @@ xrayVpn:
 qbittorrent:
   enabled: true
   volumePath: volumes/qbittorrent
-  vps: yc
+  vps: media
   webuiPort: 9001
   torrentPort: 6881
   paths:
@@ -52,18 +52,18 @@ qbittorrent:
 
 filebrowser:
   enabled: true
-  vps: yc
+  vps: media
   volumePath: volumes/filebrowser/config
 
 unmanic:
   enabled: true
-  vps: yc
+  vps: media
   volumePath: volumes/unmanic
 
 jellyfin:
   enabled: true
   volumePath: volumes/jellyfin
-  vps: yc
+  vps: media
   webuiPort: 8096
 
 testEcho:
@@ -76,7 +76,7 @@ clusterHelper:
 
 mediaServerHelper:
   enabled: true
-  vps: yc
+  vps: media
   percentTriggerToRemove: 90
   percentRemoveTarget: 80
 
@@ -88,11 +88,11 @@ webhookEndpoint:
 vpnSubscription:
   enabled: true
   entries:
-    - name: "🇩🇪 1. senaev.ru💻yc → socks🌐hetzner"
+    - name: "🇩🇪 1. senaev.ru💻ru → socks🌐hetzner"
       link: "vless://{XRAY_USER_UUID:1}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
-    - name: "🇷🇺 2. senaev.ru💻yc → freedom🌐yc"
+    - name: "🇷🇺 2. senaev.ru💻ru → freedom🌐ru"
       link: "vless://{XRAY_USER_UUID:2}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
-    - name: "🇷🇺 3. senaev.com💻hetzner → socks🌐yc"
+    - name: "🇷🇺 3. senaev.com💻hetzner → socks🌐ru"
       link: "vless://{XRAY_USER_UUID:3}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
     - name: "🇩🇪 4. senaev.com💻hetzner → freedom🌐hetzner"
       link: "vless://{XRAY_USER_UUID:4}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
@@ -136,13 +136,13 @@ ingress:
           service: nextjs-app
           port: 3000
     - name: senaev-ru-direct
-      className: traefik-yc
+      className: traefik-ru
       hosts:
         - host: webdav.senaev.ru
           service: webdav-senaev-ru
           port: 80
     - name: senaev-ru-xray-fallback
-      className: traefik-yc
+      className: traefik-media
       entrypoints: websecure-xray
       hosts:
         - host: senaev.ru

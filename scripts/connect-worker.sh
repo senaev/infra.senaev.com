@@ -4,7 +4,7 @@ set -euo pipefail
 # Connects to the worker and bootstraps it with the given VPS label.
 if [[ $# -lt 4 ]]; then
   echo "Usage: $0 <control_plane_server_url> <node_token> <address> <vps>" >&2
-  echo "Example: $0 https://11.111.111.111:6443 K106...7b53 root@11.111.111.111 yc" >&2
+  echo "Example: $0 https://11.111.111.111:6443 K106...7b53 root@11.111.111.111 vps_name" >&2
   exit 1
 fi
 

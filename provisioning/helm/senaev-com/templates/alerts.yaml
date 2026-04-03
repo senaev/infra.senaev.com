@@ -22,7 +22,7 @@ spec:
             route: senaev-com-alerts
     - name: node-connectivity
       rules:
-        - alert: node-connectivity-failed-to-node-yc
+        - alert: node-connectivity-failed-to-node-media
           expr: |
             kube_node_status_condition{node="{{ .Values.mediaServerNodeName }}", condition="Ready", status="true"} != 1
           for: 60s

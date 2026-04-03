@@ -4,7 +4,7 @@ set -euo pipefail
 # Bootstrap k3s worker. If all conditions are satisfied, do nothing; otherwise uninstall and reinstall.
 if [[ $# -lt 3 ]]; then
   echo "Usage: $0 <control_plane_server_url> <node_token> <vps>" >&2
-  echo "Example: $0 https://11.111.111.111:6443 K106...7b53 yc" >&2
+  echo "Example: $0 https://11.111.111.111:6443 K106...7b53 vps_name" >&2
   exit 1
 fi
 
