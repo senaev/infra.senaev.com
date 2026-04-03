@@ -3,20 +3,21 @@ set -euo pipefail
 
 # Bootstrap k3s worker. If all conditions are satisfied, do nothing; otherwise uninstall and reinstall.
 if [[ $# -lt 3 ]]; then
-  echo "Usage: $0 <control_plane_server_url> <node_token> <labels>" >&2
-  echo "Example: $0 https://11.111.111.111:6443 K106...7b53 label1=value1,label2=value2" >&2
+  echo "Usage: $0 <control_plane_server_url> <node_token> <vps>" >&2
+  echo "Example: $0 https://11.111.111.111:6443 K106...7b53 yc" >&2
   exit 1
 fi
 
 CONTROL_PLANE_SERVER_URL="$1"
 NODE_TOKEN="$2"
-LABELS="$3"
+VPS="$3"
+LABELS="vps=${VPS}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 set -a; source "$SCRIPT_DIR/../common/.env"; set +a
 
-echo "👉 [bootstrap-worker] Bootstrapping worker with labels=[${LABELS}] to control plane=[$CONTROL_PLANE_SERVER_URL]"
-if bash "$SCRIPT_DIR/check-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN" "$LABELS"; then
+echo "👉 [bootstrap-worker] Bootstrapping worker with vps=[${VPS}] to control plane=[$CONTROL_PLANE_SERVER_URL]"
+if bash "$SCRIPT_DIR/check-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN" "$VPS"; then
   echo "✅ [bootstrap-worker] Worker is OK"
   exit 0
 else
@@ -36,14 +37,10 @@ sudo systemctl stop k3s-agent 2>/dev/null || true
 sudo systemctl reset-failed k3s-agent 2>/dev/null || true
 echo "✅ [bootstrap-worker] Cleaned stale k3s worker state"
 
-echo "👉 [bootstrap-worker] Parsing labels=[${LABELS}]"
+echo "👉 [bootstrap-worker] Building node labels from vps=[${VPS}]"
 NODE_LABEL_ARGS=()
-if [[ -n "$LABELS" ]]; then
-  IFS=',' read -ra parts <<< "$LABELS"
-  for p in "${parts[@]}"; do
-    p="${p// /}"
-    [[ -n "$p" ]] && NODE_LABEL_ARGS+=(--node-label "$p")
-  done
+if [[ -n "$VPS" ]]; then
+  NODE_LABEL_ARGS+=(--node-label "$LABELS")
 fi
 NODE_LABEL_ARGS_STR="${NODE_LABEL_ARGS[*]}"
 echo "✅ [bootstrap-worker] NODE_LABEL_ARGS=[${NODE_LABEL_ARGS_STR}]"

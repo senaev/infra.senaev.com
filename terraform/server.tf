@@ -12,6 +12,7 @@ resource "hcloud_server" "control_plane" {
   name        = "hetzner"
   server_type = "cx23"
   location    = "nbg1"
+  # TODO: switch to debian
   image       = "ubuntu-24.04"
   ssh_keys    = [hcloud_ssh_key.ecdsa.id, hcloud_ssh_key.ed25519.id]
 
