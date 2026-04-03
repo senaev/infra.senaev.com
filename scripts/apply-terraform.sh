@@ -45,6 +45,18 @@ upsert_env_var() {
   mv "$tmp_file" "$file"
 }
 
+sync_tfvar_to_env() {
+  local key="$1"
+  local value
+
+  value="$(get_tfvar "$key")"
+  if [[ -z "$value" ]]; then
+    echo "❌ [apply-terraform] Missing required value for [$key] in terraform.tfvars" >&2
+    exit 1
+  fi
+  upsert_env_var "$ENV_FILE" "$key" "$value"
+}
+
 echo "👉 [apply-terraform] Initializing Terraform"
 cd "$TERRAFORM_DIR" && terraform init -input=false
 echo "✅ [apply-terraform] Terraform initialized"
@@ -109,10 +121,19 @@ SERVER_IP=$(terraform output -raw server_ip)
 upsert_env_var "$ENV_FILE" "CONTROL_PLANE_SERVER_IP" "$SERVER_IP"
 echo "✅ [apply-terraform] CONTROL_PLANE_SERVER_IP set to $SERVER_IP"
 
-echo "👉 [apply-terraform] Applying Telegram secrets from terraform.tfvars"
-TG_TOKEN_SENAEV_COM_BOT=$(get_tfvar "TG_TOKEN_SENAEV_COM_BOT")
-upsert_env_var "$ENV_FILE" "TG_TOKEN_SENAEV_COM_BOT" "$TG_TOKEN_SENAEV_COM_BOT"
-echo "✅ [apply-terraform] Telegram secrets written to .env"
+echo "👉 [apply-terraform] Applying values from terraform.tfvars to .env"
+for key in \
+  TG_TOKEN_SENAEV_COM_BOT \
+  VPS_YC_HOST \
+  VPS_YC_USERNAME \
+  VPS_YC_LABEL \
+  VPS_RU_HOST \
+  VPS_RU_USERNAME \
+  VPS_RU_LABEL
+do
+  sync_tfvar_to_env "$key"
+done
+echo "✅ [apply-terraform] terraform.tfvars values written to .env"
 
 echo "👉 [apply-terraform] Updating known_hosts for $SERVER_IP"
 ssh-keygen -R "$SERVER_IP" 2>/dev/null || true

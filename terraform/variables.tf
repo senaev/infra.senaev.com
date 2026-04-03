@@ -15,3 +15,33 @@ variable "TG_TOKEN_SENAEV_COM_BOT" {
   type        = string
   sensitive   = true
 }
+
+variable "VPS_YC_HOST" {
+  description = "YC worker host"
+  type        = string
+}
+
+variable "VPS_YC_USERNAME" {
+  description = "YC worker SSH username"
+  type        = string
+}
+
+variable "VPS_YC_LABEL" {
+  description = "YC worker VPS label"
+  type        = string
+}
+
+variable "VPS_RU_HOST" {
+  description = "RU worker host"
+  type        = string
+}
+
+variable "VPS_RU_USERNAME" {
+  description = "RU worker SSH username"
+  type        = string
+}
+
+variable "VPS_RU_LABEL" {
+  description = "RU worker VPS label"
+  type        = string
+}

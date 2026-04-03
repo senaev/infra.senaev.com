@@ -6,3 +6,11 @@ HETZNER_TOKEN     = "your_hetzner_cloud_api_token"
 TAILSCALE_API_KEY = "tskey_api_your_tailscale_api_key"
 # https://t.me/BotFather → /newbot or /token
 TG_TOKEN_SENAEV_COM_BOT = "111111111:your_telegram_bot_token"
+
+VPS_YC_HOST     = "11.11.111.11"
+VPS_YC_USERNAME = "ubuntu"
+VPS_YC_LABEL    = "yc"
+
+VPS_RU_HOST     = "22.22.222.22"
+VPS_RU_USERNAME = "root"
+VPS_RU_LABEL    = "ru"

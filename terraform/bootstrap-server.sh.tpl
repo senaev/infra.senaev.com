@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-TAILSCALE_AUTH_KEY="$${1:?bootstrap-server.sh requires tailscale auth key as the first argument}"
-SERVER_NAME="$${2:?bootstrap-server.sh requires server name as the second argument}"
+if [[ $# -lt 2 ]]; then
+  echo "Usage: $0 <tailscale_auth_key> <server_name>" >&2
+  exit 1
+fi
+
+TAILSCALE_AUTH_KEY="$1"
+SERVER_NAME="$2"
 
 echo "👉 [bootstrap-server] Setting server name to [$SERVER_NAME]"
 hostnamectl set-hostname "$SERVER_NAME"
@@ -11,7 +16,7 @@ echo "✅ [bootstrap-server] Server name set"
 echo "👉 [bootstrap-server] Installing necessary packages"
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
-DEBIAN_FRONTEND=noninteractive apt-get install -y jq zsh git curl
+DEBIAN_FRONTEND=noninteractive apt-get install -y jq zsh git curl rsync
 echo "✅ [bootstrap-server] Necessary packages installed"
 
 echo "👉 [bootstrap-server] Setting up shell and tools"

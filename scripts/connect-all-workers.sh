@@ -20,20 +20,14 @@ CONTROL_PLANE_SERVER_URL="https://$TAILNET_ADDRESS:$CONTROL_PLANE_SERVER_PORT"
 
 echo "👉 [connect-all-workers] Connecting to worker nodes"
 
-worker_objs=()
-while IFS= read -r line; do
-  worker_objs+=( "$line" )
-done < <(echo "$WORKERS" | jq -c '.[]')
-echo "✅ [connect-all-workers] worker_objs.length=[${#worker_objs[@]}]"
+YC_ADDR="${VPS_YC_USERNAME}@${VPS_YC_HOST}"
+echo "👉 [connect-all-workers] Connecting to node=[$YC_ADDR] with vps=[${VPS_YC_LABEL}]"
+"$ROOT_DIR/scripts/connect-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN" "$YC_ADDR" "$VPS_YC_LABEL"
+echo "✅ [connect-all-workers] Connected to node=[$YC_ADDR] with vps=[${VPS_YC_LABEL}]"
 
-for obj in "${worker_objs[@]}"; do
-  addr="$(echo "$obj" | jq -r '"\(.username)@\(.host)"')"
-  labels="$(echo "$obj" | jq -r '.labels')"
-  [[ -z "$addr" || "$addr" == "null" ]] && continue
-  echo "👉 [connect-all-workers] Connecting to node=[$addr] with labels=[${labels}]"
+RU_ADDR="${VPS_RU_USERNAME}@${VPS_RU_HOST}"
+echo "👉 [connect-all-workers] Connecting to node=[$RU_ADDR] with vps=[${VPS_RU_LABEL}]"
+"$ROOT_DIR/scripts/connect-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN" "$RU_ADDR" "$VPS_RU_LABEL"
+echo "✅ [connect-all-workers] Connected to node=[$RU_ADDR] with vps=[${VPS_RU_LABEL}]"
 
-  "$ROOT_DIR/scripts/connect-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN" "$addr" "$labels"
-
-  echo "✅ [connect-all-workers] Connected to node=[$addr] with labels=[${labels}]"
-done
 echo "✅ [connect-all-workers] Connected to worker nodes"
