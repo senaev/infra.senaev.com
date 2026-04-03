@@ -12,21 +12,23 @@ fi
 
 CONTROL_PLANE_SERVER_URL="$1"
 NODE_TOKEN="$2"
-EXPECTED_VPS="$3"
-EXPECTED_LABEL="vps=${EXPECTED_VPS}"
+VPS="$3"
+EXPECTED_LABEL="vps=${VPS}"
+
+LOG_PREFIX="[check-worker $VPS]"
 
 if ! command -v k3s &>/dev/null; then
-  echo "❌ [check-worker] k3s is not installed"
+  echo "❌ $LOG_PREFIX k3s is not installed"
   exit 1
 else
-  echo "✅ [check-worker] k3s is installed"
+  echo "✅ $LOG_PREFIX k3s is installed"
 fi
 
 if [[ ! -f /etc/systemd/system/k3s-agent.service.env ]]; then
-  echo "❌ [check-worker] k3s worker not configured (no k3s-agent.service.env)"
+  echo "❌ $LOG_PREFIX k3s worker not configured (no k3s-agent.service.env)"
   exit 1
 else
-  echo "✅ [check-worker] k3s worker is configured (k3s-agent.service.env exists)"
+  echo "✅ $LOG_PREFIX k3s worker is configured (k3s-agent.service.env exists)"
 fi
 
 mapfile -t _k3s_env < <(sudo bash -c 'source /etc/systemd/system/k3s-agent.service.env && echo "$K3S_TOKEN" && echo "$K3S_URL"')
@@ -34,40 +36,40 @@ EXISTING_NODE_TOKEN="${_k3s_env[0]:-}"
 EXISTING_SERVER_URL="${_k3s_env[1]:-}"
 
 if ! systemctl is-active --quiet k3s-agent 2>/dev/null; then
-  echo "❌ [check-worker] k3s-agent is not running"
+  echo "❌ $LOG_PREFIX k3s-agent is not running"
   exit 1
 else
-  echo "✅ [check-worker] k3s-agent is running"
+  echo "✅ $LOG_PREFIX k3s-agent is running"
 fi
 
 if systemctl is-active --quiet k3s 2>/dev/null; then
-  echo "❌ [check-worker] k3s is running in server mode, not worker"
+  echo "❌ $LOG_PREFIX k3s is running in server mode, not worker"
   exit 1
 else
-  echo "✅ [check-worker] k3s is running in worker mode"
+  echo "✅ $LOG_PREFIX k3s is running in worker mode"
 fi
 
 if [[ "$CONTROL_PLANE_SERVER_URL" != "$EXISTING_SERVER_URL" ]]; then
-  echo "❌ [check-worker] CONTROL_PLANE_SERVER_URL mismatch expected=[${CONTROL_PLANE_SERVER_URL}], existing=[${EXISTING_SERVER_URL}]"
+  echo "❌ $LOG_PREFIX CONTROL_PLANE_SERVER_URL mismatch expected=[${CONTROL_PLANE_SERVER_URL}], existing=[${EXISTING_SERVER_URL}]"
   exit 1
 else
-  echo "✅ [check-worker] CONTROL_PLANE_SERVER_URL matches"
+  echo "✅ $LOG_PREFIX CONTROL_PLANE_SERVER_URL matches"
 fi
 
 if [[ "$NODE_TOKEN" != "$EXISTING_NODE_TOKEN" ]]; then
-  echo "❌ [check-worker] NODE_TOKEN mismatch expected.length=[${#NODE_TOKEN}], existing.length=[${#EXISTING_NODE_TOKEN}]"
+  echo "❌ $LOG_PREFIX NODE_TOKEN mismatch expected.length=[${#NODE_TOKEN}], existing.length=[${#EXISTING_NODE_TOKEN}]"
   exit 1
 else
-  echo "✅ [check-worker] NODE_TOKEN matches"
+  echo "✅ $LOG_PREFIX NODE_TOKEN matches"
 fi
 
 EXISTING_LABEL=$(sudo grep -o "vps=[^'[:space:]]*" /etc/systemd/system/k3s-agent.service 2>/dev/null | head -n 1 || true)
 if [[ "${EXPECTED_LABEL}" != "${EXISTING_LABEL}" ]]; then
-  echo "❌ [check-worker] LABEL mismatch expected=[${EXPECTED_LABEL}], existing=[${EXISTING_LABEL}]"
+  echo "❌ $LOG_PREFIX LABEL mismatch expected=[${EXPECTED_LABEL}], existing=[${EXISTING_LABEL}]"
   exit 1
 else
-  echo "✅ [check-worker] LABEL matches expected=[${EXPECTED_LABEL}] existing=[${EXISTING_LABEL}]"
+  echo "✅ $LOG_PREFIX LABEL matches expected=[${EXPECTED_LABEL}] existing=[${EXISTING_LABEL}]"
 fi
 
-echo "✅ [check-worker] Worker is OK"
+echo "✅ $LOG_PREFIX Worker is OK"
 exit 0
