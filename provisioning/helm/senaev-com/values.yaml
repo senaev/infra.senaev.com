@@ -142,7 +142,7 @@ ingress:
           service: webdav-senaev-ru
           port: 80
     - name: senaev-ru-xray-fallback
-      className: traefik-media
+      className: traefik-ru
       entrypoints: websecure-xray
       hosts:
         - host: senaev.ru
