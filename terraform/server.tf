@@ -1,3 +1,4 @@
+// TODO: add in shell script??
 resource "hcloud_ssh_key" "ecdsa" {
   name       = "senaev@yandex-team"
   public_key = "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOx9ZqfcNbREx55m3iBB7n91NvU7mynTteeCVIG7lxxpS4dGE9wROwzGpXMHpYfPYUpzQd29hr7I1yJgI5JSFpY="
@@ -16,7 +17,9 @@ resource "hcloud_server" "control_plane" {
   ssh_keys    = [hcloud_ssh_key.ecdsa.id, hcloud_ssh_key.ed25519.id]
 
   user_data = templatefile("${path.module}/cloud-init.yaml.tpl", {
-    tailscale_auth_key = tailscale_tailnet_key.hetzner.key
+    bootstrap_server_script = templatefile("${path.module}/bootstrap-server.sh.tpl", {
+      tailscale_auth_key = tailscale_tailnet_key.hetzner.key
+    })
   })
 
   lifecycle {
