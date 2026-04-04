@@ -6,7 +6,7 @@ import { telegramApiCall } from "./telegram-api";
 // There's a time limit from Yandex, so it's better
 // to answer quickly and continue work in the background
 // than to fail the whole request for the client
-const ALISA_RESPONSE_TIME_LIMIT = 2000;
+const ALISA_RESPONSE_TIME_LIMIT = 3000;
 
 const TRICKY_DAD_DEBUG_CHAT_ID = -5242876030;
 export async function handleAlisaRequest(body: unknown): Promise<string> {
@@ -32,7 +32,7 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
         let responseType: "full" | "short" | "not-responded-yet" = "not-responded-yet";
         const responseText = await Promise.race<string>([
             processAlisaCommand(command).then((result) => {
-                if (responseType !== "full") {
+                if (responseType === "not-responded-yet") {
                     responseType = "full";
                 }
 
