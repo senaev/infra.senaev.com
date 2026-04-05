@@ -19,7 +19,7 @@ export async function processAlisaCommand(command: string): Promise<HandleTricky
     const parsed = await parseAlisaCommandWithOpenRouter(command);
     openRouterResponseTime = Date.now() - startTime;
     console.log(
-        `✅ Response for command=[${command}], parsed=[${JSON.stringify(parsed)}], openRouterResponseTime=[${openRouterResponseTime}ms]`,
+        `✅ Response from openRouter for command=[${command}], parsed=[${JSON.stringify(parsed)}], openRouterResponseTime=[${openRouterResponseTime}ms]`,
     );
 
     const { items, error } = parsed;
@@ -78,7 +78,13 @@ export async function processAlisaCommand(command: string): Promise<HandleTricky
         `✅ Successfully parsed and added list=[${itemsString}] during=[${((Date.now() - startTime) / 1000).toFixed(2)}]s`,
     );
     return {
-        responseTextForUser: `Добавлено: ${itemsString}`,
+        responseTextForUser: `${getRandomValueFromArray([
+            'Добавлено',
+            'Добавил',
+            'Вот что я добавил',
+            'Записал',
+            'Добавил, проверяй',
+        ])}: ${itemsString}`,
         openRouterResponseTime,
         supabaseResponseTime,
     };
