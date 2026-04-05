@@ -42,10 +42,11 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
                     text: [
                         `Command: \`${escapeTelegramMarkdownV2(command)}\``,
                         `Type: \`${escapeTelegramMarkdownV2(responseType)}\``,
-                        `Text: ${escapeTelegramMarkdownV2(result.responseTextForUser)}`,
+                        `Response text: ${escapeTelegramMarkdownV2(result.responseTextForUser)}`,
+                        `Duration: \`${escapeTelegramMarkdownV2(`${((Date.now() - startTime) / 1000).toFixed(2)}s`)}\``,
                         `OpenRouter time: ${result.openRouterResponseTime}`,
                         `Supabase time: ${result.supabaseResponseTime}`,
-                        `Duration: \`${escapeTelegramMarkdownV2(`${((Date.now() - startTime) / 1000).toFixed(2)}s`)}\``,
+                        `Error: ${escapeTelegramMarkdownV2(String(result.errorString))}`,
                     ].join("\n"),
                 }).catch((err) => {
                     console.error("❌ Failed to send success message to Telegram:", err);

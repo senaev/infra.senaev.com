@@ -8,6 +8,7 @@ export type HandleTrickyDadRequestResult = {
     responseTextForUser: string;
     openRouterResponseTime: number;
     supabaseResponseTime: number | null;
+    errorString: string | null;
 };
 
 export async function processAlisaCommand(command: string): Promise<HandleTrickyDadRequestResult> {
@@ -25,7 +26,8 @@ export async function processAlisaCommand(command: string): Promise<HandleTricky
     const { items, error } = parsed;
 
     if (error !== null) {
-        console.log(`❌ Completed with error=[${error}]`);
+        const errorString = `❌ Completed with error=[${error}]`;
+        console.log();
         return {
             responseTextForUser: `${getRandomValueFromArray([
                 "Ошибка искусственного интеллекта",
@@ -37,16 +39,19 @@ export async function processAlisaCommand(command: string): Promise<HandleTricky
                 "Искусственный интеллект на такое не способен",
             ])}: ${error}`,
             openRouterResponseTime,
+            errorString,
             supabaseResponseTime: null,
         };
     }
 
     if (items.length === 0) {
-        console.log(`❌ Completed with error=[${error}]`);
+        const errorString = `❌ Completed with error=[${error}]`;
+        console.log(errorString);
         return {
             responseTextForUser: `Батя не понял, что нужно добавить`,
             openRouterResponseTime,
             supabaseResponseTime: null,
+            errorString,
         };
     }
 
@@ -59,7 +64,8 @@ export async function processAlisaCommand(command: string): Promise<HandleTricky
         await addItemsToSupabaseGroceryList(items);
         supabaseResponseTime = Date.now() - startTimeSupabase;
     } catch (err) {
-        console.error(`❌ Failed to add items=[${itemsString}] to Supabase:`, err);
+        const errorString = `❌ Failed to add items=[${itemsString}] to Supabase: ${err}`;
+        console.error(errorString);
         supabaseResponseTime = Date.now() - startTimeSupabase;
 
         return {
@@ -70,6 +76,7 @@ export async function processAlisaCommand(command: string): Promise<HandleTricky
             ]),
             openRouterResponseTime,
             supabaseResponseTime,
+            errorString,
         };
     }
     console.log(`✅ Successfully added items=[${itemsString}] to Supabase`);
@@ -79,13 +86,14 @@ export async function processAlisaCommand(command: string): Promise<HandleTricky
     );
     return {
         responseTextForUser: `${getRandomValueFromArray([
-            'Добавлено',
-            'Добавил',
-            'Вот что я добавил',
-            'Записал',
-            'Добавил, проверяй',
+            "Добавлено",
+            "Добавил",
+            "Вот что я добавил",
+            "Записал",
+            "Добавил, проверяй",
         ])}: ${itemsString}`,
         openRouterResponseTime,
         supabaseResponseTime,
+        errorString: null,
     };
 }
