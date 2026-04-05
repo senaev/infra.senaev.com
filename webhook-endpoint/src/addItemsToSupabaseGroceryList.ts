@@ -3,12 +3,11 @@ import { SUPABASE_PROJECT_URL, SUPABASE_PUBLISHABLE_KEY } from "./env.js";
 const SUPABASE_LIST_ID = 1;
 
 export async function addItemsToSupabaseGroceryList(items: string[]): Promise<void> {
-    const firstPosition = Date.now();
-    const rows = items.map((title, index) => ({
+    const rows = items.map((title) => ({
         list_id: SUPABASE_LIST_ID,
         child: false,
         title,
-        position: firstPosition + index,
+        position: 1_000_000,
         update_index: 1,
     }));
 
