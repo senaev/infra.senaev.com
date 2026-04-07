@@ -1,5 +1,5 @@
 import { rmdir, unlink } from "fs/promises";
-import { dirname } from "path";
+import { dirname, relative, sep } from "path";
 import { escapeHtml, sendTelegramHtmlMessage } from "../telegram";
 import { formatBytes } from "./formatBytes";
 import { type FileToRemove } from "./getFilesToRemove";
@@ -19,11 +19,116 @@ function formatDate(timestampMs: number): string {
 
 function buildFileLine(file: FileToRemove): string {
     return [
-        "•",
+        escapeHtml(file.name),
         `<code>${formatBytes(file.size)}</code>`,
         `(${formatDate(file.createdAtMs)})`,
-        `${escapeHtml(file.path)}`,
     ].join(" ");
+}
+
+type RemovedFilesTreeNode = {
+    directories: Map<string, RemovedFilesTreeNode>;
+    files: FileToRemove[];
+};
+
+function createTreeNode(): RemovedFilesTreeNode {
+    return {
+        directories: new Map<string, RemovedFilesTreeNode>(),
+        files: [],
+    };
+}
+
+function getCommonPathPrefix(paths: string[]): string {
+    if (paths.length === 0) {
+        return "";
+    }
+
+    const firstPath = paths[0];
+    if (firstPath === undefined) {
+        return "";
+    }
+
+    const restPaths = paths.slice(1);
+    const firstSegments = firstPath.split(sep).filter(Boolean);
+    let commonSegmentCount = firstSegments.length;
+
+    for (const path of restPaths) {
+        const segments = path.split(sep).filter(Boolean);
+        commonSegmentCount = Math.min(commonSegmentCount, segments.length);
+
+        for (let index = 0; index < commonSegmentCount; index += 1) {
+            if (segments[index] !== firstSegments[index]) {
+                commonSegmentCount = index;
+                break;
+            }
+        }
+    }
+
+    if (commonSegmentCount === 0) {
+        return sep;
+    }
+
+    return `${sep}${firstSegments.slice(0, commonSegmentCount).join(sep)}`;
+}
+
+function buildRemovedFilesTree(removedFiles: FileToRemove[]): {
+    rootPath: string;
+    tree: RemovedFilesTreeNode;
+} {
+    const rootPath = getCommonPathPrefix(removedFiles.map((file) => dirname(file.path)));
+    const tree = createTreeNode();
+
+    for (const file of removedFiles) {
+        const relativePath = relative(rootPath, file.path);
+        const pathSegments = relativePath.split(sep).filter(Boolean);
+        let currentNode = tree;
+
+        for (const segment of pathSegments.slice(0, -1)) {
+            let nextNode = currentNode.directories.get(segment);
+
+            if (!nextNode) {
+                nextNode = createTreeNode();
+                currentNode.directories.set(segment, nextNode);
+            }
+
+            currentNode = nextNode;
+        }
+
+        currentNode.files.push(file);
+    }
+
+    return { rootPath, tree };
+}
+
+function renderRemovedFilesTree(
+    node: RemovedFilesTreeNode,
+    prefix = "",
+): string[] {
+    const directoryEntries = [...node.directories.entries()].sort(([left], [right]) =>
+        left.localeCompare(right),
+    );
+    const fileEntries = [...node.files].sort((left, right) => left.path.localeCompare(right.path));
+    const entriesCount = directoryEntries.length + fileEntries.length;
+    const lines: string[] = [];
+    let entryIndex = 0;
+
+    for (const [directoryName, childNode] of directoryEntries) {
+        entryIndex += 1;
+        const isLastEntry = entryIndex === entriesCount;
+        const branchPrefix = isLastEntry ? "└── " : "├── ";
+        const childPrefix = `${prefix}${isLastEntry ? "    " : "│   "}`;
+
+        lines.push(`${prefix}${branchPrefix}${escapeHtml(directoryName)}/`);
+        lines.push(...renderRemovedFilesTree(childNode, childPrefix));
+    }
+
+    for (const file of fileEntries) {
+        entryIndex += 1;
+        const isLastEntry = entryIndex === entriesCount;
+        const branchPrefix = isLastEntry ? "└── " : "├── ";
+        lines.push(`${prefix}${branchPrefix}${buildFileLine(file)}`);
+    }
+
+    return lines;
 }
 
 function truncateForTelegram(text: string): string {
@@ -63,7 +168,11 @@ export async function sendRemovalNotification({
         `<b>Disk used after:</b> ${formatBytes(usedBytesAfter)} (${occupiedPercentAfter.toFixed(2)}%)`,
         `<b>Total disk size:</b> ${formatBytes(totalBytes)}`,
     ];
-    const fileLines = removedFiles.map(buildFileLine);
+    const { rootPath, tree } = buildRemovedFilesTree(removedFiles);
+    const fileLines = [
+        `<b>Removed tree root:</b> <code>${escapeHtml(rootPath)}</code>`,
+        ...renderRemovedFilesTree(tree),
+    ];
     const message = [...summaryLines, "", ...fileLines].join("\n");
     await sendTelegramHtmlMessage(truncateForTelegram(message));
 }
