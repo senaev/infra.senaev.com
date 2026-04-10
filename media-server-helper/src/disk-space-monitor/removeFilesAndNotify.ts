@@ -20,7 +20,7 @@ function formatDate(timestampMs: number): string {
 function buildFileLine(file: FileToRemove): string {
     return [
         escapeHtml(file.name),
-        `<code>${formatBytes(file.size)}</code>`,
+        formatBytes(file.size),
         `(${formatDate(file.createdAtMs)})`,
     ].join(" ");
 }
@@ -99,10 +99,7 @@ function buildRemovedFilesTree(removedFiles: FileToRemove[]): {
     return { rootPath, tree };
 }
 
-function renderRemovedFilesTree(
-    node: RemovedFilesTreeNode,
-    prefix = "",
-): string[] {
+function renderRemovedFilesTree(node: RemovedFilesTreeNode, prefix = ""): string[] {
     const directoryEntries = [...node.directories.entries()].sort(([left], [right]) =>
         left.localeCompare(right),
     );
@@ -169,10 +166,8 @@ export async function sendRemovalNotification({
         `<b>Total disk size:</b> ${formatBytes(totalBytes)}`,
     ];
     const { rootPath, tree } = buildRemovedFilesTree(removedFiles);
-    const fileLines = [
-        `<b>Removed tree root:</b> <code>${escapeHtml(rootPath)}</code>`,
-        ...renderRemovedFilesTree(tree),
-    ];
+    const treeLines = [`${escapeHtml(rootPath)}/`, ...renderRemovedFilesTree(tree)];
+    const fileLines = ["<b>Removed:</b>", `<pre>${treeLines.join("\n")}</pre>`];
     const message = [...summaryLines, "", ...fileLines].join("\n");
     await sendTelegramHtmlMessage(truncateForTelegram(message));
 }
