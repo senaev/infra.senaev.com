@@ -1,17 +1,20 @@
 import { addItemsToSupabaseGroceryList } from "./addItemsToSupabaseGroceryList";
 import { parseAlisaCommandWithOpenRouter } from "./openrouter";
 
-export const ALISA_SKILL_NAME = "Хитрый Батя";
+export const ALISA_SKILL_NAME = "Умный Папа";
 
 export type HandleTrickyDadRequestResult = {
     openRouterResponseTime: number;
     supabaseResponseTime: number | null;
-    errorString: string | null;
+    addedItems: string[] | null;
+    openRouterError: string | null;
+    supabaseErrorString: string | null;
 };
 
 export async function processAlisaCommand(command: string): Promise<HandleTrickyDadRequestResult> {
     const startTime = Date.now();
     let openRouterResponseTime = 0;
+    let openRouterError: string | null = null;
     console.log(`👉 Start processing command=[${command}]`);
 
     console.log("👉 Request openRouter");
@@ -22,25 +25,20 @@ export async function processAlisaCommand(command: string): Promise<HandleTricky
     );
 
     const { items, error } = parsed;
+    let addedItems: string[] = items ?? [];
 
     if (error !== null) {
-        const errorString = `❌ Completed with error=[${error}]`;
-        console.log();
-        return {
-            openRouterResponseTime,
-            errorString,
-            supabaseResponseTime: null,
-        };
+        openRouterError = `❌ Open router request completed with error=[${error}]`;
+        console.error(openRouterError);
+
+        addedItems = [command];
     }
 
     if (items.length === 0) {
-        const errorString = `❌ Completed with error=[${error}]`;
-        console.log(errorString);
-        return {
-            openRouterResponseTime,
-            supabaseResponseTime: null,
-            errorString,
-        };
+        openRouterError = `❌ Open router request responded with no items`;
+        console.error(openRouterError);
+
+        addedItems = [command];
     }
 
     const itemsString = items.join(", ");
@@ -49,17 +47,19 @@ export async function processAlisaCommand(command: string): Promise<HandleTricky
     let supabaseResponseTime = 0;
     console.log(`👉 Adding items=[${itemsString}] to Supabase`);
     try {
-        await addItemsToSupabaseGroceryList(items);
+        await addItemsToSupabaseGroceryList(addedItems);
         supabaseResponseTime = Date.now() - startTimeSupabase;
     } catch (err) {
-        const errorString = `❌ Failed to add items=[${itemsString}] to Supabase: ${err}`;
-        console.error(errorString);
+        const supabaseErrorString = `❌ Failed to add items=[${itemsString}] to Supabase: ${err}`;
+        console.error(supabaseErrorString);
         supabaseResponseTime = Date.now() - startTimeSupabase;
 
         return {
             openRouterResponseTime,
             supabaseResponseTime,
-            errorString,
+            openRouterError,
+            supabaseErrorString,
+            addedItems,
         };
     }
     console.log(`✅ Successfully added items=[${itemsString}] to Supabase`);
@@ -70,6 +70,8 @@ export async function processAlisaCommand(command: string): Promise<HandleTricky
     return {
         openRouterResponseTime,
         supabaseResponseTime,
-        errorString: null,
+        openRouterError,
+        supabaseErrorString: null,
+        addedItems,
     };
 }
