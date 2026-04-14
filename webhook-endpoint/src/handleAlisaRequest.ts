@@ -39,7 +39,7 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
                         result.supabaseErrorString &&
                             `Supabase Error: ${escapeTelegramMarkdownV2(String(result.supabaseErrorString))}`,
                         result.addedItems &&
-                            `Added items:\n${result.addedItems.map((item) => `- \`${escapeTelegramMarkdownV2(item)}\``).join("\n")}`,
+                            `Added items:\n${result.addedItems.map((item) => `${escapeTelegramMarkdownV2(`· ${item}`)}`).join("\n")}`,
                     ]
                         .filter(Boolean)
                         .join("\n"),
