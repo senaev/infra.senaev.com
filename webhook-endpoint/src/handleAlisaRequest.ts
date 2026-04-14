@@ -50,7 +50,10 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
 
                 telegramApiCall("sendMessage", {
                     chat_id: TRICKY_DAD_DEBUG_CHAT_ID,
-                    text: `❌ Failed to process Alisa command: ${err instanceof Error ? err.message : String(err)}`,
+                    parse_mode: "MarkdownV2",
+                    text: escapeTelegramMarkdownV2(
+                        `❌ Failed to process Alisa command=[${command}]: ${err instanceof Error ? err.message : String(err)}`,
+                    ),
                 }).catch((err) => {
                     console.error("❌ Failed to send error message to Telegram:", err);
                 });
@@ -122,7 +125,10 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
 
         telegramApiCall("sendMessage", {
             chat_id: TRICKY_DAD_DEBUG_CHAT_ID,
-            text: `❌ Sync error processing Alisa command: ${err instanceof Error ? err.message : String(err)}`,
+            parse_mode: "MarkdownV2",
+            text: escapeTelegramMarkdownV2(
+                `❌ Sync error processing Alisa command: ${err instanceof Error ? err.message : String(err)}`,
+            ),
         }).catch((err) => {
             console.error("❌ Failed to send error message to Telegram:", err);
         });
