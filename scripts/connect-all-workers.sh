@@ -20,6 +20,11 @@ CONTROL_PLANE_SERVER_URL="https://$TAILNET_ADDRESS:$CONTROL_PLANE_SERVER_PORT"
 
 echo "👉 [connect-all-workers] Connecting to worker nodes"
 
+PROXMOX_ADDR="${VPS_PROXMOX_USERNAME}@${VPS_PROXMOX_HOST}"
+echo "👉 [connect-all-workers] Connecting to node=[$PROXMOX_ADDR] with vps=[${VPS_PROXMOX_LABEL}]"
+"$ROOT_DIR/scripts/connect-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN" "$PROXMOX_ADDR" "$VPS_PROXMOX_LABEL"
+echo "✅ [connect-all-workers] Connected to node=[$PROXMOX_ADDR] with vps=[${VPS_PROXMOX_LABEL}]"
+
 MEDIA_ADDR="${VPS_MEDIA_USERNAME}@${VPS_MEDIA_HOST}"
 echo "👉 [connect-all-workers] Connecting to node=[$MEDIA_ADDR] with vps=[${VPS_MEDIA_LABEL}]"
 "$ROOT_DIR/scripts/connect-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN" "$MEDIA_ADDR" "$VPS_MEDIA_LABEL"

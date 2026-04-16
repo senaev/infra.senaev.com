@@ -7,6 +7,10 @@ TAILSCALE_API_KEY = "tskey_api_your_tailscale_api_key"
 # https://t.me/BotFather → /newbot or /token
 TG_TOKEN_SENAEV_COM_BOT = "111111111:your_telegram_bot_token"
 
+VPS_PROXMOX_HOST     = "11.11.111.11"
+VPS_PROXMOX_USERNAME = "root"
+VPS_PROXMOX_LABEL    = "proxmox"
+
 VPS_MEDIA_HOST     = "11.11.111.11"
 VPS_MEDIA_USERNAME = "ubuntu"
 VPS_MEDIA_LABEL    = "media"

@@ -16,7 +16,7 @@ echo "✅ [bootstrap-server] Server name set"
 echo "👉 [bootstrap-server] Installing necessary packages"
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
-DEBIAN_FRONTEND=noninteractive apt-get install -y jq zsh git curl rsync
+DEBIAN_FRONTEND=noninteractive apt-get install -y jq zsh git curl rsync sudo
 echo "✅ [bootstrap-server] Necessary packages installed"
 
 echo "👉 [bootstrap-server] Setting up shell and tools"

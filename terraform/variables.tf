@@ -16,6 +16,21 @@ variable "TG_TOKEN_SENAEV_COM_BOT" {
   sensitive   = true
 }
 
+variable "VPS_PROXMOX_HOST" {
+  description = "Proxmox worker host"
+  type        = string
+}
+
+variable "VPS_PROXMOX_USERNAME" {
+  description = "Proxmox worker SSH username"
+  type        = string
+}
+
+variable "VPS_PROXMOX_LABEL" {
+  description = "Proxmox worker VPS label"
+  type        = string
+}
+
 variable "VPS_MEDIA_HOST" {
   description = "Media worker host"
   type        = string
