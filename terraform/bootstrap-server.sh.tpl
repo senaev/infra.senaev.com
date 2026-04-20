@@ -1,22 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -lt 2 ]]; then
-  echo "Usage: $0 <tailscale_auth_key> <server_name>" >&2
-  exit 1
-fi
-
-TAILSCALE_AUTH_KEY="$1"
-SERVER_NAME="$2"
-
-echo "👉 [bootstrap-server] Setting server name to [$SERVER_NAME]"
-hostnamectl set-hostname "$SERVER_NAME"
-echo "✅ [bootstrap-server] Server name set"
-
 echo "👉 [bootstrap-server] Installing necessary packages"
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
-DEBIAN_FRONTEND=noninteractive apt-get install -y jq zsh git curl rsync sudo
+DEBIAN_FRONTEND=noninteractive apt-get install -y cloud-init ca-certificates jq zsh git curl rsync sudo
 echo "✅ [bootstrap-server] Necessary packages installed"
 
 echo "👉 [bootstrap-server] Setting up shell and tools"
@@ -40,6 +28,21 @@ echo "✅ [bootstrap-server] Powerlevel10k theme set up"
 
 echo "👉 [bootstrap-server] Installing Tailscale"
 curl -fsSL https://tailscale.com/install.sh | sh
+echo "✅ [bootstrap-server] Tailscale installed"
+
+if [[ $# -lt 2 ]]; then
+  echo "Usage: $0 <tailscale_auth_key> <server_name>" >&2
+  exit 1
+fi
+
+TAILSCALE_AUTH_KEY="$1"
+SERVER_NAME="$2"
+
+echo "👉 [bootstrap-server] Setting server name to [$SERVER_NAME]"
+hostnamectl set-hostname "$SERVER_NAME"
+echo "✅ [bootstrap-server] Server name set"
+
+echo "👉 [bootstrap-server] Connecting to Tailscale"
 tailscale up --auth-key="$TAILSCALE_AUTH_KEY" --hostname="$SERVER_NAME"
 echo "✅ [bootstrap-server] Tailscale installed and connected"
 
