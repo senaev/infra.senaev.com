@@ -35,6 +35,8 @@ spec:
                   key: WEBDAV_COM_PASSWORD
           ports:
             - containerPort: 80
+          resources:
+{{ toYaml .Values.webdavSenaevCom.resources | indent 12 }}
           volumeMounts:
             - name: data
               mountPath: /var/lib/dav/data

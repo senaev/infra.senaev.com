@@ -68,6 +68,8 @@ spec:
               mountPath: /downloads/complete
             - name: downloads-converted-for-mobile
               mountPath: /downloads/converted-for-mobile
+          resources:
+{{ toYaml .Values.mediaServerHelper.resources | indent 12 }}
       volumes:
         - name: watch-torrent-files
           hostPath:

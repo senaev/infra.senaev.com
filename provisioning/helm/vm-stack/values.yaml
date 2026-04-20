@@ -39,7 +39,7 @@ victoria-metrics-k8s-stack:
 
   vmagent:
     spec:
-      scrapeInterval: 15s
+      scrapeInterval: 30s
       nodeSelector:
         vps: hetzner
 
@@ -94,7 +94,7 @@ victoria-metrics-k8s-stack:
         - hosts:
             - vmalert.senaev.com
     spec:
-      evaluationInterval: 15s
+      evaluationInterval: 30s
       nodeSelector:
         vps: hetzner
 

@@ -43,6 +43,8 @@ spec:
               port: 3000
             initialDelaySeconds: 10
             periodSeconds: 10
+          resources:
+{{ toYaml .Values.nextjs.resources | indent 12 }}
       volumes:
         - name: notes
           hostPath:

@@ -41,6 +41,31 @@ fi
 TAILSCALE_AUTH_KEY="$1"
 SERVER_NAME="$2"
 
+echo "👉 [bootstrap-server] Configuring swap"
+SWAPFILE_PATH="/swapfile"
+SWAPFILE_SIZE="2G"
+if ! swapon --show=NAME --noheadings | grep -Fxq "$SWAPFILE_PATH"; then
+  if [ ! -f "$SWAPFILE_PATH" ]; then
+    fallocate -l "$SWAPFILE_SIZE" "$SWAPFILE_PATH"
+    chmod 600 "$SWAPFILE_PATH"
+    mkswap "$SWAPFILE_PATH"
+  fi
+
+  swapon "$SWAPFILE_PATH"
+else
+  echo "✅ [bootstrap-server] Swap file already active"
+fi
+
+if ! grep -qE "^${SWAPFILE_PATH//\//\\/}[[:space:]]+none[[:space:]]+swap[[:space:]]+sw[[:space:]]+0[[:space:]]+0$" /etc/fstab; then
+  echo "$SWAPFILE_PATH none swap sw 0 0" >> /etc/fstab
+fi
+
+cat >/etc/sysctl.d/99-swap.conf <<'EOF'
+vm.swappiness=10
+EOF
+sysctl --system >/dev/null
+echo "✅ [bootstrap-server] Swap configured"
+
 echo "👉 [bootstrap-server] Setting server name to [$SERVER_NAME]"
 hostnamectl set-hostname "$SERVER_NAME"
 echo "✅ [bootstrap-server] Server name set"

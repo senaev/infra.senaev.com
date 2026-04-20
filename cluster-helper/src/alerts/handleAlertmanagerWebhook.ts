@@ -13,6 +13,22 @@ function formatDate(dateString: string): string {
     return `${day}-${month}-${year} ${hours}:${minutes}`;
 }
 
+function isUnsetAlertEnd(dateString: string): boolean {
+    const date = new Date(dateString);
+
+    return Number.isNaN(date.getTime()) || date.getUTCFullYear() <= 1;
+}
+
+function formatAlertTimeRange(startsAt: string, endsAt: string): string {
+    const formattedStart = formatDate(startsAt);
+
+    if (isUnsetAlertEnd(endsAt)) {
+        return formattedStart;
+    }
+
+    return `${formattedStart} - ${formatDate(endsAt)}`;
+}
+
 function normalizeGrafanaUrl(urlString: string): string {
     const url = new URL(urlString);
     const normalizedSearchParams = new URLSearchParams();
@@ -138,7 +154,7 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): AlertIt
 
         const lines = [
             `${statusEmoji}${severityEmoji} <b>${escapedAlertname}</b> <a href="${escapedGeneratorUrl}">🔗</a>`,
-            `<b>Time:</b> ${escapeHtml(`${formatDate(startsAt)} - ${formatDate(endsAt)}`)}`,
+            `<b>Time:</b> ${escapeHtml(formatAlertTimeRange(startsAt, endsAt))}`,
             `<b>Job:</b> <code>${escapedJob}</code>`,
             `<b>Pod:</b> <code>${escapedPod}</code>`,
             `<blockquote expandable>${escapedAlertJson}</blockquote>`,

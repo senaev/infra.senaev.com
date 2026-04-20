@@ -38,12 +38,12 @@ https://filebrowser.senaev.com/
 
 ### Unmanic
 
-Settings → Plugins → INSTALL PLUGIN FROM REPO ➕ → REFRESH REPOSITORIES → Install plugins:
+Settings → Plugins → INSTALL PLUGIN FROM FILE → `./unmanic-plugins`:
 
-- `Ignore video files under size`
-- `Mover v2`
-- `Transcode Video Files`
-- `Audio Encoder AAC`
+- `Ignore video files under size`: https://github.com/Unmanic/plugin.ignore_under_size/releases
+- `Mover v2`: https://github.com/Unmanic/plugin.mover2/releases
+- `Transcode Video Files`: https://github.com/Unmanic/plugin.video_transcoder/releases
+- `Audio Encoder AAC`: https://github.com/Unmanic/plugin.encoder_audio_aac/releases
 
 Settings → Library → Libraries → and configure default library:
 

@@ -4,6 +4,13 @@ deployments:
   - vps: hetzner
   - vps: ru
 
+resources:
+  requests:
+    cpu: 25m
+    memory: 64Mi
+  limits:
+    memory: 192Mi
+
 acmeStoragePath: /k3s-cluster/volumes/traefik/acme
 
 image: traefik:v3.2

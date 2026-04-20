@@ -59,6 +59,8 @@ spec:
                   optional: false
           ports:
             - containerPort: 8080
+          resources:
+{{ toYaml .Values.filebrowser.resources | indent 12 }}
           volumeMounts:
             - name: config
               mountPath: /config

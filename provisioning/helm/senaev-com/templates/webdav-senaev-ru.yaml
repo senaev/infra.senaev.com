@@ -58,6 +58,8 @@ spec:
                   key: WEBDAV_RU_PASSWORD
           ports:
             - containerPort: 80
+          resources:
+{{ toYaml .Values.webdavSenaevRu.resources | indent 12 }}
           volumeMounts:
             - name: config
               mountPath: /config

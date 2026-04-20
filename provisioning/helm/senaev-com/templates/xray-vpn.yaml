@@ -103,6 +103,8 @@ spec:
           ports:
             - containerPort: 443
             - containerPort: 1080
+          resources:
+{{ toYaml $root.Values.xrayVpn.resources | indent 12 }}
           volumeMounts:
             - name: xray-vpn-config
               mountPath: /etc/xray
