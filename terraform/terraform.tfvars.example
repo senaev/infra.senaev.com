@@ -3,7 +3,7 @@
 # https://console.hetzner.cloud/projects → Select project → Security → API tokens → Generate API token
 HETZNER_TOKEN     = "your_hetzner_cloud_api_token"
 # https://login.tailscale.com/admin/settings/keys → API access tokens → Generate access token…
-TAILSCALE_API_KEY = "tskey_api_your_tailscale_api_key"
+TAILSCALE_API_KEY = "tskey-api-your_tailscale_api_key"
 # https://t.me/BotFather → /newbot or /token
 TG_TOKEN_SENAEV_COM_BOT = "111111111:your_telegram_bot_token"
 
@@ -12,8 +12,8 @@ VPS_PROXMOX_USERNAME = "root"
 VPS_PROXMOX_LABEL    = "proxmox"
 
 VPS_MEDIA_HOST     = "11.11.111.11"
-VPS_MEDIA_USERNAME = "ubuntu"
-VPS_MEDIA_LABEL    = "media"
+VPS_MEDIA_USERNAME = "root"
+VPS_MEDIA_LABEL    = "senaev-media"
 
 VPS_RU_HOST     = "22.22.222.22"
 VPS_RU_USERNAME = "root"

@@ -131,14 +131,14 @@ spec:
       volumes:
         - name: config
           hostPath:
-            path: {{ .Values.clusterRootPath }}/{{ .Values.unmanic.volumePath }}/config
+            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.unmanic.volumePath }}/config
             type: DirectoryOrCreate
         - name: default-config
           configMap:
             name: unmanic-default-config
         - name: downloads
           hostPath:
-            path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}/downloads
+            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}/downloads
             type: DirectoryOrCreate
 ---
 apiVersion: v1

@@ -212,7 +212,7 @@ spec:
       volumes:
         - name: config
           hostPath:
-            path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}/config
+            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}/config
             type: DirectoryOrCreate
         - name: default-config
           configMap:
@@ -235,7 +235,7 @@ spec:
           emptyDir: {}
         - name: downloads
           hostPath:
-            path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}/downloads
+            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}/downloads
             type: DirectoryOrCreate
 ---
 apiVersion: v1

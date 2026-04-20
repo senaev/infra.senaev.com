@@ -1,4 +1,5 @@
 clusterRootPath: /k3s-cluster
+mediaServerStoragePath: /mnt/sdb1
 
 nextjs:
   enabled: true
@@ -11,7 +12,7 @@ webdavSenaevCom:
 
 webdavSenaevRu:
   enabled: true
-  vps: media
+  vps: senaev-media
 
 xrayVpn:
   enabled: true
@@ -40,7 +41,7 @@ xrayVpn:
 qbittorrent:
   enabled: true
   volumePath: volumes/qbittorrent
-  vps: media
+  vps: senaev-media
   webuiPort: 9001
   torrentPort: 6881
   paths:
@@ -52,18 +53,18 @@ qbittorrent:
 
 filebrowser:
   enabled: true
-  vps: media
+  vps: senaev-media
   volumePath: volumes/filebrowser/config
 
 unmanic:
   enabled: true
-  vps: media
+  vps: senaev-media
   volumePath: volumes/unmanic
 
 jellyfin:
   enabled: true
   volumePath: volumes/jellyfin
-  vps: media
+  vps: senaev-media
   webuiPort: 8096
 
 testEcho:
@@ -76,7 +77,7 @@ clusterHelper:
 
 mediaServerHelper:
   enabled: true
-  vps: media
+  vps: senaev-media
   percentTriggerToRemove: 90
   percentRemoveTarget: 80
 

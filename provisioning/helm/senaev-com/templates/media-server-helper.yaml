@@ -71,14 +71,14 @@ spec:
       volumes:
         - name: watch-torrent-files
           hostPath:
-            path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.watch }}
+            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.watch }}
             type: DirectoryOrCreate
         - name: downloads-complete
           hostPath:
-            path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.complete }}
+            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.complete }}
             type: DirectoryOrCreate
         - name: downloads-converted-for-mobile
           hostPath:
-            path: {{ .Values.clusterRootPath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.convertedForMobile }}
+            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.convertedForMobile }}
             type: DirectoryOrCreate
 {{- end }}
