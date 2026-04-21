@@ -109,8 +109,8 @@ clusterHelper:
 mediaServerHelper:
   enabled: true
   vps: senaev-media
-  percentTriggerToRemove: 90
-  percentRemoveTarget: 80
+  percentTriggerToRemove: 98
+  percentRemoveTarget: 95
 
 webhookEndpoint:
   enabled: true
