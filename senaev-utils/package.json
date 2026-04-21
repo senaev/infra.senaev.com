@@ -1,6 +1,6 @@
 {
   "name": "senaev-utils",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "description": "Personal library with utils for @senaev",
   "files": [
     "src",
