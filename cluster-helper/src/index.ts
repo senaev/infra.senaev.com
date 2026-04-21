@@ -6,10 +6,8 @@ import { handleAlertmanagerWebhook } from "./alerts/handleAlertmanagerWebhook";
 import { KAFKA_BROKERS, TG_TOKEN_SENAEV_COM_BOT } from "./env";
 import { KafkaTopicProcessorArgument } from "./kafka-topic-processors/KafkaTopicProcessorArgument";
 import { processQbittorrentWebuiPasswordTopic } from "./kafka-topic-processors/processQbittorrentWebuiPasswordTopic";
-import { processTelegramWebhookDataTopic } from "./kafka-topic-processors/processTelegramWebhookDataTopic";
 import { processTgSendToMediaServerTopic } from "./kafka-topic-processors/processTgSendToMediaServerTopic";
 import { processTgSendTopic } from "./kafka-topic-processors/processTgSendTopic";
-import { connectProducer, disconnectProducer } from "./kafka/producer";
 
 import SnappyCodec = require("kafkajs-snappy");
 CompressionCodecs[CompressionTypes.Snappy] = SnappyCodec;
@@ -43,7 +41,6 @@ const KAFKA_TOPIC_HANDLERS: Record<
     string,
     (message: KafkaTopicProcessorArgument) => Promise<void>
 > = {
-    "telegram-webhook-data-topic": processTelegramWebhookDataTopic,
     "qbittorrent-webui-password-topic": processQbittorrentWebuiPasswordTopic,
     "tg-send-topic": processTgSendTopic,
     "tg-send-to-media-server-topic": processTgSendToMediaServerTopic,
@@ -53,7 +50,6 @@ async function main(): Promise<void> {
     const botUser: TelegramUser = await getCurrentTelegramBotInfo(TG_TOKEN_SENAEV_COM_BOT);
 
     console.log("👉 Connecting Kafka producer");
-    await connectProducer();
     console.log("✅ Connected Kafka producer");
 
     const kafka = new Kafka({ brokers: KAFKA_BROKERS });
@@ -104,12 +100,10 @@ async function main(): Promise<void> {
 }
 
 process.on("SIGTERM", async () => {
-    await disconnectProducer();
     process.exit(0);
 });
 
 process.on("SIGINT", async () => {
-    await disconnectProducer();
     process.exit(0);
 });
 

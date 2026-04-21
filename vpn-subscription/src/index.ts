@@ -21,7 +21,7 @@ const subscriptionUrl = `https://vpn-subscription.senaev.com/${VPN_SUBSCRIPTION_
 
 const VPN_SUBSCRIPTION_CHAT_ID = -1003702952069;
 
-const server = Fastify({ logger: true });
+const server = Fastify();
 
 const macroValues: Record<string, string> = {
     XRAY_REALITY_PUBLIC_KEY,

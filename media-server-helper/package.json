@@ -15,6 +15,7 @@
   "dependencies": {
     "kafkajs": "2.2.4",
     "kafkajs-snappy": "1.1.0",
+    "senaev-utils": "1.0.0-ci.24720356439.1",
     "tsx": "4.21.0"
   }
 }

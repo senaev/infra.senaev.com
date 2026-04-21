@@ -30,6 +30,10 @@ spec:
               value: redpanda.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.redpanda.kafkaPort }}
             - name: WEBHOOK_DOMAIN
               value: {{ .Values.webhookEndpoint.webhookDomain }}
+            - name: TG_CLUSTER_CHAT_ID
+              value: {{ .Values.telegramClusterChatId | quote }}
+            - name: TG_MEDIA_SERVER_CHAT_ID
+              value: {{ .Values.telegramMediaServerChatId | quote }}
             - name: TG_TOKEN_SENAEV_COM_BOT
               valueFrom:
                 secretKeyRef:
