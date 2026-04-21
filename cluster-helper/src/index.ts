@@ -17,7 +17,7 @@ CompressionCodecs[CompressionTypes.Snappy] = SnappyCodec;
 const HOST = "0.0.0.0";
 const PORT = 80;
 
-const server = Fastify({ logger: true });
+const server = Fastify();
 let isReady = false;
 
 server.get("/health/live", async (_request, reply) => {
