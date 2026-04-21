@@ -27,7 +27,7 @@ send_telegram_message() {
   local http_code
 
   payload="$(jq -n \
-    --arg chat_id "-5238510786" \
+    --arg chat_id "-1003971743999" \
     --arg text "$text" \
     --arg copy_text "$copy_text" \
     --arg parse_mode "$parse_mode" \
