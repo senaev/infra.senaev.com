@@ -34,12 +34,6 @@ webdavSenaevRu:
 
 xrayVpn:
   enabled: true
-  resources:
-    requests:
-      cpu: 25m
-      memory: 64Mi
-    limits:
-      memory: 128Mi
   instances:
     - name: xray-vpn-ru
       vps: ru
@@ -68,18 +62,6 @@ qbittorrent:
   vps: senaev-media
   webuiPort: 9001
   torrentPort: 6881
-  resources:
-    requests:
-      cpu: 100m
-      memory: 512Mi
-    limits:
-      memory: 2048Mi
-  notifierResources:
-    requests:
-      cpu: 5m
-      memory: 16Mi
-    limits:
-      memory: 32Mi
   paths:
     complete: /downloads/complete
     incomplete: /downloads/incomplete
@@ -104,23 +86,17 @@ unmanic:
   volumePath: volumes/unmanic
   resources:
     requests:
-      cpu: 100m
-      memory: 128Mi
+      cpu: 512m
+      memory: 512Mi
     limits:
-      cpu: 500m
-      memory: 1Gi
+      cpu: 2048m
+      memory: 2Gi
 
 jellyfin:
   enabled: true
   volumePath: volumes/jellyfin
   vps: senaev-media
   webuiPort: 8096
-  resources:
-    requests:
-      cpu: 50m
-      memory: 128Mi
-    limits:
-      memory: 384Mi
 
 testEcho:
   enabled: true
@@ -129,45 +105,21 @@ testEcho:
 clusterHelper:
   enabled: true
   vps: hetzner
-  resources:
-    requests:
-      cpu: 25m
-      memory: 96Mi
-    limits:
-      memory: 192Mi
 
 mediaServerHelper:
   enabled: true
   vps: senaev-media
   percentTriggerToRemove: 90
   percentRemoveTarget: 80
-  resources:
-    requests:
-      cpu: 25m
-      memory: 96Mi
-    limits:
-      memory: 192Mi
 
 webhookEndpoint:
   enabled: true
   vps: hetzner
   webhookDomain: webhook-endpoint.senaev.com
-  resources:
-    requests:
-      cpu: 50m
-      memory: 96Mi
-    limits:
-      memory: 192Mi
 
 vpnSubscription:
   enabled: true
   vps: hetzner
-  resources:
-    requests:
-      cpu: 25m
-      memory: 64Mi
-    limits:
-      memory: 128Mi
   entries:
     - name: "🇩🇪 1. senaev.ru💻ru → socks🌐hetzner"
       link: "vless://{XRAY_USER_UUID:1}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
@@ -177,15 +129,10 @@ vpnSubscription:
       link: "vless://{XRAY_USER_UUID:3}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
     - name: "🇩🇪 4. senaev.com💻hetzner → freedom🌐hetzner"
       link: "vless://{XRAY_USER_UUID:4}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
+
 redpandaConsole:
   enabled: true
   vps: hetzner
-  resources:
-    requests:
-      cpu: 10m
-      memory: 32Mi
-    limits:
-      memory: 128Mi
 
 ingress:
   entries:

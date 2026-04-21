@@ -179,8 +179,6 @@ spec:
               protocol: UDP
               containerPort: {{ .Values.qbittorrent.torrentPort }}
               hostPort: {{ .Values.qbittorrent.torrentPort }}
-          resources:
-{{ toYaml .Values.qbittorrent.resources | indent 12 }}
           volumeMounts:
             - name: config
               mountPath: /config
@@ -211,8 +209,6 @@ spec:
               readOnly: true
             - name: password-notify-state
               mountPath: /password-notify-state
-          resources:
-{{ toYaml .Values.qbittorrent.notifierResources | indent 12 }}
       volumes:
         - name: config
           hostPath:

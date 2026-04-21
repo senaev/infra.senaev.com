@@ -60,8 +60,6 @@ spec:
                   name: senaev-com-kv-secrets
                   key: SUPABASE_PUBLISHABLE_KEY
                   optional: false
-          resources:
-{{ toYaml .Values.webhookEndpoint.resources | indent 12 }}
 ---
 apiVersion: v1
 kind: Service
