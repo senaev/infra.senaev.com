@@ -88,8 +88,7 @@ jobs:
             STATUS_TEXT="error"
           fi
 
-          TEXT="${STATUS_ICON} <b>senaev-utils</b> ${STATUS_TEXT}
-          <a href=\"https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\">Open workflow run</a>"
+          TEXT="${STATUS_ICON} <b>senaev-utils</b> <a href=\"https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\">${STATUS_TEXT}</a>"
 
           curl -sS -X POST "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendMessage" \
             --data-urlencode "chat_id=${{ secrets.TG_CHAT_ID }}" \
