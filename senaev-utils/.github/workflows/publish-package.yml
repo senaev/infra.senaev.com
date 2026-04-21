@@ -10,6 +10,9 @@ concurrency:
   group: publish-package-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  NPM_DIST_TAG: ci
+
 jobs:
   ci:
     name: Lint, Test, Typecheck
@@ -75,7 +78,7 @@ jobs:
           npm version "${BASE_VERSION}-ci.${GITHUB_RUN_ID}.${GITHUB_RUN_ATTEMPT}" --no-git-tag-version
 
       - name: Publish package
-        run: npm publish --tag ci
+        run: npm publish --tag "$NPM_DIST_TAG"
 
   notify:
     name: Notify Telegram
@@ -97,7 +100,7 @@ jobs:
             STATUS_TEXT="error"
           fi
 
-          TEXT="${STATUS_ICON} <b>senaev-utils</b> <a href=\"https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\">${STATUS_TEXT}</a>"
+          TEXT="${STATUS_ICON} <b>senaev-utils</b>#<code>${NPM_DIST_TAG}</code> <a href=\"https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\">${STATUS_TEXT}</a>"
 
           curl -sS -X POST "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendMessage" \
             --data-urlencode "chat_id=${{ secrets.TG_CHAT_ID }}" \
