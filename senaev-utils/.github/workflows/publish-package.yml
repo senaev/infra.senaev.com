@@ -21,10 +21,14 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 22.14.0
+          node-version: latest
+          check-latest: true
           cache: npm
+
+      - name: Update npm
+        run: npm install --global npm@latest
 
       - name: Install dependencies
         run: npm ci
@@ -51,9 +55,10 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 22.14.0
+          node-version: latest
+          check-latest: true
           registry-url: https://registry.npmjs.org
           cache: npm
 
@@ -72,13 +77,6 @@ jobs:
         run: |
           BASE_VERSION=$(node -p "require('./package.json').version")
           npm version "${BASE_VERSION}-ci.${GITHUB_RUN_ID}.${GITHUB_RUN_ATTEMPT}" --no-git-tag-version
-
-      - name: Debug publish context
-        run: |
-          npm config get registry
-          node -p "require('./package.json').name"
-          node -p "require('./package.json').version"
-          env | grep -E 'NPM|NODE_AUTH' || true
 
       - name: Publish package
         run: npm publish --tag ci
