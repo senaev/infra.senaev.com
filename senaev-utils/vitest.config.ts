@@ -9,5 +9,6 @@ export default defineConfig({
                 'jsdom',
             ], // jsdom for React hooks tests
         ],
+        maxWorkers: '100%',
     },
 });
