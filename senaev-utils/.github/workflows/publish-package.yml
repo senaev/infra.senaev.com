@@ -86,34 +86,16 @@ jobs:
     steps:
       - name: Notify Telegram
         run: |
-          if [ "${{ needs.publish.result }}" = "success" ]; then
+          if [ "${{ job.status }}" = "success" ]; then
             STATUS_ICON="✅"
-            STATUS_TEXT="published"
-          elif [ "${{ needs.ci.result }}" = "failure" ]; then
-            STATUS_ICON="❌"
-            STATUS_TEXT="failed before publish"
-          elif [ "${{ needs.publish.result }}" = "failure" ]; then
-            STATUS_ICON="❌"
-            STATUS_TEXT="publish failed"
-          elif [ "${{ needs.publish.result }}" = "cancelled" ] || [ "${{ needs.ci.result }}" = "cancelled" ]; then
-            STATUS_ICON="⚪️"
-            STATUS_TEXT="cancelled"
           else
-            STATUS_ICON="⚠️"
-            STATUS_TEXT="finished with status ${{ needs.publish.result }}"
+            STATUS_ICON="❌"
           fi
 
-          TEXT="${STATUS_ICON} <b>${{ needs.publish.outputs.package_name || 'senaev-utils' }}</b> ${STATUS_TEXT}"
-          TEXT="${TEXT}%0APackage: <code>${{ needs.publish.outputs.package_name || 'senaev-utils' }}@${{ needs.publish.outputs.package_version || 'unknown' }}</code>"
-          TEXT="${TEXT}%0AEvent: <code>${{ github.event_name }}</code>"
-          TEXT="${TEXT}%0ARef: <code>${{ github.ref_name }}</code>"
-          TEXT="${TEXT}%0AActor: <code>${{ github.actor }}</code>"
-          TEXT="${TEXT}%0ACI: <code>${{ needs.ci.result }}</code>"
-          TEXT="${TEXT}%0APublish: <code>${{ needs.publish.result }}</code>"
-          TEXT="${TEXT}%0A<a href=\"https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\">Open workflow run</a>"
+          TEXT="${STATUS_ICON} ${{ inputs.workflow_title }} <a href=\"https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\">built</a>"
 
           curl -sS -X POST "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendMessage" \
-            --data-urlencode "chat_id=${{ secrets.TG_CHAT_ID }}" \
+            --data-urlencode "chat_id=-5238510786" \
             --data-urlencode "parse_mode=HTML" \
             --data-urlencode "disable_web_page_preview=true" \
             --data-urlencode "text=${TEXT}"
