@@ -73,6 +73,13 @@ jobs:
           BASE_VERSION=$(node -p "require('./package.json').version")
           npm version "${BASE_VERSION}-ci.${GITHUB_RUN_ID}.${GITHUB_RUN_ATTEMPT}" --no-git-tag-version
 
+      - name: Debug publish context
+        run: |
+          npm config get registry
+          node -p "require('./package.json').name"
+          node -p "require('./package.json').version"
+          env | grep -E 'NPM|NODE_AUTH' || true
+
       - name: Publish package
         run: npm publish --tag ci
 
