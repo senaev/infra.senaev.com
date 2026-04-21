@@ -1,12 +1,14 @@
+import { downloadFileFromTelegramMessage } from "senaev-utils/src/utils/TelegramApi/downloadFileFromTelegramMessage";
+import { sendTelegramMessage } from "senaev-utils/src/utils/TelegramApi/sendTelegramMessage";
+import { setTelegramMessageReaction } from "senaev-utils/src/utils/TelegramApi/setTelegramMessageReaction";
+import { TelegramMessage } from "senaev-utils/src/utils/TelegramApi/types";
 import { TG_MEDIA_SERVER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from "../env";
 import { sendMessage as sendKafkaMessage } from "../kafka/producer";
-import { downloadFile, sendTelegramMessage, setMessageReaction } from "./api";
-import type { TelegramMessage } from "./types";
 
 const TORRENT_FILES_TOPIC = "torrent-files-topic";
 
 export async function processMediaServerChatMessage(message: TelegramMessage): Promise<void> {
-    await setMessageReaction({
+    await setTelegramMessageReaction({
         chatId: message.chat.id,
         messageId: message.message_id,
         token: TG_TOKEN_SENAEV_COM_BOT,
@@ -29,7 +31,10 @@ export async function processMediaServerChatMessage(message: TelegramMessage): P
         `📥 Processing new document message with fileName=[${fileName}] from Telegram channel`,
     );
     const buffer = Buffer.from(
-        await downloadFile({ fileId: message.document.file_id, token: TG_TOKEN_SENAEV_COM_BOT }),
+        await downloadFileFromTelegramMessage({
+            fileId: message.document.file_id,
+            token: TG_TOKEN_SENAEV_COM_BOT,
+        }),
     );
     console.log(
         `✅ Downloaded file from Telegram, size=[${buffer.length}] bytes, sending to Kafka topic...`,
@@ -47,7 +52,7 @@ export async function processMediaServerChatMessage(message: TelegramMessage): P
     console.log(`✅ File sent to Kafka topic [${TORRENT_FILES_TOPIC}] successfully`);
 
     console.log(`👉 Setting thumbs up reaction to the message...`);
-    await setMessageReaction({
+    await setTelegramMessageReaction({
         chatId: message.chat.id,
         messageId: message.message_id,
         token: TG_TOKEN_SENAEV_COM_BOT,

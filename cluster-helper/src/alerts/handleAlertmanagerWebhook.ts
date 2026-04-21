@@ -1,5 +1,5 @@
+import { sendTelegramMessage } from "senaev-utils/src/utils/TelegramApi/sendTelegramMessage";
 import { TG_CLUSTER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from "../env";
-import { sendTelegramMessage } from "../telegram/api";
 import { escapeHtml } from "../utils/escapeHtml";
 
 function formatDate(dateString: string): string {

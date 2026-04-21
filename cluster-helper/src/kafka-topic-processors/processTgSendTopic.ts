@@ -1,4 +1,5 @@
-import { forwardTelegramApiCall, type TelegramForwardPayload } from "../telegram/api";
+import { forwardTelegramApiCall } from "senaev-utils/src/utils/TelegramApi/forwardTelegramApiCall";
+import { TelegramForwardPayload } from "senaev-utils/src/utils/TelegramApi/types";
 import { KafkaTopicProcessorArgument } from "./KafkaTopicProcessorArgument";
 
 export async function processTgSendTopic({

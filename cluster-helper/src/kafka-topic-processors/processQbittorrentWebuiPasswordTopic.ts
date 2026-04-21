@@ -1,6 +1,6 @@
+import { escapeTelegramMarkdownV2 } from "senaev-utils/src/utils/TelegramApi/escapeTelegramMarkdownV2/escapeTelegramMarkdownV2";
+import { sendTelegramMessage } from "senaev-utils/src/utils/TelegramApi/sendTelegramMessage";
 import { TG_CLUSTER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from "../env";
-import { sendTelegramMessage } from "../telegram/api";
-import { escapeMarkdownV2 } from "../telegram/escapeMarkdownV2";
 import { KafkaTopicProcessorArgument } from "./KafkaTopicProcessorArgument";
 
 type QbittorrentWebuiPasswordMessage = {
@@ -42,7 +42,7 @@ export async function processQbittorrentWebuiPasswordTopic({
     }
 
     await sendTelegramMessage({
-        text: `qBittorrent WebUI password for ${escapeMarkdownV2(parsed.podName)}:\n||${escapeMarkdownV2(parsed.password)}||`,
+        text: `qBittorrent WebUI password for ${escapeTelegramMarkdownV2(parsed.podName)}:\n||${escapeTelegramMarkdownV2(parsed.password)}||`,
         chatId: TG_CLUSTER_CHAT_ID,
         parseMode: "MarkdownV2",
         token: TG_TOKEN_SENAEV_COM_BOT,
