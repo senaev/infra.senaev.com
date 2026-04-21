@@ -18,6 +18,7 @@ const FOLDER_TO_CHECK_USAGE = `${DOWNLOADS_DIR}/complete`;
 const CHECK_INTERVAL_MS = 10_000;
 
 let isRemovingFiles = false;
+let lastDiskUsageMessage = "";
 
 async function checkDiskSpace(): Promise<void> {
     const {
@@ -32,9 +33,13 @@ async function checkDiskSpace(): Promise<void> {
 
     const totalBytes = totalBlocks * blockSize;
     const usedBytes = (totalBlocks - availableBlocks) * blockSize;
-    console.log(
-        `✅ Disk usage=[${occupiedPercent.toFixed(2)}]% limit=[${PERCENT_TRIGGER_TO_REMOVE}]% total=[${formatBytes(totalBytes)}] used=[${formatBytes(usedBytes)}] blockSize=[${formatBytes(blockSize)}]`,
-    );
+    const diskUsageMessage = `✅ Disk usage=[${occupiedPercent.toFixed(2)}]% limit=[${PERCENT_TRIGGER_TO_REMOVE}]% total=[${formatBytes(totalBytes)}] used=[${formatBytes(usedBytes)}] blockSize=[${formatBytes(blockSize)}]`;
+
+    if (diskUsageMessage !== lastDiskUsageMessage) {
+        console.log(diskUsageMessage);
+        lastDiskUsageMessage = diskUsageMessage;
+    }
+
     if (!removeInfo) {
         isRemovingFiles = false;
         return;
