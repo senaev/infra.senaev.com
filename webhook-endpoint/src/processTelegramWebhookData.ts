@@ -1,17 +1,16 @@
-import { TG_CLUSTER_CHAT_ID, TG_MEDIA_SERVER_CHAT_ID } from "../../cluster-helper/src/env";
-import { processClusterChatMessage } from "../../cluster-helper/src/telegram/processClusterChatMessage";
-import { processMediaServerChatMessage } from "../../cluster-helper/src/telegram/processMediaServerChatMessage";
-import { TelegramUpdate } from "../../cluster-helper/src/telegram/types";
+import { TelegramUpdate, TelegramUser } from "senaev-utils/src/utils/TelegramApi/types";
+import { TG_CLUSTER_CHAT_ID, TG_MEDIA_SERVER_CHAT_ID } from "./env";
+import { processClusterChatMessage } from "./processClusterChatMessage";
+import { processMediaServerChatMessage } from "./processMediaServerChatMessage";
 
 export async function processTelegramWebhookData({
-    message: { value },
     botUser,
-}: KafkaTopicProcessorArgument): Promise<void> {
-    if (!value) {
-        throw new Error("❌ Consumed message with no value from Telegram Webhook Data topic");
-    }
-
-    const update = JSON.parse(value.toString()) as TelegramUpdate;
+    webhookInfo,
+}: {
+    botUser: TelegramUser;
+    webhookInfo: string;
+}): Promise<void> {
+    const update = JSON.parse(webhookInfo) as TelegramUpdate;
     const message = update.message;
 
     if (!message) {
@@ -46,11 +45,15 @@ export async function processTelegramWebhookData({
     }
 
     if (chatIdStr === TG_MEDIA_SERVER_CHAT_ID) {
+        console.log(
+            `👀 Received new message in media server chat, messageId=[${message.message_id}]`,
+        );
         processMediaServerChatMessage(message);
         return;
     }
 
     if (chatIdStr === TG_CLUSTER_CHAT_ID) {
+        console.log(`👀 Received new message in cluster chat, messageId=[${message.message_id}]`);
         processClusterChatMessage(message);
         return;
     }
