@@ -1,4 +1,4 @@
-import { TG_CLUSTER_CHAT_ID } from "../env";
+import { TG_CLUSTER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from "../env";
 import { sendTelegramMessage } from "../telegram/api";
 import { escapeHtml } from "../utils/escapeHtml";
 
@@ -175,6 +175,7 @@ export async function handleAlertmanagerWebhook(requestBody: unknown): Promise<v
             await sendTelegramMessage({
                 chatId: TG_CLUSTER_CHAT_ID,
                 text: message,
+                token: TG_TOKEN_SENAEV_COM_BOT,
                 parseMode: "HTML",
             });
             console.log("✅ Alert sent to Telegram");
@@ -185,6 +186,7 @@ export async function handleAlertmanagerWebhook(requestBody: unknown): Promise<v
         console.log("👉 Sending error to Telegram");
         await sendTelegramMessage({
             text: `❌ Error handling Alertmanager webhook:\n${err instanceof Error ? err.message : String(err)}\n\nReceived body:\n${JSON.stringify(requestBody)}`,
+            token: TG_TOKEN_SENAEV_COM_BOT,
             chatId: TG_CLUSTER_CHAT_ID,
         });
         console.log("✅ Error sent to Telegram");

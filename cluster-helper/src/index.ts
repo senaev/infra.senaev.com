@@ -1,12 +1,12 @@
 import Fastify from "fastify";
 import { CompressionCodecs, CompressionTypes, Kafka, type EachMessagePayload } from "kafkajs";
 import { handleAlertmanagerWebhook } from "./alerts/handleAlertmanagerWebhook";
-import { KAFKA_BROKERS } from "./env";
+import { KAFKA_BROKERS, TG_TOKEN_SENAEV_COM_BOT } from "./env";
 import { KafkaTopicProcessorArgument } from "./kafka-topic-processors/KafkaTopicProcessorArgument";
 import { processQbittorrentWebuiPasswordTopic } from "./kafka-topic-processors/processQbittorrentWebuiPasswordTopic";
-import { processTgSendTopic } from "./kafka-topic-processors/processTgSendTopic";
 import { processTelegramWebhookDataTopic } from "./kafka-topic-processors/processTelegramWebhookDataTopic";
 import { processTgSendToMediaServerTopic } from "./kafka-topic-processors/processTgSendToMediaServerTopic";
+import { processTgSendTopic } from "./kafka-topic-processors/processTgSendTopic";
 import { connectProducer, disconnectProducer } from "./kafka/producer";
 import { getMe } from "./telegram/api";
 import type { TelegramUser } from "./telegram/types";
@@ -50,7 +50,7 @@ const KAFKA_TOPIC_HANDLERS: Record<
 };
 
 async function main(): Promise<void> {
-    const botUser: TelegramUser = await getMe();
+    const botUser: TelegramUser = await getMe(TG_TOKEN_SENAEV_COM_BOT);
 
     console.log("👉 Connecting Kafka producer");
     await connectProducer();

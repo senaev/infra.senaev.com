@@ -1,4 +1,4 @@
-import { TG_CLUSTER_CHAT_ID } from "../env";
+import { TG_CLUSTER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from "../env";
 import { sendTelegramMessage } from "../telegram/api";
 import { escapeMarkdownV2 } from "../telegram/escapeMarkdownV2";
 import { KafkaTopicProcessorArgument } from "./KafkaTopicProcessorArgument";
@@ -45,6 +45,7 @@ export async function processQbittorrentWebuiPasswordTopic({
         text: `qBittorrent WebUI password for ${escapeMarkdownV2(parsed.podName)}:\n||${escapeMarkdownV2(parsed.password)}||`,
         chatId: TG_CLUSTER_CHAT_ID,
         parseMode: "MarkdownV2",
+        token: TG_TOKEN_SENAEV_COM_BOT,
         replyMarkup: {
             inline_keyboard: [[{ text: "Copy", copy_text: { text: parsed.password } }]],
         },

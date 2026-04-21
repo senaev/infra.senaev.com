@@ -1,4 +1,4 @@
-import { TG_MEDIA_SERVER_CHAT_ID } from "../env";
+import { TG_MEDIA_SERVER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from "../env";
 import { formatTorrentEvent, isTorrentEvent } from "../qbittorrent/formatTorrentEvent";
 import { sendTelegramMessage } from "../telegram/api";
 import { KafkaTopicProcessorArgument } from "./KafkaTopicProcessorArgument";
@@ -22,6 +22,7 @@ export async function processTgSendToMediaServerTopic({
         await sendTelegramMessage({
             text: raw,
             chatId: TG_MEDIA_SERVER_CHAT_ID,
+            token: TG_TOKEN_SENAEV_COM_BOT,
         });
         return;
     }
@@ -31,9 +32,14 @@ export async function processTgSendToMediaServerTopic({
             text: formatTorrentEvent(parsed),
             chatId: TG_MEDIA_SERVER_CHAT_ID,
             parseMode: "HTML",
+            token: TG_TOKEN_SENAEV_COM_BOT,
         });
         return;
     }
 
-    await sendTelegramMessage({ text: raw, chatId: TG_MEDIA_SERVER_CHAT_ID });
+    await sendTelegramMessage({
+        text: raw,
+        chatId: TG_MEDIA_SERVER_CHAT_ID,
+        token: TG_TOKEN_SENAEV_COM_BOT,
+    });
 }
