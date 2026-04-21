@@ -1,19 +1,19 @@
-import { TelegramUpdate, TelegramUser } from "senaev-utils/src/utils/TelegramApi/types";
+import { isObject } from "senaev-utils/src/utils/Object/isObject";
+import { TelegramMessage, TelegramUser } from "senaev-utils/src/utils/TelegramApi/types";
 import { TG_CLUSTER_CHAT_ID, TG_MEDIA_SERVER_CHAT_ID } from "./env";
 import { processClusterChatMessage } from "./processClusterChatMessage";
 import { processMediaServerChatMessage } from "./processMediaServerChatMessage";
 
 export async function processTelegramWebhookData({
     botUser,
-    webhookInfo,
+    update,
 }: {
     botUser: TelegramUser;
-    webhookInfo: string;
+    update: Record<string, unknown>;
 }): Promise<void> {
-    const update = JSON.parse(webhookInfo) as TelegramUpdate;
     const message = update.message;
 
-    if (!message) {
+    if (!isObject(message)) {
         throw new Error(
             `❌ Unsupported Telegram update type received in Webhook Data topic [${JSON.stringify(update)}]`,
         );
@@ -21,7 +21,7 @@ export async function processTelegramWebhookData({
 
     const { chat, from } = message;
 
-    if (!from) {
+    if (!isObject(from)) {
         throw new Error("❌ Telegram message has no sender information");
     }
 
@@ -35,7 +35,7 @@ export async function processTelegramWebhookData({
         return;
     }
 
-    if (!chat) {
+    if (!isObject(chat)) {
         throw new Error("❌ Telegram message has no chat information");
     }
 
@@ -48,13 +48,13 @@ export async function processTelegramWebhookData({
         console.log(
             `👀 Received new message in media server chat, messageId=[${message.message_id}]`,
         );
-        processMediaServerChatMessage(message);
+        processMediaServerChatMessage(message as TelegramMessage);
         return;
     }
 
     if (chatIdStr === TG_CLUSTER_CHAT_ID) {
         console.log(`👀 Received new message in cluster chat, messageId=[${message.message_id}]`);
-        processClusterChatMessage(message);
+        processClusterChatMessage(message as TelegramMessage);
         return;
     }
 

@@ -1,8 +1,8 @@
 import Fastify from "fastify";
 import { randomBytes } from "node:crypto";
-import { isNonEmptyString } from "senaev-utils/src/utils/String/NonEmptyString/NonEmptyString";
+import { isObject } from "senaev-utils/src/utils/Object/isObject";
 import { getCurrentTelegramBotInfo } from "senaev-utils/src/utils/TelegramApi/getCurrentTelegramBotInfo";
-import { TelegramUser } from "senaev-utils/src/utils/TelegramApi/types";
+import { TelegramUpdate, TelegramUser } from "senaev-utils/src/utils/TelegramApi/types";
 import { ALISA_WEBHOOK_SECRET, TG_TOKEN_SENAEV_COM_BOT, WEBHOOK_DOMAIN } from "./env.js";
 import { handleAlisaRequest } from "./handleAlisaRequest.js";
 import { connectProducer, disconnectProducer } from "./kafka-producer.js";
@@ -42,17 +42,17 @@ async function main(): Promise<void> {
             return reply.code(401).send("Unauthorized");
         }
 
-        const webhookInfo = request.body;
-        if (!isNonEmptyString(webhookInfo)) {
+        const update = request.body;
+        if (!isObject(update)) {
             console.log(
-                `❌ Invalid request=[${WEBHOOK_PATH}] with non-string body=[${typeof webhookInfo}][${webhookInfo}]`,
+                `❌ Invalid request=[${WEBHOOK_PATH}] with non-object body=[${typeof update}][${update}]`,
             );
             return reply.code(400).send("Bad Request");
         }
 
         await processTelegramWebhookData({
             botUser,
-            webhookInfo,
+            update: update as TelegramUpdate,
         });
         return reply.send("OK");
     });
