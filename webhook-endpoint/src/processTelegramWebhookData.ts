@@ -11,6 +11,7 @@ export async function processTelegramWebhookData({
     botUser: TelegramUser;
     update: Record<string, unknown>;
 }): Promise<void> {
+    console.log(`👉 processTelegramWebhookData`);
     const message = update.message;
 
     if (!isObject(message)) {

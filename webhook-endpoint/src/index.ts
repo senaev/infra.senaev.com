@@ -35,26 +35,33 @@ server.post(`/${ALISA_WEBHOOK_SECRET}`, async ({ body }, reply) => {
 async function main(): Promise<void> {
     const botUser: TelegramUser = await getCurrentTelegramBotInfo(TG_TOKEN_SENAEV_COM_BOT);
     server.post(WEBHOOK_PATH, async (request, reply) => {
-        console.log("🆕 Received Telegram update:", request.body);
-        const secret = request.headers["x-telegram-bot-api-secret-token"];
-        if (secret !== webhookSecretToken) {
-            console.log(`❌ Unauthorized request=[${WEBHOOK_PATH}] with invalid secret token`);
-            return reply.code(401).send("Unauthorized");
-        }
+        try {
+            console.log("🆕 Received Telegram update:", request.body);
+            const secret = request.headers["x-telegram-bot-api-secret-token"];
+            if (secret !== webhookSecretToken) {
+                console.log(`❌ Unauthorized request=[${WEBHOOK_PATH}] with invalid secret token`);
+                return reply.code(401).send("Unauthorized");
+            }
 
-        const update = request.body;
-        if (!isObject(update)) {
-            console.log(
-                `❌ Invalid request=[${WEBHOOK_PATH}] with non-object body=[${typeof update}][${update}]`,
-            );
-            return reply.code(400).send("Bad Request");
-        }
+            const update = request.body;
+            if (!isObject(update)) {
+                console.log(
+                    `❌ Invalid request=[${WEBHOOK_PATH}] with non-object body=[${typeof update}][${update}]`,
+                );
+                return reply.code(400).send("Bad Request");
+            }
 
-        await processTelegramWebhookData({
-            botUser,
-            update: update as TelegramUpdate,
-        });
-        return reply.send("OK");
+            await processTelegramWebhookData({
+                botUser,
+                update: update as TelegramUpdate,
+            });
+
+            console.log(`✅ Successfully processed Telegram update`);
+            return reply.send("OK");
+        } catch (err: unknown) {
+            console.error("❌ Error processing Telegram webhook data:", err);
+            return reply.code(500).send("Internal Server Error");
+        }
     });
 
     await connectProducer();
