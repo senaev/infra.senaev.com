@@ -84,7 +84,6 @@ jobs:
       contents: read
     steps:
       - name: Notify Telegram
-        if: secrets.TG_BOT_TOKEN != '' && secrets.TG_CHAT_ID != ''
         run: |
           if [ "${{ needs.publish.result }}" = "success" ]; then
             STATUS_ICON="✅"
