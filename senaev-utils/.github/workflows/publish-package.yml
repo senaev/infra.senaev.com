@@ -43,9 +43,6 @@ jobs:
     needs: ci
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    outputs:
-      package_name: ${{ steps.package.outputs.name }}
-      package_version: ${{ steps.package.outputs.version }}
     permissions:
       contents: read
       id-token: write
@@ -63,14 +60,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Publish package
-        run: npm publish
-
-      - name: Read package metadata
-        id: package
+      - name: Set CI package version
         run: |
-          echo "name=$(node -p "require('./package.json').name")" >> "$GITHUB_OUTPUT"
-          echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+          BASE_VERSION=$(node -p "require('./package.json').version")
+          npm version "${BASE_VERSION}-ci.${GITHUB_RUN_ID}.${GITHUB_RUN_ATTEMPT}" --no-git-tag-version
+
+      - name: Publish package
+        run: npm publish --tag ci
 
   notify:
     name: Notify Telegram
