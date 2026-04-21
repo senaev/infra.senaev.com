@@ -1,41 +1,46 @@
 {{- define "senaev-com.xrayVpnConfig" -}}
 {{- $instance := .instance -}}
 {{- $root := .root -}}
+{{- $publicInboundEnabled := not (empty $instance.realityServerName) -}}
 {{- $inbounds := list -}}
 {{- $rules := list -}}
 {{- $clients := list -}}
-{{- range $profile := $instance.profiles }}
-  {{- $clients = append $clients (dict
-    "email" $profile.user
-    "id" $profile.uuidMacro
-    "flow" "xtls-rprx-vision"
-  ) -}}
-  {{- $rules = append $rules (dict
-    "type" "field"
-    "inboundTag" (list (printf "inbound-%s" $instance.name))
-    "user" (list $profile.user)
-    "outboundTag" $profile.outbound
+{{- if $publicInboundEnabled }}
+  {{- range $profile := $instance.profiles }}
+    {{- $clients = append $clients (dict
+      "email" $profile.user
+      "id" $profile.uuidMacro
+      "flow" "xtls-rprx-vision"
+    ) -}}
+    {{- $rules = append $rules (dict
+      "type" "field"
+      "inboundTag" (list (printf "inbound-%s" $instance.name))
+      "user" (list $profile.user)
+      "outboundTag" $profile.outbound
+    ) -}}
+  {{- end -}}
+{{- end -}}
+{{- if $publicInboundEnabled }}
+  {{- $inbounds = append $inbounds (dict
+    "tag" (printf "inbound-%s" $instance.name)
+    "port" 443
+    "protocol" "vless"
+    "settings" (dict
+      "clients" $clients
+      "decryption" "none"
+    )
+    "streamSettings" (dict
+      "network" "tcp"
+      "security" "reality"
+      "realitySettings" (dict
+        "dest" (printf "traefik-%s.traefik.svc.cluster.local:8443" $instance.vps)
+        "serverNames" (list $instance.realityServerName)
+        "privateKey" "{XRAY_REALITY_PRIVATE_KEY}"
+        "shortIds" (list "")
+      )
+    )
   ) -}}
 {{- end -}}
-{{- $inbounds = append $inbounds (dict
-  "tag" (printf "inbound-%s" $instance.name)
-  "port" 443
-  "protocol" "vless"
-  "settings" (dict
-    "clients" $clients
-    "decryption" "none"
-  )
-  "streamSettings" (dict
-    "network" "tcp"
-    "security" "reality"
-    "realitySettings" (dict
-      "dest" (printf "traefik-%s.traefik.svc.cluster.local:8443" $instance.vps)
-      "serverNames" (list $instance.serverName)
-      "privateKey" "{XRAY_REALITY_PRIVATE_KEY}"
-      "shortIds" (list "")
-    )
-  )
-) -}}
 {{- $inbounds = append $inbounds (dict
   "tag" "inbound-socks"
   "port" 1080
