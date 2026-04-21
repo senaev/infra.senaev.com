@@ -1,4 +1,4 @@
-name: Build VPN Subscription
+name: vpn-subscription
 
 on:
   push:
@@ -14,7 +14,7 @@ jobs:
       packages: write
     uses: ./.github/workflows/build-service.yml
     with:
-      workflow_title: Build VPN Subscription
+      workflow_title: vpn-subscription
       context: ./vpn-subscription
       registry_image: ghcr.io/senaev/vpn-subscription
       deployment_name: vpn-subscription
