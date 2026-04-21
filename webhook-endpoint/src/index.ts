@@ -44,7 +44,9 @@ async function main(): Promise<void> {
 
         const webhookInfo = request.body;
         if (!isNonEmptyString(webhookInfo)) {
-            console.log(`❌ Invalid request=[${WEBHOOK_PATH}] with non-string body`);
+            console.log(
+                `❌ Invalid request=[${WEBHOOK_PATH}] with non-string body=[${typeof webhookInfo}][${webhookInfo}]`,
+            );
             return reply.code(400).send("Bad Request");
         }
 
