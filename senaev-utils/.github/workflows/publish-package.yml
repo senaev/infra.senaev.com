@@ -95,7 +95,7 @@ jobs:
           TEXT="${STATUS_ICON} ${{ inputs.workflow_title }} <a href=\"https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\">built</a>"
 
           curl -sS -X POST "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendMessage" \
-            --data-urlencode "chat_id=-5238510786" \
+            --data-urlencode "chat_id={{ secrets.TG_CHAT_ID }}" \
             --data-urlencode "parse_mode=HTML" \
             --data-urlencode "disable_web_page_preview=true" \
             --data-urlencode "text=${TEXT}"
