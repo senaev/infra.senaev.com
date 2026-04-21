@@ -62,9 +62,6 @@ jobs:
           registry-url: https://registry.npmjs.org
           cache: npm
 
-      - name: Upgrade npm
-        run: npm i -g npm@^11.5.1
-
       - name: Show tool versions
         run: |
           node -v
