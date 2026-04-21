@@ -23,7 +23,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 22.14.0
           cache: npm
 
       - name: Install dependencies
@@ -56,7 +56,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 22.14.0
           registry-url: https://registry.npmjs.org
           cache: npm
 
@@ -64,9 +64,7 @@ jobs:
         run: npm ci
 
       - name: Publish package
-        run: npm publish --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish
 
       - name: Read package metadata
         id: package
@@ -86,16 +84,18 @@ jobs:
     steps:
       - name: Notify Telegram
         run: |
-          if [ "${{ job.status }}" = "success" ]; then
+          if [ "${{ needs.publish.result }}" = "success" ]; then
             STATUS_ICON="✅"
+            STATUS_TEXT="success"
           else
             STATUS_ICON="❌"
+            STATUS_TEXT="error"
           fi
 
-          TEXT="${STATUS_ICON} ${{ inputs.workflow_title }} <a href=\"https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\">built</a>"
+          TEXT="${STATUS_ICON} <b>senaev-utils</b> ${STATUS_TEXT}%0A<a href=\"https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\">Open workflow run</a>"
 
           curl -sS -X POST "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendMessage" \
-            --data-urlencode "chat_id={{ secrets.TG_CHAT_ID }}" \
+            --data-urlencode "chat_id=${{ secrets.TG_CHAT_ID }}" \
             --data-urlencode "parse_mode=HTML" \
             --data-urlencode "disable_web_page_preview=true" \
             --data-urlencode "text=${TEXT}"
