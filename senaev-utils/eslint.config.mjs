@@ -10,6 +10,9 @@ const INDENT = 4;
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
+    {
+        ignores: ['dist/**'],
+    },
     { files: ['**/*.{js,mjs,cjs,ts,jsx,tsx}'] },
     { languageOptions: { globals: globals.browser } },
     pluginJs.configs.recommended,
@@ -415,7 +418,10 @@ export default [
             'valid-typeof': 'error',
             'no-unneeded-ternary': 'error',
             'no-nested-ternary': 'error',
-            eqeqeq: 'error',
+            eqeqeq: [
+                'error',
+                'smart',
+            ],
             'no-return-assign': [
                 'error',
                 'always',
