@@ -80,13 +80,15 @@ spec:
             - sh
             - -c
             - |
-              mkdir -p /config /downloads
-              chown -R 1000:1000 /config /downloads
+              mkdir -p /config /downloads /tmp/unmanic
+              chown -R 1000:1000 /config /downloads /tmp/unmanic
           volumeMounts:
             - name: config
               mountPath: /config
             - name: downloads
               mountPath: /downloads
+            - name: cache
+              mountPath: /tmp/unmanic
         - name: init-config
           image: busybox:1.37.0-uclibc
           command:
@@ -119,17 +121,21 @@ spec:
           ports:
             - name: webui
               containerPort: 8888
-          resources:
-{{ toYaml .Values.unmanic.resources | indent 12 }}
           volumeMounts:
             - name: config
               mountPath: /config
             - name: downloads
               mountPath: /downloads
+            - name: cache
+              mountPath: /tmp/unmanic
       volumes:
         - name: config
           hostPath:
             path: {{ .Values.mediaServerStoragePath }}/{{ .Values.unmanic.volumePath }}/config
+            type: DirectoryOrCreate
+        - name: cache
+          hostPath:
+            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.unmanic.volumePath }}/cache
             type: DirectoryOrCreate
         - name: default-config
           configMap:
