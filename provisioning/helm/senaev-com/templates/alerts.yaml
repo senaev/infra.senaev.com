@@ -5,6 +5,15 @@ metadata:
   namespace: telemetry
 spec:
   groups:
+    - name: overheating
+      rules:
+        - alert: node-overheating
+          expr: |
+            node_hwmon_temp_celsius{job="node-exporter",cluster=~".*"} > 100
+          for: 10s
+          labels:
+            severity: critical
+            route: senaev-com-alerts
     - name: node-disk
       rules:
         - alert: node-disk-space-low
