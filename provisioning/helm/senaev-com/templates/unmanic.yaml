@@ -68,6 +68,9 @@ spec:
         runAsUser: 1000
         runAsGroup: 1000
         fsGroup: 1000
+        supplementalGroups:
+          - 44
+          - 991
       nodeSelector:
         vps: {{ .Values.unmanic.vps }}
       initContainers:
@@ -111,6 +114,8 @@ spec:
       containers:
         - name: unmanic
           image: josh5/unmanic:0.4.0.post1
+          securityContext:
+            privileged: true
           env:
             - name: PUID
               value: "1000"
@@ -128,6 +133,8 @@ spec:
               mountPath: /downloads
             - name: cache
               mountPath: /tmp/unmanic
+            - name: dri
+              mountPath: /dev/dri
       volumes:
         - name: config
           hostPath:
@@ -144,6 +151,10 @@ spec:
           hostPath:
             path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}/downloads
             type: DirectoryOrCreate
+        - name: dri
+          hostPath:
+            path: /dev/dri
+            type: Directory
 ---
 apiVersion: v1
 kind: Service
