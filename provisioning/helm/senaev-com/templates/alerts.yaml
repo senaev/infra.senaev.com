@@ -7,22 +7,19 @@ spec:
   groups:
     - name: node-disk
       rules:
-{{- range $rule := list
-  (dict "alert" "node-disk-space-low" "mountpoint" "/")
-  (dict "alert" "node-media-disk-space-low" "mountpoint" "/mnt/sdb1")
-}}
-        - alert: {{ $rule.alert }}
+        - alert: node-disk-space-low
           expr: |
             (
-              node_filesystem_avail_bytes{mountpoint="{{ $rule.mountpoint }}", fstype!="", job="node-exporter"}
-              /
-              node_filesystem_size_bytes{mountpoint="{{ $rule.mountpoint }}", fstype!="", job="node-exporter"}
-            ) < 0.05
+              node_filesystem_avail_bytes{fstype!="", job="node-exporter"} < 5 * 1024 * 1024 * 1024
+            )
+            and
+            (
+              node_filesystem_size_bytes{fstype!="", job="node-exporter"} > 10 * 1024 * 1024 * 1024
+            )
           for: 10s
           labels:
             severity: warning
             route: senaev-com-alerts
-{{- end }}
     - name: node-connectivity
       rules:
         - alert: node-connectivity-failed-to-node-media
