@@ -14,6 +14,13 @@ spec:
           labels:
             severity: critical
             route: senaev-com-alerts
+        - alert: nvme-temp1-overheating
+          expr: |
+            node_hwmon_temp_celsius{cluster=~".*", chip="nvme_nvme0", sensor="temp1"} > 77.5
+          for: 10s
+          labels:
+            severity: critical
+            route: senaev-com-alerts
     - name: node-disk
       rules:
         - alert: node-disk-space-low
