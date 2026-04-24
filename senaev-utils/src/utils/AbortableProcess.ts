@@ -93,7 +93,7 @@ export class AbortableProcess {
     }
 
     public setStatus(status: AbortableProcessStatus): void {
-        this._status.next(status);
+        this._status.dispatch(status);
     }
 
     public child({
@@ -143,7 +143,7 @@ export class AbortableProcess {
         const result: VisualizedProcessesTree = {
             name: this.name,
             id: this.id,
-            status: this._status.value(),
+            status: this._status.getValue(),
             startTimestamp: this.startTimestamp,
             children: Array.from(
                 this.children.values(),

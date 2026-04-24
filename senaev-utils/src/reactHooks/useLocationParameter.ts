@@ -34,6 +34,8 @@ export function useLocationParameter({
 
         navigate(`?${params.toString()}`, { replace: true });
     }, [
+        defaultValue,
+        parameterName,
         stateValue,
         location.search,
         navigate,

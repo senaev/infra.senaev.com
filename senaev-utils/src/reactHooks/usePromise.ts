@@ -16,6 +16,7 @@ export function usePromise<T>(promise: Promise<T>): UsePromiseResult<T> {
     ] = useState<UsePromiseResult<T>>(undefined);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setResult(undefined);
 
         promise.then((data) => {

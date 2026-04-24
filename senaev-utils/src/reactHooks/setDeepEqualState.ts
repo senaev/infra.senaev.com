@@ -6,6 +6,7 @@ export function setDeepEqualState<T>(defaultValue: T): [T, (nextValue: T) => voi
     const [
         value,
         setValue,
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     ] = useState(defaultValue);
 
     return [

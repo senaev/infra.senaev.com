@@ -34,12 +34,12 @@ describe('combineSignalsIntoNewOne', () => {
             equalityChecker
         );
 
-        expect(signal.value()).toEqual(6);
+        expect(signal.getValue()).toEqual(6);
         expect(calls.length).toEqual(0);
 
-        thirdSignal.next(66);
+        thirdSignal.dispatch(66);
 
-        expect(signal.value()).toEqual(69);
+        expect(signal.getValue()).toEqual(69);
         expect(calls).toEqual([
             [
                 6,
@@ -49,9 +49,9 @@ describe('combineSignalsIntoNewOne', () => {
 
         equalityCheckerResult = true;
 
-        firstSignal.next(11);
+        firstSignal.dispatch(11);
 
-        expect(signal.value()).toStrictEqual(69);
+        expect(signal.getValue()).toStrictEqual(69);
         expect(calls).toEqual([
             [
                 6,
@@ -65,9 +65,9 @@ describe('combineSignalsIntoNewOne', () => {
 
         equalityCheckerResult = false;
 
-        firstSignal.next(12);
+        firstSignal.dispatch(12);
 
-        expect(signal.value()).toStrictEqual(80);
+        expect(signal.getValue()).toStrictEqual(80);
         expect(calls).toEqual([
             [
                 6,
@@ -85,10 +85,10 @@ describe('combineSignalsIntoNewOne', () => {
 
         // После вызова teardown ничего не происходит
         teardown();
-        firstSignal.next(666);
-        firstSignal.next(666);
+        firstSignal.dispatch(666);
+        firstSignal.dispatch(666);
 
-        expect(signal.value()).toStrictEqual(80);
+        expect(signal.getValue()).toStrictEqual(80);
         expect(calls).toEqual([
             [
                 6,
@@ -123,10 +123,10 @@ describe('combineSignalsIntoNewOne', () => {
 
         signal.subscribe(spy);
 
-        expect(signal.value()).toEqual(false);
+        expect(signal.getValue()).toEqual(false);
         expect(spy.mock.calls.length).toEqual(0);
 
-        originalSignal.next([
+        originalSignal.dispatch([
             1,
             2,
             3,
@@ -134,29 +134,29 @@ describe('combineSignalsIntoNewOne', () => {
             5,
         ]);
 
-        expect(signal.value()).toEqual(false);
+        expect(signal.getValue()).toEqual(false);
         expect(spy.mock.calls.length).toEqual(0);
 
-        originalSignal.next([1]);
+        originalSignal.dispatch([1]);
 
-        expect(signal.value()).toEqual(false);
+        expect(signal.getValue()).toEqual(false);
         expect(spy.mock.calls.length).toEqual(0);
 
-        originalSignal.next([
+        originalSignal.dispatch([
             1,
             2,
             3,
             4,
         ]);
 
-        expect(signal.value()).toEqual(true);
+        expect(signal.getValue()).toEqual(true);
         expect(spy.mock.calls.length).toEqual(1);
 
         teardown();
 
-        originalSignal.next([1]);
+        originalSignal.dispatch([1]);
 
-        expect(signal.value()).toEqual(true);
+        expect(signal.getValue()).toEqual(true);
         expect(spy.mock.calls.length).toEqual(1);
     });
 });

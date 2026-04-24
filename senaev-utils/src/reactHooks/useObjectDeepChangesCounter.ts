@@ -13,7 +13,9 @@ export function useObjectDeepChangesCounter(object: unknown): PositiveInteger {
 
     const objectRef = useRef(object);
 
+    // eslint-disable-next-line react-hooks/refs
     if (!deepEqual(object, objectRef.current)) {
+        // eslint-disable-next-line react-hooks/refs
         objectRef.current = object;
         reload();
     }

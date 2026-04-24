@@ -530,7 +530,7 @@ describe('createRemoteDataProcessingWindow', () => {
 
         const promise1 = extractItems(1);
 
-        await expect(() => extractItems(1)).toThrow('restrictParallelCalls errorMessage=[createRemoteDataProcessingWindow] previous call is not finished, do not call function in paralle');
+        expect(() => extractItems(1)).toThrow('restrictParallelCalls errorMessage=[createRemoteDataProcessingWindow] previous call is not finished, do not call function in paralle');
 
         const result1 = await promise1;
 
@@ -572,7 +572,8 @@ describe('createRemoteDataProcessingWindow', () => {
             loadNextItems,
         });
 
-        await promise;
+        await (promise as unknown as Promise<unknown>);
+
         await promiseTimeout(0);
 
         expect(loadNextItems).toHaveBeenCalledTimes(1);
@@ -618,7 +619,7 @@ describe('createRemoteDataProcessingWindow', () => {
             isLast: false,
         });
 
-        await promise;
+        await (promise as unknown as Promise<unknown>);
 
         await promiseTimeout(0);
         expect(loadNextItems).toHaveBeenCalledTimes(3);
@@ -647,7 +648,7 @@ describe('createRemoteDataProcessingWindow', () => {
 
         // Wait for buffer to be filled
         // 1. Request 100 items
-        await promise;
+        await (promise as unknown as Promise<unknown>);
 
         expect(loadNextItems).toHaveBeenCalledTimes(1);
         expect(loadNextItems).lastCalledWith({
@@ -686,7 +687,7 @@ describe('createRemoteDataProcessingWindow', () => {
         expect(loadNextItems).toHaveBeenCalledTimes(2);
 
         await promise3;
-        await promise;
+        await (promise as unknown as Promise<unknown>);
 
         // Should made two more requests to fill the buffer
         expect(loadNextItems).toHaveBeenCalledTimes(4);

@@ -16,8 +16,8 @@ describe('Signal', () => {
         signal.subscribe(spy);
         signal.subscribe(spy);
 
-        signal.next(0);
-        signal.next(111);
+        signal.dispatch(0);
+        signal.dispatch(111);
 
         expect(spy).toBeCalledTimes(1);
         expect(spy).toBeCalledWith(111);
@@ -30,13 +30,13 @@ describe('Signal', () => {
 
         signal.subscribe(spy);
 
-        signal.next(0);
+        signal.dispatch(0);
 
-        signal.next(111);
+        signal.dispatch(111);
 
-        signal.next(222);
+        signal.dispatch(222);
 
-        expect(signal.value()).toEqual(222);
+        expect(signal.getValue()).toEqual(222);
 
         expect(spy).toBeCalledTimes(2);
         expect(spy).nthCalledWith(1, 111);
@@ -48,23 +48,23 @@ describe('Signal', () => {
 
         const signal = new Signal(0, (a, b) => a % 2 === b % 2);
 
-        expect(signal.value()).toEqual(0);
+        expect(signal.getValue()).toEqual(0);
 
         signal.subscribe(spy);
 
-        signal.next(1);
+        signal.dispatch(1);
         expect(spy).nthCalledWith(1, 1);
-        expect(signal.value()).toEqual(1);
+        expect(signal.getValue()).toEqual(1);
 
         // is odd again, callbacks should not be dispatched
-        signal.next(3);
+        signal.dispatch(3);
         expect(spy).toBeCalledTimes(1);
-        expect(signal.value()).toEqual(1);
+        expect(signal.getValue()).toEqual(1);
 
         // now even, dispatch callbacks
-        signal.next(2);
+        signal.dispatch(2);
         expect(spy).nthCalledWith(2, 2);
-        expect(signal.value()).toEqual(2);
+        expect(signal.getValue()).toEqual(2);
     });
 
     it('should be able to unsubscribe functions)', () => {
@@ -73,32 +73,32 @@ describe('Signal', () => {
 
         const signal = new Signal(0);
 
-        expect(signal.value()).toEqual(0);
+        expect(signal.getValue()).toEqual(0);
 
         const unsubscribeFirst = signal.subscribe(spy1);
         const unsubscribeSecond = signal.subscribe(spy2);
 
-        signal.next(1);
+        signal.dispatch(1);
         expect(spy1).toBeCalledTimes(1);
         expect(spy1).nthCalledWith(1, 1);
         expect(spy2).toBeCalledTimes(1);
         expect(spy2).nthCalledWith(1, 1);
 
         signal.unsubscribe(spy1);
-        signal.next(2);
+        signal.dispatch(2);
         expect(spy1).toBeCalledTimes(1);
         expect(spy2).toBeCalledTimes(2);
         expect(spy2).nthCalledWith(2, 2);
 
         unsubscribeFirst();
 
-        signal.next(3);
+        signal.dispatch(3);
         expect(spy1).toBeCalledTimes(1);
         expect(spy2).toBeCalledTimes(3);
 
         unsubscribeSecond();
 
-        signal.next(4);
+        signal.dispatch(4);
         expect(spy1).toBeCalledTimes(1);
         expect(spy2).toBeCalledTimes(3);
     });

@@ -52,7 +52,7 @@ export function combineSignalsIntoNewOne<T>(
     combinator: (...args: unknown[]) => T,
     checkToEqualFunction?: (currentValue: T, nextValue: T) => boolean
 ): CombineSignalsIntoNewOneResult<T> {
-    const getAllValues = () => signals.map((signal) => signal.value());
+    const getAllValues = () => signals.map((signal) => signal.getValue());
 
     const initialValue = combinator(...getAllValues());
     const combinedSignal = new Signal(initialValue, checkToEqualFunction);
@@ -61,7 +61,7 @@ export function combineSignalsIntoNewOne<T>(
         signal.subscribe(() => {
             const nextValue = combinator(...getAllValues());
 
-            combinedSignal.next(nextValue);
+            combinedSignal.dispatch(nextValue);
         }));
 
     return {

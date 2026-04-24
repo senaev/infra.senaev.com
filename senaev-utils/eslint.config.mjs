@@ -18,6 +18,18 @@ export default [
     { languageOptions: { globals: globals.browser } },
     pluginJs.configs.recommended,
     ...tseslint.configs.recommended,
+    {
+        files: ['**/*.{ts,tsx}'],
+        languageOptions: {
+            parserOptions: {
+                projectService: true,
+                tsconfigRootDir: import.meta.dirname,
+            },
+        },
+        rules: {
+            '@typescript-eslint/await-thenable': 'error',
+        },
+    },
     pluginReact.configs.flat.recommended,
     pluginReactHooks.configs.flat.recommended,
     {

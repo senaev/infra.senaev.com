@@ -17,7 +17,7 @@ export class Signal<T> {
             currentValue === nextValue
     ) { }
 
-    public value(): T {
+    public getValue(): T {
         return this._value;
     }
 
@@ -29,7 +29,7 @@ export class Signal<T> {
         };
     }
 
-    public next(nextValue: T): void {
+    public dispatch(nextValue: T): void {
         if (this.checkToEqualFunction(this._value, nextValue)) {
             return;
         }

@@ -31,13 +31,13 @@ describe('subscribeSignalAndCallWithCurrentValue', () => {
         expect(spy).toBeCalledWith(42);
 
         // Future updates
-        signal.next(100);
+        signal.dispatch(100);
         expect(spy).toBeCalledTimes(2);
         expect(spy).toBeCalledWith(100);
 
         // Unsubscribe should work
         unsubscribe();
-        signal.next(200);
+        signal.dispatch(200);
         expect(spy).toBeCalledTimes(2); // Should not be called again
     });
 
@@ -56,7 +56,7 @@ describe('subscribeSignalAndCallWithCurrentValue', () => {
         expect(spy2).toBeCalledWith(42);
 
         // Both should receive updates
-        signal.next(100);
+        signal.dispatch(100);
         expect(spy1).toBeCalledTimes(2);
         expect(spy1).toBeCalledWith(100);
         expect(spy2).toBeCalledTimes(2);
@@ -64,14 +64,14 @@ describe('subscribeSignalAndCallWithCurrentValue', () => {
 
         // Unsubscribe first spy
         unsubscribe1();
-        signal.next(200);
+        signal.dispatch(200);
         expect(spy1).toBeCalledTimes(2); // Should not be called again
         expect(spy2).toBeCalledTimes(3);
         expect(spy2).toBeCalledWith(200);
 
         // Unsubscribe second spy
         unsubscribe2();
-        signal.next(300);
+        signal.dispatch(300);
         expect(spy1).toBeCalledTimes(2); // Should not be called again
         expect(spy2).toBeCalledTimes(3); // Should not be called again
     });

@@ -70,13 +70,13 @@ describe('callFirstThenOther', () => {
         const wrappedFn = callFirstThenOther(firstFn, otherFn);
 
         // First call with context
-        const result1 = wrappedFn.call(context);
+        const _result1 = wrappedFn.call(context);
 
         expect(firstFn).toHaveBeenCalledWith();
         expect(firstFn.mock.instances[0]).toBe(context);
 
         // Second call with context
-        const result2 = wrappedFn.call(context);
+        const _result2 = wrappedFn.call(context);
 
         expect(otherFn).toHaveBeenCalledWith();
         expect(otherFn.mock.instances[0]).toBe(context);
