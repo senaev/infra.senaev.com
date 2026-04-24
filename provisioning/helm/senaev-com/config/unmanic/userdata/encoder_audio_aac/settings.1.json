@@ -1,0 +1,7 @@
+{
+  "advanced": true,
+  "max_muxing_queue_size": 2048,
+  "main_options": "",
+  "advanced_options": "",
+  "custom_options": "-c:a aac -ac 2 -b:a 96k"
+}

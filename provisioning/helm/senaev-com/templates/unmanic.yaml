@@ -10,6 +10,8 @@ metadata:
 data:
   settings.json: |
 {{ tpl (.Files.Get "config/unmanic/settings.json") . | nindent 4 }}
+  encoder_audio_aac_settings.1.json: |
+{{ tpl (.Files.Get "config/unmanic/userdata/encoder_audio_aac/settings.1.json") . | nindent 4 }}
   ignore_under_size_settings.1.json: |
 {{ tpl (.Files.Get "config/unmanic/userdata/ignore_under_size/settings.1.json") . | nindent 4 }}
   mover2_settings.1.json: |
@@ -98,9 +100,10 @@ spec:
             - sh
             - -c
             - |
-              mkdir -p /config/.unmanic/config /config/.unmanic/userdata/ignore_under_size /config/.unmanic/userdata/mover2 /config/.unmanic/userdata/video_transcoder
+              mkdir -p /config/.unmanic/config /config/.unmanic/userdata/encoder_audio_aac /config/.unmanic/userdata/ignore_under_size /config/.unmanic/userdata/mover2 /config/.unmanic/userdata/video_transcoder
               if [ ! -f /config/.unmanic/config/settings.json ]; then
                 cp /default-config/settings.json /config/.unmanic/config/
+                cp /default-config/encoder_audio_aac_settings.1.json /config/.unmanic/userdata/encoder_audio_aac/settings.1.json
                 cp /default-config/ignore_under_size_settings.1.json /config/.unmanic/userdata/ignore_under_size/settings.1.json
                 cp /default-config/mover2_settings.1.json /config/.unmanic/userdata/mover2/settings.1.json
                 cp /default-config/video_transcoder_settings.1.json /config/.unmanic/userdata/video_transcoder/settings.1.json
