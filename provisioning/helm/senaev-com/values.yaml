@@ -43,7 +43,7 @@ xrayVpn:
           uuidMacro: "{XRAY_USER_UUID:1}"
           outbound: outbound-hetzner
         - user: user-freedom
-          uuidMacro: "{XRAY_USER_UUID:3}"
+          uuidMacro: "{XRAY_USER_UUID:4}"
           outbound: outbound-freedom
     - name: xray-vpn-hetzner
       vps: hetzner
@@ -53,10 +53,10 @@ xrayVpn:
           uuidMacro: "{XRAY_USER_UUID:2}"
           outbound: outbound-ru
         - user: user-socks-senaev-media
-          uuidMacro: "{XRAY_USER_UUID:5}"
+          uuidMacro: "{XRAY_USER_UUID:3}"
           outbound: outbound-senaev-media
         - user: user-freedom
-          uuidMacro: "{XRAY_USER_UUID:4}"
+          uuidMacro: "{XRAY_USER_UUID:5}"
           outbound: outbound-freedom
     - name: xray-vpn-senaev-media
       vps: senaev-media
@@ -131,12 +131,12 @@ vpnSubscription:
       link: "vless://{XRAY_USER_UUID:1}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
     - name: "🇷🇺 2. senaev.com💻hetzner → socks🌐ru"
       link: "vless://{XRAY_USER_UUID:2}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
-    - name: "🇷🇺 3. senaev.ru💻ru → freedom🌐ru"
-      link: "vless://{XRAY_USER_UUID:3}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
-    - name: "🇩🇪 4. senaev.com💻hetzner → freedom🌐hetzner"
-      link: "vless://{XRAY_USER_UUID:4}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
-    - name: "🇷🇺 5. senaev.com💻hetzner → socks🌐senaev-media"
-      link: "vless://{XRAY_USER_UUID:5}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
+    - name: "🇷🇺 3. senaev.com💻hetzner → socks🌐senaev-media"
+      link: "vless://{XRAY_USER_UUID:3}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
+    # - name: "🇷🇺 4. senaev.ru💻ru → freedom🌐ru"
+    #   link: "vless://{XRAY_USER_UUID:4}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
+    # - name: "🇩🇪 5. senaev.com💻hetzner → freedom🌐hetzner"
+    #   link: "vless://{XRAY_USER_UUID:5}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
 
 redpandaConsole:
   enabled: true
