@@ -181,6 +181,9 @@ ingress:
         - host: webdav.senaev.ru
           service: webdav-senaev-ru
           port: 80
+        - host: jellyfin.senaev.ru
+          service: jellyfin
+          port: 8096
     - name: senaev-ru-xray-fallback
       className: traefik-ru
       entrypoints: websecure-xray

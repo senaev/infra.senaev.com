@@ -20,6 +20,8 @@ After deploying main cluster, you have to set up components of the media server
 
 Login https://jellyfin.senaev.com/
 
+Dashboard → Playback → Transcoding → Hardware Acceleration → Intel Quicksync (QSV)
+
 ### Qbittorrent
 
 Login on the page https://qbittorrent.senaev.com/ with password from Qbittorrent output

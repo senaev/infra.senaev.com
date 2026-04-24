@@ -16,11 +16,17 @@ spec:
       labels:
         app: jellyfin
     spec:
+      securityContext:
+        supplementalGroups:
+          - 44
+          - 991
       nodeSelector:
         vps: {{ .Values.jellyfin.vps }}
       containers:
         - name: jellyfin
           image: lscr.io/linuxserver/jellyfin:10.11.6
+          securityContext:
+            privileged: true
           env:
             - name: PUID
               value: "1000"
@@ -36,6 +42,8 @@ spec:
               mountPath: /config
             - name: media
               mountPath: /media/downloads
+            - name: dri
+              mountPath: /dev/dri
       volumes:
         - name: config
           hostPath:
@@ -45,6 +53,10 @@ spec:
           hostPath:
             path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}/downloads/complete
             type: DirectoryOrCreate
+        - name: dri
+          hostPath:
+            path: /dev/dri
+            type: Directory
 ---
 apiVersion: v1
 kind: Service
