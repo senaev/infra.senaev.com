@@ -12,13 +12,20 @@ const PUBLISH_RETRY_INTERVAL_MS = 3000;
 const PASSWORD_PATTERN = /temporary password is provided for this session: (.+)$/gm;
 
 function sleep(ms) {
+    console.log(`⏳ Sleeping for ${ms}ms...`);
     return new Promise((resolve) => {
         setTimeout(resolve, ms);
     });
 }
 
 function waitForever() {
-    return new Promise(() => {});
+    console.log("⏳ Waiting indefinitely to keep node alive...");
+
+    return new Promise(() => {
+        // A pending Promise alone does not keep Node alive; we need an active handle
+        // so the sidecar stays running after finishing its one-time publish work.
+        setInterval(() => {}, 60 * 60 * 1000);
+    });
 }
 
 function getRequiredEnv(name) {
@@ -77,6 +84,7 @@ function requestText({ protocol, hostname, port, path, method, headers, ca, body
 }
 
 async function fetchPodLogs() {
+    console.log("🔍 Fetching pod logs to find qBittorrent WebUI temporary password...");
     const k8sHost = getRequiredEnv("KUBERNETES_SERVICE_HOST");
     const k8sPort = process.env.KUBERNETES_SERVICE_PORT_HTTPS || "443";
     const podName = getRequiredEnv("POD_NAME");
@@ -100,11 +108,13 @@ async function fetchPodLogs() {
 }
 
 function extractPassword(logs) {
+    console.log("🔍 Extracting qBittorrent WebUI temporary password from logs...");
     const matches = Array.from(logs.matchAll(PASSWORD_PATTERN));
     return matches.at(-1)?.[1]?.trim() || "";
 }
 
 async function publishPassword(password) {
+    console.log("🚀 Publishing qBittorrent WebUI temporary password to Redpanda...");
     const podName = getRequiredEnv("POD_NAME");
     const body = JSON.stringify({
         records: [
@@ -132,16 +142,15 @@ async function publishPassword(password) {
 }
 
 async function publishPasswordWithRetries(password) {
+    console.log("🚀 Publishing qBittorrent WebUI temporary password to Redpanda...");
     let lastError;
 
     for (let attempt = 1; attempt <= PUBLISH_MAX_ATTEMPTS; attempt += 1) {
         try {
             const publishResult = await publishPassword(password);
-            if (attempt > 1) {
-                console.log(
-                    `✅ qBittorrent WebUI password publish succeeded on retry ${attempt}/${PUBLISH_MAX_ATTEMPTS}`,
-                );
-            }
+            console.log(
+                `✅ qBittorrent WebUI password publish succeeded on retry=[${attempt}/${PUBLISH_MAX_ATTEMPTS}]`,
+            );
 
             return publishResult;
         } catch (error) {
@@ -149,7 +158,7 @@ async function publishPasswordWithRetries(password) {
             const message = error instanceof Error ? error.message : String(error);
 
             console.log(
-                `⏳ qBittorrent WebUI password publish failed, attempt ${attempt}/${PUBLISH_MAX_ATTEMPTS}: ${message}`,
+                `⏳ qBittorrent WebUI password publish failed, attempt=[${attempt}/${PUBLISH_MAX_ATTEMPTS}]: ${message}`,
             );
 
             if (attempt < PUBLISH_MAX_ATTEMPTS) {
@@ -158,6 +167,9 @@ async function publishPasswordWithRetries(password) {
         }
     }
 
+    console.log(
+        `❌ qBittorrent WebUI password publish failed after ${PUBLISH_MAX_ATTEMPTS} attempts`,
+    );
     throw lastError;
 }
 
@@ -174,7 +186,7 @@ async function main() {
 
             if (!password) {
                 console.log(
-                    `⏳ qBittorrent WebUI password not found in logs yet, attempt ${attempt}/${MAX_ATTEMPTS}`,
+                    `⏳ qBittorrent WebUI password not found in logs yet, attempt=[${attempt}/${MAX_ATTEMPTS}]`,
                 );
                 await sleep(POLL_INTERVAL_MS);
                 continue;
@@ -187,7 +199,7 @@ async function main() {
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             console.log(
-                `⏳ Waiting for qBittorrent password, attempt ${attempt}/${MAX_ATTEMPTS}: ${message}`,
+                `⏳ Waiting for qBittorrent password, attempt=[${attempt}/${MAX_ATTEMPTS}]: ${message}`,
             );
             await sleep(POLL_INTERVAL_MS);
         }
