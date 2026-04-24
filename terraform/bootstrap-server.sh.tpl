@@ -56,11 +56,11 @@ else
   echo "✅ [bootstrap-server] Swap file already active"
 fi
 
-if ! grep -qE "^${SWAPFILE_PATH//\//\\/}[[:space:]]+none[[:space:]]+swap[[:space:]]+sw[[:space:]]+0[[:space:]]+0$" /etc/fstab; then
+if ! grep -qE "^$${SWAPFILE_PATH//\//\\/}[[:space:]]+none[[:space:]]+swap[[:space:]]+sw[[:space:]]+0[[:space:]]+0$" /etc/fstab; then
   echo "$SWAPFILE_PATH none swap sw 0 0" >> /etc/fstab
 fi
 
-cat >/etc/sysctl.d/99-swap.conf <<'EOF'
+cat >/etc/sysctl.d/99-swap.conf <<"EOF"
 vm.swappiness=10
 EOF
 sysctl --system >/dev/null
