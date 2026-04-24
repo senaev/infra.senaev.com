@@ -184,6 +184,12 @@ ingress:
         - host: jellyfin.senaev.ru
           service: jellyfin
           port: 8096
+        - host: qbittorrent.senaev.ru
+          service: qbittorrent
+          port: 9001
+        - host: filebrowser.senaev.ru
+          service: filebrowser
+          port: 8080
     - name: senaev-ru-xray-fallback
       className: traefik-ru
       entrypoints: websecure-xray
@@ -196,6 +202,13 @@ ingress:
       middleware: unmanic-basicauth
       hosts:
         - host: unmanic.senaev.com
+          service: unmanic
+          port: 8888
+    - name: senaev-ru-unmanic
+      className: traefik-ru
+      middleware: unmanic-basicauth
+      hosts:
+        - host: unmanic.senaev.ru
           service: unmanic
           port: 8888
     - name: senaev-com-redpanda-console
