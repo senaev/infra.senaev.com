@@ -3,6 +3,7 @@ import stylistic from '@stylistic/eslint-plugin';
 import pluginImportX from 'eslint-plugin-import-x';
 import pluginNoOnlyTests from 'eslint-plugin-no-only-tests';
 import pluginReact from 'eslint-plugin-react';
+import pluginReactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
@@ -18,14 +19,13 @@ export default [
     pluginJs.configs.recommended,
     ...tseslint.configs.recommended,
     pluginReact.configs.flat.recommended,
+    pluginReactHooks.configs.flat.recommended,
     {
         plugins: {
             '@stylistic': stylistic,
             'import-x': pluginImportX,
             'no-only-tests': pluginNoOnlyTests,
         },
-        ignores: [],
-
         rules: {
             'one-var': [
                 'error',
@@ -503,7 +503,8 @@ export default [
                 'error',
                 {
                     selector: 'CallExpression[callee.name=onBeforeMount]',
-                    message: 'Affecting template in onBeforeMount can lead to rehydration mismatches',
+                    message:
+            'Affecting template in onBeforeMount can lead to rehydration mismatches',
                 },
             ],
             'no-extra-semi': 'error',
