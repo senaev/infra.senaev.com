@@ -22,7 +22,7 @@ export default [
         files: ['**/*.{ts,tsx}'],
         languageOptions: {
             parserOptions: {
-                projectService: true,
+                project: './tsconfig.eslint.json',
                 tsconfigRootDir: import.meta.dirname,
             },
         },
