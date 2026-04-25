@@ -92,7 +92,7 @@
       "id": 1,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull", "max"],
+          "calcs": ["lastNotNull", "max", "median", "mean"],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -194,10 +194,12 @@
       "id": 2,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull", "max"],
+          "calcs": ["lastNotNull", "max", "median", "mean"],
           "displayMode": "table",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": true,
+          "sortBy": "Mean",
+          "sortDesc": true
         },
         "tooltip": {
           "hideZeros": false,
@@ -386,5 +388,5 @@
   "timezone": "",
   "title": "SmokePing Node Connectivity",
   "uid": "smokeping-node-connectivity",
-  "version": 1
+  "version": 2
 }
