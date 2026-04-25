@@ -117,6 +117,7 @@ smokepingProber:
     - proxmox
     - ru
     - senaev-media
+  extraTargets: []
   resources:
     requests:
       cpu: 10m

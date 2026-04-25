@@ -1,7 +1,8 @@
 {{- if .Values.smokepingProber.enabled }}
 {{- $namespace := .Values.smokepingProber.namespace | default .Release.Namespace }}
+{{- $targets := concat (.Values.smokepingProber.targets | default (list)) (.Values.smokepingProber.extraTargets | default (list)) }}
 {{- $selfPairRegexes := list -}}
-{{- range .Values.smokepingProber.targets }}
+{{- range $targets }}
 {{- $selfPairRegexes = append $selfPairRegexes (printf "%s;%s" . .) -}}
 {{- end }}
 apiVersion: v1
@@ -16,7 +17,7 @@ data:
   smokeping_prober.yml: |
     targets:
       - hosts:
-{{- range .Values.smokepingProber.targets }}
+{{- range $targets }}
           - {{ . | quote }}
 {{- end }}
         interval: {{ .Values.smokepingProber.ping.interval }}
