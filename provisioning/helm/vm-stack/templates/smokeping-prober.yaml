@@ -1,0 +1,125 @@
+{{- if .Values.smokepingProber.enabled }}
+{{- $namespace := .Values.smokepingProber.namespace | default .Release.Namespace }}
+{{- $selfPairRegexes := list -}}
+{{- range .Values.smokepingProber.targets }}
+{{- $selfPairRegexes = append $selfPairRegexes (printf "%s;%s" . .) -}}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: smokeping-prober
+  namespace: {{ $namespace }}
+  labels:
+    app.kubernetes.io/name: smokeping-prober
+    app.kubernetes.io/component: monitoring
+data:
+  smokeping_prober.yml: |
+    targets:
+      - hosts:
+{{- range .Values.smokepingProber.targets }}
+          - {{ . | quote }}
+{{- end }}
+        interval: {{ .Values.smokepingProber.ping.interval }}
+        network: {{ .Values.smokepingProber.ping.network }}
+        protocol: {{ .Values.smokepingProber.ping.protocol }}
+        size: {{ .Values.smokepingProber.ping.size }}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: smokeping-prober
+  namespace: {{ $namespace }}
+  labels:
+    app.kubernetes.io/name: smokeping-prober
+    app.kubernetes.io/component: monitoring
+spec:
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: smokeping-prober
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: smokeping-prober
+        app.kubernetes.io/component: monitoring
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: smokeping-prober
+          image: quay.io/superq/smokeping-prober:latest
+          imagePullPolicy: IfNotPresent
+          args:
+            - --config.file=/etc/smokeping_prober/smokeping_prober.yml
+            - --web.listen-address=:{{ .Values.smokepingProber.port }}
+            - --privileged
+          env:
+            - name: GOMAXPROCS
+              value: "1"
+          ports:
+            - name: http
+              containerPort: {{ .Values.smokepingProber.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /-/healthy
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+{{ toYaml .Values.smokepingProber.resources | indent 12 }}
+          securityContext:
+            privileged: true
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - name: config
+              mountPath: /etc/smokeping_prober
+              readOnly: true
+      tolerations:
+{{ toYaml .Values.smokepingProber.tolerations | indent 8 }}
+      volumes:
+        - name: config
+          configMap:
+            name: smokeping-prober
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMPodScrape
+metadata:
+  name: smokeping-prober
+  namespace: {{ $namespace }}
+  labels:
+    app.kubernetes.io/name: smokeping-prober
+    app.kubernetes.io/component: monitoring
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: smokeping-prober
+  namespaceSelector:
+    matchNames:
+      - {{ $namespace }}
+  podMetricsEndpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.smokepingProber.scrapeInterval }}
+      relabelConfigs:
+        - sourceLabels:
+            - __meta_kubernetes_pod_node_name
+          targetLabel: source_node
+      metricRelabelConfigs:
+        - action: drop
+          sourceLabels:
+            - source_node
+            - host
+          separator: ;
+          regex: {{ join "|" $selfPairRegexes | quote }}
+{{- end }}

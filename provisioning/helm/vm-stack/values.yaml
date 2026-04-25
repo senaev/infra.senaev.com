@@ -101,3 +101,27 @@ victoria-metrics-k8s-stack:
   kube-state-metrics:
     nodeSelector:
       vps: hetzner
+
+smokepingProber:
+  enabled: true
+  namespace: telemetry
+  port: 9374
+  ping:
+    interval: 1s
+    network: ip
+    protocol: icmp
+    size: 56
+  scrapeInterval: 30s
+  targets:
+    - hetzner
+    - proxmox
+    - ru
+    - senaev-media
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+  tolerations: []
