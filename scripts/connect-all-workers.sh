@@ -30,9 +30,9 @@ echo "👉 [connect-all-workers] Connecting to node=[$MEDIA_ADDR] with vps=[${VP
 "$ROOT_DIR/scripts/connect-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN" "$MEDIA_ADDR" "$VPS_MEDIA_LABEL"
 echo "✅ [connect-all-workers] Connected to node=[$MEDIA_ADDR] with vps=[${VPS_MEDIA_LABEL}]"
 
-RU_ADDR="${VPS_RU_USERNAME}@${VPS_RU_HOST}"
-echo "👉 [connect-all-workers] Connecting to node=[$RU_ADDR] with vps=[${VPS_RU_LABEL}]"
-"$ROOT_DIR/scripts/connect-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN" "$RU_ADDR" "$VPS_RU_LABEL"
-echo "✅ [connect-all-workers] Connected to node=[$RU_ADDR] with vps=[${VPS_RU_LABEL}]"
+FIRSTVDS_ADDR="${VPS_FIRSTVDS_USERNAME}@${VPS_FIRSTVDS_HOST}"
+echo "👉 [connect-all-workers] Connecting to node=[$FIRSTVDS_ADDR] with vps=[${VPS_FIRSTVDS_LABEL}]"
+"$ROOT_DIR/scripts/connect-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN" "$FIRSTVDS_ADDR" "$VPS_FIRSTVDS_LABEL"
+echo "✅ [connect-all-workers] Connected to node=[$FIRSTVDS_ADDR] with vps=[${VPS_FIRSTVDS_LABEL}]"
 
 echo "✅ [connect-all-workers] Connected to worker nodes"

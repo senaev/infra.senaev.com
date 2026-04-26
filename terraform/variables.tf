@@ -46,17 +46,17 @@ variable "VPS_MEDIA_LABEL" {
   type        = string
 }
 
-variable "VPS_RU_HOST" {
-  description = "RU worker host"
+variable "VPS_FIRSTVDS_HOST" {
+  description = "FIRSTVDS worker host"
   type        = string
 }
 
-variable "VPS_RU_USERNAME" {
-  description = "RU worker SSH username"
+variable "VPS_FIRSTVDS_USERNAME" {
+  description = "FIRSTVDS worker SSH username"
   type        = string
 }
 
-variable "VPS_RU_LABEL" {
-  description = "RU worker VPS label"
+variable "VPS_FIRSTVDS_LABEL" {
+  description = "FIRSTVDS worker VPS label"
   type        = string
 }

@@ -44,6 +44,8 @@ spec:
       app.kubernetes.io/name: smokeping-prober
   template:
     metadata:
+      annotations:
+        configmap.reloader.stakater.com/reload: smokeping-prober
       labels:
         app.kubernetes.io/name: smokeping-prober
         app.kubernetes.io/component: monitoring

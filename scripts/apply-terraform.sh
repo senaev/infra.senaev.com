@@ -130,9 +130,9 @@ for key in \
   VPS_MEDIA_HOST \
   VPS_MEDIA_USERNAME \
   VPS_MEDIA_LABEL \
-  VPS_RU_HOST \
-  VPS_RU_USERNAME \
-  VPS_RU_LABEL
+  VPS_FIRSTVDS_HOST \
+  VPS_FIRSTVDS_USERNAME \
+  VPS_FIRSTVDS_LABEL
 do
   sync_tfvar_to_env "$key"
 done

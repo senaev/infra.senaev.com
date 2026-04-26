@@ -58,7 +58,7 @@ services:
 	$(REMOTE) "$(CONTROL_PLANE_SCRIPTS)/bootstrap-secrets.sh '$(TG_TOKEN_SENAEV_COM_BOT)'"
 
 	# vm-stack requires ExternalSecret CRDs for Grafana
-	$(REMOTE) "$(DEPLOY) vm-stack telemetry --set-string 'smokepingProber.extraTargets[0]=$(CONTROL_PLANE_SERVER_IP)' --set-string 'smokepingProber.extraTargets[1]=$(VPS_RU_HOST)'"
+	$(REMOTE) "$(DEPLOY) vm-stack telemetry --set-string 'smokepingProber.extraTargets[0]=$(CONTROL_PLANE_SERVER_IP)' --set-string 'smokepingProber.extraTargets[1]=$(VPS_FIRSTVDS_HOST)'"
 
 	$(REMOTE) "$(DEPLOY) senaev-com senaev-com"
 

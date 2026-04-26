@@ -117,6 +117,10 @@ smokepingProber:
     - proxmox
     - ru
     - senaev-media
+    - yc
+    - 111.88.250.57
+    - ru
+    - 45.81.253.156
   extraTargets: []
   resources:
     requests:
