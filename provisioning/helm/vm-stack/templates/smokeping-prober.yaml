@@ -1,6 +1,6 @@
 {{- if .Values.smokepingProber.enabled }}
 {{- $namespace := .Values.smokepingProber.namespace | default .Release.Namespace }}
-{{- $targets := concat (.Values.smokepingProber.targets | default (list)) (.Values.smokepingProber.extraTargets | default (list)) }}
+{{- $targets := concat (.Values.smokepingProber.targets | default (list)) (.Values.smokepingProber.extraTargets | default (list)) | uniq }}
 {{- $selfPairRegexes := list -}}
 {{- range $targets }}
 {{- $selfPairRegexes = append $selfPairRegexes (printf "%s;%s" . .) -}}
