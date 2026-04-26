@@ -2,7 +2,7 @@ enabled: true
 
 deployments:
   - vps: hetzner
-  - vps: ru
+  - vps: firstvds
 
 resources:
   requests:

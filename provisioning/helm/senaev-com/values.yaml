@@ -35,8 +35,8 @@ webdavSenaevRu:
 xrayVpn:
   enabled: true
   instances:
-    - name: xray-vpn-ru
-      vps: ru
+    - name: xray-vpn-firstvds
+      vps: firstvds
       realityServerName: senaev.ru
       profiles:
         - user: user-socks
@@ -51,7 +51,7 @@ xrayVpn:
       profiles:
         - user: user-socks
           uuidMacro: "{XRAY_USER_UUID:2}"
-          outbound: outbound-ru
+          outbound: outbound-firstvds
         - user: user-socks-senaev-media
           uuidMacro: "{XRAY_USER_UUID:3}"
           outbound: outbound-senaev-media
@@ -127,13 +127,13 @@ vpnSubscription:
   enabled: true
   vps: hetzner
   entries:
-    - name: "🇩🇪 1. senaev.ru💻ru → socks🌐hetzner"
+    - name: "🇩🇪 1. senaev.ru💻firstvds → socks🌐hetzner"
       link: "vless://{XRAY_USER_UUID:1}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
-    - name: "🇷🇺 2. senaev.com💻hetzner → socks🌐ru"
+    - name: "🇷🇺 2. senaev.com💻hetzner → socks🌐firstvds"
       link: "vless://{XRAY_USER_UUID:2}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
     - name: "🇷🇺 3. senaev.com💻hetzner → socks🌐senaev-media"
       link: "vless://{XRAY_USER_UUID:3}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
-    # - name: "🇷🇺 4. senaev.ru💻ru → freedom🌐ru"
+    # - name: "🇷🇺 4. senaev.ru💻firstvds → freedom🌐firstvds"
     #   link: "vless://{XRAY_USER_UUID:4}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
     # - name: "🇩🇪 5. senaev.com💻hetzner → freedom🌐hetzner"
     #   link: "vless://{XRAY_USER_UUID:5}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
@@ -176,7 +176,7 @@ ingress:
           service: nextjs-app
           port: 3000
     - name: senaev-ru-direct
-      className: traefik-ru
+      className: traefik-firstvds
       hosts:
         - host: webdav.senaev.ru
           service: webdav-senaev-ru
@@ -191,7 +191,7 @@ ingress:
           service: filebrowser
           port: 8080
     - name: senaev-ru-xray-fallback
-      className: traefik-ru
+      className: traefik-firstvds
       entrypoints: websecure-xray
       hosts:
         - host: senaev.ru
@@ -205,7 +205,7 @@ ingress:
           service: unmanic
           port: 8888
     - name: senaev-ru-unmanic
-      className: traefik-ru
+      className: traefik-firstvds
       middleware: unmanic-basicauth
       hosts:
         - host: unmanic.senaev.ru
