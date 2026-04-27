@@ -20,10 +20,10 @@ data:
 {{- range $targets }}
           - {{ . | quote }}
 {{- end }}
-        interval: {{ .Values.smokepingProber.ping.interval }}
-        network: {{ .Values.smokepingProber.ping.network }}
-        protocol: {{ .Values.smokepingProber.ping.protocol }}
-        size: {{ .Values.smokepingProber.ping.size }}
+        interval: {{ printf "%ds" (max 1 (len $targets)) }}
+        network: ip
+        protocol: icmp
+        size: 56
 ---
 apiVersion: apps/v1
 kind: DaemonSet
@@ -88,8 +88,6 @@ spec:
             - name: config
               mountPath: /etc/smokeping_prober
               readOnly: true
-      tolerations:
-{{ toYaml .Values.smokepingProber.tolerations | indent 8 }}
       volumes:
         - name: config
           configMap:

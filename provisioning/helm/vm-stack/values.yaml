@@ -119,11 +119,6 @@ smokepingProber:
   enabled: true
   namespace: telemetry
   port: 9374
-  ping:
-    interval: 1s
-    network: ip
-    protocol: icmp
-    size: 56
   scrapeInterval: 30s
   targets:
     - hetzner
@@ -144,4 +139,50 @@ smokepingProber:
     limits:
       cpu: 100m
       memory: 128Mi
-  tolerations: []
+
+iperf3Monitor:
+  enabled: true
+  sourceVpsList:
+    - hetzner
+    - proxmox
+    - firstvds
+    - senaev-media
+    - yc
+    - ru
+  tests:
+    - source: hetzner
+      target: proxmox
+    - source: hetzner
+      target: firstvds
+    - source: hetzner
+      target: senaev-media
+    - source: hetzner
+      target: yc
+    - source: hetzner
+      target: ru
+  scheduler:
+    enabled: true
+    vps: hetzner
+    port: 9579
+    pauseBetweenTests: 5
+    scrapeInterval: 30s
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+  agent:
+    port: 9580
+    period: 10
+    timeout: 30
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+  server:
+    port: 5201

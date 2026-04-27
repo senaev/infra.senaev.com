@@ -1,7 +1,7 @@
 -include .env
 export
 
-.PHONY: default terraform cluster rsync control-plane workers services senaev-com
+.PHONY: default terraform cluster rsync control-plane workers services senaev-com secrets telemetry
 
 CONTROL_PLANE_SERVER_ADDRESS := $(CONTROL_PLANE_SERVER_USERNAME)@$(CONTROL_PLANE_SERVER_IP)
 REMOTE := @ssh "$(CONTROL_PLANE_SERVER_ADDRESS)"
@@ -39,6 +39,19 @@ workers:
 	@$(CURDIR)/scripts/connect-all-workers.sh
 	@echo "✅ [Makefile] Worker nodes connected"
 
+secrets:
+	$(REMOTE) "$(CONTROL_PLANE_SCRIPTS)/bootstrap-secrets.sh '$(TG_TOKEN_SENAEV_COM_BOT)'"
+
+telemetry:
+	@$(MAKE) rsync
+	$(REMOTE) "$(DEPLOY) vm-operator telemetry"
+	@echo "👉 [Makefile] Waiting for vm-operator webhook to be ready (required for vm-stack CRs)"
+	$(REMOTE) "kubectl rollout status deployment/vm-operator-victoria-metrics-operator -n telemetry --timeout=120s"
+	@echo "✅ [Makefile] vm-operator webhook ready"
+
+	# vm-stack requires ExternalSecret CRDs for Grafana
+	$(REMOTE) "$(DEPLOY) vm-stack telemetry --set-string 'smokepingProber.extraTargets[0]=$(CONTROL_PLANE_SERVER_IP)' --set-string 'smokepingProber.extraTargets[1]=$(VPS_FIRSTVDS_HOST)'"
+
 services:
 	@echo "👉 [Makefile] Deploying k8s services on control-plane=[$(CONTROL_PLANE_SERVER_ADDRESS)]"
 
@@ -46,26 +59,20 @@ services:
 
 	$(REMOTE) "$(DEPLOY) traefik traefik"
 
-	$(REMOTE) "$(DEPLOY) vm-operator telemetry"
-	@echo "👉 [Makefile] Waiting for vm-operator webhook to be ready (required for vm-stack CRs)"
-	$(REMOTE) "kubectl rollout status deployment/vm-operator-victoria-metrics-operator -n telemetry --timeout=120s"
-	@echo "✅ [Makefile] vm-operator webhook ready"
+	@$(MAKE) secrets
 
-	# kafka requires Scraper CRDs for vm-operator
-	# installing kafka before the whole cluster to make sure that no message is lost during services initialization
-	$(REMOTE) "$(DEPLOY) kafka senaev-com --wait"
+	@$(MAKE) telemetry
 
-	$(REMOTE) "$(CONTROL_PLANE_SCRIPTS)/bootstrap-secrets.sh '$(TG_TOKEN_SENAEV_COM_BOT)'"
-
-	# vm-stack requires ExternalSecret CRDs for Grafana
-	$(REMOTE) "$(DEPLOY) vm-stack telemetry --set-string 'smokepingProber.extraTargets[0]=$(CONTROL_PLANE_SERVER_IP)' --set-string 'smokepingProber.extraTargets[1]=$(VPS_FIRSTVDS_HOST)'"
-
-	$(REMOTE) "$(DEPLOY) senaev-com senaev-com"
+	@$(MAKE) senaev-com
 
 	@echo "✅ [Makefile] k8s services deployed"
 
 senaev-com:
 	@echo "👉 [Makefile] Deploying senaev-com services on control-plane=[$(CONTROL_PLANE_SERVER_ADDRESS)]"
+
 	@$(MAKE) rsync
 	$(REMOTE) "$(DEPLOY) senaev-com senaev-com"
+
+	$(REMOTE) "$(DEPLOY) kafka senaev-com"
+
 	@echo "✅ [Makefile] senaev-com services deployed"

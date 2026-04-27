@@ -1,0 +1,242 @@
+{{- if .Values.iperf3Monitor.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: iperf3-agent
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: iperf3-agent
+    app.kubernetes.io/component: monitoring
+data:
+  agent.py: |
+{{ .Files.Get "files/iperf3-agent/agent.py" | indent 4 }}
+{{- if .Values.iperf3Monitor.scheduler.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: iperf3-scheduler
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: iperf3-scheduler
+    app.kubernetes.io/component: monitoring
+data:
+  scheduler.py: |
+{{ .Files.Get "files/iperf3-scheduler/scheduler.py" | indent 4 }}
+  config.json: |
+    {
+      "agentPort": {{ .Values.iperf3Monitor.agent.port }},
+      "metricsPort": {{ .Values.iperf3Monitor.scheduler.port }},
+      "pauseBetweenTestsSeconds": {{ .Values.iperf3Monitor.scheduler.pauseBetweenTests }},
+      "requestTimeoutSeconds": {{ add .Values.iperf3Monitor.agent.timeout 5 }},
+      "tests": {{ toJson .Values.iperf3Monitor.tests }}
+    }
+{{- end }}
+{{- range .Values.iperf3Monitor.sourceVpsList }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iperf3-agent-{{ . }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: iperf3-agent
+    app.kubernetes.io/instance: {{ . }}
+    app.kubernetes.io/component: monitoring
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: iperf3-agent
+      app.kubernetes.io/instance: {{ . }}
+  template:
+    metadata:
+      annotations:
+        configmap.reloader.stakater.com/reload: iperf3-agent
+      labels:
+        app.kubernetes.io/name: iperf3-agent
+        app.kubernetes.io/instance: {{ . }}
+        app.kubernetes.io/component: monitoring
+    spec:
+      dnsPolicy: ClusterFirst
+      nodeSelector:
+        vps: {{ . }}
+      containers:
+        - name: iperf3-agent
+          image: python:3.13-alpine
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - apk add --no-cache iperf3 && python /app/agent.py
+          env:
+            - name: AGENT_PORT
+              value: {{ $.Values.iperf3Monitor.agent.port | quote }}
+            - name: IPERF3_SERVER_PORT
+              value: {{ $.Values.iperf3Monitor.server.port | quote }}
+            - name: IPERF3_PERIOD_SECONDS
+              value: {{ $.Values.iperf3Monitor.agent.period | quote }}
+            - name: IPERF3_TIMEOUT_SECONDS
+              value: {{ $.Values.iperf3Monitor.agent.timeout | quote }}
+          ports:
+            - name: http
+              containerPort: {{ $.Values.iperf3Monitor.agent.port }}
+              protocol: TCP
+            - name: iperf3
+              containerPort: {{ $.Values.iperf3Monitor.server.port }}
+              hostPort: {{ $.Values.iperf3Monitor.server.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 30
+          resources:
+{{ toYaml $.Values.iperf3Monitor.agent.resources | indent 12 }}
+          volumeMounts:
+            - name: agent
+              mountPath: /app
+              readOnly: true
+      volumes:
+        - name: agent
+          configMap:
+            name: iperf3-agent
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iperf3-agent-{{ . }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: iperf3-agent
+    app.kubernetes.io/instance: {{ . }}
+    app.kubernetes.io/component: monitoring
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: iperf3-agent
+    app.kubernetes.io/instance: {{ . }}
+  ports:
+    - name: http
+      port: {{ $.Values.iperf3Monitor.agent.port }}
+      targetPort: http
+      protocol: TCP
+{{- end }}
+{{- if .Values.iperf3Monitor.scheduler.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iperf3-scheduler
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: iperf3-scheduler
+    app.kubernetes.io/component: monitoring
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: iperf3-scheduler
+  template:
+    metadata:
+      annotations:
+        configmap.reloader.stakater.com/reload: iperf3-scheduler
+      labels:
+        app.kubernetes.io/name: iperf3-scheduler
+        app.kubernetes.io/component: monitoring
+    spec:
+      nodeSelector:
+        vps: {{ .Values.iperf3Monitor.scheduler.vps }}
+      containers:
+        - name: iperf3-scheduler
+          image: python:3.13-alpine
+          imagePullPolicy: IfNotPresent
+          command:
+            - python
+            - /app/scheduler.py
+          ports:
+            - name: http
+              containerPort: {{ .Values.iperf3Monitor.scheduler.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+{{ toYaml .Values.iperf3Monitor.scheduler.resources | indent 12 }}
+          volumeMounts:
+            - name: scheduler
+              mountPath: /app
+              readOnly: true
+      volumes:
+        - name: scheduler
+          configMap:
+            name: iperf3-scheduler
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iperf3-scheduler
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: iperf3-scheduler
+    app.kubernetes.io/component: monitoring
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: iperf3-scheduler
+  ports:
+    - name: http
+      port: {{ .Values.iperf3Monitor.scheduler.port }}
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMServiceScrape
+metadata:
+  name: iperf3-scheduler
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: iperf3-scheduler
+    app.kubernetes.io/component: monitoring
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: iperf3-scheduler
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.iperf3Monitor.scheduler.scrapeInterval }}
+{{- end }}
+{{- end }}
