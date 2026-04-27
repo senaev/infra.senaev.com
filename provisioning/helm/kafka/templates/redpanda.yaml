@@ -30,17 +30,18 @@ spec:
                 --mode dev-container \
                 --kafka-addr PLAINTEXT://0.0.0.0:{{ .Values.redpanda.kafkaPort }} \
                 --advertise-kafka-addr PLAINTEXT://redpanda.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.redpanda.kafkaPort }} \
-                --pandaproxy-addr 0.0.0.0:{{ .Values.redpanda.pandaproxyPort }} \
+                --pandaproxy-addr 0.0.0.0:{{ .Values.redpanda.pandaproxyContainerPort }} \
                 --advertise-pandaproxy-addr http://redpanda.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.redpanda.pandaproxyPort }} \
                 --rpc-addr 0.0.0.0:33145 \
                 --advertise-rpc-addr redpanda-0.redpanda-headless.{{ .Release.Namespace }}.svc.cluster.local:33145 \
                 --memory {{ .Values.redpanda.memory }} \
+                --smp {{ .Values.redpanda.smp }} \
                 --default-log-level=info
           ports:
             - name: kafka
               containerPort: {{ .Values.redpanda.kafkaPort }}
             - name: http
-              containerPort: {{ .Values.redpanda.pandaproxyPort }}
+              containerPort: {{ .Values.redpanda.pandaproxyContainerPort }}
             - name: admin
               containerPort: 9644
             - name: rpc
@@ -86,6 +87,7 @@ spec:
       port: {{ .Values.redpanda.kafkaPort }}
     - name: http
       port: {{ .Values.redpanda.pandaproxyPort }}
+      targetPort: {{ .Values.redpanda.pandaproxyContainerPort }}
     - name: admin
       port: 9644
     - name: rpc
@@ -108,7 +110,7 @@ spec:
       targetPort: {{ .Values.redpanda.kafkaPort }}
     - name: http
       port: {{ .Values.redpanda.pandaproxyPort }}
-      targetPort: {{ .Values.redpanda.pandaproxyPort }}
+      targetPort: {{ .Values.redpanda.pandaproxyContainerPort }}
     - name: admin
       port: 9644
       targetPort: 9644
@@ -148,9 +150,25 @@ spec:
             - sh
             - -c
             - |
+              set -eu
+              brokers="redpanda.{{ $.Release.Namespace }}.svc.cluster.local:{{ $.Values.redpanda.kafkaPort }}"
+
+              for i in $(seq 1 60); do
+                if rpk cluster info --brokers "$brokers"; then
+                  break
+                fi
+
+                if [ "$i" -eq 60 ]; then
+                  echo "Timed out waiting for Redpanda broker at $brokers" >&2
+                  exit 1
+                fi
+
+                sleep 2
+              done
+
               {{- range .Values.redpanda.topics }}
               rpk topic create {{ .name }} \
-                --brokers redpanda.{{ $.Release.Namespace }}.svc.cluster.local:{{ $.Values.redpanda.kafkaPort }} \
+                --brokers "$brokers" \
                 --partitions {{ .partitions }} \
                 --replicas 1 \
                 --if-not-exists
