@@ -160,11 +160,47 @@ iperf3Monitor:
       target: yc
     - source: hetzner
       target: ru
+    - source: hetzner
+      target: senaev.ru
+    - source: hetzner
+      target: 111.88.250.57
+    - source: hetzner
+      target: 45.81.253.156
+    - source: ru
+      target: hetzner
+    - source: ru
+      target: senaev.com
+    - source: ru
+      target: senaev-media
+    - source: firstvds
+      target: hetzner
+    - source: firstvds
+      target: senaev.com
+    - source: firstvds
+      target: senaev-media
+    - source: yc
+      target: hetzner
+    - source: yc
+      target: senaev.com
+    - source: yc
+      target: senaev-media
+    - source: firstvds
+      target: yc
+    - source: yc
+      target: firstvds
+    - source: firstvds
+      target: ru
+    - source: ru
+      target: firstvds
+    - source: yc
+      target: ru
+    - source: ru
+      target: yc
   scheduler:
     enabled: true
     vps: hetzner
     port: 9579
-    pauseBetweenTests: 5
+    pauseBetweenTests: 60
     scrapeInterval: 30s
     resources:
       requests:

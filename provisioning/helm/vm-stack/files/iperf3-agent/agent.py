@@ -2,8 +2,9 @@ import json
 import os
 import errno
 import subprocess
+import threading
 import time
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
 
@@ -42,6 +43,8 @@ iperf3_server = subprocess.Popen(
 )
 print(f"✅ iperf3 server started with pid=[{iperf3_server.pid}]", flush=True)
 
+TEST_LOCK = threading.Lock()
+
 
 def write_json_response(handler, status_code, payload):
     body = json.dumps(payload).encode("utf-8")
@@ -52,10 +55,10 @@ def write_json_response(handler, status_code, payload):
         handler.end_headers()
         handler.wfile.write(body)
     except (BrokenPipeError, ConnectionResetError):
-        print("❌ Client disconnected before response was sent", flush=True)
+        print("⚠️ Client disconnected before response was sent", flush=True)
     except OSError as error:
         if error.errno == errno.EPIPE:
-            print("❌ Client disconnected before response was sent", flush=True)
+            print("⚠️ Client disconnected before response was sent", flush=True)
             return
         raise
 
@@ -144,6 +147,12 @@ def run_iperf3(target):
 
 
 class Handler(BaseHTTPRequestHandler):
+    def handle_one_request(self):
+        try:
+            super().handle_one_request()
+        except (BrokenPipeError, ConnectionResetError):
+            print("⚠️ Client disconnected before response was sent", flush=True)
+
     def do_GET(self):
         url = urlparse(self.path)
 
@@ -177,7 +186,16 @@ class Handler(BaseHTTPRequestHandler):
                 print("❌ Respond 400 as there is no target in the request", flush=True)
                 return
 
-            result = run_iperf3(target)
+            if not TEST_LOCK.acquire(blocking=False):
+                write_json_response(self, 409, {"ok": False, "error": "test_already_running"})
+                print("❌ Respond 409 as another iperf3 test is already running", flush=True)
+                return
+
+            try:
+                result = run_iperf3(target)
+            finally:
+                TEST_LOCK.release()
+
             print(
                 f"{'✅' if result['ok'] else '❌'} Respond result=[{json.dumps(result, indent=2)}]",
                 flush=True,
@@ -197,4 +215,4 @@ print(
     f"iperf3 server on :{ENVS['IPERF3_SERVER_PORT']}",
     flush=True,
 )
-HTTPServer(("0.0.0.0", ENVS["AGENT_PORT"]), Handler).serve_forever()
+ThreadingHTTPServer(("0.0.0.0", ENVS["AGENT_PORT"]), Handler).serve_forever()

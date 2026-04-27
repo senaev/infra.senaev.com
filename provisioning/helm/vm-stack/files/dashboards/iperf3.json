@@ -347,7 +347,7 @@
               }
             ]
           },
-          "unit": "ops"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -437,7 +437,7 @@
               }
             ]
           },
-          "unit": "ops"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -511,6 +511,30 @@
                 "value": "dateTimeFromNow"
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "received"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bps"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "sent"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bps"
+              }
+            ]
           }
         ]
       },
@@ -551,6 +575,26 @@
           "format": "table",
           "instant": true,
           "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "max by (source, target) (iperf3_received_bits_per_second{source=~\"$source\",target=~\"$target\"})",
+          "format": "table",
+          "instant": true,
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "max by (source, target) (iperf3_sent_bits_per_second{source=~\"$source\",target=~\"$target\"})",
+          "format": "table",
+          "instant": true,
+          "refId": "D"
         }
       ],
       "title": "Latest Test State",
@@ -576,7 +620,9 @@
             },
             "renameByName": {
               "Value #A": "up",
-              "Value #B": "last_run"
+              "Value #B": "last_run",
+              "Value #C": "received",
+              "Value #D": "sent"
             }
           }
         }
