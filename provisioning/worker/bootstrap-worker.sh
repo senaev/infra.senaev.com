@@ -51,10 +51,32 @@ echo "👉 $LOG_PREFIX Getting internal tailnet IP"
 TAILNET_IP=$(tailscale ip -4)
 echo "✅ $LOG_PREFIX TAILNET_IP=[${TAILNET_IP}]"
 
+check_control_plane_reachability() {
+  curl -skf --connect-timeout 10 "${CONTROL_PLANE_SERVER_URL}/ping" >/dev/null
+}
+
 echo "👉 $LOG_PREFIX Checking control plane reachability"
-if ! curl -skf --connect-timeout 10 "${CONTROL_PLANE_SERVER_URL}/ping" >/dev/null; then
-  echo "❌ $LOG_PREFIX Control plane is not reachable at [${CONTROL_PLANE_SERVER_URL}]"
-  exit 1
+if ! check_control_plane_reachability; then
+  echo "⚠️ $LOG_PREFIX Control plane is not reachable at [${CONTROL_PLANE_SERVER_URL}], restarting Tailscale and retrying once"
+
+  if sudo systemctl restart tailscaled 2>/dev/null; then
+    echo "✅ $LOG_PREFIX Restarted tailscaled service"
+  else
+    echo "❌ $LOG_PREFIX Could not restart Tailscale service"
+    exit 1
+  fi
+
+  sleep 2
+
+  echo "👉 $LOG_PREFIX Getting internal tailnet IP after Tailscale restart"
+  TAILNET_IP=$(tailscale ip -4)
+  echo "✅ $LOG_PREFIX TAILNET_IP=[${TAILNET_IP}]"
+
+  echo "👉 $LOG_PREFIX Re-checking control plane reachability"
+  if ! check_control_plane_reachability; then
+    echo "❌ $LOG_PREFIX Control plane is not reachable at [${CONTROL_PLANE_SERVER_URL}] after Tailscale restart"
+    exit 1
+  fi
 fi
 echo "✅ $LOG_PREFIX Control plane is reachable"
 

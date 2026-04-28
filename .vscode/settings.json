@@ -87,6 +87,7 @@
     "SWAPFILE",
     "swapon",
     "tailnet",
+    "tailscaled",
     "teddysun",
     "tfvar",
     "tfvars",
