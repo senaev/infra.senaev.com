@@ -281,15 +281,6 @@
           "expr": "max by (source, target) (iperf3_received_bits_per_second{source=~\"$source\",target=~\"$target\"})",
           "legendFormat": "{{source}} -> {{target}} received",
           "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "max by (source, target) (iperf3_sent_bits_per_second{source=~\"$source\",target=~\"$target\"})",
-          "legendFormat": "{{source}} -> {{target}} sent",
-          "refId": "B"
         }
       ],
       "title": "Throughput",
