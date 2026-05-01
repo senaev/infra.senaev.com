@@ -157,6 +157,8 @@ iperf3Monitor:
       target: senaev-media
     - source: senaev-media
       target: hetzner
+    - source: senaev-media
+      target: firstvds
   scheduler:
     enabled: true
     vps: hetzner
