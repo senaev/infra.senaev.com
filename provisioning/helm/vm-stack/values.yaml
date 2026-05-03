@@ -142,6 +142,7 @@ iperf3Monitor:
     - hetzner
     - firstvds
     - senaev-media
+    - yc
   tests:
     - source: hetzner
       target: senaev-media
@@ -149,6 +150,8 @@ iperf3Monitor:
       target: firstvds
     - source: hetzner
       target: senaev.ru
+    - source: hetzner
+      target: yc
     - source: firstvds
       target: hetzner
     - source: firstvds
@@ -159,6 +162,10 @@ iperf3Monitor:
       target: hetzner
     - source: senaev-media
       target: firstvds
+    - source: yc
+      target: firstvds
+    - source: yc
+      target: hetzner
   scheduler:
     enabled: true
     vps: hetzner
