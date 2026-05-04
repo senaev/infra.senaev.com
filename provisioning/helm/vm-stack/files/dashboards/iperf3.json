@@ -640,7 +640,7 @@
     }
   ],
   "preload": false,
-  "refresh": "30s",
+  "refresh": "5s",
   "schemaVersion": 42,
   "tags": ["iperf3", "network", "throughput"],
   "templating": {
