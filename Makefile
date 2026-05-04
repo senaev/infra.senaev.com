@@ -1,7 +1,7 @@
 -include .env
 export
 
-.PHONY: default terraform cluster rsync control-plane workers services senaev-com secrets telemetry
+.PHONY: default terraform cluster rsync control-plane workers services senaev-com secrets telemetry traefik
 
 CONTROL_PLANE_SERVER_ADDRESS := $(CONTROL_PLANE_SERVER_USERNAME)@$(CONTROL_PLANE_SERVER_IP)
 REMOTE := @ssh "$(CONTROL_PLANE_SERVER_ADDRESS)"
@@ -40,10 +40,13 @@ workers:
 	@echo "✅ [Makefile] Worker nodes connected"
 
 secrets:
+	@$(MAKE) rsync
+
 	$(REMOTE) "$(CONTROL_PLANE_SCRIPTS)/bootstrap-secrets.sh '$(TG_TOKEN_SENAEV_COM_BOT)'"
 
 telemetry:
 	@$(MAKE) rsync
+
 	$(REMOTE) "$(DEPLOY) vm-operator telemetry"
 	@echo "👉 [Makefile] Waiting for vm-operator webhook to be ready (required for vm-stack CRs)"
 	$(REMOTE) "kubectl rollout status deployment/vm-operator-victoria-metrics-operator -n telemetry --timeout=120s"
@@ -52,12 +55,15 @@ telemetry:
 	# vm-stack requires ExternalSecret CRDs for Grafana
 	$(REMOTE) "$(DEPLOY) vm-stack telemetry --set-string 'smokepingProber.extraTargets[0]=$(CONTROL_PLANE_SERVER_IP)' --set-string 'smokepingProber.extraTargets[1]=$(VPS_PROXMOX_HOST)' --set-string 'smokepingProber.extraTargets[2]=$(VPS_MEDIA_HOST)' --set-string 'smokepingProber.extraTargets[3]=$(VPS_FIRSTVDS_HOST)'"
 
-services:
-	@echo "👉 [Makefile] Deploying k8s services on control-plane=[$(CONTROL_PLANE_SERVER_ADDRESS)]"
-
+traefik:
 	@$(MAKE) rsync
 
 	$(REMOTE) "$(DEPLOY) traefik traefik"
+
+services:
+	@echo "👉 [Makefile] Deploying k8s services on control-plane=[$(CONTROL_PLANE_SERVER_ADDRESS)]"
+
+	@$(MAKE) traefik
 
 	@$(MAKE) secrets
 
@@ -71,6 +77,7 @@ senaev-com:
 	@echo "👉 [Makefile] Deploying senaev-com services on control-plane=[$(CONTROL_PLANE_SERVER_ADDRESS)]"
 
 	@$(MAKE) rsync
+
 	$(REMOTE) "$(DEPLOY) senaev-com senaev-com"
 
 	$(REMOTE) "$(DEPLOY) kafka senaev-com"

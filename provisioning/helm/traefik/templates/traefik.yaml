@@ -28,8 +28,6 @@ spec:
           image: "{{ $.Values.image }}"
           args:
             - "--log.level=INFO"
-            - "--accesslog=true"
-            - "--accesslog.filepath=/dev/stdout"
             - "--providers.kubernetesingress=true"
             - "--providers.kubernetesingress.ingressclass=traefik-{{ .vps }}"
             - "--providers.kubernetescrd=true"
