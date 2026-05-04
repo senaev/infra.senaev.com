@@ -18,6 +18,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
+  "id": 17,
   "links": [],
   "panels": [
     {
@@ -57,6 +58,7 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": ["lastNotNull"],
           "fields": "",
@@ -66,6 +68,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -113,6 +116,7 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": ["lastNotNull"],
           "fields": "",
@@ -122,6 +126,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -173,6 +178,7 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": ["lastNotNull"],
           "fields": "",
@@ -182,6 +188,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -213,22 +220,27 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
+            "fillOpacity": 0,
+            "gradientMode": "opacity",
             "hideFrom": {
               "legend": false,
               "tooltip": false,
               "viz": false
             },
             "insertNulls": false,
-            "lineInterpolation": "linear",
+            "lineInterpolation": "stepBefore",
+            "lineStyle": {
+              "fill": "solid"
+            },
             "lineWidth": 1,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -272,6 +284,7 @@
           "sort": "desc"
         }
       },
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -303,6 +316,7 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
@@ -319,6 +333,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -362,6 +377,7 @@
           "sort": "none"
         }
       },
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -393,6 +409,7 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
@@ -409,6 +426,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -452,6 +470,7 @@
           "sort": "none"
         }
       },
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -474,8 +493,12 @@
       "fieldConfig": {
         "defaults": {
           "custom": {
+            "align": "auto",
             "cellOptions": {
               "type": "auto"
+            },
+            "footer": {
+              "reducers": []
             },
             "inspect": false
           },
@@ -538,14 +561,9 @@
       "id": 8,
       "options": {
         "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": ["sum"],
-          "show": false
-        },
         "showHeader": true
       },
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -621,26 +639,27 @@
       "type": "table"
     }
   ],
+  "preload": false,
   "refresh": "30s",
-  "schemaVersion": 41,
+  "schemaVersion": 42,
   "tags": ["iperf3", "network", "throughput"],
   "templating": {
     "list": [
       {
         "current": {
-          "selected": false,
           "text": "Prometheus",
           "value": "Prometheus"
         },
         "label": "Data Source",
         "name": "datasource",
+        "options": [],
         "query": "prometheus",
+        "refresh": 1,
         "type": "datasource"
       },
       {
         "allValue": ".*",
         "current": {
-          "selected": true,
           "text": "All",
           "value": "$__all"
         },
@@ -651,6 +670,7 @@
         "includeAll": true,
         "label": "Source",
         "name": "source",
+        "options": [],
         "query": "label_values(iperf3_up, source)",
         "refresh": 2,
         "sort": 1,
@@ -659,7 +679,6 @@
       {
         "allValue": ".*",
         "current": {
-          "selected": true,
           "text": "All",
           "value": "$__all"
         },
@@ -670,6 +689,7 @@
         "includeAll": true,
         "label": "Target",
         "name": "target",
+        "options": [],
         "query": "label_values(iperf3_up, target)",
         "refresh": 2,
         "sort": 1,
@@ -685,6 +705,5 @@
   "timezone": "browser",
   "title": "iPerf3 Throughput",
   "uid": "iperf3-throughput",
-  "version": 1,
-  "weekStart": ""
+  "version": 2
 }
