@@ -82,7 +82,7 @@ def run_iperf3(target):
         "-t",
         str(ENVS["IPERF3_PERIOD_SECONDS"]),
         "-b",
-        "100M",
+        "50M",
         "--json",
     ]
 
