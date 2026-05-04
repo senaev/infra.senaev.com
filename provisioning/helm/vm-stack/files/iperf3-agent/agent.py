@@ -81,6 +81,8 @@ def run_iperf3(target):
         str(ENVS["IPERF3_SERVER_PORT"]),
         "-t",
         str(ENVS["IPERF3_PERIOD_SECONDS"]),
+        "-b",
+        "100M",
         "--json",
     ]
 
