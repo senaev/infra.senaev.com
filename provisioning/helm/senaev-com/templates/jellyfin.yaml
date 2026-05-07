@@ -40,8 +40,10 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /config
-            - name: media
-              mountPath: /media/downloads
+            - name: completed
+              mountPath: /media/downloads/completed
+            - name: never-remove
+              mountPath: /media/downloads/never_remove
             - name: dri
               mountPath: /dev/dri
       volumes:
@@ -49,9 +51,13 @@ spec:
           hostPath:
             path: {{ .Values.mediaServerStoragePath }}/{{ .Values.jellyfin.volumePath }}/config
             type: DirectoryOrCreate
-        - name: media
+        - name: completed
           hostPath:
-            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}/downloads/complete
+            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.completed }}
+            type: DirectoryOrCreate
+        - name: never-remove
+          hostPath:
+            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.neverRemove }}
             type: DirectoryOrCreate
         - name: dri
           hostPath:

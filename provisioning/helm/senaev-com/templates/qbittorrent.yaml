@@ -91,7 +91,7 @@ spec:
             - -c
             - |
               mkdir -p /config
-              mkdir -p {{ .Values.qbittorrent.paths.complete }} {{ .Values.qbittorrent.paths.incomplete }} {{ .Values.qbittorrent.paths.watch }} {{ .Values.qbittorrent.paths.archiveTorrents }} {{ .Values.qbittorrent.paths.convertedForMobile }}
+              mkdir -p {{ .Values.qbittorrent.paths.completed }} {{ .Values.qbittorrent.paths.incomplete }} {{ .Values.qbittorrent.paths.watch }} {{ .Values.qbittorrent.paths.archiveTorrents }} {{ .Values.qbittorrent.paths.convertedForMobile }} {{ .Values.qbittorrent.paths.neverRemove }}
               chown -R 1000:1000 /config
               chown -R 1000:1000 /downloads
           volumeMounts:

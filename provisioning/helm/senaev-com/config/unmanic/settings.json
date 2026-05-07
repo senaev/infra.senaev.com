@@ -13,7 +13,7 @@
     "follow_symlinks": true,
     "installation_name": "",
     "installation_public_address": "",
-    "library_path": "/downloads/complete",
+    "library_path": "{{ .Values.qbittorrent.paths.completed }}",
     "log_buffer_retention": 0,
     "log_path": "/config/.unmanic/logs",
     "max_age_of_completed_tasks": 91,

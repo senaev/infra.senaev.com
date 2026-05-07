@@ -34,13 +34,13 @@ spec:
             - -c
             - |
               mkdir -p /watch-torrent-files
-              mkdir -p /downloads/complete /downloads/converted-for-mobile
+              mkdir -p {{ .Values.qbittorrent.paths.completed }} {{ .Values.qbittorrent.paths.convertedForMobile }}
               chown -R 1000:1000 /watch-torrent-files /downloads
           volumeMounts:
             - name: watch-torrent-files
               mountPath: /watch-torrent-files
-            - name: downloads-complete
-              mountPath: /downloads/complete
+            - name: downloads-completed
+              mountPath: {{ .Values.qbittorrent.paths.completed }}
             - name: downloads-converted-for-mobile
               mountPath: /downloads/converted-for-mobile
       containers:
@@ -64,8 +64,8 @@ spec:
           volumeMounts:
             - name: watch-torrent-files
               mountPath: /watch-torrent-files
-            - name: downloads-complete
-              mountPath: /downloads/complete
+            - name: downloads-completed
+              mountPath: {{ .Values.qbittorrent.paths.completed }}
             - name: downloads-converted-for-mobile
               mountPath: /downloads/converted-for-mobile
       volumes:
@@ -73,9 +73,9 @@ spec:
           hostPath:
             path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.watch }}
             type: DirectoryOrCreate
-        - name: downloads-complete
+        - name: downloads-completed
           hostPath:
-            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.complete }}
+            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.completed }}
             type: DirectoryOrCreate
         - name: downloads-converted-for-mobile
           hostPath:

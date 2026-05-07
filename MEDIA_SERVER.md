@@ -22,6 +22,11 @@ Login https://jellyfin.senaev.com/
 
 Dashboard → Playback → Transcoding → Hardware Acceleration → Intel Quicksync (QSV)
 
+Add two libraries as "Home Videos and Photos" (to preserve folder structure):
+
+- /media/downloads/completed
+- /media/downloads/never_remove
+
 ### Qbittorrent
 
 Login on the page https://qbittorrent.senaev.com/ with password from Qbittorrent output

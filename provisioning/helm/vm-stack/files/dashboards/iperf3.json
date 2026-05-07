@@ -273,10 +273,12 @@
       "id": 5,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull", "min", "max"],
+          "calcs": ["lastNotNull", "min", "max", "mean"],
           "displayMode": "table",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": true,
+          "sortBy": "Mean",
+          "sortDesc": false
         },
         "tooltip": {
           "hideZeros": false,
