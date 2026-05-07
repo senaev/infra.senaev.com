@@ -239,7 +239,7 @@
             "scaleDistribution": {
               "type": "linear"
             },
-            "showPoints": "auto",
+            "showPoints": "never",
             "showValues": false,
             "spanNulls": false,
             "stacking": {
@@ -705,5 +705,5 @@
   "timezone": "browser",
   "title": "iPerf3 Throughput",
   "uid": "iperf3-throughput",
-  "version": 2
+  "version": 4
 }

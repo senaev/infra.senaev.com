@@ -143,6 +143,7 @@ iperf3Monitor:
     - firstvds
     - senaev-media
     - yc
+    - vultr
   tests:
     - source: hetzner
       target: senaev-media
@@ -154,23 +155,41 @@ iperf3Monitor:
       target: yc
     - source: firstvds
       target: hetzner
+    - source: senaev-media
+      target: hetzner
+    - source: yc
+      target: hetzner
+    - source: vultr
+      target: senaev-media
+    - source: vultr
+      target: firstvds
+    - source: vultr
+      target: senaev.ru
+    - source: vultr
+      target: yc
+    - source: firstvds
+      target: vultr
+    - source: senaev-media
+      target: vultr
+    - source: yc
+      target: vultr
+    - source: hetzner
+      target: vultr
+    - source: vultr
+      target: hetzner
     - source: firstvds
       target: senaev.com
     - source: firstvds
       target: senaev-media
     - source: senaev-media
-      target: hetzner
-    - source: senaev-media
       target: firstvds
     - source: yc
       target: firstvds
-    - source: yc
-      target: hetzner
   scheduler:
     enabled: true
     vps: hetzner
     port: 9579
-    pauseBetweenTests: 60
+    pauseBetweenTests: 20
     scrapeInterval: 30s
     resources:
       requests:
