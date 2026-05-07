@@ -293,7 +293,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "max by (source, target) (iperf3_received_bits_per_second{source=~\"$source\",target=~\"$target\"})",
+          "expr": "max by (source, target) (iperf3_received_bits_per_second{source=~\"$source\",target=~\"$target\"}) <= ($max_mbps * 1000000)",
           "legendFormat": "{{source}} -> {{target}} received",
           "refId": "A"
         }
@@ -679,6 +679,7 @@
         },
         "includeAll": true,
         "label": "Source",
+        "multi": true,
         "name": "source",
         "options": [],
         "query": "label_values(iperf3_up, source)",
@@ -698,12 +699,60 @@
         },
         "includeAll": true,
         "label": "Target",
+        "multi": true,
         "name": "target",
         "options": [],
-        "query": "label_values(iperf3_up, target)",
+        "query": "label_values(iperf3_up{source=~\"$source\"}, target)",
         "refresh": 2,
         "sort": 1,
         "type": "query"
+      },
+      {
+        "current": {
+          "text": "1000",
+          "value": "1000"
+        },
+        "label": "Max Mbps",
+        "name": "max_mbps",
+        "options": [
+          {
+            "selected": false,
+            "text": "1",
+            "value": "1"
+          },
+          {
+            "selected": false,
+            "text": "2",
+            "value": "2"
+          },
+          {
+            "selected": false,
+            "text": "5",
+            "value": "5"
+          },
+          {
+            "selected": false,
+            "text": "10",
+            "value": "10"
+          },
+          {
+            "selected": false,
+            "text": "25",
+            "value": "25"
+          },
+          {
+            "selected": false,
+            "text": "45",
+            "value": "45"
+          },
+          {
+            "selected": true,
+            "text": "1000",
+            "value": "1000"
+          }
+        ],
+        "query": "1,2,5,10,25,45,1000",
+        "type": "custom"
       }
     ]
   },
@@ -715,5 +764,5 @@
   "timezone": "browser",
   "title": "iPerf3 Throughput",
   "uid": "iperf3-throughput",
-  "version": 4
+  "version": 8
 }
