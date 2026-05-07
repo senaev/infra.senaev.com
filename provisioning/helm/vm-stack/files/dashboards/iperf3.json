@@ -47,8 +47,8 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 5,
-        "w": 8,
+        "h": 3,
+        "w": 7,
         "x": 0,
         "y": 0
       },
@@ -105,9 +105,9 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 5,
+        "h": 3,
         "w": 8,
-        "x": 8,
+        "x": 7,
         "y": 0
       },
       "id": 2,
@@ -167,9 +167,9 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 5,
-        "w": 8,
-        "x": 16,
+        "h": 3,
+        "w": 9,
+        "x": 15,
         "y": 0
       },
       "id": 3,
@@ -268,14 +268,14 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 5
+        "y": 3
       },
       "id": 5,
       "options": {
         "legend": {
           "calcs": ["lastNotNull", "min", "max", "mean"],
           "displayMode": "table",
-          "placement": "bottom",
+          "placement": "right",
           "showLegend": true,
           "sortBy": "Mean",
           "sortDesc": false
@@ -320,7 +320,7 @@
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
-            "fillOpacity": 10,
+            "fillOpacity": 0,
             "gradientMode": "none",
             "hideFrom": {
               "legend": false,
@@ -329,22 +329,26 @@
             },
             "insertNulls": false,
             "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
             "lineWidth": 1,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
             },
-            "showPoints": "auto",
+            "showPoints": "never",
             "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
-              "mode": "none"
+              "mode": "normal"
             },
             "thresholdsStyle": {
               "mode": "off"
             }
           },
+          "fieldMinMax": false,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -355,23 +359,25 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "none"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
+        "h": 7,
         "w": 12,
         "x": 0,
-        "y": 14
+        "y": 12
       },
       "id": 6,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+          "calcs": ["sum"],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Total",
+          "sortDesc": true
         },
         "tooltip": {
           "hideZeros": false,
@@ -453,18 +459,20 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
+        "h": 7,
         "w": 12,
         "x": 12,
-        "y": 14
+        "y": 12
       },
       "id": 7,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+          "calcs": ["sum"],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Total",
+          "sortDesc": true
         },
         "tooltip": {
           "hideZeros": false,
@@ -555,10 +563,10 @@
         ]
       },
       "gridPos": {
-        "h": 8,
+        "h": 44,
         "w": 24,
         "x": 0,
-        "y": 22
+        "y": 19
       },
       "id": 8,
       "options": {
