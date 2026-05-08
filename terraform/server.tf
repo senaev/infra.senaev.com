@@ -6,7 +6,7 @@ resource "hcloud_ssh_key" "ed25519" {
 resource "hcloud_server" "control_plane" {
   name        = "hetzner"
   server_type = "cx33"
-  location    = "nbg1"
+  location    = "hel1"
   image       = "debian-13"
   ssh_keys    = [hcloud_ssh_key.ed25519.id]
 

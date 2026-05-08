@@ -52,7 +52,10 @@ TAILNET_IP=$(tailscale ip -4)
 echo "✅ $LOG_PREFIX TAILNET_IP=[${TAILNET_IP}]"
 
 check_control_plane_reachability() {
-  curl -skf --connect-timeout 10 "${CONTROL_PLANE_SERVER_URL}/ping" >/dev/null
+  curl -skSf \
+    --connect-timeout 5 \
+    --max-time 15 \
+    "${CONTROL_PLANE_SERVER_URL}/ping" >/dev/null
 }
 
 echo "👉 $LOG_PREFIX Checking control plane reachability"
@@ -131,9 +134,9 @@ print_k3s_agent_diagnostics() {
 if ! install_k3s_agent || ! start_k3s_agent || ! wait_for_k3s_agent_start; then
   echo "⚠️ $LOG_PREFIX k3s agent did not start within 2 minutes, retrying once"
   print_k3s_agent_diagnostics
-  install_k3s_agent
-  start_k3s_agent
-  wait_for_k3s_agent_start
+install_k3s_agent
+start_k3s_agent
+wait_for_k3s_agent_start
 fi
 
 echo "✅ $LOG_PREFIX Installed k3s agent"
