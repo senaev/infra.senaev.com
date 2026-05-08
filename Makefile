@@ -53,7 +53,7 @@ telemetry:
 	@echo "✅ [Makefile] vm-operator webhook ready"
 
 	# vm-stack requires ExternalSecret CRDs for Grafana
-	$(REMOTE) "$(DEPLOY) vm-stack telemetry --set-string 'smokepingProber.extraTargets[0]=$(CONTROL_PLANE_SERVER_IP)' --set-string 'smokepingProber.extraTargets[1]=$(VPS_PROXMOX_HOST)' --set-string 'smokepingProber.extraTargets[2]=$(VPS_MEDIA_HOST)' --set-string 'smokepingProber.extraTargets[3]=$(VPS_FIRSTVDS_HOST)'"
+	$(REMOTE) "$(DEPLOY) vm-stack telemetry --set-string 'smokepingProber.extraTargets[0]=$(CONTROL_PLANE_SERVER_IP)' --set-string 'smokepingProber.extraTargets[1]=$(VPS_PROXMOX_HOST)' --set-string 'smokepingProber.extraTargets[2]=$(VPS_MEDIA_HOST)' --set-string 'smokepingProber.extraTargets[3]=$(VPS_FIRSTVDS_HOST)' --set-string 'smokepingProber.extraTargets[4]=$(VPS_VULTR_HOST)'"
 
 traefik:
 	@$(MAKE) rsync

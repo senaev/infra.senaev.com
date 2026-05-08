@@ -144,7 +144,6 @@ iperf3Monitor:
     - senaev-media
     - yc
     - vultr
-    - hetzner-fi
   tests:
     - source: hetzner
       target: senaev-media

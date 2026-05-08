@@ -18,3 +18,7 @@ VPS_MEDIA_LABEL    = "senaev-media"
 VPS_FIRSTVDS_HOST     = "22.22.222.22"
 VPS_FIRSTVDS_USERNAME = "root"
 VPS_FIRSTVDS_LABEL    = "firstvds"
+
+VPS_VULTR_HOST     = "33.33.33.3"
+VPS_VULTR_USERNAME = "root"
+VPS_VULTR_LABEL    = "vultr"

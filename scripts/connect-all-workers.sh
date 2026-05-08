@@ -35,4 +35,9 @@ echo "👉 [connect-all-workers] Connecting to node=[$FIRSTVDS_ADDR] with vps=[$
 "$ROOT_DIR/scripts/connect-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN" "$FIRSTVDS_ADDR" "$VPS_FIRSTVDS_LABEL"
 echo "✅ [connect-all-workers] Connected to node=[$FIRSTVDS_ADDR] with vps=[${VPS_FIRSTVDS_LABEL}]"
 
+VULTR_ADDR="${VPS_VULTR_USERNAME}@${VPS_VULTR_HOST}"
+echo "👉 [connect-all-workers] Connecting to node=[$VULTR_ADDR] with vps=[${VPS_VULTR_LABEL}]"
+"$ROOT_DIR/scripts/connect-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN" "$VULTR_ADDR" "$VPS_VULTR_LABEL"
+echo "✅ [connect-all-workers] Connected to node=[$VULTR_ADDR] with vps=[${VPS_VULTR_LABEL}]"
+
 echo "✅ [connect-all-workers] Connected to worker nodes"
