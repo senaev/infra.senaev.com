@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 TERRAFORM_DIR="$ROOT_DIR/terraform"
 ENV_FILE="$ROOT_DIR/.env"
 ENV_EXAMPLE="$ROOT_DIR/.env.example"
-SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=yes)
+SSH_OPTS=(-o ConnectTimeout=5 -o StrictHostKeyChecking=ask)
 
 get_tfvar() {
   local key="$1"
@@ -128,20 +128,6 @@ do
   sync_tfvar_to_env "$key"
 done
 echo "✅ [apply-terraform] terraform.tfvars values written to .env"
-
-echo "👉 [apply-terraform] Updating known_hosts for $SERVER_IP"
-ssh-keygen -R "$SERVER_IP" 2>/dev/null || true
-echo "✅ [apply-terraform] known_hosts updated for $SERVER_IP"
-
-echo "👉 [apply-terraform] Waiting for SSH host key to become available"
-SSH_HOST_KEY=""
-until SSH_HOST_KEY="$(ssh-keyscan -H "$SERVER_IP" 2>/dev/null)"; do
-  echo "⏳ [apply-terraform] SSH host key is not available yet, retrying in 1s"
-  sleep 1
-done
-printf '%s\n' "$SSH_HOST_KEY" >> ~/.ssh/known_hosts
-echo "✅ [apply-terraform] SSH host key is available for $SERVER_IP"
-
 
 echo "👉 [apply-terraform] Waiting for cloud-init to finish (⚠️ might take a few minutes on first boot)"
 CONSECUTIVE_QUERY_FAILURES=0

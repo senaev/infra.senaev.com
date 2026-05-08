@@ -178,24 +178,6 @@ iperf3Monitor:
       target: vultr
     - source: vultr
       target: hetzner
-    - source: hetzner-fi
-      target: senaev-media
-    - source: hetzner-fi
-      target: firstvds
-    - source: hetzner-fi
-      target: senaev.ru
-    - source: hetzner-fi
-      target: yc
-    - source: firstvds
-      target: hetzner-fi
-    - source: senaev-media
-      target: hetzner-fi
-    - source: yc
-      target: hetzner-fi
-    - source: hetzner
-      target: hetzner-fi
-    - source: hetzner-fi
-      target: hetzner
     - source: firstvds
       target: senaev.com
     - source: firstvds
