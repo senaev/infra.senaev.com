@@ -1,4 +1,4 @@
-import { PERCENT_REMOVE_TARGET, PERCENT_TRIGGER_TO_REMOVE } from "../env";
+import { DISK_USAGE_PATH, PERCENT_REMOVE_TARGET, PERCENT_TRIGGER_TO_REMOVE } from "../env";
 import { formatBytes } from "./formatBytes";
 import { getDiskUsage } from "./getDiskUsage";
 import { getFilesToRemove } from "./getFilesToRemove";
@@ -11,10 +11,6 @@ import {
 
 const DOWNLOADS_DIR = "/downloads";
 
-// Root /downloads folder is in-pod container
-// We should take one of the folders mounded as a hostPath
-const FOLDER_TO_CHECK_USAGE = `${DOWNLOADS_DIR}/complete`;
-
 const CHECK_INTERVAL_MS = 10_000;
 
 let isRemovingFiles = false;
@@ -26,7 +22,7 @@ async function checkDiskSpace(): Promise<void> {
         occupiedPercent,
         removeInfo,
     } = await getSpaceInfoToRemove({
-        folderToCheckUsage: FOLDER_TO_CHECK_USAGE,
+        folderToCheckUsage: DISK_USAGE_PATH,
         percentRemoveTarget: PERCENT_REMOVE_TARGET,
         percentTriggerToRemove: PERCENT_TRIGGER_TO_REMOVE,
     });
@@ -75,7 +71,7 @@ async function checkDiskSpace(): Promise<void> {
         const notEnoughFilesToRemove = filesToRemoveSizeBytes < bytesToRemove;
 
         await removeFiles(filesToRemove);
-        const usageAfterRemoval = await getDiskUsage(FOLDER_TO_CHECK_USAGE);
+        const usageAfterRemoval = await getDiskUsage(DISK_USAGE_PATH);
         const totalBytesAfterRemoval = usageAfterRemoval.totalBlocks * usageAfterRemoval.blockSize;
         const usedBytesAfterRemoval =
             (usageAfterRemoval.totalBlocks - usageAfterRemoval.availableBlocks) *

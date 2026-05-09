@@ -53,6 +53,8 @@ spec:
               value: {{ .Values.mediaServerHelper.percentTriggerToRemove | quote }}
             - name: PERCENT_REMOVE_TARGET
               value: {{ .Values.mediaServerHelper.percentRemoveTarget | quote }}
+            - name: DISK_USAGE_PATH
+              value: {{ .Values.qbittorrent.paths.completed | quote }}
             - name: TG_TOKEN_SENAEV_COM_BOT
               valueFrom:
                 secretKeyRef:
