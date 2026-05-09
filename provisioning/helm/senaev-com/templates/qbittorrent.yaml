@@ -73,6 +73,8 @@ spec:
     metadata:
       labels:
         app: qbittorrent
+      annotations:
+        configmap.reloader.stakater.com/reload: "qbittorrent-default-config"
     spec:
       serviceAccountName: qbittorrent-log-reader
       securityContext:
@@ -93,12 +95,14 @@ spec:
               mkdir -p /config
               mkdir -p {{ .Values.qbittorrent.paths.completed }} {{ .Values.qbittorrent.paths.incomplete }} {{ .Values.qbittorrent.paths.watch }} {{ .Values.qbittorrent.paths.archiveTorrents }} {{ .Values.qbittorrent.paths.convertedForMobile }} {{ .Values.qbittorrent.paths.neverRemove }}
               chown -R 1000:1000 /config
-              chown -R 1000:1000 /downloads
+              chown -R 1000:1000 /downloads {{ .Values.qbittorrent.paths.neverRemove }}
           volumeMounts:
             - name: config
               mountPath: /config
             - name: downloads
               mountPath: /downloads
+            - name: never-remove
+              mountPath: {{ .Values.qbittorrent.paths.neverRemove }}
         - name: init-config
           image: busybox:1.37.0-uclibc
           command:
@@ -143,6 +147,8 @@ spec:
               mountPath: /config
             - name: downloads
               mountPath: /downloads
+            - name: never-remove
+              mountPath: {{ .Values.qbittorrent.paths.neverRemove }}
             - name: tg-notify
               mountPath: /scripts/tg-notify.sh
               subPath: tg-notify.sh
@@ -197,6 +203,10 @@ spec:
         - name: downloads
           hostPath:
             path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}/downloads
+            type: DirectoryOrCreate
+        - name: never-remove
+          hostPath:
+            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.neverRemove }}
             type: DirectoryOrCreate
 ---
 apiVersion: v1

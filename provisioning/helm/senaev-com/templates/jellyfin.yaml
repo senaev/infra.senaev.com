@@ -43,7 +43,7 @@ spec:
             - name: completed
               mountPath: /media/downloads/completed
             - name: never-remove
-              mountPath: /media/downloads/never_remove
+              mountPath: /media/never_remove
             - name: dri
               mountPath: /dev/dri
       volumes:

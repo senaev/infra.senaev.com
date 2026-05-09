@@ -25,7 +25,7 @@ Dashboard → Playback → Transcoding → Hardware Acceleration → Intel Quick
 Add two libraries as "Home Videos and Photos" (to preserve folder structure):
 
 - /media/downloads/completed
-- /media/downloads/never_remove
+- /media/never_remove
 
 ### Qbittorrent
 

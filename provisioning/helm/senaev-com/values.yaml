@@ -86,7 +86,7 @@ qbittorrent:
     watch: /downloads/watch-torrent-files
     archiveTorrents: /downloads/archive-torrent-files
     convertedForMobile: /downloads/converted-for-mobile
-    neverRemove: /downloads/never_remove
+    neverRemove: /never_remove
 
 filebrowser:
   enabled: true

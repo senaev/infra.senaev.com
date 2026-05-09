@@ -73,7 +73,7 @@ spec:
             type: DirectoryOrCreate
         - name: data
           hostPath:
-            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}/downloads
+            path: {{ .Values.mediaServerStoragePath }}
             type: DirectoryOrCreate
 ---
 apiVersion: v1

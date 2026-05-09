@@ -126,7 +126,7 @@ async function publishPassword(password) {
     const chatId = getRequiredEnv("TG_CLUSTER_CHAT_ID");
     const body = JSON.stringify({
         chatId,
-        text: `qBittorrent WebUI password for <code>${escapeHtml(podName)}</code>:\n<tg-spoiler>${escapeHtml(password)}</tg-spoiler>`,
+        text: `qBittorrent WebUI password for\nhttps://qbittorrent.senaev.com/\n<code>${escapeHtml(podName)}</code>:\n<tg-spoiler>${escapeHtml(password)}</tg-spoiler>`,
         parseMode: "HTML",
         replyMarkup: {
             inline_keyboard: [[{ text: "Copy", copy_text: { text: password } }]],
@@ -153,9 +153,7 @@ async function publishPasswordWithRetries(password) {
     for (let attempt = 1; ; attempt += 1) {
         try {
             const publishResult = await publishPassword(password);
-            console.log(
-                `✅ qBittorrent WebUI password send succeeded on retry=[${attempt}]`,
-            );
+            console.log(`✅ qBittorrent WebUI password send succeeded on retry=[${attempt}]`);
 
             return publishResult;
         } catch (error) {
