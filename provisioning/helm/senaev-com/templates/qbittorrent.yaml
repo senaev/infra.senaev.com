@@ -74,6 +74,7 @@ spec:
       labels:
         app: qbittorrent
       annotations:
+        secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
         configmap.reloader.stakater.com/reload: "qbittorrent-default-config"
     spec:
       serviceAccountName: qbittorrent-log-reader

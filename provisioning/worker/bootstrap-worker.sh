@@ -85,9 +85,7 @@ echo "✅ $LOG_PREFIX Control plane is reachable"
 
 echo "👉 $LOG_PREFIX Installing k3s=[${K3S_VERSION}] agent ⚠️ might take a while, wait"
 
-install_k3s_agent() {
-  curl -sfL https://get.k3s.io | \
-    INSTALL_K3S_SKIP_START=true \
+curl -sfL https://get.k3s.io | \
     INSTALL_K3S_VERSION="${K3S_VERSION}" \
     K3S_URL="$CONTROL_PLANE_SERVER_URL" \
     K3S_TOKEN="$NODE_TOKEN" \
@@ -98,45 +96,4 @@ install_k3s_agent() {
       --flannel-iface=tailscale0 \
     " \
     sh -
-}
-
-start_k3s_agent() {
-  sudo systemctl daemon-reload
-  sudo systemctl restart k3s-agent
-}
-
-wait_for_k3s_agent_start() {
-  local deadline
-  deadline=$((SECONDS + 120))
-
-  while (( SECONDS < deadline )); do
-    if sudo systemctl is-active --quiet k3s-agent; then
-      return 0
-    fi
-
-    if sudo systemctl is-failed --quiet k3s-agent; then
-      return 1
-    fi
-
-    sleep 5
-  done
-
-  return 1
-}
-
-print_k3s_agent_diagnostics() {
-  echo "⚠️ $LOG_PREFIX k3s-agent diagnostics begin"
-  sudo systemctl status k3s-agent --no-pager || true
-  sudo journalctl -u k3s-agent -n 100 --no-pager || true
-  echo "⚠️ $LOG_PREFIX k3s-agent diagnostics end"
-}
-
-if ! install_k3s_agent || ! start_k3s_agent || ! wait_for_k3s_agent_start; then
-  echo "⚠️ $LOG_PREFIX k3s agent did not start within 2 minutes, retrying once"
-  print_k3s_agent_diagnostics
-install_k3s_agent
-start_k3s_agent
-wait_for_k3s_agent_start
-fi
-
 echo "✅ $LOG_PREFIX Installed k3s agent"

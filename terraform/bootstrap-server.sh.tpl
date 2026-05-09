@@ -41,6 +41,10 @@ fi
 TAILSCALE_AUTH_KEY="$1"
 SERVER_NAME="$2"
 
+echo "👉 [bootstrap-server] Setting server name to [$SERVER_NAME]"
+hostnamectl set-hostname "$SERVER_NAME"
+echo "✅ [bootstrap-server] Server name set"
+
 echo "👉 [bootstrap-server] Configuring swap"
 SWAPFILE_PATH="/swapfile"
 SWAPFILE_SIZE="2G"
@@ -65,10 +69,6 @@ vm.swappiness=10
 EOF
 sysctl --system >/dev/null
 echo "✅ [bootstrap-server] Swap configured"
-
-echo "👉 [bootstrap-server] Setting server name to [$SERVER_NAME]"
-hostnamectl set-hostname "$SERVER_NAME"
-echo "✅ [bootstrap-server] Server name set"
 
 echo "👉 [bootstrap-server] Installing Tailscale"
 curl -fsSL https://tailscale.com/install.sh | sh

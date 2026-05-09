@@ -145,6 +145,7 @@ iperf3Monitor:
     - yc
     - vultr
     - netcup
+    - contabo
   tests:
     - source: hetzner
       target: senaev-media
@@ -191,6 +192,24 @@ iperf3Monitor:
     - source: hetzner
       target: vultr
     - source: vultr
+      target: hetzner
+    - source: contabo
+      target: senaev-media
+    - source: contabo
+      target: firstvds
+    - source: contabo
+      target: senaev.ru
+    - source: contabo
+      target: yc
+    - source: firstvds
+      target: contabo
+    - source: senaev-media
+      target: contabo
+    - source: yc
+      target: contabo
+    - source: hetzner
+      target: contabo
+    - source: contabo
       target: hetzner
     - source: firstvds
       target: senaev.com
