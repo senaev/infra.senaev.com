@@ -10,7 +10,7 @@ import { telegramApiCall } from "./telegram-api";
 import { startTorrentOutboxProcessor, stopTorrentOutboxProcessor } from "./torrentOutbox";
 
 export const PORT = 3000;
-export const WEBHOOK_PATH = "/telegram-webhook";
+export const TELEGRAM_WEBHOOK_PATH = "/telegram-webhook";
 
 export const webhookSecretToken = randomBytes(32).toString("hex");
 
@@ -34,19 +34,21 @@ server.post(`/${ALISA_WEBHOOK_SECRET}`, async ({ body }, reply) => {
 
 async function main(): Promise<void> {
     const botUser: TelegramUser = await getCurrentTelegramBotInfo(TG_TOKEN_SENAEV_COM_BOT);
-    server.post(WEBHOOK_PATH, async (request, reply) => {
+    server.post(TELEGRAM_WEBHOOK_PATH, async (request, reply) => {
         try {
             console.log("🆕 Received Telegram update:", request.body);
             const secret = request.headers["x-telegram-bot-api-secret-token"];
             if (secret !== webhookSecretToken) {
-                console.log(`❌ Unauthorized request=[${WEBHOOK_PATH}] with invalid secret token`);
+                console.log(
+                    `❌ Unauthorized request=[${TELEGRAM_WEBHOOK_PATH}] with invalid secret token`,
+                );
                 return reply.code(401).send("Unauthorized");
             }
 
             const update = request.body;
             if (!isObject(update)) {
                 console.log(
-                    `❌ Invalid request=[${WEBHOOK_PATH}] with non-object body=[${typeof update}][${update}]`,
+                    `❌ Invalid request=[${TELEGRAM_WEBHOOK_PATH}] with non-object body=[${typeof update}][${update}]`,
                 );
                 return reply.code(400).send("Bad Request");
             }
@@ -60,7 +62,8 @@ async function main(): Promise<void> {
             return reply.send("OK");
         } catch (err: unknown) {
             console.error("❌ Error processing Telegram webhook data:", err);
-            return reply.code(500).send("Internal Server Error");
+            // Telegram retries non-2xx webhook responses, so acknowledge after logging.
+            return reply.send("OK");
         }
     });
 
@@ -70,7 +73,7 @@ async function main(): Promise<void> {
     await server.listen({ port: PORT, host: "0.0.0.0" });
     console.log(`✅ Server listening on port=${PORT}`);
 
-    const webhookUrl = `https://${WEBHOOK_DOMAIN}${WEBHOOK_PATH}`;
+    const webhookUrl = `https://${WEBHOOK_DOMAIN}${TELEGRAM_WEBHOOK_PATH}`;
     await telegramApiCall("setWebhook", {
         url: webhookUrl,
         secret_token: webhookSecretToken,
