@@ -8,7 +8,3 @@ redpanda:
   topics:
     - name: tg-send-topic
       partitions: 1
-    - name: tg-send-to-media-server-topic
-      partitions: 1
-    - name: qbittorrent-webui-password-topic
-      partitions: 1

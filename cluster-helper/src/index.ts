@@ -4,10 +4,10 @@ import { getCurrentTelegramBotInfo } from "senaev-utils/src/utils/TelegramApi/ge
 import { sendTelegramMessage } from "senaev-utils/src/utils/TelegramApi/sendTelegramMessage";
 import { TelegramUser } from "senaev-utils/src/utils/TelegramApi/types";
 import { handleAlertmanagerWebhook } from "./alerts/handleAlertmanagerWebhook";
-import { KAFKA_BROKERS, TG_TOKEN_SENAEV_COM_BOT } from "./env";
+import { KAFKA_BROKERS, TG_MEDIA_SERVER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from "./env";
 import { KafkaTopicProcessorArgument } from "./kafka-topic-processors/KafkaTopicProcessorArgument";
-import { processTgSendToMediaServerTopic } from "./kafka-topic-processors/processTgSendToMediaServerTopic";
 import { processTgSendTopic } from "./kafka-topic-processors/processTgSendTopic";
+import { formatTorrentEvent, isTorrentEvent } from "./qbittorrent/formatTorrentEvent";
 
 import SnappyCodec = require("kafkajs-snappy");
 CompressionCodecs[CompressionTypes.Snappy] = SnappyCodec;
@@ -46,12 +46,26 @@ server.post<{ Body: unknown }>("/telegram/send-message", async (request, reply) 
     reply.code(204).send();
 });
 
+server.post<{ Body: unknown }>("/qbittorrent/torrent-event", async (request, reply) => {
+    console.log("🆕 Received qBittorrent torrent event:", request.body);
+    if (!isTorrentEvent(request.body)) {
+        throw new Error("Invalid qBittorrent torrent event payload");
+    }
+
+    await sendTelegramMessage({
+        text: formatTorrentEvent(request.body),
+        chatId: TG_MEDIA_SERVER_CHAT_ID,
+        parseMode: "HTML",
+        token: TG_TOKEN_SENAEV_COM_BOT,
+    });
+    reply.code(204).send();
+});
+
 const KAFKA_TOPIC_HANDLERS: Record<
     string,
     (message: KafkaTopicProcessorArgument) => Promise<void>
 > = {
     "tg-send-topic": processTgSendTopic,
-    "tg-send-to-media-server-topic": processTgSendToMediaServerTopic,
 };
 
 async function main(): Promise<void> {
