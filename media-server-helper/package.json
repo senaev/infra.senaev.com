@@ -1,7 +1,7 @@
 {
   "name": "media-server-helper",
   "version": "1.0.0",
-  "description": "Consumes torrent files from Kafka and writes them to disk",
+  "description": "Helper service for media server automation",
   "type": "commonjs",
   "main": "src/index.ts",
   "scripts": {

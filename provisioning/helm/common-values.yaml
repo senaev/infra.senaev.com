@@ -2,7 +2,3 @@ telegramClusterChatId: "-1003971743999"
 telegramMediaServerChatId: "-1003923897462"
 
 mediaServerNodeName: "senaev-media"
-
-redpanda:
-  kafkaPort: 9092
-  topics: []

@@ -80,6 +80,4 @@ senaev-com:
 
 	$(REMOTE) "$(DEPLOY) senaev-com senaev-com"
 
-	$(REMOTE) "$(DEPLOY) kafka senaev-com"
-
 	@echo "✅ [Makefile] senaev-com services deployed"
