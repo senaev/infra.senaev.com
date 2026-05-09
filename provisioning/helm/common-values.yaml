@@ -5,6 +5,4 @@ mediaServerNodeName: "senaev-media"
 
 redpanda:
   kafkaPort: 9092
-  topics:
-    - name: tg-send-topic
-      partitions: 1
+  topics: []

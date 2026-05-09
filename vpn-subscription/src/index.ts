@@ -137,6 +137,14 @@ function getClientIpAddress(
     return ip;
 }
 
+function escapeHtml(value: string): string {
+    return value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+}
+
 server.get<{ Params: { secret: string } }>("/:secret", async (request, reply) => {
     if (!validateSecret(request.params.secret, reply)) {
         return;
@@ -195,41 +203,35 @@ server.post<{ Params: { secret: string } }>("/:secret", async (request, reply) =
     }
 
     const senderIpAddress = getClientIpAddress(request.headers, request.ip);
+    const userAgent = Array.isArray(request.headers["user-agent"])
+        ? request.headers["user-agent"].join(", ")
+        : (request.headers["user-agent"] ?? "unknown");
     const telegramMessage = [
-        "⚠️ Новое сообщение об ошибке",
-        `🛰️ IP: \`${senderIpAddress}\``,
-        `🧭 User-Agent: \`${request.headers["user-agent"] ?? "unknown"}\``,
+        "⚠️ <b>Новое сообщение об ошибке</b>",
+        `🛰️ <b>IP:</b> <code>${escapeHtml(senderIpAddress)}</code>`,
+        `🧭 <b>User-Agent:</b> <code>${escapeHtml(userAgent)}</code>`,
         "",
         "---",
         "",
-        message,
+        escapeHtml(message),
     ].join("\n");
 
-    const redpandaResponse = await fetch("http://redpanda/topics/tg-send-topic", {
+    const clusterHelperResponse = await fetch("http://cluster-helper/telegram/send-message", {
         method: "POST",
         headers: {
-            "Content-Type": "application/vnd.kafka.json.v2+json",
+            "Content-Type": "application/json",
         },
         body: JSON.stringify({
-            records: [
-                {
-                    value: {
-                        method: "sendMessage",
-                        body: {
-                            chat_id: VPN_SUBSCRIPTION_CHAT_ID,
-                            text: telegramMessage,
-                            parse_mode: "Markdown",
-                        },
-                    },
-                },
-            ],
+            chatId: String(VPN_SUBSCRIPTION_CHAT_ID),
+            text: telegramMessage,
+            parseMode: "HTML",
         }),
     });
 
-    if (!redpandaResponse.ok) {
+    if (!clusterHelperResponse.ok) {
         return reply.code(500).type("application/json; charset=utf-8").send({
             status: "error",
-            message: "Cannot write to Redpanda topic",
+            message: "Cannot send Telegram message",
         });
     }
 

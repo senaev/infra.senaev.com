@@ -38,8 +38,6 @@ spec:
               value: {{ .Values.telegramClusterChatId | quote }}
             - name: TG_MEDIA_SERVER_CHAT_ID
               value: {{ .Values.telegramMediaServerChatId | quote }}
-            - name: KAFKA_BROKERS
-              value: redpanda.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.redpanda.kafkaPort }}
           ports:
             - containerPort: 80
               name: internal
