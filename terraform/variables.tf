@@ -75,3 +75,18 @@ variable "VPS_VULTR_LABEL" {
   description = "Vultr worker VPS label"
   type        = string
 }
+
+variable "VPS_NETCUP_HOST" {
+  description = "Netcup worker host"
+  type        = string
+}
+
+variable "VPS_NETCUP_USERNAME" {
+  description = "Netcup worker SSH username"
+  type        = string
+}
+
+variable "VPS_NETCUP_LABEL" {
+  description = "Netcup worker VPS label"
+  type        = string
+}

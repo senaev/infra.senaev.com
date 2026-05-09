@@ -126,7 +126,10 @@ for key in \
   VPS_FIRSTVDS_LABEL \
   VPS_VULTR_HOST \
   VPS_VULTR_USERNAME \
-  VPS_VULTR_LABEL
+  VPS_VULTR_LABEL \
+  VPS_NETCUP_HOST \
+  VPS_NETCUP_USERNAME \
+  VPS_NETCUP_LABEL
 do
   sync_tfvar_to_env "$key"
 done

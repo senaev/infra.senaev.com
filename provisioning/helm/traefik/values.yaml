@@ -4,6 +4,7 @@ deployments:
   - vps: hetzner
   - vps: firstvds
   - vps: vultr
+  - vps: netcup
 
 resources:
   requests:

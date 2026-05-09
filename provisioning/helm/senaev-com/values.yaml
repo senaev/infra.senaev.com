@@ -45,6 +45,9 @@ xrayVpn:
         - user: user-socks-vultr
           uuidMacro: "{XRAY_USER_UUID:6}"
           outbound: outbound-vultr
+        - user: user-socks-netcup
+          uuidMacro: "{XRAY_USER_UUID:7}"
+          outbound: outbound-netcup
         - user: user-freedom
           uuidMacro: "{XRAY_USER_UUID:4}"
           outbound: outbound-freedom
@@ -66,6 +69,9 @@ xrayVpn:
       profiles: []
     - name: xray-vpn-vultr
       vps: vultr
+      profiles: []
+    - name: xray-vpn-netcup
+      vps: netcup
       profiles: []
 
 qbittorrent:
@@ -138,14 +144,12 @@ vpnSubscription:
       link: "vless://{XRAY_USER_UUID:1}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
     - name: "🇳🇱 2. senaev.ru💻firstvds → socks🌐vultr"
       link: "vless://{XRAY_USER_UUID:6}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
-    - name: "🇷🇺 3. senaev.com💻hetzner → socks🌐firstvds"
+    - name: "🇩🇪 3. senaev.ru💻firstvds → socks🌐netcup"
+      link: "vless://{XRAY_USER_UUID:7}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
+    - name: "🇷🇺 4. senaev.com💻hetzner → socks🌐firstvds"
       link: "vless://{XRAY_USER_UUID:2}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
-    - name: "🇷🇺 4. senaev.com💻hetzner → socks🌐senaev-media"
+    - name: "🇷🇺 5. senaev.com💻hetzner → socks🌐senaev-media"
       link: "vless://{XRAY_USER_UUID:3}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
-    # - name: "🇷🇺 4. senaev.ru💻firstvds → freedom🌐firstvds"
-    #   link: "vless://{XRAY_USER_UUID:4}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
-    # - name: "🇫🇮 5. senaev.com💻hetzner → freedom🌐hetzner"
-    #   link: "vless://{XRAY_USER_UUID:5}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
 
 redpandaConsole:
   enabled: true

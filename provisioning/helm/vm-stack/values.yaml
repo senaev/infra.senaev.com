@@ -144,6 +144,7 @@ iperf3Monitor:
     - senaev-media
     - yc
     - vultr
+    - netcup
   tests:
     - source: hetzner
       target: senaev-media
@@ -159,6 +160,20 @@ iperf3Monitor:
       target: hetzner
     - source: yc
       target: hetzner
+    - source: netcup
+      target: senaev-media
+    - source: netcup
+      target: firstvds
+    - source: netcup
+      target: senaev.ru
+    - source: netcup
+      target: yc
+    - source: firstvds
+      target: netcup
+    - source: senaev-media
+      target: netcup
+    - source: yc
+      target: netcup
     - source: vultr
       target: senaev-media
     - source: vultr
