@@ -1,11 +1,11 @@
 import Fastify from "fastify";
 import { CompressionCodecs, CompressionTypes, Kafka, type EachMessagePayload } from "kafkajs";
 import { getCurrentTelegramBotInfo } from "senaev-utils/src/utils/TelegramApi/getCurrentTelegramBotInfo";
+import { sendTelegramMessage } from "senaev-utils/src/utils/TelegramApi/sendTelegramMessage";
 import { TelegramUser } from "senaev-utils/src/utils/TelegramApi/types";
 import { handleAlertmanagerWebhook } from "./alerts/handleAlertmanagerWebhook";
 import { KAFKA_BROKERS, TG_TOKEN_SENAEV_COM_BOT } from "./env";
 import { KafkaTopicProcessorArgument } from "./kafka-topic-processors/KafkaTopicProcessorArgument";
-import { processQbittorrentWebuiPasswordTopic } from "./kafka-topic-processors/processQbittorrentWebuiPasswordTopic";
 import { processTgSendToMediaServerTopic } from "./kafka-topic-processors/processTgSendToMediaServerTopic";
 import { processTgSendTopic } from "./kafka-topic-processors/processTgSendTopic";
 
@@ -37,11 +37,19 @@ server.post<{ Body: unknown }>("/alertmanager/webhook", async (request, reply) =
     reply.code(204).send();
 });
 
+server.post<{ Body: unknown }>("/telegram/send-message", async (request, reply) => {
+    console.log("🆕 Received Telegram send message request:", request.body);
+    await sendTelegramMessage({
+        ...(request.body as Omit<Parameters<typeof sendTelegramMessage>[0], "token">),
+        token: TG_TOKEN_SENAEV_COM_BOT,
+    });
+    reply.code(204).send();
+});
+
 const KAFKA_TOPIC_HANDLERS: Record<
     string,
     (message: KafkaTopicProcessorArgument) => Promise<void>
 > = {
-    "qbittorrent-webui-password-topic": processQbittorrentWebuiPasswordTopic,
     "tg-send-topic": processTgSendTopic,
     "tg-send-to-media-server-topic": processTgSendToMediaServerTopic,
 };

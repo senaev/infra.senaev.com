@@ -7,7 +7,6 @@ const SERVICE_ACCOUNT_TOKEN_PATH = "/var/run/secrets/kubernetes.io/serviceaccoun
 const SERVICE_ACCOUNT_CA_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt";
 const MAX_ATTEMPTS = 120;
 const POLL_INTERVAL_MS = 5000;
-const PUBLISH_MAX_ATTEMPTS = 100;
 const PUBLISH_RETRY_INTERVAL_MS = 3000;
 const PASSWORD_PATTERN = /temporary password is provided for this session: (.+)$/gm;
 
@@ -35,6 +34,14 @@ function getRequiredEnv(name) {
     }
 
     return value;
+}
+
+function escapeHtml(value) {
+    return value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
 }
 
 function requestText({ protocol, hostname, port, path, method, headers, ca, body }) {
@@ -114,27 +121,26 @@ function extractPassword(logs) {
 }
 
 async function publishPassword(password) {
-    console.log("🚀 Publishing qBittorrent WebUI temporary password to Redpanda...");
+    console.log("🚀 Sending qBittorrent WebUI temporary password to cluster-helper...");
     const podName = getRequiredEnv("POD_NAME");
+    const chatId = getRequiredEnv("TG_CLUSTER_CHAT_ID");
     const body = JSON.stringify({
-        records: [
-            {
-                value: {
-                    podName,
-                    password,
-                },
-            },
-        ],
+        chatId,
+        text: `qBittorrent WebUI password for <code>${escapeHtml(podName)}</code>:\n<tg-spoiler>${escapeHtml(password)}</tg-spoiler>`,
+        parseMode: "HTML",
+        replyMarkup: {
+            inline_keyboard: [[{ text: "Copy", copy_text: { text: password } }]],
+        },
     });
 
     return requestText({
         protocol: "http:",
-        hostname: "redpanda",
+        hostname: "cluster-helper",
         port: "80",
-        path: "/topics/qbittorrent-webui-password-topic",
+        path: "/telegram/send-message",
         method: "POST",
         headers: {
-            "Content-Type": "application/vnd.kafka.json.v2+json",
+            "Content-Type": "application/json",
             "Content-Length": Buffer.byteLength(body),
         },
         body,
@@ -142,35 +148,26 @@ async function publishPassword(password) {
 }
 
 async function publishPasswordWithRetries(password) {
-    console.log("🚀 Publishing qBittorrent WebUI temporary password to Redpanda...");
-    let lastError;
+    console.log("🚀 Sending qBittorrent WebUI temporary password to cluster-helper...");
 
-    for (let attempt = 1; attempt <= PUBLISH_MAX_ATTEMPTS; attempt += 1) {
+    for (let attempt = 1; ; attempt += 1) {
         try {
             const publishResult = await publishPassword(password);
             console.log(
-                `✅ qBittorrent WebUI password publish succeeded on retry=[${attempt}/${PUBLISH_MAX_ATTEMPTS}]`,
+                `✅ qBittorrent WebUI password send succeeded on retry=[${attempt}]`,
             );
 
             return publishResult;
         } catch (error) {
-            lastError = error;
             const message = error instanceof Error ? error.message : String(error);
 
             console.log(
-                `⏳ qBittorrent WebUI password publish failed, attempt=[${attempt}/${PUBLISH_MAX_ATTEMPTS}]: ${message}`,
+                `⏳ qBittorrent WebUI password send failed, attempt=[${attempt}]: ${message}`,
             );
 
-            if (attempt < PUBLISH_MAX_ATTEMPTS) {
-                await sleep(PUBLISH_RETRY_INTERVAL_MS);
-            }
+            await sleep(PUBLISH_RETRY_INTERVAL_MS);
         }
     }
-
-    console.log(
-        `❌ qBittorrent WebUI password publish failed after ${PUBLISH_MAX_ATTEMPTS} attempts`,
-    );
-    throw lastError;
 }
 
 async function main() {
