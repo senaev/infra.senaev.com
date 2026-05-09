@@ -3,11 +3,11 @@ import { randomBytes } from "node:crypto";
 import { isObject } from "senaev-utils/src/utils/Object/isObject";
 import { getCurrentTelegramBotInfo } from "senaev-utils/src/utils/TelegramApi/getCurrentTelegramBotInfo";
 import { TelegramUpdate, TelegramUser } from "senaev-utils/src/utils/TelegramApi/types";
-import { ALISA_WEBHOOK_SECRET, TG_TOKEN_SENAEV_COM_BOT, WEBHOOK_DOMAIN } from "./env.js";
-import { handleAlisaRequest } from "./handleAlisaRequest.js";
-import { connectProducer, disconnectProducer } from "./kafka-producer.js";
-import { processTelegramWebhookData } from "./processTelegramWebhookData.js";
-import { telegramApiCall } from "./telegram-api.js";
+import { ALISA_WEBHOOK_SECRET, TG_TOKEN_SENAEV_COM_BOT, WEBHOOK_DOMAIN } from "./env";
+import { handleAlisaRequest } from "./handleAlisaRequest";
+import { processTelegramWebhookData } from "./processTelegramWebhookData";
+import { telegramApiCall } from "./telegram-api";
+import { startTorrentOutboxProcessor, stopTorrentOutboxProcessor } from "./torrentOutbox";
 
 export const PORT = 3000;
 export const WEBHOOK_PATH = "/telegram-webhook";
@@ -64,8 +64,8 @@ async function main(): Promise<void> {
         }
     });
 
-    await connectProducer();
-    console.log(`✅ Connected to Kafka`);
+    await startTorrentOutboxProcessor();
+    console.log(`✅ Torrent outbox processor started`);
 
     await server.listen({ port: PORT, host: "0.0.0.0" });
     console.log(`✅ Server listening on port=${PORT}`);
@@ -82,7 +82,7 @@ async function main(): Promise<void> {
 async function shutdown(): Promise<void> {
     console.log("Shutting down...");
     await server.close();
-    await disconnectProducer();
+    stopTorrentOutboxProcessor();
     process.exit(0);
 }
 

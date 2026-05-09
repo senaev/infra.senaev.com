@@ -1,4 +1,4 @@
-import { SUPABASE_PROJECT_URL, SUPABASE_PUBLISHABLE_KEY } from "./env.js";
+import { SUPABASE_PROJECT_URL, SUPABASE_PUBLISHABLE_KEY } from "./env";
 
 const SUPABASE_LIST_ID = 1;
 

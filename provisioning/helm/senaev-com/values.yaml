@@ -135,6 +135,7 @@ webhookEndpoint:
   enabled: true
   vps: hetzner
   webhookDomain: webhook-endpoint.senaev.com
+  torrentOutboxVolumePath: volumes/webhook-endpoint/torrent-outbox
 
 vpnSubscription:
   enabled: true

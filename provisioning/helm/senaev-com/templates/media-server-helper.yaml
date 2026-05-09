@@ -46,9 +46,9 @@ spec:
       containers:
         - name: media-server-helper
           image: ghcr.io/senaev/media-server-helper:latest
+          ports:
+            - containerPort: 3000
           env:
-            - name: KAFKA_BROKERS
-              value: redpanda.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.redpanda.kafkaPort }}
             - name: PERCENT_TRIGGER_TO_REMOVE
               value: {{ .Values.mediaServerHelper.percentTriggerToRemove | quote }}
             - name: PERCENT_REMOVE_TARGET
@@ -81,4 +81,19 @@ spec:
           hostPath:
             path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.convertedForMobile }}
             type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: media-server-helper
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: media-server-helper
+spec:
+  type: ClusterIP
+  selector:
+    app: media-server-helper
+  ports:
+    - port: 3000
+      targetPort: 3000
 {{- end }}

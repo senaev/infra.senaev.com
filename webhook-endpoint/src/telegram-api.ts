@@ -1,4 +1,4 @@
-import { TG_TOKEN_SENAEV_COM_BOT } from "./env.js";
+import { TG_TOKEN_SENAEV_COM_BOT } from "./env";
 
 interface TelegramResponse {
     ok: boolean;

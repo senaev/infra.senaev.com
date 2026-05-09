@@ -3,9 +3,7 @@ import { sendTelegramMessage } from "senaev-utils/src/utils/TelegramApi/sendTele
 import { setTelegramMessageReaction } from "senaev-utils/src/utils/TelegramApi/setTelegramMessageReaction";
 import { TelegramMessage } from "senaev-utils/src/utils/TelegramApi/types";
 import { TG_MEDIA_SERVER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from "./env";
-import { sendMessage } from "./kafka-producer";
-
-const TORRENT_FILES_TOPIC = "torrent-files-topic";
+import { enqueueTorrentFile } from "./torrentOutbox";
 
 export async function processMediaServerChatMessage(message: TelegramMessage): Promise<void> {
     await setTelegramMessageReaction({
@@ -37,19 +35,15 @@ export async function processMediaServerChatMessage(message: TelegramMessage): P
         }),
     );
     console.log(
-        `✅ Downloaded file from Telegram, size=[${buffer.length}] bytes, sending to Kafka topic...`,
+        `✅ Downloaded file from Telegram, size=[${buffer.length}] bytes, storing in torrent outbox...`,
     );
 
-    console.log(
-        `📤 Sending file to Kafka topic [${TORRENT_FILES_TOPIC}] with metadata: fileName=[${fileName}], telegramFileId=[${message.document.file_id}], telegramMessageId=[${message.message_id}], telegramChatId=[${message.chat.id}]`,
-    );
-    await sendMessage(TORRENT_FILES_TOPIC, buffer, {
+    console.log(`📥 Queueing torrent file with fileName=[${fileName}]`);
+    const outboxItemId = await enqueueTorrentFile({
+        buffer,
         fileName,
-        telegramFileId: message.document.file_id,
-        telegramMessageId: String(message.message_id),
-        telegramChatId: String(message.chat.id),
     });
-    console.log(`✅ File sent to Kafka topic [${TORRENT_FILES_TOPIC}] successfully`);
+    console.log(`✅ File stored in torrent outbox successfully, id=[${outboxItemId}]`);
 
     console.log(`👉 Setting thumbs up reaction to the message...`);
     await setTelegramMessageReaction({

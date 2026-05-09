@@ -1,5 +1,5 @@
-import { OPENROUTER_API_KEY, WEBHOOK_DOMAIN } from "./env.js";
-import { ALISA_SKILL_NAME } from "./processAlisaCommand.js";
+import { OPENROUTER_API_KEY, WEBHOOK_DOMAIN } from "./env";
+import { ALISA_SKILL_NAME } from "./processAlisaCommand";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_MODEL = "google/gemini-3-flash-preview";

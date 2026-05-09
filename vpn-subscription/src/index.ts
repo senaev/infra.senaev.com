@@ -7,8 +7,8 @@ import {
     VPN_SUBSCRIPTION_SECRET,
     XRAY_REALITY_PUBLIC_KEY,
     XRAY_USER_UUID,
-} from "./env.js";
-import { renderInstructionsPage } from "./renderInstructionsPage.js";
+} from "./env";
+import { renderInstructionsPage } from "./renderInstructionsPage";
 
 const TITLE = "Senaev🔐VPN";
 const ANNOUNCEMENTS = [
