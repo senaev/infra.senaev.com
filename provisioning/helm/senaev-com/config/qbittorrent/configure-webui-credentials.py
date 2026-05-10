@@ -1,21 +1,24 @@
-import html
 import json
 import os
 import re
 import ssl
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
+from http.cookiejar import CookieJar
 from pathlib import Path
 
 
-STATE_FILE = Path("/password-notify-state/webui-password-sent")
+STATE_FILE = Path("/credentials-config-state/webui-credentials-configured")
 SERVICE_ACCOUNT_TOKEN_PATH = Path("/var/run/secrets/kubernetes.io/serviceaccount/token")
 SERVICE_ACCOUNT_CA_PATH = Path("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt")
 MAX_ATTEMPTS = 120
 POLL_INTERVAL_SECONDS = 5
-PUBLISH_RETRY_INTERVAL_SECONDS = 3
 PASSWORD_PATTERN = re.compile(r"temporary password is provided for this session: (.+)$", re.MULTILINE)
+QBITTORRENT_INITIAL_WEBUI_USERNAME = "admin"
+QBITTORRENT_CONFIGURED_WEBUI_USERNAME = "qbittorrent_admin"
+QBITTORRENT_WEBUI_PORT = os.environ.get("QBITTORRENT_WEBUI_PORT", "9001")
 
 
 def sleep(seconds: int) -> None:
@@ -94,60 +97,75 @@ def extract_password(logs: str) -> str:
     return matches[-1].strip() if matches else ""
 
 
-def publish_password(password: str, chat_id: str) -> str:
-    print("🚀 Sending qBittorrent WebUI temporary password to cluster-helper...", flush=True)
-    pod_name = get_required_env("POD_NAME")
-    body = json.dumps(
-        {
-            "chatId": chat_id,
-            "text": (
-                "qBittorrent WebUI password for\n"
-                "https://qbittorrent.senaev.com/\n"
-                f"<code>{html.escape(pod_name)}</code>:\n"
-                f"<tg-spoiler>{html.escape(password)}</tg-spoiler>"
-            ),
-            "parseMode": "HTML",
-            "replyMarkup": {
-                "inline_keyboard": [[{"text": "Copy", "copy_text": {"text": password}}]],
-            },
-        },
-    ).encode("utf-8")
+def set_qbittorrent_webui_password(temporary_password: str) -> None:
+    print("🔐 Setting qBittorrent WebUI password from secret...", flush=True)
+    stable_password = get_required_env("QBITTORRENT_WEBUI_PASSWORD")
+    cookie_jar = CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie_jar))
 
-    return request_text(
-        protocol="http",
-        hostname="cluster-helper",
-        port="80",
-        path="/telegram/send-message",
-        method="POST",
+    login_body = urllib.parse.urlencode(
+            {
+                "username": QBITTORRENT_INITIAL_WEBUI_USERNAME,
+                "password": temporary_password,
+            },
+    ).encode("utf-8")
+    login_request = urllib.request.Request(
+        f"http://127.0.0.1:{QBITTORRENT_WEBUI_PORT}/api/v2/auth/login",
+        data=login_body,
         headers={
-            "Content-Type": "application/json",
-            "Content-Length": str(len(body)),
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Content-Length": str(len(login_body)),
         },
-        body=body,
+        method="POST",
     )
 
+    try:
+        with opener.open(login_request) as response:
+            login_result = response.read().decode("utf-8")
+    except urllib.error.HTTPError as error:
+        response_body = error.read().decode("utf-8", errors="replace")
+        raise RuntimeError(
+            f"qBittorrent WebUI login failed with status {error.code}: {response_body}",
+        ) from error
 
-def publish_password_with_retries(password: str, chat_id: str) -> str:
-    print("🚀 Sending qBittorrent WebUI temporary password to cluster-helper...", flush=True)
+    if login_result != "Ok.":
+        raise RuntimeError(f"qBittorrent WebUI login failed: {login_result}")
 
-    attempt = 1
-    while True:
-        try:
-            publish_result = publish_password(password, chat_id)
-            print(f"✅ qBittorrent WebUI password send succeeded on retry=[{attempt}]", flush=True)
-            return publish_result
-        except Exception as error:
-            print(
-                f"⏳ qBittorrent WebUI password send failed, attempt=[{attempt}]: {error}",
-                flush=True,
-            )
-            sleep(PUBLISH_RETRY_INTERVAL_SECONDS)
-            attempt += 1
+    preferences_body = urllib.parse.urlencode(
+        {
+            "json": json.dumps(
+                    {
+                        "web_ui_username": QBITTORRENT_CONFIGURED_WEBUI_USERNAME,
+                        "web_ui_password": stable_password,
+                    },
+            ),
+        },
+    ).encode("utf-8")
+    preferences_request = urllib.request.Request(
+        f"http://127.0.0.1:{QBITTORRENT_WEBUI_PORT}/api/v2/app/setPreferences",
+        data=preferences_body,
+        headers={
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Content-Length": str(len(preferences_body)),
+        },
+        method="POST",
+    )
+
+    try:
+        with opener.open(preferences_request) as response:
+            response.read()
+    except urllib.error.HTTPError as error:
+        response_body = error.read().decode("utf-8", errors="replace")
+        raise RuntimeError(
+            f"qBittorrent WebUI password update failed with status {error.code}: {response_body}",
+        ) from error
+
+    print("✅ qBittorrent WebUI password was set from secret", flush=True)
 
 
 def main() -> None:
     if STATE_FILE.exists():
-        print("✅ qBittorrent WebUI password already published, waiting indefinitely", flush=True)
+        print("✅ qBittorrent WebUI password already configured, waiting indefinitely", flush=True)
         wait_forever()
 
     for attempt in range(1, MAX_ATTEMPTS + 1):
@@ -163,12 +181,8 @@ def main() -> None:
                 sleep(POLL_INTERVAL_SECONDS)
                 continue
 
-            publish_results = [
-                publish_password_with_retries(password, get_required_env("TG_CLUSTER_CHAT_ID")),
-                publish_password_with_retries(password, get_required_env("TG_MEDIA_SERVER_CHAT_ID")),
-            ]
+            set_qbittorrent_webui_password(password)
             STATE_FILE.write_text("", encoding="utf-8")
-            print(f"✅ qBittorrent WebUI temporary password published: {publish_results}", flush=True)
             wait_forever()
         except Exception as error:
             print(

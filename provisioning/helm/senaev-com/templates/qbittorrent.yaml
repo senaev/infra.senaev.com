@@ -11,8 +11,8 @@ data:
 {{ tpl (.Files.Get "config/qbittorrent/qBittorrent.conf") . | nindent 4 }}
   tg-notify.sh: |
 {{ .Files.Get "config/qbittorrent/tg-notify.sh" | nindent 4 }}
-  notify-webui-password.py: |
-{{ .Files.Get "config/qbittorrent/notify-webui-password.py" | nindent 4 }}
+  configure-webui-credentials.py: |
+{{ .Files.Get "config/qbittorrent/configure-webui-credentials.py" | nindent 4 }}
   watched_folders.json: |
 {{ tpl (.Files.Get "config/qbittorrent/watched_folders.json") . | nindent 4 }}
 ---
@@ -154,11 +154,11 @@ spec:
               mountPath: /scripts/tg-notify.sh
               subPath: tg-notify.sh
               readOnly: true
-        - name: webui-password-notifier
+        - name: webui-credentials-configurer
           image: python:3.13-alpine
           command:
             - python
-            - /scripts/notify-webui-password.py
+            - /scripts/configure-webui-credentials.py
           env:
             - name: POD_NAME
               valueFrom:
@@ -168,17 +168,21 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
-            - name: TG_CLUSTER_CHAT_ID
-              value: {{ .Values.telegramClusterChatId | quote }}
-            - name: TG_MEDIA_SERVER_CHAT_ID
-              value: {{ .Values.telegramMediaServerChatId | quote }}
+            - name: QBITTORRENT_WEBUI_PORT
+              value: {{ .Values.qbittorrent.webuiPort | quote }}
+            - name: QBITTORRENT_WEBUI_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: QBITTORRENT_WEBUI_PASSWORD
+                  optional: false
           volumeMounts:
-            - name: notify-webui-password
-              mountPath: /scripts/notify-webui-password.py
-              subPath: notify-webui-password.py
+            - name: configure-webui-credentials
+              mountPath: /scripts/configure-webui-credentials.py
+              subPath: configure-webui-credentials.py
               readOnly: true
-            - name: password-notify-state
-              mountPath: /password-notify-state
+            - name: credentials-config-state
+              mountPath: /credentials-config-state
       volumes:
         - name: config
           hostPath:
@@ -194,14 +198,14 @@ spec:
               - key: tg-notify.sh
                 path: tg-notify.sh
                 mode: 0755
-        - name: notify-webui-password
+        - name: configure-webui-credentials
           configMap:
             name: qbittorrent-default-config
             items:
-              - key: notify-webui-password.py
-                path: notify-webui-password.py
+              - key: configure-webui-credentials.py
+                path: configure-webui-credentials.py
                 mode: 0644
-        - name: password-notify-state
+        - name: credentials-config-state
           emptyDir: {}
         - name: downloads
           hostPath:
