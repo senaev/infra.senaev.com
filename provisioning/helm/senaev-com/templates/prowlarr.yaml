@@ -1,0 +1,153 @@
+{{- if .Values.prowlarr.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prowlarr-default-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: prowlarr
+data:
+  configure-qbittorrent-download-client.py: |
+{{ .Files.Get "config/prowlarr/configure-qbittorrent-download-client.py" | nindent 4 }}
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: prowlarr-basicauth
+  namespace: {{ .Release.Namespace }}
+spec:
+  refreshInterval: 30s
+  secretStoreRef:
+    name: vault-cluster-secret-store
+    kind: ClusterSecretStore
+  target:
+    name: prowlarr-basicauth
+    creationPolicy: Owner
+    deletionPolicy: Delete
+  data:
+    - secretKey: users
+      remoteRef:
+        key: senaev-com-kv
+        property: PROWLARR_HTPASSWD_HASH_WITH_USERNAME
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: prowlarr-basicauth
+  namespace: {{ .Release.Namespace }}
+spec:
+  basicAuth:
+    secret: prowlarr-basicauth
+    removeHeader: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prowlarr
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: prowlarr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prowlarr
+  template:
+    metadata:
+      labels:
+        app: prowlarr
+      annotations:
+        secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
+        configmap.reloader.stakater.com/reload: "prowlarr-default-config"
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      nodeSelector:
+        vps: {{ .Values.prowlarr.vps }}
+      initContainers:
+        - name: fix-permissions
+          image: busybox:1.37.0-uclibc
+          securityContext:
+            runAsUser: 0
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p /config
+              chown -R 1000:1000 /config
+          volumeMounts:
+            - name: config
+              mountPath: /config
+      containers:
+        - name: prowlarr
+          image: lscr.io/linuxserver/prowlarr:2.3.5.5327-ls145
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: Etc/UTC
+            - name: PROWLARR__AUTH__METHOD
+              value: External
+          ports:
+            - name: webui
+              containerPort: {{ .Values.prowlarr.webuiPort }}
+          volumeMounts:
+            - name: config
+              mountPath: /config
+        - name: qbittorrent-download-client-configurer
+          image: python:3.13-alpine
+          command:
+            - python
+            - /scripts/configure-qbittorrent-download-client.py
+          env:
+            - name: QBITTORRENT_WEBUI_PORT
+              value: {{ .Values.qbittorrent.webuiPort | quote }}
+            - name: QBITTORRENT_WEBUI_USERNAME
+              value: {{ .Values.qbittorrent.webuiUsername | quote }}
+            - name: QBITTORRENT_WEBUI_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: QBITTORRENT_WEBUI_PASSWORD
+                  optional: false
+            - name: QBITTORRENT_CATEGORY
+              value: {{ .Values.prowlarr.qbittorrent.category | quote }}
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            - name: configure-qbittorrent-download-client
+              mountPath: /scripts/configure-qbittorrent-download-client.py
+              subPath: configure-qbittorrent-download-client.py
+              readOnly: true
+      volumes:
+        - name: config
+          hostPath:
+            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.prowlarr.volumePath }}/config
+            type: DirectoryOrCreate
+        - name: configure-qbittorrent-download-client
+          configMap:
+            name: prowlarr-default-config
+            items:
+              - key: configure-qbittorrent-download-client.py
+                path: configure-qbittorrent-download-client.py
+                mode: 0644
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prowlarr
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: prowlarr
+  ports:
+    - name: webui
+      port: {{ .Values.prowlarr.webuiPort }}
+      targetPort: {{ .Values.prowlarr.webuiPort }}
+{{- end }}

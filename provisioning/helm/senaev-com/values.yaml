@@ -78,6 +78,7 @@ qbittorrent:
   enabled: true
   volumePath: volumes/qbittorrent
   vps: senaev-media
+  webuiUsername: qbittorrent_admin
   webuiPort: 9001
   torrentPort: 6881
   paths:
@@ -110,6 +111,14 @@ unmanic:
     limits:
       cpu: 2048m
       memory: 2Gi
+
+prowlarr:
+  enabled: true
+  vps: senaev-media
+  volumePath: volumes/prowlarr
+  webuiPort: 9696
+  qbittorrent:
+    category: prowlarr
 
 jellyfin:
   enabled: true
@@ -221,3 +230,17 @@ ingress:
         - host: unmanic.senaev.ru
           service: unmanic
           port: 8888
+    - name: senaev-com-prowlarr
+      className: traefik-hetzner
+      middleware: prowlarr-basicauth
+      hosts:
+        - host: prowlarr.senaev.com
+          service: prowlarr
+          port: 9696
+    - name: senaev-ru-prowlarr
+      className: traefik-firstvds
+      middleware: prowlarr-basicauth
+      hosts:
+        - host: prowlarr.senaev.ru
+          service: prowlarr
+          port: 9696

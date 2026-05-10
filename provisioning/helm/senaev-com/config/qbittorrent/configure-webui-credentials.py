@@ -17,7 +17,6 @@ MAX_ATTEMPTS = 120
 POLL_INTERVAL_SECONDS = 5
 PASSWORD_PATTERN = re.compile(r"temporary password is provided for this session: (.+)$", re.MULTILINE)
 QBITTORRENT_INITIAL_WEBUI_USERNAME = "admin"
-QBITTORRENT_CONFIGURED_WEBUI_USERNAME = "qbittorrent_admin"
 QBITTORRENT_WEBUI_PORT = os.environ.get("QBITTORRENT_WEBUI_PORT", "9001")
 
 
@@ -135,7 +134,7 @@ def set_qbittorrent_webui_password(temporary_password: str) -> None:
         {
             "json": json.dumps(
                     {
-                        "web_ui_username": QBITTORRENT_CONFIGURED_WEBUI_USERNAME,
+                        "web_ui_username": get_required_env("QBITTORRENT_WEBUI_USERNAME"),
                         "web_ui_password": stable_password,
                     },
             ),

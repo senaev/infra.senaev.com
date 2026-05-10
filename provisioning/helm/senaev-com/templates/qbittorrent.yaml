@@ -170,6 +170,8 @@ spec:
                   fieldPath: metadata.namespace
             - name: QBITTORRENT_WEBUI_PORT
               value: {{ .Values.qbittorrent.webuiPort | quote }}
+            - name: QBITTORRENT_WEBUI_USERNAME
+              value: {{ .Values.qbittorrent.webuiUsername | quote }}
             - name: QBITTORRENT_WEBUI_PASSWORD
               valueFrom:
                 secretKeyRef:
