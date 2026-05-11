@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import { randomBytes } from "node:crypto";
 import { isObject } from "senaev-utils/src/utils/Object/isObject";
+import { prettyStringify } from "senaev-utils/src/utils/prettyStringify";
 import { getCurrentTelegramBotInfo } from "senaev-utils/src/utils/TelegramApi/getCurrentTelegramBotInfo";
 import { TelegramUpdate, TelegramUser } from "senaev-utils/src/utils/TelegramApi/types";
 import { ALISA_WEBHOOK_SECRET, TG_TOKEN_SENAEV_COM_BOT, WEBHOOK_DOMAIN } from "./env";
@@ -34,9 +35,11 @@ server.post(`/${ALISA_WEBHOOK_SECRET}`, async ({ body }, reply) => {
 
 async function main(): Promise<void> {
     const botUser: TelegramUser = await getCurrentTelegramBotInfo(TG_TOKEN_SENAEV_COM_BOT);
+    console.log(`✅ botUser: `, prettyStringify(botUser));
+
     server.post(TELEGRAM_WEBHOOK_PATH, async (request, reply) => {
         try {
-            console.log("🆕 Received Telegram update:", request.body);
+            console.log("🆕 Received Telegram update:", prettyStringify(request.body));
             const secret = request.headers["x-telegram-bot-api-secret-token"];
             if (secret !== webhookSecretToken) {
                 console.log(

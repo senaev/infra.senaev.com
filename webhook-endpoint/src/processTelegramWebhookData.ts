@@ -49,7 +49,10 @@ export async function processTelegramWebhookData({
         console.log(
             `👀 Received new message in media server chat, messageId=[${message.message_id}]`,
         );
-        processMediaServerChatMessage(message as TelegramMessage);
+        await processMediaServerChatMessage({
+            botUser,
+            message: message as TelegramMessage,
+        });
         return;
     }
 

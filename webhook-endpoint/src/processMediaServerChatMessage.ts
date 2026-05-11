@@ -1,17 +1,46 @@
 import { downloadFileFromTelegramMessage } from "senaev-utils/src/utils/TelegramApi/downloadFileFromTelegramMessage";
 import { sendTelegramMessage } from "senaev-utils/src/utils/TelegramApi/sendTelegramMessage";
 import { setTelegramMessageReaction } from "senaev-utils/src/utils/TelegramApi/setTelegramMessageReaction";
-import { TelegramMessage } from "senaev-utils/src/utils/TelegramApi/types";
+import { TelegramMessage, TelegramUser } from "senaev-utils/src/utils/TelegramApi/types";
 import { TG_MEDIA_SERVER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from "./env";
 import { enqueueTorrentFile } from "./torrentOutbox";
 
-export async function processMediaServerChatMessage(message: TelegramMessage): Promise<void> {
+export async function processMediaServerChatMessage({
+    botUser,
+    message,
+}: {
+    botUser: TelegramUser;
+    message: TelegramMessage;
+}): Promise<void> {
     await setTelegramMessageReaction({
         chatId: message.chat.id,
         messageId: message.message_id,
         token: TG_TOKEN_SENAEV_COM_BOT,
         reactions: ["👀"],
     });
+
+    // const { text } = message;
+
+    // // if (text) {
+    // //     const command = getTelegramCommandFromMessage(text);
+
+    // //     if (command) {
+    // //         const { commandName, botName } = command;
+
+    // //         if (botName !== undefined && botName !== botUser.username)
+
+    // //         if (command.commandName === "torrent" && isCommandForBot(command, botUser)) {
+    // //             console.log(`👉 Received torrent command text=[${message.text}]`);
+    // //             await sendTelegramMessage({
+    // //                 text: "OK",
+    // //                 chatId: TG_MEDIA_SERVER_CHAT_ID,
+    // //                 token: TG_TOKEN_SENAEV_COM_BOT,
+    // //             });
+    // //             console.log("✅ Sent torrent command acknowledgement");
+    // //             return;
+    // //         }
+    // //     }
+    // // }
 
     if (!message.document) {
         console.error(`❌ Processed message has no documents`);
