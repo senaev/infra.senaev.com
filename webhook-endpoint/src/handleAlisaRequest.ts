@@ -1,7 +1,8 @@
+import { sendTelegramMessage } from "senaev-utils/src/utils/TelegramApi/sendTelegramMessage";
+import { TG_TOKEN_SENAEV_COM_BOT } from "./env";
 import { escapeTelegramMarkdownV2 } from "./escapeTelegramMarkdownV2";
 import { getRandomValueFromArray } from "./getRandomValueFromArray";
 import { processAlisaCommand } from "./processAlisaCommand";
-import { telegramApiCall } from "./telegram-api";
 
 const TRICKY_DAD_DEBUG_CHAT_ID = -5242876030;
 export async function handleAlisaRequest(body: unknown): Promise<string> {
@@ -26,31 +27,34 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
 
         processAlisaCommand(command)
             .then((result) =>
-                telegramApiCall("sendMessage", {
-                    chat_id: TRICKY_DAD_DEBUG_CHAT_ID,
-                    parse_mode: "MarkdownV2",
-                    text: [
-                        `Command: \`${escapeTelegramMarkdownV2(command)}\``,
-                        `Duration: \`${escapeTelegramMarkdownV2(`${((Date.now() - startTime) / 1000).toFixed(2)}s`)}\``,
-                        `OpenRouter time: ${result.openRouterResponseTime}`,
-                        `Supabase time: ${result.supabaseResponseTime}`,
-                        result.openRouterError &&
-                            `OpenRouter Error: ${escapeTelegramMarkdownV2(String(result.openRouterError))}`,
-                        result.supabaseErrorString &&
-                            `Supabase Error: ${escapeTelegramMarkdownV2(String(result.supabaseErrorString))}`,
-                        result.addedItems &&
-                            `Added items:\n${result.addedItems.map((item) => `${escapeTelegramMarkdownV2(`· ${item}`)}`).join("\n")}`,
-                    ]
-                        .filter(Boolean)
-                        .join("\n"),
+                sendTelegramMessage({
+                    token: TG_TOKEN_SENAEV_COM_BOT,
+                    chatId: String(TRICKY_DAD_DEBUG_CHAT_ID),
+                    parseMode: "MarkdownV2",
+                    text: escapeTelegramMarkdownV2(
+                        [
+                            `Command: ${command}`,
+                            `Duration: ${((Date.now() - startTime) / 1000).toFixed(2)}s`,
+                            `OpenRouter time: ${result.openRouterResponseTime}`,
+                            `Supabase time: ${result.supabaseResponseTime}`,
+                            result.openRouterError &&
+                                `OpenRouter Error: ${String(result.openRouterError)}`,
+                            result.supabaseErrorString &&
+                                `Supabase Error: ${String(result.supabaseErrorString)}`,
+                            result.addedItems && `Added items:\n${result.addedItems.join("\n")}`,
+                        ]
+                            .filter(Boolean)
+                            .join("\n"),
+                    ),
                 }),
             )
             .catch((err) => {
                 console.error("❌ Failed to process Alisa command:", err);
 
-                telegramApiCall("sendMessage", {
-                    chat_id: TRICKY_DAD_DEBUG_CHAT_ID,
-                    parse_mode: "MarkdownV2",
+                sendTelegramMessage({
+                    token: TG_TOKEN_SENAEV_COM_BOT,
+                    chatId: String(TRICKY_DAD_DEBUG_CHAT_ID),
+                    parseMode: "MarkdownV2",
                     text: escapeTelegramMarkdownV2(
                         `❌ Failed to process Alisa command=[${command}]: ${err instanceof Error ? err.message : String(err)}`,
                     ),
@@ -123,9 +127,10 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
     } catch (err) {
         console.error("❌ Failed to process Alisa command:", err);
 
-        telegramApiCall("sendMessage", {
-            chat_id: TRICKY_DAD_DEBUG_CHAT_ID,
-            parse_mode: "MarkdownV2",
+        sendTelegramMessage({
+            token: TG_TOKEN_SENAEV_COM_BOT,
+            chatId: String(TRICKY_DAD_DEBUG_CHAT_ID),
+            parseMode: "MarkdownV2",
             text: escapeTelegramMarkdownV2(
                 `❌ Sync error processing Alisa command: ${err instanceof Error ? err.message : String(err)}`,
             ),

@@ -2,6 +2,10 @@ import { isObject } from "senaev-utils/src/utils/Object/isObject";
 import { TelegramMessage, TelegramUser } from "senaev-utils/src/utils/TelegramApi/types";
 import { TG_CLUSTER_CHAT_ID, TG_MEDIA_SERVER_CHAT_ID } from "./env";
 import { processClusterChatMessage } from "./processClusterChatMessage";
+import {
+    processMediaServerCallbackQuery,
+    TelegramCallbackQuery,
+} from "./processMediaServerCallbackQuery";
 import { processMediaServerChatMessage } from "./processMediaServerChatMessage";
 
 export async function processTelegramWebhookData({
@@ -12,7 +16,29 @@ export async function processTelegramWebhookData({
     update: Record<string, unknown>;
 }): Promise<void> {
     console.log(`👉 processTelegramWebhookData`);
-    const message = update.message;
+    const { callback_query, message } = update;
+
+    if (isObject(callback_query)) {
+        const { message } = callback_query;
+        if (!isObject(message) || !isObject(message.chat)) {
+            throw new Error("❌ Telegram callback query has no message chat information");
+        }
+
+        const chatIdStr = String(message.chat.id);
+        if (chatIdStr !== TG_MEDIA_SERVER_CHAT_ID) {
+            throw new Error(
+                `❌ Received Telegram callback query from unexpected chat id=[${chatIdStr}]`,
+            );
+        }
+
+        console.log(
+            `👀 Received callback query in media server chat, callbackQueryId=[${callback_query.id}]`,
+        );
+        await processMediaServerCallbackQuery({
+            callbackQuery: callback_query as unknown as TelegramCallbackQuery,
+        });
+        return;
+    }
 
     if (!isObject(message)) {
         throw new Error(

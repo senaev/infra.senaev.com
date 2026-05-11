@@ -2,12 +2,12 @@ import Fastify from "fastify";
 import { randomBytes } from "node:crypto";
 import { isObject } from "senaev-utils/src/utils/Object/isObject";
 import { prettyStringify } from "senaev-utils/src/utils/prettyStringify";
+import { callTelegramApi } from "senaev-utils/src/utils/TelegramApi/callTelegramApi";
 import { getCurrentTelegramBotInfo } from "senaev-utils/src/utils/TelegramApi/getCurrentTelegramBotInfo";
 import { TelegramUpdate, TelegramUser } from "senaev-utils/src/utils/TelegramApi/types";
 import { ALISA_WEBHOOK_SECRET, TG_TOKEN_SENAEV_COM_BOT, WEBHOOK_DOMAIN } from "./env";
 import { handleAlisaRequest } from "./handleAlisaRequest";
 import { processTelegramWebhookData } from "./processTelegramWebhookData";
-import { telegramApiCall } from "./telegram-api";
 import { startTorrentOutboxProcessor, stopTorrentOutboxProcessor } from "./torrentOutbox";
 
 export const PORT = 3000;
@@ -77,10 +77,14 @@ async function main(): Promise<void> {
     console.log(`✅ Server listening on port=${PORT}`);
 
     const webhookUrl = `https://${WEBHOOK_DOMAIN}${TELEGRAM_WEBHOOK_PATH}`;
-    await telegramApiCall("setWebhook", {
-        url: webhookUrl,
-        secret_token: webhookSecretToken,
-        allowed_updates: ["message", "channel_post"],
+    await callTelegramApi({
+        method: "setWebhook",
+        token: TG_TOKEN_SENAEV_COM_BOT,
+        body: {
+            url: webhookUrl,
+            secret_token: webhookSecretToken,
+            allowed_updates: ["message", "channel_post", "callback_query"],
+        },
     });
     console.log(`✅ Webhook set to url=${webhookUrl}`);
 }

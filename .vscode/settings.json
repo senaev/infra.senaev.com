@@ -48,6 +48,7 @@
     "kubelet",
     "kubernetescrd",
     "kubernetesingress",
+    "leechers",
     "letsencrypt",
     "loglevel",
     "lscr",

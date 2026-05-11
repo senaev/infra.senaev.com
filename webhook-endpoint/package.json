@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "fastify": "5.8.2",
-    "senaev-utils": "1.0.0-ci.24720356439.1",
+    "senaev-utils": "1.0.0-ci.25691384784.1",
     "tsx": "4.21.0"
   },
   "devDependencies": {
