@@ -116,6 +116,14 @@ spec:
                   optional: false
             - name: QBITTORRENT_CATEGORY
               value: {{ .Values.prowlarr.qbittorrent.category | quote }}
+            - name: FLARESOLVERR_ENABLED
+              value: {{ .Values.prowlarr.flaresolverr.enabled | quote }}
+            - name: FLARESOLVERR_URL
+              value: http://flaresolverr:{{ .Values.prowlarr.flaresolverr.port }}
+            - name: FLARESOLVERR_TAG
+              value: {{ .Values.prowlarr.flaresolverr.tag | quote }}
+            - name: FLARESOLVERR_REQUEST_TIMEOUT_SECONDS
+              value: {{ .Values.prowlarr.flaresolverr.requestTimeoutSeconds | quote }}
           volumeMounts:
             - name: config
               mountPath: /config

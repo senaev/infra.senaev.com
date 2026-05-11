@@ -114,11 +114,17 @@ unmanic:
 
 prowlarr:
   enabled: true
-  vps: senaev-media
+  vps: hetzner
   volumePath: volumes/prowlarr
   webuiPort: 9696
   qbittorrent:
     category: prowlarr
+  flaresolverr:
+    enabled: true
+    port: 8191
+    logLevel: warning
+    tag: flaresolverr
+    requestTimeoutSeconds: 180
 
 jellyfin:
   enabled: true
