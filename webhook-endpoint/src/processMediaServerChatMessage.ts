@@ -3,6 +3,7 @@ import { sendTelegramMessage } from "senaev-utils/src/utils/TelegramApi/sendTele
 import { setTelegramMessageReaction } from "senaev-utils/src/utils/TelegramApi/setTelegramMessageReaction";
 import { TelegramMessage, TelegramUser } from "senaev-utils/src/utils/TelegramApi/types";
 import { TG_MEDIA_SERVER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from "./env";
+import { getTelegramCommandFromMessage } from "./getTelegramCommandFromMessage/getTelegramCommandFromMessage";
 import { enqueueTorrentFile } from "./torrentOutbox";
 
 export async function processMediaServerChatMessage({
@@ -19,28 +20,29 @@ export async function processMediaServerChatMessage({
         reactions: ["👀"],
     });
 
-    // const { text } = message;
+    const { text } = message;
 
-    // // if (text) {
-    // //     const command = getTelegramCommandFromMessage(text);
+    if (text) {
+        const command = getTelegramCommandFromMessage(text);
 
-    // //     if (command) {
-    // //         const { commandName, botName } = command;
+        if (command) {
+            const { commandName, botName } = command;
 
-    // //         if (botName !== undefined && botName !== botUser.username)
-
-    // //         if (command.commandName === "torrent" && isCommandForBot(command, botUser)) {
-    // //             console.log(`👉 Received torrent command text=[${message.text}]`);
-    // //             await sendTelegramMessage({
-    // //                 text: "OK",
-    // //                 chatId: TG_MEDIA_SERVER_CHAT_ID,
-    // //                 token: TG_TOKEN_SENAEV_COM_BOT,
-    // //             });
-    // //             console.log("✅ Sent torrent command acknowledgement");
-    // //             return;
-    // //         }
-    // //     }
-    // // }
+            if (botName !== undefined && botName !== botUser.username) {
+                //TODO
+            }
+            // if (command.commandName === "torrent" && isCommandForBot(command, botUser)) {
+            //     console.log(`👉 Received torrent command text=[${message.text}]`);
+            //     await sendTelegramMessage({
+            //         text: "OK",
+            //         chatId: TG_MEDIA_SERVER_CHAT_ID,
+            //         token: TG_TOKEN_SENAEV_COM_BOT,
+            //     });
+            //     console.log("✅ Sent torrent command acknowledgement");
+            //     return;
+            // }
+        }
+    }
 
     if (!message.document) {
         console.error(`❌ Processed message has no documents`);
