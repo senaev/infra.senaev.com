@@ -9,6 +9,7 @@ from typing import Any
 
 
 PROWLARR_CONFIG_FILE = Path("/config/config.xml")
+PROWLARR_INDEXERS_FILE = Path("/scripts/indexers.json")
 POLL_INTERVAL_SECONDS = 5
 RETRY_INTERVAL_SECONDS = 30
 QBITTORRENT_CLIENT_NAME = "qBittorrent"
@@ -16,12 +17,12 @@ FLARESOLVERR_PROXY_NAME = "FlareSolverr"
 
 
 def sleep(seconds: int) -> None:
-    print(f"Sleeping for {seconds}s...", flush=True)
+    print(f"👉 Sleeping for {seconds}s...", flush=True)
     time.sleep(seconds)
 
 
 def wait_forever() -> None:
-    print("Waiting indefinitely to keep container alive...", flush=True)
+    print("✅ Waiting indefinitely to keep container alive...", flush=True)
     while True:
         time.sleep(60 * 60)
 
@@ -72,7 +73,7 @@ def read_prowlarr_api_key() -> str:
             if api_key:
                 return api_key
 
-        print("Prowlarr API key is not available yet", flush=True)
+        print("👉 Prowlarr API key is not available yet", flush=True)
         sleep(POLL_INTERVAL_SECONDS)
 
 
@@ -97,6 +98,10 @@ def prowlarr_request(
         body=encoded_body,
     )
     return json.loads(response_text) if response_text else None
+
+
+def same_name(left: Any, right: str) -> bool:
+    return isinstance(left, str) and left.lower() == right.lower()
 
 
 def set_field(client: dict[str, Any], field_name: str, value: Any) -> None:
@@ -136,6 +141,21 @@ def find_qbittorrent_schema(api_key: str) -> dict[str, Any]:
     return matching_schemas[0]
 
 
+def find_indexer_schema(api_key: str, implementation: str) -> dict[str, Any]:
+    schemas = prowlarr_request(api_key=api_key, path="/api/v1/indexer/schema", method="GET")
+    matching_schemas = [
+        schema
+        for schema in schemas
+        if same_name(schema.get("implementation"), implementation)
+        or same_name(schema.get("implementationName"), implementation)
+        or same_name(schema.get("name"), implementation)
+    ]
+    if not matching_schemas:
+        raise RuntimeError(f"Could not find indexer schema [{implementation}] in Prowlarr")
+
+    return matching_schemas[0]
+
+
 def find_flaresolverr_schema(api_key: str) -> dict[str, Any]:
     schemas = prowlarr_request(api_key=api_key, path="/api/v1/indexerproxy/schema", method="GET")
     matching_schemas = [
@@ -157,10 +177,43 @@ def upsert_tag(api_key: str, label: str) -> int:
     if current is not None:
         return int(current["id"])
 
-    print(f"Creating Prowlarr tag [{label}]...", flush=True)
+    print(f"👉 Creating Prowlarr tag [{label}]...", flush=True)
     created = prowlarr_request(api_key=api_key, path="/api/v1/tag", method="POST", body={"label": label})
-    print(f"Created Prowlarr tag [{label}]", flush=True)
+    print(f"✅ Created Prowlarr tag [{label}]", flush=True)
     return int(created["id"])
+
+
+def upsert_tags(api_key: str, labels: list[str]) -> list[int]:
+    return [upsert_tag(api_key, label) for label in labels]
+
+
+def read_indexer_definitions() -> list[dict[str, Any]]:
+    if not PROWLARR_INDEXERS_FILE.exists():
+        return []
+
+    indexers = json.loads(PROWLARR_INDEXERS_FILE.read_text(encoding="utf-8"))
+    if not isinstance(indexers, list):
+        raise RuntimeError("Prowlarr indexer configuration must be a JSON list")
+
+    return indexers
+
+
+def resolve_field_value(field_config: dict[str, Any]) -> Any:
+    if "valueFromEnv" in field_config:
+        return get_required_env(str(field_config["valueFromEnv"]))
+
+    if "value" in field_config:
+        return field_config["value"]
+
+    raise RuntimeError(f"Indexer field [{field_config.get('name')}] has no value or valueFromEnv")
+
+
+def remove_non_provisionable_indexer_fields(indexer: dict[str, Any]) -> None:
+    indexer["fields"] = [
+        field
+        for field in indexer.get("fields", [])
+        if not str(field.get("name", "")).startswith("info_")
+    ]
 
 
 def build_qbittorrent_client(api_key: str, current: dict[str, Any] | None) -> dict[str, Any]:
@@ -189,19 +242,19 @@ def upsert_qbittorrent_client(api_key: str) -> None:
     client = build_qbittorrent_client(api_key, current)
 
     if current is None:
-        print("Creating qBittorrent download client in Prowlarr...", flush=True)
+        print("👉 Creating qBittorrent download client in Prowlarr...", flush=True)
         prowlarr_request(api_key=api_key, path="/api/v1/downloadclient", method="POST", body=client)
-        print("Created qBittorrent download client in Prowlarr", flush=True)
+        print("✅ Created qBittorrent download client in Prowlarr", flush=True)
         return
 
-    print("Updating qBittorrent download client in Prowlarr...", flush=True)
+    print("👉 Updating qBittorrent download client in Prowlarr...", flush=True)
     prowlarr_request(
         api_key=api_key,
         path=f"/api/v1/downloadclient/{current['id']}",
         method="PUT",
         body=client,
     )
-    print("Updated qBittorrent download client in Prowlarr", flush=True)
+    print("✅ Updated qBittorrent download client in Prowlarr", flush=True)
 
 
 def build_flaresolverr_proxy(
@@ -226,7 +279,7 @@ def build_flaresolverr_proxy(
 
 def upsert_flaresolverr_proxy(api_key: str) -> None:
     if not env_bool("FLARESOLVERR_ENABLED"):
-        print("FlareSolverr proxy configuration is disabled", flush=True)
+        print("👉 FlareSolverr proxy configuration is disabled", flush=True)
         return
 
     tag = get_required_env("FLARESOLVERR_TAG")
@@ -236,32 +289,91 @@ def upsert_flaresolverr_proxy(api_key: str) -> None:
     proxy = build_flaresolverr_proxy(api_key, current, tag_id)
 
     if current is None:
-        print("Creating FlareSolverr indexer proxy in Prowlarr...", flush=True)
+        print("👉 Creating FlareSolverr indexer proxy in Prowlarr...", flush=True)
         prowlarr_request(api_key=api_key, path="/api/v1/indexerproxy", method="POST", body=proxy)
-        print("Created FlareSolverr indexer proxy in Prowlarr", flush=True)
+        print("✅ Created FlareSolverr indexer proxy in Prowlarr", flush=True)
         return
 
-    print("Updating FlareSolverr indexer proxy in Prowlarr...", flush=True)
+    print("👉 Updating FlareSolverr indexer proxy in Prowlarr...", flush=True)
     prowlarr_request(
         api_key=api_key,
         path=f"/api/v1/indexerproxy/{current['id']}",
         method="PUT",
         body=proxy,
     )
-    print("Updated FlareSolverr indexer proxy in Prowlarr", flush=True)
+    print("✅ Updated FlareSolverr indexer proxy in Prowlarr", flush=True)
+
+
+def build_indexer(
+    api_key: str,
+    current: dict[str, Any] | None,
+    indexer_config: dict[str, Any],
+) -> dict[str, Any]:
+    name = str(indexer_config["name"])
+    implementation = str(indexer_config["implementation"])
+    indexer = current if current is not None else find_indexer_schema(api_key, implementation)
+
+    indexer["name"] = name
+    indexer["enable"] = bool(indexer_config.get("enable", True))
+    indexer["protocol"] = indexer_config.get("protocol", indexer.get("protocol", "torrent"))
+    indexer["priority"] = int(indexer_config.get("priority", indexer.get("priority", 25)))
+    indexer["appProfileId"] = int(indexer_config.get("appProfileId", indexer.get("appProfileId", 1)))
+    indexer["enableRss"] = bool(indexer_config.get("enableRss", True))
+    indexer["enableAutomaticSearch"] = bool(indexer_config.get("enableAutomaticSearch", True))
+    indexer["enableInteractiveSearch"] = bool(indexer_config.get("enableInteractiveSearch", True))
+    indexer["tags"] = upsert_tags(api_key, indexer_config.get("tags", []))
+
+    for field_config in indexer_config.get("fields", []):
+        set_field(indexer, str(field_config["name"]), resolve_field_value(field_config))
+
+    remove_non_provisionable_indexer_fields(indexer)
+    return indexer
+
+
+def upsert_indexer(api_key: str, indexer_config: dict[str, Any], current_indexers: list[dict[str, Any]]) -> None:
+    name = str(indexer_config["name"])
+    current = next((indexer for indexer in current_indexers if indexer.get("name") == name), None)
+    indexer = build_indexer(api_key, current, indexer_config)
+
+    if current is None:
+        print(f"👉 Creating Prowlarr indexer [{name}]...", flush=True)
+        prowlarr_request(api_key=api_key, path="/api/v1/indexer", method="POST", body=indexer)
+        print(f"✅ Created Prowlarr indexer [{name}]", flush=True)
+        return
+
+    print(f"👉 Updating Prowlarr indexer [{name}]...", flush=True)
+    prowlarr_request(
+        api_key=api_key,
+        path=f"/api/v1/indexer/{current['id']}",
+        method="PUT",
+        body=indexer,
+    )
+    print(f"✅ Updated Prowlarr indexer [{name}]", flush=True)
+
+
+def upsert_indexers(api_key: str) -> None:
+    indexer_configs = read_indexer_definitions()
+    if not indexer_configs:
+        print("👉 No Prowlarr indexers configured", flush=True)
+        return
+
+    current_indexers = prowlarr_request(api_key=api_key, path="/api/v1/indexer", method="GET")
+    for indexer_config in indexer_configs:
+        upsert_indexer(api_key, indexer_config, current_indexers)
 
 
 def main() -> None:
     api_key = read_prowlarr_api_key()
-    print("Prowlarr API key loaded", flush=True)
+    print("✅ Prowlarr API key loaded", flush=True)
 
     while True:
         try:
             upsert_qbittorrent_client(api_key)
             upsert_flaresolverr_proxy(api_key)
+            upsert_indexers(api_key)
             wait_forever()
         except Exception as error:
-            print(f"Failed to configure Prowlarr: {error}", flush=True)
+            print(f"❌ Failed to configure Prowlarr: {error}", flush=True)
             sleep(RETRY_INTERVAL_SECONDS)
 
 

@@ -9,6 +9,10 @@ metadata:
 data:
   configure-qbittorrent-download-client.py: |
 {{ .Files.Get "config/prowlarr/configure-qbittorrent-download-client.py" | nindent 4 }}
+  export-indexers.py: |
+{{ .Files.Get "config/prowlarr/export-indexers.py" | nindent 4 }}
+  indexers.json: |
+{{ .Values.prowlarr.indexers | default list | toPrettyJson | nindent 4 }}
 ---
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
@@ -124,6 +128,14 @@ spec:
               value: {{ .Values.prowlarr.flaresolverr.tag | quote }}
             - name: FLARESOLVERR_REQUEST_TIMEOUT_SECONDS
               value: {{ .Values.prowlarr.flaresolverr.requestTimeoutSeconds | quote }}
+            {{- range .Values.prowlarr.secretEnv }}
+            - name: {{ .name }}
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: {{ .secretKey }}
+                  optional: false
+            {{- end }}
           volumeMounts:
             - name: config
               mountPath: /config
@@ -132,10 +144,18 @@ spec:
               mountPath: /scripts/configure-qbittorrent-download-client.py
               subPath: configure-qbittorrent-download-client.py
               readOnly: true
+            - name: configure-qbittorrent-download-client
+              mountPath: /scripts/export-indexers.py
+              subPath: export-indexers.py
+              readOnly: true
+            - name: configure-qbittorrent-download-client
+              mountPath: /scripts/indexers.json
+              subPath: indexers.json
+              readOnly: true
       volumes:
         - name: config
           hostPath:
-            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.prowlarr.volumePath }}/config
+            path: {{ .Values.clusterRootPath }}/{{ .Values.prowlarr.volumePath }}/config
             type: DirectoryOrCreate
         - name: configure-qbittorrent-download-client
           configMap:
@@ -143,6 +163,12 @@ spec:
             items:
               - key: configure-qbittorrent-download-client.py
                 path: configure-qbittorrent-download-client.py
+                mode: 0644
+              - key: export-indexers.py
+                path: export-indexers.py
+                mode: 0644
+              - key: indexers.json
+                path: indexers.json
                 mode: 0644
 ---
 apiVersion: v1

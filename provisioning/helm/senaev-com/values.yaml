@@ -125,6 +125,72 @@ prowlarr:
     logLevel: warning
     tag: flaresolverr
     requestTimeoutSeconds: 180
+  secretEnv:
+    - name: PROWLARR_KINOZAL_PASSWORD
+      secretKey: PROWLARR_KINOZAL_PASSWORD
+    - name: PROWLARR_RUTRACKER_PASSWORD
+      secretKey: PROWLARR_RUTRACKER_PASSWORD
+  # Use this script to import indexers
+  # kubectl -n senaev-com exec deploy/prowlarr -c qbittorrent-download-client-configurer -- python /scripts/export-indexers.py
+  indexers:
+    - name: "Kinozal"
+      implementation: "Cardigann"
+      enable: true
+      protocol: "torrent"
+      priority: 25
+      appProfileId: 1
+      fields:
+        - name: "definitionFile"
+          value: "kinozal"
+        - name: "baseUrl"
+          value: "https://kinozal.tv/"
+        - name: "baseSettings.limitsUnit"
+          value: 0
+        - name: "torrentBaseSettings.preferMagnetUrl"
+          value: false
+        - name: "username"
+          value: "sacryfice"
+        - name: "password"
+          valueFromEnv: PROWLARR_KINOZAL_PASSWORD
+        - name: "freeleech"
+          value: false
+        - name: "stripcyrillic"
+          value: true
+        - name: "addrussian"
+          value: true
+        - name: "sort"
+          value: 0
+        - name: "type"
+          value: 0
+        - name: "info_torrent"
+          value: "This tracker limits the number of torrents a user can download each day without paying. This indexer uses <b>torrent files</b> with the user's passkey, so any download/upload is recorded. If you receive errors when downloading torrent files, you may have reached this limit. To bypass the limit with magnet links, use <b>Kinozal (M)</b>."
+    - name: "RuTracker.org"
+      implementation: "RuTracker"
+      enable: true
+      protocol: "torrent"
+      priority: 25
+      appProfileId: 1
+      fields:
+        - name: "baseUrl"
+          value: "https://rutracker.net/"
+        - name: "username"
+          value: "senaev"
+        - name: "password"
+          valueFromEnv: PROWLARR_RUTRACKER_PASSWORD
+        - name: "russianLetters"
+          value: false
+        - name: "useMagnetLinks"
+          value: false
+        - name: "addRussianToTitle"
+          value: false
+        - name: "moveFirstTagsToEndOfReleaseTitle"
+          value: false
+        - name: "moveAllTagsToEndOfReleaseTitle"
+          value: false
+        - name: "baseSettings.limitsUnit"
+          value: 0
+        - name: "torrentBaseSettings.preferMagnetUrl"
+          value: false
 
 jellyfin:
   enabled: true
