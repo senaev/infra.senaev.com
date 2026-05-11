@@ -1,6 +1,7 @@
 export interface TelegramCommand {
+    botName: string | undefined;
+    commandArgument: string;
     commandName: string;
-    botName?: string;
 }
 
 export function getTelegramCommandFromMessage(text: string): TelegramCommand | undefined {
@@ -13,11 +14,12 @@ export function getTelegramCommandFromMessage(text: string): TelegramCommand | u
         return undefined;
     }
 
+    const commandArgument = text.slice(match[0].length).trim();
     const commandName = match[1];
     if (!commandName) {
         return undefined;
     }
 
     const botName = match[2];
-    return botName ? { commandName, botName } : { commandName };
+    return { commandArgument, commandName, botName };
 }

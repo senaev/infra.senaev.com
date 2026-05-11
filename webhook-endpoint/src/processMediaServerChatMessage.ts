@@ -2,57 +2,63 @@ import { downloadFileFromTelegramMessage } from "senaev-utils/src/utils/Telegram
 import { sendTelegramMessage } from "senaev-utils/src/utils/TelegramApi/sendTelegramMessage";
 import { setTelegramMessageReaction } from "senaev-utils/src/utils/TelegramApi/setTelegramMessageReaction";
 import { TelegramMessage, TelegramUser } from "senaev-utils/src/utils/TelegramApi/types";
+import { prettyStringify } from "senaev-utils/src/utils/prettyStringify";
 import { TG_MEDIA_SERVER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from "./env";
 import { getTelegramCommandFromMessage } from "./getTelegramCommandFromMessage/getTelegramCommandFromMessage";
 import { enqueueTorrentFile } from "./torrentOutbox";
 
-export async function processMediaServerChatMessage({
+async function processMediaServerChatMessageInternal({
     botUser,
     message,
 }: {
     botUser: TelegramUser;
     message: TelegramMessage;
-}): Promise<void> {
-    await setTelegramMessageReaction({
-        chatId: message.chat.id,
-        messageId: message.message_id,
-        token: TG_TOKEN_SENAEV_COM_BOT,
-        reactions: ["👀"],
-    });
-
+}): Promise<{
+    emoji: string;
+}> {
     const { text } = message;
 
     if (text) {
         const command = getTelegramCommandFromMessage(text);
 
         if (command) {
-            const { commandName, botName } = command;
+            const { commandName, botName, commandArgument } = command;
 
             if (botName !== undefined && botName !== botUser.username) {
-                //TODO
+                console.error(
+                    `❌ The bot=[${botName}] for the command is wrong, it should be [${botUser.username}]`,
+                );
+                return {
+                    emoji: "🤷",
+                };
             }
-            // if (command.commandName === "torrent" && isCommandForBot(command, botUser)) {
-            //     console.log(`👉 Received torrent command text=[${message.text}]`);
-            //     await sendTelegramMessage({
-            //         text: "OK",
-            //         chatId: TG_MEDIA_SERVER_CHAT_ID,
-            //         token: TG_TOKEN_SENAEV_COM_BOT,
-            //     });
-            //     console.log("✅ Sent torrent command acknowledgement");
-            //     return;
-            // }
+
+            if (command.commandName !== "torrent") {
+                console.error(`❌ Unknown command=[${commandName}]`);
+                return {
+                    emoji: "🤷",
+                };
+            }
+
+            console.log(`👉 Received torrent command text=[${message.text}]`);
+            await sendTelegramMessage({
+                text: prettyStringify({ commandName, botName, commandArgument }),
+                chatId: TG_MEDIA_SERVER_CHAT_ID,
+                token: TG_TOKEN_SENAEV_COM_BOT,
+            });
+            console.log("✅ Sent torrent command acknowledgement");
+
+            return {
+                emoji: "👍",
+            };
         }
     }
 
     if (!message.document) {
-        console.error(`❌ Processed message has no documents`);
-        await sendTelegramMessage({
-            text: "Sorry, I can only process documents (torrent files) 🤷",
-            chatId: TG_MEDIA_SERVER_CHAT_ID,
-            token: TG_TOKEN_SENAEV_COM_BOT,
-        });
-        console.log("✅ Sent message about unsupported content type");
-        return;
+        console.error("❌ No documents (torrent files)");
+        return {
+            emoji: "🤷",
+        };
     }
 
     const fileName = message.document.file_name ?? message.document.file_id;
@@ -76,12 +82,31 @@ export async function processMediaServerChatMessage({
     });
     console.log(`✅ File stored in torrent outbox successfully, id=[${outboxItemId}]`);
 
-    console.log(`👉 Setting thumbs up reaction to the message...`);
+    return {
+        emoji: "👍",
+    };
+}
+
+export async function processMediaServerChatMessage({
+    botUser,
+    message,
+}: {
+    botUser: TelegramUser;
+    message: TelegramMessage;
+}): Promise<void> {
+    console.log("👉 Start processing message in processMediaServerChatMessage");
+    const { emoji } = await processMediaServerChatMessageInternal({
+        botUser,
+        message,
+    });
+    console.log(`✅ Finish processing message in processMediaServerChatMessage, emoji=[${emoji}]`);
+
+    console.log(`👉 Setting reaction to the message...`);
     await setTelegramMessageReaction({
         chatId: message.chat.id,
         messageId: message.message_id,
         token: TG_TOKEN_SENAEV_COM_BOT,
-        reactions: ["👍"],
+        reactions: [emoji],
     });
-    console.log(`✅ Thumbs up reaction set successfully`);
+    console.log(`✅ Sent reaction to the message`);
 }
