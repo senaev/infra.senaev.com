@@ -62,12 +62,12 @@ function buildTorrentSearchKeyboard({
     const pageCount = Math.ceil(releases.length / PAGE_SIZE);
     const startIndex = page * PAGE_SIZE;
     const pageReleases = releases.slice(startIndex, startIndex + PAGE_SIZE);
-    const inline_keyboard = pageReleases.map((_, index) => [
-        {
+    const inline_keyboard = [
+        pageReleases.map((_, index) => ({
             text: `⬇️ ${startIndex + index + 1}`,
             callback_data: `torrent:download:${sessionId}:${startIndex + index}`,
-        },
-    ]);
+        })),
+    ];
 
     const paginationButtons = [];
     if (page > 0) {
