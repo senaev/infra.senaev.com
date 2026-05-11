@@ -1,3 +1,4 @@
+import { assertUnsignedInteger } from "senaev-utils/src/types/Number/UnsignedInteger";
 import { isObject } from "senaev-utils/src/utils/Object/isObject";
 import { callTelegramApi } from "senaev-utils/src/utils/TelegramApi/callTelegramApi";
 import { sendTelegramMessage } from "senaev-utils/src/utils/TelegramApi/sendTelegramMessage";
@@ -67,9 +68,7 @@ async function processMediaServerCallbackQueryInternal({
 
     if (action === "page") {
         const page = Number(rawValue);
-        if (!Number.isInteger(page) || page < 0) {
-            throw new Error("Invalid page");
-        }
+        assertUnsignedInteger(page);
 
         console.log(`👉 Opening torrent search page=[${page}], sessionId=[${sessionId}]`);
         await editTelegramMessageWithTorrentSearchView({
@@ -85,9 +84,7 @@ async function processMediaServerCallbackQueryInternal({
 
     if (action === "download") {
         const releaseIndex = Number(rawValue);
-        if (!Number.isInteger(releaseIndex) || releaseIndex < 0) {
-            throw new Error("Invalid release");
-        }
+        assertUnsignedInteger(releaseIndex);
 
         const release = getTorrentSearchRelease({ releaseIndex, sessionId });
         if (!release) {
@@ -103,9 +100,7 @@ async function processMediaServerCallbackQueryInternal({
             token: TG_TOKEN_SENAEV_COM_BOT,
             chatId: String(message.chat.id),
             parseMode: "MarkdownV2",
-            text: escapeTelegramMarkdownV2(
-                `✅ Download started:\n${release.title ?? "Untitled"}`,
-            ),
+            text: escapeTelegramMarkdownV2(`✅ Download started:\n${release.title ?? "Untitled"}`),
             replyToMessageId: message.message_id,
         });
 
