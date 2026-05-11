@@ -139,6 +139,13 @@ export async function processMediaServerChatMessage({
     message: TelegramMessage;
 }): Promise<void> {
     let resultEmoji = "❌";
+    await setTelegramMessageReaction({
+        chatId: message.chat.id,
+        messageId: message.message_id,
+        token: TG_TOKEN_SENAEV_COM_BOT,
+        reactions: ["👀"],
+    });
+
     try {
         console.log("👉 Start processing message in processMediaServerChatMessage");
         const { emoji } = await processMediaServerChatMessageInternal({
@@ -170,5 +177,6 @@ export async function processMediaServerChatMessage({
             token: TG_TOKEN_SENAEV_COM_BOT,
             reactions: [resultEmoji],
         });
+        console.log(`✅ Sent reaction to the message`);
     }
 }
