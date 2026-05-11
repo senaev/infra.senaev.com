@@ -72,13 +72,13 @@ function buildTorrentSearchKeyboard({
     const paginationButtons = [];
     if (page > 0) {
         paginationButtons.push({
-            text: "⬅️ Previous",
+            text: "⬅️ Предыдущие",
             callback_data: `torrent:page:${sessionId}:${page - 1}`,
         });
     }
     if (page < pageCount - 1) {
         paginationButtons.push({
-            text: "Next ➡️",
+            text: "Ещё ➡️",
             callback_data: `torrent:page:${sessionId}:${page + 1}`,
         });
     }
