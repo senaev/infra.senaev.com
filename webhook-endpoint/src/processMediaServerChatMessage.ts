@@ -16,7 +16,7 @@ async function processMediaServerChatMessageInternal({
     botUser: TelegramUser;
     message: TelegramMessage;
 }): Promise<{
-    emoji: string;
+    emoji: "👍" | "🤷" | "💩";
 }> {
     const { text } = message;
 
@@ -57,7 +57,7 @@ async function processMediaServerChatMessageInternal({
                 });
 
                 return {
-                    emoji: "❌",
+                    emoji: "💩",
                 };
             }
 
