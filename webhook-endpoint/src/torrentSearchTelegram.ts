@@ -5,7 +5,7 @@ import { TG_TOKEN_SENAEV_COM_BOT } from "./env";
 import { ProwlarrRelease } from "./prowlarr";
 import { createTorrentSearchSession, getTorrentSearchSession } from "./torrentSearchSessions";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 5;
 
 export interface InlineKeyboardMarkup {
     inline_keyboard: Array<Array<{ callback_data: string; text: string }>>;
