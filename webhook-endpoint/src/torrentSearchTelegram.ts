@@ -28,27 +28,32 @@ function formatTelegramMarkdownV2Link({ text, url }: { text: string; url: string
     return `[${escapeTelegramMarkdownV2(text)}](${escapeTelegramMarkdownV2(url)})`;
 }
 
+function formatPublishDate(publishDate: string | undefined): string {
+    if (!publishDate) {
+        return "?";
+    }
+
+    return publishDate.slice(0, 10);
+}
+
 function formatReleaseLine(release: ProwlarrRelease, displayIndex: number): string {
     const title = release.title ?? "Untitled";
     const size = isUnsignedInteger(release.size) ? formatBytes(release.size) : "?no-size?";
+
     const indexer = release.infoUrl
         ? formatTelegramMarkdownV2Link({
               text: release.indexer ?? "unknown",
               url: release.infoUrl,
           })
         : formatReleaseValue(release.indexer);
-    const peers = [
-        `${formatReleaseValue(release.peers)} peers`,
-        `${releaseSeeds(release)} seeds`,
-        `${formatReleaseValue(release.leechers)} leachers`,
-    ].join(" ");
+
+    const peers = `${releaseSeeds(release)}⬆️ ${formatReleaseValue(release.leechers)}⬇️`;
     return [
         `${displayIndex}\\. ${boldTelegramMarkdownV2(title)}`,
-        `Age: ${formatReleaseValue(release.age)}`,
-        `Indexer: ${indexer}`,
-        `Peers: ${peers}`,
-        `Publish date: ${formatReleaseValue(release.publishDate)}`,
-        `Size: ${escapeTelegramMarkdownV2(size)}`,
+        indexer,
+        peers,
+        `${escapeTelegramMarkdownV2(formatPublishDate(release.publishDate))}`,
+        `${escapeTelegramMarkdownV2(size)}`,
     ].join("\n");
 }
 
@@ -69,9 +74,9 @@ function buildTorrentSearchMessage({
     const startIndex = page * PAGE_SIZE;
     const pageReleases = releases.slice(startIndex, startIndex + PAGE_SIZE);
     return [
-        `🔎 ${boldTelegramMarkdownV2(query)} page ${page + 1} of ${pageCount}`,
-        "",
+        `🔎 ${boldTelegramMarkdownV2(query)}`,
         ...pageReleases.map((release, index) => formatReleaseLine(release, startIndex + index + 1)),
+        `🗒️ ${page + 1} из ${pageCount}`,
     ].join("\n\n");
 }
 
