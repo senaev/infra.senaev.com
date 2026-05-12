@@ -1,5 +1,4 @@
 import { downloadFileFromTelegramMessage } from "senaev-utils/src/utils/TelegramApi/downloadFileFromTelegramMessage";
-import { getTelegramCommandFromMessage } from "senaev-utils/src/utils/TelegramApi/getTelegramCommandFromMessage/getTelegramCommandFromMessage";
 import { sendTelegramMessage } from "senaev-utils/src/utils/TelegramApi/sendTelegramMessage";
 import { setTelegramMessageReaction } from "senaev-utils/src/utils/TelegramApi/setTelegramMessageReaction";
 import { TelegramMessage, TelegramUser } from "senaev-utils/src/utils/TelegramApi/types";
@@ -19,66 +18,47 @@ async function processMediaServerChatMessageInternal({
     const { text } = message;
 
     if (text) {
-        const command = getTelegramCommandFromMessage(text);
+        const query = text.trim();
+        if (!query) {
+            const errorMessage = "❌ Search query is empty";
+            console.error(errorMessage);
 
-        if (command) {
-            const { commandName, botName, commandArgument } = command;
-
-            if (botName !== undefined && botName !== botUser.username) {
-                const errorMessage = `❌ The bot=[${botName}] for the command is wrong, it should be [${botUser.username}]`;
-                console.error(errorMessage);
-                return errorMessage;
-            }
-
-            if (command.commandName !== "torrent") {
-                const errorMessage = `❌ Unknown command=[${commandName}]`;
-                console.error(errorMessage);
-                return errorMessage;
-            }
-
-            console.log(`👉 Received torrent command text=[${message.text}]`);
-
-            if (!commandArgument) {
-                const errorMessage = "❌ Torrent command has no search query";
-                console.error(errorMessage);
-
-                return errorMessage;
-            }
-
-            console.log(`👉 Searching torrents in Prowlarr, query=[${commandArgument}]`);
-            const releases = await searchProwlarr(commandArgument);
-            console.log(`✅ Found torrent releases count=[${releases.length}]`);
-
-            const view = createTorrentSearchView({
-                page: 0,
-                query: commandArgument,
-                releases,
-            });
-
-            const torrentSearchMessage = {
-                token: TG_TOKEN_SENAEV_COM_BOT,
-                chatId: TG_MEDIA_SERVER_CHAT_ID,
-                parseMode: "MarkdownV2",
-                disableLinkPreview: true,
-                text: view.text,
-                replyToMessageId: message.message_id,
-            } as const;
-
-            if (view.replyMarkup) {
-                await sendTelegramMessage({
-                    ...torrentSearchMessage,
-                    replyMarkup: view.replyMarkup as unknown as NonNullable<
-                        Parameters<typeof sendTelegramMessage>[0]["replyMarkup"]
-                    >,
-                });
-            } else {
-                await sendTelegramMessage(torrentSearchMessage);
-            }
-
-            console.log(`✅ Sent torrent search results, sessionId=[${view.sessionId}]`);
-
-            return;
+            return errorMessage;
         }
+
+        console.log(`👉 Searching torrents in Prowlarr, query=[${query}]`);
+        const releases = await searchProwlarr(query);
+        console.log(`✅ Found torrent releases count=[${releases.length}]`);
+
+        const view = createTorrentSearchView({
+            page: 0,
+            query,
+            releases,
+        });
+
+        const torrentSearchMessage = {
+            token: TG_TOKEN_SENAEV_COM_BOT,
+            chatId: TG_MEDIA_SERVER_CHAT_ID,
+            parseMode: "MarkdownV2",
+            disableLinkPreview: true,
+            text: view.text,
+            replyToMessageId: message.message_id,
+        } as const;
+
+        if (view.replyMarkup) {
+            await sendTelegramMessage({
+                ...torrentSearchMessage,
+                replyMarkup: view.replyMarkup as unknown as NonNullable<
+                    Parameters<typeof sendTelegramMessage>[0]["replyMarkup"]
+                >,
+            });
+        } else {
+            await sendTelegramMessage(torrentSearchMessage);
+        }
+
+        console.log(`✅ Sent torrent search results, sessionId=[${view.sessionId}]`);
+
+        return;
     }
 
     if (!message.document) {
