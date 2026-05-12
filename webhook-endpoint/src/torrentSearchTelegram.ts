@@ -45,12 +45,11 @@ function formatReleaseLine(release: ProwlarrRelease, displayIndex: number): stri
     return [
         `${displayIndex}\\. ${boldTelegramMarkdownV2(title)}`,
         `Age: ${formatReleaseValue(release.age)}`,
-        `Download URL: ${formatReleaseValue(release.downloadUrl)}`,
         `Indexer: ${indexer}`,
         `Peers: ${peers}`,
         `Publish date: ${formatReleaseValue(release.publishDate)}`,
         `Size: ${escapeTelegramMarkdownV2(size)}`,
-    ].join("\n\n");
+    ].join("\n");
 }
 
 function buildTorrentSearchMessage({
@@ -73,7 +72,7 @@ function buildTorrentSearchMessage({
         `🔎 ${boldTelegramMarkdownV2(query)} page ${page + 1} of ${pageCount}`,
         "",
         ...pageReleases.map((release, index) => formatReleaseLine(release, startIndex + index + 1)),
-    ].join("\n");
+    ].join("\n\n");
 }
 
 function buildTorrentSearchKeyboard({

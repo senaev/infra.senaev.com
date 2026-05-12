@@ -158,7 +158,7 @@ export async function processMediaServerChatMessage({
         );
         console.log(`✅ Sent reaction to the message`);
     } catch (error) {
-        const errorMessage = `❌ Error: ${error}`;
+        const errorMessage = `❌ ${error}`;
 
         console.error("❌ processMediaServerChatMessage error:", error);
 

@@ -20,6 +20,20 @@ spec:
     spec:
       nodeSelector:
         vps: {{ .Values.webhookEndpoint.vps }}
+      initContainers:
+        - name: fix-prowlarr-config-permissions
+          image: busybox:1.37.0-uclibc
+          securityContext:
+            runAsUser: 0
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p /prowlarr-config
+              chown -R 1000:1000 /prowlarr-config
+          volumeMounts:
+            - name: prowlarr-config
+              mountPath: /prowlarr-config
       containers:
         - name: webhook-endpoint
           image: ghcr.io/senaev/webhook-endpoint:latest
