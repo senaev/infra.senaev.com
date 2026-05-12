@@ -40,10 +40,9 @@ function extractTrackerDomain(tracker: string): string {
 }
 
 function formatTorrentAdded(event: TorrentEvent): string {
-    const lines: string[] = [`🚀 <b>Началась загрузка</b>`];
+    const lines: string[] = [`🚀 <b>Началась загрузка:</b> ${escapeHtml(event.name)}`];
     lines.push('<a href="https://qbittorrent.senaev.ru/">Отслеживать</a>');
     lines.push("");
-    lines.push(`📦 <b>${escapeHtml(event.name)}</b>`);
 
     const size = Number(event.sizeBytes);
     const fileCount = Number(event.fileCount);
