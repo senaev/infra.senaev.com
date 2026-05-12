@@ -27,27 +27,31 @@ describe('formatBytes', () => {
         },
         {
             bytes: 1024 as Bytes,
-            expected: '1 KB',
+            expected: '1.0 KB',
         },
         {
             bytes: 1536 as Bytes,
-            expected: '2 KB',
+            expected: '1.5 KB',
         },
         {
             bytes: 1048576 as Bytes,
-            expected: '1 MB',
+            expected: '1.0 MB',
         },
         {
             bytes: 1572864 as Bytes,
-            expected: '2 MB',
+            expected: '1.5 MB',
         },
         {
             bytes: 1073741824 as Bytes,
-            expected: '1 GB',
+            expected: '1.0 GB',
         },
         {
             bytes: 1099511627776 as Bytes,
-            expected: '1 TB',
+            expected: '1.0 TB',
+        },
+        {
+            bytes: 10485760 as Bytes,
+            expected: '10 MB',
         },
         {
             bytes: 1125899906842624 as Bytes,
@@ -61,7 +65,11 @@ describe('formatBytes', () => {
         });
     });
 
-    test('should round to the nearest whole number for non-byte units', () => {
-        expect(formatBytes(1280 as Bytes)).toBe('1 KB');
+    test('should keep one fractional digit for non-byte units below ten', () => {
+        expect(formatBytes(1280 as Bytes)).toBe('1.3 KB');
+    });
+
+    test('should round to the nearest whole number for non-byte units from ten and above', () => {
+        expect(formatBytes(10702848 as Bytes)).toBe('10 MB');
     });
 });

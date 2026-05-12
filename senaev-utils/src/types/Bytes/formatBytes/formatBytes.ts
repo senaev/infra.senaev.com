@@ -16,5 +16,9 @@ export function formatBytes(bytes: Bytes): string {
         unitIndex += 1;
     }
 
-    return `${Math.round(value)} ${units[unitIndex]}`;
+    const formattedValue = unitIndex > 0 && value < 10
+        ? value.toFixed(1)
+        : Math.round(value).toString(10);
+
+    return `${formattedValue} ${units[unitIndex]}`;
 }
