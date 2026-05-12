@@ -9,7 +9,6 @@ Desktop:
 
 Android:
 
-- use [VidHub](https://play.google.com/store/apps/details?id=com.oumi.utility.media.hub) to connect both Jellyfin and WebDAV
 - [File Manager](https://play.google.com/store/apps/details?id=com.alphainventor.filemanager) is perfect for copying files from WebDAV server (converted-for-mobile) to local folder before the flight
 
 ## Services
