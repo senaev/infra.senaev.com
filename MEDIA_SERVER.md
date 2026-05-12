@@ -65,3 +65,7 @@ Settings → Workers → Worker groups → ➕
 
 - Group name: `Worker group`
 - Worker count: `1`
+
+### Prowlarr
+
+https://prowlarr.senaev.ru/
