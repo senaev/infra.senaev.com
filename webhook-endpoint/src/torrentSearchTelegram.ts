@@ -52,9 +52,9 @@ function formatReleaseLine(release: ProwlarrRelease, displayIndex: number): stri
         `${displayIndex}\\. ${boldTelegramMarkdownV2(title)}`,
         [
             indexer,
-            peers,
+            boldTelegramMarkdownV2(size),
             `${escapeTelegramMarkdownV2(formatPublishDate(release.publishDate))}`,
-            `${escapeTelegramMarkdownV2(size)}`,
+            peers,
         ].join(" "),
     ].join("\n");
 }
