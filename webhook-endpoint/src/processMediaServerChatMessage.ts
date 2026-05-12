@@ -15,9 +15,7 @@ async function processMediaServerChatMessageInternal({
 }: {
     botUser: TelegramUser;
     message: TelegramMessage;
-}): Promise<{
-    emoji: "👍" | "🤷" | "💩";
-}> {
+}): Promise<string | undefined> {
     const { text } = message;
 
     if (text) {
@@ -27,38 +25,24 @@ async function processMediaServerChatMessageInternal({
             const { commandName, botName, commandArgument } = command;
 
             if (botName !== undefined && botName !== botUser.username) {
-                console.error(
-                    `❌ The bot=[${botName}] for the command is wrong, it should be [${botUser.username}]`,
-                );
-                return {
-                    emoji: "🤷",
-                };
+                const errorMessage = `❌ The bot=[${botName}] for the command is wrong, it should be [${botUser.username}]`;
+                console.error(errorMessage);
+                return errorMessage;
             }
 
             if (command.commandName !== "torrent") {
-                console.error(`❌ Unknown command=[${commandName}]`);
-                return {
-                    emoji: "🤷",
-                };
+                const errorMessage = `❌ Unknown command=[${commandName}]`;
+                console.error(errorMessage);
+                return errorMessage;
             }
 
             console.log(`👉 Received torrent command text=[${message.text}]`);
 
             if (!commandArgument) {
-                console.error("❌ Torrent command has no search query");
-                await sendTelegramMessage({
-                    token: TG_TOKEN_SENAEV_COM_BOT,
-                    chatId: TG_MEDIA_SERVER_CHAT_ID,
-                    parseMode: "MarkdownV2",
-                    text: escapeTelegramMarkdownV2(
-                        `❌ Добавь имя фильма после /${commandName} ...`,
-                    ),
-                    replyToMessageId: message.message_id,
-                });
+                const errorMessage = "❌ Torrent command has no search query";
+                console.error(errorMessage);
 
-                return {
-                    emoji: "💩",
-                };
+                return errorMessage;
             }
 
             console.log(`👉 Searching torrents in Prowlarr, query=[${commandArgument}]`);
@@ -92,17 +76,13 @@ async function processMediaServerChatMessageInternal({
 
             console.log(`✅ Sent torrent search results, sessionId=[${view.sessionId}]`);
 
-            return {
-                emoji: "👍",
-            };
+            return;
         }
     }
 
     if (!message.document) {
         console.error("❌ No documents (torrent files)");
-        return {
-            emoji: "🤷",
-        };
+        return;
     }
 
     const fileName = message.document.file_name ?? message.document.file_id;
@@ -126,9 +106,7 @@ async function processMediaServerChatMessageInternal({
     });
     console.log(`✅ File stored in torrent outbox successfully, id=[${outboxItemId}]`);
 
-    return {
-        emoji: "👍",
-    };
+    return;
 }
 
 export async function processMediaServerChatMessage({
@@ -138,24 +116,41 @@ export async function processMediaServerChatMessage({
     botUser: TelegramUser;
     message: TelegramMessage;
 }): Promise<void> {
-    let resultEmoji = "❌";
+    await setTelegramMessageReaction({
+        chatId: message.chat.id,
+        messageId: message.message_id,
+        token: TG_TOKEN_SENAEV_COM_BOT,
+        reactions: ["👀"],
+    });
 
     try {
         console.log("👉 Start processing message in processMediaServerChatMessage");
-        const { emoji } = await processMediaServerChatMessageInternal({
+        const responseMessage = await processMediaServerChatMessageInternal({
             botUser,
             message,
         });
-        resultEmoji = emoji;
+
         console.log(
-            `✅ Finish processing message in processMediaServerChatMessage, emoji=[${emoji}]`,
+            `✅ Finish processing message in processMediaServerChatMessage, responseMessage=[${responseMessage}]`,
         );
-        console.log(`✅ Sent reaction to the message`);
+
+        if (responseMessage) {
+            console.log(`👉 Send responseMessage=[${responseMessage}]`);
+            await sendTelegramMessage({
+                token: TG_TOKEN_SENAEV_COM_BOT,
+                chatId: TG_MEDIA_SERVER_CHAT_ID,
+                parseMode: "MarkdownV2",
+                text: escapeTelegramMarkdownV2(responseMessage),
+                replyToMessageId: message.message_id,
+            });
+            console.log(`✅ Sent responseMessage`);
+        }
     } catch (error) {
         const errorMessage = `❌ ${error}`;
 
         console.error("❌ processMediaServerChatMessage error:", error);
 
+        console.log(`👉 Send error message`);
         await sendTelegramMessage({
             token: TG_TOKEN_SENAEV_COM_BOT,
             chatId: TG_MEDIA_SERVER_CHAT_ID,
@@ -163,14 +158,6 @@ export async function processMediaServerChatMessage({
             text: escapeTelegramMarkdownV2(errorMessage),
             replyToMessageId: message.message_id,
         });
-    } finally {
-        console.log(`👉 Setting reaction to the message...`);
-        await setTelegramMessageReaction({
-            chatId: message.chat.id,
-            messageId: message.message_id,
-            token: TG_TOKEN_SENAEV_COM_BOT,
-            reactions: [resultEmoji],
-        });
-        console.log(`✅ Sent reaction to the message`);
+        console.log(`✅ Send error message`);
     }
 }

@@ -50,6 +50,8 @@ async function prowlarrApiCall<T>({
 }): Promise<T> {
     console.log(`👉 Calling Prowlarr API method=[${method}], path=[${path}]`);
     const apiKey = await getProwlarrApiKey();
+
+    console.log("👉 Request prowlarr api");
     const response = await fetch(`${PROWLARR_URL}${path}`, {
         method,
         headers: {
@@ -58,6 +60,7 @@ async function prowlarrApiCall<T>({
         },
         ...(body !== undefined && { body: JSON.stringify(body) }),
     });
+    console.log("✅ Request prowlarr api");
 
     const rawBody = await response.text();
 
