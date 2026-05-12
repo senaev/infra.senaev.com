@@ -52,7 +52,7 @@ function createDownloadStartedText({
         .join(" ");
 
     return [
-        "✅ Загрузка начата",
+        "👀 Запрос на загрузку файла получен",
         "",
         `Название: ${release.title ?? "Untitled"}`,
         `Индексер: ${release.indexer ?? "unknown"}`,
