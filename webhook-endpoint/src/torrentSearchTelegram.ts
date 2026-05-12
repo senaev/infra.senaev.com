@@ -50,10 +50,12 @@ function formatReleaseLine(release: ProwlarrRelease, displayIndex: number): stri
     const peers = `${releaseSeeds(release)}⬆️ ${formatReleaseValue(release.leechers)}⬇️`;
     return [
         `${displayIndex}\\. ${boldTelegramMarkdownV2(title)}`,
-        indexer,
-        peers,
-        `${escapeTelegramMarkdownV2(formatPublishDate(release.publishDate))}`,
-        `${escapeTelegramMarkdownV2(size)}`,
+        [
+            indexer,
+            peers,
+            `${escapeTelegramMarkdownV2(formatPublishDate(release.publishDate))}`,
+            `${escapeTelegramMarkdownV2(size)}`,
+        ].join(" "),
     ].join("\n");
 }
 
