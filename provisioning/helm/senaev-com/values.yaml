@@ -113,7 +113,7 @@ unmanic:
       memory: 2Gi
 
 prowlarr:
-  enabled: true
+  enabled: false
   vps: hetzner
   volumePath: volumes/prowlarr
   webuiPort: 9696
@@ -164,7 +164,7 @@ prowlarr:
           value: 0
         - name: "info_torrent"
           value: "This tracker limits the number of torrents a user can download each day without paying. This indexer uses <b>torrent files</b> with the user's passkey, so any download/upload is recorded. If you receive errors when downloading torrent files, you may have reached this limit. To bypass the limit with magnet links, use <b>Kinozal (M)</b>."
-    - name: "RuTracker.org"
+    - name: "RuTracker"
       implementation: "RuTracker"
       enable: true
       protocol: "torrent"

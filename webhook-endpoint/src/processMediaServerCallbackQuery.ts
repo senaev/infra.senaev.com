@@ -1,11 +1,14 @@
-import { assertUnsignedInteger } from "senaev-utils/src/types/Number/UnsignedInteger";
+import { formatBytes } from "senaev-utils/src/types/Bytes/formatBytes/formatBytes";
+import {
+    assertUnsignedInteger,
+    isUnsignedInteger,
+} from "senaev-utils/src/types/Number/UnsignedInteger";
 import { isObject } from "senaev-utils/src/utils/Object/isObject";
 import { callTelegramApi } from "senaev-utils/src/utils/TelegramApi/callTelegramApi";
-import { sendTelegramMessage } from "senaev-utils/src/utils/TelegramApi/sendTelegramMessage";
-import { TelegramMessage } from "senaev-utils/src/utils/TelegramApi/types";
+import { TelegramMessage, TelegramUser } from "senaev-utils/src/utils/TelegramApi/types";
 import { TG_TOKEN_SENAEV_COM_BOT } from "./env";
 import { escapeTelegramMarkdownV2 } from "./escapeTelegramMarkdownV2";
-import { downloadProwlarrRelease } from "./prowlarr";
+import { downloadProwlarrRelease, ProwlarrRelease } from "./prowlarr";
 import {
     editTelegramMessageWithTorrentSearchView,
     getTorrentSearchRelease,
@@ -13,6 +16,7 @@ import {
 
 export interface TelegramCallbackQuery {
     data?: string;
+    from: TelegramUser;
     id: string;
     message?: TelegramMessage;
 }
@@ -34,12 +38,67 @@ function answerCallbackQuery({
     });
 }
 
+function createDownloadStartedText({
+    release,
+    startedAt,
+    user,
+}: {
+    release: ProwlarrRelease;
+    startedAt: Date;
+    user: TelegramUser;
+}): string {
+    const startedBy = [user.first_name, user.username ? `@${user.username}` : undefined]
+        .filter(Boolean)
+        .join(" ");
+
+    return [
+        "✅ Загрузка начата",
+        "",
+        `Название: ${release.title ?? "Untitled"}`,
+        `Индексер: ${release.indexer ?? "unknown"}`,
+        `Размер: ${isUnsignedInteger(release.size) ? formatBytes(release.size) : "no-size"}`,
+        `Сиды: ${release.seeders ?? release.peers ?? 0}`,
+        `Личи: ${release.leechers ?? "?"}`,
+        release.publishDate && `Дата публикации: ${release.publishDate}`,
+        release.infoUrl && `Info URL: ${release.infoUrl}`,
+        "",
+        `Кто: ${startedBy}`,
+        `Когда: ${startedAt.toISOString()}`,
+    ]
+        .filter(Boolean)
+        .join("\n");
+}
+
+async function editTelegramMessageText({
+    chatId,
+    messageId,
+    text,
+}: {
+    chatId: number | string;
+    messageId: number;
+    text: string;
+}): Promise<void> {
+    await callTelegramApi({
+        method: "editMessageText",
+        token: TG_TOKEN_SENAEV_COM_BOT,
+        body: {
+            chat_id: chatId,
+            message_id: messageId,
+            parse_mode: "MarkdownV2",
+            text: escapeTelegramMarkdownV2(text),
+            reply_markup: {
+                inline_keyboard: [],
+            },
+        },
+    });
+}
+
 async function processMediaServerCallbackQueryInternal({
     callbackQuery,
 }: {
     callbackQuery: TelegramCallbackQuery;
 }): Promise<string> {
-    const { data, message } = callbackQuery;
+    const { data, from, message } = callbackQuery;
 
     if (!data) {
         throw new Error("Telegram callback query has no data");
@@ -64,6 +123,10 @@ async function processMediaServerCallbackQueryInternal({
 
     if (!message || !isObject(message.chat)) {
         throw new Error("Search message is gone");
+    }
+
+    if (!from) {
+        throw new Error("Sender is missing");
     }
 
     if (action === "page") {
@@ -96,13 +159,17 @@ async function processMediaServerCallbackQueryInternal({
         );
         await downloadProwlarrRelease(release);
 
-        await sendTelegramMessage({
-            token: TG_TOKEN_SENAEV_COM_BOT,
-            chatId: String(message.chat.id),
-            parseMode: "MarkdownV2",
-            text: escapeTelegramMarkdownV2(`✅ Download started:\n${release.title ?? "Untitled"}`),
-            replyToMessageId: message.message_id,
+        console.log(`👉 Editing Telegram message with started download details`);
+        await editTelegramMessageText({
+            chatId: message.chat.id,
+            messageId: message.message_id,
+            text: createDownloadStartedText({
+                release,
+                startedAt: new Date(),
+                user: from,
+            }),
         });
+        console.log(`✅ Edited Telegram message with started download details`);
 
         console.log(`✅ Started torrent download, title=[${release.title}]`);
 

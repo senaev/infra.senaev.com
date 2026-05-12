@@ -75,7 +75,7 @@ async function processMediaServerChatMessageInternal({
                 token: TG_TOKEN_SENAEV_COM_BOT,
                 chatId: TG_MEDIA_SERVER_CHAT_ID,
                 parseMode: "MarkdownV2",
-                text: escapeTelegramMarkdownV2(view.text),
+                text: view.text,
                 replyToMessageId: message.message_id,
             } as const;
 

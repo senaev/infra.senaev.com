@@ -2,6 +2,7 @@ import { formatBytes } from "senaev-utils/src/types/Bytes/formatBytes/formatByte
 import { isUnsignedInteger } from "senaev-utils/src/types/Number/UnsignedInteger";
 import { callTelegramApi } from "senaev-utils/src/utils/TelegramApi/callTelegramApi";
 import { TG_TOKEN_SENAEV_COM_BOT } from "./env";
+import { escapeTelegramMarkdownV2 } from "./escapeTelegramMarkdownV2";
 import { ProwlarrRelease } from "./prowlarr";
 import { createTorrentSearchSession, getTorrentSearchSession } from "./torrentSearchSessions";
 
@@ -15,11 +16,41 @@ function releaseSeeds(release: ProwlarrRelease): number {
     return release.seeders ?? release.peers ?? 0;
 }
 
+function boldTelegramMarkdownV2(text: string): string {
+    return `*${escapeTelegramMarkdownV2(text)}*`;
+}
+
+function formatReleaseValue(value: string | number | undefined): string {
+    return escapeTelegramMarkdownV2(value === undefined ? "?" : String(value));
+}
+
+function formatTelegramMarkdownV2Link({ text, url }: { text: string; url: string }): string {
+    return `[${escapeTelegramMarkdownV2(text)}](${escapeTelegramMarkdownV2(url)})`;
+}
+
 function formatReleaseLine(release: ProwlarrRelease, displayIndex: number): string {
+    const title = release.title ?? "Untitled";
+    const size = isUnsignedInteger(release.size) ? formatBytes(release.size) : "?no-size?";
+    const indexer = release.infoUrl
+        ? formatTelegramMarkdownV2Link({
+              text: release.indexer ?? "unknown",
+              url: release.infoUrl,
+          })
+        : formatReleaseValue(release.indexer);
+    const peers = [
+        `${formatReleaseValue(release.peers)} peers`,
+        `${releaseSeeds(release)} seeds`,
+        `${formatReleaseValue(release.leechers)} leachers`,
+    ].join(" ");
     return [
-        `${displayIndex}. ${release.title ?? "Untitled"}`,
-        `   ${isUnsignedInteger(release.size) ? formatBytes(release.size) : "?no-size?"} | seeds: ${releaseSeeds(release)} | ${release.indexer ?? "unknown"}`,
-    ].join("\n");
+        `${displayIndex}\\. ${boldTelegramMarkdownV2(title)}`,
+        `Age: ${formatReleaseValue(release.age)}`,
+        `Download URL: ${formatReleaseValue(release.downloadUrl)}`,
+        `Indexer: ${indexer}`,
+        `Peers: ${peers}`,
+        `Publish date: ${formatReleaseValue(release.publishDate)}`,
+        `Size: ${escapeTelegramMarkdownV2(size)}`,
+    ].join("\n\n");
 }
 
 function buildTorrentSearchMessage({
@@ -32,15 +63,14 @@ function buildTorrentSearchMessage({
     releases: ProwlarrRelease[];
 }): string {
     if (releases.length === 0) {
-        return `🔎 No torrents found for: ${query}`;
+        return `🔎 No torrents found for: ${escapeTelegramMarkdownV2(query)}`;
     }
 
     const pageCount = Math.ceil(releases.length / PAGE_SIZE);
     const startIndex = page * PAGE_SIZE;
     const pageReleases = releases.slice(startIndex, startIndex + PAGE_SIZE);
     return [
-        `🔎 Torrents for: ${query}`,
-        `Page ${page + 1}/${pageCount} | sorted by seeds`,
+        `🔎 ${boldTelegramMarkdownV2(query)} page ${page + 1} of ${pageCount}`,
         "",
         ...pageReleases.map((release, index) => formatReleaseLine(release, startIndex + index + 1)),
     ].join("\n");
@@ -158,6 +188,7 @@ export async function editTelegramMessageWithTorrentSearchView({
                 chat_id: chatId,
                 message_id: messageId,
                 text: "❌ Запрос устарел, нужно поискать заново",
+                parse_mode: "MarkdownV2",
             },
         });
         return;
@@ -170,6 +201,7 @@ export async function editTelegramMessageWithTorrentSearchView({
             chat_id: chatId,
             message_id: messageId,
             text: view.text,
+            parse_mode: "MarkdownV2",
             ...(view.replyMarkup && { reply_markup: view.replyMarkup }),
         },
     });
