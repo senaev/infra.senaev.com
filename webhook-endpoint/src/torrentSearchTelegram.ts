@@ -54,8 +54,8 @@ function formatReleaseLine(release: ProwlarrRelease, displayIndex: number): stri
             indexer,
             boldTelegramMarkdownV2(size),
             `${escapeTelegramMarkdownV2(formatPublishDate(release.publishDate))}`,
-            peers,
         ].join(" "),
+        peers,
     ].join("\n");
 }
 
