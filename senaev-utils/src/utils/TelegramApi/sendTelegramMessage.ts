@@ -5,6 +5,7 @@ export function sendTelegramMessage({
     chatId,
     token,
     parseMode,
+    disableLinkPreview,
     replyToMessageId,
     replyMarkup,
 }: {
@@ -12,6 +13,7 @@ export function sendTelegramMessage({
     chatId: string;
     token: string;
     parseMode?: 'HTML' | 'MarkdownV2';
+    disableLinkPreview?: boolean;
     replyToMessageId?: number;
     replyMarkup?: {
         inline_keyboard: Array<
@@ -31,6 +33,11 @@ export function sendTelegramMessage({
             chat_id: chatId,
             text,
             ...(parseMode && { parse_mode: parseMode }),
+            ...(disableLinkPreview !== undefined && {
+                link_preview_options: {
+                    is_disabled: disableLinkPreview,
+                },
+            }),
             ...(replyMarkup && { reply_markup: replyMarkup }),
             ...(replyToMessageId && {
                 reply_parameters: { message_id: replyToMessageId },
