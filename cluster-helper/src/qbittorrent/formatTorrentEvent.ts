@@ -40,7 +40,8 @@ function extractTrackerDomain(tracker: string): string {
 }
 
 function formatTorrentAdded(event: TorrentEvent): string {
-    const lines: string[] = [`🚀 <b>Download started</b>`, "https://qbittorrent.senaev.ru/"];
+    const lines: string[] = [`🚀 <b>Началась загрузка</b>`];
+    lines.push('<a href="https://qbittorrent.senaev.ru/">Отслеживать</a>');
     lines.push("");
     lines.push(`📦 <b>${escapeHtml(event.name)}</b>`);
 
@@ -59,9 +60,9 @@ function formatTorrentAdded(event: TorrentEvent): string {
 
 function formatTorrentFinished(event: TorrentEvent): string {
     return [
-        `🏁 <b>${escapeHtml(event.name)}</b>`,
-        "https://jellyfin.senaev.ru/",
-        "https://filebrowser.senaev.ru/files/volumes/qbittorrent/downloads/completed/",
+        `🏁 <b>Загрузка завершена:</b> ${escapeHtml(event.name)}`,
+        '<a href="https://jellyfin.senaev.ru/">Смотреть</a>',
+        '<a href="https://filebrowser.senaev.ru/files/volumes/qbittorrent/downloads/completed/">Скачать</a>',
     ].join("\n");
 }
 
