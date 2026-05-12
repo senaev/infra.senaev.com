@@ -113,7 +113,7 @@ unmanic:
       memory: 2Gi
 
 prowlarr:
-  enabled: false
+  enabled: true
   vps: hetzner
   volumePath: volumes/prowlarr
   webuiPort: 9696
