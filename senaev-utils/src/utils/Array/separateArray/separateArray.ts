@@ -1,4 +1,4 @@
-export function separateToArrays<T>(
+export function separateArray<T>(
     array: Iterable<T>,
     separateFunction: (value: T, index: number, currentArray: Iterable<T>) => boolean
 ): [T[], T[]] {

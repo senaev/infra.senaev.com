@@ -2,11 +2,11 @@ import {
     describe, expect, it,
 } from 'vitest';
 
-import { separateToArrays } from './separateToArrays';
+import { separateArray } from './separateArray';
 
-describe('separateToArrays', () => {
+describe('separateArray', () => {
     it('empty', () => {
-        expect(separateToArrays([], () => true)).to.eql([
+        expect(separateArray([], () => true)).to.eql([
             [],
             [],
         ]);
@@ -16,7 +16,7 @@ describe('separateToArrays', () => {
         const [
             numbers,
             strings,
-        ] = separateToArrays([
+        ] = separateArray([
             0,
             '1',
             2,
@@ -49,7 +49,7 @@ describe('separateToArrays', () => {
         const [
             even,
             odd,
-        ] = separateToArrays(new Set([
+        ] = separateArray(new Set([
             1,
             2,
             3,
@@ -86,7 +86,7 @@ describe('separateToArrays', () => {
         const [
             evenValues,
             oddValues,
-        ] = separateToArrays(map.values(), (val) => val % 2 === 0);
+        ] = separateArray(map.values(), (val) => val % 2 === 0);
 
         expect(evenValues).to.eql([2]);
         expect(oddValues).to.eql([
@@ -99,7 +99,7 @@ describe('separateToArrays', () => {
         const [
             vowels,
             consonants,
-        ] = separateToArrays('hello', (char) => 'aeiou'.includes(char));
+        ] = separateArray('hello', (char) => 'aeiou'.includes(char));
 
         expect(vowels).to.eql([
             'e',
