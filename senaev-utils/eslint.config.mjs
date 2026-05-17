@@ -100,8 +100,7 @@ export default [
                 INDENT,
                 {
                     ignoredNodes: [
-                        'FunctionExpression > .params[decorators.length > 0]',
-                        'FunctionExpression > .params > :matches(Decorator, :not(:first-child))',
+                        'FunctionExpression > .params > :matches(Identifier, AssignmentPattern, RestElement, TSParameterProperty)[decorators.length > 0]',
                         'ClassBody.body > PropertyDefinition[decorators.length > 0] > .key',
                     ],
                 },
@@ -163,6 +162,8 @@ export default [
                     },
                 },
             ],
+            '@stylistic/type-generic-spacing': 'error',
+            '@stylistic/type-named-tuple-spacing': 'error',
             'comma-dangle': [
                 'error',
                 {
