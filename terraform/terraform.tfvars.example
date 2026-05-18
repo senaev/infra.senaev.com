@@ -23,6 +23,3 @@ VPS_VULTR_HOST     = "33.33.33.3"
 VPS_VULTR_USERNAME = "root"
 VPS_VULTR_LABEL    = "vultr"
 
-VPS_NETCUP_HOST     = "44.44.44.4"
-VPS_NETCUP_USERNAME = "root"
-VPS_NETCUP_LABEL    = "netcup"

@@ -40,9 +40,4 @@ echo "👉 [connect-all-workers] Connecting to node=[$VULTR_ADDR] with vps=[${VP
 "$ROOT_DIR/scripts/connect-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN" "$VULTR_ADDR" "$VPS_VULTR_LABEL"
 echo "✅ [connect-all-workers] Connected to node=[$VULTR_ADDR] with vps=[${VPS_VULTR_LABEL}]"
 
-NETCUP_ADDR="${VPS_NETCUP_USERNAME}@${VPS_NETCUP_HOST}"
-echo "👉 [connect-all-workers] Connecting to node=[$NETCUP_ADDR] with vps=[${VPS_NETCUP_LABEL}]"
-"$ROOT_DIR/scripts/connect-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN" "$NETCUP_ADDR" "$VPS_NETCUP_LABEL"
-echo "✅ [connect-all-workers] Connected to node=[$NETCUP_ADDR] with vps=[${VPS_NETCUP_LABEL}]"
-
 echo "✅ [connect-all-workers] Connected to worker nodes"
