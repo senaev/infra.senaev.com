@@ -119,10 +119,9 @@ smokepingProber:
   enabled: true
   namespace: telemetry
   port: 9374
-  scrapeInterval: 30s
+  scrapeInterval: 120s
   targets:
     - hetzner
-    - proxmox
     - firstvds
     - senaev-media
     - senaev.com
@@ -146,8 +145,6 @@ iperf3Monitor:
     - vultr
   tests:
     - source: hetzner
-      target: senaev-media
-    - source: hetzner
       target: firstvds
     - source: hetzner
       target: senaev.ru
@@ -160,16 +157,12 @@ iperf3Monitor:
     - source: yc
       target: hetzner
     - source: vultr
-      target: senaev-media
-    - source: vultr
       target: firstvds
     - source: vultr
       target: senaev.ru
     - source: vultr
       target: yc
     - source: firstvds
-      target: vultr
-    - source: senaev-media
       target: vultr
     - source: yc
       target: vultr
@@ -179,8 +172,6 @@ iperf3Monitor:
       target: hetzner
     - source: firstvds
       target: senaev.com
-    - source: firstvds
-      target: senaev-media
     - source: senaev-media
       target: firstvds
     - source: yc
@@ -189,7 +180,7 @@ iperf3Monitor:
     enabled: true
     vps: hetzner
     port: 9579
-    pauseBetweenTests: 10
+    pauseBetweenTests: 120
     scrapeInterval: 30s
     resources:
       requests:
