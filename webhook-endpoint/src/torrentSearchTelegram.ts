@@ -20,6 +20,10 @@ function boldTelegramMarkdownV2(text: string): string {
     return `*${escapeTelegramMarkdownV2(text)}*`;
 }
 
+function codeTelegramMarkdownV2(text: string): string {
+    return `\`${text.replace(/([`\\])/g, "\\$1")}\``;
+}
+
 function formatReleaseValue(value: string | number | undefined): string {
     return escapeTelegramMarkdownV2(value === undefined ? "?" : String(value));
 }
@@ -69,7 +73,7 @@ function buildTorrentSearchMessage({
     releases: ProwlarrRelease[];
 }): string {
     if (releases.length === 0) {
-        return `🔎 No torrents found for: ${escapeTelegramMarkdownV2(query)}`;
+        return `🔎 Ничего не найдено для:\n${codeTelegramMarkdownV2(query)}`;
     }
 
     const pageCount = Math.ceil(releases.length / PAGE_SIZE);

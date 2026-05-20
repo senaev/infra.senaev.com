@@ -81,6 +81,7 @@ spec:
             - |
               mkdir -p /config
               chown -R 1000:1000 /config
+              chmod -R u+rwX,g+rwX /config
           volumeMounts:
             - name: config
               mountPath: /config

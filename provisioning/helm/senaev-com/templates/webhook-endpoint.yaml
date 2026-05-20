@@ -31,6 +31,7 @@ spec:
             - |
               mkdir -p /prowlarr-config
               chown -R 1000:1000 /prowlarr-config
+              chmod -R u+rwX,g+rwX /prowlarr-config
           volumeMounts:
             - name: prowlarr-config
               mountPath: /prowlarr-config
