@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { prettyStringify } from "senaev-utils/src/utils/prettyStringify";
 import { PROWLARR_CONFIG_FILE, PROWLARR_URL } from "./env";
 
 let cachedApiKey: string | undefined;
@@ -60,9 +61,10 @@ async function prowlarrApiCall<T>({
         },
         ...(body !== undefined && { body: JSON.stringify(body) }),
     });
-    console.log("✅ Request prowlarr api");
 
     const rawBody = await response.text();
+
+    console.log(`✅ Request prowlarr api, response=[${prettyStringify(rawBody)}]`);
 
     if (!response.ok) {
         console.error(
