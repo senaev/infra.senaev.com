@@ -64,7 +64,7 @@ async function prowlarrApiCall<T>({
 
     const rawBody = await response.text();
 
-    console.log(`✅ Request prowlarr api, response=[${prettyStringify(rawBody)}]`);
+    console.log(`✅ Request prowlarr api`, prettyStringify(rawBody));
 
     if (!response.ok) {
         console.error(
