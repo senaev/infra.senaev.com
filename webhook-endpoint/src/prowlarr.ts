@@ -64,8 +64,6 @@ async function prowlarrApiCall<T>({
 
     const rawBody = await response.text();
 
-    console.log(`✅ Request prowlarr api`, prettyStringify(rawBody));
-
     if (!response.ok) {
         console.error(
             `❌ Prowlarr API call failed method=[${method}], path=[${path}], status=[${response.status}]`,
@@ -75,10 +73,13 @@ async function prowlarrApiCall<T>({
         );
     }
 
+    const result = (rawBody ? JSON.parse(rawBody) : undefined) as T;
     console.log(
         `✅ Prowlarr API call finished method=[${method}], path=[${path}], status=[${response.status}], responseSize=[${rawBody.length}]`,
     );
-    return (rawBody ? JSON.parse(rawBody) : undefined) as T;
+    console.log(`✅ Request prowlarr api`, prettyStringify(result));
+
+    return result;
 }
 
 export async function searchProwlarr(query: string): Promise<ProwlarrRelease[]> {
