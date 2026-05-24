@@ -32,7 +32,7 @@
   "nvenc_profile": "main",
   "nvenc_encoder_ratecontrol_method": "auto",
   "nvenc_encoder_ratecontrol_lookahead": 0,
-  "nvenc_constant_quantizer_scale": 23,
+  "nvenc_constant_quantizer_scale": 28,
   "nvenc_enable_spatial_aq": false,
   "nvenc_enable_temporal_aq": false,
   "nvenc_aq_strength": 8,
