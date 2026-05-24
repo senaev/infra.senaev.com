@@ -112,6 +112,10 @@ spec:
               mountPath: /config
         - name: qbittorrent-download-client-configurer
           image: python:3.13-alpine
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
           command:
             - python
             - /scripts/configure-qbittorrent-download-client.py
