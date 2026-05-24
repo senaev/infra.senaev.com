@@ -47,6 +47,7 @@ victoria-metrics-k8s-stack:
         - hosts:
             - victoriametrics.senaev.com
     spec:
+      retentionPeriod: "3"
       nodeSelector:
         vps: hetzner
 
