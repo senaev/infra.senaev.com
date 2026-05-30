@@ -78,6 +78,12 @@ echo "👉 [bootstrap-server] Connecting to Tailscale"
 tailscale up --auth-key="$TAILSCALE_AUTH_KEY" --hostname="$SERVER_NAME"
 echo "✅ [bootstrap-server] Tailscale installed and connected"
 
+# k3s flannel is pinned to tailscale0; Tailscale auto-updates restart tailscaled,
+# briefly remove tailscale0, and can leave flannel without cross-node pod routes.
+echo "👉 [bootstrap-server] Disabling Tailscale auto-updates"
+tailscale set --auto-update=false
+echo "✅ [bootstrap-server] Tailscale auto-updates disabled"
+
 echo "👉 [bootstrap-server] Installing Helm"
 curl -fsSL https://get.helm.sh/helm-v4.1.1-linux-amd64.tar.gz | tar -xz -C /tmp
 mv /tmp/linux-amd64/helm /usr/local/bin/helm
