@@ -168,7 +168,7 @@ async function processMediaServerCallbackQueryInternal({
 
         const release = getTorrentSearchRelease({ releaseIndex, sessionId });
         if (!release) {
-            throw new Error("Search expired. Run /torrent again.");
+            throw new Error("☠️ Поиск устарел, запустите новый");
         }
 
         console.log(
