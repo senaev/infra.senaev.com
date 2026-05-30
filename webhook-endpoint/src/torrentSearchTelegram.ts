@@ -80,7 +80,7 @@ function buildTorrentSearchMessage({
     const startIndex = page * PAGE_SIZE;
     const pageReleases = releases.slice(startIndex, startIndex + PAGE_SIZE);
     return [
-        `🔎 ${boldTelegramMarkdownV2(query)}`,
+        `🔎 ${codeTelegramMarkdownV2(query)}`,
         ...pageReleases.map((release, index) => formatReleaseLine(release, startIndex + index + 1)),
         `🗒️ ${page + 1} из ${pageCount}`,
     ].join("\n\n");
