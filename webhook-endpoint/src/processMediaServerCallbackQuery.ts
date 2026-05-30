@@ -5,6 +5,7 @@ import {
 } from "senaev-utils/src/types/Number/UnsignedInteger";
 import { isObject } from "senaev-utils/src/utils/Object/isObject";
 import { callTelegramApi } from "senaev-utils/src/utils/TelegramApi/callTelegramApi";
+import { sendTelegramMessage } from "senaev-utils/src/utils/TelegramApi/sendTelegramMessage";
 import { TelegramMessage, TelegramUser } from "senaev-utils/src/utils/TelegramApi/types";
 import { TG_TOKEN_SENAEV_COM_BOT } from "./env";
 import { escapeTelegramMarkdownV2 } from "./escapeTelegramMarkdownV2";
@@ -91,6 +92,29 @@ async function editTelegramMessageText({
             },
         },
     });
+}
+
+async function sendCallbackQueryErrorMessage({
+    callbackQuery,
+    errorMessage,
+}: {
+    callbackQuery: TelegramCallbackQuery;
+    errorMessage: string;
+}): Promise<boolean> {
+    const { message } = callbackQuery;
+    if (!message || !isObject(message.chat)) {
+        return false;
+    }
+
+    await sendTelegramMessage({
+        token: TG_TOKEN_SENAEV_COM_BOT,
+        chatId: String(message.chat.id),
+        parseMode: "MarkdownV2",
+        text: escapeTelegramMarkdownV2(`❌ ${errorMessage}`),
+        replyToMessageId: message.message_id,
+    });
+
+    return true;
 }
 
 async function processMediaServerCallbackQueryInternal({
@@ -194,8 +218,27 @@ export async function processMediaServerCallbackQuery({
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error(`❌ ${errorMessage}`, { callbackQuery, error });
 
-        console.log(`👉 Answering Telegram callback query with error text=[${errorMessage}]`);
-        await answerCallbackQuery({ callbackQueryId: callbackQuery.id, text: errorMessage });
-        console.log(`✅ Answered Telegram callback query with error text=[${errorMessage}]`);
+        console.log(`👉 Sending Telegram chat message with callback query error text=[${errorMessage}]`);
+        try {
+            const sent = await sendCallbackQueryErrorMessage({ callbackQuery, errorMessage });
+            console.log(
+                sent
+                    ? `✅ Sent Telegram chat message with callback query error text=[${errorMessage}]`
+                    : `⚠️ Could not send Telegram chat message because callback query has no message chat`,
+            );
+        } catch (sendError) {
+            console.error(`❌ Failed to send Telegram chat message with callback query error`, {
+                callbackQuery,
+                errorMessage,
+                sendError,
+            });
+        }
+
+        const answerText = callbackQuery.message
+            ? "❌ Error details sent to chat"
+            : errorMessage;
+        console.log(`👉 Answering Telegram callback query with error text=[${answerText}]`);
+        await answerCallbackQuery({ callbackQueryId: callbackQuery.id, text: answerText });
+        console.log(`✅ Answered Telegram callback query with error text=[${answerText}]`);
     }
 }

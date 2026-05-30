@@ -58,6 +58,34 @@ def write_response(handler, status_code, content_type, body):
         raise
 
 
+def summarize_failure(source, target, result):
+    agent_response = result.get("agentResponse", {})
+    reason = result.get("error") or agent_response.get("error") or "unknown"
+    iperf3_error = agent_response.get("iperf3Error")
+    status_code = result.get("statusCode")
+    exit_code = agent_response.get("exitCode")
+    duration = result.get("schedulerDurationSeconds", 0)
+    agent_duration = agent_response.get("durationSeconds", 0)
+    target_resolution = agent_response.get("targetResolution", {})
+    resolved_addresses = target_resolution.get("addresses", [])
+    resolved = ",".join(address["address"] for address in resolved_addresses) or "unknown"
+    server_state = agent_response.get("serverState", {})
+
+    fields = [
+        f"test=[{source}->{target}]",
+        f"reason=[{reason}]",
+        f"httpStatus=[{status_code}]" if status_code is not None else None,
+        f"exitCode=[{exit_code}]" if exit_code is not None else None,
+        f"iperf3Error=[{iperf3_error}]" if iperf3_error else None,
+        f"targetAddresses=[{resolved}]",
+        f"agentServerRunning=[{server_state.get('running', 'unknown')}]",
+        f"schedulerDurationSeconds=[{duration:.3f}]",
+        f"agentDurationSeconds=[{agent_duration:.3f}]",
+    ]
+
+    return " ".join(field for field in fields if field is not None)
+
+
 def run_scheduler():
     tests = CONFIG["tests"]
     pause_between_tests = CONFIG["pauseBetweenTestsSeconds"]
@@ -81,6 +109,7 @@ def run_scheduler():
             if result["ok"]:
                 print(f"✅ Test successfully finished", flush=True)
             else:
+                print(f"❌ Test failed summary: {summarize_failure(source, target, result)}", flush=True)
                 print(f"❌ Test error: {json.dumps(result, indent=2)}", flush=True)
 
             with STATE_LOCK:

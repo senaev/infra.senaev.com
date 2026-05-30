@@ -2,6 +2,7 @@ import json
 import os
 import errno
 import subprocess
+import socket
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -44,6 +45,76 @@ iperf3_server = subprocess.Popen(
 print(f"✅ iperf3 server started with pid=[{iperf3_server.pid}]", flush=True)
 
 TEST_LOCK = threading.Lock()
+
+
+def preview_text(value, limit=2000):
+    if value is None:
+        return None
+
+    if isinstance(value, bytes):
+        value = value.decode("utf-8", errors="replace")
+
+    if len(value) <= limit:
+        return value
+
+    return value[:limit] + f"... truncated {len(value) - limit} chars"
+
+
+def resolve_target(target):
+    try:
+        addresses = socket.getaddrinfo(target, ENVS["IPERF3_SERVER_PORT"], type=socket.SOCK_STREAM)
+    except OSError as error:
+        return {
+            "ok": False,
+            "error": type(error).__name__,
+            "message": str(error),
+        }
+
+    resolved = []
+    for family, _socktype, _proto, _canonname, sockaddr in addresses:
+        resolved.append(
+            {
+                "family": socket.AddressFamily(family).name,
+                "address": sockaddr[0],
+                "port": sockaddr[1],
+            }
+        )
+
+    return {
+        "ok": True,
+        "addresses": resolved,
+    }
+
+
+def iperf3_server_state():
+    exit_code = iperf3_server.poll()
+    return {
+        "pid": iperf3_server.pid,
+        "running": exit_code is None,
+        "exitCode": exit_code,
+    }
+
+
+def parse_iperf3_output(stdout):
+    if not stdout:
+        return {}
+
+    try:
+        parsed = json.loads(stdout)
+    except json.JSONDecodeError as error:
+        return {
+            "parseError": str(error),
+            "stdoutPreview": preview_text(stdout),
+        }
+
+    return {
+        "iperf3": parsed,
+        "iperf3Error": parsed.get("error"),
+        "connected": parsed.get("start", {}).get("connected", []),
+        "connectingTo": parsed.get("start", {}).get("connecting_to", {}),
+        "tcpMssDefault": parsed.get("start", {}).get("tcp_mss_default"),
+        "intervalCount": len(parsed.get("intervals", [])),
+    }
 
 
 def write_json_response(handler, status_code, payload):
@@ -91,6 +162,11 @@ def run_iperf3(target):
         f"args=[{' '.join(args)}]",
         flush=True,
     )
+    target_resolution = resolve_target(target)
+    print(
+        f"🔎 Target resolution target=[{target}] result=[{json.dumps(target_resolution)}]",
+        flush=True,
+    )
 
     try:
         process = subprocess.run(
@@ -112,8 +188,11 @@ def run_iperf3(target):
             "periodSeconds": ENVS["IPERF3_PERIOD_SECONDS"],
             "timeoutSeconds": ENVS["IPERF3_TIMEOUT_SECONDS"],
             "durationSeconds": time.time() - started_at,
-            "stdout": error.stdout,
-            "stderr": error.stderr,
+            "command": args,
+            "targetResolution": target_resolution,
+            "serverState": iperf3_server_state(),
+            "stdout": preview_text(error.stdout),
+            "stderr": preview_text(error.stderr),
         }
 
     common_response_fields = {
@@ -130,14 +209,27 @@ def run_iperf3(target):
     )
 
     if process.returncode != 0:
-        print("❌ Test process error", flush=True)
+        parsed_output = parse_iperf3_output(process.stdout)
+        print(
+            "❌ Test process error "
+            f"target=[{target}] exitCode=[{process.returncode}] "
+            f"iperf3Error=[{parsed_output.get('iperf3Error')}] "
+            f"connected=[{json.dumps(parsed_output.get('connected', []))}] "
+            f"serverState=[{json.dumps(iperf3_server_state())}] "
+            f"stderr=[{preview_text(process.stderr, 500)}]",
+            flush=True,
+        )
         return {
             "ok": False,
             "error": "iperf3_failed",
             **common_response_fields,
             "exitCode": process.returncode,
-            "stdout": process.stdout,
-            "stderr": process.stderr,
+            "command": args,
+            "targetResolution": target_resolution,
+            "serverState": iperf3_server_state(),
+            **parsed_output,
+            "stdout": preview_text(process.stdout),
+            "stderr": preview_text(process.stderr),
         }
 
     print("✅ Test process success", flush=True)
