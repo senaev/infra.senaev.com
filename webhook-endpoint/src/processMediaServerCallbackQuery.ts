@@ -95,17 +95,12 @@ async function editTelegramMessageText({
 }
 
 async function sendCallbackQueryErrorMessage({
-    callbackQuery,
     errorMessage,
+    message,
 }: {
-    callbackQuery: TelegramCallbackQuery;
     errorMessage: string;
-}): Promise<boolean> {
-    const { message } = callbackQuery;
-    if (!message || !isObject(message.chat)) {
-        return false;
-    }
-
+    message: TelegramMessage;
+}): Promise<void> {
     await sendTelegramMessage({
         token: TG_TOKEN_SENAEV_COM_BOT,
         chatId: String(message.chat.id),
@@ -113,8 +108,6 @@ async function sendCallbackQueryErrorMessage({
         text: escapeTelegramMarkdownV2(`❌ ${errorMessage}`),
         replyToMessageId: message.message_id,
     });
-
-    return true;
 }
 
 async function processMediaServerCallbackQueryInternal({
@@ -218,15 +211,17 @@ export async function processMediaServerCallbackQuery({
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error(`❌ ${errorMessage}`, { callbackQuery, error });
 
-        console.log(`👉 Sending Telegram chat message with callback query error text=[${errorMessage}]`);
+        console.log(
+            `👉 Sending Telegram chat message with callback query error text=[${errorMessage}]`,
+        );
+        let answerText = "❌ Error details sent to chat";
         try {
-            const sent = await sendCallbackQueryErrorMessage({ callbackQuery, errorMessage });
+            await sendCallbackQueryErrorMessage({ errorMessage, message: callbackQuery.message! });
             console.log(
-                sent
-                    ? `✅ Sent Telegram chat message with callback query error text=[${errorMessage}]`
-                    : `⚠️ Could not send Telegram chat message because callback query has no message chat`,
+                `✅ Sent Telegram chat message with callback query error text=[${errorMessage}]`,
             );
         } catch (sendError) {
+            answerText = errorMessage;
             console.error(`❌ Failed to send Telegram chat message with callback query error`, {
                 callbackQuery,
                 errorMessage,
@@ -234,9 +229,6 @@ export async function processMediaServerCallbackQuery({
             });
         }
 
-        const answerText = callbackQuery.message
-            ? "❌ Error details sent to chat"
-            : errorMessage;
         console.log(`👉 Answering Telegram callback query with error text=[${answerText}]`);
         await answerCallbackQuery({ callbackQueryId: callbackQuery.id, text: answerText });
         console.log(`✅ Answered Telegram callback query with error text=[${answerText}]`);
