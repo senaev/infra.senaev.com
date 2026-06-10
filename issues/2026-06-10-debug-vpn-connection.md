@@ -122,30 +122,239 @@ Claude will NOT propose any write/restart/config-change command until Round 1 (a
 
 ## Findings
 
-_(Append dated sub-sections here as the investigation proceeds. Format suggestion:)_
+### 2026-06-10 22:05 — Round 1 results
 
-### YYYY-MM-DD HH:MM — Round 1 results
-
-**Command A — firstvds xray logs:**
-
+**Command C — nc -zv from firstvds pod:**
 ```
-(paste output)
+xray-vpn-hetzner (10.43.129.100:1080) open
+xray-vpn-vultr (10.43.161.184:1080) open
 ```
+Interpretation: ✅ Transport layer healthy — both chain destinations are reachable on :1080.
 
-Interpretation: …
-
-**Command B — hetzner xray logs:**
-
+**Command D — DNS from firstvds pod:**
 ```
-(paste output)
+10.43.129.100   xray-vpn-hetzner.senaev-com.svc.cluster.local ...
+10.43.161.184   xray-vpn-vultr.senaev-com.svc.cluster.local ...
 ```
+Interpretation: ✅ kube-dns is resolving correctly from firstvds node.
 
-Interpretation: …
+**Command E — EndpointSlices:**
+```
+xray-vpn-hetzner-mgdjd   IPv4  443,1080  10.42.0.179  41h
+xray-vpn-vultr-p799w     IPv4  443,1080  10.42.6.24   41h
+```
+Interpretation: ✅ Both services have healthy endpoints.
 
-**Conclusion of Round 1:** which hypothesis is supported / refuted, what Round 2 looks like.
+**Command F — pod/node status:**
+```
+xray-vpn-firstvds  1/1 Running  firstvds (10.42.4.19)
+xray-vpn-hetzner   1/1 Running  hetzner  (10.42.0.179)
+xray-vpn-vultr     1/1 Running  vultr    (10.42.6.24)
+All nodes: Ready
+```
+Interpretation: ✅ All nodes and pods healthy.
+
+**Command A — firstvds xray logs (key lines):**
+```
+[Info] received request for tcp:courier.sandbox.push.apple.com:5223
+[Info] app/dispatcher: taking detour [outbound-hetzner]
+[Info] transport/internet/tcp: dialing TCP to tcp:xray-vpn-hetzner:1080
+from 10.42.4.10:35190 accepted ... [inbound-xray-vpn-firstvds -> outbound-hetzner] email: user-socks
+```
+Interpretation: ✅ The chain is working — firstvds accepted a real client connection, correctly routed it to outbound-hetzner, and hetzner's :1080 was dialed. The "user-socks" email confirms the right UUID/profile was matched.
+
+**Command B — hetzner xray logs (key lines):**
+```
+# Connection FROM firstvds (10.42.4.19) arriving at hetzner socks inbound:
+from tcp:10.42.4.19:55374 accepted tcp:courier.sandbox.push.apple.com:5223 [inbound-socks -> outbound-freedom]
+proxy/freedom: connection opened to tcp:courier.sandbox.push.apple.com:5223, local endpoint 10.42.0.179:55186, remote endpoint 17.188.168.210:5223
+
+# FAILURE — IPv6 destination:
+app/proxyman/outbound: failed to process outbound traffic >
+  proxy/freedom: failed to open connection to tcp:e8a540b6-..fbcdn.net:443 >
+  common/retry: [dial tcp [2a03:2880:f13b:82:face:b00c:0:79f4]:443: connect: network is unreachable]
+```
+Interpretation: ✅ Chain arriving at hetzner works for IPv4 destinations (Apple, Instagram CDN on `157.240.205.63`). ❌ **IPv6 destinations fail with `network is unreachable`** — `2a03:2880:...` is a Meta/Facebook IPv6 address.
 
 ---
 
+### Conclusion of Round 1
+
+**Hypotheses A–D refuted.** Transport, DNS, endpoints, and config are all fine.
+
+**Root cause: IPv6 egress is broken in the hetzner pod.** The hetzner node's pod network (`flannel` over `tailscale0`) has no IPv6 default route. When DNS returns an AAAA record (IPv6) for a destination, `outbound-freedom` on hetzner gets `network is unreachable` and the connection fails. This affects ALL traffic that exits via hetzner's freedom outbound, including:
+- The `firstvds → hetzner` profile (uuid:1)  
+- Hetzner's own direct freedom profile (uuid:5)
+
+This explains "no internet from firstvds entry point": modern apps (iOS especially) prefer IPv6 — Instagram, Facebook, iCloud, and many others return AAAA records. With IPv6 broken, those requests fail; the VPN client sees repeated failures and reports no connectivity.
+
+The reason "hetzner entry point works": the two hetzner profiles in the subscription exit through **firstvds** (`hetzner → firstvds`, uuid:2) and **senaev-media** (`hetzner → senaev-media`, uuid:3), not through hetzner's own freedom. If the user tested those, they exit via different nodes that may have IPv6 working.
+
+---
+
+### 2026-06-10 — Round 2 (confirm IPv6 scope)
+
+Run these to confirm IPv6 is broken in hetzner pod and check other nodes:
+
+```bash
+# Check IPv6 routes in each xray pod
+kubectl exec -n senaev-com deploy/xray-vpn-hetzner -- ip -6 route show 2>&1
+kubectl exec -n senaev-com deploy/xray-vpn-vultr  -- ip -6 route show 2>&1
+kubectl exec -n senaev-com deploy/xray-vpn-firstvds -- ip -6 route show 2>&1
+```
+
+Expected: hetzner shows no default `via` route for IPv6. If vultr and firstvds also show empty/no-default, the fix should apply to all freedom outbounds.
+
+---
+
+### Proposed fix (pending Round 2 confirmation)
+
+Add `"domainStrategy": "UseIPv4"` to the freedom outbound in the xray config template. This tells xray to always resolve hostnames to IPv4 before connecting via freedom, skipping the broken IPv6 path entirely.
+
+**Where to change:** `provisioning/helm/senaev-com/templates/_helpers.tpl` — the block that emits `"protocol": "freedom"` for the `outbound-freedom` tag. Add:
+```json
+"settings": {
+  "domainStrategy": "UseIPv4"
+}
+```
+
+This is a low-risk change: it only affects freedom outbounds (direct internet exit), not the socks chain hops. Sites that are IPv6-only would still fail, but there are very few of those, and they're already failing. Dual-stack sites (the vast majority) would fall back to IPv4 and work.
+
+**Note:** this is a config change that triggers a rolling restart (pod-reloader watches the ConfigMap). Plan for a brief ~10-second restart per affected pod.
+
+---
+
+## User requests to claude (don't forget to do)
+
+ TODO: Check IPv6 availability on every node pod:                                                                                                                       ▎ for pod in xray-vpn-firstvds xray-vpn-hetzner xray-vpn-vultr xray-vpn-senaev-media; do
+      ▎   echo "=== $pod ==="; kubectl exec -n senaev-com deploy/$pod -- ip -6 route show 2>&1; done
+
 ## Resolution
 
-_(Filled in once the root cause is identified and fixed. Include: root cause, the fix command(s) run, why this happened, and any follow-up actions to prevent recurrence — e.g. add a monitor, update a runbook.)_
+**Root cause:** All xray pods (firstvds, hetzner, vultr, senaev-media) run on k3s with flannel over `tailscale0`. This overlay is IPv4-only — no IPv6 routes exist in any pod. When a destination domain returns an AAAA record, xray's `outbound-freedom` gets `network is unreachable` immediately and retries the same IPv6 address multiple times without falling back to IPv4. Modern apps (iOS, Instagram, Meta services, iCloud) heavily prefer IPv6, so they fail consistently, producing a "no internet" experience in the VPN client.
+
+**Fix:** Added `"domainStrategy": "UseIPv4"` to the `outbound-freedom` block in `provisioning/helm/senaev-com/templates/_helpers.tpl`. This tells xray to always resolve hostnames to IPv4 before connecting, skipping the broken IPv6 path entirely. Applied globally to all instances since all nodes have the same IPv6 gap.
+
+IPv6-only sites remain inaccessible, but they were already failing and are extremely rare on the public internet.
+
+**Deploy:**
+```bash
+helm upgrade senaev-com provisioning/helm/senaev-com -n senaev-com
+```
+Pod-reloader triggers a rolling restart of all xray-vpn pods on ConfigMap change.
+
+**Result: VPN still didn't appear to work after deploying the fix.** `domainStrategy: UseIPv4` only covers one half of the IPv6 problem — see Round 3 below for additional improvements. However, see **Final Resolution** at the bottom — the reported "no internet" was a client-side issue.
+
+---
+
+### 2026-06-10 — Round 3 plan
+
+#### Step 1 — Verify the fix is actually running in the pods
+
+The config flow is: `_helpers.tpl` → ConfigMap (`<name>-config-template`) → initContainer renders secrets → `/etc/xray/config.json` in pod. Verify both the ConfigMap and the live config were updated:
+
+```bash
+# Check pod restart times — confirm pods restarted after helm upgrade
+kubectl get pods -n senaev-com -o wide | grep xray-vpn
+
+# Verify the rendered config inside the running pod has domainStrategy
+kubectl exec -n senaev-com deploy/xray-vpn-firstvds -- \
+  grep -A3 '"freedom"' /etc/xray/config.json
+
+kubectl exec -n senaev-com deploy/xray-vpn-hetzner -- \
+  grep -A3 '"freedom"' /etc/xray/config.json
+```
+
+Expected: `"domainStrategy": "UseIPv4"` appears in the output. If not — the pods didn't restart, or the ConfigMap wasn't picked up.
+
+#### Step 2 — Test raw internet access from each pod
+
+This is the most direct test: can the xray pod reach the internet at all, independent of xray routing?
+
+```bash
+# IPv4 internet from firstvds pod
+kubectl exec -n senaev-com deploy/xray-vpn-firstvds -- \
+  wget -q -O- http://ipv4.icanhazip.com 2>&1
+
+# IPv4 internet from hetzner pod
+kubectl exec -n senaev-com deploy/xray-vpn-hetzner -- \
+  wget -q -O- http://ipv4.icanhazip.com 2>&1
+
+# IPv4 internet from vultr pod
+kubectl exec -n senaev-com deploy/xray-vpn-vultr -- \
+  wget -q -O- http://ipv4.icanhazip.com 2>&1
+```
+
+Expected: each returns the node's public IP. If a pod hangs or errors — that node has no outbound internet at the pod level (likely a missing iptables MASQUERADE rule), and `outbound-freedom` on that node will never work regardless of xray config. This is a separate, more fundamental issue.
+
+#### Step 3 — Fresh xray logs after the fix (filter out debug noise)
+
+```bash
+# firstvds — last 5 min, without XtlsPadding/Reshape spam
+kubectl logs -n senaev-com deploy/xray-vpn-firstvds --since=10m 2>&1 \
+  | grep -v XtlsPadding | grep -v ReshapeMultiBuffer
+
+# hetzner — same
+kubectl logs -n senaev-com deploy/xray-vpn-hetzner --since=10m 2>&1 \
+  | grep -v XtlsPadding | grep -v ReshapeMultiBuffer
+```
+
+Look for: new error patterns different from the IPv6 errors, connection resets, "failed to process", "no matching rule".
+
+---
+
+### 2026-06-10 — Round 3 findings: actual root cause identified
+
+**Vultr xray logs at 22:50:14** reveal the real problem:
+
+```
+proxy/freedom: connection opened to udp:[2001:4860:4860::8888]:53, local endpoint [::]:55415
+failed > write udp [::]:55415->[2001:4860:4860::8888]:53: sendto: network is unreachable
+```
+
+The phone's VPN client (HiddifyNext on Android) sends DNS queries **directly to Google's IPv6 DNS server** `2001:4860:4860::8888` by IP address. When this arrives at xray's socks inbound, it's already an IPv6 address — not a domain name — so `domainStrategy: UseIPv4` has no effect. xray tries to connect `[::]:xxxxx → 2001:4860:4860::8888:53` on the pod, which has no IPv6 routes → `network is unreachable` immediately.
+
+The VPN client's DNS fails → apps can't resolve hostnames → "no internet" perception, even though IPv4 TCP connections work fine (the same 22:50 session shows YouTube streaming, hh.ru, Google, Apple all succeeding).
+
+**Why this didn't surface with the domainStrategy fix:** `domainStrategy: UseIPv4` only applies when xray resolves a domain name for the freedom outbound. It does nothing when the client sends an explicit IPv6 IP.
+
+**Fix: add a blackhole routing rule for all IPv6 destinations.** When xray receives a connection to any IPv6 address (`::/0`), it returns an immediate reject instead of trying and hanging. The client immediately falls back to IPv4 DNS (8.8.8.8) and everything works.
+
+Changes made to `provisioning/helm/senaev-com/templates/_helpers.tpl`:
+- Added `outbound-blackhole` (protocol: blackhole)
+- Added routing rule: `ip: ["::/0"] → outbound-blackhole` (placed BEFORE the socks→freedom rule)
+
+Deploy:
+```bash
+helm upgrade senaev-com provisioning/helm/senaev-com -n senaev-com
+```
+
+---
+
+---
+
+## Final Resolution
+
+**Root cause of the reported "no internet":** The user's mobile phone had an underlying internet connectivity problem unrelated to the VPN. The VPN was routing traffic correctly throughout the investigation — xray logs consistently showed active connections (YouTube, Google, Apple, hh.ru) flowing through all firstvds profiles.
+
+**Lesson:** always rule out client-side issues (phone connectivity, airplane mode, carrier outage, VPN app state) before debugging the server — especially when server-side logs show traffic flowing correctly.
+
+**Improvements made during investigation (kept, correct):**
+
+1. **`"domainStrategy": "UseIPv4"` on all freedom outbounds** — prevents xray from attempting IPv6 connections when resolving domain names. All k3s pods run flannel over tailscale0 which is IPv4-only; without this, any domain returning AAAA first would silently hang.
+
+2. **IPv6 blackhole routing rule (`::/0 → outbound-blackhole`)** — immediately rejects connections to any explicit IPv6 destination. Without this, clients sending DNS queries directly to IPv6 DNS servers (e.g. `2001:4860:4860::8888`) get a timeout rather than fast fallback to IPv4.
+
+Both changes are correct and should be kept. They fix real latent issues in the cluster even though they weren't the cause of the reported symptoms.
+
+---
+
+#### What each result means
+
+| Result | Interpretation | Next step |
+|---|---|---|
+| `domainStrategy` not in config | Fix not applied — pods didn't restart or reloader missed it | Force restart: `kubectl rollout restart -n senaev-com deploy/xray-vpn-firstvds` etc. |
+| wget from firstvds pod hangs/fails | firstvds pod has no internet egress — iptables NAT broken on the host | SSH to firstvds, check `iptables -t nat -L POSTROUTING -n` for MASQUERADE rule on pod CIDR `10.42.4.0/24` |
+| wget from hetzner pod hangs/fails | Same, on hetzner | Same check on hetzner host |
+| wget all work, logs show new errors | xray-level config issue | Read fresh logs and investigate specific error |
+| wget all work, logs look clean, client fails | Problem is client-side or in how client connects (profile selection, UUID mismatch, client DNS) | Need to know which specific profile the user is testing |

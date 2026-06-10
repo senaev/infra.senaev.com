@@ -66,6 +66,16 @@
 {{- $outbounds = append $outbounds (dict
   "tag" "outbound-freedom"
   "protocol" "freedom"
+  "settings" (dict "domainStrategy" "UseIPv4")
+) -}}
+{{- $outbounds = append $outbounds (dict
+  "tag" "outbound-blackhole"
+  "protocol" "blackhole"
+) -}}
+{{- $rules = append $rules (dict
+  "type" "field"
+  "ip" (list "::/0")
+  "outboundTag" "outbound-blackhole"
 ) -}}
 {{- $rules = append $rules (dict
   "type" "field"
