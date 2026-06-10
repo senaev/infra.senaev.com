@@ -419,3 +419,15 @@ kubectl logs -n senaev-com deploy/xray-vpn-firstvds -f 2>&1 \
 | wget from hetzner pod hangs/fails | Same, on hetzner | Same check on hetzner host |
 | wget all work, logs show new errors | xray-level config issue | Read fresh logs and investigate specific error |
 | wget all work, logs look clean, client fails | Problem is client-side or in how client connects (profile selection, UUID mismatch, client DNS) | Need to know which specific profile the user is testing |
+
+---
+
+### 2026-06-10 — firstvds full OS reinstall (no IP change) — did not help
+
+The firstvds VPS was completely reinstalled from scratch (fresh OS, no software pre-installed) while keeping the **same IP address**. After reinstall, the problem persisted identically — firstvds entry profiles still blocked on most ISPs, Hetzner entry profiles still work everywhere.
+
+**Interpretation:** This conclusively rules out any server-side software, configuration, or OS state as the cause. The IP address is the only constant across the reinstall, and the blocking behavior follows the IP. Combined with the earlier observation that the *website* (`senaev.ru`) loads fine on the same IP+port, this further confirms the blocking is **behavioral DPI** reacting to the VPN traffic pattern, not an IP/port blacklist. The ISP's DPI classifies firstvds's IP range (Russian hosting) as higher-risk and applies stricter traffic analysis — enough to disrupt Reality tunnels while passing normal HTTPS.
+
+**Rules out:** any hypothesis involving firewall misconfiguration, leftover xray state, OS-level routing issues, or anything fixable by a server-side change that doesn't involve the IP or transport-layer traffic pattern.
+
+**Remaining options:** Option B (XHTTP/WebSocket transport obfuscation) or Option C (move entry point to a non-Russian IP). A bare IP change at firstvds (substituting a new IP from the same Russian provider) is worth trying but may not help if the entire provider's ASN is under aggressive DPI.
