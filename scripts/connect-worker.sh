@@ -21,5 +21,5 @@ echo "👉 [connect-worker] Rsyncing provisioning files for worker=[$ADDRESS]"
 echo "✅ [connect-worker] Provisioning files synced for worker=[$ADDRESS]"
 
 echo "👉 [connect-worker] Running bootstrap script on node=[$ADDRESS] with vps=[${VPS}]"
-ssh "$ADDRESS" "sudo $K3S_CLUSTER_PATH/provisioning/worker/bootstrap-worker.sh $CONTROL_PLANE_SERVER_URL $NODE_TOKEN $VPS"
+ssh -J "$CONTROL_PLANE_SERVER_USERNAME@$CONTROL_PLANE_SERVER_IP" "$ADDRESS" "sudo $K3S_CLUSTER_PATH/provisioning/worker/bootstrap-worker.sh $CONTROL_PLANE_SERVER_URL $NODE_TOKEN $VPS"
 echo "✅ [connect-worker] Bootstrap script run on node=[$ADDRESS] with vps=[${VPS}]"

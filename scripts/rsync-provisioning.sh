@@ -17,6 +17,9 @@ PROVISIONING_PATH="$K3S_CLUSTER_PATH/provisioning"
 REMOTE_DEST="$ADDRESS:$PROVISIONING_PATH/"
 
 SSH_OPTS=(-o StrictHostKeyChecking=ask)
+if [[ "$ADDRESS" != *"$CONTROL_PLANE_SERVER_IP"* ]]; then
+  SSH_OPTS+=(-J "$CONTROL_PLANE_SERVER_USERNAME@$CONTROL_PLANE_SERVER_IP")
+fi
 
 echo "👉 [rsync-provisioning] Creating k3s cluster path on [$REMOTE_DEST]"
 ssh "${SSH_OPTS[@]}" "$ADDRESS" "sudo mkdir -p $K3S_CLUSTER_PATH && sudo chown -R \$USER:\$USER $K3S_CLUSTER_PATH"
