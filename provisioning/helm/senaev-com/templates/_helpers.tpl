@@ -2,6 +2,7 @@
 {{- $instance := .instance -}}
 {{- $root := .root -}}
 {{- $publicInboundEnabled := not (empty $instance.realityServerName) -}}
+{{- $isXhttp := eq ($instance.transport | default "") "xhttp" -}}
 {{- $inbounds := list -}}
 {{- $rules := list -}}
 {{- $clients := list -}}
@@ -10,7 +11,7 @@
     {{- $clients = append $clients (dict
       "email" $profile.user
       "id" $profile.uuidMacro
-      "flow" "xtls-rprx-vision"
+      "flow" (ternary "" "xtls-rprx-vision" $isXhttp)
     ) -}}
     {{- $rules = append $rules (dict
       "type" "field"
@@ -21,6 +22,19 @@
   {{- end -}}
 {{- end -}}
 {{- if $publicInboundEnabled }}
+  {{- $streamSettings := dict
+    "network" (ternary "xhttp" "tcp" $isXhttp)
+    "security" "reality"
+    "realitySettings" (dict
+      "dest" (printf "traefik-%s.traefik.svc.cluster.local:8443" $instance.vps)
+      "serverNames" (list $instance.realityServerName)
+      "privateKey" "{XRAY_REALITY_PRIVATE_KEY}"
+      "shortIds" (list "")
+    )
+  -}}
+  {{- if $isXhttp -}}
+    {{- $_ := set $streamSettings "xhttpSettings" (dict "path" "/api/v1/data" "host" $instance.realityServerName) -}}
+  {{- end -}}
   {{- $inbounds = append $inbounds (dict
     "tag" (printf "inbound-%s" $instance.name)
     "port" 443
@@ -29,16 +43,7 @@
       "clients" $clients
       "decryption" "none"
     )
-    "streamSettings" (dict
-      "network" "tcp"
-      "security" "reality"
-      "realitySettings" (dict
-        "dest" (printf "traefik-%s.traefik.svc.cluster.local:8443" $instance.vps)
-        "serverNames" (list $instance.realityServerName)
-        "privateKey" "{XRAY_REALITY_PRIVATE_KEY}"
-        "shortIds" (list "")
-      )
-    )
+    "streamSettings" $streamSettings
   ) -}}
 {{- end -}}
 {{- $inbounds = append $inbounds (dict
@@ -66,6 +71,16 @@
 {{- $outbounds = append $outbounds (dict
   "tag" "outbound-freedom"
   "protocol" "freedom"
+  "settings" (dict "domainStrategy" "UseIPv4")
+) -}}
+{{- $outbounds = append $outbounds (dict
+  "tag" "outbound-blackhole"
+  "protocol" "blackhole"
+) -}}
+{{- $rules = append $rules (dict
+  "type" "field"
+  "ip" (list "::/0")
+  "outboundTag" "outbound-blackhole"
 ) -}}
 {{- $rules = append $rules (dict
   "type" "field"
@@ -73,7 +88,11 @@
   "outboundTag" "outbound-freedom"
 ) -}}
 {{- $config := dict
-  "log" (dict "loglevel" "warning")
+  "log" (dict
+    "access" "/dev/stdout"
+    "error" "/dev/stderr"
+    "loglevel" "debug"
+  )
   "inbounds" $inbounds
   "outbounds" $outbounds
   "routing" (dict "rules" $rules)

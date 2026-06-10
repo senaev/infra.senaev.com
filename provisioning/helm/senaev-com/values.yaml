@@ -26,6 +26,7 @@ xrayVpn:
     - name: xray-vpn-firstvds
       vps: firstvds
       realityServerName: senaev.ru
+      transport: xhttp
       profiles:
         - user: user-socks
           uuidMacro: "{XRAY_USER_UUID:1}"
@@ -204,10 +205,12 @@ vpnSubscription:
   enabled: true
   vps: hetzner
   entries:
+    - name: "💄 0. firstvds → freedom"
+      link: "vless://{XRAY_USER_UUID:4}@senaev.ru:443?type=xhttp&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid=&path=%2Fapi%2Fv1%2Fdata"
     - name: "🇳🇱 1. firstvds → vultr"
-      link: "vless://{XRAY_USER_UUID:6}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
+      link: "vless://{XRAY_USER_UUID:6}@senaev.ru:443?type=xhttp&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid=&path=%2Fapi%2Fv1%2Fdata"
     - name: "🇫🇮 2. firstvds → hetzner"
-      link: "vless://{XRAY_USER_UUID:1}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
+      link: "vless://{XRAY_USER_UUID:1}@senaev.ru:443?type=xhttp&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid=&path=%2Fapi%2Fv1%2Fdata"
     - name: "🇷🇺 3. hetzner → firstvds"
       link: "vless://{XRAY_USER_UUID:2}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
     - name: "🇷🇺 4. hetzner → senaev-media"

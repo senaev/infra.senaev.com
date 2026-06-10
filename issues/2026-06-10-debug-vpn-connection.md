@@ -333,19 +333,80 @@ helm upgrade senaev-com provisioning/helm/senaev-com -n senaev-com
 
 ---
 
-## Final Resolution
+## Narrowed symptom (key finding — updated)
 
-**Root cause of the reported "no internet":** The user's mobile phone had an underlying internet connectivity problem unrelated to the VPN. The VPN was routing traffic correctly throughout the investigation — xray logs consistently showed active connections (YouTube, Google, Apple, hh.ru) flowing through all firstvds profiles.
+**firstvds entry profiles work on WeWork WiFi and Vodafone. They fail on most other carriers and networks, including friends on different ISPs.**
 
-**Lesson:** always rule out client-side issues (phone connectivity, airplane mode, carrier outage, VPN app state) before debugging the server — especially when server-side logs show traffic flowing correctly.
+- `senaev.ru` website loads fine everywhere (basic HTTPS not blocked)
+- Hetzner entry profiles (senaev.com) work everywhere
+- firstvds entry profiles (senaev.ru) fail on most ISPs; only WeWork + Vodafone pass
 
-**Improvements made during investigation (kept, correct):**
+This is an **ISP-level DPI/filtering** problem. Most ISPs block or disrupt the Reality VPN tunnel to firstvds specifically. Vodafone and WeWork happen to not apply this filtering (different DPI vendors, policies, or bypass rules).
 
-1. **`"domainStrategy": "UseIPv4"` on all freedom outbounds** — prevents xray from attempting IPv6 connections when resolving domain names. All k3s pods run flannel over tailscale0 which is IPv4-only; without this, any domain returning AAAA first would silently hang.
+### Why the website loads but VPN doesn't
 
-2. **IPv6 blackhole routing rule (`::/0 → outbound-blackhole`)** — immediately rejects connections to any explicit IPv6 destination. Without this, clients sending DNS queries directly to IPv6 DNS servers (e.g. `2001:4860:4860::8888`) get a timeout rather than fast fallback to IPv4.
+Both use port 443. The difference:
+- Regular HTTPS (Traefik) has a standard TLS fingerprint — passes DPI cleanly
+- VLESS+Reality uses uTLS to mimic Chrome, but the connection has traffic patterns (sustained throughput, no Host header, no HTTP payload) that modern DPI systems recognise as a proxy tunnel even through the TLS camouflage
 
-Both changes are correct and should be kept. They fix real latent issues in the cluster even though they weren't the cause of the reported symptoms.
+### Why hetzner works but firstvds doesn't
+
+Two likely reasons (possibly both):
+1. **IP geography**: firstvds is a Russian hosting provider. Many ISPs apply more aggressive DPI to Russian datacenter IP ranges, especially post-2022. Hetzner (Finnish/EU IP) gets lighter scrutiny.
+2. **IP reputation**: firstvds's specific IP may be on DPI rule lists as a known proxy host.
+
+### Immediate workaround
+
+The hetzner entry profiles (🇷🇺 3. hetzner → firstvds and 🇷🇺 4. hetzner → senaev-media) work universally. Users on blocked carriers should use those. The firstvds entry profiles are only useful for Vodafone/WeWork users who want a Russian exit IP.
+
+### DPI theory — tests and conclusions
+
+**Test 1 (2026-06-10):** Tailed `xray-vpn-firstvds` logs while connecting from a blocked carrier — complete silence. No `authentication failed`, no `from … accepted`. TCP is being dropped before it reaches xray.
+
+**Test 2 (2026-06-10):** Changed `realityServerName` to `www.microsoft.com`, deployed, tested on blocked carrier — still blocked. Reverted to `senaev.ru`.
+
+**Key logical deduction:** Both the website (`senaev.ru`) and the VPN use the same IP, same port (443), same SNI. The website works on all carriers. Therefore the ISP is NOT filtering on IP, port, or SNI. The DPI must be detecting **post-handshake traffic behavior**: sustained bidirectional throughput, no HTTP structure, large frames — patterns characteristic of a proxy tunnel, invisible to TLS inspection but visible to behavioral analysis. Modern TSPU-class DPI boxes (deployed widely by Russian ISPs) do exactly this.
+
+**Option A is ruled out** — SNI change has no effect on behavioral DPI.
+
+### Fix options (in order of effort)
+
+**~~Option A — Change `realityServerName` for firstvds~~** (ruled out — see DPI tests above)
+
+The current SNI is `senaev.ru`. Changing it to a high-traffic trusted domain (e.g. `www.microsoft.com`, `www.apple.com`) changes what the connection *looks like* to DPI. DPI that pattern-matches on suspicious Russian domains would stop triggering. Note: sophisticated DPI that checks SNI↔IP consistency would still flag it, but simpler DPI wouldn't.
+
+Change in `values.yaml`:
+```yaml
+- name: xray-vpn-firstvds
+  realityServerName: www.microsoft.com   # was: senaev.ru
+```
+
+The `dest` (Traefik fallback) still serves senaev.ru — only the SNI the VPN accepts changes. Clients' subscription links would need updating.
+
+**Option B — Add a transport layer** (medium effort)
+
+Switch firstvds from raw TCP to XHTTP (HTTP/1.1 wrapped) or WebSocket transport. This makes the traffic look like ordinary HTTP/S web traffic to DPI, not a proxy connection pattern. Harder to detect than raw TCP Reality.
+
+**Option C — Move the entry point to a non-Russian IP** (architectural)
+
+Add a new entry point on a non-Russian VPS (another Hetzner node, a Vultr node, etc.). firstvds would then only be used as an *exit* node (the chain hop), not as the inbound that faces the internet directly. This is the most reliable long-term fix.
+
+### Next debugging step — confirm Reality auth is failing
+
+While on a blocked carrier, try connecting to a firstvds profile while tailing the logs:
+```bash
+kubectl logs -n senaev-com deploy/xray-vpn-firstvds -f 2>&1 \
+  | grep -v XtlsPadding | grep -v ReshapeMultiBuffer
+```
+
+- `REALITY: processed invalid connection … authentication failed` → Reality handshake is being disrupted by the ISP's DPI (the most likely case)
+- Complete silence (no log entry at all) → connection is being dropped before it even reaches xray — ISP is blocking at TCP level
+- `from ... accepted ...` followed by nothing → Reality auth succeeded but data transfer is disrupted
+
+### Improvements made during investigation (kept, correct regardless)
+
+1. **`"domainStrategy": "UseIPv4"` on all freedom outbounds** — prevents xray from attempting IPv6 connections when resolving domain names.
+2. **IPv6 blackhole routing rule (`::/0 → outbound-blackhole`)** — fast-rejects IPv6 destinations so clients fall back to IPv4 immediately.
 
 ---
 
