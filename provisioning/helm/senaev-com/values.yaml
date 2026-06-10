@@ -204,8 +204,6 @@ vpnSubscription:
   enabled: true
   vps: hetzner
   entries:
-    - name: "💄 0. firstvds → freedom"
-      link: "vless://{XRAY_USER_UUID:4}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
     - name: "🇳🇱 1. firstvds → vultr"
       link: "vless://{XRAY_USER_UUID:6}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
     - name: "🇫🇮 2. firstvds → hetzner"
