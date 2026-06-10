@@ -73,7 +73,11 @@
   "outboundTag" "outbound-freedom"
 ) -}}
 {{- $config := dict
-  "log" (dict "loglevel" "warning")
+  "log" (dict
+    "access" "/dev/stdout"
+    "error" "/dev/stderr"
+    "loglevel" "debug"
+  )
   "inbounds" $inbounds
   "outbounds" $outbounds
   "routing" (dict "rules" $rules)
