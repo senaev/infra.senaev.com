@@ -431,3 +431,17 @@ The firstvds VPS was completely reinstalled from scratch (fresh OS, no software 
 **Rules out:** any hypothesis involving firewall misconfiguration, leftover xray state, OS-level routing issues, or anything fixable by a server-side change that doesn't involve the IP or transport-layer traffic pattern.
 
 **Remaining options:** Option B (XHTTP/WebSocket transport obfuscation) or Option C (move entry point to a non-Russian IP). A bare IP change at firstvds (substituting a new IP from the same Russian provider) is worth trying but may not help if the entire provider's ASN is under aggressive DPI.
+
+---
+
+### 2026-06-11 — Option B (XHTTP transport) — did not help, reverted
+
+XHTTP transport was deployed on firstvds (`transport: xhttp` in `values.yaml`, subscription links switched to `type=xhttp&path=/api/v1/data`). DPI blocking on affected carriers persisted — no improvement observed.
+
+**Interpretation:** XHTTP wraps xray traffic in HTTP/1.1 framing, but TSPU-class DPI can still identify the Reality+VLESS pattern through connection behavior (timing, payload sizes, lack of HTTP semantics beyond headers). The carrier DPI is more sophisticated than SNI or transport-type inspection.
+
+**~~Option B — XHTTP transport~~** (ruled out — no effect on behavioral DPI)
+
+Reverted: removed `transport: xhttp` from firstvds instance, subscription links reverted to `type=tcp&flow=xtls-rprx-vision`. Also added "💄 5. hetzner → freedom" as a new direct-exit profile on hetzner (no chain hop, exits from hetzner IP).
+
+**Only remaining option: Option C — move entry point to a non-Russian IP.** firstvds will remain as a chain *exit* only.
