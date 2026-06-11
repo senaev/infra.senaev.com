@@ -2,7 +2,6 @@
 {{- $instance := .instance -}}
 {{- $root := .root -}}
 {{- $publicInboundEnabled := not (empty $instance.realityServerName) -}}
-{{- $isXhttp := eq ($instance.transport | default "") "xhttp" -}}
 {{- $inbounds := list -}}
 {{- $rules := list -}}
 {{- $clients := list -}}
@@ -11,7 +10,7 @@
     {{- $clients = append $clients (dict
       "email" $profile.user
       "id" $profile.uuidMacro
-      "flow" (ternary "" "xtls-rprx-vision" $isXhttp)
+      "flow" "xtls-rprx-vision"
     ) -}}
     {{- $rules = append $rules (dict
       "type" "field"
@@ -23,7 +22,7 @@
 {{- end -}}
 {{- if $publicInboundEnabled }}
   {{- $streamSettings := dict
-    "network" (ternary "xhttp" "tcp" $isXhttp)
+    "network" "tcp"
     "security" "reality"
     "realitySettings" (dict
       "dest" (printf "traefik-%s.traefik.svc.cluster.local:8443" $instance.vps)
@@ -32,9 +31,6 @@
       "shortIds" (list "")
     )
   -}}
-  {{- if $isXhttp -}}
-    {{- $_ := set $streamSettings "xhttpSettings" (dict "path" "/api/v1/data" "host" $instance.realityServerName) -}}
-  {{- end -}}
   {{- $inbounds = append $inbounds (dict
     "tag" (printf "inbound-%s" $instance.name)
     "port" 443
