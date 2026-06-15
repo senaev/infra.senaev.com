@@ -1,0 +1,76 @@
+# Overrides for the upstream `datadog` subchart (see Chart.yaml dependency).
+# Everything is nested under the `datadog:` key because that is the dependency
+# name; the chart's own top-level `datadog`/`clusterAgent`/`agents` keys live
+# one level down.
+datadog:
+  datadog:
+    site: datadoghq.eu
+    clusterName: senaev-k3s
+
+    # Credentials come from the `datadog-secrets` Secret synced by External
+    # Secrets (see templates/external-secret.yaml). The chart reads the
+    # `api-key` key.
+    apiKeyExistingSecret: datadog-secrets
+
+    # --- K3s specifics ---
+    # K3s kubelet serves a self-signed cert over the node IP; the agent cannot
+    # verify it (sets DD_KUBELET_TLS_VERIFY=false).
+    kubelet:
+      tlsVerify: false
+    # K3s embeds containerd at a non-standard socket path.
+    criSocketPath: /run/k3s/containerd/containerd.sock
+
+    # --- Kubernetes insights / infra metrics ---
+    kubeStateMetricsCore:
+      enabled: true
+    orchestratorExplorer:
+      enabled: true
+
+    # --- LOGS (priority) ---
+    # The node Agent tails /var/log/pods on its own node, so log collection is
+    # node-local: with the DaemonSet pinned to particular nodes (see the
+    # `agents` affinity below), these settings collect logs from every container
+    # on those nodes. Cluster-wide K8s resource insights (pods/nodes on all
+    # VPSes) still come from the Cluster Agent via orchestratorExplorer.
+    logs:
+      enabled: true
+      containerCollectAll: true
+      containerCollectUsingFiles: true
+
+    # --- Live processes + live containers ---
+    processAgent:
+      processCollection: true
+
+    # APM left disabled for now (possible fast-follow). DogStatsD available for
+    # custom application metrics.
+    dogstatsd:
+      useHostPort: true
+      nonLocalTraffic: true
+    operator:
+      enabled: false
+
+  # Cluster Agent: required for orchestratorExplorer, KSM core and cluster
+  # checks. Pinned to the control plane, matching the existing operator-pinning
+  # convention (vault, vm-operator).
+  clusterAgent:
+    enabled: true
+    nodeSelector:
+      vps: hetzner
+
+  # Node Agent DaemonSet: restricted to the media node and the control plane via
+  # node affinity on the `vps` label. No taints exist today, but tolerate
+  # everything defensively so future taints don't silently drop these nodes.
+  agents:
+    enabled: true
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: vps
+                  operator: In
+                  values:
+                    - senaev-media
+                    - hetzner
+    tolerations:
+      - operator: Exists
