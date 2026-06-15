@@ -99,7 +99,7 @@ spec:
               mountPath: /out
       containers:
         - name: xray-vpn
-          image: teddysun/xray:26.2.6
+          image: teddysun/xray:26.6.1
           ports:
             - containerPort: 443
             - containerPort: 1080

@@ -204,6 +204,8 @@ vpnSubscription:
   enabled: true
   vps: hetzner
   entries:
+    - name: "💄 0. firstvds → freedom"
+      link: "vless://{XRAY_USER_UUID:4}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
     - name: "🇳🇱 1. firstvds → vultr"
       link: "vless://{XRAY_USER_UUID:6}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
     - name: "🇫🇮 2. firstvds → hetzner"
@@ -212,6 +214,8 @@ vpnSubscription:
       link: "vless://{XRAY_USER_UUID:2}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
     - name: "🇷🇺 4. hetzner → senaev-media"
       link: "vless://{XRAY_USER_UUID:3}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
+    - name: "💄 5. hetzner → freedom"
+      link: "vless://{XRAY_USER_UUID:5}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
 
 ingress:
   entries:
