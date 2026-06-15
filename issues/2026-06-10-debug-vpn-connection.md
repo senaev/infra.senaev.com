@@ -12,7 +12,7 @@
 
 ## Context (architecture refresher)
 
-From `CLAUDE.VPN.md` + `provisioning/helm/senaev-com/`: each VPS pod runs Xray with a Reality inbound on :443 and a socks inbound on :1080. The :443 socket is shared with Traefik via SNI — if the connection is Reality (correct uTLS + UUID), Xray handles it; otherwise it's forwarded raw to Traefik. That's exactly why `senaev.ru` still works while VPN doesn't.
+From `AGENTS.VPN.md` + `provisioning/helm/senaev-com/`: each VPS pod runs Xray with a Reality inbound on :443 and a socks inbound on :1080. The :443 socket is shared with Traefik via SNI — if the connection is Reality (correct uTLS + UUID), Xray handles it; otherwise it's forwarded raw to Traefik. That's exactly why `senaev.ru` still works while VPN doesn't.
 
 firstvds (`values.yaml:26–38`) exposes **3 client profiles** to end users:
 
