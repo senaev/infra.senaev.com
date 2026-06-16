@@ -77,7 +77,7 @@ async function prowlarrApiCall<T>({
     console.log(
         `✅ Prowlarr API call finished method=[${method}], path=[${path}], status=[${response.status}], responseSize=[${rawBody.length}]`,
     );
-    console.log(`✅ Request prowlarr api`, prettyStringify(result));
+    console.log(`✅ Request prowlarr api result=[${prettyStringify(result)}]`);
 
     return result;
 }

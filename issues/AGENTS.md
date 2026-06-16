@@ -84,6 +84,20 @@ output goes here in dated subsections appended during the session.
   command, and result. If the fix didn't work, annotate the fix option with "did not help"
   and move to the next hypothesis.
 
+## MANDATORY: update the issue file during the session
+
+**Every time the user pastes command output, Claude MUST immediately append it to the
+issue file under `## Findings` before responding.** Do not wait until the end of the
+session — the chat is ephemeral, the file is not.
+
+Checklist after each user message with command output:
+1. `Edit` the issue file — append the output and interpretation under `## Findings`.
+2. Then respond to the user in chat.
+
+When the fix is applied, append a `### Fix applied — YYYY-MM-DD` subsection with the
+exact command used and the result. When the investigation is complete, append a
+`## Resolution` section summarising root cause, fix, and any open questions.
+
 ## Collaboration model (for agents)
 
 You propose; the user runs. Never run `kubectl exec`, SSH, or any command that modifies
