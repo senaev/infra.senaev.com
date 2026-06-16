@@ -21,12 +21,8 @@ if [[ "$ADDRESS" != *"$CONTROL_PLANE_SERVER_IP"* ]]; then
   SSH_OPTS+=(-J "$CONTROL_PLANE_SERVER_USERNAME@$CONTROL_PLANE_SERVER_IP")
 fi
 
-echo "👉 [rsync-provisioning] Creating k3s cluster path on [$REMOTE_DEST]"
-ssh "${SSH_OPTS[@]}" "$ADDRESS" "sudo mkdir -p $K3S_CLUSTER_PATH && sudo chown -R \$USER:\$USER $K3S_CLUSTER_PATH"
-echo "✅ [rsync-provisioning] k3s cluster path created on [$REMOTE_DEST]"
-
 echo "👉 [rsync-provisioning] Creating provisioning directory on [$REMOTE_DEST]"
-ssh "${SSH_OPTS[@]}" "$ADDRESS" "mkdir -p $PROVISIONING_PATH"
+ssh "${SSH_OPTS[@]}" "$ADDRESS" "sudo mkdir -p $PROVISIONING_PATH && sudo chown -R \$USER:\$USER $PROVISIONING_PATH"
 echo "✅ [rsync-provisioning] Provisioning directory created on [$REMOTE_DEST]"
 
 echo "👉 [rsync-provisioning] Rsyncing provisioning files to [$REMOTE_DEST]"

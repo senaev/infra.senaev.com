@@ -207,17 +207,99 @@ a symptom of A, not an independent cause).
 
 ---
 
+### 2026-06-16 — Root cause identified (Round 2)
+
+SSH'd to hetzner and ran `journalctl` filtered for chown/chmod/prowlarr/volumes on June 7.
+
+**Smoking gun — journal output:**
+```
+Jun 07 15:41:22 hetzner sudo[3223885]: root : PWD=/root ; USER=root ; COMMAND=/usr/bin/chown -R root:root /k3s-cluster
+Jun 07 15:43:11 hetzner sudo[3224684]: root : PWD=/root ; USER=root ; COMMAND=/usr/bin/chown -R root:root /k3s-cluster
+Jun 07 18:47:27 hetzner sudo[3293219]: root : PWD=/root ; USER=root ; COMMAND=/usr/bin/chown -R root:root /k3s-cluster
+Jun 07 19:15:09 hetzner sudo[3304219]: root : PWD=/root ; USER=root ; COMMAND=/usr/bin/chown -R root:root /k3s-cluster
+Jun 07 19:27:43 hetzner sudo[3310057]: root : PWD=/root ; USER=root ; COMMAND=/usr/bin/chown -R root:root /k3s-cluster
+```
+Interpretation: `chown -R root:root /k3s-cluster` was run **5 times on June 7**,
+interspersed with K3s pod restart activity (visible in the surrounding journal lines).
+This recursively reset ownership of every file under `/k3s-cluster/` — including all
+running pods' hostPath-mounted data directories — to root. Prowlarr's pod kept running
+but all its DB files became root-owned and unwritable by uid 1000.
+
+**Scope check — `find /k3s-cluster/volumes -not -user 1000`:**
+```
+/k3s-cluster/volumes            root:root
+/k3s-cluster/volumes/webdav     root:root  (+ subdirs)
+/k3s-cluster/volumes/webhook-endpoint  root:root  (+ subdirs)
+/k3s-cluster/volumes/traefik    root:root  (+ acme.json)
+/k3s-cluster/volumes/prowlarr   root:root
+```
+Interpretation: All four hostPath volumes were affected. `traefik/acme/acme.json` is
+also root-owned — traefik may have had similar write issues but was less visible because
+it doesn't log a recurring error for readonly state.
+
+No cron jobs or backup services found that could explain it — this was a manual command.
+
+---
+
 ### Fix applied — 2026-06-16
 
 ```bash
 kubectl rollout restart -n senaev-com deploy/prowlarr
 ```
 
-The `fix-permissions` initContainer re-ran as root, executed
-`chown -R 1000:1000 /config && chmod -R u+rwX,g+rwX /config`, verified no files remained
-non-writable, and the main container started.
+The `fix-permissions` initContainer re-ran as root, `chown -R 1000:1000 /config &&
+chmod -R u+rwX,g+rwX /config`, verified clean, main container started. Confirmed by
+`stat /k3s-cluster/volumes/prowlarr/config/` showing `Uid: 1000` after restart.
 
-**Open question:** Something on the hetzner host changed ownership of the hostPath
-directory to root around June 7. The restart fixes it now but the cause is unknown —
-could recur. Worth checking host-level cron jobs, backup agents, or any `sudo` operations
-touching the cluster data directory.
+---
+
+### 2026-06-16 — True root cause: bug in rsync-provisioning.sh
+
+The `chown -R root:root /k3s-cluster` commands were not run manually. They came from
+`scripts/rsync-provisioning.sh` line 25:
+
+```bash
+ssh ... "sudo mkdir -p $K3S_CLUSTER_PATH && sudo chown -R \$USER:\$USER $K3S_CLUSTER_PATH"
+```
+
+`\$USER` is escaped so it evaluates on the remote server — where the SSH user is `root`.
+This makes it `chown -R root:root /k3s-cluster` on every deploy. It was run 5 times on
+June 7 during a deployment/debug session, nuking ownership of all hostPath volumes.
+
+The intent was to make the `provisioning/` directory writable for rsync. The bug: the
+chown targets the entire cluster root (`$K3S_CLUSTER_PATH`) instead of just the
+provisioning subdirectory (`$PROVISIONING_PATH`).
+
+**Code fix applied** — scoped the chown and mkdir to `$PROVISIONING_PATH` only, and
+merged the two ssh calls into one:
+
+```bash
+# Before (buggy):
+ssh ... "sudo mkdir -p $K3S_CLUSTER_PATH && sudo chown -R \$USER:\$USER $K3S_CLUSTER_PATH"
+ssh ... "mkdir -p $PROVISIONING_PATH"
+
+# After (fixed):
+ssh ... "sudo mkdir -p $PROVISIONING_PATH && sudo chown -R \$USER:\$USER $PROVISIONING_PATH"
+```
+
+File changed: `scripts/rsync-provisioning.sh`
+
+---
+
+## Resolution
+
+**Root cause:** `scripts/rsync-provisioning.sh` contained a bug: on every deploy it ran
+`chown -R root:root /k3s-cluster` on the hetzner host (because `\$USER` evaluates to
+`root` on the remote). This recursively reset ownership of all hostPath volume data —
+`prowlarr`, `traefik`, `webdav`, `webhook-endpoint` — to root. Prowlarr's pod kept
+running but could not write to its SQLite database from June 7 onward, causing the
+30-second scheduler error and empty search results.
+
+**Immediate fix:** `kubectl rollout restart -n senaev-com deploy/prowlarr` — the
+`fix-permissions` initContainer repaired `/config` ownership on pod start.
+
+**Permanent fix:** Scoped the chown in `rsync-provisioning.sh` to `$PROVISIONING_PATH`
+instead of `$K3S_CLUSTER_PATH`. Future deploys will no longer touch volume directories.
+
+**Also affected:** `traefik/acme/acme.json` is still root-owned — traefik should also be
+restarted to restore write access before its next cert renewal.
