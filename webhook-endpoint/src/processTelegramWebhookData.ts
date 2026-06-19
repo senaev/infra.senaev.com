@@ -1,6 +1,7 @@
 import { isObject } from "senaev-utils/src/utils/Object/isObject";
 import { TelegramMessage, TelegramUser } from "senaev-utils/src/utils/TelegramApi/types";
 import { TG_CLUSTER_CHAT_ID, TG_MEDIA_SERVER_CHAT_ID } from "./env";
+import { logger } from "./logger";
 import { processClusterChatMessage } from "./processClusterChatMessage";
 import {
     processMediaServerCallbackQuery,
@@ -15,7 +16,7 @@ export async function processTelegramWebhookData({
     botUser: TelegramUser;
     update: Record<string, unknown>;
 }): Promise<void> {
-    console.log(`👉 processTelegramWebhookData`);
+    logger.info("👉 processTelegramWebhookData");
     const { callback_query, message } = update;
 
     if (isObject(callback_query)) {
@@ -31,8 +32,9 @@ export async function processTelegramWebhookData({
             );
         }
 
-        console.log(
-            `👀 Received callback query in media server chat, callbackQueryId=[${callback_query.id}]`,
+        logger.info(
+            { callbackQueryId: callback_query.id },
+            "🆕 Received callback query in media server chat",
         );
         await processMediaServerCallbackQuery({
             callbackQuery: callback_query as unknown as TelegramCallbackQuery,
@@ -58,7 +60,7 @@ export async function processTelegramWebhookData({
     }
 
     if (senderId === botUser.id) {
-        console.error("🤖 Ignoring message sent by the bot itself");
+        logger.info("🤖 Ignoring message sent by the bot itself");
         return;
     }
 
@@ -72,8 +74,9 @@ export async function processTelegramWebhookData({
     }
 
     if (chatIdStr === TG_MEDIA_SERVER_CHAT_ID) {
-        console.log(
-            `👀 Received new message in media server chat, messageId=[${message.message_id}]`,
+        logger.info(
+            { messageId: message.message_id },
+            "🆕 Received new message in media server chat",
         );
         await processMediaServerChatMessage({
             botUser,
@@ -83,7 +86,7 @@ export async function processTelegramWebhookData({
     }
 
     if (chatIdStr === TG_CLUSTER_CHAT_ID) {
-        console.log(`👀 Received new message in cluster chat, messageId=[${message.message_id}]`);
+        logger.info({ messageId: message.message_id }, "🆕 Received new message in cluster chat");
         processClusterChatMessage(message as TelegramMessage);
         return;
     }

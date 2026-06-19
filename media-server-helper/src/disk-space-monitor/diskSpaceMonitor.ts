@@ -1,4 +1,5 @@
 import { DISK_USAGE_PATH, PERCENT_REMOVE_TARGET, PERCENT_TRIGGER_TO_REMOVE } from "../env";
+import { logger } from "../logger";
 import { formatBytes } from "./formatBytes";
 import { getDiskUsage } from "./getDiskUsage";
 import { getFilesToRemove } from "./getFilesToRemove";
@@ -29,10 +30,13 @@ async function checkDiskSpace(): Promise<void> {
 
     const totalBytes = totalBlocks * blockSize;
     const usedBytes = (totalBlocks - availableBlocks) * blockSize;
-    const diskUsageMessage = `✅ Disk usage=[${occupiedPercent.toFixed(2)}]% limit=[${PERCENT_TRIGGER_TO_REMOVE}]% total=[${formatBytes(totalBytes)}] used=[${formatBytes(usedBytes)}] blockSize=[${formatBytes(blockSize)}]`;
+    const diskUsageMessage = `${occupiedPercent.toFixed(2)}% of ${formatBytes(totalBytes)}`;
 
     if (diskUsageMessage !== lastDiskUsageMessage) {
-        console.log(diskUsageMessage);
+        logger.info(
+            { occupiedPercent, totalBytes, usedBytes, blockSize },
+            "💾 Disk usage",
+        );
         lastDiskUsageMessage = diskUsageMessage;
     }
 
@@ -42,13 +46,14 @@ async function checkDiskSpace(): Promise<void> {
     }
 
     if (isRemovingFiles) {
-        console.warn(`⚠️ Still removing files from previous check.`);
+        logger.warn("⚠️ Still removing files from previous check");
         return;
     }
 
     const { percentToRemove, bytesToRemove } = removeInfo;
-    console.warn(
-        `👉 Disk usage above threshold=[${PERCENT_TRIGGER_TO_REMOVE}%], need to remove=[${percentToRemove.toFixed(2)}]% bytes=[${formatBytes(bytesToRemove)}]`,
+    logger.warn(
+        { percentTrigger: PERCENT_TRIGGER_TO_REMOVE, percentToRemove, bytesToRemove },
+        "⚠️ Disk usage above threshold, need to remove files",
     );
 
     const { filesToRemove, filesToRemoveSizeBytes } = await getFilesToRemove({
@@ -56,15 +61,18 @@ async function checkDiskSpace(): Promise<void> {
         pathToRemoveFiles: DOWNLOADS_DIR,
     });
 
-    console.log(
-        `🗑️ Selected files to remove count=[${filesToRemove.length}] size=[${formatBytes(filesToRemoveSizeBytes)}]`,
+    logger.info(
+        {
+            count: filesToRemove.length,
+            sizeBytes: filesToRemoveSizeBytes,
+            files: filesToRemove.map((f) => ({
+                path: f.path,
+                sizeBytes: f.size,
+                createdAt: new Date(f.createdAtMs).toISOString(),
+            })),
+        },
+        "🗑️ Selected files to remove",
     );
-
-    for (const file of filesToRemove) {
-        console.log(
-            `🗂️ file=[${file.path}] size=[${formatBytes(file.size)}] created=[${new Date(file.createdAtMs).toISOString()}]`,
-        );
-    }
 
     isRemovingFiles = true;
     try {
@@ -93,10 +101,9 @@ async function checkDiskSpace(): Promise<void> {
         });
 
         if (notEnoughFilesToRemove) {
-            console.warn(
-                `⚠️ Not enough files to remove. Selected=[${formatBytes(
-                    filesToRemoveSizeBytes,
-                )}] needed=[${formatBytes(bytesToRemove)}]`,
+            logger.warn(
+                { selected: formatBytes(filesToRemoveSizeBytes), needed: formatBytes(bytesToRemove) },
+                "⚠️ Not enough files to remove",
             );
             await sendManualCleanupRequiredNotification({
                 bytesToRemove,
@@ -116,7 +123,7 @@ async function runDiskSpaceMonitor(): Promise<void> {
         try {
             await checkDiskSpace();
         } catch (error) {
-            console.error("❌ Error checking disk space:", error);
+            logger.error(error, "❌ Error checking disk space");
         }
 
         await new Promise((resolve) => setTimeout(resolve, CHECK_INTERVAL_MS));
@@ -125,6 +132,6 @@ async function runDiskSpaceMonitor(): Promise<void> {
 
 export function startDiskSpaceMonitor(): void {
     runDiskSpaceMonitor().catch((error) => {
-        console.error("❌ Error in disk space monitor:", error);
+        logger.error(error, "❌ Error in disk space monitor");
     });
 }

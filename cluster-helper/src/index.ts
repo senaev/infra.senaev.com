@@ -4,11 +4,12 @@ import { sendTelegramMessage } from "senaev-utils/src/utils/TelegramApi/sendTele
 import { handleAlertmanagerWebhook } from "./alerts/handleAlertmanagerWebhook";
 import { TG_MEDIA_SERVER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from "./env";
 import { formatTorrentEvent, isTorrentEvent } from "./qbittorrent/formatTorrentEvent";
+import { logger } from "./logger";
 
 const HOST = "0.0.0.0";
 const PORT = 80;
 
-const server = Fastify();
+const server = Fastify({ loggerInstance: logger });
 let isReady = false;
 
 server.get("/health/live", async (_request, reply) => {
@@ -31,7 +32,7 @@ server.post<{ Body: unknown }>("/alertmanager/webhook", async (request, reply) =
 });
 
 server.post<{ Body: unknown }>("/telegram/send-message", async (request, reply) => {
-    console.log("🆕 Received Telegram send message request:", request.body);
+    logger.info({ body: request.body }, "🆕 Received Telegram send message request");
     await sendTelegramMessage({
         ...(request.body as Omit<Parameters<typeof sendTelegramMessage>[0], "token">),
         token: TG_TOKEN_SENAEV_COM_BOT,
@@ -40,7 +41,7 @@ server.post<{ Body: unknown }>("/telegram/send-message", async (request, reply) 
 });
 
 server.post<{ Body: unknown }>("/qbittorrent/torrent-event", async (request, reply) => {
-    console.log("🆕 Received qBittorrent torrent event:", request.body);
+    logger.info({ body: request.body }, "🆕 Received qBittorrent torrent event");
     if (!isTorrentEvent(request.body)) {
         throw new Error("Invalid qBittorrent torrent event payload");
     }
@@ -58,11 +59,10 @@ async function main(): Promise<void> {
     await getCurrentTelegramBotInfo(TG_TOKEN_SENAEV_COM_BOT);
 
     await server.listen({ port: PORT, host: HOST });
-    console.log(`✅ [cluster-helper] listening on port=[${PORT}]`);
-
-    console.log("✅ Cluster helper is ready");
+    logger.info({ port: PORT }, "✅ Cluster helper listening");
 
     isReady = true;
+    logger.info("✅ Cluster helper is ready");
 }
 
 process.on("SIGTERM", async () => {
@@ -74,6 +74,6 @@ process.on("SIGINT", async () => {
 });
 
 main().catch((err) => {
-    console.error(err);
+    logger.error(err, "❌ Failed to start server");
     process.exit(1);
 });

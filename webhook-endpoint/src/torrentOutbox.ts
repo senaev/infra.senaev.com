@@ -2,6 +2,7 @@ import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promise
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { setTimeout } from "node:timers/promises";
+import { logger } from "./logger";
 
 const MEDIA_SERVER_HELPER_URL = "http://media-server-helper:3000";
 const TORRENT_OUTBOX_DIR = "/torrent-outbox";
@@ -51,7 +52,7 @@ async function runTorrentOutboxProcessor(signal: AbortSignal): Promise<void> {
             if (signal.aborted) {
                 return;
             }
-            console.error("❌ Failed to process torrent outbox", error);
+            logger.error(error, "❌ Failed to process torrent outbox");
         }
     }
 }
@@ -77,9 +78,7 @@ async function processTorrentOutboxItem(itemName: string): Promise<void> {
 
     const payload = await readFile(join(itemDir, fileName));
 
-    console.log(
-        `📤 Sending queued torrent file to media-server-helper: id=[${itemName}], fileName=[${fileName}]`,
-    );
+    logger.info({ itemName, fileName }, "📤 Sending queued torrent file to media-server-helper");
 
     const response = await fetch(`${MEDIA_SERVER_HELPER_URL}/torrent-files`, {
         method: "POST",
@@ -100,5 +99,5 @@ async function processTorrentOutboxItem(itemName: string): Promise<void> {
     }
 
     await rm(itemDir, { recursive: true, force: true });
-    console.log(`✅ Delivered queued torrent file and removed outbox item id=[${itemName}]`);
+    logger.info({ itemName }, "✅ Delivered queued torrent file and removed outbox item");
 }

@@ -1,5 +1,6 @@
 import Fastify, { type FastifyReply } from "fastify";
 import { createHash } from "node:crypto";
+import { logger } from "./logger";
 import {
     PORT,
     SUBSCRIPTION_ENTRIES,
@@ -21,7 +22,7 @@ const subscriptionUrl = `https://vpn-subscription.senaev.com/${VPN_SUBSCRIPTION_
 
 const VPN_SUBSCRIPTION_CHAT_ID = -1003702952069;
 
-const server = Fastify();
+const server = Fastify({ loggerInstance: logger });
 
 const macroValues: Record<string, string> = {
     XRAY_REALITY_PUBLIC_KEY,
@@ -240,7 +241,7 @@ server.post<{ Params: { secret: string } }>("/:secret", async (request, reply) =
 
 async function main(): Promise<void> {
     await server.listen({ port: PORT, host: "0.0.0.0" });
-    console.log(`✅ VPN subscription server listening on port=${PORT}`);
+    logger.info(`✅ VPN subscription server listening on port=${PORT}`);
 }
 
 async function shutdown(): Promise<void> {
@@ -252,6 +253,6 @@ process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);
 
 main().catch((error: unknown) => {
-    console.error(error);
+    logger.error(error, "❌ Failed to start server");
     process.exit(1);
 });

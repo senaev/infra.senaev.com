@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import { isObject } from "senaev-utils/src/utils/Object/isObject";
+import { logger } from "./logger";
 
 const PORT = 3000;
 const BODY_LIMIT_BYTES = 50 * 1024 * 1024;
@@ -24,30 +25,28 @@ function badRequest(message: string): Error & { statusCode: number } {
 export async function runTorrentFileReceiver(
     writeFile: (buffer: Buffer, fileName: string) => string,
 ): Promise<void> {
-    const server = Fastify({ bodyLimit: BODY_LIMIT_BYTES });
+    const server = Fastify({ bodyLimit: BODY_LIMIT_BYTES, loggerInstance: logger });
 
     server.post<{ Body: unknown }>("/torrent-files", async (request, reply) => {
         if (!isTorrentFileRequestBody(request.body)) {
-            console.error("❌ Invalid torrent file request body", {
-                bodyType: typeof request.body,
-                body: request.body,
-            });
+            logger.error(
+                { bodyType: typeof request.body, body: request.body },
+                "❌ Invalid torrent file request body",
+            );
             throw badRequest("Invalid torrent file request body");
         }
 
         const buffer = Buffer.from(request.body.contentBase64, "base64");
         if (buffer.length === 0) {
-            console.error("❌ Received empty torrent file", {
-                fileName: request.body.fileName,
-            });
+            logger.error({ fileName: request.body.fileName }, "❌ Received empty torrent file");
             throw badRequest("Empty torrent file");
         }
 
         const path = writeFile(buffer, request.body.fileName);
-        console.log(`✅ Wrote torrent file from HTTP request to path=[${path}]`);
+        logger.info({ path }, "✅ Wrote torrent file from HTTP request");
         return reply.send("OK");
     });
 
     await server.listen({ port: PORT, host: "0.0.0.0" });
-    console.log(`✅ Torrent file receiver listening on port=[${PORT}]`);
+    logger.info({ port: PORT }, "✅ Torrent file receiver listening");
 }

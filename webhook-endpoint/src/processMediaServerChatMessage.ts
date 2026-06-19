@@ -4,6 +4,7 @@ import { setTelegramMessageReaction } from "senaev-utils/src/utils/TelegramApi/s
 import { TelegramMessage, TelegramUser } from "senaev-utils/src/utils/TelegramApi/types";
 import { TG_MEDIA_SERVER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from "./env";
 import { escapeTelegramMarkdownV2 } from "./escapeTelegramMarkdownV2";
+import { logger } from "./logger";
 import { searchProwlarr } from "./prowlarr";
 import { enqueueTorrentFile } from "./torrentOutbox";
 import { createTorrentSearchView } from "./torrentSearchTelegram";
@@ -20,15 +21,13 @@ async function processMediaServerChatMessageInternal({
     if (text) {
         const query = text.trim();
         if (!query) {
-            const errorMessage = "❌ Search query is empty";
-            console.error(errorMessage);
-
-            return errorMessage;
+            logger.error("❌ Search query is empty");
+            return "❌ Search query is empty";
         }
 
-        console.log(`👉 Searching torrents in Prowlarr, query=[${query}]`);
+        logger.info({ query }, "👉 Searching torrents in Prowlarr");
         const releases = await searchProwlarr(query);
-        console.log(`✅ Found torrent releases count=[${releases.length}]`);
+        logger.info({ count: releases.length }, "✅ Found torrent releases");
 
         const view = createTorrentSearchView({
             page: 0,
@@ -56,36 +55,32 @@ async function processMediaServerChatMessageInternal({
             await sendTelegramMessage(torrentSearchMessage);
         }
 
-        console.log(`✅ Sent torrent search results, sessionId=[${view.sessionId}]`);
+        logger.info({ sessionId: view.sessionId }, "✅ Sent torrent search results");
 
         return;
     }
 
     if (!message.document) {
-        console.error("❌ No documents (torrent files)");
+        logger.error("❌ No documents (torrent files)");
         return;
     }
 
     const fileName = message.document.file_name ?? message.document.file_id;
-    console.log(
-        `📥 Processing new document message with fileName=[${fileName}] from Telegram channel`,
-    );
+    logger.info({ fileName }, "👉 Processing new document message from Telegram channel");
     const buffer = Buffer.from(
         await downloadFileFromTelegramMessage({
             fileId: message.document.file_id,
             token: TG_TOKEN_SENAEV_COM_BOT,
         }),
     );
-    console.log(
-        `✅ Downloaded file from Telegram, size=[${buffer.length}] bytes, storing in torrent outbox...`,
-    );
+    logger.info({ sizeBytes: buffer.length }, "✅ Downloaded file from Telegram");
 
-    console.log(`📥 Queueing torrent file with fileName=[${fileName}]`);
+    logger.info({ fileName }, "👉 Queueing torrent file");
     const outboxItemId = await enqueueTorrentFile({
         buffer,
         fileName,
     });
-    console.log(`✅ File stored in torrent outbox successfully, id=[${outboxItemId}]`);
+    logger.info({ outboxItemId }, "✅ File stored in torrent outbox");
 
     return;
 }
@@ -105,18 +100,16 @@ export async function processMediaServerChatMessage({
     });
 
     try {
-        console.log("👉 Start processing message in processMediaServerChatMessage");
+        logger.info("👉 Start processing message in processMediaServerChatMessage");
         const responseMessage = await processMediaServerChatMessageInternal({
             botUser,
             message,
         });
 
-        console.log(
-            `✅ Finish processing message in processMediaServerChatMessage, responseMessage=[${responseMessage}]`,
-        );
+        logger.info({ responseMessage }, "✅ Finish processing message in processMediaServerChatMessage");
 
         if (responseMessage) {
-            console.log(`👉 Send responseMessage=[${responseMessage}]`);
+            logger.info({ responseMessage }, "👉 Sending response message");
             await sendTelegramMessage({
                 token: TG_TOKEN_SENAEV_COM_BOT,
                 chatId: TG_MEDIA_SERVER_CHAT_ID,
@@ -124,14 +117,14 @@ export async function processMediaServerChatMessage({
                 text: escapeTelegramMarkdownV2(responseMessage),
                 replyToMessageId: message.message_id,
             });
-            console.log(`✅ Sent responseMessage`);
+            logger.info("✅ Sent response message");
         }
     } catch (error) {
         const errorMessage = `❌ ${error}`;
 
-        console.error("❌ processMediaServerChatMessage error:", error);
+        logger.error(error, "❌ processMediaServerChatMessage error");
 
-        console.log(`👉 Send error message`);
+        logger.info("👉 Sending error message");
         await sendTelegramMessage({
             token: TG_TOKEN_SENAEV_COM_BOT,
             chatId: TG_MEDIA_SERVER_CHAT_ID,
@@ -139,6 +132,6 @@ export async function processMediaServerChatMessage({
             text: escapeTelegramMarkdownV2(errorMessage),
             replyToMessageId: message.message_id,
         });
-        console.log(`✅ Send error message`);
+        logger.info("✅ Sent error message");
     }
 }

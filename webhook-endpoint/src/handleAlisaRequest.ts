@@ -2,6 +2,7 @@ import { sendTelegramMessage } from "senaev-utils/src/utils/TelegramApi/sendTele
 import { TG_TOKEN_SENAEV_COM_BOT } from "./env";
 import { escapeTelegramMarkdownV2 } from "./escapeTelegramMarkdownV2";
 import { getRandomValueFromArray } from "./getRandomValueFromArray";
+import { logger } from "./logger";
 import { processAlisaCommand } from "./processAlisaCommand";
 
 const TRICKY_DAD_DEBUG_CHAT_ID = -5242876030;
@@ -13,7 +14,7 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
             throw new Error("Missing request body");
         }
 
-        console.log("🆕 Received Alisa command:", body);
+        logger.info({ body }, "🆕 Received Alisa command");
         const { request } = body as Record<string, unknown>;
         if (!request) {
             throw new Error("Missing request field in body");
@@ -49,7 +50,7 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
                 }),
             )
             .catch((err) => {
-                console.error("❌ Failed to process Alisa command:", err);
+                logger.error(err, "❌ Failed to process Alisa command");
 
                 sendTelegramMessage({
                     token: TG_TOKEN_SENAEV_COM_BOT,
@@ -59,7 +60,7 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
                         `❌ Failed to process Alisa command=[${command}]: ${err instanceof Error ? err.message : String(err)}`,
                     ),
                 }).catch((err) => {
-                    console.error("❌ Failed to send error message to Telegram:", err);
+                    logger.error(err, "❌ Failed to send error message to Telegram");
                 });
             });
 
@@ -119,13 +120,11 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
             "Внесено в список, семья спасена",
         ]);
 
-        console.log(
-            `✅ Sending fallback response for Alisa command, responseText=[${responseText}]`,
-        );
+        logger.info({ responseText }, "👉 Sending fallback response for Alisa command");
 
         return responseText;
     } catch (err) {
-        console.error("❌ Failed to process Alisa command:", err);
+        logger.error(err, "❌ Failed to process Alisa command");
 
         sendTelegramMessage({
             token: TG_TOKEN_SENAEV_COM_BOT,
@@ -135,7 +134,7 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
                 `❌ Sync error processing Alisa command: ${err instanceof Error ? err.message : String(err)}`,
             ),
         }).catch((err) => {
-            console.error("❌ Failed to send error message to Telegram:", err);
+            logger.error(err, "❌ Failed to send error message to Telegram");
         });
 
         return getRandomValueFromArray([

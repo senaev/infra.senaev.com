@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
-import { prettyStringify } from "senaev-utils/src/utils/prettyStringify";
 import { PROWLARR_CONFIG_FILE, PROWLARR_URL } from "./env";
+import { logger } from "./logger";
 
 let cachedApiKey: string | undefined;
 
@@ -21,11 +21,11 @@ export interface ProwlarrRelease {
 
 async function getProwlarrApiKey(): Promise<string> {
     if (cachedApiKey) {
-        console.log("✅ Using cached Prowlarr API key");
+        logger.info("✅ Using cached Prowlarr API key");
         return cachedApiKey;
     }
 
-    console.log(`👉 Reading Prowlarr API key from config file=[${PROWLARR_CONFIG_FILE}]`);
+    logger.info({ configFile: PROWLARR_CONFIG_FILE }, "👉 Reading Prowlarr API key from config file");
     const config = await readFile(PROWLARR_CONFIG_FILE, "utf8");
     const apiKey = config.match(/<ApiKey>([^<]+)<\/ApiKey>/)?.[1];
     if (!apiKey) {
@@ -35,7 +35,7 @@ async function getProwlarrApiKey(): Promise<string> {
     }
 
     cachedApiKey = apiKey;
-    console.log("✅ Read Prowlarr API key from config");
+    logger.info("✅ Read Prowlarr API key from config");
 
     return apiKey;
 }
@@ -49,10 +49,9 @@ async function prowlarrApiCall<T>({
     method: "GET" | "POST";
     path: string;
 }): Promise<T> {
-    console.log(`👉 Calling Prowlarr API method=[${method}], path=[${path}]`);
+    logger.info({ method, path }, "👉 Calling Prowlarr API");
     const apiKey = await getProwlarrApiKey();
 
-    console.log("👉 Request prowlarr api");
     const response = await fetch(`${PROWLARR_URL}${path}`, {
         method,
         headers: {
@@ -65,8 +64,9 @@ async function prowlarrApiCall<T>({
     const rawBody = await response.text();
 
     if (!response.ok) {
-        console.error(
-            `❌ Prowlarr API call failed method=[${method}], path=[${path}], status=[${response.status}]`,
+        logger.error(
+            { method, path, status: response.status },
+            "❌ Prowlarr API call failed",
         );
         throw new Error(
             `❌ Prowlarr API ${method} ${path} failed: HTTP ${response.status} ${response.statusText}${rawBody ? ` - ${rawBody}` : ""}`,
@@ -74,16 +74,16 @@ async function prowlarrApiCall<T>({
     }
 
     const result = (rawBody ? JSON.parse(rawBody) : undefined) as T;
-    console.log(
-        `✅ Prowlarr API call finished method=[${method}], path=[${path}], status=[${response.status}], responseSize=[${rawBody.length}]`,
+    logger.info(
+        { method, path, status: response.status, responseSize: rawBody.length, result },
+        "✅ Prowlarr API call finished",
     );
-    console.log(`✅ Request prowlarr api result=[${prettyStringify(result)}]`);
 
     return result;
 }
 
 export async function searchProwlarr(query: string): Promise<ProwlarrRelease[]> {
-    console.log(`👉 Searching Prowlarr releases query=[${query}]`);
+    logger.info({ query }, "👉 Searching Prowlarr releases");
     const searchParams = new URLSearchParams({
         query,
         type: "search",
@@ -93,25 +93,23 @@ export async function searchProwlarr(query: string): Promise<ProwlarrRelease[]> 
         path: `/api/v1/search?${searchParams.toString()}`,
     });
 
-    console.log(`👉 Sorting Prowlarr releases count=[${releases.length}]`);
     const sortedReleases = releases.sort((left, right) => {
         const rightSeeds = right.seeders ?? right.peers ?? 0;
         const leftSeeds = left.seeders ?? left.peers ?? 0;
 
         return rightSeeds - leftSeeds;
     });
-    console.log(`✅ Sorted Prowlarr releases count=[${sortedReleases.length}]`);
-    console.log(`✅ Finished Prowlarr search query=[${query}], count=[${sortedReleases.length}]`);
+    logger.info({ query, count: sortedReleases.length }, "✅ Finished Prowlarr search");
 
     return sortedReleases;
 }
 
 export async function downloadProwlarrRelease(release: ProwlarrRelease): Promise<void> {
-    console.log(`👉 Sending Prowlarr release to download title=[${release.title ?? "Untitled"}]`);
+    logger.info({ title: release.title ?? "Untitled" }, "👉 Sending Prowlarr release to download");
     await prowlarrApiCall<void>({
         method: "POST",
         path: "/api/v1/search",
         body: release,
     });
-    console.log(`✅ Sent Prowlarr release to download title=[${release.title ?? "Untitled"}]`);
+    logger.info({ title: release.title ?? "Untitled" }, "✅ Sent Prowlarr release to download");
 }

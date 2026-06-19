@@ -1,12 +1,12 @@
 import Fastify from "fastify";
 import { randomBytes } from "node:crypto";
 import { isObject } from "senaev-utils/src/utils/Object/isObject";
-import { prettyStringify } from "senaev-utils/src/utils/prettyStringify";
 import { callTelegramApi } from "senaev-utils/src/utils/TelegramApi/callTelegramApi";
 import { getCurrentTelegramBotInfo } from "senaev-utils/src/utils/TelegramApi/getCurrentTelegramBotInfo";
 import { TelegramUpdate, TelegramUser } from "senaev-utils/src/utils/TelegramApi/types";
 import { ALISA_WEBHOOK_SECRET, TG_TOKEN_SENAEV_COM_BOT, WEBHOOK_DOMAIN } from "./env";
 import { handleAlisaRequest } from "./handleAlisaRequest";
+import { logger } from "./logger";
 import { processTelegramWebhookData } from "./processTelegramWebhookData";
 import { startTorrentOutboxProcessor, stopTorrentOutboxProcessor } from "./torrentOutbox";
 
@@ -15,7 +15,7 @@ export const TELEGRAM_WEBHOOK_PATH = "/telegram-webhook";
 
 export const webhookSecretToken = randomBytes(32).toString("hex");
 
-const server = Fastify();
+const server = Fastify({ loggerInstance: logger });
 
 server.get("/*", async (request, reply) => {
     return reply.code(401).send("Unauthorized");
@@ -35,23 +35,25 @@ server.post(`/${ALISA_WEBHOOK_SECRET}`, async ({ body }, reply) => {
 
 async function main(): Promise<void> {
     const botUser: TelegramUser = await getCurrentTelegramBotInfo(TG_TOKEN_SENAEV_COM_BOT);
-    console.log(`✅ botUser: `, prettyStringify(botUser));
+    logger.info({ botUser }, "✅ Bot user");
 
     server.post(TELEGRAM_WEBHOOK_PATH, async (request, reply) => {
         try {
-            console.log("🆕 Received Telegram update:", prettyStringify(request.body));
+            logger.info({ update: request.body }, "🆕 Received Telegram update");
             const secret = request.headers["x-telegram-bot-api-secret-token"];
             if (secret !== webhookSecretToken) {
-                console.log(
-                    `❌ Unauthorized request=[${TELEGRAM_WEBHOOK_PATH}] with invalid secret token`,
+                logger.warn(
+                    { path: TELEGRAM_WEBHOOK_PATH },
+                    "⚠️ Unauthorized request with invalid secret token",
                 );
                 return reply.code(401).send("Unauthorized");
             }
 
             const update = request.body;
             if (!isObject(update)) {
-                console.log(
-                    `❌ Invalid request=[${TELEGRAM_WEBHOOK_PATH}] with non-object body=[${typeof update}][${update}]`,
+                logger.warn(
+                    { path: TELEGRAM_WEBHOOK_PATH, bodyType: typeof update, body: update },
+                    "⚠️ Invalid request with non-object body",
                 );
                 return reply.code(400).send("Bad Request");
             }
@@ -61,20 +63,20 @@ async function main(): Promise<void> {
                 update: update as TelegramUpdate,
             });
 
-            console.log(`✅ Successfully processed Telegram update`);
+            logger.info("✅ Successfully processed Telegram update");
             return reply.send("OK");
         } catch (err: unknown) {
-            console.error("❌ Error processing Telegram webhook data:", err);
+            logger.error(err, "❌ Error processing Telegram webhook data");
             // Telegram retries non-2xx webhook responses, so acknowledge after logging.
             return reply.send("OK");
         }
     });
 
     await startTorrentOutboxProcessor();
-    console.log(`✅ Torrent outbox processor started`);
+    logger.info("✅ Torrent outbox processor started");
 
     await server.listen({ port: PORT, host: "0.0.0.0" });
-    console.log(`✅ Server listening on port=${PORT}`);
+    logger.info({ port: PORT }, "✅ Server listening");
 
     const webhookUrl = `https://${WEBHOOK_DOMAIN}${TELEGRAM_WEBHOOK_PATH}`;
     await callTelegramApi({
@@ -86,11 +88,11 @@ async function main(): Promise<void> {
             allowed_updates: ["message", "channel_post", "callback_query"],
         },
     });
-    console.log(`✅ Webhook set to url=${webhookUrl}`);
+    logger.info({ webhookUrl }, "✅ Webhook set");
 }
 
 async function shutdown(): Promise<void> {
-    console.log("Shutting down...");
+    logger.info("🛑 Shutting down");
     await server.close();
     stopTorrentOutboxProcessor();
     process.exit(0);
@@ -100,6 +102,6 @@ process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);
 
 main().catch((err: unknown) => {
-    console.error(err);
+    logger.error(err, "❌ Failed to start server");
     process.exit(1);
 });

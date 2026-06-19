@@ -9,6 +9,7 @@ import { sendTelegramMessage } from "senaev-utils/src/utils/TelegramApi/sendTele
 import { TelegramMessage, TelegramUser } from "senaev-utils/src/utils/TelegramApi/types";
 import { TG_TOKEN_SENAEV_COM_BOT } from "./env";
 import { escapeTelegramMarkdownV2 } from "./escapeTelegramMarkdownV2";
+import { logger } from "./logger";
 import { downloadProwlarrRelease, ProwlarrRelease } from "./prowlarr";
 import {
     editTelegramMessageWithTorrentSearchView,
@@ -150,14 +151,14 @@ async function processMediaServerCallbackQueryInternal({
         const page = Number(rawValue);
         assertUnsignedInteger(page);
 
-        console.log(`👉 Opening torrent search page=[${page}], sessionId=[${sessionId}]`);
+        logger.info({ page, sessionId }, "👉 Opening torrent search page");
         await editTelegramMessageWithTorrentSearchView({
             chatId: message.chat.id,
             messageId: message.message_id,
             page,
             sessionId,
         });
-        console.log(`✅ Opened torrent search page=[${page}], sessionId=[${sessionId}]`);
+        logger.info({ page, sessionId }, "✅ Opened torrent search page");
 
         return "👌 Page opened";
     }
@@ -171,12 +172,13 @@ async function processMediaServerCallbackQueryInternal({
             throw new Error("☠️ Поиск устарел, запустите новый");
         }
 
-        console.log(
-            `👉 Starting torrent download, sessionId=[${sessionId}], releaseIndex=[${releaseIndex}], title=[${release.title}]`,
+        logger.info(
+            { sessionId, releaseIndex, title: release.title },
+            "👉 Starting torrent download",
         );
         await downloadProwlarrRelease(release);
 
-        console.log(`👉 Editing Telegram message with started download details`);
+        logger.info("👉 Editing Telegram message with started download details");
         await editTelegramMessageText({
             chatId: message.chat.id,
             messageId: message.message_id,
@@ -186,9 +188,7 @@ async function processMediaServerCallbackQueryInternal({
                 user: from,
             }),
         });
-        console.log(`✅ Edited Telegram message with started download details`);
-
-        console.log(`✅ Started torrent download, title=[${release.title}]`);
+        logger.info({ title: release.title }, "✅ Started torrent download");
 
         return "👌 Download started";
     }
@@ -204,33 +204,28 @@ export async function processMediaServerCallbackQuery({
     try {
         const answerText = await processMediaServerCallbackQueryInternal({ callbackQuery });
 
-        console.log(`👉 Answering Telegram callback query text=[${answerText}]`);
+        logger.info({ answerText }, "👉 Answering Telegram callback query");
         await answerCallbackQuery({ callbackQueryId: callbackQuery.id, text: answerText });
-        console.log(`✅ Answered Telegram callback query text=[${answerText}]`);
+        logger.info({ answerText }, "✅ Answered Telegram callback query");
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(`❌ ${errorMessage}`, { callbackQuery, error });
+        logger.error({ err: error, callbackQuery }, errorMessage);
 
-        console.log(
-            `👉 Sending Telegram chat message with callback query error text=[${errorMessage}]`,
-        );
+        logger.info({ errorMessage }, "👉 Sending Telegram chat message with callback query error");
         let answerText = "❌ Error details sent to chat";
         try {
             await sendCallbackQueryErrorMessage({ errorMessage, message: callbackQuery.message! });
-            console.log(
-                `✅ Sent Telegram chat message with callback query error text=[${errorMessage}]`,
-            );
+            logger.info({ errorMessage }, "✅ Sent Telegram chat message with callback query error");
         } catch (sendError) {
             answerText = errorMessage;
-            console.error(`❌ Failed to send Telegram chat message with callback query error`, {
-                callbackQuery,
-                errorMessage,
-                sendError,
-            });
+            logger.error(
+                { err: sendError, callbackQuery, errorMessage },
+                "❌ Failed to send Telegram chat message with callback query error",
+            );
         }
 
-        console.log(`👉 Answering Telegram callback query with error text=[${answerText}]`);
+        logger.info({ answerText }, "👉 Answering Telegram callback query with error");
         await answerCallbackQuery({ callbackQueryId: callbackQuery.id, text: answerText });
-        console.log(`✅ Answered Telegram callback query with error text=[${answerText}]`);
+        logger.info({ answerText }, "✅ Answered Telegram callback query with error");
     }
 }

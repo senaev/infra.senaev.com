@@ -1,6 +1,7 @@
 import { rmdir, unlink } from "fs/promises";
 import { dirname, relative, sep } from "path";
 import { escapeHtml, sendTelegramHtmlMessage } from "../telegram";
+import { logger } from "../logger";
 import { formatBytes } from "./formatBytes";
 import { type FileToRemove } from "./getFilesToRemove";
 
@@ -202,10 +203,10 @@ export async function sendManualCleanupRequiredNotification({
 export async function removeFiles(filesToRemove: FileToRemove[]): Promise<void> {
     for (const file of filesToRemove) {
         await unlink(file.path);
-        console.log(`🗑️ Removed file path=[${file.path}] size=[${formatBytes(file.size)}]`);
+        logger.info({ path: file.path, sizeBytes: file.size }, "🗑️ Removed file");
         try {
             await rmdir(dirname(file.path));
-            console.log(`🗑️ Removed empty folder path=[${dirname(file.path)}]`);
+            logger.info({ path: dirname(file.path) }, "🗑️ Removed empty folder");
         } catch {
             // Ignore directories that still contain files or cannot be removed.
         }
