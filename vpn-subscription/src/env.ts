@@ -40,6 +40,7 @@ function parseEntries(raw: string): SubscriptionEntry[] {
 }
 
 export const PORT = 3000;
+export const VPN_SUBSCRIPTION_CHAT_ID = requireEnv("VPN_SUBSCRIPTION_CHAT_ID");
 export const VPN_SUBSCRIPTION_SECRET = requireEnv("VPN_SUBSCRIPTION_SECRET");
 export const VPN_SUBSCRIPTION_CHAT = requireEnv("VPN_SUBSCRIPTION_CHAT");
 export const XRAY_USER_UUID = requireEnv("XRAY_USER_UUID");

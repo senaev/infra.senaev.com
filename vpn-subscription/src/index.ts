@@ -5,6 +5,7 @@ import {
     PORT,
     SUBSCRIPTION_ENTRIES,
     VPN_SUBSCRIPTION_CHAT,
+    VPN_SUBSCRIPTION_CHAT_ID,
     VPN_SUBSCRIPTION_SECRET,
     XRAY_REALITY_PUBLIC_KEY,
     XRAY_USER_UUID,
@@ -20,7 +21,6 @@ const ANNOUNCEMENTS = [
 const announcement = ANNOUNCEMENTS.join(" ");
 const subscriptionUrl = `https://vpn-subscription.senaev.com/${VPN_SUBSCRIPTION_SECRET}`;
 
-const VPN_SUBSCRIPTION_CHAT_ID = -1003702952069;
 
 const server = Fastify({ loggerInstance: logger });
 

@@ -16,3 +16,5 @@ export const SUPABASE_PROJECT_URL = requireEnv("SUPABASE_PROJECT_URL");
 export const SUPABASE_PUBLISHABLE_KEY = requireEnv("SUPABASE_PUBLISHABLE_KEY");
 export const PROWLARR_URL = requireEnv("PROWLARR_URL");
 export const PROWLARR_CONFIG_FILE = requireEnv("PROWLARR_CONFIG_FILE");
+export const TG_VPN_SUBSCRIPTION_CHAT_ID = requireEnv("TG_VPN_SUBSCRIPTION_CHAT_ID");
+

@@ -1,6 +1,7 @@
 import { isObject } from "senaev-utils/src/utils/Object/isObject";
 import { TelegramMessage, TelegramUser } from "senaev-utils/src/utils/TelegramApi/types";
 import { TG_CLUSTER_CHAT_ID, TG_MEDIA_SERVER_CHAT_ID } from "./env";
+import { IGNORED_CHATS_WHITELIST } from "./ignoredChatsWhitelist";
 import { logger } from "./logger";
 import { processClusterChatMessage } from "./processClusterChatMessage";
 import {
@@ -88,6 +89,15 @@ export async function processTelegramWebhookData({
     if (chatIdStr === TG_CLUSTER_CHAT_ID) {
         logger.info({ messageId: message.message_id }, "🆕 Received new message in cluster chat");
         processClusterChatMessage(message as TelegramMessage);
+        return;
+    }
+
+    const ignoredChatName = IGNORED_CHATS_WHITELIST.get(chatIdStr);
+    if (ignoredChatName) {
+        logger.info(
+            { messageId: message.message_id },
+            `🔕 Ignoring message from whitelisted chat [${ignoredChatName}]`,
+        );
         return;
     }
 

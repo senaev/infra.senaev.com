@@ -28,6 +28,8 @@ spec:
           env:
             - name: SUBSCRIPTION_ENTRIES
               value: {{ toJson .Values.vpnSubscription.entries | quote }}
+            - name: VPN_SUBSCRIPTION_CHAT_ID
+              value: {{ .Values.telegramVpnSubscriptionChatId | quote }}
             - name: VPN_SUBSCRIPTION_SECRET
               valueFrom:
                 secretKeyRef:
