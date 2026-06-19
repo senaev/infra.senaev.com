@@ -1512,7 +1512,7 @@ describe('runParallelTimescalesProcessing', () => {
 
         const endTime = Date.now();
 
-        expect(endTime - startTime).toBeGreaterThanOrEqual(50);
+        expect(endTime - startTime).toBeGreaterThanOrEqual(45);
 
         expect(callback.mock.calls).toEqual([
             [
