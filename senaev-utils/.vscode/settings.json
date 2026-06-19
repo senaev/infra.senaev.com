@@ -8,5 +8,8 @@
     "cSpell.language": "en,ru",
     "search.exclude": {
         "**/node_modules": true,
+    },
+    "editor.codeActionsOnSave": {
+        "source.fixAll.eslint": "explicit"
     }
 }
