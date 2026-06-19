@@ -88,6 +88,18 @@ spec:
                   name: senaev-com-kv-secrets
                   key: SUPABASE_PUBLISHABLE_KEY
                   optional: false
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
           volumeMounts:
             - name: torrent-outbox
               mountPath: /torrent-outbox

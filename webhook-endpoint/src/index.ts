@@ -17,6 +17,10 @@ export const webhookSecretToken = randomBytes(32).toString("hex");
 
 const server = Fastify({ loggerInstance: logger });
 
+server.get("/healthz", async (_request, reply) => {
+    return reply.send("OK");
+});
+
 server.get("/*", async (request, reply) => {
     return reply.code(401).send("Unauthorized");
 });
