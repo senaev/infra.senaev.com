@@ -7,6 +7,7 @@
     "README.md"
   ],
   "scripts": {
+    "prepare": "git config core.hooksPath .git/hooks && lefthook install",
     "lint": "eslint .",
     "lint:fix": "npx eslint . --fix",
     "test": "vitest",
