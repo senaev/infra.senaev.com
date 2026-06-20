@@ -8,6 +8,6 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && curl -fsSL https://opencode.ai/install | bash
 
-ENV PATH="/root/.local/bin:$PATH"
+ENV PATH="/root/.opencode/bin:$PATH"
 
 CMD sh -c ': "${OPENCODE_WORKDIR:?OPENCODE_WORKDIR is required}" && cd "$OPENCODE_WORKDIR" && exec opencode serve --hostname 0.0.0.0'
