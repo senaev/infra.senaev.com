@@ -33,10 +33,35 @@ spec:
                   key: OPENAI_API_KEY
                   optional: false
             - name: OPENCODE_CONFIG_CONTENT
-              value: '{"model":"{{ .Values.obsidianOpencode.model }}","provider":{"openai":{"options":{"apiKey":"{env:OPENAI_API_KEY}"}}}}'
+              value: '{"model":"{{ .Values.obsidianOpencode.modelProvider }}/{{ .Values.obsidianOpencode.modelId }}","provider":{"{{ .Values.obsidianOpencode.modelProvider }}":{"options":{"apiKey":"{env:OPENAI_API_KEY}"}}}}'
           volumeMounts:
             - name: vault
               mountPath: /vault
+
+        - name: opencode-telegram-bot
+          image: ghcr.io/senaev/opencode-telegram-bot:latest
+          env:
+            - name: TELEGRAM_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: TG_TOKEN_SENAEV_OBSIDIAN_SYNC_BOT
+                  optional: false
+            - name: TELEGRAM_ALLOWED_USER_ID
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: TG_SENAEV_USER_ID
+                  optional: false
+            - name: OPENCODE_API_URL
+              value: "http://localhost:4096"
+            - name: OPENCODE_MODEL_PROVIDER
+              value: {{ .Values.obsidianOpencode.modelProvider }}
+            - name: OPENCODE_MODEL_ID
+              value: {{ .Values.obsidianOpencode.modelId }}
+            - name: OPEN_BROWSER_ROOTS
+              value: /vault
+
       volumes:
         - name: vault
           hostPath:

@@ -1,0 +1,21 @@
+name: opencode-telegram-bot
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "opencode-telegram-bot/**"
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/build-service.yml
+    with:
+      workflow_title: opencode-telegram-bot
+      context: ./opencode-telegram-bot
+      registry_image: ghcr.io/senaev/opencode-telegram-bot
+      deployment_name: obsidian-opencode
+    secrets: inherit

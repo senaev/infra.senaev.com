@@ -209,7 +209,8 @@ obsidianSync:
 obsidianOpencode:
   enabled: true
   vps: hetzner
-  model: openai/gpt-4o
+  modelProvider: openai
+  modelId: gpt-4o
 
 
 vpnSubscription:
