@@ -32,12 +32,10 @@ spec:
             - sh
             - -c
             - |
-              chown -R 1000:1000 /projects/vault /config
+              chown -R 1000:1000 /projects/vault
           volumeMounts:
             - name: vault
               mountPath: /projects/vault
-            - name: config
-              mountPath: /config
       containers:
         - name: obsidian-sync
           image: ghcr.io/senaev/obsidian-sync:latest
@@ -61,13 +59,9 @@ spec:
           volumeMounts:
             - name: vault
               mountPath: /projects/vault
-            - name: config
-              mountPath: /home/node/.config
       volumes:
         - name: vault
           hostPath:
             path: {{ .Values.clusterRootPath }}/{{ .Values.obsidianSync.volumePath }}
             type: DirectoryOrCreate
-        - name: config
-          emptyDir: {}
 {{- end }}
