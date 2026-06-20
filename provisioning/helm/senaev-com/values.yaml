@@ -206,6 +206,11 @@ obsidianSync:
   volumePath: volumes/obsidian-sync/vault
   configPath: volumes/obsidian-sync/config
 
+obsidianOpencode:
+  enabled: true
+  vps: hetzner
+  model: openai/gpt-4o
+
 
 vpnSubscription:
   enabled: true

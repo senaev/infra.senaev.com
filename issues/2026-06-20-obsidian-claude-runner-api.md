@@ -24,11 +24,16 @@ Telegram
 opencode-telegram-bot
   ↕  HTTP  localhost:4096
 opencode serve
-  ↕  read-write /vault
-obsidian-sync sidecar
+  ↕  read-write /vault (hostPath)
+  ↕  read-write /vault (hostPath)
+obsidian-sync  (separate deployment, same node)
   ↕
 Obsidian Sync
 ```
+
+Two separate Kubernetes Deployments on the same node (`vps: hetzner`) share the vault
+via the same hostPath directory. `obsidian-sync` handles cloud sync; `obsidian-opencode`
+runs opencode-serve (and later the telegram bot).
 
 ## Components
 
@@ -166,7 +171,7 @@ is modified without the user running the commands explicitly.
 - [x] Create new Telegram bot via BotFather, add token to Vault as `TG_TOKEN_SENAEV_OBSIDIAN_SYNC_BOT`
 - [x] Add Telegram user ID to Vault as `TG_SENAEV_USER_ID`
 - [ ] Write `opencode-telegram-bot/Dockerfile` (node:20-alpine, installs `@grinev/opencode-telegram-bot`)
-- [ ] Write `opencode-serve/Dockerfile` (opencode binary, runs `opencode serve`)
+- [x] Write `opencode-serve/Dockerfile` (debian:bookworm-slim, installs opencode via curl, `OPENCODE_WORKDIR` required)
 - [ ] Add GitHub Actions workflows to build and push both images to GHCR
 - [ ] Update Helm chart: replace `obsidian-sync` Deployment with new 3-container `obsidian-opencode` Deployment
 - [ ] Deploy and test end-to-end: send a message → OpenCode queries vault → reply in Telegram
@@ -215,6 +220,11 @@ Key changes: `ANTHROPIC_API_KEY` → `OPENAI_API_KEY`, container/secret names up
 ### 2026-06-20 — obsidian-sync container verified
 
 Added `OBSIDIAN_VAULT_NAME` to `senaev-com-kv` Vault. Deployed and ran the container successfully — sync is confirmed working.
+
+### 2026-06-20 — opencode-serve container built successfully
+
+`opencode-serve/Dockerfile` committed and built via GitHub Actions. Image pushed to `ghcr.io/senaev/opencode-serve:latest`.
+`OPENCODE_WORKDIR` is required — container fails fast if unset.
 
 ### 2026-06-20 — switched to OpenCode + opencode-telegram-bot
 

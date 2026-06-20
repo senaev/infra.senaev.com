@@ -1,0 +1,45 @@
+{{- if .Values.obsidianOpencode.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: obsidian-opencode
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: obsidian-opencode
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: obsidian-opencode
+  template:
+    metadata:
+      labels:
+        app: obsidian-opencode
+      annotations:
+        secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
+    spec:
+      nodeSelector:
+        vps: {{ .Values.obsidianOpencode.vps }}
+      containers:
+        - name: opencode-serve
+          image: ghcr.io/senaev/opencode-serve:latest
+          env:
+            - name: OPENCODE_WORKDIR
+              value: /vault
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: OPENAI_API_KEY
+                  optional: false
+            - name: OPENCODE_CONFIG_CONTENT
+              value: '{"model":"{{ .Values.obsidianOpencode.model }}","provider":{"openai":{"options":{"apiKey":"{env:OPENAI_API_KEY}"}}}}'
+          volumeMounts:
+            - name: vault
+              mountPath: /vault
+      volumes:
+        - name: vault
+          hostPath:
+            path: {{ .Values.clusterRootPath }}/{{ .Values.obsidianSync.volumePath }}
+            type: DirectoryOrCreate
+{{- end }}
