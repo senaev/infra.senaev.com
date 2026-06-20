@@ -212,4 +212,31 @@ code, confirm the approach with the user. Only proceed to implementation after s
 
 ## Findings
 
-*(append results below)*
+### 2026-06-20 — Step 1: obsidian-sync container
+
+**Research finding**: Obsidian released an official headless CLI (`obsidian-headless`, npm package, `ob` binary) in open beta on 2026-02-27. It connects to the real `sync.obsidian.md` with E2E encryption — no Xvfb, no Electron. Requires Node 22+.
+
+The CLI reads `OBSIDIAN_AUTH_TOKEN` from the environment for non-interactive login (`ob login`). Full startup sequence: `ob login` → `ob sync-setup` → `ob sync --continuous`.
+
+**Implementation**: Created `obsidian-sync/` with:
+- `Dockerfile` — `node:22-alpine` base, installs `obsidian-headless` globally, `obsidian` user (uid 1000)
+- `entrypoint.sh` — validates required env vars, runs login, sync-setup, optional sync-config, then `ob sync --continuous`
+
+**Env vars consumed by the container**:
+| Var | Required | Description |
+|---|---|---|
+| `OBSIDIAN_AUTH_TOKEN` | yes | Auth token from `ob login` (stored in Vault `senaev-com-kv`) |
+| `OBSIDIAN_VAULT_NAME` | yes | Remote vault name or ID |
+| `OBSIDIAN_VAULT_PASSWORD` | no | E2E encryption password if vault is encrypted |
+| `OBSIDIAN_VAULT_PATH` | no | Local mount path (default `/vault`) |
+| `OBSIDIAN_DEVICE_NAME` | no | Device name shown in Obsidian version history |
+| `OBSIDIAN_SYNC_MODE` | no | `bidirectional` / `pull-only` / `mirror-remote` |
+| `OBSIDIAN_CONFLICT_STRATEGY` | no | `merge` / `conflict` |
+| `OBSIDIAN_EXCLUDED_FOLDERS` | no | Comma-separated folders to exclude |
+
+**Note on `ob sync-setup`**: runs on every container start (idempotent — safe to re-run). Auth token is obtained once by running `ob login` interactively locally, then stored in K8s secret.
+
+**Next steps**:
+- [ ] Build and test the image locally
+- [ ] Scaffold `claude-code-runner-api` service
+- [ ] Write K8s Deployment manifest with both containers and shared PVC

@@ -1,0 +1,21 @@
+name: obsidian-sync
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "obsidian-sync/**"
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/build-service.yml
+    with:
+      workflow_title: obsidian-sync
+      context: ./obsidian-sync
+      registry_image: ghcr.io/senaev/obsidian-sync
+      deployment_name: obsidian-sync
+    secrets: inherit
