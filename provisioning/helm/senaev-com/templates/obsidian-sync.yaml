@@ -54,8 +54,6 @@ spec:
                   optional: false
             - name: OBSIDIAN_DEVICE_NAME
               value: "senaev-com-obsidian-headless"
-            - name: OBSIDIAN_SYNC_MODE
-              value: pull-only
           volumeMounts:
             - name: vault
               mountPath: /vault
