@@ -43,7 +43,7 @@ Key env vars:
 | Var | Source | Description |
 |---|---|---|
 | `TELEGRAM_BOT_TOKEN` | Vault (`TG_TOKEN_SENAEV_OBSIDIAN_SYNC_BOT`) | New bot token (separate from webhook-endpoint bot) |
-| `TELEGRAM_ALLOWED_USER_ID` | Vault | Numeric Telegram user ID whitelist |
+| `TELEGRAM_ALLOWED_USER_ID` | Vault (`TG_SENAEV_USER_ID`) | Numeric Telegram user ID whitelist |
 | `OPENCODE_API_URL` | hardcoded | `http://localhost:4096` |
 | `OPENCODE_MODEL_PROVIDER` | values.yaml | e.g. `anthropic` or `openai` |
 | `OPENCODE_MODEL_ID` | values.yaml | e.g. `claude-sonnet-4-6` |
@@ -61,6 +61,7 @@ Key env vars:
 |---|---|---|
 | `ANTHROPIC_API_KEY` | Vault | If using Anthropic models |
 | `OPENAI_API_KEY` | Vault | If using OpenAI models |
+| `OPENCODE_WORKDIR` | hardcoded | Working directory for opencode — required, no default |
 
 ### obsidian-sync sidecar (existing — unchanged)
 
@@ -98,7 +99,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: OBSIDIAN_TELEGRAM_ALLOWED_USER_ID
+                  key: TG_SENAEV_USER_ID
             - name: OPENCODE_API_URL
               value: "http://localhost:4096"
             - name: OPENCODE_MODEL_PROVIDER
@@ -162,8 +163,8 @@ is modified without the user running the commands explicitly.
 
 ## Implementation plan
 
-- [ ] Create new Telegram bot via BotFather, add token to Vault as `TG_TOKEN_SENAEV_OBSIDIAN_SYNC_BOT`
-- [ ] Add `OBSIDIAN_TELEGRAM_ALLOWED_USER_ID` to Vault
+- [x] Create new Telegram bot via BotFather, add token to Vault as `TG_TOKEN_SENAEV_OBSIDIAN_SYNC_BOT`
+- [x] Add Telegram user ID to Vault as `TG_SENAEV_USER_ID`
 - [ ] Write `opencode-telegram-bot/Dockerfile` (node:20-alpine, installs `@grinev/opencode-telegram-bot`)
 - [ ] Write `opencode-serve/Dockerfile` (opencode binary, runs `opencode serve`)
 - [ ] Add GitHub Actions workflows to build and push both images to GHCR
