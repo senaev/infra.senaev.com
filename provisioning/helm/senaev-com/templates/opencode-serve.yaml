@@ -22,20 +22,6 @@ spec:
     spec:
       nodeSelector:
         vps: {{ .Values.obsidianOpencode.vps }}
-      initContainers:
-        - name: seed-another-project
-          image: busybox:1.37.0-uclibc
-          command:
-            - sh
-            - -c
-            - |
-              mkdir -p /projects/another-project
-              if [ ! -f /projects/another-project/README.md ]; then
-                echo "# Another Project\n\nThis is a mock project." > /projects/another-project/README.md
-              fi
-          volumeMounts:
-            - name: another-project
-              mountPath: /projects/another-project
       containers:
         - name: opencode-serve
           image: ghcr.io/senaev/opencode-serve:latest
@@ -53,12 +39,12 @@ spec:
           volumeMounts:
             - name: vault
               mountPath: /projects/vault
-            - name: another-project
-              mountPath: /projects/another-project
 
         - name: opencode-telegram-bot
           image: ghcr.io/senaev/opencode-telegram-bot:latest
-          workingDir: /projects/vault
+          volumeMounts:
+            - name: vault
+              mountPath: /projects/vault
           env:
             - name: TELEGRAM_BOT_TOKEN
               valueFrom:
@@ -85,9 +71,5 @@ spec:
         - name: vault
           hostPath:
             path: {{ .Values.clusterRootPath }}/{{ .Values.obsidianSync.volumePath }}
-            type: DirectoryOrCreate
-        - name: another-project
-          hostPath:
-            path: {{ .Values.clusterRootPath }}/{{ .Values.obsidianOpencode.anotherProjectPath }}
             type: DirectoryOrCreate
 {{- end }}

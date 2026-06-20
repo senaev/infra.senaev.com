@@ -170,11 +170,11 @@ is modified without the user running the commands explicitly.
 
 - [x] Create new Telegram bot via BotFather, add token to Vault as `TG_TOKEN_SENAEV_OBSIDIAN_SYNC_BOT`
 - [x] Add Telegram user ID to Vault as `TG_SENAEV_USER_ID`
-- [ ] Write `opencode-telegram-bot/Dockerfile` (node:20-alpine, installs `@grinev/opencode-telegram-bot`)
+- [x] Write `opencode-telegram-bot/Dockerfile` (node:20-alpine, installs `@grinev/opencode-telegram-bot`)
 - [x] Write `opencode-serve/Dockerfile` (debian:bookworm-slim, installs opencode via curl, `OPENCODE_WORKDIR` required)
 - [x] Add GitHub Actions workflow to build and push opencode-serve image to GHCR
 - [x] Add `opencode-serve.yaml` Helm template — separate deployment sharing obsidian-sync hostPath volume
-- [ ] Deploy and test end-to-end: send a message → OpenCode queries vault → reply in Telegram
+- [x] Deploy and test end-to-end: send a message → OpenCode queries vault → reply in Telegram
 
 ## Findings
 
@@ -212,6 +212,27 @@ The CLI reads `OBSIDIAN_AUTH_TOKEN` from the environment for non-interactive log
 - [x] Add `OBSIDIAN_VAULT_NAME` to Vault and deploy to test sync
 - [ ] Scaffold `claude-code-runner-api` service
 - [ ] Add `claude-code-runner-api` as second container in the Deployment with shared vault volume
+
+### 2026-06-20 — final state
+
+**Two deployments running on hetzner:**
+
+`obsidian-sync` — syncs Obsidian Sync cloud → `/projects/vault` (hostPath). `Recreate` strategy prevents duplicate sync instances. Config dir stays in-container (no volume) so lockfile never persists.
+
+`obsidian-opencode` — two containers in one pod:
+- `opencode-serve`: runs `opencode serve` from `/projects/vault`, configured via `OPENCODE_CONFIG_CONTENT` with OpenRouter + `anthropic/claude-sonnet-4.6`
+- `opencode-telegram-bot`: Telegram long-polling bot, browses `/projects` via `/open`, connects to opencode at `localhost:4096`
+
+`Recreate` strategy on both deployments. Bot project selection persists in-container only — user runs `/open` once after pod start to select `/projects/vault`.
+
+**Key decisions made during implementation:**
+- Switched from Claude Code → Codex CLI → OpenCode + opencode-telegram-bot
+- Dropped webhook-endpoint from the flow entirely
+- Vault changed from read-only to full read/write (treat as codebase)
+- Vault mount path: `/vault` → `/projects/vault` (room for future projects)
+- Sync mode: pull-only → bidirectional
+- Model provider: OpenAI direct → OpenRouter (uses existing `OPENROUTER_API_KEY`)
+- `OBSIDIAN_VAULT_PATH` env var replaces hardcoded `/vault` in entrypoint.sh
 
 ### 2026-06-20 — switched runtime from Claude Code to OpenAI Codex CLI
 

@@ -210,7 +210,6 @@ obsidianOpencode:
   vps: hetzner
   modelProvider: openrouter
   modelId: anthropic/claude-sonnet-4.6
-  anotherProjectPath: volumes/another-project
 
 
 vpnSubscription:
