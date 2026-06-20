@@ -1,0 +1,73 @@
+{{- if .Values.obsidianSync.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: obsidian-sync
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: obsidian-sync
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: obsidian-sync
+  template:
+    metadata:
+      labels:
+        app: obsidian-sync
+      annotations:
+        secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
+    spec:
+      nodeSelector:
+        vps: {{ .Values.obsidianSync.vps }}
+      initContainers:
+        - name: fix-permissions
+          image: busybox:1.37.0-uclibc
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+          command:
+            - sh
+            - -c
+            - |
+              chown -R 1000:1000 /vault /config
+          volumeMounts:
+            - name: vault
+              mountPath: /vault
+            - name: config
+              mountPath: /config
+      containers:
+        - name: obsidian-sync
+          image: ghcr.io/senaev/obsidian-sync:latest
+          env:
+            - name: OBSIDIAN_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: OBSIDIAN_AUTH_TOKEN
+                  optional: false
+            - name: OBSIDIAN_VAULT_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: OBSIDIAN_VAULT_NAME
+                  optional: false
+            - name: OBSIDIAN_DEVICE_NAME
+              value: "senaev-com-obsidian-headless"
+            - name: OBSIDIAN_SYNC_MODE
+              value: pull-only
+          volumeMounts:
+            - name: vault
+              mountPath: /vault
+            - name: config
+              mountPath: /home/node/.config
+      volumes:
+        - name: vault
+          hostPath:
+            path: {{ .Values.clusterRootPath }}/{{ .Values.obsidianSync.volumePath }}
+            type: DirectoryOrCreate
+        - name: config
+          hostPath:
+            path: {{ .Values.clusterRootPath }}/{{ .Values.obsidianSync.configPath }}
+            type: DirectoryOrCreate
+{{- end }}

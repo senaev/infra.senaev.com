@@ -10,23 +10,16 @@ if [ -z "$OBSIDIAN_VAULT_NAME" ]; then
   exit 1
 fi
 
-OBSIDIAN_VAULT_PATH="${OBSIDIAN_VAULT_PATH:-/vault}"
-mkdir -p "$OBSIDIAN_VAULT_PATH"
-
 echo "[obsidian-sync] Logging in..."
 ob login
 
-echo "[obsidian-sync] Setting up vault '$OBSIDIAN_VAULT_NAME' at $OBSIDIAN_VAULT_PATH..."
-if [ -n "$OBSIDIAN_VAULT_PASSWORD" ]; then
-  ob sync-setup --vault "$OBSIDIAN_VAULT_NAME" --path "$OBSIDIAN_VAULT_PATH" --password "$OBSIDIAN_VAULT_PASSWORD"
-else
-  ob sync-setup --vault "$OBSIDIAN_VAULT_NAME" --path "$OBSIDIAN_VAULT_PATH"
-fi
+echo "[obsidian-sync] Setting up vault '$OBSIDIAN_VAULT_NAME' at /vault..."
+ob sync-setup --vault "$OBSIDIAN_VAULT_NAME" --path /vault
 
-[ -n "$OBSIDIAN_DEVICE_NAME" ]        && ob sync-config --path "$OBSIDIAN_VAULT_PATH" --device-name "$OBSIDIAN_DEVICE_NAME"
-[ -n "$OBSIDIAN_SYNC_MODE" ]          && ob sync-config --path "$OBSIDIAN_VAULT_PATH" --mode "$OBSIDIAN_SYNC_MODE"
-[ -n "$OBSIDIAN_CONFLICT_STRATEGY" ]  && ob sync-config --path "$OBSIDIAN_VAULT_PATH" --conflict-strategy "$OBSIDIAN_CONFLICT_STRATEGY"
-[ -n "$OBSIDIAN_EXCLUDED_FOLDERS" ]   && ob sync-config --path "$OBSIDIAN_VAULT_PATH" --excluded-folders "$OBSIDIAN_EXCLUDED_FOLDERS"
+[ -n "$OBSIDIAN_DEVICE_NAME" ]        && ob sync-config --path /vault --device-name "$OBSIDIAN_DEVICE_NAME"
+[ -n "$OBSIDIAN_SYNC_MODE" ]          && ob sync-config --path /vault --mode "$OBSIDIAN_SYNC_MODE"
+[ -n "$OBSIDIAN_CONFLICT_STRATEGY" ]  && ob sync-config --path /vault --conflict-strategy "$OBSIDIAN_CONFLICT_STRATEGY"
+[ -n "$OBSIDIAN_EXCLUDED_FOLDERS" ]   && ob sync-config --path /vault --excluded-folders "$OBSIDIAN_EXCLUDED_FOLDERS"
 
 echo "[obsidian-sync] Starting continuous sync..."
-exec ob sync --path "$OBSIDIAN_VAULT_PATH" --continuous
+exec ob sync --path /vault --continuous

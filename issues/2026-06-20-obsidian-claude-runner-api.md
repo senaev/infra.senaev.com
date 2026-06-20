@@ -219,24 +219,29 @@ code, confirm the approach with the user. Only proceed to implementation after s
 The CLI reads `OBSIDIAN_AUTH_TOKEN` from the environment for non-interactive login (`ob login`). Full startup sequence: `ob login` → `ob sync-setup` → `ob sync --continuous`.
 
 **Implementation**: Created `obsidian-sync/` with:
-- `Dockerfile` — `node:22-alpine` base, installs `obsidian-headless` globally, `obsidian` user (uid 1000)
-- `entrypoint.sh` — validates required env vars, runs login, sync-setup, optional sync-config, then `ob sync --continuous`
+- `Dockerfile` — `node:22-alpine` base, reuses built-in `node` user (uid 1000), installs `obsidian-headless` globally, vault path hardcoded to `/vault`
+- `entrypoint.sh` — validates required env vars, runs login → sync-setup → optional sync-config → `ob sync --continuous`
+- `.github/workflows/build-obsidian-sync.yml` — builds and pushes to `ghcr.io/senaev/obsidian-sync:latest`
 
-**Env vars consumed by the container**:
-| Var | Required | Description |
-|---|---|---|
-| `OBSIDIAN_AUTH_TOKEN` | yes | Auth token from `ob login` (stored in Vault `senaev-com-kv`) |
-| `OBSIDIAN_VAULT_NAME` | yes | Remote vault name or ID |
-| `OBSIDIAN_VAULT_PASSWORD` | no | E2E encryption password if vault is encrypted |
-| `OBSIDIAN_VAULT_PATH` | no | Local mount path (default `/vault`) |
-| `OBSIDIAN_DEVICE_NAME` | no | Device name shown in Obsidian version history |
-| `OBSIDIAN_SYNC_MODE` | no | `bidirectional` / `pull-only` / `mirror-remote` |
-| `OBSIDIAN_CONFLICT_STRATEGY` | no | `merge` / `conflict` |
-| `OBSIDIAN_EXCLUDED_FOLDERS` | no | Comma-separated folders to exclude |
+**Env vars consumed by the container** (all sourced from `senaev-com-kv` Vault via `senaev-com-kv-secrets`):
+| Var | Required | Source | Description |
+|---|---|---|---|
+| `OBSIDIAN_AUTH_TOKEN` | yes | Vault | Auth token obtained via `npx obsidian-headless@latest login` |
+| `OBSIDIAN_VAULT_NAME` | yes | Vault | Remote vault name or ID |
+| `OBSIDIAN_DEVICE_NAME` | no | values.yaml | Device name shown in Obsidian version history (set to `k3s-hetzner`) |
+| `OBSIDIAN_SYNC_MODE` | no | hardcoded | Set to `pull-only` — vault is read-only for Claude |
+| `OBSIDIAN_CONFLICT_STRATEGY` | no | env | `merge` / `conflict` |
+| `OBSIDIAN_EXCLUDED_FOLDERS` | no | env | Comma-separated folders to exclude |
 
-**Note on `ob sync-setup`**: runs on every container start (idempotent — safe to re-run). Auth token is obtained once by running `ob login` interactively locally, then stored in K8s secret.
+**Vault is not E2E encrypted** — no password needed.
+
+**Note on `ob sync-setup`**: runs on every container start (idempotent — safe to re-run).
+
+**Helm**: `obsidian-sync` Deployment added to `senaev-com` chart, deployed on `hetzner`, vault stored at `clusterRootPath/volumes/obsidian-sync/vault` (hostPath).
+
+**Before deploying**: add `OBSIDIAN_VAULT_NAME` to Vault at `senaev-com-kv`.
 
 **Next steps**:
-- [ ] Build and test the image locally
+- [ ] Add `OBSIDIAN_VAULT_NAME` to Vault and deploy to test sync
 - [ ] Scaffold `claude-code-runner-api` service
-- [ ] Write K8s Deployment manifest with both containers and shared PVC
+- [ ] Add `claude-code-runner-api` as second container in the Deployment with shared vault volume

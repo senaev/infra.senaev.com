@@ -200,6 +200,13 @@ webhookEndpoint:
   webhookDomain: webhook-endpoint.senaev.com
   torrentOutboxVolumePath: volumes/webhook-endpoint/torrent-outbox
 
+obsidianSync:
+  enabled: true
+  vps: hetzner
+  volumePath: volumes/obsidian-sync/vault
+  configPath: volumes/obsidian-sync/config
+
+
 vpnSubscription:
   enabled: true
   vps: hetzner

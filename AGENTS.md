@@ -17,6 +17,10 @@ Short version:
 - The file is the source of truth — paste all command outputs and findings there as you go
 - Append under `## Findings`; never rewrite earlier sections
 
+## Git discipline
+
+Never commit or push without an explicit request from the user.
+
 ## Key conventions
 
 - Full VPN services architecture in [`AGENTS.VPN.md`](AGENTS.VPN.md), human documentation is [`XRAY_VPN.md`](XRAY_VPN.md)

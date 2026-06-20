@@ -7,9 +7,9 @@ RUN mkdir -p /vault /home/node/.config
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+# /home/node/.config persists ob login session state across pod restarts
 VOLUME ["/vault", "/home/node/.config"]
 
-ENV OBSIDIAN_VAULT_PATH=/vault
 
 USER node
 
