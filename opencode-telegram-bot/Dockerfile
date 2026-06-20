@@ -5,4 +5,7 @@ RUN apk add --no-cache python3 make g++
 
 RUN npm install -g @grinev/opencode-telegram-bot
 
-CMD ["opencode-telegram", "start"]
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
