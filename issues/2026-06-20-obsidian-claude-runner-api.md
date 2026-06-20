@@ -172,8 +172,8 @@ is modified without the user running the commands explicitly.
 - [x] Add Telegram user ID to Vault as `TG_SENAEV_USER_ID`
 - [ ] Write `opencode-telegram-bot/Dockerfile` (node:20-alpine, installs `@grinev/opencode-telegram-bot`)
 - [x] Write `opencode-serve/Dockerfile` (debian:bookworm-slim, installs opencode via curl, `OPENCODE_WORKDIR` required)
-- [ ] Add GitHub Actions workflows to build and push both images to GHCR
-- [ ] Update Helm chart: replace `obsidian-sync` Deployment with new 3-container `obsidian-opencode` Deployment
+- [x] Add GitHub Actions workflow to build and push opencode-serve image to GHCR
+- [x] Add `opencode-serve.yaml` Helm template — separate deployment sharing obsidian-sync hostPath volume
 - [ ] Deploy and test end-to-end: send a message → OpenCode queries vault → reply in Telegram
 
 ## Findings
@@ -225,6 +225,12 @@ Added `OBSIDIAN_VAULT_NAME` to `senaev-com-kv` Vault. Deployed and ran the conta
 
 `opencode-serve/Dockerfile` committed and built via GitHub Actions. Image pushed to `ghcr.io/senaev/opencode-serve:latest`.
 `OPENCODE_WORKDIR` is required — container fails fast if unset.
+
+### 2026-06-20 — opencode-serve verified in cluster
+
+Deployed `obsidian-opencode` to hetzner. Confirmed `GET http://localhost:4096/doc` returns the OpenAPI spec via SSH tunnel. opencode-serve is running and pointed at the vault.
+
+Fix required: install script puts the binary at `~/.opencode/bin`, not `~/.local/bin` — added `ENV PATH="/root/.opencode/bin:$PATH"` to the Dockerfile.
 
 ### 2026-06-20 — switched to OpenCode + opencode-telegram-bot
 
