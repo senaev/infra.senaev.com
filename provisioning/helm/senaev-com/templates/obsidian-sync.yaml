@@ -8,6 +8,8 @@ metadata:
     app: obsidian-sync
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: obsidian-sync
@@ -30,10 +32,10 @@ spec:
             - sh
             - -c
             - |
-              chown -R 1000:1000 /vault /config
+              chown -R 1000:1000 /projects/vault /config
           volumeMounts:
             - name: vault
-              mountPath: /vault
+              mountPath: /projects/vault
             - name: config
               mountPath: /config
       containers:
@@ -52,11 +54,13 @@ spec:
                   name: senaev-com-kv-secrets
                   key: OBSIDIAN_VAULT_NAME
                   optional: false
+            - name: OBSIDIAN_VAULT_PATH
+              value: /projects/vault
             - name: OBSIDIAN_DEVICE_NAME
               value: "senaev-com-obsidian-headless"
           volumeMounts:
             - name: vault
-              mountPath: /vault
+              mountPath: /projects/vault
             - name: config
               mountPath: /home/node/.config
       volumes:
@@ -65,7 +69,5 @@ spec:
             path: {{ .Values.clusterRootPath }}/{{ .Values.obsidianSync.volumePath }}
             type: DirectoryOrCreate
         - name: config
-          hostPath:
-            path: {{ .Values.clusterRootPath }}/{{ .Values.obsidianSync.configPath }}
-            type: DirectoryOrCreate
+          emptyDir: {}
 {{- end }}

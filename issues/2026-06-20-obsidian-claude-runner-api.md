@@ -195,6 +195,7 @@ The CLI reads `OBSIDIAN_AUTH_TOKEN` from the environment for non-interactive log
 | `OBSIDIAN_AUTH_TOKEN` | yes | Vault | Auth token obtained via `npx obsidian-headless@latest login` |
 | `OBSIDIAN_VAULT_NAME` | yes | Vault | Remote vault name or ID |
 | `OBSIDIAN_DEVICE_NAME` | no | values.yaml | Device name shown in Obsidian version history (set to `k3s-hetzner`) |
+| `OBSIDIAN_VAULT_PATH` | yes | Helm | Container path where the vault is mounted (e.g. `/projects/vault`) |
 | `OBSIDIAN_SYNC_MODE` | no | hardcoded | Set to `pull-only` — vault is read-only for Claude |
 | `OBSIDIAN_CONFLICT_STRATEGY` | no | env | `merge` / `conflict` |
 | `OBSIDIAN_EXCLUDED_FOLDERS` | no | env | Comma-separated folders to exclude |

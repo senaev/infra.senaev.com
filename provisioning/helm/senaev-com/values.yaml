@@ -204,13 +204,13 @@ obsidianSync:
   enabled: true
   vps: hetzner
   volumePath: volumes/obsidian-sync/vault
-  configPath: volumes/obsidian-sync/config
 
 obsidianOpencode:
   enabled: true
   vps: hetzner
-  modelProvider: openai
-  modelId: gpt-4o
+  modelProvider: openrouter
+  modelId: anthropic/claude-sonnet-4.6
+  anotherProjectPath: volumes/another-project
 
 
 vpnSubscription:

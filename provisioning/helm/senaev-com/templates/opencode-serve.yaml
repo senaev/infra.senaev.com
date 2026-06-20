@@ -22,26 +22,43 @@ spec:
     spec:
       nodeSelector:
         vps: {{ .Values.obsidianOpencode.vps }}
+      initContainers:
+        - name: seed-another-project
+          image: busybox:1.37.0-uclibc
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p /projects/another-project
+              if [ ! -f /projects/another-project/README.md ]; then
+                echo "# Another Project\n\nThis is a mock project." > /projects/another-project/README.md
+              fi
+          volumeMounts:
+            - name: another-project
+              mountPath: /projects/another-project
       containers:
         - name: opencode-serve
           image: ghcr.io/senaev/opencode-serve:latest
           env:
             - name: OPENCODE_WORKDIR
-              value: /vault
-            - name: OPENAI_API_KEY
+              value: /projects/vault
+            - name: OPENROUTER_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: OPENAI_API_KEY
+                  key: OPENROUTER_API_KEY
                   optional: false
             - name: OPENCODE_CONFIG_CONTENT
-              value: '{"model":"{{ .Values.obsidianOpencode.modelProvider }}/{{ .Values.obsidianOpencode.modelId }}","provider":{"{{ .Values.obsidianOpencode.modelProvider }}":{"options":{"apiKey":"{env:OPENAI_API_KEY}"}}}}'
+              value: '{"model":"openrouter/{{ .Values.obsidianOpencode.modelId }}","provider":{"openrouter":{"npm":"@ai-sdk/openai-compatible","name":"OpenRouter","options":{"baseURL":"https://openrouter.ai/api/v1","apiKey":"{env:OPENROUTER_API_KEY}"}}}}'
           volumeMounts:
             - name: vault
-              mountPath: /vault
+              mountPath: /projects/vault
+            - name: another-project
+              mountPath: /projects/another-project
 
         - name: opencode-telegram-bot
           image: ghcr.io/senaev/opencode-telegram-bot:latest
+          workingDir: /projects/vault
           env:
             - name: TELEGRAM_BOT_TOKEN
               valueFrom:
@@ -62,11 +79,15 @@ spec:
             - name: OPENCODE_MODEL_ID
               value: {{ .Values.obsidianOpencode.modelId }}
             - name: OPEN_BROWSER_ROOTS
-              value: /vault
+              value: /projects
 
       volumes:
         - name: vault
           hostPath:
             path: {{ .Values.clusterRootPath }}/{{ .Values.obsidianSync.volumePath }}
+            type: DirectoryOrCreate
+        - name: another-project
+          hostPath:
+            path: {{ .Values.clusterRootPath }}/{{ .Values.obsidianOpencode.anotherProjectPath }}
             type: DirectoryOrCreate
 {{- end }}
