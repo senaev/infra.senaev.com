@@ -66,6 +66,14 @@ spec:
               value: {{ .Values.obsidianOpencode.modelId }}
             - name: OPEN_BROWSER_ROOTS
               value: /projects
+            - name: STT_API_URL
+              value: "https://api.openai.com/v1/audio/transcriptions"
+            - name: STT_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: OPENAI_API_KEY
+                  optional: false
 
       volumes:
         - name: vault
