@@ -67,13 +67,15 @@ spec:
             - name: OPEN_BROWSER_ROOTS
               value: /projects
             - name: STT_API_URL
-              value: "https://api.openai.com/v1/audio/transcriptions"
+              value: "https://api.groq.com/openai/v1"
             - name: STT_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: OPENAI_API_KEY
+                  key: GROQ_API_KEY
                   optional: false
+            - name: STT_MODEL
+              value: "whisper-large-v3-turbo"
 
       volumes:
         - name: vault
