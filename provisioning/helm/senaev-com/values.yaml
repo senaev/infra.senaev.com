@@ -209,7 +209,8 @@ obsidianOpencode:
   enabled: true
   vps: hetzner
   modelProvider: openrouter
-  modelId: anthropic/claude-sonnet-4.6
+  modelId: google/gemini-2.5-flash
+  opencodeDataPath: volumes/opencode-data
 
 
 vpnSubscription:
