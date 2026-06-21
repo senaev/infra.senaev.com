@@ -209,7 +209,7 @@ obsidianOpencode:
   enabled: true
   vps: hetzner
   modelProvider: openrouter
-  modelId: anthropic/claude-haiku-latest
+  modelId: anthropic/claude-haiku-4.5
   opencodeDataPath: volumes/opencode-data
 
 
