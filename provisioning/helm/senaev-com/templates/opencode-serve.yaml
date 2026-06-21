@@ -1,27 +1,27 @@
-{{- if .Values.obsidianOpencode.enabled }}
+{{- if .Values.opencodeTelegram.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: obsidian-opencode
+  name: opencode-telegram
   namespace: {{ .Release.Namespace }}
   labels:
-    app: obsidian-opencode
+    app: opencode-telegram
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      app: obsidian-opencode
+      app: opencode-telegram
   template:
     metadata:
       labels:
-        app: obsidian-opencode
+        app: opencode-telegram
       annotations:
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
     spec:
       nodeSelector:
-        vps: {{ .Values.obsidianOpencode.vps }}
+        vps: {{ .Values.opencodeTelegram.vps }}
       containers:
         - name: opencode-serve
           image: ghcr.io/senaev/opencode-serve:latest
@@ -35,7 +35,7 @@ spec:
                   key: OPENROUTER_API_KEY
                   optional: false
             - name: OPENCODE_CONFIG_CONTENT
-              value: '{"model":"openrouter/{{ .Values.obsidianOpencode.modelId }}","provider":{"openrouter":{"npm":"@ai-sdk/openai-compatible","name":"OpenRouter","options":{"baseURL":"https://openrouter.ai/api/v1","apiKey":"{env:OPENROUTER_API_KEY}"}}}}'
+              value: '{"model":"openrouter/{{ .Values.opencodeTelegram.modelId }}","provider":{"openrouter":{"npm":"@ai-sdk/openai-compatible","name":"OpenRouter","options":{"baseURL":"https://openrouter.ai/api/v1","apiKey":"{env:OPENROUTER_API_KEY}"}}}}'
           volumeMounts:
             - name: vault
               mountPath: /projects/vault
@@ -67,9 +67,9 @@ spec:
             - name: OPENCODE_API_URL
               value: "http://localhost:4096"
             - name: OPENCODE_MODEL_PROVIDER
-              value: {{ .Values.obsidianOpencode.modelProvider }}
+              value: {{ .Values.opencodeTelegram.modelProvider }}
             - name: OPENCODE_MODEL_ID
-              value: {{ .Values.obsidianOpencode.modelId }}
+              value: {{ .Values.opencodeTelegram.modelId }}
             - name: OPEN_BROWSER_ROOTS
               value: /projects
             - name: STT_API_URL
@@ -90,6 +90,6 @@ spec:
             type: DirectoryOrCreate
         - name: opencode-data
           hostPath:
-            path: {{ .Values.clusterRootPath }}/{{ .Values.obsidianOpencode.opencodeDataPath }}
+            path: {{ .Values.clusterRootPath }}/{{ .Values.opencodeTelegram.opencodeDataPath }}
             type: DirectoryOrCreate
 {{- end }}

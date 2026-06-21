@@ -205,7 +205,7 @@ obsidianSync:
   vps: hetzner
   volumePath: volumes/obsidian-sync/vault
 
-obsidianOpencode:
+opencodeTelegram:
   enabled: true
   vps: hetzner
   modelProvider: openrouter

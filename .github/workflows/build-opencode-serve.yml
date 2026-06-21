@@ -17,5 +17,5 @@ jobs:
       workflow_title: opencode-serve
       context: ./opencode-serve
       registry_image: ghcr.io/senaev/opencode-serve
-      deployment_name: obsidian-opencode
+      deployment_name: opencode-telegram
     secrets: inherit
