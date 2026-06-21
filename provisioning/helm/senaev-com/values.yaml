@@ -209,7 +209,7 @@ obsidianOpencode:
   enabled: true
   vps: hetzner
   modelProvider: openrouter
-  modelId: google/gemini-2.5-flash
+  modelId: anthropic/claude-haiku-latest
   opencodeDataPath: volumes/opencode-data
 
 
