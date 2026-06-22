@@ -1,4 +1,15 @@
 {{- if .Values.opencodeTelegram.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opencode-telegram-config
+  namespace: {{ .Release.Namespace }}
+data:
+  AGENTS.md: |
+{{ .Files.Get "config/opencode-telegram/AGENTS.md" | indent 4 }}
+  CLAUDE.md: |
+{{ .Files.Get "config/opencode-telegram/CLAUDE.md" | indent 4 }}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -22,6 +33,27 @@ spec:
     spec:
       nodeSelector:
         vps: {{ .Values.opencodeTelegram.vps }}
+      initContainers:
+        - name: git-init
+          image: alpine/git:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              mkdir -p /root/.ssh
+              cp /tmp/ssh/id_rsa /root/.ssh/id_rsa
+              chmod 600 /root/.ssh/id_rsa
+              ssh-keyscan github.com >> /root/.ssh/known_hosts 2>/dev/null
+              mkdir -p /projects/git
+              cd /projects/git
+              {{- range .Values.opencodeTelegram.git.repositories }}
+              git clone {{ . }}
+              {{- end }}
+          volumeMounts:
+            - name: ssh-key
+              mountPath: /tmp/ssh
+              readOnly: true
+            - name: projects-git
+              mountPath: /projects/git
       containers:
         - name: opencode-serve
           image: ghcr.io/senaev/opencode-serve:latest
@@ -39,18 +71,34 @@ spec:
           volumeMounts:
             - name: vault
               mountPath: /projects/vault
+            - name: projects-git
+              mountPath: /projects/git
             - name: opencode-data
               mountPath: /root/.local/share/opencode
               subPath: opencode-sessions
+            - name: opencode-config
+              mountPath: /AGENTS.md
+              subPath: AGENTS.md
+            - name: opencode-config
+              mountPath: /CLAUDE.md
+              subPath: CLAUDE.md
 
         - name: opencode-telegram-bot
           image: ghcr.io/senaev/opencode-telegram-bot:latest
           volumeMounts:
             - name: vault
               mountPath: /projects/vault
+            - name: projects-git
+              mountPath: /projects/git
             - name: opencode-data
               mountPath: /root/.config/opencode-telegram-bot
               subPath: telegram-bot
+            - name: opencode-config
+              mountPath: /AGENTS.md
+              subPath: AGENTS.md
+            - name: opencode-config
+              mountPath: /CLAUDE.md
+              subPath: CLAUDE.md
           env:
             - name: TELEGRAM_BOT_TOKEN
               valueFrom:
@@ -92,4 +140,29 @@ spec:
           hostPath:
             path: {{ .Values.clusterRootPath }}/{{ .Values.opencodeTelegram.opencodeDataPath }}
             type: DirectoryOrCreate
+        - name: ssh-key
+          secret:
+            secretName: senaev-com-kv-secrets
+            items:
+              - key: TELEGRAM_OPENCODE_SSH_PRIVATE_KEY
+                path: id_rsa
+                mode: 0600
+        - name: projects-git
+          persistentVolumeClaim:
+            claimName: opencode-telegram-git
+        - name: opencode-config
+          configMap:
+            name: opencode-telegram-config
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: opencode-telegram-git
+  namespace: {{ .Release.Namespace }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 16Gi
 {{- end }}

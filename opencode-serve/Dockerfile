@@ -4,7 +4,7 @@ FROM debian:bookworm-slim
 # index in the same layer so it doesn't bloat the image, then run the opencode
 # install script which places the binary in PATH
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ca-certificates \
+    && apt-get install -y --no-install-recommends curl ca-certificates git openssh-client \
     && rm -rf /var/lib/apt/lists/* \
     && curl -fsSL https://opencode.ai/install | bash
 
