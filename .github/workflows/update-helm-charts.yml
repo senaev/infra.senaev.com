@@ -58,7 +58,7 @@ jobs:
             STATUS_ICON="❌"
           fi
 
-          TEXT="${STATUS_ICON} Helm chart ${{ matrix.chart }} <a href=\"https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\">updated</a>"
+          TEXT="${STATUS_ICON} Helm chart ${{ matrix.chart }} <a href=\"https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\">update</a>"
 
           curl -sS -X POST "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendMessage" \
             --data-urlencode "chat_id=-1003971743999" \
