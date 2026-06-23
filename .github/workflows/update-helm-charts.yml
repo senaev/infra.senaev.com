@@ -36,7 +36,7 @@ jobs:
         id: changed-files
         uses: tj-actions/changed-files@v41
         with:
-          path: provisioning/helm/${{ matrix.chart }}
+          files: provisioning/helm/${{ matrix.chart }}/**
 
       - name: Update chart
         if: steps.changed-files.outputs.any_changed == 'true'
