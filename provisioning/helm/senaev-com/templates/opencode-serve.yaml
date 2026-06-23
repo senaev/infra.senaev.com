@@ -48,6 +48,8 @@ spec:
             - name: ssh-key
               mountPath: /tmp/ssh
               readOnly: true
+            - name: ssh-dir
+              mountPath: /root/.ssh
             - name: projects-git
               mountPath: /projects/git
       containers:
@@ -69,6 +71,8 @@ spec:
               mountPath: /projects/vault
             - name: projects-git
               mountPath: /projects/git
+            - name: ssh-dir
+              mountPath: /root/.ssh
             - name: opencode-data
               mountPath: /root/.local/share/opencode
               subPath: opencode-sessions
@@ -143,6 +147,8 @@ spec:
               - key: TELEGRAM_OPENCODE_SSH_PRIVATE_KEY
                 path: id_rsa
                 mode: 0600
+        - name: ssh-dir
+          emptyDir: {}
         - name: projects-git
           persistentVolumeClaim:
             claimName: opencode-telegram-git
