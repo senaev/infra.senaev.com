@@ -66,6 +66,12 @@ spec:
               value: Andrei Senaev
             - name: GIT_COMMITTER_EMAIL
               value: andrei.senaev@gmail.com
+            - name: GH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: GH_TOKEN
+                  optional: false
             - name: OPENCODE_WORKDIR
               value: /projects/vault
             - name: OPENROUTER_API_KEY
