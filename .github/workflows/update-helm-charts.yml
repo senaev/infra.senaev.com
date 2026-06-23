@@ -3,6 +3,8 @@ name: Update Helm Charts
 on:
   push:
     branches: [main, master]
+    paths:
+      - 'provisioning/helm/**'
 
 jobs:
   update-charts:
