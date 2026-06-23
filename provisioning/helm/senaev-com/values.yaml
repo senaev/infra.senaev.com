@@ -211,12 +211,6 @@ opencodeTelegram:
   modelProvider: openrouter
   modelId: anthropic/claude-haiku-4.5
   opencodeDataPath: volumes/opencode-data
-  git:
-    repositories:
-      - git@github.com:senaev/infra.senaev.com.git
-      - git@github.com:senaev/senaev-laptop-settings.git
-      - git@github.com:senaev/senaev-utils.git
-      - git@github.com:senaev/senaev.com.git
 
 
 vpnSubscription:
