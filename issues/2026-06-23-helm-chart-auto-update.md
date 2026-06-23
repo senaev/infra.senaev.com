@@ -26,3 +26,13 @@ The workflow does the following:
 - For each chart, it checks for changes in the chart's directory.
 - If changes are detected, it runs the `upgrade-namespace.sh` script to update the chart.
 - It sends a Telegram notification with the status of the job.
+
+---
+
+**Update:**
+
+- Configured the `opencode-serve` container to use a GitHub Personal Access Token (PAT) for authentication.
+- Updated the `external-secrets` configuration to sync the `GH_TOKEN` secret from Vault to the `senaev-com-kv-secrets` Kubernetes secret.
+- Added a section to `AGENTS.md` explaining how secrets are managed in the repository.
+
+**Status:** Completed
