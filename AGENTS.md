@@ -25,4 +25,12 @@ Never commit or push without an explicit request from the user.
 
 - Full VPN services architecture in [`AGENTS.VPN.md`](AGENTS.VPN.md), human documentation is [`XRAY_VPN.md`](XRAY_VPN.md)
 - Worker nodes connect via Tailscale; Tailscale hostnames used throughout (not public IPs)
-- All alerting and operational notifications go to Telegram
+ - All alerting and operational notifications go to Telegram
+
+## Secrets Management
+
+Secrets are managed using HashiCorp Vault and the External Secrets Operator.
+
+1.  **Vault:** Secrets are stored in Vault under the `senaev-com-kv` path.
+2.  **External Secrets Operator:** The External Secrets Operator is configured to read secrets from Vault and create corresponding Kubernetes secrets.
+3.  **Kubernetes Secrets:** The applications running in the cluster can then mount these Kubernetes secrets as environment variables or files.
