@@ -445,3 +445,35 @@ XHTTP transport was deployed on firstvds (`transport: xhttp` in `values.yaml`, s
 Reverted: removed `transport: xhttp` from firstvds instance, subscription links reverted to `type=tcp&flow=xtls-rprx-vision`. Also added "💄 5. hetzner → freedom" as a new direct-exit profile on hetzner (no chain hop, exits from hetzner IP).
 
 **Only remaining option: Option C — move entry point to a non-Russian IP.** firstvds will remain as a chain *exit* only.
+
+---
+
+### 2026-06-23 — Further DPI confirmation with Hetzner freedom outbound
+
+A new test was conducted to provide even stronger evidence for the ISP-level DPI hypothesis.
+
+**Test setup:**
+- A new VPN profile was created: a direct "freedom" outbound on the **Hetzner** node (`senaev.com`). This means traffic exits directly from the Hetzner (EU) IP address, with no chaining to Russia.
+
+**Test results:**
+- **From Madrid, Spain (EU):** The connection to the Hetzner freedom profile works perfectly.
+- **From Russia:** The connection to the same Hetzner freedom profile fails.
+
+**Interpretation:**
+This is conclusive proof of geographically-targeted, behavioral DPI by Russian ISPs.
+- The server configuration is correct (it works from outside Russia).
+- The Hetzner IP itself is not blocked (the website `senaev.com` on the same IP works fine from Russia).
+- The failure only occurs for VPN traffic patterns originating from Russian ISPs.
+
+This test isolates the variable to the user's geographical location and the nature of the traffic, confirming that Russian ISPs are specifically disrupting the VLESS+Reality protocol, regardless of the server's IP location (EU or Russian).
+
+### Next Steps
+
+The VLESS+Reality protocol, even with uTLS camouflage and various transport wrappers (TCP, XHTTP), has proven insufficient to bypass the advanced behavioral DPI deployed by Russian state ISPs.
+
+The next phase of this investigation will be to research and prototype alternative protocols known for their resistance to DPI, such as:
+- **Shadowsocks (with v2ray-plugin)**
+- **Hysteria2**
+- **Tuic**
+
+The goal is to find a protocol that can successfully establish a stable tunnel from within Russia, which can then be used as the transport for chaining traffic to the desired exit nodes.
