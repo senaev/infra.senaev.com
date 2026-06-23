@@ -212,6 +212,7 @@ opencodeTelegram:
   modelId: anthropic/claude-haiku-4.5
   opencodeDataPath: volumes/opencode-data
 
+
 vpnSubscription:
   enabled: true
   vps: hetzner
