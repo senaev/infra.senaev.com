@@ -1,4 +1,3 @@
-clusterRootPath: /k3s-cluster
 mediaServerStoragePath: /mnt/sdb1
 
 nextjs:
