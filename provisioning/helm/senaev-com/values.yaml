@@ -179,10 +179,6 @@ jellyfin:
   vps: senaev-media
   webuiPort: 8096
 
-testEcho:
-  enabled: true
-  vps: hetzner
-
 clusterHelper:
   enabled: true
   vps: hetzner
@@ -235,9 +231,6 @@ ingress:
       hosts:
         - host: webdav.senaev.com
           service: webdav-senaev-com
-          port: 80
-        - host: test.senaev.com
-          service: test-echo
           port: 80
         - host: qbittorrent.senaev.com
           service: qbittorrent

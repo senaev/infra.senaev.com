@@ -1,0 +1,37 @@
+{{- if .Values.ingress.entries }}
+{{- range .Values.ingress.entries }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $.Release.Name }}-{{ .name }}
+  namespace: {{ $.Release.Namespace }}
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: {{ default "web,websecure" .entrypoints }}
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+    {{- if .middleware }}
+    traefik.ingress.kubernetes.io/router.middlewares: {{ $.Release.Namespace }}-{{ .middleware }}@kubernetescrd
+    {{- end }}
+spec:
+  ingressClassName: {{ .className }}
+  tls:
+    - hosts:
+        {{- range .hosts }}
+        - {{ .host }}
+        {{- end }}
+  rules:
+    {{- range .hosts }}
+    - host: {{ .host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .service }}
+                port:
+                  number: {{ .port }}
+    {{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,12 @@
+testEcho:
+  enabled: true
+  vps: hetzner
+
+ingress:
+  entries:
+    - name: test-direct
+      className: traefik-hetzner
+      hosts:
+        - host: test.senaev.com
+          service: test-echo
+          port: 80
