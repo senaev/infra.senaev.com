@@ -78,6 +78,8 @@ services:
 
 	@$(MAKE) senaev-com
 
+	@$(MAKE) test
+
 	@echo "✅ [Makefile] k8s services deployed"
 
 senaev-com:

@@ -2,6 +2,19 @@ testEcho:
   enabled: true
   vps: hetzner
 
+# curl -u "admin_with_emoji_password:ñew 🆕 pAsSw⭕️rd" https://test.senaev.com/test-elasticsearch/my-index/_search
+elasticsearch:
+  enabled: true
+  vps: hetzner
+  elasticPassword: "bootstrap_elastic_password"
+  customPassword: "ñew 🆕 pAsSw⭕️rd"
+  resources:
+    requests:
+      cpu: 200m
+      memory: 1Gi
+    limits:
+      memory: 2Gi
+
 ingress:
   entries:
     - name: test-direct
@@ -10,3 +23,11 @@ ingress:
         - host: test.senaev.com
           service: test-echo
           port: 80
+    - name: test-elasticsearch
+      className: traefik-hetzner
+      middleware: strip-elasticsearch-prefix
+      hosts:
+        - host: test.senaev.com
+          service: elasticsearch
+          port: 9200
+          path: /test-elasticsearch
