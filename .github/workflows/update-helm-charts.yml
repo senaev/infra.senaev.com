@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        chart: ['datadog', 'external-secrets', 'senaev-com', 'traefik', 'vault', 'vm-operator', 'vm-stack']
+        chart: ['datadog', 'external-secrets', 'senaev-com', 'test', 'traefik', 'vault', 'vm-operator', 'vm-stack']
         include:
           - chart: datadog
             namespace: datadog
@@ -19,6 +19,8 @@ jobs:
             namespace: external-secrets
           - chart: senaev-com
             namespace: senaev-com
+          - chart: test
+            namespace: test
           - chart: traefik
             namespace: traefik
           - chart: vault
