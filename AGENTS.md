@@ -19,7 +19,14 @@ Short version:
 
 ## Git discipline
 
-Never commit or push without an explicit request from the user.
+Always ask for explicit user consent before performing any of the following git operations:
+
+- `git add` / staging files
+- `git commit`
+- `git checkout` / `git switch` (branch changes)
+- `git push`
+
+Never stage, commit, switch branches, or push without an explicit request from the user.
 
 ## Key conventions
 
