@@ -477,3 +477,34 @@ The next phase of this investigation will be to research and prototype alternati
 - **Tuic**
 
 The goal is to find a protocol that can successfully establish a stable tunnel from within Russia, which can then be used as the transport for chaining traffic to the desired exit nodes.
+
+---
+
+### 2026-06-25 — Working VLESS Configuration from Russia
+
+A contact in Russia has provided a configuration that is successfully bypassing ISP-level DPI. This provides a strong data point on what currently works.
+
+**Working Configuration Details:**
+
+*   **Protocol:** VLESS over TCP
+*   **Flow:** `XTLS-RPRX-Vision`
+*   **TLS:** `Reality`
+*   **uTLS Fingerprint:** `Firefox`
+*   **Reality Server Name (SNI):** `sun6-21.userapi.com`
+
+**Analysis:**
+
+The most significant parameter is the Reality `serverName` (SNI) being set to `sun6-21.userapi.com`. This domain is part of the infrastructure for **VKontakte (VK)**, Russia's largest social network.
+
+This strongly suggests that Russian DPI systems are configured to **not** interfere with traffic that masquerades as connections to major, domestic web services. The sheer volume of legitimate traffic to VK makes it an ideal camouflage target. The risk of accidentally blocking a critical national service is too high for the ISP, so the DPI gives a pass to anything that looks like VK traffic.
+
+This is a more specific and actionable finding than simply changing protocols. The VLESS+Reality+Vision stack is confirmed to work, provided the SNI is chosen carefully.
+
+**Updated Next Steps:**
+
+Instead of switching protocols, the next immediate action should be to test this SNI-based circumvention strategy.
+
+1.  **Test:** Change the `realityServerName` on the `xray-vpn-hetzner` instance to `sun6-21.userapi.com`.
+2.  **Verify:** Ask a user in Russia to test the `hetzner → freedom` profile.
+
+If this test is successful, it confirms that the choice of a high-traffic, domestic SNI is the key to bypassing DPI in this environment. The `firstvds` (Russian IP) entry point may even become viable again using this strategy, as the geographical IP block appears to be secondary to the behavioral DPI.
