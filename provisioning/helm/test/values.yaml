@@ -4,7 +4,7 @@ testEcho:
 
 # curl -u "admin_with_emoji_password:ñew 🆕 pAsSw⭕️rd" https://test.senaev.com/test-elasticsearch/my-index/_search
 elasticsearch:
-  enabled: true
+  enabled: false
   vps: hetzner
   elasticPassword: "bootstrap_elastic_password"
   customPassword: "ñew 🆕 pAsSw⭕️rd"
