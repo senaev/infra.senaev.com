@@ -37,11 +37,11 @@ spec:
         - name: git-init
           image: alpine/git:latest
           command: ["/bin/sh", "-c"]
-              args:
-                - |
-                  git config --global user.name "Andrei Senaev"
-                  git config --global user.email "andrei.senaev@gmail.com"
-                  mkdir -p /root/.ssh
+          args:
+            - |
+              git config --global user.name "Andrei Senaev"
+              git config --global user.email "andrei.senaev@gmail.com"
+              mkdir -p /root/.ssh
               cp /tmp/ssh/id_rsa /root/.ssh/id_rsa
               chmod 600 /root/.ssh/id_rsa
               ssh-keyscan github.com >> /root/.ssh/known_hosts 2>/dev/null

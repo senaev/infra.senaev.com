@@ -1,7 +1,7 @@
 -include .env
 export
 
-.PHONY: default terraform cluster rsync control-plane workers services senaev-com secrets telemetry traefik datadog
+.PHONY: default terraform cluster rsync control-plane workers services senaev-com secrets telemetry traefik datadog test
 
 CONTROL_PLANE_SERVER_ADDRESS := $(CONTROL_PLANE_SERVER_USERNAME)@$(CONTROL_PLANE_SERVER_IP)
 REMOTE := @ssh "$(CONTROL_PLANE_SERVER_ADDRESS)"
@@ -78,6 +78,8 @@ services:
 
 	@$(MAKE) senaev-com
 
+	@$(MAKE) test
+
 	@echo "✅ [Makefile] k8s services deployed"
 
 senaev-com:
@@ -88,3 +90,8 @@ senaev-com:
 	$(REMOTE) "$(DEPLOY) senaev-com senaev-com"
 
 	@echo "✅ [Makefile] senaev-com services deployed"
+
+test:
+	@$(MAKE) rsync
+
+	$(REMOTE) "$(DEPLOY) test test"

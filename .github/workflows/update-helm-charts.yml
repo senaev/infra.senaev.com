@@ -3,13 +3,15 @@ name: Update Helm Charts
 on:
   push:
     branches: [main, master]
+    paths:
+      - 'provisioning/helm/**'
 
 jobs:
   update-charts:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        chart: ['datadog', 'external-secrets', 'senaev-com', 'traefik', 'vault', 'vm-operator', 'vm-stack']
+        chart: ['datadog', 'external-secrets', 'senaev-com', 'test', 'traefik', 'vault', 'vm-operator', 'vm-stack']
         include:
           - chart: datadog
             namespace: datadog
@@ -17,6 +19,8 @@ jobs:
             namespace: external-secrets
           - chart: senaev-com
             namespace: senaev-com
+          - chart: test
+            namespace: test
           - chart: traefik
             namespace: traefik
           - chart: vault
@@ -36,7 +40,17 @@ jobs:
         id: changed-files
         uses: tj-actions/changed-files@v41
         with:
-          path: provisioning/helm/${{ matrix.chart }}
+          files: provisioning/helm/${{ matrix.chart }}/**
+
+      - name: Sync provisioning to server
+        if: steps.changed-files.outputs.any_changed == 'true'
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.REMOTE_SSH_KEY }}
+          source: "provisioning/"
+          target: "/k3s-cluster/"
 
       - name: Update chart
         if: steps.changed-files.outputs.any_changed == 'true'
@@ -47,7 +61,7 @@ jobs:
           key: ${{ secrets.REMOTE_SSH_KEY }}
           script: |
             set -e
-            /home/senaev/infra.senaev.com/provisioning/control-plane/upgrade-namespace.sh ${{ matrix.chart }} ${{ matrix.namespace }}
+            /k3s-cluster/provisioning/control-plane/upgrade-namespace.sh ${{ matrix.chart }} ${{ matrix.namespace }}
 
       - name: Notify Telegram
         if: always() && steps.changed-files.outputs.any_changed == 'true'
@@ -58,7 +72,7 @@ jobs:
             STATUS_ICON="❌"
           fi
 
-          TEXT="${STATUS_ICON} Helm chart ${{ matrix.chart }} <a href=\"https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\">updated</a>"
+          TEXT="${STATUS_ICON} Helm chart ${{ matrix.chart }} <a href=\"https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\">update</a>"
 
           curl -sS -X POST "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendMessage" \
             --data-urlencode "chat_id=-1003971743999" \
