@@ -10,7 +10,7 @@ datadog:
     # Credentials come from the `datadog-secrets` Secret synced by External
     # Secrets (see templates/external-secret.yaml). The chart reads the
     # `api-key` key.
-    apiKeyExistingSecret: datadog-secrets
+    apiKeyExistingSecret: senaev-com-kv-secrets
 
     # --- K3s specifics ---
     # K3s kubelet serves a self-signed cert over the node IP; the agent cannot
@@ -54,6 +54,8 @@ datadog:
   # convention (vault, vm-operator).
   clusterAgent:
     enabled: true
+    podAnnotations:
+      secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
     nodeSelector:
       vps: hetzner
 
@@ -62,6 +64,8 @@ datadog:
   # everything defensively so future taints don't silently drop these nodes.
   agents:
     enabled: true
+    podAnnotations:
+      secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
     affinity:
       nodeAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:
