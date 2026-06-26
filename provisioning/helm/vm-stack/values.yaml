@@ -85,7 +85,7 @@ victoria-metrics-k8s-stack:
             receiver: telegram-alerts-receiver
             group_wait: 0s
             group_interval: 10s
-            repeat_interval: 1h
+            repeat_interval: 24h
       receivers:
         - name: blackhole
         - name: telegram-alerts-receiver
