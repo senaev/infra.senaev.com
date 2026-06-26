@@ -7,10 +7,11 @@ datadog:
     site: datadoghq.com
     clusterName: senaev-k3s
 
-    # Credentials come from the `datadog-secrets` Secret synced by External
+    # Credentials come from the `senaev-com-kv-secrets` Secret synced by External
     # Secrets (see templates/external-secret.yaml). The chart reads the
-    # `api-key` key.
+    # `DD_API_KEY` key.
     apiKeyExistingSecret: senaev-com-kv-secrets
+    apiKeySecretKeyName: DD_API_KEY
 
     # --- K3s specifics ---
     # K3s kubelet serves a self-signed cert over the node IP; the agent cannot
