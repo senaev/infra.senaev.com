@@ -7,11 +7,9 @@ datadog:
     site: datad0g.com
     clusterName: senaev-k3s
 
-    # Credentials come from the `senaev-com-kv-secrets` Secret synced by External
-    # Secrets (see templates/external-secret.yaml). The chart reads the
-    # `DD_API_KEY` key.
+    # API key injected explicitly via secretKeyRef, consistent with the rest of
+    # the cluster's secret pattern (see templates/external-secret.yaml).
     apiKeyExistingSecret: senaev-com-kv-secrets
-    apiKeySecretKeyName: DD_API_KEY
 
     # --- K3s specifics ---
     # K3s kubelet serves a self-signed cert over the node IP; the agent cannot
@@ -57,6 +55,12 @@ datadog:
     enabled: true
     podAnnotations:
       secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
+    env:
+      - name: DD_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: senaev-com-kv-secrets
+            key: DD_API_KEY
     nodeSelector:
       vps: hetzner
 
@@ -67,6 +71,14 @@ datadog:
     enabled: true
     podAnnotations:
       secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
+    containers:
+      agent:
+        env:
+          - name: DD_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: senaev-com-kv-secrets
+                key: DD_API_KEY
     affinity:
       nodeAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:
