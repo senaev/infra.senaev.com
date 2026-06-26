@@ -4,7 +4,7 @@
 # one level down.
 datadog:
   datadog:
-    site: datadoghq.com
+    site: datad0g.com
     clusterName: senaev-k3s
 
     # Credentials come from the `senaev-com-kv-secrets` Secret synced by External
