@@ -23,7 +23,7 @@ ob sync-setup --vault "$OBSIDIAN_VAULT_NAME" --path "$OBSIDIAN_VAULT_PATH"
 ob sync-config --path "$OBSIDIAN_VAULT_PATH" --device-name "senaev-com-obsidian-headless"
 ob sync-config --path "$OBSIDIAN_VAULT_PATH" --mode "bidirectional"
 ob sync-config --path "$OBSIDIAN_VAULT_PATH" --conflict-strategy "merge"
-ob sync-config --path "$OBSIDIAN_VAULT_PATH" --excluded-folders "node_modules,.git,__pycache__,.cache"
+ob sync-config --path "$OBSIDIAN_VAULT_PATH" --excluded-folders "senaev-personal-tools/node_modules"
 ob sync-config --path "$OBSIDIAN_VAULT_PATH" --configs "app,appearance,appearance-data,hotkey,core-plugin,core-plugin-data,community-plugin,community-plugin-data"
 ob sync-config --path "$OBSIDIAN_VAULT_PATH" --file-types "image,audio,video,pdf,unsupported"
 
