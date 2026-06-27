@@ -13,7 +13,10 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | d
     && curl -fsSL https://opencode.ai/install | bash \
     && YQ_VERSION=$(curl -fsSL https://api.github.com/repos/mikefarah/yq/releases/latest | grep tag_name | cut -d'"' -f4) \
     && curl -fsSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o /usr/local/bin/yq \
-    && chmod +x /usr/local/bin/yq
+    && chmod +x /usr/local/bin/yq \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
 
 ENV PATH="/root/.opencode/bin:$PATH"
 
