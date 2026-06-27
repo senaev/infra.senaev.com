@@ -56,6 +56,10 @@ spec:
               value: /projects/vault
             - name: OBSIDIAN_DEVICE_NAME
               value: "senaev-com-obsidian-headless"
+            - name: OBSIDIAN_CONFIGS
+              value: "app,appearance,appearance-data,hotkey,core-plugin,core-plugin-data,community-plugin,community-plugin-data"
+            - name: OBSIDIAN_FILE_TYPES
+              value: "image,audio,video,pdf,unsupported"
           volumeMounts:
             - name: vault
               mountPath: /projects/vault

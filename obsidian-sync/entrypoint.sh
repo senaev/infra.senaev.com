@@ -24,6 +24,8 @@ ob sync-setup --vault "$OBSIDIAN_VAULT_NAME" --path "$OBSIDIAN_VAULT_PATH"
 [ -n "$OBSIDIAN_SYNC_MODE" ]          && ob sync-config --path "$OBSIDIAN_VAULT_PATH" --mode "$OBSIDIAN_SYNC_MODE"
 [ -n "$OBSIDIAN_CONFLICT_STRATEGY" ]  && ob sync-config --path "$OBSIDIAN_VAULT_PATH" --conflict-strategy "$OBSIDIAN_CONFLICT_STRATEGY"
 [ -n "$OBSIDIAN_EXCLUDED_FOLDERS" ]   && ob sync-config --path "$OBSIDIAN_VAULT_PATH" --excluded-folders "$OBSIDIAN_EXCLUDED_FOLDERS"
+[ -n "$OBSIDIAN_CONFIGS" ]            && ob sync-config --path "$OBSIDIAN_VAULT_PATH" --configs "$OBSIDIAN_CONFIGS"
+[ -n "$OBSIDIAN_FILE_TYPES" ]         && ob sync-config --path "$OBSIDIAN_VAULT_PATH" --file-types "$OBSIDIAN_FILE_TYPES"
 
 echo "[obsidian-sync] Starting continuous sync..."
 exec ob sync --path "$OBSIDIAN_VAULT_PATH" --continuous
