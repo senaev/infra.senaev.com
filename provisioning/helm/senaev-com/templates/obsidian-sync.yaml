@@ -32,10 +32,10 @@ spec:
             - sh
             - -c
             - |
-              chown -R 1000:1000 /projects/vault
+              chown -R 1000:1000 /vault
           volumeMounts:
             - name: vault
-              mountPath: /projects/vault
+              mountPath: /vault
       containers:
         - name: obsidian-sync
           image: ghcr.io/senaev/obsidian-sync:latest
@@ -53,10 +53,10 @@ spec:
                   key: OBSIDIAN_VAULT_NAME
                   optional: false
             - name: OBSIDIAN_VAULT_PATH
-              value: /projects/vault
+              value: /vault
           volumeMounts:
             - name: vault
-              mountPath: /projects/vault
+              mountPath: /vault
       volumes:
         - name: vault
           hostPath:
