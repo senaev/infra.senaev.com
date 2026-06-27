@@ -47,3 +47,10 @@ Secrets are managed using HashiCorp Vault and the External Secrets Operator.
 1.  **Vault:** Secrets are stored in Vault under the `senaev-com-kv` path.
 2.  **External Secrets Operator:** The External Secrets Operator is configured to read secrets from Vault and create corresponding Kubernetes secrets.
 3.  **Kubernetes Secrets:** The applications running in the cluster can then mount these Kubernetes secrets as environment variables or files.
+
+## Supabase Integration
+
+Supabase is used as a managed Postgres backend.
+
+Credentials (`SUPABASE_PROJECT_URL`, `SUPABASE_PUBLISHABLE_KEY`) are stored in Vault and injected as env vars via the `senaev-com-kv-secrets` Kubernetes secret.
+

@@ -1,8 +1,70 @@
 import { addItemsToSupabaseGroceryList } from "./addItemsToSupabaseGroceryList";
 import { logger } from "./logger";
-import { parseAlisaCommandWithOpenRouter } from "./openrouter";
+import { callOpenRouter } from "./openrouter";
 
 export const ALISA_SKILL_NAME = "Умный Папа";
+
+type ParsedAlisaCommand = {
+    items: string[];
+    error: string | null;
+};
+
+async function parseAlisaCommandWithOpenRouter(command: string): Promise<ParsedAlisaCommand> {
+    const parsed = await callOpenRouter<ParsedAlisaCommand>({
+        messages: [
+            {
+                role: "system",
+                content: [
+                    `## Command`,
+                    `You are processing the Yandex Alisa skill named '${ALISA_SKILL_NAME}'.`,
+                    "This skill is dedicated to managing a single shopping list.",
+                    "If the user asks to add something to the shopping list, return only the list of items to add.",
+                    "All the items in the response should be in initial form, but avoid losing details like amount, quantity or anything else.",
+                    "All the items in the response should start from capital letter, as they will be directly added to the shopping list.",
+                    "Answer strictly in JSON that matches the provided schema.",
+                    "Preserve item names and error message in Russian.",
+                    "## Errors",
+                    "If the user asks for anything else, return an error and short explanation.",
+                ].join(" "),
+            },
+            {
+                role: "user",
+                content: command,
+            },
+        ],
+        jsonSchema: {
+            name: "alisa_shopping_command",
+            schema: {
+                type: "object",
+                properties: {
+                    items: {
+                        type: "array",
+                        items: { type: "string" },
+                    },
+                    error: {
+                        type: ["string", "null"],
+                    },
+                },
+                required: ["items", "error"],
+                additionalProperties: false,
+            },
+        },
+    });
+
+    if (!Array.isArray(parsed.items)) {
+        throw new Error(
+            `OpenRouter response items field is invalid [${JSON.stringify(parsed, null, 2)}]`,
+        );
+    }
+
+    if (parsed.error !== null && typeof parsed.error !== "string") {
+        throw new Error(
+            `OpenRouter response error field is invalid [${JSON.stringify(parsed, null, 2)}]`,
+        );
+    }
+
+    return parsed;
+}
 
 export type HandleTrickyDadRequestResult = {
     openRouterResponseTime: number;
