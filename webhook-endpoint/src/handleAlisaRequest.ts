@@ -36,6 +36,7 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
                         [
                             `Command: ${command}`,
                             `Duration: ${((Date.now() - startTime) / 1000).toFixed(2)}s`,
+                            `Destination: ${result.destination}`,
                             `OpenRouter time: ${result.openRouterResponseTime}`,
                             `Supabase time: ${result.supabaseResponseTime}`,
                             result.openRouterError &&
@@ -43,6 +44,7 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
                             result.supabaseErrorString &&
                                 `Supabase Error: ${String(result.supabaseErrorString)}`,
                             result.addedItems && `Added items:\n${result.addedItems.join("\n")}`,
+                            result.addedTask && `Added task: ${result.addedTask}`,
                         ]
                             .filter(Boolean)
                             .join("\n"),
