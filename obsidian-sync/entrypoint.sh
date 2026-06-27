@@ -20,12 +20,12 @@ ob login
 echo "[obsidian-sync] Setting up vault '$OBSIDIAN_VAULT_NAME' at $OBSIDIAN_VAULT_PATH..."
 ob sync-setup --vault "$OBSIDIAN_VAULT_NAME" --path "$OBSIDIAN_VAULT_PATH"
 
-[ -n "$OBSIDIAN_DEVICE_NAME" ]        && ob sync-config --path "$OBSIDIAN_VAULT_PATH" --device-name "$OBSIDIAN_DEVICE_NAME"
-[ -n "$OBSIDIAN_SYNC_MODE" ]          && ob sync-config --path "$OBSIDIAN_VAULT_PATH" --mode "$OBSIDIAN_SYNC_MODE"
-[ -n "$OBSIDIAN_CONFLICT_STRATEGY" ]  && ob sync-config --path "$OBSIDIAN_VAULT_PATH" --conflict-strategy "$OBSIDIAN_CONFLICT_STRATEGY"
-[ -n "$OBSIDIAN_EXCLUDED_FOLDERS" ]   && ob sync-config --path "$OBSIDIAN_VAULT_PATH" --excluded-folders "$OBSIDIAN_EXCLUDED_FOLDERS"
-[ -n "$OBSIDIAN_CONFIGS" ]            && ob sync-config --path "$OBSIDIAN_VAULT_PATH" --configs "$OBSIDIAN_CONFIGS"
-[ -n "$OBSIDIAN_FILE_TYPES" ]         && ob sync-config --path "$OBSIDIAN_VAULT_PATH" --file-types "$OBSIDIAN_FILE_TYPES"
+ob sync-config --path "$OBSIDIAN_VAULT_PATH" --device-name "senaev-com-obsidian-headless"
+ob sync-config --path "$OBSIDIAN_VAULT_PATH" --mode "bidirectional"
+ob sync-config --path "$OBSIDIAN_VAULT_PATH" --conflict-strategy "merge"
+ob sync-config --path "$OBSIDIAN_VAULT_PATH" --excluded-folders "node_modules,.git,__pycache__,.cache"
+ob sync-config --path "$OBSIDIAN_VAULT_PATH" --configs "app,appearance,appearance-data,hotkey,core-plugin,core-plugin-data,community-plugin,community-plugin-data"
+ob sync-config --path "$OBSIDIAN_VAULT_PATH" --file-types "image,audio,video,pdf,unsupported"
 
 echo "[obsidian-sync] Starting continuous sync..."
 exec ob sync --path "$OBSIDIAN_VAULT_PATH" --continuous
