@@ -1,9 +1,10 @@
 import { sendTelegramMessage } from "senaev-utils/src/utils/TelegramApi/sendTelegramMessage";
-import { TG_TOKEN_SENAEV_COM_BOT, TRICKY_DAD_CHAT_ID, OBSIDIAN_TASKS_CHAT_ID } from "./env";
+import { TG_TOKEN_SENAEV_COM_BOT, OBSIDIAN_TASKS_CHAT_ID } from "./env";
 import { escapeTelegramMarkdownV2 } from "./escapeTelegramMarkdownV2";
 import { getRandomValueFromArray } from "./getRandomValueFromArray";
 import { logger } from "./logger";
 import { processAlisaCommand } from "./processAlisaCommand";
+import { sendTrickyDadErrorReport, sendTrickyDadReport } from "./sendTrickyDadReport";
 
 export async function handleAlisaRequest(body: unknown): Promise<string> {
     const startTime = Date.now();
@@ -26,44 +27,17 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
         }
 
         processAlisaCommand(command)
-            .then((result) => {
-                const reportChatId = result.destination === "grocery" ? TRICKY_DAD_CHAT_ID : OBSIDIAN_TASKS_CHAT_ID;
-                return sendTelegramMessage({
-                    token: TG_TOKEN_SENAEV_COM_BOT,
-                    chatId: String(reportChatId),
-                    parseMode: "MarkdownV2",
-                    text: escapeTelegramMarkdownV2(
-                        [
-                            `🗣️ Command: ${command}`,
-                            `📡 Source: Alisa`,
-                            `⏱️ Duration: ${((Date.now() - startTime) / 1000).toFixed(2)}s`,
-                            `📍 Destination: ${{ grocery: "🛒 grocery", task: "✅ task", fallback: "🔀 fallback" }[result.destination]}`,
-                            `🤖 OpenRouter time: ${result.openRouterResponseTime}ms`,
-                            result.supabaseResponseTime !== null &&
-                                `🗄️ Supabase time: ${result.supabaseResponseTime}ms`,
-                            result.openRouterError &&
-                                `❌ OpenRouter Error: ${String(result.openRouterError)}`,
-                            result.supabaseErrorString &&
-                                `❌ Supabase Error: ${String(result.supabaseErrorString)}`,
-                            result.addedItems && `🛒 Added items:\n${result.addedItems.map((item) => `- ${item}`).join("\n")}`,
-                            result.addedTask && `✅ Added task: ${result.addedTask}`,
-                        ]
-                            .filter(Boolean)
-                            .join("\n"),
-                    ),
-                });
-            })
+            .then((result) =>
+                sendTrickyDadReport({
+                    command,
+                    source: "Alisa",
+                    durationSeconds: ((Date.now() - startTime) / 1000).toFixed(2),
+                    result,
+                }),
+            )
             .catch((err) => {
                 logger.error(err, "❌ Failed to process Alisa command");
-
-                sendTelegramMessage({
-                    token: TG_TOKEN_SENAEV_COM_BOT,
-                    chatId: String(OBSIDIAN_TASKS_CHAT_ID),
-                    parseMode: "MarkdownV2",
-                    text: escapeTelegramMarkdownV2(
-                        `❌ Failed to process Alisa command=[${command}]: ${err instanceof Error ? err.message : String(err)}`,
-                    ),
-                }).catch((err) => {
+                sendTrickyDadErrorReport({ command, err }).catch((err) => {
                     logger.error(err, "❌ Failed to send error message to Telegram");
                 });
             });
@@ -140,7 +114,6 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
         }).catch((err) => {
             logger.error(err, "❌ Failed to send error message to Telegram");
         });
-
         return getRandomValueFromArray([
             "Ой-ой, похоже Папа всех перехитрил и сломался",
             "У Папы что-то пошло не так",
