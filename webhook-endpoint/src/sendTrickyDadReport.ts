@@ -25,21 +25,40 @@ export async function sendTrickyDadReport({
 
     const shouldReply = sourceChatId && reportChatId === sourceChatId;
 
-    const text = [
-        `🗣️ Command: ${command}`,
-        `📡 Source: ${source}`,
-        `⏱️ Duration: ${durationSeconds}s`,
-        `📍 Destination: ${{ grocery: "🛒 grocery", task: "✅ task", fallback: "🔀 fallback" }[result.destination]}`,
-        `🤖 OpenRouter time: ${result.openRouterResponseTime}ms`,
-        result.supabaseResponseTime !== null && `🗄️ Supabase time: ${result.supabaseResponseTime}ms`,
-        result.openRouterError && `❌ OpenRouter Error: ${String(result.openRouterError)}`,
-        result.supabaseErrorString && `❌ Supabase Error: ${String(result.supabaseErrorString)}`,
-        result.addedItems &&
-            `🛒 Added items:\n${result.addedItems.map((item) => `- ${item}`).join("\n")}`,
-        result.addedTask && `✅ Added task: ${result.addedTask}`,
-    ]
-        .filter(Boolean)
-        .join("\n");
+    const esc = escapeTelegramMarkdownV2;
+
+    const parts: string[] = [];
+
+    if (result.addedItems) {
+        parts.push(
+            `🛒 Добавлено:\n${result.addedItems.map((item) => `• *${esc(item)}*`).join("\n")}`,
+        );
+    }
+
+    if (result.addedTask) {
+        parts.push(`📌 Новая задача: *${esc(result.addedTask)}*`);
+    }
+
+    const detailLines = [
+        `🗣️ Команда: ${esc(command)}`,
+        `📡 Откуда: ${esc(source)}`,
+        `📍 Куда: ${{ grocery: "🛒 grocery", task: "📌 task", fallback: "🔀 fallback" }[result.destination]}`,
+        `⏱️ Время: ${esc(durationSeconds)}s`,
+        `🤖 Время OpenRouter: ${esc(String(result.openRouterResponseTime))}ms`,
+        result.supabaseResponseTime !== null
+            ? `🗄️ Время Supabase: ${esc(String(result.supabaseResponseTime))}ms`
+            : null,
+        result.openRouterError ? `❌ OpenRouter Error: ${esc(String(result.openRouterError))}` : null,
+        result.supabaseErrorString
+            ? `❌ Supabase Error: ${esc(String(result.supabaseErrorString))}`
+            : null,
+    ].filter(Boolean) as string[];
+
+    if (detailLines.length > 0) {
+        parts.push(`**> ${detailLines.join("\n> ")}||`);
+    }
+
+    const text = parts.join("\n");
 
     logger.info({ reportChatId, source }, "👉 Sending tricky dad report");
 
@@ -47,7 +66,7 @@ export async function sendTrickyDadReport({
         token: TG_TOKEN_SENAEV_COM_BOT,
         chatId: reportChatId,
         parseMode: "MarkdownV2",
-        text: escapeTelegramMarkdownV2(text),
+        text,
         ...(shouldReply && { replyToMessageId }),
     });
 }
