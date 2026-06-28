@@ -29,9 +29,9 @@ export async function processTasksChatMessage(message: TelegramMessage): Promise
             chatId: OBSIDIAN_TASKS_CHAT_ID,
             messageId: message.message_id,
             token: TG_TOKEN_SENAEV_COM_BOT,
-            reactions: ["🧊"],
+            reactions: ["👀"],
         });
-        logger.info("✅ Added 🧊 reaction to message");
+        logger.info("✅ Added 👀 reaction to message");
 
         const parsed = await parseTaskMessageWithOpenRouter(text);
         logger.info(

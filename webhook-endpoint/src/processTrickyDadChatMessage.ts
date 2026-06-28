@@ -21,7 +21,7 @@ export async function processTrickyDadChatMessage(message: TelegramMessage): Pro
         chatId: TRICKY_DAD_CHAT_ID,
         messageId: message.message_id,
         token: TG_TOKEN_SENAEV_COM_BOT,
-        reactions: ["🧊"],
+        reactions: ["👀"],
     });
 
     logger.info({ command }, "👉 Processing tricky dad chat message");
