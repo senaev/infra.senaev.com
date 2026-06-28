@@ -7,7 +7,12 @@ import { logger } from "./logger";
 import { parseTextOrAudioMessageFromTelegram } from "./parseTextOrAudioMessageFromTelegram";
 import { processAlisaCommand } from "./processAlisaCommand";
 
-export async function processTrickyDadChatMessage(message: TelegramMessage): Promise<void> {
+export type TrickyDadMessageSource = "Tricky Dad" | "Obsidian Tasks";
+
+export async function processTrickyDadChatMessage(
+    message: TelegramMessage,
+    source: TrickyDadMessageSource,
+): Promise<void> {
     const startTime = Date.now();
 
     const command = await parseTextOrAudioMessageFromTelegram(message);
@@ -17,14 +22,16 @@ export async function processTrickyDadChatMessage(message: TelegramMessage): Pro
         return;
     }
 
+    const sourceChatId = source === "Tricky Dad" ? TRICKY_DAD_CHAT_ID : OBSIDIAN_TASKS_CHAT_ID;
+
     await setTelegramMessageReaction({
-        chatId: TRICKY_DAD_CHAT_ID,
+        chatId: sourceChatId,
         messageId: message.message_id,
         token: TG_TOKEN_SENAEV_COM_BOT,
         reactions: ["👀"],
     });
 
-    logger.info({ command }, "👉 Processing tricky dad chat message");
+    logger.info({ command, source }, "👉 Processing tricky dad chat message");
 
     try {
         const result = await processAlisaCommand(command);
@@ -33,6 +40,7 @@ export async function processTrickyDadChatMessage(message: TelegramMessage): Pro
 
         const responseLines = [
             `🗣️ Command: ${command}`,
+            `📡 Source: ${source}`,
             `⏱️ Duration: ${duration}s`,
             `📍 Destination: ${{ grocery: "🛒 grocery", task: "✅ task", fallback: "🔀 fallback" }[result.destination]}`,
             `🤖 OpenRouter time: ${result.openRouterResponseTime}ms`,
@@ -55,7 +63,7 @@ export async function processTrickyDadChatMessage(message: TelegramMessage): Pro
             chatId: reportChatId,
             parseMode: "MarkdownV2",
             text: escapeTelegramMarkdownV2(responseLines),
-            ...(reportChatId === TRICKY_DAD_CHAT_ID && { replyToMessageId: message.message_id }),
+            ...(reportChatId === sourceChatId && { replyToMessageId: message.message_id }),
         });
     } catch (err) {
         logger.error(err, "❌ Failed to process tricky dad chat message");

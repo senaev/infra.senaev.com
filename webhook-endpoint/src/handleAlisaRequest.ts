@@ -1,5 +1,5 @@
 import { sendTelegramMessage } from "senaev-utils/src/utils/TelegramApi/sendTelegramMessage";
-import { TG_TOKEN_SENAEV_COM_BOT, TRICKY_DAD_CHAT_ID } from "./env";
+import { TG_TOKEN_SENAEV_COM_BOT, TRICKY_DAD_CHAT_ID, OBSIDIAN_TASKS_CHAT_ID } from "./env";
 import { escapeTelegramMarkdownV2 } from "./escapeTelegramMarkdownV2";
 import { getRandomValueFromArray } from "./getRandomValueFromArray";
 import { logger } from "./logger";
@@ -26,14 +26,16 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
         }
 
         processAlisaCommand(command)
-            .then((result) =>
-                sendTelegramMessage({
+            .then((result) => {
+                const reportChatId = result.destination === "grocery" ? TRICKY_DAD_CHAT_ID : OBSIDIAN_TASKS_CHAT_ID;
+                return sendTelegramMessage({
                     token: TG_TOKEN_SENAEV_COM_BOT,
-                    chatId: String(TRICKY_DAD_CHAT_ID),
+                    chatId: String(reportChatId),
                     parseMode: "MarkdownV2",
                     text: escapeTelegramMarkdownV2(
                         [
                             `🗣️ Command: ${command}`,
+                            `📡 Source: Alisa`,
                             `⏱️ Duration: ${((Date.now() - startTime) / 1000).toFixed(2)}s`,
                             `📍 Destination: ${{ grocery: "🛒 grocery", task: "✅ task", fallback: "🔀 fallback" }[result.destination]}`,
                             `🤖 OpenRouter time: ${result.openRouterResponseTime}ms`,
@@ -49,14 +51,14 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
                             .filter(Boolean)
                             .join("\n"),
                     ),
-                }),
-            )
+                });
+            })
             .catch((err) => {
                 logger.error(err, "❌ Failed to process Alisa command");
 
                 sendTelegramMessage({
                     token: TG_TOKEN_SENAEV_COM_BOT,
-                    chatId: String(TRICKY_DAD_CHAT_ID),
+                    chatId: String(OBSIDIAN_TASKS_CHAT_ID),
                     parseMode: "MarkdownV2",
                     text: escapeTelegramMarkdownV2(
                         `❌ Failed to process Alisa command=[${command}]: ${err instanceof Error ? err.message : String(err)}`,
@@ -130,7 +132,7 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
 
         sendTelegramMessage({
             token: TG_TOKEN_SENAEV_COM_BOT,
-            chatId: String(TRICKY_DAD_CHAT_ID),
+            chatId: String(OBSIDIAN_TASKS_CHAT_ID),
             parseMode: "MarkdownV2",
             text: escapeTelegramMarkdownV2(
                 `❌ Sync error processing Alisa command: ${err instanceof Error ? err.message : String(err)}`,
