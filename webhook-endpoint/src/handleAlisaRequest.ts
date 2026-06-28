@@ -33,17 +33,18 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
                     parseMode: "MarkdownV2",
                     text: escapeTelegramMarkdownV2(
                         [
-                            `Command: ${command}`,
-                            `Duration: ${((Date.now() - startTime) / 1000).toFixed(2)}s`,
-                            `Destination: ${result.destination}`,
-                            `OpenRouter time: ${result.openRouterResponseTime}`,
-                            `Supabase time: ${result.supabaseResponseTime}`,
+                            `🗣️ Command: ${command}`,
+                            `⏱️ Duration: ${((Date.now() - startTime) / 1000).toFixed(2)}s`,
+                            `📍 Destination: ${{ grocery: "🛒 grocery", task: "✅ task", fallback: "🔀 fallback" }[result.destination]}`,
+                            `🤖 OpenRouter time: ${result.openRouterResponseTime}ms`,
+                            result.supabaseResponseTime !== null &&
+                                `🗄️ Supabase time: ${result.supabaseResponseTime}ms`,
                             result.openRouterError &&
-                                `OpenRouter Error: ${String(result.openRouterError)}`,
+                                `❌ OpenRouter Error: ${String(result.openRouterError)}`,
                             result.supabaseErrorString &&
-                                `Supabase Error: ${String(result.supabaseErrorString)}`,
-                            result.addedItems && `Added items:\n${result.addedItems.join("\n")}`,
-                            result.addedTask && `Added task: ${result.addedTask}`,
+                                `❌ Supabase Error: ${String(result.supabaseErrorString)}`,
+                            result.addedItems && `🛒 Added items:\n${result.addedItems.map((item) => `- ${item}`).join("\n")}`,
+                            result.addedTask && `✅ Added task: ${result.addedTask}`,
                         ]
                             .filter(Boolean)
                             .join("\n"),
