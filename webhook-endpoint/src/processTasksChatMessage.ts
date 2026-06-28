@@ -25,6 +25,14 @@ export async function processTasksChatMessage(message: TelegramMessage): Promise
             return;
         }
 
+        await setTelegramMessageReaction({
+            chatId: OBSIDIAN_TASKS_CHAT_ID,
+            messageId: message.message_id,
+            token: TG_TOKEN_SENAEV_COM_BOT,
+            reactions: ["🧊"],
+        });
+        logger.info("✅ Added 🧊 reaction to message");
+
         const parsed = await parseTaskMessageWithOpenRouter(text);
         logger.info(
             { title: parsed.title, due_date: parsed.due_date },
