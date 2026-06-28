@@ -5,25 +5,26 @@ import { OBSIDIAN_TASKS_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from "./env";
 import { logger } from "./logger";
 import { escapeTelegramMarkdownV2 } from "./escapeTelegramMarkdownV2";
 import { parseTaskMessageWithOpenRouter } from "./parseTaskMessageWithOpenRouter";
+import { parseTextOrAudioMessageFromTelegram } from "./parseTextOrAudioMessageFromTelegram";
 import { insertSupabaseRows } from "./supabase";
 
 export async function processTasksChatMessage(message: TelegramMessage): Promise<void> {
-    const { text } = message;
-
-    if (!text) {
-        logger.info(
-            { messageId: message.message_id },
-            "⏭️ Ignoring non-text message in tasks chat",
-        );
-        return;
-    }
-
     logger.info(
         { messageId: message.message_id, userId: message.from?.id },
         "🆕 Received Telegram message in tasks chat",
     );
 
     try {
+        const text = await parseTextOrAudioMessageFromTelegram(message);
+
+        if (!text) {
+            logger.info(
+                { messageId: message.message_id },
+                "⏭️ Ignoring non-text/audio message in tasks chat",
+            );
+            return;
+        }
+
         const parsed = await parseTaskMessageWithOpenRouter(text);
         logger.info(
             { title: parsed.title, due_date: parsed.due_date },

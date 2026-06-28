@@ -80,6 +80,12 @@ spec:
                   name: senaev-com-kv-secrets
                   key: OPENROUTER_API_KEY
                   optional: false
+            - name: GROQ_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: GROQ_API_KEY
+                  optional: false
             - name: SUPABASE_PROJECT_URL
               valueFrom:
                 secretKeyRef:
