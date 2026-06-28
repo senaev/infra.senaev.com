@@ -55,7 +55,7 @@ export async function processTrickyDadChatMessage(message: TelegramMessage): Pro
             chatId: reportChatId,
             parseMode: "MarkdownV2",
             text: escapeTelegramMarkdownV2(responseLines),
-            replyToMessageId: message.message_id,
+            ...(reportChatId === TRICKY_DAD_CHAT_ID && { replyToMessageId: message.message_id }),
         });
     } catch (err) {
         logger.error(err, "❌ Failed to process tricky dad chat message");
@@ -67,7 +67,6 @@ export async function processTrickyDadChatMessage(message: TelegramMessage): Pro
             text: escapeTelegramMarkdownV2(
                 `❌ Failed to process command=[${command}]: ${err instanceof Error ? err.message : String(err)}`,
             ),
-            replyToMessageId: message.message_id,
         });
     }
 }
