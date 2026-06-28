@@ -133,7 +133,7 @@ export async function processAlisaCommand(
         logger.info({ task: parsed.task, due_date: parsed.due_date }, "👉 Adding task");
         try {
             await insertSupabaseRows("tasks", {
-                title: `${parsed.task} ↖️ ${source}`,
+                title: `${parsed.task} 🌱 ${source}`,
                 ...(parsed.due_date !== null && { due_date: parsed.due_date }),
             });
             supabaseResponseTime = Date.now() - startTimeSupabase;
