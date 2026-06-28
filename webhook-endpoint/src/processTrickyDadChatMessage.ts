@@ -4,13 +4,12 @@ import { OBSIDIAN_TASKS_CHAT_ID, TRICKY_DAD_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } f
 import { logger } from "./logger";
 import { parseTextOrAudioMessageFromTelegram } from "./parseTextOrAudioMessageFromTelegram";
 import { processAlisaCommand } from "./processAlisaCommand";
-import { sendTrickyDadErrorReport, sendTrickyDadReport, TrickyDadSource } from "./sendTrickyDadReport";
-
-export type TrickyDadMessageSource = TrickyDadSource;
+import { sendTrickyDadErrorReport, sendTrickyDadReport } from "./sendTrickyDadReport";
+import { TrickyDadSource } from "./TrickyDadSource";
 
 export async function processTrickyDadChatMessage(
     message: TelegramMessage,
-    source: TrickyDadMessageSource,
+    source: TrickyDadSource,
 ): Promise<void> {
     const startTime = Date.now();
 
