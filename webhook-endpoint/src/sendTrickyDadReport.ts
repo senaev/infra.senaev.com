@@ -22,6 +22,18 @@ export async function sendTrickyDadReport({
     const reportChatId =
         result.destination === "grocery" ? TRICKY_DAD_CHAT_ID : OBSIDIAN_TASKS_CHAT_ID;
 
+    const sourceChatId =
+        source === "Tricky Dad"
+            ? TRICKY_DAD_CHAT_ID
+            : source === "Obsidian Tasks"
+              ? OBSIDIAN_TASKS_CHAT_ID
+              : null; // Alisa has no Telegram source chat
+
+    const shouldReply =
+        replyToMessageId !== undefined &&
+        sourceChatId !== null &&
+        reportChatId === sourceChatId;
+
     const text = [
         `🗣️ Command: ${command}`,
         `📡 Source: ${source}`,
@@ -45,8 +57,7 @@ export async function sendTrickyDadReport({
         chatId: reportChatId,
         parseMode: "MarkdownV2",
         text: escapeTelegramMarkdownV2(text),
-        ...(replyToMessageId !== undefined &&
-            reportChatId === TRICKY_DAD_CHAT_ID && { replyToMessageId }),
+        ...(shouldReply && { replyToMessageId }),
     });
 }
 
