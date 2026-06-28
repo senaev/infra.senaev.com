@@ -5,6 +5,7 @@ import { TelegramMessage, TelegramUser } from "senaev-utils/src/utils/TelegramAp
 import { TG_MEDIA_SERVER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from "./env";
 import { escapeTelegramMarkdownV2 } from "./escapeTelegramMarkdownV2";
 import { logger } from "./logger";
+import { parseTextOrAudioMessageFromTelegram } from "./parseTextOrAudioMessageFromTelegram";
 import { searchProwlarr } from "./prowlarr";
 import { enqueueTorrentFile } from "./torrentOutbox";
 import { createTorrentSearchView } from "./torrentSearchTelegram";
@@ -16,7 +17,7 @@ async function processMediaServerChatMessageInternal({
     botUser: TelegramUser;
     message: TelegramMessage;
 }): Promise<string | undefined> {
-    const { text } = message;
+    const text = await parseTextOrAudioMessageFromTelegram(message);
 
     if (text) {
         const query = text.trim();
