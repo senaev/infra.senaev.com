@@ -28,7 +28,11 @@ export async function transcribeAudioFile(fileId: string): Promise<string> {
         );
     }
 
-    const ext = fileInfo.file_path.split(".").pop() ?? "ogg";
+    const GROQ_ACCEPTED_EXTENSIONS = new Set([
+        "flac", "mp3", "mp4", "mpeg", "mpga", "m4a", "ogg", "opus", "wav", "webm",
+    ]);
+    const rawExt = fileInfo.file_path.split(".").pop() ?? "";
+    const ext = GROQ_ACCEPTED_EXTENSIONS.has(rawExt) ? rawExt : "ogg";
     const formData = new FormData();
     formData.append("file", await fileResponse.blob(), `audio.${ext}`);
     formData.append("model", GROQ_TRANSCRIPTION_MODEL);
