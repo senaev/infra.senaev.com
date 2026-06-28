@@ -1,11 +1,10 @@
 import { sendTelegramMessage } from "senaev-utils/src/utils/TelegramApi/sendTelegramMessage";
-import { TG_TOKEN_SENAEV_COM_BOT } from "./env";
+import { TG_TOKEN_SENAEV_COM_BOT, TRICKY_DAD_CHAT_ID } from "./env";
 import { escapeTelegramMarkdownV2 } from "./escapeTelegramMarkdownV2";
 import { getRandomValueFromArray } from "./getRandomValueFromArray";
 import { logger } from "./logger";
 import { processAlisaCommand } from "./processAlisaCommand";
 
-const TRICKY_DAD_DEBUG_CHAT_ID = -5242876030;
 export async function handleAlisaRequest(body: unknown): Promise<string> {
     const startTime = Date.now();
 
@@ -30,7 +29,7 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
             .then((result) =>
                 sendTelegramMessage({
                     token: TG_TOKEN_SENAEV_COM_BOT,
-                    chatId: String(TRICKY_DAD_DEBUG_CHAT_ID),
+                    chatId: String(TRICKY_DAD_CHAT_ID),
                     parseMode: "MarkdownV2",
                     text: escapeTelegramMarkdownV2(
                         [
@@ -56,7 +55,7 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
 
                 sendTelegramMessage({
                     token: TG_TOKEN_SENAEV_COM_BOT,
-                    chatId: String(TRICKY_DAD_DEBUG_CHAT_ID),
+                    chatId: String(TRICKY_DAD_CHAT_ID),
                     parseMode: "MarkdownV2",
                     text: escapeTelegramMarkdownV2(
                         `❌ Failed to process Alisa command=[${command}]: ${err instanceof Error ? err.message : String(err)}`,
@@ -130,7 +129,7 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
 
         sendTelegramMessage({
             token: TG_TOKEN_SENAEV_COM_BOT,
-            chatId: String(TRICKY_DAD_DEBUG_CHAT_ID),
+            chatId: String(TRICKY_DAD_CHAT_ID),
             parseMode: "MarkdownV2",
             text: escapeTelegramMarkdownV2(
                 `❌ Sync error processing Alisa command: ${err instanceof Error ? err.message : String(err)}`,

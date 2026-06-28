@@ -56,6 +56,8 @@ spec:
               value: {{ .Values.telegramVpnSubscriptionChatId | quote }}
             - name: OBSIDIAN_TASKS_CHAT_ID
               value: {{ .Values.obsidianTasksChatId | quote }}
+            - name: TRICKY_DAD_CHAT_ID
+              value: {{ .Values.trickyDadChatId | quote }}
             - name: TG_MEDIA_SERVER_CHAT_ID
               value: {{ .Values.telegramMediaServerChatId | quote }}
             - name: PROWLARR_URL
