@@ -3,8 +3,7 @@ import { OBSIDIAN_TASKS_CHAT_ID, TRICKY_DAD_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } f
 import { escapeTelegramMarkdownV2 } from "./escapeTelegramMarkdownV2";
 import { logger } from "./logger";
 import { HandleTrickyDadRequestResult } from "./processAlisaCommand";
-
-export type TrickyDadReportSource = "Tricky Dad" | "Obsidian Tasks" | "Alisa";
+import { TRICKY_DAD_SOURCE_TO_CHAT_ID, TrickyDadSource } from "./TrickyDadSource";
 
 export async function sendTrickyDadReport({
     command,
@@ -14,7 +13,7 @@ export async function sendTrickyDadReport({
     replyToMessageId,
 }: {
     command: string;
-    source: TrickyDadReportSource;
+    source: TrickyDadSource;
     durationSeconds: string;
     result: HandleTrickyDadRequestResult;
     replyToMessageId?: number;
@@ -22,17 +21,9 @@ export async function sendTrickyDadReport({
     const reportChatId =
         result.destination === "grocery" ? TRICKY_DAD_CHAT_ID : OBSIDIAN_TASKS_CHAT_ID;
 
-    const sourceChatId =
-        source === "Tricky Dad"
-            ? TRICKY_DAD_CHAT_ID
-            : source === "Obsidian Tasks"
-              ? OBSIDIAN_TASKS_CHAT_ID
-              : null; // Alisa has no Telegram source chat
+    const sourceChatId = TRICKY_DAD_SOURCE_TO_CHAT_ID[source];
 
-    const shouldReply =
-        replyToMessageId !== undefined &&
-        sourceChatId !== null &&
-        reportChatId === sourceChatId;
+    const shouldReply = sourceChatId && reportChatId === sourceChatId;
 
     const text = [
         `🗣️ Command: ${command}`,

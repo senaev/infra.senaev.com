@@ -4,9 +4,9 @@ import { OBSIDIAN_TASKS_CHAT_ID, TRICKY_DAD_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } f
 import { logger } from "./logger";
 import { parseTextOrAudioMessageFromTelegram } from "./parseTextOrAudioMessageFromTelegram";
 import { processAlisaCommand } from "./processAlisaCommand";
-import { sendTrickyDadErrorReport, sendTrickyDadReport, TrickyDadReportSource } from "./sendTrickyDadReport";
+import { sendTrickyDadErrorReport, sendTrickyDadReport, TrickyDadSource } from "./sendTrickyDadReport";
 
-export type TrickyDadMessageSource = TrickyDadReportSource;
+export type TrickyDadMessageSource = TrickyDadSource;
 
 export async function processTrickyDadChatMessage(
     message: TelegramMessage,
