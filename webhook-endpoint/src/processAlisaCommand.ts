@@ -2,6 +2,7 @@ import { addItemsToSupabaseGroceryList } from "./addItemsToSupabaseGroceryList";
 import { logger } from "./logger";
 import { callOpenRouter } from "./openrouter";
 import { insertSupabaseRows } from "./supabase";
+import { TrickyDadSource } from "./TrickyDadSource";
 
 export const ALISA_SKILL_NAME = "Умный Папа";
 
@@ -81,7 +82,10 @@ export type HandleTrickyDadRequestResult = {
     supabaseErrorString: string | null;
 };
 
-export async function processAlisaCommand(command: string): Promise<HandleTrickyDadRequestResult> {
+export async function processAlisaCommand(
+    command: string,
+    source: TrickyDadSource,
+): Promise<HandleTrickyDadRequestResult> {
     const startTime = Date.now();
     let openRouterError: string | null = null;
     logger.info({ command }, "👉 Start processing Alisa command");
@@ -129,7 +133,7 @@ export async function processAlisaCommand(command: string): Promise<HandleTricky
         logger.info({ task: parsed.task, due_date: parsed.due_date }, "👉 Adding task");
         try {
             await insertSupabaseRows("tasks", {
-                title: parsed.task,
+                title: `${parsed.task} ↖️ ${source}`,
                 ...(parsed.due_date !== null && { due_date: parsed.due_date }),
             });
             supabaseResponseTime = Date.now() - startTimeSupabase;

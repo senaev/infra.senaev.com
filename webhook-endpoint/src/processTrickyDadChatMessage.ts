@@ -32,7 +32,7 @@ export async function processTrickyDadChatMessage(
     logger.info({ command, source }, "👉 Processing tricky dad chat message");
 
     try {
-        const result = await processAlisaCommand(command);
+        const result = await processAlisaCommand(command, source);
         const durationSeconds = ((Date.now() - startTime) / 1000).toFixed(2);
 
         logger.info({ result }, "✅ Finished processing tricky dad chat message");

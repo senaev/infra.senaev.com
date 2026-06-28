@@ -26,7 +26,7 @@ export async function handleAlisaRequest(body: unknown): Promise<string> {
             throw new Error("Missing command field in request");
         }
 
-        processAlisaCommand(command)
+        processAlisaCommand(command, "Alisa")
             .then((result) =>
                 sendTrickyDadReport({
                     command,
