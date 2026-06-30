@@ -1,5 +1,3 @@
-mediaServerStoragePath: /mnt/sdb1
-
 nextjs:
   enabled: true
   vps: hetzner

@@ -7,3 +7,4 @@ obsidianTasksChatId: "-5365516821"
 trickyDadChatId: "-5242876030"
 
 mediaServerNodeName: "senaev-media"
+mediaServerStoragePath: /mnt/sdb1

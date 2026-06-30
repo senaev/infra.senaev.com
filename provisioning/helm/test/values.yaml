@@ -2,6 +2,12 @@ testEcho:
   enabled: true
   vps: hetzner
 
+minio:
+  enabled: true
+  vps: senaev-media
+  rootUser: senaev_media_s3_admin
+  volumePath: volumes/minio
+
 # curl -u "admin_with_emoji_password:ñew 🆕 pAsSw⭕️rd" https://test.senaev.com/test-elasticsearch/my-index/_search
 elasticsearch:
   enabled: false
@@ -23,11 +29,15 @@ ingress:
         - host: test.senaev.com
           service: test-echo
           port: 80
-    - name: test-elasticsearch
+    - name: test-minio
       className: traefik-hetzner
-      middleware: strip-elasticsearch-prefix
       hosts:
-        - host: test.senaev.com
-          service: elasticsearch
-          port: 9200
-          path: /test-elasticsearch
+        - host: test-s3-bucket.senaev.com
+          service: minio
+          port: 9000
+    - name: test-minio-console
+      className: traefik-hetzner
+      hosts:
+        - host: test-s3-bucket-console.senaev.com
+          service: minio
+          port: 9001
