@@ -38,8 +38,22 @@ datadog:
     processAgent:
       processCollection: true
 
-    # APM left disabled for now (possible fast-follow). DogStatsD available for
-    # custom application metrics.
+    # --- APM / Traces ---
+    # Single Step Instrumentation: the admission controller injects dd-trace
+    # libraries automatically into matching pods without code changes.
+    tags:
+      - "env:prod"
+    apm:
+      portEnabled: true
+      instrumentation:
+        enabled: true
+        # Scope injection to the app namespace. Without this the handler skips
+        # all namespaces even though the /injectlib webhook fires cluster-wide.
+        # Note: targets and enabledNamespaces are mutually exclusive in the
+        # chart schema; use enabledNamespaces + default library versions.
+        enabledNamespaces:
+          - senaev-com
+
     dogstatsd:
       useHostPort: true
       nonLocalTraffic: true

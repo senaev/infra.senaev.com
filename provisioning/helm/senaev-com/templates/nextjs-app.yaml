@@ -15,6 +15,10 @@ spec:
     metadata:
       labels:
         app: nextjs-app
+        admission.datadoghq.com/enabled: "true"
+        tags.datadoghq.com/service: nextjs-app
+        tags.datadoghq.com/env: prod
+        tags.datadoghq.com/version: latest
     spec:
       nodeSelector:
         vps: {{ .Values.nextjs.vps }}

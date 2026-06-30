@@ -43,6 +43,7 @@
     "ingressroutes",
     "ingressroutetcps",
     "ingressrouteudps",
+    "injectlib",
     "iperf",
     "jellyfin",
     "kafkajs",
