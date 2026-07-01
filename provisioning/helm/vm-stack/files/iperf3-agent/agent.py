@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import errno
 import subprocess
@@ -7,6 +8,13 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
+logger = logging.getLogger("iperf3-agent")
 
 
 def number_from_env(name):
@@ -33,16 +41,16 @@ ENVS = {
     "IPERF3_TIMEOUT_SECONDS": number_from_env("IPERF3_TIMEOUT_SECONDS"),
 }
 
-print(f"✅ ENVS=[{json.dumps(ENVS, indent=2)}]", flush=True)
+logger.info(f"✅ ENVS=[{json.dumps(ENVS, indent=2)}]")
 
-print("👉 Start iperf3 server", flush=True)
+logger.info("👉 Start iperf3 server")
 iperf3_server = subprocess.Popen(
     ["iperf3", "-s", "-p", str(ENVS["IPERF3_SERVER_PORT"])],
     stdin=subprocess.DEVNULL,
     stdout=subprocess.DEVNULL,
     stderr=None,
 )
-print(f"✅ iperf3 server started with pid=[{iperf3_server.pid}]", flush=True)
+logger.info(f"✅ iperf3 server started with pid=[{iperf3_server.pid}]")
 
 TEST_LOCK = threading.Lock()
 
@@ -126,10 +134,10 @@ def write_json_response(handler, status_code, payload):
         handler.end_headers()
         handler.wfile.write(body)
     except (BrokenPipeError, ConnectionResetError):
-        print("⚠️ Client disconnected before response was sent", flush=True)
+        logger.warning("⚠️ Client disconnected before response was sent")
     except OSError as error:
         if error.errno == errno.EPIPE:
-            print("⚠️ Client disconnected before response was sent", flush=True)
+            logger.warning("⚠️ Client disconnected before response was sent")
             return
         raise
 
@@ -157,15 +165,13 @@ def run_iperf3(target):
         "--json",
     ]
 
-    print(
+    logger.info(
         f"👉 Run iperf3 test to target=[{target}] startedAt=[{started_at}] "
         f"args=[{' '.join(args)}]",
-        flush=True,
     )
     target_resolution = resolve_target(target)
-    print(
+    logger.info(
         f"🔎 Target resolution target=[{target}] result=[{json.dumps(target_resolution)}]",
-        flush=True,
     )
 
     try:
@@ -176,9 +182,8 @@ def run_iperf3(target):
             timeout=ENVS["IPERF3_TIMEOUT_SECONDS"],
         )
     except subprocess.TimeoutExpired as error:
-        print(
+        logger.error(
             f"❌ Timeout=[{ENVS['IPERF3_TIMEOUT_SECONDS']}] expired, close test process",
-            flush=True,
         )
         return {
             "ok": False,
@@ -203,21 +208,19 @@ def run_iperf3(target):
         "durationSeconds": time.time() - started_at,
     }
 
-    print(
+    logger.info(
         f"🏁 Test process closed with code=[{process.returncode}]",
-        flush=True,
     )
 
     if process.returncode != 0:
         parsed_output = parse_iperf3_output(process.stdout)
-        print(
+        logger.error(
             "❌ Test process error "
             f"target=[{target}] exitCode=[{process.returncode}] "
             f"iperf3Error=[{parsed_output.get('iperf3Error')}] "
             f"connected=[{json.dumps(parsed_output.get('connected', []))}] "
             f"serverState=[{json.dumps(iperf3_server_state())}] "
             f"stderr=[{preview_text(process.stderr, 500)}]",
-            flush=True,
         )
         return {
             "ok": False,
@@ -232,7 +235,7 @@ def run_iperf3(target):
             "stderr": preview_text(process.stderr),
         }
 
-    print("✅ Test process success", flush=True)
+    logger.info("✅ Test process success")
     return {
         "ok": True,
         **common_response_fields,
@@ -245,44 +248,44 @@ class Handler(BaseHTTPRequestHandler):
         try:
             super().handle_one_request()
         except (BrokenPipeError, ConnectionResetError):
-            print("⚠️ Client disconnected before response was sent", flush=True)
+            logger.warning("⚠️ Client disconnected before response was sent")
 
     def do_GET(self):
         url = urlparse(self.path)
 
         if url.path != "/healthz":
             write_json_response(self, 404, {"ok": False, "error": "not_found"})
-            print("❌ Respond 404 to health request", flush=True)
+            logger.error("❌ Respond 404 to health request")
             return
 
         if iperf3_server.poll() is None:
             write_json_response(self, 200, {"ok": True})
         else:
             write_json_response(self, 500, {"ok": False, "error": "iperf3 server is not running"})
-            print("❌ Respond error to health check", flush=True)
+            logger.error("❌ Respond error to health check")
 
     def do_POST(self):
         url = urlparse(self.path)
-        print(f"👉 Request to server url=[{url.geturl()}] method=[POST]", flush=True)
+        logger.info(f"👉 Request to server url=[{url.geturl()}] method=[POST]")
 
         if url.path != "/check":
             write_json_response(self, 404, {"ok": False, "error": "not_found"})
-            print("❌ Respond 404", flush=True)
+            logger.error("❌ Respond 404")
             return
 
         try:
             input_body = read_json_request(self)
-            print(f"✅ JSON request is ready=[{json.dumps(input_body, indent=2)}]", flush=True)
+            logger.info(f"✅ JSON request is ready=[{json.dumps(input_body, indent=2)}]")
             target = input_body.get("target")
 
             if not target:
                 write_json_response(self, 400, {"ok": False, "error": "target is required"})
-                print("❌ Respond 400 as there is no target in the request", flush=True)
+                logger.error("❌ Respond 400 as there is no target in the request")
                 return
 
             if not TEST_LOCK.acquire(blocking=False):
                 write_json_response(self, 409, {"ok": False, "error": "test_already_running"})
-                print("❌ Respond 409 as another iperf3 test is already running", flush=True)
+                logger.error("❌ Respond 409 as another iperf3 test is already running")
                 return
 
             try:
@@ -290,23 +293,22 @@ class Handler(BaseHTTPRequestHandler):
             finally:
                 TEST_LOCK.release()
 
-            print(
-                f"{'✅' if result['ok'] else '❌'} Respond result=[{json.dumps(result, indent=2)}]",
-                flush=True,
-            )
+            if result["ok"]:
+                logger.info(f"✅ Respond result=[{json.dumps(result, indent=2)}]")
+            else:
+                logger.error(f"❌ Respond result=[{json.dumps(result, indent=2)}]")
             write_json_response(self, 200 if result["ok"] else 500, result)
         except Exception as error:
-            print(f"❌ Respond error=[{error}]", flush=True)
+            logger.error(f"❌ Respond error=[{error}]")
             write_json_response(self, 500, {"ok": False, "error": str(error)})
 
     def log_message(self, format, *args):
         return
 
 
-print("👉 Create server", flush=True)
-print(
+logger.info("👉 Create server")
+logger.info(
     f"iperf3 agent listening on :{ENVS['AGENT_PORT']}, "
     f"iperf3 server on :{ENVS['IPERF3_SERVER_PORT']}",
-    flush=True,
 )
 ThreadingHTTPServer(("0.0.0.0", ENVS["AGENT_PORT"]), Handler).serve_forever()

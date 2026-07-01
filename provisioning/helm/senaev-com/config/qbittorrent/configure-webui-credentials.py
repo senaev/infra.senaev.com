@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import re
 import ssl
@@ -8,6 +9,13 @@ import urllib.parse
 import urllib.request
 from http.cookiejar import CookieJar
 from pathlib import Path
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
+logger = logging.getLogger("configure-webui-credentials")
 
 
 STATE_FILE = Path("/credentials-config-state/webui-credentials-configured")
@@ -21,12 +29,12 @@ QBITTORRENT_WEBUI_PORT = os.environ.get("QBITTORRENT_WEBUI_PORT", "9001")
 
 
 def sleep(seconds: int) -> None:
-    print(f"⏳ Sleeping for {seconds}s...", flush=True)
+    logger.info(f"⏳ Sleeping for {seconds}s...")
     time.sleep(seconds)
 
 
 def wait_forever() -> None:
-    print("⏳ Waiting indefinitely to keep container alive...", flush=True)
+    logger.info("⏳ Waiting indefinitely to keep container alive...")
     while True:
         time.sleep(60 * 60)
 
@@ -71,7 +79,7 @@ def request_text(
 
 
 def fetch_pod_logs() -> str:
-    print("🔍 Fetching pod logs to find qBittorrent WebUI temporary password...", flush=True)
+    logger.info("🔍 Fetching pod logs to find qBittorrent WebUI temporary password...")
     k8s_host = get_required_env("KUBERNETES_SERVICE_HOST")
     k8s_port = os.environ.get("KUBERNETES_SERVICE_PORT_HTTPS", "443")
     pod_name = get_required_env("POD_NAME")
@@ -91,13 +99,13 @@ def fetch_pod_logs() -> str:
 
 
 def extract_password(logs: str) -> str:
-    print("🔍 Extracting qBittorrent WebUI temporary password from logs...", flush=True)
+    logger.info("🔍 Extracting qBittorrent WebUI temporary password from logs...")
     matches = PASSWORD_PATTERN.findall(logs)
     return matches[-1].strip() if matches else ""
 
 
 def set_qbittorrent_webui_password(temporary_password: str) -> None:
-    print("🔐 Setting qBittorrent WebUI password from secret...", flush=True)
+    logger.info("🔐 Setting qBittorrent WebUI password from secret...")
     stable_password = get_required_env("QBITTORRENT_WEBUI_PASSWORD")
     cookie_jar = CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie_jar))
@@ -159,12 +167,12 @@ def set_qbittorrent_webui_password(temporary_password: str) -> None:
             f"qBittorrent WebUI password update failed with status {error.code}: {response_body}",
         ) from error
 
-    print("✅ qBittorrent WebUI password was set from secret", flush=True)
+    logger.info("✅ qBittorrent WebUI password was set from secret")
 
 
 def main() -> None:
     if STATE_FILE.exists():
-        print("✅ qBittorrent WebUI password already configured, waiting indefinitely", flush=True)
+        logger.info("✅ qBittorrent WebUI password already configured, waiting indefinitely")
         wait_forever()
 
     for attempt in range(1, MAX_ATTEMPTS + 1):
@@ -173,9 +181,8 @@ def main() -> None:
             password = extract_password(logs)
 
             if not password:
-                print(
+                logger.info(
                     f"⏳ qBittorrent WebUI password not found in logs yet, attempt=[{attempt}/{MAX_ATTEMPTS}]",
-                    flush=True,
                 )
                 sleep(POLL_INTERVAL_SECONDS)
                 continue
@@ -184,13 +191,12 @@ def main() -> None:
             STATE_FILE.write_text("", encoding="utf-8")
             wait_forever()
         except Exception as error:
-            print(
+            logger.warning(
                 f"⏳ Waiting for qBittorrent password, attempt=[{attempt}/{MAX_ATTEMPTS}]: {error}",
-                flush=True,
             )
             sleep(POLL_INTERVAL_SECONDS)
 
-    print("✅ qBittorrent WebUI temporary password was not found in pod logs", flush=True)
+    logger.info("✅ qBittorrent WebUI temporary password was not found in pod logs")
     wait_forever()
 
 
@@ -198,5 +204,5 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as error:
-        print(f"❌ Error occurred: {error}", flush=True)
+        logger.error(f"❌ Error occurred: {error}")
         raise

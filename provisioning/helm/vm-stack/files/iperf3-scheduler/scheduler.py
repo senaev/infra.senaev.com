@@ -1,10 +1,18 @@
 import json
 import errno
+import logging
 import time
 import threading
 import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, HTTPServer
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
+logger = logging.getLogger("iperf3-scheduler")
 
 
 with open("/app/config.json", "r", encoding="utf-8") as config_file:
@@ -50,10 +58,10 @@ def write_response(handler, status_code, content_type, body):
         handler.end_headers()
         handler.wfile.write(body)
     except (BrokenPipeError, ConnectionResetError):
-        print("❌ Client disconnected before response was sent", flush=True)
+        logger.error("❌ Client disconnected before response was sent")
     except OSError as error:
         if error.errno == errno.EPIPE:
-            print("❌ Client disconnected before response was sent", flush=True)
+            logger.error("❌ Client disconnected before response was sent")
             return
         raise
 
@@ -90,7 +98,7 @@ def run_scheduler():
     tests = CONFIG["tests"]
     pause_between_tests = CONFIG["pauseBetweenTestsSeconds"]
 
-    print(f"✅ Scheduler config=[{json.dumps(CONFIG, indent=2)}]", flush=True)
+    logger.info(f"✅ Scheduler config=[{json.dumps(CONFIG, indent=2)}]")
 
     while True:
         for test in tests:
@@ -102,15 +110,15 @@ def run_scheduler():
                 SCHEDULER_STATE["running"] = True
                 SCHEDULER_STATE["currentTest"] = current_test
 
-            print(f"👉 Run scheduled test=[{current_test}]", flush=True)
+            logger.info(f"👉 Run scheduled test=[{current_test}]")
             result = call_agent(source, target)
             store_result(source, target, result)
 
             if result["ok"]:
-                print(f"✅ Test successfully finished", flush=True)
+                logger.info("✅ Test successfully finished")
             else:
-                print(f"❌ Test failed summary: {summarize_failure(source, target, result)}", flush=True)
-                print(f"❌ Test error: {json.dumps(result, indent=2)}", flush=True)
+                logger.error(f"❌ Test failed summary: {summarize_failure(source, target, result)}")
+                logger.error(f"❌ Test error: {json.dumps(result, indent=2)}")
 
             with STATE_LOCK:
                 SCHEDULER_STATE["running"] = False
@@ -276,5 +284,5 @@ class Handler(BaseHTTPRequestHandler):
 
 
 threading.Thread(target=run_scheduler, daemon=True).start()
-print(f"✅ iperf3 scheduler metrics listening on :{CONFIG['metricsPort']}", flush=True)
+logger.info(f"✅ iperf3 scheduler metrics listening on :{CONFIG['metricsPort']}")
 HTTPServer(("0.0.0.0", CONFIG["metricsPort"]), Handler).serve_forever()

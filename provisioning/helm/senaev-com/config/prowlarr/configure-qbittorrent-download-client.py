@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import time
 import urllib.error
@@ -6,6 +7,13 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
+logger = logging.getLogger("configure-qbittorrent-download-client")
 
 
 PROWLARR_CONFIG_FILE = Path("/config/config.xml")
@@ -17,12 +25,12 @@ FLARESOLVERR_PROXY_NAME = "FlareSolverr"
 
 
 def sleep(seconds: int) -> None:
-    print(f"👉 Sleeping for {seconds}s...", flush=True)
+    logger.info(f"👉 Sleeping for {seconds}s...")
     time.sleep(seconds)
 
 
 def wait_forever() -> None:
-    print("✅ Waiting indefinitely to keep container alive...", flush=True)
+    logger.info("✅ Waiting indefinitely to keep container alive...")
     while True:
         time.sleep(60 * 60)
 
@@ -73,7 +81,7 @@ def read_prowlarr_api_key() -> str:
             if api_key:
                 return api_key
 
-        print("👉 Prowlarr API key is not available yet", flush=True)
+        logger.info("👉 Prowlarr API key is not available yet")
         sleep(POLL_INTERVAL_SECONDS)
 
 
@@ -177,9 +185,9 @@ def upsert_tag(api_key: str, label: str) -> int:
     if current is not None:
         return int(current["id"])
 
-    print(f"👉 Creating Prowlarr tag [{label}]...", flush=True)
+    logger.info(f"👉 Creating Prowlarr tag [{label}]...")
     created = prowlarr_request(api_key=api_key, path="/api/v1/tag", method="POST", body={"label": label})
-    print(f"✅ Created Prowlarr tag [{label}]", flush=True)
+    logger.info(f"✅ Created Prowlarr tag [{label}]")
     return int(created["id"])
 
 
@@ -242,19 +250,19 @@ def upsert_qbittorrent_client(api_key: str) -> None:
     client = build_qbittorrent_client(api_key, current)
 
     if current is None:
-        print("👉 Creating qBittorrent download client in Prowlarr...", flush=True)
+        logger.info("👉 Creating qBittorrent download client in Prowlarr...")
         prowlarr_request(api_key=api_key, path="/api/v1/downloadclient", method="POST", body=client)
-        print("✅ Created qBittorrent download client in Prowlarr", flush=True)
+        logger.info("✅ Created qBittorrent download client in Prowlarr")
         return
 
-    print("👉 Updating qBittorrent download client in Prowlarr...", flush=True)
+    logger.info("👉 Updating qBittorrent download client in Prowlarr...")
     prowlarr_request(
         api_key=api_key,
         path=f"/api/v1/downloadclient/{current['id']}",
         method="PUT",
         body=client,
     )
-    print("✅ Updated qBittorrent download client in Prowlarr", flush=True)
+    logger.info("✅ Updated qBittorrent download client in Prowlarr")
 
 
 def build_flaresolverr_proxy(
@@ -279,7 +287,7 @@ def build_flaresolverr_proxy(
 
 def upsert_flaresolverr_proxy(api_key: str) -> None:
     if not env_bool("FLARESOLVERR_ENABLED"):
-        print("👉 FlareSolverr proxy configuration is disabled", flush=True)
+        logger.info("👉 FlareSolverr proxy configuration is disabled")
         return
 
     tag = get_required_env("FLARESOLVERR_TAG")
@@ -289,19 +297,19 @@ def upsert_flaresolverr_proxy(api_key: str) -> None:
     proxy = build_flaresolverr_proxy(api_key, current, tag_id)
 
     if current is None:
-        print("👉 Creating FlareSolverr indexer proxy in Prowlarr...", flush=True)
+        logger.info("👉 Creating FlareSolverr indexer proxy in Prowlarr...")
         prowlarr_request(api_key=api_key, path="/api/v1/indexerproxy", method="POST", body=proxy)
-        print("✅ Created FlareSolverr indexer proxy in Prowlarr", flush=True)
+        logger.info("✅ Created FlareSolverr indexer proxy in Prowlarr")
         return
 
-    print("👉 Updating FlareSolverr indexer proxy in Prowlarr...", flush=True)
+    logger.info("👉 Updating FlareSolverr indexer proxy in Prowlarr...")
     prowlarr_request(
         api_key=api_key,
         path=f"/api/v1/indexerproxy/{current['id']}",
         method="PUT",
         body=proxy,
     )
-    print("✅ Updated FlareSolverr indexer proxy in Prowlarr", flush=True)
+    logger.info("✅ Updated FlareSolverr indexer proxy in Prowlarr")
 
 
 def build_indexer(
@@ -336,25 +344,25 @@ def upsert_indexer(api_key: str, indexer_config: dict[str, Any], current_indexer
     indexer = build_indexer(api_key, current, indexer_config)
 
     if current is None:
-        print(f"👉 Creating Prowlarr indexer [{name}]...", flush=True)
+        logger.info(f"👉 Creating Prowlarr indexer [{name}]...")
         prowlarr_request(api_key=api_key, path="/api/v1/indexer", method="POST", body=indexer)
-        print(f"✅ Created Prowlarr indexer [{name}]", flush=True)
+        logger.info(f"✅ Created Prowlarr indexer [{name}]")
         return
 
-    print(f"👉 Updating Prowlarr indexer [{name}]...", flush=True)
+    logger.info(f"👉 Updating Prowlarr indexer [{name}]...")
     prowlarr_request(
         api_key=api_key,
         path=f"/api/v1/indexer/{current['id']}",
         method="PUT",
         body=indexer,
     )
-    print(f"✅ Updated Prowlarr indexer [{name}]", flush=True)
+    logger.info(f"✅ Updated Prowlarr indexer [{name}]")
 
 
 def upsert_indexers(api_key: str) -> None:
     indexer_configs = read_indexer_definitions()
     if not indexer_configs:
-        print("👉 No Prowlarr indexers configured", flush=True)
+        logger.info("👉 No Prowlarr indexers configured")
         return
 
     current_indexers = prowlarr_request(api_key=api_key, path="/api/v1/indexer", method="GET")
@@ -364,7 +372,7 @@ def upsert_indexers(api_key: str) -> None:
 
 def main() -> None:
     api_key = read_prowlarr_api_key()
-    print("✅ Prowlarr API key loaded", flush=True)
+    logger.info("✅ Prowlarr API key loaded")
 
     while True:
         try:
@@ -373,7 +381,7 @@ def main() -> None:
             upsert_indexers(api_key)
             wait_forever()
         except Exception as error:
-            print(f"❌ Failed to configure Prowlarr: {error}", flush=True)
+            logger.error(f"❌ Failed to configure Prowlarr: {error}")
             sleep(RETRY_INTERVAL_SECONDS)
 
 
