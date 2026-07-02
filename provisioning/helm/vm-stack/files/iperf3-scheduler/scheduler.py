@@ -8,10 +8,29 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-)
+class _JsonFormatter(logging.Formatter):
+    _PINO_LEVELS = {
+        logging.DEBUG: 20,
+        logging.INFO: 30,
+        logging.WARNING: 40,
+        logging.ERROR: 50,
+        logging.CRITICAL: 60,
+    }
+
+    def format(self, record):
+        return json.dumps({
+            "level": self._PINO_LEVELS.get(record.levelno, 30),
+            "time": int(record.created * 1000),
+            "name": record.name,
+            "msg": record.getMessage(),
+        }, ensure_ascii=False)
+
+
+_handler = logging.StreamHandler()
+_handler.setFormatter(_JsonFormatter())
+logging.root.setLevel(logging.INFO)
+logging.root.addHandler(_handler)
+
 logger = logging.getLogger("iperf3-scheduler")
 
 
