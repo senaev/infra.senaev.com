@@ -29,11 +29,10 @@ spec:
           env:
             - name: NODE_ENV
               value: "production"
+            - name: NOTES_REMOTE_URL
+              value: "http://obsidian-sync:8080"
           ports:
             - containerPort: 3000
-          volumeMounts:
-            - name: notes
-              mountPath: /app/notes-folder
           livenessProbe:
             httpGet:
               path: /api/health
@@ -49,11 +48,6 @@ spec:
             periodSeconds: 10
           resources:
 {{ toYaml .Values.nextjs.resources | indent 12 }}
-      volumes:
-        - name: notes
-          hostPath:
-            path: {{ .Values.clusterRootPath }}/{{ .Values.webdavSenaevCom.volumePath }}/notes-folder
-            type: DirectoryOrCreate
 ---
 apiVersion: v1
 kind: Service
