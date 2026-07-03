@@ -32,13 +32,17 @@ spec:
             - sh
             - -c
             - |
-              chown -R 1000:1000 /vault
+              chown -R 1000:1000 {{ .Values.obsidianSync.containerVaultPath }}
           volumeMounts:
             - name: vault
-              mountPath: /vault
+              mountPath: {{ .Values.obsidianSync.containerVaultPath }}
       containers:
         - name: obsidian-sync
           image: ghcr.io/senaev/obsidian-sync:latest
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
           env:
             - name: OBSIDIAN_AUTH_TOKEN
               valueFrom:
@@ -53,13 +57,30 @@ spec:
                   key: OBSIDIAN_VAULT_NAME
                   optional: false
             - name: OBSIDIAN_VAULT_PATH
-              value: /vault
+              value: {{ .Values.obsidianSync.containerVaultPath }}
           volumeMounts:
             - name: vault
-              mountPath: /vault
+              mountPath: {{ .Values.obsidianSync.containerVaultPath }}
       volumes:
         - name: vault
           hostPath:
             path: {{ .Values.clusterRootPath }}/{{ .Values.obsidianSync.volumePath }}
             type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: obsidian-sync
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: obsidian-sync
+spec:
+  type: ClusterIP
+  selector:
+    app: obsidian-sync
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
 {{- end }}

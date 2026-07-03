@@ -197,6 +197,7 @@ obsidianSync:
   enabled: true
   vps: hetzner
   volumePath: volumes/obsidian-sync/vault
+  containerVaultPath: /vault
 
 opencodeTelegram:
   enabled: true

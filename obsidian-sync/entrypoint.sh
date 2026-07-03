@@ -27,5 +27,19 @@ ob sync-config --path "$OBSIDIAN_VAULT_PATH" --excluded-folders "senaev-personal
 ob sync-config --path "$OBSIDIAN_VAULT_PATH" --configs "app,appearance,appearance-data,hotkey,core-plugin,core-plugin-data,community-plugin,community-plugin-data"
 ob sync-config --path "$OBSIDIAN_VAULT_PATH" --file-types "image,audio,video,pdf,unsupported"
 
+echo "[obsidian-sync] Starting public file server..."
+node /server.js &
+SERVER_PID=$!
+
 echo "[obsidian-sync] Starting continuous sync..."
-exec ob sync --path "$OBSIDIAN_VAULT_PATH" --continuous
+ob sync --path "$OBSIDIAN_VAULT_PATH" --continuous &
+SYNC_PID=$!
+
+# Exit the container if either subprocess dies — Kubernetes will restart the pod
+while kill -0 "$SERVER_PID" 2>/dev/null && kill -0 "$SYNC_PID" 2>/dev/null; do
+  sleep 2
+done
+
+echo "[obsidian-sync] ERROR: a subprocess exited unexpectedly" >&2
+kill "$SERVER_PID" "$SYNC_PID" 2>/dev/null
+exit 1
