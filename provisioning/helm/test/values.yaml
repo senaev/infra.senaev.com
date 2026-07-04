@@ -2,6 +2,10 @@ testEcho:
   enabled: true
   vps: hetzner
 
+requestEcho:
+  enabled: true
+  vps: hetzner
+
 minio:
   enabled: true
   vps: senaev-media
@@ -29,6 +33,13 @@ ingress:
         - host: test.senaev.com
           service: test-echo
           port: 80
+    - name: test-request-echo
+      className: traefik-hetzner
+      hosts:
+        - host: test.senaev.com
+          path: /echo
+          service: request-echo
+          port: 8080
     - name: test-minio
       className: traefik-hetzner
       hosts:
