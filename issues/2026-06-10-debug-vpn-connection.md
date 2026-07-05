@@ -508,3 +508,35 @@ Instead of switching protocols, the next immediate action should be to test this
 2.  **Verify:** Ask a user in Russia to test the `hetzner → freedom` profile.
 
 If this test is successful, it confirms that the choice of a high-traffic, domestic SNI is the key to bypassing DPI in this environment. The `firstvds` (Russian IP) entry point may even become viable again using this strategy, as the geographical IP block appears to be secondary to the behavioral DPI.
+
+---
+
+### 2026-06-25 — SNI swap test: `sun6-21.userapi.com` — did not help
+
+**What was tested:**
+
+Changed `realityServerName` for `xray-vpn-firstvds` from `senaev.ru` to `sun6-21.userapi.com` and deployed. VPN clients connecting to `firstvds` were updated with the new SNI. Tested from Russia.
+
+**Result:** VPN did not start working. Reverted to `senaev.ru`.
+
+**Side effect discovered:**
+
+Changing `realityServerName` also breaks `https://senaev.ru` (the website). The Traefik `IngressRouteTCP` uses the same value as the SNI match (`HostSNI(realityServerName)`), and the website's fallback ingress only listens on the `websecure-xray` (port 8443) entrypoint — not on the normal `websecure` (port 443). So when the SNI match no longer covers `senaev.ru`, browser traffic to the site has no valid route.
+
+This means **any future attempt to change the SNI on `xray-vpn-firstvds` must also add a separate ingress entry for `senaev.ru` on the `websecure` entrypoint** to keep the website alive.
+
+**Interpretation:**
+
+The VK (`userapi.com`) SNI hypothesis was wrong — or at minimum insufficient on its own. The working configuration seen from a contact in Russia may depend on factors beyond the SNI alone: the specific server (its IP history, ASN, provider), the exact Xray build version, or additional transport parameters not captured from the screenshots.
+
+**Revised hypotheses — what to investigate next:**
+
+1. **(F) The working config's server IP/ASN is the key differentiator.** The contact's server may be hosted on an ASN not yet targeted by Russian DPI lists (e.g. a smaller cloud provider or residential IP). Our firstvds is on a Russian provider IP, which may be on a stricter inspection path regardless of SNI.
+
+2. **(G) The uTLS fingerprint matters, not just the SNI.** The working config uses `fp=firefox`; our configs use `fp=chrome`. Some DPI implementations specifically look for Chrome fingerprint + Reality as a signature. Switching to `firefox` fingerprint alone (without changing SNI) is worth testing — it does not break the website.
+
+3. **(H) A dedicated entry point with a non-Russian IP + VK SNI is needed.** The combination of: (a) non-Russian ASN IP, (b) VK SNI, (c) Firefox uTLS fingerprint may all be required together. The `xray-vpn-hetzner` instance (Finnish IP, `senaev.com`) is the cleanest candidate to test this combination, as changing its SNI does not break any website.
+
+**Recommended next step — lowest risk, highest signal:**
+
+Change only the `fp` parameter (uTLS fingerprint) on the existing firstvds profiles from `chrome` to `firefox`. This requires no server-side changes (the fingerprint is client-side only in the subscription link), does not alter the SNI, and therefore does not break the website. If this alone unblocks connectivity from Russia, hypothesis G is confirmed.
