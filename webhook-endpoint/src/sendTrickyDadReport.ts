@@ -69,6 +69,20 @@ export async function sendTrickyDadReport({
         text,
         ...(shouldReply && { replyToMessageId }),
     });
+
+    const crossChat = sourceChatId && reportChatId !== sourceChatId;
+    if (crossChat) {
+        const destinationLabel =
+            reportChatId === TRICKY_DAD_CHAT_ID ? "чат покупок" : "чат дел";
+        logger.info({ sourceChatId, reportChatId }, "👉 Sending cross-chat acknowledgement");
+        await sendTelegramMessage({
+            token: TG_TOKEN_SENAEV_COM_BOT,
+            chatId: sourceChatId,
+            parseMode: "MarkdownV2",
+            text: esc(`✅ Сообщение обработано → ${destinationLabel}`),
+            ...(replyToMessageId && { replyToMessageId }),
+        });
+    }
 }
 
 export async function sendTrickyDadErrorReport({
