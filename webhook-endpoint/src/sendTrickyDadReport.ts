@@ -30,13 +30,11 @@ export async function sendTrickyDadReport({
     const parts: string[] = [];
 
     if (result.addedItems) {
-        parts.push(
-            `🛒 Добавлено:\n${result.addedItems.map((item) => `• *${esc(item)}*`).join("\n")}`,
-        );
+        parts.push(result.addedItems.map((item) => `🛒 *${esc(item)}*`).join("\n"));
     }
 
     if (result.addedTask) {
-        parts.push(`📌 Новая задача: *${esc(result.addedTask)}*`);
+        parts.push(`👉 *${esc(result.addedTask)}*`);
     }
 
     const detailLines = [
@@ -72,14 +70,12 @@ export async function sendTrickyDadReport({
 
     const crossChat = sourceChatId && reportChatId !== sourceChatId;
     if (crossChat) {
-        const destinationLabel =
-            reportChatId === TRICKY_DAD_CHAT_ID ? "чат покупок" : "чат дел";
-        logger.info({ sourceChatId, reportChatId }, "👉 Sending cross-chat acknowledgement");
+        logger.info({ sourceChatId, reportChatId }, "👉 Sending cross-chat report");
         await sendTelegramMessage({
             token: TG_TOKEN_SENAEV_COM_BOT,
             chatId: sourceChatId,
             parseMode: "MarkdownV2",
-            text: esc(`✅ Сообщение обработано → ${destinationLabel}`),
+            text,
             ...(replyToMessageId && { replyToMessageId }),
         });
     }
