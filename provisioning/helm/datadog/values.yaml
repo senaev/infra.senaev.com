@@ -4,7 +4,7 @@
 # one level down.
 datadog:
   datadog:
-    site: datad0g.com
+    site: datadoghq.eu
     clusterName: senaev-k3s
 
     apiKeyExistingSecret: senaev-com-kv-secrets
@@ -69,6 +69,16 @@ datadog:
       secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
     nodeSelector:
       vps: hetzner
+    env:
+      - name: DD_API_KEY_STAGING
+        valueFrom:
+          secretKeyRef:
+            name: senaev-com-kv-secrets
+            key: api-key-staging
+      - name: DD_ADDITIONAL_ENDPOINTS
+        value: '{"https://app.datad0g.com": ["$(DD_API_KEY_STAGING)"]}'
+      - name: DD_ORCHESTRATOR_EXPLORER_ORCHESTRATOR_ADDITIONAL_ENDPOINTS
+        value: '{"https://orchestrator.datad0g.com": ["$(DD_API_KEY_STAGING)"]}'
 
   # Node Agent DaemonSet: restricted to the media node and the control plane via
   # node affinity on the `vps` label. No taints exist today, but tolerate
@@ -89,3 +99,39 @@ datadog:
                     - hetzner
     tolerations:
       - operator: Exists
+    containers:
+      agent:
+        env:
+          # Staging org API key — defined first so $(DD_API_KEY_STAGING) can be
+          # interpolated by subsequent env vars via K8s variable substitution.
+          - name: DD_API_KEY_STAGING
+            valueFrom:
+              secretKeyRef:
+                name: senaev-com-kv-secrets
+                key: api-key-staging
+          - name: DD_ADDITIONAL_ENDPOINTS
+            value: '{"https://app.datad0g.com": ["$(DD_API_KEY_STAGING)"]}'
+          - name: DD_LOGS_CONFIG_USE_HTTP
+            value: "true"
+          - name: DD_LOGS_CONFIG_ADDITIONAL_ENDPOINTS
+            value: '[{"api_key": "$(DD_API_KEY_STAGING)", "Host": "agent-http-intake.logs.datad0g.com", "Port": 443, "is_reliable": true}]'
+      traceAgent:
+        env:
+          - name: DD_API_KEY_STAGING
+            valueFrom:
+              secretKeyRef:
+                name: senaev-com-kv-secrets
+                key: api-key-staging
+          - name: DD_APM_ADDITIONAL_ENDPOINTS
+            value: '{"https://trace.agent.datad0g.com": ["$(DD_API_KEY_STAGING)"]}'
+          - name: DD_APM_PROFILING_ADDITIONAL_ENDPOINTS
+            value: '{"https://intake.profile.datad0g.com/api/v2/profile": ["$(DD_API_KEY_STAGING)"]}'
+      processAgent:
+        env:
+          - name: DD_API_KEY_STAGING
+            valueFrom:
+              secretKeyRef:
+                name: senaev-com-kv-secrets
+                key: api-key-staging
+          - name: DD_PROCESS_ADDITIONAL_ENDPOINTS
+            value: '{"https://process.datad0g.com": ["$(DD_API_KEY_STAGING)"]}'
