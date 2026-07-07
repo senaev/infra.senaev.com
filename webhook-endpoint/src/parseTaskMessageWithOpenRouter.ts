@@ -21,6 +21,7 @@ export async function parseTaskMessageWithOpenRouter(
                     "The title should be a clear, concise description of what needs to be done.",
                     "If the message mentions a due date or deadline (e.g. 'tomorrow', 'by Friday', 'on Monday', specific dates), extract it as due_date in YYYY-MM-DD format.",
                     "If no due date is mentioned, return null for due_date.",
+                    "Preserve the language of the original request in all text fields.",
                     "Answer strictly in JSON that matches the provided schema.",
                 ].join(" "),
             },

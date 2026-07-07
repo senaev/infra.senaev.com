@@ -38,7 +38,7 @@ async function parseAlisaCommandWithOpenRouter(command: string): Promise<ParsedA
                     "## Errors",
                     "If the command does not clearly match either intent, set type to 'error' and explain briefly in the error field.",
                     "Answer strictly in JSON that matches the provided schema.",
-                    "Preserve all text fields in Russian.",
+                    "Preserve the language of the original request in all text fields.",
                 ].join(" "),
             },
             {
