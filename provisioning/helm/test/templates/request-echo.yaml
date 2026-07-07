@@ -21,6 +21,9 @@ spec:
       containers:
         - name: request-echo
           image: ghcr.io/mendhak/http-https-echo:41
+          env:
+            - name: LOG_WITHOUT_NEWLINE
+              value: "true"
           ports:
             - containerPort: 8080
           resources:
