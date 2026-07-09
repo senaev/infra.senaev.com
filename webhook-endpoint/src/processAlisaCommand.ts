@@ -72,6 +72,55 @@ async function parseAlisaCommandWithOpenRouter(command: string): Promise<ParsedA
     return parsed;
 }
 
+// Dedicated parser for the Obsidian Tasks chat. Its schema has no shopping concept at
+// all — the model is only ever asked to extract a task, so it has no way to route a
+// message anywhere else. Which prompt/function runs for a given message is decided in
+// code (see processAlisaCommand below), never by the model itself.
+type ParsedTaskOnlyCommand = {
+    task: string;
+    due_date: string | null;
+};
+
+async function parseTaskOnlyCommandWithOpenRouter(command: string): Promise<ParsedTaskOnlyCommand> {
+    const today = new Date().toISOString().slice(0, 10);
+
+    const parsed = await callOpenRouter<ParsedTaskOnlyCommand>({
+        messages: [
+            {
+                role: "system",
+                content: [
+                    `Today's date is ${today}.`,
+                    `## Role`,
+                    `You are extracting a task from a message sent to the Yandex Alisa skill named '${ALISA_SKILL_NAME}'.`,
+                    "## Task",
+                    "Rewrite the message as a short, clear task description in the task field.",
+                    "If the message mentions a due date or deadline, extract it as due_date in YYYY-MM-DD format; otherwise set due_date to null.",
+                    "Answer strictly in JSON that matches the provided schema.",
+                    "Preserve the language of the original request in the task field.",
+                ].join(" "),
+            },
+            {
+                role: "user",
+                content: command,
+            },
+        ],
+        jsonSchema: {
+            name: "task_only_command",
+            schema: {
+                type: "object",
+                properties: {
+                    task: { type: "string" },
+                    due_date: { type: ["string", "null"] },
+                },
+                required: ["task", "due_date"],
+                additionalProperties: false,
+            },
+        },
+    });
+
+    return parsed;
+}
+
 export type HandleTrickyDadRequestResult = {
     openRouterResponseTime: number;
     supabaseResponseTime: number | null;
@@ -82,7 +131,11 @@ export type HandleTrickyDadRequestResult = {
     supabaseErrorString: string | null;
 };
 
-export async function processAlisaCommand(
+// Used for the Tricky Dad chat and the Alisa voice skill only: these sources may
+// legitimately mean either the shopping list or the task list, so the model classifies
+// each command. The Obsidian Tasks chat never reaches this function — see
+// processAlisaCommand below, which routes it to processObsidianTaskCommand instead.
+async function processShoppingOrTaskCommand(
     command: string,
     source: TrickyDadSource,
 ): Promise<HandleTrickyDadRequestResult> {
@@ -199,4 +252,69 @@ export async function processAlisaCommand(
         openRouterError,
         supabaseErrorString: null,
     };
+}
+
+// Used for the Obsidian Tasks chat only. It is a task-only source, so this always writes
+// to the tasks table and never touches the shopping list — there is no branch here that
+// could send it anywhere else, and parseTaskOnlyCommandWithOpenRouter's schema has no
+// shopping concept for a model to pick either.
+async function processObsidianTaskCommand(
+    command: string,
+    source: TrickyDadSource,
+): Promise<HandleTrickyDadRequestResult> {
+    const startTime = Date.now();
+    logger.info({ command, source }, "👉 Start processing Alisa command (task-only)");
+
+    logger.info("👉 Requesting OpenRouter");
+    const parsed = await parseTaskOnlyCommandWithOpenRouter(command);
+    const openRouterResponseTime = Date.now() - startTime;
+    logger.info({ command, parsed, openRouterResponseTime }, "✅ Response from OpenRouter");
+
+    const taskTitle = parsed.task || command;
+
+    const startTimeSupabase = Date.now();
+    logger.info({ task: taskTitle, due_date: parsed.due_date }, "👉 Adding task");
+    try {
+        await insertSupabaseRows("tasks", {
+            title: `${taskTitle} 🌱 ${source}`,
+            ...(parsed.due_date !== null && { due_date: parsed.due_date }),
+        });
+        const supabaseResponseTime = Date.now() - startTimeSupabase;
+        logger.info({ task: taskTitle }, "✅ Added task");
+        return {
+            openRouterResponseTime,
+            supabaseResponseTime,
+            destination: "task",
+            addedItems: null,
+            addedTask: taskTitle,
+            openRouterError: null,
+            supabaseErrorString: null,
+        };
+    } catch (err) {
+        const supabaseResponseTime = Date.now() - startTimeSupabase;
+        const supabaseErrorString = `❌ Failed to add task: ${err}`;
+        logger.error({ err }, "❌ Failed to add task");
+        return {
+            openRouterResponseTime,
+            supabaseResponseTime,
+            destination: "task",
+            addedItems: null,
+            addedTask: taskTitle,
+            openRouterError: null,
+            supabaseErrorString,
+        };
+    }
+}
+
+export async function processAlisaCommand(
+    command: string,
+    source: TrickyDadSource,
+): Promise<HandleTrickyDadRequestResult> {
+    // Code-level routing rule, not a model decision: the Obsidian Tasks chat is
+    // task-only and must never write to the shopping list.
+    if (source === "Obsidian Tasks") {
+        return processObsidianTaskCommand(command, source);
+    }
+
+    return processShoppingOrTaskCommand(command, source);
 }
