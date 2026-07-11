@@ -1,7 +1,7 @@
 import { addItemsToSupabaseGroceryList } from "./addItemsToSupabaseGroceryList";
 import { logger } from "./logger";
+import { addObsidianTask } from "./obsidianSyncApi";
 import { callOpenRouter } from "./openrouter";
-import { insertSupabaseRows } from "./supabase";
 import { TrickyDadSource } from "./TrickyDadSource";
 
 export const ALISA_SKILL_NAME = "Умный Папа";
@@ -123,12 +123,14 @@ async function parseTaskOnlyCommandWithOpenRouter(command: string): Promise<Pars
 
 export type HandleTrickyDadRequestResult = {
     openRouterResponseTime: number;
-    supabaseResponseTime: number | null;
+    /** Time spent on the downstream write — Supabase for grocery items, obsidian-sync for tasks. */
+    writeResponseTime: number | null;
     destination: "grocery" | "task" | "fallback";
     addedItems: string[] | null;
     addedTask: string | null;
     openRouterError: string | null;
-    supabaseErrorString: string | null;
+    /** Error from the downstream write — Supabase for grocery items, obsidian-sync for tasks. */
+    writeErrorString: string | null;
 };
 
 // Used for the Tricky Dad chat and the Alisa voice skill only: these sources may
@@ -148,71 +150,71 @@ async function processShoppingOrTaskCommand(
     const openRouterResponseTime = Date.now() - startTime;
     logger.info({ command, parsed, openRouterResponseTime }, "✅ Response from OpenRouter");
 
-    const startTimeSupabase = Date.now();
-    let supabaseResponseTime = 0;
+    const writeStartTime = Date.now();
+    let writeResponseTime = 0;
 
     if (parsed.type === "shopping" && parsed.items.length > 0) {
         logger.info({ items: parsed.items }, "👉 Adding items to grocery list");
         try {
             await addItemsToSupabaseGroceryList(parsed.items);
-            supabaseResponseTime = Date.now() - startTimeSupabase;
+            writeResponseTime = Date.now() - writeStartTime;
         } catch (err) {
-            supabaseResponseTime = Date.now() - startTimeSupabase;
-            const supabaseErrorString = `❌ Failed to add grocery items: ${err}`;
+            writeResponseTime = Date.now() - writeStartTime;
+            const writeErrorString = `❌ Failed to add grocery items: ${err}`;
             logger.error({ err }, "❌ Failed to add items to grocery list");
             return {
                 openRouterResponseTime,
-                supabaseResponseTime,
+                writeResponseTime,
                 destination: "grocery",
                 addedItems: parsed.items,
                 addedTask: null,
                 openRouterError,
-                supabaseErrorString,
+                writeErrorString,
             };
         }
         logger.info({ items: parsed.items }, "✅ Added items to grocery list");
         return {
             openRouterResponseTime,
-            supabaseResponseTime,
+            writeResponseTime,
             destination: "grocery",
             addedItems: parsed.items,
             addedTask: null,
             openRouterError,
-            supabaseErrorString: null,
+            writeErrorString: null,
         };
     }
 
     if (parsed.type === "task" && parsed.task) {
         logger.info({ task: parsed.task, due_date: parsed.due_date }, "👉 Adding task");
         try {
-            await insertSupabaseRows("tasks", {
+            await addObsidianTask({
                 title: `${parsed.task} 🌱 ${source}`,
-                ...(parsed.due_date !== null && { due_date: parsed.due_date }),
+                due_date: parsed.due_date,
             });
-            supabaseResponseTime = Date.now() - startTimeSupabase;
+            writeResponseTime = Date.now() - writeStartTime;
         } catch (err) {
-            supabaseResponseTime = Date.now() - startTimeSupabase;
-            const supabaseErrorString = `❌ Failed to add task: ${err}`;
+            writeResponseTime = Date.now() - writeStartTime;
+            const writeErrorString = `❌ Failed to add task: ${err}`;
             logger.error({ err }, "❌ Failed to add task");
             return {
                 openRouterResponseTime,
-                supabaseResponseTime,
+                writeResponseTime,
                 destination: "task",
                 addedItems: null,
                 addedTask: parsed.task,
                 openRouterError,
-                supabaseErrorString,
+                writeErrorString,
             };
         }
         logger.info({ task: parsed.task }, "✅ Added task");
         return {
             openRouterResponseTime,
-            supabaseResponseTime,
+            writeResponseTime,
             destination: "task",
             addedItems: null,
             addedTask: parsed.task,
             openRouterError,
-            supabaseErrorString: null,
+            writeErrorString: null,
         };
     }
 
@@ -228,34 +230,34 @@ async function processShoppingOrTaskCommand(
     logger.info({ command }, "👉 Fallback: adding raw command to grocery list");
     try {
         await addItemsToSupabaseGroceryList([command]);
-        supabaseResponseTime = Date.now() - startTimeSupabase;
+        writeResponseTime = Date.now() - writeStartTime;
     } catch (err) {
-        supabaseResponseTime = Date.now() - startTimeSupabase;
-        const supabaseErrorString = `❌ Failed to add fallback item: ${err}`;
+        writeResponseTime = Date.now() - writeStartTime;
+        const writeErrorString = `❌ Failed to add fallback item: ${err}`;
         logger.error({ err }, "❌ Failed to add fallback item");
         return {
             openRouterResponseTime,
-            supabaseResponseTime,
+            writeResponseTime,
             destination: "fallback",
             addedItems: [command],
             addedTask: null,
             openRouterError,
-            supabaseErrorString,
+            writeErrorString,
         };
     }
     return {
         openRouterResponseTime,
-        supabaseResponseTime,
+        writeResponseTime,
         destination: "fallback",
         addedItems: [command],
         addedTask: null,
         openRouterError,
-        supabaseErrorString: null,
+        writeErrorString: null,
     };
 }
 
 // Used for the Obsidian Tasks chat only. It is a task-only source, so this always writes
-// to the tasks table and never touches the shopping list — there is no branch here that
+// to the Obsidian vault and never touches the shopping list — there is no branch here that
 // could send it anywhere else, and parseTaskOnlyCommandWithOpenRouter's schema has no
 // shopping concept for a model to pick either.
 async function processObsidianTaskCommand(
@@ -272,36 +274,36 @@ async function processObsidianTaskCommand(
 
     const taskTitle = parsed.task || command;
 
-    const startTimeSupabase = Date.now();
+    const writeStartTime = Date.now();
     logger.info({ task: taskTitle, due_date: parsed.due_date }, "👉 Adding task");
     try {
-        await insertSupabaseRows("tasks", {
+        await addObsidianTask({
             title: `${taskTitle} 🌱 ${source}`,
-            ...(parsed.due_date !== null && { due_date: parsed.due_date }),
+            due_date: parsed.due_date,
         });
-        const supabaseResponseTime = Date.now() - startTimeSupabase;
+        const writeResponseTime = Date.now() - writeStartTime;
         logger.info({ task: taskTitle }, "✅ Added task");
         return {
             openRouterResponseTime,
-            supabaseResponseTime,
+            writeResponseTime,
             destination: "task",
             addedItems: null,
             addedTask: taskTitle,
             openRouterError: null,
-            supabaseErrorString: null,
+            writeErrorString: null,
         };
     } catch (err) {
-        const supabaseResponseTime = Date.now() - startTimeSupabase;
-        const supabaseErrorString = `❌ Failed to add task: ${err}`;
+        const writeResponseTime = Date.now() - writeStartTime;
+        const writeErrorString = `❌ Failed to add task: ${err}`;
         logger.error({ err }, "❌ Failed to add task");
         return {
             openRouterResponseTime,
-            supabaseResponseTime,
+            writeResponseTime,
             destination: "task",
             addedItems: null,
             addedTask: taskTitle,
             openRouterError: null,
-            supabaseErrorString,
+            writeErrorString,
         };
     }
 }

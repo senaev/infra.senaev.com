@@ -43,12 +43,12 @@ export async function sendTrickyDadReport({
         `📍 Куда: ${{ grocery: "🛒 grocery", task: "📌 task", fallback: "🔀 fallback" }[result.destination]}`,
         `⏱️ Время: ${esc(durationSeconds)}s`,
         `🤖 Время OpenRouter: ${esc(String(result.openRouterResponseTime))}ms`,
-        result.supabaseResponseTime !== null
-            ? `🗄️ Время Supabase: ${esc(String(result.supabaseResponseTime))}ms`
+        result.writeResponseTime !== null
+            ? `🗄️ Время записи: ${esc(String(result.writeResponseTime))}ms`
             : null,
         result.openRouterError ? `❌ OpenRouter Error: ${esc(String(result.openRouterError))}` : null,
-        result.supabaseErrorString
-            ? `❌ Supabase Error: ${esc(String(result.supabaseErrorString))}`
+        result.writeErrorString
+            ? `❌ Write Error: ${esc(String(result.writeErrorString))}`
             : null,
     ].filter(Boolean) as string[];
 

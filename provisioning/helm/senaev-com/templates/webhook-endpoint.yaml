@@ -68,6 +68,8 @@ spec:
               value: http://prowlarr:{{ .Values.prowlarr.webuiPort }}
             - name: PROWLARR_CONFIG_FILE
               value: /prowlarr-config/config.xml
+            - name: OBSIDIAN_SYNC_URL
+              value: "http://obsidian-sync:8080"
             - name: TG_TOKEN_SENAEV_COM_BOT
               valueFrom:
                 secretKeyRef:
