@@ -8,11 +8,6 @@ nextjs:
     limits:
       memory: 256Mi
 
-webdavSenaevCom:
-  enabled: true
-  volumePath: volumes/webdav
-  vps: hetzner
-
 webdavSenaevRu:
   enabled: true
   vps: senaev-media
@@ -228,9 +223,6 @@ ingress:
     - name: senaev-com-direct
       className: traefik-hetzner
       hosts:
-        - host: webdav.senaev.com
-          service: webdav-senaev-com
-          port: 80
         - host: qbittorrent.senaev.com
           service: qbittorrent
           port: 9001
