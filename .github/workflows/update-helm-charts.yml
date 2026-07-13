@@ -44,13 +44,14 @@ jobs:
 
       - name: Sync provisioning to server
         if: steps.changed-files.outputs.any_changed == 'true'
-        uses: appleboy/scp-action@v0.1.7
+        uses: burnett01/rsync-deployments@9.0.0
         with:
-          host: ${{ secrets.REMOTE_HOST }}
-          username: ${{ secrets.REMOTE_USER }}
-          key: ${{ secrets.REMOTE_SSH_KEY }}
-          source: "provisioning/"
-          target: "/k3s-cluster/"
+          switches: -avzr --delete
+          path: "provisioning/helm/${{ matrix.chart }}/"
+          remote_path: "/k3s-cluster/provisioning/helm/${{ matrix.chart }}/"
+          remote_host: ${{ secrets.REMOTE_HOST }}
+          remote_user: ${{ secrets.REMOTE_USER }}
+          remote_key: ${{ secrets.REMOTE_SSH_KEY }}
 
       - name: Update chart
         if: steps.changed-files.outputs.any_changed == 'true'
