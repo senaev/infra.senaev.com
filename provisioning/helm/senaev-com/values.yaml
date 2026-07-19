@@ -238,6 +238,13 @@ ingress:
         - host: vpn-subscription.senaev.com
           service: vpn-subscription
           port: 3000
+    - name: senaev-com-short-links
+      className: traefik-hetzner
+      middleware: short-links-path-prefix
+      hosts:
+        - host: s.senaev.com
+          service: webhook-endpoint
+          port: 3000
     - name: senaev-com-xray-fallback
       className: traefik-hetzner
       entrypoints: websecure-xray

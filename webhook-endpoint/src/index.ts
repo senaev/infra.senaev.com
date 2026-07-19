@@ -7,6 +7,7 @@ import { TelegramUpdate, TelegramUser } from "senaev-utils/src/utils/TelegramApi
 import { ALISA_WEBHOOK_SECRET, TG_TOKEN_SENAEV_COM_BOT, WEBHOOK_DOMAIN } from "./env";
 import { handleAlisaRequest } from "./handleAlisaRequest";
 import { logger } from "./logger";
+import { getShortLink } from "./obsidianSyncApi";
 import { processTelegramWebhookData } from "./processTelegramWebhookData";
 import { startTorrentOutboxProcessor, stopTorrentOutboxProcessor } from "./torrentOutbox";
 
@@ -19,6 +20,25 @@ const server = Fastify({ loggerInstance: logger });
 
 server.get("/healthz", async (_request, reply) => {
     return reply.send("OK");
+});
+
+// Backs the public short link redirector at https://s.senaev.com/<shortId>.
+// The ingress for s.senaev.com rewrites "/<shortId>" to "/short_links/<shortId>"
+// via a Traefik AddPrefix middleware before it reaches this app, so this route
+// itself stays namespaced and doesn't need any host-based logic.
+server.get("/short_links/:shortId", async (request, reply) => {
+    const { shortId } = request.params as { shortId: string };
+
+    try {
+        const targetUrl = await getShortLink(shortId);
+        if (targetUrl === null) {
+            return reply.code(404).send("Not Found");
+        }
+        return reply.redirect(targetUrl, 302);
+    } catch (err: unknown) {
+        logger.error(err, "❌ Error resolving short link");
+        return reply.code(500).send("Internal Server Error");
+    }
 });
 
 server.get("/*", async (request, reply) => {

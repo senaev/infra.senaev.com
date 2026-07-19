@@ -1,4 +1,13 @@
 {{- if .Values.webhookEndpoint.enabled }}
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: short-links-path-prefix
+  namespace: {{ .Release.Namespace }}
+spec:
+  addPrefix:
+    prefix: /short_links
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
