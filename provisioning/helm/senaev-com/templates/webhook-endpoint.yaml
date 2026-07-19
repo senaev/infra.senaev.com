@@ -73,6 +73,8 @@ spec:
               value: {{ .Values.trickyDadChatId | quote }}
             - name: TG_MEDIA_SERVER_CHAT_ID
               value: {{ .Values.telegramMediaServerChatId | quote }}
+            - name: TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID
+              value: {{ .Values.telegramSenaevComBotDirectMessageWithOwnerChatId | quote }}
             - name: PROWLARR_URL
               value: http://prowlarr:{{ .Values.prowlarr.webuiPort }}
             - name: PROWLARR_CONFIG_FILE

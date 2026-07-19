@@ -5,6 +5,7 @@ telegramMediaServerChatId: "-1003923897462"
 telegramVpnSubscriptionChatId: "-1003702952069"
 obsidianTasksChatId: "-5365516821"
 trickyDadChatId: "-5242876030"
+telegramSenaevComBotDirectMessageWithOwnerChatId: "184352484"
 
 mediaServerNodeName: "senaev-media"
 mediaServerStoragePath: /mnt/sdb1

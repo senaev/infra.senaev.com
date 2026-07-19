@@ -1,6 +1,12 @@
 import { isObject } from "senaev-utils/src/utils/Object/isObject";
 import { TelegramMessage, TelegramUser } from "senaev-utils/src/utils/TelegramApi/types";
-import { OBSIDIAN_TASKS_CHAT_ID, TG_CLUSTER_CHAT_ID, TG_MEDIA_SERVER_CHAT_ID, TRICKY_DAD_CHAT_ID } from "./env";
+import {
+    OBSIDIAN_TASKS_CHAT_ID,
+    TG_CLUSTER_CHAT_ID,
+    TG_MEDIA_SERVER_CHAT_ID,
+    TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID,
+    TRICKY_DAD_CHAT_ID,
+} from "./env";
 import { IGNORED_CHATS_WHITELIST } from "./ignoredChatsWhitelist";
 import { logger } from "./logger";
 import { processClusterChatMessage } from "./processClusterChatMessage";
@@ -9,6 +15,7 @@ import {
     TelegramCallbackQuery,
 } from "./processMediaServerCallbackQuery";
 import { processMediaServerChatMessage } from "./processMediaServerChatMessage";
+import { processOwnerDirectMessage } from "./processOwnerDirectMessage";
 import { processTrickyDadChatMessage } from "./processTrickyDadChatMessage";
 
 export async function processTelegramWebhookData({
@@ -102,6 +109,15 @@ export async function processTelegramWebhookData({
     if (chatIdStr === TRICKY_DAD_CHAT_ID) {
         logger.info({ messageId: message.message_id }, "🆕 Received new message in tricky dad chat");
         await processTrickyDadChatMessage(message as TelegramMessage, "Tricky Dad");
+        return;
+    }
+
+    if (chatIdStr === TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID) {
+        logger.info(
+            { messageId: message.message_id },
+            "🆕 Received new message in owner direct message chat",
+        );
+        await processOwnerDirectMessage(message as TelegramMessage);
         return;
     }
 

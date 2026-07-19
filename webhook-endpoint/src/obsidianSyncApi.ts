@@ -32,6 +32,34 @@ export async function getShortLink(shortId: string): Promise<string | null> {
 }
 
 /**
+ * Creates a new short link by calling the obsidian-sync container's
+ * `POST /short_links` HTTP API, which validates the link and appends it to
+ * the Obsidian vault's short_links.md file.
+ *
+ * Returns the newly assigned short link id. Throws with the obsidian-sync
+ * error message (e.g. an invalid link) on failure.
+ */
+export async function createShortLink(link: string): Promise<string> {
+    const response = await fetch(`${OBSIDIAN_SYNC_URL}/short_links`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ link }),
+    });
+
+    const body = (await response.json()) as
+        | { status: "ok"; id: string }
+        | { status: "error"; message: string };
+
+    if (!response.ok || body.status !== "ok") {
+        throw new Error(body.status === "error" ? body.message : `HTTP ${response.status}`);
+    }
+
+    return body.id;
+}
+
+/**
  * Creates a task in the Obsidian vault by calling the obsidian-sync container's
  * `POST /tasks` HTTP API, which appends a checkbox line to the Obsidian Tasks
  * streaming file directly on disk.
