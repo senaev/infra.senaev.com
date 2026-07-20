@@ -4,6 +4,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const url = require('url');
+const crypto = require('crypto');
 
 const PORT = 8080;
 
@@ -204,20 +205,24 @@ async function handleCreateTask(req, res) {
 const SHORT_LINKS_RELATIVE_PATH = path.join('short_links', 'short_links.md');
 const SHORT_LINKS_FILE_PATH = path.join(VAULT_PATH, SHORT_LINKS_RELATIVE_PATH);
 
-// Base-36 counter alphabet used for short link ids: 0-9 then a-z.
+// Alphabet used for randomly generated short link ids: 0-9 then a-z.
 const SHORT_LINK_ID_ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyz';
+// 6 chars over a 36-char alphabet gives ~2.2e9 possible ids, which is more than
+// enough to make brute-force/enumeration attacks impractical for personal use
+// while keeping ids short enough to be comfortably shareable.
+const SHORT_LINK_ID_LENGTH = 6;
+const SHORT_LINK_ID_GENERATION_MAX_ATTEMPTS = 10;
 const MAX_SHORT_LINK_URL_LENGTH = 8192;
 
 // In-memory mirror of short_links.md, refreshed only when the file's mtime/size change.
 // Avoids re-parsing the file on every request and sidesteps needing the file to be
 // sorted for lookups (a plain id -> url Map is used instead of on-disk binary search).
-let shortLinksCache = null; // { mtimeMs, size, map: Map<string, string>, lastId: string | null }
+let shortLinksCache = null; // { mtimeMs, size, map: Map<string, string> }
 let shortLinksWriteQueue = Promise.resolve();
 
-/** Parses short_links.md contents into an id -> url map, tracking the last id seen. */
+/** Parses short_links.md contents into an id -> url map. */
 function parseShortLinksContent(content) {
   const map = new Map();
-  let lastId = null;
 
   for (const rawLine of content.split('\n')) {
     const line = rawLine.trim();
@@ -243,10 +248,9 @@ function parseShortLinksContent(content) {
     }
 
     map.set(id, shortLinkUrl);
-    lastId = id;
   }
 
-  return { map, lastId };
+  return map;
 }
 
 /** Ensures shortLinksCache reflects the file on disk, reloading only if it changed. */
@@ -258,7 +262,7 @@ async function ensureShortLinksCacheFresh() {
     if (err.code !== 'ENOENT') {
       throw err;
     }
-    shortLinksCache = { mtimeMs: null, size: 0, map: new Map(), lastId: null };
+    shortLinksCache = { mtimeMs: null, size: 0, map: new Map() };
     return shortLinksCache;
   }
 
@@ -271,32 +275,36 @@ async function ensureShortLinksCacheFresh() {
   }
 
   const content = await fs.promises.readFile(SHORT_LINKS_FILE_PATH, 'utf8');
-  const { map, lastId } = parseShortLinksContent(content);
-  shortLinksCache = { mtimeMs: stat.mtimeMs, size: stat.size, map, lastId };
+  const map = parseShortLinksContent(content);
+  shortLinksCache = { mtimeMs: stat.mtimeMs, size: stat.size, map };
   return shortLinksCache;
 }
 
+/** Generates a random SHORT_LINK_ID_LENGTH-character id using a uniform, unbiased draw per character. */
+function generateRandomShortLinkId() {
+  let id = '';
+  for (let i = 0; i < SHORT_LINK_ID_LENGTH; i++) {
+    id += SHORT_LINK_ID_ALPHABET[crypto.randomInt(0, SHORT_LINK_ID_ALPHABET.length)];
+  }
+  return id;
+}
+
 /**
- * Increments a short link id using a base-36 counter (digits 0-9, letters a-z),
- * odometer-style: 9 -> a, z -> 10, zz -> 100, etc. `null` returns the first id, "0".
+ * Generates a random short link id that isn't already present in `existingMap`.
+ * Collisions are astronomically unlikely at this id space size, but this still
+ * retries defensively rather than ever risking overwriting an existing entry.
  */
-function incrementShortLinkId(lastId) {
-  if (lastId === null || lastId === undefined) {
-    return SHORT_LINK_ID_ALPHABET[0];
-  }
-
-  const chars = lastId.split('');
-  for (let i = chars.length - 1; i >= 0; i--) {
-    const digitIndex = SHORT_LINK_ID_ALPHABET.indexOf(chars[i]);
-    if (digitIndex < SHORT_LINK_ID_ALPHABET.length - 1) {
-      chars[i] = SHORT_LINK_ID_ALPHABET[digitIndex + 1];
-      return chars.join('');
+function generateUniqueShortLinkId(existingMap) {
+  for (let attempt = 0; attempt < SHORT_LINK_ID_GENERATION_MAX_ATTEMPTS; attempt++) {
+    const candidate = generateRandomShortLinkId();
+    if (!existingMap.has(candidate)) {
+      return candidate;
     }
-    chars[i] = SHORT_LINK_ID_ALPHABET[0];
   }
 
-  // All digits wrapped (e.g. "zz" -> "100"): grow the id by one digit.
-  return `1${chars.join('')}`;
+  throw new Error(
+    `Failed to generate a unique short link id after ${SHORT_LINK_ID_GENERATION_MAX_ATTEMPTS} attempts`,
+  );
 }
 
 /** Runs `task` only after all previously queued short-link writes have settled. */
@@ -313,13 +321,12 @@ function withShortLinksWriteLock(task) {
 async function createShortLink(targetUrl) {
   return withShortLinksWriteLock(async () => {
     const cache = await ensureShortLinksCacheFresh();
-    const id = incrementShortLinkId(cache.lastId);
+    const id = generateUniqueShortLinkId(cache.map);
 
     await fs.promises.mkdir(path.dirname(SHORT_LINKS_FILE_PATH), { recursive: true });
     await fs.promises.appendFile(SHORT_LINKS_FILE_PATH, `${id} ${targetUrl}\n`, 'utf8');
 
     cache.map.set(id, targetUrl);
-    cache.lastId = id;
     try {
       const stat = await fs.promises.stat(SHORT_LINKS_FILE_PATH);
       cache.mtimeMs = stat.mtimeMs;
