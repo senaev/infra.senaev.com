@@ -43,15 +43,18 @@ spec:
               value: "false"
             - name: MAX_QUEUE_LENGTH
               value: "10"
+          # `/active` is browserless's health endpoint (returns 204 when up).
+          # `GET /` is intentionally not a route and returns an error, so it
+          # can't be used for probes.
           livenessProbe:
             httpGet:
-              path: /
+              path: /active
               port: 3000
             initialDelaySeconds: 15
             periodSeconds: 30
           readinessProbe:
             httpGet:
-              path: /
+              path: /active
               port: 3000
             initialDelaySeconds: 5
             periodSeconds: 10
