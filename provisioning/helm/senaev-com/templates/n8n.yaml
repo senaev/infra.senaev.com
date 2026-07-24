@@ -40,6 +40,7 @@ spec:
         app: n8n
       annotations:
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
+        configmap.reloader.stakater.com/reload: "n8n-provisioning"
     spec:
       nodeSelector:
         vps: {{ .Values.n8n.vps }}

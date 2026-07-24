@@ -4,20 +4,11 @@
   "active": false,
   "nodes": [
     {
-      "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "hours",
-              "hoursInterval": 6
-            }
-          ]
-        }
-      },
-      "id": "schedule-trigger",
-      "name": "Every 6 hours",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "When clicking 'Execute workflow'",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
       "position": [
         -260,
         0
@@ -79,7 +70,7 @@
     }
   ],
   "connections": {
-    "Every 6 hours": {
+    "When clicking 'Execute workflow'": {
       "main": [
         [
           {
