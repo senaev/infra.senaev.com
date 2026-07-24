@@ -61,6 +61,7 @@ def generate_log_line():
     ip      = f"10.{random.randint(0,255)}.{random.randint(0,255)}.{random.randint(1,254)}"
 
     log = {
+        "log_generator": True,
         "timestamp":  now,
         "level":      level,
         "host":       host,
