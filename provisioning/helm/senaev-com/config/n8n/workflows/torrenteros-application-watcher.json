@@ -1,0 +1,154 @@
+{
+  "id": "torrenteros-application-watcher",
+  "name": "Torrenteros: notify when applications open",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Every 3 hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -460,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://browserless:3000/content",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"url\": \"https://torrenteros.org/application\"\n}",
+        "options": {}
+      },
+      "id": "browserless-content",
+      "name": "Render application page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 10000,
+      "onError": "continueErrorOutput",
+      "position": [
+        -240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// The page is server-rendered; when applications are closed it contains\n// the Spanish text \"Las aplicaciones estan cerradas\" (Applications are\n// closed). Absence of that marker means the page changed - most likely\n// because applications opened.\nconst html = String($input.first().json.data ?? $input.first().json ?? '');\nconst isClosed = /cerradas/i.test(html);\nconst available = html.length > 0 && !isClosed;\n\n// Persist state across executions (n8n workflow static data) so we only\n// notify once on the closed -> open transition, not on every 3-hour check\n// while it stays open. Closed checks never notify.\nconst staticData = $getWorkflowStaticData('global');\nconst wasAvailable = staticData.wasAvailable === true;\nstaticData.wasAvailable = available;\nstaticData.lastCheckedAt = new Date().toISOString();\n\nif (!available || wasAvailable) {\n  // Still closed, or already notified for this open window: stop here by\n  // returning no items so the downstream Telegram node does not run.\n  return [];\n}\n\nreturn [{\n  json: {\n    text: `\ud83c\udf89 Torrenteros applications are OPEN!\\nhttps://torrenteros.org/application\\nChecked at: ${staticData.lastCheckedAt}`,\n  },\n}];"
+      },
+      "id": "check-availability",
+      "name": "Check availability",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -20,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// The HTTP request to Browserless failed after retries (e.g. network\n// error, Cloudflare block, Browserless down). Always notify on error -\n// unlike the closed/open check, this path is not deduplicated, since each\n// failure is worth knowing about.\nconst item = $input.first().json;\nconst err = item.error ?? item;\nconst message = (err && err.message) ? err.message : JSON.stringify(err).slice(0, 300);\n\nreturn [{\n  json: {\n    text: `\u26a0\ufe0f Failed to check Torrenteros application page: ${message}`,\n  },\n}];"
+      },
+      "id": "format-error",
+      "name": "Format error message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -20,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "telegram-notify",
+      "name": "Notify Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        200,
+        0
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "senaev-com-bot",
+          "name": "senaev.com bot (provisioned)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every 3 hours": {
+      "main": [
+        [
+          {
+            "node": "Render application page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render application page": {
+      "main": [
+        [
+          {
+            "node": "Check availability",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format error message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check availability": {
+      "main": [
+        [
+          {
+            "node": "Notify Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format error message": {
+      "main": [
+        [
+          {
+            "node": "Notify Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

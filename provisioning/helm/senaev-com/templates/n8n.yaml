@@ -15,10 +15,14 @@ metadata:
   labels:
     app: n8n
 data:
-  telegram.json.tpl: |
-{{ .Files.Get "config/n8n/credentials/telegram.json.tpl" | indent 4 }}
-  example-scrape-to-telegram.json: |
-{{ .Files.Get "config/n8n/workflows/example-scrape-to-telegram.json" | indent 4 }}
+  {{- range $path, $bytes := .Files.Glob "config/n8n/credentials/*.tpl" }}
+  {{ base $path }}: |
+{{ $.Files.Get $path | indent 4 }}
+  {{- end }}
+  {{- range $path, $bytes := .Files.Glob "config/n8n/workflows/*.json" }}
+  {{ base $path }}: |
+{{ $.Files.Get $path | indent 4 }}
+  {{- end }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -103,11 +107,26 @@ spec:
 
               echo "Importing credentials..."
               n8n import:credentials --input="$WORKDIR/telegram.json"
-
-              echo "Importing workflows..."
-              n8n import:workflow --input=/provisioning/example-scrape-to-telegram.json
-
               rm -f "$WORKDIR/telegram.json"
+
+              # Import every workflow JSON mounted from config/n8n/workflows/.
+              # import:workflow always deactivates/unpublishes imported
+              # workflows regardless of their "active" field (that flag is
+              # only honored with --activeState=fromJson, which requires
+              # multi-main mode - not applicable to this single-instance
+              # setup). So explicitly publish the workflows that must run on
+              # a schedule, and explicitly unpublish ones meant to be
+              # triggered manually only, to keep behavior deterministic on
+              # every rollout regardless of any manual UI changes.
+              echo "Importing workflows..."
+              n8n import:workflow --separate --input=/provisioning
+
+              echo "Publishing scheduled workflows..."
+              n8n publish:workflow --id=torrenteros-application-watcher || true
+
+              echo "Unpublishing manual-only workflows..."
+              n8n unpublish:workflow --id=example-scrape-to-telegram || true
+
               echo "Provisioning complete."
           volumeMounts:
             - name: data
@@ -148,10 +167,12 @@ spec:
             - name: N8N_BROWSERLESS_WS_URL
               value: ws://browserless:3000
             {{- end }}
-            # Expose the Telegram chat id to workflows (token stays in the
-            # provisioned credential; only the chat id is a plain env here).
+            # Expose Telegram chat ids to workflows (token stays in the
+            # provisioned credential; only chat ids are plain env here).
             - name: TG_CLUSTER_CHAT_ID
               value: {{ .Values.telegramClusterChatId | quote }}
+            - name: TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID
+              value: {{ .Values.telegramSenaevComBotDirectMessageWithOwnerChatId | quote }}
             # Allow workflow expressions to read env vars (e.g.
             # {{`{{ $env.TG_CLUSTER_CHAT_ID }}`}}). n8n blocks this by default.
             - name: N8N_BLOCK_ENV_ACCESS_IN_NODE
