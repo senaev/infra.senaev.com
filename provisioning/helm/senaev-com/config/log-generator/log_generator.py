@@ -2,12 +2,14 @@
 """
 Datadog Log Generator - headless stdout emitter.
 
-Continuously prints randomized, structured application log lines to stdout so
-the Datadog node Agent (containerCollectAll) can pick them up. No HTTP server,
-no API, no file output - just an infinite internal loop.
+Continuously prints randomized, structured JSON application log lines to stdout
+so the Datadog node Agent (containerCollectAll) can pick them up and auto-parse
+the JSON attributes. No HTTP server, no API, no file output - just an infinite
+internal loop.
 
 Stdlib only, so it runs on a stock python:3-slim image with no dependencies.
 """
+import json
 import random
 import time
 from datetime import datetime, timezone
@@ -58,21 +60,32 @@ def generate_log_line():
     user_id = random.randint(1000, 99999)
     ip      = f"10.{random.randint(0,255)}.{random.randint(0,255)}.{random.randint(1,254)}"
 
-    if level == "ERROR":
-        extra = 'msg="' + random.choice(ERROR_MSGS) + '" status=error'
-    elif level == "WARN":
-        extra = 'msg="' + random.choice(WARN_MSGS) + f'" latency_ms={random.randint(280,990)}'
-    elif level == "DEBUG":
-        cache = "hit" if random.random() > 0.5 else "miss"
-        extra = f"duration_ms={random.randint(1,20)} cache={cache}"
-    else:
-        status = random.choice([200, 200, 200, 201, 204, 304])
-        extra  = f"duration_ms={random.randint(5,250)} http_status={status}"
+    log = {
+        "timestamp":  now,
+        "level":      level,
+        "host":       host,
+        "env":        "production",
+        "service":    service,
+        "request_id": req_id,
+        "user_id":    user_id,
+        "client_ip":  ip,
+        "action":     action,
+    }
 
-    return (
-        f"{now} level={level} host={host} env=production service={service} "
-        f"request_id={req_id} user_id={user_id} client_ip={ip} action={action} {extra}"
-    )
+    if level == "ERROR":
+        log["message"] = random.choice(ERROR_MSGS)
+        log["status"]  = "error"
+    elif level == "WARN":
+        log["message"]    = random.choice(WARN_MSGS)
+        log["latency_ms"] = random.randint(280, 990)
+    elif level == "DEBUG":
+        log["duration_ms"] = random.randint(1, 20)
+        log["cache"]       = "hit" if random.random() > 0.5 else "miss"
+    else:
+        log["duration_ms"] = random.randint(5, 250)
+        log["http_status"] = random.choice([200, 200, 200, 201, 204, 304])
+
+    return json.dumps(log)
 
 
 def main():
