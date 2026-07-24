@@ -176,6 +176,10 @@ clusterHelper:
   enabled: true
   vps: hetzner
 
+logGenerator:
+  enabled: true
+  vps: hetzner
+
 mediaServerHelper:
   enabled: true
   vps: senaev-media

@@ -1,0 +1,60 @@
+{{- if .Values.logGenerator.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: log-generator-script
+  namespace: {{ .Release.Namespace }}
+data:
+  log_generator.py: |
+{{ .Files.Get "config/log-generator/log_generator.py" | indent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-generator
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: log-generator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: log-generator
+  template:
+    metadata:
+      labels:
+        app: log-generator
+        admission.datadoghq.com/enabled: "true"
+        tags.datadoghq.com/service: log-generator
+        tags.datadoghq.com/env: prod
+        tags.datadoghq.com/version: latest
+      annotations:
+        # Roll the pod whenever the script changes so new logic takes effect.
+        checksum/script: {{ .Files.Get "config/log-generator/log_generator.py" | sha256sum }}
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      nodeSelector:
+        vps: {{ .Values.logGenerator.vps }}
+      containers:
+        - name: log-generator
+          image: python:3-slim
+          command: ["python", "/app/log_generator.py"]
+          volumeMounts:
+            - name: script
+              mountPath: /app/log_generator.py
+              subPath: log_generator.py
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+      volumes:
+        - name: script
+          configMap:
+            name: log-generator-script
+{{- end }}
