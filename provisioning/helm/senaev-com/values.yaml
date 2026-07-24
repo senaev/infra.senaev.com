@@ -198,6 +198,16 @@ obsidianSync:
   volumePath: volumes/obsidian-sync/vault
   containerVaultPath: /vault
 
+browserless:
+  enabled: true
+  vps: hetzner
+
+n8n:
+  enabled: true
+  vps: hetzner
+  volumePath: volumes/n8n
+  containerDataPath: /home/node/.n8n
+
 opencodeTelegram:
   enabled: true
   vps: hetzner
@@ -242,6 +252,9 @@ ingress:
         - host: vpn-subscription.senaev.com
           service: vpn-subscription
           port: 3000
+        - host: n8n.senaev.com
+          service: n8n
+          port: 5678
     - name: senaev-com-short-links
       className: traefik-hetzner
       middleware: short-links-path-prefix

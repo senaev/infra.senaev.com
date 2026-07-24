@@ -1,0 +1,205 @@
+{{- if .Values.n8n.enabled }}
+# Workflow automation UI + scheduler. Data (workflows, credentials, execution
+# history) persisted on a hostPath volume, matching the obsidian-sync pattern.
+# n8n keeps its own SQLite state file on that volume for simplicity.
+#
+# Declarative provisioning: on every rollout an initContainer imports the
+# workflow + Telegram credential JSON from config/n8n/ into n8n's db. The
+# Telegram token is injected from Vault at import time (never committed).
+# Imports are idempotent (stable entity IDs are overwritten in place).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: n8n-provisioning
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: n8n
+data:
+  telegram.json.tpl: |
+{{ .Files.Get "config/n8n/credentials/telegram.json.tpl" | indent 4 }}
+  example-scrape-to-telegram.json: |
+{{ .Files.Get "config/n8n/workflows/example-scrape-to-telegram.json" | indent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: n8n
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: n8n
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: n8n
+  template:
+    metadata:
+      labels:
+        app: n8n
+      annotations:
+        secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
+    spec:
+      nodeSelector:
+        vps: {{ .Values.n8n.vps }}
+      initContainers:
+        - name: fix-permissions
+          image: busybox:1.37.0-uclibc
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+          command:
+            - sh
+            - -c
+            - |
+              chown -R 1000:1000 {{ .Values.n8n.containerDataPath }}
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.n8n.containerDataPath }}
+        # Import provisioned credentials + workflows into the SQLite db before
+        # the main container starts. Runs on every rollout; imports are
+        # idempotent because entities carry stable IDs (existing rows with the
+        # same ID are overwritten). The Telegram token is injected here from the
+        # Vault-backed secret so it is never committed to git, and it is encrypted
+        # into the db using the same N8N_ENCRYPTION_KEY as the main container.
+        - name: provision
+          image: docker.n8n.io/n8nio/n8n:latest
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+          env:
+            - name: N8N_USER_FOLDER
+              value: {{ .Values.n8n.containerDataPath }}
+            - name: N8N_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: N8N_ENCRYPTION_KEY
+                  optional: false
+            - name: TG_TOKEN_SENAEV_COM_BOT
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: TG_TOKEN_SENAEV_COM_BOT
+                  optional: false
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              WORKDIR="$(mktemp -d)"
+              # Inject the Telegram token into the credential template. Use a
+              # temp copy so the read-only ConfigMap mount is untouched, and
+              # avoid printing the token.
+              sed "s|__TG_TOKEN__|${TG_TOKEN_SENAEV_COM_BOT}|g" \
+                /provisioning/telegram.json.tpl > "$WORKDIR/telegram.json"
+
+              echo "Importing credentials..."
+              n8n import:credentials --input="$WORKDIR/telegram.json"
+
+              echo "Importing workflows..."
+              n8n import:workflow --input=/provisioning/example-scrape-to-telegram.json
+
+              rm -f "$WORKDIR/telegram.json"
+              echo "Provisioning complete."
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.n8n.containerDataPath }}
+            - name: provisioning
+              mountPath: /provisioning
+              readOnly: true
+      containers:
+        - name: n8n
+          image: docker.n8n.io/n8nio/n8n:latest
+          ports:
+            - name: http
+              containerPort: 5678
+              protocol: TCP
+          env:
+            - name: N8N_PORT
+              value: "5678"
+            - name: N8N_HOST
+              value: n8n.senaev.com
+            # Public-facing URL settings so the editor, webhooks and OAuth
+            # callbacks resolve correctly behind the Traefik TLS ingress.
+            - name: N8N_PROTOCOL
+              value: https
+            - name: WEBHOOK_URL
+              value: https://n8n.senaev.com/
+            - name: N8N_EDITOR_BASE_URL
+              value: https://n8n.senaev.com/
+            # Persist to the mounted hostPath volume.
+            - name: N8N_USER_FOLDER
+              value: {{ .Values.n8n.containerDataPath }}
+            # Prune old execution data to keep the SQLite db and disk bounded.
+            - name: EXECUTIONS_DATA_PRUNE
+              value: "true"
+            - name: EXECUTIONS_DATA_MAX_AGE
+              value: "8760"
+            # Point workflow browser nodes at the in-cluster browserless service.
+            {{- if .Values.browserless.enabled }}
+            - name: N8N_BROWSERLESS_WS_URL
+              value: ws://browserless:3000
+            {{- end }}
+            # Expose the Telegram chat id to workflows (token stays in the
+            # provisioned credential; only the chat id is a plain env here).
+            - name: TG_CLUSTER_CHAT_ID
+              value: {{ .Values.telegramClusterChatId | quote }}
+            - name: GENERIC_TIMEZONE
+              value: Europe/Amsterdam
+            # Encryption key for stored credentials. Must stay stable across
+            # restarts or saved credentials become unreadable.
+            - name: N8N_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: N8N_ENCRYPTION_KEY
+                  optional: false
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.n8n.containerDataPath }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 5678
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 5678
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+      volumes:
+        - name: data
+          hostPath:
+            path: {{ .Values.clusterRootPath }}/{{ .Values.n8n.volumePath }}
+            type: DirectoryOrCreate
+        - name: provisioning
+          configMap:
+            name: n8n-provisioning
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: n8n
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: n8n
+spec:
+  type: ClusterIP
+  selector:
+    app: n8n
+  ports:
+    - name: http
+      port: 5678
+      targetPort: 5678
+      protocol: TCP
+{{- end }}

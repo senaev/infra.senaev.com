@@ -1,0 +1,81 @@
+{{- if .Values.browserless.enabled }}
+# Chrome-as-a-service. Kept stateless; memory-capped so a leaking Chrome can't
+# OOM the node. CONCURRENT limits parallel browser sessions (each session can
+# use 300MB-1GB under load).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: browserless
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: browserless
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: browserless
+  template:
+    metadata:
+      labels:
+        app: browserless
+    spec:
+      nodeSelector:
+        vps: {{ .Values.browserless.vps }}
+      containers:
+        - name: browserless
+          image: ghcr.io/browserless/chromium:latest
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          env:
+            - name: PORT
+              value: "3000"
+            - name: CONCURRENT
+              value: "2"
+            - name: TIMEOUT
+              value: "120000"
+            # Kill and recycle Chrome between sessions so leaked memory is
+            # reclaimed on a long-running instance.
+            - name: PREBOOT_CHROME
+              value: "false"
+            - name: MAX_QUEUE_LENGTH
+              value: "10"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1536Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: browserless
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: browserless
+spec:
+  type: ClusterIP
+  selector:
+    app: browserless
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      protocol: TCP
+{{- end }}

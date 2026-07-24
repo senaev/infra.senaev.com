@@ -1,0 +1,117 @@
+{
+  "id": "example-scrape-to-telegram",
+  "name": "Example: scrape page and notify Telegram",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Every 6 hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://browserless:3000/content",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"url\": \"https://example.com\"\n}",
+        "options": {}
+      },
+      "id": "browserless-content",
+      "name": "Render page via Browserless",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -40,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Browserless /content returns the fully-rendered HTML as the response body.\n// Extract the <title> as a trivial example of \"grepping\" the page.\nconst html = String($input.first().json.data ?? $input.first().json ?? '');\nconst match = html.match(/<title[^>]*>([^<]*)<\\/title>/i);\nconst title = match ? match[1].trim() : '(no title found)';\nreturn [{ json: { title, length: html.length } }];"
+      },
+      "id": "extract-title",
+      "name": "Extract title",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        180,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TG_CLUSTER_CHAT_ID }}",
+        "text": "=Scrape result:\nTitle: {{ $json.title }}\nHTML length: {{ $json.length }}",
+        "additionalFields": {}
+      },
+      "id": "telegram-notify",
+      "name": "Notify Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        0
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "senaev-com-bot",
+          "name": "senaev.com bot (provisioned)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every 6 hours": {
+      "main": [
+        [
+          {
+            "node": "Render page via Browserless",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render page via Browserless": {
+      "main": [
+        [
+          {
+            "node": "Extract title",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract title": {
+      "main": [
+        [
+          {
+            "node": "Notify Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
