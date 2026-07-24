@@ -69,6 +69,11 @@ spec:
             runAsUser: 1000
             runAsGroup: 1000
           env:
+            # Kubernetes auto-injects N8N_PORT=tcp://<svc-ip>:5678 because a
+            # Service named "n8n" exists; override it so the n8n CLI doesn't
+            # choke on "Invalid number value for N8N_PORT".
+            - name: N8N_PORT
+              value: "5678"
             - name: N8N_USER_FOLDER
               value: {{ .Values.n8n.containerDataPath }}
             - name: N8N_ENCRYPTION_KEY
@@ -159,24 +164,26 @@ spec:
           volumeMounts:
             - name: data
               mountPath: {{ .Values.n8n.containerDataPath }}
+          # First boot runs DB migrations + provisioning import before the
+          # port opens, which can take a while. The startupProbe gives that
+          # up to ~5min before liveness/readiness kick in.
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: 5678
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 30
           livenessProbe:
             httpGet:
               path: /healthz
               port: 5678
-            initialDelaySeconds: 30
             periodSeconds: 30
           readinessProbe:
             httpGet:
               path: /healthz
               port: 5678
-            initialDelaySeconds: 10
             periodSeconds: 10
-          resources:
-            requests:
-              cpu: 50m
-              memory: 256Mi
-            limits:
-              memory: 512Mi
       volumes:
         - name: data
           hostPath:

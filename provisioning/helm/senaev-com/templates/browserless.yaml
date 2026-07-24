@@ -58,12 +58,6 @@ spec:
               port: 3000
             initialDelaySeconds: 5
             periodSeconds: 10
-          resources:
-            requests:
-              cpu: 100m
-              memory: 256Mi
-            limits:
-              memory: 1536Mi
 ---
 apiVersion: v1
 kind: Service
