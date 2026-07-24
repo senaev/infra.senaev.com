@@ -151,6 +151,10 @@ spec:
             # provisioned credential; only the chat id is a plain env here).
             - name: TG_CLUSTER_CHAT_ID
               value: {{ .Values.telegramClusterChatId | quote }}
+            # Allow workflow expressions to read env vars (e.g.
+            # {{`{{ $env.TG_CLUSTER_CHAT_ID }}`}}). n8n blocks this by default.
+            - name: N8N_BLOCK_ENV_ACCESS_IN_NODE
+              value: "false"
             - name: GENERIC_TIMEZONE
               value: Europe/Amsterdam
             # Encryption key for stored credentials. Must stay stable across
