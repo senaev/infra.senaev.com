@@ -58,7 +58,9 @@
       "parameters": {
         "chatId": "={{ $env.TG_CLUSTER_CHAT_ID }}",
         "text": "=Scrape result:\nTitle: {{ $json.title }}\nHTML length: {{ $json.length }}",
-        "additionalFields": {}
+        "additionalFields": {
+          "appendAttribution": false
+        }
       },
       "id": "telegram-notify",
       "name": "Notify Telegram",
