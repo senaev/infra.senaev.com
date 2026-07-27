@@ -71,6 +71,19 @@ EOF
 sysctl --system >/dev/null
 echo "✅ [bootstrap-server] Swap configured"
 
+# Uncapped journald retention can grow to a large fraction of a small root disk over
+# time (root-caused a node-disk-space-low alert on firstvds — see
+# issues/2026-07-27-firstvds-disk-space-low.md). Cap it via a drop-in rather than
+# editing the vendor journald.conf directly.
+echo "👉 [bootstrap-server] Capping systemd-journald size"
+mkdir -p /etc/systemd/journald.conf.d
+cat >/etc/systemd/journald.conf.d/99-max-size.conf <<"EOF"
+[Journal]
+SystemMaxUse=300M
+EOF
+systemctl restart systemd-journald
+echo "✅ [bootstrap-server] systemd-journald capped at 300M"
+
 echo "👉 [bootstrap-server] Installing Tailscale"
 curl -fsSL https://tailscale.com/install.sh | sh
 echo "✅ [bootstrap-server] Tailscale installed"
