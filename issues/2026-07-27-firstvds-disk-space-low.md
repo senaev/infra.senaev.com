@@ -227,3 +227,102 @@ should stop accumulating those image layers over time.
 
 Still pending: deploy (`make datadog`, `make senaev-com`), and the manual host cleanup
 steps (C), (B), and apt clean on firstvds.
+
+### 2026-07-27 — Committed and pushed
+
+Commit `551685c` on `main` (`87f6c1d..551685c`): the code fix above plus this issue
+file. Push to `main` triggers `.github/workflows/update-helm-charts.yml`, which
+auto-deploys the changed `datadog` and `senaev-com` Helm charts to the cluster — no
+manual `make datadog`/`make senaev-com` needed.
+
+### 2026-07-27 — Manual host cleanup applied on firstvds
+
+```
+❯ crictl rmi --prune
+(no output)
+
+❯ systemctl restart k3s-agent
+(no output)
+
+❯ sed -i 's/^\[Journal\]/[Journal]\nSystemMaxUse=300M/' /etc/systemd/journald.conf
+❯ systemctl restart systemd-journald
+
+❯ journalctl --vacuum-size=300M
+Vacuuming done, freed 0B of archived journals from /var/log/journal.
+Vacuuming done, freed 0B of archived journals from /run/log/journal.
+Vacuuming done, freed 0B of archived journals from /var/log/journal/04169b2fa644f0c09aca10db1a745185.
+
+❯ apt clean
+(no output)
+
+❯ df -h /
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda3        15G  7.5G  6.5G  54% /
+```
+
+**Interpretation:**
+- Used space dropped from **9.7G → 7.5G** (avail 4.3G → **6.5G**, 70% → 54%) — a **2.2G
+  reclaim**, comfortably clearing the 5Gi alert threshold with headroom.
+- `crictl rmi --prune` produced no output — no images were removed at that point,
+  because the unused `dd-lib-*-init` images were still referenced by the exited
+  init containers from `xray-vpn-firstvds`'s last restart (containers, not just
+  images, must be pruned/GC'd first).
+- `journalctl --vacuum-size=300M` freed 0B of *archived* journals — this indicates the
+  `systemctl restart systemd-journald` step (which rotates the active journal file and
+  immediately enforces the new `SystemMaxUse=300M` on restart) had already trimmed the
+  journal down before the explicit vacuum ran, i.e. the restart itself did the work
+  confirming hypothesis (B) — journald retention was the uncapped default, and capping
+  it reclaimed roughly the ~1G gap between the previous 1.3G measurement and a
+  300M-capped journal.
+- The remaining ~1.1-1.2G of the 2.2G reclaim is attributable to `systemctl restart
+  k3s-agent`, which restarts containerd/kubelet and triggers their built-in garbage
+  collection (stopped-container GC + orphaned overlay snapshot GC) — confirming
+  hypothesis (C): the 145-snapshot vs. 51-image-ref discrepancy found in Round 2 was
+  indeed reclaimable orphaned snapshot overhead, just not directly via `crictl rmi
+  --prune` alone.
+- `apt clean` contributed the previously-measured 74M.
+
+All three pending fix options — (C) containerd snapshot GC, (B) journald cap+vacuum,
+and apt clean — are confirmed effective. Alert should now be clear; not independently
+re-checked in Alertmanager/Telegram as part of this session, but 6.5G avail is well
+above the 5Gi trigger with sustained margin.
+
+## Resolution
+
+**Root cause:** `provisioning/helm/datadog/values.yaml` had Datadog APM Single Step
+Instrumentation enabled namespace-wide (`enabledNamespaces: [senaev-com]`) with no
+per-workload exclusion. This caused the admission controller to inject 6 unnecessary
+language-runtime init containers into `xray-vpn-firstvds` (a compiled Go binary that
+will never use any dd-trace SDK) on every pod restart, contributing to unbounded
+containerd image/snapshot growth on firstvds's small 15G disk. Uncapped systemd
+journald retention (no `SystemMaxUse`) was a secondary contributor to the historical
+backlog.
+
+**Fix:**
+1. Code (commit `551685c`, pushed to `main`, auto-deployed via CI): switched Datadog
+   APM instrumentation from the namespace-wide opt-out model to an opt-in
+   `targets`/`podSelector` model matching the native
+   `admission.datadoghq.com/enabled: "true"` pod label. Only explicitly labeled
+   workloads (`cluster-helper`, `nextjs-app`, `webhook-endpoint`,
+   `media-server-helper`, `vpn-subscription`, `log-generator`, `obsidian-sync`,
+   `opencode-serve`/`opencode-telegram-bot`) are now instrumented; `xray-vpn` and all
+   third-party workloads are excluded by default. This prevents the issue from
+   recurring going forward.
+2. Manual, one-time cleanup on firstvds: `crictl rmi --prune` + `systemctl restart
+   k3s-agent` (containerd/kubelet GC for orphaned image layers and snapshots),
+   journald capped at `SystemMaxUse=300M` + vacuumed, `apt clean`.
+
+**Result:** firstvds root disk usage dropped from 9.7G/15G (70%, 4.3G avail — alert
+firing) to 7.5G/15G (54%, 6.5G avail — clear of the 5Gi threshold with margin).
+
+**Open questions / follow-ups (not blocking):**
+- The exact base-OS disk footprint (~2.7G estimated remainder from Round 2) was never
+  independently broken down (`du --max-depth=1 /` returned no output when run) — not
+  investigated further since the alert is resolved, but worth a look if disk pressure
+  returns.
+- The 2G on-disk `/swapfile` was intentionally left untouched given tight RAM (962Mi
+  total). If disk pressure recurs, revisit swap sizing or resize the VPS disk itself
+  as longer-term options.
+- Not independently confirmed that the `node-disk-space-low` alert actually cleared in
+  Alertmanager/Telegram — the `df -h` result strongly implies it did, but worth a
+  glance at `alertmanager.senaev.com` next time it's convenient.
