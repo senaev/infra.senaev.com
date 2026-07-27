@@ -17,6 +17,10 @@ spec:
     metadata:
       labels:
         app: obsidian-sync
+        admission.datadoghq.com/enabled: "true"
+        tags.datadoghq.com/service: obsidian-sync
+        tags.datadoghq.com/env: prod
+        tags.datadoghq.com/version: latest
       annotations:
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
     spec:

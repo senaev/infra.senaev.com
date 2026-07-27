@@ -28,6 +28,10 @@ spec:
     metadata:
       labels:
         app: opencode-telegram
+        admission.datadoghq.com/enabled: "true"
+        tags.datadoghq.com/service: opencode-telegram
+        tags.datadoghq.com/env: prod
+        tags.datadoghq.com/version: latest
       annotations:
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
     spec:

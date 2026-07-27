@@ -47,12 +47,24 @@ datadog:
       portEnabled: true
       instrumentation:
         enabled: true
-        # Scope injection to the app namespace. Without this the handler skips
-        # all namespaces even though the /injectlib webhook fires cluster-wide.
-        # Note: targets and enabledNamespaces are mutually exclusive in the
-        # chart schema; use enabledNamespaces + default library versions.
-        enabledNamespaces:
-          - senaev-com
+        # Opt-in model (Datadog's recommended production pattern, vs.
+        # `enabledNamespaces` which instruments everything by default and
+        # requires opting *out* per pod). Only pods carrying the native
+        # `admission.datadoghq.com/enabled: "true"` label on their pod
+        # template get the dd-trace init containers injected. Everything
+        # else — including third-party images (xray, traefik, jellyfin,
+        # etc.) that would never benefit from a language SDK — is skipped
+        # by default.
+        #
+        # Root-caused a disk-space alert on firstvds where the previous
+        # `enabledNamespaces: [senaev-com]` setting silently instrumented the
+        # xray-vpn Go binary, pulling ~900Mi of unused init-container images
+        # on every pod restart. See issues/2026-07-27-firstvds-disk-space-low.md.
+        targets:
+          - name: apm-instrumented
+            podSelector:
+              matchLabels:
+                admission.datadoghq.com/enabled: "true"
 
     dogstatsd:
       useHostPort: true
