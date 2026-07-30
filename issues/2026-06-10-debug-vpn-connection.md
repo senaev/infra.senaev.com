@@ -638,8 +638,64 @@ helm upgrade senaev-com provisioning/helm/senaev-com -n senaev-com \
    profiles will fail).
 4. Test a firstvds profile from a previously-blocked Russian ISP.
 
-**Result: _pending user test._**
+**Result: did not help.** Deployed as commit `a8e83d9`. VPN still blocked from Russia.
 
-If this fails too, the remaining untested variable from the known-working Russian config is
-the uTLS fingerprint (hypothesis **G**, `fp=chrome` → `fp=firefox`), which is a
-client-side-only change and can be tested independently.
+The ingress rework itself was correct — verified from outside after deploy:
+
+```
+https://senaev.ru             HTTP 200  tls=0
+https://senaev.com            HTTP 200  tls=0
+https://jellyfin.senaev.ru    HTTP 302  tls=0   <- via xray dest fallback -> websecure-xray
+https://jellyfin.senaev.com   HTTP 302  tls=0   <- via xray dest fallback -> websecure-xray
+```
+
+So the SNI moved cleanly and the Reality fallback path works; the DPI simply does not care
+about the SNI. **This is now the third distinct SNI to fail** (`www.microsoft.com`,
+`sun6-21.userapi.com`, `jellyfin.senaev.*`) — and critically, the third one had *correct
+SNI↔IP consistency*, which was the stated reason the VK attempt was thought to have failed.
+That reasoning is now refuted: SNI-based camouflage is not the lever here, regardless of
+whether the name legitimately resolves to the server.
+
+---
+
+## Elimination table (state as of 2026-07-30)
+
+| Variable | Tested | Result |
+|---|---|---|
+| Server software / OS state | full reinstall, same IP | no change |
+| SNI value | microsoft.com, VK, jellyfin.senaev.* | no change (×3) |
+| SNI↔IP consistency | jellyfin.senaev.* resolves to the node | no change |
+| Transport | raw TCP, XHTTP | no change (×2) |
+| Server geography / IP | firstvds (RU), hetzner (FI) | both fail from RU |
+| Client geography | Madrid vs Russia | works from EU, fails from RU |
+| Plain HTTPS on same IP:443 | continuously | always works |
+| uTLS fingerprint | **not tested** — still `fp=chrome` | — |
+| TLS ClientHello fragmentation | **not tested** | — |
+| A never-used IP | **not tested** | — |
+| Non-Reality protocol | **not tested** | — |
+
+**What the table implies.** The discriminator is not the SNI, not the transport wrapper, not
+the server config, and not the server's country. Plain HTTPS to the exact same IP:port
+always succeeds while VLESS+Reality to it always fails from Russia. Combined with the
+2026-06-10 observation that a blocked-carrier connection attempt produced **complete
+silence in the xray log** (the TCP stream never reached the pod), the remaining candidates
+are narrow:
+
+1. **(G) uTLS fingerprint** — the one parameter from the contact's known-working config that
+   we have still never matched (`firefox` vs our `chrome`). Cheap, client-side only.
+2. **(I) The client's TLS ClientHello is being parsed by the DPI** and matched against a
+   Reality/VLESS signature. Countermeasure is client-side ClientHello fragmentation, which
+   prevents the DPI from reassembling the record. Free to test; Traefik still reassembles at
+   the TCP layer, so the server side is unaffected.
+3. **(F) IP reputation.** TSPU is known to flag IPs observed carrying proxy traffic and then
+   drop VPN-shaped flows to them while still permitting ordinary web traffic — which would
+   explain why *both* our IPs now fail from Russia yet both serve websites fine, and why no
+   amount of server-side reconfiguration has mattered. If this is the cause, the only fix is
+   an IP that has never carried our VPN traffic.
+4. **(K) Reality/VLESS protocol detection.** If TSPU now fingerprints Reality itself, no
+   parameter tuning will work and the protocol must change (Hysteria2 / TUIC /
+   Shadowsocks-2022 / AmneziaWG).
+
+Hypotheses 1 and 2 are free and should be tested before spending money or time on 3 and 4.
+Hypothesis 3 is the decisive experiment and should be run on a throwaway VPS *before* any
+architectural work, so that a negative result costs one hour instead of a migration.
