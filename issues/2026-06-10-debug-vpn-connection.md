@@ -540,3 +540,106 @@ The VK (`userapi.com`) SNI hypothesis was wrong — or at minimum insufficient o
 **Recommended next step — lowest risk, highest signal:**
 
 Change only the `fp` parameter (uTLS fingerprint) on the existing firstvds profiles from `chrome` to `firefox`. This requires no server-side changes (the fingerprint is client-side only in the subscription link), does not alter the SNI, and therefore does not break the website. If this alone unblocks connectivity from Russia, hypothesis G is confirmed.
+
+---
+
+### 2026-07-30 — SNI swap to the Jellyfin subdomains (deployed, awaiting test)
+
+New attempt at the SNI strategy, this time using a subdomain that **already hosts a real,
+high-bandwidth service on the same IP** — Jellyfin. The reasoning: the earlier
+`sun6-21.userapi.com` attempt used a domain that does *not* resolve to our IP, so any DPI
+doing SNI↔IP consistency checking would immediately flag the mismatch. A Jellyfin subdomain
+avoids that entirely, and media streaming is a natural cover for sustained high-throughput
+TLS — the exact traffic pattern that behavioral DPI was flagging as "proxy tunnel".
+
+**DNS confirms SNI↔IP consistency (the key improvement over the VK attempt):**
+
+```
+senaev.ru                  157.22.197.112
+jellyfin.senaev.ru         157.22.197.112   <- same IP as firstvds
+senaev.com                 77.42.120.71
+jellyfin.senaev.com        77.42.120.71     <- same IP as hetzner
+```
+
+**Changes made in `provisioning/helm/senaev-com/values.yaml`:**
+
+| instance | `realityServerName` | was |
+|---|---|---|
+| `xray-vpn-firstvds` | `jellyfin.senaev.ru` | `senaev.ru` |
+| `xray-vpn-hetzner` | `jellyfin.senaev.com` | `senaev.com` |
+
+Subscription links: both the connect address **and** the `sni=` parameter were changed to
+the Jellyfin host, so that the DNS lookup and the TLS SNI are the same name:
+
+```
+vless://{XRAY_USER_UUID:4}@jellyfin.senaev.ru:443?...&sni=jellyfin.senaev.ru    (firstvds)
+vless://{XRAY_USER_UUID:2}@jellyfin.senaev.com:443?...&sni=jellyfin.senaev.com  (hetzner)
+```
+
+An earlier iteration kept the connect address as `@senaev.ru:443` while only changing
+`sni=`. That works functionally (both names resolve to the same IP, and `@host` is used
+only to pick the dial address), but it leaves a correlatable anomaly: the client resolves
+one name via DNS and then presents a *different* name in the TLS SNI. Aligning them
+produces a fully coherent session — resolve `jellyfin.senaev.ru`, connect to that IP,
+present SNI `jellyfin.senaev.ru`, then move a lot of data — which is exactly what a real
+Jellyfin client does. Note this makes the VPN entry depend on the `jellyfin.*` DNS record
+staying pointed at the same node as the root domain.
+
+**Ingress rework — this is the part the 2026-06-25 attempt got wrong.**
+
+`realityServerName` drives two things at once:
+1. the Reality `serverNames` (`_helpers.tpl:29`), and
+2. the Traefik passthrough match `HostSNI(...)` (`xray-vpn-ingress-route-tcp.yaml:16`).
+
+So whichever host is the Reality SNI has its `:443` claimed by the VPN passthrough, and its
+real website must instead be served on the `websecure-xray` (8443) entrypoint — because
+that is where xray forwards non-Reality traffic (`_helpers.tpl:28`,
+`dest: traefik-<vps>:8443`). Accordingly the two `*-xray-fallback` ingress entries were
+repointed from the root domains to the Jellyfin hosts, and the root domains moved back to
+the normal `web,websecure` entrypoints:
+
+| ingress entry | host | entrypoints |
+|---|---|---|
+| `senaev-ru-xray-fallback` | `jellyfin.senaev.ru` | `websecure-xray` |
+| `senaev-ru-root` (new) | `senaev.ru` | `web,websecure` |
+| `senaev-com-xray-fallback` | `jellyfin.senaev.com` | `websecure-xray` |
+| `senaev-com-root` (new) | `senaev.com` | `web,websecure` |
+
+`jellyfin.senaev.ru` / `jellyfin.senaev.com` were removed from the `senaev-*-direct`
+entries so they are no longer bound to plain `websecure` (which would collide with the
+passthrough). ACME is unaffected: the HTTP-01 challenge is served globally on the `web`
+entrypoint (`traefik/templates/traefik.yaml:43`), so routers on `websecure-xray` still
+renew — this is already how the root domains worked before this change.
+
+**Verified by `helm template` before deploy:**
+
+```
+"serverNames": [ "jellyfin.senaev.ru" ]        (xray-vpn-firstvds)
+"serverNames": [ "jellyfin.senaev.com" ]       (xray-vpn-hetzner)
+- match: HostSNI(`jellyfin.senaev.ru`)   -> xray-vpn-firstvds
+- match: HostSNI(`jellyfin.senaev.com`)  -> xray-vpn-hetzner
+senaev-com-senaev-ru-xray-fallback   websecure-xray   jellyfin.senaev.ru
+senaev-com-senaev-ru-root            web,websecure    senaev.ru
+senaev-com-senaev-com-xray-fallback  websecure-xray   jellyfin.senaev.com
+senaev-com-senaev-com-root           web,websecure    senaev.com
+```
+
+**Deploy:**
+```bash
+helm upgrade senaev-com provisioning/helm/senaev-com -n senaev-com \
+  -f provisioning/helm/common-values.yaml
+```
+
+**Verification checklist (all four must pass):**
+1. `https://senaev.ru` and `https://senaev.com` still load (root domains on plain :443).
+2. `https://jellyfin.senaev.ru` and `https://jellyfin.senaev.com` still load — this
+   proves the Reality `dest` fallback correctly reaches Jellyfin via `websecure-xray`.
+3. Re-import the subscription in the client (both the address and `sni=` changed — old
+   profiles will fail).
+4. Test a firstvds profile from a previously-blocked Russian ISP.
+
+**Result: _pending user test._**
+
+If this fails too, the remaining untested variable from the known-working Russian config is
+the uTLS fingerprint (hypothesis **G**, `fp=chrome` → `fp=firefox`), which is a
+client-side-only change and can be tested independently.

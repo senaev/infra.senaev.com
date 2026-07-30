@@ -17,7 +17,7 @@ xrayVpn:
   instances:
     - name: xray-vpn-firstvds
       vps: firstvds
-      realityServerName: senaev.ru
+      realityServerName: jellyfin.senaev.ru
       profiles:
         - user: user-socks
           uuidMacro: "{XRAY_USER_UUID:1}"
@@ -30,7 +30,7 @@ xrayVpn:
           outbound: outbound-freedom
     - name: xray-vpn-hetzner
       vps: hetzner
-      realityServerName: senaev.com
+      realityServerName: jellyfin.senaev.com
       profiles:
         - user: user-socks
           uuidMacro: "{XRAY_USER_UUID:2}"
@@ -220,17 +220,17 @@ vpnSubscription:
   vps: hetzner
   entries:
     - name: "💄 0. firstvds → freedom"
-      link: "vless://{XRAY_USER_UUID:4}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
+      link: "vless://{XRAY_USER_UUID:4}@jellyfin.senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=jellyfin.senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
     - name: "🇳🇱 1. firstvds → vultr"
-      link: "vless://{XRAY_USER_UUID:6}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
+      link: "vless://{XRAY_USER_UUID:6}@jellyfin.senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=jellyfin.senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
     - name: "🇫🇮 2. firstvds → hetzner"
-      link: "vless://{XRAY_USER_UUID:1}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
+      link: "vless://{XRAY_USER_UUID:1}@jellyfin.senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=jellyfin.senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
     - name: "🇷🇺 3. hetzner → firstvds"
-      link: "vless://{XRAY_USER_UUID:2}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
+      link: "vless://{XRAY_USER_UUID:2}@jellyfin.senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=jellyfin.senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
     - name: "🇷🇺 4. hetzner → senaev-media"
-      link: "vless://{XRAY_USER_UUID:3}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
+      link: "vless://{XRAY_USER_UUID:3}@jellyfin.senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=jellyfin.senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
     - name: "💄 5. hetzner → freedom"
-      link: "vless://{XRAY_USER_UUID:5}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
+      link: "vless://{XRAY_USER_UUID:5}@jellyfin.senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=jellyfin.senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
 
 ingress:
   entries:
@@ -243,9 +243,6 @@ ingress:
         - host: filebrowser.senaev.com
           service: filebrowser
           port: 8080
-        - host: jellyfin.senaev.com
-          service: jellyfin
-          port: 8096
         - host: webhook-endpoint.senaev.com
           service: webhook-endpoint
           port: 3000
@@ -262,9 +259,20 @@ ingress:
         - host: s.senaev.com
           service: webhook-endpoint
           port: 3000
+    # jellyfin.senaev.com is the Reality SNI for xray-vpn-hetzner, so port 443 for
+    # this host is claimed by the VPN passthrough IngressRouteTCP. Non-Reality
+    # traffic is forwarded by xray to traefik-hetzner:8443, so the real Jellyfin
+    # service must be exposed on the websecure-xray entrypoint.
     - name: senaev-com-xray-fallback
       className: traefik-hetzner
       entrypoints: websecure-xray
+      hosts:
+        - host: jellyfin.senaev.com
+          service: jellyfin
+          port: 8096
+    # senaev.com is no longer the Reality SNI, so it is served directly on :443.
+    - name: senaev-com-root
+      className: traefik-hetzner
       hosts:
         - host: senaev.com
           service: nextjs-app
@@ -275,18 +283,26 @@ ingress:
         - host: webdav.senaev.ru
           service: webdav-senaev-ru
           port: 80
-        - host: jellyfin.senaev.ru
-          service: jellyfin
-          port: 8096
         - host: qbittorrent.senaev.ru
           service: qbittorrent
           port: 9001
         - host: filebrowser.senaev.ru
           service: filebrowser
           port: 8080
+    # jellyfin.senaev.ru is the Reality SNI for xray-vpn-firstvds, so port 443 for
+    # this host is claimed by the VPN passthrough IngressRouteTCP. Non-Reality
+    # traffic is forwarded by xray to traefik-firstvds:8443, so the real Jellyfin
+    # service must be exposed on the websecure-xray entrypoint.
     - name: senaev-ru-xray-fallback
       className: traefik-firstvds
       entrypoints: websecure-xray
+      hosts:
+        - host: jellyfin.senaev.ru
+          service: jellyfin
+          port: 8096
+    # senaev.ru is no longer the Reality SNI, so it is served directly on :443.
+    - name: senaev-ru-root
+      className: traefik-firstvds
       hosts:
         - host: senaev.ru
           service: nextjs-app
