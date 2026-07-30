@@ -116,8 +116,12 @@ prowlarr:
       fields:
         - name: "definitionFile"
           value: "kinozal"
+        # kinozal.tv dropped its HTTPS listener (443 refuses connections); the origin
+        # serves plain HTTP only. This is a `legacylink` in Prowlarr's kinozal Cardigann
+        # definition, so it is an accepted baseUrl. See
+        # issues/2026-07-30-prowlarr-kinozal-connection-refused.md
         - name: "baseUrl"
-          value: "https://kinozal.tv/"
+          value: "http://kinozal.tv/"
         - name: "baseSettings.limitsUnit"
           value: 0
         - name: "torrentBaseSettings.preferMagnetUrl"
