@@ -499,3 +499,92 @@ indexers in Prowlarr.
 **Lesson from Round 1:** a value being *listed* in a vendor definition does not mean it is
 *honoured*. Trace how the field is consumed before trusting it — `legacylinks` looked like a
 list of fallbacks and was actually a list of values that get silently rewritten.
+
+---
+
+### 2026-07-30 — Round 2 fix confirmed working
+
+Deployed via `.github/workflows/update-helm-charts.yml` (run `30577445280`). User confirms
+**both indexers now work and searches return results.**
+
+Notable behaviour: **Kinozal worked immediately, but RuTracker only started working after a
+delay** — it failed for a period after the pod came up before beginning to return results.
+
+Interpretation: expected FlareSolverr warm-up, not a lingering fault. RuTracker is the only
+indexer of the two behind an active Cloudflare *managed challenge*
+(`cf-mitigated: challenge`), so its first request has to:
+
+1. cold-start the FlareSolverr container's headless Chrome (`ghcr.io/flaresolverr/flaresolverr:v3.4.6`,
+   `templates/flaresolverr.yaml`), which is slow on first invocation;
+2. actually solve the JS/cookie challenge — the interstitial itself carries
+   `<meta http-equiv="refresh" content="360">`, and `FLARESOLVERR_REQUEST_TIMEOUT_SECONDS`
+   is `180`, so a single attempt can legitimately occupy minutes;
+3. obtain and cache the `cf_clearance` cookie before the RuTracker login POST can succeed.
+
+Kinozal needed none of this: `kinozal.guru` is Cloudflare-fronted but *not* challenged, so
+its requests pass through FlareSolverr without a solve step. This asymmetry is consistent
+with the Round 2 probe results and is the expected steady state, not a defect.
+
+**Operational note for future incidents:** after any Prowlarr pod restart, allow a few
+minutes before treating RuTracker failures as real. Transient `403 Forbidden` /
+`Just a moment...` responses immediately post-restart are the challenge being solved, not a
+regression. Only investigate if they persist beyond a few minutes or if FlareSolverr itself
+is crash-looping:
+```bash
+kubectl -n senaev-com logs deploy/flaresolverr --since=10m
+kubectl -n senaev-com get pods -l app=flaresolverr
+```
+
+---
+
+## Resolution (final — supersedes the Round 1 `## Resolution` above)
+
+**Two independent faults were present**, and the first round of work found only one of them
+because the second was masked.
+
+**Fault 1 — Kinozal unreachable.** `kinozal.tv` removed its HTTPS listener; the origin
+(`188.120.248.158`, Cloudflare DNS with proxying disabled) serves plain HTTP on port 80 only
+and RSTs on 443. Because Prowlarr runs `HttpIndexerBase.TestConnection()` as part of
+`PUT /api/v1/indexer/{id}` validation, the unreachable tracker made the indexer save fail
+with `400`, and the configurer sidecar looped on it every 30s forever without reaching
+`wait_forever()`.
+
+The obvious remedy — switching to `http://kinozal.tv/`, which is listed in the definition's
+`legacylinks` and does serve traffic — **cannot work**.
+`CardigannBase.ResolveSiteLink()` (`CardigannBase.cs:816-832`) treats `legacylinks` as a
+migration list and silently rewrites any such value to `links.First()`, which is
+`https://kinozal.tv/` — the dead URL. Only `links` entries are honoured, leaving
+`https://kinozal.guru/` as the single viable option.
+
+**Fault 2 — RuTracker blocked by Cloudflare.** Every mirror in Prowlarr's `RuTracker.cs`
+`IndexerUrls` is unusable directly: `.org` and `.net` return `403` with
+`cf-mitigated: challenge`, `.nl` fails with an HTTP/2 `PROTOCOL_ERROR`. FlareSolverr was
+already deployed and enabled but bound to **zero** indexers, because
+`build_indexer()` (`configure-qbittorrent-download-client.py:351`) overwrites
+`indexer["tags"]` unconditionally and neither indexer declared a `tags:` key.
+
+**Fix** (`provisioning/helm/senaev-com/values.yaml`):
+- Kinozal `baseUrl` → `https://kinozal.guru/`
+- `tags: ["flaresolverr"]` on both Kinozal and RuTracker
+
+**Result:** both indexers return search results. RuTracker lags for a few minutes after each
+restart while FlareSolverr cold-starts and solves the challenge.
+
+**Not at fault** (all refuted by evidence): cluster DNS, CoreDNS, IPv6 (Prowlarr itself logs
+`IPv4 is available: True, IPv6 will be disabled`), node egress, SQLite permissions, and the
+configurer script.
+
+**Known tradeoff:** Kinozal is tagged for FlareSolverr pre-emptively despite not being
+challenged from a residential IP. Every request for a tagged indexer is routed through the
+headless browser, which is slow and has a reputation for flakiness on binary `.torrent`
+fetches. **If Kinozal searches succeed but downloads fail, remove Kinozal's `flaresolverr`
+tag first** — that is the most likely culprit.
+
+**Open items (out of scope here):**
+- The Datadog APM init containers (`datadog-lib-dotnet-init`, `datadog-lib-python-init`,
+  `datadog-init-apm-inject`) are no longer injected into the Prowlarr pod. Present in the
+  Round 1 pod, absent from Round 2.
+- `kinozal.tv` TLS may return at some point; if so, `https://kinozal.tv/` becomes usable
+  again and would avoid Cloudflare entirely. Re-check with `nc -vz kinozal.tv 443`.
+- `export-indexers.py` drops empty values and re-emits `info_*` fields, so a round-trip
+  through it will not faithfully reproduce `values.yaml`. Note before relying on it.
