@@ -699,3 +699,33 @@ are narrow:
 Hypotheses 1 and 2 are free and should be tested before spending money or time on 3 and 4.
 Hypothesis 3 is the decisive experiment and should be run on a throwaway VPS *before* any
 architectural work, so that a negative result costs one hour instead of a migration.
+
+---
+
+### 2026-07-30 — Reverted the Jellyfin SNI
+
+Since the SNI swap produced no improvement, `values.yaml` was reverted to its pre-change
+state so the config stays at the simplest arrangement that works. Reverted exactly (zero
+diff against `70cda1e`):
+
+| surface | back to |
+|---|---|
+| `xray-vpn-firstvds` Reality SNI | `senaev.ru` |
+| `xray-vpn-hetzner` Reality SNI | `senaev.com` |
+| Traefik passthrough `HostSNI` | `senaev.ru` / `senaev.com` |
+| `*-xray-fallback` ingress | root domains on `websecure-xray` |
+| `jellyfin.senaev.*` | back in the `*-direct` entries on `web,websecure` |
+| subscription links | `@senaev.ru` / `@senaev.com`, `sni=` matching |
+| `senaev-*-root` entries | removed |
+
+Rationale for reverting rather than keeping: the Jellyfin SNI was not harmful, but it made
+`jellyfin.senaev.*` depend on the xray pod being up (its `:443` was owned by the VPN
+passthrough, with traffic only reaching Jellyfin through the Reality `dest` fallback). That
+is a real availability coupling for a service that is actually used, and it buys nothing now
+that SNI is known not to matter. Clients must re-import the subscription again, since the
+address and `sni=` revert with it.
+
+The pending next step is unchanged and is client-side only, so it is unaffected by this
+revert: test TLS fragmentation in Hiddify, then `fp=chrome` → `fp=firefox`, tailing
+`kubectl logs -n senaev-com deploy/xray-vpn-firstvds -f` during each attempt to see whether
+the connection reaches the pod at all.
