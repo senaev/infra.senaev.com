@@ -324,3 +324,178 @@ the internet.
 **Open question:** whether kinozal.tv's missing TLS is permanent or a lapsed certificate
 they intend to restore. If 443 comes back, `https://kinozal.tv/` can be restored. Worth
 re-checking with `nc -vz kinozal.tv 443` if the plaintext link ever starts failing.
+
+> **Annotation 2026-07-30 (later):** the fix above **did not work** and the resolution
+> section is superseded by the findings below. `http://kinozal.tv/` is silently rewritten
+> back to `https://kinozal.tv/` by Prowlarr because it is a `legacylink`. See
+> "Round 2" below. A second, independent failure (RuTracker + Cloudflare) also surfaced.
+
+---
+
+### 2026-07-30 — Round 2: fix did not work, plus a second unrelated failure
+
+Post-deploy log from `prowlarr-84c84c6d4c-fhfjl` (main container). Two separate failures.
+
+**Failure 1 — Kinozal, identical error despite the baseUrl change:**
+```
+[Info] ManagedHttpDispatcher: IPv4 is available: True, IPv6 will be disabled
+[Warn] Cardigann: Unable to connect to indexer
+[v2.3.5.5327] System.Net.Http.HttpRequestException: Connection refused (kinozal.tv:443)
+ ---> System.Net.Sockets.SocketException (111): Connection refused
+   ...
+   at NzbDrone.Core.Indexers.HttpIndexerBase`1.TestConnection() in ./NzbDrone.Core/Indexers/HttpIndexerBase.cs:line 764
+[Warn] ProwlarrErrorPipeline: Invalid request Validation failed:
+ -- : ... Connection refused (kinozal.tv:443)
+```
+Interpretation: still port **443** even though `values.yaml` now says `http://kinozal.tv/`.
+Also note `IPv6 will be disabled` — independently re-confirms Hypothesis C is dead.
+
+**Failure 2 — RuTracker blocked by Cloudflare (new, previously masked):**
+```
+[Info] ReleaseSearchService: Searching indexer(s): [RuTracker] for Term: [Rick and Morty]
+[Warn] IndexerHttpClient: HTTP Error - Res: HTTP/2.0 [POST] https://rutracker.net/forum/login.php: 403.Forbidden (5684 bytes)
+<!DOCTYPE html>...<title>Just a moment...</title>... cZone: 'rutracker.net' ... cType: 'managed' ...
+[Warn] RuTracker: RuTracker HTTP request failed: [403:Forbidden] [POST] at [https://rutracker.net/forum/login.php]
+   at NzbDrone.Core.Indexers.Definitions.RuTracker.DoLogin() in ./NzbDrone.Core/Indexers/Definitions/RuTracker.cs:line 103
+```
+Interpretation: a Cloudflare **managed challenge** interstitial (`cType: 'managed'`,
+"Enable JavaScript and cookies to continue") on RuTracker's login POST. This is exactly the
+class of block FlareSolverr exists to solve — and it is the secondary finding from Round 1
+biting for real: FlareSolverr is attached to no indexer.
+
+Reproduced independently from the laptop:
+```
+$ curl -sSI https://rutracker.net/forum/login.php | grep -i "^server\|^cf-\|HTTP/"
+HTTP/2 403
+cf-mitigated: challenge
+server: cloudflare
+cf-ray: a236e90ccd6d217a-MAD
+```
+`cf-mitigated: challenge` is conclusive — not IP-specific to the hetzner node.
+
+#### Root cause of the failed fix — `ResolveSiteLink()` rewrites legacy links
+
+`legacylinks` is **not** a list of alternative usable URLs. It is a migration list: Prowlarr
+detects a legacy value and silently replaces it with `links.First()`.
+
+`src/NzbDrone.Core/Indexers/Definitions/Cardigann/CardigannBase.cs:816-832`
+(Prowlarr `develop`):
+```csharp
+protected string ResolveSiteLink()
+{
+    var settingsBaseUrl = Settings?.BaseUrl;
+    var defaultLink = _definition.Links.First();
+
+    if (settingsBaseUrl == null)
+    {
+        return defaultLink;
+    }
+
+    if (_definition?.Legacylinks?.Contains(settingsBaseUrl) ?? false)
+    {
+        _logger.Trace("Changing legacy site link from {0} to {1}", settingsBaseUrl, defaultLink);
+        return defaultLink;
+    }
+
+    return settingsBaseUrl;
+}
+```
+For kinozal: `links.First()` is `https://kinozal.tv/` and `legacylinks` contains
+`http://kinozal.tv/`. So our value matched the legacy branch and was rewritten to **exactly
+the broken URL we were trying to escape**. The Round 1 fix was self-defeating by
+construction — no amount of redeploying would have made it work.
+
+Supporting detail: `BaseUrl` is declared in
+`src/NzbDrone.Core/Indexers/Settings/NoAuthTorrentBaseSettings.cs:21-22` as
+`FieldType.Select` with `SelectOptionsProviderAction = "getUrls"`, and
+`Cardigann.cs:154-155` populates `IndexerUrls = definition.Links` /
+`LegacyUrls = definition.Legacylinks` as two distinct sets. `LegacyUrls` is surfaced only as
+metadata (`IndexerResource.cs:17,86`) — it is never a valid selection.
+
+**Consequence:** of the four values in the definition, only entries in `links` are usable,
+and `https://kinozal.tv/` is dead. That leaves exactly **one** viable option:
+`https://kinozal.guru/`.
+
+#### Is `kinozal.guru` challenged by Cloudflare?
+
+```
+$ curl -sSI https://kinozal.guru/login.php | grep -i "^server\|^cf-\|HTTP/"
+HTTP/2 200
+server: cloudflare
+cf-cache-status: DYNAMIC
+cf-ray: a236ea589ed0ec96-MAD
+
+$ curl -sSL -o /dev/null -w "final=%{url_effective} http=%{http_code} size=%{size_download}\n" https://kinozal.guru/
+final=https://kinozal.guru/login.php?m=5 http=200 size=4582
+```
+Interpretation: Cloudflare-fronted but **no `cf-mitigated` header and HTTP 200** — it serves
+the real login page rather than a challenge. Contrast with rutracker.net above, which does
+emit `cf-mitigated: challenge`. So `kinozal.guru` is likely usable *without* FlareSolverr —
+but this was measured from a residential IP. Cloudflare treats datacenter ranges (Hetzner)
+far more aggressively, so this must be re-tested from inside the pod before assuming it.
+
+#### Side observation — Datadog APM init containers vanished
+
+Round 1 pod listed containers:
+`prowlarr, qbittorrent-download-client-configurer, datadog-lib-dotnet-init (init), datadog-lib-python-init (init), datadog-init-apm-inject (init), fix-permissions (init)`
+
+Round 2 pod lists only:
+`prowlarr, qbittorrent-download-client-configurer, fix-permissions (init)`
+
+The three Datadog auto-instrumentation init containers are no longer being injected by the
+admission controller. Unrelated to this incident and not investigated here — **tracked as a
+separate open item**.
+
+---
+
+### Fix applied — 2026-07-30 (Round 2, supersedes the Round 1 fix)
+
+RuTracker mirror survey — all options in Prowlarr's `RuTracker.cs:27-32` `IndexerUrls`:
+```
+rutracker.org    HTTP/2 403  cf-mitigated: challenge
+rutracker.net    HTTP/2 403  cf-mitigated: challenge
+rutracker.nl     HTTP/2 stream 1 was not closed cleanly: PROTOCOL_ERROR (err 1)
+```
+No mirror is directly scrapable, so FlareSolverr is mandatory for RuTracker — not a
+preference.
+
+Two changes to `provisioning/helm/senaev-com/values.yaml`:
+
+1. **Kinozal `baseUrl` → `https://kinozal.guru/`.** The only entry in the definition's
+   `links` that is actually reachable, and therefore the only value that survives
+   `ResolveSiteLink()` unmodified.
+2. **`tags: ["flaresolverr"]` on both Kinozal and RuTracker.** Fixes the Round 1 secondary
+   finding: `build_indexer()` unconditionally overwrites `indexer["tags"]`, so without an
+   explicit `tags:` key the FlareSolverr proxy was attached to nothing.
+
+Decision on tagging Kinozal: applied **pre-emptively** rather than waiting for evidence.
+`kinozal.guru` answered `200` with no `cf-mitigated` header from a residential IP, so it may
+not strictly need the proxy, but Cloudflare is materially stricter with datacenter ranges
+like Hetzner's and the in-pod probe was skipped. Accepted tradeoff: Prowlarr routes *every*
+request for a tagged indexer through FlareSolverr's headless browser, which is slower and
+has a known reputation for flakiness on binary `.torrent` downloads. If Kinozal downloads
+start failing while searches still work, dropping this tag is the first thing to try.
+
+Verified the rendered ConfigMap and sidecar env are mutually consistent:
+```
+$ helm template ... | yq 'select(.metadata.name == "prowlarr-default-config") | .data["indexers.json"]' \
+    | yq -p json '.[] | {"name": .name, "tags": .tags, "baseUrl": (.fields[] | select(.name=="baseUrl") | .value)}'
+name: Kinozal
+tags: [flaresolverr]
+baseUrl: https://kinozal.guru/
+name: RuTracker
+tags: [flaresolverr]
+baseUrl: https://rutracker.net/
+
+$ helm template ... | yq '... containers[] | select(.name=="qbittorrent-download-client-configurer") | .env[] | select(.name|test("FLARESOLVERR"))'
+FLARESOLVERR_ENABLED=true
+FLARESOLVERR_URL=http://flaresolverr:8191
+FLARESOLVERR_TAG=flaresolverr
+FLARESOLVERR_REQUEST_TIMEOUT_SECONDS=180
+```
+The indexer tags match `prowlarr.flaresolverr.tag`, which is what binds the proxy to the
+indexers in Prowlarr.
+
+**Lesson from Round 1:** a value being *listed* in a vendor definition does not mean it is
+*honoured*. Trace how the field is consumed before trusting it — `legacylinks` looked like a
+list of fallbacks and was actually a list of values that get silently rewritten.
