@@ -1,14 +1,20 @@
 FROM node:22-alpine
 
+# Provides the `ob` CLI used for Obsidian Sync login and continuous sync.
 RUN npm install -g obsidian-headless
 
-RUN mkdir -p /home/node/.config \
-    && chown -R node:node /home/node/.config
+WORKDIR /app
 
-COPY entrypoint.sh /entrypoint.sh
-COPY server.js /server.js
-RUN chmod +x /entrypoint.sh
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+COPY . .
+
+# `ob` writes its credentials/config here, and the vault hostPath is chowned to
+# uid 1000 by the deployment's init container.
+RUN mkdir -p /home/node/.config && chown -R node:node /home/node/.config /app
 
 USER node
 
-ENTRYPOINT ["/entrypoint.sh"]
+EXPOSE 8080
+CMD ["npm", "start"]
