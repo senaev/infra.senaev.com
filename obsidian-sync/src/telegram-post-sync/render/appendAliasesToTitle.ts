@@ -1,16 +1,17 @@
 import { HEADING } from "./markTitleAsProvisioned";
 
+/** Separates the real title from each alias inside the title line. */
+const ALIAS_SEPARATOR = " • ";
+
 /**
- * Renders each frontmatter alias as its own heading directly beneath the note's title,
- * at the same heading level:
+ * Appends the note's frontmatter aliases onto the title line itself:
  *
- *   # 🪨 Syrniki 🍳
- *   # Сырники
+ *   # 🪨 Syrniki 🍳 • Сырники • Cheese Pancakes
  *
  * The point is text search — aliases are how you'd look the post up in Telegram, but they
- * usually don't appear anywhere in the note body.
+ * usually appear nowhere in the note body.
  *
- * Runs after markTitleAsProvisioned, which guarantees a first heading exists to anchor to.
+ * Runs after markTitleAsProvisioned, which guarantees a first heading exists to append to.
  */
 export function appendAliasesToTitle(body: string, aliases: string[]): string {
     if (aliases.length === 0) {
@@ -25,9 +26,9 @@ export function appendAliasesToTitle(body: string, aliases: string[]): string {
             continue;
         }
 
-        const [, hashes] = match;
-        const aliasHeadings = aliases.map((alias) => `${hashes} ${alias}`);
-        lines.splice(index + 1, 0, ...aliasHeadings);
+        const [, hashes, title] = match;
+        const parts = [title, ...aliases].filter((part) => part !== undefined && part !== "");
+        lines[index] = `${hashes} ${parts.join(ALIAS_SEPARATOR)}`;
 
         return lines.join("\n");
     }

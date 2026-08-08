@@ -433,3 +433,38 @@ being promoted to H1.
 in the supported rich-message HTML tag list — so switching to
 `# 🪨 Title <sup>alias</sup>` later is a one-line change if stacked headings look too heavy
 in the client.
+
+### 2026-08-08 — Aliases folded into the title line
+
+Stacked headings were too heavy. `appendAliasesToTitle` now appends aliases onto the existing
+title line, separated by ` • `, instead of emitting one heading per alias. No extra headings
+are produced.
+
+```
+=== SYRNIKI (1 alias) ===
+# 🪨 Syrniki 🍳 • Сырники
+
+Cottage cheese pancakes.
+
+=== TWO ALIASES ===
+# 🪨 Syrniki 🍳 • Сырники • Cheese Pancakes
+
+Body text.
+
+=== NO ALIASES (My Phones) ===
+# 🪨 My Phones
+
++79826990400
+
+=== H2 TITLE ===
+## 🪨 Sub Title • Alias
+
+text
+
+=== NO HEADING ===
+# 🪨 • Solo
+
+just text
+```
+
+The separator is U+2022 BULLET, not an emoji codepoint.
