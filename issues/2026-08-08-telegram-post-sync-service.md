@@ -307,3 +307,78 @@ logs a warning and leaves the note untracked rather than failing the scan.
 **Not yet done:** nothing committed, and the service has not run against the live channel.
 The first real deploy will push `My Phones.md` to post 85, overwriting whatever is there
 now — that post's current content is unrecoverable, since the Bot API has no `getMessage`.
+
+### 2026-08-08 — Added provisioned marker and alias header
+
+Two additions to the render pipeline, applied after the existing steps:
+
+- `markTitleAsProvisioned` prefixes the note's first heading with 🪨 so a post is
+  recognisable as vault-generated. Notes with no heading at all get 🪨 as a standalone line
+  rather than silently losing the marker.
+- `prependAliases` puts frontmatter `aliases` on one line above everything, separated by
+  ` • `, followed by a divider — so aliases are reachable by Telegram's text search even
+  when they don't appear in the note body.
+
+Custom (premium/animated) emoji were considered and rejected. They exist in rich markdown as
+`![](tg://emoji?id=<id>)`, but the API states custom emoji entities require either a
+Fragment-purchased bot username, or a Premium bot owner **and** a private/group/supergroup
+chat. Channels are absent from that second clause, so a channel post can't use them without
+a Fragment purchase. A standard Unicode emoji avoids the issue entirely.
+
+`<hr/>` is used for the divider instead of `---` because markdown reads a text line followed
+by `---` as a setext heading, which would have turned the alias line into an H2 instead of
+drawing a rule. `<hr/>` is a supported rich-message tag mapping to `InputRichBlockDivider`.
+
+Rendering the example note from the request:
+
+```
+=== SYRNIKI ===
+Сырники
+
+<hr/>
+
+# 🪨 Syrniki 🍳
+
+Cottage cheese pancakes.
+```
+
+Other shapes:
+
+```
+=== TWO ALIASES + key after list ===
+Сырники • Cheese Pancakes
+
+<hr/>
+
+# 🪨 Title
+body
+
+=== NO ALIASES (My Phones shape) ===
+# 🪨 My Phones
+
++7999
+
+=== NO HEADING ===
+Solo
+
+<hr/>
+
+🪨
+
+just text
+```
+
+The alias list parser handles every YAML shape Obsidian writes, and correctly stops at the
+next frontmatter key rather than swallowing it:
+
+```
+"aliases: []"                                      -> []
+"aliases: [a, b]"                                  -> ["a","b"]
+"aliases:\n  - \"Quoted\"\n  - Second\nother: x"   -> ["Quoted","Second"]
+"aliases: Single"                                  -> ["Single"]
+"nothing: 1"                                       -> []
+```
+
+`npx tsc --noEmit` passes. Note that this change makes the next push a genuine edit to every
+tracked post rather than a `message is not modified` no-op, since the rendered content now
+differs.
