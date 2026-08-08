@@ -382,3 +382,54 @@ next frontmatter key rather than swallowing it:
 `npx tsc --noEmit` passes. Note that this change makes the next push a genuine edit to every
 tracked post rather than a `message is not modified` no-op, since the rendered content now
 differs.
+
+### 2026-08-08 — Reworked aliases into sibling headings
+
+Superseded the previous alias treatment: `prependAliases` (alias line above the title + an
+`<hr/>` divider) was deleted in favour of `appendAliasesToTitle`, which renders each alias as
+its own heading directly beneath the title, at the same heading level. The divider is gone
+entirely.
+
+`markTitleAsProvisioned` changed accordingly — a note with no heading now gets a synthesized
+`# 🪨` heading rather than a bare `🪨` line, which gives the alias step a guaranteed anchor
+and removes an ordering edge case.
+
+```
+=== SYRNIKI (1 alias) ===
+# 🪨 Syrniki 🍳
+# Сырники
+
+Cottage cheese pancakes.
+
+=== TWO ALIASES ===
+# 🪨 Syrniki 🍳
+# Сырники
+# Cheese Pancakes
+
+Body text.
+
+=== NO ALIASES (My Phones) ===
+# 🪨 My Phones
+
++79826990400
+
+=== H2 TITLE ===
+## 🪨 Sub Title
+## Alias
+
+text
+
+=== NO HEADING ===
+# 🪨
+# Solo
+
+just text
+```
+
+Alias headings inherit the title's level, so an H2-titled note gets H2 aliases rather than
+being promoted to H1.
+
+`<sup>` was considered for rendering aliases as small text and is genuinely available — it's
+in the supported rich-message HTML tag list — so switching to
+`# 🪨 Title <sup>alias</sup>` later is a one-line change if stacked headings look too heavy
+in the client.

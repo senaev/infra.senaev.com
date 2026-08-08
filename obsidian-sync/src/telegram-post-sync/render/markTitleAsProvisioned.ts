@@ -1,15 +1,15 @@
 /** Signals at a glance that a post is generated from the vault, not written by hand. */
 export const PROVISIONED_MARKER = "🪨";
 
-const HEADING = /^(#{1,6})[ \t]+(.*)$/;
+export const HEADING = /^(#{1,6})[ \t]+(.*)$/;
 
 /**
  * Prefixes the note's first heading with the provisioned marker:
  *
  *   # Syrniki 🍳  ->  # 🪨 Syrniki 🍳
  *
- * Notes without any heading get the marker as a standalone line instead, so the marker is
- * never silently dropped.
+ * Notes without any heading get a synthesized one, so downstream steps can rely on there
+ * always being a first heading to anchor to.
  */
 export function markTitleAsProvisioned(body: string): string {
     const lines = body.split("\n");
@@ -26,5 +26,5 @@ export function markTitleAsProvisioned(body: string): string {
         return lines.join("\n");
     }
 
-    return `${PROVISIONED_MARKER}\n\n${body}`;
+    return `# ${PROVISIONED_MARKER}\n\n${body}`;
 }

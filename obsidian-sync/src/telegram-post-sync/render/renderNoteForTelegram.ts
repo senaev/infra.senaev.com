@@ -1,8 +1,8 @@
 import { readFrontmatterList } from "../readFrontmatterList";
+import { appendAliasesToTitle } from "./appendAliasesToTitle";
 import { cutHistorySection } from "./cutHistorySection";
 import { ensureEmptyLineAfterTables } from "./ensureEmptyLineAfterTables";
 import { markTitleAsProvisioned } from "./markTitleAsProvisioned";
-import { prependAliases } from "./prependAliases";
 import { replaceWikiLinksWithCode } from "./replaceWikiLinksWithCode";
 import { resolveImageEmbeds, type ResolvedEmbed } from "./resolveImageEmbeds";
 import { stripFrontmatter } from "./stripFrontmatter";
@@ -20,10 +20,11 @@ export type RenderedNote = {
  * translator — headings, lists, task items, quotes, code fences and tables all pass
  * through untouched.
  *
- * Step order matters in two places: embeds must be resolved before wikilinks, otherwise the
- * wikilink pass would match the `[[...]]` inside an `![[...]]` embed; and aliases are
- * prepended last so they sit above the marked title and are never themselves processed as
- * note content.
+ * Step order matters in three places: embeds must be resolved before wikilinks, otherwise
+ * the wikilink pass would match the `[[...]]` inside an `![[...]]` embed; the title must be
+ * marked before aliases are inserted, so the marker lands on the real title rather than on
+ * the first alias; and aliases go in last so they are never themselves processed as note
+ * content.
  */
 export function renderNoteForTelegram(rawContent: string): RenderedNote {
     const { frontmatter, body } = stripFrontmatter(rawContent);
@@ -35,5 +36,5 @@ export function renderNoteForTelegram(rawContent: string): RenderedNote {
     const spaced = ensureEmptyLineAfterTables(withLinks);
     const marked = markTitleAsProvisioned(spaced.trim());
 
-    return { markdown: prependAliases(marked, aliases), media };
+    return { markdown: appendAliasesToTitle(marked, aliases), media };
 }
