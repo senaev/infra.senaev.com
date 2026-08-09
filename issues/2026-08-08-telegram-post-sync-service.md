@@ -587,3 +587,75 @@ Verified locally against a temp vault, no Telegram calls:
 The prefix case is the one worth calling out: `https://t.me/c/222` is a strict prefix of
 `https://t.me/c/222/14`, so a naive substring replace would corrupt the note. Matching is per
 frontmatter item, not per substring.
+
+### 2026-08-09 — Edits stopped reaching Telegram: the write-back was killing its own watch
+
+Reported symptom: a note created in the vault root published its post, then several edits to
+it never reached Telegram, and the moment the note was moved into a subfolder the accumulated
+changes appeared. Pod logs showed `ob sync` downloading and accepting the file each time — so
+the container's copy on disk was current, and the watcher simply never reported it.
+
+Three wrong guesses, each disproved in a `node:22-alpine` container against a real filesystem:
+recursive watching of nested directories works; non-ASCII filenames work; a directory that is
+deleted and recreated gets re-watched. The vault has only ~370 directories, far below any
+`fs.inotify.max_user_watches` limit, so exhaustion was out too.
+
+The actual rule, isolated by varying one factor at a time:
+
+| Scenario | Subsequent in-place edits |
+|---|---|
+| file created, then edited | reported |
+| file in a subdirectory, then edited | reported |
+| file **replaced by renaming another file over it**, then edited | **silent, permanently** |
+| same, but in a subdirectory | **silent, permanently** |
+| file moved to a new path, then edited | reported |
+
+So it is not about the vault root and not about nesting: replacing a file through a rename
+detaches the watch from that path. The rename itself is reported — as a `change` event, not a
+`rename` one, so it cannot even be detected and reacted to — and every in-place write after it
+is lost for good.
+
+That makes this self-inflicted. `replaceTrackingLinkInFrontmatter` writes a temp file and
+renames it over the note, which is exactly the poisoning operation. The sequence was:
+
+1. note created with a channel-only link → create event → post published
+2. post link written back → **rename over the note → watch detached**
+3. every later edit applied in place by `ob sync` → silent
+4. note moved → new path, fresh watch → the move fired and pushed the accumulated content
+
+Moving it "fixed" it only by accident. Note also that every post update observed on 2026-08-08
+came right after a rollout, and startup re-pushes every tracked note — so a broken watcher and
+a working one had looked identical until now.
+
+Two fixes, because they cover different failures:
+
+**`rearmVaultWatcher()`** — closes and rebuilds the watch, called right after a successful
+write-back. Verified: poisoned path goes silent, rebuilding restores events. This keeps pushes
+instant for the notes that were just published, which is precisely the set that was broken.
+
+**`reconcileTrackedNotes()`** — every 60s, re-reads the vault and pushes any tracked note whose
+mtime moved since its last push. The watcher gives latency, this gives the guarantee: events
+lost during a rebuild, or to any future cause, cost at most a minute of staleness instead of
+being lost until the next deploy. Verified against a temp vault with the push stubbed:
+
+| Case | Result |
+|---|---|
+| nothing changed | no push |
+| in-place edit of a tracked note | pushed once |
+| mtime recorded by the push | no repeat |
+| untracked note gains the key | discovered and pushed |
+| tracking key removed | dropped, no push, post left alone |
+
+The watcher now also rebuilds itself after a non-ENOSPC error instead of logging and dying.
+
+Deliberately not retried by reconcile: a note whose push *failed*. The failed push still
+records the new mtime, so reconcile treats it as done. Retrying a permanently broken note
+every 60s would turn one failure into an endless stream of Telegram error messages — and a
+publish that succeeded but failed its write-back would hit the duplicate guard on every pass.
+Editing the note retries it.
+
+Two costs accepted: reconcile reads every markdown file in the vault each pass, which is
+negligible at this size but would need an mtime short-circuit for a much larger vault; and a
+publish now triggers one extra no-op edit on the next pass, because the write-back moves the
+file's mtime past the value recorded during the push. Telegram answers that with "message is
+not modified".

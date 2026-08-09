@@ -8,6 +8,7 @@ import { renderNoteForTelegram } from "./render/renderNoteForTelegram";
 import type { ResolvedEmbed } from "./render/resolveImageEmbeds";
 import { replaceTrackingLinkInFrontmatter } from "./replaceTrackingLinkInFrontmatter";
 import { deleteTrackedNote, setTrackedNote, type TrackedTarget } from "./trackedNotes";
+import { rearmVaultWatcher } from "./watchVaultForNoteChanges";
 
 type InFlight = { pending: boolean };
 
@@ -72,6 +73,11 @@ async function pushTarget(
 
         try {
             await replaceTrackingLinkInFrontmatter(relativePath, entry.link, postLink);
+
+            // The write-back replaces the note by renaming a temp file over it, which detaches
+            // the watch from this path. Without rebuilding it here, every later edit of the
+            // note we just published would go unnoticed until the next reconcile pass.
+            rearmVaultWatcher();
         } catch (error) {
             // The post exists but nothing points at it. Surface the link so it can be pasted
             // in by hand — it cannot be recovered from the Bot API, which has no getMessage.
