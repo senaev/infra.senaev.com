@@ -18,46 +18,55 @@ type InFlight = { pending: boolean };
 // into one follow-up run after the current push finishes.
 const inFlight = new Map<string, InFlight>();
 
-// Entries this process has already published a post for, keyed by note and original link.
-// Publishing is not idempotent, so if writing the new link back to the note ever fails, this
-// is what stops the next filesystem event from publishing a second, third, fourth post.
-// Keyed by link rather than position so that reordering the list can't shift the guard onto
-// the wrong entry.
-const publishedInThisProcess = new Set<string>();
+// Posts this process has published, keyed by note and the channel link they came from.
+// Publishing is not idempotent, so whenever a note still points at a bare channel this is
+// what distinguishes "publish the first post" from "the link never made it back into the
+// note". Keyed by link rather than position so that reordering the list can't shift the
+// guard onto the wrong entry, and holding the message id so the post can be reused.
+const publishedInThisProcess = new Map<string, number>();
 
 function publishGuardKey(relativePath: string, link: string): string {
     return `${relativePath}\n${link}`;
 }
 
 /**
- * Publishes the note as a brand new post and returns its message id.
+ * Returns the post this note's channel link should write into, publishing one if needed.
+ *
+ * A note that still points at a bare channel after we have already published for it means
+ * the link we wrote back was lost. That happens for real: Obsidian Sync can replace the file
+ * with a copy from a device that was editing it before the write-back landed, silently
+ * reverting the frontmatter. Publishing again would leave a duplicate post behind and the
+ * note would never converge, so the existing post is reused and the write-back retried.
  *
  * Deliberately leaves the note alone: recording the id is the caller's job, so that the
  * unrecoverable window between "post exists" and "note knows about it" is visible at the
  * call site rather than buried in here.
  */
-async function publishNewPost(
+async function resolvePostForChannel(
     relativePath: string,
     link: string,
     chatId: string,
     markdown: string,
     media: ResolvedEmbed[],
-): Promise<number> {
+): Promise<{ messageId: number; reused: boolean }> {
     const guardKey = publishGuardKey(relativePath, link);
-    if (publishedInThisProcess.has(guardKey)) {
-        throw new Error(
-            `Refusing to publish a second post for ${link} in "${relativePath}" — the first ` +
-                `post was created but its link was never written back. Fill it in manually.`,
+    const alreadyPublished = publishedInThisProcess.get(guardKey);
+
+    if (alreadyPublished !== undefined) {
+        logger.warn(
+            { relativePath, messageId: alreadyPublished, link },
+            "⚠️ Note points at the channel again — reusing the post already published for it",
         );
+        return { messageId: alreadyPublished, reused: true };
     }
 
     logger.info({ relativePath, chatId }, "🆕 Publishing a new post for channel-only link");
 
     const messageId = await createTelegramRichMessage({ chatId, markdown, media });
-    publishedInThisProcess.add(guardKey);
+    publishedInThisProcess.set(guardKey, messageId);
     logger.info({ relativePath, messageId }, "✅ Post published");
 
-    return messageId;
+    return { messageId, reused: false };
 }
 
 async function pushTarget(
@@ -68,8 +77,21 @@ async function pushTarget(
 ): Promise<void> {
     if (entry.target.kind === "channel") {
         const { chatId } = entry.target;
-        const messageId = await publishNewPost(relativePath, entry.link, chatId, markdown, media);
+        const { messageId, reused } = await resolvePostForChannel(
+            relativePath,
+            entry.link,
+            chatId,
+            markdown,
+            media,
+        );
         const postLink = buildTelegramPostLink(chatId, messageId);
+
+        if (reused) {
+            // The post holds the content from when it was published, and the note has almost
+            // certainly been edited since — that edit is usually what triggered this push.
+            const outcome = await editTelegramRichMessage({ chatId, messageId, markdown, media });
+            logger.info({ relativePath, messageId, outcome }, "✅ Reused post brought up to date");
+        }
 
         try {
             await replaceTrackingLinkInFrontmatter(relativePath, entry.link, postLink);

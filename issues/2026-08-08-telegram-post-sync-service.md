@@ -659,3 +659,33 @@ negligible at this size but would need an mtime short-circuit for a much larger 
 publish now triggers one extra no-op edit on the next pass, because the write-back moves the
 file's mtime past the value recorded during the push. Telegram answers that with "message is
 not modified".
+
+### 2026-08-09 — Obsidian Sync can revert the write-back, and the guard made that fatal
+
+First live publish after the watcher fix, from the pod logs:
+
+1. `Паспорт РФ.md` arrives with a channel-only link, 36 characters
+2. post 97 published, link written back, watch rebuilt — all correct
+3. `ob sync` uploads our write-back, then immediately downloads the note again
+4. next push shows `targets: ["https://t.me/c/1728968094"]` and 55 characters
+
+The channel-only link is back. The device had the note open and edited it from a base that
+predated the write-back, so Obsidian Sync resolved the conflict in the device's favour and
+reverted our frontmatter change. This is not a rare race: typing a new note live while the
+container publishes it is the normal way these notes get created.
+
+The guard then refused to publish a second post — correct in itself, but it only remembered
+*that* it had published, not *what*, so the note was stuck erroring on every subsequent edit
+with no way forward but manual repair.
+
+Fixed by keying the guard to the message id rather than a bare flag. A note that still points
+at a bare channel after we have published for it now reuses that post: it is edited with the
+current content and the write-back is retried. The note converges as soon as the device stops
+overwriting it, and no duplicate is ever created.
+
+The remaining hole is restarts. The guard lives in the process, so if the write-back is
+reverted and the pod restarts before it succeeds, the note still points at a bare channel and
+a duplicate post gets published. Deploys make this concrete: any note left in the reverted
+state at rollout time will produce a second post. Closing it properly needs the published ids
+to outlive the process, which contradicts the original "no state store" decision — worth
+revisiting now that the revert is known to happen in practice rather than in theory.
