@@ -1,3 +1,5 @@
+import { unquoteFrontmatterItem } from "./unquoteFrontmatterItem";
+
 /**
  * Reads a list value out of a raw frontmatter block, supporting both YAML shapes
  * Obsidian writes:
@@ -29,13 +31,13 @@ export function readFrontmatterList(frontmatter: string, key: string): string[] 
         return inlineValue
             .replace(/^\[|\]$/g, "")
             .split(",")
-            .map(normalizeItem)
+            .map(unquoteFrontmatterItem)
             .filter((item) => item !== "");
     }
 
     // A non-empty scalar on the key line means it isn't a list at all.
     if (inlineValue !== "") {
-        const single = normalizeItem(inlineValue);
+        const single = unquoteFrontmatterItem(inlineValue);
         return single === "" ? [] : [single];
     }
 
@@ -47,15 +49,11 @@ export function readFrontmatterList(frontmatter: string, key: string): string[] 
             break;
         }
 
-        const item = normalizeItem(trimmed.slice(1));
+        const item = unquoteFrontmatterItem(trimmed.slice(1));
         if (item !== "") {
             items.push(item);
         }
     }
 
     return items;
-}
-
-function normalizeItem(raw: string): string {
-    return raw.trim().replace(/^["']|["']$/g, "").trim();
 }

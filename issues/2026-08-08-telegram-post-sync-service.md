@@ -468,3 +468,122 @@ just text
 ```
 
 The separator is U+2022 BULLET, not an emoji codepoint.
+
+### 2026-08-08 — Publish new posts from a channel-only link
+
+`telegram-post-clone` now also accepts a channel link with no message id:
+
+```yaml
+telegram-post-clone: https://t.me/c/3951655027
+```
+
+The sync publishes a new post via `sendRichMessage`, then **writes the resulting post link
+back into the note's own frontmatter**, after which the note behaves like any other tracked
+note. Because Obsidian Sync is bidirectional, the filled-in link propagates to other devices.
+
+This is the first time obsidian-sync writes to a note the user authored, and it needed care
+because `sendRichMessage` — unlike `editMessageText` — is **not idempotent**. Every call
+creates another post, so the no-state-store design does not protect this path. Three
+safeguards:
+
+1. `writePostLinkToFrontmatter` re-reads the file immediately before writing, touches only
+   the one frontmatter line, and swaps the result in via an atomic rename, so a crash can't
+   leave a half-written note. The temp file is dot-prefixed and not `.md`, so neither
+   Obsidian nor our own watcher reacts to it.
+2. It throws if the value it wrote doesn't parse back as a post link.
+3. `publishedInThisProcess` — an in-memory guard in `syncNoteToTelegramPost`. If the
+   write-back ever fails, the next filesystem event is refused rather than publishing a
+   second post. Damage is bounded to one orphan per container lifetime.
+
+The unavoidable hole remains: if the container dies between `sendRichMessage` returning and
+the frontmatter write landing, the post exists and nothing points at it. The error message
+includes the full post link so it can be pasted in by hand — it cannot be recovered from the
+Bot API, which has no `getMessage`.
+
+Also refactored: `callRichMessageMethod` now holds the multipart body construction,
+`message is not modified` detection and 429 retry logic, shared by
+`editTelegramRichMessage` and the new `createTelegramRichMessage`.
+
+Verified locally against a temp vault, no Telegram calls:
+
+```
+=== LINK PARSING ===
+https://t.me/c/3951655027        -> {"kind":"channel","chatId":"-1003951655027"}
+https://t.me/c/3951655027/       -> {"kind":"channel","chatId":"-1003951655027"}
+https://t.me/c/1728968094/85     -> {"kind":"post","chatId":"-1001728968094","messageId":85}
+https://t.me/senaevchannel       -> null
+https://t.me/c/abc               -> null
+
+=== BEFORE ===
+{ kind: 'channel', chatId: '-1003951655027' }
+
+=== FILE AFTER WRITE ===
+---
+telegram-post-clone: https://t.me/c/3951655027/14
+aliases:
+  - Сырники
+---
+# Syrniki 🍳
+
+Cottage cheese pancakes.
+
+=== AFTER ===
+{ kind: 'post', chatId: '-1003951655027', messageId: 14 }
+```
+
+Aliases and body are untouched, and no temp file is left behind.
+
+### 2026-08-08 — Mirroring one note into several posts
+
+`telegram-post-clone` now accepts a list, in any of the three YAML shapes Obsidian writes:
+
+```yaml
+telegram-post-clone:
+  - https://t.me/c/111/1        # existing post, rewritten in place
+  - https://t.me/c/222          # channel, published into then filled in
+```
+
+Targets are independent mirrors. Each is pushed in turn, failures are collected rather than
+thrown immediately, and the run reports them together at the end — one dead channel must not
+strand the other mirrors.
+
+Reading needed no new parsing: `readFrontmatterList`, already used for aliases, handles the
+scalar, inline-list and block-list shapes. It and the write-back now share
+`unquoteFrontmatterItem`, which matters more than it looks — write-back locates the item to
+replace by comparing against the value the reader produced, so if the two ever disagreed
+about quoting, write-back would silently fail to find a link it had *just published a post
+for*.
+
+Two silent failure modes found and fixed while here. A block list under the tracking key
+used to return `null` from `readFrontmatterValue`, indistinguishable from an absent key, so
+the note was skipped with no log line at all. A repeated key silently dropped all but the
+first. Both now warn, as does a key whose links are all unparseable. An unparseable link
+among good ones is skipped rather than failing the note.
+
+**Write-back matches on link text, not position.** A positional index looks simpler but is
+wrong: if a publish succeeds and the write-back fails, and the user then prepends a link,
+index 0 now refers to a different entry — the guard would block the new link and *permit a
+duplicate publish* of the orphaned one. Matching on text is stable under reordering. The
+same reasoning applies to `publishedInThisProcess`, keyed by `relativePath` + original link.
+
+Only the first matching item is replaced, so listing the same channel twice publishes two
+posts across two runs rather than losing one.
+
+Verified locally against a temp vault, no Telegram calls:
+
+| Case | Result |
+|---|---|
+| scalar channel-only | `telegram-post-clone: https://t.me/c/222/14` |
+| block list, post + channel | only the channel item rewritten, `aliases` untouched |
+| inline list | `[https://t.me/c/111/1, https://t.me/c/222/14]` |
+| quoted value | unquoted on write, matched correctly |
+| channel + its own post in one list | correct item replaced, no prefix collision |
+| same channel twice | first replaced, second left for the next run |
+| one bad link among good | warned, good link still synced |
+| all links bad | warned, note not tracked |
+| duplicate keys | warned |
+| link vanished before write-back | throws, file left intact |
+
+The prefix case is the one worth calling out: `https://t.me/c/222` is a strict prefix of
+`https://t.me/c/222/14`, so a naive substring replace would corrupt the note. Matching is per
+frontmatter item, not per substring.

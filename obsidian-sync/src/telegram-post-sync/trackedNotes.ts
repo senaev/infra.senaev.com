@@ -1,8 +1,21 @@
-import type { TelegramPostRef } from "./parseTelegramPostLink";
+import type { TelegramPostTarget } from "./parseTelegramPostLink";
 
-export type TrackedNote = TelegramPostRef & {
+export type TrackedTarget = {
+    /**
+     * The exact frontmatter value this target came from. Kept so write-back can find the
+     * item again — matching on the original text is stable under reordering, whereas a
+     * positional index is not.
+     */
+    link: string;
+    /** Either an existing post to rewrite, or a channel to publish into. */
+    target: TelegramPostTarget;
+};
+
+export type TrackedNote = {
     /** Path relative to the vault root, used as the map key. */
     relativePath: string;
+    /** One note can mirror into several posts; always at least one entry. */
+    targets: TrackedTarget[];
     /** Last observed modification time of the note file. */
     mtimeMs: number;
 };

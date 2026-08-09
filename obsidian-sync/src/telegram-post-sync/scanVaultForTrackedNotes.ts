@@ -48,7 +48,7 @@ export async function scanVaultForTrackedNotes(): Promise<TrackedNote[]> {
         setTrackedNote(result.tracked);
         tracked.push(result.tracked);
         logger.info(
-            { relativePath, chatId: result.tracked.chatId, messageId: result.tracked.messageId },
+            { relativePath, targets: result.tracked.targets.map((entry) => entry.link) },
             "📌 Tracking note",
         );
     }
