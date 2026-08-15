@@ -28,6 +28,12 @@ else
   echo "✅ [bootstrap-control-plane] k3s already installed"
 fi
 
+# Runs unconditionally, outside the install guard above: an already-installed k3s is
+# exactly the case that needs this applied. See the script header for the failure mode.
+echo "👉 [bootstrap-control-plane] Hardening node networking (k3s <-> tailscale0 binding)"
+bash "$SCRIPT_DIR/../common/bootstrap-node-networking.sh" k3s
+echo "✅ [bootstrap-control-plane] Node networking hardened"
+
 mkdir -p ~/.kube
 if [ ! -e ~/.kube/config ]; then
   echo "👉 [bootstrap-control-plane] Making symlink to 'rancher' from a default 'kubectl' config (for 'k9s')"
