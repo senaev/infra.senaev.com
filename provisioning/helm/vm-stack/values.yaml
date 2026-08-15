@@ -142,21 +142,12 @@ iperf3Monitor:
     - hetzner
     - firstvds
     - senaev-media
-    - vultr
   tests:
     - source: hetzner
       target: firstvds
     - source: firstvds
       target: hetzner
     - source: senaev-media
-      target: hetzner
-    - source: vultr
-      target: firstvds
-    - source: firstvds
-      target: vultr
-    - source: hetzner
-      target: vultr
-    - source: vultr
       target: hetzner
     - source: senaev-media
       target: firstvds

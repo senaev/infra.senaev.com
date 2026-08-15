@@ -3,7 +3,6 @@ enabled: true
 deployments:
   - vps: hetzner
   - vps: firstvds
-  - vps: vultr
 
 resources:
   requests:

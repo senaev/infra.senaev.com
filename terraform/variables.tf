@@ -60,18 +60,3 @@ variable "VPS_FIRSTVDS_LABEL" {
   description = "FIRSTVDS worker VPS label"
   type        = string
 }
-
-variable "VPS_VULTR_HOST" {
-  description = "Vultr worker host"
-  type        = string
-}
-
-variable "VPS_VULTR_USERNAME" {
-  description = "Vultr worker SSH username"
-  type        = string
-}
-
-variable "VPS_VULTR_LABEL" {
-  description = "Vultr worker VPS label"
-  type        = string
-}

@@ -22,9 +22,6 @@ xrayVpn:
         - user: user-socks
           uuidMacro: "{XRAY_USER_UUID:1}"
           outbound: outbound-hetzner
-        - user: user-socks-vultr
-          uuidMacro: "{XRAY_USER_UUID:6}"
-          outbound: outbound-vultr
         - user: user-freedom
           uuidMacro: "{XRAY_USER_UUID:4}"
           outbound: outbound-freedom
@@ -43,9 +40,6 @@ xrayVpn:
           outbound: outbound-freedom
     - name: xray-vpn-senaev-media
       vps: senaev-media
-      profiles: []
-    - name: xray-vpn-vultr
-      vps: vultr
       profiles: []
 
 qbittorrent:
@@ -239,16 +233,14 @@ vpnSubscription:
   vps: hetzner
   entries:
     - name: "💄 0. firstvds → freedom"
-      link: "vless://{XRAY_USER_UUID:4}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
-    - name: "🇳🇱 1. firstvds → vultr"
       link: "vless://{XRAY_USER_UUID:6}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
-    - name: "🇫🇮 2. firstvds → hetzner"
+    - name: "🇫🇮 1. firstvds → hetzner"
       link: "vless://{XRAY_USER_UUID:1}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
-    - name: "🇷🇺 3. hetzner → firstvds"
+    - name: "🇷🇺 2. hetzner → firstvds"
       link: "vless://{XRAY_USER_UUID:2}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
-    - name: "🇷🇺 4. hetzner → senaev-media"
+    - name: "🇷🇺 3. hetzner → senaev-media"
       link: "vless://{XRAY_USER_UUID:3}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
-    - name: "💄 5. hetzner → freedom"
+    - name: "💄 4. hetzner → freedom"
       link: "vless://{XRAY_USER_UUID:5}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
 
 ingress:
