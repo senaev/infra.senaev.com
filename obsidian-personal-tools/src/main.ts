@@ -6,6 +6,7 @@ import {
 } from './settings';
 import { registerCommands } from './commands';
 import { registerDailyNoteWidgets } from './dailyNote/dailyNoteWidgetsManager';
+import { registerTasksGlobals } from './tasks/registerTasksGlobals';
 
 export default class SenaevPersonalTools extends Plugin {
 	settings!: SenaevPluginSettings;
@@ -16,6 +17,7 @@ export default class SenaevPersonalTools extends Plugin {
 
 		registerCommands(this);
 		registerDailyNoteWidgets(this);
+		registerTasksGlobals(this);
 	}
 
 	async loadSettings() {

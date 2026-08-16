@@ -2,7 +2,23 @@
 
 ## Features
 
-- Displays a greeting notice on vault load: *Привет Андрей, это твои утилиты*
+- **Daily note widgets** (`src/dailyNote/`) — injects a header (date heading → nav row → milestones) and a footer (milestones → nav row) into every `periodic/day/YYYY-MM-DD` note, in both Reading view and Live Preview. Needs no markup in the note itself.
+- **Global API for the Tasks plugin** (`src/tasks/`) — see below.
+- **Commands** (`src/commands/`) — *Copy public link*.
+
+## Global API — `window.senaevPersonalTools`
+
+The Tasks plugin evaluates `filter by function` expressions as plain JavaScript, so it can only reach plugin code through a global. `registerTasksGlobals` publishes one on load and deletes it on unload.
+
+Daily notes call it like this:
+
+```tasks
+filter by function window.senaevPersonalTools.filterTasksForDaily({task, query})
+```
+
+`filterTasksForDaily` lists a task when it is closed (done or cancelled) on the note's own date, or still open and due on or before that date, or still open with no due date and of normal-or-higher priority. Tasks inside `periodic/` are always excluded so daily notes never echo each other.
+
+Renaming this global is a breaking change: ~647 notes and `_templates/Daily note template.md` reference it by name. It replaced the old CustomJS script `_scripts/CustomJS/FilterTasksForDaily.js`, which called through `window.customJS.FilterTasksForDaily.invoke(...)`. Do not put plugin helpers on `window.customJS` — that namespace belongs to the CustomJS plugin, which still hosts other scripts.
 
 ## Build
 
