@@ -79,3 +79,18 @@ export async function addObsidianTask(task: ObsidianTaskInput): Promise<void> {
         );
     }
 }
+
+/**
+ * Creates several tasks in the Obsidian vault.
+ *
+ * The writes must stay sequential: `POST /tasks` does a read-modify-write of a
+ * single vault file, so concurrent requests would overwrite each other and lose
+ * tasks. The list is also written back-to-front because each request prepends
+ * its line to the top of the file — writing in reverse leaves the tasks in the
+ * vault in the same order the user said them.
+ */
+export async function addObsidianTasks(tasks: ObsidianTaskInput[]): Promise<void> {
+    for (const task of [...tasks].reverse()) {
+        await addObsidianTask(task);
+    }
+}

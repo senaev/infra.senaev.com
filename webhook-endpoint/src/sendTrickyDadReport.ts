@@ -30,17 +30,21 @@ export async function sendTrickyDadReport({
     const parts: string[] = [];
 
     if (result.addedItems) {
-        parts.push(result.addedItems.map((item) => `🛒 *${esc(item)}*`).join("\n"));
+        // A `fallback` result is an unclassified command dumped into the grocery
+        // list as-is, not a real shopping item — mark it ❌ so it is obvious in
+        // the report that classification failed.
+        const itemEmoji = result.destination === "fallback" ? "❌" : "🛒";
+        parts.push(result.addedItems.map((item) => `${itemEmoji} *${esc(item)}*`).join("\n"));
     }
 
-    if (result.addedTask) {
-        parts.push(`👉 *${esc(result.addedTask)}*`);
+    if (result.addedTasks) {
+        parts.push(result.addedTasks.map((task) => `👉 *${esc(task)}*`).join("\n"));
     }
 
     const detailLines = [
         `🗣️ Команда: ${esc(command)}`,
         `📡 Откуда: ${esc(source)}`,
-        `📍 Куда: ${{ grocery: "🛒 grocery", task: "📌 task", fallback: "🔀 fallback" }[result.destination]}`,
+        `📍 Куда: ${{ grocery: "🛒 grocery", task: "📌 task", fallback: "❌ fallback" }[result.destination]}`,
         `⏱️ Время: ${esc(durationSeconds)}s`,
         `🤖 Время OpenRouter: ${esc(String(result.openRouterResponseTime))}ms`,
         result.writeResponseTime !== null
