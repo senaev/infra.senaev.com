@@ -1,3 +1,5 @@
+import { IsActiveDailyDate } from './activeDailyDate';
+
 /**
  * Task statuses that mean the task is no longer actionable.
  * Mirrors the Tasks plugin `task.status.type` values.
@@ -48,10 +50,13 @@ function getQueryDate(query: DailyFilterQuery): string {
  * Decides whether `task` belongs in the task list of the daily note that `query`
  * runs in.
  *
- * A task is listed when it is either:
- * - closed (done or cancelled) on the note's own date, or
- * - still open and due on or before the note's date, or
- * - still open, has no due date at all, and is of normal or higher priority.
+ * A closed (done or cancelled) task is listed on the note for the day it was
+ * closed on, so every past note stays a record of what was finished that day.
+ *
+ * Still-open tasks are listed only on the active note (see `isActiveDailyDate`),
+ * and only when they are due on or before its date, or have no due date at all
+ * and are of normal or higher priority. Without this, the whole open backlog
+ * would be repeated in every past daily note.
  *
  * Tasks that live inside periodic notes are always excluded, so daily notes
  * never echo each other's checklists.
@@ -59,6 +64,7 @@ function getQueryDate(query: DailyFilterQuery): string {
 export function filterTasksForDaily(
 	task: DailyFilterTask,
 	query: DailyFilterQuery,
+	isActiveDailyDate: IsActiveDailyDate,
 ): boolean {
 	if (task.file.path.startsWith(PERIODIC_FOLDER_PREFIX)) {
 		return false;
@@ -69,6 +75,10 @@ export function filterTasksForDaily(
 	if (CLOSED_STATUS_TYPES.includes(task.status.type)) {
 		const closedOn = task.done.moment ?? task.cancelled.moment;
 		return closedOn?.isSame(noteDate, 'day') === true;
+	}
+
+	if (!isActiveDailyDate(noteDate)) {
+		return false;
 	}
 
 	const { dueDate } = task;

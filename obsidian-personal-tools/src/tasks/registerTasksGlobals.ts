@@ -1,4 +1,5 @@
 import { Plugin } from 'obsidian';
+import { createIsActiveDailyDate } from './activeDailyDate';
 import {
 	DailyFilterQuery,
 	DailyFilterTask,
@@ -28,8 +29,11 @@ declare global {
 
 /** Publishes the global API used by ```tasks``` queries, until plugin unload. */
 export function registerTasksGlobals(plugin: Plugin): void {
+	const isActiveDailyDate = createIsActiveDailyDate(plugin);
+
 	window.senaevPersonalTools = {
-		filterTasksForDaily: ({ task, query }) => filterTasksForDaily(task, query),
+		filterTasksForDaily: ({ task, query }) =>
+			filterTasksForDaily(task, query, isActiveDailyDate),
 		sortKeyForDaily: ({ task }) => sortKeyForDaily(task),
 	};
 
