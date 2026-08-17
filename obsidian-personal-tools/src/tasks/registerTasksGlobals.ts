@@ -4,6 +4,7 @@ import {
 	DailyFilterTask,
 	filterTasksForDaily,
 } from './filterTasksForDaily';
+import { DailySortTask, sortKeyForDaily } from './sortKeyForDaily';
 
 /**
  * Helpers exposed on `window.senaevPersonalTools` so that `filter by function`
@@ -16,6 +17,7 @@ export interface SenaevPersonalToolsApi {
 		task: DailyFilterTask;
 		query: DailyFilterQuery;
 	}): boolean;
+	sortKeyForDaily(args: { task: DailySortTask }): string;
 }
 
 declare global {
@@ -28,6 +30,7 @@ declare global {
 export function registerTasksGlobals(plugin: Plugin): void {
 	window.senaevPersonalTools = {
 		filterTasksForDaily: ({ task, query }) => filterTasksForDaily(task, query),
+		sortKeyForDaily: ({ task }) => sortKeyForDaily(task),
 	};
 
 	plugin.register(() => {

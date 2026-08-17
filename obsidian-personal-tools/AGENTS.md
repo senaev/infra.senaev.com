@@ -8,17 +8,25 @@
 
 ## Global API — `window.senaevPersonalTools`
 
-The Tasks plugin evaluates `filter by function` expressions as plain JavaScript, so it can only reach plugin code through a global. `registerTasksGlobals` publishes one on load and deletes it on unload.
+The Tasks plugin evaluates `filter by function` / `sort by function` expressions as plain JavaScript, so it can only reach plugin code through a global. `registerTasksGlobals` publishes one on load and deletes it on unload.
 
 Daily notes call it like this:
 
 ```tasks
 filter by function window.senaevPersonalTools.filterTasksForDaily({task, query})
+sort by function window.senaevPersonalTools.sortKeyForDaily({task})
 ```
 
 `filterTasksForDaily` lists a task when it is closed (done or cancelled) on the note's own date, or still open and due on or before that date, or still open with no due date and of normal-or-higher priority. Tasks inside `periodic/` are always excluded so daily notes never echo each other.
 
-Renaming this global is a breaking change: ~647 notes and `_templates/Daily note template.md` reference it by name. It replaced the old CustomJS script `_scripts/CustomJS/FilterTasksForDaily.js`, which called through `window.customJS.FilterTasksForDaily.invoke(...)`. Do not put plugin helpers on `window.customJS` — that namespace belongs to the CustomJS plugin, which still hosts other scripts.
+`sortKeyForDaily` orders by priority (highest first), then file name, then description. All three tiers are packed into one `|`-separated string because the Tasks plugin accepts only a single scalar per `sort by function` and throws when two keys have different types — it has no hook for a real comparator, so a plugin cannot supply one. Details that matter if you change it:
+
+- Priority leads as a single digit (`0` Highest … `5` Lowest), so plain ascending order already means highest-priority-first.
+- `|` is the separator because Obsidian forbids it in file names, keeping the file-name tier unambiguous, and because it is ordinary punctuation. A control character would be wrong here: the comparator calls `localeCompare` without `ignorePunctuation`, and control characters are collated away entirely.
+- The comparator uses `numeric: true`, so digit runs sort naturally (`task 2` before `task 10`) rather than lexicographically. This is not configurable from a note.
+- Descriptions are used raw, so tasks written as `[[Some link]]` group ahead of plain-text ones (`[` sorts before letters). Tasks' own `sort by description` would strip the brackets; this keeps the ordering the vault had before.
+
+Renaming this global is a breaking change: ~649 notes and `_templates/Daily note template.md` reference it by name. It replaced the old CustomJS script `_scripts/CustomJS/FilterTasksForDaily.js`, which called through `window.customJS.FilterTasksForDaily.invoke(...)`, and the note-level `sort by priority` / `sort by function task.description` pair. Do not put plugin helpers on `window.customJS` — that namespace belongs to the CustomJS plugin, which still hosts other scripts.
 
 ## Build
 
