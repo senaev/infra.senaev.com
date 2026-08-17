@@ -2,6 +2,7 @@ import { Plugin } from 'obsidian';
 import {
 	formatDailyNoteBasename,
 	getDailyNoteDateFromPath,
+	isDailyNoteDateString,
 	isDailyNoteFile,
 } from '../dailyNote/dailyNotePath';
 
@@ -32,6 +33,13 @@ export function isActiveDailyDate({
 	today: string;
 	latestExistingDate: string | null;
 }): boolean {
+	if (!isDailyNoteDateString(noteDate)) {
+		// The query does not run in a dated note — `_templates/Daily note
+		// template.md` is the one such case. There is no day to scope to, so
+		// list open tasks instead of silently hiding them.
+		return true;
+	}
+
 	return noteDate >= today || noteDate === latestExistingDate;
 }
 

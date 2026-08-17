@@ -3,8 +3,16 @@ import { TAbstractFile, TFile } from 'obsidian';
 /** Vault-root folder that periodic daily notes live in. */
 export const DAILY_NOTE_FOLDER = 'periodic/day/';
 
+/** Extension every note path ends with; also keeps date-named folders out. */
+const MARKDOWN_EXTENSION = '.md';
+
 /** Matches daily note basenames such as `2026-08-01`. */
 const DAILY_NOTE_BASENAME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/** Whether `value` is a bare `YYYY-MM-DD` daily note date, e.g. `2026-08-01`. */
+export function isDailyNoteDateString(value: string): boolean {
+	return DAILY_NOTE_BASENAME_PATTERN.test(value);
+}
 
 /** Formats `date` as `YYYY-MM-DD`, using local (not UTC) date parts. */
 export function formatDailyNoteBasename(date: Date): string {
@@ -28,11 +36,14 @@ export function getDailyNotePath(date: Date): string {
  * compare the results directly.
  */
 export function getDailyNoteDateFromPath(path: string): string | null {
-	if (!path.startsWith(DAILY_NOTE_FOLDER)) {
+	if (!path.startsWith(DAILY_NOTE_FOLDER) || !path.endsWith(MARKDOWN_EXTENSION)) {
 		return null;
 	}
 
-	const basename = path.slice(DAILY_NOTE_FOLDER.length).replace(/\.md$/, '');
+	const basename = path.slice(
+		DAILY_NOTE_FOLDER.length,
+		path.length - MARKDOWN_EXTENSION.length,
+	);
 
 	return DAILY_NOTE_BASENAME_PATTERN.test(basename) ? basename : null;
 }

@@ -17,7 +17,18 @@ filter by function window.senaevPersonalTools.filterTasksForDaily({task, query})
 sort by function window.senaevPersonalTools.sortKeyForDaily({task})
 ```
 
-`filterTasksForDaily` lists a task when it is closed (done or cancelled) on the note's own date, or still open and due on or before that date, or still open with no due date and of normal-or-higher priority. Tasks inside `periodic/` are always excluded so daily notes never echo each other.
+`filterTasksForDaily` splits daily notes into two roles:
+
+- A **closed** task (done or cancelled) is listed on the note for the day it was closed on, so every past note stays a record of what was finished that day.
+- **Open** tasks are listed only on the *active* note, and only when due on or before its date, or undated and of normal-or-higher priority.
+
+Tasks inside `periodic/` are always excluded so daily notes never echo each other.
+
+`isActiveDailyDate` (`src/tasks/activeDailyDate.ts`) picks the active note: today and any future date, plus the latest existing note when today's note does not exist yet. Both rules collapse into `noteDate >= today || noteDate === latestExistingDate`, because when today's note exists the latest date is already today or later and the second check cannot reach into the past. `YYYY-MM-DD` compares chronologically as a plain string, so no date parsing is needed. A note whose name is not a date — only `_templates/Daily note template.md` — counts as active, so the template still shows open tasks.
+
+Without this scoping every past note repeats the whole open backlog, which is what made 600+ notes render the same list.
+
+`createIsActiveDailyDate` caches the latest existing date, since finding it scans every markdown file while the filter runs once per task per query. The cache is invalidated on vault `create`/`delete`/`rename` of a daily note; a rename checks the old path too. Today's date is read fresh on each call, so midnight needs no invalidation. A past note already open on screen keeps its old list until the Tasks plugin re-renders it, which reopening the note always does.
 
 `sortKeyForDaily` orders by priority (highest first), then file name, then description. All three tiers are packed into one `|`-separated string because the Tasks plugin accepts only a single scalar per `sort by function` and throws when two keys have different types — it has no hook for a real comparator, so a plugin cannot supply one. Details that matter if you change it:
 
