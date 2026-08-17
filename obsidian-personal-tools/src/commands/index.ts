@@ -1,6 +1,6 @@
 import { Plugin } from 'obsidian';
 import { copyPublicLink } from './copyPublicLink';
-import { copySelectionWithoutLinks } from './copySelectionWithoutLinks';
+import { copyTextToPublic } from './copyTextToPublic';
 import { searchSelectionInGoogle } from './searchSelectionInGoogle';
 import { translateSelection } from './translateSelection';
 
@@ -13,9 +13,9 @@ export function registerCommands(plugin: Plugin): void {
 	});
 
 	plugin.addCommand({
-		id: 'copy-selection-without-links',
-		name: 'Copy selection without links',
-		editorCallback: (editor) => void copySelectionWithoutLinks(editor),
+		id: 'copy-text-to-public',
+		name: 'Copy text to public',
+		editorCallback: (editor) => void copyTextToPublic(editor),
 	});
 
 	plugin.addCommand({

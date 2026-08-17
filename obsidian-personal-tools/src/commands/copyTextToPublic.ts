@@ -6,7 +6,7 @@ import { getSelectionAsPlainText } from '../utils/editorSelection';
  * plain text, so vault notes can be pasted somewhere public without leaking
  * `[[...]]` syntax.
  */
-export async function copySelectionWithoutLinks(editor: Editor): Promise<void> {
+export async function copyTextToPublic(editor: Editor): Promise<void> {
 	const text = getSelectionAsPlainText(editor);
 
 	if (text === null) {
@@ -16,10 +16,10 @@ export async function copySelectionWithoutLinks(editor: Editor): Promise<void> {
 	try {
 		await navigator.clipboard.writeText(text);
 	} catch (err) {
-		console.error('[copySelectionWithoutLinks] Failed to write to clipboard:', err);
-		new Notice('Failed to copy the selection to the clipboard.');
+		console.error('[copyTextToPublic] Failed to write to clipboard:', err);
+		new Notice('Failed to copy the text to the clipboard.');
 		return;
 	}
 
-	new Notice('Copied selection without links.');
+	new Notice('Copied text to public.');
 }

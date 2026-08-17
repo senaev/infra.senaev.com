@@ -4,7 +4,7 @@
 
 - **Daily note widgets** (`src/dailyNote/`) — injects a header (date heading → nav row → milestones) and a footer (milestones → nav row) into every `periodic/day/YYYY-MM-DD` note, in both Reading view and Live Preview. Needs no markup in the note itself.
 - **Global API for the Tasks plugin** (`src/tasks/`) — see below.
-- **Commands** (`src/commands/`) — *Copy public link*.
+- **Commands** (`src/commands/`) — *Copy public link*, plus three that act on the editor selection: *Copy text to public*, *Search selection in Google*, *Translate selection in Google Translate*. The last three flatten wiki-links first via `src/utils/stripWikiLinks.ts`, because `[[...]]` syntax is meaningless outside the vault.
 
 ## Global API — `window.senaevPersonalTools`
 
@@ -24,9 +24,9 @@ sort by function window.senaevPersonalTools.sortKeyForDaily({task})
 - Priority leads as a single digit (`0` Highest … `5` Lowest), so plain ascending order already means highest-priority-first.
 - `|` is the separator because Obsidian forbids it in file names, keeping the file-name tier unambiguous, and because it is ordinary punctuation. A control character would be wrong here: the comparator calls `localeCompare` without `ignorePunctuation`, and control characters are collated away entirely.
 - The comparator uses `numeric: true`, so digit runs sort naturally (`task 2` before `task 10`) rather than lexicographically. This is not configurable from a note.
-- Descriptions are used raw, so tasks written as `[[Some link]]` group ahead of plain-text ones (`[` sorts before letters). Tasks' own `sort by description` would strip the brackets; this keeps the ordering the vault had before.
+- Descriptions are used raw, so tasks written as `[[Some link]]` group ahead of plain-text ones (`[` sorts before letters). Tasks' own `sort by description` strips the brackets instead, which is why it is not used here.
 
-Renaming this global is a breaking change: ~649 notes and `_templates/Daily note template.md` reference it by name. It replaced the old CustomJS script `_scripts/CustomJS/FilterTasksForDaily.js`, which called through `window.customJS.FilterTasksForDaily.invoke(...)`, and the note-level `sort by priority` / `sort by function task.description` pair. Do not put plugin helpers on `window.customJS` — that namespace belongs to the CustomJS plugin, which still hosts other scripts.
+Renaming this global is a breaking change: ~649 notes and `_templates/Daily note template.md` reference it by name.
 
 ## Build
 
