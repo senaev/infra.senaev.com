@@ -11,17 +11,21 @@ export type FrontmatterRewrite = (input: {
 /**
  * Re-reads a note, hands its lines to `rewrite`, and swaps the result back in atomically.
  *
- * Shared by every place that writes to a note the user authored, so all of them inherit the
- * same guarantees: the file is read immediately before the change instead of reusing a copy
- * from earlier, the frontmatter block is proven to exist first, and the result lands through
- * a rename so a crash cannot leave a half-written note behind.
+ * Every write to a note the user authored goes through here, so all of them inherit the same
+ * guarantees: the file is read immediately before the change instead of reusing a copy from
+ * earlier, the frontmatter block is proven to exist first, and the result lands through a
+ * rename so a crash cannot leave a half-written note behind.
  *
  * `rewrite` is expected to throw when it cannot justify a change, which aborts the write and
  * leaves the note untouched.
  *
- * Note that the rename detaches the inotify watch from this path for good: every in-place write
- * that follows is silent, so a note written here stops reporting edits and only keeps syncing
- * because reconcileTrackedNotes re-reads the vault on a timer.
+ * Use this sparingly. Writing to a note the user may be editing is inherently unsafe: the
+ * read above and the rename below are not one atomic step, so an edit that `ob sync` applies
+ * in between is lost, and the version uploaded afterwards can carry that stale body back to
+ * every other device. The rename also detaches the inotify watch from this path for good,
+ * leaving reconcileTrackedNotes as the only thing that still notices edits to this note.
+ *
+ * Today the only caller is the post-link write-back, which runs once per note.
  */
 export async function updateNoteFrontmatter(
     relativePath: string,

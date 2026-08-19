@@ -4,12 +4,16 @@ import { editTelegramRichMessage } from "../telegram/editTelegramRichMessage";
 import { reportSyncError } from "../telegram/reportSyncError";
 import { hashRenderedNote } from "./hashRenderedNote";
 import { buildTelegramPostLink } from "./parseTelegramPostLink";
+import {
+    deletePushedNoteHash,
+    getPushedNoteHash,
+    setPushedNoteHash,
+} from "./pushedNoteHashes";
 import { readNoteTracking } from "./readNoteTracking";
 import { renderNoteForTelegram } from "./render/renderNoteForTelegram";
 import type { ResolvedEmbed } from "./render/resolveImageEmbeds";
 import { replaceTrackingLinkInFrontmatter } from "./replaceTrackingLinkInFrontmatter";
 import { deleteTrackedNote, setTrackedNote, type TrackedTarget } from "./trackedNotes";
-import { writeContentHashToFrontmatter } from "./writeContentHashToFrontmatter";
 
 type InFlight = { pending: boolean };
 
@@ -127,13 +131,16 @@ async function pushOnce(relativePath: string): Promise<void> {
     if (result === null) {
         // The note lost its tracking key or vanished between the event and this read.
         if (deleteTrackedNote(relativePath)) {
+            deletePushedNoteHash(relativePath);
             logger.info({ relativePath }, "🚫 Note is no longer tracked, leaving the post as is");
         }
         return;
     }
 
-    const { tracked, content, storedHash } = result;
+    const { tracked, content } = result;
     setTrackedNote(tracked);
+
+    const storedHash = getPushedNoteHash(relativePath);
 
     const { markdown, media } = renderNoteForTelegram(content);
     const currentLinks = tracked.targets.map((entry) => entry.link);
@@ -154,7 +161,7 @@ async function pushOnce(relativePath: string): Promise<void> {
             targets: currentLinks,
             characters: markdown.length,
             images: media.length,
-            storedHash,
+            storedHash: storedHash ?? null,
             currentHash,
         },
         "📤 Syncing note to Telegram",
@@ -183,10 +190,9 @@ async function pushOnce(relativePath: string): Promise<void> {
     // Fingerprinted against the links the content actually landed on, which differ from the
     // ones read above whenever a channel-only link was just turned into a post link. Recording
     // the pre-push value would look stale at once and cost a redundant push.
-    await writeContentHashToFrontmatter(
-        relativePath,
-        hashRenderedNote({ markdown, media, telegramPostCloneLinks: finalLinks }),
-    );
+    const pushedHash = hashRenderedNote({ markdown, media, telegramPostCloneLinks: finalLinks });
+    setPushedNoteHash(relativePath, pushedHash);
+    logger.info({ relativePath, hash: pushedHash }, "🔖 Recorded content hash for this note");
 }
 
 /**

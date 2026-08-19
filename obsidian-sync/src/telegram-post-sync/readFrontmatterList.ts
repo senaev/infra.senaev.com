@@ -10,8 +10,9 @@ import { unquoteFrontmatterItem } from "./unquoteFrontmatterItem";
  *     - Сырники
  *     - Syrniki
  *
- * Deliberately not a YAML parser — see readFrontmatterValue. Returns an empty array when
- * the key is absent or empty, so callers never need a null check.
+ * Deliberately not a YAML parser — the container has no YAML dependency and this only ever
+ * needs to read flat lists of links. Returns an empty array when the key is absent or empty,
+ * so callers never need a null check.
  */
 export function readFrontmatterList(frontmatter: string, key: string): string[] {
     const lines = frontmatter.split("\n");

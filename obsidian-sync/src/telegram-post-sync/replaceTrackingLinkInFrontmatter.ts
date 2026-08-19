@@ -28,8 +28,8 @@ export async function replaceTrackingLinkInFrontmatter(
     }
 
     await updateNoteFrontmatter(relativePath, ({ lines, closingIndex }) => {
-        // Matching includes the colon, so this cannot latch onto `telegram-post-clone-hash:`,
-        // which the tracking key is a strict prefix of.
+        // Matching includes the colon, so this cannot latch onto a longer key the tracking key
+        // happens to be a prefix of.
         const keyIndex = lines.findIndex(
             (line, index) =>
                 index > 0 && index < closingIndex && line.trim().startsWith(`${TRACKING_KEY}:`),
