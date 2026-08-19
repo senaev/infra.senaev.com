@@ -2,13 +2,14 @@ import { logger } from "../logger";
 import { createTelegramRichMessage } from "../telegram/createTelegramRichMessage";
 import { editTelegramRichMessage } from "../telegram/editTelegramRichMessage";
 import { reportSyncError } from "../telegram/reportSyncError";
+import { hashRenderedNote } from "./hashRenderedNote";
 import { buildTelegramPostLink } from "./parseTelegramPostLink";
 import { readNoteTracking } from "./readNoteTracking";
 import { renderNoteForTelegram } from "./render/renderNoteForTelegram";
 import type { ResolvedEmbed } from "./render/resolveImageEmbeds";
 import { replaceTrackingLinkInFrontmatter } from "./replaceTrackingLinkInFrontmatter";
 import { deleteTrackedNote, setTrackedNote, type TrackedTarget } from "./trackedNotes";
-import { rearmVaultWatcher } from "./watchVaultForNoteChanges";
+import { writeContentHashToFrontmatter } from "./writeContentHashToFrontmatter";
 
 type InFlight = { pending: boolean };
 
@@ -69,12 +70,13 @@ async function resolvePostForChannel(
     return { messageId, reused: false };
 }
 
+/** Pushes one mirror and returns the link the content now lives at. */
 async function pushTarget(
     relativePath: string,
     entry: TrackedTarget,
     markdown: string,
     media: ResolvedEmbed[],
-): Promise<void> {
+): Promise<string> {
     if (entry.target.kind === "channel") {
         const { chatId } = entry.target;
         const { messageId, reused } = await resolvePostForChannel(
@@ -95,11 +97,6 @@ async function pushTarget(
 
         try {
             await replaceTrackingLinkInFrontmatter(relativePath, entry.link, postLink);
-
-            // The write-back replaces the note by renaming a temp file over it, which detaches
-            // the watch from this path. Without rebuilding it here, every later edit of the
-            // note we just published would go unnoticed until the next reconcile pass.
-            rearmVaultWatcher();
         } catch (error) {
             // The post exists but nothing points at it. Surface the link so it can be pasted
             // in by hand — it cannot be recovered from the Bot API, which has no getMessage.
@@ -111,7 +108,7 @@ async function pushTarget(
             );
         }
 
-        return;
+        return postLink;
     }
 
     const { chatId, messageId } = entry.target;
@@ -121,6 +118,8 @@ async function pushTarget(
         { relativePath, messageId, outcome },
         outcome === "updated" ? "✅ Post updated" : "➖ Post already up to date",
     );
+
+    return entry.link;
 }
 
 async function pushOnce(relativePath: string): Promise<void> {
@@ -133,16 +132,30 @@ async function pushOnce(relativePath: string): Promise<void> {
         return;
     }
 
-    const { tracked, content } = result;
+    const { tracked, content, storedHash } = result;
     setTrackedNote(tracked);
 
     const { markdown, media } = renderNoteForTelegram(content);
+    const currentLinks = tracked.targets.map((entry) => entry.link);
+    const currentHash = hashRenderedNote({
+        markdown,
+        media,
+        telegramPostCloneLinks: currentLinks,
+    });
+
+    if (storedHash === currentHash) {
+        logger.info({ relativePath, hash: currentHash }, "➖ Note unchanged since its last push");
+        return;
+    }
+
     logger.info(
         {
             relativePath,
-            targets: tracked.targets.map((entry) => entry.link),
+            targets: currentLinks,
             characters: markdown.length,
             images: media.length,
+            storedHash,
+            currentHash,
         },
         "📤 Syncing note to Telegram",
     );
@@ -150,19 +163,30 @@ async function pushOnce(relativePath: string): Promise<void> {
     // Targets are independent mirrors, so one failure must not strand the others. Failures
     // are collected and reported together once every target has had its turn.
     const failures: string[] = [];
+    const finalLinks: string[] = [];
     for (const entry of tracked.targets) {
         try {
-            await pushTarget(relativePath, entry, markdown, media);
+            finalLinks.push(await pushTarget(relativePath, entry, markdown, media));
         } catch (error) {
             failures.push(`${entry.link}: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 
     if (failures.length > 0) {
+        // No hash is recorded, so the next pass retries this note rather than mistaking it for
+        // one that is already up to date.
         throw new Error(
             `${failures.length} of ${tracked.targets.length} targets failed\n${failures.join("\n")}`,
         );
     }
+
+    // Fingerprinted against the links the content actually landed on, which differ from the
+    // ones read above whenever a channel-only link was just turned into a post link. Recording
+    // the pre-push value would look stale at once and cost a redundant push.
+    await writeContentHashToFrontmatter(
+        relativePath,
+        hashRenderedNote({ markdown, media, telegramPostCloneLinks: finalLinks }),
+    );
 }
 
 /**

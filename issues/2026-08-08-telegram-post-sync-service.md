@@ -689,3 +689,85 @@ a duplicate post gets published. Deploys make this concrete: any note left in th
 state at rollout time will produce a second post. Closing it properly needs the published ids
 to outlive the process, which contradicts the original "no state store" decision — worth
 revisiting now that the revert is known to happen in practice rather than in theory.
+
+### 2026-08-09 — Skipping unchanged notes with a content fingerprint
+
+Every push previously ended in a Telegram call, and every pod restart re-sent every tracked
+note, relying on "message is not modified" to make it a no-op. That is what let a dead watcher
+look identical to a working one for two days. A `telegram-post-clone-hash` key in the note's
+frontmatter now records what was last pushed, and a note whose fingerprint still matches is
+skipped without talking to Telegram at all.
+
+**The fingerprint covers the rendered output, not the raw note.** This is what makes it safe to
+store in the note's own frontmatter: frontmatter is stripped before rendering, so writing the
+hash back cannot change the value the hash is taken over. Hashing raw content would be
+self-referential.
+
+**The clone links are part of it.** Otherwise adding a mirror to a note that is never edited
+again would be skipped forever and its post would never be created. They are sorted, so merely
+reordering the list does not force a resend.
+
+**The recorded value is computed from the links the content landed on**, not the ones read
+before pushing. The two differ whenever a channel-only link has just become a post link, and
+recording the earlier value would look stale immediately, costing one wasted push per publish.
+
+**The hash is written only when every target succeeded.** A partial failure records nothing, so
+the next event retries rather than mistaking the note for one that is up to date.
+
+`telegram-post-clone` is a strict prefix of `telegram-post-clone-hash`, which is the same shape
+as the link-matching hazard from earlier today. It is already neutralised: every lookup of
+either key includes the trailing colon, so neither matches the other's line. Verified rather
+than assumed.
+
+Both writers now share `updateNoteFrontmatter`, which re-reads the note, proves the frontmatter
+block exists, hands the lines to a rewrite, and swaps the result in atomically. The hash key is
+appended as the block's last line when absent, since inserting anywhere else could land between
+a key and the list items belonging to it.
+
+Watch rebuilds are down to exactly one per push, in a `finally` keyed off whether a note was
+actually rewritten. The first attempt rebuilt twice on the publish path — once after the link
+write-back and once after the hash — and would have skipped the rebuild entirely when a later
+target failed after an earlier one had already rewritten the note.
+
+Verified against a temp vault with Telegram stubbed:
+
+| Case | Result |
+|---|---|
+| hash key present alongside the tracking key | both read correctly, no prefix collision |
+| first push | sent, hash recorded, one watch rebuild |
+| nothing changed | no Telegram call, no write, no rebuild |
+| body edited | sent, hash changed |
+| mirror added, body untouched | both targets pushed |
+| mirrors reordered only | no resend |
+| push failed | no hash recorded, retried and sent after recovery |
+| channel-only link | published, link written back, converged with no second push |
+
+The cost, accepted deliberately over keeping this in a state file outside the vault: every
+content change now rewrites the note, which means one extra sync upload, one extra watcher
+event and one watch rebuild per edit. Events are lost during a rebuild, so a save landing in
+that window falls to the reconcile pass and its 60s latency.
+
+### 2026-08-09 — Dropped rearmVaultWatcher, reconcile every 15s instead
+
+`rearmVaultWatcher` was added earlier today when it was the only thing standing between a
+rename-poisoned watch and a note that would never sync again. `reconcileTrackedNotes` landed
+minutes later and covers that failure completely, which quietly demoted the rebuild from a
+correctness mechanism to a latency optimisation — worth roughly 1s instead of 60s.
+
+That trade stopped being worth it once the content hash moved into frontmatter, because the
+hash is written on every content change rather than once per note. So a full teardown and
+rebuild of the watch across ~370 directories went from rare to routine, each one with a window
+where events are dropped — a small hole that reconcile then has to cover anyway.
+
+Removed, and the reconcile interval tightened from 60s to 15s to absorb the latency. Net effect:
+one moving part fewer, no blind window, and the worst case for a note this service has written
+to goes from ~1s to ~15s.
+
+Worth being explicit about what the watcher is now for, because it is easy to misread the code:
+it only ever reports the *first* change to each mirrored note. As soon as that note gets a post
+link or a hash written into it, the rename detaches its watch for good and every later edit
+arrives silently. Reconcile is not a safety net for the watcher — for mirrored notes it is the
+mechanism, and the watcher is what makes the very first push fast.
+
+The removal changed no behaviour in the hash test suite: all ten cases still pass, including
+the channel-only publish converging without a second push.

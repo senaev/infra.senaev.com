@@ -7,13 +7,15 @@ import { deleteTrackedNote, getTrackedNote } from "./trackedNotes";
 /**
  * Re-reads the vault and pushes every tracked note whose file changed since its last push.
  *
- * The watcher cannot be trusted to deliver every change. Replacing a file through a rename
- * detaches the inotify watch from the path, after which in-place writes to it — which is how
- * `ob sync` applies downloaded notes — arrive silently. Nothing in the process notices, so a
- * single missed event would leave a post stale until the pod restarts.
+ * This is the mechanism that actually keeps notes in sync, not a safety net. Replacing a file
+ * through a rename detaches the inotify watch from the path permanently, after which in-place
+ * writes to it — which is how `ob sync` applies downloaded notes — arrive silently. Since this
+ * service writes a post link and a content hash into every note it mirrors, every one of them
+ * ends up in that state, and the watcher only ever reports the first change to each.
  *
- * The watcher therefore provides latency and this provides the guarantee. Notes whose mtime
- * has not moved are skipped, so a quiet vault costs one readdir and one stat per note.
+ * The watcher therefore provides latency for notes not yet written to, and this provides the
+ * guarantee for the rest. Notes whose mtime has not moved are skipped, so a quiet vault costs
+ * one readdir and one stat per note.
  *
  * Note that a note whose push failed is not retried here: the failed push still records the
  * new mtime, so reconcile treats it as done. That is deliberate — publishing is guarded

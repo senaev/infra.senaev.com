@@ -4,15 +4,27 @@ import { OBSIDIAN_VAULT_PATH } from "../env";
 import { logger } from "../logger";
 import { parseTelegramPostLink } from "./parseTelegramPostLink";
 import { readFrontmatterList } from "./readFrontmatterList";
+import { readFrontmatterValue } from "./readFrontmatterValue";
 import { stripFrontmatter } from "./render/stripFrontmatter";
 import type { TrackedNote, TrackedTarget } from "./trackedNotes";
 
 /** Frontmatter key that opts a note into being mirrored to one or more Telegram posts. */
 export const TRACKING_KEY = "telegram-post-clone";
 
+/**
+ * Frontmatter key holding the fingerprint of what was last pushed, so an unchanged note can be
+ * skipped without asking Telegram.
+ *
+ * Note that TRACKING_KEY is a strict prefix of this one. Every lookup of either key includes
+ * the trailing colon, which is what keeps them from matching each other's lines.
+ */
+export const TRACKING_HASH_KEY = "telegram-post-clone-hash";
+
 export type NoteTracking = {
     tracked: TrackedNote;
     content: string;
+    /** Fingerprint recorded by the last successful push, or null if there has not been one. */
+    storedHash: string | null;
 };
 
 /**
@@ -67,7 +79,11 @@ export async function readNoteTracking(relativePath: string): Promise<NoteTracki
         return null;
     }
 
-    return { tracked: { relativePath, targets, mtimeMs }, content };
+    return {
+        tracked: { relativePath, targets, mtimeMs },
+        content,
+        storedHash: readFrontmatterValue(frontmatter, TRACKING_HASH_KEY),
+    };
 }
 
 /**

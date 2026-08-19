@@ -5,8 +5,15 @@ import { scanVaultForTrackedNotes } from "./scanVaultForTrackedNotes";
 import { syncNoteToTelegramPost } from "./syncNoteToTelegramPost";
 import { watchVaultForNoteChanges } from "./watchVaultForNoteChanges";
 
-/** How often to re-read the vault looking for changes the watcher failed to report. */
-const RECONCILE_INTERVAL_MS = 60_000;
+/**
+ * How often to re-read the vault looking for changes the watcher failed to report.
+ *
+ * This is the only thing that keeps a note syncing once this service has written to it: that
+ * write replaces the file through a rename, which detaches the watch from the path permanently,
+ * so every later edit of that note arrives silently. The interval is therefore the worst-case
+ * delay for any note carrying a post link, which is all of them.
+ */
+const RECONCILE_INTERVAL_MS = 15_000;
 
 /**
  * Runs reconcileTrackedNotes forever, one pass at a time.

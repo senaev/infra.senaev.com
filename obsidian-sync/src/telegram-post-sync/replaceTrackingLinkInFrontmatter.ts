@@ -1,10 +1,8 @@
-import { readFile, rename, writeFile } from "node:fs/promises";
-import { basename, dirname, join } from "node:path";
-import { OBSIDIAN_VAULT_PATH } from "../env";
 import { logger } from "../logger";
 import { parseTelegramPostLink } from "./parseTelegramPostLink";
 import { TRACKING_KEY } from "./readNoteTracking";
 import { unquoteFrontmatterItem } from "./unquoteFrontmatterItem";
+import { updateNoteFrontmatter } from "./updateNoteFrontmatter";
 
 /**
  * Swaps one `telegram-post-clone` entry from a channel-only link to the full link of the
@@ -29,46 +27,34 @@ export async function replaceTrackingLinkInFrontmatter(
         throw new Error(`Refusing to write an unusable ${TRACKING_KEY} link: ${postLink}`);
     }
 
-    const absolutePath = join(OBSIDIAN_VAULT_PATH, relativePath);
-    const lines = (await readFile(absolutePath, "utf8")).split("\n");
-
-    if (lines[0]?.trim() !== "---") {
-        throw new Error(`Note "${relativePath}" has no frontmatter to update`);
-    }
-
-    const closingIndex = lines.findIndex((line, index) => index > 0 && line.trim() === "---");
-    if (closingIndex === -1) {
-        throw new Error(`Note "${relativePath}" has an unterminated frontmatter block`);
-    }
-
-    const keyIndex = lines.findIndex(
-        (line, index) =>
-            index > 0 && index < closingIndex && line.trim().startsWith(`${TRACKING_KEY}:`),
-    );
-    const keyLine = keyIndex === -1 ? undefined : lines[keyIndex];
-    if (keyLine === undefined) {
-        throw new Error(`Note "${relativePath}" no longer has a ${TRACKING_KEY} key`);
-    }
-
-    const replacedLines = replaceItem({
-        lines,
-        keyIndex,
-        keyLine,
-        closingIndex,
-        originalLink,
-        postLink,
-    });
-    if (replacedLines === null) {
-        throw new Error(
-            `Note "${relativePath}" no longer lists ${originalLink} under ${TRACKING_KEY}`,
+    await updateNoteFrontmatter(relativePath, ({ lines, closingIndex }) => {
+        // Matching includes the colon, so this cannot latch onto `telegram-post-clone-hash:`,
+        // which the tracking key is a strict prefix of.
+        const keyIndex = lines.findIndex(
+            (line, index) =>
+                index > 0 && index < closingIndex && line.trim().startsWith(`${TRACKING_KEY}:`),
         );
-    }
+        const keyLine = keyIndex === -1 ? undefined : lines[keyIndex];
+        if (keyLine === undefined) {
+            throw new Error(`Note "${relativePath}" no longer has a ${TRACKING_KEY} key`);
+        }
 
-    // Dot-prefixed and not a .md file, so neither Obsidian nor our own watcher picks it up
-    // during the brief moment it exists.
-    const temporaryPath = join(dirname(absolutePath), `.${basename(absolutePath)}.tg-sync.tmp`);
-    await writeFile(temporaryPath, replacedLines.join("\n"), "utf8");
-    await rename(temporaryPath, absolutePath);
+        const replacedLines = replaceItem({
+            lines,
+            keyIndex,
+            keyLine,
+            closingIndex,
+            originalLink,
+            postLink,
+        });
+        if (replacedLines === null) {
+            throw new Error(
+                `Note "${relativePath}" no longer lists ${originalLink} under ${TRACKING_KEY}`,
+            );
+        }
+
+        return replacedLines;
+    });
 
     logger.info({ relativePath, originalLink, postLink }, "✍️ Wrote post link back to note");
 }

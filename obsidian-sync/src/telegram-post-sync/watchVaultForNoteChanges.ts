@@ -6,9 +6,7 @@ import { isIgnoredPath } from "./ignoredPaths";
 /** How long to wait before rebuilding a watch that died, so a failing mount can't spin. */
 const RESTART_DELAY_MS = 5_000;
 
-// The watcher is a process-wide singleton so it can be rebuilt from elsewhere, which is
-// unavoidable: the code that replaces a note file is what breaks the watch, and only it
-// knows when that happened. See rearmVaultWatcher.
+// Kept at module level so a watch that errors can be replaced without the caller knowing.
 let watcher: FSWatcher | null = null;
 let handler: ((relativePath: string) => void) | null = null;
 
@@ -66,31 +64,15 @@ function startWatching(): void {
  *
  * Note that recursive watching costs one inotify watch per directory, against a per-uid
  * `fs.inotify.max_user_watches` budget — hence the explicit ENOSPC handling.
+ *
+ * This is a latency mechanism, not a guarantee. Notes this service has written to stop
+ * reporting in-place edits entirely — writing a note replaces it through a rename, which
+ * detaches the watch from that path for good — so reconcileTrackedNotes is what actually
+ * guarantees those notes keep syncing.
  */
 export function watchVaultForNoteChanges(onNoteChanged: (relativePath: string) => void): void {
     logger.info({ vault: OBSIDIAN_VAULT_PATH }, "👀 Watching vault for note changes");
 
     handler = onNoteChanged;
-    startWatching();
-}
-
-/**
- * Rebuilds the watch from scratch.
- *
- * Replacing a file by renaming another one over it detaches the watch from that path: the
- * rename itself is reported, and then every in-place write that follows is silent, for good.
- * Since this service replaces notes that way when writing a post link back, it has to rebuild
- * the watch afterwards or lose every later edit of the note it just published.
- *
- * Events occurring during the rebuild are lost, which is why reconcileTrackedNotes exists.
- */
-export function rearmVaultWatcher(): void {
-    if (handler === null) {
-        return;
-    }
-
-    logger.info("♻️ Rebuilding the vault watch");
-    watcher?.close();
-    watcher = null;
     startWatching();
 }
