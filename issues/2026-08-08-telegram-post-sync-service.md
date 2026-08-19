@@ -690,7 +690,7 @@ state at rollout time will produce a second post. Closing it properly needs the 
 to outlive the process, which contradicts the original "no state store" decision — worth
 revisiting now that the revert is known to happen in practice rather than in theory.
 
-### 2026-08-09 — Skipping unchanged notes with a content fingerprint
+### 2026-08-19 — Skipping unchanged notes with a content fingerprint
 
 Every push previously ended in a Telegram call, and every pod restart re-sent every tracked
 note, relying on "message is not modified" to make it a no-op. That is what let a dead watcher
@@ -715,7 +715,7 @@ recording the earlier value would look stale immediately, costing one wasted pus
 the next event retries rather than mistaking the note for one that is up to date.
 
 `telegram-post-clone` is a strict prefix of `telegram-post-clone-hash`, which is the same shape
-as the link-matching hazard from earlier today. It is already neutralised: every lookup of
+as the link-matching hazard from 2026-08-09. It is already neutralised: every lookup of
 either key includes the trailing colon, so neither matches the other's line. Verified rather
 than assumed.
 
@@ -747,9 +747,9 @@ content change now rewrites the note, which means one extra sync upload, one ext
 event and one watch rebuild per edit. Events are lost during a rebuild, so a save landing in
 that window falls to the reconcile pass and its 60s latency.
 
-### 2026-08-09 — Dropped rearmVaultWatcher, reconcile every 15s instead
+### 2026-08-19 — Dropped rearmVaultWatcher, reconcile every 15s instead
 
-`rearmVaultWatcher` was added earlier today when it was the only thing standing between a
+`rearmVaultWatcher` was added on 2026-08-09 when it was the only thing standing between a
 rename-poisoned watch and a note that would never sync again. `reconcileTrackedNotes` landed
 minutes later and covers that failure completely, which quietly demoted the rebuild from a
 correctness mechanism to a latency optimisation — worth roughly 1s instead of 60s.
