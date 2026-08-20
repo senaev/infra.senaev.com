@@ -273,6 +273,13 @@ ingress:
         - host: s.senaev.com
           service: webhook-endpoint
           port: 3000
+    - name: senaev-com-public-static
+      className: traefik-hetzner
+      middleware: public-static-path-prefix
+      hosts:
+        - host: static.senaev.com
+          service: webhook-endpoint
+          port: 3000
     - name: senaev-com-xray-fallback
       className: traefik-hetzner
       entrypoints: websecure-xray

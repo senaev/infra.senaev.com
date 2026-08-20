@@ -9,6 +9,7 @@ import { handleAlisaRequest } from "./handleAlisaRequest";
 import { logger } from "./logger";
 import { getShortLink } from "./obsidianSyncApi";
 import { processTelegramWebhookData } from "./processTelegramWebhookData";
+import { proxyPublicStaticFile } from "./publicStaticProxy";
 import { startTorrentOutboxProcessor, stopTorrentOutboxProcessor } from "./torrentOutbox";
 
 export const PORT = 3000;
@@ -38,6 +39,28 @@ server.get("/short_links/:shortId", async (request, reply) => {
     } catch (err: unknown) {
         logger.error(err, "❌ Error resolving short link");
         return reply.code(500).send("Internal Server Error");
+    }
+});
+
+// Backs https://static.senaev.com, whose ingress rewrites "/<path>" to
+// "/public-static/<path>" via a Traefik AddPrefix middleware, the same trick
+// s.senaev.com uses above. The files live in the Obsidian vault, which only the
+// ClusterIP-only obsidian-sync container can reach, so this route proxies to
+// it. Registered before the catch-all below only for readability — Fastify
+// matches the more specific route regardless of declaration order.
+server.get("/public-static/*", async (request, reply) => {
+    const { "*": path } = request.params as { "*": string };
+
+    try {
+        const result = await proxyPublicStaticFile({
+            path,
+            requestHeaders: request.headers,
+        });
+
+        return reply.code(result.status).headers(result.headers).send(result.body);
+    } catch (err: unknown) {
+        logger.error(err, "❌ Error proxying public static file");
+        return reply.code(502).type("text/plain").send("Bad Gateway");
     }
 });
 

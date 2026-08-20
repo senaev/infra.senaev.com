@@ -8,6 +8,15 @@ spec:
   addPrefix:
     prefix: /short_links
 ---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: public-static-path-prefix
+  namespace: {{ .Release.Namespace }}
+spec:
+  addPrefix:
+    prefix: /public-static
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
