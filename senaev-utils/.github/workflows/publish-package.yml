@@ -1,0 +1,116 @@
+name: Publish Package
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: publish-package-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NPM_DIST_TAG: ci
+
+jobs:
+  ci:
+    name: Lint, Test, Typecheck
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 25.9.0
+          cache: npm
+
+      - name: Update npm
+        run: npm install --global npm@latest
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Run tests
+        run: npm run test:ci
+
+      - name: Run typecheck
+        run: npm run typecheck
+
+  publish:
+    name: Publish to npm
+    needs: ci
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    outputs:
+      package_version: ${{ steps.package.outputs.version }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: latest
+          check-latest: true
+          registry-url: https://registry.npmjs.org
+          cache: npm
+
+      - name: Show tool versions
+        run: |
+          node -v
+          npm -v
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set CI package version
+        run: |
+          BASE_VERSION=$(node -p "require('./package.json').version")
+          npm version "${BASE_VERSION}-ci.${GITHUB_RUN_ID}.${GITHUB_RUN_ATTEMPT}" --no-git-tag-version
+
+      - name: Read package version
+        id: package
+        run: |
+          echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Publish package
+        run: npm publish --tag "$NPM_DIST_TAG"
+
+  notify:
+    name: Notify Telegram
+    needs:
+      - ci
+      - publish
+    runs-on: ubuntu-latest
+    if: always() && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+    steps:
+      - name: Notify Telegram
+        run: |
+          if [ "${{ needs.publish.result }}" = "success" ]; then
+            STATUS_ICON="✅"
+            STATUS_TEXT="success"
+          else
+            STATUS_ICON="❌"
+            STATUS_TEXT="error"
+          fi
+
+          TEXT="${STATUS_ICON} <b>senaev-utils#</b><code>${{ needs.publish.outputs.package_version || '??unknown??' }}</code> <a href=\"https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\">${STATUS_TEXT}</a>"
+
+          curl -sS -X POST "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendMessage" \
+            --data-urlencode "chat_id=${{ secrets.TG_CHAT_ID }}" \
+            --data-urlencode "parse_mode=HTML" \
+            --data-urlencode "disable_web_page_preview=true" \
+            --data-urlencode "text=${TEXT}"
