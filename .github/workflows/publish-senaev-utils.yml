@@ -38,9 +38,6 @@ jobs:
           cache: npm
           cache-dependency-path: senaev-utils/package-lock.json
 
-      - name: Update npm
-        run: npm install --global npm@latest
-
       - name: Install dependencies
         run: npm ci
 
