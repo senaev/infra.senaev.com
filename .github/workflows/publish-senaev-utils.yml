@@ -1,13 +1,18 @@
-name: Publish Package
+name: senaev-utils
+
+# Publishing stays on npm even though five services in this repo consume the package,
+# because supabase-list-notes lives elsewhere and installs it from the registry.
 
 on:
   push:
-    branches:
-      - main
+    branches: [main, master]
+    paths:
+      - "senaev-utils/**"
+      - ".github/workflows/publish-senaev-utils.yml"
   workflow_dispatch:
 
 concurrency:
-  group: publish-package-${{ github.ref }}
+  group: publish-senaev-utils-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -19,6 +24,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    defaults:
+      run:
+        working-directory: senaev-utils
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -28,6 +36,7 @@ jobs:
         with:
           node-version: 25.9.0
           cache: npm
+          cache-dependency-path: senaev-utils/package-lock.json
 
       - name: Update npm
         run: npm install --global npm@latest
@@ -53,7 +62,13 @@ jobs:
       package_version: ${{ steps.package.outputs.version }}
     permissions:
       contents: read
+      # Trusted publishing: npm mints the credential from this token, so there is no
+      # NODE_AUTH_TOKEN. The trusted publisher on npmjs.com is bound to both the repository
+      # and this workflow's filename, so renaming either one breaks publishing.
       id-token: write
+    defaults:
+      run:
+        working-directory: senaev-utils
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -65,6 +80,7 @@ jobs:
           check-latest: true
           registry-url: https://registry.npmjs.org
           cache: npm
+          cache-dependency-path: senaev-utils/package-lock.json
 
       - name: Show tool versions
         run: |
@@ -110,7 +126,7 @@ jobs:
           TEXT="${STATUS_ICON} <b>senaev-utils#</b><code>${{ needs.publish.outputs.package_version || '??unknown??' }}</code> <a href=\"https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\">${STATUS_TEXT}</a>"
 
           curl -sS -X POST "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendMessage" \
-            --data-urlencode "chat_id=${{ secrets.TG_CHAT_ID }}" \
+            --data-urlencode "chat_id=-1003971743999" \
             --data-urlencode "parse_mode=HTML" \
             --data-urlencode "disable_web_page_preview=true" \
             --data-urlencode "text=${TEXT}"

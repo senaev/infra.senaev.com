@@ -40,6 +40,16 @@ Each namespace is a Helm chart under `provisioning/helm/<chart>/`. All charts sh
 
 CI deploys via `.github/workflows/update-helm-charts.yml` on push to `main`. It runs a matrix over all charts; each job skips if its chart directory didn't change, otherwise SCPs `provisioning/` to the server, SSHes in to run `upgrade-namespace.sh <chart> <namespace>`, and sends a Telegram notification.
 
+## Shared Package: senaev-utils
+
+`senaev-utils/` holds the shared TypeScript library, moved here from its own repo with its full history. It ships raw source (`files: ["src"]`, no build step), so consumers import the TypeScript directly.
+
+Despite living in this repo it is **consumed from npm, not by path**. `.github/workflows/publish-senaev-utils.yml` lints, tests and typechecks it, then publishes `1.0.0-ci.<run_id>.<attempt>` under the `ci` dist-tag on every push to `main` that touches `senaev-utils/**`. Five services here pin an exact published version, and so does `supabase-list-notes`, which lives in a separate repo — that external consumer is why publishing stays on npm.
+
+Adopting a new version therefore means bumping the pinned version in the consuming service's `package.json` and lockfile. A change to `senaev-utils/` alone rebuilds nothing.
+
+Publishing uses npm **trusted publishing** (OIDC, no token). The trusted publisher on npmjs.com is bound to both the repository and the workflow filename, so renaming either breaks publishing until it is updated.
+
 ## Secrets Management
 
 Secrets are managed using HashiCorp Vault and the External Secrets Operator.
