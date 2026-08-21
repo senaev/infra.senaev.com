@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 
 import Fastify from 'fastify';
-import { isObject } from 'senaev-utils/src/utils/Object/isObject';
+import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { callTelegramApi } from 'senaev-utils/src/utils/TelegramApi/callTelegramApi';
 import { getCurrentTelegramBotInfo } from 'senaev-utils/src/utils/TelegramApi/getCurrentTelegramBotInfo';
 import { TelegramUpdate, TelegramUser } from 'senaev-utils/src/utils/TelegramApi/types';

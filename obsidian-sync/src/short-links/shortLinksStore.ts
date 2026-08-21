@@ -3,6 +3,8 @@ import {
 } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
+import { isNotFoundError } from 'senaev-utils/src/utils/Error/isNotFoundError/isNotFoundError';
+
 import { SHORT_LINKS_FILE_PATH } from '../vaultPaths';
 
 import { generateUniqueShortLinkId } from './generateUniqueShortLinkId';
@@ -19,10 +21,6 @@ type ShortLinksCache = {
 // sorted for lookups (a plain id -> url Map is used instead of a binary search).
 let cache: ShortLinksCache | null = null;
 let writeQueue: Promise<unknown> = Promise.resolve();
-
-function isNotFoundError(error: unknown): boolean {
-    return error instanceof Error && (error as NodeJS.ErrnoException).code === 'ENOENT';
-}
 
 /** Ensures the cache reflects the file on disk, reloading only if it changed. */
 async function ensureCacheFresh(): Promise<ShortLinksCache> {

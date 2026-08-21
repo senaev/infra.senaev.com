@@ -1,6 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { basename } from 'node:path';
 
+import { promiseTimeout } from 'senaev-utils/src/utils/timers/promiseTimeout/promiseTimeout';
+
 import { TG_TOKEN_SENAEV_COM_BOT } from '../env';
 import { logger } from '../logger';
 import type { ResolvedEmbed } from '../telegram-post-sync/render/resolveImageEmbeds';
@@ -22,10 +24,6 @@ type TelegramResponse<T> = {
 };
 
 export type RichMessageCallResult<T> = { status: 'ok'; result: T } | { status: 'not_modified' };
-
-function sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 /**
  * Builds the multipart body. Rebuilt per attempt because a FormData holding Blobs can't be
@@ -120,7 +118,7 @@ export async function callRichMessageMethod<T>({
                 base,
                 retryAfter,
             }, '⏳ Rate limited, retrying');
-            await sleep(retryAfter * 1000);
+            await promiseTimeout(retryAfter * 1000);
             continue;
         }
 

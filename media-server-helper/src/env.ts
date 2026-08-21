@@ -1,12 +1,4 @@
-function requireEnv(name: string): string {
-    const value = process.env[name];
-
-    if (!value) {
-        throw new Error(`Missing required environment variable: ${name}`);
-    }
-
-    return value;
-}
+import { requireEnv } from 'senaev-utils/src/utils/env/requireEnv/requireEnv';
 
 function requirePercentEnv(name: string): number {
     const rawValue = requireEnv(name);

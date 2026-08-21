@@ -9,6 +9,9 @@ on:
       context:
         required: true
         type: string
+      dockerfile:
+        required: true
+        type: string
       registry_image:
         required: true
         type: string
@@ -41,6 +44,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ${{ inputs.context }}
+          file: ${{ inputs.dockerfile }}
           platforms: linux/amd64
           push: true
           tags: ${{ inputs.registry_image }}:latest

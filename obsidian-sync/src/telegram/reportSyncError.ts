@@ -1,11 +1,8 @@
+import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
 
 import { TG_CLUSTER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from '../env';
 import { logger } from '../logger';
-
-function describe(error: unknown): string {
-    return error instanceof Error ? error.message : String(error);
-}
 
 /**
  * Logs a sync failure and mirrors it to the cluster chat.
@@ -21,7 +18,7 @@ export async function reportSyncError(context: string, error: unknown): Promise<
 
     try {
         await sendTelegramMessage({
-            text: `❌ obsidian-sync\n${context}\n${describe(error)}`,
+            text: `❌ obsidian-sync\n${context}\n${stringifyUnknownError(error)}`,
             chatId: TG_CLUSTER_CHAT_ID,
             token: TG_TOKEN_SENAEV_COM_BOT,
             disableLinkPreview: true,

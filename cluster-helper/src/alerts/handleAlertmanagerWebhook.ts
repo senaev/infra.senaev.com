@@ -1,19 +1,13 @@
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
+import { formatUtcDateTime } from 'senaev-utils/src/utils/Date/formatUtcDateTime/formatUtcDateTime';
+import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
+import { escapeHtml } from 'senaev-utils/src/utils/String/escapeHtml/escapeHtml';
 
 import { TG_CLUSTER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from '../env';
 import { logger } from '../logger';
-import { escapeHtml } from '../utils/escapeHtml';
 
 function formatDate(dateString: string): string {
-    const date = new Date(dateString);
-    const day = String(date.getUTCDate()).padStart(2, '0');
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const year = date.getUTCFullYear();
-    const hours = String(date.getUTCHours()).padStart(2, '0');
-    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-    const seconds = String(date.getUTCSeconds()).padStart(2, '0');
-
-    return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}`;
+    return formatUtcDateTime(new Date(dateString), { withSeconds: true });
 }
 
 function isUnsetAlertEnd(dateString: string): boolean {
@@ -177,7 +171,7 @@ export async function handleAlertmanagerWebhook(requestBody: unknown): Promise<v
 
         logger.info('👉 Sending error to Telegram');
         await sendTelegramMessage({
-            text: `❌ Error handling Alertmanager webhook:\n${err instanceof Error ? err.message : String(err)}\n\nReceived body:\n${JSON.stringify(requestBody)}`,
+            text: `❌ Error handling Alertmanager webhook:\n${stringifyUnknownError(err)}\n\nReceived body:\n${JSON.stringify(requestBody)}`,
             token: TG_TOKEN_SENAEV_COM_BOT,
             chatId: TG_CLUSTER_CHAT_ID,
         });

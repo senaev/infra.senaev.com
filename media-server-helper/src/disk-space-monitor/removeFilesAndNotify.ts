@@ -3,30 +3,22 @@ import {
     dirname, relative, sep,
 } from 'path';
 
-import { escapeHtml, sendTelegramHtmlMessage } from '../telegram';
+import { formatUtcDateTime } from 'senaev-utils/src/utils/Date/formatUtcDateTime/formatUtcDateTime';
+import { escapeHtml } from 'senaev-utils/src/utils/String/escapeHtml/escapeHtml';
+import { formatBytes } from 'senaev-utils/src/types/Bytes/formatBytes/formatBytes';
+
+import { sendTelegramHtmlMessage } from '../telegram';
 import { logger } from '../logger';
 
-import { formatBytes } from './formatBytes';
 import { type FileToRemove } from './getFilesToRemove';
 
 const TELEGRAM_MESSAGE_LIMIT = 4096;
 
-function formatDate(timestampMs: number): string {
-    const date = new Date(timestampMs);
-    const day = String(date.getUTCDate()).padStart(2, '0');
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const year = date.getUTCFullYear();
-    const hours = String(date.getUTCHours()).padStart(2, '0');
-    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-
-    return `${day}-${month}-${year} ${hours}:${minutes}`;
-}
-
 function buildFileLine(file: FileToRemove): string {
     return [
         escapeHtml(file.name),
-        formatBytes(file.size),
-        `(${formatDate(file.createdAtMs)})`,
+        formatBytes(file.size, { fractionDigits: 2 }),
+        `(${formatUtcDateTime(new Date(file.createdAtMs))})`,
     ].join(' ');
 }
 
@@ -172,11 +164,11 @@ export async function sendRemovalNotification({
         '<b>🗑️ Media Server Cleanup</b>',
         '',
         `<b>Removed files:</b> ${removedFiles.length}`,
-        `<b>Removed size:</b> ${formatBytes(removedBytes)}`,
-        `<b>Requested size:</b> ${formatBytes(bytesToRemove)}`,
-        `<b>Disk used before:</b> ${formatBytes(usedBytesBefore)} (${occupiedPercentBefore.toFixed(2)}%)`,
-        `<b>Disk used after:</b> ${formatBytes(usedBytesAfter)} (${occupiedPercentAfter.toFixed(2)}%)`,
-        `<b>Total disk size:</b> ${formatBytes(totalBytes)}`,
+        `<b>Removed size:</b> ${formatBytes(removedBytes, { fractionDigits: 2 })}`,
+        `<b>Requested size:</b> ${formatBytes(bytesToRemove, { fractionDigits: 2 })}`,
+        `<b>Disk used before:</b> ${formatBytes(usedBytesBefore, { fractionDigits: 2 })} (${occupiedPercentBefore.toFixed(2)}%)`,
+        `<b>Disk used after:</b> ${formatBytes(usedBytesAfter, { fractionDigits: 2 })} (${occupiedPercentAfter.toFixed(2)}%)`,
+        `<b>Total disk size:</b> ${formatBytes(totalBytes, { fractionDigits: 2 })}`,
     ];
     const { rootPath, tree } = buildRemovedFilesTree(removedFiles);
     const treeLines = [
@@ -213,10 +205,10 @@ export async function sendManualCleanupRequiredNotification({
         '<b>⚠️ Manual cleanup required</b>',
         '',
         'Automatic cleanup could not free enough space.',
-        `<b>Needed to remove:</b> <code>${formatBytes(bytesToRemove)}</code>`,
-        `<b>Can remove automatically:</b> <code>${formatBytes(removableBytes)}</code>`,
-        `<b>Disk used now:</b> <code>${formatBytes(usedBytes)}</code> (${occupiedPercent.toFixed(2)}%)`,
-        `<b>Total disk size:</b> <code>${formatBytes(totalBytes)}</code>`,
+        `<b>Needed to remove:</b> <code>${formatBytes(bytesToRemove, { fractionDigits: 2 })}</code>`,
+        `<b>Can remove automatically:</b> <code>${formatBytes(removableBytes, { fractionDigits: 2 })}</code>`,
+        `<b>Disk used now:</b> <code>${formatBytes(usedBytes, { fractionDigits: 2 })}</code> (${occupiedPercent.toFixed(2)}%)`,
+        `<b>Total disk size:</b> <code>${formatBytes(totalBytes, { fractionDigits: 2 })}</code>`,
         '❗️❗️❗️ Please free additional space manually.',
     ].join('\n');
 

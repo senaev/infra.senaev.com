@@ -1,3 +1,4 @@
+import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 import { getTelegramCommandFromMessage } from 'senaev-utils/src/utils/TelegramApi/getTelegramCommandFromMessage/getTelegramCommandFromMessage';
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
 import { TelegramMessage } from 'senaev-utils/src/utils/TelegramApi/types';
@@ -40,7 +41,7 @@ async function handleShortLinkCommand(link: string, message: TelegramMessage): P
         await replyToOwner(message, `${SHORT_LINK_BASE_URL}/${id}`);
     } catch (err: unknown) {
         logger.error(err, '❌ Failed to create short link');
-        const errorText = err instanceof Error ? err.message : String(err);
+        const errorText = stringifyUnknownError(err);
 
         await replyToOwner(message, `❌ ${errorText}`);
     }

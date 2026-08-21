@@ -5,6 +5,9 @@ on:
     branches: [main, master]
     paths:
       - "media-server-helper/**"
+      # senaev-utils is linked from the repo rather than installed from npm, so
+      # a change to it changes what this image ships.
+      - "senaev-utils/**"
   workflow_dispatch:
 
 jobs:
@@ -21,7 +24,8 @@ jobs:
     uses: ./.github/workflows/build-service.yml
     with:
       workflow_title: media-server-helper
-      context: ./media-server-helper
+      context: .
+      dockerfile: ./media-server-helper/Dockerfile
       registry_image: ghcr.io/senaev/media-server-helper
       deployment_name: media-server-helper
     secrets: inherit

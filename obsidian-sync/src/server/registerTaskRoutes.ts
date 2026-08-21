@@ -1,4 +1,4 @@
-import { isObject } from 'senaev-utils/src/utils/Object/isObject';
+import { isObject } from 'senaev-utils/src/types/Object/Object';
 
 import { logger } from '../logger';
 import { formatTaskLine } from '../tasks/formatTaskLine';

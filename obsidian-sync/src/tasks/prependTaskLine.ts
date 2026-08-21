@@ -3,6 +3,8 @@ import {
 } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
+import { isNotFoundError } from 'senaev-utils/src/utils/Error/isNotFoundError/isNotFoundError';
+
 import { TASKS_FILE_PATH } from '../vaultPaths';
 
 /** Puts `line` at the very top, separated from existing content by a blank line. */
@@ -14,10 +16,6 @@ function prependToContent(content: string, line: string): string {
     }
 
     return `${line}\n\n${trimmed}`;
-}
-
-function isNotFoundError(error: unknown): boolean {
-    return error instanceof Error && (error as NodeJS.ErrnoException).code === 'ENOENT';
 }
 
 /** Prepends `line` to the tasks file, creating the file (and folders) if needed. */

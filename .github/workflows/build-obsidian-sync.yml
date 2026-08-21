@@ -5,6 +5,9 @@ on:
     branches: [main, master]
     paths:
       - "obsidian-sync/**"
+      # senaev-utils is linked from the repo rather than installed from npm, so
+      # a change to it changes what this image ships.
+      - "senaev-utils/**"
   workflow_dispatch:
 
 jobs:
@@ -21,7 +24,8 @@ jobs:
     uses: ./.github/workflows/build-service.yml
     with:
       workflow_title: obsidian-sync
-      context: ./obsidian-sync
+      context: .
+      dockerfile: ./obsidian-sync/Dockerfile
       registry_image: ghcr.io/senaev/obsidian-sync
       deployment_name: obsidian-sync
     secrets: inherit

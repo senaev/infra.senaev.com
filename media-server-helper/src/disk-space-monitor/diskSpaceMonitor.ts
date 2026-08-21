@@ -1,9 +1,11 @@
+import { formatBytes } from 'senaev-utils/src/types/Bytes/formatBytes/formatBytes';
+import { promiseTimeout } from 'senaev-utils/src/utils/timers/promiseTimeout/promiseTimeout';
+
 import {
     DISK_USAGE_PATH, PERCENT_REMOVE_TARGET, PERCENT_TRIGGER_TO_REMOVE,
 } from '../env';
 import { logger } from '../logger';
 
-import { formatBytes } from './formatBytes';
 import { getDiskUsage } from './getDiskUsage';
 import { getFilesToRemove } from './getFilesToRemove';
 import { getSpaceInfoToRemove } from './getSpaceInfoToRemove';
@@ -35,7 +37,7 @@ async function checkDiskSpace(): Promise<void> {
 
     const totalBytes = totalBlocks * blockSize;
     const usedBytes = (totalBlocks - availableBlocks) * blockSize;
-    const diskUsageMessage = `${occupiedPercent.toFixed(2)}% of ${formatBytes(totalBytes)}`;
+    const diskUsageMessage = `${occupiedPercent.toFixed(2)}% of ${formatBytes(totalBytes, { fractionDigits: 2 })}`;
 
     if (diskUsageMessage !== lastDiskUsageMessage) {
         logger.info(
@@ -117,8 +119,8 @@ async function checkDiskSpace(): Promise<void> {
         if (notEnoughFilesToRemove) {
             logger.warn(
                 {
-                    selected: formatBytes(filesToRemoveSizeBytes),
-                    needed: formatBytes(bytesToRemove),
+                    selected: formatBytes(filesToRemoveSizeBytes, { fractionDigits: 2 }),
+                    needed: formatBytes(bytesToRemove, { fractionDigits: 2 }),
                 },
                 '⚠️ Not enough files to remove'
             );
@@ -143,7 +145,7 @@ async function runDiskSpaceMonitor(): Promise<void> {
             logger.error(error, '❌ Error checking disk space');
         }
 
-        await new Promise((resolve) => setTimeout(resolve, CHECK_INTERVAL_MS));
+        await promiseTimeout(CHECK_INTERVAL_MS);
     }
 }
 

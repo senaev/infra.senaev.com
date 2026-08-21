@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { setTimeout } from 'node:timers/promises';
 
+import { sanitizeFileName } from 'senaev-utils/src/utils/String/sanitizeFileName/sanitizeFileName';
+
 import { logger } from './logger';
 
 const MEDIA_SERVER_HELPER_URL = 'http://media-server-helper:3000';
@@ -18,10 +20,6 @@ type EnqueueTorrentFileInput = {
 };
 
 let processorAbortController: AbortController | undefined;
-
-function sanitizeFileName(name: string): string {
-    return name.replace(/[^a-zA-Z0-9._-]/g, '_');
-}
 
 export async function enqueueTorrentFile(input: EnqueueTorrentFileInput): Promise<string> {
     const id = randomUUID();

@@ -1,9 +1,9 @@
 import { formatBytes } from 'senaev-utils/src/types/Bytes/formatBytes/formatBytes';
 import { isUnsignedInteger } from 'senaev-utils/src/types/Number/UnsignedInteger';
 import { callTelegramApi } from 'senaev-utils/src/utils/TelegramApi/callTelegramApi';
+import { escapeTelegramMarkdownV2 } from 'senaev-utils/src/utils/TelegramApi/escapeTelegramMarkdownV2/escapeTelegramMarkdownV2';
 
 import { TG_TOKEN_SENAEV_COM_BOT } from './env';
-import { escapeTelegramMarkdownV2 } from './escapeTelegramMarkdownV2';
 import { ProwlarrRelease } from './prowlarr';
 import { createTorrentSearchSession, getTorrentSearchSession } from './torrentSearchSessions';
 

@@ -2,9 +2,9 @@ import { downloadFileFromTelegramMessage } from 'senaev-utils/src/utils/Telegram
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
 import { setTelegramMessageReaction } from 'senaev-utils/src/utils/TelegramApi/setTelegramMessageReaction';
 import { TelegramMessage } from 'senaev-utils/src/utils/TelegramApi/types';
+import { escapeTelegramMarkdownV2 } from 'senaev-utils/src/utils/TelegramApi/escapeTelegramMarkdownV2/escapeTelegramMarkdownV2';
 
 import { TG_MEDIA_SERVER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from './env';
-import { escapeTelegramMarkdownV2 } from './escapeTelegramMarkdownV2';
 import { logger } from './logger';
 import { parseTextOrAudioMessageFromTelegram } from './parseTextOrAudioMessageFromTelegram';
 import { searchProwlarr } from './prowlarr';
@@ -70,10 +70,11 @@ async function processMediaServerChatMessageInternal({ message }: {
     const fileName = message.document.file_name ?? message.document.file_id;
 
     logger.info({ fileName }, '👉 Processing new document message from Telegram channel');
-    const buffer = Buffer.from(await downloadFileFromTelegramMessage({
+    const { bytes } = await downloadFileFromTelegramMessage({
         fileId: message.document.file_id,
         token: TG_TOKEN_SENAEV_COM_BOT,
-    }));
+    });
+    const buffer = Buffer.from(bytes);
 
     logger.info({ sizeBytes: buffer.length }, '✅ Downloaded file from Telegram');
 

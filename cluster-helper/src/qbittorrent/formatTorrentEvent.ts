@@ -1,4 +1,5 @@
-import { escapeHtml } from '../utils/escapeHtml';
+import { formatBytes } from 'senaev-utils/src/types/Bytes/formatBytes/formatBytes';
+import { escapeHtml } from 'senaev-utils/src/utils/String/escapeHtml/escapeHtml';
 
 export interface TorrentEvent {
     event: 'torrent_added' | 'torrent_finished';
@@ -17,24 +18,6 @@ export function isTorrentEvent(value: unknown): value is TorrentEvent {
     return (
         typeof value === 'object' && value !== null && 'event' in value && ((value as TorrentEvent).event === 'torrent_added' || (value as TorrentEvent).event === 'torrent_finished')
     );
-}
-
-function formatBytes(bytes: number): string {
-    if (bytes === 0) {
-        return '0 B';
-    }
-
-    const units = [
-        'B',
-        'KB',
-        'MB',
-        'GB',
-        'TB',
-    ];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    const value = bytes / 1024 ** i;
-
-    return `${value.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
 function extractTrackerDomain(tracker: string): string {

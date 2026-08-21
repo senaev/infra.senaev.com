@@ -1,9 +1,10 @@
+import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
+import { escapeTelegramMarkdownV2 } from 'senaev-utils/src/utils/TelegramApi/escapeTelegramMarkdownV2/escapeTelegramMarkdownV2';
 
 import {
     OBSIDIAN_TASKS_CHAT_ID, TRICKY_DAD_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT,
 } from './env';
-import { escapeTelegramMarkdownV2 } from './escapeTelegramMarkdownV2';
 import { logger } from './logger';
 import { HandleTrickyDadRequestResult } from './processAlisaCommand';
 import { TRICKY_DAD_SOURCE_TO_CHAT_ID, TrickyDadSource } from './TrickyDadSource';
@@ -112,6 +113,6 @@ export async function sendTrickyDadErrorReport({
         token: TG_TOKEN_SENAEV_COM_BOT,
         chatId: OBSIDIAN_TASKS_CHAT_ID,
         parseMode: 'MarkdownV2',
-        text: escapeTelegramMarkdownV2(`❌ Failed to process command=[${command}]: ${err instanceof Error ? err.message : String(err)}`),
+        text: escapeTelegramMarkdownV2(`❌ Failed to process command=[${command}]: ${stringifyUnknownError(err)}`),
     });
 }

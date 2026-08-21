@@ -3,13 +3,14 @@ import {
     assertUnsignedInteger,
     isUnsignedInteger,
 } from 'senaev-utils/src/types/Number/UnsignedInteger';
-import { isObject } from 'senaev-utils/src/utils/Object/isObject';
+import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 import { callTelegramApi } from 'senaev-utils/src/utils/TelegramApi/callTelegramApi';
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
 import { TelegramMessage, TelegramUser } from 'senaev-utils/src/utils/TelegramApi/types';
+import { escapeTelegramMarkdownV2 } from 'senaev-utils/src/utils/TelegramApi/escapeTelegramMarkdownV2/escapeTelegramMarkdownV2';
 
 import { TG_TOKEN_SENAEV_COM_BOT } from './env';
-import { escapeTelegramMarkdownV2 } from './escapeTelegramMarkdownV2';
 import { logger } from './logger';
 import { downloadProwlarrRelease, ProwlarrRelease } from './prowlarr';
 import {
@@ -239,7 +240,7 @@ export async function processMediaServerCallbackQuery({
         });
         logger.info({ answerText }, '✅ Answered Telegram callback query');
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage = stringifyUnknownError(error);
 
         logger.error({
             err: error,

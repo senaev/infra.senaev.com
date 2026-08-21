@@ -1,18 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { escapeHtml } from 'senaev-utils/src/utils/String/escapeHtml/escapeHtml';
+
 // Resolved against this module rather than the working directory, so the page renders the
 // same no matter where the process was started from.
 const INSTRUCTIONS_TEMPLATE_PATH = resolve(__dirname, 'instructions-page.html');
-
-function escapeHtml(value: string): string {
-    return value
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll('\'', '&#39;');
-}
 
 export function renderInstructionsPage({
     subscriptionUrl,

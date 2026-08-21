@@ -5,6 +5,9 @@ on:
     branches: [main, master]
     paths:
       - "webhook-endpoint/**"
+      # senaev-utils is linked from the repo rather than installed from npm, so
+      # a change to it changes what this image ships.
+      - "senaev-utils/**"
   workflow_dispatch:
 
 jobs:
@@ -21,7 +24,8 @@ jobs:
     uses: ./.github/workflows/build-service.yml
     with:
       workflow_title: webhook-endpoint
-      context: ./webhook-endpoint
+      context: .
+      dockerfile: ./webhook-endpoint/Dockerfile
       registry_image: ghcr.io/senaev/webhook-endpoint
       deployment_name: webhook-endpoint
     secrets: inherit

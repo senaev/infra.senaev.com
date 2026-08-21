@@ -19,13 +19,20 @@ async function getFile({
     return { file_path: result.file_path };
 }
 
+/**
+ * Downloads the bytes behind a Telegram file id.
+ *
+ * `filePath` is returned alongside the bytes because the Bot API never sends a file name —
+ * the extension in this server-side path is the only hint at the real file type, and callers
+ * that re-upload the bytes elsewhere need it.
+ */
 export async function downloadFileFromTelegramMessage({
     fileId,
     token,
 }: {
     fileId: string;
     token: string;
-}): Promise<ArrayBuffer> {
+}): Promise<{ bytes: ArrayBuffer; filePath: string }> {
     const telegramApiBaseFileUrl = createTelegramApiBaseFileUrl(token);
     const { file_path } = await getFile({
         fileId,
@@ -34,8 +41,11 @@ export async function downloadFileFromTelegramMessage({
     const res = await fetch(`${telegramApiBaseFileUrl}/${file_path}`);
 
     if (!res.ok) {
-        throw new Error(`downloadFile failed: ${res.status}`);
+        throw new Error(`downloadFile failed: ${res.status} ${await res.text()}`);
     }
 
-    return res.arrayBuffer();
+    return {
+        bytes: await res.arrayBuffer(),
+        filePath: file_path,
+    };
 }

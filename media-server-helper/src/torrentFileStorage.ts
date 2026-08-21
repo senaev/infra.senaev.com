@@ -1,11 +1,9 @@
 import { renameSync, writeFileSync } from 'fs';
 import { join } from 'path';
 
-export const TORRENT_FILES_DIR = '/watch-torrent-files';
+import { sanitizeFileName } from 'senaev-utils/src/utils/String/sanitizeFileName/sanitizeFileName';
 
-function sanitizeFileName(name: string): string {
-    return name.replace(/[^a-zA-Z0-9._-]/g, '_');
-}
+export const TORRENT_FILES_DIR = '/watch-torrent-files';
 
 export function writeTorrentFile(buffer: Buffer, fileName: string): string {
     const targetPath = join(TORRENT_FILES_DIR, sanitizeFileName(fileName));

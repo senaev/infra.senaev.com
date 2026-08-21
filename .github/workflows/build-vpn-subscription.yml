@@ -5,6 +5,9 @@ on:
     branches: [main, master]
     paths:
       - "vpn-subscription/**"
+      # senaev-utils is linked from the repo rather than installed from npm, so
+      # a change to it changes what this image ships.
+      - "senaev-utils/**"
   workflow_dispatch:
 
 jobs:
@@ -21,7 +24,8 @@ jobs:
     uses: ./.github/workflows/build-service.yml
     with:
       workflow_title: vpn-subscription
-      context: ./vpn-subscription
+      context: .
+      dockerfile: ./vpn-subscription/Dockerfile
       registry_image: ghcr.io/senaev/vpn-subscription
       deployment_name: vpn-subscription
     secrets: inherit

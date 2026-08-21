@@ -1,3 +1,5 @@
+import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
+
 import { logger } from '../logger';
 import { createTelegramRichMessage } from '../telegram/createTelegramRichMessage';
 import { editTelegramRichMessage } from '../telegram/editTelegramRichMessage';
@@ -146,7 +148,7 @@ async function pushTarget(
             // The post exists but nothing points at it. Surface the link so it can be pasted
             // in by hand — it cannot be recovered from the Bot API, which has no getMessage.
             throw new Error(`Published ${postLink} but failed to write it back to "${relativePath}" — ` + `add it to the note's frontmatter manually. Cause: ${
-                error instanceof Error ? error.message : String(error)
+                stringifyUnknownError(error)
             }`);
         }
 
@@ -230,7 +232,7 @@ async function pushOnce(relativePath: string): Promise<void> {
         try {
             finalLinks.push(await pushTarget(relativePath, entry, markdown, media));
         } catch (error) {
-            failures.push(`${entry.link}: ${error instanceof Error ? error.message : String(error)}`);
+            failures.push(`${entry.link}: ${stringifyUnknownError(error)}`);
         }
     }
 

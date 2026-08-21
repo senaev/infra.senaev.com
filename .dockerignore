@@ -1,0 +1,14 @@
+# Every service image is built with the repository root as its context, so that
+# the `file:../senaev-utils` link can be resolved. Keep the context small.
+**/node_modules
+**/npm-debug.log
+**/dist
+.git
+.gitignore
+.github
+.vscode
+issues
+provisioning
+scripts
+**/Dockerfile
+.dockerignore

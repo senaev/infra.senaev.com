@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import Fastify, { type FastifyReply } from 'fastify';
+import { escapeHtml } from 'senaev-utils/src/utils/String/escapeHtml/escapeHtml';
 
 import { logger } from './logger';
 import {
@@ -141,14 +142,6 @@ function getClientIpAddress(
     }
 
     return ip;
-}
-
-function escapeHtml(value: string): string {
-    return value
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
 }
 
 server.get<{ Params: { secret: string } }>('/:secret', (request, reply) => {
