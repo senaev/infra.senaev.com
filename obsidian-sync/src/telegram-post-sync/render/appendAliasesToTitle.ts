@@ -1,7 +1,7 @@
-import { HEADING } from "./markTitleAsProvisioned";
+import { HEADING } from './markTitleAsProvisioned';
 
 /** Separates the real title from each alias inside the title line. */
-const ALIAS_SEPARATOR = " • ";
+const ALIAS_SEPARATOR = ' • ';
 
 /**
  * Appends the note's frontmatter aliases onto the title line itself:
@@ -18,19 +18,30 @@ export function appendAliasesToTitle(body: string, aliases: string[]): string {
         return body;
     }
 
-    const lines = body.split("\n");
+    const lines = body.split('\n');
 
-    for (const [index, line] of lines.entries()) {
+    for (const [
+        index,
+        line,
+    ] of lines.entries()) {
         const match = HEADING.exec(line);
+
         if (!match) {
             continue;
         }
 
-        const [, hashes, title] = match;
-        const parts = [title, ...aliases].filter((part) => part !== undefined && part !== "");
+        const [
+            , hashes,
+            title,
+        ] = match;
+        const parts = [
+            title,
+            ...aliases,
+        ].filter((part) => part !== undefined && part !== '');
+
         lines[index] = `${hashes} ${parts.join(ALIAS_SEPARATOR)}`;
 
-        return lines.join("\n");
+        return lines.join('\n');
     }
 
     return body;

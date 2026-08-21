@@ -1,5 +1,6 @@
-import { spawn } from "node:child_process";
-import { logger } from "../logger";
+import { spawn } from 'node:child_process';
+
+import { logger } from '../logger';
 
 /**
  * Runs the `ob` CLI once and resolves when it exits successfully.
@@ -10,19 +11,20 @@ import { logger } from "../logger";
  */
 export function runObsidianCommand(args: string[]): Promise<void> {
     return new Promise((resolve, reject) => {
-        logger.info({ args }, "▶️ Running ob");
+        logger.info({ args }, '▶️ Running ob');
 
-        const child = spawn("ob", args, { stdio: "inherit" });
+        const child = spawn('ob', args, { stdio: 'inherit' });
 
-        child.on("error", reject);
+        child.on('error', reject);
 
-        child.on("exit", (code, signal) => {
+        child.on('exit', (code, signal) => {
             if (code === 0) {
                 resolve();
+
                 return;
             }
 
-            reject(new Error(`ob ${args.join(" ")} exited with code=${code} signal=${signal}`));
+            reject(new Error(`ob ${args.join(' ')} exited with code=${code} signal=${signal}`));
         });
     });
 }

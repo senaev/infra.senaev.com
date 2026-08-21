@@ -1,13 +1,12 @@
-import { TelegramMessage } from "senaev-utils/src/utils/TelegramApi/types";
-import { transcribeAudioFile } from "./transcribeAudioFile";
+import { TelegramMessage } from 'senaev-utils/src/utils/TelegramApi/types';
+
+import { transcribeAudioFile } from './transcribeAudioFile';
 
 type TelegramAudioFile = {
     file_id: string;
 };
 
-export async function parseTextOrAudioMessageFromTelegram(
-    message: TelegramMessage,
-): Promise<string | null> {
+export async function parseTextOrAudioMessageFromTelegram(message: TelegramMessage): Promise<string | null> {
     if (message.text) {
         return message.text;
     }
@@ -22,5 +21,5 @@ export async function parseTextOrAudioMessageFromTelegram(
         return null;
     }
 
-    return transcribeAudioFile(audioFile.file_id);
+    return await transcribeAudioFile(audioFile.file_id);
 }

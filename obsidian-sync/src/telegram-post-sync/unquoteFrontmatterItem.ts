@@ -7,5 +7,5 @@
  * write-back would silently fail to find a link it had just published a post for.
  */
 export function unquoteFrontmatterItem(raw: string): string {
-    return raw.trim().replace(/^["']|["']$/g, "").trim();
+    return raw.trim().replace(/^["']|["']$/g, '').trim();
 }

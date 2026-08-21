@@ -1,5 +1,6 @@
-import type { ResolvedEmbed } from "../telegram-post-sync/render/resolveImageEmbeds";
-import { callRichMessageMethod } from "./callRichMessageMethod";
+import type { ResolvedEmbed } from '../telegram-post-sync/render/resolveImageEmbeds';
+
+import { callRichMessageMethod } from './callRichMessageMethod';
 
 /**
  * Publishes a new rich-message post to a channel and returns its message id.
@@ -17,13 +18,13 @@ export async function createTelegramRichMessage({
     media: ResolvedEmbed[];
 }): Promise<number> {
     const result = await callRichMessageMethod<{ message_id: number }>({
-        method: "sendRichMessage",
+        method: 'sendRichMessage',
         base: { chat_id: chatId },
         markdown,
         media,
     });
 
-    if (result.status !== "ok") {
+    if (result.status !== 'ok') {
         throw new Error(`sendRichMessage returned no message for chat ${chatId}`);
     }
 

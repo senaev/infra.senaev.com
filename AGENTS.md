@@ -40,6 +40,50 @@ Each namespace is a Helm chart under `provisioning/helm/<chart>/`. All charts sh
 
 CI deploys via `.github/workflows/update-helm-charts.yml` on push to `main`. It runs a matrix over all charts; each job skips if its chart directory didn't change, otherwise SCPs `provisioning/` to the server, SSHes in to run `upgrade-namespace.sh <chart> <namespace>`, and sends a Telegram notification.
 
+## Shared Toolchain
+
+The root `package.json` is not a workspace root. It is a private manifest that owns the
+shared toolchain — eslint, vitest, typescript, `@types/node`, lefthook — while every package
+keeps its own dependencies and its own lockfile. Packages are still built and deployed one
+by one, and Docker build contexts stay per-package.
+
+Run all three checks from the repository root; the packages have no check scripts of their own:
+
+```
+npm run lint        # eslint, one root eslint.config.mjs for all packages
+npm run typecheck   # tsc --noEmit per package, in sequence
+npm test            # vitest, one project per package
+```
+
+Because there is no workspace hoisting, typed linting, `tsc` and the tests each need the
+package's own `node_modules`. A fresh clone therefore needs `npm ci` at the root **and** in
+every package — this is what `.github/workflows/check.yml` does.
+
+Config lives at the root: `eslint.config.mjs` (React rules scoped to senaev-utils),
+`tsconfig.service.json` (extended by the five node services; senaev-utils keeps its own
+because it needs DOM libs and bundler resolution), and `vitest.config.ts`.
+
+`.github/workflows/check.yml` is called by every service build workflow via `needs: check`,
+so nothing is deployed before lint, typecheck and tests pass. It also runs on its own when
+the shared config changes, which belongs to no package and would otherwise reach `main`
+unchecked.
+
+### Git hooks
+
+`core.hooksPath` on this machine points at Datadog's managed global hooks, so plain
+`lefthook install` fails with a permission error. The global `pre-push` scans for secrets and
+then chains into the repo-level hook, so both can coexist — install lefthook into
+`.git/hooks` without taking the global path over:
+
+```
+git config --local core.hooksPath .git/hooks
+npx lefthook install
+git config --local --unset core.hooksPath
+```
+
+Never leave `core.hooksPath` overridden: that silently disables the managed secret scanner
+for this repository.
+
 ## Shared Package: senaev-utils
 
 `senaev-utils/` holds the shared TypeScript library, moved here from its own repo with its full history. It ships raw source (`files: ["src"]`, no build step), so consumers import the TypeScript directly.

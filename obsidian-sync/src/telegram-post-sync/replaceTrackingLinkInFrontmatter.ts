@@ -1,8 +1,9 @@
-import { logger } from "../logger";
-import { parseTelegramPostLink } from "./parseTelegramPostLink";
-import { TRACKING_KEY } from "./readNoteTracking";
-import { unquoteFrontmatterItem } from "./unquoteFrontmatterItem";
-import { updateNoteFrontmatter } from "./updateNoteFrontmatter";
+import { logger } from '../logger';
+
+import { parseTelegramPostLink } from './parseTelegramPostLink';
+import { TRACKING_KEY } from './readNoteTracking';
+import { unquoteFrontmatterItem } from './unquoteFrontmatterItem';
+import { updateNoteFrontmatter } from './updateNoteFrontmatter';
 
 /**
  * Swaps one `telegram-post-clone` entry from a channel-only link to the full link of the
@@ -19,22 +20,21 @@ import { updateNoteFrontmatter } from "./updateNoteFrontmatter";
 export async function replaceTrackingLinkInFrontmatter(
     relativePath: string,
     originalLink: string,
-    postLink: string,
+    postLink: string
 ): Promise<void> {
     // Checked before touching the file: writing an unusable value would make the note look
     // untracked, and the next edit would publish yet another post.
-    if (parseTelegramPostLink(postLink)?.kind !== "post") {
+    if (parseTelegramPostLink(postLink)?.kind !== 'post') {
         throw new Error(`Refusing to write an unusable ${TRACKING_KEY} link: ${postLink}`);
     }
 
     await updateNoteFrontmatter(relativePath, ({ lines, closingIndex }) => {
         // Matching includes the colon, so this cannot latch onto a longer key the tracking key
         // happens to be a prefix of.
-        const keyIndex = lines.findIndex(
-            (line, index) =>
-                index > 0 && index < closingIndex && line.trim().startsWith(`${TRACKING_KEY}:`),
-        );
+        const keyIndex = lines.findIndex((line, index) =>
+            index > 0 && index < closingIndex && line.trim().startsWith(`${TRACKING_KEY}:`));
         const keyLine = keyIndex === -1 ? undefined : lines[keyIndex];
+
         if (keyLine === undefined) {
             throw new Error(`Note "${relativePath}" no longer has a ${TRACKING_KEY} key`);
         }
@@ -47,16 +47,19 @@ export async function replaceTrackingLinkInFrontmatter(
             originalLink,
             postLink,
         });
+
         if (replacedLines === null) {
-            throw new Error(
-                `Note "${relativePath}" no longer lists ${originalLink} under ${TRACKING_KEY}`,
-            );
+            throw new Error(`Note "${relativePath}" no longer lists ${originalLink} under ${TRACKING_KEY}`);
         }
 
         return replacedLines;
     });
 
-    logger.info({ relativePath, originalLink, postLink }, "✍️ Wrote post link back to note");
+    logger.info({
+        relativePath,
+        originalLink,
+        postLink,
+    }, '✍️ Wrote post link back to note');
 }
 
 type ReplaceInput = {
@@ -88,27 +91,28 @@ function replaceItem({
     const inlineValue = keyLine.trim().slice(TRACKING_KEY.length + 1).trim();
 
     // telegram-post-clone: [link, link]
-    if (inlineValue.startsWith("[")) {
-        const items = inlineValue.replace(/^\[|\]$/g, "").split(",");
-        const itemIndex = items.findIndex(
-            (item) => unquoteFrontmatterItem(item) === originalLink,
-        );
+    if (inlineValue.startsWith('[')) {
+        const items = inlineValue.replace(/^\[|\]$/g, '').split(',');
+        const itemIndex = items.findIndex((item) => unquoteFrontmatterItem(item) === originalLink);
+
         if (itemIndex === -1) {
             return null;
         }
 
         items[itemIndex] = postLink;
-        updated[keyIndex] = `${indent}${TRACKING_KEY}: [${items.map((item) => item.trim()).join(", ")}]`;
+        updated[keyIndex] = `${indent}${TRACKING_KEY}: [${items.map((item) => item.trim()).join(', ')}]`;
+
         return updated;
     }
 
     // telegram-post-clone: link
-    if (inlineValue !== "") {
+    if (inlineValue !== '') {
         if (unquoteFrontmatterItem(inlineValue) !== originalLink) {
             return null;
         }
 
         updated[keyIndex] = `${indent}${TRACKING_KEY}: ${postLink}`;
+
         return updated;
     }
 
@@ -117,12 +121,14 @@ function replaceItem({
     //   - link
     for (let index = keyIndex + 1; index < closingIndex; index += 1) {
         const line = updated[index];
+
         if (line === undefined) {
             break;
         }
 
         const trimmed = line.trim();
-        if (!trimmed.startsWith("- ") && trimmed !== "-") {
+
+        if (!trimmed.startsWith('- ') && trimmed !== '-') {
             // Any other content ends the block — either the next key or a blank line.
             break;
         }
@@ -132,7 +138,9 @@ function replaceItem({
         }
 
         const itemIndent = line.slice(0, line.length - line.trimStart().length);
+
         updated[index] = `${itemIndent}- ${postLink}`;
+
         return updated;
     }
 

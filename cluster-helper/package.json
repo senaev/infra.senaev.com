@@ -18,10 +18,6 @@
   "scripts": {
     "start": "tsx src/index.ts"
   },
-  "devDependencies": {
-    "@types/node": "25.4.0",
-    "typescript": "5.9.3"
-  },
   "dependencies": {
     "fastify": "5.8.2",
     "senaev-utils": "1.0.0-ci.27819247539.1",

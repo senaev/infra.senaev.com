@@ -1,6 +1,11 @@
-import { readFile, rename, writeFile } from "node:fs/promises";
-import { basename, dirname, join } from "node:path";
-import { OBSIDIAN_VAULT_PATH } from "../env";
+import {
+    readFile, rename, writeFile,
+} from 'node:fs/promises';
+import {
+    basename, dirname, join,
+} from 'node:path';
+
+import { OBSIDIAN_VAULT_PATH } from '../env';
 
 export type FrontmatterRewrite = (input: {
     lines: string[];
@@ -29,25 +34,30 @@ export type FrontmatterRewrite = (input: {
  */
 export async function updateNoteFrontmatter(
     relativePath: string,
-    rewrite: FrontmatterRewrite,
+    rewrite: FrontmatterRewrite
 ): Promise<void> {
     const absolutePath = join(OBSIDIAN_VAULT_PATH, relativePath);
-    const lines = (await readFile(absolutePath, "utf8")).split("\n");
+    const lines = (await readFile(absolutePath, 'utf8')).split('\n');
 
-    if (lines[0]?.trim() !== "---") {
+    if (lines[0]?.trim() !== '---') {
         throw new Error(`Note "${relativePath}" has no frontmatter to update`);
     }
 
-    const closingIndex = lines.findIndex((line, index) => index > 0 && line.trim() === "---");
+    const closingIndex = lines.findIndex((line, index) => index > 0 && line.trim() === '---');
+
     if (closingIndex === -1) {
         throw new Error(`Note "${relativePath}" has an unterminated frontmatter block`);
     }
 
-    const updated = rewrite({ lines, closingIndex });
+    const updated = rewrite({
+        lines,
+        closingIndex,
+    });
 
     // Dot-prefixed and not a .md file, so neither Obsidian nor our own watcher picks it up
     // during the brief moment it exists.
     const temporaryPath = join(dirname(absolutePath), `.${basename(absolutePath)}.tg-sync.tmp`);
-    await writeFile(temporaryPath, updated.join("\n"), "utf8");
+
+    await writeFile(temporaryPath, updated.join('\n'), 'utf8');
     await rename(temporaryPath, absolutePath);
 }

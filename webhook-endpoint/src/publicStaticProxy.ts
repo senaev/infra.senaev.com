@@ -1,24 +1,29 @@
-import { posix } from "node:path";
-import { Readable } from "node:stream";
-import { OBSIDIAN_SYNC_URL } from "./env";
+import { posix } from 'node:path';
+import { Readable } from 'node:stream';
+
+import { OBSIDIAN_SYNC_URL } from './env';
 
 /** Trailing slash is load-bearing: see the prefix check in buildUpstreamPath. */
-const UPSTREAM_PREFIX = "/public-static/";
+const UPSTREAM_PREFIX = '/public-static/';
 
 /**
  * Passed straight through from the caller so conditional and ranged requests
  * survive the extra hop; without them every reload would re-download the file.
  */
-const FORWARDED_REQUEST_HEADERS = ["if-none-match", "if-modified-since", "range"] as const;
+const FORWARDED_REQUEST_HEADERS = [
+    'if-none-match',
+    'if-modified-since',
+    'range',
+] as const;
 
 /** Everything the browser needs to cache and render the file correctly. */
 const FORWARDED_RESPONSE_HEADERS = [
-    "content-type",
-    "content-length",
-    "content-range",
-    "accept-ranges",
-    "etag",
-    "last-modified",
+    'content-type',
+    'content-length',
+    'content-range',
+    'accept-ranges',
+    'etag',
+    'last-modified',
 ] as const;
 
 export type PublicStaticResult = {
@@ -53,13 +58,14 @@ export type PublicStaticResult = {
  */
 function buildUpstreamUrl(rawPath: string): URL | null {
     let decoded: string;
+
     try {
         decoded = decodeURIComponent(rawPath);
     } catch {
         return null;
     }
 
-    if (decoded.includes("\0")) {
+    if (decoded.includes('\0')) {
         return null;
     }
 
@@ -70,6 +76,7 @@ function buildUpstreamUrl(rawPath: string): URL | null {
     }
 
     let url: URL;
+
     try {
         url = new URL(`${OBSIDIAN_SYNC_URL}${joined}`);
     } catch {
@@ -101,13 +108,19 @@ export async function proxyPublicStaticFile({
     const upstreamUrl = buildUpstreamUrl(path);
 
     if (upstreamUrl === null) {
-        return { status: 400, headers: { "content-type": "text/plain" }, body: "Bad Request" };
+        return {
+            status: 400,
+            headers: { 'content-type': 'text/plain' },
+            body: 'Bad Request',
+        };
     }
 
     const headers: Record<string, string> = {};
+
     for (const name of FORWARDED_REQUEST_HEADERS) {
         const value = requestHeaders[name];
-        if (typeof value === "string") {
+
+        if (typeof value === 'string') {
             headers[name] = value;
         }
     }
@@ -115,23 +128,33 @@ export async function proxyPublicStaticFile({
     const response = await fetch(upstreamUrl, { headers });
 
     if (response.status === 404) {
-        return { status: 404, headers: { "content-type": "text/plain" }, body: "Not Found" };
+        return {
+            status: 404,
+            headers: { 'content-type': 'text/plain' },
+            body: 'Not Found',
+        };
     }
 
     const responseHeaders: Record<string, string> = {
         // The files are user-authored HTML on a senaev.com subdomain, so stop
         // browsers guessing a different content type than the one we send.
-        "x-content-type-options": "nosniff",
+        'x-content-type-options': 'nosniff',
     };
+
     for (const name of FORWARDED_RESPONSE_HEADERS) {
         const value = response.headers.get(name);
+
         if (value !== null) {
             responseHeaders[name] = value;
         }
     }
 
     if (response.body === null) {
-        return { status: response.status, headers: responseHeaders, body: "" };
+        return {
+            status: response.status,
+            headers: responseHeaders,
+            body: '',
+        };
     }
 
     return {

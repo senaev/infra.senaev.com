@@ -1,8 +1,8 @@
-import { logger } from "./logger";
-import { runContinuousSync } from "./obsidian-cli/runContinuousSync";
-import { setUpVaultSync } from "./obsidian-cli/setUpVaultSync";
-import { runVaultServer } from "./server/runVaultServer";
-import { startTelegramPostSyncInBackground } from "./telegram-post-sync/startTelegramPostSync";
+import { logger } from './logger';
+import { runContinuousSync } from './obsidian-cli/runContinuousSync';
+import { setUpVaultSync } from './obsidian-cli/setUpVaultSync';
+import { runVaultServer } from './server/runVaultServer';
+import { startTelegramPostSyncInBackground } from './telegram-post-sync/startTelegramPostSync';
 
 async function main(): Promise<never> {
     await setUpVaultSync();
@@ -17,15 +17,15 @@ async function main(): Promise<never> {
     return runContinuousSync();
 }
 
-process.on("SIGTERM", () => {
+process.on('SIGTERM', () => {
     process.exit(0);
 });
 
-process.on("SIGINT", () => {
+process.on('SIGINT', () => {
     process.exit(0);
 });
 
 main().catch((error) => {
-    logger.error(error, "❌ obsidian-sync exited");
+    logger.error(error, '❌ obsidian-sync exited');
     process.exit(1);
 });

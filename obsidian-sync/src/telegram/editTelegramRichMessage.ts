@@ -1,7 +1,8 @@
-import type { ResolvedEmbed } from "../telegram-post-sync/render/resolveImageEmbeds";
-import { callRichMessageMethod } from "./callRichMessageMethod";
+import type { ResolvedEmbed } from '../telegram-post-sync/render/resolveImageEmbeds';
 
-export type EditRichMessageResult = "updated" | "unchanged";
+import { callRichMessageMethod } from './callRichMessageMethod';
+
+export type EditRichMessageResult = 'updated' | 'unchanged';
 
 /**
  * Rewrites an existing channel post with rich-message content.
@@ -21,11 +22,14 @@ export async function editTelegramRichMessage({
     media: ResolvedEmbed[];
 }): Promise<EditRichMessageResult> {
     const result = await callRichMessageMethod<unknown>({
-        method: "editMessageText",
-        base: { chat_id: chatId, message_id: String(messageId) },
+        method: 'editMessageText',
+        base: {
+            chat_id: chatId,
+            message_id: String(messageId),
+        },
         markdown,
         media,
     });
 
-    return result.status === "ok" ? "updated" : "unchanged";
+    return result.status === 'ok' ? 'updated' : 'unchanged';
 }

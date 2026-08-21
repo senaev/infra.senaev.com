@@ -6,8 +6,8 @@ const PRIVATE_POST_LINK = /^https:\/\/t\.me\/c\/(\d+)\/(\d+)\/?$/;
 const PRIVATE_CHANNEL_LINK = /^https:\/\/t\.me\/c\/(\d+)\/?$/;
 
 export type TelegramPostTarget =
-    | { kind: "post"; chatId: string; messageId: number }
-    | { kind: "channel"; chatId: string };
+    | { kind: 'post'; chatId: string; messageId: number }
+    | { kind: 'channel'; chatId: string };
 
 /** The Bot API expects the internal `/c/<id>/` channel id prefixed with `-100`. */
 function toChatId(internalChatId: string): string {
@@ -16,7 +16,7 @@ function toChatId(internalChatId: string): string {
 
 /** Rebuilds a canonical post link, used when writing a created post id back to the note. */
 export function buildTelegramPostLink(chatId: string, messageId: number): string {
-    return `https://t.me/c/${chatId.replace(/^-100/, "")}/${messageId}`;
+    return `https://t.me/c/${chatId.replace(/^-100/, '')}/${messageId}`;
 }
 
 /**
@@ -27,18 +27,34 @@ export function parseTelegramPostLink(link: string): TelegramPostTarget | null {
     const trimmed = link.trim();
 
     const postMatch = PRIVATE_POST_LINK.exec(trimmed);
+
     if (postMatch) {
-        const [, internalChatId, messageId] = postMatch;
+        const [
+            , internalChatId,
+            messageId,
+        ] = postMatch;
+
         if (internalChatId !== undefined && messageId !== undefined) {
-            return { kind: "post", chatId: toChatId(internalChatId), messageId: Number(messageId) };
+            return {
+                kind: 'post',
+                chatId: toChatId(internalChatId),
+                messageId: Number(messageId),
+            };
         }
     }
 
     const channelMatch = PRIVATE_CHANNEL_LINK.exec(trimmed);
+
     if (channelMatch) {
-        const [, internalChatId] = channelMatch;
+        const [
+            , internalChatId,
+        ] = channelMatch;
+
         if (internalChatId !== undefined) {
-            return { kind: "channel", chatId: toChatId(internalChatId) };
+            return {
+                kind: 'channel',
+                chatId: toChatId(internalChatId),
+            };
         }
     }
 

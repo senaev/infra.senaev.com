@@ -1,11 +1,14 @@
-import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
-import { randomUUID } from "node:crypto";
-import { setTimeout } from "node:timers/promises";
-import { logger } from "./logger";
+import {
+    mkdir, readdir, readFile, rename, rm, writeFile,
+} from 'node:fs/promises';
+import { join } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { setTimeout } from 'node:timers/promises';
 
-const MEDIA_SERVER_HELPER_URL = "http://media-server-helper:3000";
-const TORRENT_OUTBOX_DIR = "/torrent-outbox";
+import { logger } from './logger';
+
+const MEDIA_SERVER_HELPER_URL = 'http://media-server-helper:3000';
+const TORRENT_OUTBOX_DIR = '/torrent-outbox';
 const RETRY_INTERVAL_MS = 5_000;
 const DELIVERY_TIMEOUT_MS = 30_000;
 
@@ -17,7 +20,7 @@ type EnqueueTorrentFileInput = {
 let processorAbortController: AbortController | undefined;
 
 function sanitizeFileName(name: string): string {
-    return name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    return name.replace(/[^a-zA-Z0-9._-]/g, '_');
 }
 
 export async function enqueueTorrentFile(input: EnqueueTorrentFileInput): Promise<string> {
@@ -52,7 +55,8 @@ async function runTorrentOutboxProcessor(signal: AbortSignal): Promise<void> {
             if (signal.aborted) {
                 return;
             }
-            logger.error(error, "❌ Failed to process torrent outbox");
+
+            logger.error(error, '❌ Failed to process torrent outbox');
         }
     }
 }
@@ -60,7 +64,7 @@ async function runTorrentOutboxProcessor(signal: AbortSignal): Promise<void> {
 async function processTorrentOutbox(): Promise<void> {
     const entries = await readdir(TORRENT_OUTBOX_DIR, { withFileTypes: true });
     const itemNames = entries
-        .filter((entry) => entry.isDirectory() && !entry.name.startsWith("."))
+        .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
         .map((entry) => entry.name)
         .sort();
 
@@ -72,32 +76,37 @@ async function processTorrentOutbox(): Promise<void> {
 async function processTorrentOutboxItem(itemName: string): Promise<void> {
     const itemDir = join(TORRENT_OUTBOX_DIR, itemName);
     const [fileName] = await readdir(itemDir);
+
     if (!fileName) {
         throw new Error(`Queued torrent item has no file: id=[${itemName}]`);
     }
 
     const payload = await readFile(join(itemDir, fileName));
 
-    logger.info({ itemName, fileName }, "📤 Sending queued torrent file to media-server-helper");
+    logger.info({
+        itemName,
+        fileName,
+    }, '📤 Sending queued torrent file to media-server-helper');
 
     const response = await fetch(`${MEDIA_SERVER_HELPER_URL}/torrent-files`, {
-        method: "POST",
+        method: 'POST',
         signal: AbortSignal.timeout(DELIVERY_TIMEOUT_MS),
         headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
         },
         body: JSON.stringify({
             fileName,
-            contentBase64: payload.toString("base64"),
+            contentBase64: payload.toString('base64'),
         }),
     });
 
     if (!response.ok) {
-        throw new Error(
-            `media-server-helper responded with status=[${response.status}] body=[${await response.text()}]`,
-        );
+        throw new Error(`media-server-helper responded with status=[${response.status}] body=[${await response.text()}]`);
     }
 
-    await rm(itemDir, { recursive: true, force: true });
-    logger.info({ itemName }, "✅ Delivered queued torrent file and removed outbox item");
+    await rm(itemDir, {
+        recursive: true,
+        force: true,
+    });
+    logger.info({ itemName }, '✅ Delivered queued torrent file and removed outbox item');
 }

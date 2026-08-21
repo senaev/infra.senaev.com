@@ -1,19 +1,23 @@
-import { rmdir, unlink } from "fs/promises";
-import { dirname, relative, sep } from "path";
-import { escapeHtml, sendTelegramHtmlMessage } from "../telegram";
-import { logger } from "../logger";
-import { formatBytes } from "./formatBytes";
-import { type FileToRemove } from "./getFilesToRemove";
+import { rmdir, unlink } from 'fs/promises';
+import {
+    dirname, relative, sep,
+} from 'path';
+
+import { escapeHtml, sendTelegramHtmlMessage } from '../telegram';
+import { logger } from '../logger';
+
+import { formatBytes } from './formatBytes';
+import { type FileToRemove } from './getFilesToRemove';
 
 const TELEGRAM_MESSAGE_LIMIT = 4096;
 
 function formatDate(timestampMs: number): string {
     const date = new Date(timestampMs);
-    const day = String(date.getUTCDate()).padStart(2, "0");
-    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
     const year = date.getUTCFullYear();
-    const hours = String(date.getUTCHours()).padStart(2, "0");
-    const minutes = String(date.getUTCMinutes()).padStart(2, "0");
+    const hours = String(date.getUTCHours()).padStart(2, '0');
+    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
 
     return `${day}-${month}-${year} ${hours}:${minutes}`;
 }
@@ -23,7 +27,7 @@ function buildFileLine(file: FileToRemove): string {
         escapeHtml(file.name),
         formatBytes(file.size),
         `(${formatDate(file.createdAtMs)})`,
-    ].join(" ");
+    ].join(' ');
 }
 
 type RemovedFilesTreeNode = {
@@ -40,12 +44,13 @@ function createTreeNode(): RemovedFilesTreeNode {
 
 function getCommonPathPrefix(paths: string[]): string {
     if (paths.length === 0) {
-        return "";
+        return '';
     }
 
     const firstPath = paths[0];
+
     if (firstPath === undefined) {
-        return "";
+        return '';
     }
 
     const restPaths = paths.slice(1);
@@ -54,6 +59,7 @@ function getCommonPathPrefix(paths: string[]): string {
 
     for (const path of restPaths) {
         const segments = path.split(sep).filter(Boolean);
+
         commonSegmentCount = Math.min(commonSegmentCount, segments.length);
 
         for (let index = 0; index < commonSegmentCount; index += 1) {
@@ -97,23 +103,28 @@ function buildRemovedFilesTree(removedFiles: FileToRemove[]): {
         currentNode.files.push(file);
     }
 
-    return { rootPath, tree };
+    return {
+        rootPath,
+        tree,
+    };
 }
 
-function renderRemovedFilesTree(node: RemovedFilesTreeNode, prefix = ""): string[] {
+function renderRemovedFilesTree(node: RemovedFilesTreeNode, prefix = ''): string[] {
     const directoryEntries = [...node.directories.entries()].sort(([left], [right]) =>
-        left.localeCompare(right),
-    );
+        left.localeCompare(right));
     const fileEntries = [...node.files].sort((left, right) => left.path.localeCompare(right.path));
     const entriesCount = directoryEntries.length + fileEntries.length;
     const lines: string[] = [];
     let entryIndex = 0;
 
-    for (const [directoryName, childNode] of directoryEntries) {
+    for (const [
+        directoryName,
+        childNode,
+    ] of directoryEntries) {
         entryIndex += 1;
         const isLastEntry = entryIndex === entriesCount;
-        const branchPrefix = isLastEntry ? "└── " : "├── ";
-        const childPrefix = `${prefix}${isLastEntry ? "    " : "│   "}`;
+        const branchPrefix = isLastEntry ? '└── ' : '├── ';
+        const childPrefix = `${prefix}${isLastEntry ? '    ' : '│   '}`;
 
         lines.push(`${prefix}${branchPrefix}${escapeHtml(directoryName)}/`);
         lines.push(...renderRemovedFilesTree(childNode, childPrefix));
@@ -122,7 +133,8 @@ function renderRemovedFilesTree(node: RemovedFilesTreeNode, prefix = ""): string
     for (const file of fileEntries) {
         entryIndex += 1;
         const isLastEntry = entryIndex === entriesCount;
-        const branchPrefix = isLastEntry ? "└── " : "├── ";
+        const branchPrefix = isLastEntry ? '└── ' : '├── ';
+
         lines.push(`${prefix}${branchPrefix}${buildFileLine(file)}`);
     }
 
@@ -157,8 +169,8 @@ export async function sendRemovalNotification({
     usedBytesAfter: number;
 }): Promise<void> {
     const summaryLines = [
-        "<b>🗑️ Media Server Cleanup</b>",
-        "",
+        '<b>🗑️ Media Server Cleanup</b>',
+        '',
         `<b>Removed files:</b> ${removedFiles.length}`,
         `<b>Removed size:</b> ${formatBytes(removedBytes)}`,
         `<b>Requested size:</b> ${formatBytes(bytesToRemove)}`,
@@ -167,9 +179,20 @@ export async function sendRemovalNotification({
         `<b>Total disk size:</b> ${formatBytes(totalBytes)}`,
     ];
     const { rootPath, tree } = buildRemovedFilesTree(removedFiles);
-    const treeLines = [`${escapeHtml(rootPath)}/`, ...renderRemovedFilesTree(tree)];
-    const fileLines = ["<b>Removed:</b>", `<pre>${treeLines.join("\n")}</pre>`];
-    const message = [...summaryLines, "", ...fileLines].join("\n");
+    const treeLines = [
+        `${escapeHtml(rootPath)}/`,
+        ...renderRemovedFilesTree(tree),
+    ];
+    const fileLines = [
+        '<b>Removed:</b>',
+        `<pre>${treeLines.join('\n')}</pre>`,
+    ];
+    const message = [
+        ...summaryLines,
+        '',
+        ...fileLines,
+    ].join('\n');
+
     await sendTelegramHtmlMessage(truncateForTelegram(message));
 }
 
@@ -187,15 +210,15 @@ export async function sendManualCleanupRequiredNotification({
     occupiedPercent: number;
 }): Promise<void> {
     const message = [
-        "<b>⚠️ Manual cleanup required</b>",
-        "",
-        "Automatic cleanup could not free enough space.",
+        '<b>⚠️ Manual cleanup required</b>',
+        '',
+        'Automatic cleanup could not free enough space.',
         `<b>Needed to remove:</b> <code>${formatBytes(bytesToRemove)}</code>`,
         `<b>Can remove automatically:</b> <code>${formatBytes(removableBytes)}</code>`,
         `<b>Disk used now:</b> <code>${formatBytes(usedBytes)}</code> (${occupiedPercent.toFixed(2)}%)`,
         `<b>Total disk size:</b> <code>${formatBytes(totalBytes)}</code>`,
-        "❗️❗️❗️ Please free additional space manually.",
-    ].join("\n");
+        '❗️❗️❗️ Please free additional space manually.',
+    ].join('\n');
 
     await sendTelegramHtmlMessage(truncateForTelegram(message));
 }
@@ -203,10 +226,13 @@ export async function sendManualCleanupRequiredNotification({
 export async function removeFiles(filesToRemove: FileToRemove[]): Promise<void> {
     for (const file of filesToRemove) {
         await unlink(file.path);
-        logger.info({ path: file.path, sizeBytes: file.size }, "🗑️ Removed file");
+        logger.info({
+            path: file.path,
+            sizeBytes: file.size,
+        }, '🗑️ Removed file');
         try {
             await rmdir(dirname(file.path));
-            logger.info({ path: dirname(file.path) }, "🗑️ Removed empty folder");
+            logger.info({ path: dirname(file.path) }, '🗑️ Removed empty folder');
         } catch {
             // Ignore directories that still contain files or cannot be removed.
         }

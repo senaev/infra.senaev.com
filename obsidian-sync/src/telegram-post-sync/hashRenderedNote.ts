@@ -1,5 +1,6 @@
-import { createHash } from "node:crypto";
-import type { ResolvedEmbed } from "./render/resolveImageEmbeds";
+import { createHash } from 'node:crypto';
+
+import type { ResolvedEmbed } from './render/resolveImageEmbeds';
 
 /** Long enough that a collision is not a practical concern, short enough to sit in a note. */
 const HASH_LENGTH = 16;
@@ -27,8 +28,10 @@ export type HashInput = {
  * the fingerprint unchanged, exactly as it already leaves the watcher unaware, since only
  * markdown files are watched.
  */
-export function hashRenderedNote({ markdown, media, telegramPostCloneLinks }: HashInput): string {
-    const hash = createHash("sha256");
+export function hashRenderedNote({
+    markdown, media, telegramPostCloneLinks,
+}: HashInput): string {
+    const hash = createHash('sha256');
 
     // Fields are separated by a NUL, which cannot occur in any of them, so no combination of
     // values can be rearranged into the same digest.
@@ -36,9 +39,10 @@ export function hashRenderedNote({ markdown, media, telegramPostCloneLinks }: Ha
     for (const embed of media) {
         hash.update(`\u0000${embed.id}\u0000${embed.absolutePath}`);
     }
+
     for (const link of [...telegramPostCloneLinks].sort()) {
         hash.update(`\u0000${link}`);
     }
 
-    return hash.digest("hex").slice(0, HASH_LENGTH);
+    return hash.digest('hex').slice(0, HASH_LENGTH);
 }

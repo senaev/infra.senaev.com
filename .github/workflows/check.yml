@@ -1,0 +1,57 @@
+name: Check
+
+# Called by every build workflow so nothing is deployed before it passes, and triggered
+# directly on the shared config, which belongs to no single package and would otherwise
+# reach main without any workflow noticing.
+on:
+  workflow_call:
+  push:
+    branches: [main, master]
+    paths:
+      - "package.json"
+      - "package-lock.json"
+      - "eslint.config.mjs"
+      - "tsconfig.service.json"
+      - "vitest.config.ts"
+      - ".github/workflows/check.yml"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Lint, Typecheck, Test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: "**/package-lock.json"
+
+      - name: Install the shared toolchain
+        run: npm ci
+
+      # Typed linting, tsc and the tests all resolve each package's own imports, so every
+      # package needs its dependencies present. There is no workspace hoisting to rely on.
+      - name: Install package dependencies
+        run: |
+          for package in cluster-helper media-server-helper obsidian-sync senaev-utils vpn-subscription webhook-endpoint; do
+            echo "::group::npm ci $package"
+            npm ci --prefix "$package"
+            echo "::endgroup::"
+          done
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test

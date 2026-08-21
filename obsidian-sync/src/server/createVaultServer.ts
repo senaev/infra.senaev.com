@@ -1,10 +1,14 @@
-import Fastify from "fastify";
-import { logger } from "../logger";
+import Fastify from 'fastify';
+
+import { logger } from '../logger';
 
 const BODY_LIMIT_BYTES = 1024 * 1024;
 
 export function createVaultServer() {
-    return Fastify({ loggerInstance: logger, bodyLimit: BODY_LIMIT_BYTES });
+    return Fastify({
+        loggerInstance: logger,
+        bodyLimit: BODY_LIMIT_BYTES,
+    });
 }
 
 /**

@@ -1,14 +1,17 @@
-import type { FastifyReply } from "fastify";
-import { readFile } from "node:fs/promises";
-import { basename, extname } from "node:path";
-import { findFileRecursively } from "../public-files/findFileRecursively";
+import { readFile } from 'node:fs/promises';
+import { basename, extname } from 'node:path';
+
+import type { FastifyReply } from 'fastify';
+
+import { findFileRecursively } from '../public-files/findFileRecursively';
 import {
     getMimeTypeByExtension,
     MARKDOWN_MIME_TYPE,
-} from "../public-files/getMimeTypeByExtension";
-import { logger } from "../logger";
-import { PUBLIC_DIR } from "../vaultPaths";
-import type { VaultServer } from "./createVaultServer";
+} from '../public-files/getMimeTypeByExtension';
+import { logger } from '../logger';
+import { PUBLIC_DIR } from '../vaultPaths';
+
+import type { VaultServer } from './createVaultServer';
 
 type PublicFileQuery = {
     note?: unknown;
@@ -16,7 +19,7 @@ type PublicFileQuery = {
 };
 
 function badRequest(reply: FastifyReply, message: string): FastifyReply {
-    return reply.code(400).type("text/plain").send(message);
+    return reply.code(400).type('text/plain').send(message);
 }
 
 /**
@@ -28,7 +31,7 @@ function badRequest(reply: FastifyReply, message: string): FastifyReply {
  */
 async function servePublicFile(
     query: PublicFileQuery,
-    reply: FastifyReply,
+    reply: FastifyReply
 ): Promise<FastifyReply> {
     const { note, file } = query;
 
@@ -37,29 +40,31 @@ async function servePublicFile(
     }
 
     if (note !== undefined) {
-        if (typeof note !== "string" || note.trim() === "") {
+        if (typeof note !== 'string' || note.trim() === '') {
             return badRequest(reply, 'Parameter "note" must not be empty');
         }
 
         const safeName = basename(note.trim());
-        const fileName = safeName.endsWith(".md") ? safeName : `${safeName}.md`;
+        const fileName = safeName.endsWith('.md') ? safeName : `${safeName}.md`;
         const filePath = findFileRecursively(PUBLIC_DIR, fileName);
 
         if (!filePath) {
-            return reply.code(404).type("text/plain").send("Not found");
+            return reply.code(404).type('text/plain').send('Not found');
         }
 
         try {
-            const content = await readFile(filePath, "utf8");
+            const content = await readFile(filePath, 'utf8');
+
             return reply.code(200).type(MARKDOWN_MIME_TYPE).send(content);
         } catch (error) {
-            logger.error(error, "❌ Failed to read note from vault");
-            return reply.code(500).type("text/plain").send("Internal Server Error");
+            logger.error(error, '❌ Failed to read note from vault');
+
+            return reply.code(500).type('text/plain').send('Internal Server Error');
         }
     }
 
     if (file !== undefined) {
-        if (typeof file !== "string" || file.trim() === "") {
+        if (typeof file !== 'string' || file.trim() === '') {
             return badRequest(reply, 'Parameter "file" must not be empty');
         }
 
@@ -73,15 +78,17 @@ async function servePublicFile(
         const filePath = findFileRecursively(PUBLIC_DIR, safeName);
 
         if (!filePath) {
-            return reply.code(404).type("text/plain").send("Not found");
+            return reply.code(404).type('text/plain').send('Not found');
         }
 
         try {
             const content = await readFile(filePath);
+
             return reply.code(200).type(getMimeTypeByExtension(extension)).send(content);
         } catch (error) {
-            logger.error(error, "❌ Failed to read file from vault");
-            return reply.code(500).type("text/plain").send("Internal Server Error");
+            logger.error(error, '❌ Failed to read file from vault');
+
+            return reply.code(500).type('text/plain').send('Internal Server Error');
         }
     }
 
@@ -93,11 +100,11 @@ export function registerPublicFileRoutes(server: VaultServer): void {
     // `note`/`file` query serves the vault file, matching the behaviour clients
     // (notably the senaev.com Next.js app) already rely on. The more specific
     // routes registered elsewhere still win over this wildcard.
-    const handler = async (
+    const handler = (
         request: { query: PublicFileQuery },
-        reply: FastifyReply,
+        reply: FastifyReply
     ): Promise<FastifyReply> => servePublicFile(request.query, reply);
 
-    server.get<{ Querystring: PublicFileQuery }>("/", handler);
-    server.get<{ Querystring: PublicFileQuery }>("/*", handler);
+    server.get<{ Querystring: PublicFileQuery }>('/', handler);
+    server.get<{ Querystring: PublicFileQuery }>('/*', handler);
 }

@@ -14,17 +14,18 @@ export function ensureEmptyLineAfterTables(text: string): string {
     const result: string[] = [];
     let inTable = false;
 
-    for (const line of text.split("\n")) {
+    for (const line of text.split('\n')) {
         if (TABLE_ROW.test(line) || TABLE_SEPARATOR.test(line)) {
             inTable = true;
             result.push(line);
             continue;
         }
 
-        if (inTable && line.trim() !== "") {
+        if (inTable && line.trim() !== '') {
             const lastLine = result[result.length - 1];
-            if (lastLine !== undefined && lastLine.trim() !== "") {
-                result.push("");
+
+            if (lastLine !== undefined && lastLine.trim() !== '') {
+                result.push('');
             }
         }
 
@@ -32,5 +33,5 @@ export function ensureEmptyLineAfterTables(text: string): string {
         result.push(line);
     }
 
-    return result.join("\n");
+    return result.join('\n');
 }

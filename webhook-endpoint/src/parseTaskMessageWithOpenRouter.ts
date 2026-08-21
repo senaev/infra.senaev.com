@@ -1,59 +1,61 @@
-import { callOpenRouter } from "./openrouter";
+import { callOpenRouter } from './openrouter';
 
 export type ParsedTaskMessage = {
     title: string;
     due_date: string | null;
 };
 
-export async function parseTaskMessageWithOpenRouter(
-    message: string,
-): Promise<ParsedTaskMessage> {
+export async function parseTaskMessageWithOpenRouter(message: string): Promise<ParsedTaskMessage> {
     const today = new Date().toISOString().slice(0, 10);
 
     const parsed = await callOpenRouter<ParsedTaskMessage>({
         messages: [
             {
-                role: "system",
+                role: 'system',
                 content: [
                     `Today's date is ${today}.`,
-                    "You are parsing a Telegram message into a task record.",
-                    "Extract the task description and an optional due date from the message.",
-                    "The title should be a clear, concise description of what needs to be done. Keep the wording as close to the original message as possible — do not rephrase or rewrite unless necessary to make it a valid task description.",
-                    "If the message mentions a due date or deadline (e.g. 'tomorrow', 'by Friday', 'on Monday', specific dates), extract it as due_date in YYYY-MM-DD format.",
-                    "If no due date is mentioned, return null for due_date.",
-                    "Preserve the language of the original request in all text fields.",
-                    "Answer strictly in JSON that matches the provided schema.",
-                ].join(" "),
+                    'You are parsing a Telegram message into a task record.',
+                    'Extract the task description and an optional due date from the message.',
+                    'The title should be a clear, concise description of what needs to be done. Keep the wording as close to the original message as possible — do not rephrase or rewrite unless necessary to make it a valid task description.',
+                    'If the message mentions a due date or deadline (e.g. \'tomorrow\', \'by Friday\', \'on Monday\', specific dates), extract it as due_date in YYYY-MM-DD format.',
+                    'If no due date is mentioned, return null for due_date.',
+                    'Preserve the language of the original request in all text fields.',
+                    'Answer strictly in JSON that matches the provided schema.',
+                ].join(' '),
             },
             {
-                role: "user",
+                role: 'user',
                 content: message,
             },
         ],
         jsonSchema: {
-            name: "task_message",
+            name: 'task_message',
             schema: {
-                type: "object",
+                type: 'object',
                 properties: {
-                    title: { type: "string" },
-                    due_date: { type: ["string", "null"] },
+                    title: { type: 'string' },
+                    due_date: {
+                        type: [
+                            'string',
+                            'null',
+                        ],
+                    },
                 },
-                required: ["title", "due_date"],
+                required: [
+                    'title',
+                    'due_date',
+                ],
                 additionalProperties: false,
             },
         },
     });
 
-    if (typeof parsed.title !== "string" || parsed.title.trim() === "") {
-        throw new Error(
-            `OpenRouter response title field is invalid [${JSON.stringify(parsed, null, 2)}]`,
-        );
+    if (typeof parsed.title !== 'string' || parsed.title.trim() === '') {
+        throw new Error(`OpenRouter response title field is invalid [${JSON.stringify(parsed, null, 2)}]`);
     }
 
-    if (parsed.due_date !== null && typeof parsed.due_date !== "string") {
-        throw new Error(
-            `OpenRouter response due_date field is invalid [${JSON.stringify(parsed, null, 2)}]`,
-        );
+    if (parsed.due_date !== null && typeof parsed.due_date !== 'string') {
+        throw new Error(`OpenRouter response due_date field is invalid [${JSON.stringify(parsed, null, 2)}]`);
     }
 
     return parsed;

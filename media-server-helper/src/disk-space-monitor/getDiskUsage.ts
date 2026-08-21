@@ -1,4 +1,4 @@
-import { statfs } from "fs/promises";
+import { statfs } from 'fs/promises';
 
 export type DisksUsage = {
     totalBlocks: number;

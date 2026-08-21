@@ -1,16 +1,17 @@
-import { sendTelegramMessage } from "senaev-utils/src/utils/TelegramApi/sendTelegramMessage";
-import { TG_CLUSTER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from "../env";
-import { logger } from "../logger";
-import { escapeHtml } from "../utils/escapeHtml";
+import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
+
+import { TG_CLUSTER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from '../env';
+import { logger } from '../logger';
+import { escapeHtml } from '../utils/escapeHtml';
 
 function formatDate(dateString: string): string {
     const date = new Date(dateString);
-    const day = String(date.getUTCDate()).padStart(2, "0");
-    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
     const year = date.getUTCFullYear();
-    const hours = String(date.getUTCHours()).padStart(2, "0");
-    const minutes = String(date.getUTCMinutes()).padStart(2, "0");
-    const seconds = String(date.getUTCSeconds()).padStart(2, "0");
+    const hours = String(date.getUTCHours()).padStart(2, '0');
+    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+    const seconds = String(date.getUTCSeconds()).padStart(2, '0');
 
     return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}`;
 }
@@ -35,23 +36,27 @@ function normalizeGrafanaUrl(urlString: string): string {
     const url = new URL(urlString);
     const normalizedSearchParams = new URLSearchParams();
 
-    for (const [key, value] of url.searchParams.entries()) {
+    for (const [
+        key,
+        value,
+    ] of url.searchParams.entries()) {
         normalizedSearchParams.append(key, value);
     }
 
     url.search = normalizedSearchParams.toString();
+
     return url.toString();
 }
 
 const ALERT_STATUSES = {
-    firing: "🔴",
-    resolved: "🟢",
+    firing: '🔴',
+    resolved: '🟢',
 } as const;
 
 const ALERT_SEVERITIES = {
-    info: "ℹ️",
-    warning: "⚠️",
-    critical: "🚨",
+    info: 'ℹ️',
+    warning: '⚠️',
+    critical: '🚨',
 } as const;
 
 type AlertItem = {
@@ -59,9 +64,9 @@ type AlertItem = {
 };
 
 export function handleAlertmanagerWebhookInternal(requestBody: unknown): AlertItem[] {
-    logger.info({ requestBody }, "👉 Processing Alertmanager webhook");
+    logger.info({ requestBody }, '👉 Processing Alertmanager webhook');
 
-    if (typeof requestBody !== "object" || requestBody === null) {
+    if (typeof requestBody !== 'object' || requestBody === null) {
         throw new Error(`❌ Received Alertmanager webhook with invalid body=[${requestBody}]`);
     }
 
@@ -72,72 +77,61 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): AlertIt
     }
 
     if (alerts.length === 0) {
-        throw new Error("❌ Received Alertmanager webhook with no alerts");
+        throw new Error('❌ Received Alertmanager webhook with no alerts');
     }
 
     const items: AlertItem[] = [];
 
     for (const alert of alerts) {
-        logger.info({ alert }, "👉 Processing alert");
+        logger.info({ alert }, '👉 Processing alert');
 
-        const { status, startsAt, endsAt, labels, annotations, generatorURL } = alert;
+        const {
+            status, startsAt, endsAt, labels, annotations, generatorURL,
+        } = alert;
 
-        if (typeof annotations !== "object" || annotations === null) {
-            throw new Error(
-                `❌ Received Alertmanager webhook with invalid alert annotations=[${annotations}]`,
-            );
+        if (typeof annotations !== 'object' || annotations === null) {
+            throw new Error(`❌ Received Alertmanager webhook with invalid alert annotations=[${annotations}]`);
         }
 
         const statusEmoji = ALERT_STATUSES[status as keyof typeof ALERT_STATUSES];
+
         if (!statusEmoji) {
-            throw new Error(
-                `❌ Received Alertmanager webhook with invalid alert status=[${status}]`,
-            );
+            throw new Error(`❌ Received Alertmanager webhook with invalid alert status=[${status}]`);
         }
 
-        if (typeof startsAt !== "string" || typeof endsAt !== "string") {
-            throw new Error(
-                `❌ Received Alertmanager webhook with invalid alert startsAt=[${startsAt}] or endsAt=[${endsAt}]`,
-            );
+        if (typeof startsAt !== 'string' || typeof endsAt !== 'string') {
+            throw new Error(`❌ Received Alertmanager webhook with invalid alert startsAt=[${startsAt}] or endsAt=[${endsAt}]`);
         }
 
-        if (typeof generatorURL !== "string") {
-            throw new Error(
-                `❌ Received Alertmanager webhook with invalid alert generatorURL=[${generatorURL}]`,
-            );
+        if (typeof generatorURL !== 'string') {
+            throw new Error(`❌ Received Alertmanager webhook with invalid alert generatorURL=[${generatorURL}]`);
         }
 
-        if (typeof labels !== "object" || labels === null) {
-            throw new Error(
-                `❌ Received Alertmanager webhook with invalid alert labels=[${labels}]`,
-            );
+        if (typeof labels !== 'object' || labels === null) {
+            throw new Error(`❌ Received Alertmanager webhook with invalid alert labels=[${labels}]`);
         }
 
-        const { severity, alertname, alertgroup, instance, job, pod } = labels;
+        const {
+            severity, alertname, alertgroup, instance, job, pod,
+        } = labels;
 
-        if (typeof alertname !== "string") {
-            throw new Error(
-                `❌ Received Alertmanager webhook with invalid alertname label=[${alertname}]`,
-            );
+        if (typeof alertname !== 'string') {
+            throw new Error(`❌ Received Alertmanager webhook with invalid alertname label=[${alertname}]`);
         }
 
-        if (typeof alertgroup !== "string") {
-            throw new Error(
-                `❌ Received Alertmanager webhook with invalid alertgroup label=[${alertgroup}]`,
-            );
+        if (typeof alertgroup !== 'string') {
+            throw new Error(`❌ Received Alertmanager webhook with invalid alertgroup label=[${alertgroup}]`);
         }
 
-        if (typeof instance !== "string") {
-            throw new Error(
-                `❌ Received Alertmanager webhook with invalid instance label=[${instance}]`,
-            );
+        if (typeof instance !== 'string') {
+            throw new Error(`❌ Received Alertmanager webhook with invalid instance label=[${instance}]`);
         }
 
-        if (typeof job !== "string") {
+        if (typeof job !== 'string') {
             throw new Error(`❌ Received Alertmanager webhook with invalid job label=[${job}]`);
         }
 
-        if (typeof pod !== "string") {
+        if (typeof pod !== 'string') {
             throw new Error(`❌ Received Alertmanager webhook with invalid pod label=[${pod}]`);
         }
 
@@ -158,7 +152,7 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): AlertIt
             `<blockquote expandable>${escapedAlertJson}</blockquote>`,
         ];
 
-        items.push({ message: lines.join("\n") });
+        items.push({ message: lines.join('\n') });
     }
 
     return items;
@@ -169,24 +163,24 @@ export async function handleAlertmanagerWebhook(requestBody: unknown): Promise<v
         const items = handleAlertmanagerWebhookInternal(requestBody);
 
         for (const { message } of items) {
-            logger.info("👉 Sending alert to Telegram");
+            logger.info('👉 Sending alert to Telegram');
             await sendTelegramMessage({
                 chatId: TG_CLUSTER_CHAT_ID,
                 text: message,
                 token: TG_TOKEN_SENAEV_COM_BOT,
-                parseMode: "HTML",
+                parseMode: 'HTML',
             });
-            logger.info("✅ Alert sent to Telegram");
+            logger.info('✅ Alert sent to Telegram');
         }
     } catch (err) {
-        logger.error(err, "❌ Error handling Alertmanager webhook");
+        logger.error(err, '❌ Error handling Alertmanager webhook');
 
-        logger.info("👉 Sending error to Telegram");
+        logger.info('👉 Sending error to Telegram');
         await sendTelegramMessage({
             text: `❌ Error handling Alertmanager webhook:\n${err instanceof Error ? err.message : String(err)}\n\nReceived body:\n${JSON.stringify(requestBody)}`,
             token: TG_TOKEN_SENAEV_COM_BOT,
             chatId: TG_CLUSTER_CHAT_ID,
         });
-        logger.info("✅ Error sent to Telegram");
+        logger.info('✅ Error sent to Telegram');
     }
 }

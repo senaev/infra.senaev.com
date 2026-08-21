@@ -1,11 +1,12 @@
-import { readFrontmatterList } from "../readFrontmatterList";
-import { appendAliasesToTitle } from "./appendAliasesToTitle";
-import { cutHistorySection } from "./cutHistorySection";
-import { ensureEmptyLineAfterTables } from "./ensureEmptyLineAfterTables";
-import { markTitleAsProvisioned } from "./markTitleAsProvisioned";
-import { replaceWikiLinksWithCode } from "./replaceWikiLinksWithCode";
-import { resolveImageEmbeds, type ResolvedEmbed } from "./resolveImageEmbeds";
-import { stripFrontmatter } from "./stripFrontmatter";
+import { readFrontmatterList } from '../readFrontmatterList';
+
+import { appendAliasesToTitle } from './appendAliasesToTitle';
+import { cutHistorySection } from './cutHistorySection';
+import { ensureEmptyLineAfterTables } from './ensureEmptyLineAfterTables';
+import { markTitleAsProvisioned } from './markTitleAsProvisioned';
+import { replaceWikiLinksWithCode } from './replaceWikiLinksWithCode';
+import { resolveImageEmbeds, type ResolvedEmbed } from './resolveImageEmbeds';
+import { stripFrontmatter } from './stripFrontmatter';
 
 export type RenderedNote = {
     markdown: string;
@@ -28,7 +29,7 @@ export type RenderedNote = {
  */
 export function renderNoteForTelegram(rawContent: string): RenderedNote {
     const { frontmatter, body } = stripFrontmatter(rawContent);
-    const aliases = readFrontmatterList(frontmatter, "aliases");
+    const aliases = readFrontmatterList(frontmatter, 'aliases');
 
     const withoutHistory = cutHistorySection(body);
     const { markdown: withImages, media } = resolveImageEmbeds(withoutHistory);
@@ -36,5 +37,8 @@ export function renderNoteForTelegram(rawContent: string): RenderedNote {
     const spaced = ensureEmptyLineAfterTables(withLinks);
     const marked = markTitleAsProvisioned(spaced.trim());
 
-    return { markdown: appendAliasesToTitle(marked, aliases), media };
+    return {
+        markdown: appendAliasesToTitle(marked, aliases),
+        media,
+    };
 }

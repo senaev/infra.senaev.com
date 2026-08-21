@@ -1,14 +1,16 @@
-import { readFile, stat } from "node:fs/promises";
-import { join } from "node:path";
-import { OBSIDIAN_VAULT_PATH } from "../env";
-import { logger } from "../logger";
-import { parseTelegramPostLink } from "./parseTelegramPostLink";
-import { readFrontmatterList } from "./readFrontmatterList";
-import { stripFrontmatter } from "./render/stripFrontmatter";
-import type { TrackedNote, TrackedTarget } from "./trackedNotes";
+import { readFile, stat } from 'node:fs/promises';
+import { join } from 'node:path';
+
+import { OBSIDIAN_VAULT_PATH } from '../env';
+import { logger } from '../logger';
+
+import { parseTelegramPostLink } from './parseTelegramPostLink';
+import { readFrontmatterList } from './readFrontmatterList';
+import { stripFrontmatter } from './render/stripFrontmatter';
+import type { TrackedNote, TrackedTarget } from './trackedNotes';
 
 /** Frontmatter key that opts a note into being mirrored to one or more Telegram posts. */
-export const TRACKING_KEY = "telegram-post-clone";
+export const TRACKING_KEY = 'telegram-post-clone';
 
 export type NoteTracking = {
     tracked: TrackedNote;
@@ -30,45 +32,61 @@ export async function readNoteTracking(relativePath: string): Promise<NoteTracki
 
     let content: string;
     let mtimeMs: number;
+
     try {
-        content = await readFile(absolutePath, "utf8");
+        content = await readFile(absolutePath, 'utf8');
         mtimeMs = (await stat(absolutePath)).mtimeMs;
     } catch {
         return null;
     }
 
     const { frontmatter } = stripFrontmatter(content);
+
     warnAboutRepeatedKey(relativePath, frontmatter);
 
     const links = readFrontmatterList(frontmatter, TRACKING_KEY);
+
     if (links.length === 0) {
         return null;
     }
 
     const targets: TrackedTarget[] = [];
+
     for (const link of links) {
         const target = parseTelegramPostLink(link);
+
         if (target === null) {
             logger.warn(
-                { relativePath, link },
-                `⚠️ Unsupported ${TRACKING_KEY} link — expected https://t.me/c/<channel>[/<message>]`,
+                {
+                    relativePath,
+                    link,
+                },
+                `⚠️ Unsupported ${TRACKING_KEY} link — expected https://t.me/c/<channel>[/<message>]`
             );
             continue;
         }
 
-        targets.push({ link, target });
+        targets.push({
+            link,
+            target,
+        });
     }
 
     if (targets.length === 0) {
         logger.warn(
             { relativePath },
-            `⚠️ Note has a ${TRACKING_KEY} key but no usable link, so it will not be synced`,
+            `⚠️ Note has a ${TRACKING_KEY} key but no usable link, so it will not be synced`
         );
+
         return null;
     }
 
     return {
-        tracked: { relativePath, targets, mtimeMs },
+        tracked: {
+            relativePath,
+            targets,
+            mtimeMs,
+        },
         content,
     };
 }
@@ -79,14 +97,16 @@ export async function readNoteTracking(relativePath: string): Promise<NoteTracki
  */
 function warnAboutRepeatedKey(relativePath: string, frontmatter: string): void {
     const occurrences = frontmatter
-        .split("\n")
+        .split('\n')
         .filter((line) => line.trim().startsWith(`${TRACKING_KEY}:`)).length;
 
     if (occurrences > 1) {
         logger.warn(
-            { relativePath, occurrences },
-            `⚠️ ${TRACKING_KEY} appears more than once — only the first is used, ` +
-                `list the links under a single key instead`,
+            {
+                relativePath,
+                occurrences,
+            },
+            `⚠️ ${TRACKING_KEY} appears more than once — only the first is used, ` + 'list the links under a single key instead'
         );
     }
 }

@@ -1,5 +1,5 @@
-import { readdirSync } from "node:fs";
-import { join } from "node:path";
+import { readdirSync } from 'node:fs';
+import { join } from 'node:path';
 
 /**
  * Depth-first search for a file named exactly `filename` anywhere under `dir`.
@@ -8,6 +8,7 @@ import { join } from "node:path";
  */
 export function findFileRecursively(dir: string, filename: string): string | null {
     let entries;
+
     try {
         entries = readdirSync(dir, { withFileTypes: true });
     } catch {
@@ -19,9 +20,11 @@ export function findFileRecursively(dir: string, filename: string): string | nul
 
         if (entry.isDirectory()) {
             const found = findFileRecursively(fullPath, filename);
+
             if (found) {
                 return found;
             }
+
             continue;
         }
 

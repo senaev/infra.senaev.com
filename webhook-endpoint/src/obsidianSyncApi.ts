@@ -1,4 +1,4 @@
-import { OBSIDIAN_SYNC_URL } from "./env";
+import { OBSIDIAN_SYNC_URL } from './env';
 
 export type ObsidianTaskInput = {
     title: string;
@@ -13,21 +13,18 @@ export type ObsidianTaskInput = {
  * Returns the target URL, or `null` if the short link id is not found.
  */
 export async function getShortLink(shortId: string): Promise<string | null> {
-    const response = await fetch(
-        `${OBSIDIAN_SYNC_URL}/short_links/${encodeURIComponent(shortId)}`,
-    );
+    const response = await fetch(`${OBSIDIAN_SYNC_URL}/short_links/${encodeURIComponent(shortId)}`);
 
     if (response.status === 404) {
         return null;
     }
 
     if (!response.ok) {
-        throw new Error(
-            `Failed to resolve short link: ${response.status} ${await response.text()}`,
-        );
+        throw new Error(`Failed to resolve short link: ${response.status} ${await response.text()}`);
     }
 
-    const body = (await response.json()) as { status: "ok"; url: string };
+    const body = (await response.json()) as { status: 'ok'; url: string };
+
     return body.url;
 }
 
@@ -41,19 +38,19 @@ export async function getShortLink(shortId: string): Promise<string | null> {
  */
 export async function createShortLink(link: string): Promise<string> {
     const response = await fetch(`${OBSIDIAN_SYNC_URL}/short_links`, {
-        method: "POST",
+        method: 'POST',
         headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
         },
         body: JSON.stringify({ link }),
     });
 
     const body = (await response.json()) as
-        | { status: "ok"; id: string }
-        | { status: "error"; message: string };
+        | { status: 'ok'; id: string }
+        | { status: 'error'; message: string };
 
-    if (!response.ok || body.status !== "ok") {
-        throw new Error(body.status === "error" ? body.message : `HTTP ${response.status}`);
+    if (!response.ok || body.status !== 'ok') {
+        throw new Error(body.status === 'error' ? body.message : `HTTP ${response.status}`);
     }
 
     return body.id;
@@ -66,17 +63,15 @@ export async function createShortLink(link: string): Promise<string> {
  */
 export async function addObsidianTask(task: ObsidianTaskInput): Promise<void> {
     const response = await fetch(`${OBSIDIAN_SYNC_URL}/tasks`, {
-        method: "POST",
+        method: 'POST',
         headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
         },
         body: JSON.stringify(task),
     });
 
     if (!response.ok) {
-        throw new Error(
-            `Failed to add Obsidian task: ${response.status} ${await response.text()}`,
-        );
+        throw new Error(`Failed to add Obsidian task: ${response.status} ${await response.text()}`);
     }
 }
 

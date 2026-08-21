@@ -1,3 +1,3 @@
-import { createLogger } from "senaev-utils/src/utils/createLogger";
+import { createLogger } from 'senaev-utils/src/utils/createLogger';
 
-export const logger = createLogger({ name: "cluster-helper" });
+export const logger = createLogger({ name: 'cluster-helper' });

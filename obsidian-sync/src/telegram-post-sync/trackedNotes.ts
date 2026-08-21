@@ -1,4 +1,4 @@
-import type { TelegramPostTarget } from "./parseTelegramPostLink";
+import type { TelegramPostTarget } from './parseTelegramPostLink';
 
 export type TrackedTarget = {
     /**

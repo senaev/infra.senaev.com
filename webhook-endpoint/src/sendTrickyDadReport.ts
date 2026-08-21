@@ -1,9 +1,12 @@
-import { sendTelegramMessage } from "senaev-utils/src/utils/TelegramApi/sendTelegramMessage";
-import { OBSIDIAN_TASKS_CHAT_ID, TRICKY_DAD_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from "./env";
-import { escapeTelegramMarkdownV2 } from "./escapeTelegramMarkdownV2";
-import { logger } from "./logger";
-import { HandleTrickyDadRequestResult } from "./processAlisaCommand";
-import { TRICKY_DAD_SOURCE_TO_CHAT_ID, TrickyDadSource } from "./TrickyDadSource";
+import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
+
+import {
+    OBSIDIAN_TASKS_CHAT_ID, TRICKY_DAD_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT,
+} from './env';
+import { escapeTelegramMarkdownV2 } from './escapeTelegramMarkdownV2';
+import { logger } from './logger';
+import { HandleTrickyDadRequestResult } from './processAlisaCommand';
+import { TRICKY_DAD_SOURCE_TO_CHAT_ID, TrickyDadSource } from './TrickyDadSource';
 
 export async function sendTrickyDadReport({
     command,
@@ -18,8 +21,7 @@ export async function sendTrickyDadReport({
     result: HandleTrickyDadRequestResult;
     replyToMessageId?: number;
 }): Promise<void> {
-    const reportChatId =
-        result.destination === "grocery" ? TRICKY_DAD_CHAT_ID : OBSIDIAN_TASKS_CHAT_ID;
+    const reportChatId = result.destination === 'grocery' ? TRICKY_DAD_CHAT_ID : OBSIDIAN_TASKS_CHAT_ID;
 
     const sourceChatId = TRICKY_DAD_SOURCE_TO_CHAT_ID[source];
 
@@ -33,18 +35,23 @@ export async function sendTrickyDadReport({
         // A `fallback` result is an unclassified command dumped into the grocery
         // list as-is, not a real shopping item — mark it ❌ so it is obvious in
         // the report that classification failed.
-        const itemEmoji = result.destination === "fallback" ? "❌" : "🛒";
-        parts.push(result.addedItems.map((item) => `${itemEmoji} *${esc(item)}*`).join("\n"));
+        const itemEmoji = result.destination === 'fallback' ? '❌' : '🛒';
+
+        parts.push(result.addedItems.map((item) => `${itemEmoji} *${esc(item)}*`).join('\n'));
     }
 
     if (result.addedTasks) {
-        parts.push(result.addedTasks.map((task) => `👉 *${esc(task)}*`).join("\n"));
+        parts.push(result.addedTasks.map((task) => `👉 *${esc(task)}*`).join('\n'));
     }
 
     const detailLines = [
         `🗣️ Команда: ${esc(command)}`,
         `📡 Откуда: ${esc(source)}`,
-        `📍 Куда: ${{ grocery: "🛒 grocery", task: "📌 task", fallback: "❌ fallback" }[result.destination]}`,
+        `📍 Куда: ${{
+            grocery: '🛒 grocery',
+            task: '📌 task',
+            fallback: '❌ fallback',
+        }[result.destination]}`,
         `⏱️ Время: ${esc(durationSeconds)}s`,
         `🤖 Время OpenRouter: ${esc(String(result.openRouterResponseTime))}ms`,
         result.writeResponseTime !== null
@@ -57,28 +64,35 @@ export async function sendTrickyDadReport({
     ].filter(Boolean) as string[];
 
     if (detailLines.length > 0) {
-        parts.push(`**> ${detailLines.join("\n> ")}||`);
+        parts.push(`**> ${detailLines.join('\n> ')}||`);
     }
 
-    const text = parts.join("\n");
+    const text = parts.join('\n');
 
-    logger.info({ reportChatId, source }, "👉 Sending tricky dad report");
+    logger.info({
+        reportChatId,
+        source,
+    }, '👉 Sending tricky dad report');
 
     await sendTelegramMessage({
         token: TG_TOKEN_SENAEV_COM_BOT,
         chatId: reportChatId,
-        parseMode: "MarkdownV2",
+        parseMode: 'MarkdownV2',
         text,
         ...(shouldReply && { replyToMessageId }),
     });
 
     const crossChat = sourceChatId && reportChatId !== sourceChatId;
+
     if (crossChat) {
-        logger.info({ sourceChatId, reportChatId }, "👉 Sending cross-chat report");
+        logger.info({
+            sourceChatId,
+            reportChatId,
+        }, '👉 Sending cross-chat report');
         await sendTelegramMessage({
             token: TG_TOKEN_SENAEV_COM_BOT,
             chatId: sourceChatId,
-            parseMode: "MarkdownV2",
+            parseMode: 'MarkdownV2',
             text,
             ...(replyToMessageId && { replyToMessageId }),
         });
@@ -92,14 +106,12 @@ export async function sendTrickyDadErrorReport({
     command: string;
     err: unknown;
 }): Promise<void> {
-    logger.info("👉 Sending tricky dad error report");
+    logger.info('👉 Sending tricky dad error report');
 
     await sendTelegramMessage({
         token: TG_TOKEN_SENAEV_COM_BOT,
         chatId: OBSIDIAN_TASKS_CHAT_ID,
-        parseMode: "MarkdownV2",
-        text: escapeTelegramMarkdownV2(
-            `❌ Failed to process command=[${command}]: ${err instanceof Error ? err.message : String(err)}`,
-        ),
+        parseMode: 'MarkdownV2',
+        text: escapeTelegramMarkdownV2(`❌ Failed to process command=[${command}]: ${err instanceof Error ? err.message : String(err)}`),
     });
 }

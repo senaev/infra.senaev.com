@@ -1,6 +1,6 @@
-import { randomInt } from "node:crypto";
+import { randomInt } from 'node:crypto';
 
-const ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz";
+const ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyz';
 
 // 6 chars over a 36-char alphabet gives ~2.2e9 possible ids, which is more than
 // enough to make brute-force/enumeration impractical for personal use while
@@ -10,10 +10,12 @@ const MAX_ATTEMPTS = 10;
 
 /** Uniform, unbiased draw per character. */
 function generateRandomShortLinkId(): string {
-    let id = "";
+    let id = '';
+
     for (let i = 0; i < ID_LENGTH; i++) {
         id += ALPHABET.charAt(randomInt(0, ALPHABET.length));
     }
+
     return id;
 }
 
@@ -25,6 +27,7 @@ function generateRandomShortLinkId(): string {
 export function generateUniqueShortLinkId(existingIds: { has: (id: string) => boolean }): string {
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
         const candidate = generateRandomShortLinkId();
+
         if (!existingIds.has(candidate)) {
             return candidate;
         }

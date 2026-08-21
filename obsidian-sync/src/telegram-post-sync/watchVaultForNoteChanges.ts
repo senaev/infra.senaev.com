@@ -1,7 +1,9 @@
-import { watch, type FSWatcher } from "node:fs";
-import { OBSIDIAN_VAULT_PATH } from "../env";
-import { logger } from "../logger";
-import { isIgnoredPath } from "./ignoredPaths";
+import { watch, type FSWatcher } from 'node:fs';
+
+import { OBSIDIAN_VAULT_PATH } from '../env';
+import { logger } from '../logger';
+
+import { isIgnoredPath } from './ignoredPaths';
 
 /** How long to wait before rebuilding a watch that died, so a failing mount can't spin. */
 const RESTART_DELAY_MS = 5_000;
@@ -12,6 +14,7 @@ let handler: ((relativePath: string) => void) | null = null;
 
 function startWatching(): void {
     const onNoteChanged = handler;
+
     if (onNoteChanged === null) {
         return;
     }
@@ -23,32 +26,39 @@ function startWatching(): void {
             }
 
             const relativePath = fileName.toString();
-            if (!relativePath.endsWith(".md") || isIgnoredPath(relativePath)) {
+
+            if (!relativePath.endsWith('.md') || isIgnoredPath(relativePath)) {
                 return;
             }
 
-            logger.info({ relativePath, eventType }, "📝 Detected note change");
+            logger.info({
+                relativePath,
+                eventType,
+            }, '📝 Detected note change');
             onNoteChanged(relativePath);
         });
     } catch (error) {
-        logger.error({ err: error }, "❌ Could not start the vault watcher, retrying");
+        logger.error({ err: error }, '❌ Could not start the vault watcher, retrying');
         setTimeout(startWatching, RESTART_DELAY_MS);
+
         return;
     }
 
-    watcher.on("error", (error) => {
-        const code = (error as NodeJS.ErrnoException).code;
-        if (code === "ENOSPC") {
+    watcher.on('error', (error) => {
+        const { code } = (error as NodeJS.ErrnoException);
+
+        if (code === 'ENOSPC') {
             logger.error(
                 { err: error },
-                "❌ inotify watch limit reached — raise fs.inotify.max_user_watches on the node",
+                '❌ inotify watch limit reached — raise fs.inotify.max_user_watches on the node'
             );
+
             return;
         }
 
         // A dead watcher is silent rather than loud: without rebuilding it, every later edit
         // would be missed and the only thing still syncing notes would be the reconcile pass.
-        logger.error({ err: error }, "❌ Vault watcher error, rebuilding the watch");
+        logger.error({ err: error }, '❌ Vault watcher error, rebuilding the watch');
         watcher?.close();
         watcher = null;
         setTimeout(startWatching, RESTART_DELAY_MS);
@@ -71,7 +81,7 @@ function startWatching(): void {
  * guarantees those notes keep syncing.
  */
 export function watchVaultForNoteChanges(onNoteChanged: (relativePath: string) => void): void {
-    logger.info({ vault: OBSIDIAN_VAULT_PATH }, "👀 Watching vault for note changes");
+    logger.info({ vault: OBSIDIAN_VAULT_PATH }, '👀 Watching vault for note changes');
 
     handler = onNoteChanged;
     startWatching();

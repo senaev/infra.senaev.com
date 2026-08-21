@@ -1,6 +1,7 @@
-import { sendTelegramMessage } from "senaev-utils/src/utils/TelegramApi/sendTelegramMessage";
-import { TG_CLUSTER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from "../env";
-import { logger } from "../logger";
+import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
+
+import { TG_CLUSTER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from '../env';
+import { logger } from '../logger';
 
 function describe(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
@@ -13,7 +14,10 @@ function describe(error: unknown): string {
  * called from event handlers where there is nobody left to catch.
  */
 export async function reportSyncError(context: string, error: unknown): Promise<void> {
-    logger.error({ err: error, context }, "❌ Telegram post sync failed");
+    logger.error({
+        err: error,
+        context,
+    }, '❌ Telegram post sync failed');
 
     try {
         await sendTelegramMessage({
@@ -23,6 +27,6 @@ export async function reportSyncError(context: string, error: unknown): Promise<
             disableLinkPreview: true,
         });
     } catch (alertError) {
-        logger.error({ err: alertError }, "❌ Failed to send the failure alert itself");
+        logger.error({ err: alertError }, '❌ Failed to send the failure alert itself');
     }
 }

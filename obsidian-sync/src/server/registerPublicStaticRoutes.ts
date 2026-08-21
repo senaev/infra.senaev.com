@@ -1,11 +1,14 @@
-import fastifyStatic from "@fastify/static";
-import { mkdirSync, realpathSync } from "node:fs";
-import { join } from "node:path";
-import { logger } from "../logger";
-import { PUBLIC_STATIC_DIR } from "../vaultPaths";
-import { VaultServer } from "./createVaultServer";
+import { mkdirSync, realpathSync } from 'node:fs';
+import { join } from 'node:path';
 
-export const PUBLIC_STATIC_PREFIX = "/public-static/";
+import fastifyStatic from '@fastify/static';
+
+import { logger } from '../logger';
+import { PUBLIC_STATIC_DIR } from '../vaultPaths';
+
+import { VaultServer } from './createVaultServer';
+
+export const PUBLIC_STATIC_PREFIX = '/public-static/';
 
 /**
  * Serves `<vault>/public-static` byte-for-byte, preserving the directory
@@ -37,10 +40,10 @@ export function registerPublicStaticRoutes(server: VaultServer): void {
         root: PUBLIC_STATIC_DIR,
         prefix: PUBLIC_STATIC_PREFIX,
         // `/folder/` and `/folder` both resolve to `/folder/index.html`.
-        index: ["index.html"],
+        index: ['index.html'],
         // A missing index must 404 rather than reveal the directory contents.
         list: false,
-        dotfiles: "deny",
+        dotfiles: 'deny',
         etag: true,
         lastModified: true,
         /**
@@ -62,5 +65,5 @@ export function registerPublicStaticRoutes(server: VaultServer): void {
         },
     });
 
-    logger.info({ publicStaticDir: PUBLIC_STATIC_DIR }, "✅ Public static routes registered");
+    logger.info({ publicStaticDir: PUBLIC_STATIC_DIR }, '✅ Public static routes registered');
 }

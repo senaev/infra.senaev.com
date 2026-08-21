@@ -9,20 +9,39 @@ import tseslint from 'typescript-eslint';
 
 const INDENT = 4;
 
+// senaev-utils is the only package with React code, so the React plugin and its rules are
+// scoped to it. The five node services never load them.
+const REACT_FILES = ['senaev-utils/**/*.{ts,tsx,jsx}'];
+
 /** @type {import('eslint').Linter.Config[]} */
 export default [
     {
-        ignores: ['dist/**'],
+        ignores: [
+            '**/dist/**',
+            '**/node_modules/**',
+        ],
     },
     { files: ['**/*.{js,mjs,cjs,ts,jsx,tsx}'] },
-    { languageOptions: { globals: globals.browser } },
+    {
+        languageOptions: {
+            globals: {
+                ...globals.node,
+                ...globals.browser,
+            },
+        },
+    },
     pluginJs.configs.recommended,
     ...tseslint.configs.recommended,
     {
         files: ['**/*.{ts,tsx}'],
         languageOptions: {
             parserOptions: {
-                project: './tsconfig.eslint.json',
+                // projectService resolves the nearest tsconfig.json per file, which is how one
+                // root config type-checks six packages that each own their compiler options.
+                // allowDefaultProject covers root config files no package includes.
+                projectService: {
+                    allowDefaultProject: ['*.ts'],
+                },
                 tsconfigRootDir: import.meta.dirname,
             },
         },
@@ -30,8 +49,102 @@ export default [
             '@typescript-eslint/await-thenable': 'error',
         },
     },
-    pluginReact.configs.flat.recommended,
-    pluginReactHooks.configs.flat.recommended,
+    {
+        files: REACT_FILES,
+        ...pluginReact.configs.flat.recommended,
+        settings: {
+            react: {
+                version: 'detect',
+            },
+        },
+    },
+    {
+        files: REACT_FILES,
+        ...pluginReactHooks.configs.flat.recommended,
+    },
+    {
+        files: REACT_FILES,
+        rules: {
+            'react/jsx-boolean-value': [
+                'error',
+                'always',
+            ],
+            'react/react-in-jsx-scope': 'off',
+            'react/jsx-indent': [
+                'error',
+                INDENT,
+            ],
+            'react/jsx-one-expression-per-line': [
+                'error',
+                { allow: 'literal' },
+            ],
+            'react/jsx-tag-spacing': [
+                'error',
+                {
+                    closingSlash: 'never',
+                    beforeSelfClosing: 'never',
+                    afterOpening: 'never',
+                    beforeClosing: 'never',
+                },
+            ],
+            'react/jsx-curly-spacing': [
+                'error',
+                {
+                    when: 'never',
+                    children: true,
+                },
+                { allowMultiline: true },
+            ],
+            'react/jsx-curly-newline': [
+                'error',
+                {
+                    singleline: 'consistent',
+                    multiline: 'consistent',
+                },
+            ],
+            'react/jsx-closing-bracket-location': [
+                'error',
+                'line-aligned',
+            ],
+            'react/jsx-curly-brace-presence': [
+                'error',
+                {
+                    props: 'always',
+                    children: 'always',
+                },
+            ],
+            'react/jsx-first-prop-new-line': [
+                'error',
+                'multiline',
+            ],
+            'react/jsx-max-props-per-line': [
+                'error',
+                {
+                    maximum: 1,
+                    when: 'always',
+                },
+            ],
+            'react/self-closing-comp': [
+                'error',
+                {
+                    component: true,
+                    html: true,
+                },
+            ],
+            'react/jsx-wrap-multilines': [
+                'error',
+                {
+                    declaration: 'never',
+                    assignment: 'never',
+                    return: 'never',
+                    arrow: 'never',
+                    condition: 'never',
+                    logical: 'never',
+                    prop: 'never',
+                },
+            ],
+        },
+    },
     {
         plugins: {
             '@stylistic': stylistic,
@@ -174,10 +287,6 @@ export default [
                     functions: 'never',
                 },
             ],
-            'react/jsx-boolean-value': [
-                'error',
-                'always',
-            ],
             'comma-spacing': [
                 'error',
                 {
@@ -212,7 +321,6 @@ export default [
                 'error',
                 'always',
             ],
-            'react/react-in-jsx-scope': 'off',
             'eol-last': [
                 'error',
                 'always',
@@ -231,28 +339,11 @@ export default [
             ],
             '@typescript-eslint/no-empty-object-type': 'off',
             'no-unreachable': ['warn'],
-            'react/jsx-indent': [
-                'error',
-                INDENT,
-            ],
-            'react/jsx-one-expression-per-line': [
-                'error',
-                { allow: 'literal' },
-            ],
             'space-in-parens': [
                 'error',
                 'never',
             ],
             'no-whitespace-before-property': 'error',
-            'react/jsx-tag-spacing': [
-                'error',
-                {
-                    closingSlash: 'never',
-                    beforeSelfClosing: 'never',
-                    afterOpening: 'never',
-                    beforeClosing: 'never',
-                },
-            ],
             'keyword-spacing': [
                 'error',
                 { after: true },
@@ -281,52 +372,15 @@ export default [
                 'error',
                 'never',
             ],
-            'react/jsx-curly-spacing': [
-                'error',
-                {
-                    when: 'never',
-                    children: true,
-                },
-                { allowMultiline: true },
-            ],
-            'react/jsx-curly-newline': [
-                'error',
-                {
-                    singleline: 'consistent',
-                    multiline: 'consistent',
-                },
-            ],
             'multiline-ternary': [
                 'error',
                 'always-multiline',
-            ],
-            'react/jsx-closing-bracket-location': [
-                'error',
-                'line-aligned',
             ],
             'comma-style': [
                 'error',
                 'last',
             ],
             '@stylistic/space-infix-ops': ['error'],
-            'react/jsx-curly-brace-presence': [
-                'error',
-                {
-                    props: 'always',
-                    children: 'always',
-                },
-            ],
-            'react/jsx-first-prop-new-line': [
-                'error',
-                'multiline',
-            ],
-            'react/jsx-max-props-per-line': [
-                'error',
-                {
-                    maximum: 1,
-                    when: 'always',
-                },
-            ],
             '@stylistic/func-call-spacing': [
                 'error',
                 'never',
@@ -455,13 +509,6 @@ export default [
                 'error',
                 { 'ts-ignore': 'allow-with-description' },
             ],
-            'react/self-closing-comp': [
-                'error',
-                {
-                    component: true,
-                    html: true,
-                },
-            ],
             '@stylistic/padding-line-between-statements': [
                 'error',
                 {
@@ -524,18 +571,6 @@ export default [
             semi: [
                 'error',
                 'always',
-            ],
-            'react/jsx-wrap-multilines': [
-                'error',
-                {
-                    declaration: 'never',
-                    assignment: 'never',
-                    return: 'never',
-                    arrow: 'never',
-                    condition: 'never',
-                    logical: 'never',
-                    prop: 'never',
-                },
             ],
             '@stylistic/space-unary-ops': [
                 'error',

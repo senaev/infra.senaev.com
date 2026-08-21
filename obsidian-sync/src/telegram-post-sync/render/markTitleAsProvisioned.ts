@@ -1,5 +1,5 @@
 /** Signals at a glance that a post is generated from the vault, not written by hand. */
-export const PROVISIONED_MARKER = "🪨";
+export const PROVISIONED_MARKER = '🪨';
 
 export const HEADING = /^(#{1,6})[ \t]+(.*)$/;
 
@@ -12,18 +12,26 @@ export const HEADING = /^(#{1,6})[ \t]+(.*)$/;
  * always being a first heading to anchor to.
  */
 export function markTitleAsProvisioned(body: string): string {
-    const lines = body.split("\n");
+    const lines = body.split('\n');
 
-    for (const [index, line] of lines.entries()) {
+    for (const [
+        index,
+        line,
+    ] of lines.entries()) {
         const match = HEADING.exec(line);
+
         if (!match) {
             continue;
         }
 
-        const [, hashes, title] = match;
+        const [
+            , hashes,
+            title,
+        ] = match;
+
         lines[index] = `${hashes} ${PROVISIONED_MARKER} ${title}`.trimEnd();
 
-        return lines.join("\n");
+        return lines.join('\n');
     }
 
     return `# ${PROVISIONED_MARKER}\n\n${body}`;

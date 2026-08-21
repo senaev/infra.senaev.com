@@ -1,9 +1,10 @@
-import { logger } from "../logger";
-import { reportSyncError } from "../telegram/reportSyncError";
-import { reconcileTrackedNotes } from "./reconcileTrackedNotes";
-import { scanVaultForTrackedNotes } from "./scanVaultForTrackedNotes";
-import { syncNoteToTelegramPost } from "./syncNoteToTelegramPost";
-import { watchVaultForNoteChanges } from "./watchVaultForNoteChanges";
+import { logger } from '../logger';
+import { reportSyncError } from '../telegram/reportSyncError';
+
+import { reconcileTrackedNotes } from './reconcileTrackedNotes';
+import { scanVaultForTrackedNotes } from './scanVaultForTrackedNotes';
+import { syncNoteToTelegramPost } from './syncNoteToTelegramPost';
+import { watchVaultForNoteChanges } from './watchVaultForNoteChanges';
 
 /**
  * How often to re-read the vault looking for changes the watcher failed to report.
@@ -26,13 +27,14 @@ function startReconcileLoop(): void {
 
     setInterval(() => {
         if (running) {
-            logger.info("⏭ Previous reconcile still running, skipping this round");
+            logger.info('⏭ Previous reconcile still running, skipping this round');
+
             return;
         }
 
         running = true;
         reconcileTrackedNotes()
-            .catch((error) => reportSyncError("Reconcile pass failed", error))
+            .catch((error) => reportSyncError('Reconcile pass failed', error))
             .finally(() => {
                 running = false;
             });
@@ -52,7 +54,7 @@ function startReconcileLoop(): void {
  * has something to compare against instead of pushing the whole vault a second time.
  */
 export async function startTelegramPostSync(): Promise<void> {
-    logger.info("🚀 Starting Telegram post sync");
+    logger.info('🚀 Starting Telegram post sync');
 
     watchVaultForNoteChanges((relativePath) => {
         void syncNoteToTelegramPost(relativePath);
@@ -67,14 +69,17 @@ export async function startTelegramPostSync(): Promise<void> {
     startReconcileLoop();
 
     logger.info(
-        { tracked: tracked.length, reconcileIntervalMs: RECONCILE_INTERVAL_MS },
-        "✅ Telegram post sync ready",
+        {
+            tracked: tracked.length,
+            reconcileIntervalMs: RECONCILE_INTERVAL_MS,
+        },
+        '✅ Telegram post sync ready'
     );
 }
 
 /** Fire-and-forget wrapper so a sync failure can never prevent the container starting. */
 export function startTelegramPostSyncInBackground(): void {
     startTelegramPostSync().catch((error) => {
-        void reportSyncError("Telegram post sync failed to start", error);
+        void reportSyncError('Telegram post sync failed to start', error);
     });
 }

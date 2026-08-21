@@ -1,5 +1,6 @@
-import { randomBytes } from "node:crypto";
-import { ProwlarrRelease } from "./prowlarr";
+import { randomBytes } from 'node:crypto';
+
+import { ProwlarrRelease } from './prowlarr';
 
 const SESSION_TTL_MS = 60 * 60 * 1000;
 
@@ -13,7 +14,11 @@ const sessions = new Map<string, TorrentSearchSession>();
 
 function pruneExpiredSessions(): void {
     const expiresBefore = Date.now() - SESSION_TTL_MS;
-    for (const [id, session] of sessions.entries()) {
+
+    for (const [
+        id,
+        session,
+    ] of sessions.entries()) {
         if (session.createdAt < expiresBefore) {
             sessions.delete(id);
         }
@@ -28,16 +33,19 @@ export function createTorrentSearchSession({
     releases: ProwlarrRelease[];
 }): string {
     pruneExpiredSessions();
-    const id = randomBytes(4).toString("hex");
+    const id = randomBytes(4).toString('hex');
+
     sessions.set(id, {
         createdAt: Date.now(),
         query,
         releases,
     });
+
     return id;
 }
 
 export function getTorrentSearchSession(id: string): TorrentSearchSession | undefined {
     pruneExpiredSessions();
+
     return sessions.get(id);
 }

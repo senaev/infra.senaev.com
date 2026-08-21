@@ -5,6 +5,7 @@ const HISTORY_HEADING = /\n##[ \t]*\[\[\d{4}-\d{2}-\d{2}\]\][ \t]*(?=\n|$)/;
 /** Truncates the note at the first dated history heading, dropping the heading too. */
 export function cutHistorySection(body: string): string {
     const match = HISTORY_HEADING.exec(body);
+
     if (!match) {
         return body;
     }

@@ -1,8 +1,9 @@
-import { logger } from "../logger";
-import { collectVaultMarkdownFiles } from "./collectVaultMarkdownFiles";
-import { readNoteTracking } from "./readNoteTracking";
-import { syncNoteToTelegramPost } from "./syncNoteToTelegramPost";
-import { deleteTrackedNote, getTrackedNote } from "./trackedNotes";
+import { logger } from '../logger';
+
+import { collectVaultMarkdownFiles } from './collectVaultMarkdownFiles';
+import { readNoteTracking } from './readNoteTracking';
+import { syncNoteToTelegramPost } from './syncNoteToTelegramPost';
+import { deleteTrackedNote, getTrackedNote } from './trackedNotes';
 
 /**
  * Re-reads the vault and pushes every tracked note whose file changed since its last push.
@@ -25,6 +26,7 @@ export async function reconcileTrackedNotes(): Promise<void> {
     const markdownFiles = await collectVaultMarkdownFiles();
 
     let resynced = 0;
+
     for (const relativePath of markdownFiles) {
         // Read the previous mtime before readNoteTracking, since the push below overwrites it.
         const previous = getTrackedNote(relativePath);
@@ -34,9 +36,10 @@ export async function reconcileTrackedNotes(): Promise<void> {
             if (deleteTrackedNote(relativePath)) {
                 logger.info(
                     { relativePath },
-                    "🚫 Note is no longer tracked, leaving the post as is",
+                    '🚫 Note is no longer tracked, leaving the post as is'
                 );
             }
+
             continue;
         }
 
@@ -45,14 +48,17 @@ export async function reconcileTrackedNotes(): Promise<void> {
         }
 
         logger.info(
-            { relativePath, known: previous !== undefined },
-            "🔁 Reconcile found a note the watcher did not report",
+            {
+                relativePath,
+                known: previous !== undefined,
+            },
+            '🔁 Reconcile found a note the watcher did not report'
         );
         await syncNoteToTelegramPost(relativePath);
         resynced += 1;
     }
 
     if (resynced > 0) {
-        logger.info({ resynced }, "✅ Reconcile pushed notes the watcher missed");
+        logger.info({ resynced }, '✅ Reconcile pushed notes the watcher missed');
     }
 }

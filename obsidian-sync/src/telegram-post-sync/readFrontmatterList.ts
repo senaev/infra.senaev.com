@@ -1,4 +1,4 @@
-import { unquoteFrontmatterItem } from "./unquoteFrontmatterItem";
+import { unquoteFrontmatterItem } from './unquoteFrontmatterItem';
 
 /**
  * Reads a list value out of a raw frontmatter block, supporting both YAML shapes
@@ -15,43 +15,49 @@ import { unquoteFrontmatterItem } from "./unquoteFrontmatterItem";
  * so callers never need a null check.
  */
 export function readFrontmatterList(frontmatter: string, key: string): string[] {
-    const lines = frontmatter.split("\n");
+    const lines = frontmatter.split('\n');
     const keyIndex = lines.findIndex((line) => line.trim().startsWith(`${key}:`));
+
     if (keyIndex === -1) {
         return [];
     }
 
     const keyLine = lines[keyIndex];
+
     if (keyLine === undefined) {
         return [];
     }
 
     const inlineValue = keyLine.trim().slice(key.length + 1).trim();
 
-    if (inlineValue.startsWith("[")) {
+    if (inlineValue.startsWith('[')) {
         return inlineValue
-            .replace(/^\[|\]$/g, "")
-            .split(",")
+            .replace(/^\[|\]$/g, '')
+            .split(',')
             .map(unquoteFrontmatterItem)
-            .filter((item) => item !== "");
+            .filter((item) => item !== '');
     }
 
     // A non-empty scalar on the key line means it isn't a list at all.
-    if (inlineValue !== "") {
+    if (inlineValue !== '') {
         const single = unquoteFrontmatterItem(inlineValue);
-        return single === "" ? [] : [single];
+
+        return single === '' ? [] : [single];
     }
 
     const items: string[] = [];
+
     for (const line of lines.slice(keyIndex + 1)) {
         const trimmed = line.trim();
-        if (!trimmed.startsWith("- ") && trimmed !== "-") {
+
+        if (!trimmed.startsWith('- ') && trimmed !== '-') {
             // Any other content ends the block — either the next key or a blank line.
             break;
         }
 
         const item = unquoteFrontmatterItem(trimmed.slice(1));
-        if (item !== "") {
+
+        if (item !== '') {
             items.push(item);
         }
     }

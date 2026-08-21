@@ -17,8 +17,8 @@ const WIKI_LINK = /\[\[([^\]]*)\]\]/gm;
  */
 export function replaceWikiLinksWithCode(body: string): string {
     return body.replace(WIKI_LINK, (_match, inner: string) => {
-        const parts = inner.split("|");
-        const title = parts.length > 1 ? parts.slice(1).join("|") : inner;
+        const parts = inner.split('|');
+        const title = parts.length > 1 ? parts.slice(1).join('|') : inner;
 
         return `\`${title.trim()}\``;
     });
