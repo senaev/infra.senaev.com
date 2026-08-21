@@ -51,8 +51,8 @@ describe('parallelsLimitQueue', () => {
             ]),
             promiseTimeout(0).then(() => {
                 expect(callback).toHaveBeenCalledTimes(2);
-                resolvers[0]();
-                resolvers[1]();
+                resolvers[0]!();
+                resolvers[1]!();
             }),
         ]);
 
@@ -67,7 +67,7 @@ describe('parallelsLimitQueue', () => {
             undefined,
         ]);
 
-        resolvers[2]();
+        resolvers[2]!();
 
         const results1 = await Promise.all([
             promise1,
@@ -88,7 +88,7 @@ describe('parallelsLimitQueue', () => {
             undefined,
         ]);
 
-        resolvers[3]();
+        resolvers[3]!();
 
         const results3 = await Promise.all([
             promise1,
@@ -132,20 +132,20 @@ describe('parallelsLimitQueue', () => {
         expect(resolvers.length).toBe(30);
 
         for (let i = 5; i < 25; i++) {
-            resolvers[i]();
+            resolvers[i]!();
         }
 
         await waitForFunction(() => resolvers.length === 50);
 
         const result = await Promise.all([
             Promise.race([
-                promises[0].then(() => {
+                promises[0]!.then(() => {
                     throw new Error('Promise 0 should NOT be resolved');
                 }),
                 promiseTimeout(10),
             ]),
             Promise.race([
-                promises[4].then(() => {
+                promises[4]!.then(() => {
                     throw new Error('Promise 4 should NOT be resolved');
                 }),
                 promiseTimeout(10),
@@ -153,13 +153,13 @@ describe('parallelsLimitQueue', () => {
             promises[5],
             promises[24],
             Promise.race([
-                promises[25].then(() => {
+                promises[25]!.then(() => {
                     throw new Error('Promise 50 should NOT be resolved');
                 }),
                 promiseTimeout(10),
             ]),
             Promise.race([
-                promises[99].then(() => {
+                promises[99]!.then(() => {
                     throw new Error('Promise 50 should NOT be resolved');
                 }),
                 promiseTimeout(10),

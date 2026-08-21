@@ -60,8 +60,12 @@ package's own `node_modules`. A fresh clone therefore needs `npm ci` at the root
 every package — this is what `.github/workflows/check.yml` does.
 
 Config lives at the root: `eslint.config.mjs` (React rules scoped to senaev-utils),
-`tsconfig.service.json` (extended by the five node services; senaev-utils keeps its own
-because it needs DOM libs and bundler resolution), and `vitest.config.ts`.
+`tsconfig.base.json` and `vitest.config.ts`.
+
+Every package extends `tsconfig.base.json`, so the library is held to the same strictness as
+the services — including `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`.
+senaev-utils overrides only `module`, `moduleResolution`, `esModuleInterop` and `lib`,
+because browser bundlers compile it too.
 
 `.github/workflows/check.yml` is called by every service build workflow via `needs: check`,
 so nothing is deployed before lint, typecheck and tests pass. It also runs on its own when

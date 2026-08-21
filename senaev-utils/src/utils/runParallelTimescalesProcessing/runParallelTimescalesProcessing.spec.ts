@@ -981,8 +981,8 @@ describe('runParallelTimescalesProcessing', () => {
         ]);
 
         // Should make more calls due to smaller buffer size
-        expect(extractItemsFunctions[0].mock.calls.length).toBeGreaterThan(1);
-        expect(extractItemsFunctions[1].mock.calls.length).toBeGreaterThan(1);
+        expect(extractItemsFunctions[0]!.mock.calls.length).toBeGreaterThan(1);
+        expect(extractItemsFunctions[1]!.mock.calls.length).toBeGreaterThan(1);
     });
 
     it('should handle negative time values', async () => {

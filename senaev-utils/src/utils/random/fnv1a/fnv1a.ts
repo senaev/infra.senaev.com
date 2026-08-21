@@ -7,7 +7,13 @@
 // FNV_PRIMES and FNV_OFFSETS from
 // http://www.isthe.com/chongo/tech/comp/fnv/index.html#FNV-param
 
-const FNV_PRIMES: Record<number, bigint> = {
+/**
+ * The bit sizes for which FNV parameters are defined. Typing the tables with this
+ * union rather than `number` makes every lookup below total.
+ */
+export type Fnv1aSize = 32 | 64 | 128 | 256 | 512 | 1024;
+
+const FNV_PRIMES: Record<Fnv1aSize, bigint> = {
     32: 16_777_619n,
     64: 1_099_511_628_211n,
     128: 309_485_009_821_345_068_724_781_371n,
@@ -16,7 +22,7 @@ const FNV_PRIMES: Record<number, bigint> = {
     1024: 5_016_456_510_113_118_655_434_598_811_035_278_955_030_765_345_404_790_744_303_017_523_831_112_055_108_147_451_509_157_692_220_295_382_716_162_651_878_526_895_249_385_292_291_816_524_375_083_746_691_371_804_094_271_873_160_484_737_966_720_260_389_217_684_476_157_468_082_573n,
 };
 
-const FNV_OFFSETS: Record<number, bigint> = {
+const FNV_OFFSETS: Record<Fnv1aSize, bigint> = {
     32: 2_166_136_261n,
     64: 14_695_981_039_346_656_037n,
     128: 144_066_263_297_769_815_596_495_629_667_062_367_629n,
@@ -27,19 +33,20 @@ const FNV_OFFSETS: Record<number, bigint> = {
 
 const cachedEncoder = new globalThis.TextEncoder();
 
-function fnv1aUint8Array(uint8Array: Uint8Array, size: number) {
+function fnv1aUint8Array(uint8Array: Uint8Array, size: Fnv1aSize) {
     const fnvPrime = FNV_PRIMES[size];
     let hash = FNV_OFFSETS[size];
 
     for (let index = 0; index < uint8Array.length; index++) {
-        hash ^= BigInt(uint8Array[index]);
+        // A `Uint8Array` has no holes, so an in-range index always yields a number.
+        hash ^= BigInt(uint8Array[index]!);
         hash = BigInt.asUintN(size, hash * fnvPrime);
     }
 
     return hash;
 }
 
-function fnv1aEncodeInto(string: string, size: number, utf8Buffer: Uint8Array) {
+function fnv1aEncodeInto(string: string, size: Fnv1aSize, utf8Buffer: Uint8Array) {
     if (utf8Buffer.length === 0) {
         throw new Error('The `utf8Buffer` option must have a length greater than zero');
     }
@@ -53,7 +60,8 @@ function fnv1aEncodeInto(string: string, size: number, utf8Buffer: Uint8Array) {
 
         remaining = remaining.slice(result.read);
         for (let index = 0; index < result.written; index++) {
-            hash ^= BigInt(utf8Buffer[index]);
+            // `written <= utf8Buffer.length`, and a `Uint8Array` has no holes.
+            hash ^= BigInt(utf8Buffer[index]!);
             hash = BigInt.asUintN(size, hash * fnvPrime);
         }
     }
@@ -67,7 +75,7 @@ export function fnv1a(
         size = 32,
         utf8Buffer,
     }: {
-        size?: number;
+        size?: Fnv1aSize;
         utf8Buffer?: Uint8Array;
     } = {}
 ) {

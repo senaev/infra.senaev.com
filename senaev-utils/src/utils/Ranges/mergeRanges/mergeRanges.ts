@@ -9,7 +9,9 @@ export function mergeRanges(ranges: Range[]): Range[] {
 
     const sorted = [...ranges].sort((a, b) => a[0] - b[0]);
 
-    const firstRange = sorted[0];
+    // `ranges` is non-empty (checked above), so `sorted` has a first element and
+    // every `sorted[i]` below `sorted.length` is present.
+    const firstRange = sorted[0]!;
 
     stack.push([
         firstRange[0],
@@ -17,7 +19,7 @@ export function mergeRanges(ranges: Range[]): Range[] {
     ]);
 
     for (let i = 1; i < sorted.length; i++) {
-        const range = sorted[i];
+        const range = sorted[i]!;
         const lastRange = stack.at(-1)!;
 
         if (lastRange[1] < range[0]) {

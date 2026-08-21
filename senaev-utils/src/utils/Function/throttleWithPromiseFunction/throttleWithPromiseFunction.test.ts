@@ -50,35 +50,35 @@ describe('throttleWithPromiseFunction', () => {
         await promiseTimeout(0);
 
         expect(callCount).toBe(0);
-        expect(resolvers[0].isResolved()).toBe(false);
+        expect(resolvers[0]!.isResolved()).toBe(false);
 
         throttled();
         throttled();
         throttled();
         expect(resolvers.length).toBe(1);
 
-        resolvers[0].resolve();
+        resolvers[0]!.resolve();
         throttled();
-        await resolvers[0].promise;
+        await resolvers[0]!.promise;
 
         expect(callCount).toBe(1);
-        expect(resolvers[0].isResolved()).toBe(true);
+        expect(resolvers[0]!.isResolved()).toBe(true);
         expect(resolvers.length).toBe(1);
 
         throttled();
         expect(callCount).toBe(1);
         expect(resolvers.length).toBe(2);
-        expect(resolvers[1].isResolved()).toBe(false);
+        expect(resolvers[1]!.isResolved()).toBe(false);
 
-        resolvers[1].resolve();
+        resolvers[1]!.resolve();
         throttled();
         throttled();
         throttled();
         throttled();
-        await resolvers[1].promise;
+        await resolvers[1]!.promise;
 
         expect(callCount).toBe(2);
-        expect(resolvers[1].isResolved()).toBe(true);
+        expect(resolvers[1]!.isResolved()).toBe(true);
         expect(resolvers.length).toBe(2);
     });
 });

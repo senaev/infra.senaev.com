@@ -60,14 +60,18 @@ export async function runParallelTimescalesProcessing<T extends ObjectWithTime[]
     while (true) {
         if (buffersToLoadData.length > 0) {
             await Promise.all(buffersToLoadData.map(async (index) => {
-                const { items, isLast } = await extractItemsFunctions[index](bufferSize);
+                // `buffersToLoadData` and `notFinishedBuffers` only ever hold indices
+                // produced by the `extractItemsFunctions.map` above, so every index
+                // addresses both a live extract function and a live buffer.
+                const { items, isLast } = await extractItemsFunctions[index]!(bufferSize);
+                const buffer = buffers[index]!;
 
                 if (isLast) {
-                    buffers[index].isLast = true;
+                    buffer.isLast = true;
                 }
 
-                buffers[index].array = items;
-                buffers[index].index = 0;
+                buffer.array = items;
+                buffer.index = 0;
 
                 if (items[0]) {
                     minHeapUniqueNumber.push(items[0].time);
@@ -82,7 +86,7 @@ export async function runParallelTimescalesProcessing<T extends ObjectWithTime[]
         const portion = new Array(timescalesCount) as ObjectsWithTimePortion<T>;
 
         for (const i of notFinishedBuffers.values()) {
-            const buffer = buffers[i];
+            const buffer = buffers[i]!;
 
             const item = buffer.array.at(buffer.index);
 

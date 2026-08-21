@@ -1,0 +1,12 @@
+{
+  "//": "Compiler options shared by every package in the repo. The default module setup targets the node services; senaev-utils overrides module, moduleResolution and lib because it is also consumed by browser builds.",
+  "compilerOptions": {
+    "module": "nodenext",
+    "target": "esnext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  }
+}

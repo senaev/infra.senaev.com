@@ -17,7 +17,9 @@ export function binarySearchClosest<T>(
 
     while (left < right - 1) {
         const midIndex = Math.floor((left + right) / 2);
-        const midValue = sortedArray[midIndex];
+        // The array is non-empty (checked above) and `left <= midIndex <= right`
+        // stays within it, so `left`, `right` and `midIndex` are all in bounds.
+        const midValue = sortedArray[midIndex]!;
 
         const compareResult = compareFunction(midValue);
 
@@ -32,8 +34,8 @@ export function binarySearchClosest<T>(
         }
     }
 
-    const leftDistance = Math.abs(compareFunction(sortedArray[left]));
-    const rightDistance = Math.abs(compareFunction(sortedArray[right]));
+    const leftDistance = Math.abs(compareFunction(sortedArray[left]!));
+    const rightDistance = Math.abs(compareFunction(sortedArray[right]!));
 
     if (leftDistance > rightDistance) {
         return right;

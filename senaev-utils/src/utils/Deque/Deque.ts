@@ -458,7 +458,8 @@ export class Deque<T> implements IterableWithIndexAccess<T> {
                 }
 
                 while (itemIndex < itemsLength) {
-                    this.push(items[itemIndex++]);
+                    // `itemIndex < itemsLength === items.length`, so this is in bounds.
+                    this.push(items[itemIndex++]!);
                 }
 
                 for (k = 0; k < leng; k++) {

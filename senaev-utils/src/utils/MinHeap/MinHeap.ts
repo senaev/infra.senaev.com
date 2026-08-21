@@ -31,13 +31,18 @@ export class MinHeap<T> {
         return top;
     }
 
+    /**
+     * `idx` starts at the last element and only ever moves to `parentIdx`, which
+     * is `>= 0` while `idx > 0`. Both indices are therefore always in bounds, so
+     * the non-null assertions below cannot fire.
+     */
     private _bubbleUp(): void {
         let idx = this._heap.length - 1;
 
         while (idx > 0) {
             const parentIdx = Math.floor((idx - 1) / 2);
-            const current = this._heap[idx];
-            const parent = this._heap[parentIdx];
+            const current = this._heap[idx]!;
+            const parent = this._heap[parentIdx]!;
 
             if (parent[0] <= current[0]) {
                 break;
@@ -50,6 +55,11 @@ export class MinHeap<T> {
         }
     }
 
+    /**
+     * The loop exits as soon as `leftIdx` is out of bounds, so `leftIdx`,
+     * `rightIdx` (guarded by `hasRight`), `idx` and `smallestIdx` are all in
+     * bounds wherever they are read below.
+     */
     private _bubbleDown(): void {
         let idx = 0;
 
@@ -65,15 +75,15 @@ export class MinHeap<T> {
             const hasRight = rightIdx < this._heap.length;
 
             if (hasRight) {
-                const rightIsPrior = this._heap[rightIdx][0] < this._heap[leftIdx][0];
+                const rightIsPrior = this._heap[rightIdx]![0] < this._heap[leftIdx]![0];
 
                 if (rightIsPrior) {
                     smallestIdx = rightIdx;
                 }
             }
 
-            const value = this._heap[idx];
-            const smallestValue = this._heap[smallestIdx];
+            const value = this._heap[idx]!;
+            const smallestValue = this._heap[smallestIdx]!;
 
             if (value[0] <= smallestValue[0]) {
                 break;

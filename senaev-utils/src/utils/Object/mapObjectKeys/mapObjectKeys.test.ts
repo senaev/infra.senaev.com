@@ -35,7 +35,7 @@ describe('mapObjectKeys', () => {
         };
 
         const entries = getObjectEntries(initialObject);
-        const lastIterableValue = entries[entries.length - 1][1];
+        const lastIterableValue = entries[entries.length - 1]![1];
 
         expect(mapObjectKeys(initialObject, () => 'propertyName')).to.eql({
             propertyName: lastIterableValue,

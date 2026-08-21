@@ -54,8 +54,8 @@ describe('getObjectEntries', () => {
         ]);
 
         // typescript passes through property name types
-        if (StringEnum[keys[0][0]] === StringEnum.prop1) {
-            expect(StringEnum[keys[1][0]]).to.eql(StringEnum.prop2);
+        if (StringEnum[keys[0]![0]] === StringEnum.prop1) {
+            expect(StringEnum[keys[1]![0]]).to.eql(StringEnum.prop2);
         }
     });
 });

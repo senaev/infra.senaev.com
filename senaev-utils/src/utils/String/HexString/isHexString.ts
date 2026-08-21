@@ -6,8 +6,8 @@ export function isHexString(str: unknown): str is HexString {
         return false;
     }
 
-    for (let key = 0; key < str.length; key++) {
-        if (HEX_SYMBOLS.indexOf(str[key].toLowerCase()) < 0) {
+    for (const char of str) {
+        if (HEX_SYMBOLS.indexOf(char.toLowerCase()) < 0) {
             return false;
         }
     }

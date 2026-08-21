@@ -8,7 +8,7 @@ import { mapObjectValues } from './mapObjectValues';
 
 describe('mapObjectValues', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const testCases: Record<string, any>[][] = [
+    const testCases: [Record<string, any>, Record<string, any>][] = [
         [
             {},
             {},

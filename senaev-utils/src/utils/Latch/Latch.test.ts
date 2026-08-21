@@ -68,7 +68,7 @@ describe('Latch', () => {
 
         expect(spy1.mock.calls.length).toBe(0);
         expect(spy2.mock.calls.length).toBe(1);
-        expect(spy2.mock.calls[0][0]).to.equal(obj);
+        expect(spy2.mock.calls[0]![0]).to.equal(obj);
 
         expect(latch.isDispatched()).to.equal(true);
         expect(latch.getValue()).to.equal(obj);
@@ -88,7 +88,7 @@ describe('Latch', () => {
         expect(latch.isDispatched()).to.equal(true);
         expect(latch.getValue()).to.equal(undefined);
         expect(spy.mock.calls.length).toBe(1);
-        expect(spy.mock.calls[0][0]).to.equal(undefined);
+        expect(spy.mock.calls[0]![0]).to.equal(undefined);
     });
 
     test('can pass callback into constructor', () => {

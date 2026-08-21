@@ -831,7 +831,7 @@ describe('createRemoteDataProcessingWindow', () => {
 
                     resolve(extractItemsFunction);
 
-                    return results[i];
+                    return results[i]!;
                 },
             });
         });

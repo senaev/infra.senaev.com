@@ -33,7 +33,7 @@ describe('makeAsyncFunctionCallsSimultaneous', () => {
         ];
 
         const asyncOperation = vi.fn(async (num: number) => {
-            await promiseTimeout(delays[num]);
+            await promiseTimeout(delays[num]!);
             executionOrder.push(num);
         });
 

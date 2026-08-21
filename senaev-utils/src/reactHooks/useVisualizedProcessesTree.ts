@@ -40,7 +40,7 @@ function reconstructAllNodesMap(allNodesMap: AllNodesMap, tree: VisualizedProces
 
         for (let i = node.children.length - 1; i >= 0; i--) {
             stack.push({
-                node: node.children[i],
+                node: node.children[i]!,
                 parent: node.id,
             });
         }

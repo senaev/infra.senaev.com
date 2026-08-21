@@ -12,21 +12,24 @@ export function collectIntegerSequences(integers: Integer[]): IntegerSequence[] 
         return [];
     }
 
+    // `integers` is non-empty (checked above), so index 0 and every `i` below
+    // `integers.length` address a real element.
     const sequences: IntegerSequence[] = [
         {
-            start: integers[0],
+            start: integers[0]!,
             length: 1,
         },
     ];
 
     for (let i = 1; i < integers.length; i += 1) {
         const lastSequence = sequences.at(-1)!;
+        const current = integers[i]!;
 
-        if (lastSequence.start + lastSequence.length === integers[i]) {
+        if (lastSequence.start + lastSequence.length === current) {
             lastSequence.length += 1;
         } else {
             sequences.push({
-                start: integers[i],
+                start: current,
                 length: 1,
             });
         }

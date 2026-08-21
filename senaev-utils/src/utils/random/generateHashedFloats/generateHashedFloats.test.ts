@@ -51,7 +51,7 @@ describe('generateHashedFloats', () => {
 
         result.forEach((float) => {
             for (let i = 0; i < 4; i++) {
-                if (float >= quartiles[i] && float < quartiles[i + 1]) {
+                if (float >= quartiles[i]! && float < quartiles[i + 1]!) {
                     counts[i]++;
                     break;
                 }

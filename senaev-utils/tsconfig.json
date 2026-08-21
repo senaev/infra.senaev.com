@@ -1,19 +1,17 @@
 {
+    "//": "Overrides the node-oriented module setup from the base config: this package ships raw TypeScript that browser bundlers also compile.",
+    "extends": "../tsconfig.base.json",
     "compilerOptions": {
-        "target": "ES2024",
         "module": "ESNext",
         "moduleResolution": "bundler",
-        "strict": true,
         "esModuleInterop": true,
-        "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": true,
-        "outDir": "dist",
-        "rootDir": "src",
         "lib": [
             "DOM",
             "DOM.Iterable",
             "ESNext"
         ],
+        "outDir": "dist",
+        "rootDir": "src"
     },
     "include": [
         "src/**/*"
