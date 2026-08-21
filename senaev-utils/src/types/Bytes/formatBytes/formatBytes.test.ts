@@ -72,4 +72,27 @@ describe('formatBytes', () => {
     test('should round to the nearest whole number for non-byte units from ten and above', () => {
         expect(formatBytes(10702848 as Bytes)).toBe('10 MB');
     });
+
+    describe('fractionDigits', () => {
+        test('renders a fixed number of digits regardless of unit or magnitude', () => {
+            expect(formatBytes(0 as Bytes, { fractionDigits: 2 })).toBe('0.00 B');
+            expect(formatBytes(1280 as Bytes, { fractionDigits: 2 })).toBe('1.25 KB');
+            expect(formatBytes(10702848 as Bytes, { fractionDigits: 2 })).toBe('10.21 MB');
+        });
+
+        test('accepts zero digits', () => {
+            expect(formatBytes(1536 as Bytes, { fractionDigits: 0 })).toBe('2 KB');
+        });
+    });
+
+    describe('values outside the unit table', () => {
+        test('clamps the unit instead of running past the last one', () => {
+            // 1 PB has no unit of its own, so it stays in TB.
+            expect(formatBytes((1024 ** 5) as Bytes)).toBe('1024 TB');
+        });
+
+        test('renders a negative value in bytes rather than producing NaN', () => {
+            expect(formatBytes(-5 as Bytes)).toBe('-5 B');
+        });
+    });
 });

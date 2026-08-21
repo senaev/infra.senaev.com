@@ -4,7 +4,7 @@ import {
     it,
 } from 'vitest';
 
-import { isObject } from './';
+import { isObject } from './Object';
 
 describe('isObject', () => {
     const testCases = [

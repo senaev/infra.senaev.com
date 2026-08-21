@@ -1,3 +1,6 @@
+/**
+ * Returns 'true' if {@param value} is {@type object}
+ */
 export function isObject<T extends Record<string, unknown> = Record<string, unknown>>(value: unknown): value is T {
     const type = typeof value;
 
