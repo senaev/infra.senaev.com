@@ -41,7 +41,7 @@ jobs:
       # package needs its dependencies present. There is no workspace hoisting to rely on.
       - name: Install package dependencies
         run: |
-          for package in cluster-helper media-server-helper obsidian-sync senaev-utils vpn-subscription webhook-endpoint; do
+          for package in cluster-helper media-server-helper obsidian-sync senaev-utils vpn-subscription; do
             echo "::group::npm ci $package"
             npm ci --prefix "$package"
             echo "::endgroup::"
