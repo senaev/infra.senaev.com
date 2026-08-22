@@ -1,4 +1,22 @@
 {{- if .Values.clusterHelper.enabled }}
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: short-links-path-prefix
+  namespace: {{ .Release.Namespace }}
+spec:
+  addPrefix:
+    prefix: /short_links
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: public-static-path-prefix
+  namespace: {{ .Release.Namespace }}
+spec:
+  addPrefix:
+    prefix: /public-static
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -28,43 +46,142 @@ spec:
         fsGroup: 1000
       nodeSelector:
         vps: {{ .Values.clusterHelper.vps }}
+      initContainers:
+        # The app runs as UID 1000, but both of these are hostPath directories:
+        # DirectoryOrCreate makes them root-owned, and fsGroup does not apply to
+        # hostPath. Without this repair the torrent outbox writes fail at runtime
+        # with EACCES rather than at startup, so fix ownership before the app boots.
+        - name: fix-host-path-permissions
+          image: busybox:1.37.0-uclibc
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+          command:
+            - sh
+            - -c
+            - |
+              for dir in /prowlarr-config /torrent-outbox; do
+                mkdir -p "$dir"
+                chown -R 1000:1000 "$dir"
+                chmod -R u+rwX,g+rwX "$dir"
+                bad_paths="$(find "$dir" \( -not -user 1000 -o -not -group 1000 -o -not -perm -u+w \) | head -n 20)"
+                if [ -n "$bad_paths" ]; then
+                  echo "Permissions in $dir are still invalid after repair:"
+                  echo "$bad_paths"
+                  exit 1
+                fi
+              done
+          volumeMounts:
+            - name: prowlarr-config
+              mountPath: /prowlarr-config
+            - name: torrent-outbox
+              mountPath: /torrent-outbox
       containers:
         - name: cluster-helper
           image: ghcr.io/senaev/cluster-helper:latest
+          ports:
+            # Only "webhook" is exposed through an ingress. "internal" carries the
+            # unauthenticated routes and must stay reachable from inside the cluster only.
+            - containerPort: 80
+              name: internal
+            - containerPort: 3000
+              name: webhook
           env:
+            - name: WEBHOOK_DOMAIN
+              value: {{ .Values.clusterHelper.webhookDomain }}
+            - name: TG_CLUSTER_CHAT_ID
+              value: {{ .Values.telegramClusterChatId | quote }}
+            - name: TG_MEDIA_SERVER_CHAT_ID
+              value: {{ .Values.telegramMediaServerChatId | quote }}
+            - name: TG_VPN_SUBSCRIPTION_CHAT_ID
+              value: {{ .Values.telegramVpnSubscriptionChatId | quote }}
+            - name: OBSIDIAN_TASKS_CHAT_ID
+              value: {{ .Values.obsidianTasksChatId | quote }}
+            - name: TRICKY_DAD_CHAT_ID
+              value: {{ .Values.trickyDadChatId | quote }}
+            - name: TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID
+              value: {{ .Values.telegramSenaevComBotDirectMessageWithOwnerChatId | quote }}
+            - name: PROWLARR_URL
+              value: http://prowlarr:{{ .Values.prowlarr.webuiPort }}
+            - name: PROWLARR_CONFIG_FILE
+              value: /prowlarr-config/config.xml
+            - name: OBSIDIAN_SYNC_URL
+              value: "http://obsidian-sync:8080"
             - name: TG_TOKEN_SENAEV_COM_BOT
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
                   key: TG_TOKEN_SENAEV_COM_BOT
                   optional: false
-            - name: TG_CLUSTER_CHAT_ID
-              value: {{ .Values.telegramClusterChatId | quote }}
-            - name: TG_MEDIA_SERVER_CHAT_ID
-              value: {{ .Values.telegramMediaServerChatId | quote }}
-          ports:
-            - containerPort: 80
-              name: internal
-            - containerPort: 3000
-              name: webhook
+            - name: ALISA_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: ALISA_WEBHOOK_SECRET
+                  optional: false
+            - name: OPENROUTER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: OPENROUTER_API_KEY
+                  optional: false
+            - name: GROQ_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: GROQ_API_KEY
+                  optional: false
+            - name: SUPABASE_PROJECT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: SUPABASE_PROJECT_URL
+                  optional: false
+            - name: SUPABASE_PUBLISHABLE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: SUPABASE_PUBLISHABLE_KEY
+                  optional: false
           livenessProbe:
             httpGet:
               path: /health/live
               port: internal
             initialDelaySeconds: 5
             periodSeconds: 5
+          # Only flips ready once both listeners are up and the Telegram webhook is
+          # registered, so traffic is never sent to a half-started pod.
           readinessProbe:
             httpGet:
               path: /health/ready
               port: internal
             initialDelaySeconds: 5
             periodSeconds: 5
+          volumeMounts:
+            - name: torrent-outbox
+              mountPath: /torrent-outbox
+            - name: prowlarr-config
+              mountPath: /prowlarr-config
+              readOnly: true
+      volumes:
+        - name: torrent-outbox
+          hostPath:
+            # Path deliberately still says webhook-endpoint: it holds the live outbox
+            # queue on the node, and renaming it would orphan queued torrents.
+            path: {{ .Values.clusterRootPath }}/{{ .Values.clusterHelper.torrentOutboxVolumePath }}
+            type: DirectoryOrCreate
+        - name: prowlarr-config
+          hostPath:
+            path: {{ .Values.clusterRootPath }}/{{ .Values.prowlarr.volumePath }}/config
+            type: DirectoryOrCreate
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: cluster-helper
   namespace: {{ .Release.Namespace }}
+  labels:
+    app: cluster-helper
 spec:
   type: ClusterIP
   selector:

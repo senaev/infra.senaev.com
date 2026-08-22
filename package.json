@@ -8,7 +8,7 @@
   "scripts": {
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "typecheck": "tsc -p senaev-utils --noEmit && tsc -p cluster-helper --noEmit && tsc -p media-server-helper --noEmit && tsc -p obsidian-sync --noEmit && tsc -p vpn-subscription --noEmit && tsc -p webhook-endpoint --noEmit",
+    "typecheck": "tsc -p senaev-utils --noEmit && tsc -p cluster-helper --noEmit && tsc -p media-server-helper --noEmit && tsc -p obsidian-sync --noEmit && tsc -p vpn-subscription --noEmit",
     "test": "vitest --run",
     "test:watch": "vitest",
     "simple-checks": "concurrently --prefix-colors auto --timings npm:lint npm:typecheck npm:test",

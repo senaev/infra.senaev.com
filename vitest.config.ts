@@ -12,7 +12,6 @@ const PACKAGES = [
     'obsidian-sync',
     'senaev-utils',
     'vpn-subscription',
-    'webhook-endpoint',
 ];
 
 // obsidian-sync validates its environment at import time, so its tests need values in place

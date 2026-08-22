@@ -15,7 +15,7 @@ export const PUBLIC_STATIC_PREFIX = '/public-static/';
  * layout: `GET /public-static/folder/index.html` reads
  * `<vault>/public-static/folder/index.html`. This is what backs
  * https://static.senaev.com, which Traefik rewrites onto this prefix before
- * passing it to webhook-endpoint, which in turn proxies it here.
+ * passing it to cluster-helper, which in turn proxies it here.
  *
  * @fastify/static does the work on purpose rather than a hand-written file
  * read. Because the request path is meaningful here — unlike the `?file=`

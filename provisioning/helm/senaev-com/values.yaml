@@ -188,6 +188,10 @@ jellyfin:
 clusterHelper:
   enabled: true
   vps: hetzner
+  # Public host for the Telegram webhook, Alisa and the short-link redirector. The app
+  # registers this URL with Telegram at startup, so it must keep matching the ingress.
+  webhookDomain: webhook-endpoint.senaev.com
+  torrentOutboxVolumePath: volumes/webhook-endpoint/torrent-outbox
 
 logGenerator:
   enabled: true
@@ -198,12 +202,6 @@ mediaServerHelper:
   vps: senaev-media
   percentTriggerToRemove: 98
   percentRemoveTarget: 95
-
-webhookEndpoint:
-  enabled: true
-  vps: hetzner
-  webhookDomain: webhook-endpoint.senaev.com
-  torrentOutboxVolumePath: volumes/webhook-endpoint/torrent-outbox
 
 obsidianSync:
   enabled: true
@@ -258,7 +256,7 @@ ingress:
           service: jellyfin
           port: 8096
         - host: webhook-endpoint.senaev.com
-          service: webhook-endpoint
+          service: cluster-helper
           port: 3000
         - host: vpn-subscription.senaev.com
           service: vpn-subscription
@@ -271,14 +269,14 @@ ingress:
       middleware: short-links-path-prefix
       hosts:
         - host: s.senaev.com
-          service: webhook-endpoint
+          service: cluster-helper
           port: 3000
     - name: senaev-com-public-static
       className: traefik-hetzner
       middleware: public-static-path-prefix
       hosts:
         - host: static.senaev.com
-          service: webhook-endpoint
+          service: cluster-helper
           port: 3000
     - name: senaev-com-xray-fallback
       className: traefik-hetzner

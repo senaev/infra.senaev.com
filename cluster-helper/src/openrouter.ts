@@ -33,7 +33,7 @@ export async function callOpenRouter<T>({
                 Authorization: `Bearer ${OPENROUTER_API_KEY}`,
                 'Content-Type': 'application/json',
                 'HTTP-Referer': `https://${WEBHOOK_DOMAIN}`,
-                'X-Title': 'senaev.com webhook-endpoint',
+                'X-Title': 'senaev.com cluster-helper',
             },
             body: JSON.stringify({
                 model: OPENROUTER_MODEL,
