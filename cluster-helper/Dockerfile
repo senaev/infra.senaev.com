@@ -20,5 +20,8 @@ RUN npm ci --omit=dev
 COPY senaev-utils/src /app/senaev-utils/src
 COPY cluster-helper /app/cluster-helper
 
+# 80 is the internal listener: unauthenticated routes for alertmanager,
+# qbittorrent and vpn-subscription, reachable only inside the cluster.
+# 3000 is the public listener behind the ingresses. See src/index.ts.
 EXPOSE 80 3000
 CMD ["npm", "start"]
