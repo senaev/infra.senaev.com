@@ -11,7 +11,7 @@ on:
       - "package.json"
       - "package-lock.json"
       - "eslint.config.mjs"
-      - "tsconfig.service.json"
+      - "tsconfig.base.json"
       - "vitest.config.ts"
       - ".github/workflows/check.yml"
   pull_request:
@@ -47,11 +47,8 @@ jobs:
             echo "::endgroup::"
           done
 
-      - name: Lint
-        run: npm run lint
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Test
-        run: npm test
+      # One step, the same command the pre-push hook runs, so local and CI cannot drift.
+      # concurrently runs all three at once and lets each finish even when another fails,
+      # so a red build reports every problem instead of only the first one.
+      - name: Lint, typecheck and test
+        run: npm run simple-checks

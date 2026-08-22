@@ -50,10 +50,17 @@ by one, and Docker build contexts stay per-package.
 Run all three checks from the repository root; the packages have no check scripts of their own:
 
 ```
-npm run lint        # eslint, one root eslint.config.mjs for all packages
-npm run typecheck   # tsc --noEmit per package, in sequence
-npm test            # vitest, one project per package
+npm run simple-checks   # all three at once, concurrently -- what the pre-push hook runs
+npm run lint            # eslint, one root eslint.config.mjs for all packages
+npm run typecheck       # tsc --noEmit per package, in sequence
+npm test                # vitest, one project per package
 ```
+
+`simple-checks` runs the other three with `concurrently`, so it takes about as long as the
+slowest one instead of their sum. Output is streamed live behind a coloured `[lint]`,
+`[typecheck]` or `[test]` prefix, and a timings table is printed at the end. Every check runs
+to completion even when another fails, so one push reports every problem at once; the exit
+code is non-zero if any of them failed.
 
 Because there is no workspace hoisting, typed linting, `tsc` and the tests each need the
 package's own `node_modules`. A fresh clone therefore needs `npm ci` at the root **and** in

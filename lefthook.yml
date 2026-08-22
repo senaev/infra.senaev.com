@@ -1,12 +1,10 @@
-# Pre-push only, on purpose. The same three checks at commit time would run on every
-# commit of a branch and get bypassed with --no-verify; at push time they run once.
-# CI runs them again regardless, so this hook is a fast local signal, not the gate.
+# Pre-push only, on purpose. The same checks at commit time would run on every commit of a
+# branch and get bypassed with --no-verify; at push time they run once. CI runs them again
+# regardless, so this hook is a fast local signal, not the gate.
+#
+# One command, because `npm run simple-checks` already runs lint, typecheck and the tests
+# concurrently and prints a single summary.
 pre-push:
-  parallel: false
   commands:
-    lint:
-      run: npm run lint
-    typecheck:
-      run: npm run typecheck
-    test:
-      run: npm test
+    simple-checks:
+      run: npm run simple-checks
