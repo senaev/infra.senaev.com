@@ -173,6 +173,48 @@ export function createTorrentSearchView({
     };
 }
 
+// A Prowlarr search can run for minutes, and until it answers the chat showed nothing at
+// all, so a slow search and a dead bot looked the same. The placeholder this builds is sent
+// straight away and then edited in place, first with the elapsed time and finally with the
+// results, which is why it opens with the same `🔎 <query>` line as buildTorrentSearchMessage.
+export function buildTorrentSearchProgressText({
+    elapsedSeconds,
+    query,
+}: {
+    elapsedSeconds: number;
+    query: string;
+}): string {
+    return [
+        `🔎 ${codeTelegramMarkdownV2(query)}`,
+        escapeTelegramMarkdownV2(`⏳ Ищу в Prowlarr… ${elapsedSeconds} сек`),
+    ].join('\n\n');
+}
+
+export async function editTorrentSearchMessage({
+    chatId,
+    messageId,
+    replyMarkup,
+    text,
+}: {
+    chatId: number | string;
+    messageId: number;
+    replyMarkup?: InlineKeyboardMarkup | undefined;
+    text: string;
+}): Promise<void> {
+    await callTelegramApi({
+        method: 'editMessageText',
+        token: TG_TOKEN_SENAEV_COM_BOT,
+        body: {
+            chat_id: chatId,
+            message_id: messageId,
+            text,
+            parse_mode: 'MarkdownV2',
+            link_preview_options: { is_disabled: true },
+            ...(replyMarkup && { reply_markup: replyMarkup }),
+        },
+    });
+}
+
 export function getTorrentSearchView({
     page,
     sessionId,

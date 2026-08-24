@@ -9,10 +9,21 @@ import { logger } from './logger';
 import { parseTextOrAudioMessageFromTelegram } from './parseTextOrAudioMessageFromTelegram';
 import { searchProwlarr } from './prowlarr';
 import { enqueueTorrentFile } from './torrentOutbox';
-import { createTorrentSearchView } from './torrentSearchTelegram';
+import {
+    buildTorrentSearchProgressText,
+    createTorrentSearchView,
+    editTorrentSearchMessage,
+} from './torrentSearchTelegram';
 
-async function processMediaServerChatMessageInternal({ message }: {
+const PROGRESS_UPDATE_INTERVAL_MS = 10_000;
+
+interface SearchProgress {
+    messageId?: number;
+}
+
+async function processMediaServerChatMessageInternal({ message, progress }: {
     message: TelegramMessage;
+    progress: SearchProgress;
 }): Promise<string | undefined> {
     const text = await parseTextOrAudioMessageFromTelegram(message);
 
@@ -26,7 +37,44 @@ async function processMediaServerChatMessageInternal({ message }: {
         }
 
         logger.info({ query }, '👉 Searching torrents in Prowlarr');
-        const releases = await searchProwlarr(query);
+
+        const { message_id: progressMessageId } = await sendTelegramMessage({
+            token: TG_TOKEN_SENAEV_COM_BOT,
+            chatId: TG_MEDIA_SERVER_CHAT_ID,
+            parseMode: 'MarkdownV2',
+            disableLinkPreview: true,
+            text: buildTorrentSearchProgressText({
+                elapsedSeconds: 0,
+                query,
+            }),
+            replyToMessageId: message.message_id,
+        });
+
+        // Hand the id to the caller so a failed search reports into this same message
+        // instead of leaving the placeholder counting forever next to a new error message.
+        progress.messageId = progressMessageId;
+
+        const searchStartedAt = Date.now();
+        const progressTimer = setInterval(() => {
+            void editTorrentSearchMessage({
+                chatId: TG_MEDIA_SERVER_CHAT_ID,
+                messageId: progressMessageId,
+                text: buildTorrentSearchProgressText({
+                    elapsedSeconds: Math.round((Date.now() - searchStartedAt) / 1000),
+                    query,
+                }),
+            }).catch((err: unknown) => {
+                logger.warn(err, '⚠️ Failed to update torrent search progress message');
+            });
+        }, PROGRESS_UPDATE_INTERVAL_MS);
+
+        let releases;
+
+        try {
+            releases = await searchProwlarr(query);
+        } finally {
+            clearInterval(progressTimer);
+        }
 
         logger.info({ count: releases.length }, '✅ Found torrent releases');
 
@@ -36,25 +84,12 @@ async function processMediaServerChatMessageInternal({ message }: {
             releases,
         });
 
-        const torrentSearchMessage = {
-            token: TG_TOKEN_SENAEV_COM_BOT,
+        await editTorrentSearchMessage({
             chatId: TG_MEDIA_SERVER_CHAT_ID,
-            parseMode: 'MarkdownV2',
-            disableLinkPreview: true,
+            messageId: progressMessageId,
+            replyMarkup: view.replyMarkup,
             text: view.text,
-            replyToMessageId: message.message_id,
-        } as const;
-
-        if (view.replyMarkup) {
-            await sendTelegramMessage({
-                ...torrentSearchMessage,
-                replyMarkup: view.replyMarkup as unknown as NonNullable<
-                    Parameters<typeof sendTelegramMessage>[0]['replyMarkup']
-                >,
-            });
-        } else {
-            await sendTelegramMessage(torrentSearchMessage);
-        }
+        });
 
         logger.info({ sessionId: view.sessionId }, '✅ Sent torrent search results');
 
@@ -99,9 +134,14 @@ export async function processMediaServerChatMessage({ message }: {
         reactions: ['👀'],
     });
 
+    const progress: SearchProgress = {};
+
     try {
         logger.info('👉 Start processing message in processMediaServerChatMessage');
-        const responseMessage = await processMediaServerChatMessageInternal({ message });
+        const responseMessage = await processMediaServerChatMessageInternal({
+            message,
+            progress,
+        });
 
         logger.info({ responseMessage }, '✅ Finish processing message in processMediaServerChatMessage');
 
@@ -120,6 +160,18 @@ export async function processMediaServerChatMessage({ message }: {
         const errorMessage = `❌ ${error}`;
 
         logger.error(error, '❌ processMediaServerChatMessage error');
+
+        if (progress.messageId !== undefined) {
+            logger.info('👉 Editing torrent search message with error');
+            await editTorrentSearchMessage({
+                chatId: TG_MEDIA_SERVER_CHAT_ID,
+                messageId: progress.messageId,
+                text: escapeTelegramMarkdownV2(errorMessage),
+            });
+            logger.info('✅ Edited torrent search message with error');
+
+            return;
+        }
 
         logger.info('👉 Sending error message');
         await sendTelegramMessage({
