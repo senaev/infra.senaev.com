@@ -158,49 +158,52 @@ async function main(): Promise<void> {
 
     logger.info({ botUser }, '✅ Bot user');
 
-    publicServer.post(TELEGRAM_WEBHOOK_PATH, async (request, reply) => {
-        try {
-            logger.info({ update: request.body }, '🆕 Received Telegram update');
-            const secret = request.headers['x-telegram-bot-api-secret-token'];
+    publicServer.post(TELEGRAM_WEBHOOK_PATH, (request, reply) => {
+        logger.info({ update: request.body }, '🆕 Received Telegram update');
+        const secret = request.headers['x-telegram-bot-api-secret-token'];
 
-            if (secret !== webhookSecretToken) {
-                logger.warn(
-                    { path: TELEGRAM_WEBHOOK_PATH },
-                    '⚠️ Unauthorized request with invalid secret token'
-                );
+        if (secret !== webhookSecretToken) {
+            logger.warn(
+                { path: TELEGRAM_WEBHOOK_PATH },
+                '⚠️ Unauthorized request with invalid secret token'
+            );
 
-                return reply.code(401).send('Unauthorized');
-            }
-
-            const update = request.body;
-
-            if (!isObject(update)) {
-                logger.warn(
-                    {
-                        path: TELEGRAM_WEBHOOK_PATH,
-                        bodyType: typeof update,
-                        body: update,
-                    },
-                    '⚠️ Invalid request with non-object body'
-                );
-
-                return reply.code(400).send('Bad Request');
-            }
-
-            await processTelegramWebhookData({
-                botUser,
-                update: update as TelegramUpdate,
-            });
-
-            logger.info('✅ Successfully processed Telegram update');
-
-            return reply.send('OK');
-        } catch (err: unknown) {
-            logger.error(err, '❌ Error processing Telegram webhook data');
-
-            // Telegram retries non-2xx webhook responses, so acknowledge after logging.
-            return reply.send('OK');
+            return reply.code(401).send('Unauthorized');
         }
+
+        const update = request.body;
+
+        if (!isObject(update)) {
+            logger.warn(
+                {
+                    path: TELEGRAM_WEBHOOK_PATH,
+                    bodyType: typeof update,
+                    body: update,
+                },
+                '⚠️ Invalid request with non-object body'
+            );
+
+            return reply.code(400).send('Bad Request');
+        }
+
+        // Telegram waits about a minute for this response and redelivers the same update
+        // when it does not arrive. A Prowlarr search can outlast that by minutes, and every
+        // redelivery used to start its own search, so one request answered the chat several
+        // times. Acknowledge first and process detached: Telegram gets its 200 straight away
+        // and the work takes as long as it takes.
+        void processTelegramWebhookData({
+            botUser,
+            update: update as TelegramUpdate,
+        }).then(
+            () => {
+                logger.info('✅ Successfully processed Telegram update');
+            },
+            (err: unknown) => {
+                logger.error(err, '❌ Error processing Telegram webhook data');
+            }
+        );
+
+        return reply.send('OK');
     });
 
     await startTorrentOutboxProcessor();
