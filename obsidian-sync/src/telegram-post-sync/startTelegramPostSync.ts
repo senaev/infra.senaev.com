@@ -1,6 +1,7 @@
 import { logger } from '../logger';
 import { reportSyncError } from '../telegram/reportSyncError';
 
+import { loadPushedNoteHashes } from './pushedNoteHashes';
 import { reconcileTrackedNotes } from './reconcileTrackedNotes';
 import { scanVaultForTrackedNotes } from './scanVaultForTrackedNotes';
 import { syncNoteToTelegramPost } from './syncNoteToTelegramPost';
@@ -45,6 +46,9 @@ function startReconcileLoop(): void {
  * Mirrors notes carrying a `telegram-post-clone` frontmatter key into the channel posts
  * they point at.
  *
+ * Pushed hashes are loaded first, so a restart only pushes notes that changed while this
+ * service was down instead of the whole vault.
+ *
  * The watcher starts before the initial push so changes made during startup aren't missed;
  * any overlap collapses inside syncNoteToTelegramPost. The initial push is sequential to
  * stay clear of Telegram's rate limits, and is a no-op for every note whose post already
@@ -55,6 +59,8 @@ function startReconcileLoop(): void {
  */
 export async function startTelegramPostSync(): Promise<void> {
     logger.info('🚀 Starting Telegram post sync');
+
+    loadPushedNoteHashes();
 
     watchVaultForNoteChanges((relativePath) => {
         void syncNoteToTelegramPost(relativePath);

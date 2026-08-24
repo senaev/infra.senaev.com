@@ -21,3 +21,18 @@ export const TASKS_FILE_PATH = join(OBSIDIAN_VAULT_PATH, '@senaev', 'tasks', 'ta
 
 /** Flat `<id> <url>` mapping file backing the short link routes. */
 export const SHORT_LINKS_FILE_PATH = join(OBSIDIAN_VAULT_PATH, 'short_links', 'short_links.md');
+
+/**
+ * `note path -> pushed content hash` map that survives a restart, so a new pod does not
+ * re-push every tracked note just to be told nothing changed.
+ *
+ * Deliberately not a markdown file and deliberately not next to any note: it is machine
+ * state, and putting it under the personal tools folder keeps it out of search results,
+ * out of the graph, and out of the vault walk, which only looks at `.md`.
+ */
+export const TELEGRAM_SYNC_HASHES_FILE_PATH = join(
+    OBSIDIAN_VAULT_PATH,
+    'plugins',
+    'senaev-personal-tools',
+    'telegram-sync-hashes.json'
+);

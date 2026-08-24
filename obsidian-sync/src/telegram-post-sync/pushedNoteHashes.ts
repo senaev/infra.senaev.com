@@ -1,17 +1,95 @@
-// Fingerprint of what was last successfully pushed, per note. Deliberately process memory
-// and nothing more.
-//
-// This started life as a `telegram-post-clone-hash` frontmatter key, which was a mistake: it
-// made this service rewrite every mirrored note on every content change, so its writes raced
-// the user's own edits through Obsidian Sync. Sync resolves that race by patching one side's
-// diff onto the other, or by overwriting outright when it sees no conflict — either way a
-// value we had just written could silently revert, and the user's text was one unlucky
-// interleaving away from going the same way.
-//
-// Keeping it here costs a re-push of every tracked note after a restart, since the map starts
-// empty. Telegram answers those with "message is not modified", so they are cheap and
-// invisible. That is a far better trade than writing to notes somebody is typing in.
+import {
+    mkdirSync, readFileSync, writeFileSync,
+} from 'node:fs';
+import { dirname } from 'node:path';
+
+import { isNotFoundError } from 'senaev-utils/src/utils/Error/isNotFoundError/isNotFoundError';
+
+import { logger } from '../logger';
+import { TELEGRAM_SYNC_HASHES_FILE_PATH } from '../vaultPaths';
+
 const pushedNoteHashes = new Map<string, string>();
+
+function save(): void {
+    try {
+        writeFileSync(
+            TELEGRAM_SYNC_HASHES_FILE_PATH,
+            `${JSON.stringify(Object.fromEntries(pushedNoteHashes), undefined, 4)}\n`,
+            'utf8'
+        );
+    } catch (error) {
+        logger.warn({
+            err: error,
+            path: TELEGRAM_SYNC_HASHES_FILE_PATH,
+        }, '⚠️ Could not persist pushed note hashes');
+    }
+}
+
+export function loadPushedNoteHashes(): void {
+    mkdirSync(dirname(TELEGRAM_SYNC_HASHES_FILE_PATH), { recursive: true });
+
+    let content: string;
+
+    try {
+        content = readFileSync(TELEGRAM_SYNC_HASHES_FILE_PATH, 'utf8');
+    } catch (error) {
+        if (!isNotFoundError(error)) {
+            logger.warn({
+                err: error,
+                path: TELEGRAM_SYNC_HASHES_FILE_PATH,
+            }, '⚠️ Could not read pushed note hashes, starting from an empty map');
+
+            return;
+        }
+
+        save();
+        logger.info(
+            { path: TELEGRAM_SYNC_HASHES_FILE_PATH },
+            '🆕 Created the pushed note hashes file, every tracked note will be pushed once'
+        );
+
+        return;
+    }
+
+    let parsed: unknown;
+
+    try {
+        parsed = JSON.parse(content);
+    } catch (error) {
+        logger.warn({
+            err: error,
+            path: TELEGRAM_SYNC_HASHES_FILE_PATH,
+        }, '⚠️ Pushed note hashes file is not valid JSON, starting from an empty map');
+
+        return;
+    }
+
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+        logger.warn(
+            { path: TELEGRAM_SYNC_HASHES_FILE_PATH },
+            '⚠️ Pushed note hashes file is not an object, starting from an empty map'
+        );
+
+        return;
+    }
+
+    for (const [
+        relativePath,
+        hash,
+    ] of Object.entries(parsed)) {
+        if (typeof hash === 'string') {
+            pushedNoteHashes.set(relativePath, hash);
+        }
+    }
+
+    logger.info(
+        {
+            loaded: pushedNoteHashes.size,
+            path: TELEGRAM_SYNC_HASHES_FILE_PATH,
+        },
+        '📖 Loaded pushed note hashes from the vault'
+    );
+}
 
 export function getPushedNoteHash(relativePath: string): string | undefined {
     return pushedNoteHashes.get(relativePath);
@@ -19,9 +97,11 @@ export function getPushedNoteHash(relativePath: string): string | undefined {
 
 export function setPushedNoteHash(relativePath: string, hash: string): void {
     pushedNoteHashes.set(relativePath, hash);
+    save();
 }
 
-/** Called when a note stops being tracked, so re-adding the key pushes it again. */
 export function deletePushedNoteHash(relativePath: string): void {
-    pushedNoteHashes.delete(relativePath);
+    if (pushedNoteHashes.delete(relativePath)) {
+        save();
+    }
 }
