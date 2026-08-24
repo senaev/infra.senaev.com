@@ -9,13 +9,11 @@ import { logger } from './logger';
 import { parseTextOrAudioMessageFromTelegram } from './parseTextOrAudioMessageFromTelegram';
 import { searchProwlarr } from './prowlarr';
 import { enqueueTorrentFile } from './torrentOutbox';
+import { editTelegramMessage, startTelegramProgressMessage } from './telegramMessages';
 import {
     buildTorrentSearchProgressText,
     createTorrentSearchView,
-    editTorrentSearchMessage,
 } from './torrentSearchTelegram';
-
-const PROGRESS_UPDATE_INTERVAL_MS = 10_000;
 
 interface SearchProgress {
     messageId?: number;
@@ -38,42 +36,25 @@ async function processMediaServerChatMessageInternal({ message, progress }: {
 
         logger.info({ query }, '👉 Searching torrents in Prowlarr');
 
-        const { message_id: progressMessageId } = await sendTelegramMessage({
-            token: TG_TOKEN_SENAEV_COM_BOT,
+        const progressMessage = await startTelegramProgressMessage({
             chatId: TG_MEDIA_SERVER_CHAT_ID,
-            parseMode: 'MarkdownV2',
-            disableLinkPreview: true,
-            text: buildTorrentSearchProgressText({
-                elapsedSeconds: 0,
+            replyToMessageId: message.message_id,
+            buildText: (elapsedSeconds) => buildTorrentSearchProgressText({
+                elapsedSeconds,
                 query,
             }),
-            replyToMessageId: message.message_id,
         });
 
         // Hand the id to the caller so a failed search reports into this same message
         // instead of leaving the placeholder counting forever next to a new error message.
-        progress.messageId = progressMessageId;
-
-        const searchStartedAt = Date.now();
-        const progressTimer = setInterval(() => {
-            void editTorrentSearchMessage({
-                chatId: TG_MEDIA_SERVER_CHAT_ID,
-                messageId: progressMessageId,
-                text: buildTorrentSearchProgressText({
-                    elapsedSeconds: Math.round((Date.now() - searchStartedAt) / 1000),
-                    query,
-                }),
-            }).catch((err: unknown) => {
-                logger.warn(err, '⚠️ Failed to update torrent search progress message');
-            });
-        }, PROGRESS_UPDATE_INTERVAL_MS);
+        progress.messageId = progressMessage.messageId;
 
         let releases;
 
         try {
             releases = await searchProwlarr(query);
         } finally {
-            clearInterval(progressTimer);
+            progressMessage.stop();
         }
 
         logger.info({ count: releases.length }, '✅ Found torrent releases');
@@ -84,9 +65,9 @@ async function processMediaServerChatMessageInternal({ message, progress }: {
             releases,
         });
 
-        await editTorrentSearchMessage({
+        await editTelegramMessage({
             chatId: TG_MEDIA_SERVER_CHAT_ID,
-            messageId: progressMessageId,
+            messageId: progressMessage.messageId,
             replyMarkup: view.replyMarkup,
             text: view.text,
         });
@@ -163,7 +144,7 @@ export async function processMediaServerChatMessage({ message }: {
 
         if (progress.messageId !== undefined) {
             logger.info('👉 Editing torrent search message with error');
-            await editTorrentSearchMessage({
+            await editTelegramMessage({
                 chatId: TG_MEDIA_SERVER_CHAT_ID,
                 messageId: progress.messageId,
                 text: escapeTelegramMarkdownV2(errorMessage),

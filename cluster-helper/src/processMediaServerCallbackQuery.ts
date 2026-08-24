@@ -13,6 +13,7 @@ import { escapeTelegramMarkdownV2 } from 'senaev-utils/src/utils/TelegramApi/esc
 import { TG_TOKEN_SENAEV_COM_BOT } from './env';
 import { logger } from './logger';
 import { downloadProwlarrRelease, ProwlarrRelease } from './prowlarr';
+import { editTelegramMessage, startTelegramProgressMessage } from './telegramMessages';
 import {
     editTelegramMessageWithTorrentSearchView,
     getTorrentSearchRelease,
@@ -76,28 +77,18 @@ function createDownloadStartedText({
         .join('\n');
 }
 
-async function editTelegramMessageText({
-    chatId,
-    messageId,
-    text,
+function createDownloadProgressText({
+    elapsedSeconds,
+    release,
 }: {
-    chatId: number | string;
-    messageId: number;
-    text: string;
-}): Promise<void> {
-    await callTelegramApi({
-        method: 'editMessageText',
-        token: TG_TOKEN_SENAEV_COM_BOT,
-        body: {
-            chat_id: chatId,
-            message_id: messageId,
-            parse_mode: 'MarkdownV2',
-            text: escapeTelegramMarkdownV2(text),
-            reply_markup: {
-                inline_keyboard: [],
-            },
-        },
-    });
+    elapsedSeconds: number;
+    release: ProwlarrRelease;
+}): string {
+    return escapeTelegramMarkdownV2([
+        `⬇️ ${release.title ?? 'Untitled'}`,
+        '',
+        `⏳ Отправляю в qBittorrent… ${elapsedSeconds} сек`,
+    ].join('\n'));
 }
 
 // Telegram rejects a sendMessage longer than 4096 characters. A failing Prowlarr call
@@ -136,10 +127,16 @@ async function sendCallbackQueryErrorMessage({
     });
 }
 
+interface DownloadProgress {
+    messageId?: number;
+}
+
 async function processMediaServerCallbackQueryInternal({
     callbackQuery,
+    progress,
 }: {
     callbackQuery: TelegramCallbackQuery;
+    progress: DownloadProgress;
 }): Promise<string> {
     const {
         data, from, message,
@@ -225,17 +222,36 @@ async function processMediaServerCallbackQueryInternal({
             },
             '👉 Starting torrent download'
         );
-        await downloadProwlarrRelease(release);
+
+        // Handing a release to qBittorrent goes through Prowlarr and can take minutes, so
+        // this reports into its own message rather than overwriting the search results --
+        // the result list keeps its buttons and stays usable for the next release.
+        const progressMessage = await startTelegramProgressMessage({
+            chatId: String(message.chat.id),
+            replyToMessageId: message.message_id,
+            buildText: (elapsedSeconds) => createDownloadProgressText({
+                elapsedSeconds,
+                release,
+            }),
+        });
+
+        progress.messageId = progressMessage.messageId;
+
+        try {
+            await downloadProwlarrRelease(release);
+        } finally {
+            progressMessage.stop();
+        }
 
         logger.info('👉 Editing Telegram message with started download details');
-        await editTelegramMessageText({
+        await editTelegramMessage({
             chatId: message.chat.id,
-            messageId: message.message_id,
-            text: createDownloadStartedText({
+            messageId: progressMessage.messageId,
+            text: escapeTelegramMarkdownV2(createDownloadStartedText({
                 release,
                 startedAt: new Date(),
                 user: from,
-            }),
+            })),
         });
         logger.info({ title: release.title }, '✅ Started torrent download');
 
@@ -250,8 +266,13 @@ export async function processMediaServerCallbackQuery({
 }: {
     callbackQuery: TelegramCallbackQuery;
 }): Promise<void> {
+    const progress: DownloadProgress = {};
+
     try {
-        const answerText = await processMediaServerCallbackQueryInternal({ callbackQuery });
+        const answerText = await processMediaServerCallbackQueryInternal({
+            callbackQuery,
+            progress,
+        });
 
         logger.info({ answerText }, '👉 Answering Telegram callback query');
         await answerCallbackQuery({
@@ -271,10 +292,21 @@ export async function processMediaServerCallbackQuery({
         let answerText = '❌ Error details sent to chat';
 
         try {
-            await sendCallbackQueryErrorMessage({
-                errorMessage,
-                message: callbackQuery.message!,
-            });
+            // The download already has a message of its own counting the seconds, so put the
+            // failure there instead of leaving it stuck on the last tick beside a new message.
+            if (progress.messageId === undefined) {
+                await sendCallbackQueryErrorMessage({
+                    errorMessage,
+                    message: callbackQuery.message!,
+                });
+            } else {
+                await editTelegramMessage({
+                    chatId: callbackQuery.message!.chat.id,
+                    messageId: progress.messageId,
+                    text: escapeTelegramMarkdownV2(`❌ ${truncateErrorMessage(errorMessage)}`),
+                });
+            }
+
             logger.info({ errorMessage }, '✅ Sent Telegram chat message with callback query error');
         } catch (sendError) {
             answerText = errorMessage;

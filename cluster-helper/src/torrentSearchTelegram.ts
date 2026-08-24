@@ -5,13 +5,10 @@ import { escapeTelegramMarkdownV2 } from 'senaev-utils/src/utils/TelegramApi/esc
 
 import { TG_TOKEN_SENAEV_COM_BOT } from './env';
 import { ProwlarrRelease } from './prowlarr';
+import { InlineKeyboardMarkup } from './telegramMessages';
 import { createTorrentSearchSession, getTorrentSearchSession } from './torrentSearchSessions';
 
 const PAGE_SIZE = 5;
-
-export interface InlineKeyboardMarkup {
-    inline_keyboard: Array<Array<{ callback_data: string; text: string }>>;
-}
 
 function releaseSeeds(release: ProwlarrRelease): number {
     return release.seeders ?? release.peers ?? 0;
@@ -188,31 +185,6 @@ export function buildTorrentSearchProgressText({
         `🔎 ${codeTelegramMarkdownV2(query)}`,
         escapeTelegramMarkdownV2(`⏳ Ищу в Prowlarr… ${elapsedSeconds} сек`),
     ].join('\n\n');
-}
-
-export async function editTorrentSearchMessage({
-    chatId,
-    messageId,
-    replyMarkup,
-    text,
-}: {
-    chatId: number | string;
-    messageId: number;
-    replyMarkup?: InlineKeyboardMarkup | undefined;
-    text: string;
-}): Promise<void> {
-    await callTelegramApi({
-        method: 'editMessageText',
-        token: TG_TOKEN_SENAEV_COM_BOT,
-        body: {
-            chat_id: chatId,
-            message_id: messageId,
-            text,
-            parse_mode: 'MarkdownV2',
-            link_preview_options: { is_disabled: true },
-            ...(replyMarkup && { reply_markup: replyMarkup }),
-        },
-    });
 }
 
 export function getTorrentSearchView({
