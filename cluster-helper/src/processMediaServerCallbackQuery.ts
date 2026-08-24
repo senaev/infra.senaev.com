@@ -100,6 +100,26 @@ async function editTelegramMessageText({
     });
 }
 
+// Telegram rejects a sendMessage longer than 4096 characters. A failing Prowlarr call
+// answers with the whole .NET stack trace -- 6493 characters in one observed case -- so
+// the message was refused and the error never reached the chat. The head of it is enough
+// to see what broke, and the logs still carry the untruncated text.
+const MAX_TELEGRAM_ERROR_MESSAGE_LENGTH = 1024;
+const TRUNCATION_ELLIPSIS = '…';
+
+function truncateErrorMessage(errorMessage: string): string {
+    if (errorMessage.length <= MAX_TELEGRAM_ERROR_MESSAGE_LENGTH) {
+        return errorMessage;
+    }
+
+    const head = errorMessage.slice(
+        0,
+        MAX_TELEGRAM_ERROR_MESSAGE_LENGTH - TRUNCATION_ELLIPSIS.length
+    );
+
+    return `${head}${TRUNCATION_ELLIPSIS}`;
+}
+
 async function sendCallbackQueryErrorMessage({
     errorMessage,
     message,
@@ -111,7 +131,7 @@ async function sendCallbackQueryErrorMessage({
         token: TG_TOKEN_SENAEV_COM_BOT,
         chatId: String(message.chat.id),
         parseMode: 'MarkdownV2',
-        text: escapeTelegramMarkdownV2(`❌ ${errorMessage}`),
+        text: escapeTelegramMarkdownV2(`❌ ${truncateErrorMessage(errorMessage)}`),
         replyToMessageId: message.message_id,
     });
 }
