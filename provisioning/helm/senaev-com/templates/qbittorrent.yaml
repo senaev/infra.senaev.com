@@ -183,8 +183,6 @@ spec:
               mountPath: /scripts/configure-webui-credentials.py
               subPath: configure-webui-credentials.py
               readOnly: true
-            - name: credentials-config-state
-              mountPath: /credentials-config-state
       volumes:
         - name: config
           hostPath:
@@ -207,8 +205,6 @@ spec:
               - key: configure-webui-credentials.py
                 path: configure-webui-credentials.py
                 mode: 0644
-        - name: credentials-config-state
-          emptyDir: {}
         - name: downloads
           hostPath:
             path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}/downloads

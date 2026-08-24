@@ -37,7 +37,6 @@ logging.root.addHandler(_handler)
 logger = logging.getLogger("configure-webui-credentials")
 
 
-STATE_FILE = Path("/credentials-config-state/webui-credentials-configured")
 SERVICE_ACCOUNT_TOKEN_PATH = Path("/var/run/secrets/kubernetes.io/serviceaccount/token")
 SERVICE_ACCOUNT_CA_PATH = Path("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt")
 MAX_ATTEMPTS = 120
@@ -123,100 +122,98 @@ def extract_password(logs: str) -> str:
     return matches[-1].strip() if matches else ""
 
 
-def set_qbittorrent_webui_password(temporary_password: str) -> None:
-    logger.info("🔐 Setting qBittorrent WebUI password from secret...")
-    stable_password = get_required_env("QBITTORRENT_WEBUI_PASSWORD")
-    cookie_jar = CookieJar()
-    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie_jar))
-
-    login_body = urllib.parse.urlencode(
-            {
-                "username": QBITTORRENT_INITIAL_WEBUI_USERNAME,
-                "password": temporary_password,
-            },
-    ).encode("utf-8")
-    login_request = urllib.request.Request(
-        f"http://127.0.0.1:{QBITTORRENT_WEBUI_PORT}/api/v2/auth/login",
-        data=login_body,
+def post_form(
+    opener: urllib.request.OpenerDirector,
+    path: str,
+    fields: dict[str, str],
+) -> str:
+    body = urllib.parse.urlencode(fields).encode("utf-8")
+    request = urllib.request.Request(
+        f"http://127.0.0.1:{QBITTORRENT_WEBUI_PORT}{path}",
+        data=body,
         headers={
             "Content-Type": "application/x-www-form-urlencoded",
-            "Content-Length": str(len(login_body)),
+            "Content-Length": str(len(body)),
         },
         method="POST",
     )
 
     try:
-        with opener.open(login_request) as response:
-            login_result = response.read().decode("utf-8")
+        with opener.open(request) as response:
+            return response.read().decode("utf-8")
     except urllib.error.HTTPError as error:
         response_body = error.read().decode("utf-8", errors="replace")
-        raise RuntimeError(
-            f"qBittorrent WebUI login failed with status {error.code}: {response_body}",
-        ) from error
+        raise RuntimeError(f"POST {path} failed with status {error.code}: {response_body}") from error
 
-    if login_result != "Ok.":
-        raise RuntimeError(f"qBittorrent WebUI login failed: {login_result}")
 
-    preferences_body = urllib.parse.urlencode(
+def login(username: str, password: str) -> urllib.request.OpenerDirector | None:
+    """Return an authenticated opener, or None when the WebUI rejects the credentials.
+
+    Raises when the WebUI is not reachable yet, so the caller can retry.
+    """
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(CookieJar()))
+    result = post_form(opener, "/api/v2/auth/login", {"username": username, "password": password})
+
+    return opener if result == "Ok." else None
+
+
+def set_webui_credentials(temporary_password: str, username: str, password: str) -> None:
+    logger.info("🔐 Setting qBittorrent WebUI credentials from secret...")
+    opener = login(QBITTORRENT_INITIAL_WEBUI_USERNAME, temporary_password)
+
+    if opener is None:
+        raise RuntimeError("qBittorrent WebUI rejected the temporary password taken from the pod log")
+
+    post_form(
+        opener,
+        "/api/v2/app/setPreferences",
         {
             "json": json.dumps(
-                    {
-                        "web_ui_username": get_required_env("QBITTORRENT_WEBUI_USERNAME"),
-                        "web_ui_password": stable_password,
-                    },
+                {
+                    "web_ui_username": username,
+                    "web_ui_password": password,
+                },
             ),
         },
-    ).encode("utf-8")
-    preferences_request = urllib.request.Request(
-        f"http://127.0.0.1:{QBITTORRENT_WEBUI_PORT}/api/v2/app/setPreferences",
-        data=preferences_body,
-        headers={
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Content-Length": str(len(preferences_body)),
-        },
-        method="POST",
     )
-
-    try:
-        with opener.open(preferences_request) as response:
-            response.read()
-    except urllib.error.HTTPError as error:
-        response_body = error.read().decode("utf-8", errors="replace")
-        raise RuntimeError(
-            f"qBittorrent WebUI password update failed with status {error.code}: {response_body}",
-        ) from error
-
-    logger.info("✅ qBittorrent WebUI password was set from secret")
 
 
 def main() -> None:
-    if STATE_FILE.exists():
-        logger.info("✅ qBittorrent WebUI password already configured, waiting indefinitely")
-        wait_forever()
+    username = get_required_env("QBITTORRENT_WEBUI_USERNAME")
+    password = get_required_env("QBITTORRENT_WEBUI_PASSWORD")
 
     for attempt in range(1, MAX_ATTEMPTS + 1):
         try:
-            logs = fetch_pod_logs()
-            password = extract_password(logs)
+            if login(username, password) is not None:
+                logger.info("✅ qBittorrent WebUI already accepts the credentials from the secret")
+                wait_forever()
 
-            if not password:
+            logger.info("👉 qBittorrent WebUI rejects the credentials from the secret, configuring them...")
+            temporary_password = extract_password(fetch_pod_logs())
+
+            if not temporary_password:
                 logger.info(
-                    f"⏳ qBittorrent WebUI password not found in logs yet, attempt=[{attempt}/{MAX_ATTEMPTS}]",
+                    f"⏳ qBittorrent WebUI temporary password not found in logs yet, attempt=[{attempt}/{MAX_ATTEMPTS}]",
                 )
                 sleep(POLL_INTERVAL_SECONDS)
                 continue
 
-            set_qbittorrent_webui_password(password)
-            STATE_FILE.write_text("", encoding="utf-8")
+            set_webui_credentials(temporary_password, username, password)
+
+            if login(username, password) is None:
+                raise RuntimeError("qBittorrent WebUI rejects the credentials right after they were set")
+
+            logger.info("✅ qBittorrent WebUI credentials were set from secret")
             wait_forever()
         except Exception as error:
             logger.warning(
-                f"⏳ Waiting for qBittorrent password, attempt=[{attempt}/{MAX_ATTEMPTS}]: {error}",
+                f"⏳ Waiting for qBittorrent WebUI, attempt=[{attempt}/{MAX_ATTEMPTS}]: {error}",
             )
             sleep(POLL_INTERVAL_SECONDS)
 
-    logger.info("✅ qBittorrent WebUI temporary password was not found in pod logs")
-    wait_forever()
+    raise RuntimeError(
+        f"qBittorrent WebUI credentials were not configured after {MAX_ATTEMPTS} attempts",
+    )
 
 
 if __name__ == "__main__":
