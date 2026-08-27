@@ -1,0 +1,30 @@
+// Project-local Zed settings.
+//
+// The global config (~/.config/zed/settings.json) pins the TypeScript language
+// server to `tsgo` -- a Yarn-PnP wrapper that only works inside the web-ui
+// repo -- and configures eslint for Yarn SDKs. This repo is plain npm, so both
+// are overridden here to use Zed's bundled vtsls and a stock eslint.
+{
+  "languages": {
+    "TypeScript": {
+      "language_servers": ["vtsls", "eslint", "!tsgo"],
+      "formatter": "none"
+    },
+    "TSX": {
+      "language_servers": ["vtsls", "eslint", "!tsgo"],
+      "formatter": "none"
+    },
+    "JavaScript": {
+      "language_servers": ["vtsls", "eslint", "!tsgo"],
+      "formatter": "none"
+    }
+  },
+  "lsp": {
+    "eslint": {
+      "settings": {
+        "nodePath": null,
+        "packageManager": "npm"
+      }
+    }
+  }
+}

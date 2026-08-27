@@ -10,11 +10,12 @@ import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTele
 import { TelegramMessage, TelegramUser } from 'senaev-utils/src/utils/TelegramApi/types';
 import { escapeTelegramMarkdownV2 } from 'senaev-utils/src/utils/TelegramApi/escapeTelegramMarkdownV2/escapeTelegramMarkdownV2';
 import { truncateTelegramText } from 'senaev-utils/src/utils/TelegramApi/truncateTelegramText/truncateTelegramText';
+import { type TelegramProgressMessage } from 'senaev-utils/src/utils/TelegramApi/startTelegramProgressMessage';
 
 import { TG_TOKEN_SENAEV_COM_BOT } from './env';
 import { logger } from './logger';
 import { downloadProwlarrRelease, ProwlarrRelease } from './prowlarr';
-import { editTelegramMarkdownMessage, startTelegramMarkdownProgressMessage } from './telegramMarkdownMessages';
+import { startTelegramMarkdownProgressMessage } from './telegramMarkdownMessages';
 import {
     editTelegramMessageWithTorrentSearchView,
     getTorrentSearchRelease,
@@ -109,7 +110,7 @@ async function sendCallbackQueryErrorMessage({
 }
 
 interface DownloadProgress {
-    messageId?: number;
+    message?: TelegramProgressMessage;
 }
 
 async function processMediaServerCallbackQueryInternal({
@@ -216,18 +217,19 @@ async function processMediaServerCallbackQueryInternal({
             }),
         });
 
-        progress.messageId = progressMessage.messageId;
+        // The handle rather than the id, so the failure path below reports into this message
+        // through the same write chain as the refresh instead of racing it.
+        progress.message = progressMessage;
 
         try {
             await downloadProwlarrRelease(release);
         } finally {
-            progressMessage.stop();
+            // Belt and braces: whatever happens, the refresh must not outlive this call.
+            progressMessage.stopRefresh();
         }
 
         logger.info('👉 Editing Telegram message with started download details');
-        await editTelegramMarkdownMessage({
-            chatId: message.chat.id,
-            messageId: progressMessage.messageId,
+        await progressMessage.finish({
             text: escapeTelegramMarkdownV2(createDownloadStartedText({
                 release,
                 startedAt: new Date(),
@@ -275,16 +277,14 @@ export async function processMediaServerCallbackQuery({
         try {
             // The download already has a message of its own counting the seconds, so put the
             // failure there instead of leaving it stuck on the last tick beside a new message.
-            if (progress.messageId === undefined) {
+            if (progress.message) {
+                await progress.message.finish({
+                    text: escapeTelegramMarkdownV2(truncateTelegramText(`❌ ${errorMessage}`)),
+                });
+            } else {
                 await sendCallbackQueryErrorMessage({
                     errorMessage,
                     message: callbackQuery.message!,
-                });
-            } else {
-                await editTelegramMarkdownMessage({
-                    chatId: callbackQuery.message!.chat.id,
-                    messageId: progress.messageId,
-                    text: escapeTelegramMarkdownV2(truncateTelegramText(`❌ ${errorMessage}`)),
                 });
             }
 
