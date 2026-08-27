@@ -37,7 +37,7 @@ async function processMediaServerChatMessageInternal({ message, progress }: {
 
         logger.info({ query }, '👉 Searching torrents in Prowlarr');
 
-        const progressMessage = await startTelegramMarkdownProgressMessage({
+        const progressMessage = startTelegramMarkdownProgressMessage({
             chatId: TG_MEDIA_SERVER_CHAT_ID,
             replyToMessageId: message.message_id,
             buildText: (elapsedSeconds) => buildTorrentSearchProgressText({
@@ -52,14 +52,9 @@ async function processMediaServerChatMessageInternal({ message, progress }: {
         // refresh rather than racing it.
         progress.message = progressMessage;
 
-        let releases;
-
-        try {
-            releases = await searchProwlarr(query);
-        } finally {
-            // Belt and braces: whatever happens, the refresh must not outlive this call.
-            progressMessage.stopRefresh();
-        }
+        // A throw from here on is caught upstream, which finishes the message with the error
+        // and stops the refresh with it.
+        const releases = await searchProwlarr(query);
 
         logger.info({ count: releases.length }, '✅ Found torrent releases');
 

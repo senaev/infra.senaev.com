@@ -208,7 +208,7 @@ async function processMediaServerCallbackQueryInternal({
         // Handing a release to qBittorrent goes through Prowlarr and can take minutes, so
         // this reports into its own message rather than overwriting the search results --
         // the result list keeps its buttons and stays usable for the next release.
-        const progressMessage = await startTelegramMarkdownProgressMessage({
+        const progressMessage = startTelegramMarkdownProgressMessage({
             chatId: String(message.chat.id),
             replyToMessageId: message.message_id,
             buildText: (elapsedSeconds) => createDownloadProgressText({
@@ -221,12 +221,9 @@ async function processMediaServerCallbackQueryInternal({
         // through the same write chain as the refresh instead of racing it.
         progress.message = progressMessage;
 
-        try {
-            await downloadProwlarrRelease(release);
-        } finally {
-            // Belt and braces: whatever happens, the refresh must not outlive this call.
-            progressMessage.stopRefresh();
-        }
+        // A throw from here on is caught upstream, which finishes the message with the error
+        // and stops the refresh with it.
+        await downloadProwlarrRelease(release);
 
         logger.info('👉 Editing Telegram message with started download details');
         await progressMessage.finish({

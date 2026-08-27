@@ -49,14 +49,14 @@ export function startTelegramMarkdownProgressMessage({
     buildText: (elapsedSeconds: number) => string;
     chatId: string;
     replyToMessageId?: number | undefined;
-}): Promise<TelegramProgressMessage> {
+}): TelegramProgressMessage {
     return startTelegramProgressMessage({
         buildText,
         chatId,
         replyToMessageId,
         token: TG_TOKEN_SENAEV_COM_BOT,
-        onEditError: (error) => {
-            logger.warn({ err: error }, '⚠️ Failed to update Telegram progress message');
+        onWriteError: (error) => {
+            logger.warn({ err: error }, '⚠️ Failed to write a Telegram progress message');
         },
     });
 }
