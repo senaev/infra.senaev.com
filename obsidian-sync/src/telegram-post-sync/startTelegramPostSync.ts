@@ -1,8 +1,8 @@
 import { logger } from '../logger';
-import { reportSyncError } from '../telegram/reportSyncError';
 
 import { loadPushedNoteHashes } from './pushedNoteHashes';
 import { reconcileTrackedNotes } from './reconcileTrackedNotes';
+import { reportSyncError } from './reportSyncError';
 import { scanVaultForTrackedNotes } from './scanVaultForTrackedNotes';
 import { syncNoteToTelegramPost } from './syncNoteToTelegramPost';
 import { watchVaultForNoteChanges } from './watchVaultForNoteChanges';

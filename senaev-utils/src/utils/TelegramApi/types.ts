@@ -49,6 +49,33 @@ export type TelegramApiResponse<T> = {
     ok: boolean;
     result?: T;
     description?: string;
+    error_code?: number;
+    /** Present on error 429; `retry_after` is the number of seconds to wait. */
+    parameters?: { retry_after?: number };
+};
+
+/**
+ * A button either fires a callback query, copies text, or opens a URL — never more than one,
+ * which is why this is a union rather than a record of optional fields.
+ */
+export type InlineKeyboardButton = { text: string } & (
+    | { callback_data: string }
+    | { copy_text: { text: string } }
+);
+
+export type InlineKeyboardMarkup = {
+    inline_keyboard: InlineKeyboardButton[][];
+};
+
+/**
+ * One photo attached to a rich message.
+ *
+ * `id` is referenced from the markdown as `tg://photo?id=<id>` and must match
+ * `[A-Za-z0-9_-]{1,64}`; the bytes are uploaded from `absolutePath` in the same request.
+ */
+export type TelegramRichMessageMedia = {
+    id: string;
+    absolutePath: string;
 };
 
 export type TelegramForwardPayload = {

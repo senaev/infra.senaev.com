@@ -1,9 +1,10 @@
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
+import { createTelegramRichMessage } from 'senaev-utils/src/utils/TelegramApi/createTelegramRichMessage';
+import { editTelegramRichMessage } from 'senaev-utils/src/utils/TelegramApi/editTelegramRichMessage';
+import { TelegramRichMessageMedia } from 'senaev-utils/src/utils/TelegramApi/types';
 
+import { TG_TOKEN_SENAEV_COM_BOT } from '../env';
 import { logger } from '../logger';
-import { createTelegramRichMessage } from '../telegram/createTelegramRichMessage';
-import { editTelegramRichMessage } from '../telegram/editTelegramRichMessage';
-import { reportSyncError } from '../telegram/reportSyncError';
 
 import { hashRenderedNote } from './hashRenderedNote';
 import { buildTelegramPostLink } from './parseTelegramPostLink';
@@ -14,11 +15,26 @@ import {
 } from './pushedNoteHashes';
 import { readNoteTracking } from './readNoteTracking';
 import { renderNoteForTelegram } from './render/renderNoteForTelegram';
-import type { ResolvedEmbed } from './render/resolveImageEmbeds';
 import { replaceTrackingLinkInFrontmatter } from './replaceTrackingLinkInFrontmatter';
+import { reportSyncError } from './reportSyncError';
 import {
     deleteTrackedNote, setTrackedNote, type TrackedTarget,
 } from './trackedNotes';
+
+// The retries happen inside the Bot API call with nobody watching, so this is the only place
+// a stalled push shows up as anything other than a long silence.
+function logRateLimit({
+    retryAfterSeconds,
+    attempt,
+}: {
+    retryAfterSeconds: number;
+    attempt: number;
+}): void {
+    logger.warn({
+        retryAfterSeconds,
+        attempt,
+    }, '⏳ Rate limited by Telegram, retrying');
+}
 
 type InFlight = { pending: boolean };
 
@@ -63,7 +79,7 @@ async function resolvePostForChannel({
     link: string;
     chatId: string;
     markdown: string;
-    media: ResolvedEmbed[];
+    media: TelegramRichMessageMedia[];
 }): Promise<{ messageId: number; reused: boolean }> {
     const guardKey = publishGuardKey(relativePath, link);
     const alreadyPublished = publishedInThisProcess.get(guardKey);
@@ -93,6 +109,8 @@ async function resolvePostForChannel({
         chatId,
         markdown,
         media,
+        token: TG_TOKEN_SENAEV_COM_BOT,
+        onRateLimited: logRateLimit,
     });
 
     publishedInThisProcess.set(guardKey, messageId);
@@ -112,7 +130,7 @@ async function pushTarget(
     relativePath: string,
     entry: TrackedTarget,
     markdown: string,
-    media: ResolvedEmbed[]
+    media: TelegramRichMessageMedia[]
 ): Promise<string> {
     if (entry.target.kind === 'channel') {
         const { chatId } = entry.target;
@@ -128,11 +146,18 @@ async function pushTarget(
         if (reused) {
             // The post holds the content from when it was published, and the note has almost
             // certainly been edited since — that edit is usually what triggered this push.
+            logger.info({
+                relativePath,
+                messageId,
+            }, '📝 Bringing the reused post up to date');
+
             const outcome = await editTelegramRichMessage({
                 chatId,
                 messageId,
                 markdown,
                 media,
+                token: TG_TOKEN_SENAEV_COM_BOT,
+                onRateLimited: logRateLimit,
             });
 
             logger.info({
@@ -156,11 +181,19 @@ async function pushTarget(
     }
 
     const { chatId, messageId } = entry.target;
+
+    logger.info({
+        relativePath,
+        messageId,
+    }, '📝 Editing the tracked post');
+
     const outcome = await editTelegramRichMessage({
         chatId,
         messageId,
         markdown,
         media,
+        token: TG_TOKEN_SENAEV_COM_BOT,
+        onRateLimited: logRateLimit,
     });
 
     logger.info(

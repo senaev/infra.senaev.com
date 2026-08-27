@@ -1,4 +1,15 @@
 import { callTelegramApi } from './callTelegramApi';
+import { InlineKeyboardMarkup } from './types';
+
+export type SendTelegramMessageParameters = {
+    text: string;
+    chatId: string;
+    token: string;
+    parseMode?: 'HTML' | 'MarkdownV2';
+    disableLinkPreview?: boolean;
+    replyToMessageId?: number;
+    replyMarkup?: InlineKeyboardMarkup;
+};
 
 export function sendTelegramMessage({
     text,
@@ -8,24 +19,7 @@ export function sendTelegramMessage({
     disableLinkPreview,
     replyToMessageId,
     replyMarkup,
-}: {
-    text: string;
-    chatId: string;
-    token: string;
-    parseMode?: 'HTML' | 'MarkdownV2';
-    disableLinkPreview?: boolean;
-    replyToMessageId?: number;
-    replyMarkup?: {
-        inline_keyboard: Array<
-            Array<{
-                text: string;
-                copy_text: {
-                    text: string;
-                };
-            }>
-        >;
-    };
-}): Promise<{ message_id: number }> {
+}: SendTelegramMessageParameters): Promise<{ message_id: number }> {
     return callTelegramApi<{ message_id: number }>({
         method: 'sendMessage',
         token,

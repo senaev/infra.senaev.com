@@ -1,5 +1,7 @@
 import { basename, extname } from 'node:path';
 
+import { TelegramRichMessageMedia } from 'senaev-utils/src/utils/TelegramApi/types';
+
 import { findFileRecursively } from '../../public-files/findFileRecursively';
 import { logger } from '../../logger';
 import { OBSIDIAN_VAULT_PATH } from '../../env';
@@ -16,15 +18,9 @@ const PHOTO_EXTENSIONS = new Set([
     '.webp',
 ]);
 
-export type ResolvedEmbed = {
-    /** Referenced from markdown as `tg://photo?id=<id>`; must match [A-Za-z0-9_-]{1,64}. */
-    id: string;
-    absolutePath: string;
-};
-
 export type ResolveImageEmbedsResult = {
     markdown: string;
-    media: ResolvedEmbed[];
+    media: TelegramRichMessageMedia[];
 };
 
 function brokenMarker(name: string): string {
@@ -43,7 +39,7 @@ function brokenMarker(name: string): string {
  * so the rest of the note still syncs.
  */
 export function resolveImageEmbeds(body: string): ResolveImageEmbedsResult {
-    const media: ResolvedEmbed[] = [];
+    const media: TelegramRichMessageMedia[] = [];
     const idByPath = new Map<string, string>();
 
     const markdown = body.replace(EMBED, (_match, rawTarget: string) => {

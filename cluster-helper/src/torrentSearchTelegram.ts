@@ -1,11 +1,10 @@
 import { formatBytes } from 'senaev-utils/src/types/Bytes/formatBytes/formatBytes';
 import { isUnsignedInteger } from 'senaev-utils/src/types/Number/UnsignedInteger';
-import { callTelegramApi } from 'senaev-utils/src/utils/TelegramApi/callTelegramApi';
 import { escapeTelegramMarkdownV2 } from 'senaev-utils/src/utils/TelegramApi/escapeTelegramMarkdownV2/escapeTelegramMarkdownV2';
+import { InlineKeyboardMarkup } from 'senaev-utils/src/utils/TelegramApi/types';
 
-import { TG_TOKEN_SENAEV_COM_BOT } from './env';
 import { ProwlarrRelease } from './prowlarr';
-import { InlineKeyboardMarkup } from './telegramMessages';
+import { editTelegramMarkdownMessage } from './telegramMarkdownMessages';
 import { createTorrentSearchSession, getTorrentSearchSession } from './torrentSearchSessions';
 
 const PAGE_SIZE = 5;
@@ -225,30 +224,20 @@ export async function editTelegramMessageWithTorrentSearchView({
     });
 
     if (!view) {
-        await callTelegramApi({
-            method: 'editMessageText',
-            token: TG_TOKEN_SENAEV_COM_BOT,
-            body: {
-                chat_id: chatId,
-                message_id: messageId,
-                text: '❌ Запрос устарел, нужно поискать заново',
-                parse_mode: 'MarkdownV2',
-            },
+        await editTelegramMarkdownMessage({
+            chatId,
+            messageId,
+            text: '❌ Запрос устарел, нужно поискать заново',
         });
 
         return;
     }
 
-    await callTelegramApi({
-        method: 'editMessageText',
-        token: TG_TOKEN_SENAEV_COM_BOT,
-        body: {
-            chat_id: chatId,
-            message_id: messageId,
-            text: view.text,
-            parse_mode: 'MarkdownV2',
-            ...(view.replyMarkup && { reply_markup: view.replyMarkup }),
-        },
+    await editTelegramMarkdownMessage({
+        chatId,
+        messageId,
+        text: view.text,
+        ...(view.replyMarkup && { replyMarkup: view.replyMarkup }),
     });
 }
 

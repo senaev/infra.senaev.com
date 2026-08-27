@@ -6,13 +6,37 @@ import {
 import { formatUtcDateTime } from 'senaev-utils/src/utils/Date/formatUtcDateTime/formatUtcDateTime';
 import { escapeHtml } from 'senaev-utils/src/utils/String/escapeHtml/escapeHtml';
 import { formatBytes } from 'senaev-utils/src/types/Bytes/formatBytes/formatBytes';
+import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
+import { truncateTelegramText } from 'senaev-utils/src/utils/TelegramApi/truncateTelegramText/truncateTelegramText';
 
-import { sendTelegramHtmlMessage } from '../telegram';
+import { TG_MEDIA_SERVER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from '../env';
 import { logger } from '../logger';
 
 import { type FileToRemove } from './getFilesToRemove';
 
-const TELEGRAM_MESSAGE_LIMIT = 4096;
+/**
+ * Sends one HTML notification to the media-server chat.
+ *
+ * The message is built from a directory listing, so its length has no upper bound and
+ * Telegram would refuse it outright — it is cut here, after the logs have the full text.
+ */
+async function sendCleanupNotification(message: string): Promise<void> {
+    const text = truncateTelegramText(message);
+
+    logger.info({
+        characters: text.length,
+        truncated: text.length < message.length,
+    }, '📤 Sending disk cleanup notification');
+
+    await sendTelegramMessage({
+        text,
+        chatId: TG_MEDIA_SERVER_CHAT_ID,
+        token: TG_TOKEN_SENAEV_COM_BOT,
+        parseMode: 'HTML',
+    });
+
+    logger.info('✅ Disk cleanup notification sent');
+}
 
 function buildFileLine(file: FileToRemove): string {
     return [
@@ -133,14 +157,6 @@ function renderRemovedFilesTree(node: RemovedFilesTreeNode, prefix = ''): string
     return lines;
 }
 
-function truncateForTelegram(text: string): string {
-    if (text.length <= TELEGRAM_MESSAGE_LIMIT) {
-        return text;
-    }
-
-    return `${text.slice(0, TELEGRAM_MESSAGE_LIMIT - 3)}...`;
-}
-
 export async function sendRemovalNotification({
     removedFiles,
     bytesToRemove,
@@ -185,7 +201,7 @@ export async function sendRemovalNotification({
         ...fileLines,
     ].join('\n');
 
-    await sendTelegramHtmlMessage(truncateForTelegram(message));
+    await sendCleanupNotification(message);
 }
 
 export async function sendManualCleanupRequiredNotification({
@@ -212,7 +228,7 @@ export async function sendManualCleanupRequiredNotification({
         '❗️❗️❗️ Please free additional space manually.',
     ].join('\n');
 
-    await sendTelegramHtmlMessage(truncateForTelegram(message));
+    await sendCleanupNotification(message);
 }
 
 export async function removeFiles(filesToRemove: FileToRemove[]): Promise<void> {

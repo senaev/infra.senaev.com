@@ -9,7 +9,7 @@ import { logger } from './logger';
 import { parseTextOrAudioMessageFromTelegram } from './parseTextOrAudioMessageFromTelegram';
 import { searchProwlarr } from './prowlarr';
 import { enqueueTorrentFile } from './torrentOutbox';
-import { editTelegramMessage, startTelegramProgressMessage } from './telegramMessages';
+import { editTelegramMarkdownMessage, startTelegramMarkdownProgressMessage } from './telegramMarkdownMessages';
 import {
     buildTorrentSearchProgressText,
     createTorrentSearchView,
@@ -36,7 +36,7 @@ async function processMediaServerChatMessageInternal({ message, progress }: {
 
         logger.info({ query }, '👉 Searching torrents in Prowlarr');
 
-        const progressMessage = await startTelegramProgressMessage({
+        const progressMessage = await startTelegramMarkdownProgressMessage({
             chatId: TG_MEDIA_SERVER_CHAT_ID,
             replyToMessageId: message.message_id,
             buildText: (elapsedSeconds) => buildTorrentSearchProgressText({
@@ -65,7 +65,7 @@ async function processMediaServerChatMessageInternal({ message, progress }: {
             releases,
         });
 
-        await editTelegramMessage({
+        await editTelegramMarkdownMessage({
             chatId: TG_MEDIA_SERVER_CHAT_ID,
             messageId: progressMessage.messageId,
             replyMarkup: view.replyMarkup,
@@ -144,7 +144,7 @@ export async function processMediaServerChatMessage({ message }: {
 
         if (progress.messageId !== undefined) {
             logger.info('👉 Editing torrent search message with error');
-            await editTelegramMessage({
+            await editTelegramMarkdownMessage({
                 chatId: TG_MEDIA_SERVER_CHAT_ID,
                 messageId: progress.messageId,
                 text: escapeTelegramMarkdownV2(errorMessage),

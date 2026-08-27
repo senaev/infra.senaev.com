@@ -1,13 +1,13 @@
 import { createHash } from 'node:crypto';
 
-import type { ResolvedEmbed } from './render/resolveImageEmbeds';
+import { TelegramRichMessageMedia } from 'senaev-utils/src/utils/TelegramApi/types';
 
 /** Long enough that a collision is not a practical concern, short enough to sit in a note. */
 const HASH_LENGTH = 16;
 
 export type HashInput = {
     markdown: string;
-    media: ResolvedEmbed[];
+    media: TelegramRichMessageMedia[];
     /** The posts this content was pushed to, so gaining a mirror forces a push. */
     telegramPostCloneLinks: string[];
 };

@@ -1,6 +1,5 @@
-import type { ResolvedEmbed } from '../telegram-post-sync/render/resolveImageEmbeds';
-
-import { callRichMessageMethod } from './callRichMessageMethod';
+import { callTelegramRichMessageMethod } from './callTelegramRichMessageMethod';
+import { TelegramRichMessageMedia } from './types';
 
 export type EditRichMessageResult = 'updated' | 'unchanged';
 
@@ -15,13 +14,17 @@ export async function editTelegramRichMessage({
     messageId,
     markdown,
     media,
+    token,
+    onRateLimited,
 }: {
     chatId: string;
     messageId: number;
     markdown: string;
-    media: ResolvedEmbed[];
+    media: TelegramRichMessageMedia[];
+    token: string;
+    onRateLimited?: ((info: { retryAfterSeconds: number; attempt: number }) => void) | undefined;
 }): Promise<EditRichMessageResult> {
-    const result = await callRichMessageMethod<unknown>({
+    const result = await callTelegramRichMessageMethod<unknown>({
         method: 'editMessageText',
         base: {
             chat_id: chatId,
@@ -29,6 +32,8 @@ export async function editTelegramRichMessage({
         },
         markdown,
         media,
+        token,
+        onRateLimited,
     });
 
     return result.status === 'ok' ? 'updated' : 'unchanged';
