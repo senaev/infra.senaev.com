@@ -2,7 +2,7 @@ import { downloadFileFromTelegramMessage } from 'senaev-utils/src/utils/Telegram
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
 import { setTelegramMessageReaction } from 'senaev-utils/src/utils/TelegramApi/setTelegramMessageReaction';
 import { TelegramMessage } from 'senaev-utils/src/utils/TelegramApi/types';
-import { escapeTelegramMarkdownV2 } from 'senaev-utils/src/utils/TelegramApi/escapeTelegramMarkdownV2/escapeTelegramMarkdownV2';
+import { escapeHtml } from 'senaev-utils/src/utils/String/escapeHtml/escapeHtml';
 import { type TelegramProgressMessage } from 'senaev-utils/src/utils/TelegramApi/startTelegramProgressMessage';
 
 import { TG_MEDIA_SERVER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from './env';
@@ -10,7 +10,7 @@ import { logger } from './logger';
 import { parseTextOrAudioMessageFromTelegram } from './parseTextOrAudioMessageFromTelegram';
 import { searchProwlarr } from './prowlarr';
 import { enqueueTorrentFile } from './torrentOutbox';
-import { startTelegramMarkdownProgressMessage } from './telegramMarkdownMessages';
+import { startTelegramHtmlProgressMessage } from './telegramHtmlMessages';
 import {
     buildTorrentSearchProgressText,
     createTorrentSearchView,
@@ -37,7 +37,7 @@ async function processMediaServerChatMessageInternal({ message, progress }: {
 
         logger.info({ query }, '👉 Searching torrents in Prowlarr');
 
-        const progressMessage = startTelegramMarkdownProgressMessage({
+        const progressMessage = startTelegramHtmlProgressMessage({
             chatId: TG_MEDIA_SERVER_CHAT_ID,
             replyToMessageId: message.message_id,
             buildText: (elapsedSeconds) => buildTorrentSearchProgressText({
@@ -128,8 +128,8 @@ export async function processMediaServerChatMessage({ message }: {
             await sendTelegramMessage({
                 token: TG_TOKEN_SENAEV_COM_BOT,
                 chatId: TG_MEDIA_SERVER_CHAT_ID,
-                parseMode: 'MarkdownV2',
-                text: escapeTelegramMarkdownV2(responseMessage),
+                parseMode: 'HTML',
+                text: escapeHtml(responseMessage),
                 replyToMessageId: message.message_id,
             });
             logger.info('✅ Sent response message');
@@ -141,7 +141,7 @@ export async function processMediaServerChatMessage({ message }: {
 
         if (progress.message) {
             logger.info('👉 Editing torrent search message with error');
-            await progress.message.finish({ text: escapeTelegramMarkdownV2(errorMessage) });
+            await progress.message.finish({ text: escapeHtml(errorMessage) });
             logger.info('✅ Edited torrent search message with error');
 
             return;
@@ -151,8 +151,8 @@ export async function processMediaServerChatMessage({ message }: {
         await sendTelegramMessage({
             token: TG_TOKEN_SENAEV_COM_BOT,
             chatId: TG_MEDIA_SERVER_CHAT_ID,
-            parseMode: 'MarkdownV2',
-            text: escapeTelegramMarkdownV2(errorMessage),
+            parseMode: 'HTML',
+            text: escapeHtml(errorMessage),
             replyToMessageId: message.message_id,
         });
         logger.info('✅ Sent error message');

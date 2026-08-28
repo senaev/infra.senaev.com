@@ -1,6 +1,10 @@
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
-import { escapeTelegramMarkdownV2 } from 'senaev-utils/src/utils/TelegramApi/escapeTelegramMarkdownV2/escapeTelegramMarkdownV2';
+import { escapeHtml } from 'senaev-utils/src/utils/String/escapeHtml/escapeHtml';
+import {
+    telegramBold,
+    telegramExpandableBlockquote,
+} from 'senaev-utils/src/utils/TelegramApi/formatTelegramHtml/formatTelegramHtml';
 
 import {
     OBSIDIAN_TASKS_CHAT_ID, TRICKY_DAD_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT,
@@ -28,8 +32,6 @@ export async function sendTrickyDadReport({
 
     const shouldReply = sourceChatId && reportChatId === sourceChatId;
 
-    const esc = escapeTelegramMarkdownV2;
-
     const parts: string[] = [];
 
     if (result.addedItems) {
@@ -38,34 +40,36 @@ export async function sendTrickyDadReport({
         // the report that classification failed.
         const itemEmoji = result.destination === 'fallback' ? '❌' : '🛒';
 
-        parts.push(result.addedItems.map((item) => `${itemEmoji} *${esc(item)}*`).join('\n'));
+        parts.push(result.addedItems.map((item) => `${itemEmoji} ${telegramBold(item)}`).join('\n'));
     }
 
     if (result.addedTasks) {
-        parts.push(result.addedTasks.map((task) => `👉 *${esc(task)}*`).join('\n'));
+        parts.push(result.addedTasks.map((task) => `👉 ${telegramBold(task)}`).join('\n'));
     }
 
+    // Raw values: telegramExpandableBlockquote escapes each line it is given, so escaping
+    // here as well would show the escapes to the reader.
     const detailLines = [
-        `🗣️ Команда: ${esc(command)}`,
-        `📡 Откуда: ${esc(source)}`,
+        `🗣️ Команда: ${command}`,
+        `📡 Откуда: ${source}`,
         `📍 Куда: ${{
             grocery: '🛒 grocery',
             task: '📌 task',
             fallback: '❌ fallback',
         }[result.destination]}`,
-        `⏱️ Время: ${esc(durationSeconds)}s`,
-        `🤖 Время OpenRouter: ${esc(String(result.openRouterResponseTime))}ms`,
+        `⏱️ Время: ${durationSeconds}s`,
+        `🤖 Время OpenRouter: ${result.openRouterResponseTime}ms`,
         result.writeResponseTime !== null
-            ? `🗄️ Время записи: ${esc(String(result.writeResponseTime))}ms`
+            ? `🗄️ Время записи: ${result.writeResponseTime}ms`
             : null,
-        result.openRouterError ? `❌ OpenRouter Error: ${esc(String(result.openRouterError))}` : null,
+        result.openRouterError ? `❌ OpenRouter Error: ${String(result.openRouterError)}` : null,
         result.writeErrorString
-            ? `❌ Write Error: ${esc(String(result.writeErrorString))}`
+            ? `❌ Write Error: ${result.writeErrorString}`
             : null,
     ].filter(Boolean) as string[];
 
     if (detailLines.length > 0) {
-        parts.push(`**> ${detailLines.join('\n> ')}||`);
+        parts.push(telegramExpandableBlockquote(detailLines));
     }
 
     const text = parts.join('\n');
@@ -78,7 +82,7 @@ export async function sendTrickyDadReport({
     await sendTelegramMessage({
         token: TG_TOKEN_SENAEV_COM_BOT,
         chatId: reportChatId,
-        parseMode: 'MarkdownV2',
+        parseMode: 'HTML',
         text,
         ...(shouldReply && { replyToMessageId }),
     });
@@ -93,7 +97,7 @@ export async function sendTrickyDadReport({
         await sendTelegramMessage({
             token: TG_TOKEN_SENAEV_COM_BOT,
             chatId: sourceChatId,
-            parseMode: 'MarkdownV2',
+            parseMode: 'HTML',
             text,
             ...(replyToMessageId && { replyToMessageId }),
         });
@@ -112,7 +116,7 @@ export async function sendTrickyDadErrorReport({
     await sendTelegramMessage({
         token: TG_TOKEN_SENAEV_COM_BOT,
         chatId: OBSIDIAN_TASKS_CHAT_ID,
-        parseMode: 'MarkdownV2',
-        text: escapeTelegramMarkdownV2(`❌ Failed to process command=[${command}]: ${stringifyUnknownError(err)}`),
+        parseMode: 'HTML',
+        text: escapeHtml(`❌ Failed to process command=[${command}]: ${stringifyUnknownError(err)}`),
     });
 }

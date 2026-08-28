@@ -1,5 +1,5 @@
 import { createTelegramApiBaseUrl } from './createTelegramApiBaseUrl';
-import { TelegramApiResponse } from './types';
+import { TelegramApiResponse, TelegramParseMode } from './types';
 
 export async function sendTelegramDocument({
     chatId,
@@ -14,7 +14,7 @@ export async function sendTelegramDocument({
     token: string;
     content: string;
     caption?: string;
-    parseMode?: 'HTML' | 'MarkdownV2';
+    parseMode?: TelegramParseMode;
 }): Promise<void> {
     const telegramApiBaseUrl = createTelegramApiBaseUrl(token);
     const formData = new FormData();

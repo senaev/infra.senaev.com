@@ -1,11 +1,11 @@
 import { callTelegramApi } from './callTelegramApi';
-import { InlineKeyboardMarkup } from './types';
+import { InlineKeyboardMarkup, TelegramParseMode } from './types';
 
 export type SendTelegramMessageParameters = {
     text: string;
     chatId: string;
     token: string;
-    parseMode?: 'HTML' | 'MarkdownV2';
+    parseMode?: TelegramParseMode;
     disableLinkPreview?: boolean;
     replyToMessageId?: number;
     replyMarkup?: InlineKeyboardMarkup;

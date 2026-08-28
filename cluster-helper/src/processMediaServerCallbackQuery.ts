@@ -8,14 +8,14 @@ import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnk
 import { callTelegramApi } from 'senaev-utils/src/utils/TelegramApi/callTelegramApi';
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
 import { TelegramMessage, TelegramUser } from 'senaev-utils/src/utils/TelegramApi/types';
-import { escapeTelegramMarkdownV2 } from 'senaev-utils/src/utils/TelegramApi/escapeTelegramMarkdownV2/escapeTelegramMarkdownV2';
+import { escapeHtml } from 'senaev-utils/src/utils/String/escapeHtml/escapeHtml';
 import { truncateTelegramText } from 'senaev-utils/src/utils/TelegramApi/truncateTelegramText/truncateTelegramText';
 import { type TelegramProgressMessage } from 'senaev-utils/src/utils/TelegramApi/startTelegramProgressMessage';
 
 import { TG_TOKEN_SENAEV_COM_BOT } from './env';
 import { logger } from './logger';
 import { downloadProwlarrRelease, ProwlarrRelease } from './prowlarr';
-import { startTelegramMarkdownProgressMessage } from './telegramMarkdownMessages';
+import { startTelegramHtmlProgressMessage } from './telegramHtmlMessages';
 import {
     editTelegramMessageWithTorrentSearchView,
     getTorrentSearchRelease,
@@ -86,7 +86,7 @@ function createDownloadProgressText({
     elapsedSeconds: number;
     release: ProwlarrRelease;
 }): string {
-    return escapeTelegramMarkdownV2([
+    return escapeHtml([
         `⬇️ ${release.title ?? 'Untitled'}`,
         '',
         `⏳ Отправляю в qBittorrent… ${elapsedSeconds} сек`,
@@ -103,8 +103,8 @@ async function sendCallbackQueryErrorMessage({
     await sendTelegramMessage({
         token: TG_TOKEN_SENAEV_COM_BOT,
         chatId: String(message.chat.id),
-        parseMode: 'MarkdownV2',
-        text: escapeTelegramMarkdownV2(truncateTelegramText(`❌ ${errorMessage}`)),
+        parseMode: 'HTML',
+        text: escapeHtml(truncateTelegramText(`❌ ${errorMessage}`)),
         replyToMessageId: message.message_id,
     });
 }
@@ -208,7 +208,7 @@ async function processMediaServerCallbackQueryInternal({
         // Handing a release to qBittorrent goes through Prowlarr and can take minutes, so
         // this reports into its own message rather than overwriting the search results --
         // the result list keeps its buttons and stays usable for the next release.
-        const progressMessage = startTelegramMarkdownProgressMessage({
+        const progressMessage = startTelegramHtmlProgressMessage({
             chatId: String(message.chat.id),
             replyToMessageId: message.message_id,
             buildText: (elapsedSeconds) => createDownloadProgressText({
@@ -227,7 +227,7 @@ async function processMediaServerCallbackQueryInternal({
 
         logger.info('👉 Editing Telegram message with started download details');
         await progressMessage.finish({
-            text: escapeTelegramMarkdownV2(createDownloadStartedText({
+            text: escapeHtml(createDownloadStartedText({
                 release,
                 startedAt: new Date(),
                 user: from,
@@ -276,7 +276,7 @@ export async function processMediaServerCallbackQuery({
             // failure there instead of leaving it stuck on the last tick beside a new message.
             if (progress.message) {
                 await progress.message.finish({
-                    text: escapeTelegramMarkdownV2(truncateTelegramText(`❌ ${errorMessage}`)),
+                    text: escapeHtml(truncateTelegramText(`❌ ${errorMessage}`)),
                 });
             } else {
                 await sendCallbackQueryErrorMessage({

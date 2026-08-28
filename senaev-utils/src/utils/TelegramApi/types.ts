@@ -1,3 +1,14 @@
+/**
+ * How Telegram should parse markup in a message, when it should parse any.
+ *
+ * One member on purpose. Telegram also accepts `MarkdownV2`, which expresses exactly the same
+ * entities, so supporting both buys nothing and costs the harder escaping: eighteen reserved
+ * characters instead of three, a second rule inside code entities, and a cut through an escape
+ * sequence that turns into a rejected message rather than literal text. Omitting the field is
+ * still meaningful — it sends plain text, which needs no escaping at all.
+ */
+export type TelegramParseMode = 'HTML';
+
 export type TelegramUser = {
     id: number;
     is_bot: boolean;

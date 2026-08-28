@@ -41,7 +41,7 @@ export function startTelegramProgressMessage({
         const { message_id: messageId } = await sendTelegramMessage({
             token,
             chatId,
-            parseMode: 'MarkdownV2',
+            parseMode: 'HTML',
             disableLinkPreview: true,
             text: buildText(0),
             ...(replyToMessageId !== undefined && { replyToMessageId }),
@@ -66,7 +66,7 @@ export function startTelegramProgressMessage({
                 chatId,
                 messageId,
                 token,
-                parseMode: 'MarkdownV2',
+                parseMode: 'HTML',
                 disableLinkPreview: true,
                 text: buildText(Math.round((Date.now() - startedAt) / 1000)),
             });
@@ -106,7 +106,7 @@ export function startTelegramProgressMessage({
                     messageId,
                     token,
                     text,
-                    parseMode: 'MarkdownV2',
+                    parseMode: 'HTML',
                     disableLinkPreview: true,
                     ...(replyMarkup && { replyMarkup }),
                 });

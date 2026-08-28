@@ -1,5 +1,5 @@
 import { callTelegramApi } from './callTelegramApi';
-import { InlineKeyboardMarkup } from './types';
+import { InlineKeyboardMarkup, TelegramParseMode } from './types';
 
 /**
  * Rewrites the text of an existing message.
@@ -21,7 +21,7 @@ export async function editTelegramMessage({
     replyMarkup?: InlineKeyboardMarkup | undefined;
     text: string;
     token: string;
-    parseMode?: 'HTML' | 'MarkdownV2';
+    parseMode?: TelegramParseMode;
     disableLinkPreview?: boolean;
 }): Promise<void> {
     await callTelegramApi({

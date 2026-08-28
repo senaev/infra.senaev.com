@@ -1,10 +1,15 @@
 import { formatBytes } from 'senaev-utils/src/types/Bytes/formatBytes/formatBytes';
 import { isUnsignedInteger } from 'senaev-utils/src/types/Number/UnsignedInteger';
-import { escapeTelegramMarkdownV2 } from 'senaev-utils/src/utils/TelegramApi/escapeTelegramMarkdownV2/escapeTelegramMarkdownV2';
+import { escapeHtml } from 'senaev-utils/src/utils/String/escapeHtml/escapeHtml';
+import {
+    telegramBold,
+    telegramCode,
+    telegramLink,
+} from 'senaev-utils/src/utils/TelegramApi/formatTelegramHtml/formatTelegramHtml';
 import { InlineKeyboardMarkup } from 'senaev-utils/src/utils/TelegramApi/types';
 
 import { ProwlarrRelease } from './prowlarr';
-import { editTelegramMarkdownMessage } from './telegramMarkdownMessages';
+import { editTelegramHtmlMessage } from './telegramHtmlMessages';
 import { createTorrentSearchSession, getTorrentSearchSession } from './torrentSearchSessions';
 
 const PAGE_SIZE = 5;
@@ -13,20 +18,8 @@ function releaseSeeds(release: ProwlarrRelease): number {
     return release.seeders ?? release.peers ?? 0;
 }
 
-function boldTelegramMarkdownV2(text: string): string {
-    return `*${escapeTelegramMarkdownV2(text)}*`;
-}
-
-function codeTelegramMarkdownV2(text: string): string {
-    return `\`${text.replace(/([`\\])/g, '\\$1')}\``;
-}
-
 function formatReleaseValue(value: string | number | undefined): string {
-    return escapeTelegramMarkdownV2(value === undefined ? '?' : String(value));
-}
-
-function formatTelegramMarkdownV2Link({ text, url }: { text: string; url: string }): string {
-    return `[${escapeTelegramMarkdownV2(text)}](${escapeTelegramMarkdownV2(url)})`;
+    return escapeHtml(value === undefined ? '?' : String(value));
 }
 
 function formatPublishDate(publishDate: string | undefined): string {
@@ -42,7 +35,7 @@ function formatReleaseLine(release: ProwlarrRelease, displayIndex: number): stri
     const size = isUnsignedInteger(release.size) ? formatBytes(release.size) : '?no-size?';
 
     const indexer = release.infoUrl
-        ? formatTelegramMarkdownV2Link({
+        ? telegramLink({
             text: release.indexer ?? 'unknown',
             url: release.infoUrl,
         })
@@ -51,11 +44,11 @@ function formatReleaseLine(release: ProwlarrRelease, displayIndex: number): stri
     const peers = `${releaseSeeds(release)}⬆️${formatReleaseValue(release.leechers)}⬇️`;
 
     return [
-        `${displayIndex}\\. ${boldTelegramMarkdownV2(title)}`,
+        `${displayIndex}. ${telegramBold(title)}`,
         [
             indexer,
-            boldTelegramMarkdownV2(size),
-            `${escapeTelegramMarkdownV2(formatPublishDate(release.publishDate))}`,
+            telegramBold(size),
+            escapeHtml(formatPublishDate(release.publishDate)),
         ].join(' '),
         peers,
     ].join('\n');
@@ -71,7 +64,7 @@ function buildTorrentSearchMessage({
     releases: ProwlarrRelease[];
 }): string {
     if (releases.length === 0) {
-        return `🔎 Ничего не найдено для:\n${codeTelegramMarkdownV2(query)}`;
+        return `🔎 Ничего не найдено для:\n${telegramCode(query)}`;
     }
 
     const pageCount = Math.ceil(releases.length / PAGE_SIZE);
@@ -79,7 +72,7 @@ function buildTorrentSearchMessage({
     const pageReleases = releases.slice(startIndex, startIndex + PAGE_SIZE);
 
     return [
-        `🔎 ${codeTelegramMarkdownV2(query)}`,
+        `🔎 ${telegramCode(query)}`,
         ...pageReleases.map((release, index) => formatReleaseLine(release, startIndex + index + 1)),
         `🗒️ ${page + 1} из ${pageCount}`,
     ].join('\n\n');
@@ -181,8 +174,8 @@ export function buildTorrentSearchProgressText({
     query: string;
 }): string {
     return [
-        `🔎 ${codeTelegramMarkdownV2(query)}`,
-        escapeTelegramMarkdownV2(`⏳ Ищу в Prowlarr… ${elapsedSeconds} сек`),
+        `🔎 ${telegramCode(query)}`,
+        escapeHtml(`⏳ Ищу в Prowlarr… ${elapsedSeconds} сек`),
     ].join('\n\n');
 }
 
@@ -224,7 +217,7 @@ export async function editTelegramMessageWithTorrentSearchView({
     });
 
     if (!view) {
-        await editTelegramMarkdownMessage({
+        await editTelegramHtmlMessage({
             chatId,
             messageId,
             text: '❌ Запрос устарел, нужно поискать заново',
@@ -233,7 +226,7 @@ export async function editTelegramMessageWithTorrentSearchView({
         return;
     }
 
-    await editTelegramMarkdownMessage({
+    await editTelegramHtmlMessage({
         chatId,
         messageId,
         text: view.text,

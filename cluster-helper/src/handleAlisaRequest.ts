@@ -1,6 +1,6 @@
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
-import { escapeTelegramMarkdownV2 } from 'senaev-utils/src/utils/TelegramApi/escapeTelegramMarkdownV2/escapeTelegramMarkdownV2';
+import { escapeHtml } from 'senaev-utils/src/utils/String/escapeHtml/escapeHtml';
 
 import { TG_TOKEN_SENAEV_COM_BOT, OBSIDIAN_TASKS_CHAT_ID } from './env';
 import { getRandomValueFromArray } from './getRandomValueFromArray';
@@ -63,8 +63,8 @@ export function handleAlisaRequest(body: unknown): string {
         sendTelegramMessage({
             token: TG_TOKEN_SENAEV_COM_BOT,
             chatId: String(OBSIDIAN_TASKS_CHAT_ID),
-            parseMode: 'MarkdownV2',
-            text: escapeTelegramMarkdownV2(`❌ Sync error processing Alisa command: ${stringifyUnknownError(err)}`),
+            parseMode: 'HTML',
+            text: escapeHtml(`❌ Sync error processing Alisa command: ${stringifyUnknownError(err)}`),
         }).catch((sendErr) => {
             logger.error(sendErr, '❌ Failed to send error message to Telegram');
         });
