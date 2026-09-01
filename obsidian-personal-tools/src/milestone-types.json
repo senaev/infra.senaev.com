@@ -1,0 +1,14 @@
+{
+	"birthday": {
+		"emoji": "🎉",
+		"template": "{{FILENAME}} birthday {{AGE}} {{EMOJI}}"
+	},
+	"holiday": {
+		"emoji": "🎉",
+		"template": "{{FILENAME}} {{AGE}} {{EMOJI}}"
+	},
+	"death": {
+		"emoji": "🕯️",
+		"template": "{{FILENAME}} death anniversary {{AGE}} {{EMOJI}}"
+	}
+}

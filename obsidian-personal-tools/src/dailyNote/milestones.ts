@@ -1,14 +1,22 @@
 import { App } from 'obsidian';
+import {
+	HOLIDAY_PROPERTY,
+	MILESTONE_TYPES,
+	MilestoneType,
+	TOMORROW_EMOJI,
+	renderMilestoneTemplate,
+} from './milestoneTypes';
 
-/** A single milestone (birthday/holiday) to show on a daily note. */
+/** A single milestone (birthday, holiday, …) to show on a daily note. */
 export interface DailyMilestone {
-	/** Display text, e.g. `@mom birthday (65)`. */
-	title: string;
+	/** Rendered display text, e.g. `@mom birthday (65) 🎉`. */
+	text: string;
 	/** Vault path (or linkpath) of the note to link to. */
-	fileName: string;
-	/** Emoji shown after the title (🔜 for tomorrow, 🎉 for today). */
-	emoji: string;
+	path: string;
 }
+
+/** Picks the emoji for a milestone, given the type it belongs to. */
+type ResolveEmoji = (type: MilestoneType) => string;
 
 interface CalendarDay {
 	year: number;
@@ -27,10 +35,9 @@ const MOTHERS_DAY_LINKPATH = "Mother's Day";
 const MOTHERS_DAY_FALLBACK_PATH = "Mother's Day.md";
 
 /**
- * Parses a `birthday`/`holiday` frontmatter value into its day/month/year
- * parts. Obsidian may hand back either a `Date` (when the YAML value is
- * auto-detected as a timestamp) or a plain `YYYY-MM-DD` string, so both are
- * supported.
+ * Parses a milestone frontmatter value into its day/month/year parts. Obsidian
+ * may hand back either a `Date` (when the YAML value is auto-detected as a
+ * timestamp) or a plain `YYYY-MM-DD` string, so both are supported.
  */
 function parseFrontmatterDate(value: unknown): FrontmatterDate | null {
 	if (value instanceof Date) {
@@ -82,9 +89,13 @@ function isMothersDay({ year, month, date }: CalendarDay): boolean {
 	return nextSunday.getMonth() === 11;
 }
 
-/** Collects all birthdays/holidays (without emoji) that fall on `day`. */
-function collectAllMilestones(app: App, day: CalendarDay): Omit<DailyMilestone, 'emoji'>[] {
-	const milestones: Omit<DailyMilestone, 'emoji'>[] = [];
+/** Collects every milestone that falls on `day`, in configured type order. */
+function collectAllMilestones(
+	app: App,
+	day: CalendarDay,
+	resolveEmoji: ResolveEmoji,
+): DailyMilestone[] {
+	const milestones: DailyMilestone[] = [];
 
 	for (const file of app.vault.getMarkdownFiles()) {
 		const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
@@ -92,30 +103,38 @@ function collectAllMilestones(app: App, day: CalendarDay): Omit<DailyMilestone, 
 			continue;
 		}
 
-		const birthday = parseFrontmatterDate(frontmatter.birthday);
-		if (birthday && birthday.day === day.date && birthday.month === day.month) {
-			const age = computeAge(birthday.year, day.year);
-			milestones.push({
-				title: `${file.basename} birthday${age !== undefined ? ` (${age})` : ''}`,
-				fileName: file.path,
-			});
-		}
+		for (const [property, type] of Object.entries(MILESTONE_TYPES)) {
+			const date = parseFrontmatterDate(frontmatter[property]);
+			if (!date || date.day !== day.date || date.month !== day.month) {
+				continue;
+			}
 
-		const holiday = parseFrontmatterDate(frontmatter.holiday);
-		if (holiday && holiday.day === day.date && holiday.month === day.month) {
-			const age = computeAge(holiday.year, day.year);
 			milestones.push({
-				title: `${file.basename}${age !== undefined ? ` (${age})` : ''}`,
-				fileName: file.path,
+				text: renderMilestoneTemplate({
+					template: type.template,
+					fileName: file.basename,
+					age: computeAge(date.year, day.year),
+					emoji: resolveEmoji(type),
+				}),
+				path: file.path,
 			});
 		}
 	}
 
-	if (isMothersDay(day)) {
+	// Mother's Day is derived from the calendar rather than a frontmatter date,
+	// so there is no note property to hang a type on; it borrows the wording of
+	// `holiday`, and is skipped if that type is ever removed.
+	const holidayType = MILESTONE_TYPES[HOLIDAY_PROPERTY];
+	if (isMothersDay(day) && holidayType) {
 		const mothersDayFile = app.metadataCache.getFirstLinkpathDest(MOTHERS_DAY_LINKPATH, '');
 		milestones.push({
-			title: "Mother's Day",
-			fileName: mothersDayFile?.path ?? MOTHERS_DAY_FALLBACK_PATH,
+			text: renderMilestoneTemplate({
+				template: holidayType.template,
+				fileName: MOTHERS_DAY_LINKPATH,
+				age: undefined,
+				emoji: resolveEmoji(holidayType),
+			}),
+			path: mothersDayFile?.path ?? MOTHERS_DAY_FALLBACK_PATH,
 		});
 	}
 
@@ -124,7 +143,7 @@ function collectAllMilestones(app: App, day: CalendarDay): Omit<DailyMilestone, 
 
 /**
  * Returns the milestones to display on the daily note for `noteDate`:
- * tomorrow's milestones (🔜) followed by today's (🎉).
+ * tomorrow's milestones (marked 🔜) followed by the note's own.
  */
 export function getDailyNoteMilestones(app: App, noteDate: Date): DailyMilestone[] {
 	const today: CalendarDay = {
@@ -142,7 +161,7 @@ export function getDailyNoteMilestones(app: App, noteDate: Date): DailyMilestone
 	};
 
 	return [
-		...collectAllMilestones(app, tomorrow).map((milestone) => ({ ...milestone, emoji: '🔜' })),
-		...collectAllMilestones(app, today).map((milestone) => ({ ...milestone, emoji: '🎉' })),
+		...collectAllMilestones(app, tomorrow, () => TOMORROW_EMOJI),
+		...collectAllMilestones(app, today, (type) => type.emoji),
 	];
 }

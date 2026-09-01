@@ -2,8 +2,6 @@ import { App } from 'obsidian';
 import { getDailyNoteMilestones } from './milestones';
 import { attachInternalLink } from './internalLink';
 
-const NBSP = '\u00A0';
-
 /**
  * Renders the milestones widget (today's/tomorrow's birthdays & holidays,
  * or a "no events" placeholder) for `noteDate` into `containerEl`.
@@ -26,9 +24,7 @@ export function renderMilestonesWidget(app: App, containerEl: HTMLElement, noteD
 			containerEl.createEl('br');
 		}
 
-		const link = containerEl.createEl('a', { cls: 'internal-link', text: milestone.title });
-		attachInternalLink(app, link, milestone.fileName);
-
-		containerEl.createSpan({ text: `${NBSP}${milestone.emoji}` });
+		const link = containerEl.createEl('a', { cls: 'internal-link', text: milestone.text });
+		attachInternalLink(app, link, milestone.path);
 	});
 }
