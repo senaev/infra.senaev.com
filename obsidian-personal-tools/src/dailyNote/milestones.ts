@@ -18,7 +18,8 @@ export interface DailyMilestone {
 /** Picks the emoji for a milestone, given the type it belongs to. */
 type ResolveEmoji = (type: MilestoneType) => string;
 
-interface CalendarDay {
+/** A day of the calendar, with `month` 1-based so it reads like a date. */
+export interface CalendarDay {
 	year: number;
 	month: number;
 	date: number;
@@ -70,8 +71,13 @@ function computeAge(birthYear: number, requestedYear: number): number | undefine
 	return undefined;
 }
 
-/** Whether `Mother's Day` (last Sunday of November) falls on `day`. */
-function isMothersDay({ year, month, date }: CalendarDay): boolean {
+/**
+ * Whether `Mother's Day` (last Sunday of November) falls on `day`.
+ *
+ * Expects a real calendar day: `date` beyond the length of the month would roll
+ * over into December and could be mistaken for a match.
+ */
+export function isMothersDay({ year, month, date }: CalendarDay): boolean {
 	if (month !== 11) {
 		return false;
 	}

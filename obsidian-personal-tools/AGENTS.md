@@ -79,10 +79,23 @@ Run from the `plugins/senaev-personal-tools/` directory:
 
 ```bash
 npm install       # first time only
-npm run build     # compiles src/main.ts → ../../.obsidian/plugins/senaev-personal-tools/main.js
+npm run build     # typecheck → tests → src/main.ts → ../../.obsidian/plugins/senaev-personal-tools/main.js
+npm test          # tests alone
 ```
 
+`build` is `tsc -noEmit` → `npm test` → esbuild, so a type error or a failing test leaves the previous `main.js` in place. Typechecking runs first because the test bundler does not check types.
+
 Never edit `main.js` directly.
+
+## Tests
+
+Tests live next to the code they cover as `src/**/*.test.ts`, and use Node's built-in runner (`node:test` + `node:assert/strict`) — no test framework is installed.
+
+`esbuild.tests.mjs` bundles each test into `tests-dist/` (git-ignored) before the runner starts, because the sources use extensionless imports that Node cannot resolve and one imports `milestone-types.json`. It clears `tests-dist/` first, so a deleted test cannot keep passing or failing from a stale bundle. The output directory is passed to Node as a quoted glob, since a bare directory argument is loaded as a module instead of being searched.
+
+Only modules free of an Obsidian runtime import can be tested: the `obsidian` package ships types alone, so a module that imports a value from it cannot load outside Obsidian. `milestones.ts` qualifies because it uses `App` as a type only. Where a module does need `App`, tests pass a stub exposing just `vault.getMarkdownFiles`, `metadataCache.getFileCache` and `metadataCache.getFirstLinkpathDest`.
+
+`isMothersDay` gets the closest attention, as the one rule that cannot be read off a frontmatter date. Besides fixed anchors for 2024–2028, it is swept across 1990–2060: every real day of each year is generated from a `Date`, and exactly one per year must match, always a November Sunday between the 24th and the 30th. Days are generated rather than enumerated because the function expects real calendar days — November 31st would roll over into December and could be mistaken for a match.
 
 ## Project overview
 
