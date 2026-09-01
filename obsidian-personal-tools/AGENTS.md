@@ -2,9 +2,41 @@
 
 ## Features
 
-- **Daily note widgets** (`src/dailyNote/`) — injects a header (date heading → nav row → milestones) and a footer (milestones → nav row) into every `periodic/day/YYYY-MM-DD` note, in both Reading view and Live Preview. Needs no markup in the note itself.
+- **Daily note widgets** (`src/dailyNote/`) — injects a header (date heading → nav row → milestones) and a footer (milestones → nav row) into every `periodic/day/YYYY-MM-DD` note, in both Reading view and Live Preview. Needs no markup in the note itself. Milestone types are configured in `src/milestone-types.json` — see below.
 - **Global API for the Tasks plugin** (`src/tasks/`) — see below.
 - **Commands** (`src/commands/`) — *Copy public link*, plus three that act on the editor selection: *Copy text to public*, *Search selection in Google*, *Translate selection in Google Translate*. The last three flatten wiki-links first via `src/utils/stripWikiLinks.ts`, because `[[...]]` syntax is meaningless outside the vault.
+
+## Milestones — `src/milestone-types.json`
+
+Milestone types are data, not code. Each key is the frontmatter property holding the date, and adding a type needs no change to any `.ts` file:
+
+```json
+{
+	"birthday": {
+		"emoji": "🎉",
+		"template": "{{FILENAME}} birthday {{AGE}} {{EMOJI}}"
+	}
+}
+```
+
+Every note carrying that property is scanned, and a milestone is shown when the day and month match the daily note's date or the day after it. The year is ignored for matching and used only for `{{AGE}}`.
+
+Placeholders (see `renderMilestoneTemplate` in `src/dailyNote/milestoneTypes.ts`):
+
+| Placeholder | Value |
+| --- | --- |
+| `{{FILENAME}}` | note name without the extension, e.g. `@mom` |
+| `{{AGE}}` | years since the date in parentheses, e.g. `(62)`; empty when the year is ≤1900 |
+| `{{EMOJI}}` | the type's `emoji`, or `🔜` when the milestone is tomorrow's |
+
+`{{AGE}}` is empty for a placeholder year such as `0001-12-31`, which the vault uses for dates that recur without a known start. Whitespace runs are collapsed and the result trimmed after substitution, so an empty placeholder leaves neither a double space nor a dangling gap, and a template can be spaced the way it reads best. Deliberate whitespace (a double space, a non-breaking space) does not survive.
+
+Two consequences of the emoji living inside the template:
+
+- It is part of the link text, so clicking it opens the note. It used to sit in its own span outside the link.
+- `🔜` replaces the type's emoji for tomorrow's milestones rather than being appended, keeping one emoji per line.
+
+Mother's Day (the last Sunday of November) is derived from the calendar, so there is no note property to key a type on. It borrows the `holiday` wording, and is skipped if that type is ever removed.
 
 ## Global API — `window.senaevPersonalTools`
 
