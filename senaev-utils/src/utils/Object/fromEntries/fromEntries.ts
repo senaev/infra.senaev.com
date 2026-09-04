@@ -1,4 +1,4 @@
-export function entriesToObject<Key extends string, Value>(entries: [Key, Value][]): Record<Key, Value> {
+export function fromEntries<Key extends string, Value>(entries: [Key, Value][]): Record<Key, Value> {
     const object = {} as Record<Key, Value>;
 
     entries.forEach(([

@@ -5,11 +5,11 @@ import {
 
 import { getObjectEntries } from '../getObjectEntries/getObjectEntries';
 
-import { entriesToObject } from './entriesToObject';
+import { fromEntries } from './fromEntries';
 
-describe('entriesToObject', () => {
+describe('fromEntries', () => {
     test('normal logic', () => {
-        expect(entriesToObject([
+        expect(fromEntries([
             [
                 'prop1',
                 1,
@@ -25,7 +25,7 @@ describe('entriesToObject', () => {
     });
 
     test('last value from the same object property names', () => {
-        const object = entriesToObject([
+        const object = fromEntries([
             [
                 'prop1',
                 1,
@@ -67,7 +67,7 @@ describe('entriesToObject', () => {
 
         const testInstance = new TestClass(1, 2);
 
-        expect(entriesToObject(getObjectEntries(testInstance))).to.eql({
+        expect(fromEntries(getObjectEntries(testInstance))).to.eql({
             prop1: 1,
             prop2: 2,
         });
