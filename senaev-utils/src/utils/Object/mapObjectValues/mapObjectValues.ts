@@ -1,15 +1,18 @@
 import { getObjectKeys } from '../getObjectKeys/getObjectKeys';
 
+/**
+ * Maps every value of an object, keeping the key-to-value relation: the type of
+ * each result key is derived from that key's own value type, not from the union
+ * of all value types.
+ */
 export function mapObjectValues<
     T extends Record<string, unknown>,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- only for util snd better typing
-    TMapFunc extends (value: T[keyof T], key: keyof T) => any,
-    R extends { [P in keyof T]: ReturnType<TMapFunc> },
->(object: T, mapFunction: TMapFunc): R {
-    const resultObject = {} as Record<string, unknown>;
+    R extends Record<keyof T, unknown>,
+>(object: T, mapFunction: <K extends keyof T>(value: T[K], key: K) => R[K]): R {
+    const resultObject = {} as Record<keyof T, unknown>;
 
     getObjectKeys(object).forEach((key) => {
-        resultObject[key as string] = mapFunction(object[key], key);
+        resultObject[key] = mapFunction(object[key], key);
     });
 
     return resultObject as R;
