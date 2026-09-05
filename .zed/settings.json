@@ -4,19 +4,39 @@
 // server to `tsgo` -- a Yarn-PnP wrapper that only works inside the web-ui
 // repo -- and configures eslint for Yarn SDKs. This repo is plain npm, so both
 // are overridden here to use Zed's bundled vtsls and a stock eslint.
+//
+// Formatting is done by `eslint --fix`, not prettier. Code style in this repo
+// is owned by eslint.config.mjs (@stylistic, object-curly-newline,
+// array-element-newline); prettier disagrees with those rules and would write
+// files that `npm run lint` rejects.
 {
   "languages": {
     "TypeScript": {
       "language_servers": ["vtsls", "eslint", "!tsgo"],
-      "formatter": "none"
+      "format_on_save": "on",
+      "formatter": {
+        "code_actions": {
+          "source.fixAll.eslint": true
+        }
+      }
     },
     "TSX": {
       "language_servers": ["vtsls", "eslint", "!tsgo"],
-      "formatter": "none"
+      "format_on_save": "on",
+      "formatter": {
+        "code_actions": {
+          "source.fixAll.eslint": true
+        }
+      }
     },
     "JavaScript": {
       "language_servers": ["vtsls", "eslint", "!tsgo"],
-      "formatter": "none"
+      "format_on_save": "on",
+      "formatter": {
+        "code_actions": {
+          "source.fixAll.eslint": true
+        }
+      }
     }
   },
   "lsp": {
