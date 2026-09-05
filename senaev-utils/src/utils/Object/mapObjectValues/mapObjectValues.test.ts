@@ -50,13 +50,7 @@ describe('mapObjectValues', () => {
         const expectB = (_b: B) => undefined;
 
         const a: A = { foo: 'bar' };
-        const maybeB: B = mapObjectValues(a, (_value, key) => {
-            if (key === 'foo') {
-                return 'baz' as const;
-            }
-
-            return undefined;
-        });
+        const maybeB: B = mapObjectValues(a, () => 'baz' as const);
 
         expectB(maybeB);
 
