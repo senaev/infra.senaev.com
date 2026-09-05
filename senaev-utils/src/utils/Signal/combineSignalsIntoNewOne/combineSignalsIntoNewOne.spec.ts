@@ -5,6 +5,10 @@ import {
     vi,
 } from 'vitest';
 
+import { IsEqualUnion } from '../../../types/IsEqualUnion';
+import { ANY_VALUE } from '../../../types/assertions/ANY_VALUE';
+import { isTrue } from '../../../types/assertions/isTrue/isTrue';
+import { Latch } from '../../Latch/Latch';
 import { deepEqual } from '../../Object/deepEqual/deepEqual';
 import { Signal } from '../Signal';
 
@@ -158,5 +162,87 @@ describe('combineSignalsIntoNewOne', () => {
 
         expect(signal.getValue()).toEqual(true);
         expect(spy.mock.calls.length).toEqual(1);
+    });
+
+    it('should pass undefined into combinator for a latch that is not dispatched yet', () => {
+        const spy = vi.fn();
+        const numberSignal = new Signal(1);
+        const stringLatch = new Latch<string>();
+
+        const { signal, teardown } = combineSignalsIntoNewOne(
+            [
+                numberSignal,
+                stringLatch,
+            ],
+            (a, b) => {
+                isTrue(ANY_VALUE as IsEqualUnion<typeof a, number>);
+                isTrue(ANY_VALUE as IsEqualUnion<typeof b, string | undefined>);
+
+                return `${a}-${b ?? 'pending'}`;
+            }
+        );
+
+        signal.subscribe(spy);
+
+        expect(signal.getValue()).toEqual('1-pending');
+
+        numberSignal.dispatch(2);
+
+        expect(signal.getValue()).toEqual('2-pending');
+
+        stringLatch.dispatch('ready');
+
+        expect(signal.getValue()).toEqual('2-ready');
+        expect(spy.mock.calls.length).toEqual(2);
+
+        // Latch срабатывает один раз, дальнейшие dispatch игнорируются
+        stringLatch.dispatch('again');
+
+        expect(signal.getValue()).toEqual('2-ready');
+        expect(spy.mock.calls.length).toEqual(2);
+
+        teardown();
+
+        numberSignal.dispatch(3);
+
+        expect(signal.getValue()).toEqual('2-ready');
+        expect(spy.mock.calls.length).toEqual(2);
+    });
+
+    it('should take the value of an already dispatched latch without emitting on setup', () => {
+        const spy = vi.fn();
+        const latch = new Latch<number>();
+
+        latch.dispatch(41);
+
+        const { signal } = combineSignalsIntoNewOne([latch], (a) => (a ?? 0) + 1);
+
+        signal.subscribe(spy);
+
+        expect(signal.getValue()).toEqual(42);
+        expect(spy.mock.calls.length).toEqual(0);
+    });
+
+    it('should combine latches only', () => {
+        const firstLatch = new Latch<number>();
+        const secondLatch = new Latch<number>();
+
+        const { signal } = combineSignalsIntoNewOne(
+            [
+                firstLatch,
+                secondLatch,
+            ],
+            (a, b) => (a === undefined || b === undefined ? undefined : a + b)
+        );
+
+        expect(signal.getValue()).toEqual(undefined);
+
+        firstLatch.dispatch(1);
+
+        expect(signal.getValue()).toEqual(undefined);
+
+        secondLatch.dispatch(2);
+
+        expect(signal.getValue()).toEqual(3);
     });
 });

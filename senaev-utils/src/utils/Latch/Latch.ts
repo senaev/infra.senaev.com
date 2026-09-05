@@ -1,3 +1,4 @@
+import { SubscribableValue } from '../../types/SubscribableValue';
 import { callFunctions } from '../Function/callFunctions/callFunctions';
 import { isFunction } from '../Function/isFunction';
 import { noop } from '../Function/noop';
@@ -16,7 +17,7 @@ export type LatchCallback<T> = (parameter: T) => void;
  * В случае, если значение задано, при вызове метода subscribe callback отрабатывает сразу,
  * а дальнейшие вызовы dispatch игнорируются
  */
-export class Latch<T = undefined> {
+export class Latch<T = undefined> implements SubscribableValue<T> {
     public dispatch = once((value: T): void => {
         this.value = value;
         this._isDispatched = true;

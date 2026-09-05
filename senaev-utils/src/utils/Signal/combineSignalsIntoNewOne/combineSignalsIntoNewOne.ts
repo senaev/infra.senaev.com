@@ -1,3 +1,5 @@
+import { SubscribableValue } from '../../../types/SubscribableValue';
+import { Latch } from '../../Latch/Latch';
 import { Signal } from '../Signal';
 
 export type CombineSignalsIntoNewOneResult<T> = {
@@ -5,63 +7,42 @@ export type CombineSignalsIntoNewOneResult<T> = {
     teardown: VoidFunction;
 };
 
-export function combineSignalsIntoNewOne<T, A, B, C, D, E, F, G>(
-    signals: [Signal<A>, Signal<B>, Signal<C>, Signal<D>, Signal<E>, Signal<F>, Signal<G>],
-    combinator: (a: A, b: B, c: C, d: D, e: E, f: F, g: G) => T,
-    checkToEqualFunction?: (currentValue: T, nextValue: T) => boolean,
-): CombineSignalsIntoNewOneResult<T>;
+/**
+ * Значение, которое источник передаёт в комбинатор
+ *
+ * У Signal значение есть всегда, у Latch до dispatch его нет,
+ * поэтому позиция Latch расширяется до `T | undefined`
+ */
+type CombineSourceValue<S> = S extends Signal<infer T>
+    ? T
+    : S extends Latch<infer T>
+        ? T | undefined
+        : S extends SubscribableValue<infer T>
+            ? T | undefined
+            : never;
 
-export function combineSignalsIntoNewOne<T, A, B, C, D, E, F>(
-    signals: [Signal<A>, Signal<B>, Signal<C>, Signal<D>, Signal<E>, Signal<F>],
-    combinator: (a: A, b: B, c: C, d: D, e: E, f: F) => T,
-    checkToEqualFunction?: (currentValue: T, nextValue: T) => boolean,
-): CombineSignalsIntoNewOneResult<T>;
+type CombineSourceValues<S extends readonly SubscribableValue<unknown>[]> = {
+    [K in keyof S]: CombineSourceValue<S[K]>;
+};
 
-export function combineSignalsIntoNewOne<T, A, B, C, D, E>(
-    signals: [Signal<A>, Signal<B>, Signal<C>, Signal<D>, Signal<E>],
-    combinator: (a: A, b: B, c: C, d: D, e: E) => T,
-    checkToEqualFunction?: (currentValue: T, nextValue: T) => boolean,
-): CombineSignalsIntoNewOneResult<T>;
-
-export function combineSignalsIntoNewOne<T, A, B, C, D>(
-    signals: [Signal<A>, Signal<B>, Signal<C>, Signal<D>],
-    combinator: (a: A, b: B, c: C, d: D) => T,
-    checkToEqualFunction?: (currentValue: T, nextValue: T) => boolean,
-): CombineSignalsIntoNewOneResult<T>;
-
-export function combineSignalsIntoNewOne<T, A, B, C>(
-    signals: [Signal<A>, Signal<B>, Signal<C>],
-    combinator: (a: A, b: B, c: C) => T,
-    checkToEqualFunction?: (currentValue: T, nextValue: T) => boolean,
-): CombineSignalsIntoNewOneResult<T>;
-
-export function combineSignalsIntoNewOne<T, A, B>(
-    signals: [Signal<A>, Signal<B>],
-    combinator: (a: A, b: B) => T,
-    checkToEqualFunction?: (currentValue: T, nextValue: T) => boolean,
-): CombineSignalsIntoNewOneResult<T>;
-
-export function combineSignalsIntoNewOne<T, A>(
-    signals: [Signal<A>],
-    combinator: (a: A) => T,
-    checkToEqualFunction?: (currentValue: T, nextValue: T) => boolean,
-): CombineSignalsIntoNewOneResult<T>;
-
-export function combineSignalsIntoNewOne<T>(
-    signals: Signal<unknown>[],
-    combinator: (...args: unknown[]) => T,
+/**
+ * Собирает значения нескольких Signal и Latch в один производный Signal
+ *
+ * Latch, по которому ещё не было dispatch, передаёт в комбинатор `undefined`,
+ * а после dispatch перестаёт влиять на результат, потому что срабатывает один раз
+ */
+export function combineSignalsIntoNewOne<const S extends readonly SubscribableValue<unknown>[], T>(
+    sources: S,
+    combinator: (...values: CombineSourceValues<S>) => T,
     checkToEqualFunction?: (currentValue: T, nextValue: T) => boolean
 ): CombineSignalsIntoNewOneResult<T> {
-    const getAllValues = () => signals.map((signal) => signal.getValue());
+    const getAllValues = () => sources.map((source) => source.getValue()) as CombineSourceValues<S>;
 
-    const initialValue = combinator(...getAllValues());
-    const combinedSignal = new Signal(initialValue, checkToEqualFunction);
+    const combinedSignal = new Signal(combinator(...getAllValues()), checkToEqualFunction);
 
-    const unsubscribeFunctions: VoidFunction[] = signals.map((signal) =>
-        signal.subscribe(() => {
-            const nextValue = combinator(...getAllValues());
-
-            combinedSignal.dispatch(nextValue);
+    const unsubscribeFunctions: VoidFunction[] = sources.map((source) =>
+        source.subscribe(() => {
+            combinedSignal.dispatch(combinator(...getAllValues()));
         }));
 
     return {

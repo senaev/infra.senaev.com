@@ -1,3 +1,5 @@
+import { SubscribableValue } from '../../types/SubscribableValue';
+
 import { SignalCallback } from './SignalCallback';
 
 /**
@@ -8,7 +10,7 @@ import { SignalCallback } from './SignalCallback';
  *
  * Allows to create and combine business logic into reactive Signals and use them in React.context via useSignal hook
  */
-export class Signal<T> {
+export class Signal<T> implements SubscribableValue<T> {
     private readonly callbacks: Set<SignalCallback<T>> = new Set<SignalCallback<T>>();
 
     public constructor(
