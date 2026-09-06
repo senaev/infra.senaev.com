@@ -83,20 +83,14 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          sparse-checkout: .github/actions
+
       - name: Notify Telegram
-        run: |
-          if [ "${{ needs.publish.result }}" = "success" ]; then
-            STATUS_ICON="✅"
-            STATUS_TEXT="success"
-          else
-            STATUS_ICON="❌"
-            STATUS_TEXT="error"
-          fi
-
-          TEXT="${STATUS_ICON} <b>senaev-utils#</b><code>${{ needs.publish.outputs.package_version || '??unknown??' }}</code> <a href=\"https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\">${STATUS_TEXT}</a>"
-
-          curl -sS -X POST "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendMessage" \
-            --data-urlencode "chat_id=-1003971743999" \
-            --data-urlencode "parse_mode=HTML" \
-            --data-urlencode "disable_web_page_preview=true" \
-            --data-urlencode "text=${TEXT}"
+        uses: ./.github/actions/notify-telegram
+        with:
+          bot_token: ${{ secrets.TG_BOT_TOKEN }}
+          status: ${{ needs.publish.result }}
+          title: <b>senaev-utils#</b><code>${{ needs.publish.outputs.package_version || '??unknown??' }}</code>

@@ -1,0 +1,51 @@
+name: Notify Telegram
+description: Sends a build status message with a link to the workflow run to the Telegram chat
+
+inputs:
+  bot_token:
+    description: Telegram bot token
+    required: true
+  status:
+    description: Job status, anything other than "success" is reported as an error
+    required: true
+  title:
+    description: Message body in Telegram HTML, shown between the status icon and the run link
+    required: true
+  link_text:
+    description: Anchor text of the run link, defaults to "success" or "error"
+    required: false
+    default: ''
+  chat_id:
+    description: Telegram chat to post to
+    required: false
+    default: '-1003971743999'
+
+runs:
+  using: composite
+  steps:
+    - name: Send message
+      shell: bash
+      env:
+        BOT_TOKEN: ${{ inputs.bot_token }}
+        STATUS: ${{ inputs.status }}
+        TITLE: ${{ inputs.title }}
+        LINK_TEXT: ${{ inputs.link_text }}
+        CHAT_ID: ${{ inputs.chat_id }}
+      run: |
+        if [ "$STATUS" = "success" ]; then
+          STATUS_ICON="✅"
+          STATUS_TEXT="success"
+        else
+          STATUS_ICON="❌"
+          STATUS_TEXT="error"
+        fi
+
+        RUN_URL="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+        TEXT="${STATUS_ICON} ${TITLE} <a href=\"${RUN_URL}\">${LINK_TEXT:-$STATUS_TEXT}</a>"
+
+        curl -sS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+          --retry 3 --retry-all-errors --retry-delay 2 \
+          --data-urlencode "chat_id=${CHAT_ID}" \
+          --data-urlencode "parse_mode=HTML" \
+          --data-urlencode "disable_web_page_preview=true" \
+          --data-urlencode "text=${TEXT}"
