@@ -1,6 +1,6 @@
 import { Integer } from '../Number/Integer';
 
 /**
- * Количество дней
+ * A number of days
  */
 export type DaysCount = Integer;

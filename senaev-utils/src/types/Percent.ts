@@ -1,4 +1,4 @@
 /**
- * Доля в процентах от 0 до 100
+ * A share in percent, from 0 to 100
  */
 export type Percent = number;

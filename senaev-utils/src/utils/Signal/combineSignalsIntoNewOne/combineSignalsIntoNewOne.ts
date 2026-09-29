@@ -8,10 +8,10 @@ export type CombineSignalsIntoNewOneResult<T> = {
 };
 
 /**
- * Значение, которое источник передаёт в комбинатор
+ * The value that a source passes to the combinator
  *
- * У Signal значение есть всегда, у Latch до dispatch его нет,
- * поэтому позиция Latch расширяется до `T | undefined`
+ * A Signal always has a value, a Latch has no value before dispatch,
+ * so the Latch position is widened to `T | undefined`
  */
 type CombineSourceValue<S> = S extends Signal<infer T>
     ? T
@@ -26,10 +26,10 @@ type CombineSourceValues<S extends readonly SubscribableValue<unknown>[]> = {
 };
 
 /**
- * Собирает значения нескольких Signal и Latch в один производный Signal
+ * Collects the values of several Signals and Latches into one derived Signal
  *
- * Latch, по которому ещё не было dispatch, передаёт в комбинатор `undefined`,
- * а после dispatch перестаёт влиять на результат, потому что срабатывает один раз
+ * A Latch that was not dispatched yet passes `undefined` to the combinator,
+ * and after dispatch it stops affecting the result, because it fires only once
  */
 export function combineSignalsIntoNewOne<const S extends readonly SubscribableValue<unknown>[], T>(
     sources: S,

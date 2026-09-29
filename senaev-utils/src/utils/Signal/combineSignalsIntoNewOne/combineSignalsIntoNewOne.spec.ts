@@ -87,7 +87,7 @@ describe('combineSignalsIntoNewOne', () => {
             ],
         ]);
 
-        // После вызова teardown ничего не происходит
+        // Nothing happens after teardown is called
         teardown();
         firstSignal.dispatch(666);
         firstSignal.dispatch(666);
@@ -195,7 +195,7 @@ describe('combineSignalsIntoNewOne', () => {
         expect(signal.getValue()).toEqual('2-ready');
         expect(spy.mock.calls.length).toEqual(2);
 
-        // Latch срабатывает один раз, дальнейшие dispatch игнорируются
+        // A Latch fires only once, further dispatch calls are ignored
         stringLatch.dispatch('again');
 
         expect(signal.getValue()).toEqual('2-ready');

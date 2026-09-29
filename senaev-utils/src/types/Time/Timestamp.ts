@@ -1,6 +1,6 @@
 import { Milliseconds } from './Milliseconds';
 
 /**
- * Тип для js-таймстампа в мс (с начала эпохи)
+ * A type for a JS timestamp in ms (since the epoch)
  */
 export type Timestamp = Milliseconds;

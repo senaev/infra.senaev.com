@@ -1,12 +1,12 @@
 import { getObjectKeys } from '../getObjectKeys/getObjectKeys';
 
 /**
- * Функция принимает на вход первым агрументом объект и прогоняет все собственные свойства
- * (ключ и значение в качестве аргументов) через функцию, которая приходит вторым аргументом.
- * Эта функция для каждого свойства должна вернуть новый ключ для
- * конкретного значения объекта.
+ * The function takes an object as its first argument and passes all its own properties
+ * (key and value as arguments) through the function that comes as the second argument.
+ * For each property, that function must return a new key for
+ * that specific value of the object.
  *
- * Функция возвращает новый объект, со старыми значениями и новыми ключами.
+ * The function returns a new object with the old values and the new keys.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function mapObjectKeys<T extends Record<string, any>, S extends string>(

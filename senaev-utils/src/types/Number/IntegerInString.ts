@@ -1,7 +1,7 @@
 import { isString } from '../../utils/String/isString';
 
 /**
- * Целое число (положительное или отрицательное), представленное строкой
+ * An integer (positive or negative) represented as a string
  * 💁‍♂️ '0'
  * 💁‍♂️ '-100500'
  * 💁‍♂️ '3456'

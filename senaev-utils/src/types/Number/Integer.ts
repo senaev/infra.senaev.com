@@ -1,5 +1,5 @@
 /**
- * Целое число
+ * An integer
  */
 export type Integer = number;
 

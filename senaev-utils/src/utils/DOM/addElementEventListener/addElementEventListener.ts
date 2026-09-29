@@ -10,7 +10,7 @@ export type AddElementEventListenerParams<K extends HTMLElementEventName> = {
 };
 
 /**
- * Подписывается на событие элемента и возвращает функцию отписки
+ * Subscribes to an element event and returns an unsubscribe function
  */
 export function addElementEventListener<K extends HTMLElementEventName>({
     element,

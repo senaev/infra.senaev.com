@@ -1,5 +1,5 @@
 /**
- * Метод организует всплытие ошибки до глобального скоупа без прерывания текущего коллстека
+ * The method bubbles the error up to the global scope without interrupting the current call stack
  */
 export function rethrowError(error: Error): void {
     setTimeout(() => {

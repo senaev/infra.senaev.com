@@ -3,7 +3,7 @@ import { isString } from '../isString';
 export type NonEmptyString = string;
 
 /**
- * Проверяет, что аргумент - строка, причем непустая
+ * Checks that the argument is a string, and a non-empty one
  */
 export function isNonEmptyString (str: unknown): str is string {
     return isString(str) && str.length > 0;

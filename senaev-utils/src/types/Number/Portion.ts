@@ -1,4 +1,4 @@
 /**
- * Доля от 0 до 1
+ * A share from 0 to 1
  */
 export type Portion = number;

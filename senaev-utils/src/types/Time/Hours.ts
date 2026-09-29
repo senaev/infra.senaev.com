@@ -1,4 +1,4 @@
 /**
- * Время в часах
+ * Time in hours
  */
 export type Hours = number;

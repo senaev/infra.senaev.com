@@ -10,7 +10,7 @@ function func2() {
     //
 }
 
-// Наборы кейсов взял отсюда https://github.com/epoberezkin/fast-deep-equal/blob/master/spec/tests.js
+// Test case sets taken from here https://github.com/epoberezkin/fast-deep-equal/blob/master/spec/tests.js
 const TEST_CASES: {
     description: string;
     tests: {

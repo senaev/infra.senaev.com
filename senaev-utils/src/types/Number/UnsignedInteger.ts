@@ -1,5 +1,5 @@
 /**
- * Целое неотрицательное число
+ * A non-negative integer
  */
 export type UnsignedInteger = number;
 

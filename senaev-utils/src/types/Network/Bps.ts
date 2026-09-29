@@ -1,4 +1,4 @@
 /**
- * Скорость в битах в секунду
+ * A speed in bits per second
  */
 export type Bps = number;

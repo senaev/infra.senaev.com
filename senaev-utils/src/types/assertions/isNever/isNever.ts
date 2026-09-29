@@ -1,7 +1,7 @@
 /**
- * Функция используется для проверки, что переданный ей аргумент имеет тип
- * never. Это позволяет на уровне статических проверок увидеть, что
- * при изменении enum была пропущена обработка одного из вариантов.
+ * The function is used to check that the argument passed to it has the type
+ * never. This lets static checks show that, after an enum change,
+ * the handling of one of the variants was missed.
  *
  * @example
  *      enum Test {

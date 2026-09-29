@@ -1,5 +1,5 @@
 /**
- * Функция вызывает массив функций с аргументами
+ * Calls an array of functions with the given arguments
  */
 export function callFunctions<T extends unknown[]>(
     functions: Iterable<((...callArgs: T) => unknown)>,

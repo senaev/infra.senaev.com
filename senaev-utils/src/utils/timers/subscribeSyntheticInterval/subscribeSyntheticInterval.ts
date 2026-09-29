@@ -12,11 +12,11 @@ const subscribersMap: Map<Milliseconds, IntervalSubscription> = new Map();
 const TIMEUPDATE_INTERVAL: Milliseconds = 1000;
 
 /**
- * Функция нужна для того, чтобы не дублировать интервалы, предназначенные для обновления состояния видео-рекламы
+ * The function exists to avoid duplicate intervals that update the state of video ads
  *
- * Функция принимает коллбек, который будет вызываться по интервалу, возвращает метод для отписки
+ * The function takes a callback that is called on each interval tick, and returns a method to unsubscribe
  *
- * Интервал запускается при первом вызове и останавливается после того, как у него не остаётся подписчиков.
+ * The interval starts on the first call and stops when it has no subscribers left.
  */
 export function subscribeSyntheticInterval(intervalMs: Milliseconds, subscriber: () => void): () => void {
     if (!subscribersMap.has(intervalMs)) {

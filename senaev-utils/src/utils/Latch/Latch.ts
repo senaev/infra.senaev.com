@@ -7,15 +7,15 @@ import { once } from '../Function/once/once';
 export type LatchCallback<T> = (parameter: T) => void;
 
 /**
- * Класс, инстанс которого хранит неизменяемое значение и может находиться в двух состояниях
- * - значение не задано
- * - значение задано
+ * A class whose instance holds an immutable value and can be in one of two states
+ * - the value is not set
+ * - the value is set
  *
- * Если значение не задано, подписаться на его установку можно с помощью метода subscribe,
- * а установить значение вызвав метод dispatch
+ * If the value is not set, you can subscribe to it being set with the subscribe method,
+ * and set the value by calling the dispatch method
  *
- * В случае, если значение задано, при вызове метода subscribe callback отрабатывает сразу,
- * а дальнейшие вызовы dispatch игнорируются
+ * If the value is set, the callback passed to subscribe runs immediately,
+ * and further dispatch calls are ignored
  */
 export class Latch<T = undefined> implements SubscribableValue<T> {
     public dispatch = once((value: T): void => {

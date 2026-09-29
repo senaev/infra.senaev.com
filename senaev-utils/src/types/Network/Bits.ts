@@ -1,4 +1,4 @@
 /**
- * Объем информации в битах
+ * An amount of data in bits
  */
 export type Bits = number;

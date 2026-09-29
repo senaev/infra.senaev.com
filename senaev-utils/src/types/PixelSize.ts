@@ -1,7 +1,7 @@
 import { Pixels } from './Pixels';
 
 /**
- * Размеры чего-либо в пикселях
+ * The dimensions of something in pixels
  */
 export type PixelSize = {
     width: Pixels;

@@ -3,7 +3,7 @@ import { PositiveNumber } from '../../types/Number/PositiveNumber';
 import { Integer } from './Integer';
 
 /**
- * Целое положительное число
+ * A positive integer
  */
 export type PositiveInteger = PositiveNumber & Integer;
 

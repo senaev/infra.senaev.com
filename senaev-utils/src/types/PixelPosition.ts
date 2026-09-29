@@ -1,7 +1,7 @@
 import { Pixels } from './Pixels';
 
 /**
- * Позиция чего-либо в пикселях
+ * The position of something in pixels
  */
 export type PixelPosition = {
     x: Pixels;

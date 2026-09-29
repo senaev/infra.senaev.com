@@ -2,14 +2,14 @@ import { isObject } from '../../../types/Object/Object';
 import { getObjectKeys } from '../getObjectKeys/getObjectKeys';
 
 /**
- * Код взят отсюда https://gist.github.com/egardner/efd34f270cc33db67c0246e837689cb9
+ * Code taken from here https://gist.github.com/egardner/efd34f270cc33db67c0246e837689cb9
  *
- * Функция подходит только для сравнения объектов и массивов любой вложенности с примитивами внутри
+ * The function is only suitable for comparing objects and arrays of any depth with primitives inside
  *
- * Не подходит для сравнения сложных объектов типа Date, Function, RegExp и т.п.
- * Воспринимает их как простые объекты и сравнивает собственные перечисляемые свойства
+ * Not suitable for comparing complex objects such as Date, Function, RegExp, etc.
+ * It treats them as plain objects and compares their own enumerable properties
  *
- * Выдает false при сравнении двух NaN
+ * Returns false when comparing two NaN values
  */
 export function deepEqual<T>(actual: unknown, expected: T): actual is T {
     if (actual === expected) {
