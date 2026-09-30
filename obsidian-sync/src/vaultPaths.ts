@@ -23,6 +23,19 @@ export const TASKS_FILE_PATH = join(OBSIDIAN_VAULT_PATH, '@senaev', 'tasks', 'ta
 export const SHORT_LINKS_FILE_PATH = join(OBSIDIAN_VAULT_PATH, 'short_links', 'short_links.md');
 
 /**
+ * Owned by the senaev-personal-tools Obsidian plugin. Its source is synced with the vault,
+ * so reading the config from here keeps one source of truth for the milestone rules.
+ */
+export const MILESTONES_CONFIG_FILE_PATH = join(
+    OBSIDIAN_VAULT_PATH,
+    'plugins',
+    'senaev-personal-tools',
+    'src',
+    'milestones',
+    'milestones.json'
+);
+
+/**
  * `note path -> pushed content hash` map that survives a restart, so a new pod does not
  * re-push every tracked note just to be told nothing changed.
  *

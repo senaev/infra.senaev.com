@@ -2,6 +2,7 @@ import { logger } from '../logger';
 import { PUBLIC_DIR } from '../vaultPaths';
 
 import { createVaultServer } from './createVaultServer';
+import { registerMilestoneRoutes } from './registerMilestoneRoutes';
 import { registerPublicFileRoutes } from './registerPublicFileRoutes';
 import { registerPublicStaticRoutes } from './registerPublicStaticRoutes';
 import { registerShortLinkRoutes } from './registerShortLinkRoutes';
@@ -16,6 +17,7 @@ export async function runVaultServer(): Promise<void> {
 
     registerTaskRoutes(server);
     registerShortLinkRoutes(server);
+    registerMilestoneRoutes(server);
     registerPublicStaticRoutes(server);
     // Registered last because it installs a catch-all GET route.
     registerPublicFileRoutes(server);
