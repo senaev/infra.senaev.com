@@ -5,6 +5,49 @@ export type ObsidianTaskInput = {
     due_date: string | null;
 };
 
+export type Milestone = {
+    fileName: string;
+    path: string;
+    /** The frontmatter property that matched, e.g. `birthday`, `holiday`, `death`. */
+    type: string;
+    age: number | null;
+    emoji: string;
+};
+
+export type DayMilestones = {
+    /** `YYYY-MM-DD` */
+    date: string;
+    milestones: Milestone[];
+};
+
+export type MilestonesOverview = {
+    today: DayMilestones;
+    tomorrow: DayMilestones;
+};
+
+/**
+ * Collects the milestones (birthdays, holidays, ...) of a day and of the day after it by
+ * calling the obsidian-sync container's `GET /milestones` HTTP API. Without `date`,
+ * obsidian-sync uses its own idea of today.
+ */
+export async function getMilestones(date?: string): Promise<MilestonesOverview> {
+    const query = date === undefined ? '' : `?date=${encodeURIComponent(date)}`;
+    const response = await fetch(`${OBSIDIAN_SYNC_URL}/milestones${query}`);
+
+    const body = (await response.json()) as
+        | ({ status: 'ok' } & MilestonesOverview)
+        | { status: 'error'; message: string };
+
+    if (!response.ok || body.status !== 'ok') {
+        throw new Error(`Failed to get milestones: ${body.status === 'error' ? body.message : `HTTP ${response.status}`}`);
+    }
+
+    return {
+        today: body.today,
+        tomorrow: body.tomorrow,
+    };
+}
+
 /**
  * Resolves a short link id by calling the obsidian-sync container's
  * `GET /short_links/:id` HTTP API, which reads the mapping from the Obsidian

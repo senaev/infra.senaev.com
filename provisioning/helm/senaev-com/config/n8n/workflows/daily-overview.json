@@ -1,0 +1,123 @@
+{
+  "id": "daily-overview",
+  "name": "Daily overview: post today's milestones to Tricky Dad",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 4 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Every day at 04:00 UTC",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -460,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://cluster-helper/send-daily-overview",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "send-daily-overview",
+      "name": "Send daily overview",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput",
+      "position": [
+        -240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// cluster-helper answers 502 with { status: 'error', message } when obsidian-sync or\n// Telegram fails, and the request itself can fail when cluster-helper is down.\nconst item = $input.first().json;\nconst err = item.error ?? item;\nconst message = (err && err.message) ? err.message : JSON.stringify(err).slice(0, 300);\n\nreturn [{\n  json: {\n    text: `\u26a0\ufe0f Failed to send the daily overview to Tricky Dad: ${message}`,\n  },\n}];"
+      },
+      "id": "format-error",
+      "name": "Format error message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -20,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TG_CLUSTER_CHAT_ID }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "telegram-notify-error",
+      "name": "Notify cluster chat",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        200,
+        120
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "senaev-com-bot",
+          "name": "senaev.com bot (provisioned)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every day at 04:00 UTC": {
+      "main": [
+        [
+          {
+            "node": "Send daily overview",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send daily overview": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Format error message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format error message": {
+      "main": [
+        [
+          {
+            "node": "Notify cluster chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "UTC"
+  }
+}

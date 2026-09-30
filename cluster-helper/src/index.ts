@@ -8,6 +8,7 @@ import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTele
 import { TelegramUpdate, TelegramUser } from 'senaev-utils/src/utils/TelegramApi/types';
 
 import { handleAlertmanagerWebhook } from './alerts/handleAlertmanagerWebhook';
+import { sendDailyOverview } from './dailyOverview/sendDailyOverview';
 import {
     ALISA_WEBHOOK_SECRET, TG_MEDIA_SERVER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT, WEBHOOK_DOMAIN,
 } from './env';
@@ -75,6 +76,31 @@ internalServer.post<{ Body: unknown }>('/telegram/send-message', async (request,
         token: TG_TOKEN_SENAEV_COM_BOT,
     });
     reply.code(204).send();
+});
+
+// Called once a day by the n8n `daily-overview` workflow. A GET with a side effect, so
+// that the scheduler needs no body; it is safe only because this port is internal.
+internalServer.get<{ Querystring: { date?: string } }>('/send-daily-overview', async (request, reply) => {
+    try {
+        const { messageId, text } = await sendDailyOverview(request.query.date);
+
+        logger.info({
+            messageId,
+            text,
+        }, '✅ Daily overview sent');
+
+        return reply.code(200).send({
+            status: 'ok',
+            messageId,
+        });
+    } catch (error) {
+        logger.error(error, '❌ Failed to send daily overview');
+
+        return reply.code(502).send({
+            status: 'error',
+            message: error instanceof Error ? error.message : String(error),
+        });
+    }
 });
 
 internalServer.post<{ Body: unknown }>('/qbittorrent/torrent-event', async (request, reply) => {

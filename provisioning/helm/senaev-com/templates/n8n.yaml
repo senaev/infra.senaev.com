@@ -123,6 +123,7 @@ spec:
 
               echo "Publishing scheduled workflows..."
               n8n publish:workflow --id=torrenteros-application-watcher || true
+              n8n publish:workflow --id=daily-overview || true
 
               echo "Unpublishing manual-only workflows..."
               n8n unpublish:workflow --id=example-scrape-to-telegram || true
