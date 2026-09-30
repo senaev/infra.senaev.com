@@ -39,31 +39,39 @@ function formatSection(title: string, milestones: Milestone[]): string | null {
     ].join('\n');
 }
 
-const RUSSIAN_DAY_FORMAT = new Intl.DateTimeFormat('ru-RU', {
-    weekday: 'long',
+// Intl has no genitive weekday ("утро субботы"), so the forms are listed here, indexed by
+// `getUTCDay()`. The month after a day number is already genitive in Intl ("25 января").
+const GENITIVE_WEEKDAYS = [
+    'воскресенья',
+    'понедельника',
+    'вторника',
+    'среды',
+    'четверга',
+    'пятницы',
+    'субботы',
+] as const;
+
+const RUSSIAN_DAY_AND_MONTH_FORMAT = new Intl.DateTimeFormat('ru-RU', {
     day: 'numeric',
     month: 'long',
     // The date carries no time zone of its own, so it is read and printed as UTC.
     timeZone: 'UTC',
 });
 
-/** `2025-11-29` → `суббота, 29 ноября` */
-function formatRussianDay(isoDate: string): string {
-    return RUSSIAN_DAY_FORMAT.format(new Date(`${isoDate}T00:00:00Z`));
+/** `2025-11-29` → `субботы, 29 ноября` */
+function formatGenitiveRussianDay(isoDate: string): string {
+    const date = new Date(`${isoDate}T00:00:00Z`);
+
+    return `${GENITIVE_WEEKDAYS[date.getUTCDay()]}, ${RUSSIAN_DAY_AND_MONTH_FORMAT.format(date)}`;
 }
 
-function formatHeader(isoDate: string, hasMilestones: boolean): string {
-    const intro = hasMilestones ? ' Вот что важно не пропустить:' : '';
-
-    return [
-        `🔔 ${telegramBold('Доброе утро!')}`,
-        `Сегодня ${escapeHtml(formatRussianDay(isoDate))}.${intro}`,
-    ].join('\n');
+function formatHeader(isoDate: string): string {
+    return `🔔 ${telegramBold(`Доброе утро ${formatGenitiveRussianDay(isoDate)}`)}`;
 }
 
 function formatCookingSection(): string {
     return [
-        telegramBold('Что приготовить сегодня:'),
+        telegramBold('Что приготовить:'),
         `🍳 ${telegramLink({
             text: 'mastereat.ru',
             url: 'https://mastereat.ru/',
@@ -74,12 +82,12 @@ function formatCookingSection(): string {
 /** The Telegram HTML text of the daily overview message. */
 export function formatDailyOverview({ today, tomorrow }: MilestonesOverview): string {
     const sections = [
-        formatSection('События сегодня:', today.milestones),
+        formatSection('Сегодня:', today.milestones),
         formatSection('Завтра:', tomorrow.milestones),
     ].filter((section) => section !== null);
 
     return [
-        formatHeader(today.date, sections.length > 0),
+        formatHeader(today.date),
         ...(sections.length === 0 ? ['Сегодня и завтра событий нет 🤷‍♂️'] : sections),
         formatCookingSection(),
         'Хорошего дня, ваш Умный Папа ❤️',

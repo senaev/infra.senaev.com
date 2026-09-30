@@ -53,17 +53,16 @@ describe('formatDailyOverview', () => {
         ));
 
         expect(text).toBe([
-            '🔔 <b>Доброе утро!</b>',
-            'Сегодня суббота, 29 ноября. Вот что важно не пропустить:',
+            '🔔 <b>Доброе утро субботы, 29 ноября</b>',
             '',
-            '<b>События сегодня:</b>',
+            '<b>Сегодня:</b>',
             '<code>@yavladimirov</code> birthday (39) 🥳',
             '<code>@sk-danil</code> birthday (37) 🥳',
             '',
             '<b>Завтра:</b>',
             '<code>Mother\'s Day</code> 💃',
             '',
-            '<b>Что приготовить сегодня:</b>',
+            '<b>Что приготовить:</b>',
             '🍳 <a href="https://mastereat.ru/">mastereat.ru</a>',
             '',
             'Хорошего дня, ваш Умный Папа ❤️',
@@ -92,18 +91,17 @@ describe('formatDailyOverview', () => {
     it('leaves out an empty day', () => {
         const text = formatDailyOverview(overview([], [milestone({})]));
 
-        expect(text).not.toContain('События сегодня');
-        expect(text).toContain('не пропустить:\n\n<b>Завтра:</b>');
+        expect(text).not.toContain('<b>Сегодня:</b>');
+        expect(text).toContain('29 ноября</b>\n\n<b>Завтра:</b>');
     });
 
-    it('says so when both days are empty, without promising anything to miss', () => {
+    it('says so when both days are empty', () => {
         expect(formatDailyOverview(overview([], []))).toBe([
-            '🔔 <b>Доброе утро!</b>',
-            'Сегодня суббота, 29 ноября.',
+            '🔔 <b>Доброе утро субботы, 29 ноября</b>',
             '',
             'Сегодня и завтра событий нет 🤷‍♂️',
             '',
-            '<b>Что приготовить сегодня:</b>',
+            '<b>Что приготовить:</b>',
             '🍳 <a href="https://mastereat.ru/">mastereat.ru</a>',
             '',
             'Хорошего дня, ваш Умный Папа ❤️',
@@ -122,7 +120,38 @@ describe('formatDailyOverview', () => {
             },
         });
 
-        expect(text).toContain('Сегодня пятница, 1 января.');
+        expect(text).toContain('Доброе утро пятницы, 1 января</b>');
+    });
+
+    it('puts every weekday in the genitive case', () => {
+        const headers = [
+            '2026-01-04',
+            '2026-01-05',
+            '2026-01-06',
+            '2026-01-07',
+            '2026-01-08',
+            '2026-01-09',
+            '2026-01-10',
+        ].map((date) => formatDailyOverview({
+            today: {
+                date,
+                milestones: [],
+            },
+            tomorrow: {
+                date,
+                milestones: [],
+            },
+        }).split('\n')[0]);
+
+        expect(headers).toEqual([
+            '🔔 <b>Доброе утро воскресенья, 4 января</b>',
+            '🔔 <b>Доброе утро понедельника, 5 января</b>',
+            '🔔 <b>Доброе утро вторника, 6 января</b>',
+            '🔔 <b>Доброе утро среды, 7 января</b>',
+            '🔔 <b>Доброе утро четверга, 8 января</b>',
+            '🔔 <b>Доброе утро пятницы, 9 января</b>',
+            '🔔 <b>Доброе утро субботы, 10 января</b>',
+        ]);
     });
 
     it('escapes HTML in the note name', () => {
