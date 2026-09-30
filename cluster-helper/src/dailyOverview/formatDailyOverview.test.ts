@@ -53,6 +53,9 @@ describe('formatDailyOverview', () => {
         ));
 
         expect(text).toBe([
+            '🔔 <b>Доброе утро!</b>',
+            'Сегодня суббота, 29 ноября. Вот что важно не пропустить:',
+            '',
             '<b>События сегодня:</b>',
             '<code>@yavladimirov</code> birthday (39) 🥳',
             '<code>@sk-danil</code> birthday (37) 🥳',
@@ -87,11 +90,33 @@ describe('formatDailyOverview', () => {
         const text = formatDailyOverview(overview([], [milestone({})]));
 
         expect(text).not.toContain('События сегодня');
-        expect(text.startsWith('<b>Завтра:</b>')).toBe(true);
+        expect(text).toContain('не пропустить:\n\n<b>Завтра:</b>');
     });
 
-    it('says so when both days are empty', () => {
-        expect(formatDailyOverview(overview([], []))).toBe('Сегодня и завтра событий нет 🤷‍♂️\n\nХорошего дня, ваш Умный Папа ❤️');
+    it('says so when both days are empty, without promising anything to miss', () => {
+        expect(formatDailyOverview(overview([], []))).toBe([
+            '🔔 <b>Доброе утро!</b>',
+            'Сегодня суббота, 29 ноября.',
+            '',
+            'Сегодня и завтра событий нет 🤷‍♂️',
+            '',
+            'Хорошего дня, ваш Умный Папа ❤️',
+        ].join('\n'));
+    });
+
+    it('names the day by the date it is given, whatever the local time zone', () => {
+        const text = formatDailyOverview({
+            today: {
+                date: '2027-01-01',
+                milestones: [],
+            },
+            tomorrow: {
+                date: '2027-01-02',
+                milestones: [],
+            },
+        });
+
+        expect(text).toContain('Сегодня пятница, 1 января.');
     });
 
     it('escapes HTML in the note name', () => {

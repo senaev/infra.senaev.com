@@ -37,6 +37,28 @@ function formatSection(title: string, milestones: Milestone[]): string | null {
     ].join('\n');
 }
 
+const RUSSIAN_DAY_FORMAT = new Intl.DateTimeFormat('ru-RU', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    // The date carries no time zone of its own, so it is read and printed as UTC.
+    timeZone: 'UTC',
+});
+
+/** `2025-11-29` → `суббота, 29 ноября` */
+function formatRussianDay(isoDate: string): string {
+    return RUSSIAN_DAY_FORMAT.format(new Date(`${isoDate}T00:00:00Z`));
+}
+
+function formatHeader(isoDate: string, hasMilestones: boolean): string {
+    const intro = hasMilestones ? ' Вот что важно не пропустить:' : '';
+
+    return [
+        `🔔 ${telegramBold('Доброе утро!')}`,
+        `Сегодня ${escapeHtml(formatRussianDay(isoDate))}.${intro}`,
+    ].join('\n');
+}
+
 /** The Telegram HTML text of the daily overview message. */
 export function formatDailyOverview({ today, tomorrow }: MilestonesOverview): string {
     const sections = [
@@ -45,6 +67,7 @@ export function formatDailyOverview({ today, tomorrow }: MilestonesOverview): st
     ].filter((section) => section !== null);
 
     return [
+        formatHeader(today.date, sections.length > 0),
         ...(sections.length === 0 ? ['Сегодня и завтра событий нет 🤷‍♂️'] : sections),
         'Хорошего дня, ваш Умный Папа ❤️',
     ].join('\n\n');
