@@ -63,6 +63,9 @@ describe('formatDailyOverview', () => {
             '<b>Завтра:</b>',
             '<code>Mother\'s Day</code> 💃',
             '',
+            '<b>Что приготовить сегодня:</b>',
+            '🍳 <a href="https://mastereat.ru/">mastereat.ru</a>',
+            '',
             'Хорошего дня, ваш Умный Папа ❤️',
         ].join('\n'));
     });
@@ -99,6 +102,9 @@ describe('formatDailyOverview', () => {
             'Сегодня суббота, 29 ноября.',
             '',
             'Сегодня и завтра событий нет 🤷‍♂️',
+            '',
+            '<b>Что приготовить сегодня:</b>',
+            '🍳 <a href="https://mastereat.ru/">mastereat.ru</a>',
             '',
             'Хорошего дня, ваш Умный Папа ❤️',
         ].join('\n'));

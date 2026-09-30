@@ -1,5 +1,7 @@
 import { escapeHtml } from 'senaev-utils/src/utils/String/escapeHtml/escapeHtml';
-import { telegramBold, telegramCode } from 'senaev-utils/src/utils/TelegramApi/formatTelegramHtml/formatTelegramHtml';
+import {
+    telegramBold, telegramCode, telegramLink,
+} from 'senaev-utils/src/utils/TelegramApi/formatTelegramHtml/formatTelegramHtml';
 
 import type { Milestone, MilestonesOverview } from '../obsidianSyncApi';
 
@@ -59,6 +61,16 @@ function formatHeader(isoDate: string, hasMilestones: boolean): string {
     ].join('\n');
 }
 
+function formatCookingSection(): string {
+    return [
+        telegramBold('Что приготовить сегодня:'),
+        `🍳 ${telegramLink({
+            text: 'mastereat.ru',
+            url: 'https://mastereat.ru/',
+        })}`,
+    ].join('\n');
+}
+
 /** The Telegram HTML text of the daily overview message. */
 export function formatDailyOverview({ today, tomorrow }: MilestonesOverview): string {
     const sections = [
@@ -69,6 +81,7 @@ export function formatDailyOverview({ today, tomorrow }: MilestonesOverview): st
     return [
         formatHeader(today.date, sections.length > 0),
         ...(sections.length === 0 ? ['Сегодня и завтра событий нет 🤷‍♂️'] : sections),
+        formatCookingSection(),
         'Хорошего дня, ваш Умный Папа ❤️',
     ].join('\n\n');
 }
