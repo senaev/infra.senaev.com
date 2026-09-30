@@ -3,7 +3,7 @@ import {
 } from 'vitest';
 
 import { parseIsoCalendarDay } from './calendarDay';
-import { collectMilestoneLines, type VaultNote } from './collectMilestones';
+import { collectMilestones, type VaultNote } from './collectMilestones';
 import { readFixture } from './fixtures/readFixture';
 import { parseMilestonesConfig } from './milestonesConfig';
 
@@ -17,17 +17,74 @@ function note(path: string, frontmatter: Record<string, unknown>): VaultNote {
     };
 }
 
-function linesOn(notes: VaultNote[], isoDay: string, invalidRules: string[] = []): string[] {
+function milestonesOn(notes: VaultNote[], isoDay: string, invalidRules: string[] = []) {
     const today = parseIsoCalendarDay(isoDay);
 
     if (!today) {
         throw new Error(`bad test day ${isoDay}`);
     }
 
-    return collectMilestoneLines(notes, CONFIG, today, (_note, rule) => {
+    return collectMilestones(notes, CONFIG, today, (_note, rule) => {
         invalidRules.push(rule);
     });
 }
+
+/** `fileName type age` per milestone, so a test reads as one line per milestone. */
+function summaryOn(notes: VaultNote[], isoDay: string): { today: string[]; tomorrow: string[] } {
+    const { today, tomorrow } = milestonesOn(notes, isoDay);
+
+    const summarize = (day: typeof today) => day.milestones.map(({
+        fileName, type, age,
+    }) => `${fileName} ${type} ${String(age)}`);
+
+    return {
+        today: summarize(today),
+        tomorrow: summarize(tomorrow),
+    };
+}
+
+describe('collectMilestones', () => {
+    it('returns both days with their dates and every field of a milestone', () => {
+        const notes = [
+            note('_people/@mom.md', { birthday: '1964-04-14' }),
+            note('_wiki/milestones/Day.md', { holiday: '0001-04-15' }),
+        ];
+
+        expect(milestonesOn(notes, '2026-04-14')).toEqual({
+            today: {
+                date: '2026-04-14',
+                milestones: [
+                    {
+                        fileName: '@mom',
+                        path: '_people/@mom.md',
+                        type: 'birthday',
+                        age: 62,
+                        emoji: '🥳',
+                    },
+                ],
+            },
+            tomorrow: {
+                date: '2026-04-15',
+                milestones: [
+                    {
+                        fileName: 'Day',
+                        path: '_wiki/milestones/Day.md',
+                        type: 'holiday',
+                        age: null,
+                        emoji: '💃',
+                    },
+                ],
+            },
+        });
+    });
+
+    it('gives empty lists for a day without milestones', () => {
+        expect(summaryOn([], '2026-04-14')).toEqual({
+            today: [],
+            tomorrow: [],
+        });
+    });
+});
 
 describe('calculated milestones (`holiday-rule`)', () => {
     const mothersDay = (extra: Record<string, unknown> = {}) => [
@@ -37,27 +94,35 @@ describe('calculated milestones (`holiday-rule`)', () => {
         }),
     ];
 
-    it('is listed on the calculated date without an age', () => {
-        expect(linesOn(mothersDay(), '2026-11-29')).toEqual(['Mother\'s Day 💃']);
+    it('is listed today on the calculated date, without an age', () => {
+        expect(summaryOn(mothersDay(), '2026-11-29')).toEqual({
+            today: ['Mother\'s Day holiday null'],
+            tomorrow: [],
+        });
     });
 
-    it('is announced with 🔜 on the day before', () => {
-        expect(linesOn(mothersDay(), '2026-11-28')).toEqual(['Mother\'s Day 🔜']);
+    it('is listed as tomorrow on the day before', () => {
+        expect(summaryOn(mothersDay(), '2026-11-28')).toEqual({
+            today: [],
+            tomorrow: ['Mother\'s Day holiday null'],
+        });
     });
 
-    it('is gone the day after and two days before', () => {
-        expect(linesOn(mothersDay(), '2026-11-30')).toEqual([]);
-        expect(linesOn(mothersDay(), '2026-11-27')).toEqual([]);
+    it('is gone the day after', () => {
+        expect(summaryOn(mothersDay(), '2026-11-30')).toEqual({
+            today: [],
+            tomorrow: [],
+        });
     });
 
     it('looks at the next year when tomorrow is 1 January', () => {
         const notes = [note('New Year.md', { 'holiday-rule': 'FREQ=YEARLY;BYMONTH=1;BYMONTHDAY=1' })];
 
-        expect(linesOn(notes, '2026-12-31')).toEqual(['New Year 🔜']);
+        expect(summaryOn(notes, '2026-12-31').tomorrow).toEqual(['New Year holiday null']);
     });
 
     it('is hidden by `milestones-hidden: true`', () => {
-        expect(linesOn(mothersDay({ 'milestones-hidden': true }), '2026-11-29')).toEqual([]);
+        expect(summaryOn(mothersDay({ 'milestones-hidden': true }), '2026-11-29').today).toEqual([]);
     });
 
     it('is ignored for a type without a rule property, or when the rule is not a string', () => {
@@ -66,14 +131,15 @@ describe('calculated milestones (`holiday-rule`)', () => {
             note('Other.md', { 'holiday-rule': 42 }),
         ];
 
-        expect(linesOn(notes, '2026-11-29')).toEqual([]);
+        expect(summaryOn(notes, '2026-11-29').today).toEqual([]);
     });
 
     it('reports an invalid rule and does not match it', () => {
         const invalidRules: string[] = [];
+        const { today } = milestonesOn([note('Bad.md', { 'holiday-rule': 'sometime' })], '2026-11-29', invalidRules);
 
-        expect(linesOn([note('Bad.md', { 'holiday-rule': 'sometime' })], '2026-11-29', invalidRules)).toEqual([]);
-        // Once for tomorrow, once for today.
+        expect(today.milestones).toEqual([]);
+        // Once for today, once for tomorrow.
         expect(invalidRules).toEqual([
             'sometime',
             'sometime',
@@ -91,7 +157,10 @@ describe('milestones-hidden', () => {
             }),
         ];
 
-        expect(linesOn(notes, '2026-04-14')).toEqual([]);
+        expect(summaryOn(notes, '2026-04-14')).toEqual({
+            today: [],
+            tomorrow: [],
+        });
     });
 
     for (const value of [
@@ -109,23 +178,29 @@ describe('milestones-hidden', () => {
                 }),
             ];
 
-            expect(linesOn(notes, '2026-04-14')).toEqual(['@mom birthday (62) 🥳']);
+            expect(summaryOn(notes, '2026-04-14').today).toEqual(['@mom birthday 62']);
         });
     }
 });
 
 describe('frontmatter milestones', () => {
-    it('renders a birthday with the age, ignoring the year for matching', () => {
+    it('computes the age, ignoring the year for matching', () => {
         const notes = [note('_people/@mom.md', { birthday: '1964-04-14' })];
 
-        expect(linesOn(notes, '2026-04-14')).toEqual(['@mom birthday (62) 🥳']);
-        expect(linesOn(notes, '2031-04-14')).toEqual(['@mom birthday (67) 🥳']);
+        expect(summaryOn(notes, '2026-04-14').today).toEqual(['@mom birthday 62']);
+        expect(summaryOn(notes, '2031-04-14').today).toEqual(['@mom birthday 67']);
     });
 
-    it('omits the age for a placeholder year', () => {
+    it('computes tomorrow\'s age with tomorrow\'s year', () => {
+        const notes = [note('_people/@x.md', { birthday: '2000-01-01' })];
+
+        expect(summaryOn(notes, '2026-12-31').tomorrow).toEqual(['@x birthday 27']);
+    });
+
+    it('gives no age for a placeholder year', () => {
         const notes = [note('_wiki/milestones/New Year 🎄.md', { holiday: '0001-12-31' })];
 
-        expect(linesOn(notes, '2026-12-31')).toEqual(['New Year 🎄 💃']);
+        expect(summaryOn(notes, '2026-12-31').today).toEqual(['New Year 🎄 holiday null']);
     });
 
     it('lists several types from one note, in config order', () => {
@@ -136,28 +211,16 @@ describe('frontmatter milestones', () => {
             }),
         ];
 
-        expect(linesOn(notes, '2026-05-02')).toEqual([
-            '@x birthday (90) 🥳',
-            '@x death anniversary (31) ⚰️',
+        expect(summaryOn(notes, '2026-05-02').today).toEqual([
+            '@x birthday 90',
+            '@x death 31',
         ]);
     });
 
     it('accepts a Date value', () => {
         const notes = [note('_people/@mom.md', { birthday: new Date('1964-04-14') })];
 
-        expect(linesOn(notes, '2026-04-14')).toEqual(['@mom birthday (62) 🥳']);
-    });
-
-    it('puts tomorrow before today, marking only tomorrow with 🔜', () => {
-        const notes = [
-            note('_people/@today.md', { birthday: '0001-04-14' }),
-            note('_people/@tomorrow.md', { birthday: '0001-04-15' }),
-        ];
-
-        expect(linesOn(notes, '2026-04-14')).toEqual([
-            '@tomorrow birthday 🔜',
-            '@today birthday 🥳',
-        ]);
+        expect(summaryOn(notes, '2026-04-14').today).toEqual(['@mom birthday 62']);
     });
 
     it('skips an unknown property, another date and an unparsable value', () => {
@@ -167,20 +230,19 @@ describe('frontmatter milestones', () => {
             note('_people/@unparsable.md', { birthday: 'sometime in April' }),
         ];
 
-        expect(linesOn(notes, '2026-04-14')).toEqual([]);
+        expect(summaryOn(notes, '2026-04-14')).toEqual({
+            today: [],
+            tomorrow: [],
+        });
     });
 
     it('crosses month and year ends when looking at tomorrow', () => {
-        expect(linesOn([note('@x.md', { birthday: '0001-05-01' })], '2026-04-30')).toEqual(['@x birthday 🔜']);
-        expect(linesOn([note('@x.md', { birthday: '0001-01-01' })], '2026-12-31')).toEqual(['@x birthday 🔜']);
+        expect(summaryOn([note('@x.md', { birthday: '0001-05-01' })], '2026-04-30').tomorrow).toEqual(['@x birthday null']);
+        expect(summaryOn([note('@x.md', { birthday: '0001-01-01' })], '2026-12-31').tomorrow).toEqual(['@x birthday null']);
     });
 
     it('matches 29 February in a leap year', () => {
-        expect(linesOn([note('@x.md', { birthday: '2000-02-29' })], '2028-02-29')).toEqual(['@x birthday (28) 🥳']);
-    });
-
-    it('inserts `$&` in a note name literally', () => {
-        expect(linesOn([note('@$&.md', { birthday: '0001-04-14' })], '2026-04-14')).toEqual(['@$& birthday 🥳']);
+        expect(summaryOn([note('@x.md', { birthday: '2000-02-29' })], '2028-02-29').today).toEqual(['@x birthday 28']);
     });
 });
 
@@ -192,18 +254,12 @@ describe('parseMilestonesConfig', () => {
         })).toThrow(/version/);
     });
 
-    it('rejects a type without a template', () => {
+    it('rejects a type without an emoji', () => {
         expect(() => parseMilestonesConfig({
             version: 1,
             hiddenProperty: 'h',
             minKnownYear: 1901,
-            tomorrowEmoji: '🔜',
-            types: [
-                {
-                    property: 'birthday',
-                    emoji: '🥳',
-                },
-            ],
-        })).toThrow(/template/);
+            types: [{ property: 'birthday' }],
+        })).toThrow(/emoji/);
     });
 });

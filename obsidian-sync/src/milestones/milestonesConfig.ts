@@ -3,19 +3,18 @@ import { isObject } from 'senaev-utils/src/types/Object/Object';
 /**
  * Mirrors `milestones.schema.json` of the senaev-personal-tools Obsidian plugin, which owns
  * the config. It is read from the synced vault, so the plugin and this service always
- * apply the same rules.
+ * apply the same rules. Only the matching rules are read: this service returns structured
+ * data, so `template` and `tomorrowEmoji` are left to the plugin.
  */
 export interface MilestoneType {
     property: string;
     ruleProperty?: string;
     emoji: string;
-    template: string;
 }
 
 export interface MilestonesConfig {
     hiddenProperty: string;
     minKnownYear: number;
-    tomorrowEmoji: string;
     types: MilestoneType[];
 }
 
@@ -39,7 +38,6 @@ function parseMilestoneType(value: unknown, index: number): MilestoneType {
     const type: MilestoneType = {
         property: requireNonEmptyString(value, 'property'),
         emoji: requireNonEmptyString(value, 'emoji'),
-        template: requireNonEmptyString(value, 'template'),
     };
 
     if (value.ruleProperty !== undefined) {
@@ -71,7 +69,6 @@ export function parseMilestonesConfig(value: unknown): MilestonesConfig {
     return {
         hiddenProperty: requireNonEmptyString(value, 'hiddenProperty'),
         minKnownYear,
-        tomorrowEmoji: requireNonEmptyString(value, 'tomorrowEmoji'),
         types: types.map(parseMilestoneType),
     };
 }

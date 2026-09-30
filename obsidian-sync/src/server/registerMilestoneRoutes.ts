@@ -1,6 +1,6 @@
 import { logger } from '../logger';
 import { parseIsoCalendarDay, todayInTimeZone } from '../milestones/calendarDay';
-import { getMilestonesText } from '../milestones/getMilestonesText';
+import { getMilestones } from '../milestones/getMilestones';
 
 import type { VaultServer } from './createVaultServer';
 
@@ -13,22 +13,24 @@ export function registerMilestoneRoutes(server: VaultServer): void {
         const today = date === undefined ? todayInTimeZone(DEFAULT_TIME_ZONE) : parseIsoCalendarDay(date);
 
         if (today === null) {
-            return reply
-                .code(400)
-                .type('text/plain')
-                .send('Query parameter "date" must be a real day in YYYY-MM-DD format');
+            return reply.code(400).send({
+                status: 'error',
+                message: 'Query parameter "date" must be a real day in YYYY-MM-DD format',
+            });
         }
 
-        let text: string;
-
         try {
-            text = await getMilestonesText(today);
+            return reply.code(200).send({
+                status: 'ok',
+                ...await getMilestones(today),
+            });
         } catch (error) {
             logger.error(error, '❌ Failed to collect milestones');
 
-            return reply.code(500).type('text/plain').send('Internal Server Error');
+            return reply.code(500).send({
+                status: 'error',
+                message: 'Internal Server Error',
+            });
         }
-
-        return reply.code(200).type('text/plain; charset=utf-8').send(text);
     });
 }
