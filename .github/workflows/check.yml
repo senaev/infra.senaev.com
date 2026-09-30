@@ -14,12 +14,16 @@ on:
       - "tsconfig.base.json"
       - "vitest.config.ts"
       - ".github/workflows/check.yml"
+      - "scripts/check-syntax.sh"
+      - "**/*.py"
+      - "**/*.sh"
+      - "provisioning/helm/**"
   pull_request:
   workflow_dispatch:
 
 jobs:
   check:
-    name: Lint, Typecheck, Test
+    name: Lint, Typecheck, Test, Syntax
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -48,7 +52,8 @@ jobs:
           done
 
       # One step, the same command the pre-push hook runs, so local and CI cannot drift.
-      # concurrently runs all three at once and lets each finish even when another fails,
+      # concurrently runs all checks at once and lets each finish even when another fails,
       # so a red build reports every problem instead of only the first one.
-      - name: Lint, typecheck and test
+      # The Python, shell and Helm syntax checks use python3, bash and helm from the runner image.
+      - name: Lint, typecheck, test and syntax checks
         run: npm run simple-checks

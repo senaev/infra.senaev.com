@@ -11,7 +11,10 @@
     "typecheck": "tsc -p senaev-utils --noEmit && tsc -p cluster-helper --noEmit && tsc -p media-server-helper --noEmit && tsc -p obsidian-sync --noEmit && tsc -p vpn-subscription --noEmit",
     "test": "vitest --run",
     "test:watch": "vitest",
-    "simple-checks": "concurrently --prefix-colors auto --timings npm:lint npm:typecheck npm:test",
+    "check:python": "bash scripts/check-syntax.sh python",
+    "check:shell": "bash scripts/check-syntax.sh shell",
+    "check:helm": "bash scripts/check-syntax.sh helm",
+    "simple-checks": "concurrently --prefix-colors auto --timings npm:lint npm:typecheck npm:test npm:check:python npm:check:shell npm:check:helm",
     "prepare": "lefthook install"
   },
   "devDependencies": {

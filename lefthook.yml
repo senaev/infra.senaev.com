@@ -2,8 +2,8 @@
 # branch and get bypassed with --no-verify; at push time they run once. CI runs them again
 # regardless, so this hook is a fast local signal, not the gate.
 #
-# One command, because `npm run simple-checks` already runs lint, typecheck and the tests
-# concurrently and prints a single summary.
+# One command, because `npm run simple-checks` already runs lint, typecheck, the tests and the
+# Python/shell/Helm syntax checks concurrently and prints a single summary.
 pre-push:
   commands:
     simple-checks:

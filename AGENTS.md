@@ -47,20 +47,27 @@ shared toolchain — eslint, vitest, typescript, `@types/node`, lefthook — whi
 keeps its own dependencies and its own lockfile. Packages are still built and deployed one
 by one, and Docker build contexts stay per-package.
 
-Run all three checks from the repository root; the packages have no check scripts of their own:
+Run all checks from the repository root; the packages have no check scripts of their own:
 
 ```
-npm run simple-checks   # all three at once, concurrently -- what the pre-push hook runs
+npm run simple-checks   # all checks below at once, concurrently -- what the pre-push hook runs
 npm run lint            # eslint, one root eslint.config.mjs for all packages
 npm run typecheck       # tsc --noEmit per package, in sequence
 npm test                # vitest, one project per package
+npm run check:python    # syntax of every *.py file (ast.parse, writes no __pycache__)
+npm run check:shell     # syntax of every *.sh file (sh -n for #!/bin/sh scripts, else bash -n)
+npm run check:helm      # helm lint of every chart, with common-values.yaml + its values.yaml
 ```
 
-`simple-checks` runs the other three with `concurrently`, so it takes about as long as the
+The three `check:*` scripts are in `scripts/check-syntax.sh`. They find files with `git ls-files`,
+so a new file is checked without a config change, also before it is first committed. They need
+`python3`, `bash` and `helm` on the `PATH`; the GitHub `ubuntu-latest` runner has all three.
+
+`simple-checks` runs the other scripts with `concurrently`, so it takes about as long as the
 slowest one instead of their sum. Output is streamed live behind a coloured `[lint]`,
-`[typecheck]` or `[test]` prefix, and a timings table is printed at the end. Every check runs
-to completion even when another fails, so one push reports every problem at once; the exit
-code is non-zero if any of them failed.
+`[typecheck]`, `[test]` or `[check:*]` prefix, and a timings table is printed at the end. Every
+check runs to completion even when another fails, so one push reports every problem at once;
+the exit code is non-zero if any of them failed.
 
 Because there is no workspace hoisting, typed linting, `tsc` and the tests each need the
 package's own `node_modules`. A fresh clone therefore needs `npm ci` at the root **and** in
@@ -75,9 +82,9 @@ senaev-utils overrides only `module`, `moduleResolution`, `esModuleInterop` and 
 because browser bundlers compile it too.
 
 `.github/workflows/check.yml` is called by every service build workflow via `needs: check`,
-so nothing is deployed before lint, typecheck and tests pass. It also runs on its own when
-the shared config changes, which belongs to no package and would otherwise reach `main`
-unchecked.
+so nothing is deployed before lint, typecheck, tests and syntax checks pass. It also runs on
+its own when the shared config, a `*.py` or `*.sh` file, or a Helm chart changes, because
+these belong to no package and would otherwise reach `main` unchecked.
 
 ### Git hooks
 
