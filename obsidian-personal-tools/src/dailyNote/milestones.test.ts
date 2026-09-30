@@ -80,6 +80,56 @@ describe("Mother's Day milestone", () => {
 
 		assert.deepEqual(textsOn(app, day(2026, 11, 27)), []);
 	});
+
+	it('is hidden when its note has `milestones-hidden: true`', () => {
+		const path = "_wiki/milestones/Mother's Day.md";
+		const app = stubApp([{ path, frontmatter: { 'milestones-hidden': true } }], path);
+
+		assert.deepEqual(textsOn(app, MOTHERS_DAY_2026), []);
+	});
+});
+
+describe('milestones-hidden', () => {
+	const BIRTHDAY = '1964-04-14';
+	const ON_BIRTHDAY = day(2026, 4, 14);
+
+	it('hides every milestone of a note set to `true`', () => {
+		const app = stubApp([
+			{
+				path: '_people/@x.md',
+				frontmatter: { birthday: BIRTHDAY, death: BIRTHDAY, 'milestones-hidden': true },
+			},
+		]);
+
+		assert.deepEqual(textsOn(app, ON_BIRTHDAY), []);
+	});
+
+	it('hides tomorrow’s milestones too', () => {
+		const app = stubApp([
+			{ path: '_people/@x.md', frontmatter: { birthday: BIRTHDAY, 'milestones-hidden': true } },
+		]);
+
+		assert.deepEqual(textsOn(app, day(2026, 4, 13)), []);
+	});
+
+	it('leaves other notes alone', () => {
+		const app = stubApp([
+			{ path: '_people/@hidden.md', frontmatter: { birthday: BIRTHDAY, 'milestones-hidden': true } },
+			{ path: '_people/@mom.md', frontmatter: { birthday: BIRTHDAY } },
+		]);
+
+		assert.deepEqual(textsOn(app, ON_BIRTHDAY), ['@mom birthday (62) 🎉']);
+	});
+
+	for (const value of [false, 'true', 'yes', 1, null]) {
+		it(`does not hide for ${JSON.stringify(value)}`, () => {
+			const app = stubApp([
+				{ path: '_people/@mom.md', frontmatter: { birthday: BIRTHDAY, 'milestones-hidden': value } },
+			]);
+
+			assert.deepEqual(textsOn(app, ON_BIRTHDAY), ['@mom birthday (62) 🎉']);
+		});
+	}
 });
 
 describe('frontmatter milestones', () => {

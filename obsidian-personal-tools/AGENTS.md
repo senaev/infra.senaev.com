@@ -38,6 +38,12 @@ Two consequences of the emoji living inside the template:
 
 Mother's Day (the last Sunday of November) is derived from the calendar, so there is no note property to key a type on. It borrows the `holiday` wording, and is skipped if that type is ever removed.
 
+### Hiding a note's milestones — `milestones-hidden`
+
+A note with `milestones-hidden: true` in its frontmatter shows none of its milestones, today's or tomorrow's. The note keeps its dates; only the widget skips it. This also works on the `Mother's Day` note.
+
+Only the YAML boolean `true` hides. Any other value — `false`, the quoted string `"true"`, `yes`, `1` — is ignored, so a typo shows the milestone instead of silently hiding it.
+
 ## Global API — `window.senaevPersonalTools`
 
 The Tasks plugin evaluates `filter by function` / `sort by function` expressions as plain JavaScript, so it can only reach plugin code through a global. `registerTasksGlobals` publishes one on load and deletes it on unload.

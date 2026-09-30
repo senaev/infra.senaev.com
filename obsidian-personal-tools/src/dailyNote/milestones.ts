@@ -35,6 +35,13 @@ interface FrontmatterDate {
 const MOTHERS_DAY_LINKPATH = "Mother's Day";
 const MOTHERS_DAY_FALLBACK_PATH = "Mother's Day.md";
 
+const MILESTONES_HIDDEN_PROPERTY = 'milestones-hidden';
+
+/** Whether a note opts out of milestones with `milestones-hidden: true`. */
+function isMilestonesHidden(frontmatter: Record<string, unknown> | undefined): boolean {
+	return frontmatter?.[MILESTONES_HIDDEN_PROPERTY] === true;
+}
+
 /**
  * Parses a milestone frontmatter value into its day/month/year parts. Obsidian
  * may hand back either a `Date` (when the YAML value is auto-detected as a
@@ -105,7 +112,7 @@ function collectAllMilestones(
 
 	for (const file of app.vault.getMarkdownFiles()) {
 		const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
-		if (!frontmatter) {
+		if (!frontmatter || isMilestonesHidden(frontmatter)) {
 			continue;
 		}
 
@@ -127,24 +134,44 @@ function collectAllMilestones(
 		}
 	}
 
-	// Mother's Day is derived from the calendar rather than a frontmatter date,
-	// so there is no note property to hang a type on; it borrows the wording of
-	// `holiday`, and is skipped if that type is ever removed.
-	const holidayType = MILESTONE_TYPES[HOLIDAY_PROPERTY];
-	if (isMothersDay(day) && holidayType) {
-		const mothersDayFile = app.metadataCache.getFirstLinkpathDest(MOTHERS_DAY_LINKPATH, '');
-		milestones.push({
-			text: renderMilestoneTemplate({
-				template: holidayType.template,
-				fileName: MOTHERS_DAY_LINKPATH,
-				age: undefined,
-				emoji: resolveEmoji(holidayType),
-			}),
-			path: mothersDayFile?.path ?? MOTHERS_DAY_FALLBACK_PATH,
-		});
+	const mothersDay = getMothersDayMilestone(app, day, resolveEmoji);
+	if (mothersDay) {
+		milestones.push(mothersDay);
 	}
 
 	return milestones;
+}
+
+/**
+ * Mother's Day is derived from the calendar rather than a frontmatter date, so
+ * there is no note property to hang a type on; it borrows the wording of
+ * `holiday`, and is skipped if that type is ever removed. Its note, when it
+ * exists, can still opt out with `milestones-hidden: true`.
+ */
+function getMothersDayMilestone(
+	app: App,
+	day: CalendarDay,
+	resolveEmoji: ResolveEmoji,
+): DailyMilestone | null {
+	const holidayType = MILESTONE_TYPES[HOLIDAY_PROPERTY];
+	if (!holidayType || !isMothersDay(day)) {
+		return null;
+	}
+
+	const mothersDayFile = app.metadataCache.getFirstLinkpathDest(MOTHERS_DAY_LINKPATH, '');
+	if (mothersDayFile && isMilestonesHidden(app.metadataCache.getFileCache(mothersDayFile)?.frontmatter)) {
+		return null;
+	}
+
+	return {
+		text: renderMilestoneTemplate({
+			template: holidayType.template,
+			fileName: MOTHERS_DAY_LINKPATH,
+			age: undefined,
+			emoji: resolveEmoji(holidayType),
+		}),
+		path: mothersDayFile?.path ?? MOTHERS_DAY_FALLBACK_PATH,
+	};
 }
 
 /**
