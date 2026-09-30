@@ -2,26 +2,58 @@
 
 ## Features
 
-- **Daily note widgets** (`src/dailyNote/`) — injects a header (date heading → nav row → milestones) and a footer (milestones → nav row) into every `periodic/day/YYYY-MM-DD` note, in both Reading view and Live Preview. Needs no markup in the note itself. Milestone types are configured in `src/milestone-types.json` — see below.
+- **Daily note widgets** (`src/dailyNote/`) — injects a header (date heading → nav row → milestones) and a footer (milestones → nav row) into every `periodic/day/YYYY-MM-DD` note, in both Reading view and Live Preview. Needs no markup in the note itself. The milestones logic and config live in `src/milestones/` — see below.
 - **Global API for the Tasks plugin** (`src/tasks/`) — see below.
 - **Commands** (`src/commands/`) — *Copy public link*, plus three that act on the editor selection: *Copy text to public*, *Search selection in Google*, *Translate selection in Google Translate*. The last three flatten wiki-links first via `src/utils/stripWikiLinks.ts`, because `[[...]]` syntax is meaningless outside the vault.
 
-## Milestones — `src/milestone-types.json`
+## Milestones — `src/milestones/`
 
-Milestone types are data, not code. Each key is the frontmatter property holding the date, and adding a type needs no change to any `.ts` file:
+Milestone types are data, not code. The JSON files are written for external code as well, so that code collecting milestones for a date can read the same rules as the plugin. The folder holds the config and the logic that reads it; only the rendering (`src/dailyNote/milestonesWidget.ts`) is elsewhere.
+
+| File | Purpose |
+| --- | --- |
+| `milestones.ts` | collects the milestones for a daily note's date and the day after it |
+| `milestoneTypes.ts` | reads `milestones.json` and fills templates |
+| `milestoneRule.ts` | evaluates calculated dates (RRULE) |
+| `calendarDay.ts` | the `CalendarDay` type |
+| `milestones.json` | the config: types in display order, the hidden property, the tomorrow emoji, the first year with a known age |
+| `milestones.schema.json` | JSON Schema for the config; every field is described there |
+| `rule-test-vectors.json` | expected dates for calculated rules, which every consumer should test against |
+
+The plugin bundles `milestones.json` at build time, so an edit there needs `npm run build`. Adding a type needs no change to any `.ts` file:
 
 ```json
 {
-	"birthday": {
-		"emoji": "🎉",
-		"template": "{{FILENAME}} birthday {{AGE}} {{EMOJI}}"
-	}
+	"property": "birthday",
+	"emoji": "🥳",
+	"template": "{{FILENAME}} birthday {{AGE}} {{EMOJI}}"
 }
 ```
 
-Every note carrying that property is scanned, and a milestone is shown when the day and month match the daily note's date or the day after it. The year is ignored for matching and used only for `{{AGE}}`.
+`types` is an array rather than an object keyed by property, so display order does not depend on how a consumer's JSON parser orders keys.
 
-Placeholders (see `renderMilestoneTemplate` in `src/dailyNote/milestoneTypes.ts`):
+Every note carrying `property` is scanned, and a milestone is shown when the day and month match the daily note's date or the day after it. The year is ignored for matching and used only for `{{AGE}}`.
+
+### Calculated dates — `ruleProperty`
+
+A type with `ruleProperty` (only `holiday`, as `holiday-rule`) also accepts a date that must be calculated, written as an RFC 5545 RRULE in the note:
+
+```yaml
+---
+holiday-rule: FREQ=YEARLY;BYMONTH=11;BYDAY=-1SU
+---
+```
+
+The rule lives in the note, like a fixed date, so a new calculated holiday is just a new note. RRULE was chosen over a readable custom syntax because every language has a library for it, so external code does not need its own parser. See `src/milestones/milestoneRule.ts` (uses the `rrule` package, which grew `main.js` from ~11 KB to ~57 KB). Conventions:
+
+- The rule is evaluated as if `DTSTART` were 1 January of the requested year, 00:00 UTC. `FREQ` is required; `DTSTART` and `COUNT` are rejected, because they would mean something different under that convention.
+- An invalid rule never matches and logs a console warning.
+- A calculated milestone has no `{{AGE}}`.
+- Easter-based dates are not expressible in standard RRULE.
+
+`_wiki/milestones/Mother's Day.md` uses this; it was hard-coded before.
+
+Placeholders (see `renderMilestoneTemplate` in `src/milestones/milestoneTypes.ts`):
 
 | Placeholder | Value |
 | --- | --- |
@@ -36,11 +68,9 @@ Two consequences of the emoji living inside the template:
 - It is part of the link text, so clicking it opens the note. It used to sit in its own span outside the link.
 - `🔜` replaces the type's emoji for tomorrow's milestones rather than being appended, keeping one emoji per line.
 
-Mother's Day (the last Sunday of November) is derived from the calendar, so there is no note property to key a type on. It borrows the `holiday` wording, and is skipped if that type is ever removed.
-
 ### Hiding a note's milestones — `milestones-hidden`
 
-A note with `milestones-hidden: true` in its frontmatter shows none of its milestones, today's or tomorrow's. The note keeps its dates; only the widget skips it. This also works on the `Mother's Day` note.
+A note with `milestones-hidden: true` (the config's `hiddenProperty`) in its frontmatter shows none of its milestones, today's or tomorrow's, fixed or calculated. The note keeps its dates; only the widget skips it.
 
 Only the YAML boolean `true` hides. Any other value — `false`, the quoted string `"true"`, `yes`, `1` — is ignored, so a typo shows the milestone instead of silently hiding it.
 
@@ -97,11 +127,11 @@ Never edit `main.js` directly.
 
 Tests live next to the code they cover as `src/**/*.test.ts`, and use Node's built-in runner (`node:test` + `node:assert/strict`) — no test framework is installed.
 
-`esbuild.tests.mjs` bundles each test into `tests-dist/` (git-ignored) before the runner starts, because the sources use extensionless imports that Node cannot resolve and one imports `milestone-types.json`. It clears `tests-dist/` first, so a deleted test cannot keep passing or failing from a stale bundle. The output directory is passed to Node as a quoted glob, since a bare directory argument is loaded as a module instead of being searched.
+`esbuild.tests.mjs` bundles each test into `tests-dist/` (git-ignored) before the runner starts, because the sources use extensionless imports that Node cannot resolve and some import JSON from `src/milestones/`. It clears `tests-dist/` first, so a deleted test cannot keep passing or failing from a stale bundle. The output directory is passed to Node as a quoted glob, since a bare directory argument is loaded as a module instead of being searched.
 
-Only modules free of an Obsidian runtime import can be tested: the `obsidian` package ships types alone, so a module that imports a value from it cannot load outside Obsidian. `milestones.ts` qualifies because it uses `App` as a type only. Where a module does need `App`, tests pass a stub exposing just `vault.getMarkdownFiles`, `metadataCache.getFileCache` and `metadataCache.getFirstLinkpathDest`.
+Only modules free of an Obsidian runtime import can be tested: the `obsidian` package ships types alone, so a module that imports a value from it cannot load outside Obsidian. `milestones.ts` qualifies because it uses `App` as a type only. Where a module does need `App`, tests pass a stub exposing just `vault.getMarkdownFiles` and `metadataCache.getFileCache`.
 
-`isMothersDay` gets the closest attention, as the one rule that cannot be read off a frontmatter date. Besides fixed anchors for 2024–2028, it is swept across 1990–2060: every real day of each year is generated from a `Date`, and exactly one per year must match, always a November Sunday between the 24th and the 30th. Days are generated rather than enumerated because the function expects real calendar days — November 31st would roll over into December and could be mistaken for a match.
+Calculated rules (`milestoneRule.test.ts`) are checked against every entry of `src/milestones/rule-test-vectors.json`: each real day of the vector's year is generated from a `Date`, and the days the rule matches must equal the expected list exactly. The last Sunday of November is also swept across 1990–2060: exactly one match per year, always a November Sunday between the 24th and the 30th. Days are generated rather than enumerated, so no invented day such as November 31st can roll over into December.
 
 ## Project overview
 

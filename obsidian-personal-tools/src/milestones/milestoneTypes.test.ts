@@ -65,13 +65,23 @@ describe('renderMilestoneTemplate', () => {
 	});
 });
 
-describe('milestone-types.json', () => {
-	it('configures the types the vault uses', () => {
-		assert.deepEqual(Object.keys(MILESTONE_TYPES), ['birthday', 'holiday', 'death']);
+describe('milestones.json', () => {
+	it('configures the types the vault uses, in display order', () => {
+		assert.deepEqual(
+			MILESTONE_TYPES.map((type) => type.property),
+			['birthday', 'holiday', 'death'],
+		);
+	});
+
+	it('gives calculated dates to holidays only', () => {
+		assert.deepEqual(
+			MILESTONE_TYPES.filter((type) => type.ruleProperty !== undefined).map((type) => type.ruleProperty),
+			['holiday-rule'],
+		);
 	});
 
 	it('gives every type a non-empty emoji and a {{FILENAME}} template', () => {
-		for (const [property, type] of Object.entries(MILESTONE_TYPES)) {
+		for (const { property, ...type } of MILESTONE_TYPES) {
 			assert.notEqual(type.emoji, '', `${property} needs an emoji`);
 			assert.ok(
 				type.template.includes('{{FILENAME}}'),

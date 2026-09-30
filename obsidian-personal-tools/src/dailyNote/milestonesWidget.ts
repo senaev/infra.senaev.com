@@ -1,5 +1,5 @@
 import { App } from 'obsidian';
-import { getDailyNoteMilestones } from './milestones';
+import { getDailyNoteMilestones } from '../milestones/milestones';
 import { attachInternalLink } from './internalLink';
 
 /**

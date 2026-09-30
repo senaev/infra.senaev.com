@@ -8,7 +8,7 @@ import { join } from 'node:path';
  * test runner can execute them.
  *
  * The tests import TypeScript sources with extensionless specifiers, which Node
- * cannot resolve on its own, and one of them imports `milestone-types.json`.
+ * cannot resolve on its own, and some import JSON from `src/milestones/`.
  * Bundling with the esbuild that already builds the plugin solves both without
  * adding a test-time TypeScript loader as a dependency.
  *

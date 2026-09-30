@@ -1,0 +1,25 @@
+{
+	"$schema": "./milestones.schema.json",
+	"version": 1,
+	"hiddenProperty": "milestones-hidden",
+	"minKnownYear": 1901,
+	"tomorrowEmoji": "🔜",
+	"types": [
+		{
+			"property": "birthday",
+			"emoji": "🥳",
+			"template": "{{FILENAME}} birthday {{AGE}} {{EMOJI}}"
+		},
+		{
+			"property": "holiday",
+			"ruleProperty": "holiday-rule",
+			"emoji": "💃",
+			"template": "{{FILENAME}} {{AGE}} {{EMOJI}}"
+		},
+		{
+			"property": "death",
+			"emoji": "⚰️",
+			"template": "{{FILENAME}} death anniversary {{AGE}} {{EMOJI}}"
+		}
+	]
+}
