@@ -107,6 +107,23 @@ async function callTool(params: unknown, saveDiaryText: SaveDiaryText) {
     return toolResult(`Saved to ${path}`, false, { path });
 }
 
+/** What to log about one message: never the arguments, which hold the diary text. */
+export function describeMcpExchange(message: unknown, response: JsonRpcResponse | null) {
+    const request = isObject(message) ? message : {};
+    const params = isObject(request.params) ? request.params : {};
+
+    return {
+        method: request.method,
+        tool: params.name,
+        protocolVersion: params.protocolVersion,
+        clientInfo: params.clientInfo,
+        error: response !== null && 'error' in response ? response.error : undefined,
+        isToolError: response !== null && 'result' in response && isObject(response.result)
+            ? response.result.isError
+            : undefined,
+    };
+}
+
 /**
  * Handles one JSON-RPC message. Returns `null` for notifications, which per the transport
  * spec get `202 Accepted` with no body.

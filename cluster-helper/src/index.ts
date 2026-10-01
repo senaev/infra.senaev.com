@@ -8,7 +8,7 @@ import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTele
 import { TelegramUpdate, TelegramUser } from 'senaev-utils/src/utils/TelegramApi/types';
 
 import { handleAlertmanagerWebhook } from './alerts/handleAlertmanagerWebhook';
-import { handleMcpMessage } from './chatGptMcp/handleMcpMessage';
+import { describeMcpExchange, handleMcpMessage } from './chatGptMcp/handleMcpMessage';
 import { sendDailyOverview } from './dailyOverview/sendDailyOverview';
 import {
     ALISA_WEBHOOK_SECRET,
@@ -191,6 +191,8 @@ const CHAT_GPT_MCP_PATH = `/${CHAT_GPT_TO_OBSIDIAN_PUBLIC_ENDPOINT_SECRET}`;
 publicServer.post<{ Body: unknown }>(CHAT_GPT_MCP_PATH, async (request, reply) => {
     try {
         const response = await handleMcpMessage(request.body, appendDailyNoteDraft);
+
+        logger.info(describeMcpExchange(request.body, response), '🤖 ChatGPT MCP message');
 
         if (response === null) {
             return reply.code(202).send();
