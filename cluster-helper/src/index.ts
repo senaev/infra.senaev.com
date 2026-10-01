@@ -8,7 +8,6 @@ import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTele
 import { TelegramUpdate, TelegramUser } from 'senaev-utils/src/utils/TelegramApi/types';
 
 import { handleAlertmanagerWebhook } from './alerts/handleAlertmanagerWebhook';
-import { formatDiaryEntry } from './chatGptMcp/formatDiaryEntry';
 import { handleMcpMessage } from './chatGptMcp/handleMcpMessage';
 import { sendDailyOverview } from './dailyOverview/sendDailyOverview';
 import {
@@ -186,15 +185,12 @@ publicServer.post(`/${ALISA_WEBHOOK_SECRET}`, ({ body }, reply) => {
 });
 
 // MCP server for the ChatGPT connector, authenticated by the secret in the path. It writes
-// diary entries to the daily note draft file in the Obsidian vault via obsidian-sync.
+// the received text as-is to the daily note draft file in the Obsidian vault via obsidian-sync.
 const CHAT_GPT_MCP_PATH = `/${CHAT_GPT_TO_OBSIDIAN_PUBLIC_ENDPOINT_SECRET}`;
 
 publicServer.post<{ Body: unknown }>(CHAT_GPT_MCP_PATH, async (request, reply) => {
     try {
-        const response = await handleMcpMessage(
-            request.body,
-            (entry) => appendDailyNoteDraft(formatDiaryEntry(entry))
-        );
+        const response = await handleMcpMessage(request.body, appendDailyNoteDraft);
 
         if (response === null) {
             return reply.code(202).send();

@@ -11,39 +11,35 @@ const SUPPORTED_PROTOCOL_VERSIONS = [
 ];
 const LATEST_PROTOCOL_VERSION = '2025-06-18';
 
-const TOOL_NAME = 'upsert_diary_entry';
+const TOOL_NAME = 'save_diary_text';
 
 const JSON_RPC_INVALID_REQUEST = -32600;
 const JSON_RPC_METHOD_NOT_FOUND = -32601;
 const JSON_RPC_INVALID_PARAMS = -32602;
 
-const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+// ChatGPT reads these instructions to decide what to send, so they are the only place
+// where the "edit lightly, do not compose" rules can be enforced.
+const EDITING_RULES = [
+    'Send only the text the user has just written, as a new separate record.',
+    'Do not combine it with earlier messages or earlier records, and do not summarize or rewrite it.',
+    'Do not add a date, a title, a heading or any other text of your own.',
+    'You may only fix typos and grammatical errors, and split the text into sentences and paragraphs.',
+    'Keep the original language of the text; never translate it.',
+].join(' ');
 
-const UPSERT_DIARY_ENTRY_TOOL = {
+const SAVE_DIARY_TEXT_TOOL = {
     name: TOOL_NAME,
-    title: 'Save diary entry',
-    description: 'Saves the full final diary entry for a day into the owner\'s Obsidian vault.',
+    title: 'Save diary text',
+    description: `Appends a piece of text to the owner's diary draft in the Obsidian vault. ${EDITING_RULES}`,
     inputSchema: {
         type: 'object',
         properties: {
-            date: {
+            text: {
                 type: 'string',
-                pattern: '^\\d{4}-\\d{2}-\\d{2}$',
-                description: 'Day of the entry in ISO format YYYY-MM-DD, e.g. 2026-09-28',
-            },
-            title: {
-                type: 'string',
-                description: 'Optional but preferred title, e.g. "Monday, September 28"',
-            },
-            content: {
-                type: 'string',
-                description: 'Full final diary entry text for that day',
+                description: `The text the user wrote. ${EDITING_RULES}`,
             },
         },
-        required: [
-            'date',
-            'content',
-        ],
+        required: ['text'],
         additionalProperties: false,
     },
     annotations: {
@@ -53,14 +49,8 @@ const UPSERT_DIARY_ENTRY_TOOL = {
     },
 };
 
-export type DiaryEntry = {
-    date: string;
-    title: string | undefined;
-    content: string;
-};
-
-/** Writes the entry and returns the vault-relative path it went to. */
-export type SaveDiaryEntry = (entry: DiaryEntry) => Promise<string>;
+/** Writes the text and returns the vault-relative path it went to. */
+export type SaveDiaryText = (text: string) => Promise<string>;
 
 type JsonRpcId = string | number | null;
 
@@ -101,58 +91,27 @@ function toolResult(text: string, isError: boolean, structuredContent?: Record<s
     };
 }
 
-export function parseDiaryEntry(args: unknown): DiaryEntry | string {
-    if (!isObject(args)) {
-        return 'Arguments must be an object';
-    }
-
-    const {
-        date, title, content,
-    } = args;
-
-    if (typeof date !== 'string' || !ISO_DAY.test(date)) {
-        return 'Field "date" is required and must be in YYYY-MM-DD format';
-    }
-
-    if (title !== undefined && title !== null && typeof title !== 'string') {
-        return 'Field "title" must be a string';
-    }
-
-    if (typeof content !== 'string' || content.trim() === '') {
-        return 'Field "content" is required and must be a non-empty string';
-    }
-
-    return {
-        date,
-        title: typeof title === 'string' && title.trim() !== '' ? title.trim() : undefined,
-        content: content.trim(),
-    };
-}
-
-async function callTool(params: unknown, saveDiaryEntry: SaveDiaryEntry) {
+async function callTool(params: unknown, saveDiaryText: SaveDiaryText) {
     if (!isObject(params) || params.name !== TOOL_NAME) {
         return null;
     }
 
-    const entry = parseDiaryEntry(params.arguments);
+    const text = isObject(params.arguments) ? params.arguments.text : undefined;
 
-    if (typeof entry === 'string') {
-        return toolResult(entry, true);
+    if (typeof text !== 'string' || text.trim() === '') {
+        return toolResult('Field "text" is required and must be a non-empty string', true);
     }
 
-    const path = await saveDiaryEntry(entry);
+    const path = await saveDiaryText(text.trim());
 
-    return toolResult(`Saved diary entry for ${entry.date} to ${path}`, false, {
-        date: entry.date,
-        path,
-    });
+    return toolResult(`Saved to ${path}`, false, { path });
 }
 
 /**
  * Handles one JSON-RPC message. Returns `null` for notifications, which per the transport
  * spec get `202 Accepted` with no body.
  */
-export async function handleMcpMessage(message: unknown, saveDiaryEntry: SaveDiaryEntry): Promise<JsonRpcResponse | null> {
+export async function handleMcpMessage(message: unknown, saveDiaryText: SaveDiaryText): Promise<JsonRpcResponse | null> {
     if (!isObject(message) || message.jsonrpc !== '2.0' || typeof message.method !== 'string') {
         return failure(null, JSON_RPC_INVALID_REQUEST, 'Invalid JSON-RPC message');
     }
@@ -189,9 +148,9 @@ export async function handleMcpMessage(message: unknown, saveDiaryEntry: SaveDia
     case 'ping':
         return success(id, {});
     case 'tools/list':
-        return success(id, { tools: [UPSERT_DIARY_ENTRY_TOOL] });
+        return success(id, { tools: [SAVE_DIARY_TEXT_TOOL] });
     case 'tools/call': {
-        const result = await callTool(params, saveDiaryEntry);
+        const result = await callTool(params, saveDiaryText);
 
         return result === null
             ? failure(id, JSON_RPC_INVALID_PARAMS, `Unknown tool, the only one is "${TOOL_NAME}"`)

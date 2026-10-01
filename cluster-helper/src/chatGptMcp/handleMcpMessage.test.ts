@@ -2,7 +2,6 @@ import {
     describe, expect, it, vi,
 } from 'vitest';
 
-import { formatDiaryEntry } from './formatDiaryEntry';
 import { handleMcpMessage } from './handleMcpMessage';
 
 const PATH = '@senaev/daily_note_draft.md';
@@ -36,47 +35,33 @@ describe('handleMcpMessage', () => {
         }, vi.fn())).toBeNull();
     });
 
-    it('lists the single upsert_diary_entry tool', async () => {
+    it('lists the single save_diary_text tool', async () => {
         const response = await handleMcpMessage(request('tools/list'), vi.fn());
 
-        expect(response).toMatchObject({ result: { tools: [{ name: 'upsert_diary_entry' }] } });
+        expect(response).toMatchObject({ result: { tools: [{ name: 'save_diary_text' }] } });
     });
 
-    it('saves the entry and returns the date and path', async () => {
+    it('saves the text unchanged and returns the path', async () => {
         const save = vi.fn().mockResolvedValue(PATH);
         const response = await handleMcpMessage(request('tools/call', {
-            name: 'upsert_diary_entry',
-            arguments: {
-                date: '2026-09-28',
-                title: 'Monday, September 28',
-                content: 'Full edited diary entry text',
-            },
+            name: 'save_diary_text',
+            arguments: { text: '  Сегодня был хороший день.\n\nМы гуляли.  ' },
         }), save);
 
-        expect(save).toHaveBeenCalledWith({
-            date: '2026-09-28',
-            title: 'Monday, September 28',
-            content: 'Full edited diary entry text',
-        });
+        expect(save).toHaveBeenCalledWith('Сегодня был хороший день.\n\nМы гуляли.');
         expect(response).toMatchObject({
             result: {
                 isError: false,
-                structuredContent: {
-                    date: '2026-09-28',
-                    path: PATH,
-                },
+                structuredContent: { path: PATH },
             },
         });
     });
 
-    it('reports invalid arguments as a tool error without saving', async () => {
+    it('reports empty text as a tool error without saving', async () => {
         const save = vi.fn();
         const response = await handleMcpMessage(request('tools/call', {
-            name: 'upsert_diary_entry',
-            arguments: {
-                date: '28.09.2026',
-                content: 'text',
-            },
+            name: 'save_diary_text',
+            arguments: { text: '   ' },
         }), save);
 
         expect(save).not.toHaveBeenCalled();
@@ -88,23 +73,5 @@ describe('handleMcpMessage', () => {
             .toMatchObject({ error: { code: -32602 } });
         expect(await handleMcpMessage(request('resources/list'), vi.fn()))
             .toMatchObject({ error: { code: -32601 } });
-    });
-});
-
-describe('formatDiaryEntry', () => {
-    it('puts the date and the title in the heading', () => {
-        expect(formatDiaryEntry({
-            date: '2026-09-28',
-            title: 'Monday, September 28',
-            content: 'Text',
-        })).toBe('# 2026-09-28 Monday, September 28\n\nText');
-    });
-
-    it('uses only the date when there is no title', () => {
-        expect(formatDiaryEntry({
-            date: '2026-09-28',
-            title: undefined,
-            content: 'Text',
-        })).toBe('# 2026-09-28\n\nText');
     });
 });
