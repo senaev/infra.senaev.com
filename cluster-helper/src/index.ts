@@ -8,13 +8,19 @@ import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTele
 import { TelegramUpdate, TelegramUser } from 'senaev-utils/src/utils/TelegramApi/types';
 
 import { handleAlertmanagerWebhook } from './alerts/handleAlertmanagerWebhook';
+import { formatDiaryEntry } from './chatGptMcp/formatDiaryEntry';
+import { handleMcpMessage } from './chatGptMcp/handleMcpMessage';
 import { sendDailyOverview } from './dailyOverview/sendDailyOverview';
 import {
-    ALISA_WEBHOOK_SECRET, TG_MEDIA_SERVER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT, WEBHOOK_DOMAIN,
+    ALISA_WEBHOOK_SECRET,
+    CHAT_GPT_TO_OBSIDIAN_PUBLIC_ENDPOINT_SECRET,
+    TG_MEDIA_SERVER_CHAT_ID,
+    TG_TOKEN_SENAEV_COM_BOT,
+    WEBHOOK_DOMAIN,
 } from './env';
 import { handleAlisaRequest } from './handleAlisaRequest';
 import { logger } from './logger';
-import { getShortLink } from './obsidianSyncApi';
+import { appendDailyNoteDraft, getShortLink } from './obsidianSyncApi';
 import { processTelegramWebhookData } from './processTelegramWebhookData';
 import { proxyPublicStaticFile } from './publicStaticProxy';
 import { formatTorrentEvent, isTorrentEvent } from './qbittorrent/formatTorrentEvent';
@@ -32,7 +38,7 @@ const HOST = '0.0.0.0';
 //
 // PUBLIC_PORT is what the three ingresses target -- webhook-endpoint.senaev.com,
 // s.senaev.com and static.senaev.com. Every route on it is either authenticated
-// (Telegram secret token, Alisa secret path) or safe to publish, and the catch-all
+// (Telegram secret token, Alisa and ChatGPT MCP secret paths) or safe to publish, and the catch-all
 // below answers 401 so nothing new leaks by accident.
 //
 // Serving both from one Fastify instance would publish the internal routes, so do not
@@ -178,6 +184,39 @@ publicServer.post(`/${ALISA_WEBHOOK_SECRET}`, ({ body }, reply) => {
         },
     });
 });
+
+// MCP server for the ChatGPT connector, authenticated by the secret in the path. It writes
+// diary entries to the daily note draft file in the Obsidian vault via obsidian-sync.
+const CHAT_GPT_MCP_PATH = `/${CHAT_GPT_TO_OBSIDIAN_PUBLIC_ENDPOINT_SECRET}`;
+
+publicServer.post<{ Body: unknown }>(CHAT_GPT_MCP_PATH, async (request, reply) => {
+    try {
+        const response = await handleMcpMessage(
+            request.body,
+            (entry) => appendDailyNoteDraft(formatDiaryEntry(entry))
+        );
+
+        if (response === null) {
+            return reply.code(202).send();
+        }
+
+        return reply.code(200).send(response);
+    } catch (error) {
+        logger.error(error, '❌ Failed to handle ChatGPT MCP message');
+
+        return reply.code(500).send({
+            jsonrpc: '2.0',
+            id: null,
+            error: {
+                code: -32603,
+                message: 'Internal error',
+            },
+        });
+    }
+});
+
+// No server-initiated SSE stream: the transport spec says to answer GET with 405.
+publicServer.get(CHAT_GPT_MCP_PATH, (_request, reply) => reply.code(405).header('Allow', 'POST').send());
 
 async function main(): Promise<void> {
     const botUser: TelegramUser = await getCurrentTelegramBotInfo(TG_TOKEN_SENAEV_COM_BOT);

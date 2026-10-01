@@ -5,6 +5,7 @@ export const TG_MEDIA_SERVER_CHAT_ID = requireEnv('TG_MEDIA_SERVER_CHAT_ID');
 export const TG_CLUSTER_CHAT_ID = requireEnv('TG_CLUSTER_CHAT_ID');
 export const WEBHOOK_DOMAIN = requireEnv('WEBHOOK_DOMAIN');
 export const ALISA_WEBHOOK_SECRET = requireEnv('ALISA_WEBHOOK_SECRET');
+export const CHAT_GPT_TO_OBSIDIAN_PUBLIC_ENDPOINT_SECRET = requireEnv('CHAT_GPT_TO_OBSIDIAN_PUBLIC_ENDPOINT_SECRET');
 export const OPENROUTER_API_KEY = requireEnv('OPENROUTER_API_KEY');
 export const GROQ_API_KEY = requireEnv('GROQ_API_KEY');
 export const SUPABASE_PROJECT_URL = requireEnv('SUPABASE_PROJECT_URL');

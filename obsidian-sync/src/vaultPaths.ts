@@ -19,6 +19,10 @@ export const PUBLIC_STATIC_DIR = join(OBSIDIAN_VAULT_PATH, 'public-static');
  */
 export const TASKS_FILE_PATH = join(OBSIDIAN_VAULT_PATH, '@senaev', 'tasks', 'tasks_streaming.md');
 
+/** Receives the timestamped records appended via `POST /daily-note-draft`. */
+export const DAILY_NOTE_DRAFT_VAULT_RELATIVE_PATH = join('@senaev', 'daily_note_draft.md');
+export const DAILY_NOTE_DRAFT_FILE_PATH = join(OBSIDIAN_VAULT_PATH, DAILY_NOTE_DRAFT_VAULT_RELATIVE_PATH);
+
 /** Flat `<id> <url>` mapping file backing the short link routes. */
 export const SHORT_LINKS_FILE_PATH = join(OBSIDIAN_VAULT_PATH, 'short_links', 'short_links.md');
 

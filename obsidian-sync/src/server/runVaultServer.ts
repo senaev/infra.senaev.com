@@ -2,6 +2,7 @@ import { logger } from '../logger';
 import { PUBLIC_DIR } from '../vaultPaths';
 
 import { createVaultServer } from './createVaultServer';
+import { registerDailyNoteDraftRoutes } from './registerDailyNoteDraftRoutes';
 import { registerMilestoneRoutes } from './registerMilestoneRoutes';
 import { registerPublicFileRoutes } from './registerPublicFileRoutes';
 import { registerPublicStaticRoutes } from './registerPublicStaticRoutes';
@@ -16,6 +17,7 @@ export async function runVaultServer(): Promise<void> {
     const server = createVaultServer();
 
     registerTaskRoutes(server);
+    registerDailyNoteDraftRoutes(server);
     registerShortLinkRoutes(server);
     registerMilestoneRoutes(server);
     registerPublicStaticRoutes(server);

@@ -132,3 +132,27 @@ export async function addObsidianTasks(tasks: ObsidianTaskInput[]): Promise<void
         await addObsidianTask(task);
     }
 }
+
+/**
+ * Appends a timestamped record to the daily note draft file in the Obsidian vault via the
+ * obsidian-sync container's `POST /daily-note-draft` HTTP API.
+ *
+ * @returns the vault-relative path of the file.
+ */
+export async function appendDailyNoteDraft(text: string): Promise<string> {
+    const response = await fetch(`${OBSIDIAN_SYNC_URL}/daily-note-draft`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text }),
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to append daily note draft: ${response.status} ${await response.text()}`);
+    }
+
+    const { path } = await response.json() as { path: string };
+
+    return path;
+}
