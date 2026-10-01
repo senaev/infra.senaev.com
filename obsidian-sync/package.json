@@ -9,10 +9,10 @@
   },
   "dependencies": {
     "@fastify/static": "8.3.0",
-    "fastify": "5.8.2",
+    "fastify": "5.12.5",
     "rrule": "2.8.1",
     "senaev-utils": "file:../senaev-utils",
-    "tsx": "4.21.0",
+    "tsx": "4.23.15",
     "yaml": "2.8.1"
   }
 }
