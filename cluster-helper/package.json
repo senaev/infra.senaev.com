@@ -19,8 +19,8 @@
     "start": "tsx src/index.ts"
   },
   "dependencies": {
-    "fastify": "5.8.2",
+    "fastify": "5.12.5",
     "senaev-utils": "file:../senaev-utils",
-    "tsx": "4.21.0"
+    "tsx": "4.23.15"
   }
 }
