@@ -30,6 +30,19 @@ export async function sendTrickyDadReport({
 
     const sourceChatId = TRICKY_DAD_SOURCE_TO_CHAT_ID[source];
 
+    // A source without a Telegram chat (Alisa) already got its answer out loud, so a
+    // successful command needs no Telegram confirmation. A failure is still reported,
+    // because otherwise it would be lost entirely.
+    if (!sourceChatId) {
+        const failed = Boolean(result.openRouterError || result.writeErrorString);
+
+        if (!failed) {
+            logger.info({ source }, '🔕 Skipping tricky dad report for a non-Telegram source');
+
+            return;
+        }
+    }
+
     const shouldReply = sourceChatId && reportChatId === sourceChatId;
 
     const parts: string[] = [];
