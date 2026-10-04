@@ -27,10 +27,13 @@ const EDITING_RULES = [
     'Keep the original language of the text; never translate it.',
 ].join(' ');
 
+const ORDER_RULE = 'First write the edited text in your reply to the user, and only then call this tool with exactly that text.';
+const CONFIRMATION_RULE = 'Do not repeat the text. Reply only with a short confirmation that contains the path.';
+
 const SAVE_DIARY_TEXT_TOOL = {
     name: TOOL_NAME,
     title: 'Save diary text',
-    description: `Appends a piece of text to the owner's diary draft in the Obsidian vault. ${EDITING_RULES}`,
+    description: `Appends a piece of text to the owner's diary draft in the Obsidian vault. ${EDITING_RULES} ${ORDER_RULE}`,
     inputSchema: {
         type: 'object',
         properties: {
@@ -104,7 +107,7 @@ async function callTool(params: unknown, saveDiaryText: SaveDiaryText) {
 
     const path = await saveDiaryText(text.trim());
 
-    return toolResult(`Saved to ${path}`, false, { path });
+    return toolResult(`Saved to ${path}. ${CONFIRMATION_RULE}`, false, { path });
 }
 
 /** What to log about one message: never the arguments, which hold the diary text. */
