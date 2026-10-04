@@ -11,8 +11,8 @@ describe('formatRecordTimestamp', () => {
 });
 
 describe('formatDailyNoteDraftRecord', () => {
-    it('puts a timestamp before the text, and the emoji and a separator after it', () => {
+    it('puts a timestamp before the text and the emoji after it', () => {
         expect(formatDailyNoteDraftRecord('Hello', new Date('2026-01-15T08:00:00Z')))
-            .toBe('\n2026-01-15 09-00-00\n\nHello ✍️\n\n---\n');
+            .toBe('\n2026-01-15 09-00-00\n\nHello ✍️\n');
     });
 });

@@ -19,5 +19,5 @@ export function formatRecordTimestamp(now: Date, timeZone: string = RECORD_TIME_
 }
 
 export function formatDailyNoteDraftRecord(text: string, now: Date): string {
-    return `\n${formatRecordTimestamp(now)}\n\n${text} ✍️\n\n---\n`;
+    return `\n${formatRecordTimestamp(now)}\n\n${text} ✍️\n`;
 }
