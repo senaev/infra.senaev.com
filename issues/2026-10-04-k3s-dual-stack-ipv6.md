@@ -223,3 +223,202 @@ The **main** problem of that issue — DPI blocks VLESS+Reality from Russian ISP
 fixed by dual-stack. One side effect may help it: the IPv6 /64 of a VPS gives addresses that
 have never carried VPN traffic. That is a cheap test of its hypothesis **(F) IP reputation**,
 but only for clients whose network has IPv6.
+
+### 2026-10-05 — Round 1 results
+
+**hetzner**
+
+```
+fd7a:115c:a1e0::6936:4c73
+mtu 1280
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 state UP qlen 1000
+    inet6 2a01:4f9:c013:5425::1/64 scope global
+       valid_lft forever preferred_lft forever
+494: tailscale0: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1280 state UNKNOWN qlen 500
+    inet6 fd7a:115c:a1e0::6936:4c73/128 scope global
+net.ipv6.conf.all.disable_ipv6 = 0
+net.ipv6.conf.all.forwarding = 0
+kvm
+2a01:4f9:c013:5425::/64 dev eth0 proto kernel metric 256 pref medium
+fd7a:115c:a1e0::6936:4c73 dev tailscale0 proto kernel metric 256 pref medium
+fe80::/64 dev eth0 proto kernel metric 256 pref medium
+fe80::/64 dev tailscale0 proto kernel metric 256 pref medium
+default via fe80::1 dev eth0 metric 1024 onlink pref medium
+<!DOCTYPE html><html lang="en-US"><head><title>Just a moment...</title>...   (Cloudflare challenge page from ifconfig.co)
+PORT="41641"
+FLAGS=""
+```
+
+Public IPv6 `2a01:4f9:c013:5425::1/64` with a default route. `curl -6` reached Cloudflare
+(the challenge page is an HTTP answer), so **IPv6 egress works**. No UFW output — UFW is not
+installed or not active. **(D) refuted for hetzner. (A) confirmed (mtu 1280).**
+
+**firstvds**
+
+```
+fd7a:115c:a1e0::d736:d926
+mtu 1280
+3: tailscale0: ... mtu 1280 ...
+    inet6 fd7a:115c:a1e0::d736:d926/128 scope global
+net.ipv6.conf.all.disable_ipv6 = 0
+net.ipv6.conf.all.forwarding = 0
+kvm
+Status: active
+Default: deny (incoming), allow (outgoing), deny (routed)
+80/tcp                     ALLOW IN    Anywhere
+443                        ALLOW IN    Anywhere
+22/tcp                     ALLOW IN    Anywhere
+1500/tcp (ispmanager)      ALLOW IN    Anywhere
+80/tcp (v6)                ALLOW IN    Anywhere (v6)
+443 (v6)                   ALLOW IN    Anywhere (v6)
+22/tcp (v6)                ALLOW IN    Anywhere (v6)
+1500/tcp (ispmanager (v6)) ALLOW IN    Anywhere (v6)
+IPV6=yes
+fd7a:115c:a1e0::d736:d926 dev tailscale0 proto kernel metric 256 pref medium
+fe80::/64 dev ens3 proto kernel metric 256 pref medium
+fe80::/64 dev tailscale0 proto kernel metric 256 pref medium
+curl: (7) Failed to connect to ifconfig.co port 443 after 32 ms: Could not connect to server
+NO IPv6 EGRESS
+PORT="41641"
+FLAGS=""
+```
+
+**No public IPv6** on `ens3` and no IPv6 default route. **(D) confirmed for firstvds** — unless
+the provider can assign an IPv6 address. UFW is ready for IPv6 (`IPV6=yes`, v6 rules for
+80/443). UFW `deny (routed)` must be checked for IPv6 pod forwarding later, if firstvds gets IPv6.
+
+**senaev-media**
+
+```
+fd7a:115c:a1e0::3f36:fe63
+mtu 1280
+net.ipv6.conf.all.disable_ipv6 = 0
+kvm
+fd7a:115c:a1e0::3f36:fe63 dev tailscale0 proto kernel metric 256 pref medium
+fe80::/64 dev eth0 proto kernel metric 256 pref medium
+fe80::/64 dev tailscale0 proto kernel metric 256 pref medium
+curl: (7) Failed to connect to ifconfig.co port 443 after 8 ms: Could not connect to server
+NO IPv6 EGRESS
+```
+
+**proxmox**
+
+```
+fd7a:115c:a1e0::6136:c70d
+mtu 1280
+net.ipv6.conf.all.disable_ipv6 = 0
+none
+fd7a:115c:a1e0::6136:c70d dev tailscale0 proto kernel metric 256 pref medium
+fe80::/64 dev tailscale0 proto kernel metric 256 pref medium
+fe80::/64 dev vmbr0 proto kernel metric 256 pref medium
+fe80::/64 dev cni0 proto kernel metric 256 linkdown pref medium
+curl: (7) Failed to connect to ifconfig.co port 443 after 2 ms: Could not connect to server
+NO IPv6 EGRESS
+```
+
+Home nodes: no public IPv6, no UFW. Only link-local on the LAN (`eth0`, `vmbr0`), so the home
+router gives no IPv6 prefix. `proxmox` is bare metal (`none`), not LXC. **(D) confirmed for
+both.**
+
+All nodes: Tailscale IPv6 present, `disable_ipv6 = 0`, `tailscale0` mtu 1280, empty
+`FLAGS` in `/etc/default/tailscaled`. **(A) confirmed on every node. (F) refuted** — no
+`fd42::` / `fd43::` routes anywhere.
+
+**PVs on hetzner** (command 8 failed: zsh globbed `[0]`; the directory listing is enough):
+
+```
+pvc-53226c1b-..._vault_data-vault-0
+pvc-9e7744e2-..._senaev-com_data-redpanda-0
+pvc-c2d77aca-..._telemetry_vmsingle-vm-stack-victoria-metrics-k8s-stack
+pvc-cb11cd65-..._senaev-com_opencode-telegram-git
+```
+
+`data-redpanda-0` is extra: Redpanda is no longer in the repo (last references in commits
+`4b256c3`, `5c803f5`, `b248df9`). It is an orphaned PVC and is lost in the rebuild, which is
+fine. **(B) closed** — data loss accepted.
+
+**Conclusion of Round 1: only hetzner has public IPv6.** The dual-stack rebuild gives:
+
+- hetzner: pod IPv6 egress and inbound VPN over IPv6 — the full goal.
+- firstvds, senaev-media, proxmox: pods get only an internal ULA IPv6 address; no change
+  for the outside world. Xray instances on these nodes keep the `UseIPv4` and `::/0`
+  workarounds.
+
+Open question before the rebuild: is the benefit (one node) worth a cluster rebuild, compared
+with a per-pod solution on hetzner (`hostNetwork: true` for `xray-vpn-hetzner`), which gives
+the same hetzner result without a rebuild?
+
+### 2026-10-05 — Decision: dual-stack rebuild, IPv6 by default on every node
+
+- firstvds IPv6 costs extra — **not enabled**.
+- **Rebuild is confirmed.** Requirement: every node is dual-stack by default, and a node that
+  gets public IPv6 later uses it **without a config change**. `hostNetwork` is rejected.
+
+Final design — nothing in the cluster config depends on whether a node has public IPv6:
+
+| Layer | Setting | Why it works on every node |
+|---|---|---|
+| Node IPs | `--node-ip` / `--node-external-ip` = Tailscale v4 + v6 | Every node has a Tailscale IPv6 (Round 1) |
+| Pod/Service CIDRs | `10.42.0.0/16,fd42::/56` / `10.43.0.0/16,fd43::/112` | IPv4 first = primary family |
+| Pod egress | `--flannel-ipv6-masq` | Pods leave as the node's public IPv6 when the node has one |
+| Overlay MTU | `TS_DEBUG_MTU=1350` | Pod MTU ≥ 1280 on all nodes, so pods keep IPv6 |
+| Inbound | Traefik `hostPort` 80/443 | CNI `portmap` also writes ip6tables DNAT |
+| Router Advertisements | `accept_ra=2` on the uplink interface | k3s sets `forwarding=1`; with forwarding on, Linux ignores RAs, so a node that gets IPv6 from SLAAC (home router) would get no IPv6 default route. hetzner uses a static route, so it is not affected today |
+| Xray | same config on all instances (see below) | — |
+
+Xray (after the rebuild, `_helpers.tpl`): change `domainStrategy` to `UseIPv4v6` and remove the
+`::/0` blackhole on **all** instances. Reason: after the rebuild every pod has an IPv6 route.
+On a node without public IPv6, the node has no IPv6 default route and answers with ICMPv6
+"no route" at once, so the connection fails fast — the same effect as the blackhole.
+**Must be verified** on firstvds (UFW `deny (routed)`) and senaev-media: from the xray pod,
+`nc -6 -w3 2001:4860:4860::8888 53` must fail in well under 1 s. If it hangs, keep the
+blackhole as a per-instance option.
+
+Per-node data that cannot be automatic: `vpn-subscription` VLESS entries with an IPv6 literal
+(no AAAA records). Add a `[2a01:4f9:c013:5425::1]:443` entry for hetzner after the rebuild.
+
+Updated rollout:
+
+1. **Deploy A (no rebuild):** `bootstrap-node-networking.sh` — `TS_DEBUG_MTU=1350`,
+   `accept_ra=2`. Roll out one node at a time; verify MTU and iperf3.
+2. **Rebuild:** script changes (server + worker flags, `check-worker.sh` dual-stack check,
+   `flannel-v6.1` check), k3s upgrade to the current stable version, uninstall all nodes,
+   `make cluster`, `make services`, Vault init, re-enter secrets.
+3. **Deploy B:** xray `UseIPv4v6` + remove blackhole (after the fast-fail test);
+   `vpn-subscription` IPv6 entry for hetzner.
+
+### 2026-10-05 — Deploy A code prepared (not committed, not deployed)
+
+`provisioning/common/bootstrap-node-networking.sh` — two new steps, after the BindsTo/udev
+binding is verified:
+
+- **(4) accept_ra:** detects the uplink from the IPv4 default route, writes
+  `net.ipv6.conf.<uplink>.accept_ra = 2` to `/etc/sysctl.d/90-ipv6-accept-ra.conf`, applies
+  and verifies it.
+- **(5) Tailscale MTU:** checks that `tailscaled` loads `/etc/default/tailscaled`, writes
+  `TS_DEBUG_MTU=1350` (idempotent). Only when `tailscale0` MTU ≠ 1350: restart `tailscaled`,
+  wait up to 30 s for the new MTU (exit 1 if it does not apply), restart the k3s unit so
+  flannel uses the new MTU, wait up to 60 s for `flannel.1`. A normal deploy restarts nothing.
+
+Expected after the rollout: `tailscale0` mtu 1350, `flannel.1` mtu 1300.
+
+Rollout, one node at a time (start with a home node, end with hetzner, the control plane):
+
+```bash
+# Workers: connect-worker.sh runs the worker bootstrap, which runs this script.
+# Or run the script alone on a node after rsync:
+make rsync   # control plane only; workers get files from scripts/connect-worker.sh
+ssh root@<node> "sudo bash <K3S_CLUSTER_PATH>/provisioning/common/bootstrap-node-networking.sh"
+```
+
+Verify on each node after it, before the next node:
+
+```bash
+cat /sys/class/net/tailscale0/mtu /sys/class/net/flannel.1/mtu      # 1350 / 1300
+sysctl net.ipv6.conf.$(ip -4 route show default | awk '{print $5}').accept_ra   # = 2
+# MTU path to another node over the tailnet (1322 = 1350 - 28). The other node must already
+# be at 1350, so run this from the second node on. Mixed 1280/1350 nodes still work in the
+# meantime: TCP negotiates MSS per side.
+ping -M do -s 1322 -c 3 <other-node-tailnet-ip>
+# Cross-node pod traffic still works, and iperf3-monitor throughput did not drop.
+```

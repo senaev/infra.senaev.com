@@ -21,6 +21,9 @@ set -euo pipefail
 #      unit but never restarts it, so this half is required for the pair to self-recover
 #      without any timer or polling loop.
 #   3. Tailscale auto-updates disabled, removing the most common trigger.
+#   4. accept_ra=2 on the uplink interface, so SLAAC IPv6 keeps working with k3s forwarding.
+#   5. Tailscale MTU 1350 (TS_DEBUG_MTU), so dual-stack pods keep an MTU >= 1280 (IPv6
+#      minimum). See issues/2026-10-04-k3s-dual-stack-ipv6.md
 #
 # SAFETY
 #   The drop-in is only installed when sys-subsystem-net-devices-tailscale0.device is
@@ -39,6 +42,9 @@ TAILSCALE_IFACE="tailscale0"
 DEVICE_UNIT="sys-subsystem-net-devices-${TAILSCALE_IFACE}.device"
 UDEV_RULE_PATH="/etc/udev/rules.d/99-tailscale-k3s.rules"
 DROPIN_FILENAME="10-tailscale-binding.conf"
+ACCEPT_RA_SYSCTL_PATH="/etc/sysctl.d/90-ipv6-accept-ra.conf"
+TAILSCALED_ENV_PATH="/etc/default/tailscaled"
+TAILSCALE_MTU="1350"
 
 SUDO=""
 if [[ "$(id -u)" -ne 0 ]]; then
@@ -159,10 +165,102 @@ else
   exit 1
 fi
 
+# -------------------------------------------- accept IPv6 router advertisements (4) ---
+# k3s sets net.ipv6.conf.all.forwarding=1, and with forwarding on the kernel ignores router
+# advertisements unless accept_ra=2. A node that gets IPv6 from SLAAC would then have an
+# address but no IPv6 default route. Harmless on a node without IPv6 or with a static route.
+
+UPLINK_IFACE="$(ip -4 route show default | awk '{ for (i = 1; i < NF; i++) if ($i == "dev") { print $(i + 1); exit } }')"
+if [[ -z "$UPLINK_IFACE" ]]; then
+  echo "❌ $LOG_PREFIX Cannot detect the uplink interface (no IPv4 default route)"
+  exit 1
+fi
+
+# sysctl uses "/" as the separator inside a key when the interface name contains "." (VLANs).
+ACCEPT_RA_KEY="net.ipv6.conf.${UPLINK_IFACE//./\/}.accept_ra"
+
+echo "👉 $LOG_PREFIX Setting [${ACCEPT_RA_KEY}=2] in [${ACCEPT_RA_SYSCTL_PATH}]"
+$SUDO tee "$ACCEPT_RA_SYSCTL_PATH" >/dev/null <<EOF
+# Managed by provisioning/common/bootstrap-node-networking.sh - do not edit by hand.
+# Keep IPv6 SLAAC default routes while k3s enables IPv6 forwarding.
+${ACCEPT_RA_KEY} = 2
+EOF
+$SUDO sysctl -q -p "$ACCEPT_RA_SYSCTL_PATH"
+
+if [[ "$(sysctl -n "$ACCEPT_RA_KEY")" == "2" ]]; then
+  echo "✅ $LOG_PREFIX ${ACCEPT_RA_KEY}=2"
+else
+  echo "❌ $LOG_PREFIX ${ACCEPT_RA_KEY} did not take effect"
+  exit 1
+fi
+
+# ------------------------------------------------------------ Tailscale MTU (5) ---
+# IPv6 VXLAN adds 70 bytes. On the default 1280 tailscale0 MTU the pod MTU would be 1210, and
+# Linux disables IPv6 on interfaces below 1280, so dual-stack pods would get no IPv6 address.
+# TS_DEBUG_MTU is an unsupported debug knob, so the result is verified and a no-op fails loudly.
+#
+# Placed after the binding above on purpose: restarting tailscaled deletes flannel.1, and
+# k3s is restarted below so flannel rebuilds it with the new MTU.
+
+get_tailscale_mtu() {
+  cat "/sys/class/net/${TAILSCALE_IFACE}/mtu" 2>/dev/null || echo 0
+}
+
+TAILSCALED_ENV_FILES="$(systemctl show tailscaled -p EnvironmentFiles --value)"
+if [[ "$TAILSCALED_ENV_FILES" != *"$TAILSCALED_ENV_PATH"* ]]; then
+  echo "❌ $LOG_PREFIX tailscaled does not load [${TAILSCALED_ENV_PATH}] (EnvironmentFiles=[${TAILSCALED_ENV_FILES}])"
+  exit 1
+fi
+
+TAILSCALE_MTU_LINE="TS_DEBUG_MTU=${TAILSCALE_MTU}"
+if grep -qx "$TAILSCALE_MTU_LINE" "$TAILSCALED_ENV_PATH"; then
+  echo "✅ $LOG_PREFIX [${TAILSCALE_MTU_LINE}] already in [${TAILSCALED_ENV_PATH}]"
+else
+  echo "👉 $LOG_PREFIX Writing [${TAILSCALE_MTU_LINE}] to [${TAILSCALED_ENV_PATH}]"
+  $SUDO sed -i '/^TS_DEBUG_MTU=/d' "$TAILSCALED_ENV_PATH"
+  echo "$TAILSCALE_MTU_LINE" | $SUDO tee -a "$TAILSCALED_ENV_PATH" >/dev/null
+  echo "✅ $LOG_PREFIX [${TAILSCALE_MTU_LINE}] written"
+fi
+
+CURRENT_TAILSCALE_MTU="$(get_tailscale_mtu)"
+if [[ "$CURRENT_TAILSCALE_MTU" == "$TAILSCALE_MTU" ]]; then
+  echo "✅ $LOG_PREFIX ${TAILSCALE_IFACE} MTU is ${TAILSCALE_MTU}, no restart needed"
+else
+  # An SSH session over the tailnet stalls for a few seconds here; the tailnet IP does not
+  # change, so TCP recovers once tailscaled is back.
+  echo "👉 $LOG_PREFIX ${TAILSCALE_IFACE} MTU is ${CURRENT_TAILSCALE_MTU}, restarting tailscaled to apply ${TAILSCALE_MTU}"
+  $SUDO systemctl restart tailscaled
+
+  for _ in $(seq 1 30); do
+    [[ "$(get_tailscale_mtu)" == "$TAILSCALE_MTU" ]] && break
+    sleep 1
+  done
+
+  CURRENT_TAILSCALE_MTU="$(get_tailscale_mtu)"
+  if [[ "$CURRENT_TAILSCALE_MTU" != "$TAILSCALE_MTU" ]]; then
+    echo "❌ $LOG_PREFIX ${TAILSCALE_IFACE} MTU is [${CURRENT_TAILSCALE_MTU}] after restart, expected [${TAILSCALE_MTU}]"
+    echo "❌ $LOG_PREFIX TS_DEBUG_MTU had no effect - check the tailscaled version"
+    exit 1
+  fi
+  echo "✅ $LOG_PREFIX ${TAILSCALE_IFACE} MTU is ${TAILSCALE_MTU}"
+
+  # The udev rule also starts k3s, but an explicit restart guarantees that flannel reads the
+  # new MTU instead of relying on BindsTo having caught the short interface removal.
+  echo "👉 $LOG_PREFIX Restarting unit=[${K3S_UNIT}] so flannel uses the new MTU"
+  $SUDO systemctl restart "$K3S_UNIT"
+  echo "✅ $LOG_PREFIX unit=[${K3S_UNIT}] restarted"
+
+  echo "👉 $LOG_PREFIX Waiting for flannel.1"
+  for _ in $(seq 1 60); do
+    ip link show flannel.1 &>/dev/null && break
+    sleep 1
+  done
+fi
+
 # The overlay device itself must exist whenever tailscale0 does. Report only - repairing it
 # here would mean restarting k3s mid-deployment, which is the caller's decision.
 if ip link show flannel.1 &>/dev/null; then
-  echo "✅ $LOG_PREFIX flannel.1 is present, cross-node pod networking is up"
+  echo "✅ $LOG_PREFIX flannel.1 is present (mtu $(cat /sys/class/net/flannel.1/mtu)), cross-node pod networking is up"
 else
   echo "⚠️ $LOG_PREFIX flannel.1 is MISSING while ${TAILSCALE_IFACE} is up - cross-node pod networking is down"
   echo "⚠️ $LOG_PREFIX Repair with: systemctl restart ${K3S_UNIT}"
