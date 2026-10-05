@@ -206,6 +206,11 @@ get_tailscale_mtu() {
   cat "/sys/class/net/${TAILSCALE_IFACE}/mtu" 2>/dev/null || echo 0
 }
 
+has_tailscale_addresses() {
+  [[ -n "$(ip -4 -o addr show dev "$TAILSCALE_IFACE" 2>/dev/null)" ]] &&
+    [[ -n "$(ip -6 -o addr show dev "$TAILSCALE_IFACE" scope global 2>/dev/null)" ]]
+}
+
 TAILSCALED_ENV_FILES="$(systemctl show tailscaled -p EnvironmentFiles --value)"
 if [[ "$TAILSCALED_ENV_FILES" != *"$TAILSCALED_ENV_PATH"* ]]; then
   echo "❌ $LOG_PREFIX tailscaled does not load [${TAILSCALED_ENV_PATH}] (EnvironmentFiles=[${TAILSCALED_ENV_FILES}])"
@@ -244,11 +249,38 @@ else
   fi
   echo "✅ $LOG_PREFIX ${TAILSCALE_IFACE} MTU is ${TAILSCALE_MTU}"
 
+  # The MTU is set when the interface is created, but the tailnet IPs arrive later, and k3s
+  # exits at startup without them: "interface tailscale0 does not have a correct global
+  # unicast ip". Dual-stack flannel needs the IPv6 address as well.
+  echo "👉 $LOG_PREFIX Waiting for IPv4 and IPv6 addresses on ${TAILSCALE_IFACE}"
+  for _ in $(seq 1 30); do
+    has_tailscale_addresses && break
+    sleep 1
+  done
+  if ! has_tailscale_addresses; then
+    echo "❌ $LOG_PREFIX ${TAILSCALE_IFACE} has no IPv4 or no global IPv6 address after tailscaled restart"
+    exit 1
+  fi
+  echo "✅ $LOG_PREFIX ${TAILSCALE_IFACE} has IPv4 and IPv6 addresses"
+
   # The udev rule also starts k3s, but an explicit restart guarantees that flannel reads the
   # new MTU instead of relying on BindsTo having caught the short interface removal.
+  # The restart can still collide with the udev-triggered start, so a failed first attempt
+  # is tolerated and systemd's Restart=always gets time to bring the unit up.
   echo "👉 $LOG_PREFIX Restarting unit=[${K3S_UNIT}] so flannel uses the new MTU"
-  $SUDO systemctl restart "$K3S_UNIT"
-  echo "✅ $LOG_PREFIX unit=[${K3S_UNIT}] restarted"
+  if ! $SUDO systemctl restart "$K3S_UNIT"; then
+    echo "⚠️ $LOG_PREFIX First start of unit=[${K3S_UNIT}] failed, waiting for systemd to retry"
+  fi
+  for _ in $(seq 1 90); do
+    systemctl is-active --quiet "$K3S_UNIT" && break
+    sleep 1
+  done
+  if ! systemctl is-active --quiet "$K3S_UNIT"; then
+    echo "❌ $LOG_PREFIX unit=[${K3S_UNIT}] is not active 90s after restart"
+    echo "❌ $LOG_PREFIX Inspect: journalctl -u ${K3S_UNIT} --since -5min --no-pager"
+    exit 1
+  fi
+  echo "✅ $LOG_PREFIX unit=[${K3S_UNIT}] is active"
 
   echo "👉 $LOG_PREFIX Waiting for flannel.1"
   for _ in $(seq 1 60); do

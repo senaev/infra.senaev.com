@@ -422,3 +422,672 @@ sysctl net.ipv6.conf.$(ip -4 route show default | awk '{print $5}').accept_ra   
 ping -M do -s 1322 -c 3 <other-node-tailnet-ip>
 # Cross-node pod traffic still works, and iperf3-monitor throughput did not drop.
 ```
+
+### 2026-10-05 — Deploy A on proxmox: MTU applied, k3s-agent restart failed
+
+`make workers` (first node, proxmox), relevant part:
+
+```
+👉 [bootstrap-node-networking] Setting [net.ipv6.conf.vmbr0.accept_ra=2] in [/etc/sysctl.d/90-ipv6-accept-ra.conf]
+✅ [bootstrap-node-networking] net.ipv6.conf.vmbr0.accept_ra=2
+👉 [bootstrap-node-networking] Writing [TS_DEBUG_MTU=1350] to [/etc/default/tailscaled]
+✅ [bootstrap-node-networking] [TS_DEBUG_MTU=1350] written
+👉 [bootstrap-node-networking] tailscale0 MTU is 1280, restarting tailscaled to apply 1350
+✅ [bootstrap-node-networking] tailscale0 MTU is 1350
+👉 [bootstrap-node-networking] Restarting unit=[k3s-agent] so flannel uses the new MTU
+Job for k3s-agent.service failed because the control process exited with error code.
+See "systemctl status k3s-agent.service" and "journalctl -xeu k3s-agent.service" for details.
+make: *** [workers] Error 1
+```
+
+- `accept_ra` step: OK (uplink detected as `vmbr0`).
+- **`TS_DEBUG_MTU` works** — `tailscale0` came back with mtu 1350. (A) fix confirmed on proxmox.
+- `k3s-agent` failed to start right after the restart. The run stopped, so senaev-media and
+  firstvds were not touched.
+
+Hypotheses:
+
+**(H) k3s started before tailscale0 had its IP / before tailscaled was Running.** The script
+waits only for the MTU, which is set when the interface is created. The tailnet IPv4 comes a
+moment later; k3s (`--node-external-ip`, `--flannel-iface=tailscale0`) exits fatally without it.
+- `Signal:` journal shows `failed to find interface` / `no IPv4 address` / IP error for
+  tailscale0; the unit is `active` now because `Restart=always` retried 5 s later.
+- `Fix:` in the script, wait for `tailscale ip -4` and an `inet` address on tailscale0 before
+  restarting k3s, and wait for the unit to become `active` instead of failing on the first try.
+
+**(I) BindsTo/udev race.** The udev rule started k3s at the same moment, and the explicit
+restart collided with it.
+- `Signal:` journal shows two starts within a second, or a dependency error.
+- `Fix:` same — wait for tailscale to settle; then `restart` only.
+
+**(J) Unrelated agent failure** (for example a config error after the long uptime).
+- `Signal:` the unit is still `failed` / restart loop with the same error.
+
+Round 2 (read-only), on proxmox:
+
+```bash
+systemctl status k3s-agent --no-pager | head -15
+journalctl -u k3s-agent --since "-15min" --no-pager | grep -vi "level=info" | tail -40
+journalctl -u k3s-agent --since "-15min" --no-pager | grep -E "Started|Starting|Stopped|Stopping|Failed|exited" | tail -20
+cat /sys/class/net/tailscale0/mtu /sys/class/net/flannel.1/mtu; tailscale ip -4
+```
+
+### 2026-10-05 — Round 2 results (proxmox): k3s-agent recovered on its own
+
+(A first run of these commands was by mistake on hetzner: `k3s-agent` not found, mtu
+1280/1230, IP `100.120.76.115` = control plane. Ignore it.)
+
+```
+● k3s-agent.service - Lightweight Kubernetes
+     Loaded: loaded (/etc/systemd/system/k3s-agent.service; enabled; preset: enabled)
+    Drop-In: /etc/systemd/system/k3s-agent.service.d
+             └─10-tailscale-binding.conf
+     Active: active (running) since Mon 2026-10-05 19:32:43 UTC; 1min 54s ago
+...
+Oct 05 19:32:43 proxmox k3s[1544808]: I1005 19:32:43.930063 1544808 kube.go:704] List of node(proxmox) annotations: map[string]string{"alpha.kubernetes.io/provided-node-ip":"100.87.199.13,fd7a:115c:a1e0::6136:c70d", ... "flannel.alpha.coreos.com/public-ip":"100.87.199.13", ...
+Oct 05 19:32:43 proxmox k3s[1544808]: time="2026-10-05T19:32:43Z" level=warning msg="no subnet found for key: FLANNEL_IPV6_NETWORK in file: /run/flannel/subnet.env"
+Oct 05 19:32:43 proxmox k3s[1544808]: time="2026-10-05T19:32:43Z" level=warning msg="no subnet found for key: FLANNEL_IPV6_SUBNET in file: /run/flannel/subnet.env"
+...
+Oct 05 19:32:43 proxmox k3s[1544808]: I1005 19:32:43.940325 1544808 vxlan_network.go:265] Received Subnet Event with VxLan: BackendType: vxlan, PublicIP: 100.90.217.37, ...
+Oct 05 19:32:43 proxmox k3s[1544808]: I1005 19:32:43.941804 1544808 vxlan_network.go:265] Received Subnet Event with VxLan: BackendType: vxlan, PublicIP: 100.120.76.115, ...
+Oct 05 19:32:43 proxmox k3s[1544808]: I1005 19:32:43.944549 1544808 vxlan_network.go:265] Received Subnet Event with VxLan: BackendType: vxlan, PublicIP: 100.103.254.98, ...
+Oct 05 19:32:43 proxmox k3s[1544808]: I1005 19:32:43.950735 1544808 iptables.go:358] bootstrap done
+Oct 05 19:32:43 proxmox systemd[1]: Started k3s-agent.service - Lightweight Kubernetes.
+1350
+1300
+100.87.199.13
+```
+
+- `k3s-agent` is `active` since 19:32:43 — `Restart=always` retried after the failed start.
+- **`tailscale0` = 1350, `flannel.1` = 1300** — Deploy A target state reached on proxmox.
+- flannel sees all 3 other nodes' VTEPs.
+- The `FLANNEL_IPV6_*` warnings are normal for an IPv4-only cluster.
+- k3s already detects the Tailscale IPv6 in `provided-node-ip` (`100.87.199.13,fd7a:…`).
+
+The grep did not filter klog-format lines, so the exact error of the failed start is not in
+this output. Both (H) and (I) stay possible; (J) is refuted (the unit runs normally now).
+
+Fix in the script (covers H and I): after the MTU is applied, wait until `tailscale0` has
+an IPv4 address, then restart k3s; if the restart reports a failure, wait up to 90 s for the
+unit to become `active` (systemd `Restart=always`), and fail only if it does not.
+
+### 2026-10-05 — Round 3: exact error of the failed start — (H) confirmed
+
+```
+Oct 05 19:32:20 proxmox k3s[1544717]: time="2026-10-05T19:32:20Z" level=fatal msg="Error: interface tailscale0 does not have a correct global unicast ip: can't find ip for interface tailscale0"
+Oct 05 19:32:20 proxmox systemd[1]: k3s-agent.service: Main process exited, code=exited, status=1/FAILURE
+Oct 05 19:32:20 proxmox systemd[1]: k3s-agent.service: Failed with result 'exit-code'.
+```
+
+**(H) confirmed, (I) refuted:** k3s started while `tailscale0` existed (with the new MTU) but
+had no IP yet. systemd restarted it 23 s later (19:32:43) and it came up.
+
+The script fix waits for **both** the IPv4 and a global IPv6 address on `tailscale0`, because
+after the rebuild dual-stack flannel needs the IPv6 address at startup too. The tolerant
+restart + 90 s `is-active` wait stays as a second safety net.
+
+### 2026-10-05 — Deploy A on all workers: success
+
+`make workers` with the fixed script (key lines):
+
+```
+# proxmox (already done) - idempotent, nothing restarted
+✅ [bootstrap-node-networking] net.ipv6.conf.vmbr0.accept_ra=2
+✅ [bootstrap-node-networking] [TS_DEBUG_MTU=1350] already in [/etc/default/tailscaled]
+✅ [bootstrap-node-networking] tailscale0 MTU is 1350, no restart needed
+✅ [bootstrap-node-networking] flannel.1 is present (mtu 1300), cross-node pod networking is up
+
+# senaev-media
+✅ [bootstrap-node-networking] net.ipv6.conf.eth0.accept_ra=2
+👉 [bootstrap-node-networking] tailscale0 MTU is 1280, restarting tailscaled to apply 1350
+✅ [bootstrap-node-networking] tailscale0 MTU is 1350
+✅ [bootstrap-node-networking] tailscale0 has IPv4 and IPv6 addresses
+✅ [bootstrap-node-networking] unit=[k3s-agent] is active
+✅ [bootstrap-node-networking] flannel.1 is present (mtu 1300), cross-node pod networking is up
+
+# firstvds
+✅ [bootstrap-node-networking] net.ipv6.conf.ens3.accept_ra=2
+👉 [bootstrap-node-networking] tailscale0 MTU is 1280, restarting tailscaled to apply 1350
+✅ [bootstrap-node-networking] tailscale0 MTU is 1350
+✅ [bootstrap-node-networking] tailscale0 has IPv4 and IPv6 addresses
+✅ [bootstrap-node-networking] unit=[k3s-agent] is active
+✅ [bootstrap-node-networking] flannel.1 is present (mtu 1300), cross-node pod networking is up
+✅ [Makefile] Worker nodes connected
+```
+
+- All 3 workers: `tailscale0` 1350, `flannel.1` 1300, `accept_ra=2` on the uplink.
+- The address wait worked: k3s-agent came up on the **first** start on both nodes (no
+  "First start ... failed" warning).
+- The re-run on proxmox restarted nothing — the script is idempotent.
+
+Remaining for Deploy A: path MTU test between workers, cross-node pod check, then hetzner
+(`make control-plane`).
+
+### 2026-10-05 — Path MTU test: all 4 pings fail locally
+
+```
+PING 100.90.217.37 (100.90.217.37) 1322(1350) bytes of data.
+ping: sendmsg: Message too long
+... (same for 100.87.199.13 at 1350, 10.42.2.0 and 10.42.1.0 at 1300)
+3 packets transmitted, 0 received, +3 errors, 100% packet loss
+```
+
+`sendmsg: Message too long` is a **local** error: the sending kernel refuses the packet
+before it leaves, because the outgoing interface MTU (or a cached path MTU) is smaller than
+the packet. It says nothing about the path. Exactly this result is expected on a host where
+`tailscale0` is 1280 and `flannel.1` is 1230 — that is **hetzner**, which is not yet changed.
+The prompt is not in the paste, so the host is unknown.
+
+Hypotheses:
+- **(K) Run on hetzner** (or on another host still at 1280) — most likely.
+- **(L) Cached path MTU on senaev-media** from before the change (`ip route get` shows `mtu`
+  with a cache entry).
+
+Round 4 (read-only), on **senaev-media**:
+
+```bash
+hostname; cat /sys/class/net/tailscale0/mtu /sys/class/net/flannel.1/mtu
+ip route get 100.90.217.37; ip route get 10.42.2.0
+ping -M do -s 1322 -c 3 100.90.217.37
+ping -M do -s 1272 -c 3 10.42.2.0
+```
+
+### 2026-10-05 — Round 4 results: path MTU 1350 / 1300 works between workers
+
+```
+senaev-media
+1350
+1300
+100.90.217.37 dev tailscale0 table 52 src 100.103.254.98 uid 0
+    cache
+10.42.2.0 via 10.42.2.0 dev flannel.1 src 10.42.3.0 uid 0
+    cache
+PING 100.90.217.37 (100.90.217.37) 1322(1350) bytes of data.
+1330 bytes from 100.90.217.37: icmp_seq=1 ttl=64 time=66.8 ms
+...
+3 packets transmitted, 3 received, 0% packet loss, time 2002ms
+PING 10.42.2.0 (10.42.2.0) 1272(1300) bytes of data.
+1280 bytes from 10.42.2.0: icmp_seq=1 ttl=64 time=63.8 ms
+...
+3 packets transmitted, 3 received, 0% packet loss, time 2004ms
+```
+
+**(K) confirmed** — the previous paste was from a host still at 1280 (hetzner). **(L) refuted**
+— no cached `mtu` in `ip route get`. Full-size packets with DF set cross both the tailnet
+(1350) and the flannel VXLAN overlay (1300) from senaev-media (home) to firstvds (RU VPS), so
+the larger WireGuard packets are not dropped on that internet path. (ping prints the ICMP
+size, 1330 / 1280 bytes, which matches 1350 / 1300 IP packets.)
+
+### 2026-10-05 — Cluster health after Deploy A on workers
+
+```
+NAME           STATUS   ROLES           AGE    VERSION
+firstvds       Ready    <none>          117d   v1.35.2+k3s1
+hetzner        Ready    control-plane   150d   v1.35.2+k3s1
+proxmox        Ready    <none>          150d   v1.35.2+k3s1
+senaev-media   Ready    <none>          150d   v1.35.2+k3s1
+NAMESPACE     NAME   READY   STATUS    RESTARTS        AGE
+```
+
+All nodes `Ready`; no pod outside `Running` / `Completed`. Workers are done. Next: hetzner
+(`make control-plane`).
+
+### 2026-10-05 — Deploy A on hetzner: applied, but 1300-byte flannel ping to senaev-media fails
+
+`make control-plane` (key lines):
+
+```
+✅ [bootstrap-node-networking] net.ipv6.conf.eth0.accept_ra=2
+👉 [bootstrap-node-networking] tailscale0 MTU is 1280, restarting tailscaled to apply 1350
+✅ [bootstrap-node-networking] tailscale0 MTU is 1350
+✅ [bootstrap-node-networking] tailscale0 has IPv4 and IPv6 addresses
+✅ [bootstrap-node-networking] unit=[k3s] is active
+✅ [bootstrap-node-networking] flannel.1 is present (mtu 1300), cross-node pod networking is up
+✅ [Makefile] k8s cluster deployed
+```
+
+Check on hetzner:
+
+```
+1350
+1300
+PING 10.42.3.0 (10.42.3.0) 1272(1300) bytes of data.
+
+--- 10.42.3.0 ping statistics ---
+3 packets transmitted, 0 received, 100% packet loss, time 2055ms
+
+NAME           STATUS   ROLES           AGE    VERSION
+firstvds       Ready    <none>          117d   v1.35.2+k3s1
+hetzner        Ready    control-plane   150d   v1.35.2+k3s1
+proxmox        Ready    <none>          150d   v1.35.2+k3s1
+senaev-media   Ready    <none>          150d   v1.35.2+k3s1
+```
+
+hetzner is at 1350 / 1300 and all nodes are `Ready` (kubelet ↔ API uses plain tailnet, not
+flannel). But the full-size flannel ping hetzner → senaev-media is **silently lost** — not a
+local `Message too long`, so the packet left hetzner.
+
+Hypotheses:
+
+**(M) The hetzner ↔ home internet path drops the larger WireGuard packets.** Outer packet =
+1350 + 80 (WireGuard/UDP/IPv6 or IPv4 overhead) ≈ 1410–1430 bytes; a tunnel or PPPoE link on
+this path may have a lower MTU, while the home → firstvds path did not.
+- `Signal:` small flannel ping works; tailnet ping at 1350 to senaev-media fails, at 1280
+  works; flannel ping hetzner → firstvds at 1300 works.
+- `Fix:` lower `TAILSCALE_MTU` to the largest value that passes on every pair (must stay
+  ≥ 1350 for IPv6 pods: 1280 + 70 VXLAN-over-IPv6 overhead) — or, if the path cannot carry
+  it, rethink (for example flannel `wireguard-native` instead of VXLAN-over-Tailscale).
+
+**(N) Overlay to senaev-media broken after the k3s restart** (stale FDB/neighbour, like the
+2026-08-15 incident).
+- `Signal:` small flannel ping (`-s 56`) to `10.42.3.0` also fails.
+- `Fix:` restart k3s on hetzner; investigate the FDB.
+
+**(O) Traffic is relayed through DERP**, and DERP has a different size limit.
+- `Signal:` `tailscale ping` shows `via DERP(...)`, not a direct address.
+
+Round 5 (read-only), on hetzner:
+
+```bash
+ping -c 3 10.42.3.0                                # (N) small, flannel to senaev-media
+ping -M do -s 1272 -c 3 10.42.2.0                  # flannel to firstvds, full size
+ping -M do -s 1272 -c 3 10.42.1.0                  # flannel to proxmox, full size
+ping -M do -s 1322 -c 3 100.103.254.98             # tailnet to senaev-media, 1350
+ping -M do -s 1252 -c 3 100.103.254.98             # tailnet to senaev-media, 1280
+tailscale ping -c 3 senaev-media                   # (O) direct or DERP
+tailscale ping -c 3 proxmox
+```
+
+### 2026-10-05 — Round 5 results: hetzner lost the tailnet to BOTH home nodes ⚠️
+
+```
+PING 10.42.3.0 (10.42.3.0) 56(84) bytes of data.
+3 packets transmitted, 0 received, 100% packet loss, time 2041ms
+
+PING 10.42.2.0 (10.42.2.0) 1272(1300) bytes of data.
+1280 bytes from 10.42.2.0: icmp_seq=2 ttl=64 time=18.9 ms
+1280 bytes from 10.42.2.0: icmp_seq=3 ttl=64 time=19.4 ms
+3 packets transmitted, 2 received, 33.3333% packet loss, time 2002ms
+
+PING 10.42.1.0 (10.42.1.0) 1272(1300) bytes of data.
+3 packets transmitted, 0 received, 100% packet loss, time 2056ms
+
+PING 100.103.254.98 (100.103.254.98) 1322(1350) bytes of data.
+3 packets transmitted, 0 received, 100% packet loss, time 2027ms
+
+PING 100.103.254.98 (100.103.254.98) 1252(1280) bytes of data.
+3 packets transmitted, 0 received, 100% packet loss, time 2039ms
+
+ping "100.103.254.98" timed out
+ping "100.103.254.98" timed out
+ping "100.103.254.98" timed out
+no reply
+ping "100.87.199.13" timed out
+ping "100.87.199.13" timed out
+ping "100.87.199.13" timed out
+no reply
+```
+
+- hetzner ↔ firstvds: works, even at full size 1300 (first packet lost = neighbour warm-up).
+- hetzner ↔ senaev-media and hetzner ↔ proxmox: **nothing passes** — small flannel ping,
+  tailnet ping at 1280 (the old MTU), and `tailscale ping` (disco, tiny packets, can fall back
+  to DERP) all fail.
+- **(M) refuted:** a packet-size problem would not break small packets and disco pings.
+- **(N) refuted as the root cause:** the tailnet itself is broken below flannel.
+- This is an **outage** of hetzner ↔ home: home pods cannot reach the API/hetzner pods, and
+  the nodes will turn `NotReady` (the earlier `Ready` was within the grace period).
+
+Timeline: the second `make workers` reached proxmox and senaev-media **through** hetzner
+(`ssh -J` hetzner → MagicDNS name) after both had restarted tailscaled, so hetzner ↔ home
+worked then. It broke when hetzner's own `tailscaled` restarted (`make control-plane`).
+
+New hypotheses:
+
+**(P) Home nodes did not learn hetzner's new disco key / endpoints.** Each tailscaled restart
+creates a new disco key; peers get it from the coordination server. If the home nodes keep
+a stale view, every path to hetzner (direct and DERP) fails, while firstvds updated fine.
+- `Signal:` on senaev-media, `tailscale status` shows hetzner as `offline` / idle, or
+  `tailscale ping hetzner` also fails; hetzner's `tailscale status` shows the home peers with
+  no `direct`/`relay` path.
+- `Fix:` restart tailscaled on one home node (it fetches a fresh netmap) and re-test.
+
+**(Q) Something in the hetzner change breaks the path to home only** (TS_DEBUG_MTU, or
+`accept_ra=2` adding an IPv6 route that tailscale now prefers for the home endpoints).
+- `Signal:` `ip -6 route` on hetzner has a new `proto ra` route; tailscaled log shows
+  endpoint/DERP errors for the home peers.
+- `Fix:` revert that change on hetzner.
+
+Round 6 (read-only):
+
+```bash
+# --- on hetzner ---
+kubectl get nodes
+tailscale status | grep -E "senaev-media|proxmox|firstvds"
+tailscale netcheck
+ip -6 route
+journalctl -u tailscaled --since "-30min" --no-pager | grep -iE "derp|magicsock|disco|endpoint|error|fail" | tail -30
+
+# --- on senaev-media (from the Mac or the home LAN) ---
+tailscale status | grep -E "hetzner|firstvds"
+tailscale ping -c 3 hetzner
+```
+
+Emergency rollback (only if service must come back before diagnosis; it also restarts
+tailscaled, so it does not cleanly test (Q)) — on hetzner:
+
+```bash
+sed -i '/^TS_DEBUG_MTU=/d' /etc/default/tailscaled && systemctl restart tailscaled
+```
+
+### 2026-10-05 — Round 6 results (hetzner): proxmox recovered, senaev-media is OFFLINE
+
+```
+NAME           STATUS     ROLES           AGE    VERSION
+firstvds       Ready      <none>          117d   v1.35.2+k3s1
+hetzner        Ready      control-plane   150d   v1.35.2+k3s1
+proxmox        Ready      <none>          150d   v1.35.2+k3s1
+senaev-media   NotReady   <none>          150d   v1.35.2+k3s1
+100.90.217.37    firstvds      andrei.senaev@  linux  active; direct 157.22.197.112:41641, tx 3967028 rx 2113290
+100.87.199.13    proxmox       andrei.senaev@  linux  active; direct 46.48.65.87:1039, tx 1789254 rx 922930
+100.103.254.98   senaev-media  andrei.senaev@  linux  active; relay "waw"; offline, last seen 14m ago, tx 128052 rx 10860
+
+Report:
+	* UDP: true
+	* IPv4: yes, 77.42.120.71:52933
+	* IPv6: yes, [2a01:4f9:c013:5425::1]:52690
+	* MappingVariesByDestIP: false
+	* Nearest DERP: Warsaw
+	...
+2a01:4f9:c013:5425::/64 dev eth0 proto kernel metric 256 pref medium
+fd7a:115c:a1e0::6936:4c73 dev tailscale0 proto kernel metric 256 pref medium
+fe80::/64 dev eth0 proto kernel metric 256 pref medium
+fe80::/64 dev tailscale0 proto kernel metric 256 pref medium
+fe80::/64 dev flannel.1 proto kernel metric 256 pref medium
+default via fe80::1 dev eth0 metric 1024 onlink pref medium
+
+Oct 05 19:44:22 hetzner tailscaled[2749091]: magicsock: endpoints changed: 77.42.120.71:41641 (stun), [2a01:4f9:c013:5425::1]:41641 (stun), 10.42.0.0:41641 (local), 10.42.0.1:41641 (local)
+Oct 05 19:44:23 hetzner tailscaled[2749091]: magicsock: disco: node [ZTFNe] d:41c5060a55b2168f now using 157.22.197.112:41641 mtu=1360 tx=3cc1615df96c
+Oct 05 19:47:16 hetzner tailscaled[2749091]: ping(100.103.254.98): sending disco ping to [IDGWw] senaev-media ...
+Oct 05 19:47:31 hetzner tailscaled[2749091]: ping(100.87.199.13): sending disco ping to [QP0HL] proxmox ...
+Oct 05 19:49:09 hetzner tailscaled[2749091]: magicsock: disco: node [QP0HL] d:96ced08b4f17e497 now using 46.48.65.87:1039 mtu=1360 tx=d09f1221f667
+Oct 05 19:49:09 hetzner tailscaled[2749091]: magicsock: new contact: peer=[QP0HL] usec=300956304 cached=false via=direct
+...
+```
+
+Interpretation:
+
+- **hetzner is healthy:** UDP, IPv4 and IPv6 work; direct path to firstvds; **direct path to
+  proxmox again since 19:49:09** (the 19:47 `tailscale ping` failure was before that), and
+  proxmox is `Ready`. The disco path MTU to both peers is `mtu=1360`, so the new MTU is
+  negotiated fine.
+- No `proto ra` route on hetzner → `accept_ra=2` changed nothing there. **(Q) refuted.**
+- **senaev-media is `offline, last seen 14m ago`** — "offline" is the coordination server's
+  view, so senaev-media's `tailscaled` has no control connection at all. The fault is on
+  senaev-media itself, not on hetzner. **(P) refuted** (hetzner has its keys; the peer is
+  simply gone). senaev-media is `NotReady`.
+- Last seen ≈ 19:38, which is near its own Deploy A run (tailscaled + k3s-agent restart) and
+  the Round 4 ping, i.e. **before** hetzner was changed.
+
+New hypotheses for senaev-media:
+
+**(R) The VM hangs or is out of memory** after the k3s-agent restart (all pods restarted at
+once on the media node).
+- `Signal:` `qm status` running but no ping/SSH on the LAN; console shows OOM / hung tasks.
+
+**(S) senaev-media lost its uplink** (eth0 / DHCP / default route), so tailscaled cannot reach
+the coordination server. `accept_ra=2` on eth0 is the only network change on the host.
+- `Signal:` LAN ping works, but `ping 1.1.1.1` fails or the routes are wrong; or an RA from the
+  home router created an IPv6 default route with no global address.
+
+**(T) tailscaled on senaev-media crashed or is in a restart loop.**
+- `Signal:` `systemctl status tailscaled` not active; errors in its journal.
+
+Round 7 — senaev-media is reachable only over the home LAN, so go through proxmox:
+
+```bash
+# --- on proxmox ---
+qm list
+ip neigh show dev vmbr0
+# find the senaev-media VM id and LAN IP, then:
+qm status <vmid>
+ping -c 3 <senaev-media-lan-ip>
+
+# --- on senaev-media, via:  ssh -J root@proxmox root@<senaev-media-lan-ip> ---
+#     (if SSH fails: qm terminal <vmid>  or the Proxmox web console)
+uptime; free -m
+systemctl status tailscaled --no-pager | head -12
+journalctl -u tailscaled --since "-40min" --no-pager | tail -40
+ip -4 route; ip -6 route
+ping -c 3 1.1.1.1
+curl -sS -m 5 -o /dev/null -w "%{http_code}\n" https://controlplane.tailscale.com/
+journalctl -k --since "-40min" --no-pager | grep -iE "oom|killed process|hung" | tail -10
+```
+
+### 2026-10-05 — Round 7 results: senaev-media tailscaled had no control connection for 16 min
+
+proxmox:
+
+```
+      VMID NAME                 STATUS     MEM(MB)    BOOTDISK(GB) PID
+       100 senaev-media         running    4096              35.00 1454
+192.168.8.136 lladdr bc:24:11:bf:88:aa REACHABLE
+status: running
+64 bytes from 192.168.8.136: icmp_seq=1 ttl=64 time=0.179 ms   (3/3 received)
+```
+
+senaev-media:
+
+```
+ 19:54:29 up 49 days,  5:50,  1 user,  load average: 2.03, 0.57, 0.27
+Mem:            3917        1535         133          70        2594        2381
+● tailscaled.service - Tailscale node agent
+    Drop-In: /etc/systemd/system/tailscaled.service.d
+             └─override.conf
+     Active: active (running) since Mon 2026-10-05 19:37:33 UTC; 16min ago
+     Status: "Connected; andrei.senaev@gmail.com; 100.103.254.98 fd7a:115c:a1e0::3f36:fe63"
+Oct 05 19:53:56 senaev-media tailscaled[370835]: derphttp.Client.Recv: connecting to derp-26 (nue)
+Oct 05 19:53:59 senaev-media tailscaled[370835]: open-conn-track: timeout opening (TCP 100.103.254.98:39026 => 100.120.76.115:6443) to node [QjnZr]; online=yes, lastRecv=4s
+Oct 05 19:54:01 senaev-media tailscaled[370835]: magicsock: [0xf3d45914b00] derp.Recv(derp-26): derphttp.Client.Recv connect to region 26 (nue): context deadline exceeded
+Oct 05 19:54:06 senaev-media tailscaled[370835]: control: lite map update error after 28.356s: Post "https://controlplane.tailscale.com/machine/map": read tcp 192.168.8.136:55976->192.200.0.112:80: read: connection timed out
+Oct 05 19:54:07 senaev-media tailscaled[370835]: Received error: PollNetMap: Post "https://controlplane.tailscale.com/machine/map": read tcp 192.168.8.136:55976->192.200.0.112:80: read: connection timed out
+Oct 05 19:54:07 senaev-media tailscaled[370835]: control: controlhttp: forcing port 443 dial due to recent noise dial
+Oct 05 19:54:07 senaev-media tailscaled[370835]: control: netmap: got new dial plan from control
+Oct 05 19:54:07 senaev-media tailscaled[370835]: nodeBackend: peer [ZTFNe] disco key changed from "discokey:38611d3a…" to "discokey:41c5060a…"
+Oct 05 19:54:07 senaev-media tailscaled[370835]: nodeBackend: peer [QjnZr] disco key changed from "discokey:fc099d87…" to "discokey:6b13fd9b…"
+Oct 05 19:54:07 senaev-media tailscaled[370835]: health(warnable=mapresponse-timeout): ok
+Oct 05 19:54:07 senaev-media tailscaled[370835]: magicsock: disco: node [QP0HL] d:96ced08b4f17e497 now using 192.168.8.157:41641 mtu=1360 tx=a910965c0f10
+Oct 05 19:54:08 senaev-media tailscaled[370835]: magicsock: disco: node [ZTFNe] d:41c5060a55b2168f now using 157.22.197.112:41641 mtu=1360 tx=167f89e61710
+Oct 05 19:54:09 senaev-media tailscaled[370835]: magicsock: disco: node [QjnZr] d:6b13fd9b99e8999f now using 77.42.120.71:41641 mtu=1360 tx=c9ed77e9dd97
+Oct 05 19:54:09 senaev-media tailscaled[370835]: magicsock: new contact: peer=[QjnZr] usec=995801948 cached=false via=direct
+Oct 05 19:54:23 senaev-media tailscaled[370835]: magicsock: derp.Send(127.3.3.40:26): derphttp.Client.Send connect to region 26 (nue): dial tcp6 [2a01:4f8:1c1c:47b6::1]:443: connect: network is unreachable
+default via 192.168.8.1 dev eth0 proto dhcp src 192.168.8.136 metric 100
+...
+fd7a:115c:a1e0::3f36:fe63 dev tailscale0 proto kernel metric 256 pref medium
+fe80::/64 dev eth0 proto kernel metric 256 pref medium
+...
+64 bytes from 1.1.1.1: icmp_seq=1 ttl=55 time=24.8 ms   (3/3 received)
+302
+(no OOM / hung-task lines)
+```
+
+Interpretation:
+
+- **(R) refuted:** the VM runs, up 49 days, no OOM, memory available 2.4 GB.
+- **(S) refuted:** IPv4 uplink works (`ping 1.1.1.1`, `curl` → 302). No IPv6 default route —
+  `accept_ra=2` changed nothing (the home router sends no usable RA).
+- **(T) refuted:** tailscaled runs since 19:37:33 (its Deploy A restart) and did not crash.
+- **Root cause: after its restart, senaev-media's tailscaled could not keep a control
+  connection.** The long-poll to `controlplane.tailscale.com` stalled (`read: connection
+  timed out` on port 80), and DERP `nue` TLS connects hit `context deadline exceeded`, while
+  short requests (ping, `curl` 302) pass. So it ran with its old netmap. When hetzner
+  restarted at 19:44 with a **new disco key**, senaev-media did not learn it, and every path
+  to hetzner failed. At 19:54:07 a dial on port 443 succeeded, the netmap arrived (disco keys
+  for hetzner `[QjnZr]` and firstvds `[ZTFNe]` updated), and at 19:54:09 senaev-media had a
+  **direct path to hetzner** (`77.42.120.71:41641 mtu=1360`).
+- The pattern — short TCP flows work, long-lived/large TCP flows to foreign hosting (Tailscale
+  control, Hetzner-hosted DERP) freeze — matches the home ISP's DPI behaviour already seen in
+  `issues/2026-06-10-debug-vpn-connection.md`. This is a hypothesis; it is not proved here.
+- proxmox (same home network) had the same short gap (no reply at 19:47, direct at 19:49).
+- **Not caused by the MTU or accept_ra settings** — the data path uses `mtu=1360` on all
+  peers once the keys are known. The trigger is the **tailscaled restart** on a node whose
+  control connection is unreliable, followed by a peer restart before it re-synced.
+
+Lesson for the scripts: after a tailscaled restart, verify that the node can actually reach
+the control plane peer over the tailnet (`tailscale ping` the control plane), and before
+restarting the next node, verify that every peer sees the restarted node with a path. The
+rebuild itself does not restart tailscaled, so it is not affected.
+
+Round 8 — confirm recovery, on hetzner:
+
+```bash
+kubectl get nodes
+tailscale status | grep -E "senaev-media|proxmox|firstvds"
+tailscale ping -c 3 senaev-media
+ping -M do -s 1272 -c 3 10.42.3.0
+ping -M do -s 1272 -c 3 10.42.1.0
+kubectl get pods -A | grep -vE "Running|Completed"
+```
+
+### 2026-10-05 — Round 8 results: cluster recovered, Deploy A complete
+
+```
+NAME           STATUS   ROLES           AGE    VERSION
+firstvds       Ready    <none>          117d   v1.35.2+k3s1
+hetzner        Ready    control-plane   150d   v1.35.2+k3s1
+proxmox        Ready    <none>          150d   v1.35.2+k3s1
+senaev-media   Ready    <none>          150d   v1.35.2+k3s1
+100.90.217.37    firstvds      andrei.senaev@  linux  active; direct 157.22.197.112:41641, tx 11372156 rx 3440658
+100.87.199.13    proxmox       andrei.senaev@  linux  active; direct 46.48.65.87:1039, tx 3293810 rx 2390008
+100.103.254.98   senaev-media  andrei.senaev@  linux  active; direct 46.48.65.87:41641, tx 4382318 rx 1894590
+pong from senaev-media (100.103.254.98) via 46.48.65.87:41641 in 65ms
+PING 10.42.3.0 (10.42.3.0) 1272(1300) bytes of data.
+1280 bytes from 10.42.3.0: icmp_seq=1 ttl=64 time=66.3 ms
+ping: sendmsg: Message too long
+ping: sendmsg: Message too long
+3 packets transmitted, 1 received, +2 errors, 66.6667% packet loss, time 2030ms
+PING 10.42.1.0 (10.42.1.0) 1272(1300) bytes of data.
+1280 bytes from 10.42.1.0: icmp_seq=1 ttl=64 time=67.1 ms
+... 3 packets transmitted, 3 received, 0% packet loss
+NAMESPACE     NAME   READY   STATUS    RESTARTS        AGE
+```
+
+- All nodes `Ready`, all peers `direct`, all pods healthy. **The outage is over.**
+- Full-size flannel to proxmox: 3/3. To senaev-media: the **first 1300-byte packet passed**,
+  then the kernel refused the next two locally (`Message too long`). That means hetzner
+  lowered its cached path MTU for `10.42.3.0` right after the first packet — most likely a
+  path-MTU exception learned during the outage (traffic via DERP / stale path). It expires
+  after 10 min (`net.ipv4.route.mtu_expires` = 600 s). Not a blocker: the first packet
+  proves the 1300 path works.
+- Check later: `ip route get 10.42.3.0` (look for `mtu` / `expires`), then repeat the ping.
+
+**Deploy A result:** `tailscale0` 1350 / `flannel.1` 1300 / `accept_ra=2` on all 4 nodes.
+
+### 2026-10-05 — Cached path MTU 1180 to senaev-media is refreshed, not expiring
+
+On hetzner, ~12 min after Round 8:
+
+```
+ip route get 10.42.3.0
+10.42.3.0 via 10.42.3.0 dev flannel.1 src 10.42.0.0 uid 0
+    cache expires 288sec mtu 1180
+ping -M do -s 1272 -c 3 10.42.3.0
+ping: sendmsg: Message too long   (x3)
+3 packets transmitted, 0 received, +3 errors, 100% packet loss
+```
+
+- `expires 288sec` < 600 s, so the exception was **renewed** recently — a live source keeps
+  reporting a smaller path MTU. My "stale entry from the outage" guess is wrong.
+- `1180 = 1230 − 50` (VXLAN overhead). The kernel propagates the outer path MTU of the VXLAN
+  tunnel into the inner route, so hetzner probably believes the **outer** path to
+  `100.103.254.98` over `tailscale0` is only **1230**, although `tailscale0` is 1350 and the
+  first 1300-byte flannel ping (outer 1350) did pass in Round 8.
+- Only senaev-media is affected; proxmox (same home uplink) passed 3/3 at 1300.
+
+Why it matters: IPv4 TCP adapts to 1180, so traffic works. But for dual-stack, IPv6 over
+this path needs outer 1350 (1280 + 70); IPv6 cannot go below 1280, so a real 1230 limit
+would break IPv6 pod traffic to senaev-media.
+
+Hypotheses:
+
+**(U) Something on senaev-media / its path returns ICMP "fragmentation needed" with MTU 1230.**
+For example a stale MTU on a senaev-media interface or VM NIC, or tailscaled on one side
+generating "packet too big" from an old per-peer MTU.
+- `Signal:` `ip route get 100.103.254.98` on hetzner shows `mtu 1230`; tailscaled log shows
+  MTU/PMTU lines; the reverse ping from senaev-media also fails.
+
+**(V) The real hetzner → home path carries less than 1350 inside WireGuard for this peer.**
+- `Signal:` tailnet ping at 1350 fails, at 1252 passes, also after the cache expires.
+
+Round 9 (read-only):
+
+```bash
+# --- on hetzner ---
+ip route get 100.103.254.98
+ping -M do -s 1322 -c 3 100.103.254.98
+ping -M do -s 1202 -c 3 100.103.254.98
+tracepath -n 10.42.3.0
+journalctl -u tailscaled --since "-20min" --no-pager | grep -iE "mtu|too big|frag" | tail -20
+
+# --- on senaev-media (via proxmox) ---
+cat /sys/class/net/eth0/mtu /sys/class/net/tailscale0/mtu /sys/class/net/flannel.1/mtu /sys/class/net/cni0/mtu
+ip route get 10.42.0.0; ip route get 100.120.76.115
+ping -M do -s 1272 -c 3 10.42.0.0
+ping -M do -s 1322 -c 3 100.120.76.115
+```
+
+### 2026-10-05 — Round 9 results: the path is fine; stale `cni0` MTU 1230 on senaev-media
+
+hetzner:
+
+```
+100.103.254.98 dev tailscale0 table 52 src 100.120.76.115 uid 0
+    cache
+PING 100.103.254.98 (100.103.254.98) 1322(1350) bytes of data.
+1330 bytes from 100.103.254.98: icmp_seq=1 ttl=64 time=66.7 ms   (3/3 received)
+PING 100.103.254.98 (100.103.254.98) 1202(1230) bytes of data.
+1210 bytes from 100.103.254.98: icmp_seq=1 ttl=64 time=66.4 ms   (3/3 received)
+zsh: command not found: tracepath
+Oct 05 19:54:09 hetzner tailscaled[2749091]: magicsock: disco: node [IDGWw] d:fabb30ab9f3c1181 now using 46.48.65.87:41641 mtu=1360 tx=f953a0726dfc
+```
+
+senaev-media:
+
+```
+1500      (eth0)
+1350      (tailscale0)
+1300      (flannel.1)
+1230      (cni0)
+10.42.0.0 via 10.42.0.0 dev flannel.1 src 10.42.3.0 uid 0
+    cache
+100.120.76.115 dev tailscale0 table 52 src 100.103.254.98 uid 0
+    cache
+PING 10.42.0.0 (10.42.0.0) 1272(1300) bytes of data.
+1280 bytes from 10.42.0.0: icmp_seq=1 ttl=64 time=67.1 ms   (3/3 received)
+PING 100.120.76.115 (100.120.76.115) 1322(1350) bytes of data.
+1330 bytes from 100.120.76.115: icmp_seq=1 ttl=64 time=68.8 ms   (3/3 received)
+```
+
+- **(V) refuted:** the tailnet carries 1350 in **both** directions between hetzner and
+  senaev-media, and the flannel overlay carries 1300 from senaev-media to hetzner. No outer
+  PMTU exception for `100.103.254.98`. tailscale path `mtu=1360`.
+- **New finding: `cni0` on senaev-media is still 1230** — the old flannel MTU. Pods that were
+  created before Deploy A keep their veth MTU (1230) until they are recreated, and the
+  bridge takes the smallest port MTU. Traffic from hetzner to those pods that is larger than
+  1230 is refused on senaev-media with ICMP "fragmentation needed", which is the most likely
+  live source of the renewed PMTU exception on hetzner. (The exact value 1180 on the
+  `10.42.3.0` entry is not fully explained.) The other nodes most probably have the same
+  stale `cni0` MTU.
+- **(U) partly confirmed** (the source is on senaev-media), but it is a consequence of
+  changing the MTU on a running cluster, not a path or config problem.
+
+Impact: none for IPv4 now (TCP adapts). The rebuild recreates every pod with the new flannel
+MTU (IPv4 1300, IPv6 1280), so this goes away by itself. To fix it without the rebuild,
+restart the pods on each node.
+
+Optional check: on senaev-media `ip -o link show | grep -oE "(cni0|veth[^:@]*).*mtu [0-9]+" | grep -oE "^[^:@ ]+|mtu [0-9]+"`; on hetzner
+`ip route flush cache; ping -M do -s 1272 -c 3 10.42.3.0`.
+
+Follow-ups before the rebuild:
+1. Commit the script fix (address wait + tolerant k3s restart).
+2. Optional hardening: after a tailscaled restart, wait until `tailscale ping` to the control
+   plane (or, on the control plane, to every worker) succeeds before restarting k3s.
