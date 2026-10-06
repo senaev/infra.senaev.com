@@ -19,7 +19,10 @@
     "start": "tsx src/index.ts"
   },
   "dependencies": {
-    "fastify": "5.8.2",
+    "@fastify/formbody": "9.0.0",
+    "@fastify/rate-limit": "11.2.0",
+    "fastify": "5.12.5",
+    "jose": "6.2.12",
     "senaev-utils": "file:../senaev-utils",
     "tsx": "4.21.0"
   }

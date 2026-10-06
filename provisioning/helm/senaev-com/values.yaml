@@ -191,6 +191,12 @@ clusterHelper:
   # Public host for the Telegram webhook, Alisa and the short-link redirector. The app
   # registers this URL with Telegram at startup, so it must keep matching the ingress.
   webhookDomain: webhook-endpoint.senaev.com
+  # OAuth authorization server for the MCP endpoint at https://<mcpDomain>/chat-gpt. It is the
+  # token issuer, so changing it makes every issued token invalid.
+  authDomain: auth.senaev.com
+  # Host of the OAuth-protected MCP endpoint. The tokens are issued for it, so changing it
+  # makes every issued token invalid too.
+  mcpDomain: mcp.senaev.com
   torrentOutboxVolumePath: volumes/webhook-endpoint/torrent-outbox
 
 logGenerator:
@@ -260,6 +266,12 @@ ingress:
           service: jellyfin
           port: 8096
         - host: webhook-endpoint.senaev.com
+          service: cluster-helper
+          port: 3000
+        - host: auth.senaev.com
+          service: cluster-helper
+          port: 3000
+        - host: mcp.senaev.com
           service: cluster-helper
           port: 3000
         - host: vpn-subscription.senaev.com

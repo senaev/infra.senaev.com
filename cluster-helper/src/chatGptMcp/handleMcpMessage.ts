@@ -55,6 +55,11 @@ const SAVE_DIARY_TEXT_TOOL = {
 /** Writes the text and returns the vault-relative path it went to. */
 export type SaveDiaryText = (text: string) => Promise<string>;
 
+export type McpServerOptions = {
+    /** Per-tool auth policy that ChatGPT reads to show its account linking UI. */
+    securitySchemes?: readonly Record<string, unknown>[];
+};
+
 type JsonRpcId = string | number | null;
 
 export type JsonRpcResponse = {
@@ -131,7 +136,11 @@ export function describeMcpExchange(message: unknown, response: JsonRpcResponse 
  * Handles one JSON-RPC message. Returns `null` for notifications, which per the transport
  * spec get `202 Accepted` with no body.
  */
-export async function handleMcpMessage(message: unknown, saveDiaryText: SaveDiaryText): Promise<JsonRpcResponse | null> {
+export async function handleMcpMessage(
+    message: unknown,
+    saveDiaryText: SaveDiaryText,
+    { securitySchemes }: McpServerOptions = {}
+): Promise<JsonRpcResponse | null> {
     if (!isObject(message) || message.jsonrpc !== '2.0' || typeof message.method !== 'string') {
         return failure(null, JSON_RPC_INVALID_REQUEST, 'Invalid JSON-RPC message');
     }
@@ -168,7 +177,14 @@ export async function handleMcpMessage(message: unknown, saveDiaryText: SaveDiar
     case 'ping':
         return success(id, {});
     case 'tools/list':
-        return success(id, { tools: [SAVE_DIARY_TEXT_TOOL] });
+        return success(id, {
+            tools: [
+                {
+                    ...SAVE_DIARY_TEXT_TOOL,
+                    ...securitySchemes && { securitySchemes },
+                },
+            ],
+        });
     case 'tools/call': {
         const result = await callTool(params, saveDiaryText);
 

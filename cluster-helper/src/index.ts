@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 
-import Fastify from 'fastify';
+import Fastify, { FastifyReply } from 'fastify';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { callTelegramApi } from 'senaev-utils/src/utils/TelegramApi/callTelegramApi';
 import { getCurrentTelegramBotInfo } from 'senaev-utils/src/utils/TelegramApi/getCurrentTelegramBotInfo';
@@ -8,17 +8,26 @@ import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTele
 import { TelegramUpdate, TelegramUser } from 'senaev-utils/src/utils/TelegramApi/types';
 
 import { handleAlertmanagerWebhook } from './alerts/handleAlertmanagerWebhook';
-import { describeMcpExchange, handleMcpMessage } from './chatGptMcp/handleMcpMessage';
+import {
+    describeMcpExchange, handleMcpMessage, McpServerOptions,
+} from './chatGptMcp/handleMcpMessage';
 import { sendDailyOverview } from './dailyOverview/sendDailyOverview';
 import {
     ALISA_WEBHOOK_SECRET,
+    AUTH_DOMAIN,
+    AUTH_MY_PASSWORD,
+    AUTH_MY_USERNAME,
+    AUTH_TOKEN_SIGNING_SECRET,
     CHAT_GPT_TO_OBSIDIAN_PUBLIC_ENDPOINT_SECRET,
+    MCP_DOMAIN,
     TG_MEDIA_SERVER_CHAT_ID,
     TG_TOKEN_SENAEV_COM_BOT,
     WEBHOOK_DOMAIN,
 } from './env';
 import { handleAlisaRequest } from './handleAlisaRequest';
 import { logger } from './logger';
+import { createAuthorizationServer, MCP_SCOPE } from './oauth/authorizationServer';
+import { oauthRoutes } from './oauth/registerOAuthRoutes';
 import { appendDailyNoteDraft, getShortLink } from './obsidianSyncApi';
 import { processTelegramWebhookData } from './processTelegramWebhookData';
 import { proxyPublicStaticFile } from './publicStaticProxy';
@@ -35,9 +44,10 @@ const HOST = '0.0.0.0';
 // be an open relay if exposed. Its callers address it as http://cluster-helper:
 // alertmanager, qbittorrent's tg-notify.sh, and vpn-subscription.
 //
-// PUBLIC_PORT is what the three ingresses target -- webhook-endpoint.senaev.com,
-// s.senaev.com and static.senaev.com. Every route on it is either authenticated
-// (Telegram secret token, Alisa and ChatGPT MCP secret paths) or safe to publish, and the catch-all
+// PUBLIC_PORT is what the five ingresses target -- webhook-endpoint.senaev.com,
+// auth.senaev.com, mcp.senaev.com, s.senaev.com and static.senaev.com. Every route on it is either
+// authenticated (Telegram secret token, Alisa and ChatGPT MCP secret paths, OAuth bearer
+// tokens), part of the OAuth flow, or safe to publish, and the catch-all
 // below answers 401 so nothing new leaks by accident.
 //
 // Serving both from one Fastify instance would publish the internal routes, so do not
@@ -184,15 +194,13 @@ publicServer.post(`/${ALISA_WEBHOOK_SECRET}`, ({ body }, reply) => {
     });
 });
 
-// MCP server for the ChatGPT connector, authenticated by the secret in the path. It writes
-// the received text as-is to the daily note draft file in the Obsidian vault via obsidian-sync.
-const CHAT_GPT_MCP_PATH = `/${CHAT_GPT_TO_OBSIDIAN_PUBLIC_ENDPOINT_SECRET}`;
-
-publicServer.post<{ Body: unknown }>(CHAT_GPT_MCP_PATH, async (request, reply) => {
+// MCP server for the ChatGPT connector. It writes the received text as-is to the daily
+// note draft file in the Obsidian vault via obsidian-sync.
+async function replyToMcpMessage(message: unknown, reply: FastifyReply, options?: McpServerOptions) {
     try {
-        const response = await handleMcpMessage(request.body, appendDailyNoteDraft);
+        const response = await handleMcpMessage(message, appendDailyNoteDraft, options);
 
-        logger.info(describeMcpExchange(request.body, response), '🤖 ChatGPT MCP message');
+        logger.info(describeMcpExchange(message, response), '🤖 ChatGPT MCP message');
 
         if (response === null) {
             return reply.code(202).send();
@@ -211,10 +219,57 @@ publicServer.post<{ Body: unknown }>(CHAT_GPT_MCP_PATH, async (request, reply) =
             },
         });
     }
-});
+}
+
+// Legacy endpoint, authenticated by the secret in the path. Remove it once the ChatGPT
+// connector works through the OAuth-protected endpoint below.
+const CHAT_GPT_MCP_PATH = `/${CHAT_GPT_TO_OBSIDIAN_PUBLIC_ENDPOINT_SECRET}`;
+
+publicServer.post<{ Body: unknown }>(CHAT_GPT_MCP_PATH, (request, reply) => replyToMcpMessage(request.body, reply));
 
 // No server-initiated SSE stream: the transport spec says to answer GET with 405.
 publicServer.get(CHAT_GPT_MCP_PATH, (_request, reply) => reply.code(405).header('Allow', 'POST').send());
+
+// OAuth-protected MCP endpoint. The authorization server is on AUTH_DOMAIN; this endpoint
+// on MCP_DOMAIN is the protected resource that the tokens are issued for.
+const MCP_PATH = '/chat-gpt';
+const MCP_RESOURCE = `https://${MCP_DOMAIN}${MCP_PATH}`;
+const MCP_RESOURCE_METADATA_URL = `https://${MCP_DOMAIN}/.well-known/oauth-protected-resource${MCP_PATH}`;
+const MCP_SERVER_OPTIONS: McpServerOptions = {
+    securitySchemes: [
+        {
+            type: 'oauth2',
+            scopes: [MCP_SCOPE],
+        },
+    ],
+};
+
+const authorizationServer = createAuthorizationServer({
+    issuer: `https://${AUTH_DOMAIN}`,
+    resource: MCP_RESOURCE,
+    username: AUTH_MY_USERNAME,
+    password: AUTH_MY_PASSWORD,
+    signingSecret: AUTH_TOKEN_SIGNING_SECRET,
+});
+
+publicServer.post<{ Body: unknown }>(MCP_PATH, { constraints: { host: MCP_DOMAIN } }, async (request, reply) => {
+    const check = await authorizationServer.checkAccessToken(request.headers.authorization);
+
+    if (check.kind !== 'valid') {
+        // The challenge points the client at the resource metadata, which is how ChatGPT
+        // finds the authorization server and starts the OAuth flow.
+        const error = check.kind === 'invalid' ? ', error="invalid_token"' : '';
+
+        return reply
+            .code(401)
+            .header('WWW-Authenticate', `Bearer resource_metadata="${MCP_RESOURCE_METADATA_URL}", scope="${MCP_SCOPE}"${error}`)
+            .send({ error: 'unauthorized' });
+    }
+
+    return replyToMcpMessage(request.body, reply, MCP_SERVER_OPTIONS);
+});
+
+publicServer.get(MCP_PATH, { constraints: { host: MCP_DOMAIN } }, (_request, reply) => reply.code(405).header('Allow', 'POST').send());
 
 async function main(): Promise<void> {
     const botUser: TelegramUser = await getCurrentTelegramBotInfo(TG_TOKEN_SENAEV_COM_BOT);
@@ -267,6 +322,13 @@ async function main(): Promise<void> {
         );
 
         return reply.send('OK');
+    });
+
+    await publicServer.register(oauthRoutes, {
+        authorizationServer,
+        authDomain: AUTH_DOMAIN,
+        mcpDomain: MCP_DOMAIN,
+        mcpPath: MCP_PATH,
     });
 
     await startTorrentOutboxProcessor();
