@@ -1366,3 +1366,129 @@ authorization failed
 `test-minio` / `test-minio-console` removed (they are in the generic `ingress.entries` list
 and do not follow `minio.enabled`). `helm template` renders no minio object. The
 `MINIO_ROOT_PASSWORD` key stays in Vault, unused.
+
+### 2026-10-06 — Rebuild step 8: final checks — IPv6 egress works
+
+```
+NAMESPACE     NAME   READY   STATUS    RESTARTS   AGE
+    inet6 fd42::2a/64 scope global
+    inet6 fe80::e463:d7ff:fe35:811d/64 scope link
+2a01:4f9:c013:5425::1
+pod "v6test" deleted from default namespace
+wget: can't connect to remote host: Network is unreachable
+Command exited with non-zero status 1
+real	0m 1.18s
+exit=1
+pod "v6test2" deleted from default namespace
+```
+
+- No unhealthy pods (minio gone after the CI deploy of `7685b29`).
+- **hetzner pod:** ULA address `fd42::2a/64`; IPv6 egress to the internet works, and the
+  remote side sees the node's public IPv6 `2a01:4f9:c013:5425::1` → `--flannel-ipv6-masq`
+  works.
+- **firstvds pod** (node without public IPv6): `Network is unreachable` — an immediate local
+  error, total 1.18 s including the pod's DNS lookup. **IPv6 fails fast, it does not hang.**
+  This is what Deploy B needs: the xray `::/0` blackhole can be removed on every instance,
+  and `domainStrategy` changed to `UseIPv4v6` everywhere, with no per-node flag.
+
+## Resolution
+
+**Root cause:** the cluster was created IPv4-only; dual-stack can only be set at creation.
+
+**Fix (one rebuild, 2026-10-06):**
+
+- Deploy A (before the rebuild): Tailscale MTU 1350 (`TS_DEBUG_MTU`) and `accept_ra=2` on all
+  nodes, so IPv6 pods get a 1280 overlay MTU (`654fca4`, `01a4f3a`).
+- Rebuild: k3s v1.36.5, `--cluster-cidr=10.42.0.0/16,fd42::/56`,
+  `--service-cidr=10.43.0.0/16,fd43::/112`, `--flannel-ipv6-masq`; no hard-coded node IPs
+  (`d42c3e8`). Safer worker bootstrap without tailscaled restarts and per-worker Makefile
+  targets (`a4ff37b`, `0391cc5`). Vault restored from a KV backup.
+
+**Result:** all 4 nodes dual-stack; IPv4 and full-size IPv6 overlay traffic between all
+nodes; pods on hetzner reach the IPv6 internet; pods on nodes without public IPv6 fail fast.
+No loss of access to the home nodes during the rebuild.
+
+**Incident on the way:** 2026-10-05, ~10 min senaev-media outage after tailscaled restarts
+(stale disco key, unreliable home uplink to the coordination server). Led to the
+"Sensitive nodes" section in `AGENTS.md`.
+
+**Open follow-ups:**
+
+1. Deploy B: xray `UseIPv4v6` + remove the `::/0` blackhole on all instances; IPv6 VLESS
+   entry `[2a01:4f9:c013:5425::1]:443` for hetzner in `vpn-subscription`.
+2. Delete `/root/vault-senaev-com-kv.json` on hetzner after the user confirms sites and VPN.
+3. Optional: `tailscale ping` check after a tailscaled restart in
+   `bootstrap-node-networking.sh`.
+
+### 2026-10-06 — Deploy B code prepared (not committed)
+
+The user confirmed that the sites and the VPN work after the rebuild.
+
+Research (xray image `teddysun/xray:26.6.1`):
+
+- `settings.domainStrategy` on freedom is still parsed in v26.6.1 (legacy alias of
+  `targetStrategy`, `infra/conf/freedom.go`), so the existing key is kept.
+- `UseIPv4v6` = resolve IPv4 first, resolve IPv6 **only if there is no A record**; a failed
+  IPv4 connection does not fall back to IPv6 (Xray `sockopt` docs). That is the wanted
+  behaviour: dual-stack sites keep using IPv4 exactly as before, IPv6-only sites become
+  reachable where the node has IPv6.
+- Side note: the old `::/0` blackhole rule came after the per-user rules, so it never applied
+  to direct `user-freedom` traffic — only to socks-chained traffic.
+
+Changes:
+
+- `provisioning/helm/senaev-com/templates/_helpers.tpl`: freedom `domainStrategy`
+  `UseIPv4` → `UseIPv4v6`; removed `outbound-blackhole` and the `::/0` rule, on all
+  instances (Rebuild step 8 showed fast failure on a node without public IPv6).
+- `provisioning/helm/senaev-com/values.yaml`: new subscription entry
+  `🌐 5. hetzner IPv6 → freedom` = same user as entry 4 (`{XRAY_USER_UUID:5}`) at
+  `[2a01:4f9:c013:5425::1]:443`, `sni=senaev.com`.
+- `vpn-subscription` code needs no change (`replaceMacros` only touches `{...}`).
+- `helm template`: no blackhole left, `UseIPv4v6` on all 3 instances, new entry rendered.
+
+Not in scope, found on the way: entry `💄 0. firstvds → freedom` uses `{XRAY_USER_UUID:6}`,
+but no xray instance has seed 6 (`xray-vpn-firstvds` `user-freedom` is seed 4). Probably that
+profile does not authenticate.
+
+Pre-deploy check (read-only), on hetzner — Traefik `hostPort` 443 over IPv6:
+
+```bash
+ip6tables -t nat -S | grep -E "CNI-HOSTPORT|dport 443"
+curl -6 -sS -o /dev/null -w "%{http_code}\n" --resolve "senaev.com:443:[2a01:4f9:c013:5425::1]" https://senaev.com/
+```
+
+Result:
+
+```
+-A PREROUTING -m addrtype --dst-type LOCAL -j CNI-HOSTPORT-DNAT
+-A OUTPUT -m addrtype --dst-type LOCAL -j CNI-HOSTPORT-DNAT
+-A CNI-DN-90e8db94dbc198bca893a -p tcp -m tcp --dport 443 -j DNAT --to-destination [fd42::5]:443
+-A CNI-HOSTPORT-DNAT -p tcp ... -m multiport --dports 80,443 -j CNI-DN-90e8db94dbc198bca893a
+...
+200
+```
+
+The CNI `portmap` plugin writes the IPv6 DNAT for Traefik's `hostPort` 443 to the Traefik pod
+`[fd42::5]:443`, and HTTPS to `senaev.com` over the public IPv6 returns 200. **Inbound IPv6 on
+hetzner works.**
+
+### 2026-10-06 — Deploy B: also upgrade xray 26.6.1 → 26.9.30
+
+User request. `teddysun/xray:26.9.30` is the newest tag (Docker Hub, 2026-10-05), matching
+Xray-core `v26.9.30` (2026-09-30). Xray marks every release as pre-release, the current
+26.6.1 too.
+
+Config-parser diff `v26.6.1...v26.9.30` (`infra/conf/`), checked for what we use:
+
+- **freedom `settings.domainStrategy` is deprecated** in 26.9.30 (auto-migrated with a warning,
+  will be removed) → moved to `streamSettings.sockopt.domainStrategy`.
+- REALITY `dest` / `serverNames` / `privateKey` / `shortIds`, network `tcp`, socks
+  inbound/outbound, routing `user` / `inboundTag`: unchanged.
+- New outbound check "vless/trojan without TLS is prohibited" does not apply (our chain uses
+  socks outbounds).
+- Removed `proxySettings`, legacy XTLS, HTTP/QUIC transports: not used.
+
+Validation with the real binary (Docker, placeholders replaced by a generated key and dummy
+UUIDs): `xray run -test` → `Configuration OK.` for all 3 instances. One existing warning on
+firstvds: `REALITY: Choosing "senaev.ru" as the target will increase the likelihood of your
+server's IP being blocked by the GFW` (not new, no action).
