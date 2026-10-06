@@ -38,9 +38,18 @@ jobs:
 
       - name: Get changed files
         id: changed-files
-        uses: tj-actions/changed-files@v41
-        with:
-          files: provisioning/helm/${{ matrix.chart }}/**
+        env:
+          BEFORE: ${{ github.event.before }}
+          CHART_DIR: provisioning/helm/${{ matrix.chart }}/
+        run: |
+          # A new branch or a force push has no usable "before" commit: deploy the chart.
+          if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            echo "any_changed=true" >> "$GITHUB_OUTPUT"
+          elif git diff --quiet "$BEFORE" "$GITHUB_SHA" -- "$CHART_DIR"; then
+            echo "any_changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "any_changed=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Sync provisioning to server
         if: steps.changed-files.outputs.any_changed == 'true'
