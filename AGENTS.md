@@ -28,6 +28,29 @@ Always ask for explicit user consent before performing any of the following git 
 
 Never stage, commit, switch branches, or push without an explicit request from the user.
 
+## Sensitive nodes: `proxmox` and `senaev-media`
+
+`proxmox` (bare metal) and `senaev-media` (VM 100 on it) are at home, behind the home
+router. There is no remote console and no other way in: they are reachable only over the
+tailnet (and senaev-media also from proxmox over the home LAN). **If we lose network access
+to them, we cannot recover them remotely, and the result is an unacceptable loss.**
+
+Be extremely careful with these nodes and their networks:
+
+- Treat any change that can affect their connectivity as high risk: `tailscaled` (restart,
+  upgrade, flags, `/etc/default/tailscaled`), firewall, routes, sysctl, network interfaces,
+  `k3s-agent` network flags, and anything that touches `tailscale0`.
+- Never change both home nodes at the same time. Change one, then confirm that it is
+  reachable (`tailscale status` shows `direct`, SSH works) before the next one.
+- Never restart `tailscaled` on hetzner (the SSH jump host) while a home node is not
+  fully connected: after a restart, peers need the new disco key from the Tailscale
+  coordination server, and the home ISP connection to it is unreliable. This caused a
+  10-minute outage of senaev-media on 2026-10-05 — see
+  [`issues/2026-10-04-k3s-dual-stack-ipv6.md`](issues/2026-10-04-k3s-dual-stack-ipv6.md).
+- Prefer a change that fails safe: verify the result, keep the old state restorable, and
+  give the user a rollback command before running anything risky.
+- Ask the user before any such change, even when the rest of the task is already approved.
+
 ## Key conventions
 
 - Full VPN services architecture in [`AGENTS.VPN.md`](AGENTS.VPN.md), human documentation is [`XRAY_VPN.md`](XRAY_VPN.md)
