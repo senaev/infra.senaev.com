@@ -123,12 +123,6 @@ spec:
                   name: senaev-com-kv-secrets
                   key: ALISA_WEBHOOK_SECRET
                   optional: false
-            - name: CHAT_GPT_TO_OBSIDIAN_PUBLIC_ENDPOINT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: senaev-com-kv-secrets
-                  key: CHAT_GPT_TO_OBSIDIAN_PUBLIC_ENDPOINT_SECRET
-                  optional: false
             - name: AUTH_MY_USERNAME
               valueFrom:
                 secretKeyRef:

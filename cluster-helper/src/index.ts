@@ -18,7 +18,6 @@ import {
     AUTH_MY_PASSWORD,
     AUTH_MY_USERNAME,
     AUTH_TOKEN_SIGNING_SECRET,
-    CHAT_GPT_TO_OBSIDIAN_PUBLIC_ENDPOINT_SECRET,
     MCP_DOMAIN,
     TG_MEDIA_SERVER_CHAT_ID,
     TG_TOKEN_SENAEV_COM_BOT,
@@ -46,8 +45,8 @@ const HOST = '0.0.0.0';
 //
 // PUBLIC_PORT is what the five ingresses target -- webhook-endpoint.senaev.com,
 // auth.senaev.com, mcp.senaev.com, s.senaev.com and static.senaev.com. Every route on it is either
-// authenticated (Telegram secret token, Alisa and ChatGPT MCP secret paths, OAuth bearer
-// tokens), part of the OAuth flow, or safe to publish, and the catch-all
+// authenticated (Telegram secret token, Alisa secret path, OAuth bearer tokens for the
+// ChatGPT MCP endpoint), part of the OAuth flow, or safe to publish, and the catch-all
 // below answers 401 so nothing new leaks by accident.
 //
 // Serving both from one Fastify instance would publish the internal routes, so do not
@@ -196,7 +195,7 @@ publicServer.post(`/${ALISA_WEBHOOK_SECRET}`, ({ body }, reply) => {
 
 // MCP server for the ChatGPT connector. It writes the received text as-is to the daily
 // note draft file in the Obsidian vault via obsidian-sync.
-async function replyToMcpMessage(message: unknown, reply: FastifyReply, options?: McpServerOptions) {
+async function replyToMcpMessage(message: unknown, reply: FastifyReply, options: McpServerOptions) {
     try {
         const response = await handleMcpMessage(message, appendDailyNoteDraft, options);
 
@@ -220,15 +219,6 @@ async function replyToMcpMessage(message: unknown, reply: FastifyReply, options?
         });
     }
 }
-
-// Legacy endpoint, authenticated by the secret in the path. Remove it once the ChatGPT
-// connector works through the OAuth-protected endpoint below.
-const CHAT_GPT_MCP_PATH = `/${CHAT_GPT_TO_OBSIDIAN_PUBLIC_ENDPOINT_SECRET}`;
-
-publicServer.post<{ Body: unknown }>(CHAT_GPT_MCP_PATH, (request, reply) => replyToMcpMessage(request.body, reply));
-
-// No server-initiated SSE stream: the transport spec says to answer GET with 405.
-publicServer.get(CHAT_GPT_MCP_PATH, (_request, reply) => reply.code(405).header('Allow', 'POST').send());
 
 // OAuth-protected MCP endpoint. The authorization server is on AUTH_DOMAIN; this endpoint
 // on MCP_DOMAIN is the protected resource that the tokens are issued for.
@@ -269,6 +259,7 @@ publicServer.post<{ Body: unknown }>(MCP_PATH, { constraints: { host: MCP_DOMAIN
     return replyToMcpMessage(request.body, reply, MCP_SERVER_OPTIONS);
 });
 
+// No server-initiated SSE stream: the transport spec says to answer GET with 405.
 publicServer.get(MCP_PATH, { constraints: { host: MCP_DOMAIN } }, (_request, reply) => reply.code(405).header('Allow', 'POST').send());
 
 async function main(): Promise<void> {
