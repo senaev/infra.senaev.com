@@ -1492,3 +1492,82 @@ Validation with the real binary (Docker, placeholders replaced by a generated ke
 UUIDs): `xray run -test` → `Configuration OK.` for all 3 instances. One existing warning on
 firstvds: `REALITY: Choosing "senaev.ru" as the target will increase the likelihood of your
 server's IP being blocked by the GFW` (not new, no action).
+
+### 2026-10-06 — Deploy B deployed (`ce55a71`)
+
+```
+NAME                                     READY   STATUS    RESTARTS   AGE   IP           NODE
+xray-vpn-firstvds-7f9d7c547f-ckt2g       1/1     Running   0          54s   10.42.1.7    firstvds
+xray-vpn-hetzner-74dcd4d45-5h4hj         1/1     Running   0          53s   10.42.0.45   hetzner
+xray-vpn-senaev-media-7486d7c494-lmzvh   1/1     Running   0          53s   10.42.3.16   senaev-media
+xray-vpn-firstvds-7f9d7c547f-ckt2g teddysun/xray:26.9.30
+xray-vpn-hetzner-74dcd4d45-5h4hj teddysun/xray:26.9.30
+xray-vpn-senaev-media-7486d7c494-lmzvh teddysun/xray:26.9.30
+Defaulted container "xray-vpn" out of: xray-vpn, xray-vpn-config-subst (init)
+```
+
+All 3 xray pods run `26.9.30`, no restarts. No `warn` / `error` line in the last 20 log lines
+of `xray-vpn-hetzner` (the start banner is earlier, because of `loglevel: debug`). Pending:
+client tests — entries 0–4, entry 5 over IPv6, and an IPv6-only site through the VPN.
+
+### 2026-10-06 — Entry 5 (hetzner over IPv6) does not work
+
+User report: "with entry5, nothing works". No other details yet (client app, network, error).
+
+The pre-deploy `curl` to `[2a01:4f9:c013:5425::1]:443` ran **on hetzner itself**, so it went
+through the `OUTPUT` chain. It proves the portmap DNAT and Traefik, but **not** that packets
+from the internet reach hetzner over IPv6.
+
+Hypotheses:
+
+**(W) The client network has no IPv6.** Many mobile and home networks in Russia have no IPv6;
+then the client cannot reach an IPv6 literal at all.
+- `Signal:` https://test-ipv6.com on the client shows no IPv6; tcpdump on hetzner sees nothing.
+
+**(X) Inbound IPv6 from the internet does not reach Traefik** (Hetzner network/firewall, or the
+`PREROUTING` path differs from the local `OUTPUT` test).
+- `Signal:` tcpdump on `eth0` sees SYNs from the client, but no SYN-ACK, or no traffic on
+  `cni0` to `fd42::5`.
+
+**(Y) The client app rejects or mangles the IPv6 literal** in the `vless://` link.
+- `Signal:` tcpdump sees nothing although the client has IPv6; the app shows a parse error or
+  the address without brackets.
+
+**(Z) TLS/REALITY reaches Traefik, but the SNI passthrough or xray fails.**
+- `Signal:` SYN/SYN-ACK on `eth0`, then xray log shows `REALITY: processed invalid connection`
+  or nothing; Traefik log shows the connection.
+
+Round 10 (read-only):
+
+```bash
+# --- on the client device ---
+# open https://test-ipv6.com  (IPv6 yes/no)
+
+# --- on hetzner, start BEFORE connecting with entry 5, stop with Ctrl+C after ~20 s ---
+command -v tcpdump || echo "tcpdump not installed"
+tcpdump -ni eth0 -c 30 'ip6 and tcp port 443'
+
+# --- on hetzner, in a second session at the same time ---
+kubectl logs -n senaev-com deploy/xray-vpn-hetzner -f --tail=0 | grep -vE "XtlsPadding|ReshapeMultiBuffer"
+
+# --- on the Mac (does the Mac have IPv6? if yes, this is an external test) ---
+curl -6 -sS -m 5 https://ifconfig.co
+curl -6 -sS -m 10 -o /dev/null -w "%{http_code}\n" --resolve "senaev.com:443:[2a01:4f9:c013:5425::1]" https://senaev.com/
+```
+
+User: without the VPN, https://ipv6test.google.com/ says "no problems detected".
+
+Not conclusive for (W): that page reports "no problems detected" also for **IPv4-only**
+clients (it tests that dual-stack sites do not break; its readiness score shows IPv6 0/10 in
+that case). Direct test: open https://ipv6.google.com or http://ipv6.icanhazip.com without the
+VPN — these have **only** AAAA records, so they load only with working IPv6.
+
+User: https://ipv6.icanhazip.com/ does not open from the local network (VPN off).
+
+**(W) confirmed for this client network: it has no IPv6**, so entry 5 cannot work from it.
+This is expected behaviour, not a server fault. Inbound IPv6 to hetzner from the internet is
+still **not proven** by an external test (only the local `OUTPUT`-path test passed).
+
+To finish the verification, a client with real IPv6 is needed — for example a phone on mobile
+data where http://ipv6.icanhazip.com opens — then connect with entry 5 while
+`tcpdump -ni eth0 'ip6 and tcp port 443'` runs on hetzner.
