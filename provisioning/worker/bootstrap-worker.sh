@@ -33,6 +33,35 @@ else
   echo "👉 $LOG_PREFIX Worker is NOT OK, k3s needs to be reinstalled"
 fi
 
+# Both checks run before the uninstall, so a failure leaves the existing agent untouched.
+bash "$SCRIPT_DIR/../common/check-tailscale-dual-stack.sh"
+
+check_control_plane_reachability() {
+  curl -skSf \
+    --connect-timeout 5 \
+    --max-time 15 \
+    "${CONTROL_PLANE_SERVER_URL}/ping" >/dev/null
+}
+
+# Never restart tailscaled here: on a flaky uplink the node may not get the coordination
+# server back for many minutes, and the home nodes cannot be recovered without the tailnet.
+# See issues/2026-10-04-k3s-dual-stack-ipv6.md (2026-10-05 outage).
+CONTROL_PLANE_WAIT_SEC=300
+CONTROL_PLANE_RETRY_SEC=10
+echo "👉 $LOG_PREFIX Checking control plane reachability at [${CONTROL_PLANE_SERVER_URL}] (up to ${CONTROL_PLANE_WAIT_SEC}s)"
+CONTROL_PLANE_DEADLINE=$((SECONDS + CONTROL_PLANE_WAIT_SEC))
+until check_control_plane_reachability; do
+  if (( SECONDS >= CONTROL_PLANE_DEADLINE )); then
+    echo "❌ $LOG_PREFIX Control plane is not reachable at [${CONTROL_PLANE_SERVER_URL}] after ${CONTROL_PLANE_WAIT_SEC}s"
+    echo "❌ $LOG_PREFIX Nothing was changed on this node. tailscaled was NOT restarted on purpose."
+    echo "❌ $LOG_PREFIX Investigate: tailscale status; tailscale ping <control-plane>; systemctl status k3s (on the control plane)"
+    exit 1
+  fi
+  echo "⏳ $LOG_PREFIX Control plane not reachable yet, retrying in ${CONTROL_PLANE_RETRY_SEC}s"
+  sleep "$CONTROL_PLANE_RETRY_SEC"
+done
+echo "✅ $LOG_PREFIX Control plane is reachable"
+
 if [[ -f /usr/local/bin/k3s-agent-uninstall.sh ]]; then
   echo "👉 $LOG_PREFIX Uninstalling existing k3s agent"
   sudo /usr/local/bin/k3s-agent-uninstall.sh
@@ -53,36 +82,6 @@ if [[ -n "$VPS" ]]; then
 fi
 NODE_LABEL_ARGS_STR="${NODE_LABEL_ARGS[*]}"
 echo "✅ $LOG_PREFIX NODE_LABEL_ARGS=[${NODE_LABEL_ARGS_STR}]"
-
-check_control_plane_reachability() {
-  curl -skSf \
-    --connect-timeout 5 \
-    --max-time 15 \
-    "${CONTROL_PLANE_SERVER_URL}/ping" >/dev/null
-}
-
-echo "👉 $LOG_PREFIX Checking control plane reachability"
-if ! check_control_plane_reachability; then
-  echo "⚠️ $LOG_PREFIX Control plane is not reachable at [${CONTROL_PLANE_SERVER_URL}], restarting Tailscale and retrying once"
-
-  if sudo systemctl restart tailscaled 2>/dev/null; then
-    echo "✅ $LOG_PREFIX Restarted tailscaled service"
-  else
-    echo "❌ $LOG_PREFIX Could not restart Tailscale service"
-    exit 1
-  fi
-
-  sleep 2
-
-  echo "👉 $LOG_PREFIX Re-checking control plane reachability"
-  if ! check_control_plane_reachability; then
-    echo "❌ $LOG_PREFIX Control plane is not reachable at [${CONTROL_PLANE_SERVER_URL}] after Tailscale restart"
-    exit 1
-  fi
-fi
-echo "✅ $LOG_PREFIX Control plane is reachable"
-
-bash "$SCRIPT_DIR/../common/check-tailscale-dual-stack.sh"
 
 # No node IPs are passed: with --flannel-iface, k3s reads them from tailscale0 on every start.
 echo "👉 $LOG_PREFIX Installing k3s=[${K3S_VERSION}] agent ⚠️ might take a while, wait"
