@@ -98,7 +98,7 @@ package's own `node_modules`. A fresh clone therefore needs `npm ci` at the root
 every package — this is what `.github/workflows/check.yml` does.
 
 Config lives at the root: `eslint.config.mjs` (React rules scoped to senaev-utils),
-`tsconfig.base.json` and `vitest.config.ts`.
+`tsconfig.base.json` and `vitest.config.mts`.
 
 Every package extends `tsconfig.base.json`, so the library is held to the same strictness as
 the services — including `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`.

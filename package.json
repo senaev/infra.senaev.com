@@ -18,11 +18,11 @@
     "prepare": "lefthook install"
   },
   "devDependencies": {
-    "@eslint/js": "9.17.0",
+    "@eslint/js": "9.39.5",
     "@stylistic/eslint-plugin": "2.12.1",
     "@types/node": "25.4.0",
     "concurrently": "^10.0.5",
-    "eslint": "9.17.0",
+    "eslint": "9.39.5",
     "eslint-plugin-import-x": "^4.6.1",
     "eslint-plugin-no-only-tests": "^3.3.0",
     "eslint-plugin-react": "7.37.3",
@@ -32,6 +32,9 @@
     "lefthook": "^1.10.10",
     "typescript": "5.9.3",
     "typescript-eslint": "^8.32.0",
-    "vitest": "^3.2.0"
+    "vitest": "^5.0.3"
+  },
+  "overrides": {
+    "shell-quote": "^1.11.0"
   }
 }
