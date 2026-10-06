@@ -32,6 +32,7 @@ Never stage, commit, switch branches, or push without an explicit request from t
 
 - Full VPN services architecture in [`AGENTS.VPN.md`](AGENTS.VPN.md), human documentation is [`XRAY_VPN.md`](XRAY_VPN.md)
 - Worker nodes connect via Tailscale; Tailscale hostnames used throughout (not public IPs)
+- The cluster is dual-stack (IPv4 primary, IPv6 secondary). k3s takes node IPs from `tailscale0` (`--flannel-iface`), so no node IP is hard-coded. Pod/Service CIDRs live in `provisioning/common/.env` and are fixed at cluster creation — changing them needs a full rebuild. See [`issues/2026-10-04-k3s-dual-stack-ipv6.md`](issues/2026-10-04-k3s-dual-stack-ipv6.md)
  - All alerting and operational notifications go to Telegram
 
 ## Service Deployment

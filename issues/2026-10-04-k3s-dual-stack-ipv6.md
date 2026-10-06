@@ -1087,7 +1087,71 @@ restart the pods on each node.
 Optional check: on senaev-media `ip -o link show | grep -oE "(cni0|veth[^:@]*).*mtu [0-9]+" | grep -oE "^[^:@ ]+|mtu [0-9]+"`; on hetzner
 `ip route flush cache; ping -M do -s 1272 -c 3 10.42.3.0`.
 
+### 2026-10-06 — Rebuild code prepared (not committed)
+
+Target version: **k3s `v1.36.5+k3s1`** (current `stable` channel; `latest` is v1.37.1).
+Release notes v1.36.0–v1.36.5 checked: no removed or renamed flag that we use. The Traefik
+chart warning does not apply (bundled Traefik is disabled). v1.36.0 includes "Fix SANs added
+from comma-separated node-external-ip list" — not relevant any more, see below.
+
+Decision with the user: **no node IP is hard-coded.** The proxmox journal (Round 2) showed
+`provided-node-ip: "100.87.199.13,fd7a:115c:a1e0::6136:c70d"` without `--node-ip`, so k3s
+already takes both node IPs from `--flannel-iface=tailscale0` on every start. Removed:
+`--advertise-address`, `--node-external-ip`, `--flannel-external-ip` (flannel uses the
+`tailscale0` address anyway; nothing in the repo reads the node `ExternalIP`). A changed
+tailnet IP now needs only a k3s restart, except on hetzner, whose IPv4 is the workers'
+`K3S_URL`.
+
+Changes:
+
+| File | Change |
+|---|---|
+| `provisioning/common/.env` | `K3S_VERSION=v1.36.5+k3s1`, new `K3S_CLUSTER_CIDR`, `K3S_SERVICE_CIDR` |
+| `provisioning/common/check-tailscale-dual-stack.sh` (new) | Fail before install when `tailscale0` lacks IPv4 or global IPv6 |
+| `provisioning/control-plane/bootstrap-control-plane.sh` | `--cluster-cidr`, `--service-cidr`, `--flannel-ipv6-masq`; removed fixed IPs; on an installed server: **fail** if its cluster-cidr differs (needs rebuild), warn on version mismatch |
+| `provisioning/worker/bootstrap-worker.sh` | Removed fixed IPs; dual-stack precondition before install |
+| `provisioning/worker/check-worker.sh` | Fail on k3s version mismatch → reinstall. (Dual-stack is server-side; after the rebuild the new token makes every old worker fail `NODE_TOKEN` anyway.) |
+| `provisioning/common/bootstrap-node-networking.sh` | Report `flannel-v6.1` |
+| `AGENTS.md` | One line about dual-stack and the CIDRs |
+
+Consequence: until the rebuild, `make control-plane` (and `make` / `make cluster`) stops with
+the cluster-cidr error. This is intended.
+
+## Rebuild runbook
+
+Expected downtime: about 1–2 h. Data loss accepted: Vault, all local-path PVCs.
+
+1. **Before:** commit and push the changes. Save anything you want from Vault. Note the
+   current Grafana/alert setup if needed.
+2. **Uninstall workers** (each, from the Mac):
+   `ssh -J root@77.42.120.71 root@<worker> '/usr/local/bin/k3s-agent-uninstall.sh'`
+   for proxmox, senaev-media, firstvds. Order does not matter much, because the server and
+   all its state are deleted in the next step.
+3. **Uninstall the server:** `ssh root@77.42.120.71 '/usr/local/bin/k3s-uninstall.sh'`
+   — this deletes `/var/lib/rancher/k3s` including all PVCs.
+4. **Recreate the cluster:** `make cluster` (control plane, then all workers; workers fail
+   `NODE_TOKEN`/version and reinstall).
+5. **Verify dual-stack before services:**
+
+   ```bash
+   kubectl get nodes -o wide
+   kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name} {.spec.podCIDRs} {.status.addresses}{"\n"}{end}'
+   kubectl get endpoints kubernetes          # must be 100.120.76.115:6443 (tailnet IPv4)
+   # on every node:
+   ip -d link show flannel-v6.1 | head -3    # mtu 1280, parent tailscale0
+   cat /sys/class/net/flannel.1/mtu          # 1300
+   ```
+
+6. **Services:** `make services` (Traefik, secrets, telemetry, Datadog, senaev-com, test).
+   `bootstrap-vault.sh` initializes a new Vault and sends the new root token to Telegram;
+   re-enter the secrets in `senaev-com-kv`, then restart/resync External Secrets.
+7. **Verify** (see `## Verification`), plus: a test pod on each node has both addresses;
+   `ping6` between pods on different nodes; from a hetzner pod `curl -6 https://ifconfig.co`
+   returns `2a01:4f9:c013:5425::1`; from a firstvds pod an IPv6 connection fails fast.
+8. **Deploy B** (separate change): xray `UseIPv4v6` + remove the `::/0` blackhole after the
+   fast-fail test; `vpn-subscription` IPv6 entry for hetzner.
+
 Follow-ups before the rebuild:
-1. Commit the script fix (address wait + tolerant k3s restart).
+1. ~~Commit the script fix (address wait + tolerant k3s restart).~~ Done in `01a4f3a`.
 2. Optional hardening: after a tailscaled restart, wait until `tailscale ping` to the control
    plane (or, on the control plane, to every worker) succeeds before restarting k3s.

@@ -4,8 +4,8 @@ set -euo pipefail
 # Makes the k3s <-> tailscale0 dependency explicit to systemd.
 #
 # WHY THIS EXISTS
-#   k3s runs with --flannel-iface=tailscale0, so flannel creates flannel.1 as a VXLAN
-#   device whose PARENT LINK is tailscale0. When tailscaled restarts (auto-update, package
+#   k3s runs with --flannel-iface=tailscale0, so flannel creates flannel.1 (and flannel-v6.1
+#   on the dual-stack cluster) as a VXLAN device whose PARENT LINK is tailscale0. When tailscaled restarts (auto-update, package
 #   upgrade, manual restart) the kernel deletes tailscale0 and, with it, every child device
 #   - including flannel.1. The already-running k3s process never notices and never
 #   recreates it, so ALL cross-node pod networking dies while the node still reports Ready.
@@ -295,6 +295,13 @@ if ip link show flannel.1 &>/dev/null; then
   echo "✅ $LOG_PREFIX flannel.1 is present (mtu $(cat /sys/class/net/flannel.1/mtu)), cross-node pod networking is up"
 else
   echo "⚠️ $LOG_PREFIX flannel.1 is MISSING while ${TAILSCALE_IFACE} is up - cross-node pod networking is down"
+  echo "⚠️ $LOG_PREFIX Repair with: systemctl restart ${K3S_UNIT}"
+fi
+
+if ip link show flannel-v6.1 &>/dev/null; then
+  echo "✅ $LOG_PREFIX flannel-v6.1 is present (mtu $(cat /sys/class/net/flannel-v6.1/mtu)), IPv6 pod networking is up"
+else
+  echo "⚠️ $LOG_PREFIX flannel-v6.1 is MISSING - IPv6 pod networking is down (expected only on a cluster created before dual-stack)"
   echo "⚠️ $LOG_PREFIX Repair with: systemctl restart ${K3S_UNIT}"
 fi
 

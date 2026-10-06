@@ -4,10 +4,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 set -a; source "$SCRIPT_DIR/../common/.env"; set +a
 
-echo "👉 [bootstrap-control-plane] getting internal tailnet IP"
-TAILNET_IP=$(tailscale ip -4)
-echo "✅ [bootstrap-control-plane] TAILNET_IP=[${TAILNET_IP}]"
+bash "$SCRIPT_DIR/../common/check-tailscale-dual-stack.sh"
 
+# No node IPs are passed: with --flannel-iface, k3s reads the node IPs (and the API advertise
+# address) from tailscale0 on every start, so a changed tailnet IP needs no reinstall.
+# IPv4 is listed first in the CIDRs, so it stays the primary family: Services are IPv4-only
+# unless they opt in with ipFamilyPolicy. See issues/2026-10-04-k3s-dual-stack-ipv6.md
 if ! command -v k3s &>/dev/null; then
   echo "👉 [bootstrap-control-plane] k3s not found, installing k3s=[${K3S_VERSION}]"
   curl -sfL https://get.k3s.io | \
@@ -15,10 +17,10 @@ if ! command -v k3s &>/dev/null; then
     INSTALL_K3S_EXEC=" \
     server \
     --disable traefik \
-    --advertise-address=$TAILNET_IP \
-    --node-external-ip=$TAILNET_IP \
+    --cluster-cidr=$K3S_CLUSTER_CIDR \
+    --service-cidr=$K3S_SERVICE_CIDR \
     --flannel-iface=tailscale0 \
-    --flannel-external-ip \
+    --flannel-ipv6-masq \
     --write-kubeconfig-mode 644 \
     --node-label vps=hetzner \
     " \
@@ -26,6 +28,19 @@ if ! command -v k3s &>/dev/null; then
   echo "✅ [bootstrap-control-plane] k3s installed"
 else
   echo "✅ [bootstrap-control-plane] k3s already installed"
+
+  # The pod and Service CIDRs are fixed when the cluster is created, so a server installed
+  # with other CIDRs (the old IPv4-only cluster) cannot be fixed by this script.
+  if ! grep -qF -- "--cluster-cidr=${K3S_CLUSTER_CIDR}" /etc/systemd/system/k3s.service; then
+    echo "❌ [bootstrap-control-plane] Installed k3s server is not configured with cluster-cidr=[${K3S_CLUSTER_CIDR}]"
+    echo "❌ [bootstrap-control-plane] This needs a full cluster rebuild - see issues/2026-10-04-k3s-dual-stack-ipv6.md"
+    exit 1
+  fi
+
+  INSTALLED_K3S_VERSION="$(k3s --version | awk 'NR == 1 { print $3 }')"
+  if [[ "$INSTALLED_K3S_VERSION" != "$K3S_VERSION" ]]; then
+    echo "⚠️ [bootstrap-control-plane] Installed k3s=[${INSTALLED_K3S_VERSION}] differs from K3S_VERSION=[${K3S_VERSION}], upgrade it by hand"
+  fi
 fi
 
 # Runs unconditionally, outside the install guard above: an already-installed k3s is

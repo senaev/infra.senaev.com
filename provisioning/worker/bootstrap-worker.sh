@@ -54,10 +54,6 @@ fi
 NODE_LABEL_ARGS_STR="${NODE_LABEL_ARGS[*]}"
 echo "✅ $LOG_PREFIX NODE_LABEL_ARGS=[${NODE_LABEL_ARGS_STR}]"
 
-echo "👉 $LOG_PREFIX Getting internal tailnet IP"
-TAILNET_IP=$(tailscale ip -4)
-echo "✅ $LOG_PREFIX TAILNET_IP=[${TAILNET_IP}]"
-
 check_control_plane_reachability() {
   curl -skSf \
     --connect-timeout 5 \
@@ -78,10 +74,6 @@ if ! check_control_plane_reachability; then
 
   sleep 2
 
-  echo "👉 $LOG_PREFIX Getting internal tailnet IP after Tailscale restart"
-  TAILNET_IP=$(tailscale ip -4)
-  echo "✅ $LOG_PREFIX TAILNET_IP=[${TAILNET_IP}]"
-
   echo "👉 $LOG_PREFIX Re-checking control plane reachability"
   if ! check_control_plane_reachability; then
     echo "❌ $LOG_PREFIX Control plane is not reachable at [${CONTROL_PLANE_SERVER_URL}] after Tailscale restart"
@@ -90,6 +82,9 @@ if ! check_control_plane_reachability; then
 fi
 echo "✅ $LOG_PREFIX Control plane is reachable"
 
+bash "$SCRIPT_DIR/../common/check-tailscale-dual-stack.sh"
+
+# No node IPs are passed: with --flannel-iface, k3s reads them from tailscale0 on every start.
 echo "👉 $LOG_PREFIX Installing k3s=[${K3S_VERSION}] agent ⚠️ might take a while, wait"
 
 curl -sfL https://get.k3s.io | \
@@ -99,7 +94,6 @@ curl -sfL https://get.k3s.io | \
     INSTALL_K3S_EXEC=" \
       agent \
       $NODE_LABEL_ARGS_STR \
-      --node-external-ip=$TAILNET_IP \
       --flannel-iface=tailscale0 \
     " \
     sh -

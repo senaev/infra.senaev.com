@@ -71,5 +71,14 @@ else
   echo "✅ $LOG_PREFIX LABEL matches expected=[${EXPECTED_LABEL}] existing=[${EXISTING_LABEL}]"
 fi
 
+# K3S_VERSION comes from common/.env, exported by bootstrap-worker.sh.
+EXISTING_K3S_VERSION=$(k3s --version | awk 'NR == 1 { print $3 }')
+if [[ "${K3S_VERSION:-}" != "$EXISTING_K3S_VERSION" ]]; then
+  echo "❌ $LOG_PREFIX K3S_VERSION mismatch expected=[${K3S_VERSION:-}], existing=[${EXISTING_K3S_VERSION}]"
+  exit 1
+else
+  echo "✅ $LOG_PREFIX K3S_VERSION matches [${EXISTING_K3S_VERSION}]"
+fi
+
 echo "✅ $LOG_PREFIX Worker is OK"
 exit 0
