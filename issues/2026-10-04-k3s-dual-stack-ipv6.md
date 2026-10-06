@@ -1155,3 +1155,36 @@ Follow-ups before the rebuild:
 1. ~~Commit the script fix (address wait + tolerant k3s restart).~~ Done in `01a4f3a`.
 2. Optional hardening: after a tailscaled restart, wait until `tailscale ping` to the control
    plane (or, on the control plane, to every worker) succeeds before restarting k3s.
+
+### 2026-10-06 — Safer worker rollout (replaces "Rebuild runbook" steps 2 and 4)
+
+After the 2026-10-05 outage, `AGENTS.md` got a "Sensitive nodes" section: proxmox and
+senaev-media cannot be recovered without the tailnet. Changes:
+
+- `a4ff37b` — `bootstrap-worker.sh` never restarts `tailscaled`; it waits up to 5 min for the
+  control plane, and both this check and the tailnet dual-stack check run **before** the old
+  agent is uninstalled, so a failure leaves the node unchanged.
+- `scripts/connect-all-workers.sh` removed. `scripts/connect-worker.sh <address> <vps>` now
+  fetches the token and API URL itself, and at the end verifies that the node is still
+  reachable over SSH through hetzner.
+- `Makefile`: `make worker-firstvds`, `make worker-proxmox`, `make worker-senaev-media`;
+  `make workers` runs them in that order (non-sensitive node first).
+
+Old agents do not need a manual uninstall: after the rebuild, `check-worker.sh` fails on the
+old token / version, and `bootstrap-worker.sh` reinstalls the agent. Old agents cannot join the
+new cluster by mistake (old token).
+
+## Rebuild runbook v2
+
+1. **Before:** optional Vault KV backup to `~/tmp` (delete after restoring). Read-only check
+   that all nodes are `Ready` and all peers `direct`.
+2. **Uninstall the server:** `ssh root@77.42.120.71 '/usr/local/bin/k3s-uninstall.sh'`.
+   From here there is no rollback to the old cluster. Old agents keep running, disconnected.
+3. **New server:** `make control-plane`. Check `kubectl get nodes`, `ip link show flannel-v6.1`.
+4. **firstvds:** `make worker-firstvds`. Check the node `Ready` and its pod CIDRs.
+5. **proxmox** (sensitive — explicit go from the user): `make worker-proxmox`. Check
+   `tailscale status` on hetzner shows proxmox `direct`, node `Ready`.
+6. **senaev-media** (sensitive — explicit go from the user): `make worker-senaev-media`. Same
+   checks.
+7. Dual-stack verification (Rebuild runbook step 5), then `make services`, Vault init,
+   re-enter secrets, verification (step 7), then Deploy B.
