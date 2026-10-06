@@ -1188,3 +1188,181 @@ new cluster by mistake (old token).
    checks.
 7. Dual-stack verification (Rebuild runbook step 5), then `make services`, Vault init,
    re-enter secrets, verification (step 7), then Deploy B.
+
+### 2026-10-06 — Rebuild step 1: pre-check passed
+
+```
+NAME           STATUS   ROLES           AGE    VERSION
+firstvds       Ready    <none>          117d   v1.35.2+k3s1
+hetzner        Ready    control-plane   150d   v1.35.2+k3s1
+proxmox        Ready    <none>          150d   v1.35.2+k3s1
+senaev-media   Ready    <none>          150d   v1.35.2+k3s1
+NAMESPACE     NAME   READY   STATUS    RESTARTS        AGE
+100.90.217.37    firstvds      andrei.senaev@  linux  active; direct 157.22.197.112:41641, tx 1539414290 rx 1379798860
+100.87.199.13    proxmox       andrei.senaev@  linux  active; direct 46.48.65.87:1039, tx 67306840 rx 189923896
+100.103.254.98   senaev-media  andrei.senaev@  linux  active; direct 46.48.65.87:41641, tx 151832132 rx 1772092260
+```
+
+All nodes `Ready`, no unhealthy pods, all peers `direct`. Ready for the server uninstall.
+
+Vault facts for the backup: one KV v2 mount `kv`, one secret `senaev-com-kv` (the only
+`remoteRef.key` in the charts). The old root token is in `/k3s-cluster/vault_unseal_key.json`
+on hetzner — outside `/var/lib/rancher`, so it survives the uninstall, but
+`bootstrap-vault.sh` **overwrites** it when it initializes the new Vault.
+
+### 2026-10-06 — Vault KV backed up
+
+The user backed up `kv/senaev-com-kv` to `/root/vault-senaev-com-kv.json` on hetzner (mode
+600; `/root` is not touched by `k3s-uninstall.sh`). Restore after `make services`:
+
+```bash
+NEW_TOKEN=$(jq -r .root_token /k3s-cluster/vault_unseal_key.json)
+kubectl exec -i -n vault vault-0 -- env VAULT_TOKEN="$NEW_TOKEN" \
+  vault kv put kv/senaev-com-kv - < /root/vault-senaev-com-kv.json
+rm /root/vault-senaev-com-kv.json
+```
+
+### 2026-10-06 — Rebuild steps 2–3: server uninstalled, new dual-stack server up
+
+(The output of `k3s-uninstall.sh` and `make control-plane` was not pasted.)
+
+```
+NAME      STATUS   ROLES           AGE    VERSION        INTERNAL-IP      EXTERNAL-IP   OS-IMAGE                       KERNEL-VERSION                        CONTAINER-RUNTIME
+hetzner   Ready    control-plane   114s   v1.36.5+k3s1   100.120.76.115   <none>        Debian GNU/Linux 13 (trixie)   6.12.74+deb13+1-cloud-amd64 (amd64)   containerd://2.3.4-k3s1.36
+hetzner ["10.42.0.0/24","fd42::/64"]
+601: flannel-v6.1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1280 qdisc noqueue state UNKNOWN mode DEFAULT group default
+    vxlan id 1 local fd7a:115c:a1e0::6936:4c73 dev tailscale0 srcport 0 0 dstport 8472 ttl auto ageing 300 nolearning ...
+1300
+1280
+NAME         ENDPOINTS             AGE
+kubernetes   100.120.76.115:6443   117s
+```
+
+- k3s `v1.36.5+k3s1`, node `Ready`.
+- **Dual-stack confirmed:** pod CIDRs `10.42.0.0/24` + `fd42::/64`.
+- `flannel-v6.1` exists, MTU **1280** (the IPv6 minimum — exactly as designed with
+  `tailscale0` 1350), VXLAN over `tailscale0` from the Tailscale IPv6 address.
+- `flannel.1` MTU 1300.
+- API endpoint stays the tailnet IPv4 without `--advertise-address`. `EXTERNAL-IP` is
+  `<none>` as expected (no `--node-external-ip`).
+
+### 2026-10-06 — Rebuild step 4: firstvds joined
+
+```
+NAME       STATUS   ROLES           AGE     VERSION        INTERNAL-IP      EXTERNAL-IP   ...
+firstvds   Ready    <none>          25s     v1.36.5+k3s1   100.90.217.37    <none>        ...
+hetzner    Ready    control-plane   4m47s   v1.36.5+k3s1   100.120.76.115   <none>        ...
+firstvds ["10.42.1.0/24","fd42:0:0:1::/64"]
+hetzner ["10.42.0.0/24","fd42::/64"]
+PING 10.42.1.0 (10.42.1.0) 56(84) bytes of data.
+64 bytes from 10.42.1.0: icmp_seq=1 ttl=64 time=22.8 ms   (3/3 received)
+PING fd42:0:0:1:: (fd42:0:0:1::) 56 data bytes
+64 bytes from fd42:0:0:1::: icmp_seq=1 ttl=64 time=18.9 ms   (3/3 received)
+```
+
+firstvds `Ready` on v1.36.5 with both pod CIDRs. **First cross-node IPv6 pod-network traffic
+works** (hetzner → firstvds over `flannel-v6.1`), IPv4 overlay too. The new bootstrap
+(no tailscaled restart, checks before uninstall) worked on its first real run.
+
+### 2026-10-06 — Rebuild step 5: proxmox joined, tailnet intact
+
+```
+100.87.199.13    proxmox       andrei.senaev@  linux  active; direct 46.48.65.87:1039, tx 70635032 rx 192843160
+100.103.254.98   senaev-media  andrei.senaev@  linux  active; direct 46.48.65.87:41641, tx 156899840 rx 1776997044
+firstvds ["10.42.1.0/24","fd42:0:0:1::/64"]
+hetzner ["10.42.0.0/24","fd42::/64"]
+proxmox ["10.42.2.0/24","fd42:0:0:2::/64"]
+PING 100.87.199.13 (100.87.199.13) 56(84) bytes of data.
+64 bytes from 100.87.199.13: icmp_seq=1 ttl=64 time=66.0 ms   (3/3 received)
+```
+
+proxmox joined with both pod CIDRs; its tailnet path is still `direct` and the tailnet IP
+answers. senaev-media is untouched and still `direct`.
+
+Pod network hetzner → proxmox:
+
+```
+PING 10.42.2.0 (10.42.2.0) 56(84) bytes of data.
+64 bytes from 10.42.2.0: icmp_seq=1 ttl=64 time=66.1 ms   (3/3 received)
+PING fd42:0:0:2:: (fd42:0:0:2::) 56 data bytes
+64 bytes from fd42:0:0:2::: icmp_seq=1 ttl=64 time=66.1 ms   (3/3 received)
+PING fd42:0:0:2:: (fd42:0:0:2::) 1232 data bytes
+1240 bytes from fd42:0:0:2::: icmp_seq=1 ttl=64 time=67.6 ms   (3/3 received)
+```
+
+**Full-size 1280-byte IPv6 packets with DF cross hetzner → home over the overlay.** This
+confirms the whole MTU design (tailscale0 1350 → flannel-v6.1 1280) on the most difficult
+path. proxmox is done.
+
+### 2026-10-06 — Rebuild step 6: senaev-media joined — all 4 nodes dual-stack
+
+```
+100.103.254.98   senaev-media  andrei.senaev@  linux  active; direct 46.48.65.87:41641, tx 158697916 rx 1778218786
+firstvds ["10.42.1.0/24","fd42:0:0:1::/64"]
+hetzner ["10.42.0.0/24","fd42::/64"]
+proxmox ["10.42.2.0/24","fd42:0:0:2::/64"]
+senaev-media ["10.42.3.0/24","fd42:0:0:3::/64"]
+PING 10.42.3.0 (10.42.3.0) 56(84) bytes of data.
+64 bytes from 10.42.3.0: icmp_seq=1 ttl=64 time=69.4 ms   (3/3 received)
+PING fd42:0:0:3:: (fd42:0:0:3::) 56 data bytes
+64 bytes from fd42:0:0:3::: icmp_seq=1 ttl=64 time=69.3 ms   (3/3 received)
+PING fd42:0:0:3:: (fd42:0:0:3::) 1232 data bytes
+1240 bytes from fd42:0:0:3::: icmp_seq=1 ttl=64 time=69.9 ms   (3/3 received)
+```
+
+senaev-media joined, tailnet `direct`, IPv4 and IPv6 overlay including full-size IPv6
+packets. **The cluster part of the rebuild is complete:** 4 nodes, v1.36.5, dual-stack, no
+tailscaled restart, no loss of access to the home nodes.
+
+Next: services. Run them in steps so that the Vault restore happens before any workload that
+reads `senaev-com-kv` starts (`bootstrap-vault.sh` creates `senaev-com-kv` with only
+`TG_TOKEN_SENAEV_COM_BOT`; `kv put` from the backup replaces it with the full set):
+`make traefik` → `make secrets` → Vault restore → `make telemetry` → `make datadog` →
+`make senaev-com` → `make test`.
+
+### 2026-10-06 — Rebuild step 7: services deployed; only test/minio fails
+
+```
+NAME           STATUS   ROLES           AGE   VERSION
+firstvds       Ready    <none>          17m   v1.36.5+k3s1
+hetzner        Ready    control-plane   22m   v1.36.5+k3s1
+proxmox        Ready    <none>          16m   v1.36.5+k3s1
+senaev-media   Ready    <none>          11m   v1.36.5+k3s1
+NAMESPACE     NAME                     READY   STATUS             RESTARTS   AGE
+test          minio-86bb8d98c5-cd647   0/1     ImagePullBackOff   0          47s
+NAMESPACE    NAME                        STORETYPE            STORE                        REFRESH INTERVAL   STATUS         READY
+datadog      senaev-com-kv-secrets       ClusterSecretStore   vault-cluster-secret-store   30s                SecretSynced   True
+senaev-com   prowlarr-basicauth          ClusterSecretStore   vault-cluster-secret-store   30s                SecretSynced   True
+senaev-com   senaev-com-kv-secrets       ClusterSecretStore   vault-cluster-secret-store   30s                SecretSynced   True
+senaev-com   unmanic-basicauth           ClusterSecretStore   vault-cluster-secret-store   30s                SecretSynced   True
+telemetry    alertmanager-basicauth      ClusterSecretStore   vault-cluster-secret-store   30s                SecretSynced   True
+telemetry    senaev-com-kv-secrets       ClusterSecretStore   vault-cluster-secret-store   30s                SecretSynced   True
+telemetry    victoriametrics-basicauth   ClusterSecretStore   vault-cluster-secret-store   30s                SecretSynced   True
+telemetry    vmalert-basicauth           ClusterSecretStore   vault-cluster-secret-store   30s                SecretSynced   True
+test         test-kv-secrets             ClusterSecretStore   vault-cluster-secret-store   30s                SecretSynced   True
+```
+
+minio pod events:
+
+```
+Failed to pull image "minio/minio:RELEASE.2025-01-20T14-49-07Z": failed to pull and unpack image
+"docker.io/minio/minio:RELEASE.2025-01-20T14-49-07Z": failed to resolve reference ...: pull access
+denied, repository does not exist or may require authorization: server message: insufficient_scope:
+authorization failed
+```
+
+- All nodes `Ready`; every pod except one runs; **all 9 ExternalSecrets `SecretSynced`** —
+  the Vault restore worked (the services read their full secret set).
+- **minio is not caused by the rebuild.** `docker.io/minio/minio` no longer serves this image
+  (MinIO stopped publishing public images on Docker Hub in 2025). The node had the image
+  cached before; the agent uninstall deleted the containerd image store, so the pull is now
+  required and fails.
+- minio is a test service (`provisioning/helm/test/`, commit `b3beea2`): an S3-compatible
+  store at `test-s3-bucket.senaev.com`, nothing in the repo uses it.
+- `Fix:` set `minio.enabled: false` in `provisioning/helm/test/values.yaml` (data on
+  `/mnt/sdb1/volumes/minio` stays), or move to another image source if it is needed.
+
+**Decision: minio disabled.** `minio.enabled: false`, and the two ingress entries
+`test-minio` / `test-minio-console` removed (they are in the generic `ingress.entries` list
+and do not follow `minio.enabled`). `helm template` renders no minio object. The
+`MINIO_ROOT_PASSWORD` key stays in Vault, unused.

@@ -6,8 +6,10 @@ requestEcho:
   enabled: true
   vps: hetzner
 
+# Disabled 2026-10-06: docker.io/minio/minio no longer serves public images. Data stays on
+# /mnt/sdb1/volumes/minio. See issues/2026-10-04-k3s-dual-stack-ipv6.md
 minio:
-  enabled: true
+  enabled: false
   vps: senaev-media
   rootUser: senaev_media_s3_admin
   volumePath: volumes/minio
@@ -40,15 +42,3 @@ ingress:
           path: /echo
           service: request-echo
           port: 8080
-    - name: test-minio
-      className: traefik-hetzner
-      hosts:
-        - host: test-s3-bucket.senaev.com
-          service: minio
-          port: 9000
-    - name: test-minio-console
-      className: traefik-hetzner
-      hosts:
-        - host: test-s3-bucket-console.senaev.com
-          service: minio
-          port: 9001
