@@ -43,6 +43,10 @@ const TASKS_PROMPT_LINES = [
     'A single message may contain several tasks — return every one of them as a separate entry in the tasks array.',
     'Split a message into several tasks only when it really describes separate actions; do not split one action into pieces.',
     'Keep the wording of each task as close to the original message as possible — do not rephrase or rewrite unless necessary.',
+    'You may change the wording, but never lose information: every detail of the message must appear in some task title.',
+    'Keep every link and URL exactly as written, with its full address, in the title of the task it belongs to; a link that relates to the whole message goes into every task.',
+    'Also keep names of people, places, products and services, file names, commands, error messages, IDs, numbers, amounts, times and quoted text exactly as written.',
+    'Never shorten, summarize or drop any part of the message to make a title shorter.',
     'If a task mentions a due date or deadline, extract it as that task\'s due_date in YYYY-MM-DD format; otherwise set its due_date to null.',
     'A due date that clearly applies to the whole message applies to every task in it.',
 ];
