@@ -70,6 +70,12 @@ spec:
                   name: senaev-com-kv-secrets
                   key: TG_TOKEN_SENAEV_COM_BOT
                   optional: false
+            - name: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN
+                  optional: false
           volumeMounts:
             - name: vault
               mountPath: {{ .Values.obsidianSync.containerVaultPath }}

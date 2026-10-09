@@ -141,6 +141,12 @@ spec:
                   name: senaev-com-kv-secrets
                   key: AUTH_TOKEN_SIGNING_SECRET
                   optional: false
+            - name: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN
+                  optional: false
             - name: OPENROUTER_API_KEY
               valueFrom:
                 secretKeyRef:

@@ -13,3 +13,6 @@ export const OBSIDIAN_VAULT_PATH = requireEnv('OBSIDIAN_VAULT_PATH');
 export const TG_TOKEN_SENAEV_COM_BOT = requireEnv('TG_TOKEN_SENAEV_COM_BOT');
 /** Destination for sync failures that can't be surfaced anywhere else. */
 export const TG_CLUSTER_CHAT_ID = requireEnv('TG_CLUSTER_CHAT_ID');
+
+/** cluster-helper sends it on every call; every route except `?note=`/`?file=` requires it. */
+export const INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN = requireEnv('INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN');

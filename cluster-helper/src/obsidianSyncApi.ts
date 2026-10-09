@@ -1,4 +1,52 @@
-import { OBSIDIAN_SYNC_URL } from './env';
+import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { createBearerAuthorizationHeader } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
+
+import type { VaultToolReply } from './chatGptMcp/handleMcpMessage';
+import { INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN, OBSIDIAN_SYNC_URL } from './env';
+
+/** A full vault search reads every note, so allow it much more than a normal request. */
+const VAULT_TOOL_TIMEOUT_MS = 30_000;
+
+/**
+ * Every call to obsidian-sync goes through here, because obsidian-sync rejects any request
+ * without the internal token.
+ */
+export function fetchObsidianSync(pathOrUrl: string | URL, init: RequestInit = {}): Promise<Response> {
+    const headers = new Headers(init.headers);
+
+    headers.set('authorization', createBearerAuthorizationHeader(INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN));
+
+    const url = typeof pathOrUrl === 'string' ? `${OBSIDIAN_SYNC_URL}${pathOrUrl}` : pathOrUrl;
+
+    return fetch(url, {
+        ...init,
+        headers,
+    });
+}
+
+/**
+ * Runs a vault tool in obsidian-sync with `POST /vault/<name>`. A reply with
+ * `status: "error"` is a normal tool error for ChatGPT; only a transport failure or a
+ * reply that is not JSON throws.
+ */
+export async function callVaultTool(vaultToolName: string, args: unknown): Promise<VaultToolReply> {
+    const response = await fetchObsidianSync(`/vault/${encodeURIComponent(vaultToolName)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args),
+        signal: AbortSignal.timeout(VAULT_TOOL_TIMEOUT_MS),
+    });
+    const body: unknown = await response.json();
+
+    if (!isObject(body) || Array.isArray(body)) {
+        throw new Error(`obsidian-sync answered HTTP ${response.status} with a body that is not a JSON object`);
+    }
+
+    return {
+        isError: !response.ok || body.status !== 'ok',
+        body,
+    };
+}
 
 export type ObsidianTaskInput = {
     title: string;
@@ -32,7 +80,7 @@ export type MilestonesOverview = {
  */
 export async function getMilestones(date?: string): Promise<MilestonesOverview> {
     const query = date === undefined ? '' : `?date=${encodeURIComponent(date)}`;
-    const response = await fetch(`${OBSIDIAN_SYNC_URL}/milestones${query}`);
+    const response = await fetchObsidianSync(`/milestones${query}`);
 
     const body = (await response.json()) as
         | ({ status: 'ok' } & MilestonesOverview)
@@ -56,7 +104,7 @@ export async function getMilestones(date?: string): Promise<MilestonesOverview> 
  * Returns the target URL, or `null` if the short link id is not found.
  */
 export async function getShortLink(shortId: string): Promise<string | null> {
-    const response = await fetch(`${OBSIDIAN_SYNC_URL}/short_links/${encodeURIComponent(shortId)}`);
+    const response = await fetchObsidianSync(`/short_links/${encodeURIComponent(shortId)}`);
 
     if (response.status === 404) {
         return null;
@@ -80,7 +128,7 @@ export async function getShortLink(shortId: string): Promise<string | null> {
  * error message (e.g. an invalid link) on failure.
  */
 export async function createShortLink(link: string): Promise<string> {
-    const response = await fetch(`${OBSIDIAN_SYNC_URL}/short_links`, {
+    const response = await fetchObsidianSync('/short_links', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -105,7 +153,7 @@ export async function createShortLink(link: string): Promise<string> {
  * streaming file directly on disk.
  */
 export async function addObsidianTask(task: ObsidianTaskInput): Promise<void> {
-    const response = await fetch(`${OBSIDIAN_SYNC_URL}/tasks`, {
+    const response = await fetchObsidianSync('/tasks', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -140,7 +188,7 @@ export async function addObsidianTasks(tasks: ObsidianTaskInput[]): Promise<void
  * @returns the vault-relative path of the file.
  */
 export async function appendDailyNoteDraft(text: string): Promise<string> {
-    const response = await fetch(`${OBSIDIAN_SYNC_URL}/daily-note-draft`, {
+    const response = await fetchObsidianSync('/daily-note-draft', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

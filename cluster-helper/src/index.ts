@@ -27,7 +27,9 @@ import { handleAlisaRequest } from './handleAlisaRequest';
 import { logger } from './logger';
 import { createAuthorizationServer, MCP_SCOPE } from './oauth/authorizationServer';
 import { oauthRoutes } from './oauth/registerOAuthRoutes';
-import { appendDailyNoteDraft, getShortLink } from './obsidianSyncApi';
+import {
+    appendDailyNoteDraft, callVaultTool, getShortLink,
+} from './obsidianSyncApi';
 import { processTelegramWebhookData } from './processTelegramWebhookData';
 import { proxyPublicStaticFile } from './publicStaticProxy';
 import { formatTorrentEvent, isTorrentEvent } from './qbittorrent/formatTorrentEvent';
@@ -193,11 +195,14 @@ publicServer.post(`/${ALISA_WEBHOOK_SECRET}`, ({ body }, reply) => {
     });
 });
 
-// MCP server for the ChatGPT connector. It writes the received text as-is to the daily
-// note draft file in the Obsidian vault via obsidian-sync.
+// MCP server for the ChatGPT connector. save_diary_text appends to the daily note draft;
+// the obsidian-* tools are forwarded to obsidian-sync, which does all vault work.
 async function replyToMcpMessage(message: unknown, reply: FastifyReply, options: McpServerOptions) {
     try {
-        const response = await handleMcpMessage(message, appendDailyNoteDraft, options);
+        const response = await handleMcpMessage(message, {
+            saveDiaryText: appendDailyNoteDraft,
+            callVaultTool,
+        }, options);
 
         logger.info(describeMcpExchange(message, response), '🤖 ChatGPT MCP message');
 

@@ -1,0 +1,205 @@
+import { readFile } from 'node:fs/promises';
+
+import { isObject } from 'senaev-utils/src/types/Object/Object';
+
+import { normalizeVaultPath, resolveExistingNote } from '../access/vaultAccess';
+import { replaceFileAtomically } from '../access/writeNoteFile';
+import { setFrontmatterProperties } from '../markdown/frontmatter';
+import { createLineLocator, hashContent } from '../markdown/parseMarkdown';
+import { findSection } from '../markdown/sections';
+import {
+    optionalString,
+    readToolArguments,
+    requiredNonEmptyString,
+    requiredString,
+    type ToolArguments,
+} from '../toolArguments';
+import type { VaultToolsConfig } from '../vaultToolsConfig';
+import { invalidArguments, VaultToolError } from '../VaultToolError';
+
+const MAX_OPERATIONS = 20;
+const SHA256_HEX = /^[0-9a-f]{64}$/;
+
+type Operation = (content: string) => string;
+
+/** Appended text always starts on a new line; a blank line before it is up to the caller. */
+function joinOnNewLine(before: string, text: string): string {
+    return before === '' || before.endsWith('\n') ? `${before}${text}` : `${before}\n${text}`;
+}
+
+function withTrailingNewline(text: string): string {
+    return text.endsWith('\n') ? text : `${text}\n`;
+}
+
+function append(args: ToolArguments): Operation {
+    const text = requiredNonEmptyString(args, 'text');
+    const section = optionalString(args, 'section');
+
+    return (content) => {
+        if (section === undefined) {
+            return withTrailingNewline(joinOnNewLine(content, text));
+        }
+
+        const { bodyStart, end } = findSection(content, section);
+        // Insert after the last non-blank text of the section, so the blank lines that
+        // separate it from the next heading stay where they are.
+        const insertAt = bodyStart + content.slice(bodyStart, end).trimEnd().length;
+
+        return `${content.slice(0, insertAt)}\n${text.replace(/\n+$/, '')}${content.slice(insertAt)}`;
+    };
+}
+
+function findOccurrences(content: string, text: string): number[] {
+    const offsets: number[] = [];
+
+    for (let offset = content.indexOf(text); offset !== -1; offset = content.indexOf(text, offset + text.length)) {
+        offsets.push(offset);
+    }
+
+    return offsets;
+}
+
+function replace(args: ToolArguments): Operation {
+    const find = requiredNonEmptyString(args, 'find');
+    const replacement = requiredString(args, 'replace');
+
+    return (content) => {
+        const occurrences = findOccurrences(content, find);
+
+        if (occurrences.length === 0) {
+            throw new VaultToolError('not_found', 'The "find" text does not occur in the note; read the note again and copy the text exactly');
+        }
+
+        if (occurrences.length > 1) {
+            const lineOf = createLineLocator(content);
+
+            throw new VaultToolError('ambiguous', `The "find" text occurs ${occurrences.length} times; include more surrounding text so it occurs once`, {
+                lines: occurrences.map(lineOf),
+            });
+        }
+
+        const offset = occurrences[0] ?? 0;
+
+        return `${content.slice(0, offset)}${replacement}${content.slice(offset + find.length)}`;
+    };
+}
+
+function replaceSection(args: ToolArguments): Operation {
+    const section = requiredNonEmptyString(args, 'section');
+    const sectionContent = requiredString(args, 'content');
+
+    return (content) => {
+        const { bodyStart, end } = findSection(content, section);
+        const isLast = end === content.length;
+        const body = sectionContent.replace(/^\n+|\n+$/g, '');
+        // The heading line stays as it is, and so does a blank line under it if the note
+        // had one. One blank line separates the body from the next heading.
+        const blankLineUnderHeading = /^\n[ \t]*\n/.test(content.slice(bodyStart, end)) ? '\n' : '';
+        const newBody = `\n${blankLineUnderHeading}${body === '' ? '' : `${body}\n`}${isLast ? '' : '\n'}`;
+
+        return `${content.slice(0, bodyStart)}${newBody}${content.slice(end)}`;
+    };
+}
+
+function setFrontmatter(args: ToolArguments): Operation {
+    const { properties } = args;
+
+    if (!isObject(properties) || Array.isArray(properties) || Object.keys(properties).length === 0) {
+        throw invalidArguments('"properties" must be a non-empty JSON object; use null as a value to delete a property');
+    }
+
+    return (content) => setFrontmatterProperties(content, properties);
+}
+
+const OPERATION_FIELDS = {
+    append: [
+        'text',
+        'section',
+    ],
+    replace: [
+        'find',
+        'replace',
+    ],
+    replaceSection: [
+        'section',
+        'content',
+    ],
+    setFrontmatter: ['properties'],
+} as const;
+
+const OPERATION_BUILDERS: Record<keyof typeof OPERATION_FIELDS, (args: ToolArguments) => Operation> = {
+    append,
+    replace,
+    replaceSection,
+    setFrontmatter,
+};
+
+function readOperations(value: unknown): Operation[] {
+    if (!Array.isArray(value) || value.length === 0 || value.length > MAX_OPERATIONS) {
+        throw invalidArguments(`"operations" must be an array of 1 to ${MAX_OPERATIONS} operations`);
+    }
+
+    return value.map((item: unknown, index) => {
+        const type = isObject(item) ? item.type : undefined;
+
+        if (typeof type !== 'string' || !(type in OPERATION_FIELDS)) {
+            throw invalidArguments(`"operations[${index}].type" must be one of: ${Object.keys(OPERATION_FIELDS).join(', ')}`);
+        }
+
+        const name = type as keyof typeof OPERATION_FIELDS;
+
+        return OPERATION_BUILDERS[name](readToolArguments(item, [
+            'type',
+            ...OPERATION_FIELDS[name],
+        ]));
+    });
+}
+
+/**
+ * Applies all operations to the note in memory, in order, and writes the result once.
+ * If any operation fails, nothing is written. The expected hash proves the caller edited
+ * the version it read.
+ */
+export async function patchTool(config: VaultToolsConfig, input: unknown) {
+    const args = readToolArguments(input, [
+        'path',
+        'expectedHash',
+        'operations',
+    ]);
+    const path = normalizeVaultPath(requiredNonEmptyString(args, 'path'), 'path');
+    const expectedHash = requiredNonEmptyString(args, 'expectedHash').toLowerCase();
+
+    if (!SHA256_HEX.test(expectedHash)) {
+        throw invalidArguments('"expectedHash" must be the "hash" value from obsidian-read');
+    }
+
+    const operations = readOperations(args.operations);
+    const absolutePath = await resolveExistingNote(config, path);
+    const original = await readFile(absolutePath, 'utf8');
+    const currentHash = hashContent(original);
+
+    if (currentHash !== expectedHash) {
+        throw new VaultToolError('conflict', 'The note changed since it was read; read it again and repeat the edit on the new version', {
+            currentHash,
+        });
+    }
+
+    const updated = operations.reduce((content, operation) => operation(content), original);
+
+    if (updated === original) {
+        return {
+            path,
+            changed: false,
+            hash: currentHash,
+        };
+    }
+
+    await replaceFileAtomically(absolutePath, updated);
+
+    return {
+        path,
+        changed: true,
+        previousHash: currentHash,
+        hash: hashContent(updated),
+    };
+}

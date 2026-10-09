@@ -1,4 +1,9 @@
 import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
+
+import { logger } from '../logger';
+
+import { getVaultToolName, OBSIDIAN_TOOLS } from './obsidianTools';
 
 // A minimal stateless MCP server over Streamable HTTP: every JSON-RPC request gets a plain
 // `application/json` response, so there are no sessions and no SSE streams to manage.
@@ -52,8 +57,26 @@ const SAVE_DIARY_TEXT_TOOL = {
     },
 };
 
+const ALL_TOOLS = [
+    SAVE_DIARY_TEXT_TOOL,
+    ...OBSIDIAN_TOOLS,
+];
+
 /** Writes the text and returns the vault-relative path it went to. */
 export type SaveDiaryText = (text: string) => Promise<string>;
+
+export type VaultToolReply = {
+    isError: boolean;
+    body: Record<string, unknown>;
+};
+
+/** Runs one obsidian-sync vault tool with the arguments exactly as ChatGPT sent them. */
+export type CallVaultTool = (vaultToolName: string, args: unknown) => Promise<VaultToolReply>;
+
+export type McpToolHandlers = {
+    saveDiaryText: SaveDiaryText;
+    callVaultTool: CallVaultTool;
+};
 
 export type McpServerOptions = {
     /** Per-tool auth policy that ChatGPT reads to show its account linking UI. */
@@ -99,8 +122,37 @@ function toolResult(text: string, isError: boolean, structuredContent?: Record<s
     };
 }
 
-async function callTool(params: unknown, saveDiaryText: SaveDiaryText) {
-    if (!isObject(params) || params.name !== TOOL_NAME) {
+/**
+ * Forwards the call unchanged and returns the obsidian-sync reply as both structured
+ * content and its JSON text, as the MCP spec recommends for structured results. A failed
+ * transport becomes a tool error too, so ChatGPT can tell the user instead of retrying blind.
+ */
+async function callObsidianTool(vaultToolName: string, args: unknown, callVaultTool: CallVaultTool) {
+    let reply: VaultToolReply;
+
+    try {
+        reply = await callVaultTool(vaultToolName, args ?? {});
+    } catch (error) {
+        logger.error(error, '❌ Failed to call an obsidian-sync vault tool');
+
+        return toolResult(`The Obsidian vault is not available right now: ${stringifyUnknownError(error)}`, true);
+    }
+
+    return toolResult(JSON.stringify(reply.body), reply.isError, reply.body);
+}
+
+async function callTool(params: unknown, { saveDiaryText, callVaultTool }: McpToolHandlers) {
+    if (!isObject(params)) {
+        return null;
+    }
+
+    const vaultToolName = getVaultToolName(params.name);
+
+    if (vaultToolName !== null) {
+        return callObsidianTool(vaultToolName, params.arguments, callVaultTool);
+    }
+
+    if (params.name !== TOOL_NAME) {
         return null;
     }
 
@@ -138,7 +190,7 @@ export function describeMcpExchange(message: unknown, response: JsonRpcResponse 
  */
 export async function handleMcpMessage(
     message: unknown,
-    saveDiaryText: SaveDiaryText,
+    handlers: McpToolHandlers,
     { securitySchemes }: McpServerOptions = {}
 ): Promise<JsonRpcResponse | null> {
     if (!isObject(message) || message.jsonrpc !== '2.0' || typeof message.method !== 'string') {
@@ -178,18 +230,18 @@ export async function handleMcpMessage(
         return success(id, {});
     case 'tools/list':
         return success(id, {
-            tools: [
-                {
-                    ...SAVE_DIARY_TEXT_TOOL,
+            tools: ALL_TOOLS.map((tool) => {
+                return {
+                    ...tool,
                     ...securitySchemes && { securitySchemes },
-                },
-            ],
+                };
+            }),
         });
     case 'tools/call': {
-        const result = await callTool(params, saveDiaryText);
+        const result = await callTool(params, handlers);
 
         return result === null
-            ? failure(id, JSON_RPC_INVALID_PARAMS, `Unknown tool, the only one is "${TOOL_NAME}"`)
+            ? failure(id, JSON_RPC_INVALID_PARAMS, `Unknown tool, the tools are: ${ALL_TOOLS.map((tool) => tool.name).join(', ')}`)
             : success(id, result);
     }
 
