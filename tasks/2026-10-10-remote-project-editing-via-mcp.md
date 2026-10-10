@@ -291,3 +291,31 @@ the permission bits of the file — before, a rewrite dropped the executable bit
 git config (`GIT_CONFIG_GLOBAL=/dev/null`): the machine's managed hooks made each test take
 0.7 s (14 s → 2.3 s in total). `check.yml` installs ripgrep when the runner does not have it.
 `npm run simple-checks` passes.
+
+### 2026-10-10 — opencode-serve image runs code-tools (step 5)
+
+- `opencode-serve/Dockerfile` is built from the repository root now. Added: python3, helm
+  (for the checks of infra.senaev.com), Node 24 (was 22; the repo needs `>=24`), and
+  `/app/senaev-utils` + `/app/code-tools` with `npm ci --omit=dev`. `curl` is installed before
+  it is used — the old first `RUN` called curl, which `bookworm-slim` does not have.
+- `opencode-serve/start.sh` (CMD): starts opencode and code-tools; when one exits, it stops
+  the other and exits with that code, so Kubernetes restarts the container. Without
+  `INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS` it starts only opencode, so this
+  image can deploy before the Helm change.
+- `build-opencode-serve.yml`: context `.`, the missing `dockerfile` input, triggers on
+  `code-tools/**` and `senaev-utils/**`, `needs: check`. Same `dockerfile` fix in
+  `build-opencode-telegram-bot.yml`.
+
+Local check (`docker build --platform linux/amd64`, then `docker run`):
+
+```
+v24.21.0 / 11.19.0 / helm v3.22.0 / Python 3.11.2 / ripgrep 13.0.0 / gh 2.102.0 / opencode 1.18.35
+GET /health                → {"status":"ok"}
+POST /code/projects        → {"status":"ok","projects":[{"name":"demo","branch":"main","changedFiles":0,...}]}
+POST /code/run             → "stdout":"v24.21.0\nREADME.md:hello\ntoken=none\n"
+POST /code/search (rg 13)  → "snippet":"1:hello"
+POST without the token     → 401
+no token in env            → "⚠️ ... code-tools is not started", opencode listening
+docker stop                → Exited (0)
+kill -9 the code-tools node → "❌ A process exited with code 137; stopping the container", Exited (137)
+```

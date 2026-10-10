@@ -16,6 +16,7 @@ jobs:
     with:
       workflow_title: opencode-telegram-bot
       context: ./opencode-telegram-bot
+      dockerfile: ./opencode-telegram-bot/Dockerfile
       registry_image: ghcr.io/senaev/opencode-telegram-bot
       deployment_name: opencode-telegram
     secrets: inherit
