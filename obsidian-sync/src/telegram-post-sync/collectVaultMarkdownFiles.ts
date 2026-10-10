@@ -1,48 +1,27 @@
-import { readdir } from 'node:fs/promises';
-import { join, relative } from 'node:path';
+import { posix } from 'node:path';
+
+import { walkDirectory } from 'senaev-utils/src/utils/fs/walkDirectory/walkDirectory';
 
 import { OBSIDIAN_VAULT_PATH } from '../env';
 import { logger } from '../logger';
 
 import { IGNORED_DIRECTORIES } from './ignoredPaths';
 
-async function walk(directory: string, found: string[]): Promise<void> {
-    let entries;
-
-    try {
-        entries = await readdir(directory, { withFileTypes: true });
-    } catch (error) {
-        // A directory that vanished mid-walk is normal while sync is running, and one we
-        // cannot read is not worth failing the whole pass over.
-        logger.warn({
-            err: error,
-            directory,
-        }, '⚠️ Could not read directory during walk');
-
-        return;
-    }
-
-    for (const entry of entries) {
-        if (entry.isDirectory()) {
-            if (IGNORED_DIRECTORIES.has(entry.name)) {
-                continue;
-            }
-
-            await walk(join(directory, entry.name), found);
-            continue;
-        }
-
-        if (entry.isFile() && entry.name.endsWith('.md')) {
-            found.push(relative(OBSIDIAN_VAULT_PATH, join(directory, entry.name)));
-        }
-    }
-}
-
 /** Every markdown file in the vault, as paths relative to the vault root. */
 export async function collectVaultMarkdownFiles(): Promise<string[]> {
-    const found: string[] = [];
+    const { files, errors } = await walkDirectory(OBSIDIAN_VAULT_PATH, '', {
+        includeFolder: (path) => !IGNORED_DIRECTORIES.has(posix.basename(path)),
+        includeFile: (path) => path.endsWith('.md'),
+    });
 
-    await walk(OBSIDIAN_VAULT_PATH, found);
+    // A directory that vanished mid-walk is normal while sync is running, and one we cannot
+    // read is not worth failing the whole pass over.
+    for (const { path, error } of errors) {
+        logger.warn({
+            err: error,
+            directory: path,
+        }, '⚠️ Could not read directory during walk');
+    }
 
-    return found;
+    return files;
 }

@@ -1,14 +1,16 @@
 import { posix } from 'node:path';
 
+import { isAlreadyExistsError } from 'senaev-utils/src/utils/Error/isAlreadyExistsError/isAlreadyExistsError';
+import { createFileExclusively } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
+
 import { prepareNewNote, normalizeVaultPath } from '../access/vaultAccess';
-import { createFileExclusively } from '../access/writeNoteFile';
 import { formatFrontmatterBlock } from '../markdown/frontmatter';
 import { createNoteDiff } from '../markdown/createNoteDiff';
 import {
     optionalObject, optionalString, readToolArguments, requiredNonEmptyString,
 } from '../toolArguments';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
-import { invalidArguments } from '../VaultToolError';
+import { invalidArguments, VaultToolError } from '../VaultToolError';
 
 /** `Ideas` and `Ideas.md` both mean the note `Ideas.md`; other extensions are refused later. */
 function withNoteExtension(config: VaultToolsConfig, path: string): string {
@@ -36,7 +38,13 @@ export async function createTool(config: VaultToolsConfig, input: unknown) {
 
     const absolutePath = await prepareNewNote(config, path);
 
-    await createFileExclusively(absolutePath, fullContent, path);
+    await createFileExclusively(absolutePath, fullContent).catch((error: unknown) => {
+        if (isAlreadyExistsError(error)) {
+            throw new VaultToolError('already_exists', `"${path}" already exists; use obsidian-patch to change it`);
+        }
+
+        throw error;
+    });
 
     return {
         path,

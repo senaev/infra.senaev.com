@@ -1,9 +1,8 @@
-import { createHash } from 'node:crypto';
-
 import type { Root } from 'mdast';
 import remarkFrontmatter from 'remark-frontmatter';
 import remarkGfm from 'remark-gfm';
 import remarkParse from 'remark-parse';
+import { sha256Hex } from 'senaev-utils/src/utils/crypto/sha256/sha256';
 import { unified } from 'unified';
 
 const processor = unified().use(remarkParse).use(remarkGfm).use(remarkFrontmatter);
@@ -15,7 +14,7 @@ export function parseMarkdown(content: string): Root {
 
 /** Identifies one exact version of a note, so an edit can prove it saw the latest one. */
 export function hashContent(content: string): string {
-    return createHash('sha256').update(content, 'utf8').digest('hex');
+    return sha256Hex(content);
 }
 
 /** Maps a character offset to a 1-based line number. */

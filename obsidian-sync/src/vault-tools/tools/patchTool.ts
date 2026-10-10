@@ -1,9 +1,9 @@
 import { readFile } from 'node:fs/promises';
 
 import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { replaceFileAtomically } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
 
 import { normalizeVaultPath, resolveExistingNote } from '../access/vaultAccess';
-import { replaceFileAtomically } from '../access/writeNoteFile';
 import { createNoteDiff } from '../markdown/createNoteDiff';
 import { setFrontmatterProperties } from '../markdown/frontmatter';
 import { createLineLocator, hashContent } from '../markdown/parseMarkdown';

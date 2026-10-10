@@ -1,9 +1,8 @@
-import {
-    mkdir, readFile, writeFile,
-} from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
 import { isNotFoundError } from 'senaev-utils/src/utils/Error/isNotFoundError/isNotFoundError';
+import { replaceFileAtomically } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
 
 import { TASKS_FILE_PATH } from '../vaultPaths';
 
@@ -32,5 +31,5 @@ export async function prependTaskLine(line: string): Promise<void> {
         }
     }
 
-    await writeFile(TASKS_FILE_PATH, prependToContent(content, line), 'utf8');
+    await replaceFileAtomically(TASKS_FILE_PATH, prependToContent(content, line));
 }

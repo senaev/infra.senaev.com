@@ -1,14 +1,17 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual } from 'node:crypto';
 
-const BEARER_PREFIX = 'Bearer ';
+import { sha256 } from '../../crypto/sha256/sha256';
+
+const BEARER_HEADER = /^Bearer (\S+)$/i;
 
 /** The `Authorization` header value that carries `token`. */
 export function createBearerAuthorizationHeader(token: string): string {
-    return `${BEARER_PREFIX}${token}`;
+    return `Bearer ${token}`;
 }
 
-function sha256(value: string): Buffer {
-    return createHash('sha256').update(value).digest();
+/** The token of a `Bearer <token>` header, or `undefined` for anything else. */
+export function parseBearerToken(header: unknown): string | undefined {
+    return typeof header === 'string' ? BEARER_HEADER.exec(header)?.[1] : undefined;
 }
 
 /**
@@ -18,9 +21,11 @@ function sha256(value: string): Buffer {
  * and comparing lengths directly would leak the token length.
  */
 export function isValidBearerAuthorizationHeader(header: unknown, expectedToken: string): boolean {
-    if (typeof header !== 'string' || !header.startsWith(BEARER_PREFIX) || expectedToken === '') {
+    const token = parseBearerToken(header);
+
+    if (token === undefined || expectedToken === '') {
         return false;
     }
 
-    return timingSafeEqual(sha256(header.slice(BEARER_PREFIX.length)), sha256(expectedToken));
+    return timingSafeEqual(sha256(token), sha256(expectedToken));
 }

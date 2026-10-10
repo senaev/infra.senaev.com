@@ -1,8 +1,10 @@
 import {
-    createHash, createHmac, randomBytes, timingSafeEqual,
+    createHmac, randomBytes, timingSafeEqual,
 } from 'node:crypto';
 
 import { jwtVerify, SignJWT } from 'jose';
+import { parseBearerToken } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
+import { sha256 } from 'senaev-utils/src/utils/crypto/sha256/sha256';
 
 // A minimal OAuth 2.1 authorization server for one user, shaped by what ChatGPT needs
 // from an MCP server: authorization code + PKCE S256, CIMD client ids, RFC 9207 `iss`
@@ -74,10 +76,6 @@ function readString(params: Params, name: string): string | undefined {
     const value = params[name];
 
     return typeof value === 'string' && value !== '' ? value : undefined;
-}
-
-function sha256(value: string): Buffer {
-    return createHash('sha256').update(value).digest();
 }
 
 function isAllowedClient(clientId: string, redirectUri: string): boolean {
@@ -376,7 +374,7 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
 
         /** Checks an `Authorization` header on a request to the protected resource. */
         async checkAccessToken(authorizationHeader: string | undefined): Promise<AccessTokenCheck> {
-            const token = /^Bearer (\S+)$/i.exec(authorizationHeader ?? '')?.[1];
+            const token = parseBearerToken(authorizationHeader);
 
             if (token === undefined) {
                 return { kind: 'missing' };

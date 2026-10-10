@@ -1,9 +1,7 @@
-import {
-    readFile, rename, writeFile,
-} from 'node:fs/promises';
-import {
-    basename, dirname, join,
-} from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+
+import { replaceFileAtomically } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
 
 import { OBSIDIAN_VAULT_PATH } from '../env';
 
@@ -54,10 +52,5 @@ export async function updateNoteFrontmatter(
         closingIndex,
     });
 
-    // Dot-prefixed and not a .md file, so neither Obsidian nor our own watcher picks it up
-    // during the brief moment it exists.
-    const temporaryPath = join(dirname(absolutePath), `.${basename(absolutePath)}.tg-sync.tmp`);
-
-    await writeFile(temporaryPath, updated.join('\n'), 'utf8');
-    await rename(temporaryPath, absolutePath);
+    await replaceFileAtomically(absolutePath, updated.join('\n'));
 }

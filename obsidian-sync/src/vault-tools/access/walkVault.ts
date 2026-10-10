@@ -2,6 +2,7 @@ import { readdir } from 'node:fs/promises';
 import { join, posix } from 'node:path';
 
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
+import { walkDirectory } from 'senaev-utils/src/utils/fs/walkDirectory/walkDirectory';
 
 import type { VaultToolsConfig } from '../vaultToolsConfig';
 
@@ -81,33 +82,19 @@ export async function listFolder(config: VaultToolsConfig, folder: string): Prom
 export async function walkVault(config: VaultToolsConfig, folder: string): Promise<VaultWalk> {
     await resolveExistingFolder(config, folder);
 
-    const files: string[] = [];
-    const errors: PathError[] = [];
-    const pending = [folder];
-
-    // Sequential on purpose: thousands of parallel reads can run out of file descriptors.
-    while (pending.length > 0) {
-        const current = pending.pop() ?? '';
-
-        try {
-            for (const entry of await readFolder(config, current)) {
-                if (entry.type === 'folder') {
-                    pending.push(entry.path);
-                } else {
-                    files.push(entry.path);
-                }
-            }
-        } catch (error) {
-            // A folder that vanishes mid-walk is normal while sync runs; report it, go on.
-            errors.push({
-                path: current,
-                message: stringifyUnknownError(error),
-            });
-        }
-    }
+    // A folder that vanishes mid-walk is normal while sync runs; it is reported, not thrown.
+    const { files, errors } = await walkDirectory(config.root, folder, {
+        includeFolder: (path) => !isExcludedFolder(config, path),
+        includeFile: (path) => isVisibleFile(config, path),
+    });
 
     return {
         files: files.sort(comparePaths),
-        errors,
+        errors: errors.map(({ path, error }) => {
+            return {
+                path,
+                message: stringifyUnknownError(error),
+            };
+        }),
     };
 }
