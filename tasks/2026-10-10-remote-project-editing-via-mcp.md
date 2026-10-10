@@ -405,3 +405,38 @@ expected a read error for locked.md, but the file was readable.
   Two bugs found while testing it: `npm ci` read the loop's stdin (now a `mapfile` array and
   `< /dev/null`), and `set -e` stopped the loop at the failing root `prepare`.
 - `code-run` description: "for a potentially long command, set it higher".
+
+All workflows for b512e18 passed (Check, cluster-helper, opencode-serve, obsidian-sync,
+senaev-utils, media-server-helper, vpn-subscription).
+
+### 2026-10-10 — Git test from ChatGPT: branch, commit, push
+
+ChatGPT created `test/code-tools`, committed and pushed it over SSH:
+
+```
+$ git log origin/test/code-tools --oneline -2
+537d9dc docs: fix Telegram bullet indentation
+b512e18 🔧 Add npm run ci:all for a fresh clone, and fix checks that ran as root
+$ git show --stat origin/test/code-tools
+Andrei Senaev <andrei.senaev@gmail.com>
+ AGENTS.md                               |  2 +-
+ tasks/2026-10-10-fix-markdown-bullet.md | 22 ++++++++++++++++++++++
+```
+
+The change is real and correct: a stray space before "- All alerting ..." in the root
+AGENTS.md made that bullet a nested one. ChatGPT also followed `tasks/AGENTS.md` and added a
+task file for its change. The git identity comes from the `GIT_*` env, as planned.
+The branch was merged into `main` (fast-forward) and deleted.
+
+## Result
+
+v1 works end to end from the ChatGPT app: list projects, clone over SSH, read, search, patch
+with hash checks, run commands (up to 300 s; ChatGPT waited 119 s for one call without a
+problem), and branch, commit and push. 8 `code-*` tools in code-tools, which runs inside the
+`opencode-serve` container; cluster-helper serves them next to the `obsidian-*` tools.
+
+Open points:
+- ❓ The Telegram opencode bot after the NetworkPolicy change: not confirmed yet.
+- ❓ The longest tool call ChatGPT waits for is not known; if a real command needs more than
+  that, add background commands (`run` returns an id, plus status and cancel tools).
+- Not in v1: worktrees per session, request-ID deduplication, move and delete tools.
