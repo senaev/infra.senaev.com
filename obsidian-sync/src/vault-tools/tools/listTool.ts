@@ -13,7 +13,7 @@ import {
     readNoteScope,
 } from '../noteScope';
 import {
-    optionalBoolean, optionalInteger, readToolArguments,
+    optionalBoolean, optionalCappedInteger, readToolArguments,
 } from '../toolArguments';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
 
@@ -51,11 +51,11 @@ export async function listTool(config: VaultToolsConfig, input: unknown) {
         'limit',
     ]);
     const scope = readNoteScope(args);
-    const offset = optionalInteger(args, 'offset', {
+    const offset = optionalCappedInteger(args, 'offset', {
         min: 0,
         max: MAX_OFFSET,
     }) ?? 0;
-    const limit = optionalInteger(args, 'limit', {
+    const limit = optionalCappedInteger(args, 'limit', {
         min: 1,
         max: MAX_ENTRIES,
     }) ?? DEFAULT_ENTRIES;
@@ -89,6 +89,7 @@ export async function listTool(config: VaultToolsConfig, input: unknown) {
         recursive: isRecursive,
         total: entries.length,
         offset,
+        limit,
         nextOffset,
         entries: await Promise.all(page.map((entry) => describeEntry(config, entry))),
         complete: walkErrors.length === 0,

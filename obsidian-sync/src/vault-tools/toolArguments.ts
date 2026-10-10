@@ -97,6 +97,24 @@ export function optionalInteger(
     return value;
 }
 
+/**
+ * For paging values: a number above `max` is reduced to `max` instead of failing. Models
+ * often ask for "100" without reading the schema, and one failed call helps nobody.
+ */
+export function optionalCappedInteger(
+    args: ToolArguments,
+    key: string,
+    { min, max }: { min: number; max: number }
+): number | undefined {
+    const value = args[key];
+    const capped = typeof value === 'number' && Number.isInteger(value) && value > max ? max : value;
+
+    return optionalInteger({ [key]: capped }, key, {
+        min,
+        max,
+    });
+}
+
 export function optionalEnum<T extends string>(args: ToolArguments, key: string, values: readonly T[]): T | undefined {
     const value = args[key];
 

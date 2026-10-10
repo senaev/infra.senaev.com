@@ -245,6 +245,34 @@ describe('searchTool', () => {
         });
     });
 
+    it('reduces a too-large limit to the maximum and reports the limit it used', async () => {
+        const files = Object.fromEntries(Array.from({ length: 60 }, (_, index) => [
+            `n${String(index).padStart(2, '0')}.md`,
+            'gym',
+        ]));
+        const { config } = await vaultWith(files);
+
+        const result = await searchTool(config, {
+            queries: ['gym'],
+            limit: 100,
+        });
+
+        expect(result).toMatchObject({
+            limit: 50,
+            matchedFiles: 60,
+            nextOffset: 50,
+        });
+        expect(result.files).toHaveLength(50);
+        await expect(searchTool(config, {
+            queries: ['gym'],
+            limit: 0,
+        })).rejects.toMatchObject({ code: 'invalid_arguments' });
+        await expect(searchTool(config, {
+            queries: ['gym'],
+            limit: '100',
+        })).rejects.toMatchObject({ code: 'invalid_arguments' });
+    });
+
     it('rejects missing queries and unknown arguments', async () => {
         const { config } = await vaultWith({});
 

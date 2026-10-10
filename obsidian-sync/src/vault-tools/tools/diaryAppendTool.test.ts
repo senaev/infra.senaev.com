@@ -32,9 +32,17 @@ describe('diaryAppendTool', () => {
         const result = await diaryAppendTool(config, { text: '  Мы гуляли.  ' });
         const content = await readFile(path(DRAFT), 'utf8');
 
-        expect(result).toEqual({ path: DRAFT });
         expect(content.startsWith(existing)).toBe(true);
         expect(content.slice(existing.length)).toMatch(RECORD);
+        expect(result).toMatchObject({
+            path: DRAFT,
+            diffTruncated: false,
+        });
+        // Only the new record is added; the old record is unchanged context.
+        expect(result.diff).toContain(`--- a/${DRAFT}\n+++ b/${DRAFT}\n`);
+        expect(result.diff).toContain(' Earlier record ✍️\n');
+        expect(result.diff).toContain('+Мы гуляли. ✍️\n');
+        expect(result.diff).not.toMatch(/^-(?!-- a\/)/m);
     });
 
     it('creates the draft and its folder when they are missing', async () => {

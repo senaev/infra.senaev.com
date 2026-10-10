@@ -42,7 +42,18 @@ describe('createTool', () => {
         expect(result.path).toBe('places/cities/Lisbon.md');
         expect(await readFile(testVault.path('places/cities/Lisbon.md'), 'utf8'))
             .toBe('---\naliases:\n  - Lisboa\n---\n# Lisbon\n');
-        expect(result.hash).toBe(await hashOf(testVault, 'places/cities/Lisbon.md'));
+        expect(result).not.toHaveProperty('hash');
+        expect(result.diff).toBe([
+            '--- a/places/cities/Lisbon.md',
+            '+++ b/places/cities/Lisbon.md',
+            '@@ -0,0 +1,5 @@',
+            '+---',
+            '+aliases:',
+            '+  - Lisboa',
+            '+---',
+            '+# Lisbon',
+            '',
+        ].join('\n'));
     });
 
     it('fails without touching an existing note', async () => {
@@ -175,9 +186,38 @@ describe('patchTool', () => {
         ].join('\n'));
         expect(result).toMatchObject({
             changed: true,
-            hash: await hashOf(testVault, 'Note.md'),
+            diffTruncated: false,
         });
+        expect(result).not.toHaveProperty('hash');
+        expect(result).not.toHaveProperty('previousHash');
+        // The diff covers the frontmatter too, and keeps the unchanged comment as context.
+        expect(result.diff).toContain(' # a comment the edit must keep\n-aliases: [Plans]\n-status: draft\n+status: active\n+updated: 2026-10-09\n');
+        expect(result.diff).toContain('-# Plans\n+# My plans\n');
+        expect(result.diff).toContain('+- three\n');
+        expect(result.diff).toContain('-- two\n-- two\n+- four\n');
         expect(await readdir(testVault.config.root)).toEqual(['Note.md']);
+    });
+
+    it('returns an empty diff and writes nothing when the operations change nothing', async () => {
+        const testVault = await vaultWith({ 'Note.md': NOTE });
+
+        const result = await patchTool(testVault.config, {
+            path: 'Note.md',
+            expectedHash: await hashOf(testVault, 'Note.md'),
+            operations: [
+                {
+                    type: 'replace',
+                    find: '# Plans',
+                    replace: '# Plans',
+                },
+            ],
+        });
+
+        expect(result).toMatchObject({
+            changed: false,
+            diffTruncated: false,
+        });
+        expect(result.diff).not.toMatch(/^[-+][^-+]/m);
     });
 
     it('appends at the end of the note on a new line', async () => {

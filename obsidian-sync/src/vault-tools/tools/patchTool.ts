@@ -4,6 +4,7 @@ import { isObject } from 'senaev-utils/src/types/Object/Object';
 
 import { normalizeVaultPath, resolveExistingNote } from '../access/vaultAccess';
 import { replaceFileAtomically } from '../access/writeNoteFile';
+import { createNoteDiff } from '../markdown/createNoteDiff';
 import { setFrontmatterProperties } from '../markdown/frontmatter';
 import { createLineLocator, hashContent } from '../markdown/parseMarkdown';
 import { findSection } from '../markdown/sections';
@@ -186,20 +187,14 @@ export async function patchTool(config: VaultToolsConfig, input: unknown) {
 
     const updated = operations.reduce((content, operation) => operation(content), original);
 
-    if (updated === original) {
-        return {
-            path,
-            changed: false,
-            hash: currentHash,
-        };
+    if (updated !== original) {
+        await replaceFileAtomically(absolutePath, updated);
     }
 
-    await replaceFileAtomically(absolutePath, updated);
-
+    // No new hash on purpose: the next edit must start from a fresh read.
     return {
         path,
-        changed: true,
-        previousHash: currentHash,
-        hash: hashContent(updated),
+        changed: updated !== original,
+        ...createNoteDiff(path, original, updated),
     };
 }

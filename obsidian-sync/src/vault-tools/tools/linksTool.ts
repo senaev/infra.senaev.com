@@ -14,7 +14,7 @@ import {
 } from '../markdown/resolveLink';
 import { getDiaryDate } from '../noteScope';
 import {
-    optionalEnum, optionalInteger, readToolArguments, requiredNonEmptyString,
+    optionalCappedInteger, optionalEnum, readToolArguments, requiredNonEmptyString,
 } from '../toolArguments';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
 
@@ -104,11 +104,11 @@ export async function linksTool(config: VaultToolsConfig, input: unknown) {
         'backlinks',
         'both',
     ] as const) ?? 'both';
-    const offset = optionalInteger(args, 'offset', {
+    const offset = optionalCappedInteger(args, 'offset', {
         min: 0,
         max: MAX_OFFSET,
     }) ?? 0;
-    const limit = optionalInteger(args, 'limit', {
+    const limit = optionalCappedInteger(args, 'limit', {
         min: 1,
         max: MAX_BACKLINK_SOURCES,
     }) ?? DEFAULT_BACKLINK_SOURCES;
@@ -189,6 +189,7 @@ function pageBacklinkSources(
             , { count },
         ]) => sum + count, 0),
         offset,
+        limit,
         nextOffset: offset + page.length < all.length ? offset + page.length : null,
         sources: page,
     };

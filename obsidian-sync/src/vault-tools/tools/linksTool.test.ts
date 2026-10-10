@@ -82,6 +82,7 @@ describe('linksTool', () => {
             totalSources: 2,
             totalLinks: 4,
             offset: 0,
+            limit: 100,
             nextOffset: null,
             sources: [
                 {

@@ -65,7 +65,7 @@ const OBSIDIAN_LIST_TOOL = {
                 type: 'integer',
                 minimum: 1,
                 maximum: 200,
-                description: 'Entries per page. Default: 100.',
+                description: 'Entries per page. Default: 100. A larger value is reduced to 200.',
             },
         },
         additionalProperties: false,
@@ -141,7 +141,7 @@ const OBSIDIAN_SEARCH_TOOL = {
                 type: 'integer',
                 minimum: 1,
                 maximum: 50,
-                description: 'Files per page. Default: 20.',
+                description: 'Files per page. Default: 20. A larger value is reduced to 50.',
             },
         },
         required: ['queries'],
@@ -224,7 +224,7 @@ const OBSIDIAN_LINKS_TOOL = {
                 type: 'integer',
                 minimum: 1,
                 maximum: 200,
-                description: 'Linking notes per page. Default: 100.',
+                description: 'Linking notes per page. Default: 100. A larger value is reduced to 200.',
             },
         },
         required: ['path'],
@@ -238,6 +238,7 @@ const OBSIDIAN_CREATE_TOOL = {
     title: 'Create an Obsidian note',
     description: [
         'Creates a new Markdown note in the owner\'s Obsidian vault, with missing folders. Fails if the note already exists.',
+        'Returns "diff", the unified diff of the new file; show it to the user in a ```diff code block.',
 
         VAULT_RULES,
     ].join(' '),
@@ -279,6 +280,8 @@ const OBSIDIAN_PATCH_TOOL = {
         '"replace" replaces the exact text "find", which must occur exactly once, with "replace";',
         '"replaceSection" replaces the body under the heading "section" with "content" and keeps the heading;',
         '"setFrontmatter" sets the given "properties", and a null value deletes a property.',
+        'Returns "diff", the unified diff of the whole file including frontmatter; show it to the user in a ```diff code block.',
+        'The result has no new hash: to edit the same note again, read it again first.',
         VAULT_RULES,
     ].join(' '),
     inputSchema: {
@@ -358,6 +361,7 @@ const OBSIDIAN_DIARY_APPEND_TOOL = {
     title: 'Add a diary record',
     description: [
         'Appends the text the user has just written to the owner\'s diary draft as one new record; the server adds the timestamp.',
+        'Returns "diff", the record as it was added.',
         'Use this to record a diary entry, not obsidian-patch. Fix only typos and grammar; never reword, summarise or translate.',
         'Follow the Diary section of the vault\'s AGENTS.md for the full rules.',
         VAULT_RULES,

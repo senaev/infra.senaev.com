@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@fastify/static": "10.1.5",
+    "diff": "9.0.0",
     "fastify": "5.12.5",
     "picomatch": "4.0.7",
     "remark-frontmatter": "5.0.0",

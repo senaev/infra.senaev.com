@@ -3,7 +3,7 @@ import { posix } from 'node:path';
 import { prepareNewNote, normalizeVaultPath } from '../access/vaultAccess';
 import { createFileExclusively } from '../access/writeNoteFile';
 import { formatFrontmatterBlock } from '../markdown/frontmatter';
-import { hashContent } from '../markdown/parseMarkdown';
+import { createNoteDiff } from '../markdown/createNoteDiff';
 import {
     optionalObject, optionalString, readToolArguments, requiredNonEmptyString,
 } from '../toolArguments';
@@ -40,6 +40,6 @@ export async function createTool(config: VaultToolsConfig, input: unknown) {
 
     return {
         path,
-        hash: hashContent(fullContent),
+        ...createNoteDiff(path, '', fullContent),
     };
 }

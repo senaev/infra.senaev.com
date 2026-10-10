@@ -14,6 +14,7 @@ import {
 } from '../noteScope';
 import {
     optionalBoolean,
+    optionalCappedInteger,
     optionalEnum,
     optionalInteger,
     optionalStringArray,
@@ -195,11 +196,11 @@ export async function searchTool(config: VaultToolsConfig, input: unknown) {
         'relevance',
         'path',
     ] as const) ?? (isDiaryRangeRequested(scope) ? 'path' : 'relevance');
-    const offset = optionalInteger(args, 'offset', {
+    const offset = optionalCappedInteger(args, 'offset', {
         min: 0,
         max: MAX_OFFSET,
     }) ?? 0;
-    const limit = optionalInteger(args, 'limit', {
+    const limit = optionalCappedInteger(args, 'limit', {
         min: 1,
         max: MAX_FILES,
     }) ?? DEFAULT_FILES;
@@ -250,6 +251,7 @@ export async function searchTool(config: VaultToolsConfig, input: unknown) {
         matchedFiles: fileMatches.length,
         totalHits: fileMatches.reduce((sum, file) => sum + file.hitCount, 0),
         offset,
+        limit,
         nextOffset,
         truncated: nextOffset !== null || page.some((file) => file.omittedMatches > 0),
         complete: walk.errors.length === 0 && readErrors.length === 0,
