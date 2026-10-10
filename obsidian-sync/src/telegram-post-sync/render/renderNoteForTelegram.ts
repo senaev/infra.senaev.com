@@ -1,6 +1,7 @@
 import { TelegramRichMessageMedia } from 'senaev-utils/src/utils/TelegramApi/types';
 
 import { readFrontmatterList } from '../readFrontmatterList';
+import { stripFrontmatter } from '../../markdown/stripFrontmatter';
 
 import { appendAliasesToTitle } from './appendAliasesToTitle';
 import { cutHistorySection } from './cutHistorySection';
@@ -8,7 +9,6 @@ import { ensureEmptyLineAfterTables } from './ensureEmptyLineAfterTables';
 import { markTitleAsProvisioned } from './markTitleAsProvisioned';
 import { replaceWikiLinksWithCode } from './replaceWikiLinksWithCode';
 import { resolveImageEmbeds } from './resolveImageEmbeds';
-import { stripFrontmatter } from './stripFrontmatter';
 
 export type RenderedNote = {
     markdown: string;

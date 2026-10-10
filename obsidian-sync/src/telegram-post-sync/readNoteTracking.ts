@@ -3,10 +3,10 @@ import { join } from 'node:path';
 
 import { OBSIDIAN_VAULT_PATH } from '../env';
 import { logger } from '../logger';
+import { stripFrontmatter } from '../markdown/stripFrontmatter';
 
 import { parseTelegramPostLink } from './parseTelegramPostLink';
 import { readFrontmatterList } from './readFrontmatterList';
-import { stripFrontmatter } from './render/stripFrontmatter';
 import type { TrackedNote, TrackedTarget } from './trackedNotes';
 
 /** Frontmatter key that opts a note into being mirrored to one or more Telegram posts. */

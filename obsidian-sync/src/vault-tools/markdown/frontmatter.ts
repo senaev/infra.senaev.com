@@ -4,8 +4,8 @@ import {
     Document, isMap, isScalar, parseDocument,
 } from 'yaml';
 
-import { parseNoteFrontmatter } from '../../milestones/readVaultNotes';
-import { stripFrontmatter } from '../../telegram-post-sync/render/stripFrontmatter';
+import { parseNoteFrontmatter } from '../../markdown/parseNoteFrontmatter';
+import { stripFrontmatter } from '../../markdown/stripFrontmatter';
 import { VaultToolError } from '../VaultToolError';
 
 export type NoteParts = {

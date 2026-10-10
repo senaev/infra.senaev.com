@@ -2,7 +2,7 @@ import {
     describe, expect, it,
 } from 'vitest';
 
-import { parseNoteFrontmatter } from './readVaultNotes';
+import { parseNoteFrontmatter } from './parseNoteFrontmatter';
 
 describe('parseNoteFrontmatter', () => {
     it('keeps an unquoted date as a string and a boolean as a boolean', () => {
