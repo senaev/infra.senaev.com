@@ -1,5 +1,7 @@
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { createBearerAuthorizationHeader } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
+import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
+import { readStatusResponse } from 'senaev-utils/src/utils/http/readStatusResponse/readStatusResponse';
 
 import type { VaultToolReply } from './chatGptMcp/handleMcpMessage';
 import { INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN, OBSIDIAN_SYNC_URL } from './env';
@@ -80,15 +82,9 @@ export type MilestonesOverview = {
  */
 export async function getMilestones(date?: string): Promise<MilestonesOverview> {
     const query = date === undefined ? '' : `?date=${encodeURIComponent(date)}`;
-    const response = await fetchObsidianSync(`/milestones${query}`);
-
-    const body = (await response.json()) as
-        | ({ status: 'ok' } & MilestonesOverview)
-        | { status: 'error'; message: string };
-
-    if (!response.ok || body.status !== 'ok') {
-        throw new Error(`Failed to get milestones: ${body.status === 'error' ? body.message : `HTTP ${response.status}`}`);
-    }
+    const body = await readStatusResponse(await fetchObsidianSync(`/milestones${query}`)).catch((error: unknown) => {
+        throw new Error(`Failed to get milestones: ${stringifyUnknownError(error)}`, { cause: error });
+    }) as MilestonesOverview;
 
     return {
         today: body.today,
@@ -110,11 +106,9 @@ export async function getShortLink(shortId: string): Promise<string | null> {
         return null;
     }
 
-    if (!response.ok) {
-        throw new Error(`Failed to resolve short link: ${response.status} ${await response.text()}`);
-    }
-
-    const body = (await response.json()) as { status: 'ok'; url: string };
+    const body = await readStatusResponse(response).catch((error: unknown) => {
+        throw new Error(`Failed to resolve short link: ${stringifyUnknownError(error)}`, { cause: error });
+    }) as { url: string };
 
     return body.url;
 }
@@ -135,14 +129,7 @@ export async function createShortLink(link: string): Promise<string> {
         },
         body: JSON.stringify({ link }),
     });
-
-    const body = (await response.json()) as
-        | { status: 'ok'; id: string }
-        | { status: 'error'; message: string };
-
-    if (!response.ok || body.status !== 'ok') {
-        throw new Error(body.status === 'error' ? body.message : `HTTP ${response.status}`);
-    }
+    const body = await readStatusResponse(response) as { id: string };
 
     return body.id;
 }
@@ -161,9 +148,9 @@ export async function addObsidianTask(task: ObsidianTaskInput): Promise<void> {
         body: JSON.stringify(task),
     });
 
-    if (!response.ok) {
-        throw new Error(`Failed to add Obsidian task: ${response.status} ${await response.text()}`);
-    }
+    await readStatusResponse(response).catch((error: unknown) => {
+        throw new Error(`Failed to add Obsidian task: ${stringifyUnknownError(error)}`, { cause: error });
+    });
 }
 
 /**
