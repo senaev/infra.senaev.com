@@ -319,3 +319,22 @@ no token in env            → "⚠️ ... code-tools is not started", opencode 
 docker stop                → Exited (0)
 kill -9 the code-tools node → "❌ A process exited with code 137; stopping the container", Exited (137)
 ```
+
+### 2026-10-10 — Helm: Service, NetworkPolicy, token (step 6)
+
+`provisioning/helm/senaev-com/templates/opencode-serve.yaml`:
+- container `opencode-serve`: ports `opencode` 4096 and `code-tools` 8080;
+  `CODE_TOOLS_PROJECTS_PATH=/projects/git`; the token from `senaev-com-kv-secrets` with
+  `optional: true` (without it, start.sh runs opencode alone).
+- Service `code-tools` :8080 → the pod.
+- NetworkPolicy `opencode-telegram`: ingress only from `app: cluster-helper` on 8080. This
+  also closes the unauthenticated opencode port 4096 to other pods; the bot uses localhost.
+
+`external-secret.yaml`: new key `INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS`.
+
+Change against the plan: no liveness probe. start.sh already stops the container when
+code-tools exits, and no pod behind a NetworkPolicy here has a probe yet, so it is not
+known whether kube-router lets kubelet probes through.
+
+The Vault key must exist before this deploys: if a `remoteRef` property is missing, the
+ExternalSecret fails as a whole and stops refreshing all keys of `senaev-com-kv-secrets`.

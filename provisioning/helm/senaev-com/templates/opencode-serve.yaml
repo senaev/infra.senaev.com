@@ -59,9 +59,26 @@ spec:
             - name: projects-git
               mountPath: /projects/git
       containers:
+        # Runs opencode (4096, for the bot on localhost) and code-tools (8080, the code-* MCP
+        # tools for cluster-helper); see opencode-serve/start.sh. No liveness probe: start.sh
+        # stops the container when either process exits.
         - name: opencode-serve
           image: ghcr.io/senaev/opencode-serve:latest
+          ports:
+            - name: opencode
+              containerPort: 4096
+            - name: code-tools
+              containerPort: 8080
           env:
+            - name: CODE_TOOLS_PROJECTS_PATH
+              value: /projects/git
+            - name: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
+                  # Without it, start.sh runs opencode alone.
+                  optional: true
             - name: GIT_AUTHOR_NAME
               value: Andrei Senaev
             - name: GIT_AUTHOR_EMAIL
@@ -187,4 +204,42 @@ spec:
   resources:
     requests:
       storage: 16Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: code-tools
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: opencode-telegram
+  ports:
+    - name: http
+      port: 8080
+      targetPort: code-tools
+      protocol: TCP
+---
+# code-tools gives a full shell in this pod, so only cluster-helper may reach it, as a second
+# barrier behind the internal token. This also closes opencode's port 4096, which has no
+# authentication: the telegram bot uses it over localhost, which a NetworkPolicy does not
+# affect. Egress is not limited: git, npm and gh need the internet.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: opencode-telegram
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: opencode-telegram
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: cluster-helper
+      ports:
+        - protocol: TCP
+          port: 8080
 {{- end }}
