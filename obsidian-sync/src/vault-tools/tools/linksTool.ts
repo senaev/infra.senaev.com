@@ -1,15 +1,10 @@
-import { readFile } from 'node:fs/promises';
-import { join, posix } from 'node:path';
+import { posix } from 'node:path';
 
 import { LINKS_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
-import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 
-import {
-    isNotePath, normalizeVaultPath, resolveExistingNote,
-} from '../access/vaultAccess';
-import { type PathError, walkVault } from '../access/walkVault';
+import { readVaultNotes } from '../access/readVaultNotes';
+import { normalizeVaultPath, resolveExistingNote } from '../access/vaultAccess';
 import { type ExtractedLink, extractLinks } from '../markdown/extractLinks';
-import { readAliases, splitNote } from '../markdown/frontmatter';
 import {
     createLinkIndex, type LinkIndex, type LinkResolution, resolveLink,
 } from '../markdown/resolveLink';
@@ -21,7 +16,6 @@ import type { VaultToolsConfig } from '../vaultToolsConfig';
 
 const MAX_LINKS = 200;
 const MAX_LINES_PER_SOURCE = 10;
-const MAX_REPORTED_ERRORS = 20;
 
 /**
  * One entry per linking note rather than per link: a central note such as a person can have
@@ -69,7 +63,7 @@ function bounded<T>(items: T[]) {
  * percent-encoded in a Markdown link, or as one of its aliases. Notes without any of these
  * are still read, but skipping their Markdown parse keeps a backlink scan fast.
  */
-function createBacklinkPrefilter(targetPath: string, aliases: readonly string[]): (content: string) => boolean {
+export function createBacklinkPrefilter(targetPath: string, aliases: readonly string[]): (content: string) => boolean {
     const name = posix.basename(targetPath, '.md');
     const needles = [
         name,
@@ -108,34 +102,10 @@ export async function linksTool(config: VaultToolsConfig, input: unknown) {
 
     await resolveExistingNote(config, path);
 
-    const walk = await walkVault(config, '');
-    const notePaths = walk.files.filter((file) => isNotePath(config, file));
-    const contents = new Map<string, string>();
-    const aliasesByNote = new Map<string, string[]>();
-    const readErrors: PathError[] = [];
-
-    for (const notePath of notePaths) {
-        try {
-            const content = await readFile(join(config.root, notePath), 'utf8');
-
-            contents.set(notePath, content);
-            aliasesByNote.set(notePath, readAliases(splitNote(content).frontmatter));
-        } catch (error) {
-            readErrors.push({
-                path: notePath,
-                message: stringifyUnknownError(error),
-            });
-        }
-    }
-
-    const index = createLinkIndex(walk.files, aliasesByNote);
-    const scan = {
-        scannedFiles: notePaths.length,
-        complete: walk.errors.length === 0 && readErrors.length === 0,
-        readErrorCount: readErrors.length,
-        readErrors: readErrors.slice(0, MAX_REPORTED_ERRORS),
-        walkErrors: walk.errors.slice(0, MAX_REPORTED_ERRORS),
-    };
+    const {
+        files, contents, aliasesByNote, scan,
+    } = await readVaultNotes(config);
+    const index = createLinkIndex(files, aliasesByNote);
 
     const outgoing = direction === 'backlinks'
         ? null

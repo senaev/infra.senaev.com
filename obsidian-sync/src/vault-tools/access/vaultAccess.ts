@@ -89,7 +89,7 @@ export async function resolveExistingFolder(config: VaultToolsConfig, relativePa
     }
 }
 
-function assertNotePath(config: VaultToolsConfig, relativePath: string): void {
+export function assertNotePath(config: VaultToolsConfig, relativePath: string): void {
     if (!isNotePath(config, relativePath)) {
         throw new VaultToolError(
             'forbidden_path',

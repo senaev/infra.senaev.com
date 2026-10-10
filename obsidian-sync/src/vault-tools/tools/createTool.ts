@@ -13,7 +13,7 @@ import type { VaultToolsConfig } from '../vaultToolsConfig';
 import { invalidArguments, VaultToolError } from '../VaultToolError';
 
 /** `Ideas` and `Ideas.md` both mean the note `Ideas.md`; other extensions are refused later. */
-function withNoteExtension(config: VaultToolsConfig, path: string): string {
+export function withNoteExtension(config: VaultToolsConfig, path: string): string {
     return posix.extname(path) === '' ? `${path}${config.noteExtension}` : path;
 }
 

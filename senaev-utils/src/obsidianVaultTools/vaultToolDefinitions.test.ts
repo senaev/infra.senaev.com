@@ -19,6 +19,7 @@ describe('vault tool definitions', () => {
             'links',
             'create',
             'patch',
+            'move',
             'diary_append',
         ]);
     });

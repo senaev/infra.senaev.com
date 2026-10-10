@@ -63,6 +63,7 @@ describe('handleMcpMessage', () => {
             'obsidian-links',
             'obsidian-create',
             'obsidian-patch',
+            'obsidian-move',
             'obsidian-diary_append',
         ]);
         expect(tools.every((tool) => tool.securitySchemes === securitySchemes)).toBe(true);

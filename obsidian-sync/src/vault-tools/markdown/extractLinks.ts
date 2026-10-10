@@ -12,6 +12,8 @@ export type ExtractedLink = {
     embed: boolean;
     /** The link exactly as written in the note. */
     raw: string;
+    /** Where `raw` starts in the note. */
+    offset: number;
     line: number;
     /** The note or file part as written, `''` for a link inside the same note. */
     target: string;
@@ -117,6 +119,7 @@ export function extractLinks(content: string): ExtractedLink[] {
                 kind: 'wikilink',
                 embed: match[1] === '!',
                 raw: match[0],
+                offset: match.index,
                 line: lineOf(match.index),
                 ...splitTargetAndSubpath(destination),
                 displayText: pipeIndex === -1 ? null : inner.slice(pipeIndex + 1).trim(),
@@ -137,6 +140,7 @@ export function extractLinks(content: string): ExtractedLink[] {
                     kind: 'markdown',
                     embed: node.type === 'image',
                     raw,
+                    offset: node.position.start.offset,
                     line: lineOf(node.position.start.offset),
                     ...isExternal
                         ? {

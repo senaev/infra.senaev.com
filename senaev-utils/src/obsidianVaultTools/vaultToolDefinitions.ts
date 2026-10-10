@@ -392,6 +392,42 @@ const patch: VaultToolDefinition = {
     },
 };
 
+const move: VaultToolDefinition = {
+    title: 'Rename or move an Obsidian note',
+    description: [
+        'Renames a note in the owner\'s Obsidian vault or moves it to another folder, with missing folders. Fails if a file already exists at the new path.',
+        'Like Obsidian, it updates the links to the note in all other notes, and the relative links inside the moved note;',
+        'a rewritten wikilink keeps its heading, block reference and display text.',
+        'Returns "diffs", the unified diff of every note whose text changed; show them to the user in ```diff code blocks.',
+        '"skippedLinks" lists links it did not change because they were ambiguous or matched only an alias before the move; tell the user about them.',
+        VAULT_RULES,
+    ].join(' '),
+    inputSchema: {
+        type: 'object',
+        properties: {
+            path: {
+                type: 'string',
+                description: 'Vault-relative path of the note to move, e.g. "Ideas.md".',
+            },
+            newPath: {
+                type: 'string',
+                description: 'The new vault-relative path, e.g. "archive/Old ideas.md"; ".md" is added when missing.',
+            },
+        },
+        required: [
+            'path',
+            'newPath',
+        ],
+        additionalProperties: false,
+    },
+    annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: false,
+    },
+};
+
 const diary_append: VaultToolDefinition = {
     title: 'Add a diary record',
     description: [
@@ -428,6 +464,7 @@ export const VAULT_TOOL_DEFINITIONS = {
     links,
     create,
     patch,
+    move,
     diary_append,
 } as const satisfies Record<string, VaultToolDefinition>;
 

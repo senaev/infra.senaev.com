@@ -18,6 +18,7 @@ describe('extractLinks', () => {
             kind: 'wikilink',
             embed: false,
             raw: '[[My Note]]',
+            offset: 4,
             line: 1,
             target: 'My Note',
             subpath: null,
