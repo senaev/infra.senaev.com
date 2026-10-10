@@ -140,3 +140,23 @@ $ kubectl -n senaev-com exec deploy/cluster-helper -c cluster-helper -- \
 A pod without an allowed label is refused at once (exit 7, not the expected timeout 28):
 kube-router rejects the packet instead of dropping it, which blocks the connection just the
 same. cluster-helper still reaches obsidian-sync (401 because the test sends no token).
+
+### 2026-10-10 — End-to-end checks passed
+
+- Short link https://s.senaev.com/1bxsl9 redirects to https://senaev.com/cv/5min.
+- Static file https://static.senaev.com/datadog-dc-by-org-id.html opens.
+- Public note https://senaev.com/notes/my_blog_post_senaev_speaks_12 opens (the nextjs-app
+  path through the NetworkPolicy).
+- ChatGPT: "Read the latest version of diary records file. Then search the files about crips
+  in my diary and write this number to the file with diary records." It read
+  `@senaev/daily_note_draft.md` (empty), searched (0 files for "crips"), and wrote `0` into
+  the draft with a diff `+0`. Read, search and write all work through the new code.
+
+These three URLs are now the smoke test in the root `AGENTS.md` ("Smoke test after a deploy").
+
+## Resolution
+
+Done. Generic helpers (sha256, bearer parsing, atomic file writes, the directory walk, status
+replies) and the vault tool contract (definitions and limits) are in senaev-utils and used by
+both services. The frontmatter parsers are in `obsidian-sync/src/markdown/`. A NetworkPolicy
+lets only cluster-helper and nextjs-app reach obsidian-sync.
