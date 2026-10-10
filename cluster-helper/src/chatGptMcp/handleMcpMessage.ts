@@ -4,7 +4,6 @@ import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnk
 import { logger } from '../logger';
 
 import { getVaultToolName, OBSIDIAN_TOOLS } from './obsidianTools';
-import { loadVaultInstructions } from './vaultInstructions';
 
 // A minimal stateless MCP server over Streamable HTTP: every JSON-RPC request gets a plain
 // `application/json` response, so there are no sessions and no SSE streams to manage.
@@ -160,7 +159,6 @@ export async function handleMcpMessage(
                 name: 'senaev-diary',
                 version: '1.0.0',
             },
-            instructions: await loadVaultInstructions(handlers.callVaultTool),
         });
     }
 

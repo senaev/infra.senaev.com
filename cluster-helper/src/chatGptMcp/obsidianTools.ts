@@ -5,8 +5,9 @@
 /** Every Obsidian tool name starts with this, followed by the obsidian-sync tool name. */
 export const OBSIDIAN_TOOL_PREFIX = 'obsidian-';
 
-// The vault rules come in the MCP instructions; this covers a client that drops them.
-// The rules themselves live only in the vault's AGENTS.md.
+// The rules themselves live only in the vault's AGENTS.md. MCP `instructions` were tried and
+// dropped: ChatGPT read AGENTS.md through this sentence anyway (see
+// issues/2026-10-10-obsidian-mcp-vault-rules-and-diary-tool.md).
 const VAULT_RULES = 'If the vault rules from the root AGENTS.md are not in your context, read AGENTS.md with obsidian-read first.';
 
 const DIARY_RANGE_PROPERTIES = {

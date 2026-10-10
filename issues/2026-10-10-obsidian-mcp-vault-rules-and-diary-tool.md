@@ -266,10 +266,43 @@ The earlier records are unchanged.
 The owner confirmed in ChatGPT that batch 2 works: writes return a diff, and diary records
 work as before (the diff is in the tool result; the `AGENTS.md` rule keeps the reply short).
 
+### 2026-10-10 — MCP `instructions` removed
+
+Four normal chats (no test prompt) in one hour, obsidian-sync `Vault tool call` log:
+
+```
+2026-10-10T09:49:16Z	read	ok      <- initialize fetch (connector start)
+2026-10-10T09:49:16Z	read	ok      <- initialize fetch
+2026-10-10T09:49:56Z	read	ok      <- initialize fetch
+2026-10-10T09:49:56Z	read	ok      <- obsidian-read by ChatGPT, first tool call of the chat
+...
+2026-10-10T09:52:19Z	read	ok
+2026-10-10T09:52:19Z	read	ok      <- first tool call of the chat: obsidian-read
+...
+2026-10-10T09:58:44Z	read	ok
+2026-10-10T09:58:44Z	read	ok      <- first tool call of the chat: obsidian-read
+...
+2026-10-10T09:59:27Z	read	ok
+2026-10-10T09:59:27Z	diary_append	ok
+2026-10-10T10:14:19Z	read	ok
+2026-10-10T10:14:19Z	read	ok      <- first tool call of the chat: obsidian-read
+...
+2026-10-10T10:14:51Z	patch	ok
+```
+
+The cluster-helper log confirms that the first `tools/call` of each chat (09:49:56,
+09:52:19, 09:58:44, 10:14:19) is `obsidian-read`. In every chat, as in the earlier test,
+ChatGPT reads `AGENTS.md` itself through the fallback sentence, although the server sent it
+in `instructions`. So `instructions` adds nothing for ChatGPT and costs one internal read per
+tool call. Removed: `chatGptMcp/vaultInstructions.ts`, the `instructions` field of
+`initialize`, and its tests. The fallback sentence in every tool description stays and is
+now the only way the rules are loaded.
+
 ## Resolution
 
-Done. The vault `AGENTS.md` is the single source of vault rules: it is sent as MCP
-`instructions` on every call, and every tool description falls back to reading it. The diary
+Done. The vault `AGENTS.md` is the single source of vault rules: every tool description tells
+ChatGPT to read it with `obsidian-read` (MCP `instructions` were tried and removed, see the
+finding above). The diary
 command is the vault tool `obsidian-diary_append` in obsidian-sync, and cluster-helper only
 forwards it. Writes return a unified diff instead of hashes, and too-large paging limits are
 reduced to the maximum. Item 5 was skipped.

@@ -4,7 +4,6 @@ import {
 
 import { handleMcpMessage, type McpToolHandlers } from './handleMcpMessage';
 import { OBSIDIAN_TOOLS } from './obsidianTools';
-import { VAULT_RULES_FALLBACK } from './vaultInstructions';
 
 function request(method: string, params?: unknown) {
     return {
@@ -17,13 +16,9 @@ function request(method: string, params?: unknown) {
 
 function handlers(overrides: Partial<McpToolHandlers> = {}): McpToolHandlers {
     return {
-        callVaultTool: vi.fn().mockRejectedValue(new Error('not mocked')),
+        callVaultTool: vi.fn(),
         ...overrides,
     };
-}
-
-function instructionsOf(response: unknown): string {
-    return (response as { result: { instructions: string } }).result.instructions;
 }
 
 describe('handleMcpMessage', () => {
@@ -39,36 +34,12 @@ describe('handleMcpMessage', () => {
         });
     });
 
-    it('puts the live AGENTS.md into the instructions of every initialize, after a short header', async () => {
-        const callVaultTool = vi.fn().mockResolvedValue({
-            isError: false,
-            body: {
-                status: 'ok',
-                notes: [{ content: '# AGENTS\n\nVault rules.\n' }],
-            },
-        });
-        const instructions = instructionsOf(await handleMcpMessage(request('initialize'), handlers({ callVaultTool })));
+    it('initializes without calling obsidian-sync', async () => {
+        const callVaultTool = vi.fn();
+        const response = await handleMcpMessage(request('initialize'), handlers({ callVaultTool }));
 
-        expect(callVaultTool).toHaveBeenCalledWith('read', { paths: ['AGENTS.md'] });
-        expect(instructions.startsWith('The text below is the root AGENTS.md')).toBe(true);
-        expect(instructions.indexOf('obsidian-read')).toBeLessThan(512);
-        expect(instructions.endsWith('\n\n# AGENTS\n\nVault rules.\n')).toBe(true);
-    });
-
-    it('still initializes with the fallback sentence when AGENTS.md cannot be read', async () => {
-        const unreachable = await handleMcpMessage(request('initialize'), handlers());
-        const failedRead = await handleMcpMessage(request('initialize'), handlers({
-            callVaultTool: vi.fn().mockResolvedValue({
-                isError: true,
-                body: {
-                    status: 'error',
-                    code: 'not_found',
-                },
-            }),
-        }));
-
-        expect(instructionsOf(unreachable)).toBe(VAULT_RULES_FALLBACK);
-        expect(instructionsOf(failedRead)).toBe(VAULT_RULES_FALLBACK);
+        expect(callVaultTool).not.toHaveBeenCalled();
+        expect(response).not.toHaveProperty('result.instructions');
     });
 
     it('returns no response for a notification', async () => {
