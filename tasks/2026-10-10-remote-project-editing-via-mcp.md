@@ -357,3 +357,51 @@ The owner added the key; `opencode-serve` (a5f1335) and `Update Helm Charts` (3b
 
 Deploy order: the new cluster-helper requires the two env vars. If its image is rolled out
 before the Helm change, the new pod fails and the old one keeps serving until Helm adds them.
+
+`Check`, `Update Helm Charts` and `cluster-helper` (342d319) passed.
+
+### 2026-10-10 — First end-to-end test from ChatGPT (step 8)
+
+ChatGPT cloned infra.senaev.com and ran commands. Its report:
+
+```
+npm ci succeeded: 385 packages installed, 0 vulnerabilities.
+npm run simple-checks hit the 60-second timeout:
+- Python, shell and Helm checks passed.
+- Typechecking reported missing dependencies such as react.
+- Several test suites failed to load; lint and tests didn't finish.
+AGENTS.md says each package also needs its own npm ci after cloning.
+```
+
+So the whole path works: ChatGPT → cluster-helper → code-tools, `code-clone` over SSH,
+`code-run` with Node, python3 and helm. Two findings, neither a code-tools bug:
+- The failures are the expected state of a fresh clone: only the root `npm ci` ran, and the
+  packages need their own (root AGENTS.md, "Shared Toolchain"). ChatGPT found this in AGENTS.md.
+- ChatGPT kept the default `timeoutSeconds` (60) for a long command; it can ask for up to 300.
+
+Second run, after `npm ci` in every package and `simple-checks` with `timeoutSeconds: 300`:
+
+```
+Installed dependencies in all six packages successfully.
+Checks completed in 119 seconds, exit code 1:
+- Lint, typecheck, Python, shell and Helm: passed.
+- Tests: 1,093 passed, 1 failed.
+Failure: obsidian-sync/src/vault-tools/tools/searchTool.test.ts — the unreadable-file test
+expected a read error for locked.md, but the file was readable.
+```
+
+- ChatGPT waited 119 s for one tool call, so long commands work at least up to that.
+  The upper limit of the ChatGPT client is still not known.
+- The failing test makes a file unreadable with `chmod 000`, which does not stop root, and
+  the container runs as root. Fixed: the test is skipped when `process.getuid() === 0`.
+
+### 2026-10-10 — One command for a fresh clone; timeout hint
+
+- `npm run ci:all` (`scripts/ci-all.sh`): `npm ci` in every folder with a committed
+  `package-lock.json`, root included. `check.yml` uses it instead of its own loop.
+  The root runs with `--ignore-scripts`, so it never installs the lefthook hooks: that fails
+  where `core.hooksPath` is managed (this laptop), and in the opencode-serve container it
+  would add the full checks to every `git push`. Hooks stay a manual step (AGENTS.md).
+  Two bugs found while testing it: `npm ci` read the loop's stdin (now a `mapfile` array and
+  `< /dev/null`), and `set -e` stopped the loop at the failing root `prepare`.
+- `code-run` description: "for a potentially long command, set it higher".

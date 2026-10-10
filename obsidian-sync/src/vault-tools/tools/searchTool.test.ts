@@ -224,7 +224,8 @@ describe('searchTool', () => {
         ]);
     });
 
-    it('reports unreadable files and marks the scan incomplete', async () => {
+    // chmod 000 does not stop root, e.g. in the opencode-serve container.
+    it.skipIf(process.getuid?.() === 0)('reports unreadable files and marks the scan incomplete', async () => {
         const { config, path } = await vaultWith({
             'ok.md': 'word',
             'locked.md': 'word',

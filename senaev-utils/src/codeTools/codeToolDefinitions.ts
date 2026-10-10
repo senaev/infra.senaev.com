@@ -325,7 +325,8 @@ const run: ToolDefinition = {
     description: [
         'Runs a bash command in the project folder on the owner\'s server and returns the exit code, stdout and stderr.',
         'Use it for tests, builds, linters and git: status, diff, log, checkout, commit, push. "gh" is available for GitHub pull requests.',
-        `The command is stopped after "timeoutSeconds" (default ${RUN_LIMITS.defaultTimeoutSeconds}, at most ${RUN_LIMITS.maxTimeoutSeconds}).`,
+        `The command is stopped after "timeoutSeconds" (default ${RUN_LIMITS.defaultTimeoutSeconds}, at most ${RUN_LIMITS.maxTimeoutSeconds});`,
+        'for a potentially long command, set it higher.',
         `Only the last ${formatNumber(RUN_LIMITS.maxOutputChars)} characters of the output are returned, so limit long output yourself, e.g. with "| tail -n 100".`,
         'Ask the user before a command that publishes or deletes: git push, gh pr create, rm -r, git reset --hard.',
         PROJECT_RULES,

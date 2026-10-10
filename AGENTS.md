@@ -104,7 +104,8 @@ the exit code is non-zero if any of them failed.
 
 Because there is no workspace hoisting, typed linting, `tsc` and the tests each need the
 package's own `node_modules`. A fresh clone therefore needs `npm ci` at the root **and** in
-every package — this is what `.github/workflows/check.yml` does.
+every package. `npm run ci:all` (`scripts/ci-all.sh`) does both, for every folder with a
+committed `package-lock.json`; `.github/workflows/check.yml` runs it too.
 
 Config lives at the root: `eslint.config.mjs` (React rules scoped to senaev-utils),
 `tsconfig.base.json` and `vitest.config.mts`.
