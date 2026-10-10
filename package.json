@@ -8,7 +8,7 @@
   "scripts": {
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "typecheck": "tsc -p senaev-utils --noEmit && tsc -p cluster-helper --noEmit && tsc -p media-server-helper --noEmit && tsc -p obsidian-sync --noEmit && tsc -p vpn-subscription --noEmit",
+    "typecheck": "tsc -p senaev-utils --noEmit && tsc -p cluster-helper --noEmit && tsc -p code-tools --noEmit && tsc -p media-server-helper --noEmit && tsc -p obsidian-sync --noEmit && tsc -p vpn-subscription --noEmit",
     "test": "vitest --run",
     "test:watch": "vitest",
     "check:python": "bash scripts/check-syntax.sh python",

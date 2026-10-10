@@ -1,0 +1,15 @@
+{
+  "name": "code-tools",
+  "version": "1.0.0",
+  "description": "MCP code tools for the repositories in the opencode-serve container",
+  "type": "commonjs",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "fastify": "5.12.5",
+    "senaev-utils": "file:../senaev-utils",
+    "tsx": "4.23.15"
+  }
+}

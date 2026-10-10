@@ -8,15 +8,19 @@ import { defineConfig } from 'vitest/config';
 // one with a `@vitest-environment jsdom` docblock at the top of the file.
 const PACKAGES = [
     'cluster-helper',
+    'code-tools',
     'media-server-helper',
     'obsidian-sync',
     'senaev-utils',
     'vpn-subscription',
 ];
 
-// obsidian-sync validates its environment at import time, so its tests need values in place
-// before the module graph is evaluated.
-const SETUP_FILES: Record<string, string[]> = { 'obsidian-sync': ['./vitest.setup.ts'] };
+// These packages validate their environment at import time, so their tests need values in
+// place before the module graph is evaluated.
+const SETUP_FILES: Record<string, string[]> = {
+    'code-tools': ['./vitest.setup.ts'],
+    'obsidian-sync': ['./vitest.setup.ts'],
+};
 
 export default defineConfig({
     test: {
