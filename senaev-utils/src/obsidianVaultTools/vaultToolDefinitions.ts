@@ -1,4 +1,12 @@
 import {
+    formatNumber,
+    getToolArgumentKeys,
+    pagingProperties,
+    READ_ONLY_ANNOTATIONS as READ_ONLY,
+    type ToolDefinition,
+} from '../toolServer/toolDefinition';
+
+import {
     LINKS_LIMITS,
     LIST_LIMITS,
     MAX_GLOB_LENGTH,
@@ -13,27 +21,6 @@ import {
 
 /** Every MCP tool name is this prefix followed by the vault tool name. */
 export const OBSIDIAN_TOOL_PREFIX = 'obsidian-';
-
-export type VaultToolDefinition = {
-    title: string;
-    description: string;
-    inputSchema: {
-        type: 'object';
-        properties: Record<string, unknown>;
-        required?: readonly string[];
-        additionalProperties: false;
-    };
-    annotations: {
-        readOnlyHint: boolean;
-        destructiveHint: boolean;
-        idempotentHint: boolean;
-        openWorldHint: boolean;
-    };
-};
-
-function formatNumber(value: number): string {
-    return value.toLocaleString('en-US');
-}
 
 // The rules themselves live only in the vault's AGENTS.md. MCP `instructions` were tried and
 // dropped: ChatGPT read AGENTS.md through this sentence anyway (see
@@ -64,36 +51,7 @@ const SCOPE_PROPERTIES = {
     ...DIARY_RANGE_PROPERTIES,
 };
 
-function pagingProperties(
-    {
-        defaultLimit, maxLimit, maxOffset,
-    }: { defaultLimit: number; maxLimit: number; maxOffset: number },
-    { items, offsetDescription }: { items: string; offsetDescription?: string }
-) {
-    return {
-        offset: {
-            type: 'integer',
-            minimum: 0,
-            maximum: maxOffset,
-            ...offsetDescription !== undefined && { description: offsetDescription },
-        },
-        limit: {
-            type: 'integer',
-            minimum: 1,
-            maximum: maxLimit,
-            description: `${items} per page. Default: ${defaultLimit}. A larger value is reduced to ${maxLimit}.`,
-        },
-    };
-}
-
-const READ_ONLY = {
-    readOnlyHint: true,
-    destructiveHint: false,
-    idempotentHint: true,
-    openWorldHint: false,
-};
-
-const list: VaultToolDefinition = {
+const list: ToolDefinition = {
     title: 'List Obsidian notes',
     description: [
         'Lists notes (.md files) and folders in the owner\'s Obsidian vault.',
@@ -117,7 +75,7 @@ const list: VaultToolDefinition = {
     annotations: READ_ONLY,
 };
 
-const search: VaultToolDefinition = {
+const search: ToolDefinition = {
     title: 'Search Obsidian notes',
     description: [
         'Full-text search in all notes of the owner\'s Obsidian vault, including frontmatter and note titles.',
@@ -184,7 +142,7 @@ const search: VaultToolDefinition = {
     annotations: READ_ONLY,
 };
 
-const read: VaultToolDefinition = {
+const read: ToolDefinition = {
     title: 'Read Obsidian notes',
     description: [
         'Reads notes from the owner\'s Obsidian vault: the full text, the parsed frontmatter, and a "hash" that obsidian-patch needs to edit the note.',
@@ -221,7 +179,7 @@ const read: VaultToolDefinition = {
     annotations: READ_ONLY,
 };
 
-const links: VaultToolDefinition = {
+const links: ToolDefinition = {
     title: 'Obsidian note links',
     description: [
         'Returns the outgoing links of a note and its backlinks. Backlinks are found by scanning the whole vault and are grouped by the note that links,',
@@ -258,7 +216,7 @@ const links: VaultToolDefinition = {
     annotations: READ_ONLY,
 };
 
-const create: VaultToolDefinition = {
+const create: ToolDefinition = {
     title: 'Create an Obsidian note',
     description: [
         'Creates a new Markdown note in the owner\'s Obsidian vault, with missing folders. Fails if the note already exists.',
@@ -311,7 +269,7 @@ export const PATCH_OPERATION_FIELDS = {
 
 export type PatchOperationType = keyof typeof PATCH_OPERATION_FIELDS;
 
-const patch: VaultToolDefinition = {
+const patch: ToolDefinition = {
     title: 'Edit an Obsidian note',
     description: [
         'Makes targeted edits to an existing note in the owner\'s Obsidian vault. Read the note with obsidian-read first and pass its "hash" as "expectedHash";',
@@ -392,7 +350,7 @@ const patch: VaultToolDefinition = {
     },
 };
 
-const move: VaultToolDefinition = {
+const move: ToolDefinition = {
     title: 'Rename or move an Obsidian note',
     description: [
         'Renames a note in the owner\'s Obsidian vault or moves it to another folder, with missing folders. Fails if a file already exists at the new path.',
@@ -428,7 +386,7 @@ const move: VaultToolDefinition = {
     },
 };
 
-const diary_append: VaultToolDefinition = {
+const diary_append: ToolDefinition = {
     title: 'Add a diary record',
     description: [
         'Appends the text the user has just written to the owner\'s diary draft as one new record; the server adds the timestamp.',
@@ -466,7 +424,7 @@ export const VAULT_TOOL_DEFINITIONS = {
     patch,
     move,
     diary_append,
-} as const satisfies Record<string, VaultToolDefinition>;
+} as const satisfies Record<string, ToolDefinition>;
 
 export type VaultToolName = keyof typeof VAULT_TOOL_DEFINITIONS;
 
@@ -478,5 +436,5 @@ export function isVaultToolName(name: unknown): name is VaultToolName {
 
 /** The argument keys a tool accepts: exactly the properties of its input schema. */
 export function getVaultToolArgumentKeys(name: VaultToolName): string[] {
-    return Object.keys(VAULT_TOOL_DEFINITIONS[name].inputSchema.properties);
+    return getToolArgumentKeys(VAULT_TOOL_DEFINITIONS[name]);
 }

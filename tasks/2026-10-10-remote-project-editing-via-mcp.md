@@ -237,3 +237,28 @@ New folder `senaev-utils/src/toolServer/`, used by obsidian-sync now and by code
 The internal-token hook stays in each package: it depends on the Fastify types, and
 senaev-utils has no Fastify. No behaviour change in the vault tools; new tests for
 `runToolCall` and `rootRelativePath`. `npm run simple-checks` passes (all tests green).
+
+### 2026-10-10 — Code tool definitions (step 3)
+
+- `senaev-utils/src/toolServer/toolDefinition.ts`: the shared `ToolDefinition` type,
+  `READ_ONLY_ANNOTATIONS`, `pagingProperties`, `formatNumber`, `getToolArgumentKeys`.
+  The vault definitions use them now (was `VaultToolDefinition` and local copies).
+- `senaev-utils/src/codeTools/codeToolDefinitions.ts` and `codeToolLimits.ts`, prefix `code-`:
+
+| Tool | Arguments | Notes |
+|---|---|---|
+| `projects` | — | branch, changed files, origin, has AGENTS.md |
+| `clone` | `url`, `name?` | fails if the project exists; open world |
+| `list` | `project`, `folder?`, `glob?`, `recursive?`, paging | `.gitignore` respected |
+| `search` | `project`, `queries[]`, `regex?`, `caseSensitive?`, `folder?`, `glob?`, `contextLines?`, `maxMatchesPerFile?`, paging | ripgrep; regex is safe there (no backtracking) |
+| `read` | `project`, `paths[]`, `startLine?`, `lineCount?` | 30k chars/file, 50k/response, `hash` |
+| `write` | `project`, `path`, `content`, `expectedHash?` | create, or replace the whole file with a hash |
+| `patch` | `project`, `path`, `expectedHash`, `operations[{find, replace}]` | returns the new `hash` |
+| `run` | `project`, `command`, `timeoutSeconds?` | bash in the project; 60 s default, 300 s max; last 30k chars of output |
+
+Changes against the plan: `write` replaces `create`, because rewriting a whole file with
+find/replace is clumsy. Unlike the vault `patch`, the code `patch` returns the new hash,
+because code edits often come in a row. Project names match `^[A-Za-z0-9_][A-Za-z0-9._-]*$`.
+
+Open point: cluster-helper calls the backend with a 30 s timeout; `run` and `clone` need
+more (step 7). The ChatGPT client timeout for one tool call is not known yet.
