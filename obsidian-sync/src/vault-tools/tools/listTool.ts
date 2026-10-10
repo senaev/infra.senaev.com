@@ -1,6 +1,8 @@
 import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { LIST_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
+
 import { isNotePath } from '../access/vaultAccess';
 import {
     type FolderEntry, listFolder, walkVault,
@@ -9,17 +11,12 @@ import {
     getDiaryDate,
     isDiaryRangeRequested,
     matchesNoteScope,
-    NOTE_SCOPE_ARGUMENT_KEYS,
     readNoteScope,
 } from '../noteScope';
 import {
-    optionalBoolean, optionalCappedInteger, readToolArguments,
+    optionalBoolean, optionalCappedInteger, readVaultToolArguments,
 } from '../toolArguments';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
-
-const DEFAULT_ENTRIES = 100;
-const MAX_ENTRIES = 200;
-const MAX_OFFSET = 1_000_000;
 
 async function describeEntry(config: VaultToolsConfig, entry: FolderEntry) {
     if (entry.type === 'folder') {
@@ -44,21 +41,16 @@ async function describeEntry(config: VaultToolsConfig, entry: FolderEntry) {
  * explorer; with `recursive`, a glob or a diary range it lists matching notes at any depth.
  */
 export async function listTool(config: VaultToolsConfig, input: unknown) {
-    const args = readToolArguments(input, [
-        ...NOTE_SCOPE_ARGUMENT_KEYS,
-        'recursive',
-        'offset',
-        'limit',
-    ]);
+    const args = readVaultToolArguments(input, 'list');
     const scope = readNoteScope(args);
     const offset = optionalCappedInteger(args, 'offset', {
         min: 0,
-        max: MAX_OFFSET,
+        max: LIST_LIMITS.maxOffset,
     }) ?? 0;
     const limit = optionalCappedInteger(args, 'limit', {
         min: 1,
-        max: MAX_ENTRIES,
-    }) ?? DEFAULT_ENTRIES;
+        max: LIST_LIMITS.maxLimit,
+    }) ?? LIST_LIMITS.defaultLimit;
     const isRecursive = optionalBoolean(args, 'recursive') === true || scope.matchesGlob !== null || isDiaryRangeRequested(scope);
 
     let entries: FolderEntry[];

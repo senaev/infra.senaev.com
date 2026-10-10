@@ -1,5 +1,7 @@
 import { readFile } from 'node:fs/promises';
 
+import { READ_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
+
 import { normalizeVaultPath, resolveExistingNote } from '../access/vaultAccess';
 import { walkVault } from '../access/walkVault';
 import { splitNote } from '../markdown/frontmatter';
@@ -9,14 +11,10 @@ import {
     getDiaryDate, isDiaryRangeRequested, isInDiaryRange, readDiaryRange,
 } from '../noteScope';
 import {
-    optionalInteger, optionalString, optionalStringArray, readToolArguments,
+    optionalInteger, optionalString, optionalStringArray, readVaultToolArguments,
 } from '../toolArguments';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
 import { invalidArguments, VaultToolError } from '../VaultToolError';
-
-const MAX_PATHS = 50;
-const MAX_CHARS_PER_NOTE = 20_000;
-const MAX_CHARS_PER_RESPONSE = 30_000;
 
 type ReadRequest = {
     path: string;
@@ -57,7 +55,7 @@ async function readNote(config: VaultToolsConfig, request: ReadRequest, maxChars
 }
 
 async function resolveRequestedPaths(config: VaultToolsConfig, args: Record<string, unknown>) {
-    const paths = optionalStringArray(args, 'paths', { maxItems: MAX_PATHS });
+    const paths = optionalStringArray(args, 'paths', { maxItems: READ_LIMITS.maxPaths });
     const range = readDiaryRange(args);
 
     if ((paths === undefined) === !isDiaryRangeRequested(range)) {
@@ -86,13 +84,7 @@ async function resolveRequestedPaths(config: VaultToolsConfig, args: Record<stri
  * cut, and `truncated` says so.
  */
 export async function readTool(config: VaultToolsConfig, input: unknown) {
-    const args = readToolArguments(input, [
-        'paths',
-        'diaryFrom',
-        'diaryTo',
-        'section',
-        'startChar',
-    ]);
+    const args = readVaultToolArguments(input, 'read');
     const { isDiaryRange, paths } = await resolveRequestedPaths(config, args);
     const section = optionalString(args, 'section');
     const startChar = optionalInteger(args, 'startChar', {
@@ -113,7 +105,7 @@ export async function readTool(config: VaultToolsConfig, input: unknown) {
         index,
         path,
     ] of paths.entries()) {
-        const budget = Math.min(MAX_CHARS_PER_NOTE, MAX_CHARS_PER_RESPONSE - usedChars);
+        const budget = Math.min(READ_LIMITS.maxCharsPerNote, READ_LIMITS.maxCharsPerResponse - usedChars);
 
         if (budget <= 0) {
             stoppedAt = index;
@@ -125,7 +117,7 @@ export async function readTool(config: VaultToolsConfig, input: unknown) {
                 path,
                 section,
                 startChar,
-            }, MAX_CHARS_PER_NOTE);
+            }, READ_LIMITS.maxCharsPerNote);
 
             // A note that would only fit cut is left whole for the next call, unless it is
             // the first one, which must always be returned so that reading makes progress.
@@ -156,8 +148,8 @@ export async function readTool(config: VaultToolsConfig, input: unknown) {
         errors,
         returnedChars: usedChars,
         limits: {
-            maxCharsPerNote: MAX_CHARS_PER_NOTE,
-            maxCharsPerResponse: MAX_CHARS_PER_RESPONSE,
+            maxCharsPerNote: READ_LIMITS.maxCharsPerNote,
+            maxCharsPerResponse: READ_LIMITS.maxCharsPerResponse,
         },
         complete: remaining.length === 0,
         // A paths read continues with `remainingPaths`, a diary range read with `nextDiaryFrom`.

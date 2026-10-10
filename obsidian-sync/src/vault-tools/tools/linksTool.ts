@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join, posix } from 'node:path';
 
+import { LINKS_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 
 import {
@@ -14,15 +15,12 @@ import {
 } from '../markdown/resolveLink';
 import { getDiaryDate } from '../noteScope';
 import {
-    optionalCappedInteger, optionalEnum, readToolArguments, requiredNonEmptyString,
+    optionalCappedInteger, optionalEnum, readVaultToolArguments, requiredNonEmptyString,
 } from '../toolArguments';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
 
 const MAX_LINKS = 200;
-const DEFAULT_BACKLINK_SOURCES = 100;
-const MAX_BACKLINK_SOURCES = 200;
 const MAX_LINES_PER_SOURCE = 10;
-const MAX_OFFSET = 1_000_000;
 const MAX_REPORTED_ERRORS = 20;
 
 /**
@@ -92,12 +90,7 @@ function createBacklinkPrefilter(targetPath: string, aliases: readonly string[])
  * note on each call; there is no index to go stale.
  */
 export async function linksTool(config: VaultToolsConfig, input: unknown) {
-    const args = readToolArguments(input, [
-        'path',
-        'direction',
-        'offset',
-        'limit',
-    ]);
+    const args = readVaultToolArguments(input, 'links');
     const path = normalizeVaultPath(requiredNonEmptyString(args, 'path'), 'path');
     const direction = optionalEnum(args, 'direction', [
         'outgoing',
@@ -106,12 +99,12 @@ export async function linksTool(config: VaultToolsConfig, input: unknown) {
     ] as const) ?? 'both';
     const offset = optionalCappedInteger(args, 'offset', {
         min: 0,
-        max: MAX_OFFSET,
+        max: LINKS_LIMITS.maxOffset,
     }) ?? 0;
     const limit = optionalCappedInteger(args, 'limit', {
         min: 1,
-        max: MAX_BACKLINK_SOURCES,
-    }) ?? DEFAULT_BACKLINK_SOURCES;
+        max: LINKS_LIMITS.maxLimit,
+    }) ?? LINKS_LIMITS.defaultLimit;
 
     await resolveExistingNote(config, path);
 

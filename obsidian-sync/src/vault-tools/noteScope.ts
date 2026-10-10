@@ -1,6 +1,7 @@
 import { posix } from 'node:path';
 
 import picomatch from 'picomatch';
+import { MAX_GLOB_LENGTH } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
 
 import { normalizeVaultPath } from './access/vaultAccess';
 import {
@@ -10,7 +11,6 @@ import type { VaultToolsConfig } from './vaultToolsConfig';
 import { invalidArguments } from './VaultToolError';
 
 const DIARY_FILE_NAME = /^(\d{4}-\d{2}-\d{2})\.md$/;
-const MAX_GLOB_LENGTH = 200;
 
 /** Which files a list or search request covers. */
 export type NoteScope = {
@@ -19,13 +19,6 @@ export type NoteScope = {
     diaryFrom: string | undefined;
     diaryTo: string | undefined;
 };
-
-export const NOTE_SCOPE_ARGUMENT_KEYS = [
-    'folder',
-    'glob',
-    'diaryFrom',
-    'diaryTo',
-] as const;
 
 /** `YYYY-MM-DD` for a diary entry, `null` for any other file. */
 export function getDiaryDate(config: VaultToolsConfig, path: string): string | null {

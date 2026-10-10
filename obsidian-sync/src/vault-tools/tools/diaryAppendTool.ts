@@ -5,7 +5,7 @@ import { isNotFoundError } from 'senaev-utils/src/utils/Error/isNotFoundError/is
 import { formatDailyNoteDraftRecord } from '../../daily-note-draft/formatDailyNoteDraftRecord';
 import { prepareNewNote, resolveExistingNote } from '../access/vaultAccess';
 import { createNoteDiff } from '../markdown/createNoteDiff';
-import { readToolArguments, requiredNonEmptyString } from '../toolArguments';
+import { readVaultToolArguments, requiredNonEmptyString } from '../toolArguments';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
 import { invalidArguments, VaultToolError } from '../VaultToolError';
 
@@ -26,7 +26,7 @@ async function resolveDraft(config: VaultToolsConfig): Promise<string> {
  * purpose, unlike obsidian-patch: a record never changes existing text, so it needs no hash.
  */
 export async function diaryAppendTool(config: VaultToolsConfig, input: unknown) {
-    const args = readToolArguments(input, ['text']);
+    const args = readVaultToolArguments(input, 'diary_append');
     const text = requiredNonEmptyString(args, 'text').trim();
 
     if (text === '') {

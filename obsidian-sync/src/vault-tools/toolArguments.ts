@@ -1,3 +1,4 @@
+import { getVaultToolArgumentKeys, type VaultToolName } from 'senaev-utils/src/obsidianVaultTools/vaultToolDefinitions';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 
 import { parseIsoCalendarDay } from '../milestones/calendarDay';
@@ -25,6 +26,11 @@ export function readToolArguments(value: unknown, allowedKeys: readonly string[]
     }
 
     return args;
+}
+
+/** The arguments of a vault tool, which may use exactly the keys of its shared input schema. */
+export function readVaultToolArguments(value: unknown, tool: VaultToolName): ToolArguments {
+    return readToolArguments(value, getVaultToolArgumentKeys(tool));
 }
 
 export function optionalString(args: ToolArguments, key: string, maxLength = Infinity): string | undefined {

@@ -1,3 +1,5 @@
+import type { VaultToolName } from 'senaev-utils/src/obsidianVaultTools/vaultToolDefinitions';
+
 import { createTool } from './tools/createTool';
 import { diaryAppendTool } from './tools/diaryAppendTool';
 import { linksTool } from './tools/linksTool';
@@ -9,8 +11,11 @@ import type { VaultToolsConfig } from './vaultToolsConfig';
 
 export type VaultTool = (config: VaultToolsConfig, input: unknown) => Promise<Record<string, unknown>>;
 
-/** Served as `POST /vault/<name>`; cluster-helper exposes each one as `obsidian-<name>`. */
-export const VAULT_TOOLS: Readonly<Record<string, VaultTool>> = {
+/**
+ * Served as `POST /vault/<name>`; cluster-helper exposes each one as `obsidian-<name>`. The
+ * names and argument schemas are in senaev-utils, so a missing tool fails to compile.
+ */
+export const VAULT_TOOLS: Readonly<Record<VaultToolName, VaultTool>> = {
     list: listTool,
     search: searchTool,
     read: readTool,

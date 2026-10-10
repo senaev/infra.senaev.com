@@ -1,5 +1,7 @@
 import { readFile } from 'node:fs/promises';
 
+import { PATCH_OPERATION_FIELDS, type PatchOperationType } from 'senaev-utils/src/obsidianVaultTools/vaultToolDefinitions';
+import { PATCH_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { replaceFileAtomically } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
 
@@ -11,6 +13,7 @@ import { findSection } from '../markdown/sections';
 import {
     optionalString,
     readToolArguments,
+    readVaultToolArguments,
     requiredNonEmptyString,
     requiredString,
     type ToolArguments,
@@ -18,7 +21,6 @@ import {
 import type { VaultToolsConfig } from '../vaultToolsConfig';
 import { invalidArguments, VaultToolError } from '../VaultToolError';
 
-const MAX_OPERATIONS = 20;
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 
 type Operation = (content: string) => string;
@@ -112,23 +114,7 @@ function setFrontmatter(args: ToolArguments): Operation {
     return (content) => setFrontmatterProperties(content, properties);
 }
 
-const OPERATION_FIELDS = {
-    append: [
-        'text',
-        'section',
-    ],
-    replace: [
-        'find',
-        'replace',
-    ],
-    replaceSection: [
-        'section',
-        'content',
-    ],
-    setFrontmatter: ['properties'],
-} as const;
-
-const OPERATION_BUILDERS: Record<keyof typeof OPERATION_FIELDS, (args: ToolArguments) => Operation> = {
+const OPERATION_BUILDERS: Record<PatchOperationType, (args: ToolArguments) => Operation> = {
     append,
     replace,
     replaceSection,
@@ -136,22 +122,24 @@ const OPERATION_BUILDERS: Record<keyof typeof OPERATION_FIELDS, (args: ToolArgum
 };
 
 function readOperations(value: unknown): Operation[] {
-    if (!Array.isArray(value) || value.length === 0 || value.length > MAX_OPERATIONS) {
-        throw invalidArguments(`"operations" must be an array of 1 to ${MAX_OPERATIONS} operations`);
+    const { maxOperations } = PATCH_LIMITS;
+
+    if (!Array.isArray(value) || value.length === 0 || value.length > maxOperations) {
+        throw invalidArguments(`"operations" must be an array of 1 to ${maxOperations} operations`);
     }
 
     return value.map((item: unknown, index) => {
         const type = isObject(item) ? item.type : undefined;
 
-        if (typeof type !== 'string' || !(type in OPERATION_FIELDS)) {
-            throw invalidArguments(`"operations[${index}].type" must be one of: ${Object.keys(OPERATION_FIELDS).join(', ')}`);
+        if (typeof type !== 'string' || !Object.hasOwn(PATCH_OPERATION_FIELDS, type)) {
+            throw invalidArguments(`"operations[${index}].type" must be one of: ${Object.keys(PATCH_OPERATION_FIELDS).join(', ')}`);
         }
 
-        const name = type as keyof typeof OPERATION_FIELDS;
+        const name = type as PatchOperationType;
 
         return OPERATION_BUILDERS[name](readToolArguments(item, [
             'type',
-            ...OPERATION_FIELDS[name],
+            ...PATCH_OPERATION_FIELDS[name],
         ]));
     });
 }
@@ -162,11 +150,7 @@ function readOperations(value: unknown): Operation[] {
  * the version it read.
  */
 export async function patchTool(config: VaultToolsConfig, input: unknown) {
-    const args = readToolArguments(input, [
-        'path',
-        'expectedHash',
-        'operations',
-    ]);
+    const args = readVaultToolArguments(input, 'patch');
     const path = normalizeVaultPath(requiredNonEmptyString(args, 'path'), 'path');
     const expectedHash = requiredNonEmptyString(args, 'expectedHash').toLowerCase();
 

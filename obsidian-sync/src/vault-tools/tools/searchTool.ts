@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join, posix } from 'node:path';
 
+import { SEARCH_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 
 import { isNotePath } from '../access/vaultAccess';
@@ -9,7 +10,6 @@ import {
     getDiaryDate,
     isDiaryRangeRequested,
     matchesNoteScope,
-    NOTE_SCOPE_ARGUMENT_KEYS,
     readNoteScope,
 } from '../noteScope';
 import {
@@ -18,20 +18,11 @@ import {
     optionalEnum,
     optionalInteger,
     optionalStringArray,
-    readToolArguments,
+    readVaultToolArguments,
 } from '../toolArguments';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
 import { invalidArguments } from '../VaultToolError';
 
-const MAX_QUERIES = 20;
-const MAX_QUERY_LENGTH = 200;
-const DEFAULT_FILES = 20;
-const MAX_FILES = 50;
-const DEFAULT_MATCHES_PER_FILE = 5;
-const MAX_MATCHES_PER_FILE = 20;
-const DEFAULT_CONTEXT_LINES = 1;
-const MAX_CONTEXT_LINES = 3;
-const MAX_OFFSET = 100_000;
 const SNIPPET_MAX_CHARS = 300;
 const SNIPPET_CHARS_BEFORE_MATCH = 100;
 const MAX_REPORTED_ERRORS = 20;
@@ -154,20 +145,10 @@ function byRelevance(a: FileMatch, b: FileMatch): number {
  * also when the response limit is reached early, so the totals are exact.
  */
 export async function searchTool(config: VaultToolsConfig, input: unknown) {
-    const args = readToolArguments(input, [
-        ...NOTE_SCOPE_ARGUMENT_KEYS,
-        'queries',
-        'match',
-        'wholeWord',
-        'contextLines',
-        'maxMatchesPerFile',
-        'sort',
-        'offset',
-        'limit',
-    ]);
+    const args = readVaultToolArguments(input, 'search');
     const queries = optionalStringArray(args, 'queries', {
-        maxItems: MAX_QUERIES,
-        maxLength: MAX_QUERY_LENGTH,
+        maxItems: SEARCH_LIMITS.maxQueries,
+        maxLength: SEARCH_LIMITS.maxQueryLength,
     });
 
     if (queries === undefined) {
@@ -185,12 +166,12 @@ export async function searchTool(config: VaultToolsConfig, input: unknown) {
         ] as const) === 'all',
         contextLines: optionalInteger(args, 'contextLines', {
             min: 0,
-            max: MAX_CONTEXT_LINES,
-        }) ?? DEFAULT_CONTEXT_LINES,
+            max: SEARCH_LIMITS.maxContextLines,
+        }) ?? SEARCH_LIMITS.defaultContextLines,
         maxMatchesPerFile: optionalInteger(args, 'maxMatchesPerFile', {
             min: 1,
-            max: MAX_MATCHES_PER_FILE,
-        }) ?? DEFAULT_MATCHES_PER_FILE,
+            max: SEARCH_LIMITS.maxMatchesPerFile,
+        }) ?? SEARCH_LIMITS.defaultMatchesPerFile,
     };
     const sort = optionalEnum(args, 'sort', [
         'relevance',
@@ -198,12 +179,12 @@ export async function searchTool(config: VaultToolsConfig, input: unknown) {
     ] as const) ?? (isDiaryRangeRequested(scope) ? 'path' : 'relevance');
     const offset = optionalCappedInteger(args, 'offset', {
         min: 0,
-        max: MAX_OFFSET,
+        max: SEARCH_LIMITS.maxOffset,
     }) ?? 0;
     const limit = optionalCappedInteger(args, 'limit', {
         min: 1,
-        max: MAX_FILES,
-    }) ?? DEFAULT_FILES;
+        max: SEARCH_LIMITS.maxLimit,
+    }) ?? SEARCH_LIMITS.defaultLimit;
 
     const walk = await walkVault(config, scope.folder);
     const paths = walk.files.filter((path) => isNotePath(config, path) && matchesNoteScope(config, scope, path));

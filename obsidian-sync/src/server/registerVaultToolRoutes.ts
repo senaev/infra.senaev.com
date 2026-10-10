@@ -1,3 +1,5 @@
+import { isVaultToolName } from 'senaev-utils/src/obsidianVaultTools/vaultToolDefinitions';
+
 import { logger } from '../logger';
 import { VAULT_TOOLS } from '../vault-tools/vaultTools';
 import type { VaultToolsConfig } from '../vault-tools/vaultToolsConfig';
@@ -14,9 +16,8 @@ import type { VaultServer } from './createVaultServer';
 export function registerVaultToolRoutes(server: VaultServer, config: VaultToolsConfig): void {
     server.post<{ Params: { tool: string }; Body: unknown }>('/vault/:tool', async (request, reply) => {
         const { tool: name } = request.params;
-        const tool = Object.hasOwn(VAULT_TOOLS, name) ? VAULT_TOOLS[name] : undefined;
 
-        if (tool === undefined) {
+        if (!isVaultToolName(name)) {
             return reply.code(404).send({
                 status: 'error',
                 code: 'unknown_tool',
@@ -27,7 +28,7 @@ export function registerVaultToolRoutes(server: VaultServer, config: VaultToolsC
         const startedAt = performance.now();
 
         try {
-            const result = await tool(config, request.body);
+            const result = await VAULT_TOOLS[name](config, request.body);
 
             logger.info({
                 tool: name,

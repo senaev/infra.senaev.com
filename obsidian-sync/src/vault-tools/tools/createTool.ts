@@ -7,7 +7,7 @@ import { prepareNewNote, normalizeVaultPath } from '../access/vaultAccess';
 import { formatFrontmatterBlock } from '../markdown/frontmatter';
 import { createNoteDiff } from '../markdown/createNoteDiff';
 import {
-    optionalObject, optionalString, readToolArguments, requiredNonEmptyString,
+    optionalObject, optionalString, readVaultToolArguments, requiredNonEmptyString,
 } from '../toolArguments';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
 import { invalidArguments, VaultToolError } from '../VaultToolError';
@@ -19,11 +19,7 @@ function withNoteExtension(config: VaultToolsConfig, path: string): string {
 
 /** Creates a new note, with missing parent folders. Fails if anything already exists there. */
 export async function createTool(config: VaultToolsConfig, input: unknown) {
-    const args = readToolArguments(input, [
-        'path',
-        'content',
-        'frontmatter',
-    ]);
+    const args = readVaultToolArguments(input, 'create');
     const path = withNoteExtension(config, normalizeVaultPath(requiredNonEmptyString(args, 'path'), 'path'));
     const content = optionalString(args, 'content') ?? '';
     const frontmatter = optionalObject(args, 'frontmatter');
