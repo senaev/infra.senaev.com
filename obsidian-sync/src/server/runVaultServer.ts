@@ -4,7 +4,6 @@ import { createVaultToolsConfig } from '../vault-tools/vaultToolsConfig';
 import { PUBLIC_DIR } from '../vaultPaths';
 
 import { createVaultServer } from './createVaultServer';
-import { registerDailyNoteDraftRoutes } from './registerDailyNoteDraftRoutes';
 import { registerInternalTokenCheck } from './registerInternalTokenCheck';
 import { registerMilestoneRoutes } from './registerMilestoneRoutes';
 import { registerPublicFileRoutes } from './registerPublicFileRoutes';
@@ -24,7 +23,6 @@ export async function runVaultServer(): Promise<void> {
     registerInternalTokenCheck(server, INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN);
     registerVaultToolRoutes(server, createVaultToolsConfig(OBSIDIAN_VAULT_PATH));
     registerTaskRoutes(server);
-    registerDailyNoteDraftRoutes(server);
     registerShortLinkRoutes(server);
     registerMilestoneRoutes(server);
     registerPublicStaticRoutes(server);

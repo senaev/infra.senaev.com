@@ -5,6 +5,10 @@
 /** Every Obsidian tool name starts with this, followed by the obsidian-sync tool name. */
 export const OBSIDIAN_TOOL_PREFIX = 'obsidian-';
 
+// The vault rules come in the MCP instructions; this covers a client that drops them.
+// The rules themselves live only in the vault's AGENTS.md.
+const VAULT_RULES = 'If the vault rules from the root AGENTS.md are not in your context, read AGENTS.md with obsidian-read first.';
+
 const DIARY_RANGE_PROPERTIES = {
     diaryFrom: {
         type: 'string',
@@ -43,6 +47,7 @@ const OBSIDIAN_LIST_TOOL = {
         'Without filters it lists one folder level. With "recursive", "glob" or a diary range it lists matching notes at any depth.',
         'Use a diary range to find the diary entries of a period before you read them.',
         'The result is paged: when "nextOffset" is not null, call again with "offset" set to it.',
+        VAULT_RULES,
     ].join(' '),
     inputSchema: {
         type: 'object',
@@ -75,8 +80,11 @@ const OBSIDIAN_SEARCH_TOOL = {
         'Full-text search in all notes of the owner\'s Obsidian vault, including frontmatter and note titles.',
         'Each query is literal text, case-insensitive, matched as a substring; there are no regular expressions.',
         'The notes are written in English, Spanish and Russian, so send several queries in one call: each language, synonyms and word forms (e.g. "climbing", "escalada", "скалолаз").',
+        'Up to 20 queries per call. Before you write a note or a diary record, collect the people, places and concepts it mentions and look them all up in one call',
+        '(several spellings and languages each), so that you link only to notes that exist.',
         'Results are grouped by file with line numbers and context; read a note with obsidian-read to see the full text.',
         'The whole scope is always scanned: "matchedFiles" and "totalHits" are exact even when the results are paged ("nextOffset") or "truncated".',
+        VAULT_RULES,
     ].join(' '),
     inputSchema: {
         type: 'object',
@@ -152,6 +160,7 @@ const OBSIDIAN_READ_TOOL = {
         'A note longer than 20,000 characters is cut with "truncated": true; read the rest with "startChar" set to "nextStartChar", or read one section.',
         'Everything you read stays in the conversation, so to summarise a long diary range, read and summarise it in parts (e.g. one month at a time) and then combine the summaries.',
         'Cite the source notes by their path or date.',
+        VAULT_RULES,
     ].join(' '),
     inputSchema: {
         type: 'object',
@@ -188,6 +197,7 @@ const OBSIDIAN_LINKS_TOOL = {
         'Wikilinks, embeds, Markdown links, heading (#) and block (^) references are included; links in code are not.',
         'A target is never guessed: "ambiguous" lists every note it can mean, "unresolved" means no such note,',
         'and "alias" means it matches only the frontmatter aliases of a note, which Obsidian itself does not resolve.',
+        VAULT_RULES,
     ].join(' '),
     inputSchema: {
         type: 'object',
@@ -228,8 +238,8 @@ const OBSIDIAN_CREATE_TOOL = {
     title: 'Create an Obsidian note',
     description: [
         'Creates a new Markdown note in the owner\'s Obsidian vault, with missing folders. Fails if the note already exists.',
-        'Before you create a note, search for an existing one and find the right folder (obsidian-list).',
-        'Link only to notes that exist, as [[Note name]] or [[Note name|display text]].',
+
+        VAULT_RULES,
     ].join(' '),
     inputSchema: {
         type: 'object',
@@ -269,8 +279,7 @@ const OBSIDIAN_PATCH_TOOL = {
         '"replace" replaces the exact text "find", which must occur exactly once, with "replace";',
         '"replaceSection" replaces the body under the heading "section" with "content" and keeps the heading;',
         '"setFrontmatter" sets the given "properties", and a null value deletes a property.',
-        'Content under an archive heading with a date (e.g. "## 2026-01-15") is historical: do not change it, and add new content before it.',
-        'Keep the owner\'s wording; change only what the user asked for.',
+        VAULT_RULES,
     ].join(' '),
     inputSchema: {
         type: 'object',
@@ -344,6 +353,34 @@ const OBSIDIAN_PATCH_TOOL = {
     },
 };
 
+const OBSIDIAN_DIARY_APPEND_TOOL = {
+    name: 'obsidian-diary_append',
+    title: 'Add a diary record',
+    description: [
+        'Appends the text the user has just written to the owner\'s diary draft as one new record; the server adds the timestamp.',
+        'Use this to record a diary entry, not obsidian-patch. Fix only typos and grammar; never reword, summarise or translate.',
+        'Follow the Diary section of the vault\'s AGENTS.md for the full rules.',
+        VAULT_RULES,
+    ].join(' '),
+    inputSchema: {
+        type: 'object',
+        properties: {
+            text: {
+                type: 'string',
+                description: 'The text of the record.',
+            },
+        },
+        required: ['text'],
+        additionalProperties: false,
+    },
+    annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+    },
+};
+
 export const OBSIDIAN_TOOLS = [
     OBSIDIAN_LIST_TOOL,
     OBSIDIAN_SEARCH_TOOL,
@@ -351,6 +388,7 @@ export const OBSIDIAN_TOOLS = [
     OBSIDIAN_LINKS_TOOL,
     OBSIDIAN_CREATE_TOOL,
     OBSIDIAN_PATCH_TOOL,
+    OBSIDIAN_DIARY_APPEND_TOOL,
 ];
 
 /** The obsidian-sync tool behind an MCP tool name, or `null` for a name that is not ours. */

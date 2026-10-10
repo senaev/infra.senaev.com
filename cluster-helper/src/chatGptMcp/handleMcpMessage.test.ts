@@ -4,8 +4,7 @@ import {
 
 import { handleMcpMessage, type McpToolHandlers } from './handleMcpMessage';
 import { OBSIDIAN_TOOLS } from './obsidianTools';
-
-const PATH = '@senaev/daily_note_draft.md';
+import { VAULT_RULES_FALLBACK } from './vaultInstructions';
 
 function request(method: string, params?: unknown) {
     return {
@@ -18,10 +17,13 @@ function request(method: string, params?: unknown) {
 
 function handlers(overrides: Partial<McpToolHandlers> = {}): McpToolHandlers {
     return {
-        saveDiaryText: vi.fn(),
-        callVaultTool: vi.fn(),
+        callVaultTool: vi.fn().mockRejectedValue(new Error('not mocked')),
         ...overrides,
     };
+}
+
+function instructionsOf(response: unknown): string {
+    return (response as { result: { instructions: string } }).result.instructions;
 }
 
 describe('handleMcpMessage', () => {
@@ -37,6 +39,38 @@ describe('handleMcpMessage', () => {
         });
     });
 
+    it('puts the live AGENTS.md into the instructions of every initialize, after a short header', async () => {
+        const callVaultTool = vi.fn().mockResolvedValue({
+            isError: false,
+            body: {
+                status: 'ok',
+                notes: [{ content: '# AGENTS\n\nVault rules.\n' }],
+            },
+        });
+        const instructions = instructionsOf(await handleMcpMessage(request('initialize'), handlers({ callVaultTool })));
+
+        expect(callVaultTool).toHaveBeenCalledWith('read', { paths: ['AGENTS.md'] });
+        expect(instructions.startsWith('The text below is the root AGENTS.md')).toBe(true);
+        expect(instructions.indexOf('obsidian-read')).toBeLessThan(512);
+        expect(instructions.endsWith('\n\n# AGENTS\n\nVault rules.\n')).toBe(true);
+    });
+
+    it('still initializes with the fallback sentence when AGENTS.md cannot be read', async () => {
+        const unreachable = await handleMcpMessage(request('initialize'), handlers());
+        const failedRead = await handleMcpMessage(request('initialize'), handlers({
+            callVaultTool: vi.fn().mockResolvedValue({
+                isError: true,
+                body: {
+                    status: 'error',
+                    code: 'not_found',
+                },
+            }),
+        }));
+
+        expect(instructionsOf(unreachable)).toBe(VAULT_RULES_FALLBACK);
+        expect(instructionsOf(failedRead)).toBe(VAULT_RULES_FALLBACK);
+    });
+
     it('returns no response for a notification', async () => {
         expect(await handleMcpMessage({
             jsonrpc: '2.0',
@@ -44,21 +78,24 @@ describe('handleMcpMessage', () => {
         }, handlers())).toBeNull();
     });
 
-    it('lists save_diary_text and every Obsidian tool, each with the auth policy', async () => {
+    it('lists every Obsidian tool, each with the auth policy and the AGENTS.md fallback', async () => {
         const securitySchemes = [{ type: 'oauth2' }];
         const response = await handleMcpMessage(request('tools/list'), handlers(), { securitySchemes });
-        const { tools } = (response as { result: { tools: { name: string; securitySchemes: unknown }[] } }).result;
+        const { tools } = (response as {
+            result: { tools: { name: string; description: string; securitySchemes: unknown }[] };
+        }).result;
 
         expect(tools.map((tool) => tool.name)).toEqual([
-            'save_diary_text',
             'obsidian-list',
             'obsidian-search',
             'obsidian-read',
             'obsidian-links',
             'obsidian-create',
             'obsidian-patch',
+            'obsidian-diary_append',
         ]);
         expect(tools.every((tool) => tool.securitySchemes === securitySchemes)).toBe(true);
+        expect(tools.every((tool) => tool.description.includes('read AGENTS.md with obsidian-read'))).toBe(true);
     });
 
     it('uses only tool names that OpenAI function calling accepts', () => {
@@ -67,35 +104,10 @@ describe('handleMcpMessage', () => {
         }
     });
 
-    it('saves the text unchanged and returns the path', async () => {
-        const save = vi.fn().mockResolvedValue(PATH);
-        const response = await handleMcpMessage(request('tools/call', {
-            name: 'save_diary_text',
-            arguments: { text: '  Сегодня был хороший день.\n\nМы гуляли.  ' },
-        }), handlers({ saveDiaryText: save }));
-
-        expect(save).toHaveBeenCalledWith('Сегодня был хороший день.\n\nМы гуляли.');
-        expect(response).toMatchObject({
-            result: {
-                isError: false,
-                structuredContent: { path: PATH },
-            },
-        });
-    });
-
-    it('reports empty text as a tool error without saving', async () => {
-        const save = vi.fn();
-        const response = await handleMcpMessage(request('tools/call', {
-            name: 'save_diary_text',
-            arguments: { text: '   ' },
-        }), handlers({ saveDiaryText: save }));
-
-        expect(save).not.toHaveBeenCalled();
-        expect(response).toMatchObject({ result: { isError: true } });
-    });
-
-    it('rejects an unknown tool and an unknown method', async () => {
+    it('rejects an unknown tool, the removed save_diary_text, and an unknown method', async () => {
         expect(await handleMcpMessage(request('tools/call', { name: 'other' }), handlers()))
+            .toMatchObject({ error: { code: -32602 } });
+        expect(await handleMcpMessage(request('tools/call', { name: 'save_diary_text' }), handlers()))
             .toMatchObject({ error: { code: -32602 } });
         expect(await handleMcpMessage(request('resources/list'), handlers()))
             .toMatchObject({ error: { code: -32601 } });

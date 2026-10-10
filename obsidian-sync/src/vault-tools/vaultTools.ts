@@ -1,4 +1,5 @@
 import { createTool } from './tools/createTool';
+import { diaryAppendTool } from './tools/diaryAppendTool';
 import { linksTool } from './tools/linksTool';
 import { listTool } from './tools/listTool';
 import { patchTool } from './tools/patchTool';
@@ -16,4 +17,5 @@ export const VAULT_TOOLS: Readonly<Record<string, VaultTool>> = {
     links: linksTool,
     create: createTool,
     patch: patchTool,
+    diary_append: diaryAppendTool,
 };

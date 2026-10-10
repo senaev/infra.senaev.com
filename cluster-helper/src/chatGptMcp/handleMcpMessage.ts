@@ -4,6 +4,7 @@ import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnk
 import { logger } from '../logger';
 
 import { getVaultToolName, OBSIDIAN_TOOLS } from './obsidianTools';
+import { loadVaultInstructions } from './vaultInstructions';
 
 // A minimal stateless MCP server over Streamable HTTP: every JSON-RPC request gets a plain
 // `application/json` response, so there are no sessions and no SSE streams to manage.
@@ -16,54 +17,9 @@ const SUPPORTED_PROTOCOL_VERSIONS = [
 ];
 const LATEST_PROTOCOL_VERSION = '2025-06-18';
 
-const TOOL_NAME = 'save_diary_text';
-
 const JSON_RPC_INVALID_REQUEST = -32600;
 const JSON_RPC_METHOD_NOT_FOUND = -32601;
 const JSON_RPC_INVALID_PARAMS = -32602;
-
-// ChatGPT reads these instructions to decide what to send, so they are the only place
-// where the "edit lightly, do not compose" rules can be enforced.
-const EDITING_RULES = [
-    'Send only the text the user has just written, as a new separate record.',
-    'Do not combine it with earlier messages or earlier records, and do not summarize or rewrite it.',
-    'Do not add a date, a title, a heading or any other text of your own.',
-    'You may only fix typos and grammatical errors, and split the text into sentences and paragraphs.',
-    'Keep the original language of the text; never translate it.',
-].join(' ');
-
-const ORDER_RULE = 'First write the edited text in your reply to the user, and only then call this tool with exactly that text.';
-const CONFIRMATION_RULE = 'Do not repeat the text. Reply only with a short confirmation that contains the path.';
-
-const SAVE_DIARY_TEXT_TOOL = {
-    name: TOOL_NAME,
-    title: 'Save diary text',
-    description: `Appends a piece of text to the owner's diary draft in the Obsidian vault. ${EDITING_RULES} ${ORDER_RULE}`,
-    inputSchema: {
-        type: 'object',
-        properties: {
-            text: {
-                type: 'string',
-                description: `The text the user wrote. ${EDITING_RULES}`,
-            },
-        },
-        required: ['text'],
-        additionalProperties: false,
-    },
-    annotations: {
-        readOnlyHint: false,
-        destructiveHint: false,
-        openWorldHint: false,
-    },
-};
-
-const ALL_TOOLS = [
-    SAVE_DIARY_TEXT_TOOL,
-    ...OBSIDIAN_TOOLS,
-];
-
-/** Writes the text and returns the vault-relative path it went to. */
-export type SaveDiaryText = (text: string) => Promise<string>;
 
 export type VaultToolReply = {
     isError: boolean;
@@ -74,7 +30,6 @@ export type VaultToolReply = {
 export type CallVaultTool = (vaultToolName: string, args: unknown) => Promise<VaultToolReply>;
 
 export type McpToolHandlers = {
-    saveDiaryText: SaveDiaryText;
     callVaultTool: CallVaultTool;
 };
 
@@ -141,30 +96,12 @@ async function callObsidianTool(vaultToolName: string, args: unknown, callVaultT
     return toolResult(JSON.stringify(reply.body), reply.isError, reply.body);
 }
 
-async function callTool(params: unknown, { saveDiaryText, callVaultTool }: McpToolHandlers) {
-    if (!isObject(params)) {
-        return null;
-    }
+function callTool(params: unknown, { callVaultTool }: McpToolHandlers) {
+    const vaultToolName = isObject(params) ? getVaultToolName(params.name) : null;
 
-    const vaultToolName = getVaultToolName(params.name);
-
-    if (vaultToolName !== null) {
-        return callObsidianTool(vaultToolName, params.arguments, callVaultTool);
-    }
-
-    if (params.name !== TOOL_NAME) {
-        return null;
-    }
-
-    const text = isObject(params.arguments) ? params.arguments.text : undefined;
-
-    if (typeof text !== 'string' || text.trim() === '') {
-        return toolResult('Field "text" is required and must be a non-empty string', true);
-    }
-
-    const path = await saveDiaryText(text.trim());
-
-    return toolResult(`Saved to ${path}. ${CONFIRMATION_RULE}`, false, { path });
+    return vaultToolName === null || !isObject(params)
+        ? null
+        : callObsidianTool(vaultToolName, params.arguments, callVaultTool);
 }
 
 /** What to log about one message: never the arguments, which hold the diary text. */
@@ -223,6 +160,7 @@ export async function handleMcpMessage(
                 name: 'senaev-diary',
                 version: '1.0.0',
             },
+            instructions: await loadVaultInstructions(handlers.callVaultTool),
         });
     }
 
@@ -230,7 +168,7 @@ export async function handleMcpMessage(
         return success(id, {});
     case 'tools/list':
         return success(id, {
-            tools: ALL_TOOLS.map((tool) => {
+            tools: OBSIDIAN_TOOLS.map((tool) => {
                 return {
                     ...tool,
                     ...securitySchemes && { securitySchemes },
@@ -241,7 +179,7 @@ export async function handleMcpMessage(
         const result = await callTool(params, handlers);
 
         return result === null
-            ? failure(id, JSON_RPC_INVALID_PARAMS, `Unknown tool, the tools are: ${ALL_TOOLS.map((tool) => tool.name).join(', ')}`)
+            ? failure(id, JSON_RPC_INVALID_PARAMS, `Unknown tool, the tools are: ${OBSIDIAN_TOOLS.map((tool) => tool.name).join(', ')}`)
             : success(id, result);
     }
 

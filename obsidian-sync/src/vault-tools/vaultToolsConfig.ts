@@ -12,6 +12,8 @@ export type VaultToolsConfig = {
     excludedFileSuffixes: readonly string[];
     /** Holds the diary entries, one `YYYY-MM-DD.md` file per day. */
     diaryFolder: string;
+    /** Receives the records of `diary_append`; the owner moves them into daily notes by hand. */
+    diaryDraftPath: string;
 };
 
 /** A factory rather than a constant, so tests can apply the same rules to a temporary vault. */
@@ -25,5 +27,6 @@ export function createVaultToolsConfig(root: string): VaultToolsConfig {
         // Excalidraw drawings are JSON scene data saved as markdown, not text.
         excludedFileSuffixes: ['.excalidraw.md'],
         diaryFolder: 'periodic/day',
+        diaryDraftPath: '@senaev/daily_note_draft.md',
     };
 }
