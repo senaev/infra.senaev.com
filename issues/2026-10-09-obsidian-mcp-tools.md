@@ -133,3 +133,92 @@ body byte-for-byte and left no temp file.
   gives `401`; `https://s.senaev.com/<id>` and `https://static.senaev.com/...` still work.
 - In ChatGPT, after refreshing the connector: "find my diary entries about climbing", "summarise
   my diary for September 2026", "who links to @luli", and one create + patch on a test note.
+
+### 2026-10-09 — ChatGPT end-to-end test (production)
+
+A 17-step prompt run in ChatGPT against the deployed connector. All writes went only to
+`@senaev/mcp-test/MCP smoke test.md`. Result as reported by ChatGPT:
+
+```
+1. obsidian-list — PASS — 101 total entries; returned 20 folders and 80 notes; no .obsidian, .trash or plugins; nextOffset=100.
+2. obsidian-list — PASS — 8 daily notes for October 1–8; all expected paths and diaryDate values present.
+3. obsidian-search — PASS — scannedFiles=3621, matchedFiles=7, complete=true, truncated=false.
+4. obsidian-search — PASS — scannedFiles=30, matchedFiles=30, nextOffset=5; first page November 1–5, second page November 6–10; no overlapping files.
+5. obsidian-read — PASS — hash=ac1614c2...; first diary sentence: "Today was a good and pretty intensive day."
+6. obsidian-read — PASS — 30 notes across 3 pages: 12 → nextDiaryFrom=2026-09-13; 10 → 2026-09-23; 8 → null; final complete=true.
+7. obsidian-read — PASS — totalChars=102926, truncated=true, nextStartChar=20000; second chunk continued at character 20000; same hash.
+8. obsidian-links — PASS — outgoing links: resolved=19, ambiguous=0, unresolved=0.
+9. obsidian-links — PASS — totalSources=845, totalLinks=2907.
+10. obsidian-read — PASS — expected error: forbidden_path.
+11. obsidian-create — PASS — hash=f847f785...
+12. obsidian-create — PASS — expected error: already_exists.
+13. obsidian-patch — PASS — appended "- three" to Done and set status=checked.
+14. obsidian-patch — PASS — expected error: conflict; currentHash matched step 13.
+15. obsidian-patch — PASS — expected error: ambiguous; 2 occurrences at lines 15 and 16.
+16. obsidian-patch — PASS — replaced Todo with "- four".
+17. obsidian-read — PASS — all expected content and frontmatter confirmed.
+```
+
+Final test note:
+
+```markdown
+---
+tags:
+  - mcp-test
+status: checked
+---
+# MCP smoke test
+
+## Done
+
+- one
+- three
+
+## Todo
+
+- four
+```
+
+All 17 steps pass, so the whole chain works in production: OAuth, the cluster-helper proxy,
+the internal token, and every tool, including paging, the response budget, exclusions, the
+hash conflict and the ambiguous-target check. The numbers match the local smoke run
+(3,621 scanned files, 845 backlink sources, 2,907 links). The September summary in step 6
+cited dates for each point, which confirms the diary-range workflow.
+
+### 2026-10-09 — Cluster verification of the internal token
+
+The secret key `INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN` is present (not empty).
+No pod has `curl`, so the checks use `node -e` in the cluster-helper pod. The token is
+checked by obsidian-sync, so a request without the header tests the same thing as any pod.
+
+```
+$ kubectl -n senaev-com exec deploy/cluster-helper -- node -e \
+  "fetch('http://obsidian-sync:8080/milestones').then(r => console.log(r.status))"
+401
+
+# wrong token: no output was pasted
+
+$ kubectl -n senaev-com exec deploy/cluster-helper -- node -e \
+  "fetch('http://obsidian-sync:8080/milestones', {headers: {authorization: 'Bearer ' + process.env.INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN}}).then(r => console.log(r.status))"
+200
+
+$ kubectl -n senaev-com exec deploy/cluster-helper -- node -e \
+  "fetch('http://obsidian-sync:8080/').then(r => console.log(r.status))"
+400
+```
+
+- No token gives 401 and the real token gives 200: other pods can no longer read or edit
+  the vault, and cluster-helper still can.
+- `/` gives 400, not 401: the `?note=`/`?file=` routes stay open for nextjs-app.
+- Checked in a browser, all work: `https://static.senaev.com/datadog-dc-by-org-id.html`
+  (static proxy with the token), `https://senaev.com/notes/all_senaev_speaks_posts`
+  (nextjs-app without the token), and `s.senaev.com` short links.
+
+The wrong-token case is covered by unit tests
+(`registerVaultToolRoutes.test.ts`, `bearerToken.test.ts`).
+
+## Resolution
+
+Done. ChatGPT can list, search, read, link-explore, create and edit vault notes through the
+`obsidian-*` tools. The test note `@senaev/mcp-test/MCP smoke test.md` was deleted by hand
+(the tools have no delete).
