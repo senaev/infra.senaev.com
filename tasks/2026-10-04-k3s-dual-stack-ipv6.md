@@ -25,7 +25,7 @@ k3s cannot change an existing IPv4-only cluster to dual-stack. `--cluster-cidr` 
 - Node IPs come from `tailscale ip -4` only. The control plane URL in
   `scripts/connect-all-workers.sh` is also IPv4 (keep it IPv4).
 - flannel: VXLAN over `tailscale0` (`--flannel-iface=tailscale0`). `tailscale0` MTU is 1280,
-  `flannel.1` MTU is 1230 (see `issues/2026-08-15-firstvds-https-hangs-no-web-traffic.md`).
+  `flannel.1` MTU is 1230 (see `tasks/2026-08-15-firstvds-https-hangs-no-web-traffic.md`).
 - `provisioning/common/bootstrap-node-networking.sh` runs on every node at every deployment
   and binds k3s to `tailscale0` (systemd `BindsTo` + udev restart rule).
 - Ingress: Traefik DaemonSet-like pods with `hostPort` 80/443 on `hetzner` and `firstvds`
@@ -199,7 +199,7 @@ PVCs that are lost (from the repo; all on `hetzner`):
 
 Confirm on the live cluster with `kubectl get pvc -A`.
 
-### 2026-10-04 — Relation to `issues/2026-06-10-debug-vpn-connection.md`
+### 2026-10-04 — Relation to `tasks/2026-06-10-debug-vpn-connection.md`
 
 That issue found that **VPN exit traffic to IPv6 destinations fails** with
 `network is unreachable`, because xray pods have no IPv6 route (IPv4-only flannel). Two
@@ -926,7 +926,7 @@ Interpretation:
   **direct path to hetzner** (`77.42.120.71:41641 mtu=1360`).
 - The pattern — short TCP flows work, long-lived/large TCP flows to foreign hosting (Tailscale
   control, Hetzner-hosted DERP) freeze — matches the home ISP's DPI behaviour already seen in
-  `issues/2026-06-10-debug-vpn-connection.md`. This is a hypothesis; it is not proved here.
+  `tasks/2026-06-10-debug-vpn-connection.md`. This is a hypothesis; it is not proved here.
 - proxmox (same home network) had the same short gap (no reply at 19:47, direct at 19:49).
 - **Not caused by the MTU or accept_ra settings** — the data path uses `mtu=1360` on all
   peers once the keys are known. The trigger is the **tailscaled restart** on a node whose

@@ -59,7 +59,7 @@ datadog:
         # Root-caused a disk-space alert on firstvds where the previous
         # `enabledNamespaces: [senaev-com]` setting silently instrumented the
         # xray-vpn Go binary, pulling ~900Mi of unused init-container images
-        # on every pod restart. See issues/2026-07-27-firstvds-disk-space-low.md.
+        # on every pod restart. See tasks/2026-07-27-firstvds-disk-space-low.md.
         targets:
           - name: apm-instrumented
             podSelector:

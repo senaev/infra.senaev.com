@@ -45,7 +45,7 @@ check_control_plane_reachability() {
 
 # Never restart tailscaled here: on a flaky uplink the node may not get the coordination
 # server back for many minutes, and the home nodes cannot be recovered without the tailnet.
-# See issues/2026-10-04-k3s-dual-stack-ipv6.md (2026-10-05 outage).
+# See tasks/2026-10-04-k3s-dual-stack-ipv6.md (2026-10-05 outage).
 CONTROL_PLANE_WAIT_SEC=300
 CONTROL_PLANE_RETRY_SEC=10
 echo "👉 $LOG_PREFIX Checking control plane reachability at [${CONTROL_PLANE_SERVER_URL}] (up to ${CONTROL_PLANE_WAIT_SEC}s)"

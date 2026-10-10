@@ -73,7 +73,7 @@ echo "✅ [bootstrap-server] Swap configured"
 
 # Uncapped journald retention can grow to a large fraction of a small root disk over
 # time (root-caused a node-disk-space-low alert on firstvds — see
-# issues/2026-07-27-firstvds-disk-space-low.md). Cap it via a drop-in rather than
+# tasks/2026-07-27-firstvds-disk-space-low.md). Cap it via a drop-in rather than
 # editing the vendor journald.conf directly.
 echo "👉 [bootstrap-server] Capping systemd-journald size"
 mkdir -p /etc/systemd/journald.conf.d

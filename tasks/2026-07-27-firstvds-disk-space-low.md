@@ -26,7 +26,7 @@ Filesystem      Size  Used Avail Use% Mounted on
 - `firstvds` is a bare k3s worker VPS, **not Terraform-managed**
   (`terraform/terraform.tfvars:18-20`), IP `157.22.197.112`, root disk `/dev/vda3` = 15G,
   RAM 962Mi. Underwent a full OS reinstall on 2026-06-10
-  (`issues/2026-06-10-debug-vpn-connection.md:425`).
+  (`tasks/2026-06-10-debug-vpn-connection.md:425`).
 - Workloads scheduled there: `xray-vpn-firstvds` (ns `senaev-com`), `traefik-firstvds`
   (ns `traefik`), `node-exporter`/`smokeping-prober` DaemonSets, `iperf3-agent-firstvds`
   (ns `telemetry`).

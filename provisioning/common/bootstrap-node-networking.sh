@@ -12,7 +12,7 @@ set -euo pipefail
 #
 #   This happened at 2026-08-09 06:16 UTC on hetzner, senaev-media and proxmox, and went
 #   unnoticed for 6 days. Full analysis:
-#   issues/2026-08-15-firstvds-https-hangs-no-web-traffic.md
+#   tasks/2026-08-15-firstvds-https-hangs-no-web-traffic.md
 #
 # WHAT THIS INSTALLS
 #   1. A systemd drop-in binding k3s to the tailscale0 .device unit, so k3s is stopped when
@@ -23,7 +23,7 @@ set -euo pipefail
 #   3. Tailscale auto-updates disabled, removing the most common trigger.
 #   4. accept_ra=2 on the uplink interface, so SLAAC IPv6 keeps working with k3s forwarding.
 #   5. Tailscale MTU 1350 (TS_DEBUG_MTU), so dual-stack pods keep an MTU >= 1280 (IPv6
-#      minimum). See issues/2026-10-04-k3s-dual-stack-ipv6.md
+#      minimum). See tasks/2026-10-04-k3s-dual-stack-ipv6.md
 #
 # SAFETY
 #   The drop-in is only installed when sys-subsystem-net-devices-tailscale0.device is
@@ -130,7 +130,7 @@ $SUDO tee "$DROPIN_PATH" >/dev/null <<EOF
 # all cross-node pod networking. Binding the two makes systemd stop k3s instead, and the
 # companion udev rule at ${UDEV_RULE_PATH} starts it again when the interface returns.
 #
-# See issues/2026-08-15-firstvds-https-hangs-no-web-traffic.md
+# See tasks/2026-08-15-firstvds-https-hangs-no-web-traffic.md
 [Unit]
 BindsTo=${DEVICE_UNIT}
 After=${DEVICE_UNIT}

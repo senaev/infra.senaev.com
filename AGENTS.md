@@ -6,16 +6,11 @@ This file provides guidance to any AI coding agent working with this repository.
 
 Personal infrastructure for `infra.senaev.com` — a distributed K3s cluster across multiple VPS providers, managed via Terraform, Helm, and shell scripts. Includes custom microservices and media server automation.
 
-## Issues and investigations
+## Tasks
 
-Active incidents, debug sessions, and task work are tracked in [`issues/`](issues/).
-See [`issues/AGENTS.md`](issues/AGENTS.md) for the full workflow, file naming convention,
-and document structure.
-
-Short version:
-- Each file covers one incident or task: `YYYY-MM-DD-<short-slug>.md`
-- The file is the source of truth — paste all command outputs and findings there as you go
-- Append under `## Findings`; never rewrite earlier sections
+Every task (feature, change, incident, investigation) has a working log in [`tasks/`](tasks/),
+one file per task: `YYYY-MM-DD-<short-slug>.md`. The file is the source of truth: append
+findings under `## Findings` as you go. See [`tasks/AGENTS.md`](tasks/AGENTS.md).
 
 ## Git discipline
 
@@ -46,7 +41,7 @@ Be extremely careful with these nodes and their networks:
   fully connected: after a restart, peers need the new disco key from the Tailscale
   coordination server, and the home ISP connection to it is unreliable. This caused a
   10-minute outage of senaev-media on 2026-10-05 — see
-  [`issues/2026-10-04-k3s-dual-stack-ipv6.md`](issues/2026-10-04-k3s-dual-stack-ipv6.md).
+  [`tasks/2026-10-04-k3s-dual-stack-ipv6.md`](tasks/2026-10-04-k3s-dual-stack-ipv6.md).
 - Prefer a change that fails safe: verify the result, keep the old state restorable, and
   give the user a rollback command before running anything risky.
 - Ask the user before any such change, even when the rest of the task is already approved.
@@ -55,7 +50,7 @@ Be extremely careful with these nodes and their networks:
 
 - Full VPN services architecture in [`AGENTS.VPN.md`](AGENTS.VPN.md), human documentation is [`XRAY_VPN.md`](XRAY_VPN.md)
 - Worker nodes connect via Tailscale; Tailscale hostnames used throughout (not public IPs)
-- The cluster is dual-stack (IPv4 primary, IPv6 secondary). k3s takes node IPs from `tailscale0` (`--flannel-iface`), so no node IP is hard-coded. Pod/Service CIDRs live in `provisioning/common/.env` and are fixed at cluster creation — changing them needs a full rebuild. See [`issues/2026-10-04-k3s-dual-stack-ipv6.md`](issues/2026-10-04-k3s-dual-stack-ipv6.md)
+- The cluster is dual-stack (IPv4 primary, IPv6 secondary). k3s takes node IPs from `tailscale0` (`--flannel-iface`), so no node IP is hard-coded. Pod/Service CIDRs live in `provisioning/common/.env` and are fixed at cluster creation — changing them needs a full rebuild. See [`tasks/2026-10-04-k3s-dual-stack-ipv6.md`](tasks/2026-10-04-k3s-dual-stack-ipv6.md)
  - All alerting and operational notifications go to Telegram
 
 ## Service Deployment

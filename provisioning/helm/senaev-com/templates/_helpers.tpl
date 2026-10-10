@@ -68,7 +68,7 @@
   UseIPv4v6: IPv4 whenever the domain has an A record, IPv6 only for IPv6-only domains.
   The cluster is dual-stack; on a node without public IPv6 an IPv6 connection fails at once
   ("network is unreachable"), so no IPv6 blackhole is needed.
-  See issues/2026-10-04-k3s-dual-stack-ipv6.md
+  See tasks/2026-10-04-k3s-dual-stack-ipv6.md
 */ -}}
 {{- $outbounds = append $outbounds (dict
   "tag" "outbound-freedom"

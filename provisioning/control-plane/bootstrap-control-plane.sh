@@ -9,7 +9,7 @@ bash "$SCRIPT_DIR/../common/check-tailscale-dual-stack.sh"
 # No node IPs are passed: with --flannel-iface, k3s reads the node IPs (and the API advertise
 # address) from tailscale0 on every start, so a changed tailnet IP needs no reinstall.
 # IPv4 is listed first in the CIDRs, so it stays the primary family: Services are IPv4-only
-# unless they opt in with ipFamilyPolicy. See issues/2026-10-04-k3s-dual-stack-ipv6.md
+# unless they opt in with ipFamilyPolicy. See tasks/2026-10-04-k3s-dual-stack-ipv6.md
 if ! command -v k3s &>/dev/null; then
   echo "👉 [bootstrap-control-plane] k3s not found, installing k3s=[${K3S_VERSION}]"
   curl -sfL https://get.k3s.io | \
@@ -33,7 +33,7 @@ else
   # with other CIDRs (the old IPv4-only cluster) cannot be fixed by this script.
   if ! grep -qF -- "--cluster-cidr=${K3S_CLUSTER_CIDR}" /etc/systemd/system/k3s.service; then
     echo "❌ [bootstrap-control-plane] Installed k3s server is not configured with cluster-cidr=[${K3S_CLUSTER_CIDR}]"
-    echo "❌ [bootstrap-control-plane] This needs a full cluster rebuild - see issues/2026-10-04-k3s-dual-stack-ipv6.md"
+    echo "❌ [bootstrap-control-plane] This needs a full cluster rebuild - see tasks/2026-10-04-k3s-dual-stack-ipv6.md"
     exit 1
   fi
 

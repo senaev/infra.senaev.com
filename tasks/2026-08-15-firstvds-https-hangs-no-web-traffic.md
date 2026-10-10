@@ -117,7 +117,7 @@ config (hence the valid cert and the 301) but every endpoint it knows is now sta
   failed/restart-looping; `journalctl -u k3s-agent` full of API-server dial errors.
 - `Fix:` `systemctl restart k3s-agent`; check `provisioning/worker/check-worker.sh` output.
 
-**(C) Disk full again (recurrence of `issues/2026-07-27-firstvds-disk-space-low.md`)**
+**(C) Disk full again (recurrence of `tasks/2026-07-27-firstvds-disk-space-low.md`)**
 The 15G root disk hit 100%, so containerd/kubelet stall and pods cannot be scheduled or
 restarted. Previous incident left ~6.5G free after cleanup, and the journald cap was
 applied by hand only — a firstvds reinstall or slow growth could have undone it.
@@ -197,7 +197,7 @@ Do not run any of these until Round 1 localises the fault.
   `./scripts/connect-all-workers.sh` (re-runs `bootstrap-worker.sh` with `--node-external-ip`).
 - **If B (agent wedged):** `systemctl restart k3s-agent`, then `provisioning/worker/check-worker.sh`.
 - **If C (disk full):** follow the July runbook in
-  `issues/2026-07-27-firstvds-disk-space-low.md` — `crictl rmi --prune`,
+  `tasks/2026-07-27-firstvds-disk-space-low.md` — `crictl rmi --prune`,
   `systemctl restart k3s-agent`, `journalctl --vacuum-size=300M`, `apt clean`.
   Note: `crictl rmi --prune` alone reclaims nothing while exited init containers still
   reference the images; the agent restart is what triggers containerd GC.
@@ -803,7 +803,7 @@ rather than relying on outbound-initiated NAT traversal.
 
 **Durability requirement.** This is the second time a hand-fixed host setting has been at
 risk of being lost (cf. the journald cap in
-`issues/2026-07-27-firstvds-disk-space-low.md`, applied by hand and absent from
+`tasks/2026-07-27-firstvds-disk-space-low.md`, applied by hand and absent from
 `provisioning/worker/bootstrap-worker.sh`). Since ispmanager may rewrite UFW rules again on
 its next update, the fix must be **codified in the repo** — add the UFW allowances to
 `provisioning/worker/bootstrap-worker.sh` so any re-bootstrap restores them, and consider a

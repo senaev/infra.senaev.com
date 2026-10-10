@@ -121,7 +121,7 @@ prowlarr:
         # ResolveSiteLink() silently rewrites any legacylink back to links.First(),
         # i.e. https://kinozal.tv/, which no longer listens on 443 at all.
         # That leaves kinozal.guru as the only working option.
-        # See issues/2026-07-30-prowlarr-kinozal-connection-refused.md
+        # See tasks/2026-07-30-prowlarr-kinozal-connection-refused.md
         - name: "baseUrl"
           value: "https://kinozal.guru/"
         - name: "baseSettings.limitsUnit"
@@ -247,7 +247,7 @@ vpnSubscription:
     - name: "💄 4. hetzner → freedom"
       link: "vless://{XRAY_USER_UUID:5}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
     # IPv6 literal of hetzner (there are no AAAA records). It changes only if the server is
-    # recreated. See issues/2026-10-04-k3s-dual-stack-ipv6.md
+    # recreated. See tasks/2026-10-04-k3s-dual-stack-ipv6.md
     - name: "🌐 5. hetzner IPv6 → freedom"
       link: "vless://{XRAY_USER_UUID:5}@[2a01:4f9:c013:5425::1]:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
 

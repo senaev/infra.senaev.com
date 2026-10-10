@@ -7,7 +7,7 @@ requestEcho:
   vps: hetzner
 
 # Disabled 2026-10-06: docker.io/minio/minio no longer serves public images. Data stays on
-# /mnt/sdb1/volumes/minio. See issues/2026-10-04-k3s-dual-stack-ipv6.md
+# /mnt/sdb1/volumes/minio. See tasks/2026-10-04-k3s-dual-stack-ipv6.md
 minio:
   enabled: false
   vps: senaev-media
