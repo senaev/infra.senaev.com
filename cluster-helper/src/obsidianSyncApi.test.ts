@@ -33,6 +33,8 @@ vi.hoisted(() => {
 
     process.env.OBSIDIAN_SYNC_URL = 'http://obsidian-sync:8080';
     process.env.INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN = 'internal-token';
+    process.env.CODE_TOOLS_URL = 'http://code-tools:8080';
+    process.env.INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS = 'code-tools-token';
 });
 
 function mockFetch(status: number, body: unknown) {

@@ -27,6 +27,8 @@ import { handleAlisaRequest } from './handleAlisaRequest';
 import { logger } from './logger';
 import { createAuthorizationServer, MCP_SCOPE } from './oauth/authorizationServer';
 import { oauthRoutes } from './oauth/registerOAuthRoutes';
+import { createToolFamilies } from './chatGptMcp/toolFamilies';
+import { callCodeTool } from './codeToolsApi';
 import { callVaultTool, getShortLink } from './obsidianSyncApi';
 import { processTelegramWebhookData } from './processTelegramWebhookData';
 import { proxyPublicStaticFile } from './publicStaticProxy';
@@ -194,10 +196,15 @@ publicServer.post(`/${ALISA_WEBHOOK_SECRET}`, ({ body }, reply) => {
 });
 
 // MCP server for the ChatGPT connector. The obsidian-* tools are forwarded to obsidian-sync,
-// which does all vault work.
+// which does all vault work, and the code-* tools to code-tools in the opencode-serve pod.
+const MCP_TOOL_FAMILIES = createToolFamilies({
+    callVaultTool,
+    callCodeTool,
+});
+
 async function replyToMcpMessage(message: unknown, reply: FastifyReply, options: McpServerOptions) {
     try {
-        const response = await handleMcpMessage(message, { callVaultTool }, options);
+        const response = await handleMcpMessage(message, MCP_TOOL_FAMILIES, options);
 
         logger.info(describeMcpExchange(message, response), '🤖 ChatGPT MCP message');
 

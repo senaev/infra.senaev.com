@@ -111,6 +111,14 @@ spec:
               value: /prowlarr-config/config.xml
             - name: OBSIDIAN_SYNC_URL
               value: "http://obsidian-sync:8080"
+            - name: CODE_TOOLS_URL
+              value: "http://code-tools:8080"
+            - name: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
+                  optional: false
             - name: TG_TOKEN_SENAEV_COM_BOT
               valueFrom:
                 secretKeyRef:

@@ -338,3 +338,22 @@ known whether kube-router lets kubelet probes through.
 
 The Vault key must exist before this deploys: if a `remoteRef` property is missing, the
 ExternalSecret fails as a whole and stops refreshing all keys of `senaev-com-kv-secrets`.
+
+The owner added the key; `opencode-serve` (a5f1335) and `Update Helm Charts` (3b660eb) passed.
+
+### 2026-10-10 — cluster-helper serves the code-* tools (step 7)
+
+- `chatGptMcp/toolFamilies.ts` (new; replaces `obsidianTools.ts`): a `ToolFamily` is a
+  prefix, the shared definitions, a backend name for errors, and a `call` function.
+  `createToolFamilies` makes `obsidian-*` and `code-*`; `listMcpTools`, `findTool`.
+- `handleMcpMessage` takes the families instead of `{ callVaultTool }`; `tools/list` shows
+  the Obsidian tools, then the code tools. A failed call says which backend is down.
+- `chatGptMcp/callToolServer.ts`: the shared `POST` with the Bearer token and the reply check;
+  `callVaultTool` (30 s timeout, as before) and the new `codeToolsApi.ts` `callCodeTool` use it.
+  The code timeout is 330 s: the longest tool (`run`/`clone`, 300 s) plus 30 s.
+- Env and Helm: `CODE_TOOLS_URL=http://code-tools:8080` and the token in `cluster-helper.yaml`.
+- Tests: the 16 tools in order, every name valid for OpenAI function calling, `code-*` goes
+  only to code-tools, and the "code tools server is not available" error.
+
+Deploy order: the new cluster-helper requires the two env vars. If its image is rolled out
+before the Helm change, the new pod fails and the old one keeps serving until Helm adds them.

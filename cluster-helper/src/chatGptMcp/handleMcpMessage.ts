@@ -3,7 +3,9 @@ import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnk
 
 import { logger } from '../logger';
 
-import { getVaultToolName, OBSIDIAN_TOOLS } from './obsidianTools';
+import {
+    findTool, listMcpTools, type ToolFamily, type ToolReply,
+} from './toolFamilies';
 
 // A minimal stateless MCP server over Streamable HTTP: every JSON-RPC request gets a plain
 // `application/json` response, so there are no sessions and no SSE streams to manage.
@@ -19,18 +21,6 @@ const LATEST_PROTOCOL_VERSION = '2025-06-18';
 const JSON_RPC_INVALID_REQUEST = -32600;
 const JSON_RPC_METHOD_NOT_FOUND = -32601;
 const JSON_RPC_INVALID_PARAMS = -32602;
-
-export type VaultToolReply = {
-    isError: boolean;
-    body: Record<string, unknown>;
-};
-
-/** Runs one obsidian-sync vault tool with the arguments exactly as ChatGPT sent them. */
-export type CallVaultTool = (vaultToolName: string, args: unknown) => Promise<VaultToolReply>;
-
-export type McpToolHandlers = {
-    callVaultTool: CallVaultTool;
-};
 
 export type McpServerOptions = {
     /** Per-tool auth policy that ChatGPT reads to show its account linking UI. */
@@ -77,30 +67,33 @@ function toolResult(text: string, isError: boolean, structuredContent?: Record<s
 }
 
 /**
- * Forwards the call unchanged and returns the obsidian-sync reply as both structured
- * content and its JSON text, as the MCP spec recommends for structured results. A failed
- * transport becomes a tool error too, so ChatGPT can tell the user instead of retrying blind.
+ * Forwards the call unchanged and returns the backend reply as both structured content and
+ * its JSON text, as the MCP spec recommends for structured results. A failed transport
+ * becomes a tool error too, so ChatGPT can tell the user instead of retrying blind.
  */
-async function callObsidianTool(vaultToolName: string, args: unknown, callVaultTool: CallVaultTool) {
-    let reply: VaultToolReply;
+async function forwardToolCall(family: ToolFamily, toolName: string, args: unknown) {
+    let reply: ToolReply;
 
     try {
-        reply = await callVaultTool(vaultToolName, args ?? {});
+        reply = await family.call(toolName, args ?? {});
     } catch (error) {
-        logger.error(error, '❌ Failed to call an obsidian-sync vault tool');
+        logger.error({
+            err: error,
+            tool: `${family.prefix}${toolName}`,
+        }, '❌ Failed to call a backend tool');
 
-        return toolResult(`The Obsidian vault is not available right now: ${stringifyUnknownError(error)}`, true);
+        return toolResult(`${family.backendName} is not available right now: ${stringifyUnknownError(error)}`, true);
     }
 
     return toolResult(JSON.stringify(reply.body), reply.isError, reply.body);
 }
 
-function callTool(params: unknown, { callVaultTool }: McpToolHandlers) {
-    const vaultToolName = isObject(params) ? getVaultToolName(params.name) : null;
+function callTool(params: unknown, families: readonly ToolFamily[]) {
+    const found = isObject(params) ? findTool(families, params.name) : null;
 
-    return vaultToolName === null || !isObject(params)
+    return found === null || !isObject(params)
         ? null
-        : callObsidianTool(vaultToolName, params.arguments, callVaultTool);
+        : forwardToolCall(found.family, found.toolName, params.arguments);
 }
 
 /** What to log about one message: never the arguments, which hold the diary text. */
@@ -126,7 +119,7 @@ export function describeMcpExchange(message: unknown, response: JsonRpcResponse 
  */
 export async function handleMcpMessage(
     message: unknown,
-    handlers: McpToolHandlers,
+    families: readonly ToolFamily[],
     { securitySchemes }: McpServerOptions = {}
 ): Promise<JsonRpcResponse | null> {
     if (!isObject(message) || message.jsonrpc !== '2.0' || typeof message.method !== 'string') {
@@ -166,7 +159,7 @@ export async function handleMcpMessage(
         return success(id, {});
     case 'tools/list':
         return success(id, {
-            tools: OBSIDIAN_TOOLS.map((tool) => {
+            tools: listMcpTools(families).map((tool) => {
                 return {
                     ...tool,
                     ...securitySchemes && { securitySchemes },
@@ -174,10 +167,10 @@ export async function handleMcpMessage(
             }),
         });
     case 'tools/call': {
-        const result = await callTool(params, handlers);
+        const result = await callTool(params, families);
 
         return result === null
-            ? failure(id, JSON_RPC_INVALID_PARAMS, `Unknown tool, the tools are: ${OBSIDIAN_TOOLS.map((tool) => tool.name).join(', ')}`)
+            ? failure(id, JSON_RPC_INVALID_PARAMS, `Unknown tool, the tools are: ${listMcpTools(families).map((tool) => tool.name).join(', ')}`)
             : success(id, result);
     }
 

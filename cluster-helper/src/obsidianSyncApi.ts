@@ -1,9 +1,9 @@
-import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { createBearerAuthorizationHeader } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 import { readStatusResponse } from 'senaev-utils/src/utils/http/readStatusResponse/readStatusResponse';
 
-import type { VaultToolReply } from './chatGptMcp/handleMcpMessage';
+import { callToolServer } from './chatGptMcp/callToolServer';
+import type { ToolReply } from './chatGptMcp/toolFamilies';
 import { INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN, OBSIDIAN_SYNC_URL } from './env';
 
 /** A full vault search reads every note, so allow it much more than a normal request. */
@@ -26,28 +26,15 @@ export function fetchObsidianSync(pathOrUrl: string | URL, init: RequestInit = {
     });
 }
 
-/**
- * Runs a vault tool in obsidian-sync with `POST /vault/<name>`. A reply with
- * `status: "error"` is a normal tool error for ChatGPT; only a transport failure or a
- * reply that is not JSON throws.
- */
-export async function callVaultTool(vaultToolName: string, args: unknown): Promise<VaultToolReply> {
-    const response = await fetchObsidianSync(`/vault/${encodeURIComponent(vaultToolName)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(args),
-        signal: AbortSignal.timeout(VAULT_TOOL_TIMEOUT_MS),
+/** Runs a vault tool in obsidian-sync with `POST /vault/<name>`. */
+export function callVaultTool(vaultToolName: string, args: unknown): Promise<ToolReply> {
+    return callToolServer({
+        url: `${OBSIDIAN_SYNC_URL}/vault/${encodeURIComponent(vaultToolName)}`,
+        token: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN,
+        args,
+        timeoutMs: VAULT_TOOL_TIMEOUT_MS,
+        serverName: 'obsidian-sync',
     });
-    const body: unknown = await response.json();
-
-    if (!isObject(body) || Array.isArray(body)) {
-        throw new Error(`obsidian-sync answered HTTP ${response.status} with a body that is not a JSON object`);
-    }
-
-    return {
-        isError: !response.ok || body.status !== 'ok',
-        body,
-    };
 }
 
 export type ObsidianTaskInput = {

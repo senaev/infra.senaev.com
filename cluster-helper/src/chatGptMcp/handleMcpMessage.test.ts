@@ -2,8 +2,10 @@ import {
     describe, expect, it, vi,
 } from 'vitest';
 
-import { handleMcpMessage, type McpToolHandlers } from './handleMcpMessage';
-import { OBSIDIAN_TOOLS } from './obsidianTools';
+import { handleMcpMessage } from './handleMcpMessage';
+import {
+    type CallTool, createToolFamilies, listMcpTools, type ToolFamily,
+} from './toolFamilies';
 
 function request(method: string, params?: unknown) {
     return {
@@ -14,12 +16,17 @@ function request(method: string, params?: unknown) {
     };
 }
 
-function handlers(overrides: Partial<McpToolHandlers> = {}): McpToolHandlers {
-    return {
+function handlers(overrides: { callVaultTool?: CallTool; callCodeTool?: CallTool } = {}): ToolFamily[] {
+    return createToolFamilies({
         callVaultTool: vi.fn(),
+        callCodeTool: vi.fn(),
         ...overrides,
-    };
+    });
 }
+
+const ALL_TOOLS = listMcpTools(handlers());
+const OBSIDIAN_TOOLS = ALL_TOOLS.filter((tool) => tool.name.startsWith('obsidian-'));
+const CODE_TOOLS = ALL_TOOLS.filter((tool) => tool.name.startsWith('code-'));
 
 describe('handleMcpMessage', () => {
     it('negotiates the requested protocol version on initialize', async () => {
@@ -49,7 +56,7 @@ describe('handleMcpMessage', () => {
         }, handlers())).toBeNull();
     });
 
-    it('lists every Obsidian tool, each with the auth policy and the AGENTS.md fallback', async () => {
+    it('lists the Obsidian tools, then the code tools, each with the auth policy', async () => {
         const securitySchemes = [{ type: 'oauth2' }];
         const response = await handleMcpMessage(request('tools/list'), handlers(), { securitySchemes });
         const { tools } = (response as {
@@ -65,13 +72,24 @@ describe('handleMcpMessage', () => {
             'obsidian-patch',
             'obsidian-move',
             'obsidian-diary_append',
+            'code-projects',
+            'code-clone',
+            'code-list',
+            'code-search',
+            'code-read',
+            'code-write',
+            'code-patch',
+            'code-run',
         ]);
         expect(tools.every((tool) => tool.securitySchemes === securitySchemes)).toBe(true);
-        expect(tools.every((tool) => tool.description.includes('read AGENTS.md with obsidian-read'))).toBe(true);
+    });
+
+    it('points every Obsidian tool to the vault AGENTS.md', () => {
+        expect(OBSIDIAN_TOOLS.every((tool) => tool.description.includes('read AGENTS.md with obsidian-read'))).toBe(true);
     });
 
     it('uses only tool names that OpenAI function calling accepts', () => {
-        for (const tool of OBSIDIAN_TOOLS) {
+        for (const tool of ALL_TOOLS) {
             expect(tool.name).toMatch(/^[a-zA-Z0-9_-]{1,64}$/);
         }
     });
@@ -195,5 +213,44 @@ describe('Obsidian tool proxy', () => {
 
         expect(callVaultTool).not.toHaveBeenCalled();
         expect(response).toMatchObject({ error: { code: -32602 } });
+    });
+});
+
+describe('code tool proxy', () => {
+    it('forwards each code- tool to code-tools, never to obsidian-sync', async () => {
+        const callVaultTool = vi.fn();
+        const callCodeTool = vi.fn().mockResolvedValue({
+            isError: false,
+            body: { status: 'ok' },
+        });
+
+        for (const tool of CODE_TOOLS) {
+            await handleMcpMessage(request('tools/call', {
+                name: tool.name,
+                arguments: { project: 'demo' },
+            }), handlers({
+                callVaultTool,
+                callCodeTool,
+            }));
+
+            expect(callCodeTool).toHaveBeenLastCalledWith(tool.name.slice('code-'.length), { project: 'demo' });
+        }
+
+        expect(callCodeTool).toHaveBeenCalledTimes(CODE_TOOLS.length);
+        expect(callVaultTool).not.toHaveBeenCalled();
+    });
+
+    it('names the code tools server when it cannot be reached', async () => {
+        const response = await handleMcpMessage(request('tools/call', {
+            name: 'code-run',
+            arguments: {},
+        }), handlers({ callCodeTool: vi.fn().mockRejectedValue(new Error('The operation was aborted due to timeout')) }));
+
+        expect(response).toMatchObject({
+            result: {
+                isError: true,
+                content: [{ text: 'The code tools server is not available right now: The operation was aborted due to timeout' }],
+            },
+        });
     });
 });
