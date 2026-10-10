@@ -1,5 +1,5 @@
 import {
-    mkdtemp, readdir, readFile, rm, writeFile,
+    mkdtemp, readdir, readFile, rm, stat, writeFile,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -34,6 +34,15 @@ describe('replaceFileAtomically', () => {
 
         expect(await readFile(path, 'utf8')).toBe('new');
         expect(await readdir(folder)).toEqual(['note.md']);
+    });
+
+    test('keeps the permission bits, so a script stays executable', async () => {
+        const path = join(folder, 'run.sh');
+
+        await writeFile(path, 'old', { mode: 0o755 });
+        await replaceFileAtomically(path, 'new');
+
+        expect((await stat(path)).mode & 0o777).toBe(0o755);
     });
 });
 

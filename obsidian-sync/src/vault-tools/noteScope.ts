@@ -1,7 +1,7 @@
 import { posix } from 'node:path';
 
-import picomatch from 'picomatch';
 import { MAX_GLOB_LENGTH } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
+import { compileFileGlob } from 'senaev-utils/src/toolServer/compileFileGlob';
 import { optionalString, type ToolArguments } from 'senaev-utils/src/toolServer/toolArguments';
 import { invalidArguments } from 'senaev-utils/src/toolServer/ToolError';
 
@@ -51,16 +51,7 @@ export function readNoteScope(args: ToolArguments): NoteScope {
 
     return {
         folder: normalizeVaultPath(optionalString(args, 'folder') ?? '', 'folder'),
-        // Extglobs are off: they are the source of picomatch's known ReDoS cases, and a
-        // file name filter does not need them. A pattern without `/` matches the file name;
-        // `basename` is set only then, because it stops `a/**/*.md` from matching at all.
-        matchesGlob: glob === undefined
-            ? null
-            : picomatch(glob, {
-                basename: !glob.includes('/'),
-                nocase: true,
-                noextglob: true,
-            }),
+        matchesGlob: glob === undefined ? null : compileFileGlob(glob),
         ...readDiaryRange(args),
     };
 }

@@ -1,11 +1,11 @@
 import { readFile } from 'node:fs/promises';
 
+import { hashContent } from 'senaev-utils/src/toolServer/contentHash';
 import {
     afterEach, describe, expect, it,
 } from 'vitest';
 
 import { createTestVault, type TestVault } from '../createTestVault';
-import { hashContent } from '../markdown/parseMarkdown';
 
 import { readTool } from './readTool';
 

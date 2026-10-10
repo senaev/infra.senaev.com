@@ -262,3 +262,32 @@ because code edits often come in a row. Project names match `^[A-Za-z0-9_][A-Za-
 
 Open point: cluster-helper calls the backend with a 30 s timeout; `run` and `clone` need
 more (step 7). The ChatGPT client timeout for one tool call is not known yet.
+
+### 2026-10-10 — code-tools server and the 8 tools (step 4)
+
+More shared code moved to `senaev-utils/src/toolServer/` first, and obsidian-sync uses it:
+`textEdits.ts` (`replaceExactlyOnce`, `createLineLocator`), `contentHash.ts` (`hashContent`,
+`readExpectedHash`, `assertExpectedHash`), `compileFileGlob.ts` (picomatch moved to
+senaev-utils). New `ToolError` code `command_failed` (422). `replaceFileAtomically` now keeps
+the permission bits of the file — before, a rewrite dropped the executable bit of a script.
+
+`code-tools/src/`:
+- `process/runProcess.ts` — spawn without a shell, own process group (a timeout kills
+  everything the command started), stdin closed, output capped: keep the end (`run`, errors
+  are there) or the start (ripgrep JSON; the process is stopped when the buffer is full).
+- `tools/codeToolsConfig.ts` — the command environment: `GIT_TERMINAL_PROMPT=0`, no pager,
+  and without the internal token.
+- `tools/projectAccess.ts` — project name check, project-relative paths, `.git` is off limits
+  for the file tools, no symlinks, text files only (NUL byte = binary, as git does), 5 MB max.
+- `git/runGit.ts` — `listProjectFiles`: `git ls-files --cached --others --exclude-standard`
+  without deleted files, so `.gitignore` applies.
+- Tools: `projects`, `clone` (a URL that starts with "-" is refused: git option injection),
+  `list`, `search` (`rg --json --hidden --glob !.git`, snippets in ripgrep's `12:` / `13-`
+  format), `read` (line ranges, whole lines, `nextStartLine`), `write`, `patch`, `run`
+  (`bash -c`, not `-lc`: Debian's `/etc/profile` would replace the container's PATH).
+- `server/createCodeToolsServer.ts` — `POST /code/:tool` through `runToolCall`; body limit 4 MB.
+
+36 tests on real git repositories in a temp folder. The test repositories ignore the global
+git config (`GIT_CONFIG_GLOBAL=/dev/null`): the machine's managed hooks made each test take
+0.7 s (14 s → 2.3 s in total). `check.yml` installs ripgrep when the runner does not have it.
+`npm run simple-checks` passes.

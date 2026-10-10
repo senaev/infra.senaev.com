@@ -1,6 +1,7 @@
 import type { Nodes } from 'mdast';
+import { createLineLocator } from 'senaev-utils/src/toolServer/textEdits';
 
-import { createLineLocator, parseMarkdown } from './parseMarkdown';
+import { parseMarkdown } from './parseMarkdown';
 
 export type LinkSubpath = {
     type: 'heading' | 'block';

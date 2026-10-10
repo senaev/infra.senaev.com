@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 
 import { READ_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
+import { hashContent } from 'senaev-utils/src/toolServer/contentHash';
 import {
     optionalInteger, optionalString, optionalStringArray,
 } from 'senaev-utils/src/toolServer/toolArguments';
@@ -9,7 +10,6 @@ import { invalidArguments, ToolError } from 'senaev-utils/src/toolServer/ToolErr
 import { normalizeVaultPath, resolveExistingNote } from '../access/vaultAccess';
 import { walkVault } from '../access/walkVault';
 import { splitNote } from '../markdown/frontmatter';
-import { hashContent } from '../markdown/parseMarkdown';
 import { findSection, formatHeadingPath } from '../markdown/sections';
 import {
     getDiaryDate, isDiaryRangeRequested, isInDiaryRange, readDiaryRange,

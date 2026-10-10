@@ -5,7 +5,8 @@ export type ToolErrorCode =
     | 'not_found'
     | 'already_exists'
     | 'conflict'
-    | 'ambiguous';
+    | 'ambiguous'
+    | 'command_failed';
 
 const HTTP_STATUS_BY_CODE: Record<ToolErrorCode, number> = {
     invalid_arguments: 400,
@@ -15,6 +16,7 @@ const HTTP_STATUS_BY_CODE: Record<ToolErrorCode, number> = {
     already_exists: 409,
     conflict: 409,
     ambiguous: 409,
+    command_failed: 422,
 };
 
 /** An expected failure of an MCP tool, with a message that is safe and useful to show to ChatGPT. */

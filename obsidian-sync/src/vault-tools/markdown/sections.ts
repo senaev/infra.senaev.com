@@ -1,6 +1,7 @@
 import { ToolError } from 'senaev-utils/src/toolServer/ToolError';
+import { createLineLocator } from 'senaev-utils/src/toolServer/textEdits';
 
-import { createLineLocator, parseMarkdown } from './parseMarkdown';
+import { parseMarkdown } from './parseMarkdown';
 
 export type Section = {
     /** Every heading from the outermost ancestor down to this one. */
