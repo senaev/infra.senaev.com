@@ -55,9 +55,10 @@ The improvements are done one by one, and each batch is deployed before the next
    of failing, and the result reports the `limit` that was used. Wrong types and unknown
    fields stay errors.
 
-## Later batches (not decided yet)
+## Later batches
 
-- Item 5: `obsidian-read` returns exact Markdown with frontmatter.
+- Item 5 (`obsidian-read` returns exact Markdown with frontmatter): skipped by decision on
+  2026-10-10. `content` stays the body; frontmatter stays parsed.
 
 ## Findings
 
@@ -259,3 +260,16 @@ The earlier records are unchanged.
   an unchanged comment as context; no hash fields in the results; a no-op patch; create diff;
   diary diff adds only the new record; search `limit: 100` gives 50 with `nextOffset: 50`,
   while `0` and `"100"` still fail. `npm run simple-checks`: all pass.
+
+### 2026-10-10 — Batch 2 verified
+
+The owner confirmed in ChatGPT that batch 2 works: writes return a diff, and diary records
+work as before (the diff is in the tool result; the `AGENTS.md` rule keeps the reply short).
+
+## Resolution
+
+Done. The vault `AGENTS.md` is the single source of vault rules: it is sent as MCP
+`instructions` on every call, and every tool description falls back to reading it. The diary
+command is the vault tool `obsidian-diary_append` in obsidian-sync, and cluster-helper only
+forwards it. Writes return a unified diff instead of hashes, and too-large paging limits are
+reduced to the maximum. Item 5 was skipped.
