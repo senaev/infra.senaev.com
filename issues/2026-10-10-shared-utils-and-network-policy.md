@@ -66,3 +66,77 @@ vault-tools no longer imports from feature folders.
 ## Findings
 
 *(append results below)*
+
+### 2026-10-10 — Implementation
+
+Commits (`npm run simple-checks` passes after each):
+
+```
+ddcb64b ♻️ Move sha256, bearer parsing, atomic file writes and the directory walk to senaev-utils
+339e274 ♻️ Read obsidian-sync status replies with one senaev-utils helper
+747c617 ♻️ Share the Obsidian vault tool definitions and limits through senaev-utils
+1779bd9 🚚 Move the frontmatter parsers to obsidian-sync/src/markdown
+```
+
+Deviations from the plan, and details:
+
+- `hashRenderedNote.ts` keeps its own `createHash`: it hashes several fields incrementally,
+  which `sha256(string)` does not cover.
+- `parseBearerToken` accepts any case of `Bearer` and no spaces in the token, as the OAuth
+  check did before. The internal-token check now uses it too, so it also accepts `bearer`.
+- `createFileExclusively` in senaev-utils throws the plain `EEXIST` error (new
+  `isAlreadyExistsError`); `createTool` turns it into `already_exists`. The temporary files
+  are now `.<name>.<random>.tmp` everywhere (before: `.vault-tools.tmp` and `.tg-sync.tmp`);
+  nothing matched those suffixes.
+- `prependTaskLine` now writes atomically (it used a plain `writeFile`).
+- The helper is `readStatusResponse(response)` instead of `fetchJsonStatus`: it reads a reply
+  that is already fetched, so `fetchObsidianSync` keeps adding the token. An ok reply without
+  a JSON object body (`201 Created` of `POST /tasks`) counts as success. The short link error
+  text that the owner sees in Telegram is still the plain `message` of obsidian-sync.
+- Tool definitions: `senaev-utils/src/obsidianVaultTools/vaultToolDefinitions.ts` (schemas,
+  descriptions, `PATCH_OPERATION_FIELDS`, `isVaultToolName`, `getVaultToolArgumentKeys`) and
+  `vaultToolLimits.ts`. obsidian-sync accepts exactly the schema keys
+  (`readVaultToolArguments`), and `VAULT_TOOLS` is typed by `VaultToolName`, so a tool
+  without a definition fails to compile. Internal-only limits (snippet size, reported
+  errors, links per note) stay in obsidian-sync.
+- `tools/list` compared before and after (JSON diff of `OBSIDIAN_TOOLS`): the only changes are
+  the new `maxLength: 200` on `glob` (list, search) and `maximum` on `offset`
+  (1,000,000 / 100,000 / 1,000,000), which the server already enforced. No connector refresh
+  is needed; ChatGPT gets them on its next `tools/list`.
+- NetworkPolicy added as planned. `helm template` renders it.
+
+### 2026-10-10 — Deploy of 84db2a5
+
+```
+obsidian-sync: completed success
+senaev-utils: completed success
+vpn-subscription: completed success
+cluster-helper: completed success
+Update Helm Charts: completed success
+Check: completed success
+media-server-helper: in_progress
+```
+
+media-server-helper is rebuilt only because senaev-utils changed; its node is down, so its
+deploy waits. It does not use any of the changed code paths. Production checks pending.
+
+### 2026-10-10 — NetworkPolicy verified
+
+```
+$ kubectl -n senaev-com get networkpolicy obsidian-sync
+NAME            POD-SELECTOR        AGE
+obsidian-sync   app=obsidian-sync   3m59s
+
+$ kubectl -n senaev-com run np-test --rm -i --restart=Never --image=curlimages/curl -- \
+    curl -sS -m 3 http://obsidian-sync:8080/ ; echo "exit=$?"
+curl: (7) Failed to connect to obsidian-sync:8080 after 72 ms: Could not connect to server
+exit=7
+
+$ kubectl -n senaev-com exec deploy/cluster-helper -c cluster-helper -- \
+    node -e 'fetch("http://obsidian-sync:8080/milestones").then(r=>console.log(r.status))'
+401
+```
+
+A pod without an allowed label is refused at once (exit 7, not the expected timeout 28):
+kube-router rejects the packet instead of dropping it, which blocks the connection just the
+same. cluster-helper still reaches obsidian-sync (401 because the test sends no token).

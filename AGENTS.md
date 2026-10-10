@@ -64,6 +64,20 @@ Each namespace is a Helm chart under `provisioning/helm/<chart>/`. All charts sh
 
 CI deploys via `.github/workflows/update-helm-charts.yml` on push to `main`. It runs a matrix over all charts; each job skips if its chart directory didn't change, otherwise SCPs `provisioning/` to the server, SSHes in to run `upgrade-namespace.sh <chart> <namespace>`, and sends a Telegram notification.
 
+### Smoke test after a deploy
+
+These public URLs go through cluster-helper or nextjs-app to obsidian-sync, so they show
+that the whole path works. Open each one and check the result:
+
+| URL | Path | Expected result |
+|---|---|---|
+| https://s.senaev.com/1bxsl9 | short link: cluster-helper → obsidian-sync | redirect to https://senaev.com/cv/5min |
+| https://static.senaev.com/datadog-dc-by-org-id.html | static file: cluster-helper → obsidian-sync | the HTML page |
+| https://senaev.com/notes/my_blog_post_senaev_speaks_12 | public note: nextjs-app → obsidian-sync | the rendered note |
+
+For the ChatGPT MCP connector, ask ChatGPT to read a note, search the vault and add a diary
+record, then check the `🤖 ChatGPT MCP message` logs of cluster-helper.
+
 ## Shared Toolchain
 
 The root `package.json` is not a workspace root. It is a private manifest that owns the
