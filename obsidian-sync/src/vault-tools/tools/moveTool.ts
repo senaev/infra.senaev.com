@@ -4,20 +4,21 @@ import { join } from 'node:path';
 import { isAlreadyExistsError } from 'senaev-utils/src/utils/Error/isAlreadyExistsError/isAlreadyExistsError';
 import { isNotFoundError } from 'senaev-utils/src/utils/Error/isNotFoundError/isNotFoundError';
 import { createFileExclusively, replaceFileAtomically } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
+import { createFileDiff, type FileDiff } from 'senaev-utils/src/toolServer/createFileDiff';
+import { requiredNonEmptyString } from 'senaev-utils/src/toolServer/toolArguments';
+import { invalidArguments, ToolError } from 'senaev-utils/src/toolServer/ToolError';
 
 import { readVaultNotes, type VaultNotes } from '../access/readVaultNotes';
 import {
     assertNotePath, normalizeVaultPath, prepareNewNote, resolveExistingNote,
 } from '../access/vaultAccess';
-import { createNoteDiff, type NoteDiff } from '../markdown/createNoteDiff';
 import { extractLinks } from '../markdown/extractLinks';
 import { createLinkIndex, resolveLink } from '../markdown/resolveLink';
 import {
     applyTextEdits, pointsRelativelyAt, rewriteLinkTarget, type TextEdit,
 } from '../markdown/rewriteLinkTarget';
-import { readVaultToolArguments, requiredNonEmptyString } from '../toolArguments';
+import { readVaultToolArguments } from '../toolArguments';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
-import { invalidArguments, VaultToolError } from '../VaultToolError';
 
 import { withNoteExtension } from './createTool';
 import { createBacklinkPrefilter } from './linksTool';
@@ -146,11 +147,11 @@ async function assertNothingAt(config: VaultToolsConfig, path: string): Promise<
         throw error;
     }
 
-    throw new VaultToolError('already_exists', `"${path}" already exists; choose another "newPath"`);
+    throw new ToolError('already_exists', `"${path}" already exists; choose another "newPath"`);
 }
 
 function collectDiffs(updates: readonly NoteUpdate[]) {
-    const diffs: ({ path: string } & NoteDiff)[] = [];
+    const diffs: ({ path: string } & FileDiff)[] = [];
     const notesWithoutDiff: string[] = [];
     let remainingChars = MAX_DIFF_CHARS_PER_RESPONSE;
 
@@ -159,7 +160,7 @@ function collectDiffs(updates: readonly NoteUpdate[]) {
             continue;
         }
 
-        const diff = createNoteDiff(update.target, update.before, update.after);
+        const diff = createFileDiff(update.target, update.before, update.after);
 
         if (diff.diff.length <= remainingChars) {
             diffs.push({
@@ -208,7 +209,7 @@ export async function moveTool(config: VaultToolsConfig, input: unknown) {
 
     await createFileExclusively(newAbsolutePath, movedNote.after).catch((error: unknown) => {
         if (isAlreadyExistsError(error)) {
-            throw new VaultToolError('already_exists', `"${newPath}" already exists; choose another "newPath"`);
+            throw new ToolError('already_exists', `"${newPath}" already exists; choose another "newPath"`);
         }
 
         throw error;

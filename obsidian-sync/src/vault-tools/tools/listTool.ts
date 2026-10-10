@@ -2,6 +2,7 @@ import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { LIST_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
+import { optionalBoolean, optionalCappedInteger } from 'senaev-utils/src/toolServer/toolArguments';
 
 import { isNotePath } from '../access/vaultAccess';
 import {
@@ -13,9 +14,7 @@ import {
     matchesNoteScope,
     readNoteScope,
 } from '../noteScope';
-import {
-    optionalBoolean, optionalCappedInteger, readVaultToolArguments,
-} from '../toolArguments';
+import { readVaultToolArguments } from '../toolArguments';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
 
 async function describeEntry(config: VaultToolsConfig, entry: FolderEntry) {

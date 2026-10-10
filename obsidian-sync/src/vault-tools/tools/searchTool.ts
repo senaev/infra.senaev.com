@@ -3,6 +3,14 @@ import { join, posix } from 'node:path';
 
 import { SEARCH_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
+import {
+    optionalBoolean,
+    optionalCappedInteger,
+    optionalEnum,
+    optionalInteger,
+    optionalStringArray,
+} from 'senaev-utils/src/toolServer/toolArguments';
+import { invalidArguments } from 'senaev-utils/src/toolServer/ToolError';
 
 import { isNotePath } from '../access/vaultAccess';
 import { type PathError, walkVault } from '../access/walkVault';
@@ -12,16 +20,8 @@ import {
     matchesNoteScope,
     readNoteScope,
 } from '../noteScope';
-import {
-    optionalBoolean,
-    optionalCappedInteger,
-    optionalEnum,
-    optionalInteger,
-    optionalStringArray,
-    readVaultToolArguments,
-} from '../toolArguments';
+import { readVaultToolArguments } from '../toolArguments';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
-import { invalidArguments } from '../VaultToolError';
 
 const SNIPPET_MAX_CHARS = 300;
 const SNIPPET_CHARS_BEFORE_MATCH = 100;

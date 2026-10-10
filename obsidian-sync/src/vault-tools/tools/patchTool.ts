@@ -4,22 +4,22 @@ import { PATCH_OPERATION_FIELDS, type PatchOperationType } from 'senaev-utils/sr
 import { PATCH_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { replaceFileAtomically } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
-
-import { normalizeVaultPath, resolveExistingNote } from '../access/vaultAccess';
-import { createNoteDiff } from '../markdown/createNoteDiff';
-import { setFrontmatterProperties } from '../markdown/frontmatter';
-import { createLineLocator, hashContent } from '../markdown/parseMarkdown';
-import { findSection } from '../markdown/sections';
+import { createFileDiff } from 'senaev-utils/src/toolServer/createFileDiff';
 import {
     optionalString,
     readToolArguments,
-    readVaultToolArguments,
     requiredNonEmptyString,
     requiredString,
     type ToolArguments,
-} from '../toolArguments';
+} from 'senaev-utils/src/toolServer/toolArguments';
+import { invalidArguments, ToolError } from 'senaev-utils/src/toolServer/ToolError';
+
+import { normalizeVaultPath, resolveExistingNote } from '../access/vaultAccess';
+import { setFrontmatterProperties } from '../markdown/frontmatter';
+import { createLineLocator, hashContent } from '../markdown/parseMarkdown';
+import { findSection } from '../markdown/sections';
+import { readVaultToolArguments } from '../toolArguments';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
-import { invalidArguments, VaultToolError } from '../VaultToolError';
 
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 
@@ -70,13 +70,13 @@ function replace(args: ToolArguments): Operation {
         const occurrences = findOccurrences(content, find);
 
         if (occurrences.length === 0) {
-            throw new VaultToolError('not_found', 'The "find" text does not occur in the note; read the note again and copy the text exactly');
+            throw new ToolError('not_found', 'The "find" text does not occur in the note; read the note again and copy the text exactly');
         }
 
         if (occurrences.length > 1) {
             const lineOf = createLineLocator(content);
 
-            throw new VaultToolError('ambiguous', `The "find" text occurs ${occurrences.length} times; include more surrounding text so it occurs once`, {
+            throw new ToolError('ambiguous', `The "find" text occurs ${occurrences.length} times; include more surrounding text so it occurs once`, {
                 lines: occurrences.map(lineOf),
             });
         }
@@ -164,7 +164,7 @@ export async function patchTool(config: VaultToolsConfig, input: unknown) {
     const currentHash = hashContent(original);
 
     if (currentHash !== expectedHash) {
-        throw new VaultToolError('conflict', 'The note changed since it was read; read it again and repeat the edit on the new version', {
+        throw new ToolError('conflict', 'The note changed since it was read; read it again and repeat the edit on the new version', {
             currentHash,
         });
     }
@@ -179,6 +179,6 @@ export async function patchTool(config: VaultToolsConfig, input: unknown) {
     return {
         path,
         changed: updated !== original,
-        ...createNoteDiff(path, original, updated),
+        ...createFileDiff(path, original, updated),
     };
 }

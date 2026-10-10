@@ -1,6 +1,10 @@
 import { readFile } from 'node:fs/promises';
 
 import { READ_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
+import {
+    optionalInteger, optionalString, optionalStringArray,
+} from 'senaev-utils/src/toolServer/toolArguments';
+import { invalidArguments, ToolError } from 'senaev-utils/src/toolServer/ToolError';
 
 import { normalizeVaultPath, resolveExistingNote } from '../access/vaultAccess';
 import { walkVault } from '../access/walkVault';
@@ -10,11 +14,8 @@ import { findSection, formatHeadingPath } from '../markdown/sections';
 import {
     getDiaryDate, isDiaryRangeRequested, isInDiaryRange, readDiaryRange,
 } from '../noteScope';
-import {
-    optionalInteger, optionalString, optionalStringArray, readVaultToolArguments,
-} from '../toolArguments';
+import { readVaultToolArguments } from '../toolArguments';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
-import { invalidArguments, VaultToolError } from '../VaultToolError';
 
 type ReadRequest = {
     path: string;
@@ -129,7 +130,7 @@ export async function readTool(config: VaultToolsConfig, input: unknown) {
             notes.push(note);
             usedChars += note.content.length;
         } catch (error) {
-            if (!(error instanceof VaultToolError) || paths.length === 1) {
+            if (!(error instanceof ToolError) || paths.length === 1) {
                 throw error;
             }
 

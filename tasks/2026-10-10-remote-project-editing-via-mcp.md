@@ -218,3 +218,22 @@ lockfile (fastify, tsx, `senaev-utils` by path), `tsconfig.json` extends the bas
 `createCodeToolsServer` has `GET /health` (no token, for the liveness probe) and requires the
 internal token on every other route; 3 tests. Registered in the root `typecheck` script,
 `vitest.config.mts` and `check.yml`. `npm run simple-checks` passes.
+
+### 2026-10-10 — Shared tool-server code moved to senaev-utils (step 2)
+
+New folder `senaev-utils/src/toolServer/`, used by obsidian-sync now and by code-tools next:
+- `ToolError.ts` — was `VaultToolError` in obsidian-sync; same codes and HTTP statuses.
+- `toolArguments.ts` — the generic argument readers. `readVaultToolArguments` and
+  `optionalIsoDay` stay in `obsidian-sync/src/vault-tools/toolArguments.ts`.
+- `runToolCall.ts` — the body of the `POST /<prefix>/:tool` route: 200 with the result,
+  a `ToolError` with its own status, anything else a hidden 500. Logs only name and time.
+  The log messages changed from "Vault tool call" to "Tool call".
+- `createFileDiff.ts` — was `createNoteDiff`. senaev-utils now depends on `diff` 9.0.0;
+  obsidian-sync no longer does.
+- `rootRelativePath.ts` — `normalizeRootRelativePath` (the root name goes into the error,
+  so the vault still says "outside the vault"), `assertNoSymlinkOnPath`, `prepareNewFilePath`.
+  `vaultAccess.ts` keeps only the vault rules (exclusions, `.md` only) on top of them.
+
+The internal-token hook stays in each package: it depends on the Fastify types, and
+senaev-utils has no Fastify. No behaviour change in the vault tools; new tests for
+`runToolCall` and `rootRelativePath`. `npm run simple-checks` passes (all tests green).

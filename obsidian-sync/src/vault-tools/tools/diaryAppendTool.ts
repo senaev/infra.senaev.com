@@ -1,19 +1,20 @@
 import { appendFile, readFile } from 'node:fs/promises';
 
 import { isNotFoundError } from 'senaev-utils/src/utils/Error/isNotFoundError/isNotFoundError';
+import { createFileDiff } from 'senaev-utils/src/toolServer/createFileDiff';
+import { requiredNonEmptyString } from 'senaev-utils/src/toolServer/toolArguments';
+import { invalidArguments, ToolError } from 'senaev-utils/src/toolServer/ToolError';
 
 import { formatDailyNoteDraftRecord } from '../../daily-note-draft/formatDailyNoteDraftRecord';
 import { prepareNewNote, resolveExistingNote } from '../access/vaultAccess';
-import { createNoteDiff } from '../markdown/createNoteDiff';
-import { readVaultToolArguments, requiredNonEmptyString } from '../toolArguments';
+import { readVaultToolArguments } from '../toolArguments';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
-import { invalidArguments, VaultToolError } from '../VaultToolError';
 
 async function resolveDraft(config: VaultToolsConfig): Promise<string> {
     try {
         return await resolveExistingNote(config, config.diaryDraftPath);
     } catch (error) {
-        if (error instanceof VaultToolError && error.code === 'not_found') {
+        if (error instanceof ToolError && error.code === 'not_found') {
             return prepareNewNote(config, config.diaryDraftPath);
         }
 
@@ -47,6 +48,6 @@ export async function diaryAppendTool(config: VaultToolsConfig, input: unknown) 
 
     return {
         path: config.diaryDraftPath,
-        ...createNoteDiff(config.diaryDraftPath, before, `${before}${record}`),
+        ...createFileDiff(config.diaryDraftPath, before, `${before}${record}`),
     };
 }

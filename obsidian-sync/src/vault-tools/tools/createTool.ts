@@ -2,15 +2,16 @@ import { posix } from 'node:path';
 
 import { isAlreadyExistsError } from 'senaev-utils/src/utils/Error/isAlreadyExistsError/isAlreadyExistsError';
 import { createFileExclusively } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
+import { createFileDiff } from 'senaev-utils/src/toolServer/createFileDiff';
+import {
+    optionalObject, optionalString, requiredNonEmptyString,
+} from 'senaev-utils/src/toolServer/toolArguments';
+import { invalidArguments, ToolError } from 'senaev-utils/src/toolServer/ToolError';
 
 import { prepareNewNote, normalizeVaultPath } from '../access/vaultAccess';
 import { formatFrontmatterBlock } from '../markdown/frontmatter';
-import { createNoteDiff } from '../markdown/createNoteDiff';
-import {
-    optionalObject, optionalString, readVaultToolArguments, requiredNonEmptyString,
-} from '../toolArguments';
+import { readVaultToolArguments } from '../toolArguments';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
-import { invalidArguments, VaultToolError } from '../VaultToolError';
 
 /** `Ideas` and `Ideas.md` both mean the note `Ideas.md`; other extensions are refused later. */
 export function withNoteExtension(config: VaultToolsConfig, path: string): string {
@@ -36,7 +37,7 @@ export async function createTool(config: VaultToolsConfig, input: unknown) {
 
     await createFileExclusively(absolutePath, fullContent).catch((error: unknown) => {
         if (isAlreadyExistsError(error)) {
-            throw new VaultToolError('already_exists', `"${path}" already exists; use obsidian-patch to change it`);
+            throw new ToolError('already_exists', `"${path}" already exists; use obsidian-patch to change it`);
         }
 
         throw error;
@@ -44,6 +45,6 @@ export async function createTool(config: VaultToolsConfig, input: unknown) {
 
     return {
         path,
-        ...createNoteDiff(path, '', fullContent),
+        ...createFileDiff(path, '', fullContent),
     };
 }

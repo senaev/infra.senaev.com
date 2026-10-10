@@ -2,13 +2,12 @@ import { posix } from 'node:path';
 
 import picomatch from 'picomatch';
 import { MAX_GLOB_LENGTH } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
+import { optionalString, type ToolArguments } from 'senaev-utils/src/toolServer/toolArguments';
+import { invalidArguments } from 'senaev-utils/src/toolServer/ToolError';
 
 import { normalizeVaultPath } from './access/vaultAccess';
-import {
-    optionalIsoDay, optionalString, type ToolArguments,
-} from './toolArguments';
+import { optionalIsoDay } from './toolArguments';
 import type { VaultToolsConfig } from './vaultToolsConfig';
-import { invalidArguments } from './VaultToolError';
 
 const DIARY_FILE_NAME = /^(\d{4}-\d{2}-\d{2})\.md$/;
 

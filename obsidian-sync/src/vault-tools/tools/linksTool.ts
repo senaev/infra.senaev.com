@@ -1,6 +1,9 @@
 import { posix } from 'node:path';
 
 import { LINKS_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
+import {
+    optionalCappedInteger, optionalEnum, requiredNonEmptyString,
+} from 'senaev-utils/src/toolServer/toolArguments';
 
 import { readVaultNotes } from '../access/readVaultNotes';
 import { normalizeVaultPath, resolveExistingNote } from '../access/vaultAccess';
@@ -9,9 +12,7 @@ import {
     createLinkIndex, type LinkIndex, type LinkResolution, resolveLink,
 } from '../markdown/resolveLink';
 import { getDiaryDate } from '../noteScope';
-import {
-    optionalCappedInteger, optionalEnum, readVaultToolArguments, requiredNonEmptyString,
-} from '../toolArguments';
+import { readVaultToolArguments } from '../toolArguments';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
 
 const MAX_LINKS = 200;
