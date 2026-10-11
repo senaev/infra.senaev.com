@@ -329,8 +329,8 @@ const run: ToolDefinition = {
     description: [
         'Runs a bash command in the project folder on the owner\'s server and returns the exit code, stdout and stderr.',
         'Use it for tests, builds, linters and git: status, diff, log, checkout, commit, push. "gh" is available for GitHub pull requests.',
-        `The command is stopped after "timeoutSeconds" (default ${RUN_LIMITS.defaultTimeoutSeconds}, at most ${RUN_LIMITS.maxTimeoutSeconds});`,
-        'for a potentially long command, set it higher.',
+        MANAGED_TOOL_DESCRIPTION,
+        'A nonzero command exit code is retained as a normal command result with operation.state=failed; inspect exitCode before running dependent commands.',
         `Only the last ${formatNumber(RUN_LIMITS.maxOutputChars)} characters of the output are returned, so limit long output yourself, e.g. with "| tail -n 100".`,
         'Ask the user before a command that publishes or deletes: git push, gh pr create, rm -r, git reset --hard.',
         PROJECT_RULES,
@@ -345,12 +345,7 @@ const run: ToolDefinition = {
                 maxLength: RUN_LIMITS.maxCommandLength,
                 description: 'The bash command, e.g. "npm test -- src/foo.test.ts".',
             },
-            timeoutSeconds: {
-                type: 'integer',
-                minimum: 1,
-                maximum: RUN_LIMITS.maxTimeoutSeconds,
-                description: `Default: ${RUN_LIMITS.defaultTimeoutSeconds}.`,
-            },
+            ...MANAGED_TOOL_PROPERTIES,
         },
         required: [
             'project',
@@ -390,8 +385,11 @@ export function getCodeToolArgumentKeys(name: CodeToolName): string[] {
     return getToolArgumentKeys(CODE_TOOL_DEFINITIONS[name]);
 }
 
-/** Stage 2 canary allowlist. Other domain tools keep their direct execution path. */
-export const MANAGED_CODE_TOOL_NAMES: readonly CodeToolName[] = ['projects'];
+/** Incremental activation; file repair tools still keep their direct execution path. */
+export const MANAGED_CODE_TOOL_NAMES: readonly CodeToolName[] = [
+    'projects',
+    'run',
+];
 
 export function isManagedCodeToolName(name: string): boolean {
     return MANAGED_CODE_TOOL_NAMES.some((tool) => tool === name);

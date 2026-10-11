@@ -1,5 +1,7 @@
 import { RUN_LIMITS } from 'senaev-utils/src/codeTools/codeToolLimits';
-import { optionalInteger, requiredNonEmptyString } from 'senaev-utils/src/toolServer/toolArguments';
+import { operationContext, throwIfOperationAborted } from 'senaev-utils/src/operations/operationContext';
+import { executionTimeout } from 'senaev-utils/src/operations/OperationManager';
+import { requiredNonEmptyString } from 'senaev-utils/src/toolServer/toolArguments';
 
 import { runProcess } from '../process/runProcess';
 
@@ -12,12 +14,14 @@ import { readCodeToolArguments, resolveProject } from './projectAccess';
  */
 export async function runTool(config: CodeToolsConfig, input: unknown) {
     const args = readCodeToolArguments(input, 'run');
+
+    throwIfOperationAborted();
     const project = await resolveProject(config, args);
     const command = requiredNonEmptyString(args, 'command', RUN_LIMITS.maxCommandLength);
-    const timeoutSeconds = optionalInteger(args, 'timeoutSeconds', {
-        min: 1,
-        max: RUN_LIMITS.maxTimeoutSeconds,
-    }) ?? RUN_LIMITS.defaultTimeoutSeconds;
+    const timeoutSeconds = executionTimeout(args.timeoutSeconds);
+
+    throwIfOperationAborted();
+    const context = operationContext();
 
     // Not a login shell (-l): Debian's /etc/profile would replace the container's PATH.
     const result = await runProcess('bash', [
@@ -25,10 +29,17 @@ export async function runTool(config: CodeToolsConfig, input: unknown) {
         command,
     ], {
         cwd: project.root,
-        timeoutMs: timeoutSeconds * 1000,
+        ...context === undefined
+            ? { timeoutMs: timeoutSeconds * 1000 }
+            : {
+                signal: context.signal,
+                onOutput: context.log,
+            },
         maxOutputChars: RUN_LIMITS.maxOutputChars,
         env: config.commandEnv,
     });
+
+    throwIfOperationAborted();
 
     return {
         project: project.name,

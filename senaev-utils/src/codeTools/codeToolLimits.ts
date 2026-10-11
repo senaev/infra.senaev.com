@@ -37,8 +37,6 @@ export const PATCH_LIMITS = {
 
 export const RUN_LIMITS = {
     maxCommandLength: 10_000,
-    defaultTimeoutSeconds: 60,
-    maxTimeoutSeconds: 300,
     /** For stdout and stderr together; the end of the output is kept, because errors are there. */
     maxOutputChars: 30_000,
 } as const;

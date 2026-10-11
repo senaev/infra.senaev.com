@@ -56,6 +56,16 @@ describe('runProcess', () => {
         expect(result.durationMs).toBeLessThan(5000);
     });
 
+    it('does not overflow long direct process deadlines into an immediate timeout', async () => {
+        const result = await bash('sleep .05; printf done', { timeoutMs: 3_000_000_000 });
+
+        expect(result).toMatchObject({
+            exitCode: 0,
+            timedOut: false,
+            stdout: 'done',
+        });
+    });
+
     it('does not spawn when already aborted', async () => {
         const controller = new AbortController();
         const reason = new Error('cancelled');

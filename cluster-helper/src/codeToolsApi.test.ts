@@ -31,17 +31,27 @@ describe('code operation proxy', () => {
         vi.stubGlobal('fetch', fetchMock);
         for (const name of [
             'projects',
+            'run',
             'operations',
             'operation_status',
             'operation_result',
             'operation_cancel',
         ]) {
-            const args = name === 'projects'
-                ? {
+            let args: Record<string, unknown> = { id: 'code-id' };
+
+            if (name === 'run') {
+                args = {
+                    project: 'demo',
+                    command: 'true',
                     timeoutSeconds: 10800,
                     requestId: 'retry',
-                }
-                : { id: 'code-id' };
+                };
+            } else if (name === 'projects') {
+                args = {
+                    timeoutSeconds: 10800,
+                    requestId: 'retry',
+                };
+            }
 
             expect(await callCodeTool(name, args)).toEqual({
                 isError: false,
@@ -55,10 +65,7 @@ describe('code operation proxy', () => {
             }));
         }
 
-        await callCodeTool('run', {
-            project: 'demo',
-            command: 'true',
-        });
+        await callCodeTool('clone', { url: 'git@example.com:demo.git' });
         expect(timeout).toHaveBeenLastCalledWith(330000);
     });
 
