@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
-import { setTimeout as delay } from 'node:timers/promises';
 
+import { completeOperation } from 'senaev-utils/src/operations/testing/completeOperation';
+import type { OperationLaunchReply, OperationObservation } from 'senaev-utils/src/operations/operationTypes';
 import { operationContext } from 'senaev-utils/src/operations/operationContext';
 import { hashContent } from 'senaev-utils/src/toolServer/contentHash';
 import { createBearerAuthorizationHeader } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
@@ -43,23 +44,10 @@ describe('all managed file tools', { timeout: 60000 }, () => {
     }
 
     async function completed(tool: string, payload: Record<string, unknown>) {
-        let reply = (await call(tool, payload)).json<Reply>();
-
-        for (let attempt = 0; attempt < 200 && [
-            'queued',
-            'running',
-        ].includes(reply.operation.state); attempt += 1) {
-            await delay(100);
-            const retained = (await call('operation_result', { id: reply.operation.id })).json<Reply>();
-
-            reply = {
-                status: 'ok',
-                ...retained.result,
-                operation: retained.operation,
-            };
-        }
-
-        return reply;
+        return await completeOperation(
+            (await call(tool, payload)).json<OperationLaunchReply>(),
+            async (input) => (await call('operation_result', input)).json<OperationObservation>()
+        ) as unknown as Reply;
     }
 
     function args(tool: string, suffix: string): Record<string, unknown> {
@@ -166,6 +154,10 @@ describe('all managed file tools', { timeout: 60000 }, () => {
         const active = call('projects');
 
         await started;
+        const discovery = (await call('operations')).json<{ operations: { id: string; state: string }[] }>();
+        const activeId = discovery.operations.find((operation) => operation.state === 'running')?.id;
+
+        expect(activeId).toBeDefined();
         const waiting: string[] = [];
 
         for (const tool of [
@@ -195,7 +187,6 @@ describe('all managed file tools', { timeout: 60000 }, () => {
             expect(parallel.operation.state).toBe('completed');
         }
 
-        await delay(1100);
         for (const id of waiting) {
             expect((await call('operation_status', { id })).json<Reply>().operation.state).toBe('queued');
             expect((await call('operation_cancel', { id })).json<Reply>().operation)
@@ -205,12 +196,11 @@ describe('all managed file tools', { timeout: 60000 }, () => {
                 });
         }
 
-        const block = (await active).json<Reply>();
-
-        expect(block.operation.state).toBe('running');
-        await call('operation_cancel', { id: block.operation.id });
-        await vi.waitFor(async () => expect((await call('operation_status', { id: block.operation.id })).json<Reply>().operation.state).toBe('cancelled'));
-    }, 12000);
+        expect((await call('operation_status', { id: activeId })).json<Reply>().operation.state).toBe('running');
+        await call('operation_cancel', { id: activeId });
+        await active;
+        await vi.waitFor(async () => expect((await call('operation_status', { id: activeId })).json<Reply>().operation.state).toBe('cancelled'));
+    });
 
     it.each([
         'read',

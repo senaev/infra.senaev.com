@@ -4,6 +4,9 @@ import { ToolError, invalidArguments } from '../toolServer/ToolError';
 
 import { scheduleDeadline, withOperationContext } from './operationContext';
 import { DEFAULT_TIMEOUT_SECONDS, OBSERVATION_MS } from './operationLimits';
+import {
+    isTerminalOperation as terminal, type ExecutionPolicy, type OperationLog as LogEntry, type OperationState as State, type OperationView, type OperationLaunchReply,
+} from './operationTypes';
 
 export { DEFAULT_TIMEOUT_SECONDS, OBSERVATION_MS } from './operationLimits';
 const MAX_LOG_CHARS = 128_000;
@@ -12,11 +15,7 @@ const MAX_RESULT_CHARS = 1_000_000;
 const MAX_RECORDS = 100;
 const RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 
-export type ExecutionPolicy = 'queued' | 'parallel';
-
-type State = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled' | 'timed_out' | 'interrupted';
-
-type LogEntry = { cursor: number; stream: 'stdout' | 'stderr'; text: string };
+export type { ExecutionPolicy } from './operationTypes';
 
 type RecordData = {
     id: string;
@@ -33,6 +32,8 @@ type RecordData = {
     changedPaths: string[];
     logs: LogEntry[];
     nextCursor: number;
+    logChars: number;
+    logHead: number;
     truncated: boolean;
 };
 
@@ -44,7 +45,29 @@ type Entry = {
     finish: () => void;
 };
 
-const terminal = (state: State) => state !== 'queued' && state !== 'running';
+function serializeResult(result: Record<string, unknown>, reportFailure: (error: unknown) => void): string {
+    let serialized: string;
+
+    try {
+        serialized = JSON.stringify(result);
+    } catch (error) {
+        reportFailure(error);
+
+        return JSON.stringify({
+            status: 'error',
+            code: 'internal_error',
+            message: 'Result cannot be serialized',
+        });
+    }
+
+    return serialized.length <= MAX_RESULT_CHARS
+        ? serialized
+        : JSON.stringify({
+            status: 'error',
+            code: 'command_failed',
+            message: 'Result exceeds retained result quota; narrow the query',
+        });
+}
 
 /** Canonical JSON makes request retries independent of object key order. */
 function canonical(value: unknown): string {
@@ -90,19 +113,51 @@ export class OperationManager {
     ) {}
 
     private static appendLog(data: RecordData, stream: 'stdout' | 'stderr', text: string): void {
-        for (let offset = 0; offset < text.length; offset += PAGE_CHARS) {
-            data.logs.push({
-                cursor: data.nextCursor++,
-                stream,
-                text: text.slice(offset, offset + PAGE_CHARS),
-            });
+        // Cursors are text positions: polling a packed chunk can resume inside it.
+        for (let offset = 0; offset < text.length;) {
+            const last = data.logs.at(-1);
+            const append = last?.stream === stream && last.text.length < PAGE_CHARS;
+            const length = Math.min(text.length - offset, append ? PAGE_CHARS - last.text.length : PAGE_CHARS);
+            const part = text.slice(offset, offset + length);
+
+            if (append) {
+                last.text += part;
+            } else {
+                data.logs.push({
+                    cursor: data.nextCursor,
+                    stream,
+                    text: part,
+                });
+            }
+
+            data.nextCursor += length;
+            data.logChars += length;
+            offset += length;
         }
 
-        let size = data.logs.reduce((sum, entry) => sum + entry.text.length, 0);
+        while (data.logChars > MAX_LOG_CHARS) {
+            const first = data.logs[data.logHead];
 
-        while (size > MAX_LOG_CHARS) {
-            size -= data.logs.shift()?.text.length ?? 0;
+            if (first === undefined) {
+                break;
+            }
+
+            const removed = Math.min(data.logChars - MAX_LOG_CHARS, first.text.length);
+
+            if (removed === first.text.length) {
+                data.logHead++;
+            } else {
+                first.text = first.text.slice(removed);
+                first.cursor += removed;
+            }
+
+            data.logChars -= removed;
             data.truncated = true;
+        }
+
+        if (data.logHead > data.logs.length / 2) {
+            data.logs = data.logs.slice(data.logHead);
+            data.logHead = 0;
         }
 
         data.updatedAt = Date.now();
@@ -110,7 +165,7 @@ export class OperationManager {
 
     public async launch(options: {
         tool: string; args: Record<string, unknown>; run: () => Promise<Record<string, unknown>>;
-    }): Promise<Record<string, unknown>> {
+    }): Promise<OperationLaunchReply> {
         const {
             tool, args, run,
         } = options;
@@ -168,6 +223,8 @@ export class OperationManager {
                 changedPaths: [],
                 logs: [],
                 nextCursor: 0,
+                logChars: 0,
+                logHead: 0,
                 truncated: false,
                 ...typeof requestId === 'string' && { requestId },
             };
@@ -268,23 +325,59 @@ export class OperationManager {
         }
 
         const logs: LogEntry[] = [];
-        let chars = 0;
+        let nextCursor = Math.max(cursor, entry.data.logs[entry.data.logHead]?.cursor ?? entry.data.nextCursor);
+        let chars = 2;
 
-        for (const log of entry.data.logs) {
-            if (log.cursor >= cursor && chars + log.text.length <= PAGE_CHARS) {
-                logs.push(log);
-                chars += log.text.length;
-            } else if (log.cursor >= cursor) {
+        for (let index = entry.data.logHead; index < entry.data.logs.length; index++) {
+            const log = entry.data.logs[index];
+
+            if (log === undefined) {
+                break;
+            }
+
+            const start = Math.max(nextCursor, log.cursor);
+            const remaining = log.text.slice(start - log.cursor);
+
+            if (remaining.length === 0) {
+                continue;
+            }
+
+            const overhead = JSON.stringify({
+                cursor: start,
+                stream: log.stream,
+                text: '',
+            }).length + 1;
+            const budget = PAGE_CHARS - chars - overhead;
+            let length = Math.min(remaining.length, Math.max(0, budget));
+
+            // Use the existing page quota for JSON metadata and escaped text too.
+            while (length > 0 && JSON.stringify(remaining.slice(0, length)).length - 2 > budget) {
+                length = Math.floor(length / 2);
+            }
+
+            if (length === 0) {
+                break;
+            }
+
+            const item = {
+                cursor: start,
+                stream: log.stream,
+                text: remaining.slice(0, length),
+            };
+
+            logs.push(item);
+            chars += JSON.stringify(item).length + 1;
+            nextCursor = start + length;
+            if (length < remaining.length) {
                 break;
             }
         }
 
-        const nextCursor = logs.length > 0 ? (logs[logs.length - 1]?.cursor ?? cursor) + 1 : Math.max(cursor, entry.data.logs[0]?.cursor ?? entry.data.nextCursor);
         const response: Record<string, unknown> = {
             operation: this.view(entry.data),
             logs,
             nextCursor,
-            firstAvailableCursor: entry.data.logs[0]?.cursor ?? entry.data.nextCursor,
+            firstAvailableCursor: entry.data.logs[entry.data.logHead]?.cursor ?? entry.data.nextCursor,
             logsTruncated: entry.data.truncated,
         };
 
@@ -354,7 +447,7 @@ export class OperationManager {
         }
     }
 
-    private view(data: RecordData): Record<string, unknown> {
+    private view(data: RecordData): OperationView {
         return {
             id: data.id,
             backend: this.backend,
@@ -368,6 +461,18 @@ export class OperationManager {
             changedPaths: data.changedPaths,
             pollAfterMs: terminal(data.state) ? 0 : 1000,
         };
+    }
+
+    private reportFailure(error: unknown, data: RecordData): void {
+        try {
+            this.reportError?.(error, {
+                id: data.id,
+                backend: this.backend,
+                tool: data.tool,
+            });
+        } catch {
+            // Diagnostic failures must not prevent terminal state or cleanup.
+        }
     }
 
     private async execute(entry: Entry): Promise<void> {
@@ -389,14 +494,10 @@ export class OperationManager {
             }, entry.run);
 
             controller.signal.throwIfAborted();
-            const serialized = JSON.stringify(result);
+            data.resultJson = serializeResult(result, (error) => this.reportFailure(error, data));
+            const retained = JSON.parse(data.resultJson) as Record<string, unknown>;
 
-            if (serialized.length > MAX_RESULT_CHARS) {
-                throw new ToolError('command_failed', 'Result exceeds retained result quota; narrow the query');
-            }
-
-            data.resultJson = serialized;
-            data.state = result.status === 'error' || Object.hasOwn(result, 'exitCode') && result.exitCode !== 0 ? 'failed' : 'completed';
+            data.state = retained.status === 'error' || Object.hasOwn(retained, 'exitCode') && retained.exitCode !== 0 ? 'failed' : 'completed';
         } catch (error) {
             if (controller.signal.aborted) {
                 const { reason } = controller.signal;
@@ -413,22 +514,14 @@ export class OperationManager {
                 });
             } else if (error instanceof ToolError) {
                 data.state = 'failed';
-                data.resultJson = JSON.stringify({
+                data.resultJson = serializeResult({
                     status: 'error',
                     code: error.code,
                     message: error.message,
                     ...error.details !== undefined && { details: error.details },
-                });
+                }, (serializationError) => this.reportFailure(serializationError, data));
             } else {
-                try {
-                    this.reportError?.(error, {
-                        id: data.id,
-                        backend: this.backend,
-                        tool: data.tool,
-                    });
-                } catch {
-                    // Diagnostic failures must not prevent terminal state or cleanup.
-                }
+                this.reportFailure(error, data);
 
                 data.state = 'failed';
                 data.resultJson = JSON.stringify({

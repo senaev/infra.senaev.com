@@ -1,6 +1,5 @@
 import { RUN_LIMITS } from 'senaev-utils/src/codeTools/codeToolLimits';
 import { operationContext, throwIfOperationAborted } from 'senaev-utils/src/operations/operationContext';
-import { executionTimeout } from 'senaev-utils/src/operations/OperationManager';
 import { requiredNonEmptyString } from 'senaev-utils/src/toolServer/toolArguments';
 
 import { runProcess } from '../process/runProcess';
@@ -18,7 +17,6 @@ export async function runTool(config: CodeToolsConfig, input: unknown) {
     throwIfOperationAborted();
     const project = await resolveProject(config, args);
     const command = requiredNonEmptyString(args, 'command', RUN_LIMITS.maxCommandLength);
-    const timeoutSeconds = executionTimeout(args.timeoutSeconds);
 
     throwIfOperationAborted();
     const context = operationContext();
@@ -29,12 +27,10 @@ export async function runTool(config: CodeToolsConfig, input: unknown) {
         command,
     ], {
         cwd: project.root,
-        ...context === undefined
-            ? { timeoutMs: timeoutSeconds * 1000 }
-            : {
-                signal: context.signal,
-                onOutput: context.log,
-            },
+        ...context && {
+            signal: context.signal,
+            onOutput: context.log,
+        },
         maxOutputChars: RUN_LIMITS.maxOutputChars,
         env: config.commandEnv,
     });

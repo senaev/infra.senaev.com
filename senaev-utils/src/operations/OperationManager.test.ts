@@ -568,7 +568,7 @@ describe('OperationManager', () => {
         });
         await expect(manager.control('operation_status', {
             id,
-            cursor: 100000,
+            cursor: 1000000,
         })).rejects.toMatchObject({ code: 'invalid_arguments' });
         await manager.close();
     });

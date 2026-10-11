@@ -5,7 +5,6 @@ import {
 import {
     CODE_TOOL_DEFINITIONS,
     CODE_TOOL_NAMES,
-    MANAGED_CODE_TOOL_NAMES,
     getCodeToolArgumentKeys,
     isCodeToolName,
     PROJECT_NAME_PATTERN,
@@ -42,7 +41,6 @@ describe('code tool definitions', () => {
     });
 
     test('every domain command exposes the same managed execution contract', () => {
-        expect(MANAGED_CODE_TOOL_NAMES).toEqual(CODE_TOOL_NAMES);
         for (const name of CODE_TOOL_NAMES) {
             const { properties } = CODE_TOOL_DEFINITIONS[name].inputSchema;
 

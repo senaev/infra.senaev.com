@@ -83,6 +83,28 @@ describe('vault cooperative cleanup', { timeout: 30000 }, () => {
         expect(await readFile(vault.path('Target.md'), 'utf8')).toBe('original');
     });
 
+    it('preserves a backlink edited externally after target publication and reports the partial move', async () => {
+        vault = await createTestVault({
+            'Source.md': 'original',
+            'Backlink.md': '[[Source]]',
+        });
+        const changedPaths = new Set<string>();
+
+        hooks.afterPublish = () => writeFileSync(vault.path('Backlink.md'), '[[Source]]\nexternal edit');
+        await expect(withOperationContext({
+            signal: new AbortController().signal,
+            changedPaths,
+            log: () => {},
+        }, () => moveTool(vault.config, {
+            path: 'Source.md',
+            newPath: 'Target.md',
+        }))).rejects.toMatchObject({ code: 'conflict' });
+        expect(await readFile(vault.path('Backlink.md'), 'utf8')).toBe('[[Source]]\nexternal edit');
+        expect(await readFile(vault.path('Source.md'), 'utf8')).toBe('original');
+        expect(await readFile(vault.path('Target.md'), 'utf8')).toBe('original');
+        expect([...changedPaths]).toEqual(['Target.md']);
+    });
+
     it('reports an atomically published move target after cancellation and preserves the source and backlinks', async () => {
         vault = await createTestVault({
             'Source.md': 'original',

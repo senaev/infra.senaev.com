@@ -32,9 +32,9 @@ const SYNCED_FILE_TYPES = [
  * then applies every sync setting. Safe to re-run on each container start — all
  * of these commands are idempotent.
  */
-export async function setUpVaultSync(): Promise<void> {
+export async function setUpVaultSync(signal?: AbortSignal): Promise<void> {
     logger.info('🔑 Logging in to Obsidian Sync');
-    await runObsidianCommand(['login']);
+    await runObsidianCommand(['login'], signal);
 
     logger.info(
         {
@@ -49,7 +49,7 @@ export async function setUpVaultSync(): Promise<void> {
         OBSIDIAN_VAULT_NAME,
         '--path',
         OBSIDIAN_VAULT_PATH,
-    ]);
+    ], signal);
 
     const configFlags: string[][] = [
         [
@@ -84,7 +84,7 @@ export async function setUpVaultSync(): Promise<void> {
             '--path',
             OBSIDIAN_VAULT_PATH,
             ...flags,
-        ]);
+        ], signal);
     }
 
     logger.info('✅ Vault sync configured');

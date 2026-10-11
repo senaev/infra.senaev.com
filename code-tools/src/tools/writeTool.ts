@@ -36,17 +36,23 @@ async function createFile(project: Project, path: string, content: string): Prom
 }
 
 /** Replaces the whole file, but only the version the caller read. */
-async function replaceFile(project: Project, path: string, content: string, expectedHash: string): Promise<string> {
+async function replaceFile(project: Project, path: string, content: string, expectedHash: string) {
     const absolutePath = await resolveExistingFile(project, path);
     const original = await readTextFile(absolutePath, path);
 
     assertExpectedHash(original, expectedHash, 'file');
 
+    const diff = await createFileDiffAsync(path, original, content);
+
     if (content !== original) {
+        assertExpectedHash(await readTextFile(absolutePath, path), expectedHash, 'file');
         await replaceFileAtomically(absolutePath, content, operationContext()?.signal, () => recordChangedPath(path));
     }
 
-    return original;
+    return {
+        original,
+        diff,
+    };
 }
 
 export async function writeTool(config: CodeToolsConfig, input: unknown) {
@@ -64,10 +70,12 @@ export async function writeTool(config: CodeToolsConfig, input: unknown) {
     return withFileMutation(`${project.root}/${path}`, async () => {
         const isReplace = args.expectedHash !== undefined && args.expectedHash !== null;
         let original = '';
+        let diff;
 
         if (isReplace) {
-            original = await replaceFile(project, path, content, readExpectedHash(args, 'expectedHash', 'code-read'));
+            ({ original, diff } = await replaceFile(project, path, content, readExpectedHash(args, 'expectedHash', 'code-read')));
         } else {
+            diff = await createFileDiffAsync(path, original, content);
             await createFile(project, path, content);
         }
 
@@ -78,7 +86,7 @@ export async function writeTool(config: CodeToolsConfig, input: unknown) {
             created: !isReplace,
             changed: content !== original || !isReplace,
             hash: hashContent(content),
-            ...await createFileDiffAsync(path, original, content),
+            ...diff,
         };
     });
 }

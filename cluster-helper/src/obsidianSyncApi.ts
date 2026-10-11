@@ -1,4 +1,4 @@
-import { OBSERVATION_MS } from 'senaev-utils/src/operations/operationLimits';
+import { TRANSPORT_TIMEOUT_MS } from 'senaev-utils/src/operations/operationLimits';
 import { createBearerAuthorizationHeader } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 import { readStatusResponse } from 'senaev-utils/src/utils/http/readStatusResponse/readStatusResponse';
@@ -6,9 +6,6 @@ import { readStatusResponse } from 'senaev-utils/src/utils/http/readStatusRespon
 import { callToolServer } from './chatGptMcp/callToolServer';
 import type { ToolReply } from './chatGptMcp/toolFamilies';
 import { INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN, OBSIDIAN_SYNC_URL } from './env';
-
-/** Execution deadlines belong to the backend; transport covers admission and observation. */
-const VAULT_TOOL_TIMEOUT_MS = OBSERVATION_MS + 10_000;
 
 /**
  * Every call to obsidian-sync goes through here, because obsidian-sync rejects any request
@@ -33,7 +30,7 @@ export function callVaultTool(vaultToolName: string, args: unknown): Promise<Too
         url: `${OBSIDIAN_SYNC_URL}/vault/${encodeURIComponent(vaultToolName)}`,
         token: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN,
         args,
-        timeoutMs: VAULT_TOOL_TIMEOUT_MS,
+        timeoutMs: TRANSPORT_TIMEOUT_MS,
         serverName: 'obsidian-sync',
     });
 }

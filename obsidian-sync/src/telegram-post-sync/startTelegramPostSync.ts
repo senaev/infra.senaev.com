@@ -23,10 +23,14 @@ const RECONCILE_INTERVAL_MS = 15_000;
  * Passes never overlap: a vault large enough to take longer than the interval would otherwise
  * stack passes on top of each other, each one pushing the same notes.
  */
-function startReconcileLoop(): void {
+function startReconcileLoop(signal: AbortSignal, track: (work: Promise<void>) => void): () => void {
     let running = false;
 
-    setInterval(() => {
+    const timer = setInterval(() => {
+        if (signal.aborted) {
+            return;
+        }
+
         if (running) {
             logger.info('⏭ Previous reconcile still running, skipping this round');
 
@@ -34,12 +38,14 @@ function startReconcileLoop(): void {
         }
 
         running = true;
-        reconcileTrackedNotes()
+        track(reconcileTrackedNotes(signal)
             .catch((error) => reportSyncError('Reconcile pass failed', error))
             .finally(() => {
                 running = false;
-            });
+            }));
     }, RECONCILE_INTERVAL_MS);
+
+    return () => clearInterval(timer);
 }
 
 /**
@@ -57,22 +63,44 @@ function startReconcileLoop(): void {
  * The reconcile loop starts last, once every note has a recorded mtime, so its first pass
  * has something to compare against instead of pushing the whole vault a second time.
  */
-export async function startTelegramPostSync(): Promise<void> {
+async function startTelegramPostSync(options: {
+    signal: AbortSignal;
+    track: (work: Promise<void>) => void;
+    own: (stop: () => void) => void;
+}): Promise<void> {
+    const {
+        signal, track, own,
+    } = options;
+
+    if (signal.aborted) {
+        return;
+    }
+
     logger.info('🚀 Starting Telegram post sync');
 
     loadPushedNoteHashes();
 
-    watchVaultForNoteChanges((relativePath) => {
-        void syncNoteToTelegramPost(relativePath);
-    });
+    own(watchVaultForNoteChanges((relativePath) => {
+        if (!signal.aborted) {
+            track(syncNoteToTelegramPost(relativePath));
+        }
+    }));
 
     const tracked = await scanVaultForTrackedNotes();
 
     for (const note of tracked) {
+        if (signal.aborted) {
+            return;
+        }
+
         await syncNoteToTelegramPost(note.relativePath);
     }
 
-    startReconcileLoop();
+    if (signal.aborted) {
+        return;
+    }
+
+    own(startReconcileLoop(signal, track));
 
     logger.info(
         {
@@ -84,8 +112,56 @@ export async function startTelegramPostSync(): Promise<void> {
 }
 
 /** Fire-and-forget wrapper so a sync failure can never prevent the container starting. */
-export function startTelegramPostSyncInBackground(): void {
-    startTelegramPostSync().catch((error) => {
-        void reportSyncError('Telegram post sync failed to start', error);
-    });
+export function startTelegramPostSyncInBackground(parentSignal: AbortSignal): { close: () => Promise<void> } {
+    const controller = new AbortController();
+    const { signal } = controller;
+    const abort = () => controller.abort(parentSignal.reason);
+
+    if (parentSignal.aborted) {
+        abort();
+    } else {
+        parentSignal.addEventListener('abort', abort, { once: true });
+    }
+
+    const pending = new Set<Promise<void>>();
+    const resources = new Set<() => void>();
+    const stopScheduling = () => {
+        for (const stop of resources) {
+            stop();
+        }
+
+        resources.clear();
+    };
+    const track = (work: Promise<void>) => {
+        pending.add(work);
+        void work.then(() => pending.delete(work), () => pending.delete(work));
+    };
+    const own = (stop: () => void) => {
+        if (signal.aborted) {
+            stop();
+        } else {
+            resources.add(stop);
+        }
+    };
+
+    signal.addEventListener('abort', stopScheduling, { once: true });
+    track(startTelegramPostSync({
+        signal,
+        track,
+        own,
+    }).catch(async (error) => {
+        if (!signal.aborted) {
+            await reportSyncError('Telegram post sync failed to start', error);
+        }
+    }));
+
+    return {
+        close: async () => {
+            controller.abort(new Error('Background sync stopping'));
+            parentSignal.removeEventListener('abort', abort);
+            stopScheduling();
+            signal.removeEventListener('abort', stopScheduling);
+            await Promise.allSettled(pending);
+        },
+    };
 }

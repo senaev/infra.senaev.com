@@ -1,3 +1,5 @@
+import { completeOperation } from 'senaev-utils/src/operations/testing/completeOperation';
+import type { OperationLaunchReply, OperationObservation } from 'senaev-utils/src/operations/operationTypes';
 import { OperationManager } from 'senaev-utils/src/operations/OperationManager';
 import { operationContext } from 'senaev-utils/src/operations/operationContext';
 import { ToolError } from 'senaev-utils/src/toolServer/ToolError';
@@ -39,7 +41,7 @@ function deferred() {
     };
 }
 
-describe('projects managed-execution canary', () => {
+describe('managed execution HTTP contract', () => {
     let projects: TestProjects;
     let server: CodeToolsServer;
 
@@ -61,6 +63,13 @@ describe('projects managed-execution canary', () => {
             headers: HEADERS,
             payload,
         });
+    }
+
+    async function completed(tool: string, payload: Record<string, unknown>) {
+        return await completeOperation(
+            (await call(tool, payload)).json<OperationLaunchReply>(),
+            async (args) => (await call('operation_result', args)).json<OperationObservation>()
+        ) as unknown as Reply;
     }
 
     function holdProjects() {
@@ -240,12 +249,12 @@ describe('projects managed-execution canary', () => {
             project: 'demo',
             command: 'printf direct',
         })).statusCode).toBe(429);
-        const read = (await call('read', {
+        const read = await completed('read', {
             project: 'demo',
             executionPolicy: 'parallel',
             paths: ['README.md'],
-        })).json<Reply>();
-        const write = await call('write', {
+        });
+        const write = await completed('write', {
             project: 'demo',
             executionPolicy: 'parallel',
             path: 'README.md',
@@ -253,12 +262,12 @@ describe('projects managed-execution canary', () => {
             content: 'updated\n',
         });
 
-        expect(write.statusCode).toBe(200);
-        const patch = await call('patch', {
+        expect(write.operation.state).toBe('completed');
+        const patch = await completed('patch', {
             project: 'demo',
             executionPolicy: 'parallel',
             path: 'README.md',
-            expectedHash: write.json<Reply>().hash,
+            expectedHash: write.hash,
             operations: [
                 {
                     find: 'updated',
@@ -267,12 +276,12 @@ describe('projects managed-execution canary', () => {
             ],
         });
 
-        expect(patch.statusCode).toBe(200);
-        expect((await call('read', {
+        expect(patch.operation.state).toBe('completed');
+        expect((await completed('read', {
             project: 'demo',
             executionPolicy: 'parallel',
             paths: ['README.md'],
-        })).json<Reply>().files?.[0]?.content).toBe('patched\n');
+        })).files?.[0]?.content).toBe('patched\n');
         for (const id of queued) {
             expect((await call('operation_cancel', { id })).json<Reply>().operation.state).toBe('cancelled');
         }

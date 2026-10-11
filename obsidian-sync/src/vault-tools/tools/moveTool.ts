@@ -237,7 +237,10 @@ export async function moveTool(config: VaultToolsConfig, input: unknown) {
         for (const update of updates) {
             if (update !== movedNote) {
                 await operationCheckpoint();
-                await replaceFileAtomically(join(config.root, update.source), update.after, operationContext()?.signal, () => recordChangedPath(update.source));
+                const absolutePath = await resolveExistingNote(config, update.source);
+
+                assertExpectedHash(await readOperationTextFile(absolutePath), hashContent(update.before), 'note');
+                await replaceFileAtomically(absolutePath, update.after, operationContext()?.signal, () => recordChangedPath(update.source));
             }
         }
 

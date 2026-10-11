@@ -8,7 +8,7 @@ import { runObsidianCommand } from './runObsidianCommand';
  * container. The returned promise therefore only settles when sync stops, which
  * is always a fatal condition — the caller exits so Kubernetes restarts the pod.
  */
-export async function runContinuousSync(): Promise<never> {
+export async function runContinuousSync(signal?: AbortSignal): Promise<void> {
     logger.info('🔄 Starting continuous sync');
 
     await runObsidianCommand([
@@ -16,7 +16,9 @@ export async function runContinuousSync(): Promise<never> {
         '--path',
         OBSIDIAN_VAULT_PATH,
         '--continuous',
-    ]);
+    ], signal);
 
-    throw new Error('ob sync --continuous exited on its own');
+    if (!signal?.aborted) {
+        throw new Error('ob sync --continuous exited on its own');
+    }
 }

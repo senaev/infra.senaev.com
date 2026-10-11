@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 
+import { OperationManager } from 'senaev-utils/src/operations/OperationManager';
 import {
     afterEach, beforeEach, describe, expect, it,
 } from 'vitest';
@@ -122,14 +123,28 @@ describe('runTool', () => {
         expect(result.stdout).toBe('token:\n');
     });
 
-    it('stops a command after its timeout', async () => {
-        const result = await runTool(projects.config, {
+    it('stops a command under the common execution deadline', async () => {
+        const manager = new OperationManager('test');
+        const args = {
             project: 'demo',
             command: 'sleep 30',
             timeoutSeconds: 1,
-        });
+        };
 
-        expect(result.timedOut).toBe(true);
+        try {
+            const result = await manager.launch({
+                tool: 'run',
+                args,
+                run: () => runTool(projects.config, args),
+            });
+
+            expect(result).toMatchObject({
+                code: 'timed_out',
+                operation: { state: 'timed_out' },
+            });
+        } finally {
+            await manager.close();
+        }
     });
 
     it('refuses a project that does not exist or a name that climbs out', async () => {

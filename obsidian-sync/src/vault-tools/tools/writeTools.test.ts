@@ -131,7 +131,7 @@ describe('patchTool', () => {
         })).rejects.toMatchObject({ code: 'invalid_arguments' });
     });
 
-    it('applies several operations in order, keeps the rest of the note, and returns the new hash', async () => {
+    it('applies several operations in order, keeps the rest of the note, and requires a fresh read for another edit', async () => {
         const testVault = await vaultWith({ 'Note.md': NOTE });
 
         const result = await patchTool(testVault.config, {

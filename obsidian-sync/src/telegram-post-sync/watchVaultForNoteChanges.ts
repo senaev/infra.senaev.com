@@ -11,6 +11,7 @@ const RESTART_DELAY_MS = 5_000;
 // Kept at module level so a watch that errors can be replaced without the caller knowing.
 let watcher: FSWatcher | null = null;
 let handler: ((relativePath: string) => void) | null = null;
+let retry: ReturnType<typeof setTimeout> | undefined;
 
 function startWatching(): void {
     const onNoteChanged = handler;
@@ -21,7 +22,7 @@ function startWatching(): void {
 
     try {
         watcher = watch(OBSIDIAN_VAULT_PATH, { recursive: true }, (eventType, fileName) => {
-            if (!fileName) {
+            if (handler !== onNoteChanged || !fileName) {
                 return;
             }
 
@@ -39,12 +40,16 @@ function startWatching(): void {
         });
     } catch (error) {
         logger.error({ err: error }, '❌ Could not start the vault watcher, retrying');
-        setTimeout(startWatching, RESTART_DELAY_MS);
+        retry = setTimeout(startWatching, RESTART_DELAY_MS);
 
         return;
     }
 
     watcher.on('error', (error) => {
+        if (handler !== onNoteChanged) {
+            return;
+        }
+
         const { code } = (error as NodeJS.ErrnoException);
 
         if (code === 'ENOSPC') {
@@ -61,7 +66,7 @@ function startWatching(): void {
         logger.error({ err: error }, '❌ Vault watcher error, rebuilding the watch');
         watcher?.close();
         watcher = null;
-        setTimeout(startWatching, RESTART_DELAY_MS);
+        retry = setTimeout(startWatching, RESTART_DELAY_MS);
     });
 }
 
@@ -80,9 +85,16 @@ function startWatching(): void {
  * detaches the watch from that path for good — so reconcileTrackedNotes is what actually
  * guarantees those notes keep syncing.
  */
-export function watchVaultForNoteChanges(onNoteChanged: (relativePath: string) => void): void {
+export function watchVaultForNoteChanges(onNoteChanged: (relativePath: string) => void): () => void {
     logger.info({ vault: OBSIDIAN_VAULT_PATH }, '👀 Watching vault for note changes');
 
     handler = onNoteChanged;
     startWatching();
+
+    return () => {
+        handler = null;
+        clearTimeout(retry);
+        watcher?.close();
+        watcher = null;
+    };
 }

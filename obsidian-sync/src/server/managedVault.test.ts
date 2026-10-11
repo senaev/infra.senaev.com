@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 
+import { completeOperation, awaitOperation } from 'senaev-utils/src/operations/testing/completeOperation';
 import { operationContext, throwIfOperationAborted } from 'senaev-utils/src/operations/operationContext';
 import {
     afterEach, describe, expect, it, vi,
@@ -37,43 +38,13 @@ async function call(tool: string, body: Record<string, unknown> = {}) {
     return reply.json();
 }
 
-async function terminal(id: string) {
-    let result = await call('operation_result', { id });
-
-    for (let attempt = 0; attempt < 200 && [
-        'running',
-        'queued',
-    ].includes(result.operation.state); attempt += 1) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        result = await call('operation_result', { id });
-    }
-
-    expect([
-        'running',
-        'queued',
-    ]).not.toContain(result.operation.state);
-
-    return result;
+function terminal(id: string) {
+    return awaitOperation(id, (args) => call('operation_result', args));
 }
 
 /** Even small worker-backed calls may outlive observation on a busy runner. */
 async function completed(tool: string, args: Record<string, unknown> = {}) {
-    const first = await call(tool, args);
-
-    if (first.operation && [
-        'queued',
-        'running',
-    ].includes(first.operation.state)) {
-        const retained = await terminal(first.operation.id);
-
-        return {
-            status: 'ok',
-            ...retained.result,
-            operation: retained.operation,
-        };
-    }
-
-    return first;
+    return completeOperation(await call(tool, args), (input) => call('operation_result', input));
 }
 
 function blockSearch() {
@@ -141,7 +112,7 @@ describe('managed vault routes', { timeout: 60000 }, () => {
                 { text: 'record' },
             ],
         ];
-        const original = await call('read', { paths: ['Note.md'] });
+        const original = await completed('read', { paths: ['Note.md'] });
 
         requests.push([
             'patch',
@@ -234,7 +205,7 @@ describe('managed vault routes', { timeout: 60000 }, () => {
             state: 'completed',
             changedPaths: ['New.md'],
         });
-        const read = await call('read', {
+        const read = await completed('read', {
             paths: ['New.md'],
             executionPolicy: 'parallel',
         });
