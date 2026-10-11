@@ -269,3 +269,7 @@ Targeted output: "Test Files 5 passed (5)" / "Tests 31 passed (31)". New HTTP/ha
 ### 2026-10-11 13:47 UTC — Full-check corrections
 
 The first pre-push run blocked publication: one generic test callback needed an explicit unknown result type, and an existing HTTP-error test still used list as a direct route. Kept that test on direct read and added an explicit managed list not_found/failed assertion: accepted operations retain execution errors rather than exposing them as direct-route HTTP 404. Production logic was unchanged by these test corrections. Lint and all syntax checks passed; repeat the complete validation before opening the PR.
+
+### 2026-10-11 13:49 UTC — Stage 4 full validation passed
+
+All pre-push checks passed: lint, TypeScript, Python, shell, Helm and Vitest. Verbatim summary: "Test Files 139 passed (139)" and "Tests 1140 passed (1140)". Branch feat/async-code-search-list is pushed. This stage is ready for a separate review PR; live search/list verification remains the post-merge/deployment gate.
