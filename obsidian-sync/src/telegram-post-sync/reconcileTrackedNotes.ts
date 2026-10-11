@@ -22,12 +22,16 @@ import { deleteTrackedNote, getTrackedNote } from './trackedNotes';
  * against repeats, and retrying a permanently broken note every minute would turn one
  * failure into an endless stream of error messages. Editing the note retries it.
  */
-export async function reconcileTrackedNotes(): Promise<void> {
+export async function reconcileTrackedNotes(signal?: AbortSignal): Promise<void> {
     const markdownFiles = await collectVaultMarkdownFiles();
 
     let resynced = 0;
 
     for (const relativePath of markdownFiles) {
+        if (signal?.aborted) {
+            return;
+        }
+
         // Read the previous mtime before readNoteTracking, since the push below overwrites it.
         const previous = getTrackedNote(relativePath);
         const result = await readNoteTracking(relativePath);
@@ -54,6 +58,10 @@ export async function reconcileTrackedNotes(): Promise<void> {
             },
             '🔁 Reconcile found a note the watcher did not report'
         );
+        if (signal?.aborted) {
+            return;
+        }
+
         await syncNoteToTelegramPost(relativePath);
         resynced += 1;
     }

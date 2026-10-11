@@ -77,7 +77,9 @@ export function createBacklinkPrefilter(targetPath: string, aliases: readonly st
     return (content) => {
         const lower = content.toLowerCase();
 
-        return needles.some((needle) => lower.includes(needle));
+        // Any percent encoding or Markdown escape may spell the same target differently.
+        // False positives cost a parse; false negatives lose backlinks during a move.
+        return /%[0-9a-f]{2}|\\/.test(lower) || needles.some((needle) => lower.includes(needle));
     };
 }
 

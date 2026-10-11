@@ -401,13 +401,6 @@ export function getCodeToolArgumentKeys(name: CodeToolName): string[] {
     return getToolArgumentKeys(CODE_TOOL_DEFINITIONS[name]);
 }
 
-/** All Code Tools domain commands share one operation lifecycle. */
-export const MANAGED_CODE_TOOL_NAMES: readonly CodeToolName[] = CODE_TOOL_NAMES;
-
-export function isManagedCodeToolName(name: string): boolean {
-    return MANAGED_CODE_TOOL_NAMES.some((tool) => tool === name);
-}
-
 /** Control tools are separate from domain handlers and always bypass the FIFO queue. */
 export const CODE_MCP_TOOL_DEFINITIONS = {
     ...CODE_TOOL_DEFINITIONS,

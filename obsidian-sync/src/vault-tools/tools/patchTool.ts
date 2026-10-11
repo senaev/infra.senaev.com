@@ -11,7 +11,7 @@ import { replaceFileAtomically } from 'senaev-utils/src/utils/fs/atomicFileWrite
 import { assertExpectedHash, readExpectedHash } from 'senaev-utils/src/toolServer/contentHash';
 import { createFileDiffAsync } from 'senaev-utils/src/toolServer/createFileDiffAsync';
 import { withFileMutation } from 'senaev-utils/src/toolServer/withFileMutation';
-import { replaceExactlyOnce } from 'senaev-utils/src/toolServer/textEdits';
+import { replaceExactlyOnceAsync } from 'senaev-utils/src/toolServer/textEdits';
 import {
     optionalString,
     readToolArguments,
@@ -27,7 +27,7 @@ import { findSection } from '../markdown/sections';
 import { readVaultToolArguments } from '../toolArguments';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
 
-type Operation = (content: string) => string;
+type Operation = (content: string) => string | Promise<string>;
 
 /** Appended text always starts on a new line; a blank line before it is up to the caller. */
 function joinOnNewLine(before: string, text: string): string {
@@ -60,7 +60,7 @@ function replace(args: ToolArguments): Operation {
     const find = requiredNonEmptyString(args, 'find');
     const replacement = requiredString(args, 'replace');
 
-    return (content) => replaceExactlyOnce(content, find, replacement, 'note');
+    return (content) => replaceExactlyOnceAsync(content, find, replacement, 'note');
 }
 
 function replaceSection(args: ToolArguments): Operation {
@@ -141,7 +141,7 @@ export async function patchTool(config: VaultToolsConfig, input: unknown) {
 
         for (const operation of operations) {
             await operationCheckpoint();
-            updated = operation(updated);
+            updated = await operation(updated);
         }
 
         const diff = await createFileDiffAsync(path, original, updated);

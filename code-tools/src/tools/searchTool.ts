@@ -19,7 +19,6 @@ import {
     normalizeProjectPath, readCodeToolArguments, resolveProject,
 } from './projectAccess';
 
-const RG_TIMEOUT_MS = 30_000;
 const MAX_RG_OUTPUT_CHARS = 10_000_000;
 const MAX_LINE_CHARS = 300;
 const CHARS_BEFORE_MATCH = 100;
@@ -233,12 +232,10 @@ export async function searchTool(config: CodeToolsConfig, input: unknown) {
         folder: normalizeProjectPath(optionalString(args, 'folder') ?? '', 'folder'),
     }), {
         cwd: project.root,
-        ...context === undefined
-            ? { timeoutMs: RG_TIMEOUT_MS }
-            : {
-                signal: context.signal,
-                onOutput: context.log,
-            },
+        ...context && {
+            signal: context.signal,
+            onOutput: context.log,
+        },
         maxOutputChars: MAX_RG_OUTPUT_CHARS,
         keep: 'start',
         env: config.commandEnv,

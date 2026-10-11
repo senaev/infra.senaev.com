@@ -12,8 +12,8 @@ import { invalidArguments } from 'senaev-utils/src/toolServer/ToolError';
 import { replaceFileAtomically } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
 import { createFileDiffAsync } from 'senaev-utils/src/toolServer/createFileDiffAsync';
 import { withFileMutation } from 'senaev-utils/src/toolServer/withFileMutation';
+import { replaceExactlyOnceAsync as replaceText } from 'senaev-utils/src/toolServer/textEdits';
 
-import { replaceText } from './replaceText';
 import type { CodeToolsConfig } from './codeToolsConfig';
 import {
     normalizeProjectPath, readCodeToolArguments, readTextFile, resolveExistingFile, resolveProject,
@@ -68,9 +68,12 @@ export async function patchTool(config: CodeToolsConfig, input: unknown) {
             updated = await replaceText(updated, operation.find, operation.replace);
         }
 
+        const diff = await createFileDiffAsync(path, original, updated);
+
         throwIfOperationAborted();
 
         if (updated !== original) {
+            assertExpectedHash(await readTextFile(absolutePath, path), expectedHash, 'file');
             await replaceFileAtomically(absolutePath, updated, operationContext()?.signal, () => recordChangedPath(path));
         }
 
@@ -80,7 +83,7 @@ export async function patchTool(config: CodeToolsConfig, input: unknown) {
             path,
             changed: updated !== original,
             hash: hashContent(updated),
-            ...await createFileDiffAsync(path, original, updated),
+            ...diff,
         };
     });
 }

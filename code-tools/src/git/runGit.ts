@@ -6,7 +6,6 @@ import { ToolError } from 'senaev-utils/src/toolServer/ToolError';
 import { type ProcessResult, runProcess } from '../process/runProcess';
 import type { CodeToolsConfig } from '../tools/codeToolsConfig';
 
-const GIT_TIMEOUT_MS = 30_000;
 const MAX_GIT_OUTPUT_CHARS = 20_000_000;
 
 /** Runs a git command that is part of a tool, and fails with git's own message. */
@@ -15,12 +14,10 @@ export async function runGit(config: CodeToolsConfig, cwd: string, args: readonl
     const context = operationContext();
     const result = await runProcess('git', args, {
         cwd,
-        ...context === undefined
-            ? { timeoutMs: GIT_TIMEOUT_MS }
-            : {
-                signal: context.signal,
-                onOutput: context.log,
-            },
+        ...context && {
+            signal: context.signal,
+            onOutput: context.log,
+        },
         maxOutputChars: MAX_GIT_OUTPUT_CHARS,
         keep: 'start',
         env: config.commandEnv,

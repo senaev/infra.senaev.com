@@ -7,7 +7,6 @@ import { CLONE_LIMITS } from 'senaev-utils/src/codeTools/codeToolLimits';
 import {
     operationCheckpoint, operationContext, recordChangedPath, throwIfOperationAborted,
 } from 'senaev-utils/src/operations/operationContext';
-import { executionTimeout } from 'senaev-utils/src/operations/OperationManager';
 import { optionalString, requiredNonEmptyString } from 'senaev-utils/src/toolServer/toolArguments';
 import { invalidArguments, ToolError } from 'senaev-utils/src/toolServer/ToolError';
 import { isNotFoundError } from 'senaev-utils/src/utils/Error/isNotFoundError/isNotFoundError';
@@ -103,12 +102,10 @@ export async function cloneTool(config: CodeToolsConfig, input: unknown) {
             temporary,
         ], {
             cwd: config.projectsRoot,
-            ...context === undefined
-                ? { timeoutMs: executionTimeout(args.timeoutSeconds) * 1000 }
-                : {
-                    signal: context.signal,
-                    onOutput: context.log,
-                },
+            ...context && {
+                signal: context.signal,
+                onOutput: context.log,
+            },
             maxOutputChars: MAX_ERROR_CHARS,
             env: config.commandEnv,
         });

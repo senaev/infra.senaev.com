@@ -1,10 +1,7 @@
 import Fastify from 'fastify';
-import { isCodeToolName, isManagedCodeToolName } from 'senaev-utils/src/codeTools/codeToolDefinitions';
-import { OperationManager } from 'senaev-utils/src/operations/OperationManager';
-import { isOperationToolName, readOperationArguments } from 'senaev-utils/src/operations/operationToolDefinitions';
+import { createManagedToolService } from 'senaev-utils/src/toolServer/createManagedToolService';
 import { isValidBearerAuthorizationHeader } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
 import { runToolCall } from 'senaev-utils/src/toolServer/runToolCall';
-import { ToolError } from 'senaev-utils/src/toolServer/ToolError';
 
 import { logger } from '../logger';
 import { CODE_TOOLS } from '../tools/codeTools';
@@ -21,22 +18,15 @@ export function createCodeToolsServer(internalToken: string, config: CodeToolsCo
         bodyLimit: BODY_LIMIT_BYTES,
     });
 
-    // Lazy, memory-only lifecycle shared by every domain command.
-    let manager: OperationManager | undefined;
-    const operations = () => {
-        manager ??= new OperationManager('code', (error, operation) => {
-            logger.error({
-                err: error,
-                ...operation,
-            }, 'Managed operation crashed');
-        });
-
-        return manager;
-    };
-
-    server.addHook('onClose', async () => {
-        await manager?.close();
+    const service = createManagedToolService({
+        backend: 'code',
+        logger,
+        config,
+        tools: CODE_TOOLS,
+        readArguments: readCodeToolArguments,
     });
+
+    server.addHook('onClose', () => service.close());
 
     // Every route except the Kubernetes liveness probe needs the token that only
     // cluster-helper has, because the tools give a full shell in the container.
@@ -67,27 +57,7 @@ export function createCodeToolsServer(internalToken: string, config: CodeToolsCo
         const { statusCode, body } = await runToolCall({
             name,
             logger,
-            run: () => {
-                if (isOperationToolName(name)) {
-                    return operations().control(name, readOperationArguments(name, request.body));
-                }
-
-                if (!isCodeToolName(name)) {
-                    throw new ToolError('unknown_tool', `Unknown code tool "${name}"`);
-                }
-
-                if (isManagedCodeToolName(name)) {
-                    const args = readCodeToolArguments(request.body, name);
-
-                    return operations().launch({
-                        tool: name,
-                        args,
-                        run: () => CODE_TOOLS[name](config, args),
-                    });
-                }
-
-                return CODE_TOOLS[name](config, request.body);
-            },
+            run: () => service.call(name, request.body),
         });
 
         return reply.code(statusCode).send(body);

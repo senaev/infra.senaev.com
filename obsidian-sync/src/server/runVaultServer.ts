@@ -16,7 +16,7 @@ const HOST = '0.0.0.0';
 const PORT = 8080;
 
 /** Starts the vault HTTP API and resolves once it is accepting connections. */
-export async function runVaultServer(): Promise<void> {
+export async function runVaultServer() {
     const server = createVaultServer();
 
     // First, so the check covers every route registered below.
@@ -37,4 +37,6 @@ export async function runVaultServer(): Promise<void> {
         port: PORT,
         publicDir: PUBLIC_DIR,
     }, '✅ Vault server listening');
+
+    return server;
 }

@@ -8,12 +8,12 @@ import {
     afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
 import { createFileDiffAsync } from 'senaev-utils/src/toolServer/createFileDiffAsync';
+import { replaceExactlyOnceAsync as replaceText } from 'senaev-utils/src/toolServer/textEdits';
 
 import { cloneTool } from './cloneTool';
 import { createTestProjects, type TestProjects } from './createTestProjects';
 import { patchTool } from './patchTool';
 import { readTool } from './readTool';
-import { replaceText } from './replaceText';
 import { writeTool } from './writeTool';
 
 const hooks = vi.hoisted(() => {

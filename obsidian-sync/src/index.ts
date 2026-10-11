@@ -1,31 +1,52 @@
+import { installGracefulShutdown } from 'senaev-utils/src/utils/process/installGracefulShutdown';
+
 import { logger } from './logger';
 import { runContinuousSync } from './obsidian-cli/runContinuousSync';
 import { setUpVaultSync } from './obsidian-cli/setUpVaultSync';
 import { runVaultServer } from './server/runVaultServer';
 import { startTelegramPostSyncInBackground } from './telegram-post-sync/startTelegramPostSync';
 
-async function main(): Promise<never> {
-    await setUpVaultSync();
-    await runVaultServer();
+let server: Awaited<ReturnType<typeof runVaultServer>> | undefined;
+let background: ReturnType<typeof startTelegramPostSyncInBackground> | undefined;
+let continuous: Promise<void> | undefined;
+let starting: Promise<void> | undefined;
 
-    // Backgrounded on purpose: the initial push talks to Telegram, and a failure there
-    // must not stop the vault server or the sync loop below from running.
-    startTelegramPostSyncInBackground();
+const lifecycle = installGracefulShutdown({
+    stop: async () => {
+        await starting?.catch(() => undefined);
+        const outcomes = await Promise.allSettled([
+            server?.close(),
+            background?.close(),
+            continuous,
+        ]);
+        const failed = outcomes.find((outcome) => outcome.status === 'rejected');
 
-    // Never resolves while sync is healthy, so this keeps the process alive and
-    // turns a dead sync into a crash that Kubernetes restarts.
-    return runContinuousSync();
+        if (failed?.status === 'rejected') {
+            throw failed.reason;
+        }
+    },
+    reportError: (error) => logger.error(error, '❌ Obsidian shutdown failed'),
+});
+
+async function start(): Promise<void> {
+    await setUpVaultSync(lifecycle.signal);
+    lifecycle.signal.throwIfAborted();
+    server = await runVaultServer();
+    lifecycle.signal.throwIfAborted();
+    background = startTelegramPostSyncInBackground(lifecycle.signal);
 }
 
-process.on('SIGTERM', () => {
-    process.exit(0);
-});
+async function main(): Promise<void> {
+    starting = start();
+    await starting;
+    lifecycle.signal.throwIfAborted();
+    continuous = runContinuousSync(lifecycle.signal);
+    await continuous;
+}
 
-process.on('SIGINT', () => {
-    process.exit(0);
-});
-
-main().catch((error) => {
-    logger.error(error, '❌ obsidian-sync exited');
-    process.exit(1);
+main().catch(async (error) => {
+    if (!lifecycle.signal.aborted) {
+        logger.error(error, '❌ obsidian-sync exited');
+        await lifecycle.shutdown(1);
+    }
 });
