@@ -81,6 +81,14 @@ All Code Tools domain commands (run, clone, search, projects, list, read, write 
 
 Persist bounded search/list results for subsequent retrieval rather than rerunning the same operation. Saved results are snapshots and must not be presented as current after filesystem changes. Typed tools return structured results rather than raw process logs. Cancellation/deadline checks cover JavaScript processing as well as subprocesses.
 
+### Gradual activation and recovery access
+
+Universal coverage is the final target, not a single deployment switch. Activate the shared wrapper through a backend-owned allowlist/feature flag, initially for only one read-only command (code-projects is the first candidate). Commands outside the allowlist keep their existing direct path during migration; they do not enter the new queue or depend on manager initialization/storage. Keep the control endpoints outside the queue and ensure tool descriptions match the actually enabled behaviour.
+
+Before enabling another group, merge its separate PR, verify the deployment and exercise the enabled command end-to-end through ChatGPT: fast result, long-running handle, queued response, status/result, cancellation, timeout and backend recovery. Use controlled test fixtures/delays to test slow read-only behaviour without altering real repositories. Verify that code-run/read/write/patch still work while the new manager is unavailable, its queue is full or an operation is hung.
+
+Migrate read-only commands first, then mutations, and switch the commands used to repair this repository last. Before that final switch, establish and test a recovery path independent of this MCP (for example SSH/kubectl with a documented last-known-good image rollback). A flag reachable only through the broken MCP is not a recovery path. Disabling managed execution must reject new managed admissions, reconcile in-flight work and preserve retrievable results; never automatically retry mutations on the old path. Do not advance while rollout/health/smoke checks fail. A shared process crash or blocked event loop can still affect direct tools; the initial allowlist reduces exposure but does not replace independent recovery access.
+
 ## Questions and clarifications
 
 - Final operation tool names and schemas; whether observation combines status, logs and result in one response.
@@ -107,10 +115,10 @@ These are design references, not adopted dependencies or proof of ChatGPT client
 2. Verify actual ChatGPT capabilities and choose the external polling interface; keep native Tasks optional.
 3. Implement the reusable operation lifecycle in senaev-utils, backend-owned persistent operations and routing, process supervision, runtime deadlines and cancellation.
 4. Thread AbortSignal through every existing Code Tools and Obsidian handler/helper chain; make file traversal and batch/CPU processing cooperatively cancellable.
-5. Wrap all Code Tools and Obsidian domain commands with the common server-controlled response behaviour, fixed observation waiting, structured final results, incremental output and retry deduplication.
+5. Add a backend-owned activation allowlist and wrap one safe read-only command first (code-projects). Keep all other commands on their existing direct path; validate the complete managed lifecycle before expanding coverage.
 6. Add independent per-backend FIFO queues (one running, five waiting), immediate queued acknowledgement, QUEUE_FULL, retention, clone publication and restart reconciliation.
 7. Preserve each wrapped tool's structured results, conflict/diff feedback and partial-mutation reporting.
-8. Update shared tool definitions, proxy policies and operating instructions.
+8. Expand coverage in separate PRs after merge/deployment/smoke checks: read-only tools, mutations, then recovery-critical run/read/write/patch after independent rollback access is verified. Update shared tool definitions, proxy policies and operating instructions for each enabled stage.
 9. Run automated checks and end-to-end tests from the current ChatGPT connector before any rollout claims.
 
 ## Verification
@@ -129,7 +137,8 @@ These are design references, not adopted dependencies or proof of ChatGPT client
 - Verify aborted search/backlink scans stop scheduling reads and cannot return complete:true or swallow abort as an ordinary file warning. Verify CPU loops yield and parallel batches stop scheduling work.
 - Verify cancelled multi-file mutations preserve valid individual files and report completed changes and incomplete work. Test abort racing with final completion/publication and ensure a single coherent terminal outcome.
 - Verify backend routing and owner isolation for both Code Tools and Obsidian operation handles; client poll disconnection must not abort execution.
-- Run all repository checks; demonstrate run, clone and a long Obsidian scan through ChatGPT.
+- Test disabled-command bypass when the manager fails initialization, storage fails, its queue is full or an operation is hung; verify run/read/write/patch remain available during migration. Verify safe feature-flag rollback without duplicate mutations and test independent recovery access before the final switch.
+- Run all repository checks and verify each merged deployment before expanding the activation allowlist; ultimately demonstrate run, clone and a long Obsidian scan through ChatGPT.
 
 ## Findings
 
@@ -156,3 +165,11 @@ The owner superseded the earlier tool exceptions and per-project concurrency pro
 ### 2026-10-11 09:50 UTC — Remove execution modes and clarify both consumers
 
 The owner removed caller-selected sync/async/auto modes. All domain tools now use server-controlled bounded observation: an idle executor returns a result/error within 5 seconds or an operation ID; a busy executor immediately returns a queued ID. Updated operative requirements, proxy policy, plan and verification, removing obsolete sync transport questions. Explicitly named both Code Tools and Obsidian Sync containers as consumers of the shared senaev-utils wrapper, with Cluster Helper routing to their independent queues and state. Earlier mode decisions remain historical only. This PR still changes documentation only.
+
+### 2026-10-11 10:08 UTC — Stage 1: shared manager, separate PRs
+
+Merged the reviewed design PR #61 into main (f1038eb). The owner requested a separate PR from main for each implementation stage, followed by deployment verification before advancing. Stage 1 lives on feat/operation-manager and adds the inactive shared manager and cancellation context only; existing backend routes and MCP schemas remain unchanged. Implemented serialized FIFO admission (one active/five waiting), QUEUE_FULL, requestId deduplication, bounded initial observation, runtime-only chunked deadlines, cancellation, atomic persistent records, replayable bounded logs, paged result retrieval and interrupted restart recovery. Initial storage policy: 128,000 log characters, 4,000,000 result characters, 100 terminal records and seven-day retention, pruning at admission/completion. Log snapshots flush every 250 ms and at terminal completion; an abrupt crash can lose the last unflushed output. Cooperative cancellation checkpoints use an async-local operation context to propagate the same AbortSignal through helper chains. Stage 1 does not activate execution or change production behaviour. Clone removal/generalized Run remains a separate Obsidian reminder, outside this implementation.
+
+### 2026-10-11 10:40 UTC — Gradual activation requirement
+
+The owner approved merging stage 1 and requested gradual activation to protect the MCP used to edit and repair this repository. Added an initial read-only canary, backend-owned activation allowlist, independent direct-path bypass, separate merge/deploy/verification gates, recovery-critical tools last and tested out-of-band rollback before universal activation. The final universal interface remains the goal; migration exceptions are temporary. The allowlist itself is a small integration change; lifecycle, failure and rollout verification is the larger part of the work.
