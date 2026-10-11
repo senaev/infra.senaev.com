@@ -1,3 +1,5 @@
+import { randomBytes } from 'node:crypto';
+
 import formbody from '@fastify/formbody';
 import rateLimit from '@fastify/rate-limit';
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
@@ -40,11 +42,13 @@ function sendAuthorizeOutcome(reply: FastifyReply, outcome: AuthorizeOutcome) {
             return sendAuthorizationError(reply, 400, redirect.searchParams.get('error_description') ?? 'The authorization request is invalid.', outcome.location);
         }
 
+        const nonce = randomBytes(16).toString('base64');
+
         return reply.code(200)
-            .header('Content-Security-Policy', LOGIN_PAGE_CSP)
+            .header('Content-Security-Policy', `${LOGIN_PAGE_CSP}; script-src 'nonce-${nonce}'`)
             .header('X-Frame-Options', 'DENY')
             .type('text/html')
-            .send(renderAuthorizationSuccess(outcome.location));
+            .send(renderAuthorizationSuccess(outcome.location, nonce));
     }
 
     if (outcome.kind === 'reject') {

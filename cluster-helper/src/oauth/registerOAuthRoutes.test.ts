@@ -195,6 +195,12 @@ describe('registerOAuthRoutes', () => {
         expect(response.headers['referrer-policy']).toBe('no-referrer');
         expect(response.headers['content-security-policy']).toContain('form-action');
         expect(response.body).toContain('Signed in successfully');
+        const nonce = /script-src 'nonce-([^']+)'/.exec(String(response.headers['content-security-policy']))?.[1];
+
+        expect(nonce).toMatch(/^[A-Za-z0-9+/]{22}==$/);
+        expect(response.body).toContain(`<script nonce="${nonce}">`);
+        expect(response.body).toContain('window.location.assign(link.href)');
+        expect(String(response.headers['content-security-policy'])).not.toContain('script-src \'unsafe-inline\'');
         expect(response.body).not.toContain('secret-password');
         expect(response.body).not.toContain('<form');
         expect(response.body).not.toContain('http-equiv="refresh"');
@@ -206,6 +212,22 @@ describe('registerOAuthRoutes', () => {
         expect(location.origin).toBe('https://chatgpt.com');
         expect(location.searchParams.get('code')).toBeTruthy();
         expect(location.searchParams.get('state')).toBe('original-state');
+        const anotherLogin = await server.inject({
+            method: 'POST',
+            url: '/authorize',
+            headers: FORM_HEADERS,
+            payload: new URLSearchParams({
+                response_type: 'code',
+                client_id: 'https://chatgpt.com/oauth/client.json',
+                redirect_uri: 'https://chatgpt.com/connector_platform_oauth_redirect',
+                code_challenge: challenge,
+                code_challenge_method: 'S256',
+                username: 'andrei',
+                password: 'secret-password',
+            }).toString(),
+        });
+
+        expect(anotherLogin.headers['content-security-policy']).not.toBe(response.headers['content-security-policy']);
         const token = await server.inject({
             method: 'POST',
             url: '/token',

@@ -78,7 +78,7 @@ ${continueUrl === undefined ? '' : `<p><a href="${escapeHtml(continueUrl)}">Retu
 }
 
 /** A user-initiated link avoids the browser's form redirect chain restrictions. */
-export function renderAuthorizationSuccess(continueUrl: string): string {
+export function renderAuthorizationSuccess(continueUrl: string, nonce: string): string {
     return `<!doctype html>
 <html lang="en">
 <head>
@@ -96,6 +96,16 @@ a { display: block; padding: .8rem; border-radius: 6px; background: #18181b; col
 <p>Your username and password were accepted. Return to the app to finish connecting.</p>
 <a href="${escapeHtml(continueUrl)}" rel="noreferrer">Return to the app</a>
 <p>This link expires shortly. If it has expired, start the connection again from the app.</p>
-</main></body>
+</main>
+<script nonce="${escapeHtml(nonce)}">
+// Keep the link visible if scripting or automatic navigation is blocked.
+window.setTimeout(function () {
+    var link = document.querySelector('main a');
+    if (link) {
+        try { window.location.assign(link.href); } catch (_) { /* The link remains available. */ }
+    }
+}, 500);
+</script>
+</body>
 </html>`;
 }
