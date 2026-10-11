@@ -21,7 +21,7 @@ export function createCodeToolsServer(internalToken: string, config: CodeToolsCo
         bodyLimit: BODY_LIMIT_BYTES,
     });
 
-    // Lazy, memory-only lifecycle: direct tools do not depend on the manager.
+    // Lazy, memory-only lifecycle shared by every domain command.
     let manager: OperationManager | undefined;
     const operations = () => {
         manager ??= new OperationManager('code');

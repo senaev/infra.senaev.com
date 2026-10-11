@@ -213,7 +213,7 @@ describe('projects managed-execution canary', () => {
         }, { timeout: 3000 });
     }, 10000);
 
-    it('immediately queues five, rejects overflow and keeps read/write/patch available', async () => {
+    it('immediately queues five, rejects overflow and allows parallel file commands', async () => {
         const { started, run } = holdProjects();
         const active = call('projects', { requestId: 'active' });
 
@@ -242,10 +242,12 @@ describe('projects managed-execution canary', () => {
         })).statusCode).toBe(429);
         const read = (await call('read', {
             project: 'demo',
+            executionPolicy: 'parallel',
             paths: ['README.md'],
         })).json<Reply>();
         const write = await call('write', {
             project: 'demo',
+            executionPolicy: 'parallel',
             path: 'README.md',
             expectedHash: read.files?.[0]?.hash,
             content: 'updated\n',
@@ -254,6 +256,7 @@ describe('projects managed-execution canary', () => {
         expect(write.statusCode).toBe(200);
         const patch = await call('patch', {
             project: 'demo',
+            executionPolicy: 'parallel',
             path: 'README.md',
             expectedHash: write.json<Reply>().hash,
             operations: [
@@ -267,6 +270,7 @@ describe('projects managed-execution canary', () => {
         expect(patch.statusCode).toBe(200);
         expect((await call('read', {
             project: 'demo',
+            executionPolicy: 'parallel',
             paths: ['README.md'],
         })).json<Reply>().files?.[0]?.content).toBe('patched\n');
         for (const id of queued) {
@@ -294,14 +298,15 @@ describe('projects managed-execution canary', () => {
         });
     });
 
-    it('keeps repair tools direct if managed admission fails', async () => {
+    it('all domain tools depend on managed admission', async () => {
         const launch = vi.spyOn(OperationManager.prototype, 'launch').mockRejectedValue(new ToolError('conflict', 'Unavailable'));
 
         expect((await call('read', {
             project: 'demo',
+            executionPolicy: 'parallel',
             paths: ['README.md'],
-        })).statusCode).toBe(200);
-        expect(launch).not.toHaveBeenCalled();
+        })).statusCode).toBe(409);
+        expect(launch).toHaveBeenCalledTimes(1);
         expect((await call('projects')).statusCode).toBe(409);
     });
 

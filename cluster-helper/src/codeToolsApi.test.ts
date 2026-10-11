@@ -34,6 +34,10 @@ describe('code operation proxy', () => {
             'run',
             'list',
             'search',
+            'clone',
+            'read',
+            'write',
+            'patch',
             'operations',
             'operation_status',
             'operation_result',
@@ -75,7 +79,7 @@ describe('code operation proxy', () => {
         }
 
         await callCodeTool('clone', { url: 'git@example.com:demo.git' });
-        expect(timeout).toHaveBeenLastCalledWith(330000);
+        expect(timeout).toHaveBeenLastCalledWith(15000);
     });
 
     it('preserves QUEUE_FULL as a tool error rather than a transport failure', async () => {

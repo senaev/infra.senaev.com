@@ -4,6 +4,9 @@ import { join } from 'node:path';
 import {
     getCodeToolArgumentKeys, PROJECT_NAME_PATTERN, type CodeToolName,
 } from 'senaev-utils/src/codeTools/codeToolDefinitions';
+import {
+    operationCheckpoint, operationContext, throwIfOperationAborted,
+} from 'senaev-utils/src/operations/operationContext';
 import { assertNoSymlinkOnPath, normalizeRootRelativePath } from 'senaev-utils/src/toolServer/rootRelativePath';
 import {
     readToolArguments, requiredNonEmptyString, type ToolArguments,
@@ -35,6 +38,7 @@ export function assertProjectName(name: string, field: string): void {
 
 /** The project from the `project` argument; it must be an existing folder, not a symlink. */
 export async function resolveProject(config: CodeToolsConfig, args: ToolArguments): Promise<Project> {
+    await operationCheckpoint();
     const name = requiredNonEmptyString(args, 'project');
 
     assertProjectName(name, 'project');
@@ -42,7 +46,10 @@ export async function resolveProject(config: CodeToolsConfig, args: ToolArgument
     try {
         const root = await assertNoSymlinkOnPath(config.projectsRoot, name);
 
-        if ((await stat(root)).isDirectory()) {
+        const metadata = await stat(root);
+
+        throwIfOperationAborted();
+        if (metadata.isDirectory()) {
             return {
                 name,
                 root,
@@ -73,6 +80,7 @@ export function normalizeProjectPath(input: string, field: string): string {
 
 /** The absolute path of an existing regular file, with no symlink on the way. */
 export async function resolveExistingFile(project: Project, path: string): Promise<string> {
+    await operationCheckpoint();
     if (path === '') {
         throw invalidArguments('The path must name a file, not the project root');
     }
@@ -83,6 +91,8 @@ export async function resolveExistingFile(project: Project, path: string): Promi
         if (!(await stat(absolutePath)).isFile()) {
             throw new ToolError('not_found', `"${path}" is not a file`);
         }
+
+        throwIfOperationAborted();
 
         return absolutePath;
     } catch (error) {
@@ -96,11 +106,16 @@ export async function resolveExistingFile(project: Project, path: string): Promi
 
 /** Reads a UTF-8 text file. A file with a NUL byte near its start is treated as binary, as git does. */
 export async function readTextFile(absolutePath: string, path: string): Promise<string> {
+    await operationCheckpoint();
     if ((await stat(absolutePath)).size > MAX_TEXT_FILE_BYTES) {
         throw new ToolError('forbidden_path', `"${path}" is larger than ${MAX_TEXT_FILE_BYTES / 1024 / 1024} MB; use code-run with head, tail or sed to read parts of it`);
     }
 
-    const buffer = await readFile(absolutePath);
+    throwIfOperationAborted();
+    const signal = operationContext()?.signal;
+    const buffer = await readFile(absolutePath, signal === undefined ? {} : { signal });
+
+    throwIfOperationAborted();
 
     if (buffer.subarray(0, BINARY_SNIFF_BYTES).includes(0)) {
         throw new ToolError('forbidden_path', `"${path}" is a binary file`);

@@ -1,8 +1,13 @@
 import {
     mkdir, realpath, stat,
 } from 'node:fs/promises';
-import { join, posix } from 'node:path';
+import {
+    join, posix, relative,
+} from 'node:path';
 
+import {
+    operationCheckpoint, recordChangedPath, throwIfOperationAborted,
+} from '../operations/operationContext';
 import { isNotFoundError } from '../utils/Error/isNotFoundError/isNotFoundError';
 
 import { invalidArguments, ToolError } from './ToolError';
@@ -34,10 +39,12 @@ export function normalizeRootRelativePath(input: string, field: string, rootName
  * placed inside the root, because the requested path looks innocent either way.
  */
 export async function assertNoSymlinkOnPath(root: string, relativePath: string): Promise<string> {
+    await operationCheckpoint();
     const realRoot = await realpath(root);
     const absolutePath = join(root, relativePath);
     const realPath = await realpath(absolutePath);
 
+    throwIfOperationAborted();
     if (realPath !== join(realRoot, relativePath)) {
         throw new ToolError('forbidden_path', `"${relativePath}" goes through a symbolic link, which is not allowed`);
     }
@@ -62,6 +69,7 @@ export async function prepareNewFilePath(root: string, relativePath: string): Pr
     let existingAncestor = parent;
 
     for (;;) {
+        await operationCheckpoint();
         try {
             const absolutePath = await assertNoSymlinkOnPath(root, existingAncestor);
 
@@ -79,7 +87,14 @@ export async function prepareNewFilePath(root: string, relativePath: string): Pr
         }
     }
 
-    await mkdir(join(root, parent), { recursive: true });
+    throwIfOperationAborted();
+    const created = await mkdir(join(root, parent), { recursive: true });
+
+    if (created !== undefined) {
+        recordChangedPath(relative(root, created));
+    }
+
+    throwIfOperationAborted();
 
     return join(root, relativePath);
 }

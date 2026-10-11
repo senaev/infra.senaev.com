@@ -81,7 +81,10 @@ describe('createCodeToolsServer', () => {
 
         expect(unknown.statusCode).toBe(404);
         expect(unknown.json()).toMatchObject({ code: 'unknown_tool' });
-        expect(missingProject.statusCode).toBe(404);
-        expect(missingProject.json()).toMatchObject({ code: 'not_found' });
+        expect(missingProject.statusCode).toBe(200);
+        expect(missingProject.json()).toMatchObject({
+            code: 'not_found',
+            operation: { state: 'failed' },
+        });
     });
 });

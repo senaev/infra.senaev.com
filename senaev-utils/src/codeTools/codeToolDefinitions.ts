@@ -78,12 +78,15 @@ const projects: ToolDefinition = {
 const clone: ToolDefinition = {
     title: 'Clone a git repository',
     description: [
+        MANAGED_TOOL_DESCRIPTION,
+        'Clones into its own hidden temporary directory, then atomically publishes without replacing an existing destination. Concurrent clones of the same name conflict; abort cleans only its own temporary data. Progress logs are retained.',
         'Clones a git repository into a new project on the owner\'s server. Fails if a project with that name already exists.',
         'GitHub repositories work over SSH ("git@github.com:owner/repo.git") and over HTTPS.',
     ].join(' '),
     inputSchema: {
         type: 'object',
         properties: {
+            ...MANAGED_TOOL_PROPERTIES,
             url: {
                 type: 'string',
                 maxLength: CLONE_LIMITS.maxUrlLength,
@@ -195,6 +198,7 @@ const search: ToolDefinition = {
 const read: ToolDefinition = {
     title: 'Read project files',
     description: [
+        MANAGED_TOOL_DESCRIPTION,
         'Reads text files of a project. Each file comes with "hash", which code-patch and code-write need to change it.',
         `One response holds at most ${formatNumber(READ_LIMITS.maxCharsPerResponse)} characters and whole lines only; continue with "remainingPaths".`,
         `A file longer than ${formatNumber(READ_LIMITS.maxCharsPerFile)} characters is cut with "truncated": true;`,
@@ -204,6 +208,7 @@ const read: ToolDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
+            ...MANAGED_TOOL_PROPERTIES,
             ...PROJECT_PROPERTY,
             paths: {
                 type: 'array',
@@ -235,15 +240,18 @@ const read: ToolDefinition = {
 const write: ToolDefinition = {
     title: 'Write a project file',
     description: [
+        MANAGED_TOOL_DESCRIPTION,
         'Creates a file in a project, with missing folders, or replaces the whole text of an existing file.',
         'To replace an existing file, pass the "hash" from the latest code-read as "expectedHash";',
         'without "expectedHash" the call fails if the file exists. For small changes to a big file, use code-patch.',
         'Returns "diff", the unified diff of the file; show it to the user in a ```diff code block.',
+        'Cancellation does not roll back published changes; inspect operation.changedPaths. Parallel mutations can conflict; hash checks and per-file atomic publication remain enforced.',
         PROJECT_RULES,
     ].join(' '),
     inputSchema: {
         type: 'object',
         properties: {
+            ...MANAGED_TOOL_PROPERTIES,
             ...PROJECT_PROPERTY,
             path: {
                 type: 'string',
@@ -272,17 +280,20 @@ const write: ToolDefinition = {
 const patch: ToolDefinition = {
     title: 'Edit a project file',
     description: [
+        MANAGED_TOOL_DESCRIPTION,
         'Makes targeted edits to an existing file of a project. Read the file with code-read first and pass its "hash" as "expectedHash";',
         'if the file changed since then, the edit is refused with a conflict and you must read it again.',
         'Each operation replaces the exact text "find", which must occur exactly once, with "replace"; include enough lines in "find" to make it unique.',
         'The operations run in order, and if one fails, nothing is written.',
         'Returns "diff", the unified diff of the file, and the new "hash", so you can edit the same file again without reading it.',
         'Show the diff to the user in a ```diff code block.',
+        'Cancellation does not roll back published changes; inspect operation.changedPaths. Parallel mutations can conflict; hash checks and per-file atomic publication remain enforced.',
         PROJECT_RULES,
     ].join(' '),
     inputSchema: {
         type: 'object',
         properties: {
+            ...MANAGED_TOOL_PROPERTIES,
             ...PROJECT_PROPERTY,
             path: {
                 type: 'string',
@@ -389,13 +400,8 @@ export function getCodeToolArgumentKeys(name: CodeToolName): string[] {
     return getToolArgumentKeys(CODE_TOOL_DEFINITIONS[name]);
 }
 
-/** Incremental activation; file repair tools still keep their direct execution path. */
-export const MANAGED_CODE_TOOL_NAMES: readonly CodeToolName[] = [
-    'projects',
-    'run',
-    'list',
-    'search',
-];
+/** All Code Tools domain commands share one operation lifecycle. */
+export const MANAGED_CODE_TOOL_NAMES: readonly CodeToolName[] = CODE_TOOL_NAMES;
 
 export function isManagedCodeToolName(name: string): boolean {
     return MANAGED_CODE_TOOL_NAMES.some((tool) => tool === name);

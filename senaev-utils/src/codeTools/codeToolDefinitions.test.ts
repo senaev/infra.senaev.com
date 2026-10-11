@@ -5,6 +5,7 @@ import {
 import {
     CODE_TOOL_DEFINITIONS,
     CODE_TOOL_NAMES,
+    MANAGED_CODE_TOOL_NAMES,
     getCodeToolArgumentKeys,
     isCodeToolName,
     PROJECT_NAME_PATTERN,
@@ -38,6 +39,24 @@ describe('code tool definitions', () => {
             'timeoutSeconds',
             'requestId',
         ]);
+    });
+
+    test('every domain command exposes the same managed execution contract', () => {
+        expect(MANAGED_CODE_TOOL_NAMES).toEqual(CODE_TOOL_NAMES);
+        for (const name of CODE_TOOL_NAMES) {
+            const { properties } = CODE_TOOL_DEFINITIONS[name].inputSchema;
+
+            expect(properties.executionPolicy).toMatchObject({
+                enum: [
+                    'queued',
+                    'parallel',
+                ],
+            });
+            expect(properties.timeoutSeconds).toMatchObject({ minimum: 1 });
+            expect(properties.timeoutSeconds).not.toHaveProperty('maximum');
+            expect(properties.requestId).toBeDefined();
+            expect(CODE_TOOL_DEFINITIONS[name].description).toContain('observes for up to 5 seconds');
+        }
     });
 
     test('recognise only own tool names, not inherited object keys', () => {

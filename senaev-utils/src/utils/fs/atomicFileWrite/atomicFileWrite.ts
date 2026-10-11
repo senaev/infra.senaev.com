@@ -1,11 +1,12 @@
 import { randomBytes } from 'node:crypto';
 import {
-    chmod, link, rename, rm, stat, writeFile,
+    chmod, link, open, rename, rm, stat,
 } from 'node:fs/promises';
 import {
     basename, dirname, join,
 } from 'node:path';
 
+import { throwIfOperationAborted } from '../../../operations/operationContext';
 import { isNotFoundError } from '../../Error/isNotFoundError/isNotFoundError';
 
 const PERMISSION_BITS = 0o7777;
@@ -15,16 +16,35 @@ const PERMISSION_BITS = 0o7777;
  * so file watchers and sync tools that look for a known extension ignore it during the brief
  * moment it exists. Random, so two writes never share one.
  */
-async function writeTemporaryFile(absolutePath: string, content: string): Promise<string> {
+async function writeTemporaryFile(absolutePath: string, content: string, signal?: AbortSignal): Promise<string> {
+    signal?.throwIfAborted();
+    throwIfOperationAborted();
     const temporaryPath = join(
         dirname(absolutePath),
         `.${basename(absolutePath)}.${randomBytes(6).toString('hex')}.tmp`
     );
 
-    await writeFile(temporaryPath, content, {
-        encoding: 'utf8',
-        flag: 'wx',
-    });
+    // Reserve exclusively before writing: cleanup never removes another writer's file.
+    const handle = await open(temporaryPath, 'wx');
+
+    try {
+        signal?.throwIfAborted();
+        await handle.writeFile(content, {
+            encoding: 'utf8',
+            ...signal === undefined ? {} : { signal },
+        });
+        signal?.throwIfAborted();
+        throwIfOperationAborted();
+        await handle.close();
+    } catch (error) {
+        try {
+            await handle.close();
+        } finally {
+            await rm(temporaryPath, { force: true });
+        }
+
+        throw error;
+    }
 
     return temporaryPath;
 }
@@ -44,12 +64,15 @@ async function copyFileMode(fromPath: string, toPath: string): Promise<void> {
  * Swaps the new content in with a rename, so a crash never leaves a half-written file.
  * The file keeps its permission bits.
  */
-export async function replaceFileAtomically(absolutePath: string, content: string): Promise<void> {
-    const temporaryPath = await writeTemporaryFile(absolutePath, content);
+export async function replaceFileAtomically(absolutePath: string, content: string, signal?: AbortSignal, published?: () => void): Promise<void> {
+    const temporaryPath = await writeTemporaryFile(absolutePath, content, signal);
 
     try {
         await copyFileMode(absolutePath, temporaryPath);
+        signal?.throwIfAborted();
+        throwIfOperationAborted();
         await rename(temporaryPath, absolutePath);
+        published?.();
     } catch (error) {
         await rm(temporaryPath, { force: true });
         throw error;
@@ -61,11 +84,14 @@ export async function replaceFileAtomically(absolutePath: string, content: strin
  * `link` never overwrites, which makes "fail if it already exists" a single atomic step,
  * and the file appears with its full content at once.
  */
-export async function createFileExclusively(absolutePath: string, content: string): Promise<void> {
-    const temporaryPath = await writeTemporaryFile(absolutePath, content);
+export async function createFileExclusively(absolutePath: string, content: string, signal?: AbortSignal, published?: () => void): Promise<void> {
+    const temporaryPath = await writeTemporaryFile(absolutePath, content, signal);
 
     try {
+        signal?.throwIfAborted();
+        throwIfOperationAborted();
         await link(temporaryPath, absolutePath);
+        published?.();
     } finally {
         await rm(temporaryPath, { force: true });
     }
