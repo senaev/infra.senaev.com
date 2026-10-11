@@ -70,15 +70,15 @@ main { background: white; max-width: 28rem; margin: auto; padding: 2rem; border-
 <body><main>
 <h1>Sign-in failed</h1>
 <p class="error" role="alert">${escapeHtml(message)}</p>
-<p>Return to ChatGPT and start the connection again. If this keeps happening, share the reference below with the server owner.</p>
+<p>Return to the app and start the connection again. If this keeps happening, share the reference below with the server owner.</p>
 <p>Reference: ${escapeHtml(requestId)}</p>
-${continueUrl === undefined ? '' : `<p><a href="${escapeHtml(continueUrl)}">Return to ChatGPT with this error</a></p>`}
+${continueUrl === undefined ? '' : `<p><a href="${escapeHtml(continueUrl)}">Return to the app with this error</a></p>`}
 </main></body>
 </html>`;
 }
 
 /** A user-initiated link avoids the browser's form redirect chain restrictions. */
-export function renderAuthorizationSuccess(continueUrl: string): string {
+export function renderAuthorizationSuccess(continueUrl: string, nonce: string): string {
     return `<!doctype html>
 <html lang="en">
 <head>
@@ -93,9 +93,19 @@ a { display: block; padding: .8rem; border-radius: 6px; background: #18181b; col
 </head>
 <body><main>
 <h1>Signed in successfully</h1>
-<p>Your username and password were accepted. Return to ChatGPT to finish connecting.</p>
-<a href="${escapeHtml(continueUrl)}" rel="noreferrer">Return to ChatGPT</a>
-<p>This link expires shortly. If it has expired, start the connection again from ChatGPT.</p>
-</main></body>
+<p>Your username and password were accepted. Return to the app to finish connecting.</p>
+<a href="${escapeHtml(continueUrl)}" rel="noreferrer">Return to the app</a>
+<p>This link expires shortly. If it has expired, start the connection again from the app.</p>
+</main>
+<script nonce="${escapeHtml(nonce)}">
+// Keep the link visible if scripting or automatic navigation is blocked.
+window.setTimeout(function () {
+    var link = document.querySelector('main a');
+    if (link) {
+        try { window.location.assign(link.href); } catch (_) { /* The link remains available. */ }
+    }
+}, 500);
+</script>
+</body>
 </html>`;
 }
