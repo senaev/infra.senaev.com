@@ -10,12 +10,12 @@ export function hashContent(content: string): string {
     return sha256Hex(content);
 }
 
-/** Reads a hash argument; `readToolName` tells the model where the hash comes from. */
-export function readExpectedHash(args: ToolArguments, key: string, readToolName: string): string {
+/** Reads a hash argument; the hash identifies the whole file returned by a read. */
+export function readExpectedHash(args: ToolArguments, key: string): string {
     const expectedHash = requiredNonEmptyString(args, key).toLowerCase();
 
     if (!SHA256_HEX.test(expectedHash)) {
-        throw invalidArguments(`"${key}" must be the "hash" value from ${readToolName}`);
+        throw invalidArguments(`"${key}" must be a 64-character SHA-256 hash from the latest read`);
     }
 
     return expectedHash;

@@ -1,9 +1,8 @@
 import {
-    getToolArgumentKeys, READ_ONLY_ANNOTATIONS, type ToolDefinition,
+    READ_ONLY_ANNOTATIONS, type ToolDefinition,
 } from '../toolServer/toolDefinition';
-import { readToolArguments, requiredNonEmptyString } from '../toolServer/toolArguments';
-import { invalidArguments } from '../toolServer/ToolError';
 
+import type { OperationToolName } from './operationCommands';
 import { DEFAULT_TIMEOUT_SECONDS, OBSERVATION_MS } from './operationLimits';
 
 export const MANAGED_TOOL_PROPERTIES = {
@@ -114,32 +113,8 @@ export const OPERATION_TOOL_DEFINITIONS = {
             openWorldHint: false,
         },
     },
-} as const satisfies Record<string, ToolDefinition>;
+} as const satisfies Record<OperationToolName, ToolDefinition>;
 
-export type OperationToolName = keyof typeof OPERATION_TOOL_DEFINITIONS;
-
-export function isOperationToolName(name: string): name is OperationToolName {
-    return Object.hasOwn(OPERATION_TOOL_DEFINITIONS, name);
-}
-
-/** Validate control arguments before looking up a record or cancelling any work. */
-export function readOperationArguments(name: OperationToolName, value: unknown): Record<string, unknown> {
-    const args = readToolArguments(value, getToolArgumentKeys(OPERATION_TOOL_DEFINITIONS[name]));
-
-    if (name !== 'operations') {
-        requiredNonEmptyString(args, 'id');
-    }
-
-    for (const key of [
-        'cursor',
-        'offset',
-    ]) {
-        const argument = args[key];
-
-        if (argument !== undefined && (typeof argument !== 'number' || !Number.isFinite(argument) || !Number.isInteger(argument) || argument < 0)) {
-            throw invalidArguments(`${key} must be a nonnegative integer`);
-        }
-    }
-
-    return args;
-}
+export {
+    isOperationToolName, readOperationArguments, type OperationToolName,
+} from './operationCommands';

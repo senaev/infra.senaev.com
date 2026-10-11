@@ -129,7 +129,7 @@ describe('sliceLines', () => {
         expect(() => sliceLines(content, {
             startLine: 3,
             lineCount: 10,
-        }, 2)).toThrow('use code-run');
+        }, 2)).toThrow('use head, tail or sed');
     });
 
     it('reads an empty file and a file without a final newline', () => {
@@ -164,7 +164,7 @@ describe('readTool', () => {
             }))
                 .rejects.toMatchObject({
                     code: 'command_failed',
-                    message: expect.stringContaining('use code-run'),
+                    message: expect.stringContaining('use head, tail or sed'),
                 });
         }
     });

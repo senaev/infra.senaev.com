@@ -693,3 +693,31 @@ Full simple-checks PASS, code-25d62e34-ca77-4149-9caf-54771f78e579 exitCode 0: l
 ## Result — Final review corrections implemented and validated
 
 All five review findings addressed, obsolete migration activation branches removed, shared lifecycle/dispatch/text/line/test helpers in place, publication ordering aligned, and prior journal preserved. Full checks pass as recorded above; commit/push/PR proceed under existing owner authorization, with mandatory hooks enabled. No merge or deployment performed. Remaining business/protocol boundary improvements are recorded as the next separate iteration, not started. Existing live acceptance evidence describes the currently deployed predecessor; it is not evidence for an undeployed branch.
+
+### 2026-10-11 19:06 UTC — Correction branch published
+
+Committed 1588b9fc33a090d60b7620dab3290fbad230a38a on fix/async-mcp-final-review, 52 scoped files including preserved journal. Mandatory pre-push simple-checks PASS all six checks, 154 files / 1222 tests; no hook bypass. Public operation code-a7493086-f299-4441-a37a-eee422fa4ff8 exitCode 0. Pushed only this branch and opened https://github.com/senaev/infra.senaev.com/pull/76. Main remains 18609aa5df4677675009c5b945cd8c2ad1664139. PR head matches the commit and is mergeable. Check and CodeRabbit are initially in progress; no merge/deployment authorized or performed.
+
+Owned cleanup removed 17 exact regular temporary test/check/push/body files after no-symlink checks. Automated fixtures and the real child process are owned and cleaned by their finally/afterEach paths; no production vault fixture created. CI watch has its own remaining log to remove after completion. This publication entry remains uncommitted for append-only continuation, as in prior iterations.
+
+### 2026-10-11 19:13 UTC — PR76 CI and automatic review complete
+
+PR76 head verified as 1588b9fc33a090d60b7620dab3290fbad230a38a. Check / Lint, Typecheck, Test, Syntax SUCCESS (run 38166564692, job 114550230557); CodeRabbit SUCCESS and APPROVED for this exact commit, no inline review comments. PR remains OPEN and MERGEABLE. No merge/deployment or new production live-check claim. CI observer operation code-09083b53-5855-4f45-891a-83dbfbd5670c completed with exitCode 0; its exact owned log removed after regular-file/no-symlink checks.
+
+## Result — Review correction iteration complete; PR76 ready
+
+Five findings and agreed cleanup implemented; local full checks, mandatory pre-push and GitHub CI passed, 154 test files / 1222 tests. Automatic review approved. Journal history preserved; only publication/CI continuation entries are uncommitted in the working copy. Owned temporary files/child processes/test fixtures cleaned. Next stage proposal is protocol-independent domain inputs/results/errors and explicit generic execution capabilities, with scheduling/retry/retention in the wrapper and MCP catalog/presentation in cluster-helper. This next architecture iteration has not started. Deployment and subsequent live validation follow a separately authorized merge.
+
+### 2026-10-11T19:51:06.856137+00:00 — PR #76 merged; domain boundary iteration started
+
+User explicitly authorized the merge. PR #76 is MERGED at `b3fb9a1b0d67d6107e9be08fddf2fa32109f92bc`, matching reviewed head `1588b9fc33a090d60b7620dab3290fbad230a38a`. The uncommitted publication/CI journal was saved in scoped stash `7fe03d7ba1a29e19ce1c7022a9f218ae067734b6`, restored after fast-forwarding main, and only that stash was dropped. All six automatic releases at this merge SHA completed successfully: senaev-utils, cluster-helper, obsidian-sync, opencode-serve, vpn-subscription, media-server-helper.
+
+Started separate branch `refactor/domain-command-boundary`. Scope: domain argument/name/patch contracts independent of MCP descriptions and schemas; adapter owns execution fields and passes only domain arguments to handlers; catalogue compatibility and admission/deduplication regressions. Public fields, limits and modes remain unchanged. Full explicit execution-capability injection and typed command results are subsequent work, not claimed complete by this iteration. No deployed-vault mutation or live verification of unmerged changes.
+
+### 2026-10-11T19:56:57.816613+00:00 — Domain contracts and adapter boundary implemented
+
+All sixteen business handlers now depend on independent command names/allowed fields and domain patch metadata, not MCP schemas. The shared adapter accepts domain + execution fields, retains the complete original arguments for requestId fingerprinting, and dispatches only domain fields. Control parsing/name guards also moved out of presentation definitions. Old catalogue exports for names, project pattern, patch metadata and controls remain compatible. Domain hash/errors no longer name MCP commands. Catalogue tests check exact domain + execution field correspondence.
+
+Initial validation failed only in the newly added boundary assertions/type narrowing; the second full run had 1226 passing tests and two new assertion failures (forgot to await operation_result), plus one duplicate-import lint error. These were corrected. Final focused operation `code-10351ff4-064b-45ea-8195-402489123487` passed all 23 tests across four files, scoped eslint and git diff --check. The second full run passed typecheck, Python, shell and Helm. The mandatory pre-push full simple-checks will verify the committed final version; no check bypass.
+
+PR #76 public smoke operation `code-fb33e5e8-4bfd-4d25-94c6-94d97d34d6b8`: short link HTTP 200 after expected redirect to https://senaev.com/cv/5min, static HTML HTTP 200, public note HTTP 200. These are deployed smoke checks, separate from automated tests of this unmerged branch.

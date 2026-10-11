@@ -1,4 +1,4 @@
-import type { CodeToolName } from 'senaev-utils/src/codeTools/codeToolDefinitions';
+import type { CodeCommandName } from 'senaev-utils/src/codeTools/codeCommands';
 
 import { cloneTool } from './cloneTool';
 import type { CodeToolsConfig } from './codeToolsConfig';
@@ -12,8 +12,8 @@ import { writeTool } from './writeTool';
 
 export type CodeTool = (config: CodeToolsConfig, input: unknown) => Promise<Record<string, unknown>>;
 
-/** Typed by the shared definitions, so a tool without an implementation does not compile. */
-export const CODE_TOOLS: Record<CodeToolName, CodeTool> = {
+/** Typed by the domain command contract, so a tool without an implementation does not compile. */
+export const CODE_TOOLS: Record<CodeCommandName, CodeTool> = {
     projects: projectsTool,
     clone: cloneTool,
     list: listTool,

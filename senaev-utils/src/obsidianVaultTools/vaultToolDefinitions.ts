@@ -9,6 +9,7 @@ import {
     type ToolDefinition,
 } from '../toolServer/toolDefinition';
 
+import { PATCH_OPERATION_FIELDS, type VaultCommandName } from './vaultCommands';
 import {
     LINKS_LIMITS,
     LIST_LIMITS,
@@ -17,6 +18,8 @@ import {
     READ_LIMITS,
     SEARCH_LIMITS,
 } from './vaultToolLimits';
+
+export { PATCH_OPERATION_FIELDS, type PatchOperationType } from './vaultCommands';
 
 // The Obsidian vault tools as ChatGPT sees them. obsidian-sync serves each one as
 // `POST /vault/<name>` and accepts exactly the argument keys of its input schema;
@@ -258,25 +261,6 @@ const create: ToolDefinition = {
     },
 };
 
-/** The fields each patch operation type accepts, besides `type`. */
-export const PATCH_OPERATION_FIELDS = {
-    append: [
-        'text',
-        'section',
-    ],
-    replace: [
-        'find',
-        'replace',
-    ],
-    replaceSection: [
-        'section',
-        'content',
-    ],
-    setFrontmatter: ['properties'],
-} as const;
-
-export type PatchOperationType = keyof typeof PATCH_OPERATION_FIELDS;
-
 const patch: ToolDefinition = {
     title: 'Edit an Obsidian note',
     description: [
@@ -435,9 +419,9 @@ export const VAULT_TOOL_DEFINITIONS = {
     patch,
     move,
     diary_append,
-} as const satisfies Record<string, ToolDefinition>;
+} as const satisfies Record<VaultCommandName, ToolDefinition>;
 
-export type VaultToolName = keyof typeof VAULT_TOOL_DEFINITIONS;
+export type VaultToolName = VaultCommandName;
 
 export const VAULT_TOOL_NAMES = Object.keys(VAULT_TOOL_DEFINITIONS) as VaultToolName[];
 

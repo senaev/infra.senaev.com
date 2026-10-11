@@ -1,10 +1,10 @@
+import { VAULT_COMMAND_ARGUMENTS } from 'senaev-utils/src/obsidianVaultTools/vaultCommands';
 import { createManagedToolService } from 'senaev-utils/src/toolServer/createManagedToolService';
 import { runToolCall } from 'senaev-utils/src/toolServer/runToolCall';
 
 import { logger } from '../logger';
 import { VAULT_TOOLS } from '../vault-tools/vaultTools';
 import type { VaultToolsConfig } from '../vault-tools/vaultToolsConfig';
-import { readVaultToolArguments } from '../vault-tools/toolArguments';
 
 import type { VaultServer } from './createVaultServer';
 
@@ -15,7 +15,7 @@ export function registerVaultToolRoutes(server: VaultServer, config: VaultToolsC
         logger,
         config,
         tools: VAULT_TOOLS,
-        readArguments: readVaultToolArguments,
+        argumentKeys: (name) => VAULT_COMMAND_ARGUMENTS[name],
     });
 
     server.addHook('onClose', () => service.close());

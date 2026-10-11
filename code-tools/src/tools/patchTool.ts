@@ -52,7 +52,7 @@ export async function patchTool(config: CodeToolsConfig, input: unknown) {
     const args = readCodeToolArguments(input, 'patch');
     const project = await resolveProject(config, args);
     const path = normalizeProjectPath(requiredNonEmptyString(args, 'path'), 'path');
-    const expectedHash = readExpectedHash(args, 'expectedHash', 'code-read');
+    const expectedHash = readExpectedHash(args, 'expectedHash');
     const operations = readOperations(args.operations);
 
     return withFileMutation(`${project.root}/${path}`, async () => {

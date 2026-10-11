@@ -9,6 +9,7 @@ import {
     type ToolDefinition,
 } from '../toolServer/toolDefinition';
 
+import { PROJECT_NAME_PATTERN, type CodeCommandName } from './codeCommands';
 import {
     CLONE_LIMITS,
     LIST_LIMITS,
@@ -20,6 +21,8 @@ import {
     WRITE_LIMITS,
 } from './codeToolLimits';
 
+export { PROJECT_NAME_PATTERN } from './codeCommands';
+
 // The code tools as ChatGPT sees them. code-tools runs in the opencode-serve container and
 // serves each one as `POST /code/<name>`, accepting exactly the argument keys of its input
 // schema; cluster-helper lists them over MCP as `code-<name>` and forwards the calls.
@@ -27,9 +30,6 @@ import {
 /** Every MCP tool name is this prefix followed by the code tool name. */
 export const CODE_TOOL_PREFIX = 'code-';
 const MANAGED_TOOL_DESCRIPTION = createManagedToolDescription(CODE_TOOL_PREFIX);
-
-/** A project is a folder with a git repository in the projects folder; its name is the folder name. */
-export const PROJECT_NAME_PATTERN = '^[A-Za-z0-9_][A-Za-z0-9._-]*$';
 
 const PROJECT_RULES = 'Before you change a project, read its AGENTS.md (or README.md) with code-read, if it is not in your context yet.';
 
@@ -387,9 +387,9 @@ export const CODE_TOOL_DEFINITIONS = {
     write,
     patch,
     run,
-} as const satisfies Record<string, ToolDefinition>;
+} as const satisfies Record<CodeCommandName, ToolDefinition>;
 
-export type CodeToolName = keyof typeof CODE_TOOL_DEFINITIONS;
+export type CodeToolName = CodeCommandName;
 
 export const CODE_TOOL_NAMES = Object.keys(CODE_TOOL_DEFINITIONS) as CodeToolName[];
 

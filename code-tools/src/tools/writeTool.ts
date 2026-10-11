@@ -28,7 +28,7 @@ async function createFile(project: Project, path: string, content: string): Prom
         await createFileExclusively(await prepareNewFilePath(project.root, path), content, operationContext()?.signal, () => recordChangedPath(path));
     } catch (error) {
         if (isAlreadyExistsError(error)) {
-            throw new ToolError('already_exists', `"${path}" already exists; read it with code-read and pass its "hash" as "expectedHash" to replace it`);
+            throw new ToolError('already_exists', `"${path}" already exists; read it and pass its "hash" as "expectedHash" to replace it`);
         }
 
         throw error;
@@ -73,7 +73,7 @@ export async function writeTool(config: CodeToolsConfig, input: unknown) {
         let diff;
 
         if (isReplace) {
-            ({ original, diff } = await replaceFile(project, path, content, readExpectedHash(args, 'expectedHash', 'code-read')));
+            ({ original, diff } = await replaceFile(project, path, content, readExpectedHash(args, 'expectedHash')));
         } else {
             diff = await createFileDiffAsync(path, original, content);
             await createFile(project, path, content);

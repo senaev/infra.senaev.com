@@ -1,7 +1,7 @@
 import { readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { PROJECT_NAME_PATTERN } from 'senaev-utils/src/codeTools/codeToolDefinitions';
+import { PROJECT_NAME_PATTERN } from 'senaev-utils/src/codeTools/codeCommands';
 import { operationCheckpoint, throwIfOperationAborted } from 'senaev-utils/src/operations/operationContext';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 
