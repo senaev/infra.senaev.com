@@ -4,7 +4,7 @@ import { readOperationTextFile } from 'senaev-utils/src/toolServer/readOperation
 import {
     operationCheckpoint, operationContext, recordChangedPath,
 } from 'senaev-utils/src/operations/operationContext';
-import { PATCH_OPERATION_FIELDS, type PatchOperationType } from 'senaev-utils/src/obsidianVaultTools/vaultToolDefinitions';
+import { PATCH_OPERATION_FIELDS, type PatchOperationType } from 'senaev-utils/src/obsidianVaultTools/vaultCommands';
 import { PATCH_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { replaceFileAtomically } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
@@ -128,7 +128,7 @@ function readOperations(value: unknown): Operation[] {
 export async function patchTool(config: VaultToolsConfig, input: unknown) {
     const args = readVaultToolArguments(input, 'patch');
     const path = normalizeVaultPath(requiredNonEmptyString(args, 'path'), 'path');
-    const expectedHash = readExpectedHash(args, 'expectedHash', 'obsidian-read');
+    const expectedHash = readExpectedHash(args, 'expectedHash');
     const operations = readOperations(args.operations);
 
     return await withFileMutation(join(config.root, path), async () => {

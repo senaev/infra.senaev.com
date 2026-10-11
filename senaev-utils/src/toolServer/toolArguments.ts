@@ -5,8 +5,7 @@ import { invalidArguments } from './ToolError';
 export type ToolArguments = Record<string, unknown>;
 
 /**
- * The arguments come from ChatGPT through cluster-helper, which does not validate them, so
- * every tool reads them through these helpers. Unknown keys are rejected so that a typo in
+ * Commands validate untrusted inputs through these helpers. Unknown keys are rejected so that a typo in
  * a field name fails loudly instead of being silently ignored.
  */
 export function readToolArguments(value: unknown, allowedKeys: readonly string[]): ToolArguments {

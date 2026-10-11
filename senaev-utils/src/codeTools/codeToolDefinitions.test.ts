@@ -2,6 +2,9 @@ import {
     describe, expect, test,
 } from 'vitest';
 
+import { MANAGED_ARGUMENT_KEYS } from '../operations/managedArguments';
+
+import { CODE_COMMAND_ARGUMENTS } from './codeCommands';
 import {
     CODE_TOOL_DEFINITIONS,
     CODE_TOOL_NAMES,
@@ -12,6 +15,20 @@ import {
 import { SEARCH_LIMITS } from './codeToolLimits';
 
 describe('code tool definitions', () => {
+    test('public schemas match the independent domain and execution contracts', () => {
+        for (const [
+            name,
+            keys,
+        ] of Object.entries(CODE_COMMAND_ARGUMENTS)) {
+            const definition = CODE_TOOL_DEFINITIONS[name as keyof typeof CODE_TOOL_DEFINITIONS];
+
+            expect(Object.keys(definition.inputSchema.properties).sort()).toEqual([
+                ...keys,
+                ...MANAGED_ARGUMENT_KEYS,
+            ].sort());
+        }
+    });
+
     test('lists the tools in a fixed order', () => {
         expect(CODE_TOOL_NAMES).toEqual([
             'projects',

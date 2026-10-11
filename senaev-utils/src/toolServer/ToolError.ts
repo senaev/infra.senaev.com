@@ -21,7 +21,7 @@ const HTTP_STATUS_BY_CODE: Record<ToolErrorCode, number> = {
     command_failed: 422,
 };
 
-/** An expected failure of an MCP tool, with a message that is safe and useful to show to ChatGPT. */
+/** An expected command failure with a message safe to return to its caller. */
 export class ToolError extends Error {
     public readonly code: ToolErrorCode;
     public readonly details: Record<string, unknown> | undefined;

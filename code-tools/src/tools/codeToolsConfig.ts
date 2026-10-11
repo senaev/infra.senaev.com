@@ -1,7 +1,7 @@
 export type CodeToolsConfig = {
     /** The folder with one git repository per project. */
     projectsRoot: string;
-    /** The environment of `code-run` commands and of git; without the internal token. */
+    /** The environment of shell commands and of git; without the internal token. */
     commandEnv: NodeJS.ProcessEnv;
 };
 

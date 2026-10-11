@@ -135,7 +135,10 @@ describe('runTool', () => {
             const result = await manager.launch({
                 tool: 'run',
                 args,
-                run: () => runTool(projects.config, args),
+                run: () => runTool(projects.config, {
+                    project: args.project,
+                    command: args.command,
+                }),
             });
 
             expect(result).toMatchObject({

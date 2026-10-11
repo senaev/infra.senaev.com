@@ -1,3 +1,4 @@
+import { CODE_COMMAND_ARGUMENTS } from 'senaev-utils/src/codeTools/codeCommands';
 import Fastify from 'fastify';
 import { createManagedToolService } from 'senaev-utils/src/toolServer/createManagedToolService';
 import { isValidBearerAuthorizationHeader } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
@@ -6,7 +7,6 @@ import { runToolCall } from 'senaev-utils/src/toolServer/runToolCall';
 import { logger } from '../logger';
 import { CODE_TOOLS } from '../tools/codeTools';
 import type { CodeToolsConfig } from '../tools/codeToolsConfig';
-import { readCodeToolArguments } from '../tools/projectAccess';
 
 // code-write accepts up to 500,000 characters, which is up to about 2 MB of UTF-8 in JSON.
 const BODY_LIMIT_BYTES = 4 * 1024 * 1024;
@@ -23,7 +23,7 @@ export function createCodeToolsServer(internalToken: string, config: CodeToolsCo
         logger,
         config,
         tools: CODE_TOOLS,
-        readArguments: readCodeToolArguments,
+        argumentKeys: (name) => CODE_COMMAND_ARGUMENTS[name],
     });
 
     server.addHook('onClose', () => service.close());

@@ -40,7 +40,7 @@ export function sliceLines(content: string, { startLine, lineCount }: LineRange,
     }
 
     if (endLine < startLine && lastRequestedLine >= startLine) {
-        throw new ToolError('command_failed', `Line ${startLine} exceeds the ${maxChars}-character page; use code-run with head, tail or sed to inspect it`);
+        throw new ToolError('command_failed', `Line ${startLine} exceeds the ${maxChars}-character page; use head, tail or sed to inspect it`);
     }
 
     const text = content.slice(start, offsets[endLine] ?? start);

@@ -2,6 +2,9 @@ import {
     describe, expect, test,
 } from 'vitest';
 
+import { MANAGED_ARGUMENT_KEYS } from '../operations/managedArguments';
+
+import { VAULT_COMMAND_ARGUMENTS } from './vaultCommands';
 import {
     getVaultToolArgumentKeys,
     isVaultToolName,
@@ -11,6 +14,20 @@ import {
 import { READ_LIMITS, SEARCH_LIMITS } from './vaultToolLimits';
 
 describe('vault tool definitions', () => {
+    test('public schemas match the independent domain and execution contracts', () => {
+        for (const [
+            name,
+            keys,
+        ] of Object.entries(VAULT_COMMAND_ARGUMENTS)) {
+            const definition = VAULT_TOOL_DEFINITIONS[name as keyof typeof VAULT_TOOL_DEFINITIONS];
+
+            expect(Object.keys(definition.inputSchema.properties).sort()).toEqual([
+                ...keys,
+                ...MANAGED_ARGUMENT_KEYS,
+            ].sort());
+        }
+    });
+
     test('lists the tools in a fixed order', () => {
         expect(VAULT_TOOL_NAMES).toEqual([
             'list',

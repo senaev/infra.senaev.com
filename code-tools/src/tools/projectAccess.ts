@@ -2,8 +2,8 @@ import { readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import {
-    getCodeToolArgumentKeys, PROJECT_NAME_PATTERN, type CodeToolName,
-} from 'senaev-utils/src/codeTools/codeToolDefinitions';
+    CODE_COMMAND_ARGUMENTS, PROJECT_NAME_PATTERN, type CodeCommandName,
+} from 'senaev-utils/src/codeTools/codeCommands';
 import {
     operationCheckpoint, operationContext, throwIfOperationAborted,
 } from 'senaev-utils/src/operations/operationContext';
@@ -25,9 +25,9 @@ export type Project = {
     root: string;
 };
 
-/** The arguments of a code tool, which may use exactly the keys of its shared input schema. */
-export function readCodeToolArguments(value: unknown, tool: CodeToolName): ToolArguments {
-    return readToolArguments(value, getCodeToolArgumentKeys(tool));
+/** The arguments of a code tool, which contain only domain fields. */
+export function readCodeToolArguments(value: unknown, tool: CodeCommandName): ToolArguments {
+    return readToolArguments(value, CODE_COMMAND_ARGUMENTS[tool]);
 }
 
 export function assertProjectName(name: string, field: string): void {
@@ -61,18 +61,18 @@ export async function resolveProject(config: CodeToolsConfig, args: ToolArgument
         }
     }
 
-    throw new ToolError('not_found', `Project "${name}" does not exist; call code-projects to see the projects`);
+    throw new ToolError('not_found', `Project "${name}" does not exist; list the available projects`);
 }
 
 /**
  * A clean project-relative path from a tool argument. The `.git` folder is off limits for
- * the file tools, so they cannot damage the repository; `code-run` can still use git.
+ * the file tools, so they cannot damage the repository; shell commands can still use git.
  */
 export function normalizeProjectPath(input: string, field: string): string {
     const path = normalizeRootRelativePath(input, field, 'project');
 
     if (path.split('/').includes('.git')) {
-        throw new ToolError('forbidden_path', `"${field}" points into a .git folder; use git commands with code-run instead`);
+        throw new ToolError('forbidden_path', `"${field}" points into a .git folder; use git commands instead`);
     }
 
     return path;
@@ -108,7 +108,7 @@ export async function resolveExistingFile(project: Project, path: string): Promi
 export async function readTextFile(absolutePath: string, path: string): Promise<string> {
     await operationCheckpoint();
     if ((await stat(absolutePath)).size > MAX_TEXT_FILE_BYTES) {
-        throw new ToolError('forbidden_path', `"${path}" is larger than ${MAX_TEXT_FILE_BYTES / 1024 / 1024} MB; use code-run with head, tail or sed to read parts of it`);
+        throw new ToolError('forbidden_path', `"${path}" is larger than ${MAX_TEXT_FILE_BYTES / 1024 / 1024} MB; use head, tail or sed to read parts of it`);
     }
 
     throwIfOperationAborted();

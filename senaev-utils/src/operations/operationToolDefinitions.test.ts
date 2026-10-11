@@ -6,11 +6,23 @@ import {
     CODE_MCP_TOOL_DEFINITIONS, CODE_TOOL_DEFINITIONS, CODE_TOOL_NAMES,
 } from '../codeTools/codeToolDefinitions';
 
+import { OPERATION_COMMAND_ARGUMENTS } from './operationCommands';
+import { MANAGED_ARGUMENT_KEYS } from './managedArguments';
 import {
-    createManagedToolDescription, OPERATION_TOOL_DEFINITIONS, readOperationArguments,
+    createManagedToolDescription, MANAGED_TOOL_PROPERTIES, OPERATION_TOOL_DEFINITIONS, readOperationArguments,
 } from './operationToolDefinitions';
 
 describe('operation tool contracts', () => {
+    it('keeps transport schemas compatible with independent execution contracts', () => {
+        expect(Object.keys(MANAGED_TOOL_PROPERTIES).sort()).toEqual([...MANAGED_ARGUMENT_KEYS].sort());
+        for (const [
+            name,
+            keys,
+        ] of Object.entries(OPERATION_COMMAND_ARGUMENTS)) {
+            expect(Object.keys(OPERATION_TOOL_DEFINITIONS[name as keyof typeof OPERATION_TOOL_DEFINITIONS].inputSchema.properties).sort()).toEqual([...keys].sort());
+        }
+    });
+
     it('derives backend-specific control names without copying lifecycle descriptions', () => {
         const vault = createManagedToolDescription('obsidian-');
 

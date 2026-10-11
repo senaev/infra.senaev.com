@@ -1,4 +1,4 @@
-import { getVaultToolArgumentKeys, type VaultToolName } from 'senaev-utils/src/obsidianVaultTools/vaultToolDefinitions';
+import { VAULT_COMMAND_ARGUMENTS, type VaultCommandName } from 'senaev-utils/src/obsidianVaultTools/vaultCommands';
 import {
     optionalString, readToolArguments, type ToolArguments,
 } from 'senaev-utils/src/toolServer/toolArguments';
@@ -6,9 +6,9 @@ import { invalidArguments } from 'senaev-utils/src/toolServer/ToolError';
 
 import { parseIsoCalendarDay } from '../milestones/calendarDay';
 
-/** The arguments of a vault tool, which may use exactly the keys of its shared input schema. */
-export function readVaultToolArguments(value: unknown, tool: VaultToolName): ToolArguments {
-    return readToolArguments(value, getVaultToolArgumentKeys(tool));
+/** The arguments of a vault tool, which contain only domain fields. */
+export function readVaultToolArguments(value: unknown, tool: VaultCommandName): ToolArguments {
+    return readToolArguments(value, VAULT_COMMAND_ARGUMENTS[tool]);
 }
 
 /** A strict `YYYY-MM-DD` that is a real day, kept as a string: it compares like a date. */
