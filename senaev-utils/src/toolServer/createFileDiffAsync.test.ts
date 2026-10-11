@@ -7,7 +7,7 @@ import { withOperationContext } from '../operations/operationContext';
 import { createFileDiff } from './createFileDiff';
 import { createFileDiffAsync } from './createFileDiffAsync';
 
-describe('createFileDiffAsync', () => {
+describe('createFileDiffAsync', { timeout: 15000 }, () => {
     it.each([
         {
             before: 'a\nb\n',

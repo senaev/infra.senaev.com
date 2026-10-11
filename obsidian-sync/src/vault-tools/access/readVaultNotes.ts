@@ -1,6 +1,7 @@
-import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { readOperationTextFile } from 'senaev-utils/src/toolServer/readOperationTextFile';
+import { operationCheckpoint, throwIfOperationAborted } from 'senaev-utils/src/operations/operationContext';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 
 import { readAliases, splitNote } from '../markdown/frontmatter';
@@ -34,12 +35,14 @@ export async function readVaultNotes(config: VaultToolsConfig): Promise<VaultNot
     const readErrors: PathError[] = [];
 
     for (const notePath of notePaths) {
+        await operationCheckpoint();
         try {
-            const content = await readFile(join(config.root, notePath), 'utf8');
+            const content = await readOperationTextFile(join(config.root, notePath));
 
             contents.set(notePath, content);
             aliasesByNote.set(notePath, readAliases(splitNote(content).frontmatter));
         } catch (error) {
+            throwIfOperationAborted();
             readErrors.push({
                 path: notePath,
                 message: stringifyUnknownError(error),

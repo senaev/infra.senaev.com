@@ -15,6 +15,7 @@ type Reply = {
     code?: string;
     operation: { id: string; state: string; changedPaths: string[] };
     logs?: { text: string }[];
+    result?: Record<string, unknown>;
 };
 
 describe('managed clone publication and cleanup', () => {
@@ -112,11 +113,21 @@ describe('managed clone publication and cleanup', () => {
 
     it('never replaces an unrelated empty directory created before publication', async () => {
         await fakeGit(`#!/bin/bash\nif [[ "$1" == clone ]]; then mkdir -p "\${@: -1}/.git"; mkdir "${projects.path('raced')}"; else echo main; fi\n`);
-        const raced = (await call('clone', {
+        let raced = (await call('clone', {
             url: projects.path('demo'),
             name: 'raced',
             executionPolicy: 'parallel',
         })).json<Reply>();
+
+        for (let attempt = 0; attempt < 100 && raced.operation.state === 'running'; attempt += 1) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            const retained = (await call('operation_result', { id: raced.operation.id })).json<Reply>();
+
+            raced = {
+                ...retained.result,
+                operation: retained.operation,
+            };
+        }
 
         expect(raced).toMatchObject({
             code: 'conflict',
@@ -127,7 +138,7 @@ describe('managed clone publication and cleanup', () => {
         });
         expect(await readdir(projects.path('raced'))).toEqual([]);
         expect((await readdir(projects.config.projectsRoot)).filter((name) => name.startsWith('.clone-'))).toEqual([]);
-    });
+    }, 15000);
 
     it('leaves stale reservations untouched and cleans a failed clone', async () => {
         await mkdir(projects.path('.clone-reserved.lock'));

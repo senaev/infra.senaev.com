@@ -444,3 +444,35 @@ All six review findings are corrected with regressions; shared diff/path reserva
 ### 2026-10-11 16:07 UTC — Git authorization and policy update
 
 The user explicitly authorized creating a separate branch, staging, committing, pushing and opening a PR for this iteration, and authorized the same workflow for future tasks. Updated root AGENTS.md: working-branch operations and PR creation are allowed within task scope; direct main commits/pushes and PR merges still require explicit consent. Previous journal history is preserved.
+
+### 2026-10-11 16:09 UTC — Correction PR opened
+
+Created and pushed branch `fix/operation-review`, commit `e3d7bf2`. Mandatory pre-push `npm run simple-checks` passed all six checks again: 143 files, 1182 tests. Opened https://github.com/senaev/infra.senaev.com/pull/73. Root Git policy updated as authorized. No merge, deployment or Obsidian migration performed. This final PR-link entry remains uncommitted in the branch working tree.
+
+### 2026-10-11 16:11 UTC — PR 73 merged; deployment gate
+
+User explicitly authorized merge and proceeding to the next stage. GitHub Check succeeded; CodeRabbit was pending at merge time. Merged PR #73 at `6f3a0f4fd46322abc976df982d2209e4acd2f9de`. Preserved uncommitted PR-link journal entry using a path-scoped stash across switching to main and fast-forward pull. Deployment and public MCP live verification precede Obsidian migration in a separate PR.
+
+### 2026-10-11 16:16 UTC — PR 73 deployment and public smoke verification
+
+All six release workflows completed successfully for merge `6f3a0f4`. Code Tools briefly returned `fetch failed` during its rollout, then recovered using the same public MCP; no alternative access used. Live PASS: SIGTERM shell result now has state failed, exitCode null, signal SIGTERM, and retained operation_result matches. Live PASS: a 40000-character line now fails explicitly with command_failed rather than omitting a suffix. Live PASS: shared worker diff works for queued write and parallel patch; changedPaths reports the own fixture path; resulting content verified. Removed only the two own fixture files and their directory. TTL expiration, invalid direct-manager cursor, and unexpected internal exception reporting cannot reliably be stimulated immediately through the public API; existing regression tests remain the evidence for those cases, not live proof. Active discovery under >100 terminal results was not re-exercised in this smoke verification. Obsidian migration is authorized as the next separate PR.
+
+### 2026-10-11 16:23 UTC — Obsidian migration implementation
+
+Created `feat/obsidian-managed-operations` after successful PR73 releases and public smoke verification. All eight vault commands share one obsidian backend OperationManager and prefix-specific controls; proxy transport covers admission/observation only. Shared cancellation-aware text reader and directory checkpoints prevent swallowed aborts. Search/backlinks/move yield during traversal; mutations use shared diff worker, write-set reservations and publication callbacks. Move reserves all planned touched paths, validates snapshots, publishes target first and deletes source last; cancellation reports partial changedPaths without rollback. No live user vault notes have been edited.
+
+### 2026-10-11 16:26 UTC — Migration regression verification
+
+Initial full migration run: typecheck and Python/shell/Helm passed; lint formatting and old HTTP error assertions needed adjustment. Async diff worker setup exposed existing 5-second test budgets under concurrent check load; only affected worker integration suites now have explicit test budgets, with no API deadline or limit changes. Focused filesystem cancellation tests passed, including cancellation after target publication and exact changedPaths. Added HTTP coverage of every domain handler under queued/parallel, retained results/retries and policy conflicts, plus FIFO/control/timeout/close and write-set overlap tests. Fixed the close-test signal accessor before the final full run. These are automated integration tests against temporary vaults, not deployed Obsidian live verification.
+
+### 2026-10-11 16:30 UTC — Handle-aware tests and move source protection
+
+Second full run passed lint/typecheck/syntax checks but exposed timing-dependent tests that incorrectly assumed tiny worker-backed requests always complete within the 5-second observation window. Updated Code Tools and Obsidian integration tests to retrieve final results when a handle is returned, retaining state/result/deduplication assertions. Worker integration test budgets are separate from unchanged API timeouts. Added a final source-hash check before move deletion and a real external-writer regression: a source changed after target publication is preserved and the operation returns conflict. Wide directory/link loops now yield in bounded batches. Cancellation is cooperative between processing batches; individual synchronous Markdown/frontmatter parsing steps are not preemptible. External writers/replicas remain outside process-local reservations.
+
+### 2026-10-11 16:35 UTC — Migration prepared for PR
+
+Focused final integration run passed: 4 files, 17 tests. Full run before the final formatting/test adjustment passed 1192 of 1193 tests; only an existing real-clone test hit its default 5-second Vitest budget. That test now accepts an operation handle and retrieves the final result; its filesystem/conflict/cleanup assertions remain intact. Fixed link-loop ESLint formatting. Preparing a separate migration commit and push with the mandatory full pre-push checks enabled. Deployed Obsidian live verification remains after merge/deploy/catalog refresh. No main push or migration merge is authorized by the existing PR73 merge request.
+
+### 2026-10-11 16:38 UTC — Pre-push blocked on backend test budgets
+
+The mandatory pre-push gate blocked publication: all non-test checks passed, 1191/1193 tests passed; two native clone/diary tests exceeded the remaining default 5-second Vitest budget. Applied a 15-second default only to Code Tools and Obsidian test projects, whose managed calls themselves observe for up to 5 seconds before returning. Removed redundant per-suite overrides where the backend default suffices. API observation/deadlines and production parallel admission are unchanged; precise lifecycle timing assertions and explicit controlled-test budgets remain intact. No hooks bypassed. Repeating the mandatory pre-push gate.

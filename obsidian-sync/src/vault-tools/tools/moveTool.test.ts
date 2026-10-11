@@ -29,7 +29,7 @@ function read(testVault: TestVault, path: string): Promise<string> {
     return readFile(testVault.path(path), 'utf8');
 }
 
-describe('moveTool', () => {
+describe('moveTool', { timeout: 30000 }, () => {
     it('renames a note and rewrites the wikilinks to it, keeping heading, block, display text and embeds', async () => {
         const testVault = await vaultWith({
             'Ideas.md': '# Ideas\n\nSee [[#Ideas]] and [[Ideas#Ideas]].\n',

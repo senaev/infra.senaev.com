@@ -1,4 +1,7 @@
 import {
+    createManagedToolDescription, MANAGED_TOOL_PROPERTIES, OPERATION_TOOL_DEFINITIONS,
+} from '../operations/operationToolDefinitions';
+import {
     formatNumber,
     getToolArgumentKeys,
     pagingProperties,
@@ -25,7 +28,7 @@ export const OBSIDIAN_TOOL_PREFIX = 'obsidian-';
 // The rules themselves live only in the vault's AGENTS.md. MCP `instructions` were tried and
 // dropped: ChatGPT read AGENTS.md through this sentence anyway (see
 // tasks/2026-10-10-obsidian-mcp-vault-rules-and-diary-tool.md in infra.senaev.com).
-const VAULT_RULES = 'If the vault rules from the root AGENTS.md are not in your context, read AGENTS.md with obsidian-read first.';
+const VAULT_RULES = `${createManagedToolDescription(OBSIDIAN_TOOL_PREFIX)} Cancellation does not roll back published changes; inspect operation.changedPaths. Move can leave the new note and only some rewritten backlinks when cancelled. If the vault rules from the root AGENTS.md are not in your context, read AGENTS.md with obsidian-read first.`;
 
 const DIARY_RANGE_PROPERTIES = {
     diaryFrom: {
@@ -63,6 +66,7 @@ const list: ToolDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
+            ...MANAGED_TOOL_PROPERTIES,
             ...SCOPE_PROPERTIES,
             recursive: {
                 type: 'boolean',
@@ -90,6 +94,7 @@ const search: ToolDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
+            ...MANAGED_TOOL_PROPERTIES,
             queries: {
                 type: 'array',
                 items: {
@@ -156,6 +161,7 @@ const read: ToolDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
+            ...MANAGED_TOOL_PROPERTIES,
             paths: {
                 type: 'array',
                 items: { type: 'string' },
@@ -192,6 +198,7 @@ const links: ToolDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
+            ...MANAGED_TOOL_PROPERTIES,
             path: {
                 type: 'string',
                 description: 'Vault-relative note path.',
@@ -226,6 +233,7 @@ const create: ToolDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
+            ...MANAGED_TOOL_PROPERTIES,
             path: {
                 type: 'string',
                 description: 'Vault-relative path of the new note; ".md" is added when missing.',
@@ -286,6 +294,7 @@ const patch: ToolDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
+            ...MANAGED_TOOL_PROPERTIES,
             path: {
                 type: 'string',
                 description: 'Vault-relative note path.',
@@ -363,6 +372,7 @@ const move: ToolDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
+            ...MANAGED_TOOL_PROPERTIES,
             path: {
                 type: 'string',
                 description: 'Vault-relative path of the note to move, e.g. "Ideas.md".',
@@ -398,6 +408,7 @@ const diary_append: ToolDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
+            ...MANAGED_TOOL_PROPERTIES,
             text: {
                 type: 'string',
                 description: 'The text of the record.',
@@ -438,3 +449,8 @@ export function isVaultToolName(name: unknown): name is VaultToolName {
 export function getVaultToolArgumentKeys(name: VaultToolName): string[] {
     return getToolArgumentKeys(VAULT_TOOL_DEFINITIONS[name]);
 }
+
+export const VAULT_MCP_TOOL_DEFINITIONS = {
+    ...VAULT_TOOL_DEFINITIONS,
+    ...OPERATION_TOOL_DEFINITIONS,
+};

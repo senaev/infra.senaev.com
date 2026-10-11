@@ -1,5 +1,6 @@
 import { posix } from 'node:path';
 
+import { operationCheckpoint } from 'senaev-utils/src/operations/operationContext';
 import { LINKS_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
 import {
     optionalCappedInteger, optionalEnum, requiredNonEmptyString,
@@ -108,12 +109,25 @@ export async function linksTool(config: VaultToolsConfig, input: unknown) {
     } = await readVaultNotes(config);
     const index = createLinkIndex(files, aliasesByNote);
 
-    const outgoing = direction === 'backlinks'
-        ? null
-        : extractLinks(contents.get(path) ?? '').map((link) => describeLink(link, resolveLink(index, path, link)));
+    let outgoing: ReturnType<typeof describeLink>[] | null = null;
+
+    if (direction !== 'backlinks') {
+        outgoing = [];
+        for (const [
+            linkIndex,
+            link,
+        ] of extractLinks(contents.get(path) ?? '').entries()) {
+            if (linkIndex % 128 === 0) {
+                await operationCheckpoint();
+            }
+
+            outgoing.push(describeLink(link, resolveLink(index, path, link)));
+        }
+    }
+
     const found = direction === 'outgoing'
         ? null
-        : findBacklinks(index, contents, path, aliasesByNote.get(path) ?? []);
+        : await findBacklinks(index, contents, path, aliasesByNote.get(path) ?? []);
 
     // Fields of the direction that was not asked for are null, so the shape never changes.
     return {
@@ -159,7 +173,7 @@ function pageBacklinkSources(
     };
 }
 
-function findBacklinks(
+async function findBacklinks(
     index: LinkIndex,
     contents: ReadonlyMap<string, string>,
     path: string,
@@ -174,11 +188,19 @@ function findBacklinks(
         source,
         content,
     ] of contents) {
+        await operationCheckpoint();
         if (source === path || !isCandidate(content)) {
             continue;
         }
 
-        for (const link of extractLinks(content)) {
+        for (const [
+            linkIndex,
+            link,
+        ] of extractLinks(content).entries()) {
+            if (linkIndex % 128 === 0) {
+                await operationCheckpoint();
+            }
+
             const resolution = resolveLink(index, source, link);
             const backlink: Backlink = {
                 source,

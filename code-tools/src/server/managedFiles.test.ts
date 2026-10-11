@@ -20,7 +20,7 @@ type Reply = {
     hash?: string; result?: Record<string, unknown>; logs?: { text: string }[];
 };
 
-describe('all managed file tools', () => {
+describe('all managed file tools', { timeout: 60000 }, () => {
     let projects: TestProjects;
     let server: CodeToolsServer;
 
@@ -40,6 +40,26 @@ describe('all managed file tools', () => {
             headers: { authorization: createBearerAuthorizationHeader('files-test') },
             payload,
         });
+    }
+
+    async function completed(tool: string, payload: Record<string, unknown>) {
+        let reply = (await call(tool, payload)).json<Reply>();
+
+        for (let attempt = 0; attempt < 200 && [
+            'queued',
+            'running',
+        ].includes(reply.operation.state); attempt += 1) {
+            await delay(100);
+            const retained = (await call('operation_result', { id: reply.operation.id })).json<Reply>();
+
+            reply = {
+                status: 'ok',
+                ...retained.result,
+                operation: retained.operation,
+            };
+        }
+
+        return reply;
     }
 
     function args(tool: string, suffix: string): Record<string, unknown> {
@@ -96,13 +116,13 @@ describe('all managed file tools', () => {
                 requestId: tool,
                 timeoutSeconds: 10800,
             };
-            const first = (await call(tool, payload)).json<Reply>();
+            const first = await completed(tool, payload);
 
             expect(first.operation).toMatchObject({
                 state: 'completed',
                 timeoutSeconds: 10800,
             });
-            expect((await call(tool, payload)).json()).toEqual(first);
+            expect(await completed(tool, payload)).toEqual(first);
             const retained = (await call('operation_result', { id: first.operation.id })).json<Reply>();
             const {
                 status: _status, operation: _operation, ...domain
@@ -167,10 +187,10 @@ describe('all managed file tools', () => {
             });
             waiting.push(queued.operation.id);
             expect(spy).not.toHaveBeenCalled();
-            const parallel = (await call(tool, {
+            const parallel = await completed(tool, {
                 ...args(tool, 'parallel'),
                 executionPolicy: 'parallel',
-            })).json<Reply>();
+            });
 
             expect(parallel.operation.state).toBe('completed');
         }

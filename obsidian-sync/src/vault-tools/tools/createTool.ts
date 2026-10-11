@@ -1,14 +1,18 @@
-import { posix } from 'node:path';
+import { join, posix } from 'node:path';
 
+import { operationContext, recordChangedPath } from 'senaev-utils/src/operations/operationContext';
 import { isAlreadyExistsError } from 'senaev-utils/src/utils/Error/isAlreadyExistsError/isAlreadyExistsError';
 import { createFileExclusively } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
-import { createFileDiff } from 'senaev-utils/src/toolServer/createFileDiff';
+import { createFileDiffAsync } from 'senaev-utils/src/toolServer/createFileDiffAsync';
+import { withFileMutation } from 'senaev-utils/src/toolServer/withFileMutation';
 import {
     optionalObject, optionalString, requiredNonEmptyString,
 } from 'senaev-utils/src/toolServer/toolArguments';
 import { invalidArguments, ToolError } from 'senaev-utils/src/toolServer/ToolError';
 
-import { prepareNewNote, normalizeVaultPath } from '../access/vaultAccess';
+import {
+    prepareNewNote, normalizeVaultPath, assertNotePath,
+} from '../access/vaultAccess';
 import { formatFrontmatterBlock } from '../markdown/frontmatter';
 import { readVaultToolArguments } from '../toolArguments';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
@@ -33,18 +37,22 @@ export async function createTool(config: VaultToolsConfig, input: unknown) {
         ? content
         : `${formatFrontmatterBlock(frontmatter)}${content}`;
 
-    const absolutePath = await prepareNewNote(config, path);
+    return await withFileMutation(join(config.root, path), async () => {
+        assertNotePath(config, path);
+        const diff = await createFileDiffAsync(path, '', fullContent);
+        const absolutePath = await prepareNewNote(config, path);
 
-    await createFileExclusively(absolutePath, fullContent).catch((error: unknown) => {
-        if (isAlreadyExistsError(error)) {
-            throw new ToolError('already_exists', `"${path}" already exists; use obsidian-patch to change it`);
-        }
+        await createFileExclusively(absolutePath, fullContent, operationContext()?.signal, () => recordChangedPath(path)).catch((error: unknown) => {
+            if (isAlreadyExistsError(error)) {
+                throw new ToolError('already_exists', `"${path}" already exists; use obsidian-patch to change it`);
+            }
 
-        throw error;
+            throw error;
+        });
+
+        return {
+            path,
+            ...diff,
+        };
     });
-
-    return {
-        path,
-        ...createFileDiff(path, '', fullContent),
-    };
 }

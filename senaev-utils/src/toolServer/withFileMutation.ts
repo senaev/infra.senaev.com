@@ -8,15 +8,20 @@ import { ToolError } from './ToolError';
 const reserved = new Set<string>();
 
 export async function withFileMutation<T>(path: string, run: () => Promise<T>): Promise<T> {
+    return await withFileMutations([path], run);
+}
+
+/** Reserve overlapping write sets without waiting or deadlocking parallel mutations. */
+export async function withFileMutations<T>(paths: readonly string[], run: () => Promise<T>): Promise<T> {
     await operationCheckpoint();
-    if (reserved.has(path)) {
+    if (paths.some((path) => reserved.has(path))) {
         throw new ToolError('conflict', 'Another mutation of this file is in progress');
     }
 
-    reserved.add(path);
+    paths.forEach((path) => reserved.add(path));
     try {
         return await run();
     } finally {
-        reserved.delete(path);
+        paths.forEach((path) => reserved.delete(path));
     }
 }

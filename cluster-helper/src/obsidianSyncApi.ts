@@ -1,3 +1,4 @@
+import { OBSERVATION_MS } from 'senaev-utils/src/operations/operationLimits';
 import { createBearerAuthorizationHeader } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 import { readStatusResponse } from 'senaev-utils/src/utils/http/readStatusResponse/readStatusResponse';
@@ -6,8 +7,8 @@ import { callToolServer } from './chatGptMcp/callToolServer';
 import type { ToolReply } from './chatGptMcp/toolFamilies';
 import { INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN, OBSIDIAN_SYNC_URL } from './env';
 
-/** A full vault search reads every note, so allow it much more than a normal request. */
-const VAULT_TOOL_TIMEOUT_MS = 30_000;
+/** Execution deadlines belong to the backend; transport covers admission and observation. */
+const VAULT_TOOL_TIMEOUT_MS = OBSERVATION_MS + 10_000;
 
 /**
  * Every call to obsidian-sync goes through here, because obsidian-sync rejects any request
