@@ -2,11 +2,11 @@
 
 ## Goal
 
-Replace the blocking long-command workflow in the existing Code Tools MCP with managed operations and extend the shared mechanism to Obsidian tools. ChatGPT chooses synchronous, asynchronous or automatic execution, receives a reliable launch acknowledgement, and can retrieve state, incremental logs and the final result or cancel execution. This PR documents the design only; implementation starts after the owner reviews it.
+Introduce one shared managed-operation wrapper for all domain commands in both backend consumers: Code Tools (code-tools in the opencode-serve container) and Obsidian Sync (obsidian-sync in its own container). Cluster Helper (cluster-helper) remains the authenticated MCP entry point and proxies requests to the originating backend. The server returns a final result within a fixed 5-second observation window or a retrievable operation ID; ChatGPT can retrieve state, incremental logs and the final result or cancel execution without selecting an execution mode. This PR documents the design only; implementation starts after the owner reviews it.
 
 ## Context
 
-- Existing tools are in `code-tools/`; `cluster-helper/` exposes and proxies them through the authenticated MCP connector. Shared definitions live in `senaev-utils/src/codeTools/`.
+- Both `code-tools/` and `obsidian-sync/` consume the shared wrapper from `senaev-utils/`, owning separate execution queues and persistent operation state in their respective containers. Code Tools manages repositories and shell processes; Obsidian Sync manages vault filesystem commands. `cluster-helper/` exposes both through the authenticated MCP connector and routes launch and control requests to the correct backend. Existing shared definitions live in `senaev-utils/src/codeTools/` and `senaev-utils/src/obsidianVaultTools/`.
 - `runTool.ts` and `cloneTool.ts` await `runProcess.ts`. Results and bounded output arrive only after completion. The proxy allows up to 330 seconds; the current process runtime limit is at most 300 seconds.
 - `runProcess.ts` already uses asynchronous Node spawn, separate process groups and closed stdin. It stores bounded stdout/stderr in memory and kills the process group on timeout. It has no operation registry or later result retrieval.
 - `handleMcpMessage.ts` implements stateless JSON responses using protocol version 2025-06-18, without task methods or notification streams.
@@ -17,12 +17,10 @@ Replace the blocking long-command workflow in the existing Code Tools MCP with m
 
 - Preserve the current authenticated MCP connection and project-scoped development workflow. The external API may be redesigned; backwards compatibility is not required.
 - Wrap every existing Code Tools and Obsidian domain command in the same managed-operation interface, including short reads and mutations. Status, result retrieval, discovery and cancellation are control-plane commands served directly outside the execution queue.
-- Let ChatGPT select `mode: sync | async | auto`; default to `auto`.
-- In `async`, acknowledge a successfully launched operation promptly with its ID. Validation and launch failures must be explicit; acceptance must not be reported as command success.
-- In `sync`, wait for the terminal result when execution can start immediately, subject to transport policy. Busy-backend admission always returns a queued operation ID immediately, including sync requests; document this precedence in the tool contract.
-- In `auto`, when the executor is free, start execution and wait up to a fixed 5 seconds: return the final result if finished, otherwise return the operation ID and current state. When busy, enqueue and return the ID with state queued immediately, without a 5-second wait. Execution continues independently of that response.
+- The server always decides whether to return a final result or an operation handle. Do not expose mode, sync, async or equivalent execution-mode arguments to ChatGPT.
+- When the executor is free, start the operation and observe it for at most a fixed 5 seconds: return the final result or error if it finishes, otherwise return its ID and current state (normally running). When busy, enqueue and immediately return its ID with state queued, without waiting 5 seconds. Acceptance is not command success; validation/admission errors are explicit, and subsequent execution failures remain retrievable.
 - The observation wait is fixed at 5 seconds and is not configurable through tool arguments. Do not expose `waitSeconds` or another equivalent override. A follow-up observation may wait up to the same fixed 5 seconds for new output or a state change, returning sooner when either occurs.
-- `timeoutSeconds` is optional and accepts a positive integer number of seconds with no API maximum. When omitted, the execution timeout is 60 seconds. When supplied, the server enforces the deadline independently of mode, observation calls or client connectivity. Apply this contract to every domain command. Start the runtime deadline only on transition to running; queue waiting never consumes the execution timeout. Remove existing per-tool maximum runtime limits. Handle long durations using deadline-based/chunked timers so the platform timer range cannot cause an early timeout.
+- `timeoutSeconds` is optional and accepts a positive integer number of seconds with no API maximum. When omitted, the execution timeout is 60 seconds. When supplied, the server enforces the deadline independently of observation calls or client connectivity. Apply this contract to every domain command. Start the runtime deadline only on transition to running; queue waiting never consumes the execution timeout. Remove existing per-tool maximum runtime limits. Handle long durations using deadline-based/chunked timers so the platform timer range cannot cause an early timeout.
 - On execution timeout or cancellation, stop the whole process group; preserve logs and report the reason. Prefer SIGTERM followed by SIGKILL after a bounded grace period. Define whether the grace period is additional to the runtime limit.
 - No PTY, interactive terminal sessions or stdin interaction in this iteration.
 - No second LLM, coding agent or model API key is required.
@@ -31,7 +29,7 @@ Replace the blocking long-command workflow in the existing Code Tools MCP with m
 
 ### Operation lifecycle and API
 
-Use every existing domain command as a launch entry point with the same mode, execution timeout and requestId contract. Add observation, cancellation and owner-scoped discovery of recent operations; final names and schemas remain to be specified.
+Use every existing domain command as a launch entry point with the same server-controlled response behaviour, execution timeout and requestId contract. Add observation, cancellation and owner-scoped discovery of recent operations; final names and schemas remain to be specified.
 
 Use a stable opaque operation ID rather than an OS PID. Return machine-readable state, creation/start/update timestamps, effective timeout, operation type and project, plus a suggested polling interval. Distinguish queued, accepted/starting, running, completed, failed, cancelled, timed out and interrupted execution. Define a single consistent mapping between operation state, launch errors, nonzero exit codes and MCP tool errors. Dependent work must wait for successful completion, not merely launch acknowledgement.
 
@@ -39,7 +37,7 @@ Observation returns current state, a bounded page of new stdout/stderr, a contin
 
 ### Execution, storage and recovery
 
-Use a small operation manager inside code-tools. Persist metadata, final results and bounded logs on persistent storage outside repository working trees; a database or distributed queue is not initially necessary for the single-instance deployment. Set retention, output quotas and concurrent-operation limits.
+Use the shared small operation manager in both code-tools and obsidian-sync, each with independent queue and backend-owned state. Persist metadata, final results and bounded logs on persistent storage outside repository working trees; a database or distributed queue is not initially necessary for the single-instance deployment. Set retention, output quotas and concurrent-operation limits.
 
 Persist a retrievable operation before returning its ID. Deduplicate launch retries using a caller-provided request ID and reject reuse with different arguments. Do not automatically rerun arbitrary shell commands after crashes: they may already have produced side effects.
 
@@ -71,7 +69,7 @@ Review every existing code-* and obsidian-* handler and its helper chain, record
 
 ### Timeouts and notifications
 
-Execution timeout enforcement belongs to the server, not to ChatGPT polling. A Node timer handles ordinary hung commands; if guarantees against a blocked or failed code-tools event loop are required, use an independent watchdog and document its failure boundary. HTTP observation timeout must include margin above the fixed 5-second wait; synchronous calls require a separate compatible proxy policy.
+Execution timeout enforcement belongs to the server, not to ChatGPT polling. A Node timer handles ordinary hung commands; if guarantees against a blocked or failed backend event loop are required, use an independent watchdog and document its failure boundary. Launch and HTTP observation timeouts must include margin above the fixed 5-second wait and bounded admission/storage overhead. No HTTP request waits for the complete execution beyond that window; operation runtime deadlines are independent of proxy limits.
 
 Ordinary MCP tool calls with operation polling are the compatible initial path. Native MCP Tasks can be an adapter over the same operation manager if the actual ChatGPT client advertises and correctly handles the relevant capability. Do not substitute an unsupported protocol result shape for CallToolResult.
 
@@ -79,7 +77,7 @@ Push notifications are optional follow-up work, gated on confirmed client suppor
 
 ### Universal tool coverage
 
-All Code Tools domain commands (run, clone, search, projects, list, read, write and patch) and all Obsidian domain commands use the same wrapper, queue, IDs, modes, deadlines and observation utilities. Preserve each tool's original structured final result; short commands return it during the initial observation window. No read-only exemption or per-project execution slot is introduced.
+All Code Tools domain commands (run, clone, search, projects, list, read, write and patch) and all Obsidian domain commands use the same wrapper, queue, IDs, server-controlled response behaviour, deadlines and observation utilities. Preserve each tool's original structured final result; short commands return it during the initial observation window. No read-only exemption or per-project execution slot is introduced.
 
 Persist bounded search/list results for subsequent retrieval rather than rerunning the same operation. Saved results are snapshots and must not be presented as current after filesystem changes. Typed tools return structured results rather than raw process logs. Cancellation/deadline checks cover JavaScript processing as well as subprocesses.
 
@@ -92,7 +90,6 @@ Persist bounded search/list results for subsequent retrieval rather than rerunni
 - Backend-aware operation routing and persistent state configuration for obsidian-sync.
 - Cancellation checkpoints, yield/batch sizes and partial-write reporting for every existing handler. All domain tools expose the same managed interface.
 - Which native MCP Tasks revision, if any, the deployed ChatGPT client supports. Older 2025-11-25 Tasks and the current Tasks extension have different contracts.
-- Expected behaviour of sync mode when the requested runtime exceeds client/proxy limits; recommend auto/async and enforce a known safe sync ceiling rather than silently changing mode.
 
 ## Research references
 
@@ -110,7 +107,7 @@ These are design references, not adopted dependencies or proof of ChatGPT client
 2. Verify actual ChatGPT capabilities and choose the external polling interface; keep native Tasks optional.
 3. Implement the reusable operation lifecycle in senaev-utils, backend-owned persistent operations and routing, process supervision, runtime deadlines and cancellation.
 4. Thread AbortSignal through every existing Code Tools and Obsidian handler/helper chain; make file traversal and batch/CPU processing cooperatively cancellable.
-5. Wrap all Code Tools and Obsidian domain commands with the common modes, fixed observation waiting, structured final results, incremental output and retry deduplication.
+5. Wrap all Code Tools and Obsidian domain commands with the common server-controlled response behaviour, fixed observation waiting, structured final results, incremental output and retry deduplication.
 6. Add independent per-backend FIFO queues (one running, five waiting), immediate queued acknowledgement, QUEUE_FULL, retention, clone publication and restart reconciliation.
 7. Preserve each wrapped tool's structured results, conflict/diff feedback and partial-mutation reporting.
 8. Update shared tool definitions, proxy policies and operating instructions.
@@ -118,8 +115,7 @@ These are design references, not adopted dependencies or proof of ChatGPT client
 
 ## Verification
 
-- Short auto command returns its final result; long auto command returns an ID within the fixed 5-second observation window plus bounded overhead.
-- Async returns an operation acknowledgement without waiting for completion; sync returns the final result when admitted to an idle executor. Every mode returns queued immediately when the executor is busy.
+- On an idle executor, every domain command returns its final result or error if it finishes within the fixed 5-second observation window; otherwise it returns an operation ID and current state within that window plus bounded overhead. A busy executor immediately returns queued without observing execution. Test completion racing with the observation deadline and retain a retrievable coherent outcome.
 - Omitted timeout enforces the 60-second default. An explicit positive-integer timeout overrides it and terminates a hung command without any observation calls. Values above the old 300-second limit, including 10800 seconds (3 hours), are accepted. Test long deadlines without waiting in real time and ensure platform timer overflow cannot produce immediate termination. Cancel and timeout kill descendant processes and preserve partial logs.
 - Invalid launch, fast nonzero exit, successful completion, timeout, cancellation and interruption remain distinguishable.
 - Poll while running, read new output by cursor and replay the same cursor; verify bounded output and retained stderr for fast failures.
@@ -128,7 +124,7 @@ These are design references, not adopted dependencies or proof of ChatGPT client
 - For each backend, verify exactly one running operation and at most five waiting, FIFO admission, immediate queued responses without the initial 5-second wait, and QUEUE_FULL without a new operation record. Code Tools and Obsidian execute independently.
 - Queue waiting does not consume the default or explicit runtime timeout. Verify queued cancellation never invokes the handler; running cancellation holds the slot until cleanup completes. Status/result/cancel remain available while execution and queue slots are occupied.
 - Restart the container: completed results survive and unfinished work becomes interrupted, without automatic reruns or indefinite running states.
-- Verify that no tool schema exposes configurable observation waiting or PTY functionality.
+- Verify that no tool schema exposes execution-mode arguments (mode/sync/async), configurable observation waiting or PTY functionality.
 - For every existing handler, verify an already-aborted signal prevents new work. Test mid-traversal/mid-batch abort, timeout without polls, listener/timer/lock cleanup and cancellation propagation through helpers.
 - Verify aborted search/backlink scans stop scheduling reads and cannot return complete:true or swallow abort as an ordinary file warning. Verify CPU loops yield and parallel batches stop scheduling work.
 - Verify cancelled multi-file mutations preserve valid individual files and report completed changes and incomplete work. Test abort racing with final completion/publication and ensure a single coherent terminal outcome.
@@ -156,3 +152,7 @@ The owner requested shared async infrastructure for Obsidian and AbortController
 ### 2026-10-11 09:37 UTC — Universal wrapper and per-backend FIFO queues
 
 The owner superseded the earlier tool exceptions and per-project concurrency proposal: all domain commands use one managed wrapper. Each backend pod independently permits one running operation and five FIFO waiting operations; a busy executor returns a queued ID immediately, and a full waiting queue returns QUEUE_FULL without creating an operation. Runtime timeout starts only at running and excludes all queue waiting. Control-plane calls bypass the queue; queued cancellation removes waiting work, and running cancellation releases the slot only after cleanup. Long operations blocking short reads are accepted for the first version. Retained requestId deduplication and dependent-command completion requirements. Updated operative requirements, plan and verification; historical findings above remain as the decision log. No implementation changed.
+
+### 2026-10-11 09:50 UTC — Remove execution modes and clarify both consumers
+
+The owner removed caller-selected sync/async/auto modes. All domain tools now use server-controlled bounded observation: an idle executor returns a result/error within 5 seconds or an operation ID; a busy executor immediately returns a queued ID. Updated operative requirements, proxy policy, plan and verification, removing obsolete sync transport questions. Explicitly named both Code Tools and Obsidian Sync containers as consumers of the shared senaev-utils wrapper, with Cluster Helper routing to their independent queues and state. Earlier mode decisions remain historical only. This PR still changes documentation only.
