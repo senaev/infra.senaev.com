@@ -213,7 +213,7 @@ describe('projects managed-execution canary', () => {
         }, { timeout: 3000 });
     }, 10000);
 
-    it('immediately queues five, rejects overflow and keeps run/read/write/patch available', async () => {
+    it('immediately queues five, rejects overflow and keeps read/write/patch available', async () => {
         const { started, run } = holdProjects();
         const active = call('projects', { requestId: 'active' });
 
@@ -236,13 +236,10 @@ describe('projects managed-execution canary', () => {
         expect((await call('operations')).json<Reply>().operations).toHaveLength(6);
         expect((await call('projects', { requestId: 'q0' })).json<Reply>().operation.id).toBe(queued[0]);
 
-        const directRun = (await call('run', {
+        expect((await call('run', {
             project: 'demo',
             command: 'printf direct',
-        })).json<Reply>();
-
-        expect(directRun.stdout).toBe('direct');
-        expect(directRun.operation).toBeUndefined();
+        })).statusCode).toBe(429);
         const read = (await call('read', {
             project: 'demo',
             paths: ['README.md'],
@@ -303,10 +300,6 @@ describe('projects managed-execution canary', () => {
         expect((await call('read', {
             project: 'demo',
             paths: ['README.md'],
-        })).statusCode).toBe(200);
-        expect((await call('run', {
-            project: 'demo',
-            command: 'true',
         })).statusCode).toBe(200);
         expect(launch).not.toHaveBeenCalled();
         expect((await call('projects')).statusCode).toBe(409);

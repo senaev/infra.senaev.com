@@ -9,7 +9,7 @@ import {
     isCodeToolName,
     PROJECT_NAME_PATTERN,
 } from './codeToolDefinitions';
-import { RUN_LIMITS, SEARCH_LIMITS } from './codeToolLimits';
+import { SEARCH_LIMITS } from './codeToolLimits';
 
 describe('code tool definitions', () => {
     test('lists the tools in a fixed order', () => {
@@ -34,6 +34,7 @@ describe('code tool definitions', () => {
             'project',
             'command',
             'timeoutSeconds',
+            'requestId',
         ]);
     });
 
@@ -62,7 +63,8 @@ describe('code tool definitions', () => {
 
     test('build the schemas and descriptions from the shared limits', () => {
         expect(CODE_TOOL_DEFINITIONS.search.inputSchema.properties.queries).toMatchObject({ maxItems: SEARCH_LIMITS.maxQueries });
-        expect(CODE_TOOL_DEFINITIONS.run.description).toContain(`at most ${RUN_LIMITS.maxTimeoutSeconds}`);
+        expect(CODE_TOOL_DEFINITIONS.run.description).toContain('it has no API maximum');
+        expect(CODE_TOOL_DEFINITIONS.run.inputSchema.properties.timeoutSeconds).not.toHaveProperty('maximum');
         expect(CODE_TOOL_DEFINITIONS.read.description).toContain('at most 50,000 characters');
     });
 });

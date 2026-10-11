@@ -1,5 +1,7 @@
 import { spawn } from 'node:child_process';
 
+import { scheduleDeadline } from 'senaev-utils/src/operations/operationContext';
+
 export type ProcessResult = {
     exitCode: number | null;
     signal: NodeJS.Signals | null;
@@ -128,14 +130,14 @@ export function runProcess(command: string, args: readonly string[], options: Ru
             // Grace is additional to the operation deadline; hold the slot until close.
             escalation ??= setTimeout(() => killGroup(), 1000);
         };
-        const timer = options.timeoutMs === undefined
+        const stopDeadline = options.timeoutMs === undefined
             ? undefined
-            : setTimeout(() => {
+            : scheduleDeadline(options.timeoutMs / 1000, () => {
                 timedOut = true;
                 killGroup();
-            }, options.timeoutMs);
+            });
         const dispose = () => {
-            clearTimeout(timer);
+            stopDeadline?.();
             clearTimeout(escalation);
             options.signal?.removeEventListener('abort', abort);
         };

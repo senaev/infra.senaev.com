@@ -208,3 +208,46 @@ Full npm run simple-checks passed: lint, TypeScript for all packages, tests, Pyt
 ### 2026-10-11 11:44 UTC — Restore the complete task log
 
 Final PR review exposed truncated MCP reads of this long file. Restored the previous memory-stage log from the complete main blob and the missing stage verification/decision entries from the session record, then appended the canary findings. Operative requirements and implementation are unchanged. Read long files in pages before replacing them; never treat truncated content as the whole file. This follow-up changes documentation only.
+
+### 2026-10-11 11:56 UTC — PR #65 merged and deployed MCP canary checked
+
+Merged https://github.com/senaev/infra.senaev.com/pull/65 into main at `102ac595d9b1f53ef728afc2bea4b1a839becbed`; pulled main. All six main service workflows succeeded, including rollout status. Public smoke checks passed: short link 302 to https://senaev.com/cv/5min, static page 200, public note 200.
+
+Actual ChatGPT MCP calls against deployed services:
+- Fast projects: completed operation `code-dcf42497-a6d6-49a8-a096-9c116699c676`, backend runtime about 138 ms, client 705 ms.
+- Temporary isolated Git repository with a 12-second fsmonitor hook: projects returned `code-befedb93-daa1-4bdc-bf46-52f7d058049e`, state `running`, after 5547 ms including network overhead.
+- Five subsequent requests returned distinct queued IDs in 511–617 ms; `startedAt: null`.
+- Sixth waiting request returned exactly: `{"status":"error","code":"QUEUE_FULL","message":"Five operations are already waiting; retry after a slot is free"}`; MCP `isError: true`, 514 ms. Connector also adds `error_code: INVALID_ARGUMENT` to the structured error.
+- Legacy code-run worked while the managed queue was full (disabled the temporary hook in 12 ms). This preserves recovery access during the canary stage.
+- After the first operation finished and queued requests drained, a fresh projects call completed in about 60 ms backend runtime. Temporary probe repository was removed; production repository Git configuration was untouched.
+
+Limitation: this chat still exposes the old MCP tool catalogue, without code-operations/status/result/cancel and without the new projects arguments. Read-only plugin-management discovery offers no catalogue refresh operation. Therefore cancellation, result/log polling, requestId and custom runtime timeout were NOT verified through this live ChatGPT connector; automated coverage passed before merge, but deployed end-to-end verification of those controls remains pending a refreshed connector catalogue. Do not roll out additional managed commands before that check.
+
+### 2026-10-11 12:45 UTC — Refreshed connector: deployed canary verification completed
+
+The refreshed ChatGPT catalogue exposes code-operations, code-operation_status, code-operation_result and code-operation_cancel, plus projects requestId/timeoutSeconds. All were exercised through the actual MCP connector; no internal bearer extraction or alternate authentication path.
+
+- Fast projects completed in about 71 ms backend runtime with default timeoutSeconds 60. Repeat requestId returned the same ID and retained snapshot; changed arguments returned conflict.
+- Historical running/queued IDs from the earlier live probe are all completed. operation_result retrieved their final project snapshot and stdout/stderr logs, closing the prior tracking gap.
+- Isolated temporary Git fsmonitor probe: 30-second work returned running after 5528 ms. Status/log observation bypassed the execution queue. Cursor 0 replayed the same six entries; cursor 6 returned no repeated entries.
+- Queued cancellation: code-056f20a0-f60b-4ada-ad7d-5c487b5d66e2 became cancelled with startedAt null, no logs, despite waiting over six seconds with timeoutSeconds 1. It never executed.
+- Running cancellation: code-6cdc13db-cd87-4ac1-be80-949fc1a5e1c4 initially remained running during cleanup, then cancelled. Repeated cancellation was safe.
+- Runtime deadline without polling: code-4c5c42bb-2db7-4790-b01b-52904a12bfc8 with timeoutSeconds 1 timed out in about 1007 ms backend runtime and released the slot. operation_result retained the timed_out error and logs.
+- Long natural completion: code-0996ffe8-48b7-4685-b3f2-edeac22f8818 accepted timeoutSeconds 10800 (above the legacy API cap), returned running after 5496 ms and completed after about 12 seconds. operation_result returned its final snapshot.
+- Runtime-only deadline: code-d3b57b20-eb8b-47b5-aa4a-c1a4c4a5d10b waited 6458 ms in the queue with timeoutSeconds 1, then completed in 36 ms. Queue waiting did not consume its deadline.
+- Legacy code-run remained usable to disable the probe while managed work was running/queued. /proc cmdline inspection found no remaining canary hook/sleep subprocesses after abort/timeout and completion.
+- Removed only the guarded temporary probe repository. Existing production repositories/configuration unchanged. No implementation edits needed.
+
+Together with the earlier five-waiter/QUEUE_FULL test and passing automated integration/manager suites, the deployed projects canary gate is verified. Large result pagination, retention limits and forced backend restart remain covered by automated tests; no disruptive production restart was performed for this check. Next stage can expand the managed allowlist incrementally while retaining repair access.
+
+### 2026-10-11 12:54 UTC — Stage 3: activate managed code-run
+
+Created feat/async-code-run from verified main. Expanded only the shared managed allowlist from projects to projects/run, reusing the same backend FIFO, IDs, requestId deduplication, 5-second observation and control endpoints. read/write/patch and remaining tools stay direct for repair access. run now uses the operation AbortSignal and log sink; managed execution has no nested process deadline. Shared executionTimeout defaults to 60 seconds and accepts positive finite integer values without an API upper cap. Removed stale run timeout cap from schema/limits/proxy; managed run uses the existing 15-second observation transport budget. Direct process deadline helper now uses chunked scheduling to avoid Node timer overflow.
+
+Retain the manager's existing classification: nonzero shell exitCode is a normal command result (status ok, stdout/stderr/exitCode retained) with terminal operation state failed; exceptions also become failed, cancellation/deadline become cancelled/timed_out. Updated tool description accordingly. Initial integration test exposed this existing classification and was corrected without changing manager semantics.
+
+Targeted suite passed: six files, 38 tests. Real subprocess tests cover streaming/replay cursors, one mutation despite duplicate requestId, conflicting retries, queued cancellation without execution, TERM-resistant group termination, slot held for cleanup, shared projects/run queue, runtime expiry without polling, recovery after expiry, output limits and invalid parameters. Added direct long-deadline overflow regression. Full validation pending pre-push. After merge/deploy, test real MCP fast/slow run, polling/result, cancel/timeout and repair access before expanding further.
+
+### 2026-10-11 12:59 UTC — Stage 3 validation
+
+Full pre-push validation passed: ESLint, TypeScript, 138 Vitest files / 1134 tests, Helm, shell and Python checks. The first full run exposed an outdated projects-only contract assertion; it now verifies both managed tools and keeps repair tools outside the queue. Branch feat/async-code-run is pushed. Live code-run checks are reserved for after merge and deployment.
