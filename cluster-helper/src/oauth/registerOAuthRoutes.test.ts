@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import Fastify, { FastifyInstance } from 'fastify';
 import {
     afterEach, beforeEach, describe, expect, it, vi,
@@ -167,7 +169,9 @@ describe('registerOAuthRoutes', () => {
         expect(response.body).not.toContain('private-secret');
     });
 
-    it('still redirects successful logins to the validated ChatGPT callback', async () => {
+    it('shows a successful login with a usable validated callback link', async () => {
+        const verifier = 'v'.repeat(43);
+        const challenge = createHash('sha256').update(verifier).digest('base64url');
         const response = await server.inject({
             method: 'POST',
             url: '/authorize',
@@ -176,7 +180,7 @@ describe('registerOAuthRoutes', () => {
                 response_type: 'code',
                 client_id: 'https://chatgpt.com/oauth/client.json',
                 redirect_uri: 'https://chatgpt.com/connector_platform_oauth_redirect',
-                code_challenge: 'x'.repeat(43),
+                code_challenge: challenge,
                 code_challenge_method: 'S256',
                 username: 'andrei',
                 password: 'secret-password',
@@ -184,12 +188,39 @@ describe('registerOAuthRoutes', () => {
             }).toString(),
         });
 
-        expect(response.statusCode).toBe(302);
-        const location = new URL(String(response.headers.location));
+        expect(response.statusCode).toBe(200);
+        expect(response.headers.location).toBeUndefined();
+        expect(response.headers['content-type']).toContain('text/html');
+        expect(response.headers['cache-control']).toBe('no-store');
+        expect(response.headers['referrer-policy']).toBe('no-referrer');
+        expect(response.headers['content-security-policy']).toContain('form-action');
+        expect(response.body).toContain('Signed in successfully');
+        expect(response.body).not.toContain('secret-password');
+        expect(response.body).not.toContain('<form');
+        expect(response.body).not.toContain('http-equiv="refresh"');
+        const href = /<a href="([^" ]+)" rel="noreferrer">Return to ChatGPT<\/a>/.exec(response.body)?.[1];
+
+        expect(href).toBeDefined();
+        const location = new URL(String(href).replaceAll('&amp;', '&'));
 
         expect(location.origin).toBe('https://chatgpt.com');
         expect(location.searchParams.get('code')).toBeTruthy();
         expect(location.searchParams.get('state')).toBe('original-state');
+        const token = await server.inject({
+            method: 'POST',
+            url: '/token',
+            headers: FORM_HEADERS,
+            payload: new URLSearchParams({
+                grant_type: 'authorization_code',
+                code: String(location.searchParams.get('code')),
+                client_id: 'https://chatgpt.com/oauth/client.json',
+                redirect_uri: 'https://chatgpt.com/connector_platform_oauth_redirect',
+                code_verifier: verifier,
+            }).toString(),
+        });
+
+        expect(token.statusCode).toBe(200);
+        expect(token.json()).toMatchObject({ token_type: 'Bearer' });
     });
 
     it('parses the form-encoded login and token requests', async () => {

@@ -76,3 +76,26 @@ ${continueUrl === undefined ? '' : `<p><a href="${escapeHtml(continueUrl)}">Retu
 </main></body>
 </html>`;
 }
+
+/** A user-initiated link avoids the browser's form redirect chain restrictions. */
+export function renderAuthorizationSuccess(continueUrl: string): string {
+    return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Signed in · senaev.com</title>
+<style>
+body { font-family: system-ui, sans-serif; background: #f4f4f5; margin: 0; padding: 10vh 1rem; }
+main { box-sizing: border-box; background: white; max-width: 28rem; margin: auto; padding: 2rem; border-radius: 12px; }
+a { display: block; padding: .8rem; border-radius: 6px; background: #18181b; color: white; text-align: center; text-decoration: none; }
+</style>
+</head>
+<body><main>
+<h1>Signed in successfully</h1>
+<p>Your username and password were accepted. Return to ChatGPT to finish connecting.</p>
+<a href="${escapeHtml(continueUrl)}" rel="noreferrer">Return to ChatGPT</a>
+<p>This link expires shortly. If it has expired, start the connection again from ChatGPT.</p>
+</main></body>
+</html>`;
+}
