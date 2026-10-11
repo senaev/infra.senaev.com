@@ -32,7 +32,7 @@ afterEach(async () => {
 });
 
 describe('formatSnippet', () => {
-    it('shows matches with context in ripgrep style and joins close parts', () => {
+    it('shows matches with context in ripgrep style and joins close parts', async () => {
         const lines = [
             {
                 line: 1,
@@ -56,8 +56,8 @@ describe('formatSnippet', () => {
             },
         ];
 
-        expect(formatSnippet(lines, 5, 1)).toBe('1-a\n2:hit\n3-b\n--\n9:hit');
-        expect(formatSnippet(lines, 1, 0)).toBe('2:hit');
+        expect(await formatSnippet(lines, 5, 1)).toBe('1-a\n2:hit\n3-b\n--\n9:hit');
+        expect(await formatSnippet(lines, 1, 0)).toBe('2:hit');
     });
 });
 

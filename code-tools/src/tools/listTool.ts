@@ -1,6 +1,7 @@
 import { lstat } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { operationCheckpoint, throwIfOperationAborted } from 'senaev-utils/src/operations/operationContext';
 import { LIST_LIMITS, MAX_GLOB_LENGTH } from 'senaev-utils/src/codeTools/codeToolLimits';
 import { compileFileGlob } from 'senaev-utils/src/toolServer/compileFileGlob';
 import {
@@ -21,12 +22,18 @@ type Entry = {
 };
 
 /** The files and folders directly in `folder`, folders first. */
-function listOneLevel(files: readonly string[], folder: string): Entry[] {
+async function listOneLevel(files: readonly string[], folder: string): Promise<Entry[]> {
     const prefix = folder === '' ? '' : `${folder}/`;
     const folders = new Set<string>();
     const directFiles: string[] = [];
 
+    let index = 0;
+
     for (const file of files) {
+        if (index++ % 128 === 0) {
+            await operationCheckpoint();
+        }
+
         const rest = file.slice(prefix.length);
         const slash = rest.indexOf('/');
 
@@ -54,6 +61,7 @@ function listOneLevel(files: readonly string[], folder: string): Entry[] {
 }
 
 async function withSize(root: string, entry: Entry) {
+    await operationCheckpoint();
     if (entry.type === 'folder') {
         return entry;
     }
@@ -64,11 +72,14 @@ async function withSize(root: string, entry: Entry) {
             size: (await lstat(join(root, entry.path))).size,
         };
     } catch {
+        throwIfOperationAborted();
+
         return entry;
     }
 }
 
 export async function listTool(config: CodeToolsConfig, input: unknown) {
+    throwIfOperationAborted();
     const args = readCodeToolArguments(input, 'list');
     const project = await resolveProject(config, args);
     const folder = normalizeProjectPath(optionalString(args, 'folder') ?? '', 'folder');
@@ -84,31 +95,63 @@ export async function listTool(config: CodeToolsConfig, input: unknown) {
     }) ?? LIST_LIMITS.defaultLimit;
 
     const prefix = folder === '' ? '' : `${folder}/`;
-    const filesInFolder = (await listProjectFiles(config, project.root)).filter((file) => file.startsWith(prefix));
+    const files = await listProjectFiles(config, project.root);
+    const filesInFolder: string[] = [];
+
+    for (let index = 0; index < files.length; index++) {
+        if (index % 128 === 0) {
+            await operationCheckpoint();
+        }
+
+        const file = files[index];
+
+        if (file !== undefined && file.startsWith(prefix)) {
+            filesInFolder.push(file);
+        }
+    }
 
     if (folder !== '' && filesInFolder.length === 0) {
         throw new ToolError('not_found', `Folder "${folder}" has no files that git shows`);
     }
 
     const matchesGlob = glob === undefined ? null : compileFileGlob(glob);
-    const entries: Entry[] = recursive || matchesGlob !== null
-        ? filesInFolder
-            .filter((file) => matchesGlob === null || matchesGlob(file))
-            .map((path) => {
-                return {
+    let entries: Entry[] = [];
+
+    if (recursive || matchesGlob !== null) {
+        for (let index = 0; index < filesInFolder.length; index++) {
+            if (index % 128 === 0) {
+                await operationCheckpoint();
+            }
+
+            const path = filesInFolder[index];
+
+            if (path !== undefined && (matchesGlob === null || matchesGlob(path))) {
+                entries.push({
                     path,
                     type: 'file',
-                };
-            })
-        : listOneLevel(filesInFolder, folder);
+                });
+            }
+        }
+    } else {
+        entries = await listOneLevel(filesInFolder, folder);
+    }
+
     const page = entries.slice(offset, offset + limit);
     const nextOffset = offset + page.length < entries.length ? offset + page.length : null;
+
+    const sizedEntries = [];
+
+    for (const entry of page) {
+        sizedEntries.push(await withSize(project.root, entry));
+    }
+
+    throwIfOperationAborted();
 
     return {
         project: project.name,
         folder,
         total: entries.length,
-        entries: await Promise.all(page.map((entry) => withSize(project.root, entry))),
+        entries: sizedEntries,
         nextOffset,
     };
 }

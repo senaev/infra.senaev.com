@@ -1,4 +1,6 @@
-import { operationContext, throwIfOperationAborted } from 'senaev-utils/src/operations/operationContext';
+import {
+    operationCheckpoint, operationContext, throwIfOperationAborted,
+} from 'senaev-utils/src/operations/operationContext';
 import { ToolError } from 'senaev-utils/src/toolServer/ToolError';
 
 import { type ProcessResult, runProcess } from '../process/runProcess';
@@ -49,10 +51,7 @@ function describeGitFailure(result: ProcessResult): string {
  * does not hide. Sorted, project-relative, with "/" separators.
  */
 export async function listProjectFiles(config: CodeToolsConfig, root: string): Promise<string[]> {
-    const [
-        listed,
-        deleted,
-    ] = await Promise.all([
+    const results = await Promise.allSettled([
         runGit(config, root, [
             'ls-files',
             '-z',
@@ -66,8 +65,30 @@ export async function listProjectFiles(config: CodeToolsConfig, root: string): P
             '--deleted',
         ]),
     ]);
-    const deletedFiles = new Set(deleted.split('\0'));
-    const files = new Set(listed.split('\0').filter((file) => file !== '' && !deletedFiles.has(file)));
+
+    throwIfOperationAborted();
+    const output = results.map((result) => {
+        if (result.status === 'rejected') {
+            throw result.reason;
+        }
+
+        return result.value;
+    });
+    const deletedFiles = new Set((output[1] ?? '').split('\0'));
+    const files = new Set<string>();
+    let index = 0;
+
+    for (const file of (output[0] ?? '').split('\0')) {
+        if (index++ % 128 === 0) {
+            await operationCheckpoint();
+        }
+
+        if (file !== '' && !deletedFiles.has(file)) {
+            files.add(file);
+        }
+    }
+
+    throwIfOperationAborted();
 
     return [...files].sort();
 }

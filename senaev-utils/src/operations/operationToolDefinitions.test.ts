@@ -13,6 +13,8 @@ describe('operation tool contracts', () => {
         expect(MANAGED_CODE_TOOL_NAMES).toEqual([
             'projects',
             'run',
+            'list',
+            'search',
         ]);
         for (const name of MANAGED_CODE_TOOL_NAMES) {
             const { properties } = CODE_TOOL_DEFINITIONS[name].inputSchema;
