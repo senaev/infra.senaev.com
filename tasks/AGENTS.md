@@ -5,7 +5,10 @@ or an investigation. The file is the source of truth; the chat is ephemeral.
 
 ## File naming
 
-`YYYY-MM-DD-<short-slug>.md` — the date is when the work started; the slug is 3–5 words.
+`YYYY-MM-DD-HH-mm-<short-slug>.md` — use the file creation date and time in UTC:
+`HH` is the zero-padded 24-hour hour, `mm` is the zero-padded minute; the slug is 3–5 words.
+For example: `2026-10-11-08-35-add-task-creation-time.md`.
+Apply this format only to new tasks; do not rename existing task files.
 For an incident, name the symptom, not the cause (the cause is not known yet).
 
 ## Document structure

@@ -9,8 +9,9 @@ Personal infrastructure for `infra.senaev.com` — a distributed K3s cluster acr
 ## Tasks
 
 Every task (feature, change, incident, investigation) has a working log in [`tasks/`](tasks/),
-one file per task: `YYYY-MM-DD-<short-slug>.md`. The file is the source of truth: append
-findings under `## Findings` as you go. See [`tasks/AGENTS.md`](tasks/AGENTS.md).
+one file per task: `YYYY-MM-DD-HH-mm-<short-slug>.md`, using the file creation date and
+24-hour time in UTC. Existing task filenames stay unchanged. The file is the source of
+truth: append findings under `## Findings` as you go. See [`tasks/AGENTS.md`](tasks/AGENTS.md).
 
 ## Git discipline
 
