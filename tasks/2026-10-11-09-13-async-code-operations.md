@@ -721,3 +721,33 @@ All sixteen business handlers now depend on independent command names/allowed fi
 Initial validation failed only in the newly added boundary assertions/type narrowing; the second full run had 1226 passing tests and two new assertion failures (forgot to await operation_result), plus one duplicate-import lint error. These were corrected. Final focused operation `code-10351ff4-064b-45ea-8195-402489123487` passed all 23 tests across four files, scoped eslint and git diff --check. The second full run passed typecheck, Python, shell and Helm. The mandatory pre-push full simple-checks will verify the committed final version; no check bypass.
 
 PR #76 public smoke operation `code-fb33e5e8-4bfd-4d25-94c6-94d97d34d6b8`: short link HTTP 200 after expected redirect to https://senaev.com/cv/5min, static HTML HTTP 200, public note HTTP 200. These are deployed smoke checks, separate from automated tests of this unmerged branch.
+
+### 2026-10-11T20:00:32.724322+00:00 — PR #77 published after complete validation
+
+Committed `ce94ec1936ba1baf5e912ed5bdfc38c44629a9b6` on `refactor/domain-command-boundary` (30 files). Public operation `code-174846db-d7f2-4518-b1ea-072ece1d718b` completed with exitCode 0; mandatory pre-push simple-checks passed lint, typecheck, Vitest, Python, shell and Helm. Verbatim test summary: `Test Files 155 passed (155)`; `Tests 1228 passed (1228)`. No hook bypass. Opened https://github.com/senaev/infra.senaev.com/pull/77 from this exact head; CI pending. PR #77 has not been merged or deployed.
+
+### 2026-10-11T20:02:04.575684+00:00 — PR #77 CI completed
+
+GitHub Check run `38170359637`, job `114561508915`, completed SUCCESS at 2026-10-11T20:01:19Z for exact head `ce94ec1936ba1baf5e912ed5bdfc38c44629a9b6`. CodeRabbit status SUCCESS; review and inline-comment arrays are empty at this observation (not an approval claim). PR remains OPEN/MERGEABLE. CI observer `code-b4ef97fb-9498-4a56-b26f-53b410194ffe` completed exitCode 0. Only this publication/verification continuation is uncommitted.
+
+## Result — PR #76 deployed; first domain-boundary iteration ready as PR #77
+
+PR #76 merged and all six releases succeeded; three public smoke routes passed. PR #77 separates independent domain command contracts and operation controls from MCP presentation, strips execution fields before handler dispatch while preserving complete retry fingerprints, and removes MCP-specific domain diagnostics. Six new regressions cover schema compatibility and both execution policies; full validation passed 155 files / 1228 tests and GitHub CI. It has not been merged, deployed or live-tested. Generic cooperative execution context remains ambient; explicit capability injection and typed input/result contracts are later improvements, not prerequisites secretly implemented here. Journal history and earlier live evidence are preserved.
+
+### 2026-10-11T20:17:11.494733+00:00 — PR #77 merged; explicit execution pilot
+
+User authorized merging PR #77 and starting the next step. Reviewed head ce94ec1936ba1baf5e912ed5bdfc38c44629a9b6 merged as `dfe59aa8ff27aea111dc2a04a95399bb629287ee`. Scoped journal stash `d0c9986e2ed456801104fa67e4be3762d125da3a` was restored after fast-forwarding main; only that stash was removed. All six automatic releases at this merge completed SUCCESS.
+
+Started `refactor/explicit-command-execution`. Scope made explicit in chat: neutral host capabilities and typed run business command/input adapter first; migrate the other fifteen commands in a subsequent PR. Managed adapter supplies capabilities at execution time, so queued commands receive their own running context. Project/symlink checks accept explicit capabilities; compatibility defaults preserve legacy callers. Chunked deadline moved to neutral process utility without changing behaviour. No MCP modes, waits or limits added.
+
+During deployment several public run calls returned INVALID_ARGUMENT without an ID; read/status remained available and subsequent queued/parallel run calls succeeded. Verified the rejected commands did not alter the working tree before retrying through the same public MCP. No alternative authorization/recovery channel used.
+
+Focused operation `code-ae53c7d6-b17f-4204-aff9-9e645b2c88ce` passed 19 tests across four files. New real-process tests run without a manager, preserve nonzero exit/output/logs, ignore an unrelated aborted ambient context, reject pre-aborted execution before marker creation, and cancel a running own process group before returning. All fixtures are disposable and cleaned; this is automated evidence, not a deployed live check.
+
+### 2026-10-11T20:22:42.711341+00:00 — Explicit execution pilot verification before publication
+
+Full first run passed lint, all package typechecks, Python, shell and Helm; Vitest had 1236 passing tests and one failure in the new process-group assertion. Signal 0 reports group existence, which is not sufficient to distinguish running children from unreaped terminated children. The original fixture printed readiness before spawning its background child and did not reap it. Changed only the fixture to start its child before readiness and trap TERM with wait before exiting; production process termination is unchanged. The strict ESRCH assertion is retained for this cooperative fixture. Existing escalation/stream-cleanup tests still cover uncooperative groups.
+
+Separated typed resolveNamedProject from legacy JSON argument parsing, with explicit execution passed through project and symlink checks. Final focused operation `code-aeb0e024-64df-4c71-927e-00c512611aba` passed 22 tests in three files, scoped eslint, code-tools typecheck and diff checks. Generic input-adapter tests and host observer integration passed in the prior focused run. Mandatory pre-push simple-checks will verify the final committed version without bypass.
+
+Deployed PR #77 smoke operation `code-45e340f2-997b-48a7-aca4-aec28ccc7935` passed all three public routes with HTTP 200, including expected short-link redirect. Unmerged pilot changes have no deployed live-check claim. No production vault files modified.
