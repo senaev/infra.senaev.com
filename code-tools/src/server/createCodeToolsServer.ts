@@ -24,7 +24,12 @@ export function createCodeToolsServer(internalToken: string, config: CodeToolsCo
     // Lazy, memory-only lifecycle shared by every domain command.
     let manager: OperationManager | undefined;
     const operations = () => {
-        manager ??= new OperationManager('code');
+        manager ??= new OperationManager('code', (error, operation) => {
+            logger.error({
+                err: error,
+                ...operation,
+            }, 'Managed operation crashed');
+        });
 
         return manager;
     };

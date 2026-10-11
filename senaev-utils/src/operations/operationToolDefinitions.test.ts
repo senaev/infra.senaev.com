@@ -6,9 +6,22 @@ import {
     CODE_MCP_TOOL_DEFINITIONS, CODE_TOOL_DEFINITIONS, CODE_TOOL_NAMES, MANAGED_CODE_TOOL_NAMES,
 } from '../codeTools/codeToolDefinitions';
 
-import { OPERATION_TOOL_DEFINITIONS, readOperationArguments } from './operationToolDefinitions';
+import {
+    createManagedToolDescription, OPERATION_TOOL_DEFINITIONS, readOperationArguments,
+} from './operationToolDefinitions';
 
 describe('operation tool contracts', () => {
+    it('derives backend-specific control names without copying lifecycle descriptions', () => {
+        const vault = createManagedToolDescription('obsidian-');
+
+        expect(vault).toContain('obsidian-operation_status');
+        expect(vault).toContain('obsidian-operation_result');
+        expect(vault).toContain('obsidian-operation_cancel');
+        expect(vault).not.toContain('code-operation');
+        expect(vault).toContain('5 seconds');
+        expect(vault).toContain('defaults to 60');
+    });
+
     it('exposes execution arguments on managed code tools and does not expose modes or wait overrides', () => {
         expect(MANAGED_CODE_TOOL_NAMES).toEqual(CODE_TOOL_NAMES);
         for (const name of MANAGED_CODE_TOOL_NAMES) {

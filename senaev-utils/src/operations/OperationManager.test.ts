@@ -44,6 +44,161 @@ async function waitFor(check: () => Promise<boolean>) {
 }
 
 describe('OperationManager', () => {
+    it('enforces the observation boundary without charging queued work', async () => {
+        vi.useFakeTimers();
+        const manager = new OperationManager('code');
+        const gate = deferred<Record<string, unknown>>();
+        let observed = false;
+        const launch = manager.launch({
+            tool: 'read',
+            args: {},
+            run: () => gate.promise,
+        });
+
+        void launch.then(() => {
+            observed = true;
+        });
+        await vi.advanceTimersByTimeAsync(0);
+        const queued = await manager.launch({
+            tool: 'list',
+            args: {},
+            run: () => Promise.resolve({}),
+        });
+
+        expect(queued.operation).toMatchObject({
+            state: 'queued',
+            startedAt: null,
+        });
+        await vi.advanceTimersByTimeAsync(4999);
+        expect(observed).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(observed).toBe(true);
+        expect((await launch).operation).toMatchObject({ state: 'running' });
+        gate.resolve({});
+        await manager.close();
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('expires retries and control reads without unrelated admissions', async () => {
+        const manager = new OperationManager('code');
+        const run = vi.fn(() => Promise.resolve({ value: 42 }));
+        const options = {
+            tool: 'read',
+            args: { requestId: 'expired' },
+            run,
+        };
+        const first = await manager.launch(options);
+        const now = Date.now();
+
+        vi.spyOn(Date, 'now').mockReturnValue(now + 8 * 24 * 60 * 60 * 1000);
+        try {
+            const retry = await manager.launch(options);
+
+            expect(retry.operation).not.toMatchObject({ id: (first.operation as { id: string }).id });
+            expect(run).toHaveBeenCalledTimes(2);
+            vi.mocked(Date.now).mockReturnValue(now + 16 * 24 * 60 * 60 * 1000);
+            await expect(manager.control('operation_result', { id: (retry.operation as { id: string }).id }))
+                .rejects.toMatchObject({ code: 'not_found' });
+            expect((await manager.control('operations', {})).operations).toEqual([]);
+        } finally {
+            vi.restoreAllMocks();
+            await manager.close();
+        }
+    });
+
+    it('keeps active work discoverable after terminal history fills', async () => {
+        const manager = new OperationManager('code');
+        const gate = deferred<Record<string, unknown>>();
+        const launch = manager.launch({
+            tool: 'run',
+            args: {},
+            run: () => gate.promise,
+        });
+
+        await waitFor(async () => ((await manager.control('operations', {})).operations as unknown[]).length === 1);
+        const first = ((await manager.control('operations', {})).operations as { id: string }[])[0];
+
+        for (let index = 0; index < 101; index++) {
+            await manager.launch({
+                tool: 'read',
+                args: { executionPolicy: 'parallel' },
+                run: () => Promise.resolve({}),
+            });
+        }
+
+        const recent = (await manager.control('operations', {})).operations as { id: string; state: string }[];
+
+        expect(recent).toHaveLength(101);
+        expect(recent).toContainEqual(expect.objectContaining({
+            id: first?.id,
+            state: 'running',
+        }));
+        gate.resolve({});
+        await launch;
+        await manager.close();
+    });
+
+    it('validates record-specific cursors before cancelling', async () => {
+        const manager = new OperationManager('code');
+        const gate = deferred<Record<string, unknown>>();
+        let signal: AbortSignal | undefined;
+        const launch = manager.launch({
+            tool: 'run',
+            args: {},
+            run: () => {
+                signal = operationContext()?.signal;
+
+                return gate.promise;
+            },
+        });
+
+        await waitFor(() => Promise.resolve(signal !== undefined));
+        const first = ((await manager.control('operations', {})).operations as { id: string }[])[0];
+
+        await expect(manager.control('operation_cancel', {
+            id: first?.id,
+            cursor: 1,
+        }))
+            .rejects.toMatchObject({ code: 'invalid_arguments' });
+        expect(signal?.aborted).toBe(false);
+        gate.resolve({});
+        await launch;
+        await manager.close();
+    });
+
+    it('reports unexpected failures without exposing arguments or losing cleanup', async () => {
+        const error = new Error('diagnostic');
+        const report = vi.fn(() => {
+            throw new Error('reporter failed');
+        });
+        const manager = new OperationManager('code', report);
+        const reply = await manager.launch({
+            tool: 'read',
+            args: { privateText: 'secret' },
+            run: () => Promise.reject(error),
+        });
+
+        expect(reply).toMatchObject({
+            code: 'internal_error',
+            operation: { state: 'failed' },
+        });
+        expect(report).toHaveBeenCalledWith(error, {
+            id: (reply.operation as { id: string }).id,
+            backend: 'code',
+            tool: 'read',
+        });
+        expect(await manager.launch({
+            tool: 'read',
+            args: {},
+            run: () => Promise.resolve({ value: 1 }),
+        }))
+            .toMatchObject({
+                value: 1,
+                operation: { state: 'completed' },
+            });
+        await manager.close();
+    });
+
     it('bypasses a full FIFO without a parallel cap and preserves retries and cleanup', async () => {
         const { manager } = createManager();
         const gates: { resolve: (value: Record<string, unknown>) => void }[] = [];
@@ -636,7 +791,7 @@ describe('deadline and cooperative cancellation', () => {
         stopShort();
     });
 
-    it('throws an already aborted signal before traversing and isolates concurrent contexts', async () => {
+    it('throws an already aborted signal before traversing and restores its context', async () => {
         const controller = new AbortController();
 
         controller.abort(new Error('cancelled'));
@@ -647,6 +802,47 @@ describe('deadline and cooperative cancellation', () => {
         };
 
         await expect(withOperationContext(context, operationCheckpoint)).rejects.toThrow('cancelled');
+        expect(operationContext()).toBeUndefined();
+    });
+    it('isolates overlapping asynchronous contexts, abort and changed paths', async () => {
+        const gate = deferred<void>();
+        const entered = deferred<void>();
+        const firstController = new AbortController();
+        const secondController = new AbortController();
+        const first = {
+            signal: firstController.signal,
+            changedPaths: new Set<string>(),
+            log: vi.fn(),
+        };
+        const second = {
+            signal: secondController.signal,
+            changedPaths: new Set<string>(),
+            log: vi.fn(),
+        };
+        const pending = withOperationContext(first, async () => {
+            entered.resolve();
+            await gate.promise;
+            expect(operationContext()).toBe(first);
+            await expect(operationCheckpoint()).rejects.toThrow('first cancelled');
+        });
+
+        await entered.promise;
+        await withOperationContext(second, async () => {
+            await operationCheckpoint();
+            expect(operationContext()).toBe(second);
+            operationContext()?.changedPaths.add('second.md');
+            operationContext()?.log('stdout', 'second');
+            firstController.abort(new Error('first cancelled'));
+            gate.resolve();
+            await pending;
+            await operationCheckpoint();
+            expect(operationContext()).toBe(second);
+        });
+        expect(secondController.signal.aborted).toBe(false);
+        expect(first.changedPaths.size).toBe(0);
+        expect(second.changedPaths).toEqual(new Set(['second.md']));
+        expect(first.log).not.toHaveBeenCalled();
+        expect(second.log).toHaveBeenCalledWith('stdout', 'second');
         expect(operationContext()).toBeUndefined();
     });
 });

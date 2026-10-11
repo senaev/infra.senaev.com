@@ -16,14 +16,13 @@ to maintain the task's working log.
 
 ## Git discipline
 
-Always ask for explicit user consent before performing any of the following git operations:
+Work on a separate branch for each task. Within the user's requested scope, agents
+may create and switch working branches, stage files, create commits, push working
+branches, and open pull requests without asking for additional permission.
 
-- `git add` / staging files
-- `git commit`
-- `git checkout` / `git switch` (branch changes)
-- `git push`
-
-Never stage, commit, switch branches, or push without an explicit request from the user.
+Explicit user consent is required before committing directly to the repository's
+default branch (`main`), pushing to it, or merging a pull request into it.
+Authorization to work on a branch or open a pull request does not authorize a merge.
 
 ## Sensitive nodes: `proxmox` and `senaev-media`
 

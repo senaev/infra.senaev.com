@@ -10,10 +10,10 @@ import {
 } from 'senaev-utils/src/toolServer/toolArguments';
 import { invalidArguments } from 'senaev-utils/src/toolServer/ToolError';
 import { replaceFileAtomically } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
+import { createFileDiffAsync } from 'senaev-utils/src/toolServer/createFileDiffAsync';
+import { withFileMutation } from 'senaev-utils/src/toolServer/withFileMutation';
 
 import { replaceText } from './replaceText';
-import { fileDiff } from './fileDiff';
-import { withFileMutation } from './fileMutation';
 import type { CodeToolsConfig } from './codeToolsConfig';
 import {
     normalizeProjectPath, readCodeToolArguments, readTextFile, resolveExistingFile, resolveProject,
@@ -80,7 +80,7 @@ export async function patchTool(config: CodeToolsConfig, input: unknown) {
             path,
             changed: updated !== original,
             hash: hashContent(updated),
-            ...await fileDiff(path, original, updated),
+            ...await createFileDiffAsync(path, original, updated),
         };
     });
 }

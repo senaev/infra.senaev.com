@@ -1,28 +1,30 @@
 import { createRequire } from 'node:module';
 import { Worker } from 'node:worker_threads';
 
-import { operationContext, throwIfOperationAborted } from 'senaev-utils/src/operations/operationContext';
-import type { FileDiff } from 'senaev-utils/src/toolServer/createFileDiff';
+import { operationContext, throwIfOperationAborted } from '../operations/operationContext';
+
+import {
+    buildFileDiff, FILE_DIFF_OPTIONS, type FileDiff,
+} from './createFileDiff';
 
 // Diff can be quadratic. Run it in a disposable worker so the backend event loop,
 // deadline and cancellation endpoints stay responsive; wait for termination on abort.
-export async function fileDiff(path: string, before: string, after: string): Promise<FileDiff> {
+export async function createFileDiffAsync(path: string, before: string, after: string): Promise<FileDiff> {
     throwIfOperationAborted();
     const signal = operationContext()?.signal;
     const worker = new Worker(`
         const { parentPort, workerData } = require('node:worker_threads');
         const { createTwoFilesPatch } = require(workerData.module);
-        const patch = createTwoFilesPatch('a/' + workerData.path, 'b/' + workerData.path,
-            workerData.before, workerData.after, undefined, undefined, { context: 3 })
-            .replace(/^=+\\n/, '');
-        parentPort.postMessage({ diff: patch.slice(0, 20000), diffTruncated: patch.length > 20000 });
+        const build = eval('(' + workerData.build + ')');
+        parentPort.postMessage(build(createTwoFilesPatch, { path: workerData.path,
+            before: workerData.before, after: workerData.after }, workerData.options));
     `, {
         eval: true,
         execArgv: [],
         workerData: {
-            module: createRequire(__filename).resolve('diff', {
-                paths: [createRequire(__filename).resolve('senaev-utils/package.json')],
-            }),
+            module: createRequire(__filename).resolve('diff'),
+            build: buildFileDiff.toString(),
+            options: FILE_DIFF_OPTIONS,
             path,
             before,
             after,
