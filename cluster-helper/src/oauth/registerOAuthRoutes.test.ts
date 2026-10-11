@@ -1,6 +1,6 @@
 import Fastify, { FastifyInstance } from 'fastify';
 import {
-    afterEach, beforeEach, describe, expect, it,
+    afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
 
 import { createAuthorizationServer } from './authorizationServer';
@@ -14,19 +14,21 @@ const FORM_HEADERS = {
 };
 
 let server: FastifyInstance;
+let authorizationServer: ReturnType<typeof createAuthorizationServer>;
 
 beforeEach(async () => {
     server = Fastify();
     // Same catch-all as the public server: routes bound to another host must fall through to it.
     server.get('/*', (_request, reply) => reply.code(401).send('Unauthorized'));
+    authorizationServer = createAuthorizationServer({
+        issuer: `https://${AUTH_DOMAIN}`,
+        resource: `https://${MCP_DOMAIN}/mcp`,
+        username: 'andrei',
+        password: 'secret-password',
+        signingSecret: 'signing-secret',
+    });
     await server.register(oauthRoutes, {
-        authorizationServer: createAuthorizationServer({
-            issuer: `https://${AUTH_DOMAIN}`,
-            resource: `https://${MCP_DOMAIN}/mcp`,
-            username: 'andrei',
-            password: 'secret-password',
-            signingSecret: 'signing-secret',
-        }),
+        authorizationServer,
         authDomain: AUTH_DOMAIN,
         mcpDomain: MCP_DOMAIN,
         mcpPath: '/mcp',
@@ -72,6 +74,122 @@ describe('registerOAuthRoutes', () => {
                 authorization_servers: [`https://${AUTH_DOMAIN}`],
             });
         }
+    });
+
+    it('shows rejected and protocol errors locally without automatic redirection', async () => {
+        const rejected = await server.inject({
+            url: '/authorize?client_id=%3Cscript%3E',
+            headers: { host: AUTH_DOMAIN },
+        });
+
+        expect(rejected.statusCode).toBe(400);
+        expect(rejected.headers['content-type']).toContain('text/html');
+        expect(rejected.body).toContain('role="alert"');
+        expect(rejected.body).toContain('Unknown client or redirect URI');
+        expect(rejected.body).not.toContain('<script>');
+
+        const invalid = await server.inject({
+            method: 'POST',
+            url: '/authorize',
+            headers: FORM_HEADERS,
+            payload: new URLSearchParams({
+                client_id: 'https://chatgpt.com/oauth/client.json',
+                redirect_uri: 'https://chatgpt.com/connector_platform_oauth_redirect',
+                response_type: 'unsupported',
+                state: 'original-state',
+            }).toString(),
+        });
+
+        expect(invalid.statusCode).toBe(400);
+        expect(invalid.headers.location).toBeUndefined();
+        expect(invalid.body).toContain('Only response_type=code is supported');
+        expect(invalid.body).toContain('state=original-state');
+        expect(invalid.body).toContain('Return to ChatGPT with this error');
+    });
+
+    it('shows rate-limit errors and keeps token errors as JSON', async () => {
+        for (let attempt = 0; attempt < 10; attempt++) {
+            await server.inject({
+                method: 'POST',
+                url: '/authorize',
+                headers: FORM_HEADERS,
+                payload: '',
+            });
+        }
+
+        const response = await server.inject({
+            method: 'POST',
+            url: '/authorize',
+            headers: FORM_HEADERS,
+            payload: '',
+        });
+
+        expect(response.statusCode).toBe(429);
+        expect(response.headers['retry-after']).toBeDefined();
+        expect(response.headers['cache-control']).toBe('no-store');
+        expect(response.headers['content-security-policy']).toContain('frame-ancestors \'none\'');
+        expect(response.body).toContain('Wait 15 minutes');
+        expect(response.body).toContain('Reference:');
+
+        for (let attempt = 0; attempt < 60; attempt++) {
+            await server.inject({
+                method: 'POST',
+                url: '/token',
+                headers: FORM_HEADERS,
+                payload: '',
+            });
+        }
+
+        const token = await server.inject({
+            method: 'POST',
+            url: '/token',
+            headers: FORM_HEADERS,
+            payload: '',
+        });
+
+        expect(token.statusCode).toBe(429);
+        expect(token.headers['content-type']).toContain('application/json');
+    });
+
+    it('shows a safe internal error without disclosing exception details', async () => {
+        vi.spyOn(authorizationServer, 'login').mockImplementation(() => {
+            throw new Error('private-secret');
+        });
+        const response = await server.inject({
+            method: 'POST',
+            url: '/authorize',
+            headers: FORM_HEADERS,
+            payload: '',
+        });
+
+        expect(response.statusCode).toBe(500);
+        expect(response.body).toContain('Sign-in is temporarily unavailable');
+        expect(response.body).not.toContain('private-secret');
+    });
+
+    it('still redirects successful logins to the validated ChatGPT callback', async () => {
+        const response = await server.inject({
+            method: 'POST',
+            url: '/authorize',
+            headers: FORM_HEADERS,
+            payload: new URLSearchParams({
+                response_type: 'code',
+                client_id: 'https://chatgpt.com/oauth/client.json',
+                redirect_uri: 'https://chatgpt.com/connector_platform_oauth_redirect',
+                code_challenge: 'x'.repeat(43),
+                code_challenge_method: 'S256',
+                username: 'andrei',
+                password: 'secret-password',
+                state: 'original-state',
+            }).toString(),
+        });
+
+        expect(response.statusCode).toBe(302);
+        const location = new URL(String(response.headers.location));
+
+        expect(location.origin).toBe('https://chatgpt.com');
+        expect(location.searchParams.get('code')).toBeTruthy();
+        expect(location.searchParams.get('state')).toBe('original-state');
     });
 
     it('parses the form-encoded login and token requests', async () => {

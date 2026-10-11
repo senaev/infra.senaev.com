@@ -36,7 +36,7 @@ button { font: inherit; padding: .6rem; border: 0; border-radius: 6px; backgroun
 <form method="post" action="/authorize">
 <h1 style="margin: 0; font-size: 1.25rem;">Sign in</h1>
 <p class="client">${escapeHtml(request.clientId)} asks for access to ${escapeHtml(request.resource)}</p>
-${error === undefined ? '' : `<p class="error">${escapeHtml(error)}</p>`}
+${error === undefined ? '' : `<p class="error" role="alert">${escapeHtml(error)}</p>`}
 <input name="username" autocomplete="username" placeholder="Username" required autofocus>
 <input name="password" type="password" autocomplete="current-password" placeholder="Password" required>
 ${hiddenField('response_type', 'code')}
@@ -51,4 +51,28 @@ ${hiddenField('resource', request.resource)}
 </body>
 </html>
 `;
+}
+
+/** No credentials or request parameters are reflected on this standalone error page. */
+export function renderAuthorizationError(message: string, requestId: string, continueUrl?: string): string {
+    return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign-in failed · senaev.com</title>
+<style>
+body { font-family: system-ui, sans-serif; background: #f4f4f5; padding: 10vh 1rem; }
+main { background: white; max-width: 28rem; margin: auto; padding: 2rem; border-radius: 12px; }
+.error { color: #b91c1c; } p { overflow-wrap: anywhere; }
+</style>
+</head>
+<body><main>
+<h1>Sign-in failed</h1>
+<p class="error" role="alert">${escapeHtml(message)}</p>
+<p>Return to ChatGPT and start the connection again. If this keeps happening, share the reference below with the server owner.</p>
+<p>Reference: ${escapeHtml(requestId)}</p>
+${continueUrl === undefined ? '' : `<p><a href="${escapeHtml(continueUrl)}">Return to ChatGPT with this error</a></p>`}
+</main></body>
+</html>`;
 }
