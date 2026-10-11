@@ -338,6 +338,35 @@ describe('OperationManager', () => {
         await deadlineManager.close();
     });
 
+    it('enforces the reduced result quota and retains a JSON snapshot', async () => {
+        const { manager } = createManager();
+        const result = { text: 'a'.repeat(999_989) };
+        const reply = await manager.launch({
+            tool: 'read',
+            args: {},
+            run: () => Promise.resolve(result),
+        });
+        const { id } = reply.operation as { id: string };
+
+        expect(reply.operation).toMatchObject({ state: 'completed' });
+        result.text = 'mutated after completion';
+        const retained = await manager.control('operation_result', { id });
+
+        expect(retained.totalChars).toBe(1_000_000);
+        expect(String(retained.resultJson)).toContain('a'.repeat(100));
+        const oversized = await manager.launch({
+            tool: 'read',
+            args: {},
+            run: () => Promise.resolve({ text: 'b'.repeat(999_990) }),
+        });
+
+        expect(oversized).toMatchObject({
+            code: 'command_failed',
+            operation: { state: 'failed' },
+        });
+        await manager.close();
+    });
+
     it('bounds terminal records and expires old results without storage', async () => {
         const { manager } = createManager();
         const options = {

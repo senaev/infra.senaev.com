@@ -8,7 +8,7 @@ export const OBSERVATION_MS = 5000;
 export const DEFAULT_TIMEOUT_SECONDS = 60;
 const MAX_LOG_CHARS = 128_000;
 const PAGE_CHARS = 30_000;
-const MAX_RESULT_CHARS = 4_000_000;
+const MAX_RESULT_CHARS = 1_000_000;
 const MAX_RECORDS = 100;
 const RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -26,7 +26,7 @@ type RecordData = {
     startedAt?: number;
     updatedAt: number;
     timeoutSeconds: number;
-    result?: Record<string, unknown>;
+    resultJson?: string;
     changedPaths: string[];
     logs: LogEntry[];
     nextCursor: number;
@@ -199,9 +199,9 @@ export class OperationManager {
 
         const { data } = admitted.entry;
 
-        if (terminal(data.state) && data.result !== undefined) {
+        if (terminal(data.state) && data.resultJson !== undefined) {
             return {
-                ...data.result,
+                ...JSON.parse(data.resultJson) as Record<string, unknown>,
                 operation: this.view(data),
             };
         }
@@ -229,11 +229,11 @@ export class OperationManager {
                     this.queue.splice(this.queue.indexOf(entry), 1);
                     entry.data.state = 'cancelled';
                     entry.data.updatedAt = Date.now();
-                    entry.data.result = {
+                    entry.data.resultJson = JSON.stringify({
                         status: 'error',
                         code: 'cancelled',
                         message: 'Cancelled before execution',
-                    };
+                    });
                     entry.run = () => Promise.resolve({});
                     entry.finish();
                 } else if (entry.data.state === 'running') {
@@ -269,8 +269,8 @@ export class OperationManager {
             logsTruncated: entry.data.truncated,
         };
 
-        if (name === 'operation_result' && entry.data.result !== undefined) {
-            const serialized = JSON.stringify(entry.data.result);
+        if (name === 'operation_result' && entry.data.resultJson !== undefined) {
+            const serialized = entry.data.resultJson;
             const offset = args.offset ?? 0;
 
             if (typeof offset !== 'number' || !Number.isInteger(offset) || offset < 0 || offset > serialized.length) {
@@ -278,7 +278,7 @@ export class OperationManager {
             }
 
             if (serialized.length <= PAGE_CHARS) {
-                response.result = entry.data.result;
+                response.result = JSON.parse(serialized) as Record<string, unknown>;
             } else {
                 response.resultJson = serialized.slice(offset, offset + PAGE_CHARS);
                 response.nextOffset = offset + PAGE_CHARS < serialized.length ? offset + PAGE_CHARS : null;
@@ -361,11 +361,13 @@ export class OperationManager {
             }, entry.run);
 
             controller.signal.throwIfAborted();
-            if (JSON.stringify(result).length > MAX_RESULT_CHARS) {
+            const serialized = JSON.stringify(result);
+
+            if (serialized.length > MAX_RESULT_CHARS) {
                 throw new ToolError('command_failed', 'Result exceeds retained result quota; narrow the query');
             }
 
-            data.result = result;
+            data.resultJson = serialized;
             data.state = result.status === 'error' || typeof result.exitCode === 'number' && result.exitCode !== 0 ? 'failed' : 'completed';
         } catch (error) {
             if (controller.signal.aborted) {
@@ -376,26 +378,26 @@ export class OperationManager {
                     data.state = reason.message;
                 }
 
-                data.result = {
+                data.resultJson = JSON.stringify({
                     status: 'error',
                     code: data.state,
                     message: `Operation ${data.state}`,
-                };
+                });
             } else if (error instanceof ToolError) {
                 data.state = 'failed';
-                data.result = {
+                data.resultJson = JSON.stringify({
                     status: 'error',
                     code: error.code,
                     message: error.message,
                     ...error.details !== undefined && { details: error.details },
-                };
+                });
             } else {
                 data.state = 'failed';
-                data.result = {
+                data.resultJson = JSON.stringify({
                     status: 'error',
                     code: 'internal_error',
                     message: 'Operation failed; inspect backend logs',
-                };
+                });
             }
         } finally {
             stopDeadline();
