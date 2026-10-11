@@ -84,8 +84,9 @@ describe('vault tool routes', () => {
     it('maps an expected failure to its status, code and message', async () => {
         const response = await callTool('read', { paths: ['Missing.md'] });
 
-        expect(response.statusCode).toBe(404);
-        expect(response.json()).toEqual({
+        expect(response.statusCode).toBe(200);
+        expect(response.json()).toMatchObject({
+            operation: { state: 'failed' },
             status: 'error',
             code: 'not_found',
             message: 'Note "Missing.md" does not exist',

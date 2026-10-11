@@ -1,6 +1,7 @@
-import { readFile } from 'node:fs/promises';
 import { join, posix } from 'node:path';
 
+import { readOperationTextFile } from 'senaev-utils/src/toolServer/readOperationTextFile';
+import { operationCheckpoint, throwIfOperationAborted } from 'senaev-utils/src/operations/operationContext';
 import { SEARCH_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 import {
@@ -81,7 +82,7 @@ type SearchOptions = {
     maxMatchesPerFile: number;
 };
 
-function searchNote(path: string, content: string, options: SearchOptions): FileMatch | null {
+async function searchNote(path: string, content: string, options: SearchOptions): Promise<FileMatch | null> {
     const title = posix.basename(path, '.md');
     const matchedQueryIndexes = new Set<number>();
     const titleMatches = options.patterns.flatMap((pattern, index) => (pattern.test(title) ? [index] : []));
@@ -92,18 +93,25 @@ function searchNote(path: string, content: string, options: SearchOptions): File
     const matches: LineMatch[] = [];
     let hitCount = 0;
 
-    lines.forEach((line, lineIndex) => {
+    for (const [
+        lineIndex,
+        line,
+    ] of lines.entries()) {
+        if (lineIndex % 128 === 0) {
+            await operationCheckpoint();
+        }
+
         const lineQueries = options.patterns.flatMap((pattern, index) => (pattern.test(line) ? [index] : []));
 
         if (lineQueries.length === 0) {
-            return;
+            continue;
         }
 
         hitCount += 1;
         lineQueries.forEach((index) => matchedQueryIndexes.add(index));
 
         if (matches.length >= options.maxMatchesPerFile) {
-            return;
+            continue;
         }
 
         const firstQueryIndex = lineQueries[0] ?? 0;
@@ -116,7 +124,7 @@ function searchNote(path: string, content: string, options: SearchOptions): File
             before: lines.slice(Math.max(0, lineIndex - options.contextLines), lineIndex).map((context) => shorten(context)),
             after: lines.slice(lineIndex + 1, lineIndex + 1 + options.contextLines).map((context) => shorten(context)),
         });
-    });
+    }
 
     const isMatch = options.requireAll
         ? matchedQueryIndexes.size === options.queries.length
@@ -192,11 +200,13 @@ export async function searchTool(config: VaultToolsConfig, input: unknown) {
     const readErrors: PathError[] = [];
 
     for (const path of paths) {
+        await operationCheckpoint();
         let content: string;
 
         try {
-            content = await readFile(join(config.root, path), 'utf8');
+            content = await readOperationTextFile(join(config.root, path));
         } catch (error) {
+            throwIfOperationAborted();
             readErrors.push({
                 path,
                 message: stringifyUnknownError(error),
@@ -204,7 +214,7 @@ export async function searchTool(config: VaultToolsConfig, input: unknown) {
             continue;
         }
 
-        const fileMatch = searchNote(path, content, options);
+        const fileMatch = await searchNote(path, content, options);
         const diaryDate = getDiaryDate(config, path);
 
         if (fileMatch !== null) {

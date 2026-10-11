@@ -1,11 +1,16 @@
-import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
+import { readOperationTextFile } from 'senaev-utils/src/toolServer/readOperationTextFile';
+import {
+    operationCheckpoint, operationContext, recordChangedPath,
+} from 'senaev-utils/src/operations/operationContext';
 import { PATCH_OPERATION_FIELDS, type PatchOperationType } from 'senaev-utils/src/obsidianVaultTools/vaultToolDefinitions';
 import { PATCH_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { replaceFileAtomically } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
 import { assertExpectedHash, readExpectedHash } from 'senaev-utils/src/toolServer/contentHash';
-import { createFileDiff } from 'senaev-utils/src/toolServer/createFileDiff';
+import { createFileDiffAsync } from 'senaev-utils/src/toolServer/createFileDiffAsync';
+import { withFileMutation } from 'senaev-utils/src/toolServer/withFileMutation';
 import { replaceExactlyOnce } from 'senaev-utils/src/toolServer/textEdits';
 import {
     optionalString,
@@ -125,21 +130,32 @@ export async function patchTool(config: VaultToolsConfig, input: unknown) {
     const path = normalizeVaultPath(requiredNonEmptyString(args, 'path'), 'path');
     const expectedHash = readExpectedHash(args, 'expectedHash', 'obsidian-read');
     const operations = readOperations(args.operations);
-    const absolutePath = await resolveExistingNote(config, path);
-    const original = await readFile(absolutePath, 'utf8');
 
-    assertExpectedHash(original, expectedHash, 'note');
+    return await withFileMutation(join(config.root, path), async () => {
+        const absolutePath = await resolveExistingNote(config, path);
+        const original = await readOperationTextFile(absolutePath);
 
-    const updated = operations.reduce((content, operation) => operation(content), original);
+        assertExpectedHash(original, expectedHash, 'note');
 
-    if (updated !== original) {
-        await replaceFileAtomically(absolutePath, updated);
-    }
+        let updated = original;
 
-    // No new hash on purpose: the next edit must start from a fresh read.
-    return {
-        path,
-        changed: updated !== original,
-        ...createFileDiff(path, original, updated),
-    };
+        for (const operation of operations) {
+            await operationCheckpoint();
+            updated = operation(updated);
+        }
+
+        const diff = await createFileDiffAsync(path, original, updated);
+
+        if (updated !== original) {
+            assertExpectedHash(await readOperationTextFile(absolutePath), expectedHash, 'note');
+            await replaceFileAtomically(absolutePath, updated, operationContext()?.signal, () => recordChangedPath(path));
+        }
+
+        // No new hash on purpose: the next edit must start from a fresh read.
+        return {
+            path,
+            changed: updated !== original,
+            ...diff,
+        };
+    });
 }

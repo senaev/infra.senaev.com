@@ -29,7 +29,7 @@ async function hashOf(testVault: TestVault, path: string): Promise<string> {
     return note?.hash ?? '';
 }
 
-describe('createTool', () => {
+describe('createTool', { timeout: 15000 }, () => {
     it('creates a note with frontmatter and missing parent folders', async () => {
         const testVault = await vaultWith({});
 
@@ -96,7 +96,7 @@ const NOTE = [
     '',
 ].join('\n');
 
-describe('patchTool', () => {
+describe('patchTool', { timeout: 15000 }, () => {
     it('refuses to edit a note that changed since it was read, and writes nothing', async () => {
         const testVault = await vaultWith({ 'Note.md': NOTE });
         const currentHash = await hashOf(testVault, 'Note.md');

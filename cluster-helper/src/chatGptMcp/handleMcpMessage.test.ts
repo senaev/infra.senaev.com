@@ -72,6 +72,10 @@ describe('handleMcpMessage', () => {
             'obsidian-patch',
             'obsidian-move',
             'obsidian-diary_append',
+            'obsidian-operations',
+            'obsidian-operation_status',
+            'obsidian-operation_result',
+            'obsidian-operation_cancel',
             'code-projects',
             'code-clone',
             'code-list',
@@ -89,7 +93,7 @@ describe('handleMcpMessage', () => {
     });
 
     it('points every Obsidian tool to the vault AGENTS.md', () => {
-        expect(OBSIDIAN_TOOLS.every((tool) => tool.description.includes('read AGENTS.md with obsidian-read'))).toBe(true);
+        expect(OBSIDIAN_TOOLS.filter((tool) => !tool.name.startsWith('obsidian-operation')).every((tool) => tool.description.includes('read AGENTS.md with obsidian-read'))).toBe(true);
     });
 
     it('uses only tool names that OpenAI function calling accepts', () => {

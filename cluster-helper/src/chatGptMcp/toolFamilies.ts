@@ -1,5 +1,5 @@
 import { CODE_MCP_TOOL_DEFINITIONS, CODE_TOOL_PREFIX } from 'senaev-utils/src/codeTools/codeToolDefinitions';
-import { OBSIDIAN_TOOL_PREFIX, VAULT_TOOL_DEFINITIONS } from 'senaev-utils/src/obsidianVaultTools/vaultToolDefinitions';
+import { OBSIDIAN_TOOL_PREFIX, VAULT_MCP_TOOL_DEFINITIONS } from 'senaev-utils/src/obsidianVaultTools/vaultToolDefinitions';
 import type { ToolDefinition } from 'senaev-utils/src/toolServer/toolDefinition';
 
 export type ToolReply = {
@@ -29,7 +29,7 @@ export function createToolFamilies({ callVaultTool, callCodeTool }: { callVaultT
     return [
         {
             prefix: OBSIDIAN_TOOL_PREFIX,
-            definitions: VAULT_TOOL_DEFINITIONS,
+            definitions: VAULT_MCP_TOOL_DEFINITIONS,
             backendName: 'The Obsidian vault',
             call: callVaultTool,
         },

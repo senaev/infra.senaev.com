@@ -1,10 +1,17 @@
 import { stat, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import {
+    operationCheckpoint, operationContext, recordChangedPath,
+} from 'senaev-utils/src/operations/operationContext';
+import { readOperationTextFile } from 'senaev-utils/src/toolServer/readOperationTextFile';
+import { assertExpectedHash, hashContent } from 'senaev-utils/src/toolServer/contentHash';
+import { createFileDiffAsync } from 'senaev-utils/src/toolServer/createFileDiffAsync';
+import { withFileMutations } from 'senaev-utils/src/toolServer/withFileMutation';
 import { isAlreadyExistsError } from 'senaev-utils/src/utils/Error/isAlreadyExistsError/isAlreadyExistsError';
 import { isNotFoundError } from 'senaev-utils/src/utils/Error/isNotFoundError/isNotFoundError';
 import { createFileExclusively, replaceFileAtomically } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
-import { createFileDiff, type FileDiff } from 'senaev-utils/src/toolServer/createFileDiff';
+import { type FileDiff } from 'senaev-utils/src/toolServer/createFileDiff';
 import { requiredNonEmptyString } from 'senaev-utils/src/toolServer/toolArguments';
 import { invalidArguments, ToolError } from 'senaev-utils/src/toolServer/ToolError';
 
@@ -49,7 +56,7 @@ type SkippedLink = {
  * resolve to anything else afterwards is rewritten. This covers backlinks, the relative links
  * inside the moved note, and links that the new name would make ambiguous.
  */
-function planLinkUpdates(notes: VaultNotes, path: string, newPath: string) {
+async function planLinkUpdates(notes: VaultNotes, path: string, newPath: string) {
     const rename = (file: string) => (file === path ? newPath : file);
     const indexBefore = createLinkIndex(notes.files, notes.aliasesByNote);
     const indexAfter = createLinkIndex(
@@ -71,6 +78,7 @@ function planLinkUpdates(notes: VaultNotes, path: string, newPath: string) {
         source,
         content,
     ] of notes.contents) {
+        await operationCheckpoint();
         if (source !== path && !mayLinkToOldName(content) && !mayLinkToNewName(content)) {
             continue;
         }
@@ -79,6 +87,7 @@ function planLinkUpdates(notes: VaultNotes, path: string, newPath: string) {
         const edits: TextEdit[] = [];
 
         for (const link of extractLinks(content)) {
+            await operationCheckpoint();
             const before = resolveLink(indexBefore, source, link);
 
             if (before.status === 'resolved') {
@@ -150,7 +159,7 @@ async function assertNothingAt(config: VaultToolsConfig, path: string): Promise<
     throw new ToolError('already_exists', `"${path}" already exists; choose another "newPath"`);
 }
 
-function collectDiffs(updates: readonly NoteUpdate[]) {
+async function collectDiffs(updates: readonly NoteUpdate[]) {
     const diffs: ({ path: string } & FileDiff)[] = [];
     const notesWithoutDiff: string[] = [];
     let remainingChars = MAX_DIFF_CHARS_PER_RESPONSE;
@@ -160,7 +169,7 @@ function collectDiffs(updates: readonly NoteUpdate[]) {
             continue;
         }
 
-        const diff = createFileDiff(update.target, update.before, update.after);
+        const diff = await createFileDiffAsync(update.target, update.before, update.after);
 
         if (diff.diff.length <= remainingChars) {
             diffs.push({
@@ -198,39 +207,54 @@ export async function moveTool(config: VaultToolsConfig, input: unknown) {
     await assertNothingAt(config, newPath);
 
     const notes = await readVaultNotes(config);
-    const { updates, skippedLinks } = planLinkUpdates(notes, path, newPath);
+    const { updates, skippedLinks } = await planLinkUpdates(notes, path, newPath);
     const movedNote = updates.find((update) => update.source === path);
 
     if (movedNote === undefined) {
         throw new Error(`Could not read "${path}"`);
     }
 
-    const newAbsolutePath = await prepareNewNote(config, newPath);
+    return withFileMutations(updates.flatMap((update) => [
+        join(config.root, update.source),
+        join(config.root, update.target),
+    ]), async () => {
+        const diffResult = await collectDiffs(updates);
 
-    await createFileExclusively(newAbsolutePath, movedNote.after).catch((error: unknown) => {
-        if (isAlreadyExistsError(error)) {
-            throw new ToolError('already_exists', `"${newPath}" already exists; choose another "newPath"`);
+        for (const update of updates) {
+            assertExpectedHash(await readOperationTextFile(join(config.root, update.source)), hashContent(update.before), 'note');
         }
 
-        throw error;
+        const newAbsolutePath = await prepareNewNote(config, newPath);
+
+        await createFileExclusively(newAbsolutePath, movedNote.after, operationContext()?.signal, () => recordChangedPath(newPath)).catch((error: unknown) => {
+            if (isAlreadyExistsError(error)) {
+                throw new ToolError('already_exists', `"${newPath}" already exists; choose another "newPath"`);
+            }
+
+            throw error;
+        });
+
+        for (const update of updates) {
+            if (update !== movedNote) {
+                await operationCheckpoint();
+                await replaceFileAtomically(join(config.root, update.source), update.after, operationContext()?.signal, () => recordChangedPath(update.source));
+            }
+        }
+
+        await operationCheckpoint();
+        assertExpectedHash(await readOperationTextFile(oldAbsolutePath), hashContent(movedNote.before), 'note');
+        await unlink(oldAbsolutePath);
+        recordChangedPath(path);
+
+        return {
+            path,
+            newPath,
+            changedNotes: updates.filter((update) => update.before !== update.after).length,
+            rewrittenLinks: updates.reduce((sum, update) => sum + update.rewrittenLinks, 0),
+            ...diffResult,
+            skippedLinkCount: skippedLinks.length,
+            skippedLinks: skippedLinks.slice(0, MAX_REPORTED_SKIPPED_LINKS),
+            ...notes.scan,
+        };
     });
-
-    for (const update of updates) {
-        if (update !== movedNote) {
-            await replaceFileAtomically(join(config.root, update.source), update.after);
-        }
-    }
-
-    await unlink(oldAbsolutePath);
-
-    return {
-        path,
-        newPath,
-        changedNotes: updates.filter((update) => update.before !== update.after).length,
-        rewrittenLinks: updates.reduce((sum, update) => sum + update.rewrittenLinks, 0),
-        ...collectDiffs(updates),
-        skippedLinkCount: skippedLinks.length,
-        skippedLinks: skippedLinks.slice(0, MAX_REPORTED_SKIPPED_LINKS),
-        ...notes.scan,
-    };
 }

@@ -1,5 +1,5 @@
-import { readFile } from 'node:fs/promises';
-
+import { readOperationTextFile } from 'senaev-utils/src/toolServer/readOperationTextFile';
+import { operationCheckpoint, throwIfOperationAborted } from 'senaev-utils/src/operations/operationContext';
 import { READ_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
 import { hashContent } from 'senaev-utils/src/toolServer/contentHash';
 import {
@@ -25,7 +25,7 @@ type ReadRequest = {
 
 async function readNote(config: VaultToolsConfig, request: ReadRequest, maxChars: number) {
     const absolutePath = await resolveExistingNote(config, request.path);
-    const raw = await readFile(absolutePath, 'utf8');
+    const raw = await readOperationTextFile(absolutePath);
     const { body, ...frontmatter } = splitNote(raw);
     const section = request.section === undefined ? null : findSection(raw, request.section);
     const fullText = section === null ? body : raw.slice(section.start, section.end);
@@ -106,6 +106,7 @@ export async function readTool(config: VaultToolsConfig, input: unknown) {
         index,
         path,
     ] of paths.entries()) {
+        await operationCheckpoint();
         const budget = Math.min(READ_LIMITS.maxCharsPerNote, READ_LIMITS.maxCharsPerResponse - usedChars);
 
         if (budget <= 0) {
@@ -130,6 +131,7 @@ export async function readTool(config: VaultToolsConfig, input: unknown) {
             notes.push(note);
             usedChars += note.content.length;
         } catch (error) {
+            throwIfOperationAborted();
             if (!(error instanceof ToolError) || paths.length === 1) {
                 throw error;
             }

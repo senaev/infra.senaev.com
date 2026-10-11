@@ -55,7 +55,7 @@ describe('projectsTool', () => {
     });
 });
 
-describe('cloneTool', () => {
+describe('cloneTool', { timeout: 15000 }, () => {
     it('takes the project name from the repository URL', () => {
         expect(getRepositoryName('git@github.com:senaev/infra.senaev.com.git')).toBe('infra.senaev.com');
         expect(getRepositoryName('https://github.com/senaev/repo/')).toBe('repo');

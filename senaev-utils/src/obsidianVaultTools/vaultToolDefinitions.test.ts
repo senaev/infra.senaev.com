@@ -25,8 +25,16 @@ describe('vault tool definitions', () => {
     });
 
     test('accept exactly the keys of the input schema', () => {
-        expect(getVaultToolArgumentKeys('diary_append')).toEqual(['text']);
+        expect(getVaultToolArgumentKeys('diary_append')).toEqual([
+            'executionPolicy',
+            'timeoutSeconds',
+            'requestId',
+            'text',
+        ]);
         expect(getVaultToolArgumentKeys('list')).toEqual([
+            'executionPolicy',
+            'timeoutSeconds',
+            'requestId',
             'folder',
             'glob',
             'diaryFrom',
@@ -35,6 +43,22 @@ describe('vault tool definitions', () => {
             'offset',
             'limit',
         ]);
+    });
+
+    test('all eight tools expose the common execution contract', () => {
+        for (const definition of Object.values(VAULT_TOOL_DEFINITIONS)) {
+            expect(definition.inputSchema.properties).toMatchObject({
+                executionPolicy: {
+                    enum: [
+                        'queued',
+                        'parallel',
+                    ],
+                },
+                timeoutSeconds: { minimum: 1 },
+                requestId: { minLength: 1 },
+            });
+            expect(definition.description).toContain('obsidian-operation_status');
+        }
     });
 
     test('recognise only own tool names, not inherited object keys', () => {

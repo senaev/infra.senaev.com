@@ -1,6 +1,7 @@
 import { readdir } from 'node:fs/promises';
 import { join, posix } from 'node:path';
 
+import { operationCheckpoint } from 'senaev-utils/src/operations/operationContext';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 import { walkDirectory } from 'senaev-utils/src/utils/fs/walkDirectory/walkDirectory';
 
@@ -44,7 +45,14 @@ async function readFolder(config: VaultToolsConfig, folder: string): Promise<Fol
     const entries = await readdir(join(config.root, folder), { withFileTypes: true });
     const result: FolderEntry[] = [];
 
-    for (const entry of entries) {
+    for (const [
+        index,
+        entry,
+    ] of entries.entries()) {
+        if (index % 128 === 0) {
+            await operationCheckpoint();
+        }
+
         const path = childPath(folder, entry.name);
 
         if (entry.isDirectory() && !isExcludedFolder(config, path)) {
