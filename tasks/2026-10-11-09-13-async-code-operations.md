@@ -22,7 +22,7 @@ Replace the blocking long-command workflow in the existing Code Tools MCP with m
 - In `sync`, wait for the terminal result within the execution timeout.
 - In `auto`, wait up to a fixed 5 seconds: return the final result if finished, otherwise return the operation ID and current state. The process continues after that response.
 - The observation wait is fixed at 5 seconds and is not configurable through tool arguments. Do not expose `waitSeconds` or another equivalent override. A follow-up observation may wait up to the same fixed 5 seconds for new output or a state change, returning sooner when either occurs.
-- `timeoutSeconds` is optional and accepts a positive integer number of seconds with no product-defined maximum. When omitted, there is no execution timeout. When supplied, the server enforces the deadline independently of mode, observation calls or client connectivity. Apply this contract to both run and clone; remove their existing default and maximum runtime limits. Handle long durations using deadline-based/chunked timers so the platform timer range cannot cause an early timeout.
+- `timeoutSeconds` is optional and accepts a positive integer number of seconds with no API maximum. When omitted, the execution timeout is 60 seconds. When supplied, the server enforces the deadline independently of mode, observation calls or client connectivity. Apply this contract to both run and clone; use a 60-second default for both and remove the existing maximum runtime limit. Handle long durations using deadline-based/chunked timers so the platform timer range cannot cause an early timeout.
 - On execution timeout or cancellation, stop the whole process group; preserve logs and report the reason. Prefer SIGTERM followed by SIGKILL after a bounded grace period. Define whether the grace period is additional to the runtime limit.
 - No PTY, interactive terminal sessions or stdin interaction in this iteration.
 - No second LLM, coding agent or model API key is required.
@@ -57,10 +57,24 @@ Ordinary MCP tool calls with operation polling are the compatible initial path. 
 
 Push notifications are optional follow-up work, gated on confirmed client support. Protocol notifications, user-visible notifications and automatic model continuation are separate capabilities. Do not promise any of them without an end-to-end test. Polling remains sufficient to retrieve results and logs.
 
+### Other existing tools: scope assessment
+
+| Tool | Existing execution | Recommendation |
+| --- | --- | --- |
+| run | Arbitrary bash command | Required in the first implementation. |
+| clone | git clone and branch discovery | Required in the first implementation. |
+| search | ripgrep over repository files, with a fixed 30-second deadline; each page repeats the search | Strong next candidate. Reuse managed operations, persist one bounded structured result and page through that result without rerunning the search. Distinguish incomplete/truncated results from complete results. |
+| projects | Parallel Git branch/status/remote calls for every repository; git status can be expensive | Candidate for auto execution when observation exceeds 5 seconds. First consider bounded concurrency and cheaper discovery; do not require background execution for ordinary small project lists. |
+| list | Two git ls-files calls collect the whole repository before folder filtering and pagination | Candidate for large repositories. First reduce the work where practical; reuse operation snapshots if async listing is added. |
+| read | Bounded reads and hashes of selected text files | Keep direct in the first iteration. |
+| write / patch | Bounded edits with hash checks and atomic writes | Keep direct in the first iteration to preserve immediate conflict/diff feedback. |
+
+Build the operation manager so additional tool types can reuse it. These candidates are an assessment, not automatic scope expansion: run and clone remain mandatory; confirm inclusion of search/projects/list with the owner. Read-only operations should not take the exclusive shell-operation slot. A saved search/list result is a snapshot and must not be presented as current after repository changes. Typed tools return structured results, not raw process logs. Their cancellation/deadline checks must cover the complete operation, including JavaScript processing, rather than only subprocess execution.
+
 ## Questions and clarifications
 
 - Final operation tool names and schemas; whether observation combines status, logs and result in one response.
-- Termination grace period, log quotas, retention and global concurrency limit. No default execution timeout or product-defined maximum is to be introduced.
+- Termination grace period, log quotas, retention and global concurrency limit. The execution default is 60 seconds; the API must not impose an upper bound.
 - Persistent state directory and restart reconciliation details.
 - Whether a Node timer is sufficient or an independent watchdog is required.
 - Which native MCP Tasks revision, if any, the deployed ChatGPT client supports. Older 2025-11-25 Tasks and the current Tasks extension have different contracts.
@@ -90,7 +104,7 @@ These are design references, not adopted dependencies or proof of ChatGPT client
 
 - Short auto command returns its final result; long auto command returns an ID within the fixed 5-second observation window plus bounded overhead.
 - Async returns a launch acknowledgement without waiting for completion; sync returns the final result.
-- Omitted timeout permits continued execution without an implicit deadline. An explicit timeout terminates a hung command without any observation calls. Values above the old 300-second limit, including 10800 seconds (3 hours), are accepted. Test long deadlines without waiting in real time and ensure platform timer overflow cannot produce immediate termination. Cancel and timeout kill descendant processes and preserve partial logs.
+- Omitted timeout enforces the 60-second default. An explicit positive-integer timeout overrides it and terminates a hung command without any observation calls. Values above the old 300-second limit, including 10800 seconds (3 hours), are accepted. Test long deadlines without waiting in real time and ensure platform timer overflow cannot produce immediate termination. Cancel and timeout kill descendant processes and preserve partial logs.
 - Invalid launch, fast nonzero exit, successful completion, timeout, cancellation and interruption remain distinguishable.
 - Poll while running, read new output by cursor and replay the same cursor; verify bounded output and retained stderr for fast failures.
 - Disconnect and reconnect the client; verify retrieval with the same ID and owner-scoped discovery in a new chat.
@@ -108,3 +122,7 @@ Inspected the current execution and proxy code and reviewed primary-source async
 ### 2026-10-11 09:16 UTC — Clarify execution timeout
 
 The owner explicitly replaced the timeout defaults and maximum: timeoutSeconds is optional, with no product-defined maximum; omission means no execution deadline. This applies to both run and clone. The fixed 5-second observation wait remains unchanged. Existing code currently uses 60 seconds by default and a 300-second maximum for run, and a fixed 300 seconds for clone. These are current-state facts, not requirements for the new API.
+
+### 2026-10-11 09:18 UTC — Final timeout clarification and additional candidates
+
+The owner superseded the preceding no-default decision: omitted timeoutSeconds means 60 seconds; an explicit value is any positive integer without an API maximum. The current requirements and verification above reflect this final decision. Reviewed search, projects and list implementations and recorded their suitability for managed execution; read/write/patch remain direct initially.
