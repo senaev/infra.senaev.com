@@ -31,6 +31,14 @@ export default defineConfig({
                     name,
                     root: `./${name}`,
                     environment: 'node',
+                    // Native subprocess/worker startup and 5-second observation need
+                    // a runner budget distinct from the backend's operation deadline.
+                    ...[
+                        'code-tools',
+                        'obsidian-sync',
+                    ].includes(name)
+                        ? { testTimeout: 15000 }
+                        : {},
                     setupFiles: SETUP_FILES[name] ?? [],
                 },
             };

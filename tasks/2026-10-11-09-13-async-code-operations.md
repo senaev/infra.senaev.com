@@ -472,3 +472,7 @@ Second full run passed lint/typecheck/syntax checks but exposed timing-dependent
 ### 2026-10-11 16:35 UTC — Migration prepared for PR
 
 Focused final integration run passed: 4 files, 17 tests. Full run before the final formatting/test adjustment passed 1192 of 1193 tests; only an existing real-clone test hit its default 5-second Vitest budget. That test now accepts an operation handle and retrieves the final result; its filesystem/conflict/cleanup assertions remain intact. Fixed link-loop ESLint formatting. Preparing a separate migration commit and push with the mandatory full pre-push checks enabled. Deployed Obsidian live verification remains after merge/deploy/catalog refresh. No main push or migration merge is authorized by the existing PR73 merge request.
+
+### 2026-10-11 16:38 UTC — Pre-push blocked on backend test budgets
+
+The mandatory pre-push gate blocked publication: all non-test checks passed, 1191/1193 tests passed; two native clone/diary tests exceeded the remaining default 5-second Vitest budget. Applied a 15-second default only to Code Tools and Obsidian test projects, whose managed calls themselves observe for up to 5 seconds before returning. Removed redundant per-suite overrides where the backend default suffices. API observation/deadlines and production parallel admission are unchanged; precise lifecycle timing assertions and explicit controlled-test budgets remain intact. No hooks bypassed. Repeating the mandatory pre-push gate.
