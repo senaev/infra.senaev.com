@@ -173,3 +173,7 @@ Merged the reviewed design PR #61 into main (f1038eb). The owner requested a sep
 ### 2026-10-11 10:40 UTC — Gradual activation requirement
 
 The owner approved merging stage 1 and requested gradual activation to protect the MCP used to edit and repair this repository. Added an initial read-only canary, backend-owned activation allowlist, independent direct-path bypass, separate merge/deploy/verification gates, recovery-critical tools last and tested out-of-band rollback before universal activation. The final universal interface remains the goal; migration exceptions are temporary. The allowlist itself is a small integration change; lifecycle, failure and rollout verification is the larger part of the work.
+
+### 2026-10-11 10:46 UTC — Stage 1 merge and CI timing correction
+
+Merged PR #62 into main (58108bd) with the gradual activation requirement. Local checks passed on retry; the first local run hit an existing calendar-test timeout. Post-merge GitHub CI then exposed a timing-sensitive helper in two new manager tests: 1,000 immediate event-loop turns can expire before filesystem completion on a fast runner with slower storage. Deployment was blocked by CI and production behaviour stayed unchanged. Prepared a follow-up fix using a three-second wall-clock polling deadline with a 10 ms pause; no production code change. Do not advance to activation until the corrected CI and deployments succeed.

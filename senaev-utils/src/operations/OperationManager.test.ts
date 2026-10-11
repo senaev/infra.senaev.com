@@ -3,7 +3,7 @@ import {
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { setImmediate as nextTurn } from 'node:timers/promises';
+import { setTimeout as pause } from 'node:timers/promises';
 
 import {
     afterEach, describe, expect, it, vi,
@@ -48,12 +48,14 @@ function deferred<T>() {
 }
 
 async function waitFor(check: () => Promise<boolean>) {
-    for (let attempt = 0; attempt < 1000; attempt++) {
+    const deadline = performance.now() + 3000;
+
+    while (performance.now() < deadline) {
         if (await check()) {
             return;
         }
 
-        await nextTurn();
+        await pause(10);
     }
 
     throw new Error('Expected operation transition');
