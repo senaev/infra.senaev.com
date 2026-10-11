@@ -26,7 +26,10 @@ describe('code tool definitions', () => {
     });
 
     test('accept exactly the keys of the input schema', () => {
-        expect(getCodeToolArgumentKeys('projects')).toEqual([]);
+        expect(getCodeToolArgumentKeys('projects')).toEqual([
+            'timeoutSeconds',
+            'requestId',
+        ]);
         expect(getCodeToolArgumentKeys('run')).toEqual([
             'project',
             'command',

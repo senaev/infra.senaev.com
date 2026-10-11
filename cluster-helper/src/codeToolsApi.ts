@@ -1,3 +1,6 @@
+import { isManagedCodeToolName } from 'senaev-utils/src/codeTools/codeToolDefinitions';
+import { OBSERVATION_MS } from 'senaev-utils/src/operations/operationLimits';
+import { isOperationToolName } from 'senaev-utils/src/operations/operationToolDefinitions';
 import { CLONE_LIMITS, RUN_LIMITS } from 'senaev-utils/src/codeTools/codeToolLimits';
 
 import { callToolServer } from './chatGptMcp/callToolServer';
@@ -13,7 +16,9 @@ export function callCodeTool(codeToolName: string, args: unknown): Promise<ToolR
         url: `${CODE_TOOLS_URL}/code/${encodeURIComponent(codeToolName)}`,
         token: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS,
         args,
-        timeoutMs: CODE_TOOL_TIMEOUT_MS,
+        timeoutMs: isManagedCodeToolName(codeToolName) || isOperationToolName(codeToolName)
+            ? OBSERVATION_MS + 10_000
+            : CODE_TOOL_TIMEOUT_MS,
         serverName: 'code-tools',
     });
 }

@@ -179,9 +179,32 @@ Merged PR #62 into main (58108bd) with the gradual activation requirement. Local
 
 ### 2026-10-11 10:53 UTC — Stage 1 verified after deployment
 
+Merged the CI polling correction as PR #63 (main 0c1e293). All six workflows for this commit succeeded: opencode-serve, cluster-helper, obsidian-sync, media-server-helper, vpn-subscription and senaev-utils. Confirmed live MCP code-projects, code-read and code-run, plus Obsidian read. HTTP smoke checks returned the expected 302 redirect to https://senaev.com/cv/5min and 200 for the static HTML and public note. Code Tools was briefly unavailable during its restart and recovered. Stage 1 is complete; the manager is still inactive. Prepared feat/managed-projects-canary from this verified main for the next separate PR, initially enabling only projects. No canary implementation or activation had started at this point.
+
+### 2026-10-11 11:02 UTC — Separate stage: memory-only operation state
+
+The owner superseded all persistence and restart-recovery requirements. Removed disk records, initialization/recovery I/O and log-flush timers in a separate PR before activating projects. Operation state and requestId deduplication are process-local and bounded; restart loses all handles, logs, results and queued work, without replay. Historical findings remain the decision log. This stage does not activate the manager or change existing MCP routes.
 
 Removed all operation-state filesystem imports, persistence/recovery methods and log-flush timers. Retained bounded process-local records, replayable cursors, result paging, queue limits, deadlines and cancellation. Close discards queued callbacks, cooperatively aborts active execution and clears retained records. Updated tests for fresh-instance loss of IDs/deduplication, backend isolation, shutdown and retention. Targeted manager suite: 12 passed. Full npm run simple-checks: all six checks passed; 133 test files and 1,106 tests passed. Separate branch: refactor/in-memory-operations. Canary activation remains deferred until this stage is merged and deployment verified.
 
 ### 2026-10-11 11:06 UTC — Reduce retained memory toward 256 MiB
 
 The owner requested a roughly 256 MiB retained-data target without introducing additional limits. Reduced the existing result quota from 4,000,000 to 1,000,000 JSON characters per operation; kept 100 terminal records, 128,000 log characters, seven-day retention and one active/five waiting operations. Store completed results as JSON strings to avoid unbounded object-graph overhead in retained records and parse only when returning a small result or the initial final reply. Estimated retained text: about 215 MiB at two bytes per character, plus metadata and transient response overhead. This does not bound Node process RSS or memory used by executing handlers. Targeted manager suite: 13 tests passed, including the exact result boundary, rejection above it and snapshot independence from later mutation.
+
+### 2026-10-11 11:34 UTC — Stage 2: projects canary and authenticated controls
+
+Merged PR #64 into main (89822f0). All six main workflows succeeded. After brief restart-time MCP/HTTP unavailability, Code Tools projects/read/run and Obsidian read worked; public smoke checks recovered to the expected 302 redirect and two 200 responses. Created feat/projects-operation-canary from that verified main.
+
+Activated only projects through a shared typed canary allowlist. Other Code Tools domain routes remain direct and do not construct or admit through the memory-only manager. Added authenticated operations, operation_status, operation_result and operation_cancel endpoints and matching MCP definitions; discovery and observation/cancellation bypass FIFO. projects accepts timeoutSeconds/requestId without execution modes or wait overrides. The proxy gives managed launch/control requests 15 seconds for the fixed five-second observation window plus transport margin; legacy routes retain their existing 330-second HTTP budget.
+
+Added cooperative directory/project checkpoints and bounded sequential project scheduling. Managed runGit uses the operation signal and log sink rather than its legacy 30-second nested deadline. Abort terminates the entire Git process group with SIGTERM, then SIGKILL after up to one additional second, and waits for stream/process cleanup. Project description waits for all sibling Git calls before releasing the operation slot; generic per-project/remote error handling cannot swallow abort. Server shutdown closes the manager with a ten-second process-level fallback. Obsidian integration and other domain activation remain later stages.
+
+Targeted validation: nine files, 67 tests passed, including real Fastify HTTP client disconnection, fast results, five-second handles, immediate queued responses/QUEUE_FULL, replayable logs, runtime-only timeout, cancellation, restart loss, request deduplication, control authentication/validation and repair-route bypass under full/failing admission. Fake Git fixtures verify abort before traversal, mid-project abort propagation, whole-group escalation and no scheduling of later projects. Updated MCP discovery/proxy/schema tests; no production delay knobs or real repository changes are used to exercise slow behaviour.
+
+### 2026-10-11 11:36 UTC — Stage 2 full validation
+
+Full npm run simple-checks passed: lint, TypeScript for all packages, tests, Python, shell and Helm checks all exited 0. Test output: "Test Files 137 passed (137)" and "Tests 1125 passed (1125)". The pre-push hook also completed and commit 03b8c37 reached the remote branch. Opened PR #65; GitHub Check and CodeRabbit both passed on that commit. Do not expand the allowlist until this PR is merged, its deployment passes and the actual connector is exercised.
+
+### 2026-10-11 11:44 UTC — Restore the complete task log
+
+Final PR review exposed truncated MCP reads of this long file. Restored the previous memory-stage log from the complete main blob and the missing stage verification/decision entries from the session record, then appended the canary findings. Operative requirements and implementation are unchanged. Read long files in pages before replacing them; never treat truncated content as the whole file. This follow-up changes documentation only.

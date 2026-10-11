@@ -80,6 +80,10 @@ describe('handleMcpMessage', () => {
             'code-write',
             'code-patch',
             'code-run',
+            'code-operations',
+            'code-operation_status',
+            'code-operation_result',
+            'code-operation_cancel',
         ]);
         expect(tools.every((tool) => tool.securitySchemes === securitySchemes)).toBe(true);
     });

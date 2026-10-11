@@ -1,4 +1,4 @@
-import { CODE_TOOL_DEFINITIONS, CODE_TOOL_PREFIX } from 'senaev-utils/src/codeTools/codeToolDefinitions';
+import { CODE_MCP_TOOL_DEFINITIONS, CODE_TOOL_PREFIX } from 'senaev-utils/src/codeTools/codeToolDefinitions';
 import { OBSIDIAN_TOOL_PREFIX, VAULT_TOOL_DEFINITIONS } from 'senaev-utils/src/obsidianVaultTools/vaultToolDefinitions';
 import type { ToolDefinition } from 'senaev-utils/src/toolServer/toolDefinition';
 
@@ -35,7 +35,7 @@ export function createToolFamilies({ callVaultTool, callCodeTool }: { callVaultT
         },
         {
             prefix: CODE_TOOL_PREFIX,
-            definitions: CODE_TOOL_DEFINITIONS,
+            definitions: CODE_MCP_TOOL_DEFINITIONS,
             backendName: 'The code tools server',
             call: callCodeTool,
         },

@@ -17,15 +17,26 @@ async function main(): Promise<void> {
         host: HOST,
     });
     logger.info({ port: PORT }, '✅ Code tools server listening');
+    let closing = false;
+    const shutdown = () => {
+        if (closing) {
+            return;
+        }
+
+        closing = true;
+        // Bound shutdown even if a legacy direct command or noncooperative handler is hung.
+        const timer = setTimeout(() => process.exit(0), 10_000);
+
+        timer.unref();
+        void server.close().then(() => process.exit(0), (error: unknown) => {
+            logger.error(error, '❌ Code tools shutdown failed');
+            process.exit(1);
+        });
+    };
+
+    process.on('SIGTERM', shutdown);
+    process.on('SIGINT', shutdown);
 }
-
-process.on('SIGTERM', () => {
-    process.exit(0);
-});
-
-process.on('SIGINT', () => {
-    process.exit(0);
-});
 
 main().catch((error) => {
     logger.error(error, '❌ code-tools exited');

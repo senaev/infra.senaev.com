@@ -13,7 +13,9 @@ export type ProcessResult = {
 
 export type RunProcessOptions = {
     cwd: string;
-    timeoutMs: number;
+    timeoutMs?: number;
+    signal?: AbortSignal;
+    onOutput?: (stream: 'stdout' | 'stderr', text: string) => void;
     /** For stdout and stderr together. */
     maxOutputChars: number;
     /**
@@ -97,6 +99,7 @@ export function runProcess(command: string, args: readonly string[], options: Ru
     const stderr = new OutputBuffer(options.maxOutputChars, 'end');
 
     return new Promise((resolve, reject) => {
+        options.signal?.throwIfAborted();
         const child = spawn(command, args, {
             cwd: options.cwd,
             env: options.env ?? process.env,
@@ -109,39 +112,66 @@ export function runProcess(command: string, args: readonly string[], options: Ru
         });
         let timedOut = false;
 
-        const killGroup = () => {
+        const killGroup = (signal: NodeJS.Signals = 'SIGKILL') => {
             if (child.pid !== undefined) {
                 try {
-                    process.kill(-child.pid, 'SIGKILL');
+                    process.kill(-child.pid, signal);
                 } catch {
                     // The group is already gone.
                 }
             }
         };
 
-        const timer = setTimeout(() => {
-            timedOut = true;
-            killGroup();
-        }, options.timeoutMs);
+        let escalation: ReturnType<typeof setTimeout> | undefined;
+        const abort = () => {
+            killGroup('SIGTERM');
+            // Grace is additional to the operation deadline; hold the slot until close.
+            escalation ??= setTimeout(() => killGroup(), 1000);
+        };
+        const timer = options.timeoutMs === undefined
+            ? undefined
+            : setTimeout(() => {
+                timedOut = true;
+                killGroup();
+            }, options.timeoutMs);
+        const dispose = () => {
+            clearTimeout(timer);
+            clearTimeout(escalation);
+            options.signal?.removeEventListener('abort', abort);
+        };
+
+        options.signal?.addEventListener('abort', abort, { once: true });
+        if (options.signal?.aborted) {
+            abort();
+        }
 
         child.stdout.setEncoding('utf8').on('data', (chunk: string) => {
+            options.onOutput?.('stdout', chunk);
             if (!stdout.append(chunk)) {
                 killGroup();
             }
         });
         child.stderr.setEncoding('utf8').on('data', (chunk: string) => {
+            options.onOutput?.('stderr', chunk);
             stderr.append(chunk);
         });
 
         child.on('error', (error) => {
-            clearTimeout(timer);
-            reject(error);
+            dispose();
+            killGroup();
+            reject(options.signal?.aborted ? options.signal.reason : error);
         });
 
         child.on('close', (exitCode, signal) => {
-            clearTimeout(timer);
+            dispose();
             // A background process left by the command would keep the group alive.
             killGroup();
+            if (options.signal?.aborted) {
+                reject(options.signal.reason);
+
+                return;
+            }
+
             resolve({
                 exitCode,
                 signal,
