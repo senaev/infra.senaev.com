@@ -2,7 +2,7 @@
 
 ## Goal
 
-Replace the blocking long-command workflow in the existing Code Tools MCP with managed operations. ChatGPT chooses synchronous, asynchronous or automatic execution, receives a reliable launch acknowledgement, and can retrieve state, incremental logs and the final result or cancel execution. This PR documents the design only; implementation starts after the owner reviews it.
+Replace the blocking long-command workflow in the existing Code Tools MCP with managed operations and extend the shared mechanism to Obsidian tools. ChatGPT chooses synchronous, asynchronous or automatic execution, receives a reliable launch acknowledgement, and can retrieve state, incremental logs and the final result or cancel execution. This PR documents the design only; implementation starts after the owner reviews it.
 
 ## Context
 
@@ -16,7 +16,7 @@ Replace the blocking long-command workflow in the existing Code Tools MCP with m
 ## Confirmed requirements
 
 - Preserve the current authenticated MCP connection and project-scoped development workflow. The external API may be redesigned; backwards compatibility is not required.
-- Apply managed execution to shell commands and repository cloning. Keep ordinary file tools direct.
+- Apply managed execution to shell commands and repository cloning, and support the same lifecycle for long-running Code Tools and Obsidian operations. Short file tools may stay direct but must participate in the common cancellation/deadline contract.
 - Let ChatGPT select `mode: sync | async | auto`; default to `auto`.
 - In `async`, acknowledge a successfully launched operation promptly with its ID. Validation and launch failures must be explicit; acceptance must not be reported as command success.
 - In `sync`, wait for the terminal result within the execution timeout.
@@ -49,6 +49,24 @@ Start with one active shell operation per project and an explicit conflict respo
 
 Clone into a reserved temporary destination and expose the final project only after success. Prevent concurrent clones into the same destination; handle failed or interrupted temporary clones without deleting unrelated directories. Replace quiet cloning with bounded progress output where practical.
 
+### Shared cancellation and Obsidian operations
+
+The owner explicitly added Obsidian to the design scope. Put reusable operation lifecycle, ID generation, observation contracts and cancellation utilities in senaev-utils; code-tools and obsidian-sync own their execution and persistent state. cluster-helper routes operation requests to the originating backend using an explicit backend discriminator or an unambiguous opaque handle. Enforce the same authenticated-owner access on launch, observation, discovery and cancellation.
+
+Obsidian search (whole-vault search), links (backlink scanning), recursive list, large diary reads and move (link rewrites) are candidates for managed async execution. Keep ordinary short reads and edits direct where appropriate. All existing commands in both services must support cancellation propagation, regardless of whether they initially expose async mode; this includes create, patch and diary_append as well as read-only tools. Async exposure and AbortSignal support are separate requirements.
+
+Create an AbortController for each managed operation or direct tool invocation. Pass its AbortSignal through tool handlers and shared helpers, including filesystem traversal, note reading, search, backlink scans, batch loops and subprocess supervision. Manual cancellation and execution timeout abort the same controller, with distinguishable reasons. Use the agreed default 60-second timeout and optional positive-integer override without an API maximum. Do not create independent nested deadlines that silently shorten the caller's operation timeout.
+
+- Check signal.throwIfAborted() before starting work and between files, directory entries, batches and execution stages. Pass the signal to Node APIs that support it; for APIs that do not, check before and after awaiting and stop scheduling further work. An already pending non-abortable I/O operation may still finish.
+- Make CPU-heavy loops yield periodically so timers and cancellation requests can run; a synchronous loop that never yields cannot provide timely cancellation. Bound parallel batches and prevent new work after abort.
+- Do not swallow AbortError in generic per-file error handlers or report it as an unreadable-file warning. Propagate cancellation to the operation boundary, where it becomes cancelled or timed_out rather than success or an unrelated internal error.
+- For shell operations, connect the abort signal to termination of the entire process group, with bounded graceful shutdown and escalation. Drain/persist available output and settle the operation exactly once despite exit/abort races.
+- For TypeScript operations, stop cooperative processing, close iterators/file handles and release locks/listeners/timers. Return preserved progress where meaningful, without claiming a complete result.
+- Before irreversible writes or atomic publication, check the signal. Preserve per-file atomicity and existing hash/conflict checks. Cancellation cannot undo completed writes: report changed paths and partial completion for move/link rewrites and other multi-file mutations. Never claim automatic rollback unless it is explicitly implemented.
+- Remove cancellation listeners and deadline timers after terminal completion. Keep the last known consistent persisted state. Abort must not be caused merely by a disconnected observation request; operation execution belongs to its lifecycle, not to a poll's HTTP connection.
+
+Review every existing code-* and obsidian-* handler and its helper chain, recording coverage in tests. Native filesystem AbortSignal support does not guarantee interruption of every kernel I/O call; acceptance tests must cover cooperative traversal and bounded scheduling rather than promise instantaneous cancellation of all I/O.
+
 ### Timeouts and notifications
 
 Execution timeout enforcement belongs to the server, not to ChatGPT polling. A Node timer handles ordinary hung commands; if guarantees against a blocked or failed code-tools event loop are required, use an independent watchdog and document its failure boundary. HTTP observation timeout must include margin above the fixed 5-second wait; synchronous calls require a separate compatible proxy policy.
@@ -77,6 +95,8 @@ Build the operation manager so additional tool types can reuse it. These candida
 - Termination grace period, log quotas, retention and global concurrency limit. The execution default is 60 seconds; the API must not impose an upper bound.
 - Persistent state directory and restart reconciliation details.
 - Whether a Node timer is sufficient or an independent watchdog is required.
+- Backend-aware operation routing and persistent state configuration for obsidian-sync.
+- Cancellation checkpoints, yield/batch sizes and partial-write reporting for every existing handler; which Obsidian tools expose async mode initially.
 - Which native MCP Tasks revision, if any, the deployed ChatGPT client supports. Older 2025-11-25 Tasks and the current Tasks extension have different contracts.
 - Expected behaviour of sync mode when the requested runtime exceeds client/proxy limits; recommend auto/async and enforce a known safe sync ceiling rather than silently changing mode.
 
@@ -94,11 +114,13 @@ These are design references, not adopted dependencies or proof of ChatGPT client
 
 1. Review this task with the owner and settle the open API and lifecycle decisions.
 2. Verify actual ChatGPT capabilities and choose the external polling interface; keep native Tasks optional.
-3. Implement persistent operations, process supervision, runtime deadlines and cancellation.
-4. Integrate run/clone modes, fixed observation waiting, incremental output and retry deduplication.
-5. Add retention, concurrency controls, clone publication and restart reconciliation.
-6. Update shared tool definitions, proxy policies and operating instructions.
-7. Run automated checks and end-to-end tests from the current ChatGPT connector before any rollout claims.
+3. Implement the reusable operation lifecycle in senaev-utils, backend-owned persistent operations and routing, process supervision, runtime deadlines and cancellation.
+4. Thread AbortSignal through every existing Code Tools and Obsidian handler/helper chain; make file traversal and batch/CPU processing cooperatively cancellable.
+5. Integrate run/clone modes, fixed observation waiting, incremental output and retry deduplication.
+6. Add retention, concurrency controls, clone publication and restart reconciliation.
+7. Integrate selected long-running Obsidian tools and preserve structured results and partial-mutation reporting.
+8. Update shared tool definitions, proxy policies and operating instructions.
+9. Run automated checks and end-to-end tests from the current ChatGPT connector before any rollout claims.
 
 ## Verification
 
@@ -111,7 +133,11 @@ These are design references, not adopted dependencies or proof of ChatGPT client
 - Duplicate request IDs do not run a command twice; conflicting arguments fail. Concurrent operations and clone destinations follow the documented limits.
 - Restart the container: completed results survive and unfinished work becomes interrupted, without automatic reruns or indefinite running states.
 - Verify that no tool schema exposes configurable observation waiting or PTY functionality.
-- Run all repository checks; demonstrate the flow with npm run simple-checks and a repository clone through ChatGPT.
+- For every existing handler, verify an already-aborted signal prevents new work. Test mid-traversal/mid-batch abort, timeout without polls, listener/timer/lock cleanup and cancellation propagation through helpers.
+- Verify aborted search/backlink scans stop scheduling reads and cannot return complete:true or swallow abort as an ordinary file warning. Verify CPU loops yield and parallel batches stop scheduling work.
+- Verify cancelled multi-file mutations preserve valid individual files and report completed changes and incomplete work. Test abort racing with final completion/publication and ensure a single coherent terminal outcome.
+- Verify backend routing and owner isolation for both Code Tools and Obsidian operation handles; client poll disconnection must not abort execution.
+- Run all repository checks; demonstrate run, clone and a long Obsidian scan through ChatGPT.
 
 ## Findings
 
@@ -126,3 +152,7 @@ The owner explicitly replaced the timeout defaults and maximum: timeoutSeconds i
 ### 2026-10-11 09:18 UTC — Final timeout clarification and additional candidates
 
 The owner superseded the preceding no-default decision: omitted timeoutSeconds means 60 seconds; an explicit value is any positive integer without an API maximum. The current requirements and verification above reflect this final decision. Reviewed search, projects and list implementations and recorded their suitability for managed execution; read/write/patch remain direct initially.
+
+### 2026-10-11 09:26 UTC — Extend scope to Obsidian and cooperative cancellation
+
+The owner requested shared async infrastructure for Obsidian and AbortController support throughout all existing commands. Added a common AbortSignal contract, cooperative filesystem traversal and CPU/batch checkpoints, abort propagation, subprocess termination, resource cleanup and explicit partial-mutation behaviour. Updated the plan and verification. This remains a documentation-only PR; no implementation changed.
