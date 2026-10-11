@@ -1,5 +1,5 @@
 import {
-    MANAGED_TOOL_DESCRIPTION, MANAGED_TOOL_PROPERTIES, OPERATION_TOOL_DEFINITIONS,
+    createManagedToolDescription, MANAGED_TOOL_PROPERTIES, OPERATION_TOOL_DEFINITIONS,
 } from '../operations/operationToolDefinitions';
 import {
     formatNumber,
@@ -26,6 +26,7 @@ import {
 
 /** Every MCP tool name is this prefix followed by the code tool name. */
 export const CODE_TOOL_PREFIX = 'code-';
+const MANAGED_TOOL_DESCRIPTION = createManagedToolDescription(CODE_TOOL_PREFIX);
 
 /** A project is a folder with a git repository in the projects folder; its name is the folder name. */
 export const PROJECT_NAME_PATTERN = '^[A-Za-z0-9_][A-Za-z0-9._-]*$';
@@ -202,7 +203,7 @@ const read: ToolDefinition = {
         'Reads text files of a project. Each file comes with "hash", which code-patch and code-write need to change it.',
         `One response holds at most ${formatNumber(READ_LIMITS.maxCharsPerResponse)} characters and whole lines only; continue with "remainingPaths".`,
         `A file longer than ${formatNumber(READ_LIMITS.maxCharsPerFile)} characters is cut with "truncated": true;`,
-        'read the rest with "startLine" set to "nextStartLine".',
+        'read the rest with "startLine" set to "nextStartLine". A line longer than a page is rejected; use code-run to inspect it.',
         PROJECT_RULES,
     ].join(' '),
     inputSchema: {

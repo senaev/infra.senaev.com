@@ -10,9 +10,9 @@ import { requiredNonEmptyString, requiredString } from 'senaev-utils/src/toolSer
 import { invalidArguments, ToolError } from 'senaev-utils/src/toolServer/ToolError';
 import { createFileExclusively, replaceFileAtomically } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
 import { isAlreadyExistsError } from 'senaev-utils/src/utils/Error/isAlreadyExistsError/isAlreadyExistsError';
+import { createFileDiffAsync } from 'senaev-utils/src/toolServer/createFileDiffAsync';
+import { withFileMutation } from 'senaev-utils/src/toolServer/withFileMutation';
 
-import { fileDiff } from './fileDiff';
-import { withFileMutation } from './fileMutation';
 import type { CodeToolsConfig } from './codeToolsConfig';
 import {
     normalizeProjectPath,
@@ -78,7 +78,7 @@ export async function writeTool(config: CodeToolsConfig, input: unknown) {
             created: !isReplace,
             changed: content !== original || !isReplace,
             hash: hashContent(content),
-            ...await fileDiff(path, original, content),
+            ...await createFileDiffAsync(path, original, content),
         };
     });
 }

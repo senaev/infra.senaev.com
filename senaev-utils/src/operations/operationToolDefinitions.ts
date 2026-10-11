@@ -28,14 +28,16 @@ export const MANAGED_TOOL_PROPERTIES = {
     },
 };
 
-export const MANAGED_TOOL_DESCRIPTION = [
-    `If idle, starts execution and observes for up to ${OBSERVATION_MS / 1000} seconds: returns the final result/error or an operation handle.`,
-    'executionPolicy defaults to queued: if busy, immediately returns a queued handle; one FIFO operation runs and at most five wait. QUEUE_FULL means no operation was admitted.',
-    'executionPolicy parallel starts independently of FIFO and observes for up to 5 seconds, without an additional concurrency limit. It does not guarantee a consistent filesystem snapshot or serialize conflicting mutations.',
-    'An accepted handle is not completion. Poll code-operation_status, then code-operation_result; wait for completed before dependent commands.',
-    'Use code-operation_cancel to stop queued or running work. timeoutSeconds defaults to 60 and excludes queue waiting; it has no API maximum.',
-    'Operations and requestId deduplication live only in memory. Restart loses IDs, logs, results and queued work; old IDs return not_found and work is never replayed.',
-].join(' ');
+export function createManagedToolDescription(prefix: string): string {
+    return [
+        `If idle, starts execution and observes for up to ${OBSERVATION_MS / 1000} seconds: returns the final result/error or an operation handle.`,
+        'executionPolicy defaults to queued: if busy, immediately returns a queued handle; one FIFO operation runs and at most five wait. QUEUE_FULL means no operation was admitted.',
+        `executionPolicy parallel starts independently of FIFO and observes for up to ${OBSERVATION_MS / 1000} seconds, without an additional concurrency limit. It does not guarantee a consistent filesystem snapshot or serialize conflicting mutations.`,
+        `An accepted handle is not completion. Poll ${prefix}operation_status, then ${prefix}operation_result; wait for completed before dependent commands.`,
+        `Use ${prefix}operation_cancel to stop queued or running work. timeoutSeconds defaults to ${DEFAULT_TIMEOUT_SECONDS} and excludes queue waiting; it has no API maximum.`,
+        'Operations and requestId deduplication live only in memory. Restart loses IDs, logs, results and queued work; old IDs return not_found and work is never replayed.',
+    ].join(' ');
+}
 
 const ID_PROPERTY = {
     id: {
@@ -55,7 +57,7 @@ const CURSOR_PROPERTY = {
 export const OPERATION_TOOL_DEFINITIONS = {
     operations: {
         title: 'List recent operations',
-        description: 'Lists recent operations in this backend process, newest first. Includes state, effective timeout and timestamps. Bypasses the execution queue. Restart loses every record.',
+        description: 'Lists every active operation and up to 100 retained terminal operations in this backend process, newest first. Includes state, effective timeout and timestamps. Bypasses the execution queue. Restart loses every record.',
         inputSchema: {
             type: 'object',
             properties: {},

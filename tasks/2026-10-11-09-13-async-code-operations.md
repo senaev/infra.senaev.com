@@ -333,3 +333,114 @@ Second full run passed all tests ("Test Files 142 passed (142)", "Tests 1167 pas
 ### 2026-10-11 15:05 UTC — Universal Code Tools full validation passed
 
 Final npm run simple-checks passed every check: lint, typecheck, tests, Python, shell and Helm all exited 0. Verbatim test summary: "Test Files 142 passed (142)" / "Tests 1167 passed (1167)". git diff --check passed. All implementation and the preserved deployment/live-verification journal are included in this stage. Next: commit/push, separate PR, CI and owner-authorized deployment; then verify the new catalogue and isolated live fixtures. No Obsidian command is activated by this change.
+
+
+### 2026-10-11 15:15 UTC — PR #72 merged and deployed
+
+- По явному разрешению пользователя после успешного CI PR https://github.com/senaev/infra.senaev.com/pull/72 смержен; merge commit: `5b6d6c36c1eb2bc8f4757196e9d2f9398f614ee3`. На момент мержа CI Check SUCCESS; CodeRabbit PENDING, одобряющего ревью не было.
+- Все шесть release workflows для merge commit завершились SUCCESS: opencode-serve, cluster-helper, obsidian-sync, media-server-helper, vpn-subscription, senaev-utils. Обновлена локальная main через fast-forward; предыдущая запись о деплое PR #71 включена в PR #72 и сохранена.
+- Перед push npm run simple-checks: все шесть проверок успешны, 142 test files / 1167 tests.
+- Live-проверка новых параметров clone/read/write/patch НЕ выполнена: каталог MCP текущего чата по-прежнему содержит старые схемы без executionPolicy/requestId/timeoutSeconds. Отсутствующие параметры не передавались; тестовые файлы и проекты на этом шаге не создавались. Требуется обновить подключение/каталог MCP и выполнить live-проверку всех четырёх команд на изолированных данных до перехода к следующему этапу.
+- Следующий отдельный этап после live-проверки Code Tools — миграция Obsidian на общий менеджер; в PR #72 Obsidian не активирован.
+
+### 2026-10-11 15:21 UTC — PR #72 live verification started
+
+Actual refreshed mcp.senaev.com catalogue has executionPolicy queued|parallel, requestId and timeoutSeconds on all eight Code Tools. Read root/tasks AGENTS and complete task pages. main HEAD 5b6d6c36c1eb2bc8f4757196e9d2f9398f614ee3; pre-existing uncommitted deployment entry preserved. Only public authenticated MCP used.
+
+1 PASS: isolated local fixture mcp72-live-20261011-1519-source and clones ending -queued/-parallel. clone/read/write/patch completed with both policies. Clone timeoutSeconds 10800 accepted; omitted read/write/patch timeout metadata is 60. write created new.txt (one/two), patch replaced two with three; changedPaths contains new.txt. No production implementation changes, commits, pushes or PRs.
+
+### 2026-10-11 15:23 UTC — Retry retention and FIFO bypass
+
+3 PASS: all four new tools reused their original parallel ID and result; changing policy or timeout with the same requestId returned "conflict", "requestId was already used with different arguments".
+4 PASS: operation_result returned all four original structured snapshots; clone retained Cloning/done/branch logs.
+2 initial PASS: queued run code-e6802179-571c-4ece-b42f-209cf055dd86 occupied FIFO. Four clone/read/write/patch calls queued with startedAt null and timeout 1; all four parallel equivalents completed while those same four IDs remained queued and run remained running. FIF0 completion order checked after blocker cancellation below.
+
+### 2026-10-11 15:25 UTC — FIFO completion, conflicts, pagination and clone lifecycle
+
+2 PASS: queued clone/read/write/patch started in admission order at 1791732197726/1791732197804/1791732197808/1791732197916 and all completed. Parallel calls did not release FIFO.
+3/4 PASS as above: retained same-ID snapshots for all four new tools, conflicts for changed executionPolicy and timeoutSeconds.
+5 PARTIAL: real slow git:// loopback fixture clone returned running handle, status retained progress, cancellation reached cancelled, result retained cancellation. End-to-end launch measured 9718 ms, so exact five-second server observation cannot be measured separately from connector overhead; no claim of a five-second end-to-end response. Long read/write/patch not yet exercised.
+6 PARTIAL: queued write code-348b3a19-8642-48c8-833d-e5d0c2af6c30 cancelled with startedAt null/logs empty; never.txt absent. Running clone code-aad9145c-0913-4308-be28-cc8a447324ab reached cancelled; filesystem/process cleanup checked below.
+7 PASS runtime exclusion: all four waited 47–57 seconds with timeoutSeconds 1, then completed in 4–108 ms. Slow clone timeoutSeconds 1 reached timed_out in 1005 ms. Default metadata 60; explicit 10800 accepted. No API maximum proven by catalogue, not an exhaustive numeric-boundary live test.
+8 PASS: pages.txt read in four whole-line pages covering all 3000 lines. Every page hash 68ef32961b31b6245f4cbfd9abe1055d9987c4e7a248aad3a9db3398f3928d3a equals independent sha256sum of entire file.
+9 PARTIAL: stale write/patch hash conflicts; write without hash rejects existing file. Two-step patch with first valid replacement and second absent find failed and left file exactly one/four. Failed mutations changedPaths empty; successful publications list changed paths. Publication/abort race and kernel-level atomicity cannot be inferred from fast calls.
+
+### 2026-10-11 15:30 UTC — Lifecycle and safety limits of live verification
+
+6 PASS queued cancellation for clone/read/write/patch: all retained cancelled, startedAt null, empty logs/changedPaths; mutation destinations absent. First patch cancellation lost a race with default clone expiry and became failed (stale hash), not cancelled; repeated with fresh 90-second blocker, code-907022ed-8c8a-4ece-a11e-c78e978c0329 cancelled before execution. No foreign operation was cancelled. Running clone cancellation cleaned its temp/lock and preserved progress; long running read/write/patch cleanup NOT VERIFIED, because these small public fixtures finish before cancellation and no production delay controls were introduced.
+
+7 PASS: default slow clone code-c37235e5-c517-414a-982e-d61b20a751c5 timed_out after 60007 ms, logs retained; override 1 reached timed_out after 1005 ms; 10800 accepted. All four FIFO tools completed despite waits exceeding timeout 1. Exact numeric API upper boundary not exhaustively tested; catalogue documents none.
+
+9 PASS observed hash/patch semantics and published changedPaths. Two parallel write calls using the same old hash yielded one success (winner-B) and one conflict, but server timestamps show no overlap, so this is NOT a live simultaneous reservation-race test. Cancellation of the already-completed successful write retained completed, changedPaths=[new.txt] and published content; no rollback was claimed. Mid-publication abort and underlying atomic-rename race NOT VERIFIED through these public calls.
+
+10 PARTIAL: successful clone retains logs and changedPaths; slow clone exposes only hidden temp before publication; running cancel/default/override timeout clean owned temp/lock and leave destination absent. Existing project rejects already_exists. Failed clone cleans its own temp/lock while unrelated .clone-mcp72-live-20261011-1519-fail-unrelated/OWNER sentinel remains intact. Existing empty destination and final process inspection are recorded below. Whole-group descendant escalation and publication/abort race NOT VERIFIED: no artificial Git replacement or production environment manipulation was used.
+
+All counts above are actual public authenticated MCP results, not substituted automated-suite outcomes. Exact five-second backend observation versus connector latency, long read/write/patch lifecycle, concurrent publication/hash-reservation races and low-level atomicity remain explicit live coverage limitations. No modes, limits or observation parameters were added. Owner waiver of independent recovery remains operative; code-run shares this same manager/backend.
+
+### 2026-10-11 15:31 UTC — Cleanup and final live result
+
+10 additional PASS: empty pre-existing destination rejected with already_exists, unchanged. Published winner-B still present after cancellation of completed write. Process inspection found no remaining fixture git clone or slow-server processes. Slow server operation code-71f2f50a-ef3f-4de6-9974-af34b7dacba5 retained cancelled.
+
+11 PASS: removed only seven exact invocation-owned paths, guarded by source OWNER, clone origin URLs, empty-directory check and unrelated sentinel content. Output: "Remaining owned fixture paths: []". Public code-operations reported no queued/running operations (including no active test operations). Existing production projects untouched except this appended task journal. No commit/push/branch change/PR or migration.
+
+## Result — 2026-10-11 15:31 UTC live verification
+
+Catalogue and tested live scenarios passed: both policies on all four commands; shared FIFO and independent parallel; retained retries/results and conflicts; queued cancellation; running clone cancellation/cleanup and logs; default/override clone deadlines and runtime excluding queue; whole-file read hashes/pagination; write/patch conflicts and unsuccessful patch preserving bytes; existing clone destinations and ownership-restricted cleanup.
+
+Live coverage is incomplete, not a claim of full acceptance: exact five-second backend observation separate from transport overhead; long running read/write/patch cancellation/deadlines/resource cleanup; simultaneous mutation reservations; cancellation during publication and changedPaths at that race; clone descendant-group escalation and atomic-publication races. Small public fixtures do not provide reliable timing control for these scenarios. No automatic tests were presented as live proof.
+
+Next proposed separate PR is Obsidian migration to the shared operation manager, independent backend queue/state and routed controls. Migration has not started. Owner may choose whether to close these remaining live coverage gaps before that PR; no blanket full-success gate is claimed.
+
+### 2026-10-11 15:36 UTC — Design/code/test review: reproduced findings
+
+Review requested before Obsidian migration. Read manager/context/contracts, Code Tools server/process/files/clone/list/search helpers, proxy and focused tests. Only authenticated public MCP; no alternative authentication, implementation edits, branch changes or commits. Reproductions of manager edge cases ran in a separate Node process, using transient in-memory instances and TypeScript transpilation, not the production manager's state.
+
+- P1: real public code-run `kill -TERM $$` returned exitCode null, signal SIGTERM, operation.state completed (code-6512b540-be3b-4134-9a9c-aa27d95dbf55). The manager only treats numeric nonzero exitCode as failure. A signalled command must not authorize dependent work as successful.
+- P2: after simulated eight days, retry with same requestId reused the expired ID and did not rerun. prune runs after duplicate lookup; controls do not enforce age expiry. Output: EXPIRED_RETRY {"sameId":true,"count":1}.
+- P2: one active FIFO plus 100 completed parallel records hides the active operation in discovery, although status still says running. Output: DISCOVERY {"listed":100,"activeListed":false,"activeState":"running"}. operations slices newest 100 across active+terminal, without pagination/truncation metadata.
+- P2: cancellation side effect precedes record-specific cursor validation. Isolated control(operation_cancel,{id,cursor:1}) on zero-log running operation throws invalid_arguments but aborts it. Output: BAD_CANCEL {"code":"invalid_arguments","signalAborted":true}.
+- P2: read slices an overlong first line then advances to the next line, losing the unreturned suffix. Output: LONG_LINE {"shownChars":30000,"nextStartLine":2,"next":"END\\n","missingChars":10001}. Existing API cannot continue within the same line; a single-line file also has truncated true but no continuation.
+- P2 by inspection: unexpected managed exceptions become internal_error with "inspect backend logs", but the catch discards the exception without logging. Outer runToolCall receives a resolved result and logs successful tool-call transport. Add a backend-injected error reporter keyed by operation ID/tool, keeping private arguments/results out of logs.
+
+Focused suite is running; findings are not inferred from passing counts. Obsidian migration remains unstarted.
+
+### 2026-10-11 15:38 UTC — Review conclusion and pre-Obsidian work
+
+Focused existing suite passed: "Test Files 13 passed (13)" / "Tests 105 passed (105)", exitCode 0, duration 29.41s. This is a scoped review of asynchronous infrastructure and integration, not an audit of every one of the repository's 1167 tests. No implementation was changed to make tests pass.
+
+Design worth retaining: one shared generic memory-only OperationManager; backend-owned queues/state; independent control plane; one AbortSignal propagated through async-local context; runtime-only chunked deadline; retained structured results; shared schema properties; process-group cleanup; per-file atomic publication and process-local path reservations. Unlimited parallel, state loss at restart and external-writer limits are approved tradeoffs, not new review defects.
+
+Reuse cleanup before migration: code-tools fileDiff duplicates the shared createFileDiff algorithm/context/quota inside a worker string. Put the worker-backed cancellable diff and formatting constants in the shared package, with synchronous/async entry points invoking the same formatting core; move the path-reservation helper there for relevant Obsidian writes. MANAGED_TOOL_DESCRIPTION hardcodes code-operation_* plus 5/60 literals; make it derive backend-specific names and shared constants rather than copying text for Obsidian. codeToolsApi has a vestigial conditional whose branches both return the same timeout. Typed lifecycle/control result contracts and optional scope metadata would reduce casts and help discovery when both backends are used. Keep filesystem domain logic separate; do not force Code Tools git traversal into Obsidian.
+
+Test quality: real process/HTTP/atomic-filesystem tests are meaningful; controllable gates around real I/O are appropriate for deterministic races. managedFiles long-handler/deadline tests replace CODE_TOOLS handlers, so they verify the wrapper rather than proving actual read/write/patch cleanup; fileCancellation separately covers several real stages. Missing regression coverage matches the six findings above. The five-second test waits but does not assert the boundary with virtual time; expiry test prunes via unrelated admission before checking instead of testing expired retry/read. The "isolates concurrent contexts" test only tests already-aborted/single context cleanup; the "large read/patch loops" test invokes replaceText and fileDiff, not read. Add overlapping async-context isolation and real multi-file read cancellation tests with explicit scheduling gates. Long-line test explicitly accepts cutting without asserting that every character is retrievable. Correct the pagination contract/test together; reject an unpageable line with an actionable error if preserving existing arguments, rather than silently skipping it.
+
+Recommended next stage: separate correction/refactor PR for the reproduced findings, shared diff/reservations and accurate regression tests; full simple-checks and deployed verification after merge. Then migrate Obsidian using the verified same manager plus small backend integration; give move/diary writes explicit partial-change and multi-file reservation semantics. No automatic migration or repair PR opened in this review.
+
+
+### 2026-10-11 15:43 UTC — Review correction iteration started
+
+Owner approved implementing the proposed correction iteration. Branch creation was rejected by automatic approval review: repository Git discipline requires explicit branch-switch consent. Prepared reversible implementation/tests in the current main worktree while preserving all previous journal text. No staging/commit/push/PR until explicit Git approval; no migration or deployment. Fixing six findings and extracting shared helpers/descriptions without new execution limits or waiting arguments.
+
+
+### 2026-10-11 15:48 UTC — Corrections and regression coverage
+
+Implemented signal/null-exit failure classification; age pruning before retries and controls; discovery includes all active records plus retained terminal history; cursor validation before cancellation side effects; injected backend error reporting protected against reporter failure; explicit error for unpageable lines instead of skipped suffixes. Aggregate read budget defers intact files to remainingPaths. The cursor reproduction was at the direct shared-manager API: public cancellation schema accepts only id and already rejects extra cursor; the fix strengthens reusable manager validation, not a claim of a production public-schema bypass.
+
+Shared cancellable diff invokes one formatting core and constants for both synchronous and worker paths; file reservations moved to senaev-utils. Managed descriptions derive backend-specific control names and observation/default constants; proxy's identical timeout branches removed. Obsidian handlers remain unchanged.
+
+Added regressions for six findings, virtual-time 4999/5000 ms boundary, overlapping async-context isolation, real multi-file read traversal cancellation, aggregate read pagination, and shared diff parity. First focused run: "Test Files 5 passed (5)", "Tests 56 passed (56)". Full typecheck passed before new tests; final full suite still required.
+
+
+### 2026-10-11 15:51 UTC — First full validation and lint correction
+
+Full tests passed: "Test Files 143 passed (143)", "Tests 1182 passed (1182)"; typecheck/Python/shell/Helm passed. ESLint rejected two new constructs: redundant async in a rejection callback and five arguments in the shared pure diff core. Removed redundant async and grouped path/before/after into one input object. No lint-rule bypass. Repeat full validation after this helper change.
+
+### 2026-10-11 15:54 UTC — Correction iteration fully validated
+
+Second full run still rejected the remaining redundant async in the polling predicate (the first correction targeted a different callback). Replaced that predicate with an explicit resolved Promise. Final npm run simple-checks: lint, typecheck, tests, Python, shell and Helm all exited 0. Verbatim: "Test Files 143 passed (143)", "Tests 1182 passed (1182)". git diff --check passed. Shared worker also passed an independent smoke check under the production tsx loader: "Production tsx worker parity PASS".
+
+All six review findings are corrected with regressions; shared diff/path reservation and backend-specific descriptions are ready for later reuse. Existing deployment/review journal preserved. Work remains uncommitted on main because automatic approval review rejected branch creation under AGENTS.md Git consent rules. No workaround, staging, commit, push, PR, deployment or Obsidian migration occurred. Ready to create fix/operation-review, stage/commit/push this reviewed change set and open its separate PR after explicit Git authorization. Live verification of the corrected deployed backend remains a post-merge gate; passing local tests are not claimed as deployment proof.
+
+### 2026-10-11 16:07 UTC — Git authorization and policy update
+
+The user explicitly authorized creating a separate branch, staging, committing, pushing and opening a PR for this iteration, and authorized the same workflow for future tasks. Updated root AGENTS.md: working-branch operations and PR creation are allowed within task scope; direct main commits/pushes and PR merges still require explicit consent. Previous journal history is preserved.

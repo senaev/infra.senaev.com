@@ -117,7 +117,7 @@ describe('sliceLines', () => {
         });
     });
 
-    it('stops before the line that does not fit, and cuts a single line that alone is too long', () => {
+    it('stops before a line that does not fit and rejects an unpageable line', () => {
         expect(sliceLines(content, {
             startLine: 1,
             lineCount: 10,
@@ -126,14 +126,10 @@ describe('sliceLines', () => {
             endLine: 2,
             nextStartLine: 3,
         });
-        expect(sliceLines(content, {
+        expect(() => sliceLines(content, {
             startLine: 3,
             lineCount: 10,
-        }, 2)).toMatchObject({
-            content: 'th',
-            endLine: 3,
-            truncated: true,
-        });
+        }, 2)).toThrow('use code-run');
     });
 
     it('reads an empty file and a file without a final newline', () => {
@@ -156,6 +152,48 @@ describe('sliceLines', () => {
 });
 
 describe('readTool', () => {
+    it('rejects overlong lines without pretending their suffix was paginated', async () => {
+        for (const text of [
+            'x'.repeat(40000),
+            `${'x'.repeat(40000)}\nEND\n`,
+        ]) {
+            await writeFile(projects.path('demo', 'long.txt'), text);
+            await expect(readTool(projects.config, {
+                project: 'demo',
+                paths: ['long.txt'],
+            }))
+                .rejects.toMatchObject({
+                    code: 'command_failed',
+                    message: expect.stringContaining('use code-run'),
+                });
+        }
+    });
+
+    it('defers a whole file when only the aggregate response budget is too small', async () => {
+        const first = `${'a'.repeat(29999)}\n`;
+        const second = `${'b'.repeat(24999)}\n`;
+
+        await writeFile(projects.path('demo', 'first.txt'), first);
+        await writeFile(projects.path('demo', 'second.txt'), second);
+        const page = await readTool(projects.config, {
+            project: 'demo',
+            paths: [
+                'first.txt',
+                'second.txt',
+            ],
+        });
+
+        expect(page.files.map((file) => file.content)).toEqual([first]);
+        expect(page.remainingPaths).toEqual(['second.txt']);
+        const next = await readTool(projects.config, {
+            project: 'demo',
+            paths: page.remainingPaths,
+        });
+
+        expect(next.files[0]?.content).toBe(second);
+        expect(next.files[0]?.hash).toBe(hashContent(second));
+    });
+
     it('reads files with their hash, and reports a bad path without failing the others', async () => {
         const result = await readTool(projects.config, {
             project: 'demo',

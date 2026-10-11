@@ -84,7 +84,10 @@ export class OperationManager {
     private lock: Promise<void> = Promise.resolve();
     private closing = false;
 
-    public constructor(private readonly backend: string) {}
+    public constructor(
+        private readonly backend: string,
+        private readonly reportError?: (error: unknown, operation: { id: string; backend: string; tool: string }) => void
+    ) {}
 
     private static appendLog(data: RecordData, stream: 'stdout' | 'stderr', text: string): void {
         for (let offset = 0; offset < text.length; offset += PAGE_CHARS) {
@@ -133,6 +136,7 @@ export class OperationManager {
                 throw new ToolError('conflict', 'Operation executor unavailable');
             }
 
+            this.prune();
             if (requestId !== undefined) {
                 const duplicate = [...this.entries.values()].find((entry) => entry.data.requestId === requestId);
 
@@ -152,7 +156,6 @@ export class OperationManager {
                 throw new ToolError('QUEUE_FULL', 'Five operations are already waiting; retry after a slot is free');
             }
 
-            this.prune();
             const data: RecordData = {
                 id: `${this.backend}-${randomUUID()}`,
                 tool,
@@ -227,14 +230,22 @@ export class OperationManager {
     }
 
     public async control(name: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
+        this.prune();
         if (name === 'operations') {
-            return { operations: [...this.entries.values()].reverse().slice(0, MAX_RECORDS).map((entry) => this.view(entry.data)) };
+            // Retention bounds terminal history; active work must always be discoverable.
+            return { operations: [...this.entries.values()].reverse().map((entry) => this.view(entry.data)) };
         }
 
         const entry = this.entries.get(String(args.id));
 
         if (entry === undefined) {
             throw new ToolError('not_found', 'Operation not found in this backend');
+        }
+
+        const cursor = args.cursor ?? 0;
+
+        if (typeof cursor !== 'number' || !Number.isInteger(cursor) || cursor < 0 || cursor > entry.data.nextCursor) {
+            throw invalidArguments('cursor must be an integer from 0 to nextCursor');
         }
 
         if (name === 'operation_cancel') {
@@ -254,12 +265,6 @@ export class OperationManager {
                     entry.controller.abort(new Error('cancelled'));
                 }
             });
-        }
-
-        const cursor = args.cursor ?? 0;
-
-        if (typeof cursor !== 'number' || !Number.isInteger(cursor) || cursor < 0 || cursor > entry.data.nextCursor) {
-            throw invalidArguments('cursor must be an integer from 0 to nextCursor');
         }
 
         const logs: LogEntry[] = [];
@@ -391,7 +396,7 @@ export class OperationManager {
             }
 
             data.resultJson = serialized;
-            data.state = result.status === 'error' || typeof result.exitCode === 'number' && result.exitCode !== 0 ? 'failed' : 'completed';
+            data.state = result.status === 'error' || Object.hasOwn(result, 'exitCode') && result.exitCode !== 0 ? 'failed' : 'completed';
         } catch (error) {
             if (controller.signal.aborted) {
                 const { reason } = controller.signal;
@@ -415,6 +420,16 @@ export class OperationManager {
                     ...error.details !== undefined && { details: error.details },
                 });
             } else {
+                try {
+                    this.reportError?.(error, {
+                        id: data.id,
+                        backend: this.backend,
+                        tool: data.tool,
+                    });
+                } catch {
+                    // Diagnostic failures must not prevent terminal state or cleanup.
+                }
+
                 data.state = 'failed';
                 data.resultJson = JSON.stringify({
                     status: 'error',

@@ -1,14 +1,16 @@
-import { readFile, readdir } from 'node:fs/promises';
+import {
+    readFile, readdir, writeFile,
+} from 'node:fs/promises';
 
 import { operationContext, withOperationContext } from 'senaev-utils/src/operations/operationContext';
 import { hashContent } from 'senaev-utils/src/toolServer/contentHash';
 import {
     afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
+import { createFileDiffAsync } from 'senaev-utils/src/toolServer/createFileDiffAsync';
 
 import { cloneTool } from './cloneTool';
 import { createTestProjects, type TestProjects } from './createTestProjects';
-import { fileDiff } from './fileDiff';
 import { patchTool } from './patchTool';
 import { readTool } from './readTool';
 import { replaceText } from './replaceText';
@@ -19,6 +21,7 @@ const hooks = vi.hoisted(() => {
         afterWrite: (_path: string) => Promise.resolve(),
         afterRename: () => undefined as void,
         beforeRead: (_path: string) => undefined as void,
+        afterRead: (_path: string) => undefined as void,
     };
 });
 
@@ -42,10 +45,13 @@ vi.mock('node:fs/promises', async (importOriginal) => {
             await original.rename(...args);
             hooks.afterRename();
         },
-        readFile: (...args: Parameters<typeof original.readFile>) => {
+        readFile: async (...args: Parameters<typeof original.readFile>) => {
             hooks.beforeRead(String(args[0]));
+            const result = await original.readFile(...args);
 
-            return original.readFile(...args);
+            hooks.afterRead(String(args[0]));
+
+            return result;
         },
     };
 });
@@ -65,6 +71,7 @@ describe('cooperative file cancellation and atomicity', () => {
         hooks.afterWrite = () => Promise.resolve();
         hooks.afterRename = () => undefined;
         hooks.beforeRead = () => undefined;
+        hooks.afterRead = () => undefined;
         await projects.remove();
     });
     function context(controller = new AbortController()) {
@@ -242,10 +249,37 @@ describe('cooperative file cancellation and atomicity', () => {
             .toMatchObject({ changed: true });
     });
 
-    it('yields in large read/patch loops and terminates CPU diff workers on cancellation', async () => {
+    it('cancels a real multi-file read during cooperative line traversal', async () => {
+        await writeFile(projects.path('demo', 'README.md'), 'line\n'.repeat(100000));
+        const controller = new AbortController();
+        const reason = new Error('read traversal cancelled');
+        const reads: string[] = [];
+
+        hooks.beforeRead = (path) => {
+            reads.push(path);
+        };
+
+        hooks.afterRead = (path) => {
+            if (path.endsWith('/README.md')) {
+                // Abort at the first cooperative traversal checkpoint after native I/O.
+                setImmediate(() => controller.abort(reason));
+            }
+        };
+
+        await expect(withOperationContext(context(controller), () => readTool(projects.config, {
+            project: 'demo',
+            paths: [
+                'README.md',
+                'second.md',
+            ],
+        }))).rejects.toBe(reason);
+        expect(reads).toEqual([projects.path('demo', 'README.md')]);
+    });
+
+    it('yields during patch scanning and terminates CPU diff workers on cancellation', async () => {
         for (const run of [
             () => replaceText('x\n'.repeat(100000), 'x', 'y'),
-            () => fileDiff('large.md', 'a\nb\n'.repeat(20000), 'b\na\n'.repeat(20000)),
+            () => createFileDiffAsync('large.md', 'a\nb\n'.repeat(20000), 'b\na\n'.repeat(20000)),
         ]) {
             const controller = new AbortController();
             const reason = new Error('CPU cancelled');

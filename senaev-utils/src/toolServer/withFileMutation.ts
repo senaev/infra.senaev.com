@@ -1,5 +1,6 @@
-import { operationCheckpoint } from 'senaev-utils/src/operations/operationContext';
-import { ToolError } from 'senaev-utils/src/toolServer/ToolError';
+import { operationCheckpoint } from '../operations/operationContext';
+
+import { ToolError } from './ToolError';
 
 // A mutation reserves one path, not an execution slot. Conflicting parallel edits fail
 // rather than both validating an old hash and silently losing one of the changes.

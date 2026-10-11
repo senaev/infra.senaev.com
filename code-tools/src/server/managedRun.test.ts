@@ -72,6 +72,24 @@ describe('managed shell execution', () => {
         expect((await run('true', args)).statusCode).toBe(409);
     });
 
+    it('retains signal termination as a failed command outcome', async () => {
+        const body = (await run('kill -TERM $$')).json<Reply>();
+
+        expect(body).toMatchObject({
+            exitCode: null,
+            signal: 'SIGTERM',
+            operation: { state: 'failed' },
+        });
+        expect((await call('operation_result', { id: body.operation.id })).json())
+            .toMatchObject({
+                result: {
+                    exitCode: null,
+                    signal: 'SIGTERM',
+                },
+                operation: { state: 'failed' },
+            });
+    });
+
     it('streams logs, cancels queued work and holds the shared slot until group cleanup', async () => {
         const active = (await run('trap \'\' TERM; (trap \'\' TERM; sleep 30) & echo ready; echo diagnostic >&2; wait')).json<Reply>();
         const { id } = active.operation;

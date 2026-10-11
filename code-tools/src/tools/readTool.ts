@@ -36,8 +36,8 @@ function lineOffsets(content: string): number[] {
 }
 
 /**
- * Whole lines from `startLine`, as many as fit into `maxChars`. A first line that alone is
- * longer is cut, so a read always makes progress.
+ * Whole lines from `startLine`, as many as fit into `maxChars`. Reject an unpageable
+ * line instead of silently discarding its suffix when advancing to the next line.
  */
 export function sliceLines(content: string, { startLine, lineCount }: LineRange, maxChars: number, offsets = lineOffsets(content)) {
     const totalLines = offsets.length - 1;
@@ -54,19 +54,19 @@ export function sliceLines(content: string, { startLine, lineCount }: LineRange,
         endLine += 1;
     }
 
-    const isLineCut = endLine < startLine && lastRequestedLine >= startLine;
-    const text = isLineCut
-        ? content.slice(start, start + maxChars)
-        : content.slice(start, offsets[endLine] ?? start);
-    const shownEndLine = isLineCut ? startLine : endLine;
+    if (endLine < startLine && lastRequestedLine >= startLine) {
+        throw new ToolError('command_failed', `Line ${startLine} exceeds the ${maxChars}-character page; use code-run with head, tail or sed to inspect it`);
+    }
+
+    const text = content.slice(start, offsets[endLine] ?? start);
 
     return {
         totalLines,
         startLine,
-        endLine: shownEndLine,
+        endLine,
         content: text,
-        truncated: shownEndLine < lastRequestedLine || isLineCut,
-        ...shownEndLine < totalLines && { nextStartLine: shownEndLine + 1 },
+        truncated: endLine < lastRequestedLine,
+        ...endLine < totalLines && { nextStartLine: endLine + 1 },
     };
 }
 
@@ -135,14 +135,14 @@ export async function readTool(config: CodeToolsConfig, input: unknown) {
     ] of paths.entries()) {
         await operationCheckpoint();
         const isFirstRead = files.length === 0;
-        const maxChars = isFirstRead ? READ_LIMITS.maxCharsPerFile : Math.min(READ_LIMITS.maxCharsPerFile, budget);
+        const maxChars = READ_LIMITS.maxCharsPerFile;
 
         try {
             const file = await readOneFile(project, normalizeProjectPath(requestedPath, 'paths'), range, maxChars);
 
-            // A file that would be cut only because this response is almost full is read
-            // whole in the next call instead.
-            if (!isFirstRead && file.truncated && maxChars < READ_LIMITS.maxCharsPerFile) {
+            // Defer a file that only exceeds the remaining aggregate response budget;
+            // its own page is still valid and must not be mistaken for an overlong line.
+            if (!isFirstRead && file.content.length > budget) {
                 remainingPaths = paths.slice(index);
                 break;
             }

@@ -1,29 +1,38 @@
 import { createTwoFilesPatch } from 'diff';
 
-const MAX_DIFF_CHARS = 20_000;
-const CONTEXT_LINES = 3;
+export const FILE_DIFF_OPTIONS = {
+    maxDiffChars: 20_000,
+    contextLines: 3,
+};
 
 export type FileDiff = {
     diff: string;
     diffTruncated: boolean;
 };
 
-/**
- * The unified diff of a whole file, so the user sees exactly what a write changed on disk.
- * `before` is `''` for a new file.
- */
-export function createFileDiff(path: string, before: string, after: string): FileDiff {
-    const patch = createTwoFilesPatch(`a/${path}`, `b/${path}`, before, after, undefined, undefined, { context: CONTEXT_LINES })
-        // jsdiff starts every patch with a line of "=" signs, which is noise in a chat.
+/** Pure formatting core, also serialized into the disposable diff worker. No closures. */
+export function buildFileDiff(
+    createPatch: typeof createTwoFilesPatch,
+    input: { path: string; before: string; after: string },
+    options: typeof FILE_DIFF_OPTIONS
+): FileDiff {
+    const {
+        path, before, after,
+    } = input;
+    const patch = createPatch(`a/${path}`, `b/${path}`, before, after, undefined, undefined, { context: options.contextLines })
         .replace(/^=+\n/, '');
 
-    return patch.length > MAX_DIFF_CHARS
-        ? {
-            diff: patch.slice(0, MAX_DIFF_CHARS),
-            diffTruncated: true,
-        }
-        : {
-            diff: patch,
-            diffTruncated: false,
-        };
+    return {
+        diff: patch.slice(0, options.maxDiffChars),
+        diffTruncated: patch.length > options.maxDiffChars,
+    };
+}
+
+/** The unified diff of a whole file. `before` is empty for a new file. */
+export function createFileDiff(path: string, before: string, after: string): FileDiff {
+    return buildFileDiff(createTwoFilesPatch, {
+        path,
+        before,
+        after,
+    }, FILE_DIFF_OPTIONS);
 }
