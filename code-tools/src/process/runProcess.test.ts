@@ -56,6 +56,45 @@ describe('runProcess', () => {
         expect(result.durationMs).toBeLessThan(5000);
     });
 
+    it('does not spawn when already aborted', async () => {
+        const controller = new AbortController();
+        const reason = new Error('cancelled');
+
+        controller.abort(reason);
+        await expect(runProcess('missing-executable', [], {
+            cwd: tmpdir(),
+            signal: controller.signal,
+            maxOutputChars: 100,
+        })).rejects.toBe(reason);
+    });
+
+    it('escalates cancellation for the whole process group and waits for stream cleanup', async () => {
+        const controller = new AbortController();
+        const reason = new Error('cancelled');
+        const started = performance.now();
+        const streams: string[] = [];
+        const result = runProcess('bash', [
+            '-c',
+            'trap \'\' TERM; (trap \'\' TERM; sleep 30) & echo ready; echo diagnostic >&2; wait',
+        ], {
+            cwd: tmpdir(),
+            signal: controller.signal,
+            maxOutputChars: 1000,
+            onOutput: (stream, text) => {
+                streams.push(stream);
+                if (text.includes('ready')) {
+                    controller.abort(reason);
+                }
+            },
+        });
+
+        await expect(result).rejects.toBe(reason);
+        expect(performance.now() - started).toBeGreaterThanOrEqual(900);
+        expect(performance.now() - started).toBeLessThan(4000);
+        expect(streams).toContain('stdout');
+        expect(streams).toContain('stderr');
+    });
+
     it('does not wait for input', async () => {
         const result = await bash('read line; echo "got:$line"');
 

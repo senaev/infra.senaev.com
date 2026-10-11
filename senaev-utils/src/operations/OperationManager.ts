@@ -3,9 +3,9 @@ import { createHash, randomUUID } from 'node:crypto';
 import { ToolError, invalidArguments } from '../toolServer/ToolError';
 
 import { scheduleDeadline, withOperationContext } from './operationContext';
+import { DEFAULT_TIMEOUT_SECONDS, OBSERVATION_MS } from './operationLimits';
 
-export const OBSERVATION_MS = 5000;
-export const DEFAULT_TIMEOUT_SECONDS = 60;
+export { DEFAULT_TIMEOUT_SECONDS, OBSERVATION_MS } from './operationLimits';
 const MAX_LOG_CHARS = 128_000;
 const PAGE_CHARS = 30_000;
 const MAX_RESULT_CHARS = 1_000_000;

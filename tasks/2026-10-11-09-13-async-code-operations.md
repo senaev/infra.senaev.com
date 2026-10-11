@@ -180,8 +180,10 @@ Merged PR #62 into main (58108bd) with the gradual activation requirement. Local
 ### 2026-10-11 10:53 UTC — Stage 1 verified after deployment
 
 
-Removed all operation-state filesystem imports, persistence/recovery methods and log-flush timers. Retained bounded process-local records, replayable cursors, result paging, queue limits, deadlines and cancellation. Close discards queued callbacks, cooperatively aborts active execution and clears retained records. Updated tests for fresh-instance loss of IDs/deduplication, backend isolation, shutdown and retention. Targeted manager suite: 12 passed. Full npm run simple-checks: all six checks passed; 133 test files and 1,106 tests passed. Separate branch: refactor/in-memory-operations. Canary activation remains deferred until this stage is merged and deployment verified.
 
-### 2026-10-11 11:06 UTC — Reduce retained memory toward 256 MiB
+### 2026-10-11 11:34 UTC — Stage 2: projects canary and authenticated controls
 
-The owner requested a roughly 256 MiB retained-data target without introducing additional limits. Reduced the existing result quota from 4,000,000 to 1,000,000 JSON characters per operation; kept 100 terminal records, 128,000 log characters, seven-day retention and one active/five waiting operations. Store completed results as JSON strings to avoid unbounded object-graph overhead in retained records and parse only when returning a small result or the initial final reply. Estimated retained text: about 215 MiB at two bytes per character, plus metadata and transient response overhead. This does not bound Node process RSS or memory used by executing handlers. Targeted manager suite: 13 tests passed, including the exact result boundary, rejection above it and snapshot independence from later mutation.
+
+### 2026-10-11 11:36 UTC — Stage 2 full validation
+
+Full npm run simple-checks passed: lint, TypeScript for all packages, tests, Python, shell and Helm checks all exited 0. Test output: "Test Files 137 passed (137)" and "Tests 1125 passed (1125)". No skipped tests or hook bypass. The new managed contracts are exposed only for projects; run/read/write/patch and all Obsidian tools retain direct execution. Next: commit/push this branch and open its separate PR. Do not expand the allowlist until this PR is merged, its deployment passes and the actual connector is exercised.

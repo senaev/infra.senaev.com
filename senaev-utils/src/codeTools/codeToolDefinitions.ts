@@ -1,4 +1,7 @@
 import {
+    MANAGED_TOOL_DESCRIPTION, MANAGED_TOOL_PROPERTIES, OPERATION_TOOL_DEFINITIONS,
+} from '../operations/operationToolDefinitions';
+import {
     formatNumber,
     getToolArgumentKeys,
     pagingProperties,
@@ -62,10 +65,11 @@ const projects: ToolDefinition = {
         'Lists the code projects on the owner\'s server: one git repository per project, with its current branch,',
         'the number of changed files, the "origin" remote and whether it has an AGENTS.md.',
         'Start here to find the project name for the other code tools. To add a project, use code-clone.',
+        MANAGED_TOOL_DESCRIPTION,
     ].join(' '),
     inputSchema: {
         type: 'object',
-        properties: {},
+        properties: MANAGED_TOOL_PROPERTIES,
         additionalProperties: false,
     },
     annotations: READ_ONLY_ANNOTATIONS,
@@ -385,3 +389,16 @@ export function isCodeToolName(name: unknown): name is CodeToolName {
 export function getCodeToolArgumentKeys(name: CodeToolName): string[] {
     return getToolArgumentKeys(CODE_TOOL_DEFINITIONS[name]);
 }
+
+/** Stage 2 canary allowlist. Other domain tools keep their direct execution path. */
+export const MANAGED_CODE_TOOL_NAMES: readonly CodeToolName[] = ['projects'];
+
+export function isManagedCodeToolName(name: string): boolean {
+    return MANAGED_CODE_TOOL_NAMES.some((tool) => tool === name);
+}
+
+/** Control tools are separate from domain handlers and always bypass the FIFO queue. */
+export const CODE_MCP_TOOL_DEFINITIONS = {
+    ...CODE_TOOL_DEFINITIONS,
+    ...OPERATION_TOOL_DEFINITIONS,
+};
