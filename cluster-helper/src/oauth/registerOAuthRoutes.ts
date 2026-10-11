@@ -4,9 +4,11 @@ import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 
 import type { AuthorizationServer, AuthorizeOutcome } from './authorizationServer';
-import { renderAuthorizationError, renderLoginPage } from './renderLoginPage';
+import {
+    renderAuthorizationError, renderAuthorizationSuccess, renderLoginPage,
+} from './renderLoginPage';
 
-// Redirects after a form post are checked against form-action too, so ChatGPT must be in it.
+// Keep the form policy restrictive; successful authorization uses a normal link.
 const LOGIN_PAGE_CSP = [
     'default-src \'none\'',
     'style-src \'unsafe-inline\'',
@@ -29,7 +31,7 @@ function sendAuthorizationError(reply: FastifyReply, status: number, message: st
 }
 
 function sendAuthorizeOutcome(reply: FastifyReply, outcome: AuthorizeOutcome) {
-    reply.header('Cache-Control', 'no-store');
+    reply.header('Cache-Control', 'no-store').header('Referrer-Policy', 'no-referrer');
 
     if (outcome.kind === 'redirect') {
         const redirect = new URL(outcome.location);
@@ -38,7 +40,11 @@ function sendAuthorizeOutcome(reply: FastifyReply, outcome: AuthorizeOutcome) {
             return sendAuthorizationError(reply, 400, redirect.searchParams.get('error_description') ?? 'The authorization request is invalid.', outcome.location);
         }
 
-        return reply.redirect(outcome.location, 302);
+        return reply.code(200)
+            .header('Content-Security-Policy', LOGIN_PAGE_CSP)
+            .header('X-Frame-Options', 'DENY')
+            .type('text/html')
+            .send(renderAuthorizationSuccess(outcome.location));
     }
 
     if (outcome.kind === 'reject') {
