@@ -1,12 +1,21 @@
-import { chmod } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 
 import {
-    afterEach, describe, expect, it,
+    afterEach, describe, expect, it, vi,
 } from 'vitest';
 
 import { createTestVault, type TestVault } from '../createTestVault';
 
 import { searchTool } from './searchTool';
+
+vi.mock('node:fs/promises', async (importOriginal) => {
+    const original = await importOriginal<typeof import('node:fs/promises')>();
+
+    return {
+        ...original,
+        readFile: vi.fn(original.readFile),
+    };
+});
 
 let vault: TestVault | undefined;
 
@@ -17,6 +26,7 @@ async function vaultWith(files: Record<string, string>): Promise<TestVault> {
 }
 
 afterEach(async () => {
+    vi.resetAllMocks();
     await vault?.remove();
     vault = undefined;
 });
@@ -224,18 +234,27 @@ describe('searchTool', () => {
         ]);
     });
 
-    // chmod 000 does not stop root, e.g. in the opencode-serve container.
-    it.skipIf(process.getuid?.() === 0)('reports unreadable files and marks the scan incomplete', async () => {
+    it('reports unreadable files and marks the scan incomplete', async () => {
         const { config, path } = await vaultWith({
             'ok.md': 'word',
             'locked.md': 'word',
         });
 
-        await chmod(path('locked.md'), 0o000);
+        const original = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
+        const deniedPath = path('locked.md');
+        const readError = Object.assign(new Error(`EACCES: permission denied, open '${deniedPath}'`), {
+            code: 'EACCES',
+        });
+
+        vi.mocked(readFile).mockImplementation((...args) => {
+            if (args[0] === deniedPath) {
+                return Promise.reject(readError);
+            }
+
+            return original.readFile(...args);
+        });
 
         const result = await searchTool(config, { queries: ['word'] });
-
-        await chmod(path('locked.md'), 0o644);
 
         expect(result).toMatchObject({
             scannedFiles: 2,

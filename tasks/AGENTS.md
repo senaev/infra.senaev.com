@@ -1,7 +1,7 @@
 # AGENTS.md — tasks/
 
-Each file is the working log of one task: a feature, a change, a migration, an incident,
-or an investigation. The file is the source of truth; the chat is ephemeral.
+Create a task file only at the user's explicit request. Each file is the working log
+of that task; append progress and results using the structure below.
 
 ## File naming
 
