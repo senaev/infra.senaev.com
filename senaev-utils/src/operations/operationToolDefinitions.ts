@@ -7,6 +7,14 @@ import { invalidArguments } from '../toolServer/ToolError';
 import { DEFAULT_TIMEOUT_SECONDS, OBSERVATION_MS } from './operationLimits';
 
 export const MANAGED_TOOL_PROPERTIES = {
+    executionPolicy: {
+        type: 'string',
+        enum: [
+            'queued',
+            'parallel',
+        ],
+        description: 'Default: queued (one running, five waiting). parallel starts immediately outside FIFO, with no additional concurrency limit. Both policies use the same observation, timeout, cancellation and retry contract. Parallel work may observe intermediate filesystem state or race with mutations.',
+    },
     timeoutSeconds: {
         type: 'integer',
         minimum: 1,
@@ -22,7 +30,8 @@ export const MANAGED_TOOL_PROPERTIES = {
 
 export const MANAGED_TOOL_DESCRIPTION = [
     `If idle, starts execution and observes for up to ${OBSERVATION_MS / 1000} seconds: returns the final result/error or an operation handle.`,
-    'If busy, immediately returns a queued handle; one operation runs and at most five wait. QUEUE_FULL means no operation was admitted.',
+    'executionPolicy defaults to queued: if busy, immediately returns a queued handle; one FIFO operation runs and at most five wait. QUEUE_FULL means no operation was admitted.',
+    'executionPolicy parallel starts independently of FIFO and observes for up to 5 seconds, without an additional concurrency limit. It does not guarantee a consistent filesystem snapshot or serialize conflicting mutations.',
     'An accepted handle is not completion. Poll code-operation_status, then code-operation_result; wait for completed before dependent commands.',
     'Use code-operation_cancel to stop queued or running work. timeoutSeconds defaults to 60 and excludes queue waiting; it has no API maximum.',
     'Operations and requestId deduplication live only in memory. Restart loses IDs, logs, results and queued work; old IDs return not_found and work is never replayed.',

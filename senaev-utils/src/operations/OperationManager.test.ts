@@ -44,6 +44,183 @@ async function waitFor(check: () => Promise<boolean>) {
 }
 
 describe('OperationManager', () => {
+    it('bypasses a full FIFO without a parallel cap and preserves retries and cleanup', async () => {
+        const { manager } = createManager();
+        const gates: { resolve: (value: Record<string, unknown>) => void }[] = [];
+        const start = (args: Record<string, unknown>) => {
+            const gate = deferred<Record<string, unknown>>();
+
+            gates.push(gate);
+
+            return manager.launch({
+                tool: 'run',
+                args,
+                run: () => gate.promise,
+            });
+        };
+        const fifo = start({ requestId: 'fifo' });
+
+        await waitFor(async () => ((await manager.control('operations', {})).operations as unknown[]).length === 1);
+        for (let index = 0; index < 5; index++) {
+            await manager.launch({
+                tool: 'list',
+                args: {},
+                run: () => Promise.resolve({}),
+            });
+        }
+
+        const fast = await manager.launch({
+            tool: 'search',
+            args: {
+                executionPolicy: 'parallel',
+                requestId: 'fast',
+            },
+            run: () => Promise.resolve({ value: 42 }),
+        });
+
+        expect(fast).toMatchObject({
+            value: 42,
+            operation: {
+                executionPolicy: 'parallel',
+                state: 'completed',
+            },
+        });
+        const launches = Array.from({ length: 4 }, (_, index) => start({
+            executionPolicy: 'parallel',
+            requestId: `parallel-${index}`,
+        }));
+
+        await waitFor(async () => ((await manager.control('operations', {})).operations as unknown[]).length === 11);
+        const all = (await manager.control('operations', {})).operations as { id: string; executionPolicy: string; state: string }[];
+        const parallel = all.filter((entry) => entry.executionPolicy === 'parallel' && entry.state === 'running');
+
+        expect(parallel).toHaveLength(4);
+        const run = vi.fn(() => Promise.resolve({}));
+
+        expect(await manager.launch({
+            tool: 'run',
+            args: { executionPolicy: 'parallel' },
+            run,
+        }))
+            .toMatchObject({ operation: { state: 'completed' } });
+        const retry = await manager.launch({
+            tool: 'run',
+            args: {
+                executionPolicy: 'parallel',
+                requestId: 'parallel-0',
+            },
+            run,
+        });
+
+        expect(retry.operation).toMatchObject({ id: parallel[3]?.id });
+        await expect(manager.launch({
+            tool: 'run',
+            args: {
+                executionPolicy: 'queued',
+                requestId: 'parallel-0',
+            },
+            run,
+        })).rejects.toMatchObject({ code: 'conflict' });
+        const cancelledId = parallel[0]?.id;
+
+        await manager.control('operation_cancel', { id: cancelledId });
+        expect(await manager.launch({
+            tool: 'run',
+            args: { executionPolicy: 'parallel' },
+            run,
+        }))
+            .toMatchObject({ operation: { state: 'completed' } });
+        expect(run).toHaveBeenCalledTimes(2);
+        for (const gate of gates.slice(1)) {
+            gate.resolve({});
+        }
+
+        await Promise.all(launches);
+        await waitFor(async () => {
+            const result = await manager.control('operation_status', { id: cancelledId });
+
+            return (result.operation as { state: string }).state === 'cancelled';
+        });
+        expect(await manager.launch({
+            tool: 'list',
+            args: { executionPolicy: 'parallel' },
+            run,
+        }))
+            .toMatchObject({ operation: { state: 'completed' } });
+        expect((await manager.control('operations', {})).operations)
+            .toEqual(expect.arrayContaining([
+                expect.objectContaining({
+                    executionPolicy: 'queued',
+                    state: 'running',
+                }),
+            ]));
+        gates[0]?.resolve({});
+        await fifo;
+        await manager.close();
+    });
+
+    it('validates policy, times out parallel work and interrupts every policy on close', async () => {
+        const { manager } = createManager();
+        const run = vi.fn(() => Promise.resolve({}));
+
+        for (const executionPolicy of [
+            'sync',
+            null,
+            1,
+        ]) {
+            await expect(manager.launch({
+                tool: 'read',
+                args: { executionPolicy },
+                run,
+            }))
+                .rejects.toMatchObject({ code: 'invalid_arguments' });
+        }
+
+        expect(run).not.toHaveBeenCalled();
+        const abortable = () => new Promise<Record<string, unknown>>((resolve) => {
+            operationContext()?.signal.addEventListener('abort', () => resolve({}), { once: true });
+        });
+        const timeout = await manager.launch({
+            tool: 'run',
+            args: {
+                executionPolicy: 'parallel',
+                timeoutSeconds: 1,
+            },
+            run: abortable,
+        });
+
+        expect(timeout.operation).toMatchObject({
+            state: 'timed_out',
+            executionPolicy: 'parallel',
+        });
+        const launches = [
+            manager.launch({
+                tool: 'run',
+                args: {},
+                run: abortable,
+            }),
+            manager.launch({
+                tool: 'run',
+                args: { executionPolicy: 'parallel' },
+                run: abortable,
+            }),
+            manager.launch({
+                tool: 'run',
+                args: { executionPolicy: 'parallel' },
+                run: abortable,
+            }),
+        ];
+
+        await waitFor(async () => ((await manager.control('operations', {})).operations as { state: string }[])
+            .filter((entry) => entry.state === 'running').length === 3);
+        await manager.close();
+        for (const reply of await Promise.all(launches)) {
+            expect(reply.operation).toMatchObject({ state: 'interrupted' });
+        }
+
+        expect((await manager.control('operations', {})).operations).toEqual([]);
+    });
+
     it('returns fast structured results, records failures and deduplicates retries', async () => {
         const { manager } = createManager();
         const run = vi.fn(() => Promise.resolve({ value: 42 }));

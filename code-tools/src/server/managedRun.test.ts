@@ -96,6 +96,27 @@ describe('managed shell execution', () => {
             id,
             cursor: status.nextCursor,
         })).json<Reply>().logs).toEqual([]);
+        const parallelArgs = {
+            executionPolicy: 'parallel',
+            requestId: 'parallel-once',
+        };
+        const parallel = (await run('echo independent', parallelArgs)).json<Reply>();
+
+        expect(parallel).toMatchObject({
+            stdout: 'independent\n',
+            operation: {
+                executionPolicy: 'parallel',
+                state: 'completed',
+            },
+        });
+        expect((await run('echo independent', parallelArgs)).json<Reply>()).toEqual(parallel);
+        expect((await run('echo independent', {
+            ...parallelArgs,
+            executionPolicy: 'queued',
+        })).statusCode).toBe(409);
+        expect((await call('operation_result', { id: parallel.operation.id })).json<Reply>())
+            .toMatchObject({ result: { stdout: 'independent\n' } });
+        expect((await call('operation_status', { id })).json<Reply>().operation.state).toBe('running');
         const queued = (await run('echo should-not-run > forbidden', { timeoutSeconds: 1 })).json<Reply>();
 
         expect(queued.operation.state).toBe('queued');
