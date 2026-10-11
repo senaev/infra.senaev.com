@@ -22,7 +22,7 @@ Replace the blocking long-command workflow in the existing Code Tools MCP with m
 - In `sync`, wait for the terminal result within the execution timeout.
 - In `auto`, wait up to a fixed 5 seconds: return the final result if finished, otherwise return the operation ID and current state. The process continues after that response.
 - The observation wait is fixed at 5 seconds and is not configurable through tool arguments. Do not expose `waitSeconds` or another equivalent override. A follow-up observation may wait up to the same fixed 5 seconds for new output or a state change, returning sooner when either occurs.
-- `timeoutSeconds` remains configurable by ChatGPT, defaults to 60 seconds, and limits actual execution independently of mode, observation calls or client connectivity. Specify a finite server-enforced maximum during implementation.
+- `timeoutSeconds` is optional and accepts a positive integer number of seconds with no product-defined maximum. When omitted, there is no execution timeout. When supplied, the server enforces the deadline independently of mode, observation calls or client connectivity. Apply this contract to both run and clone; remove their existing default and maximum runtime limits. Handle long durations using deadline-based/chunked timers so the platform timer range cannot cause an early timeout.
 - On execution timeout or cancellation, stop the whole process group; preserve logs and report the reason. Prefer SIGTERM followed by SIGKILL after a bounded grace period. Define whether the grace period is additional to the runtime limit.
 - No PTY, interactive terminal sessions or stdin interaction in this iteration.
 - No second LLM, coding agent or model API key is required.
@@ -60,7 +60,7 @@ Push notifications are optional follow-up work, gated on confirmed client suppor
 ## Questions and clarifications
 
 - Final operation tool names and schemas; whether observation combines status, logs and result in one response.
-- Maximum execution timeout, termination grace period, log quotas, retention and global concurrency limit.
+- Termination grace period, log quotas, retention and global concurrency limit. No default execution timeout or product-defined maximum is to be introduced.
 - Persistent state directory and restart reconciliation details.
 - Whether a Node timer is sufficient or an independent watchdog is required.
 - Which native MCP Tasks revision, if any, the deployed ChatGPT client supports. Older 2025-11-25 Tasks and the current Tasks extension have different contracts.
@@ -90,7 +90,7 @@ These are design references, not adopted dependencies or proof of ChatGPT client
 
 - Short auto command returns its final result; long auto command returns an ID within the fixed 5-second observation window plus bounded overhead.
 - Async returns a launch acknowledgement without waiting for completion; sync returns the final result.
-- Default 60-second execution timeout terminates a hung command without any observation calls. A longer explicit timeout works within the server maximum. Cancel and timeout kill descendant processes and preserve partial logs.
+- Omitted timeout permits continued execution without an implicit deadline. An explicit timeout terminates a hung command without any observation calls. Values above the old 300-second limit, including 10800 seconds (3 hours), are accepted. Test long deadlines without waiting in real time and ensure platform timer overflow cannot produce immediate termination. Cancel and timeout kill descendant processes and preserve partial logs.
 - Invalid launch, fast nonzero exit, successful completion, timeout, cancellation and interruption remain distinguishable.
 - Poll while running, read new output by cursor and replay the same cursor; verify bounded output and retained stderr for fast failures.
 - Disconnect and reconnect the client; verify retrieval with the same ID and owner-scoped discovery in a new chat.
@@ -103,4 +103,8 @@ These are design references, not adopted dependencies or proof of ChatGPT client
 
 ### 2026-10-11 09:13 UTC — Prepare design for owner review
 
-Inspected the current execution and proxy code and reviewed primary-source async MCP and command-tool patterns. The owner confirmed mode selection, a configurable execution timeout with a 60-second default, a fixed non-configurable 5-second observation wait, and no PTY. Created this file at the owner's explicit request. This branch contains documentation only; implementation has not started.
+Inspected the current execution and proxy code and reviewed primary-source async MCP and command-tool patterns. The owner confirmed mode selection, a fixed non-configurable 5-second observation wait, and no PTY. The initially discussed 60-second execution default was superseded by the clarification below. Created this file at the owner's explicit request. This branch contains documentation only; implementation has not started.
+
+### 2026-10-11 09:16 UTC — Clarify execution timeout
+
+The owner explicitly replaced the timeout defaults and maximum: timeoutSeconds is optional, with no product-defined maximum; omission means no execution deadline. This applies to both run and clone. The fixed 5-second observation wait remains unchanged. Existing code currently uses 60 seconds by default and a 300-second maximum for run, and a fixed 300 seconds for clone. These are current-state facts, not requirements for the new API.
