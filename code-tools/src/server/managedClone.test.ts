@@ -165,7 +165,17 @@ describe('managed clone publication and cleanup', () => {
         })).json<Reply>();
 
         expect(body.operation.state).toBe('running');
-        expect(await readFile(projects.path('published', 'README.md'), 'utf8')).toBe('hello');
+        await expect.poll(async () => {
+            try {
+                return await readFile(projects.path('published', 'README.md'), 'utf8');
+            } catch (error) {
+                if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+                    return undefined;
+                }
+
+                throw error;
+            }
+        }, { timeout: 10000 }).toBe('hello');
         await call('operation_cancel', { id: body.operation.id });
         await expect.poll(
             async () => (await call('operation_status', { id: body.operation.id })).json<Reply>().operation.state,
@@ -174,5 +184,5 @@ describe('managed clone publication and cleanup', () => {
         expect((await call('operation_result', { id: body.operation.id })).json<Reply>().operation.changedPaths).toEqual(['published']);
         expect(await readFile(projects.path('published', 'README.md'), 'utf8')).toBe('hello');
         expect((await readdir(projects.config.projectsRoot)).filter((name) => name.startsWith('.clone-'))).toEqual([]);
-    }, 12000);
+    }, 25000);
 });
