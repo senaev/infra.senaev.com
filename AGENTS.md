@@ -6,12 +6,13 @@ This file provides guidance to any AI coding agent working with this repository.
 
 Personal infrastructure for `infra.senaev.com` — a distributed K3s cluster across multiple VPS providers, managed via Terraform, Helm, and shell scripts. Includes custom microservices and media server automation.
 
-## Tasks
+## Task flow
 
-Every task (feature, change, incident, investigation) has a working log in [`tasks/`](tasks/),
-one file per task: `YYYY-MM-DD-HH-mm-<short-slug>.md`, using the file creation date and
-24-hour time in UTC. Existing task filenames stay unchanged. The file is the source of
-truth: append findings under `## Findings` as you go. See [`tasks/AGENTS.md`](tasks/AGENTS.md).
+Create a task file only when the user explicitly asks for one, not automatically for
+each request or command. Store it in [`tasks/`](tasks/) as
+`YYYY-MM-DD-HH-mm-<short-slug>.md`, using the UTC creation date and time.
+Keep existing filenames unchanged. Follow [`tasks/AGENTS.md`](tasks/AGENTS.md)
+to maintain the task's working log.
 
 ## Git discipline
 
