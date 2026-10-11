@@ -6,9 +6,11 @@ export type ToolErrorCode =
     | 'already_exists'
     | 'conflict'
     | 'ambiguous'
-    | 'command_failed';
+    | 'command_failed'
+    | 'QUEUE_FULL';
 
 const HTTP_STATUS_BY_CODE: Record<ToolErrorCode, number> = {
+    QUEUE_FULL: 429,
     invalid_arguments: 400,
     unknown_tool: 404,
     forbidden_path: 403,
