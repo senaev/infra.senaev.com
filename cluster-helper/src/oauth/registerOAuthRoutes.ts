@@ -4,7 +4,7 @@ import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 
 import type { AuthorizationServer, AuthorizeOutcome } from './authorizationServer';
-import { renderLoginPage } from './renderLoginPage';
+import { renderAuthorizationError, renderLoginPage } from './renderLoginPage';
 
 // Redirects after a form post are checked against form-action too, so ChatGPT must be in it.
 const LOGIN_PAGE_CSP = [
@@ -19,15 +19,30 @@ function asParams(value: unknown): Record<string, unknown> {
     return isObject(value) ? value : {};
 }
 
+function sendAuthorizationError(reply: FastifyReply, status: number, message: string, continueUrl?: string) {
+    return reply.code(status)
+        .header('Cache-Control', 'no-store')
+        .header('Content-Security-Policy', LOGIN_PAGE_CSP)
+        .header('X-Frame-Options', 'DENY')
+        .type('text/html')
+        .send(renderAuthorizationError(message, reply.request.id, continueUrl));
+}
+
 function sendAuthorizeOutcome(reply: FastifyReply, outcome: AuthorizeOutcome) {
     reply.header('Cache-Control', 'no-store');
 
     if (outcome.kind === 'redirect') {
+        const redirect = new URL(outcome.location);
+
+        if (redirect.searchParams.has('error')) {
+            return sendAuthorizationError(reply, 400, redirect.searchParams.get('error_description') ?? 'The authorization request is invalid.', outcome.location);
+        }
+
         return reply.redirect(outcome.location, 302);
     }
 
     if (outcome.kind === 'reject') {
-        return reply.code(400).type('text/plain').send(outcome.message);
+        return sendAuthorizationError(reply, 400, outcome.message);
     }
 
     return reply
@@ -62,6 +77,32 @@ export const oauthRoutes: FastifyPluginAsync<OAuthRoutesOptions> = async (instan
 
     const onAuthDomain = { constraints: { host: authDomain } };
     const onMcpDomain = { constraints: { host: mcpDomain } };
+
+    // Scoped to this plugin: token errors retain their JSON protocol response.
+    instance.setErrorHandler((error, request, reply) => {
+        if (request.hostname !== authDomain || request.routeOptions.url !== '/authorize') {
+            return reply.send(error);
+        }
+
+        const status = isObject(error) && typeof error.statusCode === 'number' && error.statusCode >= 400 && error.statusCode <= 599
+            ? error.statusCode
+            : 500;
+        let message = 'The sign-in request could not be read. Return to ChatGPT and start the connection again.';
+
+        if (status === 429) {
+            message = 'Too many sign-in attempts. Wait 15 minutes before trying again.';
+        } else if (status >= 500) {
+            message = 'Sign-in is temporarily unavailable. Please try again later.';
+        }
+
+        // Only safe identifiers: errors may include sensitive request data.
+        request.log.warn({
+            requestId: request.id,
+            statusCode: status,
+        }, 'OAuth authorization request failed');
+
+        return sendAuthorizationError(reply, status, message);
+    });
 
     instance.get('/.well-known/oauth-authorization-server', onAuthDomain, (_request, reply) => reply.send(authorizationServer.authorizationServerMetadata()));
 
