@@ -247,3 +247,7 @@ Created feat/async-code-run from verified main. Expanded only the shared managed
 Retain the manager's existing classification: nonzero shell exitCode is a normal command result (status ok, stdout/stderr/exitCode retained) with terminal operation state failed; exceptions also become failed, cancellation/deadline become cancelled/timed_out. Updated tool description accordingly. Initial integration test exposed this existing classification and was corrected without changing manager semantics.
 
 Targeted suite passed: six files, 38 tests. Real subprocess tests cover streaming/replay cursors, one mutation despite duplicate requestId, conflicting retries, queued cancellation without execution, TERM-resistant group termination, slot held for cleanup, shared projects/run queue, runtime expiry without polling, recovery after expiry, output limits and invalid parameters. Added direct long-deadline overflow regression. Full validation pending pre-push. After merge/deploy, test real MCP fast/slow run, polling/result, cancel/timeout and repair access before expanding further.
+
+### 2026-10-11 12:59 UTC — Stage 3 validation
+
+Full pre-push validation passed: ESLint, TypeScript, 138 Vitest files / 1134 tests, Helm, shell and Python checks. The first full run exposed an outdated projects-only contract assertion; it now verifies both managed tools and keeps repair tools outside the queue. Branch feat/async-code-run is pushed. Live code-run checks are reserved for after merge and deployment.
