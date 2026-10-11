@@ -12,6 +12,8 @@ const MAX_RESULT_CHARS = 1_000_000;
 const MAX_RECORDS = 100;
 const RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 
+export type ExecutionPolicy = 'queued' | 'parallel';
+
 type State = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled' | 'timed_out' | 'interrupted';
 
 type LogEntry = { cursor: number; stream: 'stdout' | 'stderr'; text: string };
@@ -26,6 +28,7 @@ type RecordData = {
     startedAt?: number;
     updatedAt: number;
     timeoutSeconds: number;
+    executionPolicy: ExecutionPolicy;
     resultJson?: string;
     changedPaths: string[];
     logs: LogEntry[];
@@ -72,11 +75,12 @@ export function executionTimeout(value: unknown): number {
     return value;
 }
 
-/** Single backend executor. Admission is serialized; state lives only in memory; control calls bypass FIFO. */
+/** Backend executor with FIFO and independent parallel admission. Admission is serialized; state lives only in memory; control calls bypass FIFO. */
 export class OperationManager {
     private readonly entries = new Map<string, Entry>();
     private readonly queue: Entry[] = [];
     private active: Entry | undefined;
+    private readonly parallel = new Set<Entry>();
     private lock: Promise<void> = Promise.resolve();
     private closing = false;
 
@@ -108,6 +112,12 @@ export class OperationManager {
             tool, args, run,
         } = options;
         const timeoutSeconds = executionTimeout(args.timeoutSeconds);
+        const executionPolicy = args.executionPolicy === undefined ? 'queued' : args.executionPolicy;
+
+        if (executionPolicy !== 'queued' && executionPolicy !== 'parallel') {
+            throw invalidArguments('executionPolicy must be queued or parallel');
+        }
+
         const { requestId } = args;
 
         if (requestId !== undefined && (typeof requestId !== 'string' || requestId.length === 0 || requestId.length > 200)) {
@@ -138,7 +148,7 @@ export class OperationManager {
                 }
             }
 
-            if (this.active !== undefined && this.queue.length >= 5) {
+            if (executionPolicy === 'queued' && this.active !== undefined && this.queue.length >= 5) {
                 throw new ToolError('QUEUE_FULL', 'Five operations are already waiting; retry after a slot is free');
             }
 
@@ -151,6 +161,7 @@ export class OperationManager {
                 queuedAt: Date.now(),
                 updatedAt: Date.now(),
                 timeoutSeconds,
+                executionPolicy,
                 changedPaths: [],
                 logs: [],
                 nextCursor: 0,
@@ -170,9 +181,12 @@ export class OperationManager {
             };
 
             this.entries.set(data.id, entry);
-            const observe = this.active === undefined;
+            const observe = executionPolicy === 'parallel' || this.active === undefined;
 
-            if (observe) {
+            if (executionPolicy === 'parallel') {
+                this.parallel.add(entry);
+                void this.execute(entry);
+            } else if (observe) {
                 this.active = entry;
                 void this.execute(entry);
             } else {
@@ -297,8 +311,16 @@ export class OperationManager {
             entry.finish();
         }
 
-        this.active?.controller.abort(new Error('interrupted'));
-        await this.active?.done;
+        const running = [
+            ...this.parallel,
+            ...this.active !== undefined ? [this.active] : [],
+        ];
+
+        for (const entry of running) {
+            entry.controller.abort(new Error('interrupted'));
+        }
+
+        await Promise.all(running.map((entry) => entry.done));
         await this.lock;
         this.entries.clear();
     }
@@ -337,6 +359,7 @@ export class OperationManager {
             startedAt: data.startedAt ?? null,
             updatedAt: data.updatedAt,
             timeoutSeconds: data.timeoutSeconds,
+            executionPolicy: data.executionPolicy,
             changedPaths: data.changedPaths,
             pollAfterMs: terminal(data.state) ? 0 : 1000,
         };
@@ -406,8 +429,13 @@ export class OperationManager {
             entry.run = () => Promise.resolve({});
             entry.finish();
             await this.exclusive(() => {
-                this.active = undefined;
-                if (!this.closing) {
+                if (data.executionPolicy === 'parallel') {
+                    this.parallel.delete(entry);
+                } else {
+                    this.active = undefined;
+                }
+
+                if (data.executionPolicy === 'queued' && !this.closing) {
                     const next = this.queue.shift();
 
                     if (next !== undefined) {

@@ -21,6 +21,13 @@ describe('operation tool contracts', () => {
             const timeout = properties.timeoutSeconds;
 
             expect(properties).toHaveProperty('requestId');
+            expect(properties.executionPolicy).toMatchObject({
+                type: 'string',
+                enum: [
+                    'queued',
+                    'parallel',
+                ],
+            });
 
             expect(timeout).toMatchObject({
                 type: 'integer',

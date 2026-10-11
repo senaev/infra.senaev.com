@@ -273,3 +273,27 @@ The first pre-push run blocked publication: one generic test callback needed an 
 ### 2026-10-11 13:49 UTC — Stage 4 full validation passed
 
 All pre-push checks passed: lint, TypeScript, Python, shell, Helm and Vitest. Verbatim summary: "Test Files 139 passed (139)" and "Tests 1140 passed (1140)". Branch feat/async-code-search-list is pushed. This stage is ready for a separate review PR; live search/list verification remains the post-merge/deployment gate.
+
+### 2026-10-11 14:00 UTC — Stage 4 merged, deployed and verified through MCP
+
+Merged PR #70 into main as 8266177fc133f64217e98222fb278ce335fcce64; checkout is main. GitHub Check passed before merge; CodeRabbit was still pending. All six deployment workflows succeeded. Actual MCP calls verified fast search with preserved snippets and counts, no-match completion, a real 12-second list returning a running ID after 5.6 seconds, status logs, retained paged list results and a queued search completing after list. Cancelling that first search after it had already completed correctly retained completed. A second queued search cancelled before starting (startedAt null, no logs).
+
+An isolated fsmonitor fixture with TERM-resistant sleeps verified the real list default timeout: running operation code-f7310f76-bf79-4ba7-9f7f-f41322247293 reached timed_out after 61,006 ms including SIGKILL grace; no partial success result. A run queued for 15,309 ms with timeoutSeconds 1 then completed in 13 ms, confirming runtime excludes waiting and list releases its slot after cleanup. A separate running list cancelled and released the slot. Direct read remained available during long execution; fast list pagination returned the last entry and nextOffset null.
+
+Temporary /projects/git/mcp-list-stage4-20261011 was marker-guarded, removed after testing, and /proc showed no remaining fixture hook/sleep processes. Existing repositories and configuration unchanged. Public smoke output: "short-link: 302 https://senaev.com/cv/5min", "static: 200", "note: 200". Current chat catalogue still has the old list/search argument definitions; their new requestId/custom timeout fields need a catalogue refresh before live parameter-specific verification. These paths passed automated integration/schema tests before deployment.
+
+### 2026-10-11 14:12 UTC — Stage 4 catalogue gate completed; execution policy approved
+
+Refreshed ChatGPT schemas expose list/search requestId and timeoutSeconds with the expected asynchronous descriptions. Both accepted timeoutSeconds 10800; list returned 37 entries, search for MANAGED_CODE_TOOL_NAMES in senaev-utils/src returned 2 files / 5 matches. Identical retries returned identical IDs and results; operation_result snapshots matched; changing timeoutSeconds to 10799 with the same requestId returned code conflict for both. Stage 4 is complete. Preserved the pre-existing uncommitted deployment verification entry.
+
+The owner approved a universal executionPolicy queued|parallel parameter before clone migration. This supersedes the exclusive one-running-operation requirement: queued remains the default one-running/five-waiting FIFO; parallel has four independent running slots per backend and rejects saturation with PARALLEL_FULL without a record or hidden queue. Both use the same fixed five-second observation, IDs, controls, runtime-only deadlines and process-local retry contract. Parallel execution can observe intermediate filesystem state and does not serialize conflicting mutations. Cancellation retains either slot until cleanup; shutdown aborts and waits for all active operations. Activation remains limited to projects/run/list/search; repair tools and clone migrate in later separate stages. Separate branch: feat/operation-execution-policy.
+
+### 2026-10-11 14:14 UTC — Simplify parallel execution
+
+The owner rejected the additional parallel concurrency cap. This supersedes the four-slot proposal above: parallel starts immediately outside FIFO with no additional concurrency limit and no PARALLEL_FULL error. Keep the existing queued policy limits unchanged. Both policies retain the same observation, timeout, cancellation, result retention and requestId contract.
+
+### 2026-10-11 14:19 UTC — Execution policy implementation validated
+
+Implemented executionPolicy queued|parallel in the shared manager and managed tool schemas/descriptions. Default FIFO behaviour is unchanged; parallel launches immediately even when FIFO is full, with no new concurrency cap. Operation metadata reports the policy. Parallel completion cannot release or advance FIFO, cancellation retains cooperative cleanup semantics, and shutdown aborts/waits for every active operation.
+
+Tests cover full-FIFO bypass, more than four concurrent parallel admissions, retained retries, policy conflicts, invalid policy values, parallel timeout, cancellation, shutdown across both policies and authenticated HTTP execution/result retrieval during a long queued-policy run. Corrected explicit null policy validation and the existing exact schema-key assertion. Full npm run simple-checks: all six checks exited 0; "Test Files 139 passed (139)" and "Tests 1142 passed (1142)". git diff --check passed. Deployment/live connector verification remains the post-merge gate.
