@@ -476,3 +476,86 @@ Focused final integration run passed: 4 files, 17 tests. Full run before the fin
 ### 2026-10-11 16:38 UTC — Pre-push blocked on backend test budgets
 
 The mandatory pre-push gate blocked publication: all non-test checks passed, 1191/1193 tests passed; two native clone/diary tests exceeded the remaining default 5-second Vitest budget. Applied a 15-second default only to Code Tools and Obsidian test projects, whose managed calls themselves observe for up to 5 seconds before returning. Removed redundant per-suite overrides where the backend default suffices. API observation/deadlines and production parallel admission are unchanged; precise lifecycle timing assertions and explicit controlled-test budgets remain intact. No hooks bypassed. Repeating the mandatory pre-push gate.
+
+### 2026-10-11 16:42 UTC — Obsidian migration PR ready
+
+Mandatory pre-push npm run simple-checks passed all six checks: Test Files 146 passed (146), Tests 1193 passed (1193); lint/typecheck/Helm/Python/shell exit codes all 0. Published commits d91a3a9 and 155af4d on feat/obsidian-managed-operations and opened https://github.com/senaev/infra.senaev.com/pull/74. git diff --check passed. Public code-operations showed no active operations after the checks/PR creation. Production vault notes were not edited; tests used isolated temporary vaults with cleanup. PR74 is not merged or deployed; public Obsidian live verification and catalog refresh remain the next gate. This final PR-link/validation entry is intentionally uncommitted for later journal continuation.
+
+## Result — PR73 complete and Obsidian migration prepared
+
+PR73 merged at 6f3a0f4fd46322abc976df982d2209e4acd2f9de; all six releases passed and public Code Tools smoke checks passed with the documented untested cases. PR74 now reuses the common operation manager and file helpers for all eight Obsidian domain tools and four operation controls, with passing automated integration/regression checks. Cooperative parsing boundaries and external-writer limitations are documented; no additional API modes, limits or wait parameters were introduced.
+
+2026-10-11T16:58:16.232016+00:00
+
+### PR #74 merge and baseline verification
+
+- PR #74 merged with explicit user authorization: `b2f9c4ee99c22fe10f64735379e7a2738150b800`. PR CI and CodeRabbit passed. Switched to main with a scoped journal stash/pop; all previous uncommitted journal entries preserved.
+- Release discovery initially returned no runs. Dispatched the six existing workflows on main; delayed automatic push runs subsequently appeared. All six release families successfully completed for the merge SHA: senaev-utils 38157331957, obsidian-sync 38157331863, cluster-helper 38157331940, opencode-serve 38157331946, media-server-helper 38157331888, vpn-subscription 38157331921. One duplicate senaev-utils run was automatically cancelled by workflow concurrency. Duplicate opencode-serve run 38157332423 failed fetching installer version information; another run of the same SHA succeeded. No foreign operations were cancelled.
+- Public HTTP smoke: short URL redirects to https://senaev.com/cv/5min (200); static datadog page (200); published note page (200). These checks are not Obsidian async MCP live verification.
+- Initial post-merge npm run simple-checks: FAIL, 145/146 test files and 1192/1193 tests passed. Lint, typecheck, Helm, Python and shell checks passed. managedClone cancellation-after-publication test assumed publication had happened when the five-second observation returned a running ID; README read failed with ENOENT under load.
+- Prepared fix/clone-publication-test-wait: explicitly poll for published README before cancelling; only ENOENT means not yet published; other errors propagate. Preserve file content, cancellation state, changedPaths and owned temporary cleanup assertions. Adjust only this test's runner budget to 25 seconds; API observation/deadline unchanged. Focused managedClone test passed all seven scenarios. Full checks pending.
+- During deployment several public code-run calls transiently returned INVALID_ARGUMENT; public code-projects/operations remained available, and code-run recovered without alternate authorization. Backend restart cleared old operation records, as documented.
+- Current chat's Obsidian catalog is stale. No new Obsidian parameters sent, no production vault mutations performed. Live verification requires a refreshed catalog in a new chat. Successful diary_append mutates the real draft; skip under isolated-fixture-only authorization. Before vault fixture creation, prove a safe cleanup path through public MCP; do not assume code-tools and obsidian-sync share a filesystem.
+
+- Final follow-up validation: PASS, npm run simple-checks completed all six checks, 146 test files / 1193 tests; focused clone tests 7/7; git diff --check passed. Test-only correction remains uncommitted on fix/clone-publication-test-wait. Automatic approval review rejected commit/push/PR creation, citing the original verification prohibition despite later user authorization for working-branch commits/push/PR. No rejected mutation was executed, no workaround attempted. Journal remains append-only.
+
+### 2026-10-11 17:03 UTC — Public Obsidian managed-operation live verification
+
+Only the public authenticated mcp.senaev.com tools were used. No alternative authorization, internal tokens, local HTTP tests, commits, pushes, PRs, deployments or branch changes. Read root/tasks AGENTS, all 500 task lines by pages, and vault root AGENTS (12080 characters, untruncated). Existing clone test correction and journal preserved on fix/clone-publication-test-wait.
+
+Catalogue PASS: all eight Obsidian domain schemas expose executionPolicy queued|parallel, requestId and timeoutSeconds; all four Obsidian controls exist. No observation overrides or new limits were introduced.
+
+Fixture cleanup prerequisite NOT AVAILABLE in the exposed public catalogue: no Obsidian delete/remove/exec tool. Code-run is project-scoped in the separate Code Tools backend; no shared filesystem or permitted Obsidian-container cleanup path was established. No vault fixtures were created. All test paths use the unique nonexistent folder @senaev/mcp-test/live74-20261011-1702-84f912. Reading required AGENTS is instruction loading, not a fixture correctness test.
+
+1 NOT VERIFIED for complete eight-command successful coverage. PASS limited error-path integration: list/search/read/links each invoked with queued and parallel, all returned not_found with backend obsidian, state failed, expected policy, timeoutSeconds 60 and changedPaths []. create/patch/move skipped because owned fixture cleanup is unavailable; diary_append successful write skipped because it writes the real draft.
+2 NOT VERIFIED: no reliable long Obsidian operation on isolated fixtures; FIFO occupancy, parallel bypass and preservation of FIFO order were not stimulated. Code-run was not used as an Obsidian blocker.
+3 PASS for eight tested read-only error-path records: identical arguments/requestId retained identical ID and error; policy change and timeout change returned conflict. Successful-result/mutation retry semantics NOT VERIFIED.
+4 PASS for all eight error-path records: operation_result retained exact domain not_found result, state failed and empty logs/changedPaths. Successful fixture snapshots NOT VERIFIED.
+5 NOT VERIFIED for long operation/five-second handle. PASS limited terminal controls: status and cancel on own already-failed list retained failed; this does not prove running cancellation.
+6 NOT VERIFIED: queued cancellation without handler invocation, running cancellation and cleanup require a controlled long Obsidian operation.
+7 PASS admission/metadata only: omitted timeout=60; timeout 1 and 10800 accepted and reported; 0, -1 and 1.5 rejected with invalid_arguments / 'timeoutSeconds must be a positive integer number of seconds'. No API maximum documented in catalogue, not exhaustively proven numerically. timed_out, 60-second enforcement and queue-time exclusion NOT VERIFIED.
+8 NOT VERIFIED: read pagination/whole-file hash, successful search counts/snippets and links/backlinks correctness require isolated fixtures; missing-path responses are not correctness proof.
+9 NOT VERIFIED: successful create/patch/move, hashes/conflicts, atomicity, unchanged file after failing patch and refusal to overwrite move target skipped without safe fixture cleanup.
+10 NOT VERIFIED: cancellation after publication/partial move changedPaths requires owned mutation fixtures and reliable timing. No rollback claim.
+11 PASS no created fixture data and no active operations in either public operations list at inspection. All ten own test records terminal failed; no foreign cancellation. changedPaths empty on all tests. Cleanup execution itself NOT VERIFIED because no data was created.
+
+Evidence — eight launch records (each retained by retry/result):
+- list queued: obsidian-9980531e-a3e2-4f50-980d-d4892a8c9ef7
+- search queued: obsidian-66d3cb6c-a45f-45d5-a2fe-4d09a758d1f4
+- read queued: obsidian-57cdb9b6-0c98-43f7-a70a-551b55c31fb4
+- links queued: obsidian-ff8d04ca-eab5-442e-83b0-07a3c2f88f58
+- list parallel: obsidian-f11e0dbe-c105-4fcd-aa9c-3dc7f13bd4ee
+- search parallel: obsidian-11a0b20b-0c75-4069-a05a-d086c88b6641
+- read parallel: obsidian-492b1f63-d372-4bf6-980d-c4f911098794
+- links parallel: obsidian-7e4dccd8-a903-4a65-860b-55cf1412324b
+
+Timeout records: 1 second obsidian-4e143473-98a1-4047-ac1f-4dd06c512f7d; 10800 seconds obsidian-cd66c9b0-1493-41b4-9b55-4599d6d18532. Both failed quickly with not_found, not timed_out.
+Verbatim conflict: {"status":"error","code":"conflict","message":"requestId was already used with different arguments"}. Terminal cancel of obsidian-9980531e-a3e2-4f50-980d-d4892a8c9ef7 preserved state failed.
+
+## Result — 2026-10-11 public Obsidian live verification remains incomplete
+
+Updated catalogue and public managed error-path/retry/result/admission controls passed. This is not full migration acceptance. Successful mutations and long-operation lifecycle remain blocked by unavailable proven fixture cleanup and controlled isolated long work. Successful diary_append explicitly NOT VERIFIED under the current isolation requirement. No automatic regression results substituted for live proof. Existing uncommitted test correction remains untouched; previous automatic commit/push/PR refusal was not retried or bypassed.
+
+### 2026-10-11 17:17 UTC — Successful read-only Obsidian live verification in refreshed original chat
+
+Only public authenticated mcp.senaev.com. Read vault AGENTS, repository/task instructions and journal pages; no vault writes, fixtures, foreign cancellation, Git publication or alternate auth. Existing uncommitted clone correction preserved.
+
+1 PASS for successful list/search/read/links with both queued and parallel (eight records). create/patch/move/diary_append success remains NOT VERIFIED under existing isolation/cleanup restrictions.
+2 PASS: real queued links blocked search/read. Parallel read obsidian-facfefd4-caf0-4b7b-b8c8-3ad6164b994d completed while blocker obsidian-b1844dbe-bc37-4d88-adae-bb56e4c638ec remained running and three own queued records retained startedAt null. FIFO started blocker/search/read at 1791738654225/1791738656866/1791738658915; each successor started after predecessor finished. A separate four-links chain also started in actual admission order (concurrent invocation order is not admission order).
+3 PASS: identical successful requests retained same ID and exact result for all four read-only commands under both policies; changing executionPolicy returned conflict for all eight. Successful mutation deduplication remains NOT VERIFIED.
+4 PASS: operation_result retained all eight successful snapshots, timeout and queued cancellation. Snapshot comparisons used exact structured results, excluding transport/operation envelope.
+5 PASS handle/status/result: backlinks to _people/@senaev.md returned running for parallel and queued. Latest queued obsidian-953b7ea4-a5da-4c32-b6d1-89d4a61067aa returned after 5517ms including transport; exact backend five-second boundary cannot be isolated from client overhead. Earlier parallel obsidian-c1c8a742-9505-4650-85f2-fe7a887b75e5 completed in 7175ms and retained result. Running manual cancellation NOT VERIFIED: attempts reached backend after natural completion; terminal cancel correctly preserved completed. No rollback or successful running cancellation claim.
+6 PASS queued cancellation on repeat: obsidian-f7f3dcb3-7b3c-4c40-9aa1-dc3f02960990 cancelled, startedAt null, empty logs/changedPaths, result 'Cancelled before execution'. First two queued cancellation attempts lost completion races. Running-resource cleanup after manual cancellation remains NOT VERIFIED; short deadline paths cooperatively settled and later FIFO reads completed.
+7 PASS actual deadline: parallel search obsidian-33a786d5-34fc-48c0-b1f5-45502b654c72 timed_out in 1003ms; queued search obsidian-80362718-7172-4b2c-9fa2-23e6e1cf1dce in 1004ms. No partial successful results. Queue exclusion: read obsidian-40dfc4e6-e9a0-4c13-a7d2-b4f4a253e543 waited 4055ms with timeout 1, then completed in 2ms. Default metadata 60; actual 60-second Obsidian enforcement NOT VERIFIED. Prior chat checked positive-integer validation/10800 acceptance; no exhaustive numeric upper-bound test.
+8 PASS observed read/search/list/links semantics: root list pages 100+2, total/unique 102, final nextOffset null, excluded .obsidian/.trash/plugins. Multilingual search scanned 3624 files, matchedFiles 7, totalHits 7; 2-result page matched full 7-result prefix and totals, complete true, no read/walk errors. AGENTS outgoing six links (five vault links incl canvas/self and one external URL), all classified correctly against its text. _people/@senaev backlinks 34 sources/78 links; first two pages disjoint with offsets 0/2/4 and stable totals. First two source notes contain corresponding block wikilinks; reported lines include original YAML, whereas read content excludes it. This is sampled correctness, not exhaustive validation of every backlink/snippet.
+Read long _wiki/Cookieless/Cookieless with third party last slide.md in two pages: 20000+6491 body characters, contiguous offsets 0/20000, total 26491, final truncated false, identical hash ec3097369f79ee8e5aafecab50eae5c818300d0605f0c7100162da50aea4580d. Independently calculated SHA-256 of complete frontmatter-free AGENTS matches eeb0f5e20525a4ec020929a28d17d574d24266cbb20078e11f8b5d5d3b8e5188. Comparing long note body hash to raw-file hash initially mismatched as expected: frontmatter is returned separately. Raw YAML bytes are unavailable through read; independent whole-raw-file digest for that long note NOT VERIFIED. Source inspection confirms hashContent(raw), not a page hash; this inspection is separate from live evidence.
+9/10 NOT VERIFIED: successful writes, hash conflicts/atomic publication and cancellation changedPaths for mutations remain skipped. Safe own-vault-fixture deletion is not exposed/proven; diary_append targets actual draft. No production note edited.
+11 PASS: no fixtures created; both operation lists showed no active operations at final inspection. No owned cleanup needed. No automatic tests substituted for live verification.
+
+## Result — Refreshed-chat read-only live gate improved
+
+Successful read-only commands, both policies, FIFO/parallel independence, retained successful snapshots/retries, queued cancellation, real one-second deadlines, runtime excluding queue, handles and sampled pagination/link correctness passed. Full migration acceptance remains incomplete: successful mutations, manual running cancellation/resource cleanup, actual default Obsidian deadline and exhaustive/raw-YAML checks above are not proven live. Journal history remains intact.
+
+### 2026-10-11 17:19 UTC — Explicit follow-up publication authorization
+
+User explicitly confirmed commit, push and separate PR for the clone test correction and preserved journal. This supersedes the earlier verification-only publication prohibition for this follow-up. No authorization to merge this new PR. Validation already passed all six checks, 146 files / 1193 tests; mandatory pre-push checks remain enabled.
