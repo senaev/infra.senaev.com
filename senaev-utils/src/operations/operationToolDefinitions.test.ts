@@ -9,30 +9,37 @@ import {
 import { OPERATION_TOOL_DEFINITIONS, readOperationArguments } from './operationToolDefinitions';
 
 describe('operation tool contracts', () => {
-    it('exposes execution arguments only on the projects canary and does not expose modes or wait overrides', () => {
-        expect(MANAGED_CODE_TOOL_NAMES).toEqual(['projects']);
-        const timeout = CODE_TOOL_DEFINITIONS.projects.inputSchema.properties.timeoutSeconds;
+    it('exposes execution arguments on managed code tools and does not expose modes or wait overrides', () => {
+        expect(MANAGED_CODE_TOOL_NAMES).toEqual([
+            'projects',
+            'run',
+        ]);
+        for (const name of MANAGED_CODE_TOOL_NAMES) {
+            const { properties } = CODE_TOOL_DEFINITIONS[name].inputSchema;
+            const timeout = properties.timeoutSeconds;
 
-        expect(timeout).toMatchObject({
-            type: 'integer',
-            minimum: 1,
-        });
-        expect(timeout).not.toHaveProperty('maximum');
-        for (const key of [
-            'mode',
-            'sync',
-            'async',
-            'waitSeconds',
-            'pty',
-        ]) {
-            expect(CODE_TOOL_DEFINITIONS.projects.inputSchema.properties).not.toHaveProperty(key);
+            expect(properties).toHaveProperty('requestId');
+
+            expect(timeout).toMatchObject({
+                type: 'integer',
+                minimum: 1,
+            });
+            expect(timeout).not.toHaveProperty('maximum');
+            for (const key of [
+                'mode',
+                'sync',
+                'async',
+                'waitSeconds',
+                'pty',
+            ]) {
+                expect(properties).not.toHaveProperty(key);
+            }
         }
 
         for (const name of [
             'read',
             'write',
             'patch',
-            'run',
         ] as const) {
             expect(CODE_TOOL_DEFINITIONS[name].inputSchema.properties).not.toHaveProperty('requestId');
         }
