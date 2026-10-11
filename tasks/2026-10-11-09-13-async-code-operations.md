@@ -251,3 +251,17 @@ Targeted suite passed: six files, 38 tests. Real subprocess tests cover streamin
 ### 2026-10-11 12:59 UTC — Stage 3 validation
 
 Full pre-push validation passed: ESLint, TypeScript, 138 Vitest files / 1134 tests, Helm, shell and Python checks. The first full run exposed an outdated projects-only contract assertion; it now verifies both managed tools and keeps repair tools outside the queue. Branch feat/async-code-run is pushed. Live code-run checks are reserved for after merge and deployment.
+
+### 2026-10-11 13:09 UTC — Stage 3 merged and verified live
+
+PR #69 merged into main as 32445b0028b468ecfac6a03573da420e8e5477c7; working checkout is main. All six deployment workflows succeeded. Actual MCP calls verified immediate run completion; a 12-second run returned a running ID, exposed stdout/stderr before completion, then retained exitCode 7 with state failed; queued run cancellation retained startedAt=null; running TERM-resistant process-group cancellation reached cancelled; timeoutSeconds=1 reached timed_out after approximately two seconds including SIGKILL grace without polling. A subsequent run completed normally, and /proc contained no remaining sleep 30/50 test processes. No test fixture files were created. Read/write/patch remain direct for repair access. The current ChatGPT tool catalogue still describes the old run timeout cap and lacks requestId; refreshing tool definitions is needed to expose those new arguments, while the deployed asynchronous flow already works.
+
+### 2026-10-11 13:39 UTC — Refreshed run catalogue and Stage 4
+
+The actual ChatGPT catalogue now exposes run requestId and the uncapped execution timeout. Two calls with requestId catalogue-check-20261011-1335 returned the same operation code-ef9610fa-9e58-4fac-b4f6-fbedec259790 and UUID output, confirming retained deduplication; timeoutSeconds 10800 was accepted. Started feat/async-code-search-list from main for the next separate PR. Enable only list/search with common observation, queue, timeouts and controls; add cancellation checkpoints to subprocesses, result parsing and file metadata traversal. Keep read/write/patch and clone direct during this stage.
+
+### 2026-10-11 13:45 UTC — Stage 4 implementation and targeted validation
+
+Expanded the shared allowlist and MCP schemas to projects/run/list/search. Proxy policy automatically applies the existing 15-second managed observation budget. Search uses the operation signal/log sink instead of a nested deadline, with cooperative checkpoints while parsing JSON events, counting matches and formatting snippets. List uses checkpoints during path filtering/grouping and sequential metadata reads; abort is never swallowed by file-stat fallback. listProjectFiles now waits for both sibling Git subprocesses to settle before releasing the operation slot. File repair and clone remain direct.
+
+Targeted output: "Test Files 5 passed (5)" / "Tests 31 passed (31)". New HTTP/handler tests exercise real result retention, no-match success, regex failure, requestId deduplication, shared queue admission, queued cancellation without invoking search, runtime excluding queue time, TERM-resistant subprocess deadlines, sibling Git cleanup, already-aborted handlers, mid-JSON parsing abort and metadata traversal abort. Full pre-push checks are the next gate. No production activation occurs before this stage is reviewed and merged.

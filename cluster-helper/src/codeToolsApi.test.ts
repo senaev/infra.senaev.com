@@ -32,6 +32,8 @@ describe('code operation proxy', () => {
         for (const name of [
             'projects',
             'run',
+            'list',
+            'search',
             'operations',
             'operation_status',
             'operation_result',
@@ -45,6 +47,13 @@ describe('code operation proxy', () => {
                     command: 'true',
                     timeoutSeconds: 10800,
                     requestId: 'retry',
+                };
+            } else if (name === 'list' || name === 'search') {
+                args = {
+                    project: 'demo',
+                    timeoutSeconds: 10800,
+                    requestId: 'retry',
+                    ...name === 'search' ? { queries: ['needle'] } : {},
                 };
             } else if (name === 'projects') {
                 args = {

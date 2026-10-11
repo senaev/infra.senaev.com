@@ -1,3 +1,6 @@
+import {
+    operationCheckpoint, operationContext, throwIfOperationAborted,
+} from 'senaev-utils/src/operations/operationContext';
 import { MAX_GLOB_LENGTH, SEARCH_LIMITS } from 'senaev-utils/src/codeTools/codeToolLimits';
 import {
     optionalBoolean,
@@ -49,10 +52,16 @@ function readText(value: unknown): string | null {
 }
 
 /** Groups ripgrep's `--json` events by file. Paths that are not valid UTF-8 are skipped. */
-export function parseRipgrepJson(output: string): FileMatches[] {
+export async function parseRipgrepJson(output: string): Promise<FileMatches[]> {
     const files = new Map<string, FileMatches>();
 
+    let index = 0;
+
     for (const line of output.split('\n')) {
+        if (index++ % 128 === 0) {
+            await operationCheckpoint();
+        }
+
         if (line === '') {
             continue;
         }
@@ -93,6 +102,8 @@ export function parseRipgrepJson(output: string): FileMatches[] {
         files.set(path, file);
     }
 
+    throwIfOperationAborted();
+
     return [...files.values()];
 }
 
@@ -100,13 +111,33 @@ export function parseRipgrepJson(output: string): FileMatches[] {
  * The first `maxMatches` matching lines with their context, in ripgrep's own format:
  * "12:text" for a match, "13-text" for context, and "--" between separate parts.
  */
-export function formatSnippet(lines: readonly FoundLine[], maxMatches: number, contextLines: number): string {
-    const shownMatches = lines.filter((line) => line.isMatch).slice(0, maxMatches).map((line) => line.line);
+export async function formatSnippet(lines: readonly FoundLine[], maxMatches: number, contextLines: number): Promise<string> {
+    const shownMatches: number[] = [];
+    let index = 0;
+
+    for (const line of lines) {
+        if (index++ % 128 === 0) {
+            await operationCheckpoint();
+        }
+
+        if (line.isMatch) {
+            shownMatches.push(line.line);
+            if (shownMatches.length === maxMatches) {
+                break;
+            }
+        }
+    }
+
     const isShown = (line: number) => shownMatches.some((match) => Math.abs(match - line) <= contextLines);
     const parts: string[] = [];
     let previousLine: number | null = null;
 
+    await operationCheckpoint();
     for (const found of [...lines].sort((a, b) => a.line - b.line)) {
+        if (index++ % 128 === 0) {
+            await operationCheckpoint();
+        }
+
         if (!isShown(found.line) || found.line === previousLine) {
             continue;
         }
@@ -118,6 +149,8 @@ export function formatSnippet(lines: readonly FoundLine[], maxMatches: number, c
         parts.push(`${found.line}${found.isMatch ? ':' : '-'}${found.text}`);
         previousLine = found.line;
     }
+
+    throwIfOperationAborted();
 
     return parts.join('\n');
 }
@@ -160,6 +193,7 @@ function buildRipgrepArgs(options: {
 }
 
 export async function searchTool(config: CodeToolsConfig, input: unknown) {
+    throwIfOperationAborted();
     const args = readCodeToolArguments(input, 'search');
     const project = await resolveProject(config, args);
     const queries = optionalStringArray(args, 'queries', {
@@ -188,6 +222,8 @@ export async function searchTool(config: CodeToolsConfig, input: unknown) {
         max: SEARCH_LIMITS.maxLimit,
     }) ?? SEARCH_LIMITS.defaultLimit;
 
+    throwIfOperationAborted();
+    const context = operationContext();
     const result = await runProcess('rg', buildRipgrepArgs({
         queries,
         regex: optionalBoolean(args, 'regex') ?? false,
@@ -197,12 +233,19 @@ export async function searchTool(config: CodeToolsConfig, input: unknown) {
         folder: normalizeProjectPath(optionalString(args, 'folder') ?? '', 'folder'),
     }), {
         cwd: project.root,
-        timeoutMs: RG_TIMEOUT_MS,
+        ...context === undefined
+            ? { timeoutMs: RG_TIMEOUT_MS }
+            : {
+                signal: context.signal,
+                onOutput: context.log,
+            },
         maxOutputChars: MAX_RG_OUTPUT_CHARS,
         keep: 'start',
         env: config.commandEnv,
     });
-    const files = parseRipgrepJson(result.stdout).sort((a, b) => a.path.localeCompare(b.path));
+
+    throwIfOperationAborted();
+    const files = (await parseRipgrepJson(result.stdout)).sort((a, b) => a.path.localeCompare(b.path));
 
     // Exit code 2 is an error, such as a bad regular expression or an unreadable file.
     if (result.exitCode === 2 && files.length === 0) {
@@ -210,22 +253,47 @@ export async function searchTool(config: CodeToolsConfig, input: unknown) {
     }
 
     const page = files.slice(offset, offset + limit);
-    const countMatches = (file: FileMatches) => file.lines.filter((line) => line.isMatch).length;
+    const counts = new Map<FileMatches, number>();
+    let totalMatches = 0;
+    let index = 0;
+
+    for (const file of files) {
+        let count = 0;
+
+        for (const line of file.lines) {
+            if (index++ % 128 === 0) {
+                await operationCheckpoint();
+            }
+
+            if (line.isMatch) {
+                count++;
+            }
+        }
+
+        counts.set(file, count);
+        totalMatches += count;
+    }
+
+    const snippets = [];
+
+    for (const file of page) {
+        const matchCount = counts.get(file) ?? 0;
+
+        snippets.push({
+            path: file.path,
+            matchCount,
+            omittedMatches: Math.max(0, matchCount - maxMatchesPerFile),
+            snippet: await formatSnippet(file.lines, maxMatchesPerFile, contextLines),
+        });
+    }
+
+    throwIfOperationAborted();
 
     return {
         project: project.name,
         matchedFiles: files.length,
-        totalMatches: files.reduce((sum, file) => sum + countMatches(file), 0),
-        files: page.map((file) => {
-            const matchCount = countMatches(file);
-
-            return {
-                path: file.path,
-                matchCount,
-                omittedMatches: Math.max(0, matchCount - maxMatchesPerFile),
-                snippet: formatSnippet(file.lines, maxMatchesPerFile, contextLines),
-            };
-        }),
+        totalMatches,
+        files: snippets,
         nextOffset: offset + page.length < files.length ? offset + page.length : null,
         // The counts above are then only for the part that was read.
         truncated: result.outputTruncated || result.timedOut,

@@ -112,12 +112,14 @@ const list: ToolDefinition = {
         'Lists the files and folders of a project. Files ignored by .gitignore and the .git folder are not shown.',
         'Without "recursive" or "glob" it lists one folder level; with them it lists matching files at any depth.',
         'The result is paged: when "nextOffset" is not null, call again with "offset" set to it.',
+        MANAGED_TOOL_DESCRIPTION,
         PROJECT_RULES,
     ].join(' '),
     inputSchema: {
         type: 'object',
         properties: {
             ...PROJECT_PROPERTY,
+            ...MANAGED_TOOL_PROPERTIES,
             ...SCOPE_PROPERTIES,
             recursive: {
                 type: 'boolean',
@@ -139,12 +141,14 @@ const search: ToolDefinition = {
         `Up to ${SEARCH_LIMITS.maxQueries} queries per call. Results are grouped by file, with line numbers and context;`,
         'read a file with code-read to see more.',
         'The result is paged: when "nextOffset" is not null, call again with "offset" set to it.',
+        MANAGED_TOOL_DESCRIPTION,
         PROJECT_RULES,
     ].join(' '),
     inputSchema: {
         type: 'object',
         properties: {
             ...PROJECT_PROPERTY,
+            ...MANAGED_TOOL_PROPERTIES,
             queries: {
                 type: 'array',
                 items: {
@@ -389,6 +393,8 @@ export function getCodeToolArgumentKeys(name: CodeToolName): string[] {
 export const MANAGED_CODE_TOOL_NAMES: readonly CodeToolName[] = [
     'projects',
     'run',
+    'list',
+    'search',
 ];
 
 export function isManagedCodeToolName(name: string): boolean {
