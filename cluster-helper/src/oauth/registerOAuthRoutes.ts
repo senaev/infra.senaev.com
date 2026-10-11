@@ -93,7 +93,7 @@ export const oauthRoutes: FastifyPluginAsync<OAuthRoutesOptions> = async (instan
         const status = isObject(error) && typeof error.statusCode === 'number' && error.statusCode >= 400 && error.statusCode <= 599
             ? error.statusCode
             : 500;
-        let message = 'The sign-in request could not be read. Return to ChatGPT and start the connection again.';
+        let message = 'The sign-in request could not be read. Return to the app and start the connection again.';
 
         if (status === 429) {
             message = 'Too many sign-in attempts. Wait 15 minutes before trying again.';

@@ -106,7 +106,7 @@ describe('registerOAuthRoutes', () => {
         expect(invalid.headers.location).toBeUndefined();
         expect(invalid.body).toContain('Only response_type=code is supported');
         expect(invalid.body).toContain('state=original-state');
-        expect(invalid.body).toContain('Return to ChatGPT with this error');
+        expect(invalid.body).toContain('Return to the app with this error');
     });
 
     it('shows rate-limit errors and keeps token errors as JSON', async () => {
@@ -198,7 +198,7 @@ describe('registerOAuthRoutes', () => {
         expect(response.body).not.toContain('secret-password');
         expect(response.body).not.toContain('<form');
         expect(response.body).not.toContain('http-equiv="refresh"');
-        const href = /<a href="([^" ]+)" rel="noreferrer">Return to ChatGPT<\/a>/.exec(response.body)?.[1];
+        const href = /<a href="([^" ]+)" rel="noreferrer">Return to the app<\/a>/.exec(response.body)?.[1];
 
         expect(href).toBeDefined();
         const location = new URL(String(href).replaceAll('&amp;', '&'));
