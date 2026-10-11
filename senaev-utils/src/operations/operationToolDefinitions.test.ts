@@ -3,19 +3,14 @@ import {
 } from 'vitest';
 
 import {
-    CODE_MCP_TOOL_DEFINITIONS, CODE_TOOL_DEFINITIONS, MANAGED_CODE_TOOL_NAMES,
+    CODE_MCP_TOOL_DEFINITIONS, CODE_TOOL_DEFINITIONS, CODE_TOOL_NAMES, MANAGED_CODE_TOOL_NAMES,
 } from '../codeTools/codeToolDefinitions';
 
 import { OPERATION_TOOL_DEFINITIONS, readOperationArguments } from './operationToolDefinitions';
 
 describe('operation tool contracts', () => {
     it('exposes execution arguments on managed code tools and does not expose modes or wait overrides', () => {
-        expect(MANAGED_CODE_TOOL_NAMES).toEqual([
-            'projects',
-            'run',
-            'list',
-            'search',
-        ]);
+        expect(MANAGED_CODE_TOOL_NAMES).toEqual(CODE_TOOL_NAMES);
         for (const name of MANAGED_CODE_TOOL_NAMES) {
             const { properties } = CODE_TOOL_DEFINITIONS[name].inputSchema;
             const timeout = properties.timeoutSeconds;
@@ -43,14 +38,6 @@ describe('operation tool contracts', () => {
             ]) {
                 expect(properties).not.toHaveProperty(key);
             }
-        }
-
-        for (const name of [
-            'read',
-            'write',
-            'patch',
-        ] as const) {
-            expect(CODE_TOOL_DEFINITIONS[name].inputSchema.properties).not.toHaveProperty('requestId');
         }
     });
 

@@ -176,6 +176,7 @@ describe('managed search and list', () => {
             });
         expect((await call('read', {
             project: 'demo',
+            executionPolicy: 'parallel',
             paths: ['README.md'],
         })).statusCode).toBe(200);
         await delay(1100);
@@ -220,6 +221,7 @@ describe('managed search and list', () => {
         expect(performance.now() - before).toBeGreaterThanOrEqual(1900);
         expect((await call('read', {
             project: 'demo',
+            executionPolicy: 'parallel',
             paths: ['README.md'],
         })).statusCode).toBe(200);
     }, 8000);

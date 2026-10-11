@@ -297,3 +297,39 @@ The owner rejected the additional parallel concurrency cap. This supersedes the 
 Implemented executionPolicy queued|parallel in the shared manager and managed tool schemas/descriptions. Default FIFO behaviour is unchanged; parallel launches immediately even when FIFO is full, with no new concurrency cap. Operation metadata reports the policy. Parallel completion cannot release or advance FIFO, cancellation retains cooperative cleanup semantics, and shutdown aborts/waits for every active operation.
 
 Tests cover full-FIFO bypass, more than four concurrent parallel admissions, retained retries, policy conflicts, invalid policy values, parallel timeout, cancellation, shutdown across both policies and authenticated HTTP execution/result retrieval during a long queued-policy run. Corrected explicit null policy validation and the existing exact schema-key assertion. Full npm run simple-checks: all six checks exited 0; "Test Files 139 passed (139)" and "Tests 1142 passed (1142)". git diff --check passed. Deployment/live connector verification remains the post-merge gate.
+
+### 2026-10-11 14:33 UTC — PR #71 merged, deployed; catalogue gate pending
+
+Merged PR #71 as abcf3eb2323e7e48d02ae80cb47fdf4f0f7f2f8d after GitHub Check and CodeRabbit SUCCESS; switched to main and pulled fast-forward. All six release workflows completed successfully: opencode-serve, cluster-helper, obsidian-sync, media-server-helper, vpn-subscription and senaev-utils. Code Tools briefly returned fetch failed during restart, then recovered. Actual MCP replies now report executionPolicy queued.
+
+Live default-policy verification: an eight-second run returned running, then completed with retained stdout and exitCode 0. A thirty-second run occupied FIFO; list returned queued with startedAt null, while direct read remained available. Cancelling the run reached cancelled and released FIFO; the queued list completed with six entries and retained result. Public smoke output: "short-link: 302 https://senaev.com/cv/5min", "static: 200", "note: 200". No probe files were created.
+
+The current ChatGPT catalogue still lacks executionPolicy on code-run/list/search (and the new shared parameter on projects). Did not send unsupported schema arguments or use an alternate internal-auth route. Therefore actual connector parallel launch, bypass, policy-specific retry conflicts and cancellation/timeout verification remain pending a refreshed catalogue. Automated HTTP/manager coverage passed before merge, but this stage's live parallel gate is not complete; do not advance to clone until it is verified. This deployment log is intentionally left uncommitted on main for preservation in the next stage.
+
+### 2026-10-11 14:44 UTC — User-reported PR #71 live gate and final Code Tools stage
+
+Source: user message carrying live verification results from another chat. The refreshed catalogue has executionPolicy/requestId/timeoutSeconds on projects/run/list/search. queued is default; long run returns running and queued list waits with startedAt null. parallel list bypasses FIFO without changing its state. Identical requestId preserves ID/result; changed policy conflicts. parallel run supports status/result/cancel and timeout. Cancellation/FIFO release passed on repeat; the first sleep completed before cancellation. No active test operations remained. No parallel load test was performed; no additional parallel concurrency limit exists.
+
+Preserved the uncommitted PR #71 deployment entry on main. main/origin main both abcf3eb2323e7e48d02ae80cb47fdf4f0f7f2f8d; created feat/all-code-operations. Owner authorized one PR for clone/read/write/patch, tests, commit/push/PR. Obsidian remains out of scope.
+
+The owner subsequently waived the independent recovery prerequisite and authorized deployment after checks. Explained that code-run uses the same manager/backend and is not independent recovery from their failure; no SSH/kubectl recovery was tested or claimed. This supersedes the previous independent-access activation gate for this stage.
+
+### 2026-10-11 14:57 UTC — Universal Code Tools implementation and focused checks
+
+All eight domain commands now share managed schemas, lifecycle and 15-second proxy observation budgets. clone/read/write/patch join projects/run/list/search; Obsidian routes are unchanged. File helper chains propagate the operation signal, checkpoint/yield during traversal and parsing, and never swallow abort. Native file reads/writes receive AbortSignal. Atomic writes clean exclusive temporary files, preserve file modes and record published files (and newly created parent directories) before terminal cancellation. Process-local path reservations reject overlapping parallel edits before stale hashes can both be accepted; external writers/replicas remain outside this protection.
+
+Read preserves whole-file hashes and response pagination. Patch cooperatively scans occurrences and formats ambiguity locations. Potentially quadratic diff computation runs in a disposable worker; cancellation waits for worker termination before releasing the operation. clone uses a reserved hidden temporary directory, streaming Git progress and whole-group cancellation without the old 300-second deadline. Linux renameat2(RENAME_NOREPLACE), invoked through existing image dependency python3, atomically publishes the completed clone without overwriting an unrelated empty directory. Cleanup removes only invocation-owned temporary data; stale reservations after crashes require explicit inspection.
+
+Focused HTTP/schema/proxy suites: 7 files / 43 tests passed. Cooperative cancellation/atomicity suite: 8 tests passed. Tests include both policies, retained results/retries/conflicts, full-FIFO parallel bypass, queued cancellation without execution, long file handles, runtime deadlines, real clone TERM escalation, preservation of unrelated/stale temporary data, empty-destination publication races, native read abort, temporary-write abort, post-publication changedPaths and competing hash mutations. Typecheck identified test callback/key typing issues, corrected before full validation.
+
+### 2026-10-11 15:00 UTC — Full-check contract correction and clone publication race
+
+First full npm run simple-checks: lint/typecheck/Python/shell/Helm passed; one obsolete operationToolDefinitions assertion still expected only projects/run/list/search and direct repair schemas. Verbatim: "Test Files 1 failed | 141 passed (142)" / "Tests 1 failed | 1165 passed (1166)". Updated it to require universal managed coverage. Additional real clone publication/abort race test passed: terminal cancelled preserves the published project and changedPaths, cleans only owned temporary data. Focused follow-up: 2 files / 15 tests passed. Disposable diff workers now omit inherited TypeScript loader flags; ambiguity line scanning yields between bounded batches. Repeat full validation before publication.
+
+### 2026-10-11 15:02 UTC — Final suite results and formatting correction
+
+Second full run passed all tests ("Test Files 142 passed (142)", "Tests 1167 passed (1167)"), typecheck and Python/shell/Helm. ESLint found one padded-block blank line in the updated contract test; removed it. No production change from this correction. Final complete check and pre-push hook remain required before rollout.
+
+### 2026-10-11 15:05 UTC — Universal Code Tools full validation passed
+
+Final npm run simple-checks passed every check: lint, typecheck, tests, Python, shell and Helm all exited 0. Verbatim test summary: "Test Files 142 passed (142)" / "Tests 1167 passed (1167)". git diff --check passed. All implementation and the preserved deployment/live-verification journal are included in this stage. Next: commit/push, separate PR, CI and owner-authorized deployment; then verify the new catalogue and isolated live fixtures. No Obsidian command is activated by this change.

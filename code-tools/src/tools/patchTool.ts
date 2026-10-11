@@ -2,14 +2,18 @@ import { PATCH_LIMITS } from 'senaev-utils/src/codeTools/codeToolLimits';
 import {
     assertExpectedHash, hashContent, readExpectedHash,
 } from 'senaev-utils/src/toolServer/contentHash';
-import { createFileDiff } from 'senaev-utils/src/toolServer/createFileDiff';
-import { replaceExactlyOnce } from 'senaev-utils/src/toolServer/textEdits';
+import {
+    operationCheckpoint, operationContext, recordChangedPath, throwIfOperationAborted,
+} from 'senaev-utils/src/operations/operationContext';
 import {
     readToolArguments, requiredNonEmptyString, requiredString,
 } from 'senaev-utils/src/toolServer/toolArguments';
 import { invalidArguments } from 'senaev-utils/src/toolServer/ToolError';
 import { replaceFileAtomically } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
 
+import { replaceText } from './replaceText';
+import { fileDiff } from './fileDiff';
+import { withFileMutation } from './fileMutation';
 import type { CodeToolsConfig } from './codeToolsConfig';
 import {
     normalizeProjectPath, readCodeToolArguments, readTextFile, resolveExistingFile, resolveProject,
@@ -50,21 +54,33 @@ export async function patchTool(config: CodeToolsConfig, input: unknown) {
     const path = normalizeProjectPath(requiredNonEmptyString(args, 'path'), 'path');
     const expectedHash = readExpectedHash(args, 'expectedHash', 'code-read');
     const operations = readOperations(args.operations);
-    const absolutePath = await resolveExistingFile(project, path);
-    const original = await readTextFile(absolutePath, path);
 
-    assertExpectedHash(original, expectedHash, 'file');
+    return withFileMutation(`${project.root}/${path}`, async () => {
+        const absolutePath = await resolveExistingFile(project, path);
+        const original = await readTextFile(absolutePath, path);
 
-    const updated = operations.reduce((content, operation) => replaceExactlyOnce(content, operation.find, operation.replace, 'file'), original);
+        assertExpectedHash(original, expectedHash, 'file');
 
-    if (updated !== original) {
-        await replaceFileAtomically(absolutePath, updated);
-    }
+        let updated = original;
 
-    return {
-        path,
-        changed: updated !== original,
-        hash: hashContent(updated),
-        ...createFileDiff(path, original, updated),
-    };
+        for (const operation of operations) {
+            await operationCheckpoint();
+            updated = await replaceText(updated, operation.find, operation.replace);
+        }
+
+        throwIfOperationAborted();
+
+        if (updated !== original) {
+            await replaceFileAtomically(absolutePath, updated, operationContext()?.signal, () => recordChangedPath(path));
+        }
+
+        await operationCheckpoint();
+
+        return {
+            path,
+            changed: updated !== original,
+            hash: hashContent(updated),
+            ...await fileDiff(path, original, updated),
+        };
+    });
 }

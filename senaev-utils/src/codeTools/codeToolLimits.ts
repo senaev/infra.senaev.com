@@ -43,5 +43,4 @@ export const RUN_LIMITS = {
 
 export const CLONE_LIMITS = {
     maxUrlLength: 500,
-    timeoutSeconds: 300,
 } as const;

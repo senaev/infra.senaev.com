@@ -1,4 +1,5 @@
 import { READ_LIMITS } from 'senaev-utils/src/codeTools/codeToolLimits';
+import { operationCheckpoint, throwIfOperationAborted } from 'senaev-utils/src/operations/operationContext';
 import { hashContent } from 'senaev-utils/src/toolServer/contentHash';
 import { optionalInteger, optionalStringArray } from 'senaev-utils/src/toolServer/toolArguments';
 import { invalidArguments, ToolError } from 'senaev-utils/src/toolServer/ToolError';
@@ -20,6 +21,7 @@ type LineRange = {
 
 /** The offset where each line starts, plus the end of the text. A trailing "\n" ends the last line. */
 function lineOffsets(content: string): number[] {
+    throwIfOperationAborted();
     const offsets = [0];
 
     for (let index = content.indexOf('\n'); index !== -1; index = content.indexOf('\n', index + 1)) {
@@ -37,8 +39,7 @@ function lineOffsets(content: string): number[] {
  * Whole lines from `startLine`, as many as fit into `maxChars`. A first line that alone is
  * longer is cut, so a read always makes progress.
  */
-export function sliceLines(content: string, { startLine, lineCount }: LineRange, maxChars: number) {
-    const offsets = lineOffsets(content);
+export function sliceLines(content: string, { startLine, lineCount }: LineRange, maxChars: number, offsets = lineOffsets(content)) {
     const totalLines = offsets.length - 1;
 
     if (totalLines > 0 && startLine > totalLines) {
@@ -72,11 +73,28 @@ export function sliceLines(content: string, { startLine, lineCount }: LineRange,
 async function readOneFile(project: Project, path: string, range: LineRange, maxChars: number) {
     const raw = await readTextFile(await resolveExistingFile(project, path), path);
 
+    const offsets = [0];
+    let count = 0;
+
+    for (let index = raw.indexOf('\n'); index !== -1; index = raw.indexOf('\n', index + 1)) {
+        if (count++ % 1024 === 0) {
+            await operationCheckpoint();
+        }
+
+        offsets.push(index + 1);
+    }
+
+    if (offsets.at(-1) !== raw.length) {
+        offsets.push(raw.length);
+    }
+
+    await operationCheckpoint();
+
     return {
         path,
         // Always the hash of the whole file, also for a part of it.
         hash: hashContent(raw),
-        ...sliceLines(raw, range, maxChars),
+        ...sliceLines(raw, range, maxChars, offsets),
     };
 }
 
@@ -115,6 +133,7 @@ export async function readTool(config: CodeToolsConfig, input: unknown) {
         index,
         requestedPath,
     ] of paths.entries()) {
+        await operationCheckpoint();
         const isFirstRead = files.length === 0;
         const maxChars = isFirstRead ? READ_LIMITS.maxCharsPerFile : Math.min(READ_LIMITS.maxCharsPerFile, budget);
 
@@ -131,6 +150,7 @@ export async function readTool(config: CodeToolsConfig, input: unknown) {
             files.push(file);
             budget -= file.content.length;
         } catch (error) {
+            throwIfOperationAborted();
             if (!(error instanceof ToolError) || paths.length === 1) {
                 throw error;
             }

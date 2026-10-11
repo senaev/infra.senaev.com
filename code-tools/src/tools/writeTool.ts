@@ -2,13 +2,17 @@ import { WRITE_LIMITS } from 'senaev-utils/src/codeTools/codeToolLimits';
 import {
     assertExpectedHash, hashContent, readExpectedHash,
 } from 'senaev-utils/src/toolServer/contentHash';
-import { createFileDiff } from 'senaev-utils/src/toolServer/createFileDiff';
+import {
+    operationCheckpoint, operationContext, recordChangedPath, throwIfOperationAborted,
+} from 'senaev-utils/src/operations/operationContext';
 import { prepareNewFilePath } from 'senaev-utils/src/toolServer/rootRelativePath';
 import { requiredNonEmptyString, requiredString } from 'senaev-utils/src/toolServer/toolArguments';
 import { invalidArguments, ToolError } from 'senaev-utils/src/toolServer/ToolError';
 import { createFileExclusively, replaceFileAtomically } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
 import { isAlreadyExistsError } from 'senaev-utils/src/utils/Error/isAlreadyExistsError/isAlreadyExistsError';
 
+import { fileDiff } from './fileDiff';
+import { withFileMutation } from './fileMutation';
 import type { CodeToolsConfig } from './codeToolsConfig';
 import {
     normalizeProjectPath,
@@ -21,7 +25,7 @@ import {
 
 async function createFile(project: Project, path: string, content: string): Promise<void> {
     try {
-        await createFileExclusively(await prepareNewFilePath(project.root, path), content);
+        await createFileExclusively(await prepareNewFilePath(project.root, path), content, operationContext()?.signal, () => recordChangedPath(path));
     } catch (error) {
         if (isAlreadyExistsError(error)) {
             throw new ToolError('already_exists', `"${path}" already exists; read it with code-read and pass its "hash" as "expectedHash" to replace it`);
@@ -39,7 +43,7 @@ async function replaceFile(project: Project, path: string, content: string, expe
     assertExpectedHash(original, expectedHash, 'file');
 
     if (content !== original) {
-        await replaceFileAtomically(absolutePath, content);
+        await replaceFileAtomically(absolutePath, content, operationContext()?.signal, () => recordChangedPath(path));
     }
 
     return original;
@@ -55,20 +59,26 @@ export async function writeTool(config: CodeToolsConfig, input: unknown) {
         throw invalidArguments('"path" must name a file, not the project root');
     }
 
-    const isReplace = args.expectedHash !== undefined && args.expectedHash !== null;
-    let original = '';
+    throwIfOperationAborted();
 
-    if (isReplace) {
-        original = await replaceFile(project, path, content, readExpectedHash(args, 'expectedHash', 'code-read'));
-    } else {
-        await createFile(project, path, content);
-    }
+    return withFileMutation(`${project.root}/${path}`, async () => {
+        const isReplace = args.expectedHash !== undefined && args.expectedHash !== null;
+        let original = '';
 
-    return {
-        path,
-        created: !isReplace,
-        changed: content !== original || !isReplace,
-        hash: hashContent(content),
-        ...createFileDiff(path, original, content),
-    };
+        if (isReplace) {
+            original = await replaceFile(project, path, content, readExpectedHash(args, 'expectedHash', 'code-read'));
+        } else {
+            await createFile(project, path, content);
+        }
+
+        await operationCheckpoint();
+
+        return {
+            path,
+            created: !isReplace,
+            changed: content !== original || !isReplace,
+            hash: hashContent(content),
+            ...await fileDiff(path, original, content),
+        };
+    });
 }
