@@ -122,6 +122,11 @@ describe('managed search and list', () => {
                 code: 'invalid_arguments',
                 operation: { state: 'failed' },
             });
+        expect((await call('list', { project: 'missing' })).json<Reply>()).toMatchObject({
+            status: 'error',
+            code: 'not_found',
+            operation: { state: 'failed' },
+        });
         for (const tool of [
             'list',
             'search',
@@ -264,7 +269,7 @@ describe('managed search and list', () => {
             listTool,
             searchTool,
         ]) {
-            await expect(withOperationContext(context, () => tool(projects.config, {
+            await expect(withOperationContext<unknown>(context, () => tool(projects.config, {
                 project: 'demo',
                 queries: ['needle'],
             }))).rejects.toBe(reason);

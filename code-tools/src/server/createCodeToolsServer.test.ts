@@ -71,9 +71,12 @@ describe('createCodeToolsServer', () => {
         });
         const missingProject = await server.inject({
             method: 'POST',
-            url: '/code/list',
+            url: '/code/read',
             headers: AUTHORIZED,
-            payload: { project: 'nope' },
+            payload: {
+                project: 'nope',
+                paths: ['README.md'],
+            },
         });
 
         expect(unknown.statusCode).toBe(404);
