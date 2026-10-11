@@ -1,8 +1,4 @@
 import { createHash, randomUUID } from 'node:crypto';
-import {
-    mkdir, readdir, readFile, rename, unlink, writeFile,
-} from 'node:fs/promises';
-import { join } from 'node:path';
 
 import { ToolError, invalidArguments } from '../toolServer/ToolError';
 
@@ -12,7 +8,7 @@ export const OBSERVATION_MS = 5000;
 export const DEFAULT_TIMEOUT_SECONDS = 60;
 const MAX_LOG_CHARS = 128_000;
 const PAGE_CHARS = 30_000;
-const MAX_RESULT_CHARS = 4_000_000;
+const MAX_RESULT_CHARS = 1_000_000;
 const MAX_RECORDS = 100;
 const RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -30,7 +26,7 @@ type RecordData = {
     startedAt?: number;
     updatedAt: number;
     timeoutSeconds: number;
-    result?: Record<string, unknown>;
+    resultJson?: string;
     changedPaths: string[];
     logs: LogEntry[];
     nextCursor: number;
@@ -76,20 +72,15 @@ export function executionTimeout(value: unknown): number {
     return value;
 }
 
-/** Single backend executor. Admission and persistence are serialized; control calls bypass FIFO. */
+/** Single backend executor. Admission is serialized; state lives only in memory; control calls bypass FIFO. */
 export class OperationManager {
     private readonly entries = new Map<string, Entry>();
     private readonly queue: Entry[] = [];
     private active: Entry | undefined;
     private lock: Promise<void> = Promise.resolve();
-    private readonly ready: Promise<void>;
-    private unavailable = false;
     private closing = false;
 
-    public constructor(private readonly directory: string, private readonly backend: string) {
-        this.ready = this.recover();
-        void this.ready.catch(() => undefined);
-    }
+    public constructor(private readonly backend: string) {}
 
     private static appendLog(data: RecordData, stream: 'stdout' | 'stderr', text: string): void {
         for (let offset = 0; offset < text.length; offset += PAGE_CHARS) {
@@ -113,7 +104,6 @@ export class OperationManager {
     public async launch(options: {
         tool: string; args: Record<string, unknown>; run: () => Promise<Record<string, unknown>>;
     }): Promise<Record<string, unknown>> {
-        await this.ready;
         const {
             tool, args, run,
         } = options;
@@ -128,8 +118,8 @@ export class OperationManager {
             tool,
             args,
         })).digest('hex');
-        const admitted = await this.exclusive(async () => {
-            if (this.unavailable || this.closing) {
+        const admitted = await this.exclusive(() => {
+            if (this.closing) {
                 throw new ToolError('conflict', 'Operation executor unavailable');
             }
 
@@ -152,7 +142,7 @@ export class OperationManager {
                 throw new ToolError('QUEUE_FULL', 'Five operations are already waiting; retry after a slot is free');
             }
 
-            await this.prune();
+            this.prune();
             const data: RecordData = {
                 id: `${this.backend}-${randomUUID()}`,
                 tool,
@@ -179,7 +169,6 @@ export class OperationManager {
                 finish,
             };
 
-            await this.persist(data);
             this.entries.set(data.id, entry);
             const observe = this.active === undefined;
 
@@ -210,9 +199,9 @@ export class OperationManager {
 
         const { data } = admitted.entry;
 
-        if (terminal(data.state) && data.result !== undefined) {
+        if (terminal(data.state) && data.resultJson !== undefined) {
             return {
-                ...data.result,
+                ...JSON.parse(data.resultJson) as Record<string, unknown>,
                 operation: this.view(data),
             };
         }
@@ -224,7 +213,6 @@ export class OperationManager {
     }
 
     public async control(name: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
-        await this.ready;
         if (name === 'operations') {
             return { operations: [...this.entries.values()].reverse().slice(0, MAX_RECORDS).map((entry) => this.view(entry.data)) };
         }
@@ -236,17 +224,17 @@ export class OperationManager {
         }
 
         if (name === 'operation_cancel') {
-            await this.exclusive(async () => {
+            await this.exclusive(() => {
                 if (entry.data.state === 'queued') {
                     this.queue.splice(this.queue.indexOf(entry), 1);
                     entry.data.state = 'cancelled';
                     entry.data.updatedAt = Date.now();
-                    entry.data.result = {
+                    entry.data.resultJson = JSON.stringify({
                         status: 'error',
                         code: 'cancelled',
                         message: 'Cancelled before execution',
-                    };
-                    await this.persist(entry.data);
+                    });
+                    entry.run = () => Promise.resolve({});
                     entry.finish();
                 } else if (entry.data.state === 'running') {
                     entry.controller.abort(new Error('cancelled'));
@@ -281,8 +269,8 @@ export class OperationManager {
             logsTruncated: entry.data.truncated,
         };
 
-        if (name === 'operation_result' && entry.data.result !== undefined) {
-            const serialized = JSON.stringify(entry.data.result);
+        if (name === 'operation_result' && entry.data.resultJson !== undefined) {
+            const serialized = entry.data.resultJson;
             const offset = args.offset ?? 0;
 
             if (typeof offset !== 'number' || !Number.isInteger(offset) || offset < 0 || offset > serialized.length) {
@@ -290,7 +278,7 @@ export class OperationManager {
             }
 
             if (serialized.length <= PAGE_CHARS) {
-                response.result = entry.data.result;
+                response.result = JSON.parse(serialized) as Record<string, unknown>;
             } else {
                 response.resultJson = serialized.slice(offset, offset + PAGE_CHARS);
                 response.nextOffset = offset + PAGE_CHARS < serialized.length ? offset + PAGE_CHARS : null;
@@ -302,14 +290,20 @@ export class OperationManager {
     }
 
     public async close(): Promise<void> {
-        await this.ready;
         this.closing = true;
+        for (const entry of this.queue.splice(0)) {
+            entry.data.state = 'cancelled';
+            entry.run = () => Promise.resolve({});
+            entry.finish();
+        }
+
         this.active?.controller.abort(new Error('interrupted'));
         await this.active?.done;
         await this.lock;
+        this.entries.clear();
     }
 
-    private exclusive<T>(run: () => Promise<T>): Promise<T> {
+    private exclusive<T>(run: () => T | Promise<T>): Promise<T> {
         const next = this.lock.then(run);
 
         this.lock = next.then(() => undefined, () => undefined);
@@ -317,55 +311,8 @@ export class OperationManager {
         return next;
     }
 
-    private async persist(data: RecordData): Promise<void> {
-        const path = join(this.directory, `${data.id}.json`);
-        const temporary = `${path}.tmp`;
-
-        await writeFile(temporary, JSON.stringify(data), { mode: 0o600 });
-        await rename(temporary, path);
-    }
-
-    private async recover(): Promise<void> {
-        await mkdir(this.directory, {
-            recursive: true,
-            mode: 0o700,
-        });
-        for (const filename of await readdir(this.directory)) {
-            if (!filename.startsWith(`${this.backend}-`) || !filename.endsWith('.json')) {
-                continue;
-            }
-
-            const data = JSON.parse(await readFile(join(this.directory, filename), 'utf8')) as RecordData;
-
-            if (`${data.id}.json` !== filename) {
-                throw new Error('Invalid operation state filename');
-            }
-
-            if (!terminal(data.state)) {
-                data.state = 'interrupted';
-                data.updatedAt = Date.now();
-                data.result = {
-                    status: 'error',
-                    code: 'interrupted',
-                    message: 'Backend restarted; operation was not replayed',
-                };
-                await this.persist(data);
-            }
-
-            this.entries.set(data.id, {
-                data,
-                controller: new AbortController(),
-                run: () => Promise.resolve({}),
-                done: Promise.resolve(),
-                finish: () => undefined,
-            });
-        }
-
-        await this.prune();
-    }
-
-    private async prune(): Promise<void> {
-        const finished = [...this.entries.values()].filter((entry) => terminal(entry.data.state))
+    private prune(): void {
+        const finished = [...this.entries.values()].filter((entry) => terminal(entry.data.state)).reverse()
             .sort((a, b) => b.data.updatedAt - a.data.updatedAt);
 
         for (const [
@@ -376,7 +323,6 @@ export class OperationManager {
                 continue;
             }
 
-            await unlink(join(this.directory, `${entry.data.id}.json`));
             this.entries.delete(entry.data.id);
         }
     }
@@ -399,41 +345,29 @@ export class OperationManager {
     private async execute(entry: Entry): Promise<void> {
         const { data, controller } = entry;
         let stopDeadline: () => void = () => undefined;
-        let logTimer: ReturnType<typeof setTimeout> | undefined;
-        let persistenceFailure: unknown;
         const changedPaths = new Set<string>();
-        const persistLogs = () => {
-            logTimer = undefined;
-            void this.exclusive(() => this.persist(data)).catch((error: unknown) => {
-                persistenceFailure = error;
-                this.unavailable = true;
-                controller.abort(new Error('Operation storage failed'));
-            });
-        };
 
         try {
             data.state = 'running';
             data.startedAt = Date.now();
             data.updatedAt = data.startedAt;
-            await this.exclusive(() => this.persist(data));
             stopDeadline = scheduleDeadline(data.timeoutSeconds, () => controller.abort(new Error('timed_out')));
             const result = await withOperationContext({
                 signal: controller.signal,
                 changedPaths,
                 log: (stream, text) => {
                     OperationManager.appendLog(data, stream, text);
-                    if (logTimer === undefined) {
-                        logTimer = setTimeout(persistLogs, 250);
-                    }
                 },
             }, entry.run);
 
             controller.signal.throwIfAborted();
-            if (JSON.stringify(result).length > MAX_RESULT_CHARS) {
+            const serialized = JSON.stringify(result);
+
+            if (serialized.length > MAX_RESULT_CHARS) {
                 throw new ToolError('command_failed', 'Result exceeds retained result quota; narrow the query');
             }
 
-            data.result = result;
+            data.resultJson = serialized;
             data.state = result.status === 'error' || typeof result.exitCode === 'number' && result.exitCode !== 0 ? 'failed' : 'completed';
         } catch (error) {
             if (controller.signal.aborted) {
@@ -444,51 +378,36 @@ export class OperationManager {
                     data.state = reason.message;
                 }
 
-                data.result = {
+                data.resultJson = JSON.stringify({
                     status: 'error',
                     code: data.state,
                     message: `Operation ${data.state}`,
-                };
+                });
             } else if (error instanceof ToolError) {
                 data.state = 'failed';
-                data.result = {
+                data.resultJson = JSON.stringify({
                     status: 'error',
                     code: error.code,
                     message: error.message,
                     ...error.details !== undefined && { details: error.details },
-                };
+                });
             } else {
                 data.state = 'failed';
-                data.result = {
+                data.resultJson = JSON.stringify({
                     status: 'error',
                     code: 'internal_error',
                     message: 'Operation failed; inspect backend logs',
-                };
+                });
             }
         } finally {
             stopDeadline();
-            clearTimeout(logTimer);
             data.changedPaths = [...changedPaths];
             data.updatedAt = Date.now();
-            try {
-                await this.exclusive(() => this.persist(data));
-                if (persistenceFailure !== undefined) {
-                    this.unavailable = true;
-                }
-            } catch {
-                this.unavailable = true;
-                data.state = 'interrupted';
-                data.result = {
-                    status: 'error',
-                    code: 'storage_failed',
-                    message: 'Operation result could not be persisted',
-                };
-            }
-
+            entry.run = () => Promise.resolve({});
             entry.finish();
-            await this.exclusive(async () => {
+            await this.exclusive(() => {
                 this.active = undefined;
-                if (!this.unavailable && !this.closing) {
+                if (!this.closing) {
                     const next = this.queue.shift();
 
                     if (next !== undefined) {
@@ -497,9 +416,7 @@ export class OperationManager {
                     }
                 }
 
-                await this.prune();
-            }).catch(() => {
-                this.unavailable = true;
+                this.prune();
             });
         }
     }

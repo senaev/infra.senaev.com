@@ -1,8 +1,3 @@
-import {
-    mkdtemp, readdir, readFile, rm, writeFile,
-} from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { setTimeout as pause } from 'node:timers/promises';
 
 import {
@@ -14,25 +9,12 @@ import {
     operationCheckpoint, operationContext, scheduleDeadline, withOperationContext,
 } from './operationContext';
 
-const directories: string[] = [];
-
-afterEach(async () => {
+afterEach(() => {
     vi.useRealTimers();
-    await Promise.all(directories.splice(0).map((path) => rm(path, {
-        recursive: true,
-        force: true,
-    })));
 });
 
-async function createManager(backend = 'code') {
-    const directory = await mkdtemp(join(tmpdir(), 'operations-'));
-
-    directories.push(directory);
-
-    return {
-        directory,
-        manager: new OperationManager(directory, backend),
-    };
+function createManager(backend = 'code') {
+    return { manager: new OperationManager(backend) };
 }
 
 function deferred<T>() {
@@ -63,7 +45,7 @@ async function waitFor(check: () => Promise<boolean>) {
 
 describe('OperationManager', () => {
     it('returns fast structured results, records failures and deduplicates retries', async () => {
-        const { manager } = await createManager();
+        const { manager } = createManager();
         const run = vi.fn(() => Promise.resolve({ value: 42 }));
         const reply = await manager.launch({
             tool: 'read',
@@ -108,7 +90,7 @@ describe('OperationManager', () => {
     });
 
     it('observes for 5 seconds, admits five queued jobs immediately and cancels without executing', async () => {
-        const { manager, directory } = await createManager();
+        const { manager } = createManager();
         const gate = deferred<Record<string, unknown>>();
         const running = manager.launch({
             tool: 'run',
@@ -119,7 +101,7 @@ describe('OperationManager', () => {
             run: () => gate.promise,
         });
 
-        await waitFor(async () => (await manager.control('operations', {})).operations instanceof Array && (await readdir(directory)).length === 1);
+        await waitFor(async () => ((await manager.control('operations', {})).operations as unknown[]).length === 1);
         const queuedRun = vi.fn(() => Promise.resolve({}));
         const queued = [];
 
@@ -142,7 +124,7 @@ describe('OperationManager', () => {
             args: {},
             run: queuedRun,
         })).rejects.toMatchObject({ code: 'QUEUE_FULL' });
-        expect((await readdir(directory)).filter((name) => name.endsWith('.json'))).toHaveLength(6);
+        expect((await manager.control('operations', {})).operations).toHaveLength(6);
         expect(await manager.launch({
             tool: 'read',
             args: { requestId: 'q0' },
@@ -166,7 +148,7 @@ describe('OperationManager', () => {
     }, 10000);
 
     it('executes FIFO across tool types and holds the slot while abort cleanup is pending', async () => {
-        const { manager } = await createManager();
+        const { manager } = createManager();
         const started = deferred<void>();
         const cleanup = deferred<Record<string, unknown>>();
         const order: string[] = [];
@@ -223,8 +205,8 @@ describe('OperationManager', () => {
         await manager.close();
     });
 
-    it('preserves results and bounded replayable stream cursors across restart', async () => {
-        const { manager, directory } = await createManager();
+    it('retains results and bounded replayable stream cursors in memory', async () => {
+        const { manager } = createManager();
         const reply = await manager.launch({
             tool: 'run',
             args: {},
@@ -248,50 +230,71 @@ describe('OperationManager', () => {
             id,
             cursor: 0,
         })).toEqual(page);
-        await manager.close();
-        const recovered = new OperationManager(directory, 'code');
-
-        expect(await recovered.control('operation_result', { id })).toMatchObject({
+        expect(await manager.control('operation_result', { id })).toMatchObject({
             operation: { state: 'completed' },
             result: { value: 42 },
         });
-        await expect(recovered.control('operation_status', {
+        await expect(manager.control('operation_status', {
             id,
             cursor: 100000,
         })).rejects.toMatchObject({ code: 'invalid_arguments' });
-        await recovered.close();
+        await manager.close();
     });
 
-    it('recovers queued/running records as interrupted without replay and isolates backends', async () => {
-        const { manager, directory } = await createManager();
-        const reply = await manager.launch({
+    it('forgets IDs and request deduplication in a new instance and isolates backends', async () => {
+        const { manager } = createManager();
+        const run = vi.fn(() => Promise.resolve({}));
+        const options = {
             tool: 'read',
-            args: {},
-            run: () => Promise.resolve({}),
-        });
-
-        await manager.close();
+            args: { requestId: 'retry' },
+            run,
+        };
+        const reply = await manager.launch(options);
         const { id } = reply.operation as { id: string };
-        const path = join(directory, `${id}.json`);
-        const record = JSON.parse(await readFile(path, 'utf8')) as Record<string, unknown>;
+        const fresh = new OperationManager('code');
+        const vault = new OperationManager('obsidian');
 
-        record.state = 'queued';
-        await writeFile(path, JSON.stringify(record));
-        const recovered = new OperationManager(directory, 'code');
-
-        expect(await recovered.control('operation_result', { id })).toMatchObject({
-            operation: { state: 'interrupted' },
-            result: { code: 'interrupted' },
-        });
-        const vault = new OperationManager(directory, 'obsidian');
-
+        await expect(fresh.control('operation_status', { id })).rejects.toMatchObject({ code: 'not_found' });
         await expect(vault.control('operation_status', { id })).rejects.toMatchObject({ code: 'not_found' });
-        await recovered.close();
+        const repeated = await fresh.launch(options);
+
+        expect(repeated.operation).not.toMatchObject({ id });
+        expect(run).toHaveBeenCalledTimes(2);
+        await manager.close();
+        expect((await manager.control('operations', {})).operations).toEqual([]);
+        await expect(manager.launch(options)).rejects.toMatchObject({ code: 'conflict' });
+        await fresh.close();
         await vault.close();
     });
 
+    it('cancels queued work and releases retained records when closed', async () => {
+        const { manager } = createManager();
+        const started = deferred<void>();
+        const active = manager.launch({
+            tool: 'run',
+            args: {},
+            run: () => new Promise((resolve) => {
+                operationContext()?.signal.addEventListener('abort', () => resolve({}), { once: true });
+                started.resolve();
+            }),
+        });
+
+        await started.promise;
+        const queuedRun = vi.fn(() => Promise.resolve({}));
+
+        await manager.launch({
+            tool: 'read',
+            args: {},
+            run: queuedRun,
+        });
+        await manager.close();
+        expect((await active).operation).toMatchObject({ state: 'interrupted' });
+        expect(queuedRun).not.toHaveBeenCalled();
+        expect((await manager.control('operations', {})).operations).toEqual([]);
+    });
+
     it('does not count queued time and enforces timeout without polling', async () => {
-        const { manager } = await createManager();
+        const { manager } = createManager();
         const started = deferred<void>();
         const first = manager.launch({
             tool: 'run',
@@ -320,7 +323,7 @@ describe('OperationManager', () => {
         });
         expect(await manager.control('operation_result', { id })).toMatchObject({ result: { value: 'not timed out in queue' } });
         await manager.close();
-        const { manager: deadlineManager } = await createManager();
+        const { manager: deadlineManager } = createManager();
         const hung = await deadlineManager.launch({
             tool: 'run',
             args: { timeoutSeconds: 1 },
@@ -335,8 +338,65 @@ describe('OperationManager', () => {
         await deadlineManager.close();
     });
 
+    it('enforces the reduced result quota and retains a JSON snapshot', async () => {
+        const { manager } = createManager();
+        const result = { text: 'a'.repeat(999_989) };
+        const reply = await manager.launch({
+            tool: 'read',
+            args: {},
+            run: () => Promise.resolve(result),
+        });
+        const { id } = reply.operation as { id: string };
+
+        expect(reply.operation).toMatchObject({ state: 'completed' });
+        result.text = 'mutated after completion';
+        const retained = await manager.control('operation_result', { id });
+
+        expect(retained.totalChars).toBe(1_000_000);
+        expect(String(retained.resultJson)).toContain('a'.repeat(100));
+        const oversized = await manager.launch({
+            tool: 'read',
+            args: {},
+            run: () => Promise.resolve({ text: 'b'.repeat(999_990) }),
+        });
+
+        expect(oversized).toMatchObject({
+            code: 'command_failed',
+            operation: { state: 'failed' },
+        });
+        await manager.close();
+    });
+
+    it('bounds terminal records and expires old results without storage', async () => {
+        const { manager } = createManager();
+        const options = {
+            tool: 'read',
+            args: {},
+            run: () => Promise.resolve({}),
+        };
+        const oldest = await manager.launch(options);
+        const { id } = oldest.operation as { id: string };
+
+        for (let index = 0; index < 100; index++) {
+            await manager.launch(options);
+        }
+
+        await expect(manager.control('operation_result', { id })).rejects.toMatchObject({ code: 'not_found' });
+        expect((await manager.control('operations', {})).operations).toHaveLength(100);
+        const now = Date.now();
+
+        vi.spyOn(Date, 'now').mockReturnValue(now + 8 * 24 * 60 * 60 * 1000);
+        try {
+            await manager.launch(options);
+            expect((await manager.control('operations', {})).operations).toHaveLength(1);
+        } finally {
+            vi.restoreAllMocks();
+            await manager.close();
+        }
+    });
+
     it('pages large final JSON results without rerunning the handler', async () => {
-        const { manager } = await createManager();
+        const { manager } = createManager();
         const expected = { text: 'z'.repeat(90000) };
         const reply = await manager.launch({
             tool: 'read',

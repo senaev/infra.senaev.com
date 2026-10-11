@@ -2,11 +2,11 @@
 
 ## Goal
 
-Introduce one shared managed-operation wrapper for all domain commands in both backend consumers: Code Tools (code-tools in the opencode-serve container) and Obsidian Sync (obsidian-sync in its own container). Cluster Helper (cluster-helper) remains the authenticated MCP entry point and proxies requests to the originating backend. The server returns a final result within a fixed 5-second observation window or a retrievable operation ID; ChatGPT can retrieve state, incremental logs and the final result or cancel execution without selecting an execution mode. This PR documents the design only; implementation starts after the owner reviews it.
+Introduce one shared managed-operation wrapper for all domain commands in both backend consumers: Code Tools (code-tools in the opencode-serve container) and Obsidian Sync (obsidian-sync in its own container). Cluster Helper (cluster-helper) remains the authenticated MCP entry point and proxies requests to the originating backend. The server returns a final result within a fixed 5-second observation window or a retrievable operation ID; ChatGPT can retrieve state, incremental logs and the final result or cancel execution without selecting an execution mode. Implementation proceeds in separate reviewed and verified stages.
 
 ## Context
 
-- Both `code-tools/` and `obsidian-sync/` consume the shared wrapper from `senaev-utils/`, owning separate execution queues and persistent operation state in their respective containers. Code Tools manages repositories and shell processes; Obsidian Sync manages vault filesystem commands. `cluster-helper/` exposes both through the authenticated MCP connector and routes launch and control requests to the correct backend. Existing shared definitions live in `senaev-utils/src/codeTools/` and `senaev-utils/src/obsidianVaultTools/`.
+- Both `code-tools/` and `obsidian-sync/` consume the shared wrapper from `senaev-utils/`, owning separate execution queues and in-memory operation state in their respective containers. Code Tools manages repositories and shell processes; Obsidian Sync manages vault filesystem commands. `cluster-helper/` exposes both through the authenticated MCP connector and routes launch and control requests to the correct backend. Existing shared definitions live in `senaev-utils/src/codeTools/` and `senaev-utils/src/obsidianVaultTools/`.
 - `runTool.ts` and `cloneTool.ts` await `runProcess.ts`. Results and bounded output arrive only after completion. The proxy allows up to 330 seconds; the current process runtime limit is at most 300 seconds.
 - `runProcess.ts` already uses asynchronous Node spawn, separate process groups and closed stdin. It stores bounded stdout/stderr in memory and kills the process group on timeout. It has no operation registry or later result retrieval.
 - `handleMcpMessage.ts` implements stateless JSON responses using protocol version 2025-06-18, without task methods or notification streams.
@@ -35,23 +35,23 @@ Use a stable opaque operation ID rather than an OS PID. Return machine-readable 
 
 Observation returns current state, a bounded page of new stdout/stderr, a continuation cursor, truncation/retention metadata and the original final tool result when available. Explicit cursors must be replayable: reading must not consume output globally. Preserve stream identity; do not claim exact chronological ordering between independent stdout and stderr streams. Do not infer command-stage completion or a progress percentage from arbitrary log text.
 
-### Execution, storage and recovery
+### Execution and in-memory state
 
-Use the shared small operation manager in both code-tools and obsidian-sync, each with independent queue and backend-owned state. Persist metadata, final results and bounded logs on persistent storage outside repository working trees; a database or distributed queue is not initially necessary for the single-instance deployment. Set retention, output quotas and concurrent-operation limits.
+Use the shared small operation manager in both code-tools and obsidian-sync, each with independent queue and backend-owned state. Store all operation metadata, queue entries, requestId deduplication, final results and bounded logs exclusively in process memory. Do not use disk, a database, remote storage or any asynchronous storage adapter for operation state. This restriction does not prohibit the filesystem work explicitly requested by domain tools.
 
-Persist a retrievable operation before returning its ID. Deduplicate launch retries using a caller-provided request ID and reject reuse with different arguments. Do not automatically rerun arbitrary shell commands after crashes: they may already have produced side effects.
+Register a retrievable operation in memory before returning its ID. Deduplicate launch retries using a caller-provided request ID and reject reuse with different arguments while its record remains retained in the same process. Keep up to 100 terminal records, 128,000 log characters per operation and 1,000,000 serialized JSON result characters per operation, with seven-day retention. Store completed results as JSON strings rather than object graphs. The retained text payload is approximately 215 MiB at two bytes per character, leaving headroom toward the roughly 256 MiB target for retained operation data. This is not a process RSS or execution-peak cap; no additional global memory or queue limits are introduced. Expire old records and release completed handler closures. Close cancels queued work, aborts active work, waits for cooperative cleanup and releases retained records.
 
-Client disconnection must not terminate execution. Persisted results and logs must survive service/container restart. Continued execution across container restart is not a requirement for this iteration: record unfinished operations as interrupted rather than leaving them running forever or reporting success. Do not claim that `detached: true` alone provides restart durability. Guard against PID reuse when recovering state or cancelling processes.
+Client disconnection must not terminate execution. A backend restart loses all IDs, queue entries, logs, results and deduplication records. Old IDs return not_found; do not reconstruct, recover or automatically replay operations. A requestId submitted after restart is a new request and can repeat side effects, so clients must inspect domain state before retrying mutations. Filesystem changes already performed remain; loss of operation state is not rollback. Continued subprocess execution across container restart is not promised.
 
 Use one FIFO queue per backend pod, independently for Code Tools and Obsidian: one running domain operation and at most five waiting operations, across all projects and tool types. Long operations block short reads in that backend; this is an accepted first-version limitation. Serialize admission and slot assignment to enforce these limits under concurrent requests. When all five waiting slots are occupied, return the machine-readable error QUEUE_FULL without creating an operation. Deduplicate an existing requestId before capacity checks; retries must return the original operation, while reuse with different arguments fails. Status, result retrieval, discovery and cancellation bypass the queue.
 
-A queued operation is retrievable before its ID is returned and can be cancelled without executing its handler; remove it from the waiting queue and preserve its cancelled record. After cancelling a running operation, release the execution slot and start the next operation only after processing/subprocess termination and resource cleanup finish. Record queuedAt and startedAt separately; waiting has no execution deadline. Persisted queued work is marked interrupted on restart rather than automatically executed. Per-pod serialization does not protect shared files against additional replicas or external writers, including the Telegram agent; document that limitation.
+A queued operation is retrievable before its ID is returned and can be cancelled without executing its handler; remove it from the waiting queue and preserve its cancelled record. After cancelling a running operation, release the execution slot and start the next operation only after processing/subprocess termination and resource cleanup finish. Record queuedAt and startedAt separately; waiting has no execution deadline. Queued work is lost on restart and is never automatically replayed. Per-pod serialization does not protect shared files against additional replicas or external writers, including the Telegram agent; document that limitation.
 
 Clone into a reserved temporary destination and expose the final project only after success. Prevent concurrent clones into the same destination; handle failed or interrupted temporary clones without deleting unrelated directories. Replace quiet cloning with bounded progress output where practical.
 
 ### Shared cancellation and Obsidian operations
 
-The owner explicitly added Obsidian to the design scope. Put reusable operation lifecycle, ID generation, observation contracts and cancellation utilities in senaev-utils; code-tools and obsidian-sync own their execution and persistent state. cluster-helper routes operation requests to the originating backend using an explicit backend discriminator or an unambiguous opaque handle. Enforce the same authenticated-owner access on launch, observation, discovery and cancellation.
+The owner explicitly added Obsidian to the design scope. Put reusable operation lifecycle, ID generation, observation contracts and cancellation utilities in senaev-utils; code-tools and obsidian-sync own their execution and in-memory state. cluster-helper routes operation requests to the originating backend using an explicit backend discriminator or an unambiguous opaque handle. Enforce the same authenticated-owner access on launch, observation, discovery and cancellation.
 
 All existing Obsidian commands use the shared wrapper, including search, links, list, read, create, patch, diary_append and move. Every existing Code Tools command uses it as well. All handler/helper chains support cancellation propagation; short reads and edits have no exemption.
 
@@ -60,16 +60,16 @@ Create an AbortController for each managed operation. Pass its AbortSignal throu
 - Check signal.throwIfAborted() before starting work and between files, directory entries, batches and execution stages. Pass the signal to Node APIs that support it; for APIs that do not, check before and after awaiting and stop scheduling further work. An already pending non-abortable I/O operation may still finish.
 - Make CPU-heavy loops yield periodically so timers and cancellation requests can run; a synchronous loop that never yields cannot provide timely cancellation. Bound parallel batches and prevent new work after abort.
 - Do not swallow AbortError in generic per-file error handlers or report it as an unreadable-file warning. Propagate cancellation to the operation boundary, where it becomes cancelled or timed_out rather than success or an unrelated internal error.
-- For shell operations, connect the abort signal to termination of the entire process group, with bounded graceful shutdown and escalation. Drain/persist available output and settle the operation exactly once despite exit/abort races.
+- For shell operations, connect the abort signal to termination of the entire process group, with bounded graceful shutdown and escalation. Retain available output in memory and settle the operation exactly once despite exit/abort races.
 - For TypeScript operations, stop cooperative processing, close iterators/file handles and release locks/listeners/timers. Return preserved progress where meaningful, without claiming a complete result.
 - Before irreversible writes or atomic publication, check the signal. Preserve per-file atomicity and existing hash/conflict checks. Cancellation cannot undo completed writes: report changed paths and partial completion for move/link rewrites and other multi-file mutations. Never claim automatic rollback unless it is explicitly implemented.
-- Remove cancellation listeners and deadline timers after terminal completion. Keep the last known consistent persisted state. Abort must not be caused merely by a disconnected observation request; operation execution belongs to its lifecycle, not to a poll's HTTP connection.
+- Remove cancellation listeners and deadline timers after terminal completion. Keep the last known consistent in-memory state. Abort must not be caused merely by a disconnected observation request; operation execution belongs to its lifecycle, not to a poll's HTTP connection.
 
 Review every existing code-* and obsidian-* handler and its helper chain, recording coverage in tests. Native filesystem AbortSignal support does not guarantee interruption of every kernel I/O call; acceptance tests must cover cooperative traversal and bounded scheduling rather than promise instantaneous cancellation of all I/O.
 
 ### Timeouts and notifications
 
-Execution timeout enforcement belongs to the server, not to ChatGPT polling. A Node timer handles ordinary hung commands; if guarantees against a blocked or failed backend event loop are required, use an independent watchdog and document its failure boundary. Launch and HTTP observation timeouts must include margin above the fixed 5-second wait and bounded admission/storage overhead. No HTTP request waits for the complete execution beyond that window; operation runtime deadlines are independent of proxy limits.
+Execution timeout enforcement belongs to the server, not to ChatGPT polling. A Node timer handles ordinary hung commands; if guarantees against a blocked or failed backend event loop are required, use an independent watchdog and document its failure boundary. Launch and HTTP observation timeouts must include margin above the fixed 5-second wait and bounded admission overhead. No HTTP request waits for the complete execution beyond that window; operation runtime deadlines are independent of proxy limits.
 
 Ordinary MCP tool calls with operation polling are the compatible initial path. Native MCP Tasks can be an adapter over the same operation manager if the actual ChatGPT client advertises and correctly handles the relevant capability. Do not substitute an unsupported protocol result shape for CallToolResult.
 
@@ -79,11 +79,11 @@ Push notifications are optional follow-up work, gated on confirmed client suppor
 
 All Code Tools domain commands (run, clone, search, projects, list, read, write and patch) and all Obsidian domain commands use the same wrapper, queue, IDs, server-controlled response behaviour, deadlines and observation utilities. Preserve each tool's original structured final result; short commands return it during the initial observation window. No read-only exemption or per-project execution slot is introduced.
 
-Persist bounded search/list results for subsequent retrieval rather than rerunning the same operation. Saved results are snapshots and must not be presented as current after filesystem changes. Typed tools return structured results rather than raw process logs. Cancellation/deadline checks cover JavaScript processing as well as subprocesses.
+Retain bounded search/list results in memory for subsequent retrieval rather than rerunning the same operation. Saved results are snapshots and must not be presented as current after filesystem changes. Typed tools return structured results rather than raw process logs. Cancellation/deadline checks cover JavaScript processing as well as subprocesses.
 
 ### Gradual activation and recovery access
 
-Universal coverage is the final target, not a single deployment switch. Activate the shared wrapper through a backend-owned allowlist/feature flag, initially for only one read-only command (code-projects is the first candidate). Commands outside the allowlist keep their existing direct path during migration; they do not enter the new queue or depend on manager initialization/storage. Keep the control endpoints outside the queue and ensure tool descriptions match the actually enabled behaviour.
+Universal coverage is the final target, not a single deployment switch. Activate the shared wrapper through a backend-owned allowlist/feature flag, initially for only one read-only command (code-projects is the first candidate). Commands outside the allowlist keep their existing direct path during migration; they do not enter the new queue or depend on manager availability. Keep the control endpoints outside the queue and ensure tool descriptions match the actually enabled behaviour.
 
 Before enabling another group, merge its separate PR, verify the deployment and exercise the enabled command end-to-end through ChatGPT: fast result, long-running handle, queued response, status/result, cancellation, timeout and backend recovery. Use controlled test fixtures/delays to test slow read-only behaviour without altering real repositories. Verify that code-run/read/write/patch still work while the new manager is unavailable, its queue is full or an operation is hung.
 
@@ -93,9 +93,8 @@ Migrate read-only commands first, then mutations, and switch the commands used t
 
 - Final operation tool names and schemas; whether observation combines status, logs and result in one response.
 - Termination grace period, log/result quotas and retention. Queue capacity is settled: one running and five waiting operations per backend pod. The execution default is 60 seconds; the API must not impose an upper bound.
-- Persistent state directory and restart reconciliation details.
 - Whether a Node timer is sufficient or an independent watchdog is required.
-- Backend-aware operation routing and persistent state configuration for obsidian-sync.
+- Backend-aware operation routing and in-memory operation ownership for obsidian-sync.
 - Cancellation checkpoints, yield/batch sizes and partial-write reporting for every existing handler. All domain tools expose the same managed interface.
 - Which native MCP Tasks revision, if any, the deployed ChatGPT client supports. Older 2025-11-25 Tasks and the current Tasks extension have different contracts.
 
@@ -113,10 +112,10 @@ These are design references, not adopted dependencies or proof of ChatGPT client
 
 1. Review this task with the owner and settle the open API and lifecycle decisions.
 2. Verify actual ChatGPT capabilities and choose the external polling interface; keep native Tasks optional.
-3. Implement the reusable operation lifecycle in senaev-utils, backend-owned persistent operations and routing, process supervision, runtime deadlines and cancellation.
+3. Implement the reusable operation lifecycle in senaev-utils, backend-owned in-memory operations and routing, process supervision, runtime deadlines and cancellation.
 4. Thread AbortSignal through every existing Code Tools and Obsidian handler/helper chain; make file traversal and batch/CPU processing cooperatively cancellable.
 5. Add a backend-owned activation allowlist and wrap one safe read-only command first (code-projects). Keep all other commands on their existing direct path; validate the complete managed lifecycle before expanding coverage.
-6. Add independent per-backend FIFO queues (one running, five waiting), immediate queued acknowledgement, QUEUE_FULL, retention, clone publication and restart reconciliation.
+6. Add independent per-backend FIFO queues (one running, five waiting), immediate queued acknowledgement, QUEUE_FULL, retention, clone publication and loss of state on restart.
 7. Preserve each wrapped tool's structured results, conflict/diff feedback and partial-mutation reporting.
 8. Expand coverage in separate PRs after merge/deployment/smoke checks: read-only tools, mutations, then recovery-critical run/read/write/patch after independent rollback access is verified. Update shared tool definitions, proxy policies and operating instructions for each enabled stage.
 9. Run automated checks and end-to-end tests from the current ChatGPT connector before any rollout claims.
@@ -131,13 +130,13 @@ These are design references, not adopted dependencies or proof of ChatGPT client
 - Duplicate request IDs do not run a command twice, including retries when the queue is full; conflicting arguments fail. Dependent commands wait for successful completion. Clone destinations follow the documented limits.
 - For each backend, verify exactly one running operation and at most five waiting, FIFO admission, immediate queued responses without the initial 5-second wait, and QUEUE_FULL without a new operation record. Code Tools and Obsidian execute independently.
 - Queue waiting does not consume the default or explicit runtime timeout. Verify queued cancellation never invokes the handler; running cancellation holds the slot until cleanup completes. Status/result/cancel remain available while execution and queue slots are occupied.
-- Restart the container: completed results survive and unfinished work becomes interrupted, without automatic reruns or indefinite running states.
+- Restart the container: all operation state is lost, old IDs return not_found and no work is replayed. Deduplication applies only while the record exists in the same process. Verify the manager does not read or write operation state through any storage API.
 - Verify that no tool schema exposes execution-mode arguments (mode/sync/async), configurable observation waiting or PTY functionality.
 - For every existing handler, verify an already-aborted signal prevents new work. Test mid-traversal/mid-batch abort, timeout without polls, listener/timer/lock cleanup and cancellation propagation through helpers.
 - Verify aborted search/backlink scans stop scheduling reads and cannot return complete:true or swallow abort as an ordinary file warning. Verify CPU loops yield and parallel batches stop scheduling work.
 - Verify cancelled multi-file mutations preserve valid individual files and report completed changes and incomplete work. Test abort racing with final completion/publication and ensure a single coherent terminal outcome.
 - Verify backend routing and owner isolation for both Code Tools and Obsidian operation handles; client poll disconnection must not abort execution.
-- Test disabled-command bypass when the manager fails initialization, storage fails, its queue is full or an operation is hung; verify run/read/write/patch remain available during migration. Verify safe feature-flag rollback without duplicate mutations and test independent recovery access before the final switch.
+- Test disabled-command bypass when the manager is unavailable, its queue is full or an operation is hung; verify run/read/write/patch remain available during migration. Verify safe feature-flag rollback without duplicate mutations and test independent recovery access before the final switch.
 - Run all repository checks and verify each merged deployment before expanding the activation allowlist; ultimately demonstrate run, clone and a long Obsidian scan through ChatGPT.
 
 ## Findings
@@ -177,3 +176,12 @@ The owner approved merging stage 1 and requested gradual activation to protect t
 ### 2026-10-11 10:46 UTC — Stage 1 merge and CI timing correction
 
 Merged PR #62 into main (58108bd) with the gradual activation requirement. Local checks passed on retry; the first local run hit an existing calendar-test timeout. Post-merge GitHub CI then exposed a timing-sensitive helper in two new manager tests: 1,000 immediate event-loop turns can expire before filesystem completion on a fast runner with slower storage. Deployment was blocked by CI and production behaviour stayed unchanged. Prepared a follow-up fix using a three-second wall-clock polling deadline with a 10 ms pause; no production code change. Do not advance to activation until the corrected CI and deployments succeed.
+
+### 2026-10-11 10:53 UTC — Stage 1 verified after deployment
+
+
+Removed all operation-state filesystem imports, persistence/recovery methods and log-flush timers. Retained bounded process-local records, replayable cursors, result paging, queue limits, deadlines and cancellation. Close discards queued callbacks, cooperatively aborts active execution and clears retained records. Updated tests for fresh-instance loss of IDs/deduplication, backend isolation, shutdown and retention. Targeted manager suite: 12 passed. Full npm run simple-checks: all six checks passed; 133 test files and 1,106 tests passed. Separate branch: refactor/in-memory-operations. Canary activation remains deferred until this stage is merged and deployment verified.
+
+### 2026-10-11 11:06 UTC — Reduce retained memory toward 256 MiB
+
+The owner requested a roughly 256 MiB retained-data target without introducing additional limits. Reduced the existing result quota from 4,000,000 to 1,000,000 JSON characters per operation; kept 100 terminal records, 128,000 log characters, seven-day retention and one active/five waiting operations. Store completed results as JSON strings to avoid unbounded object-graph overhead in retained records and parse only when returning a small result or the initial final reply. Estimated retained text: about 215 MiB at two bytes per character, plus metadata and transient response overhead. This does not bound Node process RSS or memory used by executing handlers. Targeted manager suite: 13 tests passed, including the exact result boundary, rejection above it and snapshot independence from later mutation.
