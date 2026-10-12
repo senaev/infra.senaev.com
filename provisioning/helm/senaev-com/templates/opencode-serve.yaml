@@ -94,7 +94,7 @@ spec:
                   key: GH_TOKEN
                   optional: false
             - name: OPENCODE_WORKDIR
-              value: /projects/vault
+              value: /projects/git
             - name: OPENROUTER_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -104,8 +104,6 @@ spec:
             - name: OPENCODE_CONFIG_CONTENT
               value: '{"model":"openrouter/{{ .Values.opencodeTelegram.modelId }}","provider":{"openrouter":{"npm":"@ai-sdk/openai-compatible","name":"OpenRouter","options":{"baseURL":"https://openrouter.ai/api/v1","apiKey":"{env:OPENROUTER_API_KEY}"}}}}'
           volumeMounts:
-            - name: vault
-              mountPath: /projects/vault
             - name: projects-git
               mountPath: /projects/git
             - name: ssh-dir
@@ -123,8 +121,6 @@ spec:
         - name: opencode-telegram-bot
           image: ghcr.io/senaev/opencode-telegram-bot:latest
           volumeMounts:
-            - name: vault
-              mountPath: /projects/vault
             - name: projects-git
               mountPath: /projects/git
             - name: opencode-data
@@ -156,7 +152,7 @@ spec:
             - name: OPENCODE_MODEL_ID
               value: {{ .Values.opencodeTelegram.modelId }}
             - name: OPEN_BROWSER_ROOTS
-              value: /projects
+              value: /projects/git
             - name: STT_API_URL
               value: "https://api.groq.com/openai/v1"
             - name: STT_API_KEY
@@ -169,10 +165,6 @@ spec:
               value: "whisper-large-v3-turbo"
 
       volumes:
-        - name: vault
-          hostPath:
-            path: {{ .Values.clusterRootPath }}/{{ .Values.obsidianSync.volumePath }}
-            type: DirectoryOrCreate
         - name: opencode-data
           hostPath:
             path: {{ .Values.clusterRootPath }}/{{ .Values.opencodeTelegram.opencodeDataPath }}

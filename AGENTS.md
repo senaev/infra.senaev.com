@@ -74,6 +74,19 @@ that the whole path works. Open each one and check the result:
 For the ChatGPT MCP connector, ask ChatGPT to read a note, search the vault and add a diary
 record, then check the `🤖 ChatGPT MCP message` logs of cluster-helper.
 
+## Agent data boundaries
+
+OpenCode Serve, Code Tools MCP and the OpenCode Telegram bot share `/projects/git`
+for repository work. They have no Obsidian Vault mount. Obsidian files are mounted
+only by `obsidian-sync`, which owns the Obsidian MCP business commands, sync and
+file publication. `cluster-helper` routes MCP requests to the appropriate backend
+without mounting either data directory; `nextjs-app` consumes public note APIs.
+
+Create or edit Vault content through Obsidian MCP rather than `code-run`. The current
+Obsidian MCP commands support Markdown notes; arbitrary-file uploads or HTML/JS
+creation need a separate Obsidian capability. Shared service deployments must preserve
+these filesystem boundaries and the existing authenticated/network-restricted APIs.
+
 ## Shared Toolchain
 
 The root `package.json` is not a workspace root. It is a private manifest that owns the

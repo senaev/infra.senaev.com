@@ -2,7 +2,7 @@
 
 ## Server Overview
 
-This document covers the architecture and components of the cloud server, describing the structure of all main directories and their purpose.
+This environment is for working with git repositories and source code. OpenCode, Code Tools and the Telegram bot share the same git project storage. Other application data is managed by its own service and is not mounted here.
 
 ---
 
@@ -10,7 +10,7 @@ This document covers the architecture and components of the cloud server, descri
 
 ### `/projects` - Root Projects Folder
 
-The root directory where all projects and server files are stored.
+Git working copies are stored under `/projects/git`. This is also the default OpenCode working directory and the Telegram file browser root. Choose a repository subfolder before making changes.
 
 #### 1. **`/projects/git`** (ProjectsGit)
 
@@ -22,10 +22,6 @@ The root directory where all projects and server files are stored.
   git clone <repository-url>
   ```
 
-#### 2. **`/projects/vault`** (ProjectsWorld)
-- **Purpose:** Storing private and confidential information
-- **Description:** Secure directory for storing private information, secrets, configurations, and other sensitive server data.
-- **Usage:** For critical files, API keys, passwords, and private configurations
 
 ---
 
@@ -53,4 +49,3 @@ All cloned repositories should be placed in `/projects/git` for convenient organ
 | Directory | Type | Purpose |
 |-----------|------|---------|
 | `/projects/git` | Working directory | Git repositories and source code |
-| `/projects/vault` | Storage | Confidential information and secrets |
