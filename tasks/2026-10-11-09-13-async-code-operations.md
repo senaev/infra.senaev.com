@@ -1260,3 +1260,79 @@ The rule protects static imports under existing production module conventions; t
 ## Result
 
 PR84 merged/built/deployed and smoke verified. Next iteration adds static dependency boundary enforcement in existing root lint. No runtime changes or new production fixtures.
+
+### 2026-10-12T15:16:53.377555+00:00 — PR85 boundary enforcement published
+
+Commit7d61a3de6f978c649aac39f7364ac40e0af6c1d7 published in chore/command-boundaries. PR https://github.com/senaev/infra.senaev.com/pull/85 . Mandatory full pre-push operation code-42aa9496-ecea-4bf5-9e71-0bd808df6659 exit0, all six PASS:
+
+```text
+[test]  Test Files  162 passed (162)
+[test]       Tests  1258 passed (1258)
+--> Timings:
+--> ┌──────────────┬──────────┬───────────┬────────┬──────────────────────┐
+--> │ name         │ duration │ exit code │ killed │ command              │
+--> ├──────────────┼──────────┼───────────┼────────┼──────────────────────┤
+--> │ test         │ 155,521  │ 0         │ false  │ npm run test         │
+--> │ lint         │ 107,702  │ 0         │ false  │ npm run lint         │
+--> │ typecheck    │ 91,938   │ 0         │ false  │ npm run typecheck    │
+--> │ check:helm   │ 10,428   │ 0         │ false  │ npm run check:helm   │
+--> │ check:python │ 6,272    │ 0         │ false  │ npm run check:python │
+--> │ check:shell  │ 1,728    │ 0         │ false  │ npm run check:shell  │
+--> └──────────────┴──────────┴───────────┴────────┴──────────────────────┘
+summary: (done in 157.54 seconds)
+```
+
+CI/review pending; no merge authorization for PR85 and no merge/deployment done. Removed exact own push log and PR-body files after preserving evidence; post-publication journal remains uncommitted.
+
+## Findings
+
+### 2026-10-12T15:19:36.158193+00:00 — PR85 merged; migration completion review
+
+PR85 pre-push all six PASS162files/1258tests; exact-HEAD CI38269027459 SUCCESS. CodeRabbit skipped for free review quota (next available42min at observation); green context is not approval. User explicitly authorized merge after disclosure. PR85 merged2026-10-12T15:18:12Z as a4d35bc157b19f5a822a3b74fe999538563ad8c1. Scoped stash preserved journal onto main. Only main Check38269240624 triggered, no service deployments for lint-only changes.
+
+Completion review: eight Code Tools and eight Obsidian commands registered and managed, explicit CommandExecution throughout, no production AsyncLocalStorage/operationContext/currentCommandExecution/canary or migration allowlist found. Shared neutral file helpers and CommandError have no HTTP/manager dependencies; HTTP mapping/operation admission separated; existing lifecycle shared; static boundary lint enforced. Public parallel Code read and Obsidian section read both completed successfully after prior deployments. Basic smoke is not full new live regression.
+
+## Result
+
+Main migration and business/adapter separation are complete. No new functional implementation justified by this final review. Remaining follow-up evidence: long-clone process-group cancellation, nonempty backlink rewrites and diary_append not repeated after latest refactor; publication cancellation window explicitly waived. Floating Helm/Node/apt remain build reproducibility follow-ups outside migration. Documented memory retention/restart loss and per-backend queues remain intentional. PR85 independent CodeRabbit review skipped for quota; main CI completion pending. No production vault changes, test data or new task files created in closure review; journal only uncommitted.
+
+### 2026-10-12T15:19:55.810452+00:00 — closure verification complete
+
+Main Check38269240624 completed SUCCESS for merge a4d35bc157b19f5a822a3b74fe999538563ad8c1. Both public read smoke calls terminal completed; final Obsidian operations active[], Code inventory had active[] and subsequent own journal calls completed. No active test operations or owned fixtures remain. Migration closure verified within recorded live limits.
+
+## Findings
+
+### 2026-10-12T15:21:54.901670+00:00 — remaining live evidence iteration started
+
+User authorized next iteration after migration closure: live long-clone cancellation/process-group cleanup, nonempty move backlinks and diary_append in both policies. Public MCP only; own fixtures and exact own-record diary removal, preserving concurrent user content. Root vault instructions remain in context and mounted AGENTS hash verified. No implementation/commit/push/PR planned unless a real defect is found.
+
+### 2026-10-12T15:30:09.511431+00:00 — remaining live scenarios PASS and fixtures cleaned
+
+1 Long clone cancellation PASS both policies through public code-clone. Own git repository served on a loopback HTTP fixture which delayed valid upload-pack advertisement90s, holding real git/remote-http processes before publication. Fixture itself ran as own parallel code-run code-2a60f938-bc2e-4275-b4e7-bfd13e86c43c. Queued clone code-483dd1b4-5b0d-40fb-b79f-4d8d8a59fbd5 and parallel clone code-d0b60453-bff3-44b8-ae81-d8a7a7726ddd returned running handles, retained clone logs, then reached cancelled with changedPaths[]. Independent /proc checks found no remaining process in their groups and no destination/temp clone directory. Parallel census before cancellation:
+
+```text
+pid4730 pgid4730 queued git clone (leader observed)
+pid4768 pgid4768 parallel git clone
+pid4769 pgid4768 git remote-http
+pid4770 pgid4768 git-remote-http
+PASS all three parallel clone group members gone; temp and destination absent
+```
+
+Initial queued process census wrongly filtered only command prefix git-space and asserted a child, missing remote-http processes; assertion failed in test instrumentation. Corrected census selected the complete group, verified all three members for parallel; queued group independently absent after cancel. Own HTTP fixture cancelled and listener connect failed as expected. This live proof covers cancellation while waiting for HTTP advertisement; it does not cover every pack-transfer/checkout/publication timing race or SIGTERM-resistant clone descendants. No backend/config changes or foreign operations cancelled.
+
+2 Nonempty backlink rewrite PASS both policies. Moves obsidian-b2c1f84b-f28a-4518-a1c3-21234d01e4d2 and obsidian-975236e3-4799-45ae-a81c-180f4a57ce4a each changed1ownbacklinknote/rewrote3links, skipped0, readErrors0. Public reads verified heading/display wikilink, block embed and Markdown relative link preservation; fenced-code old link unchanged. Public links results obsidian-83555f5d-a1cc-4f11-87a9-8dd7fcf5086a and obsidian-a3a7b260-916f-4bcb-a936-04f372f08c45 each report totalSources1,totalLinks3,lines[2,3,4], ambiguous0,alias0,complete:true. Only own old/new/backlink paths in changedPaths (plus own created moved folder).
+
+3 Diary_append PASS both policies: obsidian-bcf88d6b-c1e5-44e2-a70f-caf7cc2fc774 and obsidian-70b3a744-76d5-4e44-a7e9-0918f8c2d2c2 added exact own test text with Europe/Madrid timestamp and mark. Identical retained retry reused original ID/result without duplication; changed policy conflicted. Removed only two exact timestamped test records via current-hash public obsidian-patch obsidian-f3c1d9d4-5804-4862-8c18-b4972a438090. Public whole-file hash and independent byte comparison against private pre-test snapshot both confirm complete original restoration:
+
+```text
+123ddd7d97edb77f01911dd545d20cbef08044ba028423611ebe3471c87762cb
+PASS independent byte-for-byte diary restoration
+```
+
+No snapshot overwrite was used to restore the production draft; cleanup was targeted removal and would preserve concurrent unrelated content through the hash guard. No concurrent draft change observed in this run.
+
+4 Cleanup PASS: operation code-72fb9bc5-98cc-4372-b5c9-171928444590 exit0, removed exactly four owned vault notes and own folders after filename-set, hash, marker and no-symlink checks; own git source after exact contents/commit/recursive no-symlink checks; own HTTP fixture files and private diary snapshot after ownership/type/contents checks. No clone temp paths remain. Public code-operations active[] and obsidian-operations active[].
+
+## Result
+
+Remaining requested live scenarios completed through public MCP: long clone group cancellation/cleanup, nonempty move backlinks and diary_append all PASS in queued and parallel. No implementation defect found, no commit/push/new PR needed; main remains a4d35bc157b19f5a822a3b74fe999538563ad8c1 and only append-only journal changed. Migration work complete within explicit test limits. Exact transport-independent5s timing, exhaustive cancellation stages/process races and waived publication-window cancellation remain outside claims. Floating Helm/Node/apt dependencies are separate optional build work, not migration blockers.
