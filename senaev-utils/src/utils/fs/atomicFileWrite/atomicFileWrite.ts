@@ -6,7 +6,6 @@ import {
     basename, dirname, join,
 } from 'node:path';
 
-import { throwIfOperationAborted } from '../../../operations/operationContext';
 import { isNotFoundError } from '../../Error/isNotFoundError/isNotFoundError';
 
 const PERMISSION_BITS = 0o7777;
@@ -18,7 +17,6 @@ const PERMISSION_BITS = 0o7777;
  */
 async function writeTemporaryFile(absolutePath: string, content: string, signal?: AbortSignal): Promise<string> {
     signal?.throwIfAborted();
-    throwIfOperationAborted();
     const temporaryPath = join(
         dirname(absolutePath),
         `.${basename(absolutePath)}.${randomBytes(6).toString('hex')}.tmp`
@@ -34,7 +32,6 @@ async function writeTemporaryFile(absolutePath: string, content: string, signal?
             ...signal === undefined ? {} : { signal },
         });
         signal?.throwIfAborted();
-        throwIfOperationAborted();
         await handle.close();
     } catch (error) {
         try {
@@ -70,7 +67,6 @@ export async function replaceFileAtomically(absolutePath: string, content: strin
     try {
         await copyFileMode(absolutePath, temporaryPath);
         signal?.throwIfAborted();
-        throwIfOperationAborted();
         await rename(temporaryPath, absolutePath);
         published?.();
     } catch (error) {
@@ -89,7 +85,6 @@ export async function createFileExclusively(absolutePath: string, content: strin
 
     try {
         signal?.throwIfAborted();
-        throwIfOperationAborted();
         await link(temporaryPath, absolutePath);
         published?.();
     } finally {

@@ -6,7 +6,7 @@ import {
     CODE_COMMAND_ARGUMENTS, PROJECT_NAME_PATTERN, type CodeCommandName,
 } from 'senaev-utils/src/codeTools/codeCommands';
 import {
-    currentCommandExecution, operationCheckpoint, operationContext, throwIfOperationAborted,
+    currentCommandExecution,
 } from 'senaev-utils/src/operations/operationContext';
 import { assertNoSymlinkOnPath, normalizeRootRelativePath } from 'senaev-utils/src/toolServer/rootRelativePath';
 import {
@@ -63,6 +63,7 @@ export async function resolveNamedProject(config: CodeToolsConfig, name: string,
             };
         }
     } catch (error) {
+        execution.throwIfAborted();
         if (!isNotFoundError(error)) {
             throw error;
         }
@@ -86,23 +87,24 @@ export function normalizeProjectPath(input: string, field: string): string {
 }
 
 /** The absolute path of an existing regular file, with no symlink on the way. */
-export async function resolveExistingFile(project: Project, path: string): Promise<string> {
-    await operationCheckpoint();
+export async function resolveExistingFile(project: Project, path: string, execution: CommandExecution = currentCommandExecution()): Promise<string> {
+    await execution.checkpoint();
     if (path === '') {
         throw invalidArguments('The path must name a file, not the project root');
     }
 
     try {
-        const absolutePath = await assertNoSymlinkOnPath(project.root, path);
+        const absolutePath = await assertNoSymlinkOnPath(project.root, path, execution);
 
         if (!(await stat(absolutePath)).isFile()) {
             throw new ToolError('not_found', `"${path}" is not a file`);
         }
 
-        throwIfOperationAborted();
+        execution.throwIfAborted();
 
         return absolutePath;
     } catch (error) {
+        execution.throwIfAborted();
         if (isNotFoundError(error)) {
             throw new ToolError('not_found', `File "${path}" does not exist`);
         }
@@ -112,23 +114,28 @@ export async function resolveExistingFile(project: Project, path: string): Promi
 }
 
 /** Reads a UTF-8 text file. A file with a NUL byte near its start is treated as binary, as git does. */
-export async function readTextFile(absolutePath: string, path: string): Promise<string> {
-    await operationCheckpoint();
-    if ((await stat(absolutePath)).size > MAX_TEXT_FILE_BYTES) {
-        throw new ToolError('forbidden_path', `"${path}" is larger than ${MAX_TEXT_FILE_BYTES / 1024 / 1024} MB; use head, tail or sed to read parts of it`);
+export async function readTextFile(absolutePath: string, path: string, execution: CommandExecution = currentCommandExecution()): Promise<string> {
+    await execution.checkpoint();
+    try {
+        if ((await stat(absolutePath)).size > MAX_TEXT_FILE_BYTES) {
+            throw new ToolError('forbidden_path', `"${path}" is larger than ${MAX_TEXT_FILE_BYTES / 1024 / 1024} MB; use head, tail or sed to read parts of it`);
+        }
+
+        execution.throwIfAborted();
+        const { signal } = execution;
+        const buffer = await readFile(absolutePath, signal === undefined ? {} : { signal });
+
+        execution.throwIfAborted();
+
+        if (buffer.subarray(0, BINARY_SNIFF_BYTES).includes(0)) {
+            throw new ToolError('forbidden_path', `"${path}" is a binary file`);
+        }
+
+        return buffer.toString('utf8');
+    } catch (error) {
+        execution.throwIfAborted();
+        throw error;
     }
-
-    throwIfOperationAborted();
-    const signal = operationContext()?.signal;
-    const buffer = await readFile(absolutePath, signal === undefined ? {} : { signal });
-
-    throwIfOperationAborted();
-
-    if (buffer.subarray(0, BINARY_SNIFF_BYTES).includes(0)) {
-        throw new ToolError('forbidden_path', `"${path}" is a binary file`);
-    }
-
-    return buffer.toString('utf8');
 }
 
 export function projectPath(config: CodeToolsConfig, name: string): string {

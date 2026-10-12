@@ -1,4 +1,5 @@
-import { operationCheckpoint } from '../operations/operationContext';
+import type { CommandExecution } from '../commands/CommandExecution';
+import { currentCommandExecution } from '../operations/operationContext';
 
 import { ToolError } from './ToolError';
 import { createLineStarts } from './textLines';
@@ -104,16 +105,20 @@ export function replaceExactlyOnce(content: string, find: string, replacement: s
 }
 
 /** Same replacement algorithm, yielding so cancellation can be observed. */
-export async function replaceExactlyOnceAsync(content: string, find: string, replacement: string, documentName = 'file'): Promise<string> {
+export async function replaceExactlyOnceAsync(content: string, find: string, replacement: string, options: string | { documentName?: string; execution: CommandExecution } = 'file'): Promise<string> {
+    const documentName = typeof options === 'string' ? options : options.documentName ?? 'file';
+    const execution = typeof options === 'string' ? currentCommandExecution() : options.execution;
+
+    execution.throwIfAborted();
     const steps = replacementSteps(content, find, documentName);
     let step = steps.next();
 
     while (!step.done) {
-        await operationCheckpoint();
+        await execution.checkpoint();
         step = steps.next();
     }
 
-    await operationCheckpoint();
+    await execution.checkpoint();
 
     return applyReplacement(content, find, replacement, step.value);
 }

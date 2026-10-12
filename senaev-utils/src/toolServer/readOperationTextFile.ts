@@ -1,19 +1,22 @@
 import { readFile } from 'node:fs/promises';
 
-import {
-    operationCheckpoint, operationContext, throwIfOperationAborted,
-} from '../operations/operationContext';
+import type { CommandExecution } from '../commands/CommandExecution';
+import { currentCommandExecution } from '../operations/operationContext';
 
-/** Reads text under the current operation, without swallowing cancellation as a path error. */
-export async function readOperationTextFile(path: string): Promise<string> {
-    await operationCheckpoint();
-    const signal = operationContext()?.signal;
-    const content = await readFile(path, {
-        encoding: 'utf8',
-        ...signal === undefined ? {} : { signal },
-    });
+/** Read text with explicit cancellation; the default bridges legacy callers. */
+export async function readOperationTextFile(path: string, execution: CommandExecution = currentCommandExecution()): Promise<string> {
+    await execution.checkpoint();
+    try {
+        const content = await readFile(path, {
+            encoding: 'utf8',
+            signal: execution.signal,
+        });
 
-    throwIfOperationAborted();
+        execution.throwIfAborted();
 
-    return content;
+        return content;
+    } catch (error) {
+        execution.throwIfAborted();
+        throw error;
+    }
 }
