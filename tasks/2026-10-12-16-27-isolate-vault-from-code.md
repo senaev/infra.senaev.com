@@ -113,3 +113,42 @@ Root AGENTS.md restored to the main version; the PR no longer introduces this se
 ### 2026-10-12T16:46:43.780320+00:00 — Pre-merge review correction
 
 User authorized merge, deployment verification and final main journal commit. Root boundary section removal published in76e3735; all six checks PASS162files/1258tests, exact-HEAD CI38279470963 SUCCESS. CodeRabbit identified bot0.26.4 requires Node ^22.14.0 || ^23.6.0 || >=24 and rejects Node20 at CLI startup. Verified the published npm tarball package.json and dist/runtime/node-version.js. Changed bot base image to node:22-alpine before merging; image build/deploy will verify installation and startup. No merge yet.
+
+### 2026-10-12T16:51:59.685692+00:00 — PR86 merged after checks
+
+Node correction96195557e46c64177518c6e5f187eb3ba6b21843 passed all six pre-push checks162files/1258tests (code-e41bd31b-50e8-444a-b23d-aa50676c4d88 exit0) and CI38280063732 SUCCESS. CodeRabbit status SUCCESS; original major Node finding independently verified and fixed, inline comments empty. PR86 merged with expected-head guard at2026-10-12T16:51:31Z: c58ea51c76484467ea35367e304a0cd8e290ee3d. Main fast-forwarded cleanly. Triggered exact-merge runs: Check38280307734, Update Helm Charts38280307717, bot build/deploy38280307754. Awaiting all results and live verification.
+
+### 2026-10-12T16:55:55.381140+00:00 — Deployment and live verification PASS
+
+All exact-merge workflows completed successfully: Check38280307734, Update Helm Charts38280307717 (all8 matrix jobs success; only senaev-com changed), opencode-telegram-bot38280307754. Actual bot image built from node:22-alpine digest0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402 and installed0.26.4. Rollout log:
+
+```text
+2026-10-12T16:53:54.6188447Z out: deployment "opencode-telegram" successfully rolled out
+```
+
+Public Code MCP briefly returned INVALID_ARGUMENT during pod replacement; recovered without alternate authorization or tokens. New hostname opencode-telegram-76ff8788cd-nvxdr. Live code-d349e813-d693-4c31-9c18-de69fd892915 exit0:
+
+```text
+PASS former Vault path absent and read fails ENOENT
+PASS no Vault mount in current Code Tools container
+PASS git repository remains available
+OPENCODE_WORKDIR=/projects/git
+```
+
+code-projects code-0644812b-fac8-454c-a49a-e39bd95f46a2 completed and lists infra.senaev.com on main. Obsidian read obsidian-048f8cb9-2292-4ffb-af6c-fa9d798e4ecc completed with unchanged AGENTS.md hash5458a865df4c54af6b3bb5ecba547b1c8b1886858656ff41f048acb99d8a08ab; search obsidian-1bd75a2c-e01c-4908-97dd-cda88bfd5c04 completed with expected Public static files match. No Vault writes or fixtures created.
+
+Public HTTP smoke outputs:
+
+```text
+https://s.senaev.com/1bxsl9 -> https://senaev.com/cv/5min: 200 text/html; charset=utf-8,60436bytes
+https://static.senaev.com/datadog-dc-by-org-id.html: 200 text/html; charset=utf-8,4991bytes
+https://senaev.com/notes/my_blog_post_senaev_speaks_12: 200 text/html; charset=utf-8,23565bytes
+https://static.senaev.com/hello-world/: 200 text/html; charset=utf-8,2386bytes
+https://static.senaev.com/hello-world/counter.js: 200 application/javascript; charset=utf-8,269bytes
+```
+
+Limits: direct mount/read checks cover the actual Code Tools/OpenCode container. Bot mount removal is evidenced by rendered pod specification and successful rollout; no independent bot-container filesystem shell, Telegram interactive UI/session switching, browser visual/click test, desktop Obsidian Sync round-trip or new Vault-write regression performed. Do not treat these as live-verified. Historical sessions remain; a previously selected Vault session may require user selection of a git project. No new exclusions/blacklists or upload capability added.
+
+## Result
+
+PR86 merged and deployed successfully. Vault mount removed from code pod; git storage and /projects/git workdir remain available. Obsidian MCP read/search and all required public smoke routes PASS. Root Agent data boundaries section removed per user request; root AGENTS.md has no PR diff. CodeRabbit's Node20 incompatibility corrected before merge. All mandatory pre-push checks162files/1258tests, PR CI and all merge workflows PASS. Evidence and explicit live limitations retained above. User authorized this final journal-only commit directly on main.
