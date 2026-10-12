@@ -990,3 +990,43 @@ Broader operation code-08eee238-74d6-4767-a4fc-df728a39315d: 40 files / 260 test
 ### 2026-10-12T11:10:20.812568+00:00 — Final regression correction and pagination deduplication
 
 Corrected deadline/standalone/manager regression output: "Test Files 4 passed (4)" / "Tests 38 passed (38)" (code-dfc40fd7-6fdf-4e9e-b4b6-5812addbef53); actual run deadline completed in 1186ms. All sixteen direct commands still pass their standalone integration checks. Removed one remaining algorithmic duplicate: identical offset/limit decoding in five adapters now calls shared readPageArguments, retaining each command's original defaults, caps and error order through optionalCappedInteger. Existing pagination/validation integration cases remain the verification; no new public limit or argument. Final mandatory full hook is the definitive gate.
+
+### 2026-10-12T11:16:07.650141+00:00 — Direct execution cleanup published; mandatory checks PASS
+
+Published branch refactor/direct-command-execution at 757b9dde5e3b39c8996a1f36684d53957430ccfb. Push operation code-f7de7be7-bb0c-4057-b721-87739d7fac5a exited 0; mandatory unmodified npm run simple-checks passed all six checks. Opened a separate PR; no main commit/push/merge authorization inferred. Validation excerpt (ANSI removed):
+```text
+[test]  Test Files  162 passed (162)
+[test]       Tests  1249 passed (1249)
+--> │ test         │ 188,340  │ 0         │ false  │ npm run test         │
+--> │ lint         │ 137,518  │ 0         │ false  │ npm run lint         │
+--> │ typecheck    │ 117,803  │ 0         │ false  │ npm run typecheck    │
+--> │ check:helm   │ 12,405   │ 0         │ false  │ npm run check:helm   │
+--> │ check:python │ 6,243    │ 0         │ false  │ npm run check:python │
+--> │ check:shell  │ 1,778    │ 0         │ false  │ npm run check:shell  │
+```
+
+The test count changed from 1251 to 1249 by removing three duplicate/obsolete ambient-only cases and adding one standalone-adapter capability case. Two old async-context tests were replaced by explicit pre-abort and real overlapping manager callback checks; meaningful cancellation/cleanup/observer assertions remain. New business modules import neither adapters/argument decoders nor ambient manager state. GitHub CI/CodeRabbit review pending; no live proof claimed before merge/deploy. Post-publication journal entries remain uncommitted for continuation.
+
+### 2026-10-12T11:18:07.702642+00:00 — PR #82 review/CI observation and owned cleanup
+
+PR https://github.com/senaev/infra.senaev.com/pull/82 is OPEN/MERGEABLE at exact HEAD 757b9dde5e3b39c8996a1f36684d53957430ccfb. GitHub Check run 38241556453 / job 114785135772 is in progress; CodeRabbit is PENDING with no submitted review or inline findings yet and no quota warning. No approval claim. Removed exactly four own regular/non-symlink temporary focus/push/body files after their paths and evidence were retained; no user data or foreign operations touched. Tests used only disposable owned fixtures; this iteration created no production vault fixtures. Journal remains the only uncommitted file.
+
+## Findings
+
+### 2026-10-12T11:23:36.534017+00:00 — PR #82 review finding addressed; published validation evidence
+
+CodeRabbit reviewed HEAD 757b9dde5e3b39c8996a1f36684d53957430ccfb and requested one documentation change: the checked-in journal lacked the final mandatory pre-push result and an iteration Result section. The result/table were already appended in the working copy after publication; this follow-up publishes them without rewriting history. No implementation findings were posted. GitHub CI run 38241556453 / job 114785135772 completed SUCCESS at 2026-10-12T11:17:21Z for that exact implementation commit.
+
+Broad-regression failure excerpt retained from code-08eee238-74d6-4767-a4fc-df728a39315d (ANSI removed):
+```text
+ FAIL   code-tools  src/tools/projectTools.test.ts > runTool > stops a command under the common execution deadline
+Error: Test timed out in 15000ms.
+ Test Files  1 failed | 40 passed (41)
+      Tests  1 failed | 260 passed (261)
+```
+
+The implicit deadline-test callback was corrected; subsequent targeted run output was "Test Files 4 passed (4)" / "Tests 38 passed (38)". Final mandatory pre-push completed exitCode 0 with "Test Files 162 passed (162)" / "Tests 1249 passed (1249)"; the verbatim six-check timings table is in the preceding publication entry. All six checks passed. The documentation-only follow-up is subject to the same mandatory hook; no bypass or approval claim.
+
+## Result
+
+Removed AsyncLocalStorage and operationContext completely. The manager passes one explicit CommandExecution per operation directly to the service/handler; standalone adapters create neutral independent capabilities. All sixteen typed business commands are separated from JSON adapters, and argument/scope decoding is outside file-access/domain modules. Consolidated repeated pagination argument decoding in five adapters; removed obsolete signal fallbacks/comments and redundant ambient-only test variants. Real overlapping-manager isolation and standalone capabilities are tested; existing cancellation, deadlines, FIFO, retention and filesystem safety remain covered. Public API/modes/limits unchanged. Required full checks passed 162 files / 1249 tests, and GitHub CI passed. PR #82 is prepared, not merged/deployed/live-verified. Existing domain exclusions, path/hash/atomic publication guards and approved memory/restart/parallel tradeoffs remain intentional. No further justified cleanup identified in this iteration. Own temporary files/fixtures cleaned; append-only history preserved. CodeRabbit documentation finding is being corrected in this follow-up; its CHANGES_REQUESTED state must not be described as approval.
