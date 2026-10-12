@@ -64,3 +64,46 @@ summary: (done in 164.10 seconds)
 ## Result
 
 Separate branch implementation complete: Vault filesystem mounts removed from OpenCode/Telegram pod; repository PVC retained; workdir/browser/default roots set to /projects/git; instructions updated. Bot0.26.4 pinned with verified missing-folder menu behavior. Actual rendered manifests pass data/network boundary assertions. All mandatory checks PASS. Not merged/deployed: live absence of Vault in code pod, Telegram UI/session behavior and continued Obsidian/public endpoint function remain to be verified after user-authorized merge. Existing history retained; arbitrary Vault upload/HTML/JS API is a separate task. Publishing this evidence as a documentation-only follow-up before opening PR.
+
+## Findings
+
+### 2026-10-12T16:37:02.655399+00:00 — PR86 published; documentation hook PASS
+
+PR https://github.com/senaev/infra.senaev.com/pull/86 opened at40fafe9025102873eb36de1b57166d36b763f5ec. Doc-followup push hook code-2167c2ba-eaf3-4e9f-a6a2-b0890e3c45b7 exit0:
+
+```text
+[test]  Test Files  162 passed (162)
+[test]       Tests  1258 passed (1258)
+--> Timings:
+--> ┌──────────────┬──────────┬───────────┬────────┬──────────────────────┐
+--> │ name         │ duration │ exit code │ killed │ command              │
+--> ├──────────────┼──────────┼───────────┼────────┼──────────────────────┤
+--> │ test         │ 157,526  │ 0         │ false  │ npm run test         │
+--> │ lint         │ 116,258  │ 0         │ false  │ npm run lint         │
+--> │ typecheck    │ 94,129   │ 0         │ false  │ npm run typecheck    │
+--> │ check:helm   │ 8,889    │ 0         │ false  │ npm run check:helm   │
+--> │ check:python │ 3,693    │ 0         │ false  │ npm run check:python │
+--> │ check:shell  │ 2,096    │ 0         │ false  │ npm run check:shell  │
+--> └──────────────┴──────────┴───────────┴────────┴──────────────────────┘
+summary: (done in 159.67 seconds)
+```
+
+Only root instructions, bot version/default root, OpenCode Helm template/instructions and this task changed. No live Vault mutation or deployment. Removed exactly three owned temp log/body files after evidence preserved. Remote CI/review pending; post-publication entries remain uncommitted for continuation.
+
+### 2026-10-12T16:38:17.135797+00:00 — Exact-HEAD CI PASS
+
+GitHub Check38278583248 completed SUCCESS for40fafe9025102873eb36de1b57166d36b763f5ec. CodeRabbit submitted reviews[] and inline comments[] at latest read, still pending (no approval claim).
+
+## Result
+
+PR86 prepared and published; rendered Helm isolation checks and both mandatory fullhooks PASS162files/1258tests, exact-HEAD CI PASS. CodeRabbit pending. Branch not merged/deployed; runtime filesystem absence, bot UI/selected session and Obsidian/public smoke verification remain explicitly post-deploy. Only this append-only task journal uncommitted; no live Vault or existing project contents changed.
+
+## Findings
+
+### 2026-10-12T16:41:23.939051+00:00 — Remove root boundary documentation on user request
+
+Removed the entire Agent data boundaries section from root AGENTS.md. Deployment isolation changes remain in scope. Previous journal entries are retained as historical evidence.
+
+## Result
+
+Root AGENTS.md restored to the main version; the PR no longer introduces this section. Publishing this requested documentation correction with the existing verification journal.
