@@ -1,9 +1,8 @@
 import { stat, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import {
-    operationCheckpoint, operationContext, recordChangedPath,
-} from 'senaev-utils/src/operations/operationContext';
+import { createCommandAdapter } from 'senaev-utils/src/toolServer/createCommandAdapter';
+import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { readOperationTextFile } from 'senaev-utils/src/toolServer/readOperationTextFile';
 import { assertExpectedHash, hashContent } from 'senaev-utils/src/toolServer/contentHash';
 import { createFileDiffAsync } from 'senaev-utils/src/toolServer/createFileDiffAsync';
@@ -56,7 +55,7 @@ type SkippedLink = {
  * resolve to anything else afterwards is rewritten. This covers backlinks, the relative links
  * inside the moved note, and links that the new name would make ambiguous.
  */
-async function planLinkUpdates(notes: VaultNotes, path: string, newPath: string) {
+async function planLinkUpdates(notes: VaultNotes, path: string, newPath: string, execution: CommandExecution) {
     const rename = (file: string) => (file === path ? newPath : file);
     const indexBefore = createLinkIndex(notes.files, notes.aliasesByNote);
     const indexAfter = createLinkIndex(
@@ -78,7 +77,7 @@ async function planLinkUpdates(notes: VaultNotes, path: string, newPath: string)
         source,
         content,
     ] of notes.contents) {
-        await operationCheckpoint();
+        await execution.checkpoint();
         if (source !== path && !mayLinkToOldName(content) && !mayLinkToNewName(content)) {
             continue;
         }
@@ -87,7 +86,7 @@ async function planLinkUpdates(notes: VaultNotes, path: string, newPath: string)
         const edits: TextEdit[] = [];
 
         for (const link of extractLinks(content)) {
-            await operationCheckpoint();
+            await execution.checkpoint();
             const before = resolveLink(indexBefore, source, link);
 
             if (before.status === 'resolved') {
@@ -145,10 +144,11 @@ async function planLinkUpdates(notes: VaultNotes, path: string, newPath: string)
 }
 
 /** An early, readable refusal; the exclusive create at the end is the race-free check. */
-async function assertNothingAt(config: VaultToolsConfig, path: string): Promise<void> {
+async function assertNothingAt(config: VaultToolsConfig, path: string, execution: CommandExecution): Promise<void> {
     try {
         await stat(join(config.root, path));
     } catch (error) {
+        execution.throwIfAborted();
         if (isNotFoundError(error)) {
             return;
         }
@@ -159,7 +159,7 @@ async function assertNothingAt(config: VaultToolsConfig, path: string): Promise<
     throw new ToolError('already_exists', `"${path}" already exists; choose another "newPath"`);
 }
 
-async function collectDiffs(updates: readonly NoteUpdate[]) {
+async function collectDiffs(updates: readonly NoteUpdate[], execution: CommandExecution) {
     const diffs: ({ path: string } & FileDiff)[] = [];
     const notesWithoutDiff: string[] = [];
     let remainingChars = MAX_DIFF_CHARS_PER_RESPONSE;
@@ -169,7 +169,7 @@ async function collectDiffs(updates: readonly NoteUpdate[]) {
             continue;
         }
 
-        const diff = await createFileDiffAsync(update.target, update.before, update.after);
+        const diff = await createFileDiffAsync(update.target, update.before, update.after, execution);
 
         if (diff.diff.length <= remainingChars) {
             diffs.push({
@@ -188,26 +188,39 @@ async function collectDiffs(updates: readonly NoteUpdate[]) {
     };
 }
 
+export type MoveCommandInput = {
+    path: string;
+    newPath: string;
+};
+function parseMoveInput(input: unknown): MoveCommandInput {
+    const args = readVaultToolArguments(input, 'move');
+
+    return {
+        path: requiredNonEmptyString(args, 'path'),
+        newPath: requiredNonEmptyString(args, 'newPath'),
+    };
+}
+
 /**
  * Renames or moves a note and updates the links to it. The new file is written first and
  * the old one deleted last, so a failure in between leaves a duplicate, never a lost note.
  */
-export async function moveTool(config: VaultToolsConfig, input: unknown) {
-    const args = readVaultToolArguments(input, 'move');
-    const path = normalizeVaultPath(requiredNonEmptyString(args, 'path'), 'path');
-    const newPath = withNoteExtension(config, normalizeVaultPath(requiredNonEmptyString(args, 'newPath'), 'newPath'));
+export async function moveCommand(config: VaultToolsConfig, input: MoveCommandInput, execution: CommandExecution) {
+    execution.throwIfAborted();
+    const path = normalizeVaultPath(input.path, 'path');
+    const newPath = withNoteExtension(config, normalizeVaultPath(input.newPath, 'newPath'));
 
     if (newPath === path) {
         throw invalidArguments('"newPath" is the same as "path"');
     }
 
-    const oldAbsolutePath = await resolveExistingNote(config, path);
+    const oldAbsolutePath = await resolveExistingNote(config, path, execution);
 
     assertNotePath(config, newPath);
-    await assertNothingAt(config, newPath);
+    await assertNothingAt(config, newPath, execution);
 
-    const notes = await readVaultNotes(config);
-    const { updates, skippedLinks } = await planLinkUpdates(notes, path, newPath);
+    const notes = await readVaultNotes(config, execution);
+    const { updates, skippedLinks } = await planLinkUpdates(notes, path, newPath, execution);
     const movedNote = updates.find((update) => update.source === path);
 
     if (movedNote === undefined) {
@@ -218,15 +231,16 @@ export async function moveTool(config: VaultToolsConfig, input: unknown) {
         join(config.root, update.source),
         join(config.root, update.target),
     ]), async () => {
-        const diffResult = await collectDiffs(updates);
+        const diffResult = await collectDiffs(updates, execution);
 
         for (const update of updates) {
-            assertExpectedHash(await readOperationTextFile(join(config.root, update.source)), hashContent(update.before), 'note');
+            assertExpectedHash(await readOperationTextFile(join(config.root, update.source), execution), hashContent(update.before), 'note');
         }
 
-        const newAbsolutePath = await prepareNewNote(config, newPath);
+        const newAbsolutePath = await prepareNewNote(config, newPath, execution);
 
-        await createFileExclusively(newAbsolutePath, movedNote.after, operationContext()?.signal, () => recordChangedPath(newPath)).catch((error: unknown) => {
+        await createFileExclusively(newAbsolutePath, movedNote.after, execution.signal, () => execution.changedPath(newPath)).catch((error: unknown) => {
+            execution.throwIfAborted();
             if (isAlreadyExistsError(error)) {
                 throw new ToolError('already_exists', `"${newPath}" already exists; choose another "newPath"`);
             }
@@ -236,18 +250,18 @@ export async function moveTool(config: VaultToolsConfig, input: unknown) {
 
         for (const update of updates) {
             if (update !== movedNote) {
-                await operationCheckpoint();
-                const absolutePath = await resolveExistingNote(config, update.source);
+                await execution.checkpoint();
+                const absolutePath = await resolveExistingNote(config, update.source, execution);
 
-                assertExpectedHash(await readOperationTextFile(absolutePath), hashContent(update.before), 'note');
-                await replaceFileAtomically(absolutePath, update.after, operationContext()?.signal, () => recordChangedPath(update.source));
+                assertExpectedHash(await readOperationTextFile(absolutePath, execution), hashContent(update.before), 'note');
+                await replaceFileAtomically(absolutePath, update.after, execution.signal, () => execution.changedPath(update.source));
             }
         }
 
-        await operationCheckpoint();
-        assertExpectedHash(await readOperationTextFile(oldAbsolutePath), hashContent(movedNote.before), 'note');
+        await execution.checkpoint();
+        assertExpectedHash(await readOperationTextFile(oldAbsolutePath, execution), hashContent(movedNote.before), 'note');
         await unlink(oldAbsolutePath);
-        recordChangedPath(path);
+        execution.changedPath(path);
 
         return {
             path,
@@ -259,5 +273,8 @@ export async function moveTool(config: VaultToolsConfig, input: unknown) {
             skippedLinks: skippedLinks.slice(0, MAX_REPORTED_SKIPPED_LINKS),
             ...notes.scan,
         };
-    });
+    }, execution);
 }
+
+export type MoveCommandResult = Awaited<ReturnType<typeof moveCommand>>;
+export const moveTool = createCommandAdapter(parseMoveInput, moveCommand);

@@ -6,9 +6,6 @@ import {
 } from 'node:path';
 
 import type { CommandExecution } from '../commands/CommandExecution';
-import {
-    currentCommandExecution,
-} from '../operations/operationContext';
 import { isNotFoundError } from '../utils/Error/isNotFoundError/isNotFoundError';
 
 import { invalidArguments, ToolError } from './ToolError';
@@ -39,7 +36,7 @@ export function normalizeRootRelativePath(input: string, field: string, rootName
  * on the way, and returns it. Comparing real paths is the only check that catches a symlink
  * placed inside the root, because the requested path looks innocent either way.
  */
-export async function assertNoSymlinkOnPath(root: string, relativePath: string, execution: CommandExecution = currentCommandExecution()): Promise<string> {
+export async function assertNoSymlinkOnPath(root: string, relativePath: string, execution: CommandExecution): Promise<string> {
     await execution.checkpoint();
     const realRoot = await realpath(root);
     const absolutePath = join(root, relativePath);
@@ -65,7 +62,7 @@ function parentOf(relativePath: string): string {
  * file. Whether the file itself already exists is left to the exclusive write, which is the
  * only race-free check.
  */
-export async function prepareNewFilePath(root: string, relativePath: string, execution: CommandExecution = currentCommandExecution()): Promise<string> {
+export async function prepareNewFilePath(root: string, relativePath: string, execution: CommandExecution): Promise<string> {
     const parent = parentOf(relativePath);
     let existingAncestor = parent;
 

@@ -8,6 +8,8 @@ import {
     afterEach, beforeEach, describe, expect, it,
 } from 'vitest';
 
+import { createCommandExecution } from '../commands/CommandExecution';
+
 import {
     assertNoSymlinkOnPath, normalizeRootRelativePath, prepareNewFilePath,
 } from './rootRelativePath';
@@ -41,23 +43,23 @@ describe('file system checks', () => {
     });
 
     it('returns the absolute path when there is no symlink on the way', async () => {
-        await expect(assertNoSymlinkOnPath(root, 'src')).resolves.toBe(join(root, 'src'));
+        await expect(assertNoSymlinkOnPath(root, 'src', createCommandExecution())).resolves.toBe(join(root, 'src'));
     });
 
     it('rejects a path through a symlink', async () => {
         await symlink(join(root, 'src'), join(root, 'link'));
 
-        await expect(assertNoSymlinkOnPath(root, 'link')).rejects.toMatchObject({ code: 'forbidden_path' });
+        await expect(assertNoSymlinkOnPath(root, 'link', createCommandExecution())).rejects.toMatchObject({ code: 'forbidden_path' });
     });
 
     it('creates the missing folders for a new file', async () => {
-        await expect(prepareNewFilePath(root, 'src/a/b/c.ts')).resolves.toBe(join(root, 'src/a/b/c.ts'));
+        await expect(prepareNewFilePath(root, 'src/a/b/c.ts', createCommandExecution())).resolves.toBe(join(root, 'src/a/b/c.ts'));
         expect((await stat(join(root, 'src/a/b'))).isDirectory()).toBe(true);
     });
 
     it('does not create folders below a symlinked folder', async () => {
         await symlink(join(root, 'src'), join(root, 'link'));
 
-        await expect(prepareNewFilePath(root, 'link/new/c.ts')).rejects.toMatchObject({ code: 'forbidden_path' });
+        await expect(prepareNewFilePath(root, 'link/new/c.ts', createCommandExecution())).rejects.toMatchObject({ code: 'forbidden_path' });
     });
 });

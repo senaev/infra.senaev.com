@@ -1,10 +1,9 @@
 import { join } from 'node:path';
 
+import { createCommandAdapter } from 'senaev-utils/src/toolServer/createCommandAdapter';
+import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { readOperationTextFile } from 'senaev-utils/src/toolServer/readOperationTextFile';
-import {
-    operationCheckpoint, operationContext, recordChangedPath,
-} from 'senaev-utils/src/operations/operationContext';
-import { PATCH_OPERATION_FIELDS, type PatchOperationType } from 'senaev-utils/src/obsidianVaultTools/vaultCommands';
+import { PATCH_OPERATION_FIELDS } from 'senaev-utils/src/obsidianVaultTools/vaultCommands';
 import { PATCH_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { replaceFileAtomically } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
@@ -17,7 +16,6 @@ import {
     readToolArguments,
     requiredNonEmptyString,
     requiredString,
-    type ToolArguments,
 } from 'senaev-utils/src/toolServer/toolArguments';
 import { invalidArguments } from 'senaev-utils/src/toolServer/ToolError';
 
@@ -27,6 +25,11 @@ import { findSection } from '../markdown/sections';
 import { readVaultToolArguments } from '../toolArguments';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
 
+export type PatchOperation =
+    | { type: 'append'; text: string; section: string | undefined }
+    | { type: 'replace'; find: string; replace: string }
+    | { type: 'replaceSection'; section: string; content: string }
+    | { type: 'setFrontmatter'; properties: Record<string, unknown> };
 type Operation = (content: string) => string | Promise<string>;
 
 /** Appended text always starts on a new line; a blank line before it is up to the caller. */
@@ -38,10 +41,7 @@ function withTrailingNewline(text: string): string {
     return text.endsWith('\n') ? text : `${text}\n`;
 }
 
-function append(args: ToolArguments): Operation {
-    const text = requiredNonEmptyString(args, 'text');
-    const section = optionalString(args, 'section');
-
+function append({ text, section }: Extract<PatchOperation, { type: 'append' }>): Operation {
     return (content) => {
         if (section === undefined) {
             return withTrailingNewline(joinOnNewLine(content, text));
@@ -56,17 +56,14 @@ function append(args: ToolArguments): Operation {
     };
 }
 
-function replace(args: ToolArguments): Operation {
-    const find = requiredNonEmptyString(args, 'find');
-    const replacement = requiredString(args, 'replace');
-
-    return (content) => replaceExactlyOnceAsync(content, find, replacement, 'note');
+function replace({ find, replace: replacement }: Extract<PatchOperation, { type: 'replace' }>, execution: CommandExecution): Operation {
+    return (content) => replaceExactlyOnceAsync(content, find, replacement, {
+        documentName: 'note',
+        execution,
+    });
 }
 
-function replaceSection(args: ToolArguments): Operation {
-    const section = requiredNonEmptyString(args, 'section');
-    const sectionContent = requiredString(args, 'content');
-
+function replaceSection({ section, content: sectionContent }: Extract<PatchOperation, { type: 'replaceSection' }>): Operation {
     return (content) => {
         const { bodyStart, end } = findSection(content, section);
         const isLast = end === content.length;
@@ -80,44 +77,83 @@ function replaceSection(args: ToolArguments): Operation {
     };
 }
 
-function setFrontmatter(args: ToolArguments): Operation {
-    const { properties } = args;
-
-    if (!isObject(properties) || Array.isArray(properties) || Object.keys(properties).length === 0) {
-        throw invalidArguments('"properties" must be a non-empty JSON object; use null as a value to delete a property');
+function buildOperation(operation: PatchOperation, execution: CommandExecution): Operation {
+    switch (operation.type) {
+    case 'append': return append(operation);
+    case 'replace': return replace(operation, execution);
+    case 'replaceSection': return replaceSection(operation);
+    case 'setFrontmatter': return (content) => setFrontmatterProperties(content, operation.properties);
+    default: throw invalidArguments('Unsupported patch operation');
     }
-
-    return (content) => setFrontmatterProperties(content, properties);
 }
 
-const OPERATION_BUILDERS: Record<PatchOperationType, (args: ToolArguments) => Operation> = {
-    append,
-    replace,
-    replaceSection,
-    setFrontmatter,
-};
-
-function readOperations(value: unknown): Operation[] {
+function readOperations(value: unknown): PatchOperation[] {
     const { maxOperations } = PATCH_LIMITS;
 
     if (!Array.isArray(value) || value.length === 0 || value.length > maxOperations) {
         throw invalidArguments(`"operations" must be an array of 1 to ${maxOperations} operations`);
     }
 
-    return value.map((item: unknown, index) => {
+    return value.map((item: unknown, index): PatchOperation => {
         const type = isObject(item) ? item.type : undefined;
 
         if (typeof type !== 'string' || !Object.hasOwn(PATCH_OPERATION_FIELDS, type)) {
             throw invalidArguments(`"operations[${index}].type" must be one of: ${Object.keys(PATCH_OPERATION_FIELDS).join(', ')}`);
         }
 
-        const name = type as PatchOperationType;
-
-        return OPERATION_BUILDERS[name](readToolArguments(item, [
+        const name = type as keyof typeof PATCH_OPERATION_FIELDS;
+        const args = readToolArguments(item, [
             'type',
             ...PATCH_OPERATION_FIELDS[name],
-        ]));
+        ]);
+
+        switch (name) {
+        case 'append': return {
+            type: name,
+            text: requiredNonEmptyString(args, 'text'),
+            section: optionalString(args, 'section'),
+        };
+        case 'replace': return {
+            type: name,
+            find: requiredNonEmptyString(args, 'find'),
+            replace: requiredString(args, 'replace'),
+        };
+        case 'replaceSection': return {
+            type: name,
+            section: requiredNonEmptyString(args, 'section'),
+            content: requiredString(args, 'content'),
+        };
+        case 'setFrontmatter': {
+            const { properties } = args;
+
+            if (!isObject(properties) || Array.isArray(properties) || Object.keys(properties).length === 0) {
+                throw invalidArguments('"properties" must be a non-empty JSON object; use null as a value to delete a property');
+            }
+
+            return {
+                type: name,
+                properties,
+            };
+        }
+
+        default: throw invalidArguments('Unsupported patch operation');
+        }
     });
+}
+
+export type PatchCommandInput = {
+    path: string;
+    expectedHash: string;
+    operations: readonly PatchOperation[];
+};
+function parsePatchInput(input: unknown): PatchCommandInput {
+    const args = readVaultToolArguments(input, 'patch');
+
+    return {
+        path: requiredNonEmptyString(args, 'path'),
+        expectedHash: readExpectedHash(args, 'expectedHash'),
+        operations: readOperations(args.operations),
+    };
 }
 
 /**
@@ -125,30 +161,29 @@ function readOperations(value: unknown): Operation[] {
  * If any operation fails, nothing is written. The expected hash proves the caller edited
  * the version it read.
  */
-export async function patchTool(config: VaultToolsConfig, input: unknown) {
-    const args = readVaultToolArguments(input, 'patch');
-    const path = normalizeVaultPath(requiredNonEmptyString(args, 'path'), 'path');
-    const expectedHash = readExpectedHash(args, 'expectedHash');
-    const operations = readOperations(args.operations);
+export async function patchCommand(config: VaultToolsConfig, input: PatchCommandInput, execution: CommandExecution) {
+    execution.throwIfAborted();
+    const path = normalizeVaultPath(input.path, 'path');
+    const { expectedHash, operations } = input;
 
     return await withFileMutation(join(config.root, path), async () => {
-        const absolutePath = await resolveExistingNote(config, path);
-        const original = await readOperationTextFile(absolutePath);
+        const absolutePath = await resolveExistingNote(config, path, execution);
+        const original = await readOperationTextFile(absolutePath, execution);
 
         assertExpectedHash(original, expectedHash, 'note');
 
         let updated = original;
 
         for (const operation of operations) {
-            await operationCheckpoint();
-            updated = await operation(updated);
+            await execution.checkpoint();
+            updated = await buildOperation(operation, execution)(updated);
         }
 
-        const diff = await createFileDiffAsync(path, original, updated);
+        const diff = await createFileDiffAsync(path, original, updated, execution);
 
         if (updated !== original) {
-            assertExpectedHash(await readOperationTextFile(absolutePath), expectedHash, 'note');
-            await replaceFileAtomically(absolutePath, updated, operationContext()?.signal, () => recordChangedPath(path));
+            assertExpectedHash(await readOperationTextFile(absolutePath, execution), expectedHash, 'note');
+            await replaceFileAtomically(absolutePath, updated, execution.signal, () => execution.changedPath(path));
         }
 
         // No new hash on purpose: the next edit must start from a fresh read.
@@ -157,5 +192,8 @@ export async function patchTool(config: VaultToolsConfig, input: unknown) {
             changed: updated !== original,
             ...diff,
         };
-    });
+    }, execution);
 }
+
+export type PatchCommandResult = Awaited<ReturnType<typeof patchCommand>>;
+export const patchTool = createCommandAdapter(parsePatchInput, patchCommand);

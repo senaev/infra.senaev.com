@@ -1,14 +1,14 @@
 import { readdir } from 'node:fs/promises';
 import { join, posix } from 'node:path';
 
-import { operationCheckpoint } from 'senaev-utils/src/operations/operationContext';
+import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 import { walkDirectory } from 'senaev-utils/src/utils/fs/walkDirectory/walkDirectory';
 
 import type { VaultToolsConfig } from '../vaultToolsConfig';
 
 import {
-    isExcludedFolder, isVisibleFile, resolveExistingFolder,
+    isExcludedFolder, isVisibleFile, normalizeVaultPath, resolveExistingFolder,
 } from './vaultAccess';
 
 export type PathError = {
@@ -41,7 +41,7 @@ function childPath(folder: string, name: string): string {
  * Lists one folder. `Dirent` describes the entry itself without following it, so symlinks
  * are neither files nor folders here and are skipped: the tools never follow them.
  */
-async function readFolder(config: VaultToolsConfig, folder: string): Promise<FolderEntry[]> {
+async function readFolder(config: VaultToolsConfig, folder: string, execution: CommandExecution): Promise<FolderEntry[]> {
     const entries = await readdir(join(config.root, folder), { withFileTypes: true });
     const result: FolderEntry[] = [];
 
@@ -50,7 +50,7 @@ async function readFolder(config: VaultToolsConfig, folder: string): Promise<Fol
         entry,
     ] of entries.entries()) {
         if (index % 128 === 0) {
-            await operationCheckpoint();
+            await execution.checkpoint();
         }
 
         const path = childPath(folder, entry.name);
@@ -72,10 +72,11 @@ async function readFolder(config: VaultToolsConfig, folder: string): Promise<Fol
 }
 
 /** The visible direct children of a folder, folders first, then files, each sorted by path. */
-export async function listFolder(config: VaultToolsConfig, folder: string): Promise<FolderEntry[]> {
-    await resolveExistingFolder(config, folder);
+export async function listFolder(config: VaultToolsConfig, folder: string, execution: CommandExecution): Promise<FolderEntry[]> {
+    folder = normalizeVaultPath(folder, 'folder');
+    await resolveExistingFolder(config, folder, execution);
 
-    const entries = await readFolder(config, folder);
+    const entries = await readFolder(config, folder, execution);
 
     return entries.sort((a, b) => {
         if (a.type !== b.type) {
@@ -87,14 +88,15 @@ export async function listFolder(config: VaultToolsConfig, folder: string): Prom
 }
 
 /** Every visible file below `folder`, at any depth. */
-export async function walkVault(config: VaultToolsConfig, folder: string): Promise<VaultWalk> {
-    await resolveExistingFolder(config, folder);
+export async function walkVault(config: VaultToolsConfig, folder: string, execution: CommandExecution): Promise<VaultWalk> {
+    folder = normalizeVaultPath(folder, 'folder');
+    await resolveExistingFolder(config, folder, execution);
 
     // A folder that vanishes mid-walk is normal while sync runs; it is reported, not thrown.
     const { files, errors } = await walkDirectory(config.root, folder, {
         includeFolder: (path) => !isExcludedFolder(config, path),
         includeFile: (path) => isVisibleFile(config, path),
-    });
+    }, execution);
 
     return {
         files: files.sort(comparePaths),

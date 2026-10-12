@@ -1,5 +1,6 @@
 import { stat } from 'node:fs/promises';
 
+import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import {
     assertNoSymlinkOnPath, normalizeRootRelativePath, prepareNewFilePath,
 } from 'senaev-utils/src/toolServer/rootRelativePath';
@@ -36,13 +37,15 @@ export function isNotePath(config: VaultToolsConfig, relativePath: string): bool
 }
 
 /** Resolves a folder that must exist and be visible. `''` is the vault root. */
-export async function resolveExistingFolder(config: VaultToolsConfig, relativePath: string): Promise<string> {
+export async function resolveExistingFolder(config: VaultToolsConfig, relativePath: string, execution: CommandExecution): Promise<string> {
+    execution.throwIfAborted();
+    relativePath = normalizeVaultPath(relativePath, 'path');
     if (isExcludedFolder(config, relativePath)) {
         throw new ToolError('forbidden_path', `Folder "${relativePath}" is excluded from the vault tools`);
     }
 
     try {
-        const absolutePath = await assertNoSymlinkOnPath(config.root, relativePath);
+        const absolutePath = await assertNoSymlinkOnPath(config.root, relativePath, execution);
 
         if (!(await stat(absolutePath)).isDirectory()) {
             throw new ToolError('not_found', `"${relativePath}" is not a folder`);
@@ -50,6 +53,7 @@ export async function resolveExistingFolder(config: VaultToolsConfig, relativePa
 
         return absolutePath;
     } catch (error) {
+        execution.throwIfAborted();
         if (isNotFoundError(error)) {
             throw new ToolError('not_found', `Folder "${relativePath}" does not exist`);
         }
@@ -68,11 +72,13 @@ export function assertNotePath(config: VaultToolsConfig, relativePath: string): 
 }
 
 /** Resolves a note that must exist. Reads and edits both go through here. */
-export async function resolveExistingNote(config: VaultToolsConfig, relativePath: string): Promise<string> {
+export async function resolveExistingNote(config: VaultToolsConfig, relativePath: string, execution: CommandExecution): Promise<string> {
+    execution.throwIfAborted();
+    relativePath = normalizeVaultPath(relativePath, 'path');
     assertNotePath(config, relativePath);
 
     try {
-        const absolutePath = await assertNoSymlinkOnPath(config.root, relativePath);
+        const absolutePath = await assertNoSymlinkOnPath(config.root, relativePath, execution);
 
         if (!(await stat(absolutePath)).isFile()) {
             throw new ToolError('not_found', `"${relativePath}" is not a file`);
@@ -80,6 +86,7 @@ export async function resolveExistingNote(config: VaultToolsConfig, relativePath
 
         return absolutePath;
     } catch (error) {
+        execution.throwIfAborted();
         if (isNotFoundError(error)) {
             throw new ToolError('not_found', `Note "${relativePath}" does not exist`);
         }
@@ -89,8 +96,10 @@ export async function resolveExistingNote(config: VaultToolsConfig, relativePath
 }
 
 /** Prepares the place for a new note; see `prepareNewFilePath`. */
-export function prepareNewNote(config: VaultToolsConfig, relativePath: string): Promise<string> {
+export function prepareNewNote(config: VaultToolsConfig, relativePath: string, execution: CommandExecution): Promise<string> {
+    execution.throwIfAborted();
+    relativePath = normalizeVaultPath(relativePath, 'path');
     assertNotePath(config, relativePath);
 
-    return prepareNewFilePath(config.root, relativePath);
+    return prepareNewFilePath(config.root, relativePath, execution);
 }

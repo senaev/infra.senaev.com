@@ -2,6 +2,8 @@ import {
     describe, expect, it,
 } from 'vitest';
 
+import { createCommandExecution } from '../commands/CommandExecution';
+
 import { replaceExactlyOnce, replaceExactlyOnceAsync } from './textEdits';
 import { createLineOffsets, createLineOffsetsAsync } from './textLines';
 
@@ -19,7 +21,10 @@ describe('shared text operations', () => {
     it('uses the same exact replacement semantics in sync and async consumers', async () => {
         const content = 'До\nunique\nПосле';
 
-        expect(await replaceExactlyOnceAsync(content, 'unique', 'новое', 'note')).toBe(replaceExactlyOnce(content, 'unique', 'новое', 'note'));
+        expect(await replaceExactlyOnceAsync(content, 'unique', 'новое', {
+            documentName: 'note',
+            execution: createCommandExecution(),
+        })).toBe(replaceExactlyOnce(content, 'unique', 'новое', 'note'));
     });
 
     it.each([
@@ -53,6 +58,9 @@ describe('shared text operations', () => {
             code,
             ...(details ? { details } : {}),
         });
-        await expect(replaceExactlyOnceAsync(content, find, 'new', 'note')).rejects.toMatchObject(synchronous as Error);
+        await expect(replaceExactlyOnceAsync(content, find, 'new', {
+            documentName: 'note',
+            execution: createCommandExecution(),
+        })).rejects.toMatchObject(synchronous as Error);
     });
 });

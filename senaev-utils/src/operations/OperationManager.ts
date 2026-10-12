@@ -1,8 +1,9 @@
 import { createHash, randomUUID } from 'node:crypto';
 
 import { ToolError, invalidArguments } from '../toolServer/ToolError';
+import { scheduleDeadline } from '../utils/process/scheduleDeadline';
 
-import { scheduleDeadline, withOperationContext } from './operationContext';
+import { withOperationContext } from './operationContext';
 import { DEFAULT_TIMEOUT_SECONDS, OBSERVATION_MS } from './operationLimits';
 import {
     isTerminalOperation as terminal, type ExecutionPolicy, type OperationLog as LogEntry, type OperationState as State, type OperationView, type OperationLaunchReply,

@@ -1,5 +1,6 @@
+import { createCommandAdapter } from 'senaev-utils/src/toolServer/createCommandAdapter';
+import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { readOperationTextFile } from 'senaev-utils/src/toolServer/readOperationTextFile';
-import { operationCheckpoint, throwIfOperationAborted } from 'senaev-utils/src/operations/operationContext';
 import { READ_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
 import { hashContent } from 'senaev-utils/src/toolServer/contentHash';
 import {
@@ -23,9 +24,9 @@ type ReadRequest = {
     startChar: number;
 };
 
-async function readNote(config: VaultToolsConfig, request: ReadRequest, maxChars: number) {
-    const absolutePath = await resolveExistingNote(config, request.path);
-    const raw = await readOperationTextFile(absolutePath);
+async function readNote(config: VaultToolsConfig, request: ReadRequest, maxChars: number, execution: CommandExecution) {
+    const absolutePath = await resolveExistingNote(config, request.path, execution);
+    const raw = await readOperationTextFile(absolutePath, execution);
     const { body, ...frontmatter } = splitNote(raw);
     const section = request.section === undefined ? null : findSection(raw, request.section);
     const fullText = section === null ? body : raw.slice(section.start, section.end);
@@ -55,7 +56,15 @@ async function readNote(config: VaultToolsConfig, request: ReadRequest, maxChars
     };
 }
 
-async function resolveRequestedPaths(config: VaultToolsConfig, args: Record<string, unknown>) {
+export type ReadCommandInput = {
+    paths: readonly string[] | undefined;
+    diaryFrom: string | undefined;
+    diaryTo: string | undefined;
+    section: string | undefined;
+    startChar: number;
+};
+function parseReadInput(input: unknown): ReadCommandInput {
+    const args = readVaultToolArguments(input, 'read');
     const paths = optionalStringArray(args, 'paths', { maxItems: READ_LIMITS.maxPaths });
     const range = readDiaryRange(args);
 
@@ -63,18 +72,37 @@ async function resolveRequestedPaths(config: VaultToolsConfig, args: Record<stri
         throw invalidArguments('Give either "paths" or a diary range ("diaryFrom"/"diaryTo"), not both and not neither');
     }
 
-    if (paths !== undefined) {
+    const section = optionalString(args, 'section');
+    const startChar = optionalInteger(args, 'startChar', {
+        min: 0,
+        max: Number.MAX_SAFE_INTEGER,
+    }) ?? 0;
+
+    if ((section !== undefined || startChar > 0) && (paths === undefined || paths.length !== 1)) {
+        throw invalidArguments('"section" and "startChar" can only be used when reading exactly one path');
+    }
+
+    return {
+        paths,
+        ...range,
+        section,
+        startChar,
+    };
+}
+
+async function resolveRequestedPaths(config: VaultToolsConfig, input: ReadCommandInput, execution: CommandExecution) {
+    if (input.paths !== undefined) {
         return {
             isDiaryRange: false,
-            paths: paths.map((path) => normalizeVaultPath(path, 'paths')),
+            paths: input.paths.map((path) => normalizeVaultPath(path, 'paths')),
         };
     }
 
-    const walk = await walkVault(config, config.diaryFolder);
+    const walk = await walkVault(config, config.diaryFolder, execution);
 
     return {
         isDiaryRange: true,
-        paths: walk.files.filter((path) => isInDiaryRange(config, range, path)),
+        paths: walk.files.filter((path) => isInDiaryRange(config, input, path)),
     };
 }
 
@@ -84,19 +112,10 @@ async function resolveRequestedPaths(config: VaultToolsConfig, args: Record<stri
  * continues exactly where this one stopped. Only a note larger than the per-note limit is
  * cut, and `truncated` says so.
  */
-export async function readTool(config: VaultToolsConfig, input: unknown) {
-    const args = readVaultToolArguments(input, 'read');
-    const { isDiaryRange, paths } = await resolveRequestedPaths(config, args);
-    const section = optionalString(args, 'section');
-    const startChar = optionalInteger(args, 'startChar', {
-        min: 0,
-        max: Number.MAX_SAFE_INTEGER,
-    }) ?? 0;
-
-    if ((section !== undefined || startChar > 0) && (isDiaryRange || paths.length !== 1)) {
-        throw invalidArguments('"section" and "startChar" can only be used when reading exactly one path');
-    }
-
+export async function readCommand(config: VaultToolsConfig, input: ReadCommandInput, execution: CommandExecution) {
+    execution.throwIfAborted();
+    const { isDiaryRange, paths } = await resolveRequestedPaths(config, input, execution);
+    const { section, startChar } = input;
     const notes = [];
     const errors = [];
     let usedChars = 0;
@@ -106,7 +125,7 @@ export async function readTool(config: VaultToolsConfig, input: unknown) {
         index,
         path,
     ] of paths.entries()) {
-        await operationCheckpoint();
+        await execution.checkpoint();
         const budget = Math.min(READ_LIMITS.maxCharsPerNote, READ_LIMITS.maxCharsPerResponse - usedChars);
 
         if (budget <= 0) {
@@ -119,7 +138,7 @@ export async function readTool(config: VaultToolsConfig, input: unknown) {
                 path,
                 section,
                 startChar,
-            }, READ_LIMITS.maxCharsPerNote);
+            }, READ_LIMITS.maxCharsPerNote, execution);
 
             // A note that would only fit cut is left whole for the next call, unless it is
             // the first one, which must always be returned so that reading makes progress.
@@ -131,7 +150,7 @@ export async function readTool(config: VaultToolsConfig, input: unknown) {
             notes.push(note);
             usedChars += note.content.length;
         } catch (error) {
-            throwIfOperationAborted();
+            execution.throwIfAborted();
             if (!(error instanceof ToolError) || paths.length === 1) {
                 throw error;
             }
@@ -160,3 +179,6 @@ export async function readTool(config: VaultToolsConfig, input: unknown) {
         nextDiaryFrom: isDiaryRange && remaining.length > 0 ? getDiaryDate(config, remaining[0] ?? '') : null,
     };
 }
+
+export type ReadCommandResult = Awaited<ReturnType<typeof readCommand>>;
+export const readTool = createCommandAdapter(parseReadInput, readCommand);

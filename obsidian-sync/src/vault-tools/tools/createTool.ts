@@ -1,6 +1,7 @@
 import { join, posix } from 'node:path';
 
-import { operationContext, recordChangedPath } from 'senaev-utils/src/operations/operationContext';
+import { createCommandAdapter } from 'senaev-utils/src/toolServer/createCommandAdapter';
+import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { isAlreadyExistsError } from 'senaev-utils/src/utils/Error/isAlreadyExistsError/isAlreadyExistsError';
 import { createFileExclusively } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
 import { createFileDiffAsync } from 'senaev-utils/src/toolServer/createFileDiffAsync';
@@ -22,12 +23,26 @@ export function withNoteExtension(config: VaultToolsConfig, path: string): strin
     return posix.extname(path) === '' ? `${path}${config.noteExtension}` : path;
 }
 
-/** Creates a new note, with missing parent folders. Fails if anything already exists there. */
-export async function createTool(config: VaultToolsConfig, input: unknown) {
+export type CreateCommandInput = {
+    path: string;
+    content: string;
+    frontmatter: Record<string, unknown> | undefined;
+};
+function parseCreateInput(input: unknown): CreateCommandInput {
     const args = readVaultToolArguments(input, 'create');
-    const path = withNoteExtension(config, normalizeVaultPath(requiredNonEmptyString(args, 'path'), 'path'));
-    const content = optionalString(args, 'content') ?? '';
-    const frontmatter = optionalObject(args, 'frontmatter');
+
+    return {
+        path: requiredNonEmptyString(args, 'path'),
+        content: optionalString(args, 'content') ?? '',
+        frontmatter: optionalObject(args, 'frontmatter'),
+    };
+}
+
+/** Creates a new note, with missing parent folders. Fails if anything already exists there. */
+export async function createCommand(config: VaultToolsConfig, input: CreateCommandInput, execution: CommandExecution) {
+    execution.throwIfAborted();
+    const path = withNoteExtension(config, normalizeVaultPath(input.path, 'path'));
+    const { content, frontmatter } = input;
 
     if (frontmatter !== undefined && content.startsWith('---')) {
         throw invalidArguments('Give the frontmatter either in "frontmatter" or inside "content", not both');
@@ -39,12 +54,13 @@ export async function createTool(config: VaultToolsConfig, input: unknown) {
 
     return await withFileMutation(join(config.root, path), async () => {
         assertNotePath(config, path);
-        const diff = await createFileDiffAsync(path, '', fullContent);
-        const absolutePath = await prepareNewNote(config, path);
+        const diff = await createFileDiffAsync(path, '', fullContent, execution);
+        const absolutePath = await prepareNewNote(config, path, execution);
 
-        await createFileExclusively(absolutePath, fullContent, operationContext()?.signal, () => recordChangedPath(path)).catch((error: unknown) => {
+        await createFileExclusively(absolutePath, fullContent, execution.signal, () => execution.changedPath(path)).catch((error: unknown) => {
+            execution.throwIfAborted();
             if (isAlreadyExistsError(error)) {
-                throw new ToolError('already_exists', `"${path}" already exists; use obsidian-patch to change it`);
+                throw new ToolError('already_exists', `"${path}" already exists; use patch to change it`);
             }
 
             throw error;
@@ -54,5 +70,8 @@ export async function createTool(config: VaultToolsConfig, input: unknown) {
             path,
             ...diff,
         };
-    });
+    }, execution);
 }
+
+export type CreateCommandResult = Awaited<ReturnType<typeof createCommand>>;
+export const createTool = createCommandAdapter(parseCreateInput, createCommand);
