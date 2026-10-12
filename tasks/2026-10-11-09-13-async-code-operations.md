@@ -1207,3 +1207,56 @@ The deliberately wrong checksum failed, then official pinned SHA matched; archiv
 ## Result
 
 OpenCode installer pin/checksum change prepared with real archive and binary verification. PR83 merged/deployed successfully; next branch not deployed. Preserve append-only task history.
+
+### 2026-10-12T14:59:27.327275+00:00 — pinned OpenCode PR84 published; full hook PASS
+
+Push operation code-326244a1-3eb3-4b96-b38f-201b1f954b82 completed exit0 at2026-10-12T14:48:24Z, before interrupted polling resumed. Commit72b4a503dada9725f6bc02fa9b1eb81825deff89. PR https://github.com/senaev/infra.senaev.com/pull/84 opened. Mandatory six checks PASS:
+
+```text
+[test]  Test Files  162 passed (162)
+[test]       Tests  1258 passed (1258)
+--> Timings:
+--> ┌──────────────┬──────────┬───────────┬────────┬──────────────────────┐
+--> │ name         │ duration │ exit code │ killed │ command              │
+--> ├──────────────┼──────────┼───────────┼────────┼──────────────────────┤
+--> │ test         │ 156,367  │ 0         │ false  │ npm run test         │
+--> │ lint         │ 111,520  │ 0         │ false  │ npm run lint         │
+--> │ typecheck    │ 99,474   │ 0         │ false  │ npm run typecheck    │
+--> │ check:helm   │ 7,990    │ 0         │ false  │ npm run check:helm   │
+--> │ check:python │ 3,758    │ 0         │ false  │ npm run check:python │
+--> │ check:shell  │ 1,871    │ 0         │ false  │ npm run check:shell  │
+--> └──────────────┴──────────┴───────────┴────────┴──────────────────────┘
+summary: (done in 158.63 seconds)
+```
+
+Real pinned archive and negative checksum tests passed separately as recorded. Full Docker image build not verified; no merge/deploy for PR84. CI/review pending. Post-publication journal evidence retained uncommitted. Removed exact owned push log and PR-body temporary files.
+
+### 2026-10-12T15:05:41.548900+00:00 — PR84 CodeRabbit completed
+
+User requested watching review. CodeRabbit submitted APPROVED at2026-10-12T15:03:46Z (17:03:46 Europe/Madrid); inline comments[]. No findings. First read attempt hit automatic permission-review deadline (not a safety rejection); one authorized read retry succeeded. No merge/deploy performed.
+
+## Findings
+
+### 2026-10-12T15:08:10.992428+00:00 — PR84 merge and command boundary enforcement
+
+User authorized PR84 merge and continuation. Merged2026-10-12T15:06:50Z as eafa99433f6fa174628249d4c16f660cd5858df5; scoped stash preserved journal. Only opencode-serve release38267850347 triggered; build/deploy pending. Next scoped branch chore/command-boundaries protects the established business-vs-adapter dependency direction with ESLint restricted imports. Covers neutral commands/files and Code/Obs business modules; tests/test helpers may intentionally exercise adapters/managers. No runtime/API changes. Validation will inject forbidden imports only in in-memory ESLint input, without modifying project sources.
+
+### 2026-10-12T15:13:15.338121+00:00 — PR84 rollout and boundary validation PASS
+
+Release38267850347 completed SUCCESS; pinned binary reports1.19.0 after rollout. All three HTTP smoke URLs200 and shortlink redirected as expected. MCP recovered after transient INVALID_ARGUMENT during backend replacement; pending operation record lost on restart, so read-only lint was repeated.
+
+Boundary validation used ESLint API with in-memory injected imports, no source fixtures. Shared adapters/manager, direct readTool/server and local registry imports are rejected; all existing business/neutral modules accepted; adapter layer unrestricted. Initial registry glob also blocked children of neutral codeTools directory; replaced with exact basename regex, preserving legitimate constants and rejecting registry. Final validation operation code-9772f37e-bf02-48a6-955b-e603b78284c6 exit0:
+
+```text
+PASS forbidden layer rejected: ./readTool
+PASS forbidden layer rejected: ../server/createCodeToolsServer
+PASS forbidden layer rejected: ./codeTools
+PASS forbidden layer rejected: senaev-utils/src/operations/OperationManager
+PASS all current business/neutral modules lint clean
+```
+
+The rule protects static imports under existing production module conventions; tests/testing modules intentionally excluded. It is not a complete transitive/dynamic dependency graph checker. No runtime/MCP fields/modes/limits changed. Mandatory full pre-push pending.
+
+## Result
+
+PR84 merged/built/deployed and smoke verified. Next iteration adds static dependency boundary enforcement in existing root lint. No runtime changes or new production fixtures.

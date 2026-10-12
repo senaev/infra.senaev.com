@@ -586,4 +586,47 @@ export default [
             ],
         },
     },
+    {
+        // Business code may use neutral capabilities/helpers, never a transport or queue.
+        files: [
+            'senaev-utils/src/commands/**/*.ts',
+            'senaev-utils/src/files/**/*.ts',
+            'code-tools/src/tools/*Command.ts',
+            'code-tools/src/tools/projectAccess.ts',
+            'obsidian-sync/src/vault-tools/tools/*Command.ts',
+            'obsidian-sync/src/vault-tools/access/**/*.ts',
+            'obsidian-sync/src/vault-tools/markdown/**/*.ts',
+            'obsidian-sync/src/vault-tools/noteScope.ts',
+        ],
+        ignores: [
+            '**/*.test.ts',
+            '**/*.spec.ts',
+            '**/testing/**',
+        ],
+        rules: {
+            'no-restricted-imports': [
+                'error',
+                {
+                    patterns: [
+                        {
+                            group: [
+                                '**/toolServer/**',
+                                '**/operations/**',
+                                '**/server/**',
+                                '**/*Tool',
+                                '**/*Tool.ts',
+                                '**/*Server',
+                                '**/*Server.ts',
+                            ],
+                            message: 'Business commands and neutral helpers must not depend on transport adapters or operation management.',
+                        },
+                        {
+                            regex: String.raw`(^|/)(codeTools|vaultTools)(\.ts)?$`,
+                            message: 'Business modules must not import adapter registries.',
+                        },
+                    ],
+                },
+            ],
+        },
+    },
 ];
