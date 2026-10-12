@@ -39,3 +39,28 @@ PASS rendered obsidian-sync still mounts /vault
 ```
 
 Additional rendered checks confirm only obsidian-sync Deployment mounts Vault hostPath and ingress remains cluster-helper/nextjs-app. No runtime mounts changed yet. New arbitrary-file/upload Obsidian MCP tools are outside this PR; direct code-run writes to Vault will stop after deploy by design. Mandatory checks and PR publication follow.
+
+### 2026-10-12T16:33:12.171331+00:00 — Mandatory full checks PASS
+
+Implementation commit8a5b438 published with required hook code-628dd51e-f908-4bde-bf3a-9c18c230e828 exit0. All six checks passed,162files/1258tests:
+
+```text
+[test]  Test Files  162 passed (162)
+[test]       Tests  1258 passed (1258)
+--> Timings:
+--> ┌──────────────┬──────────┬───────────┬────────┬──────────────────────┐
+--> │ name         │ duration │ exit code │ killed │ command              │
+--> ├──────────────┼──────────┼───────────┼────────┼──────────────────────┤
+--> │ test         │ 162,268  │ 0         │ false  │ npm run test         │
+--> │ lint         │ 115,451  │ 0         │ false  │ npm run lint         │
+--> │ typecheck    │ 95,783   │ 0         │ false  │ npm run typecheck    │
+--> │ check:helm   │ 11,335   │ 0         │ false  │ npm run check:helm   │
+--> │ check:python │ 5,837    │ 0         │ false  │ npm run check:python │
+--> │ check:shell  │ 1,920    │ 0         │ false  │ npm run check:shell  │
+--> └──────────────┴──────────┴───────────┴────────┴──────────────────────┘
+summary: (done in 164.10 seconds)
+```
+
+## Result
+
+Separate branch implementation complete: Vault filesystem mounts removed from OpenCode/Telegram pod; repository PVC retained; workdir/browser/default roots set to /projects/git; instructions updated. Bot0.26.4 pinned with verified missing-folder menu behavior. Actual rendered manifests pass data/network boundary assertions. All mandatory checks PASS. Not merged/deployed: live absence of Vault in code pod, Telegram UI/session behavior and continued Obsidian/public endpoint function remain to be verified after user-authorized merge. Existing history retained; arbitrary Vault upload/HTML/JS API is a separate task. Publishing this evidence as a documentation-only follow-up before opening PR.
