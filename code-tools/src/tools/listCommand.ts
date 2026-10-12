@@ -2,8 +2,8 @@ import { lstat } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
-import { compileFileGlob } from 'senaev-utils/src/toolServer/compileFileGlob';
-import { ToolError } from 'senaev-utils/src/toolServer/ToolError';
+import { compileFileGlob } from 'senaev-utils/src/files/compileFileGlob';
+import { CommandError } from 'senaev-utils/src/commands/CommandError';
 
 import { listProjectFiles } from '../git/runGit';
 
@@ -101,7 +101,7 @@ export async function listCommand(config: CodeToolsConfig, input: ListCommandInp
     }
 
     if (folder !== '' && filesInFolder.length === 0) {
-        throw new ToolError('not_found', `Folder "${folder}" has no files that git shows`);
+        throw new CommandError('not_found', `Folder "${folder}" has no files that git shows`);
     }
 
     const matchesGlob = glob === undefined ? null : compileFileGlob(glob);

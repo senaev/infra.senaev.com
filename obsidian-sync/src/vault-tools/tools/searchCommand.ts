@@ -1,7 +1,7 @@
 import { join, posix } from 'node:path';
 
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
-import { readOperationTextFile } from 'senaev-utils/src/toolServer/readOperationTextFile';
+import { readTextFile } from 'senaev-utils/src/files/readTextFile';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 
 import { isNotePath } from '../access/vaultAccess';
@@ -172,7 +172,7 @@ export async function searchCommand(config: VaultToolsConfig, input: SearchComma
         let content: string;
 
         try {
-            content = await readOperationTextFile(join(config.root, path), execution);
+            content = await readTextFile(join(config.root, path), execution);
         } catch (error) {
             execution.throwIfAborted();
             readErrors.push({

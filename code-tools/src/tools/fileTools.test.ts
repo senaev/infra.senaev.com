@@ -2,7 +2,7 @@ import {
     readFile, stat, symlink, writeFile,
 } from 'node:fs/promises';
 
-import { hashContent } from 'senaev-utils/src/toolServer/contentHash';
+import { hashContent } from 'senaev-utils/src/files/contentHash';
 import {
     afterEach, beforeEach, describe, expect, it,
 } from 'vitest';

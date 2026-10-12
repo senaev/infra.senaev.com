@@ -4,12 +4,12 @@ import {
 
 import { createCommandExecution, type CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { withCommandExecution } from 'senaev-utils/src/commands/testing/withCommandExecution';
-import { hashContent } from 'senaev-utils/src/toolServer/contentHash';
+import { hashContent } from 'senaev-utils/src/files/contentHash';
 import {
     afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
-import { createFileDiffAsync } from 'senaev-utils/src/toolServer/createFileDiffAsync';
-import { replaceExactlyOnceAsync as replaceText } from 'senaev-utils/src/toolServer/textEdits';
+import { createFileDiffAsync } from 'senaev-utils/src/files/createFileDiffAsync';
+import { replaceExactlyOnceAsync as replaceText } from 'senaev-utils/src/files/textEdits';
 
 import { cloneTool } from './cloneTool';
 import { createTestProjects, type TestProjects } from './createTestProjects';

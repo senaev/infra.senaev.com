@@ -1,7 +1,7 @@
 import { completeOperation } from 'senaev-utils/src/operations/testing/completeOperation';
 import type { OperationLaunchReply, OperationObservation } from 'senaev-utils/src/operations/operationTypes';
 import { OperationManager } from 'senaev-utils/src/operations/OperationManager';
-import { ToolError } from 'senaev-utils/src/toolServer/ToolError';
+import { CommandError } from 'senaev-utils/src/commands/CommandError';
 import { createBearerAuthorizationHeader } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
 import {
     afterEach, beforeEach, describe, expect, it, vi,
@@ -307,7 +307,7 @@ describe('managed execution HTTP contract', () => {
     });
 
     it('all domain tools depend on managed admission', async () => {
-        const launch = vi.spyOn(OperationManager.prototype, 'launch').mockRejectedValue(new ToolError('conflict', 'Unavailable'));
+        const launch = vi.spyOn(OperationManager.prototype, 'launch').mockRejectedValue(new CommandError('conflict', 'Unavailable'));
 
         expect((await call('read', {
             project: 'demo',
@@ -345,7 +345,7 @@ describe('managed execution HTTP contract', () => {
     });
 
     it('retains a fast execution failure as a terminal failed operation', async () => {
-        vi.spyOn(CODE_TOOLS, 'projects').mockRejectedValue(new ToolError('command_failed', 'Git failed'));
+        vi.spyOn(CODE_TOOLS, 'projects').mockRejectedValue(new CommandError('command_failed', 'Git failed'));
         const body = (await call('projects')).json<Reply>();
 
         expect(body).toMatchObject({

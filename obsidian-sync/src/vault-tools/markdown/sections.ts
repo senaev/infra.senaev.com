@@ -1,5 +1,5 @@
-import { ToolError } from 'senaev-utils/src/toolServer/ToolError';
-import { createLineLocator } from 'senaev-utils/src/toolServer/textEdits';
+import { CommandError } from 'senaev-utils/src/commands/CommandError';
+import { createLineLocator } from 'senaev-utils/src/files/textEdits';
 
 import { parseMarkdown } from './parseMarkdown';
 
@@ -127,20 +127,20 @@ export function findSection(content: string, heading: string): Section {
     const wanted = heading.split('>').map(normalizeSegment).filter((segment) => segment !== '');
 
     if (wanted.length === 0) {
-        throw new ToolError('invalid_arguments', 'The section heading must not be empty');
+        throw new CommandError('invalid_arguments', 'The section heading must not be empty');
     }
 
     const sections = collectSections(content);
     const matches = sections.filter((section) => matchesHeadingPath(section.headingPath, wanted));
 
     if (matches.length === 0) {
-        throw new ToolError('not_found', `No section with heading "${heading}"`, {
+        throw new CommandError('not_found', `No section with heading "${heading}"`, {
             availableHeadings: sections.map((section) => formatHeadingPath(section.headingPath)),
         });
     }
 
     if (matches.length > 1) {
-        throw new ToolError('ambiguous', `Several sections match "${heading}"; use a heading path such as "Parent > Heading"`, {
+        throw new CommandError('ambiguous', `Several sections match "${heading}"; use a heading path such as "Parent > Heading"`, {
             candidates: matches.map((section) => {
                 return {
                     headingPath: formatHeadingPath(section.headingPath),

@@ -1,6 +1,19 @@
 import type { Logger } from 'pino';
 
-import { ToolError } from './ToolError';
+import { OperationError } from '../operations/OperationError';
+import { type CommandErrorCode, CommandError } from '../commands/CommandError';
+
+const HTTP_STATUS_BY_CODE: Record<CommandErrorCode | OperationError['code'], number> = {
+    QUEUE_FULL: 429,
+    invalid_arguments: 400,
+    unknown_tool: 404,
+    forbidden_path: 403,
+    not_found: 404,
+    already_exists: 409,
+    conflict: 409,
+    ambiguous: 409,
+    command_failed: 422,
+};
 
 export type ToolCallReply = {
     statusCode: number;
@@ -9,7 +22,7 @@ export type ToolCallReply = {
 
 /**
  * Runs one command call for an HTTP route. Success is `200 {status:'ok', ...result}`; a
- * `ToolError` answers with its own status and a caller-facing message; anything else is
+ * command or admission error gets its mapped HTTP status and safe message; anything else is
  * a 500 that hides the error.
  *
  * Logs only the tool name and timing: the arguments and results can hold private text.
@@ -35,14 +48,14 @@ export async function runToolCall({
             },
         };
     } catch (error) {
-        if (error instanceof ToolError) {
+        if (error instanceof CommandError || error instanceof OperationError) {
             logger.info({
                 tool: name,
                 code: error.code,
             }, '⚠️ Tool call failed');
 
             return {
-                statusCode: error.httpStatus,
+                statusCode: HTTP_STATUS_BY_CODE[error.code],
                 body: {
                     status: 'error',
                     code: error.code,

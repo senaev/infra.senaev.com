@@ -1,5 +1,5 @@
 import { readToolArguments, requiredNonEmptyString } from '../toolServer/toolArguments';
-import { invalidArguments } from '../toolServer/ToolError';
+import { invalidArguments } from '../commands/CommandError';
 
 export const OPERATION_COMMAND_ARGUMENTS = {
     operations: [],

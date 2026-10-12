@@ -3,7 +3,7 @@ import { MAX_GLOB_LENGTH, SEARCH_LIMITS } from 'senaev-utils/src/codeTools/codeT
 import {
     optionalBoolean, readPageArguments, optionalInteger, optionalString, optionalStringArray, requiredNonEmptyString,
 } from 'senaev-utils/src/toolServer/toolArguments';
-import { invalidArguments } from 'senaev-utils/src/toolServer/ToolError';
+import { invalidArguments } from 'senaev-utils/src/commands/CommandError';
 
 import { readCodeToolArguments } from './toolArguments';
 import { type SearchCommandInput, searchCommand } from './searchCommand';

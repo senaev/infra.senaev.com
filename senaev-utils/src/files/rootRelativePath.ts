@@ -7,13 +7,11 @@ import {
 
 import type { CommandExecution } from '../commands/CommandExecution';
 import { isNotFoundError } from '../utils/Error/isNotFoundError/isNotFoundError';
-
-import { invalidArguments, ToolError } from './ToolError';
+import { invalidArguments, CommandError } from '../commands/CommandError';
 
 /**
  * Turns a path from a tool argument into a clean root-relative POSIX path, `''` for the
- * root. A leading `/` is read as the root, because that is how a model naturally writes
- * "from the top". Anything that climbs out of the root is rejected.
+ * root. A leading `/` is read as the root, preserving the root-relative convention. Anything that climbs out of the root is rejected.
  *
  * @param rootName what the root is called in the error message, e.g. "vault" or "project"
  */
@@ -25,7 +23,7 @@ export function normalizeRootRelativePath(input: string, field: string, rootName
     const normalized = posix.normalize(`./${input.trim().replace(/^\/+/, '')}`).replace(/\/+$/, '');
 
     if (normalized === '..' || normalized.startsWith('../')) {
-        throw new ToolError('forbidden_path', `"${field}" points outside the ${rootName}`);
+        throw new CommandError('forbidden_path', `"${field}" points outside the ${rootName}`);
     }
 
     return normalized === '.' ? '' : normalized;
@@ -44,7 +42,7 @@ export async function assertNoSymlinkOnPath(root: string, relativePath: string, 
 
     execution.throwIfAborted();
     if (realPath !== join(realRoot, relativePath)) {
-        throw new ToolError('forbidden_path', `"${relativePath}" goes through a symbolic link, which is not allowed`);
+        throw new CommandError('forbidden_path', `"${relativePath}" goes through a symbolic link, which is not allowed`);
     }
 
     return absolutePath;
@@ -72,7 +70,7 @@ export async function prepareNewFilePath(root: string, relativePath: string, exe
             const absolutePath = await assertNoSymlinkOnPath(root, existingAncestor, execution);
 
             if (!(await stat(absolutePath)).isDirectory()) {
-                throw new ToolError('forbidden_path', `"${existingAncestor}" is a file, not a folder`);
+                throw new CommandError('forbidden_path', `"${existingAncestor}" is a file, not a folder`);
             }
 
             break;

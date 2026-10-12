@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 
 import { completeOperation } from 'senaev-utils/src/operations/testing/completeOperation';
 import type { OperationLaunchReply, OperationObservation } from 'senaev-utils/src/operations/operationTypes';
-import { hashContent } from 'senaev-utils/src/toolServer/contentHash';
+import { hashContent } from 'senaev-utils/src/files/contentHash';
 import { createBearerAuthorizationHeader } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
 import {
     afterEach, beforeEach, describe, expect, it, vi,

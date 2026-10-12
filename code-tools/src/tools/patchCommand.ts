@@ -1,9 +1,9 @@
-import { assertExpectedHash, hashContent } from 'senaev-utils/src/toolServer/contentHash';
+import { assertExpectedHash, hashContent } from 'senaev-utils/src/files/contentHash';
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { replaceFileAtomically } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
-import { createFileDiffAsync } from 'senaev-utils/src/toolServer/createFileDiffAsync';
-import { withFileMutation } from 'senaev-utils/src/toolServer/withFileMutation';
-import { replaceExactlyOnceAsync as replaceText } from 'senaev-utils/src/toolServer/textEdits';
+import { createFileDiffAsync } from 'senaev-utils/src/files/createFileDiffAsync';
+import { withFileMutation } from 'senaev-utils/src/files/withFileMutation';
+import { replaceExactlyOnceAsync as replaceText } from 'senaev-utils/src/files/textEdits';
 
 import type { CodeToolsConfig } from './codeToolsConfig';
 import {

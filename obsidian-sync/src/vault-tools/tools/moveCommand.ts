@@ -2,15 +2,15 @@ import { stat, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
-import { readOperationTextFile } from 'senaev-utils/src/toolServer/readOperationTextFile';
-import { assertExpectedHash, hashContent } from 'senaev-utils/src/toolServer/contentHash';
-import { createFileDiffAsync } from 'senaev-utils/src/toolServer/createFileDiffAsync';
-import { withFileMutations } from 'senaev-utils/src/toolServer/withFileMutation';
+import { readTextFile } from 'senaev-utils/src/files/readTextFile';
+import { assertExpectedHash, hashContent } from 'senaev-utils/src/files/contentHash';
+import { createFileDiffAsync } from 'senaev-utils/src/files/createFileDiffAsync';
+import { withFileMutations } from 'senaev-utils/src/files/withFileMutation';
 import { isAlreadyExistsError } from 'senaev-utils/src/utils/Error/isAlreadyExistsError/isAlreadyExistsError';
 import { isNotFoundError } from 'senaev-utils/src/utils/Error/isNotFoundError/isNotFoundError';
 import { createFileExclusively, replaceFileAtomically } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
-import { type FileDiff } from 'senaev-utils/src/toolServer/createFileDiff';
-import { invalidArguments, ToolError } from 'senaev-utils/src/toolServer/ToolError';
+import { type FileDiff } from 'senaev-utils/src/files/createFileDiff';
+import { invalidArguments, CommandError } from 'senaev-utils/src/commands/CommandError';
 
 import { readVaultNotes, type VaultNotes } from '../access/readVaultNotes';
 import {
@@ -154,7 +154,7 @@ async function assertNothingAt(config: VaultToolsConfig, path: string, execution
         throw error;
     }
 
-    throw new ToolError('already_exists', `"${path}" already exists; choose another "newPath"`);
+    throw new CommandError('already_exists', `"${path}" already exists; choose another "newPath"`);
 }
 
 async function collectDiffs(updates: readonly NoteUpdate[], execution: CommandExecution) {
@@ -224,7 +224,7 @@ export async function moveCommand(config: VaultToolsConfig, input: MoveCommandIn
         const diffResult = await collectDiffs(updates, execution);
 
         for (const update of updates) {
-            assertExpectedHash(await readOperationTextFile(join(config.root, update.source), execution), hashContent(update.before), 'note');
+            assertExpectedHash(await readTextFile(join(config.root, update.source), execution), hashContent(update.before), 'note');
         }
 
         const newAbsolutePath = await prepareNewNote(config, newPath, execution);
@@ -232,7 +232,7 @@ export async function moveCommand(config: VaultToolsConfig, input: MoveCommandIn
         await createFileExclusively(newAbsolutePath, movedNote.after, execution.signal, () => execution.changedPath(newPath)).catch((error: unknown) => {
             execution.throwIfAborted();
             if (isAlreadyExistsError(error)) {
-                throw new ToolError('already_exists', `"${newPath}" already exists; choose another "newPath"`);
+                throw new CommandError('already_exists', `"${newPath}" already exists; choose another "newPath"`);
             }
 
             throw error;
@@ -243,13 +243,13 @@ export async function moveCommand(config: VaultToolsConfig, input: MoveCommandIn
                 await execution.checkpoint();
                 const absolutePath = await resolveExistingNote(config, update.source, execution);
 
-                assertExpectedHash(await readOperationTextFile(absolutePath, execution), hashContent(update.before), 'note');
+                assertExpectedHash(await readTextFile(absolutePath, execution), hashContent(update.before), 'note');
                 await replaceFileAtomically(absolutePath, update.after, execution.signal, () => execution.changedPath(update.source));
             }
         }
 
         await execution.checkpoint();
-        assertExpectedHash(await readOperationTextFile(oldAbsolutePath, execution), hashContent(movedNote.before), 'note');
+        assertExpectedHash(await readTextFile(oldAbsolutePath, execution), hashContent(movedNote.before), 'note');
         await unlink(oldAbsolutePath);
         execution.changedPath(path);
 

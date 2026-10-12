@@ -1,9 +1,10 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import { ToolError, invalidArguments } from '../toolServer/ToolError';
+import { CommandError, invalidArguments } from '../commands/CommandError';
 import { scheduleDeadline } from '../utils/process/scheduleDeadline';
 import { createCommandExecution, type CommandExecution } from '../commands/CommandExecution';
 
+import { OperationError } from './OperationError';
 import { DEFAULT_TIMEOUT_SECONDS, OBSERVATION_MS } from './operationLimits';
 import {
     isTerminalOperation as terminal, type ExecutionPolicy, type OperationLog as LogEntry, type OperationState as State, type OperationView, type OperationLaunchReply,
@@ -189,7 +190,7 @@ export class OperationManager {
         })).digest('hex');
         const admitted = await this.exclusive(() => {
             if (this.closing) {
-                throw new ToolError('conflict', 'Operation executor unavailable');
+                throw new CommandError('conflict', 'Operation executor unavailable');
             }
 
             this.prune();
@@ -198,7 +199,7 @@ export class OperationManager {
 
                 if (duplicate !== undefined) {
                     if (duplicate.data.fingerprint !== fingerprint) {
-                        throw new ToolError('conflict', 'requestId was already used with different arguments');
+                        throw new CommandError('conflict', 'requestId was already used with different arguments');
                     }
 
                     return {
@@ -209,7 +210,7 @@ export class OperationManager {
             }
 
             if (executionPolicy === 'queued' && this.active !== undefined && this.queue.length >= 5) {
-                throw new ToolError('QUEUE_FULL', 'Five operations are already waiting; retry after a slot is free');
+                throw new OperationError('QUEUE_FULL', 'Five operations are already waiting; retry after a slot is free');
             }
 
             const data: RecordData = {
@@ -297,7 +298,7 @@ export class OperationManager {
         const entry = this.entries.get(String(args.id));
 
         if (entry === undefined) {
-            throw new ToolError('not_found', 'Operation not found in this backend');
+            throw new CommandError('not_found', 'Operation not found in this backend');
         }
 
         const cursor = args.cursor ?? 0;
@@ -514,7 +515,7 @@ export class OperationManager {
                     code: data.state,
                     message: `Operation ${data.state}`,
                 });
-            } else if (error instanceof ToolError) {
+            } else if (error instanceof CommandError) {
                 data.state = 'failed';
                 data.resultJson = serializeResult({
                     status: 'error',

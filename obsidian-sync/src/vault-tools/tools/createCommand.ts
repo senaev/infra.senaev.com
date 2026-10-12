@@ -3,9 +3,9 @@ import { join, posix } from 'node:path';
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { isAlreadyExistsError } from 'senaev-utils/src/utils/Error/isAlreadyExistsError/isAlreadyExistsError';
 import { createFileExclusively } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
-import { createFileDiffAsync } from 'senaev-utils/src/toolServer/createFileDiffAsync';
-import { withFileMutation } from 'senaev-utils/src/toolServer/withFileMutation';
-import { invalidArguments, ToolError } from 'senaev-utils/src/toolServer/ToolError';
+import { createFileDiffAsync } from 'senaev-utils/src/files/createFileDiffAsync';
+import { withFileMutation } from 'senaev-utils/src/files/withFileMutation';
+import { invalidArguments, CommandError } from 'senaev-utils/src/commands/CommandError';
 
 import {
     prepareNewNote, normalizeVaultPath, assertNotePath,
@@ -46,7 +46,7 @@ export async function createCommand(config: VaultToolsConfig, input: CreateComma
         await createFileExclusively(absolutePath, fullContent, execution.signal, () => execution.changedPath(path)).catch((error: unknown) => {
             execution.throwIfAborted();
             if (isAlreadyExistsError(error)) {
-                throw new ToolError('already_exists', `"${path}" already exists; use patch to change it`);
+                throw new CommandError('already_exists', `"${path}" already exists; use patch to change it`);
             }
 
             throw error;

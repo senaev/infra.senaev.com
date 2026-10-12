@@ -1,5 +1,5 @@
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
-import { ToolError } from 'senaev-utils/src/toolServer/ToolError';
+import { CommandError } from 'senaev-utils/src/commands/CommandError';
 
 import { type ProcessResult, runProcess } from '../process/runProcess';
 import type { CodeToolsConfig } from '../tools/codeToolsConfig';
@@ -20,7 +20,7 @@ export async function runGit(config: CodeToolsConfig, cwd: string, args: readonl
 
     execution.throwIfAborted();
     if (result.exitCode !== 0 || result.outputTruncated) {
-        throw new ToolError('command_failed', `git ${args[0] ?? ''} failed: ${describeGitFailure(result)}`);
+        throw new CommandError('command_failed', `git ${args[0] ?? ''} failed: ${describeGitFailure(result)}`);
     }
 
     return result.stdout;

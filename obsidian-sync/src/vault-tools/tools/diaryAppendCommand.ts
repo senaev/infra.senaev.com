@@ -2,11 +2,11 @@ import { join } from 'node:path';
 import { appendFile } from 'node:fs/promises';
 
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
-import { readOperationTextFile } from 'senaev-utils/src/toolServer/readOperationTextFile';
+import { readTextFile } from 'senaev-utils/src/files/readTextFile';
 import { isNotFoundError } from 'senaev-utils/src/utils/Error/isNotFoundError/isNotFoundError';
-import { createFileDiffAsync } from 'senaev-utils/src/toolServer/createFileDiffAsync';
-import { withFileMutation } from 'senaev-utils/src/toolServer/withFileMutation';
-import { ToolError } from 'senaev-utils/src/toolServer/ToolError';
+import { createFileDiffAsync } from 'senaev-utils/src/files/createFileDiffAsync';
+import { withFileMutation } from 'senaev-utils/src/files/withFileMutation';
+import { CommandError } from 'senaev-utils/src/commands/CommandError';
 
 import { formatDailyNoteDraftRecord } from '../../daily-note-draft/formatDailyNoteDraftRecord';
 import { prepareNewNote, resolveExistingNote } from '../access/vaultAccess';
@@ -17,7 +17,7 @@ async function resolveDraft(config: VaultToolsConfig, execution: CommandExecutio
         return await resolveExistingNote(config, config.diaryDraftPath, execution);
     } catch (error) {
         execution.throwIfAborted();
-        if (error instanceof ToolError && error.code === 'not_found') {
+        if (error instanceof CommandError && error.code === 'not_found') {
             return prepareNewNote(config, config.diaryDraftPath, execution);
         }
 
@@ -39,7 +39,7 @@ export async function diaryAppendCommand(config: VaultToolsConfig, input: DiaryA
 
     return await withFileMutation(join(config.root, config.diaryDraftPath), async () => {
         const absolutePath = await resolveDraft(config, execution);
-        const before = await readOperationTextFile(absolutePath, execution).catch((error: unknown) => {
+        const before = await readTextFile(absolutePath, execution).catch((error: unknown) => {
             execution.throwIfAborted();
             if (isNotFoundError(error)) {
                 return '';

@@ -4,9 +4,9 @@ import type { CommandExecution } from '../commands/CommandExecution';
 import { domainArguments, MANAGED_ARGUMENT_KEYS } from '../operations/managedArguments';
 import { OperationManager } from '../operations/OperationManager';
 import { isOperationToolName, readOperationArguments } from '../operations/operationCommands';
+import { OperationError } from '../operations/OperationError';
 
 import { readToolArguments } from './toolArguments';
-import { ToolError } from './ToolError';
 
 /** Backend adapter shared by HTTP services, independent of MCP and ChatGPT. */
 export function createManagedToolService<Name extends string, Config>(options: {
@@ -31,7 +31,7 @@ export function createManagedToolService<Name extends string, Config>(options: {
             }
 
             if (!Object.hasOwn(options.tools, name)) {
-                throw new ToolError('unknown_tool', `Unknown ${options.backend} tool "${name}"`);
+                throw new OperationError('unknown_tool', `Unknown ${options.backend} tool "${name}"`);
             }
 
             const tool = name as Name;

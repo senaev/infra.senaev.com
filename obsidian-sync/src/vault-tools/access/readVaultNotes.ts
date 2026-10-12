@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
-import { readOperationTextFile } from 'senaev-utils/src/toolServer/readOperationTextFile';
+import { readTextFile } from 'senaev-utils/src/files/readTextFile';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 
 import { readAliases, splitNote } from '../markdown/frontmatter';
@@ -37,7 +37,7 @@ export async function readVaultNotes(config: VaultToolsConfig, execution: Comman
     for (const notePath of notePaths) {
         await execution.checkpoint();
         try {
-            const content = await readOperationTextFile(join(config.root, notePath), execution);
+            const content = await readTextFile(join(config.root, notePath), execution);
 
             contents.set(notePath, content);
             aliasesByNote.set(notePath, readAliases(splitNote(content).frontmatter));

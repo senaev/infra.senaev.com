@@ -2,7 +2,7 @@ import { VAULT_COMMAND_ARGUMENTS, type VaultCommandName } from 'senaev-utils/src
 import {
     optionalString, readToolArguments, type ToolArguments,
 } from 'senaev-utils/src/toolServer/toolArguments';
-import { invalidArguments } from 'senaev-utils/src/toolServer/ToolError';
+import { invalidArguments } from 'senaev-utils/src/commands/CommandError';
 
 import { parseIsoCalendarDay } from '../milestones/calendarDay';
 

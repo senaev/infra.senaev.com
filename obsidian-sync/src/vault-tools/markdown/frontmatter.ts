@@ -3,7 +3,7 @@ import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnk
 import {
     Document, isMap, isScalar, parseDocument,
 } from 'yaml';
-import { ToolError } from 'senaev-utils/src/toolServer/ToolError';
+import { CommandError } from 'senaev-utils/src/commands/CommandError';
 
 import { parseNoteFrontmatter } from '../../markdown/parseNoteFrontmatter';
 import { stripFrontmatter } from '../../markdown/stripFrontmatter';
@@ -102,7 +102,7 @@ export function setFrontmatterProperties(content: string, properties: Record<str
     const hasBlock = body !== content;
 
     if (!hasBlock && content.startsWith('---')) {
-        throw new ToolError(
+        throw new CommandError(
             'conflict',
             'The note starts with "---" but has no frontmatter block that can be edited safely (unterminated block or Windows line endings)'
         );
@@ -111,14 +111,14 @@ export function setFrontmatterProperties(content: string, properties: Record<str
     const document = parseDocument(raw, { uniqueKeys: false });
 
     if (document.errors.length > 0) {
-        throw new ToolError('conflict', `The frontmatter is not valid YAML: ${document.errors[0]?.message ?? ''}`);
+        throw new CommandError('conflict', `The frontmatter is not valid YAML: ${document.errors[0]?.message ?? ''}`);
     }
 
     // Empty contents are fine: `set` creates the map on first use.
     const existing: unknown = document.toJS();
 
     if (existing !== null && (!isObject(existing) || Array.isArray(existing))) {
-        throw new ToolError('conflict', 'The frontmatter is not a set of properties');
+        throw new CommandError('conflict', 'The frontmatter is not a set of properties');
     }
 
     for (const [
