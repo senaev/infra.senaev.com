@@ -5,8 +5,9 @@ import {
     join, posix, relative,
 } from 'node:path';
 
+import type { CommandExecution } from '../commands/CommandExecution';
 import {
-    operationCheckpoint, recordChangedPath, throwIfOperationAborted,
+    currentCommandExecution,
 } from '../operations/operationContext';
 import { isNotFoundError } from '../utils/Error/isNotFoundError/isNotFoundError';
 
@@ -38,13 +39,13 @@ export function normalizeRootRelativePath(input: string, field: string, rootName
  * on the way, and returns it. Comparing real paths is the only check that catches a symlink
  * placed inside the root, because the requested path looks innocent either way.
  */
-export async function assertNoSymlinkOnPath(root: string, relativePath: string): Promise<string> {
-    await operationCheckpoint();
+export async function assertNoSymlinkOnPath(root: string, relativePath: string, execution: CommandExecution = currentCommandExecution()): Promise<string> {
+    await execution.checkpoint();
     const realRoot = await realpath(root);
     const absolutePath = join(root, relativePath);
     const realPath = await realpath(absolutePath);
 
-    throwIfOperationAborted();
+    execution.throwIfAborted();
     if (realPath !== join(realRoot, relativePath)) {
         throw new ToolError('forbidden_path', `"${relativePath}" goes through a symbolic link, which is not allowed`);
     }
@@ -64,14 +65,14 @@ function parentOf(relativePath: string): string {
  * file. Whether the file itself already exists is left to the exclusive write, which is the
  * only race-free check.
  */
-export async function prepareNewFilePath(root: string, relativePath: string): Promise<string> {
+export async function prepareNewFilePath(root: string, relativePath: string, execution: CommandExecution = currentCommandExecution()): Promise<string> {
     const parent = parentOf(relativePath);
     let existingAncestor = parent;
 
     for (;;) {
-        await operationCheckpoint();
+        await execution.checkpoint();
         try {
-            const absolutePath = await assertNoSymlinkOnPath(root, existingAncestor);
+            const absolutePath = await assertNoSymlinkOnPath(root, existingAncestor, execution);
 
             if (!(await stat(absolutePath)).isDirectory()) {
                 throw new ToolError('forbidden_path', `"${existingAncestor}" is a file, not a folder`);
@@ -87,14 +88,14 @@ export async function prepareNewFilePath(root: string, relativePath: string): Pr
         }
     }
 
-    throwIfOperationAborted();
+    execution.throwIfAborted();
     const created = await mkdir(join(root, parent), { recursive: true });
 
     if (created !== undefined) {
-        recordChangedPath(relative(root, created));
+        execution.changedPath(relative(root, created));
     }
 
-    throwIfOperationAborted();
+    execution.throwIfAborted();
 
     return join(root, relativePath);
 }

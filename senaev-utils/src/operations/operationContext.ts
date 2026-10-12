@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { setImmediate as yieldImmediate } from 'node:timers/promises';
+
+import { createCommandExecution, type CommandExecution } from '../commands/CommandExecution';
 
 export type OperationContext = {
     signal: AbortSignal;
@@ -17,43 +18,32 @@ export function operationContext(): OperationContext | undefined {
     return contexts.getStore();
 }
 
+/** Compatibility bridge for adapters and not-yet-migrated callers. */
+export function currentCommandExecution(): CommandExecution {
+    const context = contexts.getStore();
+
+    return createCommandExecution(context === undefined
+        ? {}
+        : {
+            signal: context.signal,
+            log: context.log,
+            changedPath: (path) => context.changedPaths.add(path),
+        });
+}
+
 export function throwIfOperationAborted(): void {
     contexts.getStore()?.signal.throwIfAborted();
 }
 
-/** Yield to timers and cancellation HTTP requests between bounded batches. */
+/** Yield between bounded batches; legacy callers use the same neutral capabilities. */
 export async function operationCheckpoint(): Promise<void> {
-    throwIfOperationAborted();
     if (contexts.getStore() !== undefined) {
-        await yieldImmediate();
+        await currentCommandExecution().checkpoint();
     }
-
-    throwIfOperationAborted();
 }
 
 export function recordChangedPath(path: string): void {
     contexts.getStore()?.changedPaths.add(path);
 }
 
-/** Chunk long deadlines: Node timers overflow above about 24 days. */
-export function scheduleDeadline(seconds: number, abort: () => void): () => void {
-    const started = performance.now();
-    let timer: ReturnType<typeof setTimeout>;
-    let stopped = false;
-    const tick = () => {
-        const remaining = seconds - (performance.now() - started) / 1000;
-
-        if (remaining <= 0) {
-            abort();
-        } else if (!stopped) {
-            timer = setTimeout(tick, Math.min(remaining * 1000, 2_147_483_647));
-        }
-    };
-
-    tick();
-
-    return () => {
-        stopped = true;
-        clearTimeout(timer);
-    };
-}
+export { scheduleDeadline } from '../utils/process/scheduleDeadline';

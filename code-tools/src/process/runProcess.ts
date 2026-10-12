@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 
-import { scheduleDeadline } from 'senaev-utils/src/operations/operationContext';
+import { scheduleDeadline } from 'senaev-utils/src/utils/process/scheduleDeadline';
 
 export type ProcessResult = {
     exitCode: number | null;

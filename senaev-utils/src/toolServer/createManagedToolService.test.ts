@@ -3,18 +3,21 @@ import {
 } from 'vitest';
 
 import type { OperationLaunchReply } from '../operations/operationTypes';
-import { operationContext } from '../operations/operationContext';
+import type { CommandExecution } from '../commands/CommandExecution';
 
 import { createManagedToolService } from './createManagedToolService';
 import { readToolArguments } from './toolArguments';
 
 function fixture() {
-    const run = vi.fn((_config: unknown, input: unknown) => {
+    const run = vi.fn((_config: unknown, input: unknown, execution: CommandExecution) => {
         const args = readToolArguments(input, ['value']);
+
+        execution.log('stdout', 'host output');
+        execution.changedPath('published.txt');
 
         return Promise.resolve({
             value: args.value,
-            hasExecutionContext: operationContext() !== undefined,
+            hasExecutionContext: execution.signal instanceof AbortSignal,
         });
     });
     const service = createManagedToolService({
@@ -58,12 +61,21 @@ describe('managed command boundary', () => {
                 },
             });
             expect(repeat).toEqual(first);
-            expect(run).toHaveBeenCalledExactlyOnceWith({}, { value: 42 });
+            expect(run).toHaveBeenCalledExactlyOnceWith({}, { value: 42 }, expect.objectContaining({ signal: expect.any(AbortSignal) }));
             await expect(service.call('echo', {
                 ...args,
                 executionPolicy: executionPolicy === 'queued' ? 'parallel' : 'queued',
             })).rejects.toThrow(/different arguments/);
-            expect(await service.call('operation_result', { id: first.operation.id })).toMatchObject({ result: { value: 42 } });
+            expect(await service.call('operation_result', { id: first.operation.id })).toMatchObject({
+                result: { value: 42 },
+                operation: { changedPaths: ['published.txt'] },
+                logs: [
+                    {
+                        stream: 'stdout',
+                        text: 'host output',
+                    },
+                ],
+            });
         } finally {
             await service.close();
         }

@@ -1,11 +1,12 @@
 import { readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import {
     CODE_COMMAND_ARGUMENTS, PROJECT_NAME_PATTERN, type CodeCommandName,
 } from 'senaev-utils/src/codeTools/codeCommands';
 import {
-    operationCheckpoint, operationContext, throwIfOperationAborted,
+    currentCommandExecution, operationCheckpoint, operationContext, throwIfOperationAborted,
 } from 'senaev-utils/src/operations/operationContext';
 import { assertNoSymlinkOnPath, normalizeRootRelativePath } from 'senaev-utils/src/toolServer/rootRelativePath';
 import {
@@ -37,18 +38,24 @@ export function assertProjectName(name: string, field: string): void {
 }
 
 /** The project from the `project` argument; it must be an existing folder, not a symlink. */
-export async function resolveProject(config: CodeToolsConfig, args: ToolArguments): Promise<Project> {
-    await operationCheckpoint();
-    const name = requiredNonEmptyString(args, 'project');
+export async function resolveProject(config: CodeToolsConfig, args: ToolArguments, execution: CommandExecution = currentCommandExecution()): Promise<Project> {
+    execution.throwIfAborted();
+
+    return await resolveNamedProject(config, requiredNonEmptyString(args, 'project'), execution);
+}
+
+/** Resolve a typed project name with explicit host capabilities. */
+export async function resolveNamedProject(config: CodeToolsConfig, name: string, execution: CommandExecution): Promise<Project> {
+    await execution.checkpoint();
 
     assertProjectName(name, 'project');
 
     try {
-        const root = await assertNoSymlinkOnPath(config.projectsRoot, name);
+        const root = await assertNoSymlinkOnPath(config.projectsRoot, name, execution);
 
         const metadata = await stat(root);
 
-        throwIfOperationAborted();
+        execution.throwIfAborted();
         if (metadata.isDirectory()) {
             return {
                 name,
