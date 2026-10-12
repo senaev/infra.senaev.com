@@ -1,11 +1,12 @@
 import { lstat } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { operationCheckpoint, throwIfOperationAborted } from 'senaev-utils/src/operations/operationContext';
+import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
+import { createCommandAdapter } from 'senaev-utils/src/toolServer/createCommandAdapter';
 import { LIST_LIMITS, MAX_GLOB_LENGTH } from 'senaev-utils/src/codeTools/codeToolLimits';
 import { compileFileGlob } from 'senaev-utils/src/toolServer/compileFileGlob';
 import {
-    optionalBoolean, optionalCappedInteger, optionalString,
+    optionalBoolean, optionalCappedInteger, optionalString, requiredNonEmptyString,
 } from 'senaev-utils/src/toolServer/toolArguments';
 import { ToolError } from 'senaev-utils/src/toolServer/ToolError';
 
@@ -13,7 +14,7 @@ import { listProjectFiles } from '../git/runGit';
 
 import type { CodeToolsConfig } from './codeToolsConfig';
 import {
-    normalizeProjectPath, readCodeToolArguments, resolveProject,
+    normalizeProjectPath, readCodeToolArguments, resolveNamedProject,
 } from './projectAccess';
 
 type Entry = {
@@ -22,7 +23,7 @@ type Entry = {
 };
 
 /** The files and folders directly in `folder`, folders first. */
-async function listOneLevel(files: readonly string[], folder: string): Promise<Entry[]> {
+async function listOneLevel(files: readonly string[], folder: string, execution: CommandExecution): Promise<Entry[]> {
     const prefix = folder === '' ? '' : `${folder}/`;
     const folders = new Set<string>();
     const directFiles: string[] = [];
@@ -31,7 +32,7 @@ async function listOneLevel(files: readonly string[], folder: string): Promise<E
 
     for (const file of files) {
         if (index++ % 128 === 0) {
-            await operationCheckpoint();
+            await execution.checkpoint();
         }
 
         const rest = file.slice(prefix.length);
@@ -60,8 +61,8 @@ async function listOneLevel(files: readonly string[], folder: string): Promise<E
     ];
 }
 
-async function withSize(root: string, entry: Entry) {
-    await operationCheckpoint();
+async function withSize(root: string, entry: Entry, execution: CommandExecution) {
+    await execution.checkpoint();
     if (entry.type === 'folder') {
         return entry;
     }
@@ -72,17 +73,19 @@ async function withSize(root: string, entry: Entry) {
             size: (await lstat(join(root, entry.path))).size,
         };
     } catch {
-        throwIfOperationAborted();
+        execution.throwIfAborted();
 
         return entry;
     }
 }
 
-export async function listTool(config: CodeToolsConfig, input: unknown) {
-    throwIfOperationAborted();
+export type ListCommandInput = {
+    project: string; folder: string; glob: string | undefined; recursive: boolean; offset: number; limit: number;
+};
+
+function parseListInput(input: unknown): ListCommandInput {
     const args = readCodeToolArguments(input, 'list');
-    const project = await resolveProject(config, args);
-    const folder = normalizeProjectPath(optionalString(args, 'folder') ?? '', 'folder');
+    const folder = optionalString(args, 'folder') ?? '';
     const glob = optionalString(args, 'glob', MAX_GLOB_LENGTH);
     const recursive = optionalBoolean(args, 'recursive') ?? false;
     const offset = optionalCappedInteger(args, 'offset', {
@@ -94,13 +97,31 @@ export async function listTool(config: CodeToolsConfig, input: unknown) {
         max: LIST_LIMITS.maxLimit,
     }) ?? LIST_LIMITS.defaultLimit;
 
+    return {
+        project: requiredNonEmptyString(args, 'project'),
+        folder,
+        glob,
+        recursive,
+        offset,
+        limit,
+    };
+}
+
+export async function listCommand(config: CodeToolsConfig, input: ListCommandInput, execution: CommandExecution) {
+    execution.throwIfAborted();
+    const project = await resolveNamedProject(config, input.project, execution);
+    const folder = normalizeProjectPath(input.folder, 'folder');
+    const {
+        glob, recursive, offset, limit,
+    } = input;
+
     const prefix = folder === '' ? '' : `${folder}/`;
-    const files = await listProjectFiles(config, project.root);
+    const files = await listProjectFiles(config, project.root, execution);
     const filesInFolder: string[] = [];
 
     for (let index = 0; index < files.length; index++) {
         if (index % 128 === 0) {
-            await operationCheckpoint();
+            await execution.checkpoint();
         }
 
         const file = files[index];
@@ -120,7 +141,7 @@ export async function listTool(config: CodeToolsConfig, input: unknown) {
     if (recursive || matchesGlob !== null) {
         for (let index = 0; index < filesInFolder.length; index++) {
             if (index % 128 === 0) {
-                await operationCheckpoint();
+                await execution.checkpoint();
             }
 
             const path = filesInFolder[index];
@@ -133,7 +154,7 @@ export async function listTool(config: CodeToolsConfig, input: unknown) {
             }
         }
     } else {
-        entries = await listOneLevel(filesInFolder, folder);
+        entries = await listOneLevel(filesInFolder, folder, execution);
     }
 
     const page = entries.slice(offset, offset + limit);
@@ -142,10 +163,10 @@ export async function listTool(config: CodeToolsConfig, input: unknown) {
     const sizedEntries = [];
 
     for (const entry of page) {
-        sizedEntries.push(await withSize(project.root, entry));
+        sizedEntries.push(await withSize(project.root, entry, execution));
     }
 
-    throwIfOperationAborted();
+    execution.throwIfAborted();
 
     return {
         project: project.name,
@@ -155,3 +176,6 @@ export async function listTool(config: CodeToolsConfig, input: unknown) {
         nextOffset,
     };
 }
+
+export type ListCommandResult = Awaited<ReturnType<typeof listCommand>>;
+export const listTool = createCommandAdapter(parseListInput, listCommand);

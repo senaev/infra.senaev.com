@@ -5,12 +5,9 @@ import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecutio
 import {
     CODE_COMMAND_ARGUMENTS, PROJECT_NAME_PATTERN, type CodeCommandName,
 } from 'senaev-utils/src/codeTools/codeCommands';
-import {
-    currentCommandExecution,
-} from 'senaev-utils/src/operations/operationContext';
 import { assertNoSymlinkOnPath, normalizeRootRelativePath } from 'senaev-utils/src/toolServer/rootRelativePath';
 import {
-    readToolArguments, requiredNonEmptyString, type ToolArguments,
+    readToolArguments, type ToolArguments,
 } from 'senaev-utils/src/toolServer/toolArguments';
 import { invalidArguments, ToolError } from 'senaev-utils/src/toolServer/ToolError';
 import { isNotFoundError } from 'senaev-utils/src/utils/Error/isNotFoundError/isNotFoundError';
@@ -35,13 +32,6 @@ export function assertProjectName(name: string, field: string): void {
     if (!PROJECT_NAME.test(name)) {
         throw invalidArguments(`"${field}" must be a project folder name such as "my-repo": letters, digits, ".", "_" and "-"`);
     }
-}
-
-/** The project from the `project` argument; it must be an existing folder, not a symlink. */
-export async function resolveProject(config: CodeToolsConfig, args: ToolArguments, execution: CommandExecution = currentCommandExecution()): Promise<Project> {
-    execution.throwIfAborted();
-
-    return await resolveNamedProject(config, requiredNonEmptyString(args, 'project'), execution);
 }
 
 /** Resolve a typed project name with explicit host capabilities. */
@@ -87,7 +77,7 @@ export function normalizeProjectPath(input: string, field: string): string {
 }
 
 /** The absolute path of an existing regular file, with no symlink on the way. */
-export async function resolveExistingFile(project: Project, path: string, execution: CommandExecution = currentCommandExecution()): Promise<string> {
+export async function resolveExistingFile(project: Project, path: string, execution: CommandExecution): Promise<string> {
     await execution.checkpoint();
     if (path === '') {
         throw invalidArguments('The path must name a file, not the project root');
@@ -114,7 +104,7 @@ export async function resolveExistingFile(project: Project, path: string, execut
 }
 
 /** Reads a UTF-8 text file. A file with a NUL byte near its start is treated as binary, as git does. */
-export async function readTextFile(absolutePath: string, path: string, execution: CommandExecution = currentCommandExecution()): Promise<string> {
+export async function readTextFile(absolutePath: string, path: string, execution: CommandExecution): Promise<string> {
     await execution.checkpoint();
     try {
         if ((await stat(absolutePath)).size > MAX_TEXT_FILE_BYTES) {

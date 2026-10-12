@@ -1,3 +1,4 @@
+import { createCommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import {
     afterEach, beforeEach, describe, expect, it,
 } from 'vitest';
@@ -56,8 +57,8 @@ describe('formatSnippet', () => {
             },
         ];
 
-        expect(await formatSnippet(lines, 5, 1)).toBe('1-a\n2:hit\n3-b\n--\n9:hit');
-        expect(await formatSnippet(lines, 1, 0)).toBe('2:hit');
+        expect(await formatSnippet(lines, 5, 1, createCommandExecution())).toBe('1-a\n2:hit\n3-b\n--\n9:hit');
+        expect(await formatSnippet(lines, 1, 0, createCommandExecution())).toBe('2:hit');
     });
 });
 

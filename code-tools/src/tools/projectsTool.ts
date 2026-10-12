@@ -2,7 +2,8 @@ import { readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { PROJECT_NAME_PATTERN } from 'senaev-utils/src/codeTools/codeCommands';
-import { operationCheckpoint, throwIfOperationAborted } from 'senaev-utils/src/operations/operationContext';
+import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
+import { createCommandAdapter } from 'senaev-utils/src/toolServer/createCommandAdapter';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 
 import { runGit } from '../git/runGit';
@@ -12,35 +13,35 @@ import { readCodeToolArguments } from './projectAccess';
 
 const PROJECT_NAME = new RegExp(PROJECT_NAME_PATTERN);
 
-async function exists(path: string): Promise<boolean> {
+async function exists(path: string, execution: CommandExecution): Promise<boolean> {
     try {
-        throwIfOperationAborted();
+        execution.throwIfAborted();
         await stat(path);
-        throwIfOperationAborted();
+        execution.throwIfAborted();
 
         return true;
     } catch {
-        throwIfOperationAborted();
+        execution.throwIfAborted();
 
         return false;
     }
 }
 
-async function readRemote(config: CodeToolsConfig, root: string): Promise<string | null> {
+async function readRemote(config: CodeToolsConfig, root: string, execution: CommandExecution): Promise<string | null> {
     try {
         return (await runGit(config, root, [
             'remote',
             'get-url',
             'origin',
-        ])).trim();
+        ], execution)).trim();
     } catch {
-        throwIfOperationAborted();
+        execution.throwIfAborted();
 
         return null;
     }
 }
 
-async function describeProject(config: CodeToolsConfig, name: string) {
+async function describeProject(config: CodeToolsConfig, name: string, execution: CommandExecution) {
     const root = join(config.projectsRoot, name);
 
     try {
@@ -48,19 +49,19 @@ async function describeProject(config: CodeToolsConfig, name: string) {
             runGit(config, root, [
                 'branch',
                 '--show-current',
-            ]),
+            ], execution),
             runGit(config, root, [
                 'status',
                 '--porcelain',
                 '-z',
-            ]),
-            readRemote(config, root),
-            exists(join(root, 'AGENTS.md')),
+            ], execution),
+            readRemote(config, root, execution),
+            exists(join(root, 'AGENTS.md'), execution),
         ] as const;
 
         // A rejection must not release the operation slot while sibling Git processes clean up.
         await Promise.allSettled(pending);
-        throwIfOperationAborted();
+        execution.throwIfAborted();
         const [
             branch,
             status,
@@ -77,7 +78,7 @@ async function describeProject(config: CodeToolsConfig, name: string) {
             hasAgentsMd,
         };
     } catch (error) {
-        throwIfOperationAborted();
+        execution.throwIfAborted();
 
         return {
             name,
@@ -87,16 +88,17 @@ async function describeProject(config: CodeToolsConfig, name: string) {
 }
 
 /** Every folder with a `.git` in the projects root is a project. */
-export async function projectsTool(config: CodeToolsConfig, input: unknown) {
-    readCodeToolArguments(input, 'projects');
-    await operationCheckpoint();
+export type ProjectsCommandInput = Record<string, never>;
+
+export async function projectsCommand(config: CodeToolsConfig, _input: ProjectsCommandInput, execution: CommandExecution) {
+    await execution.checkpoint();
 
     const entries = await readdir(config.projectsRoot, { withFileTypes: true });
     const names: string[] = [];
 
     for (const entry of entries) {
-        await operationCheckpoint();
-        if (entry.isDirectory() && PROJECT_NAME.test(entry.name) && await exists(join(config.projectsRoot, entry.name, '.git'))) {
+        await execution.checkpoint();
+        if (entry.isDirectory() && PROJECT_NAME.test(entry.name) && await exists(join(config.projectsRoot, entry.name, '.git'), execution)) {
             names.push(entry.name);
         }
     }
@@ -107,10 +109,18 @@ export async function projectsTool(config: CodeToolsConfig, input: unknown) {
 
     // One project at a time bounds Git subprocess scheduling and exposes abort checkpoints.
     for (const name of names) {
-        await operationCheckpoint();
-        projects.push(await describeProject(config, name));
-        await operationCheckpoint();
+        await execution.checkpoint();
+        projects.push(await describeProject(config, name, execution));
+        await execution.checkpoint();
     }
 
     return { projects };
 }
+
+export type ProjectsCommandResult = Awaited<ReturnType<typeof projectsCommand>>;
+
+export const projectsTool = createCommandAdapter((input: unknown): ProjectsCommandInput => {
+    readCodeToolArguments(input, 'projects');
+
+    return {};
+}, projectsCommand);

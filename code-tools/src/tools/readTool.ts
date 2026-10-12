@@ -1,8 +1,11 @@
 import { createLineOffsets, createLineOffsetsAsync } from 'senaev-utils/src/toolServer/textLines';
 import { READ_LIMITS } from 'senaev-utils/src/codeTools/codeToolLimits';
-import { operationCheckpoint, throwIfOperationAborted } from 'senaev-utils/src/operations/operationContext';
+import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
+import { createCommandAdapter } from 'senaev-utils/src/toolServer/createCommandAdapter';
 import { hashContent } from 'senaev-utils/src/toolServer/contentHash';
-import { optionalInteger, optionalStringArray } from 'senaev-utils/src/toolServer/toolArguments';
+import {
+    optionalInteger, optionalStringArray, requiredNonEmptyString,
+} from 'senaev-utils/src/toolServer/toolArguments';
 import { invalidArguments, ToolError } from 'senaev-utils/src/toolServer/ToolError';
 
 import type { CodeToolsConfig } from './codeToolsConfig';
@@ -12,7 +15,7 @@ import {
     readCodeToolArguments,
     readTextFile,
     resolveExistingFile,
-    resolveProject,
+    resolveNamedProject,
 } from './projectAccess';
 
 type LineRange = {
@@ -55,10 +58,13 @@ export function sliceLines(content: string, { startLine, lineCount }: LineRange,
     };
 }
 
-async function readOneFile(project: Project, path: string, range: LineRange, maxChars: number) {
-    const raw = await readTextFile(await resolveExistingFile(project, path), path);
+async function readOneFile(project: Project, request: { path: string; range: LineRange; maxChars: number }, execution: CommandExecution) {
+    const {
+        path, range, maxChars,
+    } = request;
+    const raw = await readTextFile(await resolveExistingFile(project, path, execution), path, execution);
 
-    const offsets = await createLineOffsetsAsync(raw, operationCheckpoint);
+    const offsets = await createLineOffsetsAsync(raw, execution.checkpoint);
 
     return {
         path,
@@ -68,9 +74,10 @@ async function readOneFile(project: Project, path: string, range: LineRange, max
     };
 }
 
-export async function readTool(config: CodeToolsConfig, input: unknown) {
+export type ReadCommandInput = { project: string; paths: readonly string[]; startLine: number; lineCount: number };
+
+function parseReadInput(input: unknown): ReadCommandInput {
     const args = readCodeToolArguments(input, 'read');
-    const project = await resolveProject(config, args);
     const paths = optionalStringArray(args, 'paths', { maxItems: READ_LIMITS.maxPaths });
 
     if (paths === undefined) {
@@ -90,6 +97,19 @@ export async function readTool(config: CodeToolsConfig, input: unknown) {
         throw invalidArguments('"startLine" and "lineCount" work only with exactly one path');
     }
 
+    return {
+        project: requiredNonEmptyString(args, 'project'),
+        paths,
+        startLine: startLine ?? 1,
+        lineCount: lineCount ?? Number.MAX_SAFE_INTEGER,
+    };
+}
+
+export async function readCommand(config: CodeToolsConfig, input: ReadCommandInput, execution: CommandExecution) {
+    const project = await resolveNamedProject(config, input.project, execution);
+    const {
+        paths, startLine, lineCount,
+    } = input;
     const range = {
         startLine: startLine ?? 1,
         lineCount: lineCount ?? Number.MAX_SAFE_INTEGER,
@@ -103,12 +123,16 @@ export async function readTool(config: CodeToolsConfig, input: unknown) {
         index,
         requestedPath,
     ] of paths.entries()) {
-        await operationCheckpoint();
+        await execution.checkpoint();
         const isFirstRead = files.length === 0;
         const maxChars = READ_LIMITS.maxCharsPerFile;
 
         try {
-            const file = await readOneFile(project, normalizeProjectPath(requestedPath, 'paths'), range, maxChars);
+            const file = await readOneFile(project, {
+                path: normalizeProjectPath(requestedPath, 'paths'),
+                range,
+                maxChars,
+            }, execution);
 
             // Defer a file that only exceeds the remaining aggregate response budget;
             // its own page is still valid and must not be mistaken for an overlong line.
@@ -120,7 +144,7 @@ export async function readTool(config: CodeToolsConfig, input: unknown) {
             files.push(file);
             budget -= file.content.length;
         } catch (error) {
-            throwIfOperationAborted();
+            execution.throwIfAborted();
             if (!(error instanceof ToolError) || paths.length === 1) {
                 throw error;
             }
@@ -145,3 +169,6 @@ export async function readTool(config: CodeToolsConfig, input: unknown) {
         errors,
     };
 }
+
+export type ReadCommandResult = Awaited<ReturnType<typeof readCommand>>;
+export const readTool = createCommandAdapter(parseReadInput, readCommand);

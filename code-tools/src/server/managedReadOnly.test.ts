@@ -4,6 +4,7 @@ import {
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
+import { createCommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { withOperationContext } from 'senaev-utils/src/operations/operationContext';
 import { createBearerAuthorizationHeader } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
 import {
@@ -294,7 +295,7 @@ describe('managed search and list', () => {
                 ...context,
                 signal: controller.signal,
             },
-            () => parseRipgrepJson(Array.from({ length: 2000 }, () => line).join('\n'))
+            () => parseRipgrepJson(Array.from({ length: 2000 }, () => line).join('\n'), createCommandExecution({ signal: controller.signal }))
         )).rejects.toBe(reason);
     });
 });

@@ -2,9 +2,8 @@ import { PATCH_LIMITS } from 'senaev-utils/src/codeTools/codeToolLimits';
 import {
     assertExpectedHash, hashContent, readExpectedHash,
 } from 'senaev-utils/src/toolServer/contentHash';
-import {
-    operationCheckpoint, operationContext, recordChangedPath, throwIfOperationAborted,
-} from 'senaev-utils/src/operations/operationContext';
+import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
+import { createCommandAdapter } from 'senaev-utils/src/toolServer/createCommandAdapter';
 import {
     readToolArguments, requiredNonEmptyString, requiredString,
 } from 'senaev-utils/src/toolServer/toolArguments';
@@ -16,7 +15,7 @@ import { replaceExactlyOnceAsync as replaceText } from 'senaev-utils/src/toolSer
 
 import type { CodeToolsConfig } from './codeToolsConfig';
 import {
-    normalizeProjectPath, readCodeToolArguments, readTextFile, resolveExistingFile, resolveProject,
+    normalizeProjectPath, readCodeToolArguments, readTextFile, resolveExistingFile, resolveNamedProject,
 } from './projectAccess';
 
 type Replacement = {
@@ -48,36 +47,47 @@ function readOperations(value: unknown): Replacement[] {
  * Applies all replacements in memory, in order, and writes the result once. If one fails,
  * nothing is written. The new hash lets the caller edit the same file again at once.
  */
-export async function patchTool(config: CodeToolsConfig, input: unknown) {
+export type PatchCommandInput = { project: string; path: string; expectedHash: string; operations: readonly Replacement[] };
+
+function parsePatchInput(input: unknown): PatchCommandInput {
     const args = readCodeToolArguments(input, 'patch');
-    const project = await resolveProject(config, args);
-    const path = normalizeProjectPath(requiredNonEmptyString(args, 'path'), 'path');
-    const expectedHash = readExpectedHash(args, 'expectedHash');
-    const operations = readOperations(args.operations);
+
+    return {
+        project: requiredNonEmptyString(args, 'project'),
+        path: requiredNonEmptyString(args, 'path'),
+        expectedHash: readExpectedHash(args, 'expectedHash'),
+        operations: readOperations(args.operations),
+    };
+}
+
+export async function patchCommand(config: CodeToolsConfig, input: PatchCommandInput, execution: CommandExecution) {
+    const project = await resolveNamedProject(config, input.project, execution);
+    const path = normalizeProjectPath(input.path, 'path');
+    const { expectedHash, operations } = input;
 
     return withFileMutation(`${project.root}/${path}`, async () => {
-        const absolutePath = await resolveExistingFile(project, path);
-        const original = await readTextFile(absolutePath, path);
+        const absolutePath = await resolveExistingFile(project, path, execution);
+        const original = await readTextFile(absolutePath, path, execution);
 
         assertExpectedHash(original, expectedHash, 'file');
 
         let updated = original;
 
         for (const operation of operations) {
-            await operationCheckpoint();
-            updated = await replaceText(updated, operation.find, operation.replace);
+            await execution.checkpoint();
+            updated = await replaceText(updated, operation.find, operation.replace, { execution });
         }
 
-        const diff = await createFileDiffAsync(path, original, updated);
+        const diff = await createFileDiffAsync(path, original, updated, execution);
 
-        throwIfOperationAborted();
+        execution.throwIfAborted();
 
         if (updated !== original) {
-            assertExpectedHash(await readTextFile(absolutePath, path), expectedHash, 'file');
-            await replaceFileAtomically(absolutePath, updated, operationContext()?.signal, () => recordChangedPath(path));
+            assertExpectedHash(await readTextFile(absolutePath, path, execution), expectedHash, 'file');
+            await replaceFileAtomically(absolutePath, updated, execution.signal, () => execution.changedPath(path));
         }
 
-        await operationCheckpoint();
+        await execution.checkpoint();
 
         return {
             path,
@@ -85,5 +95,8 @@ export async function patchTool(config: CodeToolsConfig, input: unknown) {
             hash: hashContent(updated),
             ...diff,
         };
-    });
+    }, execution);
 }
+
+export type PatchCommandResult = Awaited<ReturnType<typeof patchCommand>>;
+export const patchTool = createCommandAdapter(parsePatchInput, patchCommand);
