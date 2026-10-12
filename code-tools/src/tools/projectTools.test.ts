@@ -5,7 +5,9 @@ import {
     afterEach, beforeEach, describe, expect, it,
 } from 'vitest';
 
-import { cloneTool, getRepositoryName } from './cloneTool';
+import { runCommand } from './runCommand';
+import { cloneTool } from './cloneTool';
+import { getRepositoryName } from './cloneCommand';
 import { createTestProjects, type TestProjects } from './createTestProjects';
 import { projectsTool } from './projectsTool';
 import { runTool } from './runTool';
@@ -135,10 +137,10 @@ describe('runTool', () => {
             const result = await manager.launch({
                 tool: 'run',
                 args,
-                run: () => runTool(projects.config, {
+                run: (execution) => runCommand(projects.config, {
                     project: args.project,
                     command: args.command,
-                }),
+                }, execution),
             });
 
             expect(result).toMatchObject({

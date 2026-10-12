@@ -8,8 +8,8 @@ export type ToolCallReply = {
 };
 
 /**
- * Runs one MCP tool call for an HTTP route. Success is `200 {status:'ok', ...result}`; a
- * `ToolError` answers with its own status and a message meant for ChatGPT; anything else is
+ * Runs one command call for an HTTP route. Success is `200 {status:'ok', ...result}`; a
+ * `ToolError` answers with its own status and a caller-facing message; anything else is
  * a 500 that hides the error.
  *
  * Logs only the tool name and timing: the arguments and results can hold private text.

@@ -167,3 +167,17 @@ export function optionalObject(args: ToolArguments, key: string): ToolArguments 
 
     return value;
 }
+
+/** Shared offset/limit decoding; each command retains its own existing page limits. */
+export function readPageArguments(args: ToolArguments, limits: { maxOffset: number; maxLimit: number; defaultLimit: number }): { offset: number; limit: number } {
+    return {
+        offset: optionalCappedInteger(args, 'offset', {
+            min: 0,
+            max: limits.maxOffset,
+        }) ?? 0,
+        limit: optionalCappedInteger(args, 'limit', {
+            min: 1,
+            max: limits.maxLimit,
+        }) ?? limits.defaultLimit,
+    };
+}

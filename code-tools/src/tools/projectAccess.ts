@@ -3,12 +3,9 @@ import { join } from 'node:path';
 
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import {
-    CODE_COMMAND_ARGUMENTS, PROJECT_NAME_PATTERN, type CodeCommandName,
+    PROJECT_NAME_PATTERN,
 } from 'senaev-utils/src/codeTools/codeCommands';
 import { assertNoSymlinkOnPath, normalizeRootRelativePath } from 'senaev-utils/src/toolServer/rootRelativePath';
-import {
-    readToolArguments, type ToolArguments,
-} from 'senaev-utils/src/toolServer/toolArguments';
 import { invalidArguments, ToolError } from 'senaev-utils/src/toolServer/ToolError';
 import { isNotFoundError } from 'senaev-utils/src/utils/Error/isNotFoundError/isNotFoundError';
 
@@ -22,11 +19,6 @@ export type Project = {
     name: string;
     root: string;
 };
-
-/** The arguments of a code tool, which contain only domain fields. */
-export function readCodeToolArguments(value: unknown, tool: CodeCommandName): ToolArguments {
-    return readToolArguments(value, CODE_COMMAND_ARGUMENTS[tool]);
-}
 
 export function assertProjectName(name: string, field: string): void {
     if (!PROJECT_NAME.test(name)) {
@@ -113,7 +105,7 @@ export async function readTextFile(absolutePath: string, path: string, execution
 
         execution.throwIfAborted();
         const { signal } = execution;
-        const buffer = await readFile(absolutePath, signal === undefined ? {} : { signal });
+        const buffer = await readFile(absolutePath, { signal });
 
         execution.throwIfAborted();
 

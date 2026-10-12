@@ -1,12 +1,5 @@
 import { posix } from 'node:path';
 
-import { MAX_GLOB_LENGTH } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
-import { compileFileGlob } from 'senaev-utils/src/toolServer/compileFileGlob';
-import { optionalString, type ToolArguments } from 'senaev-utils/src/toolServer/toolArguments';
-import { invalidArguments } from 'senaev-utils/src/toolServer/ToolError';
-
-import { normalizeVaultPath } from './access/vaultAccess';
-import { optionalIsoDay } from './toolArguments';
 import type { VaultToolsConfig } from './vaultToolsConfig';
 
 const DIARY_FILE_NAME = /^(\d{4}-\d{2}-\d{2})\.md$/;
@@ -30,30 +23,6 @@ export function getDiaryDate(config: VaultToolsConfig, path: string): string | n
 
 export function isDiaryRangeRequested(scope: Pick<NoteScope, 'diaryFrom' | 'diaryTo'>): boolean {
     return scope.diaryFrom !== undefined || scope.diaryTo !== undefined;
-}
-
-export function readDiaryRange(args: ToolArguments): Pick<NoteScope, 'diaryFrom' | 'diaryTo'> {
-    const diaryFrom = optionalIsoDay(args, 'diaryFrom');
-    const diaryTo = optionalIsoDay(args, 'diaryTo');
-
-    if (diaryFrom !== undefined && diaryTo !== undefined && diaryFrom > diaryTo) {
-        throw invalidArguments('"diaryFrom" must not be later than "diaryTo"');
-    }
-
-    return {
-        diaryFrom,
-        diaryTo,
-    };
-}
-
-export function readNoteScope(args: ToolArguments): NoteScope {
-    const glob = optionalString(args, 'glob', MAX_GLOB_LENGTH);
-
-    return {
-        folder: normalizeVaultPath(optionalString(args, 'folder') ?? '', 'folder'),
-        matchesGlob: glob === undefined ? null : compileFileGlob(glob),
-        ...readDiaryRange(args),
-    };
 }
 
 export function isInDiaryRange(

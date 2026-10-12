@@ -3,7 +3,7 @@ import {
 } from 'node:fs/promises';
 
 import { createCommandExecution, type CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
-import { operationContext, withOperationContext } from 'senaev-utils/src/operations/operationContext';
+import { withCommandExecution } from 'senaev-utils/src/commands/testing/withCommandExecution';
 import { hashContent } from 'senaev-utils/src/toolServer/contentHash';
 import {
     afterEach, beforeEach, describe, expect, it, vi,
@@ -89,16 +89,16 @@ describe('cooperative file cancellation and atomicity', () => {
 
         controller.abort(reason);
         const calls = [
-            () => readTool(projects.config, {
+            (execution: CommandExecution) => readTool(projects.config, {
                 project: 'demo',
                 paths: ['README.md'],
-            }),
-            () => writeTool(projects.config, {
+            }, execution),
+            (execution: CommandExecution) => writeTool(projects.config, {
                 project: 'demo',
                 path: 'README.md',
                 content: 'new',
-            }),
-            () => patchTool(projects.config, {
+            }, execution),
+            (execution: CommandExecution) => patchTool(projects.config, {
                 project: 'demo',
                 path: 'README.md',
                 expectedHash: hashContent('old\n'),
@@ -108,15 +108,15 @@ describe('cooperative file cancellation and atomicity', () => {
                         replace: 'new',
                     },
                 ],
-            }),
-            () => cloneTool(projects.config, {
+            }, execution),
+            (execution: CommandExecution) => cloneTool(projects.config, {
                 url: projects.path('demo'),
                 name: 'copy',
-            }),
+            }, execution),
         ];
 
         for (const run of calls) {
-            await expect(withOperationContext<unknown>(context(controller), run)).rejects.toBe(reason);
+            await expect(withCommandExecution<unknown>(context(controller), run)).rejects.toBe(reason);
         }
 
         expect(await readFile(projects.path('demo', 'README.md'), 'utf8')).toBe('old\n');
@@ -134,13 +134,13 @@ describe('cooperative file cancellation and atomicity', () => {
             }
         };
 
-        await expect(withOperationContext(context(controller), () => readTool(projects.config, {
+        await expect(withCommandExecution(context(controller), (execution: CommandExecution) => readTool(projects.config, {
             project: 'demo',
             paths: [
                 'README.md',
                 'second.md',
             ],
-        }))).rejects.toBe(reason);
+        }, execution))).rejects.toBe(reason);
         expect(reads).toEqual([projects.path('demo', 'README.md')]);
     });
 
@@ -160,7 +160,7 @@ describe('cooperative file cancellation and atomicity', () => {
 
         const ctx = context(controller);
         const run = tool === 'patch'
-            ? () => patchTool(projects.config, {
+            ? (execution: CommandExecution) => patchTool(projects.config, {
                 project: 'demo',
                 path: 'README.md',
                 expectedHash: hashContent('old\n'),
@@ -170,15 +170,15 @@ describe('cooperative file cancellation and atomicity', () => {
                         replace: 'new',
                     },
                 ],
-            })
-            : () => writeTool(projects.config, {
+            }, execution)
+            : (execution: CommandExecution) => writeTool(projects.config, {
                 project: 'demo',
                 path: tool === 'create' ? 'new.md' : 'README.md',
                 content: 'new',
                 ...tool === 'create' ? {} : { expectedHash: hashContent('old\n') },
-            });
+            }, execution);
 
-        await expect(withOperationContext(ctx, run)).rejects.toBe(reason);
+        await expect(withCommandExecution(ctx, run)).rejects.toBe(reason);
         expect(ctx.changedPaths.size).toBe(0);
         expect(await readFile(projects.path('demo', 'README.md'), 'utf8')).toBe('old\n');
         expect((await readdir(projects.path('demo'))).filter((path) => path.endsWith('.tmp') || path === 'new.md')).toEqual([]);
@@ -191,12 +191,12 @@ describe('cooperative file cancellation and atomicity', () => {
         hooks.afterRename = () => controller.abort(reason);
         const ctx = context(controller);
 
-        await expect(withOperationContext(ctx, () => writeTool(projects.config, {
+        await expect(withCommandExecution(ctx, (execution: CommandExecution) => writeTool(projects.config, {
             project: 'demo',
             path: 'README.md',
             content: 'new\n',
             expectedHash: hashContent('old\n'),
-        }))).rejects.toBe(reason);
+        }, execution))).rejects.toBe(reason);
         expect(ctx.changedPaths).toEqual(new Set(['README.md']));
         expect(await readFile(projects.path('demo', 'README.md'), 'utf8')).toBe('new\n');
         expect((await readdir(projects.path('demo'))).filter((path) => path.endsWith('.tmp'))).toEqual([]);
@@ -218,15 +218,15 @@ describe('cooperative file cancellation and atomicity', () => {
             await gate;
         };
 
-        const first = withOperationContext(context(controller), () => writeTool(projects.config, {
+        const first = withCommandExecution(context(controller), (execution: CommandExecution) => writeTool(projects.config, {
             project: 'demo',
             path: 'README.md',
             expectedHash: hashContent('old\n'),
             content: 'first',
-        })).catch((error: unknown) => error);
+        }, execution)).catch((error: unknown) => error);
 
         await started;
-        await expect(withOperationContext(context(), () => patchTool(projects.config, {
+        await expect(withCommandExecution(context(), (execution: CommandExecution) => patchTool(projects.config, {
             project: 'demo',
             path: 'README.md',
             expectedHash: hashContent('old\n'),
@@ -236,7 +236,7 @@ describe('cooperative file cancellation and atomicity', () => {
                     replace: 'second',
                 },
             ],
-        }))).rejects.toMatchObject({ code: 'conflict' });
+        }, execution))).rejects.toMatchObject({ code: 'conflict' });
         controller.abort(new Error('stop'));
         release();
         await first;
@@ -267,13 +267,13 @@ describe('cooperative file cancellation and atomicity', () => {
             }
         };
 
-        await expect(withOperationContext(context(controller), () => readTool(projects.config, {
+        await expect(withCommandExecution(context(controller), (execution: CommandExecution) => readTool(projects.config, {
             project: 'demo',
             paths: [
                 'README.md',
                 'second.md',
             ],
-        }))).rejects.toBe(reason);
+        }, execution))).rejects.toBe(reason);
         expect(reads).toEqual([projects.path('demo', 'README.md')]);
     });
 
@@ -290,7 +290,5 @@ describe('cooperative file cancellation and atomicity', () => {
             setImmediate(() => controller.abort(reason));
             await expect(promise).rejects.toBe(reason);
         }
-
-        expect(operationContext()).toBeUndefined();
     });
 });

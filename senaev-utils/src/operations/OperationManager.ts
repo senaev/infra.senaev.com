@@ -2,8 +2,8 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import { ToolError, invalidArguments } from '../toolServer/ToolError';
 import { scheduleDeadline } from '../utils/process/scheduleDeadline';
+import { createCommandExecution, type CommandExecution } from '../commands/CommandExecution';
 
-import { withOperationContext } from './operationContext';
 import { DEFAULT_TIMEOUT_SECONDS, OBSERVATION_MS } from './operationLimits';
 import {
     isTerminalOperation as terminal, type ExecutionPolicy, type OperationLog as LogEntry, type OperationState as State, type OperationView, type OperationLaunchReply,
@@ -41,7 +41,7 @@ type RecordData = {
 type Entry = {
     data: RecordData;
     controller: AbortController;
-    run: () => Promise<Record<string, unknown>>;
+    run: (execution: CommandExecution) => Promise<Record<string, unknown>>;
     done: Promise<void>;
     finish: () => void;
 };
@@ -165,7 +165,7 @@ export class OperationManager {
     }
 
     public async launch(options: {
-        tool: string; args: Record<string, unknown>; run: () => Promise<Record<string, unknown>>;
+        tool: string; args: Record<string, unknown>; run: (execution: CommandExecution) => Promise<Record<string, unknown>>;
     }): Promise<OperationLaunchReply> {
         const {
             tool, args, run,
@@ -486,13 +486,14 @@ export class OperationManager {
             data.startedAt = Date.now();
             data.updatedAt = data.startedAt;
             stopDeadline = scheduleDeadline(data.timeoutSeconds, () => controller.abort(new Error('timed_out')));
-            const result = await withOperationContext({
+            const execution = createCommandExecution({
                 signal: controller.signal,
-                changedPaths,
+                changedPath: (path) => changedPaths.add(path),
                 log: (stream, text) => {
                     OperationManager.appendLog(data, stream, text);
                 },
-            }, entry.run);
+            });
+            const result = await entry.run(execution);
 
             controller.signal.throwIfAborted();
             data.resultJson = serializeResult(result, (error) => this.reportFailure(error, data));

@@ -4,12 +4,10 @@ import {
     afterEach, describe, expect, it, vi,
 } from 'vitest';
 
+import { createCommandExecution, type CommandExecution } from '../commands/CommandExecution';
 import { scheduleDeadline } from '../utils/process/scheduleDeadline';
 
 import { OperationManager, executionTimeout } from './OperationManager';
-import {
-    currentCommandExecution, operationContext, withOperationContext,
-} from './operationContext';
 
 afterEach(() => {
     vi.useRealTimers();
@@ -147,8 +145,8 @@ describe('OperationManager', () => {
         const launch = manager.launch({
             tool: 'run',
             args: {},
-            run: () => {
-                signal = operationContext()?.signal;
+            run: (execution) => {
+                signal = execution?.signal;
 
                 return gate.promise;
             },
@@ -334,8 +332,8 @@ describe('OperationManager', () => {
         }
 
         expect(run).not.toHaveBeenCalled();
-        const abortable = () => new Promise<Record<string, unknown>>((resolve) => {
-            operationContext()?.signal.addEventListener('abort', () => resolve({}), { once: true });
+        const abortable = (execution: CommandExecution) => new Promise<Record<string, unknown>>((resolve) => {
+            execution?.signal.addEventListener('abort', () => resolve({}), { once: true });
         });
         const timeout = await manager.launch({
             tool: 'run',
@@ -544,8 +542,8 @@ describe('OperationManager', () => {
         const reply = await manager.launch({
             tool: 'run',
             args: {},
-            run: () => {
-                const context = operationContext();
+            run: (execution) => {
+                const context = execution;
 
                 context?.log('stdout', 'a'.repeat(200000));
                 context?.log('stderr', 'error');
@@ -607,8 +605,8 @@ describe('OperationManager', () => {
         const active = manager.launch({
             tool: 'run',
             args: {},
-            run: () => new Promise((resolve) => {
-                operationContext()?.signal.addEventListener('abort', () => resolve({}), { once: true });
+            run: (execution) => new Promise((resolve) => {
+                execution?.signal.addEventListener('abort', () => resolve({}), { once: true });
                 started.resolve();
             }),
         });
@@ -661,8 +659,8 @@ describe('OperationManager', () => {
         const hung = await deadlineManager.launch({
             tool: 'run',
             args: { timeoutSeconds: 1 },
-            run: () => new Promise((resolve) => {
-                const signal = operationContext()?.signal;
+            run: (execution) => new Promise((resolve) => {
+                const signal = execution?.signal;
 
                 signal?.addEventListener('abort', () => resolve({}), { once: true });
             }),
@@ -792,59 +790,118 @@ describe('deadline and cooperative cancellation', () => {
         expect(abort).toHaveBeenCalledOnce();
         stopShort();
     });
-
-    it('throws an already aborted signal before traversing and restores its context', async () => {
+    it('rejects a pre-aborted explicit capability before traversal', async () => {
         const controller = new AbortController();
 
         controller.abort(new Error('cancelled'));
-        const context = {
-            signal: controller.signal,
-            log: () => undefined,
-            changedPaths: new Set<string>(),
-        };
-
-        await expect(withOperationContext(context, () => currentCommandExecution().checkpoint())).rejects.toThrow('cancelled');
-        expect(operationContext()).toBeUndefined();
+        await expect(createCommandExecution({ signal: controller.signal }).checkpoint()).rejects.toThrow('cancelled');
     });
-    it('isolates overlapping asynchronous contexts, abort and changed paths', async () => {
-        const gate = deferred<void>();
-        const entered = deferred<void>();
-        const firstController = new AbortController();
-        const secondController = new AbortController();
-        const first = {
-            signal: firstController.signal,
-            changedPaths: new Set<string>(),
-            log: vi.fn(),
+
+    it('isolates signals, logs and changes of overlapping real managed callbacks', async () => {
+        const manager = new OperationManager('isolation');
+        const firstReady = deferred<void>();
+        const secondReady = deferred<void>();
+        const firstGate = deferred<void>();
+        const secondGate = deferred<void>();
+        let firstExecution: CommandExecution | undefined;
+        let secondExecution: CommandExecution | undefined;
+        const firstArgs = {
+            executionPolicy: 'parallel',
+            requestId: 'first',
         };
-        const second = {
-            signal: secondController.signal,
-            changedPaths: new Set<string>(),
-            log: vi.fn(),
+        const secondArgs = {
+            executionPolicy: 'parallel',
+            requestId: 'second',
         };
-        const pending = withOperationContext(first, async () => {
-            entered.resolve();
-            await gate.promise;
-            expect(operationContext()).toBe(first);
-            await expect(currentCommandExecution().checkpoint()).rejects.toThrow('first cancelled');
+        const firstLaunch = manager.launch({
+            tool: 'first',
+            args: firstArgs,
+            run: async (execution) => {
+                firstExecution = execution;
+                execution.log('stdout', 'first');
+                firstReady.resolve();
+                await firstGate.promise;
+                execution.throwIfAborted();
+                execution.changedPath('first.md');
+
+                return {};
+            },
+        });
+        const secondLaunch = manager.launch({
+            tool: 'second',
+            args: secondArgs,
+            run: async (execution) => {
+                secondExecution = execution;
+                execution.log('stderr', 'second');
+                secondReady.resolve();
+                await secondGate.promise;
+                execution.throwIfAborted();
+                execution.changedPath('second.md');
+
+                return { value: 'second' };
+            },
         });
 
-        await entered.promise;
-        await withOperationContext(second, async () => {
-            await currentCommandExecution().checkpoint();
-            expect(operationContext()).toBe(second);
-            operationContext()?.changedPaths.add('second.md');
-            operationContext()?.log('stdout', 'second');
-            firstController.abort(new Error('first cancelled'));
-            gate.resolve();
-            await pending;
-            await currentCommandExecution().checkpoint();
-            expect(operationContext()).toBe(second);
-        });
-        expect(secondController.signal.aborted).toBe(false);
-        expect(first.changedPaths.size).toBe(0);
-        expect(second.changedPaths).toEqual(new Set(['second.md']));
-        expect(first.log).not.toHaveBeenCalled();
-        expect(second.log).toHaveBeenCalledWith('stdout', 'second');
-        expect(operationContext()).toBeUndefined();
+        try {
+            await Promise.all([
+                firstReady.promise,
+                secondReady.promise,
+            ]);
+            const first = await manager.launch({
+                tool: 'first',
+                args: firstArgs,
+                run: () => Promise.resolve({}),
+            });
+            const second = await manager.launch({
+                tool: 'second',
+                args: secondArgs,
+                run: () => Promise.resolve({}),
+            });
+
+            expect(firstExecution).not.toBe(secondExecution);
+            expect(firstExecution?.signal).not.toBe(secondExecution?.signal);
+            await manager.control('operation_cancel', { id: first.operation.id });
+            expect(firstExecution?.signal.aborted).toBe(true);
+            expect(secondExecution?.signal.aborted).toBe(false);
+            firstGate.resolve();
+            secondGate.resolve();
+            await Promise.all([
+                firstLaunch,
+                secondLaunch,
+            ]);
+            expect(await manager.control('operation_result', { id: first.operation.id })).toMatchObject({
+                operation: {
+                    state: 'cancelled',
+                    changedPaths: [],
+                },
+                logs: [
+                    {
+                        stream: 'stdout',
+                        text: 'first',
+                    },
+                ],
+            });
+            expect(await manager.control('operation_result', { id: second.operation.id })).toMatchObject({
+                operation: {
+                    state: 'completed',
+                    changedPaths: ['second.md'],
+                },
+                logs: [
+                    {
+                        stream: 'stderr',
+                        text: 'second',
+                    },
+                ],
+                result: { value: 'second' },
+            });
+        } finally {
+            firstGate.resolve();
+            secondGate.resolve();
+            await Promise.all([
+                firstLaunch,
+                secondLaunch,
+            ]);
+            await manager.close();
+        }
     });
 });

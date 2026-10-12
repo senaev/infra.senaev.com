@@ -873,3 +873,160 @@ First push operation code-04942f13-0592-4ba7-856a-78868122d163 failed before pub
 ### 2026-10-12T09:43:34.482529+00:00 — Remaining Code Tools cancellation callers corrected
 
 Operation code-8cca38f7-c66e-4cd5-a496-8e24c7dffd5b completed exitCode 0: Code Tools typecheck, scoped lint and all 9 fileCancellation tests passed, including real replacement scanning/diff-worker cancellation with an explicit signal. Amending the unpublished branch commit and repeating the mandatory pre-push checks.
+
+### 2026-10-12T09:47:00.805177+00:00 — Full mandatory checks PASS; typed Obsidian PR opened
+
+Final push operation code-114cece7-08bd-4abb-9bed-1fa95a6eabf3 completed exitCode 0. Mandatory unmodified pre-push npm run simple-checks passed all six checks: lint, typecheck, Vitest (162 files / 1251 tests), Python, shell and Helm syntax. Published branch refactor/typed-obsidian-commands at 2e6d129dcd13c04c5e66490254d1412368c48c0d and opened its pull request. No checks bypassed. The first failed unpublished commit was amended; the branch was never force-pushed. GitHub CI and CodeRabbit review remain pending. Post-publication evidence continues in the uncommitted append-only journal.
+
+### 2026-10-12T09:48:39.589600+00:00 — PR #81 published; CodeRabbit quota noted
+
+PR: https://github.com/senaev/infra.senaev.com/pull/81, reviewed candidate HEAD 2e6d129dcd13c04c5e66490254d1412368c48c0d, OPEN/MERGEABLE. GitHub Check run 38232106004 / job 114753816197 is in progress. CodeRabbit status context says SUCCESS, but there is no submitted review: its issue comment (2026-10-12T09:47:10Z) says "Review limit reached" and "Next included review available in 2 minutes." This is not approval or completed code review. No review findings have been submitted yet.
+
+Mandatory pre-push output excerpt, ANSI removed:
+```text
+[test]  Test Files  162 passed (162)
+[test]       Tests  1251 passed (1251)
+--> │ test         │ 164,908  │ 0         │ false  │ npm run test         │
+--> │ lint         │ 112,715  │ 0         │ false  │ npm run lint         │
+--> │ typecheck    │ 104,050  │ 0         │ false  │ npm run typecheck    │
+--> │ check:helm   │ 9,800    │ 0         │ false  │ npm run check:helm   │
+--> │ check:python │ 4,831    │ 0         │ false  │ npm run check:python │
+--> │ check:shell  │ 2,003    │ 0         │ false  │ npm run check:shell  │
+```
+
+Removed only the three own regular temporary push logs/PR-body files after retaining this evidence; isolated test fixtures already use their own cleanup. The task journal remains the only uncommitted file.
+
+### 2026-10-12T09:50:21.227506+00:00 — PR #81 GitHub CI PASS; independent bot review still absent
+
+GitHub Check run 38232106004 / job 114753816197 completed SUCCESS at 2026-10-12T09:48:09Z for exact HEAD 2e6d129dcd13c04c5e66490254d1412368c48c0d. Rechecked CodeRabbit after the advertised two-minute quota-reset interval: its unchanged rate-limit comment remains, reviews is empty, reviewDecision is empty, and no review is in progress. The SUCCESS status context must not be described as approval. No unrequested message was posted to the bot. PR #81 remains OPEN and has not been merged or deployed.
+
+## Result — PR #80 deployed; typed Obsidian iteration prepared as PR #81
+
+PR #80 was merged with explicit user consent; opencode-serve image build, publication, deployment and all three required public smoke checks passed. Completed the eight typed standalone Obsidian business commands and explicit shared file execution migration in PR #81. Removed obsolete ambient compatibility helpers/defaults and consolidated registry adapter typing. All six mandatory checks passed (162 files / 1251 tests), and GitHub CI passed. The append-only journal is preserved and remains the only uncommitted file. Independent CodeRabbit review is NOT VERIFIED because it was skipped for quota and did not retry automatically. This Obsidian iteration is not live-verified before deployment. Next: retry the bot review, resolve any findings, obtain explicit consent for PR #81 merge, verify releases and live behavior, then assess any remaining business/adapter boundary cleanup. No new public MCP parameters, modes or limits and no production vault edits.
+
+### 2026-10-12T10:00:26.665891+00:00 — PR #81 merged with user consent; release/live stage started
+
+User explicitly authorized merging PR #81 and proceeding. Rechecked exact HEAD 2e6d129dcd13c04c5e66490254d1412368c48c0d: GitHub CI SUCCESS, MERGEABLE, no submitted review or review findings; CodeRabbit quota-skipped review remains unverified as disclosed before authorization. Merged at 2026-10-12T09:59:52Z as 67eb37e4b93b926223badd9f227a92c44058be1d. Preserved the complete uncommitted task journal using an own path-scoped stash, verified its file hash after applying and dropped only that stash. main fast-forwarded to the merged commit. Public catalogue inspection confirms all eight Obsidian commands expose executionPolicy, requestId and timeoutSeconds, with status/result/cancel/operations controls. Monitoring all triggered releases before live verification.
+
+### 2026-10-12T10:05:06.449791+00:00 — All PR #81 releases PASS
+
+All six release workflows for merge 67eb37e4b93b926223badd9f227a92c44058be1d completed SUCCESS: senaev-utils 38233488635, media-server-helper 38233488672, vpn-subscription 38233488633, obsidian-sync 38233488656, cluster-helper 38233488709, opencode-serve 38233488649. Public MCP recovered after transient INVALID_ARGUMENT during rollout. Vault AGENTS read fully via public obsidian-read; whole-file SHA-256 eeb0f5e20525a4ec020929a28d17d574d24266cbb20078e11f8b5d5d3b8e5188 matches /projects/vault/AGENTS.md through public code-run. Ownership-guarded cleanup path is available. Starting isolated live fixtures at @senaev/mcp-test/live81-20261012-1002-c6d942; no new API fields or alternate authorization.
+
+### 2026-10-12T10:10:43.244430+00:00 — Isolated live commands and atomicity PASS
+
+Live create/list/search/read/links/patch/move succeeded under queued and parallel. Listing with limit 1 returned nextOffset 1; scoped search found the expected unique source; links found exactly one own backlink. Section reads returned the whole-file hash. All four patch operation types applied successfully. Failed second patch replacement returned not_found with changedPaths empty and unchanged whole-file hash; stale hash returned conflict; an existing move destination returned already_exists with no changes, under both policies. Successful moves rewrote exactly one own backlink, skippedLinks empty, and changedPaths stayed inside the owned prefix. These are public MCP live results, not substituted automated evidence.
+
+Operation records:
+```json
+[{"tool":"create","policy":"queued","id":"obsidian-a0a974e2-8545-4f1b-a099-af5d1cf0a9d4","state":"completed"},{"tool":"create","policy":"parallel","id":"obsidian-bde16695-b335-4739-944f-9cb4823708ca","state":"completed"},{"tool":"create","policy":"queued","id":"obsidian-860aed81-aec4-4222-92b0-b86d825ac66d","state":"completed"},{"tool":"list","policy":"queued","id":"obsidian-5b16382a-3e41-4b75-9d42-b61296873a09","state":"completed"},{"tool":"read","policy":"queued","id":"obsidian-928c7005-b68b-4e7d-9e3d-6d2075570643","state":"completed"},{"tool":"search","policy":"queued","id":"obsidian-a41cfd13-0173-4107-9c75-475036723eb3","state":"completed"},{"tool":"links","policy":"queued","id":"obsidian-cf116c48-92be-4a2d-9cdb-69fb6855a8b8","state":"completed"},{"tool":"create","policy":"parallel","id":"obsidian-a8969317-499c-4489-a45c-26f380e49b91","state":"completed"},{"tool":"list","policy":"parallel","id":"obsidian-61705e49-a9fd-43d7-a41b-bc4c6e05a3a9","state":"completed"},{"tool":"read","policy":"parallel","id":"obsidian-7483ad64-a925-46e4-8078-d949676329f8","state":"completed"},{"tool":"search","policy":"parallel","id":"obsidian-117bb8cc-1610-4c89-8d47-0a9b9ef0d8c3","state":"completed"},{"tool":"links","policy":"parallel","id":"obsidian-fb29506f-1046-4ac8-8d56-8cbfa17af4a8","state":"completed"},{"tool":"patch","policy":"queued","id":"obsidian-e1cb08e8-a03f-47dc-978e-c712bb9dc028","state":"completed"},{"tool":"patch","policy":"parallel","id":"obsidian-e43eb30e-ef59-4474-a0a8-9aa45151feac","state":"completed"},{"tool":"move","policy":"queued","id":"obsidian-985b2227-6e96-4f96-b0fc-ee409478d982","state":"completed"},{"tool":"move","policy":"parallel","id":"obsidian-66f14b3e-6e14-4a1b-8887-20f6c96d2501","state":"completed"}]
+```
+
+### 2026-10-12T10:11:22.468850+00:00 — Move link verification clarified
+
+An initial harness string assertion expected the rewritten backlink to retain its full folder path. Actual move intentionally rewrote it to the unique shortest name [[live81-queued-Moved]] / [[live81-parallel-Moved]], which is supported existing behavior. Public obsidian-links on both backlink notes confirmed status resolved and the exact owned moved-note path. This was an incorrect harness expectation, not a live product failure. Both move results preserve the original note hash, rewrite one owned backlink, return no skipped links and report only owned changedPaths.
+
+### 2026-10-12T10:16:25.433075+00:00 — Live retries, retained results, diary and read pagination PASS
+
+1 PASS all eight Obsidian commands completed successfully with queued and parallel. Diary test records were explicitly announced, appended once (obsidian-a074d902-a81d-4799-b22f-8c523a8d5c71 / obsidian-ffac3022-4b8c-4d50-be60-bec10e4045b0), then removed only after the entire appended suffix matched the exact two own records/timestamps. Restore patch obsidian-5cc60da4-4566-4994-9183-9226b5011460 restored original draft SHA-256 91b8f48b33da26fd9e21a6a637791dc4f1522b1139f494462fd542385ebaa20f.
+3 PASS sixteen identical retries (all eight tools, both policies) reused original IDs and exact saved business results, including diary after restoration and create/read/patch/move after source paths were moved. Sixteen policy changes with retained requestIds returned conflict; eight additional distinct domain-argument changes also returned conflict.
+4 PASS operation_result independently returned the exact saved result for all sixteen successful records.
+8 PASS complete reconstruction of the owned 165010-character slow.md via nine public read pages; all pages reported one identical whole-file hash. Independent public code-run filesystem SHA-256 above confirms it. No automatic tests substituted for these live observations.
+
+### 2026-10-12T10:20:17.920664+00:00 — Live FIFO, cancellation and explicit deadlines PASS
+
+2 PASS: real queued patch obsidian-9e16ac24-1dad-4570-b56e-7252f0b4d0e9 held FIFO; queued list obsidian-2d4bade9-081b-40bd-9a88-9a5a40692d46 and search obsidian-5e2c6d81-c551-4248-aee6-f0305f8f505e had startedAt null. Parallel read obsidian-057066f0-82ee-4912-a7d7-b2d7cde18ee7 completed while the patch was running, and both FIFO entries remained queued. After cancellation/cleanup, list ran first (startedAt 1791800271373, completed 1791800271384), then search (startedAt 1791800271384, completed 1791800271435). They waited 44628ms / 44127ms despite timeoutSeconds 1, then completed in 11ms / 51ms: queue time is excluded from runtime timeout.
+5 PASS handles and retained status/result/cancel: long real patch returned running ID and remained controllable. Client observation took about 11.5s including transport; the exact backend five-second boundary isolated from transport is NOT VERIFIED by this public test.
+6 PASS observed queued/running cancellation: own queued create obsidian-dcf8d147-00d9-4c8f-95aa-8cc932591a6a cancelled with startedAt null, empty changedPaths, result "Cancelled before execution"; public read confirmed never.md absent. Running queued patch reached cancelled only after cleanup, changedPaths empty, original file hash unchanged, FIFO resumed. Subsequent same-path real patches were admitted and reached timed_out, proving reservation release. OS worker-thread counts were not independently inspected. Initial cancel tool responses lacked structuredContent; repeated safe own-ID cancellations returned normal control results, and terminal states were verified.
+7 PASS explicit actual deadlines: queued obsidian-1da07e65-4fdd-43f0-9b59-04da8f2e7025 and parallel obsidian-ff0bbf0d-d2c9-413c-84bf-90b188bd0715 each reached timed_out at roughly 1006ms / 1003ms with timeoutSeconds 1 and empty changedPaths. Override 3000000000 was accepted and fast list completed; 0 and 1.5 returned invalid_arguments. Default-expiry operation obsidian-127a190b-40eb-489f-8bcc-ea624cb52a38 is running with effective timeoutSeconds 60 and no explicit override; outcome pending.
+
+### 2026-10-12T10:22:53.920408+00:00 — Default expiry, parallel cleanup and guarded removal PASS
+
+7 PASS default actual expiry: queued patch obsidian-127a190b-40eb-489f-8bcc-ea624cb52a38 omitted timeoutSeconds, reported effective 60, and autonomously reached timed_out in 60029ms, changedPaths empty. No polling was needed for the deadline.
+6 PASS parallel running cancellation: obsidian-3bbfac6a-3b5e-4662-a5f8-84433da6a845 initially remained running after cancel, then reached cancelled; file hash stayed unchanged. Following same-path queued patch obsidian-74dc0aab-e901-4b01-a15a-a59a3aa649d5 completed with changed false and changedPaths empty, demonstrating reservation/worker cleanup and continued service. This covers actual patch cancellation in both policies, not every internal stage of every command.
+9 PASS observed hash conflicts, failed-patch atomicity, no-overwrite move and accurate owned changedPaths. Cancellation during publication remains intentionally waived by the owner, not marked PASS; no rollback claim. Low-level simultaneous OS/external-writer publication races are NOT VERIFIED live.
+11 Guarded cleanup removed exactly five own Markdown files plus OWNERSHIP.txt, after exact filename-set, regular-file/no-symlink, marker and every content-hash checks. Removed only the own directory; no recursive vault deletion. Independent filesystem draft hash equals the original 91b8f48b33da26fd9e21a6a637791dc4f1522b1139f494462fd542385ebaa20f. Public absent-folder/active-operation checks follow.
+
+### 2026-10-12T10:30:37.002503+00:00 — Code Tools shared-layer live regression PASS
+
+Catalog confirmed all eight Code Tools expose executionPolicy/requestId/timeoutSeconds. Created only own local source repository live81-c6d942-source with its own test commit f0f4edaa5ab2bbf93f70f1c23a9597f9d17383ba, then public clone created live81-c6d942-queued (code-1cb165a7-d2ae-4b61-9a2e-6ae7f9986302) and live81-c6d942-parallel (code-6cf46773-ab34-4a57-901a-d6e3430e18f4). Both retained real clone progress logs.
+1 PASS live clone/read/write/patch with both policies, plus expected-hash full write replacement. Code-read partial line returned whole-file SHA-256 cb6957ea592cad86968c83373f677c7edd5ab7f7f13bc2188c3de43b1cf21ead. Failed second patch replacement preserved beta/line-two bytes and hash 2617b31cde13bf6cecc123dcec22f8ac9178aa303d0bbda8a38f22d5715164fa. Stale hash conflicted, unhashed overwrite and existing clone destination returned already_exists, all with changedPaths empty.
+3/4 PASS eight identical retries reused exact original IDs/results, all eight policy changes conflicted, operation_result returned exact snapshots; clone logs remained retrievable.
+2 PASS queued run code-5a9e3296-2322-43f1-a809-96a84c6f1397 held the same Code Tools FIFO while read/write/patch/clone were all observed queued with startedAt null. Parallel read code-5f27ee27-94c3-4f85-aa31-f481e3424eb5 completed while run stayed running and all four queued commands stayed queued. Cancelled only that own run; subsequent operation records confirmed original FIFO order and completion after subprocess cleanup. Short runtime overrides did not include queue waiting. Own clone/read/write/patch data and local source are pending guarded cleanup.
+
+Limits: this final regression did not re-exercise long clone process-group cancellation, atomic-publication races or every long read/write cancellation stage after PR #81. Earlier journal live evidence and current automated tests remain separate; no new live PASS claimed for unobserved stages. Cancellation during publication remains owner-waived.
+
+### 2026-10-12T10:33:37.597500+00:00 — Final cleanup and next boundary refinement
+
+11 PASS: removed only four own local git projects (source, queued, parallel, FIFO clone) after exact file-set checks, OWNERSHIP.txt/README contents, expected source commit, final fixture contents and recursive no-symlink checks. No own clone temp/lock paths remain. Public code-operations and obsidian-operations both returned active []; no foreign operations cancelled. main remains 67eb37e4b93b926223badd9f227a92c44058be1d, with only the append-only task journal modified. No new implementation commit/push/PR during this verification; the only new commit was inside the disposable fixture repository, explicitly allowed by the owner.
+
+Read-only boundary audit: non-test Code Tools business-tool and Obsidian vault-tool sources have no MCP/ChatGPT/control-field/operationContext/currentCommandExecution references. Typed business functions take explicit CommandExecution, but most command modules still also import/create their JSON adapters, and the shared adapter/service bridge still captures AsyncLocalStorage. OperationManager.execute wraps entry.run in withOperationContext; createManagedToolService calls currentCommandExecution inside that callback. A subsequent separate PR can pass CommandExecution directly into the manager run callback and remove the remaining ambient bridge, then separate adapter/parser modules from pure command modules so standalone imports do not load adapter/operation-context code. This is a layering simplification, not a reproduced live correctness failure. Existing domain exclusions/path/hash guards and approved memory-only/restart/parallel tradeoffs remain necessary, not obsolete migration lists. No implementation of this next refinement started.
+
+## Result — PR #81 merged/deployed and live regression completed
+
+Merge 67eb37e4b93b926223badd9f227a92c44058be1d: six releases SUCCESS; all three public smoke URLs PASS. Original full mandatory/GitHub checks passed 162 test files / 1251 tests. Independent CodeRabbit review was quota-skipped, disclosed before the owner explicitly authorized this merge, and is not claimed as approval. All eight Obsidian commands and clone/read/write/patch Code Tools succeeded live with queued and parallel; both backends preserve FIFO independently of parallel work. Identical retained retries/results, policy/domain conflicts, paginated whole-file hashes, failed-patch atomicity, no-overwrite checks, actual Obsidian one-second/default-sixty-second deadlines and queue-time exclusion passed. Actual patch cancellation under both policies released reservations/resources and preserved file bytes. Temporary diary records removed with full original hash restored; all owned fixtures cleaned; no active operations remain.
+
+Limits remain explicit: exact five-second observation isolated from transport, low-level OS/external-writer publication races, and exhaustive long cancellation stages of every command (including a fresh long clone process-group test in this final deployment) are NOT VERIFIED live. Cancellation during publication was expressly waived by the owner, not tested or marked PASS. No independent recovery channel exists; code-run uses the same backend/manager. Next proposed implementation: direct manager execution capabilities and separate command/adaptation modules, with stable public API and the same meaningful tests/live acceptance.
+
+### 2026-10-12T10:48:41.656138+00:00 — Direct manager execution and final cleanup iteration started
+
+Owner authorized removing the remaining AsyncLocalStorage bridge and assessing further cleanup. New branch refactor/direct-command-execution, preserving all uncommitted journal entries from main. Manager will construct neutral capabilities and pass them to run callbacks directly; adapters use neutral standalone defaults rather than ambient context. Tests must continue proving cancellation, observer isolation, FIFO, retention and cleanup through explicit capabilities. No public MCP fields/modes/limits changed, no production vault edits. Subsequent layering cleanup will be based on actual source dependencies.
+
+### 2026-10-12T10:57:04.742421+00:00 — Ambient production context removed
+
+OperationManager now constructs CommandExecution when an operation starts and passes it directly to entry.run. Managed service forwards that exact capability object; standalone adapters create neutral capabilities instead of reading ambient state. Deleted operationContext.ts, including AsyncLocalStorage and its remaining bridge. All six package typechecks PASS (code-1bf6d651-aae2-42bd-93b5-83cba5ebcddd). Migrated cancellation/logging test callers to explicit contexts, using a test-only observer mapper with no global state. Removed duplicate ambient-variant standalone cases and an obsolete ambient-only run case, retaining real business, abort, publication and cleanup assertions. Replaced old async-local isolation test with two actual overlapping managed callbacks, independently checking signals, log streams, changes and cancellation. Added fresh standalone adapter-capability regression.
+
+Cleanup audit found obsolete legacy-default/manager-compatibility comments and HTTP-wrapper comments incorrectly describing general code as MCP/ChatGPT-specific; corrected them. Real vault alias support and path/security exclusions are domain behavior and remain. No public API change and no deployed live proof claimed for this unmerged iteration. Targeted runtime checks are next.
+
+### 2026-10-12T11:04:48.325606+00:00 — Separate business modules and final cleanup
+
+First direct-execution focused run code-162ed81e-68ad-49d4-991f-107f43a4bb61 PASS: 19 files / 109 tests, including real managed concurrency/observer isolation, cancellation, cleanup, deadlines and every backend handler under both policies. Further dependency inspection found command/adaptation colocation, so completed the separation in this same authorized cleanup iteration: 15 additional *Command.ts files join the existing runCommand.ts; *Tool.ts modules now contain only untrusted-input parsing and generic adaptation. Standalone tests and business-helper imports reference command modules directly; no compatibility re-export barrels added. Moved Code Tools argument decoding out of projectAccess and Obsidian scope parsing out of pure noteScope. Corrected extraction-only unused imports and kept shared helpers in one place. All six package typechecks PASS after these moves (code-e5de9301-736d-4e28-b565-d363d8b72731).
+
+Removed obsolete signal-undefined/optional-signal branches where CommandExecution requires a signal (Code Tools text read and worker diff); standalone process/atomic-file APIs still legitimately permit omitted signals and retain that behavior. Renamed the historical projectsCanary test to managedProjects to reflect its current shared-manager coverage. Domain alias support, filesystem exclusions, hashes/reservations, control-plane routing and existing storage/deadline limits remain purposeful. No activation allowlist/legacy ambient fallback remains. Broad targeted runtime regression and mandatory pre-push checks are pending.
+
+### 2026-10-12T11:08:26.382755+00:00 — Broad runtime regression found one implicit test callback
+
+Broader operation code-08eee238-74d6-4767-a4fc-df728a39315d: 40 files / 260 tests PASS, one projectTools deadline test timed out. Its manager callback called standalone runTool with two arguments, implicitly relying on the removed bridge although that file did not import operationContext. Changed this managed callback to typed runCommand with the manager-supplied execution, making the required capability visible to TypeScript; retained the actual one-second subprocess deadline assertion and cleanup. Swept all launch callbacks; production has only the shared service, which already forwards capabilities. This was a missed test migration, not permission to restore hidden context or weaken assertions. Final focused/full checks follow.
+
+### 2026-10-12T11:10:20.812568+00:00 — Final regression correction and pagination deduplication
+
+Corrected deadline/standalone/manager regression output: "Test Files 4 passed (4)" / "Tests 38 passed (38)" (code-dfc40fd7-6fdf-4e9e-b4b6-5812addbef53); actual run deadline completed in 1186ms. All sixteen direct commands still pass their standalone integration checks. Removed one remaining algorithmic duplicate: identical offset/limit decoding in five adapters now calls shared readPageArguments, retaining each command's original defaults, caps and error order through optionalCappedInteger. Existing pagination/validation integration cases remain the verification; no new public limit or argument. Final mandatory full hook is the definitive gate.
+
+### 2026-10-12T11:16:07.650141+00:00 — Direct execution cleanup published; mandatory checks PASS
+
+Published branch refactor/direct-command-execution at 757b9dde5e3b39c8996a1f36684d53957430ccfb. Push operation code-f7de7be7-bb0c-4057-b721-87739d7fac5a exited 0; mandatory unmodified npm run simple-checks passed all six checks. Opened a separate PR; no main commit/push/merge authorization inferred. Validation excerpt (ANSI removed):
+```text
+[test]  Test Files  162 passed (162)
+[test]       Tests  1249 passed (1249)
+--> │ test         │ 188,340  │ 0         │ false  │ npm run test         │
+--> │ lint         │ 137,518  │ 0         │ false  │ npm run lint         │
+--> │ typecheck    │ 117,803  │ 0         │ false  │ npm run typecheck    │
+--> │ check:helm   │ 12,405   │ 0         │ false  │ npm run check:helm   │
+--> │ check:python │ 6,243    │ 0         │ false  │ npm run check:python │
+--> │ check:shell  │ 1,778    │ 0         │ false  │ npm run check:shell  │
+```
+
+The test count changed from 1251 to 1249 by removing three duplicate/obsolete ambient-only cases and adding one standalone-adapter capability case. Two old async-context tests were replaced by explicit pre-abort and real overlapping manager callback checks; meaningful cancellation/cleanup/observer assertions remain. New business modules import neither adapters/argument decoders nor ambient manager state. GitHub CI/CodeRabbit review pending; no live proof claimed before merge/deploy. Post-publication journal entries remain uncommitted for continuation.
+
+### 2026-10-12T11:18:07.702642+00:00 — PR #82 review/CI observation and owned cleanup
+
+PR https://github.com/senaev/infra.senaev.com/pull/82 is OPEN/MERGEABLE at exact HEAD 757b9dde5e3b39c8996a1f36684d53957430ccfb. GitHub Check run 38241556453 / job 114785135772 is in progress; CodeRabbit is PENDING with no submitted review or inline findings yet and no quota warning. No approval claim. Removed exactly four own regular/non-symlink temporary focus/push/body files after their paths and evidence were retained; no user data or foreign operations touched. Tests used only disposable owned fixtures; this iteration created no production vault fixtures. Journal remains the only uncommitted file.
+
+## Findings
+
+### 2026-10-12T11:23:36.534017+00:00 — PR #82 review finding addressed; published validation evidence
+
+CodeRabbit reviewed HEAD 757b9dde5e3b39c8996a1f36684d53957430ccfb and requested one documentation change: the checked-in journal lacked the final mandatory pre-push result and an iteration Result section. The result/table were already appended in the working copy after publication; this follow-up publishes them without rewriting history. No implementation findings were posted. GitHub CI run 38241556453 / job 114785135772 completed SUCCESS at 2026-10-12T11:17:21Z for that exact implementation commit.
+
+Broad-regression failure excerpt retained from code-08eee238-74d6-4767-a4fc-df728a39315d (ANSI removed):
+```text
+ FAIL   code-tools  src/tools/projectTools.test.ts > runTool > stops a command under the common execution deadline
+Error: Test timed out in 15000ms.
+ Test Files  1 failed | 40 passed (41)
+      Tests  1 failed | 260 passed (261)
+```
+
+The implicit deadline-test callback was corrected; subsequent targeted run output was "Test Files 4 passed (4)" / "Tests 38 passed (38)". Final mandatory pre-push completed exitCode 0 with "Test Files 162 passed (162)" / "Tests 1249 passed (1249)"; the verbatim six-check timings table is in the preceding publication entry. All six checks passed. The documentation-only follow-up is subject to the same mandatory hook; no bypass or approval claim.
+
+## Result
+
+Removed AsyncLocalStorage and operationContext completely. The manager passes one explicit CommandExecution per operation directly to the service/handler; standalone adapters create neutral independent capabilities. All sixteen typed business commands are separated from JSON adapters, and argument/scope decoding is outside file-access/domain modules. Consolidated repeated pagination argument decoding in five adapters; removed obsolete signal fallbacks/comments and redundant ambient-only test variants. Real overlapping-manager isolation and standalone capabilities are tested; existing cancellation, deadlines, FIFO, retention and filesystem safety remain covered. Public API/modes/limits unchanged. Required full checks passed 162 files / 1249 tests, and GitHub CI passed. PR #82 is prepared, not merged/deployed/live-verified. Existing domain exclusions, path/hash/atomic publication guards and approved memory/restart/parallel tradeoffs remain intentional. No further justified cleanup identified in this iteration. Own temporary files/fixtures cleaned; append-only history preserved. CodeRabbit documentation finding is being corrected in this follow-up; its CHANGES_REQUESTED state must not be described as approval.
