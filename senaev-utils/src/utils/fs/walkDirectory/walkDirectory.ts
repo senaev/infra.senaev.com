@@ -1,7 +1,8 @@
 import { readdir } from 'node:fs/promises';
 import { join, posix } from 'node:path';
 
-import { operationCheckpoint, throwIfOperationAborted } from '../../../operations/operationContext';
+import type { CommandExecution } from '../../../commands/CommandExecution';
+import { currentCommandExecution } from '../../../operations/operationContext';
 
 export type WalkDirectoryFilters = {
     /** Gets the root-relative POSIX path of a folder; `false` skips it with everything below. */
@@ -33,14 +34,15 @@ export type WalkDirectoryResult = {
 export async function walkDirectory(
     root: string,
     startFolder = '',
-    { includeFolder = () => true, includeFile = () => true }: WalkDirectoryFilters = {}
+    { includeFolder = () => true, includeFile = () => true }: WalkDirectoryFilters = {},
+    execution: CommandExecution = currentCommandExecution()
 ): Promise<WalkDirectoryResult> {
     const files: string[] = [];
     const errors: WalkDirectoryError[] = [];
     const pending = [startFolder];
 
     while (pending.length > 0) {
-        await operationCheckpoint();
+        await execution.checkpoint();
         const folder = pending.pop() ?? '';
 
         try {
@@ -49,7 +51,7 @@ export async function walkDirectory(
                 entry,
             ] of (await readdir(join(root, folder), { withFileTypes: true })).entries()) {
                 if (index % 128 === 0) {
-                    await operationCheckpoint();
+                    await execution.checkpoint();
                 }
 
                 const path = folder === '' ? entry.name : posix.join(folder, entry.name);
@@ -61,7 +63,7 @@ export async function walkDirectory(
                 }
             }
         } catch (error) {
-            throwIfOperationAborted();
+            execution.throwIfAborted();
             errors.push({
                 path: folder,
                 error,

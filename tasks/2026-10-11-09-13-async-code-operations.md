@@ -751,3 +751,49 @@ Full first run passed lint, all package typechecks, Python, shell and Helm; Vite
 Separated typed resolveNamedProject from legacy JSON argument parsing, with explicit execution passed through project and symlink checks. Final focused operation `code-aeb0e024-64df-4c71-927e-00c512611aba` passed 22 tests in three files, scoped eslint, code-tools typecheck and diff checks. Generic input-adapter tests and host observer integration passed in the prior focused run. Mandatory pre-push simple-checks will verify the final committed version without bypass.
 
 Deployed PR #77 smoke operation `code-45e340f2-997b-48a7-aca4-aec28ccc7935` passed all three public routes with HTTP 200, including expected short-link redirect. Unmerged pilot changes have no deployed live-check claim. No production vault files modified.
+
+### 2026-10-11T20:26:37.737293+00:00 — Explicit run pilot published as PR #78
+
+Commit `4b735a2fd1e2d5cc49d58292859f8e98d91d6528`, 15 files, on `refactor/explicit-command-execution`. Public operation `code-a29b33aa-5023-4084-b3fb-0a33cccbb426` completed exitCode 0; mandatory pre-push simple-checks passed all six checks on the committed final version. Verbatim: `Test Files 158 passed (158)`; `Tests 1237 passed (1237)`. No hook bypass. Created https://github.com/senaev/infra.senaev.com/pull/78 from this exact head. CI pending; not merged or deployed.
+
+Shared host capabilities expose only AbortSignal, checkpoint, cancellation check, stdout/stderr logging and publication path callback: no MCP ID, execution policy, requestId or timeout. Typed run business logic receives input/result types and explicit capabilities; input parsing stays in the wrapper. Other fifteen handlers still use legacy compatibility and are explicitly outside this pilot. Existing operation-context deadline exports remain compatible. Nine new tests are automated evidence; only PR #77 release/HTTP smoke checks are deployed evidence in this iteration.
+
+### 2026-10-11T20:28:45.927679+00:00 — PR #78 GitHub CI completed
+
+Exact head `4b735a2fd1e2d5cc49d58292859f8e98d91d6528`: GitHub Check run `38172191953`, job `114566933993`, completed SUCCESS at 2026-10-11T20:27:13Z. Public CI observer `code-2b9702c9-4fb4-41be-ba99-117498cb6c79` completed exitCode 0. PR OPEN/MERGEABLE. CodeRabbit remains PENDING; review/inline-comment arrays are empty at this observation, not an approval claim. Only publication/CI continuation entries remain uncommitted.
+
+## Result — PR #77 deployed; explicit execution run pilot published
+
+PR #77 merged at dfe59aa8ff27aea111dc2a04a95399bb629287ee; all six releases and three public HTTP smoke routes passed. PR #78 introduces protocol-independent host capabilities and a typed standalone run command, separates input adaptation and named-project resolution, and preserves legacy callers while enabling incremental migration. Final mandatory full checks passed 158 files / 1237 tests; GitHub CI passed. Nine new automated tests verify portability, cancellation, observers and parsing; no deployed live verification claimed for PR #78. It is not merged or deployed, and external CodeRabbit review is still pending. The other fifteen domain handlers remain the next migration step. No new MCP fields, execution modes, limits or wait parameters. No production vault edits; disposable fixtures and owned temporary files cleaned.
+
+### 2026-10-12T07:06:58.712417+00:00 — CodeRabbit finding explicitly deferred; PR #78 merge authorized
+
+CodeRabbit requested changes on PR #78 with one Minor finding in code-tools/src/tools/projectAccess.ts, resolveNamedProject catch: cancellation occurring during filesystem checks can be translated to not_found if the abort reason is an Error with code ENOENT. Verified the current catch lacks execution.throwIfAborted() before isNotFoundError. User explicitly chose to record this for the next iteration and merge the current PR unchanged. GitHub CI and CodeRabbit status contexts are SUCCESS; the review remains CHANGES_REQUESTED and is not described as approval.
+
+Next-iteration requirement: check execution.throwIfAborted() first in this catch, and add a deterministic regression for cancellation during path/stat checking with an ENOENT-shaped abort reason, asserting the exact cancellation reason is preserved. Keep ordinary missing-project not_found behaviour covered. No implementation fix in this merge.
+
+### 2026-10-12T07:10:33.967350+00:00 — PR #78 merged and deployed; next-stage proposal
+
+Explicitly authorized merge completed at `83d8bc14864a8456969a9063ae60a39a90642707`, reviewed head 4b735a2fd1e2d5cc49d58292859f8e98d91d6528 unchanged. Main fast-forwarded; own scoped stash e4dfd4ae98795a2d240a24ac5046e2486e3860f7 restored and only that stash dropped. Deferred CodeRabbit cancellation finding remains open as requested. All six automatic releases at this exact merge SHA completed SUCCESS: senaev-utils, cluster-helper, opencode-serve, media-server-helper, vpn-subscription, obsidian-sync. Public smoke operation code-9e6ed4c2-da50-472b-ab40-b6cb4b0e80b9 passed three HTTP 200 routes, including expected redirect to https://senaev.com/cv/5min.
+
+A journal append attempt during deployment returned INVALID_ARGUMENT without an ID. Read the journal tail and working tree to confirm no append occurred before retrying through the same public MCP; no alternative access used.
+
+Proposed order: (1) fix cancellation-versus-ENOENT conversion with deterministic regression and ordinary missing-project coverage; (2) pass explicit execution through shared text/file/diff/mutation helpers, preserving hash checks, symlink guards, publication tracking and reservations; (3) convert remaining seven Code Tools and eight Obsidian commands with typed input adapters/business results, grouping read-only and mutation paths for review; (4) after all sixteen commands use explicit capabilities, remove business-layer ambient defaults and compatibility adapters, verify standalone execution and unrelated ambient-context isolation, then run isolated public queued/parallel checks. Retain domain exclusions and filesystem protections: they are not MCP compatibility leftovers. This is a proposal, not a completed migration. No new implementation or branch started: user asked to think about the next step.
+
+## Result — PR #78 merged; deferred finding recorded
+
+PR #78 merged and all six releases plus public HTTP smoke checks passed. The CodeRabbit finding is explicitly deferred to the next iteration by user decision; no approval or fix claimed. Journal history preserved on main, with continuation entries uncommitted. Next implementation scope is proposed above and has not started.
+
+### 2026-10-12T07:28:32.307981+00:00 — Next iteration: shared file foundation and deferred cancellation fix
+
+Started branch `refactor/explicit-file-commands` from main 83d8bc14864a8456969a9063ae60a39a90642707, preserving existing uncommitted journal entries. After source inspection, scoped this first PR in chat to the shared file foundation and deferred CodeRabbit correction; remaining fifteen command DTO/handler conversions and final ambient-adapter removal follow separately, not claimed complete here.
+
+Deterministic regression `code-f850624a-1c84-4f1a-bb60-481926efdfc6` failed before correction: expected the exact ENOENT-shaped abort reason, received ToolError not_found; ordinary missing-project test passed. Added cancellation-priority checks to project/file resolution and text reads. Shared text reads, exact replacements, worker diffs, directory walking and mutation reservations now accept explicit execution with legacy defaults retained temporarily.
+
+The standalone explicit pipeline first exposed a real hidden dependency in atomicFileWrite: even with an explicit working signal, it consulted an unrelated aborted ambient context. Removed ambient checks from the atomic write primitive; all managed production callers already supply their operation signal, and unrelated background callers intentionally have no operation context. No publication algorithm, hash policy, reservation, symlink rule or public MCP field changed.
+
+Focused `code-c2498e4b-b39b-4447-b974-6222111d1c70` passed 25 tests across seven files, including the cancellation regression, standalone read/edit/diff/publication under an unrelated aborted ambient context, pre-abort without handler execution, reservation release on running cancellation and legacy parity tests. Additional exclusive-create/no-overwrite assertions added before final checks. Tests use disposable fixtures and no production vault files; not live deployment evidence.
+
+### 2026-10-12T07:30:43.047454+00:00 — Shared file foundation validated before publication
+
+Final focused operation code-f8fab585-4ef2-4a05-a331-affc9689105f completed exitCode 0: five new regression tests, all six package typechecks and diff checks passed. The explicit pipeline now covers both atomic replacement and exclusive creation under an unrelated aborted ambient context, no-overwrite conflict preserving existing content, walking with explicit context, correct own changedPaths and an untouched foreign write set. Prior focused run covered 25 tests across seven files. Mutation reservation cleanup and pre-aborted handler suppression are verified with explicit capabilities. Mandatory pre-push simple-checks will validate the final commit; no hook bypass.

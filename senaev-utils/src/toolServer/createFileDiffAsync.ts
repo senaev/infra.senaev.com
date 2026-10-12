@@ -1,7 +1,8 @@
 import { createRequire } from 'node:module';
 import { Worker } from 'node:worker_threads';
 
-import { operationContext, throwIfOperationAborted } from '../operations/operationContext';
+import type { CommandExecution } from '../commands/CommandExecution';
+import { currentCommandExecution } from '../operations/operationContext';
 
 import {
     buildFileDiff, FILE_DIFF_OPTIONS, type FileDiff,
@@ -9,9 +10,9 @@ import {
 
 // Diff can be quadratic. Run it in a disposable worker so the backend event loop,
 // deadline and cancellation endpoints stay responsive; wait for termination on abort.
-export async function createFileDiffAsync(path: string, before: string, after: string): Promise<FileDiff> {
-    throwIfOperationAborted();
-    const signal = operationContext()?.signal;
+export async function createFileDiffAsync(path: string, before: string, after: string, execution: CommandExecution = currentCommandExecution()): Promise<FileDiff> {
+    execution.throwIfAborted();
+    const { signal } = execution;
     const worker = new Worker(`
         const { parentPort, workerData } = require('node:worker_threads');
         const { createTwoFilesPatch } = require(workerData.module);
