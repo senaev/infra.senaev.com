@@ -1146,3 +1146,64 @@ Two six-package typechecks PASS. Focused intermediate run code-73f634bd-7429-4d6
 ## Result
 
 Neutral business/file utilities separated from HTTP adapters, with nine new HTTP contract cases (1249→1258 totaltests,162files unchanged). No production deployment/live check claimed for this branch. Mandatory pre-push and remote CI/review follow publication; existing journal history preserved.
+
+### 2026-10-12T12:56:18.876614+00:00 — PR #83 published; pre-push PASS
+
+Commit b675ab4e63572c31eadf839ff7ba89beed7a916e pushed to refactor/domain-utilities with mandatory hook operation code-cb649e47-9377-431a-9bcf-3a87aca996a6 exit0. PR https://github.com/senaev/infra.senaev.com/pull/83 opened. Verbatim hook evidence:
+
+```text
+[test]  Test Files  162 passed (162)
+[test]       Tests  1258 passed (1258)
+--> Timings:
+--> ┌──────────────┬──────────┬───────────┬────────┬──────────────────────┐
+--> │ name         │ duration │ exit code │ killed │ command              │
+--> ├──────────────┼──────────┼───────────┼────────┼──────────────────────┤
+--> │ test         │ 152,748  │ 0         │ false  │ npm run test         │
+--> │ lint         │ 106,591  │ 0         │ false  │ npm run lint         │
+--> │ typecheck    │ 97,925   │ 0         │ false  │ npm run typecheck    │
+--> │ check:helm   │ 11,397   │ 0         │ false  │ npm run check:helm   │
+--> │ check:python │ 3,524    │ 0         │ false  │ npm run check:python │
+--> │ check:shell  │ 1,572    │ 0         │ false  │ npm run check:shell  │
+--> └──────────────┴──────────┴───────────┴────────┴──────────────────────┘
+summary: (done in 154.91 seconds)     
+✔️ simple-checks (154.90 seconds)
+```
+
+Exact-HEAD GitHub Check run38252135321 in progress; CodeRabbit PENDING with no submitted findings yet. No merge/deploy/live check claimed. Post-publication journal evidence remains uncommitted for continuation.
+
+### 2026-10-12T12:59:49.923932+00:00 — PR #83 exact-HEAD CI PASS; review pending
+
+GitHub Check38252135321 completed success for b675ab4e63572c31eadf839ff7ba89beed7a916e. Latest PR state OPEN/MERGEABLE, CodeRabbit PENDING, submitted reviews[] and inline comments[]. Qodo billing-blocked (subscription inactive), so no Qodo review claim. One transient GitHub GraphQL read failed and later reads succeeded. All owned temporary files removed; automated fixtures handled by existing tests; no production vault mutations. Only appended journal remains uncommitted.
+
+## Result
+
+PR #83 implementation and publication complete, full simple-checks plus mandatory pre-push all six PASS (162files/1258tests), exact-HEAD GitHub CI PASS. CodeRabbit review remains pending and is not approval. Branch not merged, deployed or live-verified. User merge authorization is required for this PR.
+
+## Findings
+
+### 2026-10-12T14:43:42.672878+00:00 — PR83 merge and pinned OpenCode iteration
+
+CodeRabbit approved PR83 with no findings; CI SUCCESS. User authorized merge and next iteration. Merged2026-10-12T14:40:09Z as87dd28fd437713c2e14eeeb55429a86b5fd0bf9b. Scoped stash preserved journal. Interrupted/malformed-response edit attempts produced no side effects: projects confirmed main with only journal modified before this retry. New branch fix/pinned-opencode-install.
+
+Current OpenCode1.19.0; official anomalyco/opencode release API baseline Linux x64 digest6334d70db3990721ea454357e9cf2573c8685524ad7769af9d52cbffb7008438. Replace floating shell installer with fixed archive, checksum-before-extraction and version assertion; baseline supports non-AVX2 hosts. No MCP/business changes. Other image dependencies remain outside scope; full image reproducibility not claimed.
+
+### 2026-10-12T14:45:21.057802+00:00 — PR83 releases and real pinned archive validation PASS
+
+All six PR83 releases SUCCESS: senaev-utils38264600928, opencode-serve38264600894, vpn-subscription38264600909, obsidian-sync38264600910, media-server-helper38264601003, cluster-helper38264600935. Public MCP recovered after transient INVALID_ARGUMENT during rollout. Three mandatory public smoke URLs returned200 with expected shortlink redirect. These are release/smoke checks, not the full file-command live regression for PR83.
+
+Real release archive validation operation code-f3df29e3-02f4-453b-9bcd-dd192c1a6e37 exit0:
+
+```text
+sha256sum: WARNING: 1 computed checksum did NOT match
+PASS: invalid checksum rejected before extraction
+opencode.tar.gz: OK
+opencode
+PASS: pinned OpenCode version 1.19.0
+Own binary/archive test fixture removed
+```
+
+The deliberately wrong checksum failed, then official pinned SHA matched; archive contained opencode and extracted baseline binary ran successfully. No system binary modified. No Docker executable available here: full image build NOT VERIFIED before merge; real install chain verified in isolated temp directory. Known floating Helm/Node/apt dependencies not addressed. Mandatory pre-push fullchecks pending.
+
+## Result
+
+OpenCode installer pin/checksum change prepared with real archive and binary verification. PR83 merged/deployed successfully; next branch not deployed. Preserve append-only task history.
