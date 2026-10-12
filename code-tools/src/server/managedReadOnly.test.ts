@@ -4,8 +4,8 @@ import {
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
-import { createCommandExecution } from 'senaev-utils/src/commands/CommandExecution';
-import { withOperationContext } from 'senaev-utils/src/operations/operationContext';
+import { createCommandExecution, type CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
+import { withCommandExecution } from 'senaev-utils/src/commands/testing/withCommandExecution';
 import { createBearerAuthorizationHeader } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
 import {
     afterEach, beforeEach, describe, expect, it, vi,
@@ -14,7 +14,8 @@ import {
 import { CODE_TOOLS } from '../tools/codeTools';
 import { createTestProjects, type TestProjects } from '../tools/createTestProjects';
 import { listTool } from '../tools/listTool';
-import { parseRipgrepJson, searchTool } from '../tools/searchTool';
+import { searchTool } from '../tools/searchTool';
+import { parseRipgrepJson } from '../tools/searchCommand';
 
 import { createCodeToolsServer, type CodeToolsServer } from './createCodeToolsServer';
 
@@ -246,14 +247,14 @@ describe('managed search and list', () => {
             }
         };
 
-        await expect(withOperationContext({
+        await expect(withCommandExecution({
             signal: controller.signal,
             log: () => undefined,
             changedPaths: new Set<string>(),
-        }, () => listTool(projects.config, {
+        }, (execution: CommandExecution) => listTool(projects.config, {
             project: 'demo',
             recursive: true,
-        }))).rejects.toBe(reason);
+        }, execution))).rejects.toBe(reason);
         expect(readPaths).toEqual([projects.path('demo', 'README.md')]);
     });
 
@@ -272,10 +273,10 @@ describe('managed search and list', () => {
             listTool,
             searchTool,
         ]) {
-            await expect(withOperationContext<unknown>(context, () => tool(projects.config, {
+            await expect(withCommandExecution<unknown>(context, (execution: CommandExecution) => tool(projects.config, {
                 project: 'demo',
                 queries: ['needle'],
-            }))).rejects.toBe(reason);
+            }, execution))).rejects.toBe(reason);
         }
 
         const controller = new AbortController();
@@ -290,7 +291,7 @@ describe('managed search and list', () => {
         });
 
         setImmediate(() => setImmediate(() => controller.abort(reason)));
-        await expect(withOperationContext(
+        await expect(withCommandExecution(
             {
                 ...context,
                 signal: controller.signal,

@@ -9,7 +9,6 @@ import {
 } from 'vitest';
 
 import { createCommandExecution } from '../commands/CommandExecution';
-import { withOperationContext } from '../operations/operationContext';
 import { walkDirectory } from '../utils/fs/walkDirectory/walkDirectory';
 import { createFileExclusively, replaceFileAtomically } from '../utils/fs/atomicFileWrite/atomicFileWrite';
 
@@ -35,17 +34,10 @@ describe('explicit file execution capabilities', () => {
     it('reads, edits, computes a worker diff and publishes using only explicit capabilities', async () => {
         const file = join(root, 'sample.md');
         const ownChanges = new Set<string>();
-        const foreignChanges = new Set<string>();
-        const foreign = new AbortController();
         const execution = createCommandExecution({ changedPath: (path) => ownChanges.add(path) });
 
         await writeFile(file, 'before');
-        foreign.abort(new Error('unrelated cancellation'));
-        const result = await withOperationContext({
-            signal: foreign.signal,
-            log: () => {},
-            changedPaths: foreignChanges,
-        }, () => withFileMutation(file, async () => {
+        const result = await withFileMutation(file, async () => {
             const before = await readOperationTextFile(file, execution);
             const after = await replaceExactlyOnceAsync(before, 'before', 'after', { execution });
             const diff = await createFileDiffAsync('sample.md', before, after, execution);
@@ -53,39 +45,25 @@ describe('explicit file execution capabilities', () => {
             await replaceFileAtomically(file, after, execution.signal, () => execution.changedPath('sample.md'));
 
             return diff;
-        }, execution));
+        }, execution);
 
         expect(await readFile(file, 'utf8')).toBe('after');
         expect(result.diff).toContain('+after');
         expect([...ownChanges]).toEqual(['sample.md']);
-        expect([...foreignChanges]).toEqual([]);
-        const newPath = await withOperationContext({
-            signal: foreign.signal,
-            log: () => {},
-            changedPaths: foreignChanges,
-        }, () => prepareNewFilePath(root, 'new/child.md', execution));
+        const newPath = await prepareNewFilePath(root, 'new/child.md', execution);
 
         expect(newPath).toBe(join(root, 'new/child.md'));
         expect(ownChanges.has('new')).toBe(true);
-        await withOperationContext({
-            signal: foreign.signal,
-            log: () => {},
-            changedPaths: foreignChanges,
-        }, () => createFileExclusively(newPath, 'created', execution.signal, () => execution.changedPath('new/child.md')));
+        await createFileExclusively(newPath, 'created', execution.signal, () => execution.changedPath('new/child.md'));
         await expect(createFileExclusively(file, 'overwrite', execution.signal)).rejects.toMatchObject({ code: 'EEXIST' });
         expect(await readFile(file, 'utf8')).toBe('after');
-        const walk = await withOperationContext({
-            signal: foreign.signal,
-            log: () => {},
-            changedPaths: foreignChanges,
-        }, () => walkDirectory(root, '', {}, execution));
+        const walk = await walkDirectory(root, '', {}, execution);
 
         expect(walk.files.sort()).toEqual([
             'new/child.md',
             'sample.md',
         ]);
         expect(walk.errors).toEqual([]);
-        expect([...foreignChanges]).toEqual([]);
     });
 
     it('rejects pre-aborted work without invoking a mutation handler or reserving its path', async () => {

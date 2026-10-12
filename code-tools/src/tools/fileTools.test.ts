@@ -10,7 +10,8 @@ import {
 import { createTestProjects, type TestProjects } from './createTestProjects';
 import { listTool } from './listTool';
 import { patchTool } from './patchTool';
-import { readTool, sliceLines } from './readTool';
+import { readTool } from './readTool';
+import { sliceLines } from './readCommand';
 import { writeTool } from './writeTool';
 
 let projects: TestProjects;

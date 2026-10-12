@@ -2,7 +2,6 @@ import { readFile } from 'node:fs/promises';
 
 import { completeOperation } from 'senaev-utils/src/operations/testing/completeOperation';
 import type { OperationLaunchReply, OperationObservation } from 'senaev-utils/src/operations/operationTypes';
-import { operationContext } from 'senaev-utils/src/operations/operationContext';
 import { hashContent } from 'senaev-utils/src/toolServer/contentHash';
 import { createBearerAuthorizationHeader } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
 import {
@@ -147,8 +146,8 @@ describe('all managed file tools', { timeout: 60000 }, () => {
             entered = resolve;
         });
 
-        vi.spyOn(CODE_TOOLS, 'projects').mockImplementation(() => new Promise((resolve) => {
-            operationContext()?.signal.addEventListener('abort', () => resolve({ projects: [] }), { once: true });
+        vi.spyOn(CODE_TOOLS, 'projects').mockImplementation((_config, _input, execution) => new Promise((resolve) => {
+            execution?.signal.addEventListener('abort', () => resolve({ projects: [] }), { once: true });
             entered();
         }));
         const active = call('projects');
@@ -207,8 +206,8 @@ describe('all managed file tools', { timeout: 60000 }, () => {
         'write',
         'patch',
     ])('returns a long %s handle and retains terminal cancellation', async (tool) => {
-        vi.spyOn(CODE_TOOLS, tool as keyof typeof CODE_TOOLS).mockImplementation(() => new Promise<never>((_resolve, reject) => {
-            const context = operationContext();
+        vi.spyOn(CODE_TOOLS, tool as keyof typeof CODE_TOOLS).mockImplementation((_config, _input, execution) => new Promise<never>((_resolve, reject) => {
+            const context = execution;
 
             context?.signal.addEventListener('abort', () => reject(context.signal.reason), { once: true });
         }));
@@ -239,8 +238,8 @@ describe('all managed file tools', { timeout: 60000 }, () => {
             'write',
             'patch',
         ]) {
-            vi.spyOn(CODE_TOOLS, tool as keyof typeof CODE_TOOLS).mockImplementation(() => new Promise<never>((_resolve, reject) => {
-                const context = operationContext();
+            vi.spyOn(CODE_TOOLS, tool as keyof typeof CODE_TOOLS).mockImplementation((_config, _input, execution) => new Promise<never>((_resolve, reject) => {
+                const context = execution;
 
                 context?.signal.addEventListener('abort', () => reject(context.signal.reason), { once: true });
             }));

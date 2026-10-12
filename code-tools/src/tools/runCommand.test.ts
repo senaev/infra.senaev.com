@@ -5,7 +5,6 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { createCommandExecution } from 'senaev-utils/src/commands/CommandExecution';
-import { withOperationContext } from 'senaev-utils/src/operations/operationContext';
 import {
     afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
@@ -46,26 +45,6 @@ describe('standalone typed run command', () => {
         });
         expect(log).toHaveBeenCalledWith('stdout', 'hello');
         expect(log).toHaveBeenCalledWith('stderr', 'problem');
-    });
-
-    it('uses explicit capabilities even inside an unrelated aborted operation context', async () => {
-        const foreign = new AbortController();
-        const foreignLog = vi.fn();
-        const explicitLog = vi.fn();
-
-        foreign.abort(new Error('foreign cancellation'));
-        const result = await withOperationContext({
-            signal: foreign.signal,
-            log: foreignLog,
-            changedPaths: new Set(),
-        }, () => runCommand(config, {
-            project: 'demo',
-            command: 'printf independent',
-        }, createCommandExecution({ log: explicitLog })));
-
-        expect(result.stdout).toBe('independent');
-        expect(foreignLog).not.toHaveBeenCalled();
-        expect(explicitLog).toHaveBeenCalledWith('stdout', 'independent');
     });
 
     it('rejects pre-aborted execution before starting a shell or publishing its marker', async () => {

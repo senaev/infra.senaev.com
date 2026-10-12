@@ -40,6 +40,22 @@ describe('typed command input adapter', () => {
         expect(execute).toHaveBeenCalledExactlyOnceWith(config, { text: 'hello' }, execution);
     });
 
+    it('creates separate neutral capabilities for standalone adapter calls', async () => {
+        const { adapter, execute } = fixture();
+
+        await adapter({ prefix: '' }, { text: 'first' });
+        await adapter({ prefix: '' }, { text: 'second' });
+        const first = execute.mock.calls[0]?.[2];
+        const second = execute.mock.calls[1]?.[2];
+
+        expect(first).toBeDefined();
+        expect(second).toBeDefined();
+        expect(first).not.toBe(second);
+        expect(first?.signal).not.toBe(second?.signal);
+        expect(first?.signal.aborted).toBe(false);
+        expect(second?.signal.aborted).toBe(false);
+    });
+
     it('rejects invalid input before invoking business code', async () => {
         const { execute, adapter } = fixture();
 

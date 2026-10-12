@@ -5,7 +5,6 @@ import {
 import { ToolError } from '../toolServer/ToolError';
 
 import { OperationManager } from './OperationManager';
-import { operationContext } from './operationContext';
 import type { OperationObservation } from './operationTypes';
 
 describe('operation retention regressions', () => {
@@ -66,14 +65,14 @@ describe('operation retention regressions', () => {
         const launch = manager.launch({
             tool: 'logs',
             args: { requestId: 'packed' },
-            run: async () => {
+            run: async (execution) => {
                 for (let i = 0; i < 20000; i++) {
-                    operationContext()?.log('stdout', 'x');
+                    execution?.log('stdout', 'x');
                 }
 
                 logged();
                 await gate;
-                operationContext()?.log('stdout', 'tail');
+                execution?.log('stdout', 'tail');
 
                 return {};
             },
@@ -106,9 +105,9 @@ describe('operation retention regressions', () => {
         const result = await manager.launch({
             tool: 'logs',
             args: {},
-            run: () => {
+            run: (execution) => {
                 for (let i = 0; i < 4000; i++) {
-                    operationContext()?.log(i % 2 === 0 ? 'stdout' : 'stderr', '\n');
+                    execution?.log(i % 2 === 0 ? 'stdout' : 'stderr', '\n');
                 }
 
                 return Promise.resolve({});

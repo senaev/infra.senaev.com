@@ -1,7 +1,6 @@
 import { completeOperation } from 'senaev-utils/src/operations/testing/completeOperation';
 import type { OperationLaunchReply, OperationObservation } from 'senaev-utils/src/operations/operationTypes';
 import { OperationManager } from 'senaev-utils/src/operations/OperationManager';
-import { operationContext } from 'senaev-utils/src/operations/operationContext';
 import { ToolError } from 'senaev-utils/src/toolServer/ToolError';
 import { createBearerAuthorizationHeader } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
 import {
@@ -13,7 +12,7 @@ import { createTestProjects, type TestProjects } from '../tools/createTestProjec
 
 import { createCodeToolsServer, type CodeToolsServer } from './createCodeToolsServer';
 
-const TOKEN = 'canary-test';
+const TOKEN = 'managed-project-test';
 const HEADERS = { authorization: createBearerAuthorizationHeader(TOKEN) };
 
 type Reply = {
@@ -74,8 +73,8 @@ describe('managed execution HTTP contract', () => {
 
     function holdProjects() {
         const started = deferred();
-        const run = vi.spyOn(CODE_TOOLS, 'projects').mockImplementation(() => new Promise((resolve) => {
-            const context = operationContext();
+        const run = vi.spyOn(CODE_TOOLS, 'projects').mockImplementation((_config, _input, execution) => new Promise((resolve) => {
+            const context = execution;
 
             context?.log('stdout', 'started\n');
             context?.log('stderr', 'diagnostic\n');
@@ -139,8 +138,8 @@ describe('managed execution HTTP contract', () => {
         const complete = deferred();
         let signal: AbortSignal | undefined;
 
-        vi.spyOn(CODE_TOOLS, 'projects').mockImplementation(async () => {
-            signal = operationContext()?.signal;
+        vi.spyOn(CODE_TOOLS, 'projects').mockImplementation(async (_config, _input, execution) => {
+            signal = execution?.signal;
             started.resolve();
             await complete.promise;
 

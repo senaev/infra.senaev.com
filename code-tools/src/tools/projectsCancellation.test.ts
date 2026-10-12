@@ -3,7 +3,8 @@ import {
 } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { withOperationContext } from 'senaev-utils/src/operations/operationContext';
+import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
+import { withCommandExecution } from 'senaev-utils/src/commands/testing/withCommandExecution';
 import {
     afterEach, beforeEach, describe, expect, it,
 } from 'vitest';
@@ -29,14 +30,14 @@ describe('projects cancellation', () => {
         const controller = new AbortController();
 
         controller.abort(new Error('cancelled before traversal'));
-        await expect(withOperationContext({
+        await expect(withCommandExecution({
             signal: controller.signal,
             changedPaths: new Set(),
             log: () => undefined,
-        }, () => projectsTool({
+        }, (execution: CommandExecution) => projectsTool({
             ...projects.config,
             projectsRoot: '/missing-projects-root',
-        }, {})))
+        }, {}, execution)))
             .rejects.toThrow('cancelled before traversal');
     });
 
@@ -63,7 +64,7 @@ describe('projects cancellation', () => {
         const controller = new AbortController();
         const started = performance.now();
 
-        await expect(withOperationContext({
+        await expect(withCommandExecution({
             signal: controller.signal,
             changedPaths: new Set(),
             log: (_stream, text) => {
@@ -71,7 +72,7 @@ describe('projects cancellation', () => {
                     controller.abort(new Error('cancelled traversal'));
                 }
             },
-        }, () => projectsTool(config, {}))).rejects.toThrow('cancelled traversal');
+        }, (execution: CommandExecution) => projectsTool(config, {}, execution))).rejects.toThrow('cancelled traversal');
         expect(performance.now() - started).toBeGreaterThanOrEqual(900);
         expect(performance.now() - started).toBeLessThan(4000);
         const calls = (await readFile(log, 'utf8')).trim().split('\n');

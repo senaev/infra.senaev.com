@@ -4,7 +4,8 @@ import {
 } from 'vitest';
 
 import { createTestProjects, type TestProjects } from './createTestProjects';
-import { formatSnippet, searchTool } from './searchTool';
+import { searchTool } from './searchTool';
+import { formatSnippet } from './searchCommand';
 
 let projects: TestProjects;
 

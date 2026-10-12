@@ -1,21 +1,20 @@
 import { readFile, readdir } from 'node:fs/promises';
 
 import { createCommandExecution } from 'senaev-utils/src/commands/CommandExecution';
-import { withOperationContext } from 'senaev-utils/src/operations/operationContext';
 import { hashContent } from 'senaev-utils/src/toolServer/contentHash';
 import {
     afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
 
-import { cloneCommand } from './cloneTool';
+import { cloneCommand } from './cloneCommand';
 import { createTestProjects, type TestProjects } from './createTestProjects';
-import { listCommand } from './listTool';
-import { patchCommand } from './patchTool';
-import { projectsCommand } from './projectsTool';
-import { readCommand } from './readTool';
+import { listCommand } from './listCommand';
+import { patchCommand } from './patchCommand';
+import { projectsCommand } from './projectsCommand';
+import { readCommand } from './readCommand';
 import { runCommand } from './runCommand';
-import { searchCommand } from './searchTool';
-import { writeCommand } from './writeTool';
+import { searchCommand } from './searchCommand';
+import { writeCommand } from './writeCommand';
 
 let projects: TestProjects;
 
@@ -33,13 +32,7 @@ afterEach(async () => {
 });
 
 describe('standalone typed code commands', () => {
-    it.each([
-        'none',
-        'unrelated-aborted',
-    ] as const)('runs all eight commands with explicit capabilities and ambient context %s', async (ambient) => {
-        const foreign = new AbortController();
-        const foreignLog = vi.fn();
-        const foreignChanges = new Set<string>();
+    it('runs all eight commands with explicit capabilities without a manager', async () => {
         const ownChanges: string[] = [];
         const ownLog = vi.fn();
         const execution = createCommandExecution({
@@ -168,19 +161,7 @@ describe('standalone typed code commands', () => {
             expect((await readdir(projects.config.projectsRoot)).some((path) => path.startsWith('.clone-'))).toBe(false);
         };
 
-        foreign.abort(new Error('unrelated operation'));
-        if (ambient === 'none') {
-            await run();
-        } else {
-            await withOperationContext({
-                signal: foreign.signal,
-                log: foreignLog,
-                changedPaths: foreignChanges,
-            }, run);
-        }
-
-        expect(foreignLog).not.toHaveBeenCalled();
-        expect([...foreignChanges]).toEqual([]);
+        await run();
     }, 30000);
 
     it('pre-aborted execution starts none of the seven migrated business commands', async () => {

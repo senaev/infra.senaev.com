@@ -1,7 +1,6 @@
 import type { Logger } from 'pino';
 
 import type { CommandExecution } from '../commands/CommandExecution';
-import { currentCommandExecution } from '../operations/operationContext';
 import { domainArguments, MANAGED_ARGUMENT_KEYS } from '../operations/managedArguments';
 import { OperationManager } from '../operations/OperationManager';
 import { isOperationToolName, readOperationArguments } from '../operations/operationCommands';
@@ -45,7 +44,7 @@ export function createManagedToolService<Name extends string, Config>(options: {
             return manager.launch({
                 tool,
                 args,
-                run: () => options.tools[tool](options.config, inputArgs, currentCommandExecution()),
+                run: (execution) => options.tools[tool](options.config, inputArgs, execution),
             });
         },
     };

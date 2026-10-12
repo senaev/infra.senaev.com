@@ -1,8 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import { writeFileSync } from 'node:fs';
 
+import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { OperationManager } from 'senaev-utils/src/operations/OperationManager';
-import { currentCommandExecution, withOperationContext } from 'senaev-utils/src/operations/operationContext';
+import { withCommandExecution } from 'senaev-utils/src/commands/testing/withCommandExecution';
 import {
     afterEach, describe, expect, it, vi,
 } from 'vitest';
@@ -63,11 +64,11 @@ describe('vault cooperative cleanup', { timeout: 30000 }, () => {
         const controller = new AbortController();
 
         hooks.afterRead = () => setImmediate(() => controller.abort(new Error('cancelled')));
-        await expect(withOperationContext({
+        await expect(withCommandExecution({
             signal: controller.signal,
             changedPaths: new Set(),
             log: () => {},
-        }, () => readVaultNotes(vault.config, currentCommandExecution()))).rejects.toThrow('cancelled');
+        }, (execution) => readVaultNotes(vault.config, execution))).rejects.toThrow('cancelled');
         expect(readFile).toHaveBeenCalledTimes(1);
     });
 
@@ -91,14 +92,14 @@ describe('vault cooperative cleanup', { timeout: 30000 }, () => {
         const changedPaths = new Set<string>();
 
         hooks.afterPublish = () => writeFileSync(vault.path('Backlink.md'), '[[Source]]\nexternal edit');
-        await expect(withOperationContext({
+        await expect(withCommandExecution({
             signal: new AbortController().signal,
             changedPaths,
             log: () => {},
-        }, () => moveTool(vault.config, {
+        }, (execution: CommandExecution) => moveTool(vault.config, {
             path: 'Source.md',
             newPath: 'Target.md',
-        }))).rejects.toMatchObject({ code: 'conflict' });
+        }, execution))).rejects.toMatchObject({ code: 'conflict' });
         expect(await readFile(vault.path('Backlink.md'), 'utf8')).toBe('[[Source]]\nexternal edit');
         expect(await readFile(vault.path('Source.md'), 'utf8')).toBe('original');
         expect(await readFile(vault.path('Target.md'), 'utf8')).toBe('original');
@@ -114,14 +115,14 @@ describe('vault cooperative cleanup', { timeout: 30000 }, () => {
         const changedPaths = new Set<string>();
 
         hooks.afterPublish = () => controller.abort(new Error('cancelled after publication'));
-        await expect(withOperationContext({
+        await expect(withCommandExecution({
             signal: controller.signal,
             changedPaths,
             log: () => {},
-        }, () => moveTool(vault.config, {
+        }, (execution: CommandExecution) => moveTool(vault.config, {
             path: 'Source.md',
             newPath: 'Target.md',
-        }))).rejects.toThrow('cancelled after publication');
+        }, execution))).rejects.toThrow('cancelled after publication');
         expect([...changedPaths]).toEqual(['Target.md']);
         expect(await readFile(vault.path('Source.md'), 'utf8')).toBe('original');
         expect(await readFile(vault.path('Target.md'), 'utf8')).toBe('original');
@@ -133,10 +134,10 @@ describe('vault cooperative cleanup', { timeout: 30000 }, () => {
             const result = await manager.launch({
                 tool: 'move',
                 args: {},
-                run: () => moveTool(vault.config, {
+                run: (execution: CommandExecution) => moveTool(vault.config, {
                     path: 'Source.md',
                     newPath: 'Other.md',
-                }),
+                }, execution),
             });
 
             expect(result.operation).toMatchObject({ state: 'completed' });

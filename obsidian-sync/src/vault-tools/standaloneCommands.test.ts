@@ -1,21 +1,20 @@
 import { readFile, readdir } from 'node:fs/promises';
 
 import { createCommandExecution } from 'senaev-utils/src/commands/CommandExecution';
-import { withOperationContext } from 'senaev-utils/src/operations/operationContext';
 import { hashContent } from 'senaev-utils/src/toolServer/contentHash';
 import {
     afterEach, describe, expect, it, vi,
 } from 'vitest';
 
 import { createTestVault, type TestVault } from './createTestVault';
-import { createCommand } from './tools/createTool';
-import { diaryAppendCommand } from './tools/diaryAppendTool';
-import { linksCommand } from './tools/linksTool';
-import { listCommand } from './tools/listTool';
-import { moveCommand } from './tools/moveTool';
-import { patchCommand } from './tools/patchTool';
-import { readCommand } from './tools/readTool';
-import { searchCommand } from './tools/searchTool';
+import { createCommand } from './tools/createCommand';
+import { diaryAppendCommand } from './tools/diaryAppendCommand';
+import { linksCommand } from './tools/linksCommand';
+import { listCommand } from './tools/listCommand';
+import { moveCommand } from './tools/moveCommand';
+import { patchCommand } from './tools/patchCommand';
+import { readCommand } from './tools/readCommand';
+import { searchCommand } from './tools/searchCommand';
 
 let vault: TestVault;
 const scope = {
@@ -48,10 +47,7 @@ afterEach(async () => {
 });
 
 describe('standalone typed Obsidian commands', { timeout: 30000 }, () => {
-    it.each([
-        false,
-        true,
-    ])('runs all eight commands with an unrelated aborted ambient context: %s', async (useAmbient) => {
+    it('runs all eight commands with explicit capabilities without a manager', async () => {
         const original = '---\ntitle: Source\n---\n# Heading\noriginal\n';
 
         vault = await createTestVault({
@@ -60,11 +56,7 @@ describe('standalone typed Obsidian commands', { timeout: 30000 }, () => {
             '@senaev/daily_note_draft.md': '',
         });
         const ownChanges: string[] = [];
-        const foreignChanges = new Set<string>();
-        const foreignLog = vi.fn();
-        const foreign = new AbortController();
 
-        foreign.abort(new Error('unrelated cancellation'));
         const execution = createCommandExecution({ changedPath: (path) => ownChanges.push(path) });
         const run = async () => {
             const listed = await listCommand(vault.config, {
@@ -188,18 +180,7 @@ describe('standalone typed Obsidian commands', { timeout: 30000 }, () => {
             ]);
         };
 
-        if (useAmbient) {
-            await withOperationContext({
-                signal: foreign.signal,
-                changedPaths: foreignChanges,
-                log: foreignLog,
-            }, run);
-        } else {
-            await run();
-        }
-
-        expect([...foreignChanges]).toEqual([]);
-        expect(foreignLog).not.toHaveBeenCalled();
+        await run();
     });
 
     it('rejects every pre-aborted command without touching files or reporting changes', async () => {

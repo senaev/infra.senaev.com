@@ -33,8 +33,8 @@ export async function createFileDiffAsync(path: string, before: string, after: s
 
     try {
         return await new Promise<FileDiff>((resolve, reject) => {
-            const abort = () => reject(signal?.reason);
-            const cleanup = () => signal?.removeEventListener('abort', abort);
+            const abort = () => reject(signal.reason);
+            const cleanup = () => signal.removeEventListener('abort', abort);
 
             worker.once('message', (result: FileDiff) => {
                 cleanup();
@@ -48,8 +48,8 @@ export async function createFileDiffAsync(path: string, before: string, after: s
                 cleanup();
                 reject(new Error(`Diff worker exited before returning a result (code ${code})`));
             });
-            signal?.addEventListener('abort', abort, { once: true });
-            if (signal?.aborted) {
+            signal.addEventListener('abort', abort, { once: true });
+            if (signal.aborted) {
                 abort();
             }
         });
