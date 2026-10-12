@@ -2,11 +2,11 @@ import { createCommandAdapter } from 'senaev-utils/src/toolServer/createCommandA
 import { PATCH_OPERATION_FIELDS } from 'senaev-utils/src/obsidianVaultTools/vaultCommands';
 import { PATCH_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
-import { readExpectedHash } from 'senaev-utils/src/toolServer/contentHash';
+import { readExpectedHash } from 'senaev-utils/src/toolServer/expectedHashArguments';
 import {
     optionalString, readToolArguments, requiredNonEmptyString, requiredString,
 } from 'senaev-utils/src/toolServer/toolArguments';
-import { invalidArguments } from 'senaev-utils/src/toolServer/ToolError';
+import { invalidArguments } from 'senaev-utils/src/commands/CommandError';
 
 import { readVaultToolArguments } from '../toolArguments';
 

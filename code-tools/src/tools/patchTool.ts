@@ -1,10 +1,10 @@
 import { PATCH_LIMITS } from 'senaev-utils/src/codeTools/codeToolLimits';
-import { readExpectedHash } from 'senaev-utils/src/toolServer/contentHash';
+import { readExpectedHash } from 'senaev-utils/src/toolServer/expectedHashArguments';
 import { createCommandAdapter } from 'senaev-utils/src/toolServer/createCommandAdapter';
 import {
     readToolArguments, requiredNonEmptyString, requiredString,
 } from 'senaev-utils/src/toolServer/toolArguments';
-import { invalidArguments } from 'senaev-utils/src/toolServer/ToolError';
+import { invalidArguments } from 'senaev-utils/src/commands/CommandError';
 
 import { readCodeToolArguments } from './toolArguments';
 import {

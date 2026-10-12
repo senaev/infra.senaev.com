@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 
-import { hashContent } from 'senaev-utils/src/toolServer/contentHash';
+import { hashContent } from 'senaev-utils/src/files/contentHash';
 import {
     afterEach, describe, expect, it,
 } from 'vitest';

@@ -3,7 +3,7 @@ import { SEARCH_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimi
 import {
     optionalBoolean, readPageArguments, optionalEnum, optionalInteger, optionalStringArray,
 } from 'senaev-utils/src/toolServer/toolArguments';
-import { invalidArguments } from 'senaev-utils/src/toolServer/ToolError';
+import { invalidArguments } from 'senaev-utils/src/commands/CommandError';
 
 import { isDiaryRangeRequested } from '../noteScope';
 import { readNoteScope } from '../noteScopeArguments';

@@ -3,7 +3,7 @@ import { createCommandAdapter } from 'senaev-utils/src/toolServer/createCommandA
 import {
     optionalInteger, optionalStringArray, requiredNonEmptyString,
 } from 'senaev-utils/src/toolServer/toolArguments';
-import { invalidArguments } from 'senaev-utils/src/toolServer/ToolError';
+import { invalidArguments } from 'senaev-utils/src/commands/CommandError';
 
 import { readCodeToolArguments } from './toolArguments';
 import { type ReadCommandInput, readCommand } from './readCommand';

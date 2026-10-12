@@ -2,7 +2,7 @@ import {
     describe, expect, it, vi,
 } from 'vitest';
 
-import { ToolError } from '../toolServer/ToolError';
+import { CommandError } from '../commands/CommandError';
 
 import { OperationManager } from './OperationManager';
 import type { OperationObservation } from './operationTypes';
@@ -17,7 +17,7 @@ describe('operation retention regressions', () => {
                 tool: 'error',
                 args: {},
                 run: () => {
-                    throw new ToolError('ambiguous', 'many matches', { lines: Array(510000).fill(1) });
+                    throw new CommandError('ambiguous', 'many matches', { lines: Array(510000).fill(1) });
                 },
             });
 
@@ -33,7 +33,7 @@ describe('operation retention regressions', () => {
                 tool: 'error',
                 args: {},
                 run: () => {
-                    throw new ToolError('conflict', 'circular', circular);
+                    throw new CommandError('conflict', 'circular', circular);
                 },
             });
 

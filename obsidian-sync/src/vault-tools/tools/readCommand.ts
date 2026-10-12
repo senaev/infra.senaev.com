@@ -1,8 +1,8 @@
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
-import { readOperationTextFile } from 'senaev-utils/src/toolServer/readOperationTextFile';
+import { readTextFile } from 'senaev-utils/src/files/readTextFile';
 import { READ_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
-import { hashContent } from 'senaev-utils/src/toolServer/contentHash';
-import { ToolError } from 'senaev-utils/src/toolServer/ToolError';
+import { hashContent } from 'senaev-utils/src/files/contentHash';
+import { CommandError } from 'senaev-utils/src/commands/CommandError';
 
 import { normalizeVaultPath, resolveExistingNote } from '../access/vaultAccess';
 import { walkVault } from '../access/walkVault';
@@ -19,7 +19,7 @@ type ReadRequest = {
 
 async function readNote(config: VaultToolsConfig, request: ReadRequest, maxChars: number, execution: CommandExecution) {
     const absolutePath = await resolveExistingNote(config, request.path, execution);
-    const raw = await readOperationTextFile(absolutePath, execution);
+    const raw = await readTextFile(absolutePath, execution);
     const { body, ...frontmatter } = splitNote(raw);
     const section = request.section === undefined ? null : findSection(raw, request.section);
     const fullText = section === null ? body : raw.slice(section.start, section.end);
@@ -118,7 +118,7 @@ export async function readCommand(config: VaultToolsConfig, input: ReadCommandIn
             usedChars += note.content.length;
         } catch (error) {
             execution.throwIfAborted();
-            if (!(error instanceof ToolError) || paths.length === 1) {
+            if (!(error instanceof CommandError) || paths.length === 1) {
                 throw error;
             }
 

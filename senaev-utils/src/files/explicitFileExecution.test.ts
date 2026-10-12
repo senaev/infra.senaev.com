@@ -13,7 +13,7 @@ import { walkDirectory } from '../utils/fs/walkDirectory/walkDirectory';
 import { createFileExclusively, replaceFileAtomically } from '../utils/fs/atomicFileWrite/atomicFileWrite';
 
 import { createFileDiffAsync } from './createFileDiffAsync';
-import { readOperationTextFile } from './readOperationTextFile';
+import { readTextFile } from './readTextFile';
 import { prepareNewFilePath } from './rootRelativePath';
 import { replaceExactlyOnceAsync } from './textEdits';
 import { withFileMutation } from './withFileMutation';
@@ -38,7 +38,7 @@ describe('explicit file execution capabilities', () => {
 
         await writeFile(file, 'before');
         const result = await withFileMutation(file, async () => {
-            const before = await readOperationTextFile(file, execution);
+            const before = await readTextFile(file, execution);
             const after = await replaceExactlyOnceAsync(before, 'before', 'after', { execution });
             const diff = await createFileDiffAsync('sample.md', before, after, execution);
 
@@ -74,7 +74,7 @@ describe('explicit file execution capabilities', () => {
         controller.abort(reason);
         const execution = createCommandExecution({ signal: controller.signal });
 
-        await expect(readOperationTextFile(join(root, 'missing'), execution)).rejects.toBe(reason);
+        await expect(readTextFile(join(root, 'missing'), execution)).rejects.toBe(reason);
         await expect(replaceExactlyOnceAsync('text', 'missing', 'new', { execution })).rejects.toBe(reason);
         await expect(createFileDiffAsync('note', 'old', 'new', execution)).rejects.toBe(reason);
         await expect(withFileMutation('reserved', run, execution)).rejects.toBe(reason);

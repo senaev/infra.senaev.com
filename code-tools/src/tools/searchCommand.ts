@@ -1,5 +1,5 @@
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
-import { ToolError } from 'senaev-utils/src/toolServer/ToolError';
+import { CommandError } from 'senaev-utils/src/commands/CommandError';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 
 import { runProcess } from '../process/runProcess';
@@ -210,7 +210,7 @@ export async function searchCommand(config: CodeToolsConfig, input: SearchComman
 
     // Exit code 2 is an error, such as a bad regular expression or an unreadable file.
     if (result.exitCode === 2 && files.length === 0) {
-        throw new ToolError('invalid_arguments', `ripgrep failed: ${result.stderr.trim().slice(0, 2000)}`);
+        throw new CommandError('invalid_arguments', `ripgrep failed: ${result.stderr.trim().slice(0, 2000)}`);
     }
 
     const page = files.slice(offset, offset + limit);

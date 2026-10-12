@@ -1,7 +1,7 @@
 import { MAX_GLOB_LENGTH } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
-import { compileFileGlob } from 'senaev-utils/src/toolServer/compileFileGlob';
+import { compileFileGlob } from 'senaev-utils/src/files/compileFileGlob';
 import { optionalString, type ToolArguments } from 'senaev-utils/src/toolServer/toolArguments';
-import { invalidArguments } from 'senaev-utils/src/toolServer/ToolError';
+import { invalidArguments } from 'senaev-utils/src/commands/CommandError';
 
 import { normalizeVaultPath } from './access/vaultAccess';
 import { optionalIsoDay } from './toolArguments';

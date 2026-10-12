@@ -1,6 +1,5 @@
 import { isObject } from '../types/Object/Object';
-
-import { invalidArguments } from './ToolError';
+import { invalidArguments } from '../commands/CommandError';
 
 export type ToolArguments = Record<string, unknown>;
 

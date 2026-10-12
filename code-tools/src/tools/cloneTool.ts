@@ -1,7 +1,7 @@
 import { CLONE_LIMITS } from 'senaev-utils/src/codeTools/codeToolLimits';
 import { createCommandAdapter } from 'senaev-utils/src/toolServer/createCommandAdapter';
 import { optionalString, requiredNonEmptyString } from 'senaev-utils/src/toolServer/toolArguments';
-import { invalidArguments } from 'senaev-utils/src/toolServer/ToolError';
+import { invalidArguments } from 'senaev-utils/src/commands/CommandError';
 
 import { readCodeToolArguments } from './toolArguments';
 import {

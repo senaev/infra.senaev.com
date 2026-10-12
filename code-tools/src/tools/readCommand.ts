@@ -1,8 +1,8 @@
-import { createLineOffsets, createLineOffsetsAsync } from 'senaev-utils/src/toolServer/textLines';
+import { createLineOffsets, createLineOffsetsAsync } from 'senaev-utils/src/files/textLines';
 import { READ_LIMITS } from 'senaev-utils/src/codeTools/codeToolLimits';
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
-import { hashContent } from 'senaev-utils/src/toolServer/contentHash';
-import { invalidArguments, ToolError } from 'senaev-utils/src/toolServer/ToolError';
+import { hashContent } from 'senaev-utils/src/files/contentHash';
+import { invalidArguments, CommandError } from 'senaev-utils/src/commands/CommandError';
 
 import type { CodeToolsConfig } from './codeToolsConfig';
 import {
@@ -34,7 +34,7 @@ export function sliceLines(content: string, { startLine, lineCount }: LineRange,
     }
 
     if (endLine < startLine && lastRequestedLine >= startLine) {
-        throw new ToolError('command_failed', `Line ${startLine} exceeds the ${maxChars}-character page; use head, tail or sed to inspect it`);
+        throw new CommandError('command_failed', `Line ${startLine} exceeds the ${maxChars}-character page; use head, tail or sed to inspect it`);
     }
 
     const text = content.slice(start, offsets[endLine] ?? start);
@@ -73,8 +73,8 @@ export async function readCommand(config: CodeToolsConfig, input: ReadCommandInp
         paths, startLine, lineCount,
     } = input;
     const range = {
-        startLine: startLine ?? 1,
-        lineCount: lineCount ?? Number.MAX_SAFE_INTEGER,
+        startLine,
+        lineCount,
     };
     const files: Awaited<ReturnType<typeof readOneFile>>[] = [];
     const errors: { path: string; code: string; message: string }[] = [];
@@ -107,7 +107,7 @@ export async function readCommand(config: CodeToolsConfig, input: ReadCommandInp
             budget -= file.content.length;
         } catch (error) {
             execution.throwIfAborted();
-            if (!(error instanceof ToolError) || paths.length === 1) {
+            if (!(error instanceof CommandError) || paths.length === 1) {
                 throw error;
             }
 

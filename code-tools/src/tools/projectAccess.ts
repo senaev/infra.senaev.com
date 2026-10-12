@@ -5,8 +5,8 @@ import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecutio
 import {
     PROJECT_NAME_PATTERN,
 } from 'senaev-utils/src/codeTools/codeCommands';
-import { assertNoSymlinkOnPath, normalizeRootRelativePath } from 'senaev-utils/src/toolServer/rootRelativePath';
-import { invalidArguments, ToolError } from 'senaev-utils/src/toolServer/ToolError';
+import { assertNoSymlinkOnPath, normalizeRootRelativePath } from 'senaev-utils/src/files/rootRelativePath';
+import { invalidArguments, CommandError } from 'senaev-utils/src/commands/CommandError';
 import { isNotFoundError } from 'senaev-utils/src/utils/Error/isNotFoundError/isNotFoundError';
 
 import type { CodeToolsConfig } from './codeToolsConfig';
@@ -51,7 +51,7 @@ export async function resolveNamedProject(config: CodeToolsConfig, name: string,
         }
     }
 
-    throw new ToolError('not_found', `Project "${name}" does not exist; list the available projects`);
+    throw new CommandError('not_found', `Project "${name}" does not exist; list the available projects`);
 }
 
 /**
@@ -62,7 +62,7 @@ export function normalizeProjectPath(input: string, field: string): string {
     const path = normalizeRootRelativePath(input, field, 'project');
 
     if (path.split('/').includes('.git')) {
-        throw new ToolError('forbidden_path', `"${field}" points into a .git folder; use git commands instead`);
+        throw new CommandError('forbidden_path', `"${field}" points into a .git folder; use git commands instead`);
     }
 
     return path;
@@ -79,7 +79,7 @@ export async function resolveExistingFile(project: Project, path: string, execut
         const absolutePath = await assertNoSymlinkOnPath(project.root, path, execution);
 
         if (!(await stat(absolutePath)).isFile()) {
-            throw new ToolError('not_found', `"${path}" is not a file`);
+            throw new CommandError('not_found', `"${path}" is not a file`);
         }
 
         execution.throwIfAborted();
@@ -88,7 +88,7 @@ export async function resolveExistingFile(project: Project, path: string, execut
     } catch (error) {
         execution.throwIfAborted();
         if (isNotFoundError(error)) {
-            throw new ToolError('not_found', `File "${path}" does not exist`);
+            throw new CommandError('not_found', `File "${path}" does not exist`);
         }
 
         throw error;
@@ -100,7 +100,7 @@ export async function readTextFile(absolutePath: string, path: string, execution
     await execution.checkpoint();
     try {
         if ((await stat(absolutePath)).size > MAX_TEXT_FILE_BYTES) {
-            throw new ToolError('forbidden_path', `"${path}" is larger than ${MAX_TEXT_FILE_BYTES / 1024 / 1024} MB; use head, tail or sed to read parts of it`);
+            throw new CommandError('forbidden_path', `"${path}" is larger than ${MAX_TEXT_FILE_BYTES / 1024 / 1024} MB; use head, tail or sed to read parts of it`);
         }
 
         execution.throwIfAborted();
@@ -110,7 +110,7 @@ export async function readTextFile(absolutePath: string, path: string, execution
         execution.throwIfAborted();
 
         if (buffer.subarray(0, BINARY_SNIFF_BYTES).includes(0)) {
-            throw new ToolError('forbidden_path', `"${path}" is a binary file`);
+            throw new CommandError('forbidden_path', `"${path}" is a binary file`);
         }
 
         return buffer.toString('utf8');

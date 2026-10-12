@@ -4,7 +4,7 @@ import {
 import { join } from 'node:path';
 
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
-import { ToolError } from 'senaev-utils/src/toolServer/ToolError';
+import { CommandError } from 'senaev-utils/src/commands/CommandError';
 import { isNotFoundError } from 'senaev-utils/src/utils/Error/isNotFoundError/isNotFoundError';
 
 import { runGit } from '../git/runGit';
@@ -34,7 +34,7 @@ async function assertFree(path: string, name: string, execution: CommandExecutio
         throw error;
     }
 
-    throw new ToolError('already_exists', `Project "${name}" already exists; choose another "name" or use the existing project`);
+    throw new CommandError('already_exists', `Project "${name}" already exists; choose another "name" or use the existing project`);
 }
 
 async function notePublication(temporary: string, name: string, execution: CommandExecution): Promise<void> {
@@ -67,7 +67,7 @@ export async function cloneCommand(config: CodeToolsConfig, input: CloneCommandI
     } catch (error) {
         execution.throwIfAborted();
         if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
-            throw new ToolError('conflict', `A clone of "${name}" is already reserved; inspect stale reservations after a restart`);
+            throw new CommandError('conflict', `A clone of "${name}" is already reserved; inspect stale reservations after a restart`);
         }
 
         throw error;
@@ -94,7 +94,7 @@ export async function cloneCommand(config: CodeToolsConfig, input: CloneCommandI
 
         execution.throwIfAborted();
         if (result.exitCode !== 0) {
-            throw new ToolError('command_failed', `git clone failed: ${result.stderr.trim()}`);
+            throw new CommandError('command_failed', `git clone failed: ${result.stderr.trim()}`);
         }
 
         const branch = (await runGit(config, temporary, [
@@ -130,7 +130,7 @@ export async function cloneCommand(config: CodeToolsConfig, input: CloneCommandI
             });
 
             if (publication.exitCode !== 0) {
-                throw new ToolError(
+                throw new CommandError(
                     publication.exitCode === 17 ? 'conflict' : 'command_failed',
                     `Clone publication failed: ${publication.stderr.trim()}`
                 );

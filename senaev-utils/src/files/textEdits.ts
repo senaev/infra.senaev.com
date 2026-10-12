@@ -1,6 +1,6 @@
 import type { CommandExecution } from '../commands/CommandExecution';
+import { CommandError } from '../commands/CommandError';
 
-import { ToolError } from './ToolError';
 import { createLineStarts } from './textLines';
 
 /** Maps a character offset to a 1-based line number. */
@@ -28,7 +28,7 @@ export function createLineLocator(content: string): (offset: number) => number {
 /** The offsets of every non-overlapping occurrence of `text`. */
 function* occurrenceOffsets(content: string, text: string): Generator<number> {
     if (text.length === 0) {
-        throw new ToolError('invalid_arguments', 'The "find" text must not be empty');
+        throw new CommandError('invalid_arguments', 'The "find" text must not be empty');
     }
 
     for (let offset = content.indexOf(text); offset !== -1; offset = content.indexOf(text, offset + text.length)) {
@@ -58,7 +58,7 @@ function* replacementSteps(content: string, find: string, documentName: string):
     }
 
     if (offsets.length === 0) {
-        throw new ToolError('not_found', `The "find" text does not occur in the ${documentName}; read the ${documentName} again and copy the text exactly`);
+        throw new CommandError('not_found', `The "find" text does not occur in the ${documentName}; read the ${documentName} again and copy the text exactly`);
     }
 
     if (offsets.length > 1) {
@@ -82,7 +82,7 @@ function* replacementSteps(content: string, find: string, documentName: string):
             lines.push(line);
         }
 
-        throw new ToolError('ambiguous', `The "find" text occurs ${offsets.length} times; include more surrounding text so it occurs once`, { lines });
+        throw new CommandError('ambiguous', `The "find" text occurs ${offsets.length} times; include more surrounding text so it occurs once`, { lines });
     }
 
     return offsets[0] ?? 0;

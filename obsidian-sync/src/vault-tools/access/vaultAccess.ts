@@ -3,8 +3,8 @@ import { stat } from 'node:fs/promises';
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import {
     assertNoSymlinkOnPath, normalizeRootRelativePath, prepareNewFilePath,
-} from 'senaev-utils/src/toolServer/rootRelativePath';
-import { ToolError } from 'senaev-utils/src/toolServer/ToolError';
+} from 'senaev-utils/src/files/rootRelativePath';
+import { CommandError } from 'senaev-utils/src/commands/CommandError';
 import { isNotFoundError } from 'senaev-utils/src/utils/Error/isNotFoundError/isNotFoundError';
 
 import type { VaultToolsConfig } from '../vaultToolsConfig';
@@ -41,21 +41,21 @@ export async function resolveExistingFolder(config: VaultToolsConfig, relativePa
     execution.throwIfAborted();
     relativePath = normalizeVaultPath(relativePath, 'path');
     if (isExcludedFolder(config, relativePath)) {
-        throw new ToolError('forbidden_path', `Folder "${relativePath}" is excluded from the vault tools`);
+        throw new CommandError('forbidden_path', `Folder "${relativePath}" is excluded from the vault tools`);
     }
 
     try {
         const absolutePath = await assertNoSymlinkOnPath(config.root, relativePath, execution);
 
         if (!(await stat(absolutePath)).isDirectory()) {
-            throw new ToolError('not_found', `"${relativePath}" is not a folder`);
+            throw new CommandError('not_found', `"${relativePath}" is not a folder`);
         }
 
         return absolutePath;
     } catch (error) {
         execution.throwIfAborted();
         if (isNotFoundError(error)) {
-            throw new ToolError('not_found', `Folder "${relativePath}" does not exist`);
+            throw new CommandError('not_found', `Folder "${relativePath}" does not exist`);
         }
 
         throw error;
@@ -64,7 +64,7 @@ export async function resolveExistingFolder(config: VaultToolsConfig, relativePa
 
 export function assertNotePath(config: VaultToolsConfig, relativePath: string): void {
     if (!isNotePath(config, relativePath)) {
-        throw new ToolError(
+        throw new CommandError(
             'forbidden_path',
             `"${relativePath}" is not an accessible note: only ${config.noteExtension} files outside excluded folders are allowed`
         );
@@ -81,14 +81,14 @@ export async function resolveExistingNote(config: VaultToolsConfig, relativePath
         const absolutePath = await assertNoSymlinkOnPath(config.root, relativePath, execution);
 
         if (!(await stat(absolutePath)).isFile()) {
-            throw new ToolError('not_found', `"${relativePath}" is not a file`);
+            throw new CommandError('not_found', `"${relativePath}" is not a file`);
         }
 
         return absolutePath;
     } catch (error) {
         execution.throwIfAborted();
         if (isNotFoundError(error)) {
-            throw new ToolError('not_found', `Note "${relativePath}" does not exist`);
+            throw new CommandError('not_found', `Note "${relativePath}" does not exist`);
         }
 
         throw error;

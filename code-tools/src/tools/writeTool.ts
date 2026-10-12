@@ -1,5 +1,5 @@
 import { WRITE_LIMITS } from 'senaev-utils/src/codeTools/codeToolLimits';
-import { readExpectedHash } from 'senaev-utils/src/toolServer/contentHash';
+import { readExpectedHash } from 'senaev-utils/src/toolServer/expectedHashArguments';
 import { createCommandAdapter } from 'senaev-utils/src/toolServer/createCommandAdapter';
 import { requiredNonEmptyString, requiredString } from 'senaev-utils/src/toolServer/toolArguments';
 

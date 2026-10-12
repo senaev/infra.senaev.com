@@ -1030,3 +1030,119 @@ The implicit deadline-test callback was corrected; subsequent targeted run outpu
 ## Result
 
 Removed AsyncLocalStorage and operationContext completely. The manager passes one explicit CommandExecution per operation directly to the service/handler; standalone adapters create neutral independent capabilities. All sixteen typed business commands are separated from JSON adapters, and argument/scope decoding is outside file-access/domain modules. Consolidated repeated pagination argument decoding in five adapters; removed obsolete signal fallbacks/comments and redundant ambient-only test variants. Real overlapping-manager isolation and standalone capabilities are tested; existing cancellation, deadlines, FIFO, retention and filesystem safety remain covered. Public API/modes/limits unchanged. Required full checks passed 162 files / 1249 tests, and GitHub CI passed. PR #82 is prepared, not merged/deployed/live-verified. Existing domain exclusions, path/hash/atomic publication guards and approved memory/restart/parallel tradeoffs remain intentional. No further justified cleanup identified in this iteration. Own temporary files/fixtures cleaned; append-only history preserved. CodeRabbit documentation finding is being corrected in this follow-up; its CHANGES_REQUESTED state must not be described as approval.
+
+## Findings
+
+2026-10-12T11:30:00Z — PR #82 documentation follow-up published as `2f5191bb87b3fafddd9365a06248ffbca24263b0`. Mandatory pre-push hook completed successfully (operation `code-b3aa416f-0097-45bf-b3b2-c632d21d08b9`, exit 0):
+
+```text
+test       164475ms  0
+lint       114150ms  0
+typecheck   92611ms  0
+Helm        11692ms  0
+Python       7119ms  0
+shell        2026ms  0
+Test Files  162 passed (162)
+Tests       1249 passed (1249)
+```
+
+GitHub Check run `38242661880` completed with `success` for this exact HEAD: https://github.com/senaev/infra.senaev.com/actions/runs/38242661880 . CodeRabbit's sole journal finding is resolved and explicitly marked addressed in commit `2f5191b`; its original review still has `CHANGES_REQUESTED`, and no replacement approval is claimed. CodeRabbit status context is `SUCCESS`.
+
+## Result
+
+PR #82 is ready for user review with direct explicit command execution, separated business commands/adapters and shared pagination parsing. Both mandatory local hook and exact-HEAD CI passed. No merge, deployment or new production live verification was performed for this iteration. This post-publication evidence remains an appended working-tree journal entry, preserving earlier history.
+
+## Findings
+
+### 2026-10-12T11:57:29.637689+00:00 — PR #82 merge and remaining cleanup review
+
+User explicitly authorized merging PR #82. GitHub reports MERGED at 2026-10-12T11:55:44Z, merge commit `d75faa832228b128e284793020d6416080717b99`. Main checkout fast-forwarded; the existing uncommitted post-publication journal was preserved via scoped stash and restored successfully. Six release workflows started; completion pending.
+
+Remaining concrete architectural cleanup: neutral filesystem/hash/diff helpers live in `toolServer`; `ToolError` mixes domain codes with HTTP status mapping and `QUEUE_FULL`; `contentHash.ts` combines hash operations with unknown-JSON argument parsing. Business commands use these helpers but do not depend on the manager or MCP at runtime. A follow-up can separate domain utilities/errors from transport parsing and map HTTP statuses only in the HTTP adapter. `readOperationTextFile` has an obsolete operation-specific name despite accepting only explicit CommandExecution. Code readCommand also repeats startLine/lineCount defaults already guaranteed by its required DTO and parser. No migration allowlist or production ambient-context fallback found. Obsidian legacy alias support represents actual note-format compatibility and must remain. These are review findings, not changes in this merged iteration.
+
+### 2026-10-12T11:59:36.411855+00:00 — release results and blocked retry
+
+Five releases succeeded for merge d75faa8: senaev-utils 38245807154, vpn-subscription 38245807182, media-server-helper 38245807138, cluster-helper 38245807120, obsidian-sync 38245807205. opencode-serve run 38245807166 failed before application build, in external OpenCode installer:
+
+```text
+Installing opencode version: 1.19.0
+gzip: stdin: not in gzip format
+tar: Child returned status 1
+tar: Error is not recoverable: exiting now
+```
+
+The downloaded archive is invalid; root cause of invalid payload not established. Automatic approval review rejected gh run rerun --failed because it can publish artifacts or trigger production actions and requested explicit authorization for that rerun. No retry or workaround executed. Code Tools new version remains undeployed; new-version live checks are incomplete. Public HTTP smoke checks all passed (200): short link redirected to https://senaev.com/cv/5min; static page returned HTML, 4983 characters; public note returned HTML, 21801 characters. These do not prove the new Code Tools version.
+
+## Result
+
+PR #82 merged; five of six releases succeeded. Next priority is restoring the Code Tools release, then live verification. Further scoped cleanup candidates recorded above: split domain errors from HTTP mapping, relocate neutral helpers and separate hash argument parsing, remove duplicate typed read defaults. In addition the floating external OpenCode installer is a reproducibility risk evidenced by this failed release; consider version pinning and archive validation separately. Existing journal remains uncommitted on main; no new branch implementation was started.
+
+### 2026-10-12T12:23:08.167671+00:00 — authorized release retry successful
+
+User explicitly authorized retrying the Code Tools build/deploy. Run 38245807166 attempt 2 completed successfully; both Check and build-and-push jobs report success. Verbatim rollout evidence:
+
+```text
+2026-10-12T12:21:50.4943049Z out: deployment "opencode-telegram" successfully rolled out
+```
+
+All six releases for merge d75faa832228b128e284793020d6416080717b99 are now successful. Public MCP projects and code-run work after rollout; operations records reset during backend restart. Three transient code-run responses contained INVALID_ARGUMENT; after projects/operations read checks, code-run succeeded. No cause beyond temporal association with rollout is claimed. All three public smoke URLs again returned HTTP 200 and the expected short-link destination. No files besides this journal were modified. This is release/smoke verification, not the full clone/read/write/patch live regression suite.
+
+## Findings
+
+### 2026-10-12T12:38:08.536930+00:00 — PR #82 live regression through public MCP
+
+Catalog PASS: all eight Code Tools expose executionPolicy, requestId and timeoutSeconds. Isolated fixtures live82-20261012-1225 source/queued/parallel/fifo repositories; own vault folder @senaev/mcp-test/live82-20261012-1225, mount matched root AGENTS hash eeb0f5e20525a4ec020929a28d17d574d24266cbb20078e11f8b5d5d3b8e5188. No alternative auth or internal token used.
+
+1 PASS Code clone/read/write/patch succeeded both policies. Obs create/read/patch/list/search/move/links succeeded both policies. Obs create initially failed because own test folder was created root:root 0755 by code-run; corrected only its owner to 1000:1000, then new-requestId creates succeeded. Fixture preparation error, not a demonstrated implementation regression.
+2 PASS Code FIFO read/write/patch/clone stayed queued behind own run code-7040c9d1-2d44-4268-ac89-ab7500ae8a7e while parallel read/write completed. After own running-run cancellation, starts in FIFO order: read1791808155690, write1791808155693, patch1791808156068, clone1791808156489. Obs queued list remained queued behind running patch obsidian-de7b1a6d-0fd0-4f2a-a01b-ab8fc8330c17 while parallel read completed; after cancellation list completed.
+3 PASS retained Code clone/write/patch/read retries returned same ID/result. Changed policy with same IDs conflicted; read changed lineCount conflicted. Obs retained patch retry returned same original ID/result even after file move; changed policy conflicted.
+4 PASS operation_result retained FIFO results, diff and clone stdout/stderr logs.
+5 PASS long running run and actual long Code/Obs patches returned handles after server observation; status/result/cancel worked. Exact five-second transport-independent observation timing not measured.
+6 PASS own queued write cancelled with startedAt:null; never.txt independently absent. Running Code parallel patch code-80553985-c926-4211-aca7-c11163a3b51f and Obs queued patch obsidian-de7b1a6d-0fd0-4f2a-a01b-ab8fc8330c17 reached cancelled, changedPaths:[]; same-file no-op patches subsequently succeeded with original hash dd243a2638b2d3d8c2437306a59043e85f7ca53696dff50f082555428cbd5b3c, proving reservation release and unchanged bytes. No independent worker/process inventory inspection.
+7 PASS actual Code run/patch and Obs patch one-second timeouts: timed_out. Code patch code-3f063696-05f2-41c5-8cb6-927e8decae83 elapsed1009ms; Obs patch obsidian-4f9365b8-b818-4bfc-8882-24351e64f188 elapsed1007ms. Code FIFO waited38–56s with timeout2 then completed; Obs list waited11896ms with timeout1 then completed11ms. Positive override3000000000 accepted on projects. Default-expiry observation pending.
+8 PASS Code pages have different contents and same whole-file hash18b1b8e78fd926fe9eb0fcf38dc4dd487073d3b2f0681d3f85d526a5d1e603c6, independently matched filesystem SHA256. Obs slow read truncated with whole-file hash and nextStartChar20000.
+9 PASS stale Code write hash conflict; multi-operation failed patch changedPaths[] and subsequent FIFO read returned unchanged alpha/delta/gamma, then FIFO patch produced alpha/delta/omega verified independently. Cancellation publication window waived by owner.
+10 PASS local clone succeeded both policies, retained logs and changedPaths, existing destination refused with already_exists. Short operations cannot prove instantaneous atomic visibility; long clone process-group cancellation not reliably exercised in this run and is NOT VERIFIED, nor every handler cancellation stage.
+
+Obs move scanned3627notes and changed only own old/new paths, rewrittenLinks0. Initial parallel links raced unfinished move due to test orchestration and returned not_found; after waiting for move terminal completion, both-policy links succeeded. No backlink rewrite fixtures in this regression. Diary_append not rerun and production draft untouched; previous PR81 proof is separate. No automatic tests are represented as live proof. Own fixture cleanup pending.
+
+### 2026-10-12T12:39:18.939241+00:00 — default expiry and final guarded cleanup
+
+7 PASS actual default60s Code patch expiry: code-44111996-8ddf-4e4a-b925-66452c314e5b started1791808596145, timed_out1791808656174, elapsed60029ms, changedPaths[].
+11 PASS both backend operation inventories active[] before cleanup. Removed exactly source/queued/parallel/fifo owned git fixtures after exact filename sets, marker/README/content and hash checks and recursive no-symlink validation; deleted exactly OWNERSHIP.txt/queued-moved.md/parallel-moved.md/slow.md in own vault folder after exact contents/hashes and regular-file checks, then own empty folder. No own clone temporary paths remain. Cleanup operation code-8fcbe620-7c23-4ddd-896b-02de3d02a257 exit0. No foreign operation cancelled. No production diary mutation, commit/push/new PR.
+
+## Result
+
+PR82 public live regression passed the observed core Code Tools and seven Obsidian command scenarios, FIFO independence, retained retries/conflicts/results, actual patch cancellation and reservation reuse, one-second and default60s deadlines, queue-time exclusion, pagination whole-file hashes, hash guards, failed patch atomicity and clone no-overwrite/logs. Limits: exact transport-independent5s timing, every handler cancellation stage, long clone process group/atomic visibility under race, nonempty backlink rewrites and diary_append were NOT VERIFIED in this iteration. Cancel during publication remains explicitly waived. Initial own folder permissions and early links-vs-move ordering were fixture/orchestration mistakes, documented and corrected. Own fixtures cleaned; main remains d75faa832228b128e284793020d6416080717b99 with only appended journal modified. Next optional PR: domain errors/file helpers separated from transport adapters, then reproducible external CLI installation separately.
+
+## Findings
+
+### 2026-10-12T12:44:17.378345+00:00 — neutral utilities iteration started
+
+User authorized next iteration. Created refactor/domain-utilities from main d75faa8, preserving uncommitted journal. Scope: move neutral file helpers out of toolServer; neutral CommandError with HTTP mapping solely in runToolCall; separate operation admission error QUEUE_FULL; split expected-hash JSON parsing; remove duplicated required read defaults. No public fields, policies, limits, transport behavior or external CLI changes.
+
+### 2026-10-12T12:52:03.435995+00:00 — neutral modules implemented; full checks PASS
+
+Neutral file helpers and their existing tests moved to senaev-utils/src/files; readOperationTextFile renamed readTextFile. Hash operations no longer import JSON parsing; expectedHashArguments stays in toolServer. Neutral CommandError handles seven business codes, OperationError handles QUEUE_FULL/unknown_tool; runToolCall alone maps them to unchanged HTTP status/body. All consumers migrated without old-path compatibility barrels. Removed duplicate read DTO defaults. Domain business commands/access/markdown and neutral files/commands no longer import toolServer or operation manager modules. Existing direct/managed cancellation, worker diff, hash, atomic publication and path guards retained. No new API fields/modes/limits or external CLI changes.
+
+Two six-package typechecks PASS. Focused intermediate run code-73f634bd-7429-4d65-93b9-1ca39f53a13a passed11files/86tests; subsequently removed unknown_tool from domain-code test table when routing separated, with the final full run verifying the correction. Full simple-checks code-ff59087c-aad2-46f7-8d5b-64a0720454cf exit0:
+
+```text
+[test]  Test Files  162 passed (162)
+[test]       Tests  1258 passed (1258)
+--> Timings:
+--> ┌──────────────┬──────────┬───────────┬────────┬──────────────────────┐
+--> │ name         │ duration │ exit code │ killed │ command              │
+--> ├──────────────┼──────────┼───────────┼────────┼──────────────────────┤
+--> │ test         │ 158,842  │ 0         │ false  │ npm run test         │
+--> │ lint         │ 114,925  │ 0         │ false  │ npm run lint         │
+--> │ typecheck    │ 101,966  │ 0         │ false  │ npm run typecheck    │
+--> │ check:helm   │ 9,416    │ 0         │ false  │ npm run check:helm   │
+--> │ check:python │ 5,486    │ 0         │ false  │ npm run check:python │
+--> │ check:shell  │ 1,962    │ 0         │ false  │ npm run check:shell  │
+--> └──────────────┴──────────┴───────────┴────────┴──────────────────────┘
+```
+
+## Result
+
+Neutral business/file utilities separated from HTTP adapters, with nine new HTTP contract cases (1249→1258 totaltests,162files unchanged). No production deployment/live check claimed for this branch. Mandatory pre-push and remote CI/review follow publication; existing journal history preserved.

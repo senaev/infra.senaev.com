@@ -1,7 +1,7 @@
 import { readFile, readdir } from 'node:fs/promises';
 
 import { createCommandExecution } from 'senaev-utils/src/commands/CommandExecution';
-import { hashContent } from 'senaev-utils/src/toolServer/contentHash';
+import { hashContent } from 'senaev-utils/src/files/contentHash';
 import {
     afterEach, describe, expect, it, vi,
 } from 'vitest';
