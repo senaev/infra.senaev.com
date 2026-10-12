@@ -4,6 +4,7 @@ FROM debian:bookworm-slim
 #
 # The tools are for the opencode agent and for the code-* MCP tools alike: both run
 # commands in /projects/git. python3 and helm are there for the checks of infra.senaev.com.
+# Pin the working yq version; image builds must not depend on the latest-release API.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl ca-certificates \
     && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
@@ -13,8 +14,7 @@ RUN apt-get update \
         git openssh-client python3 \
         jq vim ripgrep fzf tree make unzip wget gh \
     && curl -fsSL https://opencode.ai/install | bash \
-    && YQ_VERSION=$(curl -fsSL https://api.github.com/repos/mikefarah/yq/releases/latest | grep tag_name | cut -d'"' -f4) \
-    && curl -fsSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o /usr/local/bin/yq \
+    && curl -fsSL "https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64" -o /usr/local/bin/yq \
     && chmod +x /usr/local/bin/yq \
     && curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash \
     && curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \

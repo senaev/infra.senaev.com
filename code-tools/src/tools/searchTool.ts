@@ -1,6 +1,5 @@
-import {
-    operationCheckpoint, operationContext, throwIfOperationAborted,
-} from 'senaev-utils/src/operations/operationContext';
+import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
+import { createCommandAdapter } from 'senaev-utils/src/toolServer/createCommandAdapter';
 import { MAX_GLOB_LENGTH, SEARCH_LIMITS } from 'senaev-utils/src/codeTools/codeToolLimits';
 import {
     optionalBoolean,
@@ -8,6 +7,7 @@ import {
     optionalInteger,
     optionalString,
     optionalStringArray,
+    requiredNonEmptyString,
 } from 'senaev-utils/src/toolServer/toolArguments';
 import { invalidArguments, ToolError } from 'senaev-utils/src/toolServer/ToolError';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
@@ -16,7 +16,7 @@ import { runProcess } from '../process/runProcess';
 
 import type { CodeToolsConfig } from './codeToolsConfig';
 import {
-    normalizeProjectPath, readCodeToolArguments, resolveProject,
+    normalizeProjectPath, readCodeToolArguments, resolveNamedProject,
 } from './projectAccess';
 
 const MAX_RG_OUTPUT_CHARS = 10_000_000;
@@ -51,14 +51,14 @@ function readText(value: unknown): string | null {
 }
 
 /** Groups ripgrep's `--json` events by file. Paths that are not valid UTF-8 are skipped. */
-export async function parseRipgrepJson(output: string): Promise<FileMatches[]> {
+export async function parseRipgrepJson(output: string, execution: CommandExecution): Promise<FileMatches[]> {
     const files = new Map<string, FileMatches>();
 
     let index = 0;
 
     for (const line of output.split('\n')) {
         if (index++ % 128 === 0) {
-            await operationCheckpoint();
+            await execution.checkpoint();
         }
 
         if (line === '') {
@@ -101,7 +101,7 @@ export async function parseRipgrepJson(output: string): Promise<FileMatches[]> {
         files.set(path, file);
     }
 
-    throwIfOperationAborted();
+    execution.throwIfAborted();
 
     return [...files.values()];
 }
@@ -110,13 +110,13 @@ export async function parseRipgrepJson(output: string): Promise<FileMatches[]> {
  * The first `maxMatches` matching lines with their context, in ripgrep's own format:
  * "12:text" for a match, "13-text" for context, and "--" between separate parts.
  */
-export async function formatSnippet(lines: readonly FoundLine[], maxMatches: number, contextLines: number): Promise<string> {
+export async function formatSnippet(lines: readonly FoundLine[], maxMatches: number, contextLines: number, execution: CommandExecution): Promise<string> {
     const shownMatches: number[] = [];
     let index = 0;
 
     for (const line of lines) {
         if (index++ % 128 === 0) {
-            await operationCheckpoint();
+            await execution.checkpoint();
         }
 
         if (line.isMatch) {
@@ -131,10 +131,10 @@ export async function formatSnippet(lines: readonly FoundLine[], maxMatches: num
     const parts: string[] = [];
     let previousLine: number | null = null;
 
-    await operationCheckpoint();
+    await execution.checkpoint();
     for (const found of [...lines].sort((a, b) => a.line - b.line)) {
         if (index++ % 128 === 0) {
-            await operationCheckpoint();
+            await execution.checkpoint();
         }
 
         if (!isShown(found.line) || found.line === previousLine) {
@@ -149,7 +149,7 @@ export async function formatSnippet(lines: readonly FoundLine[], maxMatches: num
         previousLine = found.line;
     }
 
-    throwIfOperationAborted();
+    execution.throwIfAborted();
 
     return parts.join('\n');
 }
@@ -191,10 +191,13 @@ function buildRipgrepArgs(options: {
     ];
 }
 
-export async function searchTool(config: CodeToolsConfig, input: unknown) {
-    throwIfOperationAborted();
+export type SearchCommandInput = {
+    project: string; queries: readonly string[]; regex: boolean; caseSensitive: boolean; contextLines: number;
+    glob: string | undefined; folder: string; maxMatchesPerFile: number; offset: number; limit: number;
+};
+
+function parseSearchInput(input: unknown): SearchCommandInput {
     const args = readCodeToolArguments(input, 'search');
-    const project = await resolveProject(config, args);
     const queries = optionalStringArray(args, 'queries', {
         maxItems: SEARCH_LIMITS.maxQueries,
         maxLength: SEARCH_LIMITS.maxQueryLength,
@@ -221,28 +224,40 @@ export async function searchTool(config: CodeToolsConfig, input: unknown) {
         max: SEARCH_LIMITS.maxLimit,
     }) ?? SEARCH_LIMITS.defaultLimit;
 
-    throwIfOperationAborted();
-    const context = operationContext();
-    const result = await runProcess('rg', buildRipgrepArgs({
+    return {
+        project: requiredNonEmptyString(args, 'project'),
         queries,
         regex: optionalBoolean(args, 'regex') ?? false,
         caseSensitive: optionalBoolean(args, 'caseSensitive') ?? false,
         contextLines,
         glob: optionalString(args, 'glob', MAX_GLOB_LENGTH),
-        folder: normalizeProjectPath(optionalString(args, 'folder') ?? '', 'folder'),
+        folder: optionalString(args, 'folder') ?? '',
+        maxMatchesPerFile,
+        offset,
+        limit,
+    };
+}
+
+export async function searchCommand(config: CodeToolsConfig, input: SearchCommandInput, execution: CommandExecution) {
+    execution.throwIfAborted();
+    const project = await resolveNamedProject(config, input.project, execution);
+    const {
+        contextLines, maxMatchesPerFile, offset, limit,
+    } = input;
+    const result = await runProcess('rg', buildRipgrepArgs({
+        ...input,
+        folder: normalizeProjectPath(input.folder, 'folder'),
     }), {
         cwd: project.root,
-        ...context && {
-            signal: context.signal,
-            onOutput: context.log,
-        },
+        signal: execution.signal,
+        onOutput: execution.log,
         maxOutputChars: MAX_RG_OUTPUT_CHARS,
         keep: 'start',
         env: config.commandEnv,
     });
 
-    throwIfOperationAborted();
-    const files = (await parseRipgrepJson(result.stdout)).sort((a, b) => a.path.localeCompare(b.path));
+    execution.throwIfAborted();
+    const files = (await parseRipgrepJson(result.stdout, execution)).sort((a, b) => a.path.localeCompare(b.path));
 
     // Exit code 2 is an error, such as a bad regular expression or an unreadable file.
     if (result.exitCode === 2 && files.length === 0) {
@@ -259,7 +274,7 @@ export async function searchTool(config: CodeToolsConfig, input: unknown) {
 
         for (const line of file.lines) {
             if (index++ % 128 === 0) {
-                await operationCheckpoint();
+                await execution.checkpoint();
             }
 
             if (line.isMatch) {
@@ -280,11 +295,11 @@ export async function searchTool(config: CodeToolsConfig, input: unknown) {
             path: file.path,
             matchCount,
             omittedMatches: Math.max(0, matchCount - maxMatchesPerFile),
-            snippet: await formatSnippet(file.lines, maxMatchesPerFile, contextLines),
+            snippet: await formatSnippet(file.lines, maxMatchesPerFile, contextLines, execution),
         });
     }
 
-    throwIfOperationAborted();
+    execution.throwIfAborted();
 
     return {
         project: project.name,
@@ -297,3 +312,6 @@ export async function searchTool(config: CodeToolsConfig, input: unknown) {
         ...result.exitCode === 2 && { warnings: result.stderr.trim().slice(0, 2000) },
     };
 }
+
+export type SearchCommandResult = Awaited<ReturnType<typeof searchCommand>>;
+export const searchTool = createCommandAdapter(parseSearchInput, searchCommand);

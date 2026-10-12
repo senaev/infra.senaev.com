@@ -2,9 +2,8 @@ import { WRITE_LIMITS } from 'senaev-utils/src/codeTools/codeToolLimits';
 import {
     assertExpectedHash, hashContent, readExpectedHash,
 } from 'senaev-utils/src/toolServer/contentHash';
-import {
-    operationCheckpoint, operationContext, recordChangedPath, throwIfOperationAborted,
-} from 'senaev-utils/src/operations/operationContext';
+import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
+import { createCommandAdapter } from 'senaev-utils/src/toolServer/createCommandAdapter';
 import { prepareNewFilePath } from 'senaev-utils/src/toolServer/rootRelativePath';
 import { requiredNonEmptyString, requiredString } from 'senaev-utils/src/toolServer/toolArguments';
 import { invalidArguments, ToolError } from 'senaev-utils/src/toolServer/ToolError';
@@ -20,13 +19,14 @@ import {
     readCodeToolArguments,
     readTextFile,
     resolveExistingFile,
-    resolveProject,
+    resolveNamedProject,
 } from './projectAccess';
 
-async function createFile(project: Project, path: string, content: string): Promise<void> {
+async function createFile(project: Project, path: string, content: string, execution: CommandExecution): Promise<void> {
     try {
-        await createFileExclusively(await prepareNewFilePath(project.root, path), content, operationContext()?.signal, () => recordChangedPath(path));
+        await createFileExclusively(await prepareNewFilePath(project.root, path, execution), content, execution.signal, () => execution.changedPath(path));
     } catch (error) {
+        execution.throwIfAborted();
         if (isAlreadyExistsError(error)) {
             throw new ToolError('already_exists', `"${path}" already exists; read it and pass its "hash" as "expectedHash" to replace it`);
         }
@@ -36,17 +36,20 @@ async function createFile(project: Project, path: string, content: string): Prom
 }
 
 /** Replaces the whole file, but only the version the caller read. */
-async function replaceFile(project: Project, path: string, content: string, expectedHash: string) {
-    const absolutePath = await resolveExistingFile(project, path);
-    const original = await readTextFile(absolutePath, path);
+async function replaceFile(project: Project, input: { path: string; content: string; expectedHash: string }, execution: CommandExecution) {
+    const {
+        path, content, expectedHash,
+    } = input;
+    const absolutePath = await resolveExistingFile(project, path, execution);
+    const original = await readTextFile(absolutePath, path, execution);
 
     assertExpectedHash(original, expectedHash, 'file');
 
-    const diff = await createFileDiffAsync(path, original, content);
+    const diff = await createFileDiffAsync(path, original, content, execution);
 
     if (content !== original) {
-        assertExpectedHash(await readTextFile(absolutePath, path), expectedHash, 'file');
-        await replaceFileAtomically(absolutePath, content, operationContext()?.signal, () => recordChangedPath(path));
+        assertExpectedHash(await readTextFile(absolutePath, path, execution), expectedHash, 'file');
+        await replaceFileAtomically(absolutePath, content, execution.signal, () => execution.changedPath(path));
     }
 
     return {
@@ -55,31 +58,47 @@ async function replaceFile(project: Project, path: string, content: string, expe
     };
 }
 
-export async function writeTool(config: CodeToolsConfig, input: unknown) {
+export type WriteCommandInput = { project: string; path: string; content: string; expectedHash: string | undefined };
+
+function parseWriteInput(input: unknown): WriteCommandInput {
     const args = readCodeToolArguments(input, 'write');
-    const project = await resolveProject(config, args);
-    const path = normalizeProjectPath(requiredNonEmptyString(args, 'path'), 'path');
-    const content = requiredString(args, 'content', WRITE_LIMITS.maxContentChars);
+
+    return {
+        project: requiredNonEmptyString(args, 'project'),
+        path: requiredNonEmptyString(args, 'path'),
+        content: requiredString(args, 'content', WRITE_LIMITS.maxContentChars),
+        expectedHash: args.expectedHash === undefined || args.expectedHash === null ? undefined : readExpectedHash(args, 'expectedHash'),
+    };
+}
+
+export async function writeCommand(config: CodeToolsConfig, input: WriteCommandInput, execution: CommandExecution) {
+    const project = await resolveNamedProject(config, input.project, execution);
+    const path = normalizeProjectPath(input.path, 'path');
+    const { content, expectedHash } = input;
 
     if (path === '') {
         throw invalidArguments('"path" must name a file, not the project root');
     }
 
-    throwIfOperationAborted();
+    execution.throwIfAborted();
 
     return withFileMutation(`${project.root}/${path}`, async () => {
-        const isReplace = args.expectedHash !== undefined && args.expectedHash !== null;
+        const isReplace = expectedHash !== undefined;
         let original = '';
         let diff;
 
-        if (isReplace) {
-            ({ original, diff } = await replaceFile(project, path, content, readExpectedHash(args, 'expectedHash')));
+        if (expectedHash !== undefined) {
+            ({ original, diff } = await replaceFile(project, {
+                path,
+                content,
+                expectedHash,
+            }, execution));
         } else {
-            diff = await createFileDiffAsync(path, original, content);
-            await createFile(project, path, content);
+            diff = await createFileDiffAsync(path, original, content, execution);
+            await createFile(project, path, content, execution);
         }
 
-        await operationCheckpoint();
+        await execution.checkpoint();
 
         return {
             path,
@@ -88,5 +107,8 @@ export async function writeTool(config: CodeToolsConfig, input: unknown) {
             hash: hashContent(content),
             ...diff,
         };
-    });
+    }, execution);
 }
+
+export type WriteCommandResult = Awaited<ReturnType<typeof writeCommand>>;
+export const writeTool = createCommandAdapter(parseWriteInput, writeCommand);

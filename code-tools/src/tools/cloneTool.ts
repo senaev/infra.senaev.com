@@ -4,9 +4,8 @@ import {
 import { join } from 'node:path';
 
 import { CLONE_LIMITS } from 'senaev-utils/src/codeTools/codeToolLimits';
-import {
-    operationCheckpoint, operationContext, recordChangedPath, throwIfOperationAborted,
-} from 'senaev-utils/src/operations/operationContext';
+import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
+import { createCommandAdapter } from 'senaev-utils/src/toolServer/createCommandAdapter';
 import { optionalString, requiredNonEmptyString } from 'senaev-utils/src/toolServer/toolArguments';
 import { invalidArguments, ToolError } from 'senaev-utils/src/toolServer/ToolError';
 import { isNotFoundError } from 'senaev-utils/src/utils/Error/isNotFoundError/isNotFoundError';
@@ -39,10 +38,11 @@ function readUrl(args: Record<string, unknown>): string {
     return url;
 }
 
-async function assertFree(path: string, name: string): Promise<void> {
+async function assertFree(path: string, name: string, execution: CommandExecution): Promise<void> {
     try {
         await lstat(path);
     } catch (error) {
+        execution.throwIfAborted();
         if (isNotFoundError(error)) {
             return;
         }
@@ -53,7 +53,7 @@ async function assertFree(path: string, name: string): Promise<void> {
     throw new ToolError('already_exists', `Project "${name}" already exists; choose another "name" or use the existing project`);
 }
 
-async function notePublication(temporary: string, name: string): Promise<void> {
+async function notePublication(temporary: string, name: string, execution: CommandExecution): Promise<void> {
     try {
         await lstat(temporary);
     } catch (error) {
@@ -61,26 +61,38 @@ async function notePublication(temporary: string, name: string): Promise<void> {
             throw error;
         }
 
-        recordChangedPath(name);
+        execution.changedPath(name);
     }
 }
 
-export async function cloneTool(config: CodeToolsConfig, input: unknown) {
+export type CloneCommandInput = { url: string; name: string };
+
+function parseCloneInput(input: unknown): CloneCommandInput {
     const args = readCodeToolArguments(input, 'clone');
     const url = readUrl(args);
     const name = optionalString(args, 'name') ?? getRepositoryName(url);
+
+    return {
+        url,
+        name,
+    };
+}
+
+export async function cloneCommand(config: CodeToolsConfig, input: CloneCommandInput, execution: CommandExecution) {
+    const { url, name } = input;
 
     assertProjectName(name, 'name');
 
     const destination = projectPath(config, name);
 
-    await operationCheckpoint();
-    await assertFree(destination, name);
+    await execution.checkpoint();
+    await assertFree(destination, name, execution);
     const reservation = join(config.projectsRoot, `.clone-${name}.lock`);
 
     try {
         await mkdir(reservation);
     } catch (error) {
+        execution.throwIfAborted();
         if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
             throw new ToolError('conflict', `A clone of "${name}" is already reserved; inspect stale reservations after a restart`);
         }
@@ -91,9 +103,8 @@ export async function cloneTool(config: CodeToolsConfig, input: unknown) {
     let temporary: string | undefined;
 
     try {
-        await operationCheckpoint();
+        await execution.checkpoint();
         temporary = await mkdtemp(join(config.projectsRoot, `.clone-${name}-`));
-        const context = operationContext();
         const result = await runProcess('git', [
             'clone',
             '--progress',
@@ -102,15 +113,13 @@ export async function cloneTool(config: CodeToolsConfig, input: unknown) {
             temporary,
         ], {
             cwd: config.projectsRoot,
-            ...context && {
-                signal: context.signal,
-                onOutput: context.log,
-            },
+            signal: execution.signal,
+            onOutput: execution.log,
             maxOutputChars: MAX_ERROR_CHARS,
             env: config.commandEnv,
         });
 
-        throwIfOperationAborted();
+        execution.throwIfAborted();
         if (result.exitCode !== 0) {
             throw new ToolError('command_failed', `git clone failed: ${result.stderr.trim()}`);
         }
@@ -118,9 +127,9 @@ export async function cloneTool(config: CodeToolsConfig, input: unknown) {
         const branch = (await runGit(config, temporary, [
             'branch',
             '--show-current',
-        ])).trim();
+        ], execution)).trim();
 
-        await operationCheckpoint();
+        await execution.checkpoint();
         // Linux renameat2(RENAME_NOREPLACE) publishes an entire directory atomically.
         // Plain fs.rename can replace an unrelated empty directory after a race.
         // python3 is an existing required dependency of the opencode-serve image.
@@ -141,12 +150,8 @@ export async function cloneTool(config: CodeToolsConfig, input: unknown) {
                 destination,
             ], {
                 cwd: config.projectsRoot,
-                ...context === undefined
-                    ? {}
-                    : {
-                        signal: context.signal,
-                        onOutput: context.log,
-                    },
+                signal: execution.signal,
+                onOutput: execution.log,
                 maxOutputChars: MAX_ERROR_CHARS,
                 env: config.commandEnv,
             });
@@ -160,10 +165,10 @@ export async function cloneTool(config: CodeToolsConfig, input: unknown) {
         } finally {
             // Publication may win a race with abort. Discover that change before reporting
             // terminal cancellation; never remove the published destination.
-            await notePublication(temporary, name);
+            await notePublication(temporary, name, execution);
         }
 
-        throwIfOperationAborted();
+        execution.throwIfAborted();
 
         return {
             project: name,
@@ -185,3 +190,6 @@ export async function cloneTool(config: CodeToolsConfig, input: unknown) {
         }
     }
 }
+
+export type CloneCommandResult = Awaited<ReturnType<typeof cloneCommand>>;
+export const cloneTool = createCommandAdapter(parseCloneInput, cloneCommand);
