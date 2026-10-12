@@ -18,7 +18,7 @@ export function operationContext(): OperationContext | undefined {
     return contexts.getStore();
 }
 
-/** Compatibility bridge for adapters and not-yet-migrated callers. */
+/** Capture manager capabilities at the adapter boundary; business code receives them explicitly. */
 export function currentCommandExecution(): CommandExecution {
     const context = contexts.getStore();
 
@@ -30,20 +30,3 @@ export function currentCommandExecution(): CommandExecution {
             changedPath: (path) => context.changedPaths.add(path),
         });
 }
-
-export function throwIfOperationAborted(): void {
-    contexts.getStore()?.signal.throwIfAborted();
-}
-
-/** Yield between bounded batches; legacy callers use the same neutral capabilities. */
-export async function operationCheckpoint(): Promise<void> {
-    if (contexts.getStore() !== undefined) {
-        await currentCommandExecution().checkpoint();
-    }
-}
-
-export function recordChangedPath(path: string): void {
-    contexts.getStore()?.changedPaths.add(path);
-}
-
-export { scheduleDeadline } from '../utils/process/scheduleDeadline';

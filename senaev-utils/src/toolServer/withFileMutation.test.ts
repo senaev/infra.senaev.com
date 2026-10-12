@@ -2,6 +2,8 @@ import {
     describe, expect, it,
 } from 'vitest';
 
+import { createCommandExecution } from '../commands/CommandExecution';
+
 import { withFileMutation, withFileMutations } from './withFileMutation';
 
 describe('mutation write sets', () => {
@@ -22,14 +24,14 @@ describe('mutation write sets', () => {
             started();
             await gate;
             throw new Error('write failed');
-        });
+        }, createCommandExecution());
 
         await ready;
         await expect(withFileMutations([
             'c',
             'b',
-        ], () => Promise.resolve('overlap'))).rejects.toMatchObject({ code: 'conflict' });
-        expect(await withFileMutation('c', () => Promise.resolve('independent'))).toBe('independent');
+        ], () => Promise.resolve('overlap'), createCommandExecution())).rejects.toMatchObject({ code: 'conflict' });
+        expect(await withFileMutation('c', () => Promise.resolve('independent'), createCommandExecution())).toBe('independent');
         const failure = expect(running).rejects.toThrow('write failed');
 
         release();
@@ -37,6 +39,6 @@ describe('mutation write sets', () => {
         expect(await withFileMutations([
             'a',
             'b',
-        ], () => Promise.resolve('released'))).toBe('released');
+        ], () => Promise.resolve('released'), createCommandExecution())).toBe('released');
     });
 });

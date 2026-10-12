@@ -2,7 +2,6 @@ import { readdir } from 'node:fs/promises';
 import { join, posix } from 'node:path';
 
 import type { CommandExecution } from '../../../commands/CommandExecution';
-import { currentCommandExecution } from '../../../operations/operationContext';
 
 export type WalkDirectoryFilters = {
     /** Gets the root-relative POSIX path of a folder; `false` skips it with everything below. */
@@ -35,7 +34,7 @@ export async function walkDirectory(
     root: string,
     startFolder = '',
     { includeFolder = () => true, includeFile = () => true }: WalkDirectoryFilters = {},
-    execution: CommandExecution = currentCommandExecution()
+    execution: CommandExecution
 ): Promise<WalkDirectoryResult> {
     const files: string[] = [];
     const errors: WalkDirectoryError[] = [];

@@ -1,7 +1,6 @@
 import { readFile } from 'node:fs/promises';
 
 import { completeOperation, awaitOperation } from 'senaev-utils/src/operations/testing/completeOperation';
-import { operationContext, throwIfOperationAborted } from 'senaev-utils/src/operations/operationContext';
 import {
     afterEach, describe, expect, it, vi,
 } from 'vitest';
@@ -54,8 +53,8 @@ function blockSearch() {
     const ready = new Promise<void>((resolve) => {
         started = resolve;
     });
-    const spy = vi.spyOn(VAULT_TOOLS, 'search').mockImplementation(async () => {
-        const signal = operationContext()?.signal;
+    const spy = vi.spyOn(VAULT_TOOLS, 'search').mockImplementation(async (_config, _input, execution) => {
+        const signal = execution?.signal;
 
         activeSignal = signal;
 
@@ -64,7 +63,7 @@ function blockSearch() {
             signal?.addEventListener('abort', () => resolve(), { once: true });
             started();
         });
-        throwIfOperationAborted();
+        execution?.throwIfAborted();
 
         return { released: true };
     });

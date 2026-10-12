@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 
+import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { readOperationTextFile } from 'senaev-utils/src/toolServer/readOperationTextFile';
-import { operationCheckpoint, throwIfOperationAborted } from 'senaev-utils/src/operations/operationContext';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 
 import { readAliases, splitNote } from '../markdown/frontmatter';
@@ -27,22 +27,22 @@ export type VaultNotes = {
 };
 
 /** Reads every note of the vault. A note that cannot be read is reported, not thrown. */
-export async function readVaultNotes(config: VaultToolsConfig): Promise<VaultNotes> {
-    const walk = await walkVault(config, '');
+export async function readVaultNotes(config: VaultToolsConfig, execution: CommandExecution): Promise<VaultNotes> {
+    const walk = await walkVault(config, '', execution);
     const notePaths = walk.files.filter((file) => isNotePath(config, file));
     const contents = new Map<string, string>();
     const aliasesByNote = new Map<string, string[]>();
     const readErrors: PathError[] = [];
 
     for (const notePath of notePaths) {
-        await operationCheckpoint();
+        await execution.checkpoint();
         try {
-            const content = await readOperationTextFile(join(config.root, notePath));
+            const content = await readOperationTextFile(join(config.root, notePath), execution);
 
             contents.set(notePath, content);
             aliasesByNote.set(notePath, readAliases(splitNote(content).frontmatter));
         } catch (error) {
-            throwIfOperationAborted();
+            execution.throwIfAborted();
             readErrors.push({
                 path: notePath,
                 message: stringifyUnknownError(error),

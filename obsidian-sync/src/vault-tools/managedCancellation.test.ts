@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { writeFileSync } from 'node:fs';
 
 import { OperationManager } from 'senaev-utils/src/operations/OperationManager';
-import { withOperationContext } from 'senaev-utils/src/operations/operationContext';
+import { currentCommandExecution, withOperationContext } from 'senaev-utils/src/operations/operationContext';
 import {
     afterEach, describe, expect, it, vi,
 } from 'vitest';
@@ -67,7 +67,7 @@ describe('vault cooperative cleanup', { timeout: 30000 }, () => {
             signal: controller.signal,
             changedPaths: new Set(),
             log: () => {},
-        }, () => readVaultNotes(vault.config))).rejects.toThrow('cancelled');
+        }, () => readVaultNotes(vault.config, currentCommandExecution()))).rejects.toThrow('cancelled');
         expect(readFile).toHaveBeenCalledTimes(1);
     });
 

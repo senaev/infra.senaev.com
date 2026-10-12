@@ -4,9 +4,11 @@ import {
     afterEach, describe, expect, it, vi,
 } from 'vitest';
 
+import { scheduleDeadline } from '../utils/process/scheduleDeadline';
+
 import { OperationManager, executionTimeout } from './OperationManager';
 import {
-    operationCheckpoint, operationContext, scheduleDeadline, withOperationContext,
+    currentCommandExecution, operationContext, withOperationContext,
 } from './operationContext';
 
 afterEach(() => {
@@ -801,7 +803,7 @@ describe('deadline and cooperative cancellation', () => {
             changedPaths: new Set<string>(),
         };
 
-        await expect(withOperationContext(context, operationCheckpoint)).rejects.toThrow('cancelled');
+        await expect(withOperationContext(context, () => currentCommandExecution().checkpoint())).rejects.toThrow('cancelled');
         expect(operationContext()).toBeUndefined();
     });
     it('isolates overlapping asynchronous contexts, abort and changed paths', async () => {
@@ -823,19 +825,19 @@ describe('deadline and cooperative cancellation', () => {
             entered.resolve();
             await gate.promise;
             expect(operationContext()).toBe(first);
-            await expect(operationCheckpoint()).rejects.toThrow('first cancelled');
+            await expect(currentCommandExecution().checkpoint()).rejects.toThrow('first cancelled');
         });
 
         await entered.promise;
         await withOperationContext(second, async () => {
-            await operationCheckpoint();
+            await currentCommandExecution().checkpoint();
             expect(operationContext()).toBe(second);
             operationContext()?.changedPaths.add('second.md');
             operationContext()?.log('stdout', 'second');
             firstController.abort(new Error('first cancelled'));
             gate.resolve();
             await pending;
-            await operationCheckpoint();
+            await currentCommandExecution().checkpoint();
             expect(operationContext()).toBe(second);
         });
         expect(secondController.signal.aborted).toBe(false);

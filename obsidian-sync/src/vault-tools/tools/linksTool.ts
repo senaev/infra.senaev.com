@@ -1,6 +1,7 @@
 import { posix } from 'node:path';
 
-import { operationCheckpoint } from 'senaev-utils/src/operations/operationContext';
+import { createCommandAdapter } from 'senaev-utils/src/toolServer/createCommandAdapter';
+import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { LINKS_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
 import {
     optionalCappedInteger, optionalEnum, requiredNonEmptyString,
@@ -83,13 +84,15 @@ export function createBacklinkPrefilter(targetPath: string, aliases: readonly st
     };
 }
 
-/**
- * Outgoing links and backlinks of one note. Backlinks are found by reading and parsing every
- * note on each call; there is no index to go stale.
- */
-export async function linksTool(config: VaultToolsConfig, input: unknown) {
+export type LinksCommandInput = {
+    path: string;
+    direction: 'outgoing' | 'backlinks' | 'both';
+    offset: number;
+    limit: number;
+};
+function parseLinksInput(input: unknown): LinksCommandInput {
     const args = readVaultToolArguments(input, 'links');
-    const path = normalizeVaultPath(requiredNonEmptyString(args, 'path'), 'path');
+    const path = requiredNonEmptyString(args, 'path');
     const direction = optionalEnum(args, 'direction', [
         'outgoing',
         'backlinks',
@@ -104,11 +107,30 @@ export async function linksTool(config: VaultToolsConfig, input: unknown) {
         max: LINKS_LIMITS.maxLimit,
     }) ?? LINKS_LIMITS.defaultLimit;
 
-    await resolveExistingNote(config, path);
+    return {
+        path,
+        direction,
+        offset,
+        limit,
+    };
+}
+
+/**
+ * Outgoing links and backlinks of one note. Backlinks are found by reading and parsing every
+ * note on each call; there is no index to go stale.
+ */
+export async function linksCommand(config: VaultToolsConfig, input: LinksCommandInput, execution: CommandExecution) {
+    execution.throwIfAborted();
+    const path = normalizeVaultPath(input.path, 'path');
+    const {
+        direction, offset, limit,
+    } = input;
+
+    await resolveExistingNote(config, path, execution);
 
     const {
         files, contents, aliasesByNote, scan,
-    } = await readVaultNotes(config);
+    } = await readVaultNotes(config, execution);
     const index = createLinkIndex(files, aliasesByNote);
 
     let outgoing: ReturnType<typeof describeLink>[] | null = null;
@@ -120,7 +142,7 @@ export async function linksTool(config: VaultToolsConfig, input: unknown) {
             link,
         ] of extractLinks(contents.get(path) ?? '').entries()) {
             if (linkIndex % 128 === 0) {
-                await operationCheckpoint();
+                await execution.checkpoint();
             }
 
             outgoing.push(describeLink(link, resolveLink(index, path, link)));
@@ -129,7 +151,10 @@ export async function linksTool(config: VaultToolsConfig, input: unknown) {
 
     const found = direction === 'outgoing'
         ? null
-        : await findBacklinks(index, contents, path, aliasesByNote.get(path) ?? []);
+        : await findBacklinks(index, contents, path, {
+            aliases: aliasesByNote.get(path) ?? [],
+            execution,
+        });
 
     // Fields of the direction that was not asked for are null, so the shape never changes.
     return {
@@ -179,7 +204,7 @@ async function findBacklinks(
     index: LinkIndex,
     contents: ReadonlyMap<string, string>,
     path: string,
-    aliases: readonly string[]
+    { aliases, execution }: { aliases: readonly string[]; execution: CommandExecution }
 ) {
     const isCandidate = createBacklinkPrefilter(path, aliases);
     const sources = new Map<string, { count: number; lines: number[] }>();
@@ -190,7 +215,7 @@ async function findBacklinks(
         source,
         content,
     ] of contents) {
-        await operationCheckpoint();
+        await execution.checkpoint();
         if (source === path || !isCandidate(content)) {
             continue;
         }
@@ -200,7 +225,7 @@ async function findBacklinks(
             link,
         ] of extractLinks(content).entries()) {
             if (linkIndex % 128 === 0) {
-                await operationCheckpoint();
+                await execution.checkpoint();
             }
 
             const resolution = resolveLink(index, source, link);
@@ -242,3 +267,6 @@ async function findBacklinks(
         viaAlias,
     };
 }
+
+export type LinksCommandResult = Awaited<ReturnType<typeof linksCommand>>;
+export const linksTool = createCommandAdapter(parseLinksInput, linksCommand);

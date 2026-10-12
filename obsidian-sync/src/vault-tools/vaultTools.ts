@@ -1,3 +1,4 @@
+import type { CommandAdapter } from 'senaev-utils/src/toolServer/createCommandAdapter';
 import type { VaultCommandName } from 'senaev-utils/src/obsidianVaultTools/vaultCommands';
 
 import { createTool } from './tools/createTool';
@@ -10,7 +11,7 @@ import { readTool } from './tools/readTool';
 import { searchTool } from './tools/searchTool';
 import type { VaultToolsConfig } from './vaultToolsConfig';
 
-export type VaultTool = (config: VaultToolsConfig, input: unknown) => Promise<Record<string, unknown>>;
+export type VaultTool = CommandAdapter<VaultToolsConfig>;
 
 /** Domain command registry; missing implementations fail to compile. */
 export const VAULT_TOOLS: Readonly<Record<VaultCommandName, VaultTool>> = {

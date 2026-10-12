@@ -1,7 +1,8 @@
 import { join, posix } from 'node:path';
 
+import { createCommandAdapter } from 'senaev-utils/src/toolServer/createCommandAdapter';
+import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { readOperationTextFile } from 'senaev-utils/src/toolServer/readOperationTextFile';
-import { operationCheckpoint, throwIfOperationAborted } from 'senaev-utils/src/operations/operationContext';
 import { SEARCH_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 import {
@@ -20,6 +21,7 @@ import {
     isDiaryRangeRequested,
     matchesNoteScope,
     readNoteScope,
+    type NoteScope,
 } from '../noteScope';
 import { readVaultToolArguments } from '../toolArguments';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
@@ -82,7 +84,7 @@ type SearchOptions = {
     maxMatchesPerFile: number;
 };
 
-async function searchNote(path: string, content: string, options: SearchOptions): Promise<FileMatch | null> {
+async function searchNote(path: string, content: string, options: SearchOptions, execution: CommandExecution): Promise<FileMatch | null> {
     const title = posix.basename(path, '.md');
     const matchedQueryIndexes = new Set<number>();
     const titleMatches = options.patterns.flatMap((pattern, index) => (pattern.test(title) ? [index] : []));
@@ -98,7 +100,7 @@ async function searchNote(path: string, content: string, options: SearchOptions)
         line,
     ] of lines.entries()) {
         if (lineIndex % 128 === 0) {
-            await operationCheckpoint();
+            await execution.checkpoint();
         }
 
         const lineQueries = options.patterns.flatMap((pattern, index) => (pattern.test(line) ? [index] : []));
@@ -148,11 +150,18 @@ function byRelevance(a: FileMatch, b: FileMatch): number {
     return b.matchedQueries.length - a.matchedQueries.length || Number(b.titleMatched) - Number(a.titleMatched) || b.hitCount - a.hitCount || a.path.localeCompare(b.path);
 }
 
-/**
- * Searches the text of every note in scope in one pass. The whole scope is always scanned,
- * also when the response limit is reached early, so the totals are exact.
- */
-export async function searchTool(config: VaultToolsConfig, input: unknown) {
+export type SearchCommandInput = {
+    scope: NoteScope;
+    queries: string[];
+    wholeWord: boolean;
+    requireAll: boolean;
+    contextLines: number;
+    maxMatchesPerFile: number;
+    sort: 'relevance' | 'path';
+    offset: number;
+    limit: number;
+};
+function parseSearchInput(input: unknown): SearchCommandInput {
     const args = readVaultToolArguments(input, 'search');
     const queries = optionalStringArray(args, 'queries', {
         maxItems: SEARCH_LIMITS.maxQueries,
@@ -165,9 +174,8 @@ export async function searchTool(config: VaultToolsConfig, input: unknown) {
 
     const scope = readNoteScope(args);
     const isWholeWord = optionalBoolean(args, 'wholeWord') === true;
-    const options: SearchOptions = {
+    const options = {
         queries,
-        patterns: queries.map((query) => compileQuery(query, isWholeWord)),
         requireAll: optionalEnum(args, 'match', [
             'any',
             'all',
@@ -194,19 +202,42 @@ export async function searchTool(config: VaultToolsConfig, input: unknown) {
         max: SEARCH_LIMITS.maxLimit,
     }) ?? SEARCH_LIMITS.defaultLimit;
 
-    const walk = await walkVault(config, scope.folder);
+    return {
+        scope,
+        ...options,
+        wholeWord: isWholeWord,
+        sort,
+        offset,
+        limit,
+    };
+}
+
+/**
+ * Searches the text of every note in scope in one pass. The whole scope is always scanned,
+ * also when the response limit is reached early, so the totals are exact.
+ */
+export async function searchCommand(config: VaultToolsConfig, input: SearchCommandInput, execution: CommandExecution) {
+    execution.throwIfAborted();
+    const {
+        scope, queries, sort, offset, limit,
+    } = input;
+    const options: SearchOptions = {
+        ...input,
+        patterns: queries.map((query) => compileQuery(query, input.wholeWord)),
+    };
+    const walk = await walkVault(config, scope.folder, execution);
     const paths = walk.files.filter((path) => isNotePath(config, path) && matchesNoteScope(config, scope, path));
     const fileMatches: FileMatch[] = [];
     const readErrors: PathError[] = [];
 
     for (const path of paths) {
-        await operationCheckpoint();
+        await execution.checkpoint();
         let content: string;
 
         try {
-            content = await readOperationTextFile(join(config.root, path));
+            content = await readOperationTextFile(join(config.root, path), execution);
         } catch (error) {
-            throwIfOperationAborted();
+            execution.throwIfAborted();
             readErrors.push({
                 path,
                 message: stringifyUnknownError(error),
@@ -214,7 +245,7 @@ export async function searchTool(config: VaultToolsConfig, input: unknown) {
             continue;
         }
 
-        const fileMatch = await searchNote(path, content, options);
+        const fileMatch = await searchNote(path, content, options, execution);
         const diaryDate = getDiaryDate(config, path);
 
         if (fileMatch !== null) {
@@ -252,3 +283,6 @@ export async function searchTool(config: VaultToolsConfig, input: unknown) {
         files: page,
     };
 }
+
+export type SearchCommandResult = Awaited<ReturnType<typeof searchCommand>>;
+export const searchTool = createCommandAdapter(parseSearchInput, searchCommand);

@@ -8,6 +8,8 @@ import {
     afterEach, beforeEach, describe, expect, test,
 } from 'vitest';
 
+import { createCommandExecution } from '../../../commands/CommandExecution';
+
 import { walkDirectory } from './walkDirectory';
 
 let root: string;
@@ -33,7 +35,7 @@ afterEach(async () => {
 
 describe('walkDirectory', () => {
     test('returns every file at any depth as root-relative paths, and never follows symlinks', async () => {
-        const { files, errors } = await walkDirectory(root);
+        const { files, errors } = await walkDirectory(root, '', {}, createCommandExecution());
 
         expect(files.sort()).toEqual([
             'a/b/two.txt',
@@ -48,8 +50,8 @@ describe('walkDirectory', () => {
         const filtered = await walkDirectory(root, '', {
             includeFolder: (path) => path !== 'skip',
             includeFile: (path) => path.endsWith('.md'),
-        });
-        const below = await walkDirectory(root, 'a');
+        }, createCommandExecution());
+        const below = await walkDirectory(root, 'a', {}, createCommandExecution());
 
         expect(filtered.files.sort()).toEqual([
             'a/one.md',
@@ -62,7 +64,7 @@ describe('walkDirectory', () => {
     });
 
     test('reports a folder that cannot be read and goes on', async () => {
-        const { files, errors } = await walkDirectory(root, 'missing');
+        const { files, errors } = await walkDirectory(root, 'missing', {}, createCommandExecution());
 
         expect(files).toEqual([]);
         expect(errors.map((error) => error.path)).toEqual(['missing']);

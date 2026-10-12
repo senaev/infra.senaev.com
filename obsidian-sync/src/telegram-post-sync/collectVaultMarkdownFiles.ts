@@ -1,5 +1,6 @@
 import { posix } from 'node:path';
 
+import { createCommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { walkDirectory } from 'senaev-utils/src/utils/fs/walkDirectory/walkDirectory';
 
 import { OBSIDIAN_VAULT_PATH } from '../env';
@@ -12,7 +13,7 @@ export async function collectVaultMarkdownFiles(): Promise<string[]> {
     const { files, errors } = await walkDirectory(OBSIDIAN_VAULT_PATH, '', {
         includeFolder: (path) => !IGNORED_DIRECTORIES.has(posix.basename(path)),
         includeFile: (path) => path.endsWith('.md'),
-    });
+    }, createCommandExecution());
 
     // A directory that vanished mid-walk is normal while sync is running, and one we cannot
     // read is not worth failing the whole pass over.
