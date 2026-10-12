@@ -107,3 +107,9 @@ Removed the entire Agent data boundaries section from root AGENTS.md. Deployment
 ## Result
 
 Root AGENTS.md restored to the main version; the PR no longer introduces this section. Publishing this requested documentation correction with the existing verification journal.
+
+## Findings
+
+### 2026-10-12T16:46:43.780320+00:00 — Pre-merge review correction
+
+User authorized merge, deployment verification and final main journal commit. Root boundary section removal published in76e3735; all six checks PASS162files/1258tests, exact-HEAD CI38279470963 SUCCESS. CodeRabbit identified bot0.26.4 requires Node ^22.14.0 || ^23.6.0 || >=24 and rejects Node20 at CLI startup. Verified the published npm tarball package.json and dist/runtime/node-version.js. Changed bot base image to node:22-alpine before merging; image build/deploy will verify installation and startup. No merge yet.
