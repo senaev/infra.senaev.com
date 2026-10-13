@@ -5,9 +5,12 @@ on:
     branches: [main, master]
     paths:
       - "opencode-serve/**"
-      # The image also runs code-tools, which links senaev-utils from the repo.
-      - "code-tools/**"
-      - "senaev-utils/**"
+      - ".github/workflows/build-opencode-serve.yml"
+  pull_request:
+    paths:
+      - "opencode-serve/**"
+      - ".github/workflows/build-service.yml"
+      - ".github/workflows/build-opencode-serve.yml"
   workflow_dispatch:
 
 jobs:
@@ -27,5 +30,6 @@ jobs:
       context: .
       dockerfile: ./opencode-serve/Dockerfile
       registry_image: ghcr.io/senaev/opencode-serve
+      publish_image: ${{ github.event_name != 'pull_request' }}
       deployment_name: opencode-telegram
     secrets: inherit

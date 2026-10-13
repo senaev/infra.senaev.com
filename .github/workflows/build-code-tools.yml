@@ -1,0 +1,42 @@
+name: code-tools
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "code-tools/**"
+      - "senaev-utils/**"
+      - ".github/workflows/build-code-tools.yml"
+  pull_request:
+    paths:
+      - "code-tools/**"
+      - "senaev-utils/**"
+      - "opencode-serve/**"
+      - ".github/workflows/build-service.yml"
+      - ".github/workflows/build-code-tools.yml"
+  workflow_dispatch:
+
+jobs:
+  check:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/check.yml
+
+  build-and-push:
+    needs: check
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/build-service.yml
+    with:
+      workflow_title: code-tools
+      context: .
+      dockerfile: ./code-tools/Dockerfile
+      # A separate image tag reuses the existing package's cluster pull access.
+      registry_image: ghcr.io/senaev/opencode-serve
+      image_tag: code-tools
+      publish_image: ${{ github.event_name != 'pull_request' }}
+      deployment_name: code-tools
+      # During the first split, the Helm workflow creates it after building the images.
+      allow_missing_deployment: true
+    secrets: inherit

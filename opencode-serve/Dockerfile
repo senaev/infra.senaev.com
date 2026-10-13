@@ -1,9 +1,8 @@
 FROM debian:bookworm-slim
 
-# Built from the repository root, because code-tools links senaev-utils by path.
+# Built from the repository root; Code Tools now has its own image.
 #
-# The tools are for the opencode agent and for the code-* MCP tools alike: both run
-# commands in /projects/git. python3 and helm are there for the checks of infra.senaev.com.
+# The tools are for the OpenCode agent, which runs commands in /projects/git. python3 and helm are there for the checks of infra.senaev.com.
 # Pin OpenCode and verify its release archive before extraction. The baseline x64
 # binary supports hosts without AVX2. Keep yq pinned as well.
 RUN apt-get update \
@@ -27,24 +26,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && node --version && npm --version && helm version --short
 
-WORKDIR /app
-
-# senaev-utils is linked as a symlink, and Node resolves a module's own imports from its
-# real path, so the library's dependencies are installed next to it.
-COPY senaev-utils/package*.json ./senaev-utils/
-COPY code-tools/package*.json ./code-tools/
-
-WORKDIR /app/senaev-utils
-RUN npm ci --omit=dev
-
-WORKDIR /app/code-tools
-RUN npm ci --omit=dev
-
-COPY senaev-utils/src /app/senaev-utils/src
-COPY code-tools /app/code-tools
 COPY opencode-serve/start.sh /app/start.sh
 
 WORKDIR /
-
-EXPOSE 4096 8080
+EXPOSE 4096
 CMD ["bash", "/app/start.sh"]
