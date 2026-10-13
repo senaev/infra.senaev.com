@@ -12,65 +12,8 @@ jobs:
       contents: read
     uses: ./.github/workflows/check.yml
 
-  plan-images:
-    runs-on: ubuntu-latest
-    outputs:
-      split_changed: ${{ steps.changes.outputs.split_changed }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - id: changes
-        env:
-          BEFORE: ${{ github.event.before }}
-        run: |
-          if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null || ! git diff --quiet "$BEFORE" "$GITHUB_SHA" -- provisioning/helm/senaev-com/templates/code-tools.yaml provisioning/helm/senaev-com/templates/opencode-serve.yaml; then
-            echo "split_changed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "split_changed=false" >> "$GITHUB_OUTPUT"
-          fi
-
-  code-tools-image:
-    needs: [check, plan-images]
-    if: needs.plan-images.outputs.split_changed == 'true'
-    permissions:
-      contents: read
-      packages: write
-    uses: ./.github/workflows/build-service.yml
-    with:
-      workflow_title: code-tools image for Helm
-      context: .
-      dockerfile: ./code-tools/Dockerfile
-      # A separate image tag reuses the existing package's cluster pull access.
-      registry_image: ghcr.io/senaev/opencode-serve
-      image_tag: code-tools
-      deployment_name: code-tools
-      restart_deployment: false
-    secrets: inherit
-
-  opencode-image:
-    needs: [check, plan-images]
-    if: needs.plan-images.outputs.split_changed == 'true'
-    permissions:
-      contents: read
-      packages: write
-    uses: ./.github/workflows/build-service.yml
-    with:
-      workflow_title: opencode image for Helm
-      context: .
-      dockerfile: ./opencode-serve/Dockerfile
-      registry_image: ghcr.io/senaev/opencode-serve
-      deployment_name: opencode-telegram
-      restart_deployment: false
-    secrets: inherit
-
   update-charts:
-    needs: [check, plan-images, code-tools-image, opencode-image]
-    if: >-
-      always() && !cancelled() &&
-      needs.check.result == 'success' && needs.plan-images.result == 'success' &&
-      (needs.code-tools-image.result == 'success' || needs.code-tools-image.result == 'skipped') &&
-      (needs.opencode-image.result == 'success' || needs.opencode-image.result == 'skipped')
+    needs: check
     runs-on: ubuntu-latest
     strategy:
       matrix:

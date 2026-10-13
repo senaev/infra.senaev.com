@@ -11,7 +11,6 @@ on:
     paths:
       - "code-tools/**"
       - "senaev-utils/**"
-      - "opencode-serve/**"
       - ".github/workflows/build-service.yml"
       - ".github/workflows/build-code-tools.yml"
   workflow_dispatch:
@@ -37,6 +36,4 @@ jobs:
       image_tag: code-tools
       publish_image: ${{ github.event_name != 'pull_request' }}
       deployment_name: code-tools
-      # During the first split, the Helm workflow creates it after building the images.
-      allow_missing_deployment: true
     secrets: inherit

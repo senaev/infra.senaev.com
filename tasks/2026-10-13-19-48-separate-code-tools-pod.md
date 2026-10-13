@@ -50,3 +50,21 @@ kubectl -n senaev-com rollout status deployment/opencode-telegram --timeout=300s
 kubectl -n senaev-com get pods -l 'app in (code-tools,opencode-telegram)' -o wide
 ```
 Then run public MCP projects, read, search and run calls, and test the Telegram bot. Confirm `/projects/git` contains existing repositories in both pods. Any restart test changes cluster state and should be explicitly scheduled; it invalidates Code Tools operation IDs.
+
+### 2026-10-13 — Deployment verified; follow-up cleanup
+PR #88 merge commit: `082c48ffb038082a128ba641b51fa6f028910ce6`.
+All four workflows completed successfully: Check, opencode-serve, code-tools and Update Helm Charts.
+Public MCP projects/read/search/run succeeded; the run hostname is `code-tools-55578c56df-6hcs6`, confirming the separate pod. Obsidian read also succeeded.
+
+Prepare a separate PR to remove both `allow_missing_deployment` and `restart_deployment`.
+Extract `build-image.yml` for image-only Helm prerequisites; `build-service.yml` builds then restarts the now-existing Deployment. Also explicitly pull the mutable Code Tools image tag on every restart, preventing stale cached images.
+
+### 2026-10-13 — Scope refined for steady-state operation
+Remove all migration-only Helm image planning and prerequisite builds as well as both deployment flags. A separate build-only workflow is therefore unnecessary and is not included in this PR. Keep the existing shared service workflow with strict restart/status calls for an existing Deployment, PR-only image validation, image tag selection, Helm checks/wait and the permanent pod/storage/probe configuration.
+Remove the irrelevant OpenCode source trigger from Code Tools PR image checks. Retain `imagePullPolicy: Always` to refresh its mutable non-latest tag.
+
+### 2026-10-13 — Follow-up verified
+All six `npm run simple-checks` checks exited 0, including 1258 tests. Actionlint passed across all workflows, Helm lint passed and `git diff --check` passed. No migration flags/planning remain in workflow code or permanent instructions. Code Tools `/health` returned `{"status":"ok"}`.
+
+## Follow-up result
+Prepared steady-state cleanup on `refactor/remove-deployment-build-flags` for a separate PR. Deployment monitoring and public MCP checks are complete. This cleanup is not merged or deployed; explicit merge approval is required.
