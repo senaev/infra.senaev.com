@@ -41,7 +41,9 @@ jobs:
       workflow_title: code-tools image for Helm
       context: .
       dockerfile: ./code-tools/Dockerfile
-      registry_image: ghcr.io/senaev/code-tools
+      # A separate image tag reuses the existing package's cluster pull access.
+      registry_image: ghcr.io/senaev/opencode-serve
+      image_tag: code-tools
       deployment_name: code-tools
       restart_deployment: false
     secrets: inherit

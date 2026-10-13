@@ -54,7 +54,7 @@ spec:
               mountPath: /projects/git
       containers:
         - name: code-tools
-          image: ghcr.io/senaev/code-tools:latest
+          image: ghcr.io/senaev/opencode-serve:code-tools
           ports:
             - name: http
               containerPort: 8080

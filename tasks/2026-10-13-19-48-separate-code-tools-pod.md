@@ -37,6 +37,9 @@ Tests 1258 passed (1258)
 ```
 `npm run simple-checks`: all six checks exited 0. `actionlint` passed for all changed workflows; `git diff --check` passed. No Docker daemon is installed in the MCP pod, so image builds are checked by the PR workflows, without publishing or deploying.
 
+### 2026-10-13 — Registry access refinement
+Use the dedicated `code-tools` tag in the existing `ghcr.io/senaev/opencode-serve` package. This keeps the existing cluster pull access instead of introducing a new package whose visibility may require setup. The independent image build and Deployment are unchanged.
+
 ## Result
 Prepared the split for review on `refactor/separate-code-tools-pod`. No production resources changed. Code Tools updates will be independent of OpenCode, while retaining short Recreate outages, shared working trees and in-memory operation state. Cross-process edit coordination remains necessary.
 

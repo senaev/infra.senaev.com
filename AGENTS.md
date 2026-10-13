@@ -166,7 +166,8 @@ Credentials (`SUPABASE_PROJECT_URL`, `SUPABASE_PUBLISHABLE_KEY`) are stored in V
 
 ## Code Tools and OpenCode
 
-Code Tools has its own image (`code-tools/Dockerfile`), Deployment and Service
+Code Tools has its own image (`code-tools/Dockerfile`,
+`ghcr.io/senaev/opencode-serve:code-tools`), Deployment and Service
 (`provisioning/helm/senaev-com/templates/code-tools.yaml`). OpenCode and its Telegram
 bot stay in the `opencode-telegram` Deployment. Both pods mount the existing
 `opencode-telegram-git` PVC at `/projects/git`; required pod affinity puts Code Tools

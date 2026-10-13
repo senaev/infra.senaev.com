@@ -15,6 +15,9 @@ on:
       registry_image:
         required: true
         type: string
+      image_tag:
+        type: string
+        default: latest
       deployment_name:
         required: true
         type: string
@@ -57,7 +60,7 @@ jobs:
           file: ${{ inputs.dockerfile }}
           platforms: linux/amd64
           push: ${{ inputs.publish_image }}
-          tags: ${{ inputs.registry_image }}:latest
+          tags: ${{ inputs.registry_image }}:${{ inputs.image_tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
