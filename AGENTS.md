@@ -179,7 +179,7 @@ OpenCode and Code Tools. Do not enable overlapping Code Tools replicas without
 addressing operation routing and filesystem coordination.
 
 Code Tools builds independently via `.github/workflows/build-code-tools.yml`.
-The Helm workflow checks the repository and builds both images before applying
-changes to either pod's template. Its image-only builds do not restart deployments;
-Helm waits for readiness. The initial Code Tools build may find no Deployment yet;
-it publishes the image and lets Helm create the resource.
+Service releases publish their image and restart an existing Deployment. PR image
+checks do neither. The Helm workflow checks the repository and waits for readiness;
+it does not build images or restart services outside the chart changes.
+Code Tools explicitly uses `imagePullPolicy: Always` for its mutable `code-tools` tag.

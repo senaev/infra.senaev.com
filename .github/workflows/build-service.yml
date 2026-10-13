@@ -24,12 +24,6 @@ on:
       publish_image:
         type: boolean
         default: true
-      restart_deployment:
-        type: boolean
-        default: true
-      allow_missing_deployment:
-        type: boolean
-        default: false
 
 jobs:
   build-and-push:
@@ -65,7 +59,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Restart deployment via SSH
-        if: inputs.restart_deployment && inputs.publish_image
+        if: inputs.publish_image
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.REMOTE_HOST }}
@@ -73,13 +67,6 @@ jobs:
           key: ${{ secrets.REMOTE_SSH_KEY }}
           script: |
             set -e
-            if [ "${{ inputs.allow_missing_deployment }}" = "true" ]; then
-              existing=$(kubectl -n senaev-com get deployment/${{ inputs.deployment_name }} --ignore-not-found -o name)
-              if [ -z "$existing" ]; then
-                echo "First deployment: image published; Helm will create the Deployment."
-                exit 0
-              fi
-            fi
             kubectl -n senaev-com rollout restart deployment/${{ inputs.deployment_name }}
             kubectl -n senaev-com rollout status deployment/${{ inputs.deployment_name }} --timeout=180s
 
