@@ -230,7 +230,7 @@ const create: ToolDefinition = {
     title: 'Create an Obsidian note',
     description: [
         'Creates a new Markdown note in the owner\'s Obsidian vault, with missing folders. Fails if the note already exists.',
-        'Returns "diff", the unified diff of the new file; show it to the user in a ```diff code block.',
+        'Returns "diff", the unified diff of the new file; show it to the user in a ```diff code block. Display the returned diff unchanged, preserving all context lines and headers.',
         VAULT_RULES,
     ].join(' '),
     inputSchema: {
@@ -271,7 +271,7 @@ const patch: ToolDefinition = {
         '"replace" replaces the exact text "find", which must occur exactly once, with "replace";',
         '"replaceSection" replaces the body under the heading "section" with "content" and keeps the heading;',
         '"setFrontmatter" sets the given "properties", and a null value deletes a property.',
-        'Returns "diff", the unified diff of the whole file including frontmatter; show it to the user in a ```diff code block.',
+        'Returns "diff", the unified diff of the whole file including frontmatter; show it to the user in a ```diff code block. Display the returned diff unchanged, preserving all context lines and headers.',
         'The result has no new hash: to edit the same note again, read it again first.',
         VAULT_RULES,
     ].join(' '),
@@ -349,7 +349,7 @@ const move: ToolDefinition = {
         'Renames a note in the owner\'s Obsidian vault or moves it to another folder, with missing folders. Fails if a file already exists at the new path.',
         'Like Obsidian, it updates the links to the note in all other notes, and the relative links inside the moved note;',
         'a rewritten wikilink keeps its heading, block reference and display text.',
-        'Returns "diffs", the unified diff of every note whose text changed; show them to the user in ```diff code blocks.',
+        'Returns "diffs", the unified diff of every note whose text changed; show them to the user in ```diff code blocks. Display each returned diff unchanged, preserving all context lines and headers.',
         '"skippedLinks" lists links it did not change because they were ambiguous or matched only an alias before the move; tell the user about them.',
         VAULT_RULES,
     ].join(' '),
