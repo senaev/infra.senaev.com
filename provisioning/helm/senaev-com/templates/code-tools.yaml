@@ -1,0 +1,146 @@
+{{- if .Values.opencodeTelegram.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: code-tools
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  # One operation manager owns the shared working trees; upgrades still have a short outage.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: code-tools
+  template:
+    metadata:
+      labels:
+        app: code-tools
+        admission.datadoghq.com/enabled: "true"
+        tags.datadoghq.com/service: code-tools
+        tags.datadoghq.com/env: prod
+        tags.datadoghq.com/version: latest
+      annotations:
+        secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
+    spec:
+      # ReadWriteOnce permits both pods to mount the existing disk on the same node.
+      nodeSelector:
+        vps: {{ .Values.opencodeTelegram.vps }}
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: opencode-telegram
+              topologyKey: kubernetes.io/hostname
+      initContainers:
+        - name: git-init
+          image: alpine/git:latest
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              mkdir -p /root/.ssh
+              cp /tmp/ssh/id_rsa /root/.ssh/id_rsa
+              chmod 600 /root/.ssh/id_rsa
+              ssh-keyscan github.com >> /root/.ssh/known_hosts 2>/dev/null
+              mkdir -p /projects/git
+          volumeMounts:
+            - name: ssh-key
+              mountPath: /tmp/ssh
+              readOnly: true
+            - name: ssh-dir
+              mountPath: /root/.ssh
+            - name: projects-git
+              mountPath: /projects/git
+      containers:
+        - name: code-tools
+          image: ghcr.io/senaev/code-tools:latest
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: CODE_TOOLS_PROJECTS_PATH
+              value: /projects/git
+            - name: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
+            - name: GIT_AUTHOR_NAME
+              value: Andrei Senaev
+            - name: GIT_AUTHOR_EMAIL
+              value: andrei.senaev@gmail.com
+            - name: GIT_COMMITTER_NAME
+              value: Andrei Senaev
+            - name: GIT_COMMITTER_EMAIL
+              value: andrei.senaev@gmail.com
+            - name: GH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: GH_TOKEN
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 2
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+          volumeMounts:
+            - name: projects-git
+              mountPath: /projects/git
+            - name: ssh-dir
+              mountPath: /root/.ssh
+      volumes:
+        - name: ssh-key
+          secret:
+            secretName: senaev-com-kv-secrets
+            items:
+              - key: TELEGRAM_OPENCODE_SSH_PRIVATE_KEY
+                path: id_rsa
+                mode: 0600
+        - name: ssh-dir
+          emptyDir: {}
+        - name: projects-git
+          persistentVolumeClaim:
+            claimName: opencode-telegram-git
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: code-tools
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: code-tools
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+---
+# Full-shell access remains limited to cluster-helper, with the internal token as well.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: code-tools
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: code-tools
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: cluster-helper
+      ports:
+        - protocol: TCP
+          port: 8080
+{{- end }}

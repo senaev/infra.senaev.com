@@ -18,6 +18,15 @@ on:
       deployment_name:
         required: true
         type: string
+      publish_image:
+        type: boolean
+        default: true
+      restart_deployment:
+        type: boolean
+        default: true
+      allow_missing_deployment:
+        type: boolean
+        default: false
 
 jobs:
   build-and-push:
@@ -34,6 +43,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
+        if: inputs.publish_image
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -46,12 +56,13 @@ jobs:
           context: ${{ inputs.context }}
           file: ${{ inputs.dockerfile }}
           platforms: linux/amd64
-          push: true
+          push: ${{ inputs.publish_image }}
           tags: ${{ inputs.registry_image }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Restart deployment via SSH
+        if: inputs.restart_deployment && inputs.publish_image
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.REMOTE_HOST }}
@@ -59,11 +70,18 @@ jobs:
           key: ${{ secrets.REMOTE_SSH_KEY }}
           script: |
             set -e
+            if [ "${{ inputs.allow_missing_deployment }}" = "true" ]; then
+              existing=$(kubectl -n senaev-com get deployment/${{ inputs.deployment_name }} --ignore-not-found -o name)
+              if [ -z "$existing" ]; then
+                echo "First deployment: image published; Helm will create the Deployment."
+                exit 0
+              fi
+            fi
             kubectl -n senaev-com rollout restart deployment/${{ inputs.deployment_name }}
             kubectl -n senaev-com rollout status deployment/${{ inputs.deployment_name }} --timeout=180s
 
       - name: Notify Telegram
-        if: always()
+        if: always() && inputs.publish_image
         uses: ./.github/actions/notify-telegram
         with:
           bot_token: ${{ secrets.TG_BOT_TOKEN }}
