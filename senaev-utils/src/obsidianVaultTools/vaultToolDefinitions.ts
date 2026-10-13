@@ -1,4 +1,7 @@
 import {
+    DIFF_PRESENTATION_DESCRIPTION, MUTATION_CANCELLATION_DESCRIPTION, PAGED_RESULT_DESCRIPTION,
+} from '../toolServer/toolDescriptions';
+import {
     createManagedToolDescription, MANAGED_TOOL_PROPERTIES, OPERATION_TOOL_DEFINITIONS,
 } from '../operations/operationToolDefinitions';
 import {
@@ -31,7 +34,7 @@ export const OBSIDIAN_TOOL_PREFIX = 'obsidian-';
 // The rules themselves live only in the vault's AGENTS.md. MCP `instructions` were tried and
 // dropped: ChatGPT read AGENTS.md through this sentence anyway (see
 // tasks/2026-10-10-obsidian-mcp-vault-rules-and-diary-tool.md in infra.senaev.com).
-const VAULT_RULES = `${createManagedToolDescription(OBSIDIAN_TOOL_PREFIX)} Cancellation does not roll back published changes; inspect operation.changedPaths. Move can leave the new note and only some rewritten backlinks when cancelled. If the vault rules from the root AGENTS.md are not in your context, read AGENTS.md with obsidian-read first.`;
+const VAULT_RULES = `${createManagedToolDescription(OBSIDIAN_TOOL_PREFIX)} ${MUTATION_CANCELLATION_DESCRIPTION} Move can leave the new note and only some rewritten backlinks when cancelled. If the vault rules from the root AGENTS.md are not in your context, read AGENTS.md with obsidian-read first.`;
 
 const DIARY_RANGE_PROPERTIES = {
     diaryFrom: {
@@ -63,7 +66,7 @@ const list: ToolDefinition = {
         'Lists notes (.md files) and folders in the owner\'s Obsidian vault.',
         'Without filters it lists one folder level. With "recursive", "glob" or a diary range it lists matching notes at any depth.',
         'Use a diary range to find the diary entries of a period before you read them.',
-        'The result is paged: when "nextOffset" is not null, call again with "offset" set to it.',
+        PAGED_RESULT_DESCRIPTION,
         VAULT_RULES,
     ].join(' '),
     inputSchema: {
@@ -230,7 +233,8 @@ const create: ToolDefinition = {
     title: 'Create an Obsidian note',
     description: [
         'Creates a new Markdown note in the owner\'s Obsidian vault, with missing folders. Fails if the note already exists.',
-        'Returns "diff", the unified diff of the new file; show it to the user in a ```diff code block.',
+        'Returns "diff", the unified diff of the new file.',
+        DIFF_PRESENTATION_DESCRIPTION,
         VAULT_RULES,
     ].join(' '),
     inputSchema: {
@@ -271,7 +275,8 @@ const patch: ToolDefinition = {
         '"replace" replaces the exact text "find", which must occur exactly once, with "replace";',
         '"replaceSection" replaces the body under the heading "section" with "content" and keeps the heading;',
         '"setFrontmatter" sets the given "properties", and a null value deletes a property.',
-        'Returns "diff", the unified diff of the whole file including frontmatter; show it to the user in a ```diff code block.',
+        'Returns "diff", the unified diff of the whole file including frontmatter.',
+        DIFF_PRESENTATION_DESCRIPTION,
         'The result has no new hash: to edit the same note again, read it again first.',
         VAULT_RULES,
     ].join(' '),
@@ -349,7 +354,8 @@ const move: ToolDefinition = {
         'Renames a note in the owner\'s Obsidian vault or moves it to another folder, with missing folders. Fails if a file already exists at the new path.',
         'Like Obsidian, it updates the links to the note in all other notes, and the relative links inside the moved note;',
         'a rewritten wikilink keeps its heading, block reference and display text.',
-        'Returns "diffs", the unified diff of every note whose text changed; show them to the user in ```diff code blocks.',
+        'Returns "diffs", the unified diff of every note whose text changed.',
+        DIFF_PRESENTATION_DESCRIPTION,
         '"skippedLinks" lists links it did not change because they were ambiguous or matched only an alias before the move; tell the user about them.',
         VAULT_RULES,
     ].join(' '),

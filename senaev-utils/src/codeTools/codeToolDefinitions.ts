@@ -1,4 +1,7 @@
 import {
+    DIFF_PRESENTATION_DESCRIPTION, MUTATION_CANCELLATION_DESCRIPTION, PAGED_RESULT_DESCRIPTION,
+} from '../toolServer/toolDescriptions';
+import {
     createManagedToolDescription, MANAGED_TOOL_PROPERTIES, OPERATION_TOOL_DEFINITIONS,
 } from '../operations/operationToolDefinitions';
 import {
@@ -115,7 +118,7 @@ const list: ToolDefinition = {
     description: [
         'Lists the files and folders of a project. Files ignored by .gitignore and the .git folder are not shown.',
         'Without "recursive" or "glob" it lists one folder level; with them it lists matching files at any depth.',
-        'The result is paged: when "nextOffset" is not null, call again with "offset" set to it.',
+        PAGED_RESULT_DESCRIPTION,
         MANAGED_TOOL_DESCRIPTION,
         PROJECT_RULES,
     ].join(' '),
@@ -144,7 +147,7 @@ const search: ToolDefinition = {
         'Each query is literal text unless "regex" is true. A file matches if it contains at least one query.',
         `Up to ${SEARCH_LIMITS.maxQueries} queries per call. Results are grouped by file, with line numbers and context;`,
         'read a file with code-read to see more.',
-        'The result is paged: when "nextOffset" is not null, call again with "offset" set to it.',
+        PAGED_RESULT_DESCRIPTION,
         MANAGED_TOOL_DESCRIPTION,
         PROJECT_RULES,
     ].join(' '),
@@ -245,8 +248,10 @@ const write: ToolDefinition = {
         'Creates a file in a project, with missing folders, or replaces the whole text of an existing file.',
         'To replace an existing file, pass the "hash" from the latest code-read as "expectedHash";',
         'without "expectedHash" the call fails if the file exists. For small changes to a big file, use code-patch.',
-        'Returns "diff", the unified diff of the file; show it to the user in a ```diff code block.',
-        'Cancellation does not roll back published changes; inspect operation.changedPaths. Parallel mutations can conflict; hash checks and per-file atomic publication remain enforced.',
+        'Returns "diff", the unified diff of the file.',
+        DIFF_PRESENTATION_DESCRIPTION,
+        MUTATION_CANCELLATION_DESCRIPTION,
+        'Parallel mutations can conflict; hash checks and per-file atomic publication remain enforced.',
         PROJECT_RULES,
     ].join(' '),
     inputSchema: {
@@ -287,8 +292,9 @@ const patch: ToolDefinition = {
         'Each operation replaces the exact text "find", which must occur exactly once, with "replace"; include enough lines in "find" to make it unique.',
         'The operations run in order, and if one fails, nothing is written.',
         'Returns "diff", the unified diff of the file, and the new "hash", so you can edit the same file again without reading it.',
-        'Show the diff to the user in a ```diff code block.',
-        'Cancellation does not roll back published changes; inspect operation.changedPaths. Parallel mutations can conflict; hash checks and per-file atomic publication remain enforced.',
+        DIFF_PRESENTATION_DESCRIPTION,
+        MUTATION_CANCELLATION_DESCRIPTION,
+        'Parallel mutations can conflict; hash checks and per-file atomic publication remain enforced.',
         PROJECT_RULES,
     ].join(' '),
     inputSchema: {
