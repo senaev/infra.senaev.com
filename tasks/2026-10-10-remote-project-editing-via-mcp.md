@@ -436,7 +436,7 @@ problem), and branch, commit and push. 8 `code-*` tools in code-tools, which run
 `opencode-serve` container; cluster-helper serves them next to the `obsidian-*` tools.
 
 Open points:
-- ❓ The Telegram opencode bot after the NetworkPolicy change: not confirmed yet.
-- ❓ The longest tool call ChatGPT waits for is not known; if a real command needs more than
-  that, add background commands (`run` returns an id, plus status and cancel tools).
+- The Telegram opencode bot works after the NetworkPolicy change (confirmed by the owner).
+- Background commands, the pod rename and the vault removal continue in
+  [`2026-10-10-code-tools-async-and-isolation.md`](2026-10-10-code-tools-async-and-isolation.md).
 - Not in v1: worktrees per session, request-ID deduplication, move and delete tools.
