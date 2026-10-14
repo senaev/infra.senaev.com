@@ -1,8 +1,3 @@
-import { escapeHtml } from 'senaev-utils/src/utils/String/escapeHtml/escapeHtml';
-import {
-    telegramBold, telegramCode, telegramLink,
-} from 'senaev-utils/src/utils/TelegramApi/formatTelegramHtml/formatTelegramHtml';
-
 import type { Milestone, MilestonesOverview } from '../obsidianSyncApi';
 
 /**
@@ -15,27 +10,41 @@ const TYPE_LABELS: Record<string, string> = {
     death: 'death anniversary',
 };
 
+/**
+ * Highlighted (`==text==`) note name, shown literally. Only the characters that can start
+ * inline markdown are backslash-escaped, so a plain name is sent unchanged.
+ */
+function markdownHighlight(text: string): string {
+    return `==${text.replace(/[\\`*_=[\]<>~|]/g, '\\$&')}==`;
+}
+
 function formatMilestone({
     fileName, type, age, emoji,
 }: Milestone): string {
     const label = TYPE_LABELS[type] ?? type;
 
     return [
-        telegramCode(fileName),
-        label === '' ? null : escapeHtml(label),
+        markdownHighlight(fileName),
+        label === '' ? null : label,
         age === null ? null : `(${age})`,
-        escapeHtml(emoji),
+        emoji,
     ].filter((part) => part !== null).join(' ');
 }
 
-function formatSection(title: string, milestones: Milestone[]): string | null {
+/** Replaces the type emoji of tomorrow's milestones, like `tomorrowEmoji` in the plugin. */
+const TOMORROW_EMOJI = '🔜';
+
+function formatSection(title: string, milestones: Milestone[], emoji?: string): string | null {
     if (milestones.length === 0) {
         return null;
     }
 
     return [
-        telegramBold(title),
-        ...milestones.map(formatMilestone),
+        `### ${title}`,
+        ...milestones.map((milestone) => `- ${formatMilestone({
+            ...milestone,
+            emoji: emoji ?? milestone.emoji,
+        })}`),
     ].join('\n');
 }
 
@@ -66,24 +75,21 @@ function formatGenitiveRussianDay(isoDate: string): string {
 }
 
 function formatHeader(isoDate: string): string {
-    return `🔔 ${telegramBold(`Доброе утро ${formatGenitiveRussianDay(isoDate)}`)}`;
+    return `## 🔔 Доброе утро ${formatGenitiveRussianDay(isoDate)}`;
 }
 
 function formatCookingSection(): string {
     return [
-        telegramBold('Что приготовить:'),
-        `🍳 ${telegramLink({
-            text: 'mastereat.ru',
-            url: 'https://mastereat.ru/',
-        })}`,
+        '### Что приготовить',
+        '🍳 [mastereat.ru](https://mastereat.ru/)',
     ].join('\n');
 }
 
-/** The Telegram HTML text of the daily overview message. */
+/** The Telegram rich message markdown of the daily overview. */
 export function formatDailyOverview({ today, tomorrow }: MilestonesOverview): string {
     const sections = [
-        formatSection('Сегодня:', today.milestones),
-        formatSection('Завтра:', tomorrow.milestones),
+        formatSection('Сегодня', today.milestones),
+        formatSection('Завтра', tomorrow.milestones, TOMORROW_EMOJI),
     ].filter((section) => section !== null);
 
     return [

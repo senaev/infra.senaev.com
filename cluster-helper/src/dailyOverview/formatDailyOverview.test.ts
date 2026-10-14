@@ -53,17 +53,17 @@ describe('formatDailyOverview', () => {
         ));
 
         expect(text).toBe([
-            '🔔 <b>Доброе утро субботы, 29 ноября</b>',
+            '## 🔔 Доброе утро субботы, 29 ноября',
             '',
-            '<b>Сегодня:</b>',
-            '<code>@yavladimirov</code> birthday (39) 🥳',
-            '<code>@sk-danil</code> birthday (37) 🥳',
+            '### Сегодня',
+            '- ==@yavladimirov== birthday (39) 🥳',
+            '- ==@sk-danil== birthday (37) 🥳',
             '',
-            '<b>Завтра:</b>',
-            '<code>Mother\'s Day</code> 💃',
+            '### Завтра',
+            '- ==Mother\'s Day== 🔜',
             '',
-            '<b>Что приготовить:</b>',
-            '🍳 <a href="https://mastereat.ru/">mastereat.ru</a>',
+            '### Что приготовить',
+            '🍳 [mastereat.ru](https://mastereat.ru/)',
             '',
             'Хорошего дня, ваш Умный Папа ❤️',
         ].join('\n'));
@@ -85,24 +85,24 @@ describe('formatDailyOverview', () => {
             []
         ));
 
-        expect(text).toContain('<code>@x</code> death anniversary (31) ⚰️\n<code>@x</code> wedding 💍');
+        expect(text).toContain('- ==@x== death anniversary (31) ⚰️\n- ==@x== wedding 💍');
     });
 
     it('leaves out an empty day', () => {
         const text = formatDailyOverview(overview([], [milestone({})]));
 
-        expect(text).not.toContain('<b>Сегодня:</b>');
-        expect(text).toContain('29 ноября</b>\n\n<b>Завтра:</b>');
+        expect(text).not.toContain('### Сегодня');
+        expect(text).toContain('29 ноября\n\n### Завтра');
     });
 
     it('says so when both days are empty', () => {
         expect(formatDailyOverview(overview([], []))).toBe([
-            '🔔 <b>Доброе утро субботы, 29 ноября</b>',
+            '## 🔔 Доброе утро субботы, 29 ноября',
             '',
             'Сегодня и завтра событий нет 🤷‍♂️',
             '',
-            '<b>Что приготовить:</b>',
-            '🍳 <a href="https://mastereat.ru/">mastereat.ru</a>',
+            '### Что приготовить',
+            '🍳 [mastereat.ru](https://mastereat.ru/)',
             '',
             'Хорошего дня, ваш Умный Папа ❤️',
         ].join('\n'));
@@ -120,7 +120,7 @@ describe('formatDailyOverview', () => {
             },
         });
 
-        expect(text).toContain('Доброе утро пятницы, 1 января</b>');
+        expect(text).toContain('## 🔔 Доброе утро пятницы, 1 января\n');
     });
 
     it('puts every weekday in the genitive case', () => {
@@ -144,17 +144,17 @@ describe('formatDailyOverview', () => {
         }).split('\n')[0]);
 
         expect(headers).toEqual([
-            '🔔 <b>Доброе утро воскресенья, 4 января</b>',
-            '🔔 <b>Доброе утро понедельника, 5 января</b>',
-            '🔔 <b>Доброе утро вторника, 6 января</b>',
-            '🔔 <b>Доброе утро среды, 7 января</b>',
-            '🔔 <b>Доброе утро четверга, 8 января</b>',
-            '🔔 <b>Доброе утро пятницы, 9 января</b>',
-            '🔔 <b>Доброе утро субботы, 10 января</b>',
+            '## 🔔 Доброе утро воскресенья, 4 января',
+            '## 🔔 Доброе утро понедельника, 5 января',
+            '## 🔔 Доброе утро вторника, 6 января',
+            '## 🔔 Доброе утро среды, 7 января',
+            '## 🔔 Доброе утро четверга, 8 января',
+            '## 🔔 Доброе утро пятницы, 9 января',
+            '## 🔔 Доброе утро субботы, 10 января',
         ]);
     });
 
-    it('escapes HTML in the note name', () => {
-        expect(formatDailyOverview(overview([milestone({ fileName: 'Tom & <Jerry>' })], []))).toContain('<code>Tom &amp; &lt;Jerry&gt;</code>');
+    it('escapes markdown characters in the note name', () => {
+        expect(formatDailyOverview(overview([milestone({ fileName: '*Tom* & [Jerry] a==b' })], []))).toContain('- ==\\*Tom\\* & \\[Jerry\\] a\\=\\=b== birthday 🥳');
     });
 });
