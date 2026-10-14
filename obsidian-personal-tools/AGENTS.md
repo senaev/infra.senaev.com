@@ -121,6 +121,8 @@ npm test          # tests alone
 
 `build` is `tsc -noEmit` → `npm test` → esbuild, so a type error or a failing test leaves the previous `main.js` in place. Typechecking runs first because the test bundler does not check types.
 
+After changing plugin source or bundled configuration, run `npm run build` and include the updated `.obsidian/plugins/senaev-personal-tools/main.js` in the same commit as the plugin changes. The vault tracks this installed build so Obsidian can load the updated plugin immediately.
+
 Never edit `main.js` directly.
 
 ## Tests
@@ -192,7 +194,7 @@ npm run build
         constants.ts
       types.ts         # TypeScript interfaces and types
     ```
-- **Do not commit build artifacts**: Never commit `node_modules/`, `main.js`, or other generated files to version control.
+- Do not commit `node_modules/`, `tests-dist/`, or other temporary build files.
 - Keep the plugin small. Avoid large dependencies. Prefer browser-compatible packages.
 - Generated output should be placed at the plugin root or `dist/` depending on your build setup. Release artifacts must end up at the top level of the plugin folder in the vault (`main.js`, `manifest.json`, `styles.css`).
 

@@ -3,9 +3,16 @@ import { copyPublicLink } from './copyPublicLink';
 import { copyTextToPublic } from './copyTextToPublic';
 import { searchSelectionInGoogle } from './searchSelectionInGoogle';
 import { translateSelection } from './translateSelection';
+import { insertCurrentDateLink } from './insertCurrentDateLink';
 
 /** Registers all user-facing commands for the plugin. */
 export function registerCommands(plugin: Plugin): void {
+	plugin.addCommand({
+		id: 'insert-current-date-link',
+		name: 'Insert current date link',
+		editorCallback: (editor) => insertCurrentDateLink(editor),
+	});
+
 	plugin.addCommand({
 		id: 'copy-public-link',
 		name: 'Copy public link',
