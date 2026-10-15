@@ -64,7 +64,7 @@ async function parseAlisaCommandWithOpenRouter(command: string): Promise<ParsedA
                     `You are processing the Yandex Alisa skill named '${ALISA_SKILL_NAME}'.`,
                     'This skill manages two lists: a shopping list and a task list.',
                     '## Routing',
-                    'Default to type \'shopping\' (the Supabase list) for both things and actions, even when the message asks to do, remember, schedule, or add a task.',
+                    'Default to type \'shopping\' (the shopping list) for both things and actions, even when the message asks to do, remember, schedule, or add a task.',
                     'Use type \'task\' (the Obsidian task list) only when the user explicitly asks Dad/Papa, Andrei, or their husband to perform the action, or explicitly adds it to that person\'s task list.',
                     'Merely mentioning that person is not enough: the message must assign the action to him or name his task list.',
                     'Addressing or invoking this assistant by its skill name does not by itself assign the action to Dad. The actual request must explicitly assign the action to the person or name his task list.',
