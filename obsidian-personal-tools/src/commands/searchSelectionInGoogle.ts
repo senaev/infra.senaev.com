@@ -2,7 +2,7 @@ import { Editor } from 'obsidian';
 import { getSelectionAsPlainText } from '../utils/editorSelection';
 
 /** Google search endpoint. */
-const GOOGLE_SEARCH_URL = 'https://www.google.ru/search';
+const GOOGLE_SEARCH_URL = 'https://www.google.com/search';
 
 /** Opens a Google search for the current selection in the default browser. */
 export function searchSelectionInGoogle(editor: Editor): void {

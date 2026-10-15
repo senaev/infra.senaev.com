@@ -121,7 +121,9 @@ npm test          # tests alone
 
 `build` is `tsc -noEmit` → `npm test` → esbuild, so a type error or a failing test leaves the previous `main.js` in place. Typechecking runs first because the test bundler does not check types.
 
-After changing plugin source or bundled configuration, run `npm run build` and include the updated `.obsidian/plugins/senaev-personal-tools/main.js` in the same commit as the plugin changes. The vault tracks this installed build so Obsidian can load the updated plugin immediately.
+After changing plugin source or bundled configuration, run `npm run build`.
+
+Do not commit plugin changes by default. Commit only when the user asks. When you commit, include the updated `.obsidian/plugins/senaev-personal-tools/main.js` in the same commit as the plugin changes. The vault tracks this installed build so Obsidian can load the updated plugin immediately.
 
 Never edit `main.js` directly.
 
