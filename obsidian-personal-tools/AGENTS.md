@@ -116,11 +116,11 @@ Run from the `plugins/senaev-personal-tools/` directory:
 ```bash
 npm install       # first time only
 npm run typecheck # TypeScript checks alone
-npm run build     # typecheck → tests → src/main.ts → ../../.obsidian/plugins/senaev-personal-tools/main.js
+npm run build     # bundle src/main.ts → ../../.obsidian/plugins/senaev-personal-tools/main.js
 npm test          # tests alone
 ```
 
-`build` is `tsc -noEmit` → `npm test` → esbuild, so a type error or a failing test leaves the previous `main.js` in place. Typechecking runs first because the test bundler does not check types.
+`build` runs esbuild only. Run `npm run typecheck` and `npm test` separately to validate changes; CI runs them as separate steps before the build. The test bundler does not check types.
 
 After changing plugin source or bundled configuration, run `npm run build`.
 
