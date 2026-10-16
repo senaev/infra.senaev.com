@@ -36,6 +36,13 @@ const MANAGED_TOOL_DESCRIPTION = createManagedToolDescription(CODE_TOOL_PREFIX);
 
 const PROJECT_RULES = 'Before you change a project, read its AGENTS.md (or README.md) with code-read, if it is not in your context yet.';
 
+const GIT_RULES = [
+    'Work on a separate branch for each task: within the user\'s requested scope you may create and switch branches,',
+    'stage files, commit, push the working branch and open a pull request without asking again.',
+    'Get explicit user consent before you commit to the default branch (e.g. "main"), push to it, or merge a pull request into it;',
+    'permission to work on a branch or open a pull request is not permission to merge.',
+].join(' ');
+
 const PROJECT_PROPERTY = {
     project: {
         type: 'string',
@@ -354,7 +361,8 @@ const run: ToolDefinition = {
         MANAGED_TOOL_DESCRIPTION,
         'A nonzero command exit code is retained as a normal command result with operation.state=failed; inspect exitCode before running dependent commands.',
         `Only the last ${formatNumber(RUN_LIMITS.maxOutputChars)} characters of the output are returned, so limit long output yourself, e.g. with "| tail -n 100".`,
-        'Ask the user before a command that publishes or deletes: git push, gh pr create, rm -r, git reset --hard.',
+        'Ask the user before a command that deletes: rm -r, git reset --hard, git branch -D.',
+        GIT_RULES,
         PROJECT_RULES,
     ].join(' '),
     inputSchema: {

@@ -14,16 +14,6 @@ each request or command. Store it in [`tasks/`](tasks/) as
 Keep existing filenames unchanged. Follow [`tasks/AGENTS.md`](tasks/AGENTS.md)
 to maintain the task's working log.
 
-## Git discipline
-
-Work on a separate branch for each task. Within the user's requested scope, agents
-may create and switch working branches, stage files, create commits, push working
-branches, and open pull requests without asking for additional permission.
-
-Explicit user consent is required before committing directly to the repository's
-default branch (`main`), pushing to it, or merging a pull request into it.
-Authorization to work on a branch or open a pull request does not authorize a merge.
-
 ## Sensitive nodes: `proxmox` and `senaev-media`
 
 `proxmox` (bare metal) and `senaev-media` (VM 100 on it) are at home, behind the home
