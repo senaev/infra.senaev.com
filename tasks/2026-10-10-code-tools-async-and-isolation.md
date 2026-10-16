@@ -1,5 +1,7 @@
 # 2026-10-10 — code-tools: background commands and an isolated pod
 
+- [ ] Run code-tools commands in the background in an isolated pod
+
 ## Goal
 
 1. **Background operations.** Every command and every long operation of the `code-*` tools

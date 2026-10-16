@@ -1,5 +1,7 @@
 # Checklist: Helm Chart Setup for OpenCode Server
 
+- [x] Give the OpenCode server cloned git repositories
+
 ## 1. Dependencies and Tools
 
 - [x] Add `git` to Dockerfile / initContainer

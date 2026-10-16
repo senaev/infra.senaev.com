@@ -1,5 +1,7 @@
 # 2026-07-27 — firstvds disk space alert (node-disk-space-low)
 
+- [x] Free disk space on firstvds and clear the alert
+
 > This file is the working log for the investigation. All findings, command outputs,
 > screenshots, hypotheses confirmed/refuted, and the eventual fix must be appended to
 > this file as we go — so the whole debug session lives in one place and is searchable later.

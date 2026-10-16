@@ -1,5 +1,7 @@
 # 2026-10-10 — Obsidian MCP: tool to rename and move notes
 
+- [ ] Add an MCP tool that renames and moves notes and fixes their links
+
 ## Goal
 
 Add the vault tool `move` (`obsidian-move` in ChatGPT): rename a note or move it to another

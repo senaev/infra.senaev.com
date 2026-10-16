@@ -1,5 +1,7 @@
 # 2026-10-04 — k3s cluster has no IPv6 support
 
+- [ ] Make the k3s cluster dual-stack and verify the IPv6 VPN entry
+
 > This file is the working log for the investigation. All findings, command outputs,
 > screenshots, hypotheses confirmed/refuted, and the eventual fix must be appended to
 > this file as we go — so the whole debug session lives in one place and is searchable later.

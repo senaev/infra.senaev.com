@@ -1,5 +1,7 @@
 # 2026-08-15 — firstvds serves no web traffic: HTTPS connects then hangs
 
+- [x] Restore web traffic through firstvds
+
 > This file is the working log for the investigation. All findings, command outputs,
 > screenshots, hypotheses confirmed/refuted, and the eventual fix must be appended to
 > this file as we go — so the whole debug session lives in one place and is searchable later.

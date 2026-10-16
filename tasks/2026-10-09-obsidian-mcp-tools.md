@@ -1,5 +1,7 @@
 # 2026-10-09 — Obsidian vault tools for the ChatGPT MCP connector
 
+- [x] Let ChatGPT read and edit the vault through MCP tools
+
 > This file is the working log for this task. All design decisions, implementation steps,
 > commands run, outputs pasted, blockers hit, and the eventual completion state must be
 > appended to this file as we go — so the whole session lives in one place and is

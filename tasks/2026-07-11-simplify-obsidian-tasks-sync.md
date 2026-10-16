@@ -1,5 +1,7 @@
 # 2026-07-11 — Simplify Obsidian tasks sync architecture
 
+- [x] Write Obsidian tasks through obsidian-sync instead of Supabase
+
 > This file is the working log for this task. All design decisions, implementation steps,
 > commands run, outputs pasted, blockers hit, and the eventual completion state must be
 > appended to this file as we go — so the whole session lives in one place and is

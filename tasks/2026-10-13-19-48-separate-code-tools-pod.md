@@ -1,5 +1,7 @@
 # 2026-10-13 — Separate Code Tools from OpenCode
 
+- [x] Move Code Tools into its own pod
+
 ## Goal
 Move Code Tools into its own pod so it can restart independently of OpenCode and its Telegram bot.
 

@@ -1,5 +1,7 @@
 # 2026-06-10 — Debug VPN connection (firstvds entry point)
 
+- [ ] Make the firstvds VPN entry point work from Russian ISPs
+
 > **This file is the working log for the investigation.** All findings, command outputs, screenshots, hypotheses confirmed/refuted, and the eventual fix must be appended to this file as we go — so the whole debug session lives in one place and is searchable later.
 >
 > Format: append new dated sections under `## Findings` as work proceeds. Don't rewrite earlier sections — annotate them.

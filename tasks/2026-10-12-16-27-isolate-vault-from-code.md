@@ -1,5 +1,7 @@
 # 2026-10-12 — Isolate Obsidian Vault from code containers
 
+- [x] Remove the Obsidian vault mount from code containers
+
 ## Goal
 
 Keep Vault filesystem access in obsidian-sync only. OpenCode Serve, Code Tools MCP and the Telegram bot work with git repositories and have no Vault mount. Preserve Obsidian MCP, sync and public static/note serving. User requests separate task/branch/PR; no merge/deploy authorized yet.

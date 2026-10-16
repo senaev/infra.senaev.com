@@ -1,5 +1,7 @@
 # 2026-08-08 — Telegram post sync service
 
+- [x] Sync Obsidian notes to Telegram channel posts
+
 > This file is the working log for this task. All design decisions, implementation steps,
 > commands run, outputs pasted, blockers hit, and the eventual completion state must be
 > appended to this file as we go — so the whole session lives in one place and is

@@ -1,5 +1,7 @@
 # 2026-10-10 — Remote project editing via MCP
 
+- [x] Edit project repositories remotely through MCP
+
 ## Description
 
 Enable voice-driven development from the [[ChatGPT]] app on [[Android]] using the owner's existing authenticated MCP plugin running on his server. ChatGPT itself should inspect and edit remote repository files, run commands, verify changes and optionally prepare commits and pull requests.

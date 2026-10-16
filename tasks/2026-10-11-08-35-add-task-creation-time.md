@@ -1,5 +1,7 @@
 # 2026-10-11 — Add task creation time
 
+- [x] Add the creation time to task file names
+
 ## Goal
 
 Include the UTC creation hour and minute in new task filenames. Keep existing task filenames unchanged.

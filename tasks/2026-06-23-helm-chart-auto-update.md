@@ -1,5 +1,7 @@
 # Automate Helm Chart Updates on Main Branch Commits
 
+- [x] Deploy changed Helm charts on every push to `main`
+
 ## Plan
 
 1.  **Analyze Existing Workflows:** Examine current GitHub Actions workflows in `.github/workflows` to understand the existing automation, particularly how Telegram notifications are handled.

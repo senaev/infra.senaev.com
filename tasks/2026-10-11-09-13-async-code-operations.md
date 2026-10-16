@@ -1,5 +1,7 @@
 # 2026-10-11 — Asynchronous code operations
 
+- [x] Run code and Obsidian operations asynchronously through MCP
+
 ## Goal
 
 Introduce one shared managed-operation wrapper for all domain commands in both backend consumers: Code Tools (code-tools in the opencode-serve container) and Obsidian Sync (obsidian-sync in its own container). Cluster Helper (cluster-helper) remains the authenticated MCP entry point and proxies requests to the originating backend. The server returns a final result within a fixed 5-second observation window or a retrievable operation ID; ChatGPT can retrieve state, incremental logs and the final result or cancel execution without selecting an execution mode. Implementation proceeds in separate reviewed and verified stages.

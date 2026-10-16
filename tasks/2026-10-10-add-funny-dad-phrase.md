@@ -1,5 +1,7 @@
 # 2026-10-10 — Add funny dad phrase
 
+- [x] Add a funny dad phrase
+
 ## Goal
 
 Add «Так точно сделаем срочно» to the funny responses.

@@ -1,5 +1,7 @@
 # 2026-10-10 — Shared code in senaev-utils, NetworkPolicy for obsidian-sync
 
+- [x] Move shared code to senaev-utils and restrict obsidian-sync with a NetworkPolicy
+
 > This file is the working log for this task. All design decisions, implementation steps,
 > commands run, outputs pasted, blockers hit, and the eventual completion state must be
 > appended to this file as we go — so the whole session lives in one place and is

@@ -1,5 +1,7 @@
 # 2026-07-30 — Prowlarr: indexer PUT returns 400, "Connection refused (kinozal.tv:443)"
 
+- [x] Make the Kinozal indexer work in Prowlarr
+
 > **This file is the working log for the investigation.** All findings, command outputs,
 > hypotheses confirmed/refuted, and the eventual fix must be appended here as we go — so
 > the whole debug session lives in one place and is searchable later.

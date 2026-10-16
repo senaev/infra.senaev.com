@@ -1,5 +1,7 @@
 # Add Datadog Agent to the K3s cluster
 
+- [x] Deploy the Datadog Agent to the K3s cluster
+
 ## Context
 
 We want maximum observability over **both** the media stack (Jellyfin,

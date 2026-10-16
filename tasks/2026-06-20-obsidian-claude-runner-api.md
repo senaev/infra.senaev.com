@@ -1,5 +1,7 @@
 # 2026-06-20 — Obsidian OpenCode Telegram Bot
 
+- [x] Run OpenCode on the Obsidian vault through a Telegram bot
+
 > This file is the working log for this task. All design decisions, implementation steps,
 > commands run, outputs pasted, blockers hit, and the eventual completion state must be
 > appended to this file as we go — so the whole session lives in one place and is

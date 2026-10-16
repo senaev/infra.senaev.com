@@ -1,5 +1,7 @@
 # 2026-10-10 — Fix Markdown bullet
 
+- [x] Fix one Markdown bullet line
+
 ## Goal
 Read the repository instructions and make one small line change.
 

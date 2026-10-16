@@ -1,5 +1,7 @@
 # 2026-06-16 — Prowlarr: SQLite readonly + search returns empty
 
+- [x] Make Prowlarr write its database and return search results
+
 > **This file is the working log for the investigation.** All findings, command outputs,
 > hypotheses confirmed/refuted, and the eventual fix must be appended here as we go.
 >

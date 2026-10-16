@@ -13,7 +13,7 @@ For an incident, name the symptom, not the cause (the cause is not known yet).
 
 ## Document structure
 
-1. `# YYYY-MM-DD — <title>`
+1. `# YYYY-MM-DD — <title>`, then the status checkbox: `- [ ] <one line: what the task must achieve>`
 2. `## Goal` — what we want, or what is wrong. Paste errors and logs verbatim.
 3. `## Context` — only the facts needed for this task. Link files by path; do not copy them.
 4. `## Plan` — the steps, or for an incident the ranked hypotheses
@@ -23,6 +23,8 @@ For an incident, name the symptom, not the cause (the cause is not known yet).
 7. `## Result` — added at the end: what was done, the root cause if any, open points.
 
 Skip a section when it does not apply. Keep each one short.
+
+Check the status checkbox (`- [x]`) when the task is done and `## Result` is written.
 
 ## Rules
 
