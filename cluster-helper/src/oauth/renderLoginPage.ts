@@ -53,9 +53,9 @@ main { background: #fff; padding: 2rem; border-radius: 12px; box-shadow: 0 2px 1
 form { display: flex; flex-direction: column; gap: .75rem; margin: 0; }
 input { font: inherit; padding: .5rem; border: 1px solid #d4d4d8; border-radius: 6px; }
 button { font: inherit; padding: .6rem; border: 0; border-radius: 6px; background: #18181b; color: #fff; cursor: pointer; width: 100%; }
-.google { background: #fff; border: 1px solid #d4d4d8; display: flex; justify-content: center; align-items: center; }
+.google { background: #fff; color: #1f1f1f; border: 1px solid #747775; display: flex; justify-content: center; align-items: center; gap: .75rem; font-weight: 500; }
 .google:hover { background: #f4f4f5; }
-.google svg { width: 1.5rem; height: 1.5rem; display: block; }
+.google svg { width: 1.25rem; height: 1.25rem; display: block; flex: none; }
 .separator { color: #71717a; font-size: .85rem; text-align: center; margin: 0; }
 .error { color: #b91c1c; margin: 0; }
 .client { color: #71717a; font-size: .85rem; margin: 0; word-break: break-all; }
@@ -75,7 +75,7 @@ ${requestFields(request)}
 <p class="separator">or</p>
 <form method="get" action="/google/start">
 ${requestFields(request)}
-<button type="submit" class="google" aria-label="Sign in with Google" title="Sign in with Google">${GOOGLE_LOGO}</button>
+<button type="submit" class="google">${GOOGLE_LOGO}<span>Sign in with Google</span></button>
 </form>
 </main>
 </body>
