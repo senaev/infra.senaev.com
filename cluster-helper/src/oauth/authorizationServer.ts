@@ -15,13 +15,22 @@ import { sha256 } from 'senaev-utils/src/utils/crypto/sha256/sha256';
 export const MCP_SCOPE = 'mcp';
 
 const AUTHORIZATION_CODE_TTL_MS = 60_000;
-const ACCESS_TOKEN_TTL_SECONDS = 60 * 60;
-const REFRESH_TOKEN_TTL_SECONDS = 90 * 24 * 60 * 60;
+
+type TokenKind = {
+    type: string;
+    ttlSeconds: number;
+};
 
 // The JWT `typ` header tells the two token kinds apart, so a refresh token is never
 // accepted as an access token. `at+jwt` is the RFC 9068 type for access tokens.
-const ACCESS_TOKEN_TYPE = 'at+jwt';
-const REFRESH_TOKEN_TYPE = 'refresh+jwt';
+const ACCESS_TOKEN: TokenKind = {
+    type: 'at+jwt',
+    ttlSeconds: 60 * 60,
+};
+const REFRESH_TOKEN: TokenKind = {
+    type: 'refresh+jwt',
+    ttlSeconds: 90 * 24 * 60 * 60,
+};
 const SIGNING_ALGORITHM = 'HS256';
 
 // ChatGPT identifies itself with a Client ID Metadata Document URL, so there is no client
@@ -33,12 +42,26 @@ const CHATGPT_CALLBACK_CLIENT_ID = /^https:\/\/chatgpt\.com\/oauth\/([\w-]+)\/cl
 
 const PKCE_CODE_VERIFIER = /^[\w.~-]{43,128}$/;
 
+export type LoginIdentity =
+    | { method: 'password' }
+    | { method: 'google'; email: string };
+
+export type LoginAttempt = {
+    method: LoginIdentity['method'];
+    result: 'success' | 'denied';
+    /** The Google email, or the username given in the password form. */
+    account: string;
+};
+
 export type AuthorizationServerConfig = {
     issuer: string;
     resource: string;
     username: string;
     password: string;
     signingSecret: string;
+    /** Normalized Gmail addresses; a Google-origin refresh token renews only while its email is here. */
+    googleAdminEmails: ReadonlySet<string>;
+    onLoginAttempt?: (attempt: LoginAttempt) => void;
     now?: () => number;
 };
 
@@ -69,7 +92,20 @@ type Params = Record<string, unknown>;
 
 type IssuedCode = {
     request: AuthorizeRequest;
+    identity: LoginIdentity;
     expiresAt: number;
+};
+
+// Signed into Google-origin tokens so that refresh can check the allowlist. The email is
+// kept as a keyed hash: ChatGPT stores the tokens and can read their payload. Tokens
+// without `idp` come from password login, or were issued before Google login existed.
+type TokenProvenance =
+    | { idp: 'password' }
+    | { idp: 'google'; emailHash: string };
+
+type VerifiedToken = {
+    clientId: string;
+    provenance: TokenProvenance;
 };
 
 function readString(params: Params, name: string): string | undefined {
@@ -97,6 +133,12 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
     // The key also depends on the password, so changing the password in Vault revokes
     // every token at once. That is the only revocation there is: tokens are not stored.
     const signingKey = createHmac('sha256', config.signingSecret).update(password).digest();
+
+    function hashEmail(email: string): string {
+        return createHmac('sha256', signingKey).update(`google-email:${email}`).digest('base64url');
+    }
+
+    const googleAdminEmailHashes = new Set([...config.googleAdminEmails].map(hashEmail));
 
     const issuedCodes = new Map<string, IssuedCode>();
 
@@ -177,7 +219,7 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
         return isUsernameValid && isPasswordValid;
     }
 
-    function issueAuthorizationCode(request: AuthorizeRequest): string {
+    function issueAuthorizationCode(request: AuthorizeRequest, identity: LoginIdentity): string {
         const currentTime = now();
 
         for (const code of issuedCodes.keys()) {
@@ -190,10 +232,40 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
 
         issuedCodes.set(code, {
             request,
+            identity,
             expiresAt: currentTime + AUTHORIZATION_CODE_TTL_MS,
         });
 
         return code;
+    }
+
+    function completeAuthorization(request: AuthorizeRequest, identity: LoginIdentity): AuthorizeOutcome {
+        return redirectTo(request.redirectUri, {
+            code: issueAuthorizationCode(request, identity),
+            state: request.state,
+        });
+    }
+
+    function provenanceOf(identity: LoginIdentity): TokenProvenance {
+        return identity.method === 'google'
+            ? {
+                idp: 'google',
+                emailHash: hashEmail(identity.email),
+            }
+            : { idp: 'password' };
+    }
+
+    function readProvenance(payload: Record<string, unknown>): TokenProvenance | null {
+        if (payload.idp === undefined) {
+            return { idp: 'password' };
+        }
+
+        return payload.idp === 'google' && typeof payload.email_hash === 'string'
+            ? {
+                idp: 'google',
+                emailHash: payload.email_hash,
+            }
+            : null;
     }
 
     function tokenError(error: string, description: string): TokenResponse {
@@ -206,10 +278,16 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
         };
     }
 
-    function signToken(type: string, clientId: string, issuedAt: number, ttlSeconds: number): Promise<string> {
+    function signToken({
+        type, ttlSeconds,
+    }: TokenKind, clientId: string, provenance: TokenProvenance, issuedAt: number): Promise<string> {
         return new SignJWT({
             client_id: clientId,
             scope: MCP_SCOPE,
+            ...(provenance.idp === 'google' && {
+                idp: provenance.idp,
+                email_hash: provenance.emailHash,
+            }),
         })
             .setProtectedHeader({
                 alg: SIGNING_ALGORITHM,
@@ -224,23 +302,22 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
             .sign(signingKey);
     }
 
-    async function issueTokens(clientId: string): Promise<TokenResponse> {
+    async function issueTokens(clientId: string, provenance: TokenProvenance): Promise<TokenResponse> {
         const issuedAt = Math.floor(now() / 1000);
 
         return {
             status: 200,
             body: {
-                access_token: await signToken(ACCESS_TOKEN_TYPE, clientId, issuedAt, ACCESS_TOKEN_TTL_SECONDS),
+                access_token: await signToken(ACCESS_TOKEN, clientId, provenance, issuedAt),
                 token_type: 'Bearer',
-                expires_in: ACCESS_TOKEN_TTL_SECONDS,
-                refresh_token: await signToken(REFRESH_TOKEN_TYPE, clientId, issuedAt, REFRESH_TOKEN_TTL_SECONDS),
+                expires_in: ACCESS_TOKEN.ttlSeconds,
+                refresh_token: await signToken(REFRESH_TOKEN, clientId, provenance, issuedAt),
                 scope: MCP_SCOPE,
             },
         };
     }
 
-    /** Returns the `client_id` claim of a valid token of the given type. */
-    async function verifyToken(token: string, type: string): Promise<string | null> {
+    async function verifyToken(token: string, type: string): Promise<VerifiedToken | null> {
         try {
             const { payload } = await jwtVerify(token, signingKey, {
                 algorithms: [SIGNING_ALGORITHM],
@@ -252,7 +329,14 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
                 currentDate: new Date(now()),
             });
 
-            return typeof payload.client_id === 'string' ? payload.client_id : null;
+            const provenance = readProvenance(payload);
+
+            return typeof payload.client_id === 'string' && provenance !== null
+                ? {
+                    clientId: payload.client_id,
+                    provenance,
+                }
+                : null;
         } catch {
             return null;
         }
@@ -274,7 +358,7 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
             return tokenError('invalid_grant', 'Unknown or expired authorization code');
         }
 
-        const { request } = issued;
+        const { request, identity } = issued;
         const isSameClient = readString(params, 'client_id') === request.clientId;
         const isSameRedirectUri = readString(params, 'redirect_uri') === request.redirectUri;
         const isSameResource = (readString(params, 'resource') ?? request.resource) === request.resource;
@@ -287,19 +371,25 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
             return tokenError('invalid_grant', 'PKCE verification failed');
         }
 
-        return issueTokens(request.clientId);
+        return issueTokens(request.clientId, provenanceOf(identity));
     }
 
     async function exchangeRefreshToken(params: Params): Promise<TokenResponse> {
         const refreshToken = readString(params, 'refresh_token');
-        const tokenClientId = refreshToken === undefined ? null : await verifyToken(refreshToken, REFRESH_TOKEN_TYPE);
+        const verified = refreshToken === undefined ? null : await verifyToken(refreshToken, REFRESH_TOKEN.type);
         const clientId = readString(params, 'client_id');
 
-        if (tokenClientId === null || (clientId !== undefined && clientId !== tokenClientId)) {
+        if (verified === null || (clientId !== undefined && clientId !== verified.clientId)) {
             return tokenError('invalid_grant', 'Invalid or expired refresh token');
         }
 
-        return issueTokens(tokenClientId);
+        const { provenance } = verified;
+
+        if (provenance.idp === 'google' && !googleAdminEmailHashes.has(provenance.emailHash)) {
+            return tokenError('invalid_grant', 'The Google account of this refresh token is no longer allowed');
+        }
+
+        return issueTokens(verified.clientId, provenance);
     }
 
     return {
@@ -345,20 +435,30 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
                 return outcome;
             }
 
-            if (!areCredentialsValid(readString(params, 'username') ?? '', readString(params, 'password') ?? '')) {
+            const givenUsername = readString(params, 'username') ?? '';
+            const isValid = areCredentialsValid(givenUsername, readString(params, 'password') ?? '');
+
+            config.onLoginAttempt?.({
+                method: 'password',
+                result: isValid ? 'success' : 'denied',
+                account: givenUsername,
+            });
+
+            if (!isValid) {
                 return {
                     ...outcome,
                     error: 'Incorrect username or password.',
                 };
             }
 
-            const { request } = outcome;
-
-            return redirectTo(request.redirectUri, {
-                code: issueAuthorizationCode(request),
-                state: request.state,
-            });
+            return completeAuthorization(outcome.request, { method: 'password' });
         },
+
+        /**
+         * Issues the authorization code for a request that a login method other than the
+         * password form has already checked with `authorize` and authenticated.
+         */
+        completeAuthorization,
 
         /** POST /token */
         async token(params: Params): Promise<TokenResponse> {
@@ -380,7 +480,7 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
                 return { kind: 'missing' };
             }
 
-            return await verifyToken(token, ACCESS_TOKEN_TYPE) === null
+            return await verifyToken(token, ACCESS_TOKEN.type) === null
                 ? { kind: 'invalid' }
                 : {
                     kind: 'valid',

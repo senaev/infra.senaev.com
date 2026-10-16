@@ -10,6 +10,10 @@ export const MCP_DOMAIN = requireEnv('MCP_DOMAIN');
 export const AUTH_MY_USERNAME = requireEnv('AUTH_MY_USERNAME');
 export const AUTH_MY_PASSWORD = requireEnv('AUTH_MY_PASSWORD');
 export const AUTH_TOKEN_SIGNING_SECRET = requireEnv('AUTH_TOKEN_SIGNING_SECRET');
+export const GOOGLE_OAUTH_CLIENT_ID = requireEnv('GOOGLE_OAUTH_CLIENT_ID');
+export const GOOGLE_OAUTH_CLIENT_SECRET = requireEnv('GOOGLE_OAUTH_CLIENT_SECRET');
+/** Comma-separated Gmail addresses that may sign in with Google. */
+export const GOOGLE_OAUTH_ADMIN_EMAILS = requireEnv('GOOGLE_OAUTH_ADMIN_EMAILS');
 export const OPENROUTER_API_KEY = requireEnv('OPENROUTER_API_KEY');
 export const GROQ_API_KEY = requireEnv('GROQ_API_KEY');
 export const SUPABASE_PROJECT_URL = requireEnv('SUPABASE_PROJECT_URL');

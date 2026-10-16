@@ -149,6 +149,24 @@ spec:
                   name: senaev-com-kv-secrets
                   key: AUTH_TOKEN_SIGNING_SECRET
                   optional: false
+            - name: GOOGLE_OAUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: GOOGLE_OAUTH_CLIENT_ID
+                  optional: false
+            - name: GOOGLE_OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: GOOGLE_OAUTH_CLIENT_SECRET
+                  optional: false
+            - name: GOOGLE_OAUTH_ADMIN_EMAILS
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: GOOGLE_OAUTH_ADMIN_EMAILS
+                  optional: false
             - name: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN
               valueFrom:
                 secretKeyRef:

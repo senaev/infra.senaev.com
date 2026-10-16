@@ -1,23 +1,64 @@
 import { randomBytes } from 'node:crypto';
 
+import cookie, { type CookieSerializeOptions } from '@fastify/cookie';
 import formbody from '@fastify/formbody';
 import rateLimit from '@fastify/rate-limit';
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 
-import type { AuthorizationServer, AuthorizeOutcome } from './authorizationServer';
+import type {
+    AuthorizationServer, AuthorizeOutcome, AuthorizeRequest, LoginAttempt,
+} from './authorizationServer';
+import type { GoogleLogin, GoogleLoginResult } from './googleLogin';
 import {
     renderAuthorizationError, renderAuthorizationSuccess, renderLoginPage,
 } from './renderLoginPage';
 
 // Keep the form policy restrictive; successful authorization uses a normal link.
+// `form-action` also applies to the redirect after a form submit, so the Google form needs
+// Google's authorization endpoint here.
 const LOGIN_PAGE_CSP = [
     'default-src \'none\'',
     'style-src \'unsafe-inline\'',
-    'form-action \'self\' https://chatgpt.com',
+    'form-action \'self\' https://chatgpt.com https://accounts.google.com',
     'frame-ancestors \'none\'',
     'base-uri \'none\'',
 ].join('; ');
+
+const GOOGLE_START_PATH = '/google/start';
+
+export const GOOGLE_CALLBACK_PATH = '/google/callback';
+
+// Routes that answer with an HTML page, so their errors are HTML pages too.
+const HTML_ROUTES = new Set([
+    '/authorize',
+    GOOGLE_START_PATH,
+    GOOGLE_CALLBACK_PATH,
+]);
+
+// `__Host-` cookies must be Secure, have Path=/ and no Domain. Lax is sent on the
+// top-level redirect back from Google.
+const TRANSACTION_COOKIE_OPTIONS: CookieSerializeOptions = {
+    path: '/',
+    secure: true,
+    httpOnly: true,
+    sameSite: 'lax',
+};
+
+// One key per route, not per IP: behind Traefik every request has the same source
+// address anyway. Too many attempts lock the route for a minute; tokens that are already
+// issued keep working. Separate keys keep a flood on one method from locking the other.
+function rateLimitFor(key: string) {
+    return {
+        config: {
+            rateLimit: {
+                max: 60,
+                timeWindow: '1 minute',
+                keyGenerator: () => key,
+            },
+        },
+    };
+}
 
 function asParams(value: unknown): Record<string, unknown> {
     return isObject(value) ? value : {};
@@ -63,8 +104,18 @@ function sendAuthorizeOutcome(reply: FastifyReply, outcome: AuthorizeOutcome) {
         .send(renderLoginPage(outcome.request, outcome.error));
 }
 
+function showLoginAgain(reply: FastifyReply, request: AuthorizeRequest, error: string) {
+    return sendAuthorizeOutcome(reply, {
+        kind: 'show-login',
+        request,
+        error,
+    });
+}
+
 export type OAuthRoutesOptions = {
     authorizationServer: AuthorizationServer;
+    googleLogin: GoogleLogin;
+    onLoginAttempt?: (attempt: LoginAttempt) => void;
     authDomain: string;
     mcpDomain: string;
     mcpPath: string;
@@ -78,11 +129,14 @@ export type OAuthRoutesOptions = {
 // A plugin, so that the form body parser and the rate limiter apply only to these routes.
 export const oauthRoutes: FastifyPluginAsync<OAuthRoutesOptions> = async (instance, {
     authorizationServer,
+    googleLogin,
+    onLoginAttempt,
     authDomain,
     mcpDomain,
     mcpPath,
 }) => {
     await instance.register(formbody);
+    await instance.register(cookie);
     await instance.register(rateLimit, { global: false });
 
     const onAuthDomain = { constraints: { host: authDomain } };
@@ -90,7 +144,7 @@ export const oauthRoutes: FastifyPluginAsync<OAuthRoutesOptions> = async (instan
 
     // Scoped to this plugin: token errors retain their JSON protocol response.
     instance.setErrorHandler((error, request, reply) => {
-        if (request.hostname !== authDomain || request.routeOptions.url !== '/authorize') {
+        if (request.hostname !== authDomain || !HTML_ROUTES.has(request.routeOptions.url ?? '')) {
             return reply.send(error);
         }
 
@@ -100,7 +154,7 @@ export const oauthRoutes: FastifyPluginAsync<OAuthRoutesOptions> = async (instan
         let message = 'The sign-in request could not be read. Return to the app and start the connection again.';
 
         if (status === 429) {
-            message = 'Too many sign-in attempts. Wait 15 minutes before trying again.';
+            message = 'Too many sign-in attempts. Wait a minute before trying again.';
         } else if (status >= 500) {
             message = 'Sign-in is temporarily unavailable. Please try again later.';
         }
@@ -120,17 +174,84 @@ export const oauthRoutes: FastifyPluginAsync<OAuthRoutesOptions> = async (instan
 
     instance.post('/authorize', {
         ...onAuthDomain,
-        // One key for all clients, not per IP: behind Traefik every request has the
-        // same source address anyway. Too many attempts lock the form for a while;
-        // tokens that are already issued keep working.
-        config: {
-            rateLimit: {
-                max: 10,
-                timeWindow: '15 minutes',
-                keyGenerator: () => 'login',
-            },
-        },
+        ...rateLimitFor('login'),
     }, (request, reply) => sendAuthorizeOutcome(reply, authorizationServer.login(asParams(request.body))));
+
+    instance.get(GOOGLE_START_PATH, {
+        ...onAuthDomain,
+        ...rateLimitFor('google-start'),
+    }, async (request, reply) => {
+        // The hidden fields come from the browser, so the request is checked again here:
+        // otherwise a link with another redirect_uri would send the code elsewhere.
+        const outcome = authorizationServer.authorize(asParams(request.query));
+
+        if (outcome.kind !== 'show-login') {
+            return sendAuthorizeOutcome(reply, outcome);
+        }
+
+        const { authorizationUrl, cookie: transactionCookie } = await googleLogin.start(outcome.request);
+
+        return reply
+            .setCookie(transactionCookie.name, transactionCookie.value, {
+                ...TRANSACTION_COOKIE_OPTIONS,
+                maxAge: transactionCookie.maxAgeSeconds,
+            })
+            .header('Cache-Control', 'no-store')
+            .header('Referrer-Policy', 'no-referrer')
+            .redirect(authorizationUrl, 302);
+    });
+
+    function sendGoogleLoginResult(reply: FastifyReply, result: GoogleLoginResult) {
+        switch (result.kind) {
+        case 'expired':
+            return sendAuthorizationError(reply, 400, 'The Google sign-in has expired or was started in another browser.');
+        case 'cancelled':
+            return showLoginAgain(reply, result.request, 'Google sign-in was cancelled.');
+        case 'failed':
+            reply.request.log.warn({
+                requestId: reply.request.id,
+                error: result.error instanceof Error ? result.error.message : 'unknown',
+            }, 'Google sign-in failed');
+
+            return showLoginAgain(reply, result.request, 'Google sign-in failed. Try again, or sign in with the password.');
+        case 'denied':
+            onLoginAttempt?.({
+                method: 'google',
+                result: 'denied',
+                account: result.email ?? 'no verified email',
+            });
+
+            return showLoginAgain(reply, result.request, 'This Google account is not allowed.');
+        case 'allowed':
+            break;
+        }
+
+        onLoginAttempt?.({
+            method: 'google',
+            result: 'success',
+            account: result.email,
+        });
+
+        return sendAuthorizeOutcome(reply, authorizationServer.completeAuthorization(result.request, {
+            method: 'google',
+            email: result.email,
+        }));
+    }
+
+    instance.get(GOOGLE_CALLBACK_PATH, {
+        ...onAuthDomain,
+        ...rateLimitFor('google-callback'),
+    }, async (request, reply) => {
+        const query = new URL(request.url, `https://${authDomain}`).searchParams;
+        const { result, cookieName } = await googleLogin.finish(query, request.cookies);
+
+        // Each transaction is used once, whatever the result.
+        if (cookieName !== undefined) {
+            reply.clearCookie(cookieName, TRANSACTION_COOKIE_OPTIONS);
+        }
+
+        return sendGoogleLoginResult(reply, result);
+    });
 
     instance.post('/token', {
         ...onAuthDomain,

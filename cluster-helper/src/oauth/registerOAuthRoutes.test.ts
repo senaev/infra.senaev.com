@@ -5,8 +5,10 @@ import {
     afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
 
-import { createAuthorizationServer } from './authorizationServer';
+import { createAuthorizationServer, LoginAttempt } from './authorizationServer';
+import { createGoogleLogin } from './googleLogin';
 import { oauthRoutes } from './registerOAuthRoutes';
+import { createFakeGoogle, FakeGoogle } from './testing/fakeGoogle';
 
 const AUTH_DOMAIN = 'auth.example.com';
 const MCP_DOMAIN = 'mcp.example.com';
@@ -14,28 +16,85 @@ const FORM_HEADERS = {
     host: AUTH_DOMAIN,
     'content-type': 'application/x-www-form-urlencoded',
 };
+const GOOGLE_CLIENT_ID = 'google-client-id';
+const GOOGLE_EMAIL = 'admin@gmail.com';
+const CODE_VERIFIER = 'v'.repeat(43);
+const AUTHORIZE_QUERY = {
+    response_type: 'code',
+    client_id: 'https://chatgpt.com/oauth/client.json',
+    redirect_uri: 'https://chatgpt.com/connector_platform_oauth_redirect',
+    code_challenge: createHash('sha256').update(CODE_VERIFIER).digest('base64url'),
+    code_challenge_method: 'S256',
+    state: 'original-state',
+};
 
 let server: FastifyInstance;
 let authorizationServer: ReturnType<typeof createAuthorizationServer>;
+let fakeGoogle: FakeGoogle;
+let loginAttempts: LoginAttempt[];
 
 beforeEach(async () => {
     server = Fastify();
     // Same catch-all as the public server: routes bound to another host must fall through to it.
     server.get('/*', (_request, reply) => reply.code(401).send('Unauthorized'));
+    loginAttempts = [];
     authorizationServer = createAuthorizationServer({
         issuer: `https://${AUTH_DOMAIN}`,
         resource: `https://${MCP_DOMAIN}/mcp`,
         username: 'andrei',
         password: 'secret-password',
         signingSecret: 'signing-secret',
+        googleAdminEmails: new Set([GOOGLE_EMAIL]),
     });
+    fakeGoogle = await createFakeGoogle(GOOGLE_CLIENT_ID);
     await server.register(oauthRoutes, {
         authorizationServer,
+        googleLogin: createGoogleLogin({
+            clientId: GOOGLE_CLIENT_ID,
+            clientSecret: 'google-client-secret',
+            redirectUri: `https://${AUTH_DOMAIN}/google/callback`,
+            adminEmails: new Set([GOOGLE_EMAIL]),
+            transactionSecret: 'signing-secret',
+            fetch: fakeGoogle.fetch,
+        }),
+        onLoginAttempt: (attempt) => loginAttempts.push(attempt),
         authDomain: AUTH_DOMAIN,
         mcpDomain: MCP_DOMAIN,
         mcpPath: '/mcp',
     });
 });
+
+async function startGoogleLogin() {
+    const response = await server.inject({
+        url: `/google/start?${new URLSearchParams(AUTHORIZE_QUERY).toString()}`,
+        headers: { host: AUTH_DOMAIN },
+    });
+    const [transactionCookie] = response.cookies;
+    const google = new URL(String(response.headers.location));
+
+    return {
+        response,
+        transactionCookie,
+        state: String(google.searchParams.get('state')),
+        nonce: String(google.searchParams.get('nonce')),
+    };
+}
+
+function callGoogleCallback(query: Record<string, string>, cookie: { name: string; value: string } | undefined) {
+    return server.inject({
+        url: `/google/callback?${new URLSearchParams(query).toString()}`,
+        headers: { host: AUTH_DOMAIN },
+        ...(cookie !== undefined && { cookies: { [cookie.name]: cookie.value } }),
+    });
+}
+
+function continueUrlOf(body: string): URL {
+    const href = /<a href="([^" ]+)" rel="noreferrer">Return to the app<\/a>/.exec(body)?.[1];
+
+    expect(href).toBeDefined();
+
+    return new URL(String(href).replaceAll('&amp;', '&'));
+}
 
 afterEach(async () => {
     await server.close();
@@ -110,7 +169,7 @@ describe('registerOAuthRoutes', () => {
     });
 
     it('shows rate-limit errors and keeps token errors as JSON', async () => {
-        for (let attempt = 0; attempt < 10; attempt++) {
+        for (let attempt = 0; attempt < 60; attempt++) {
             await server.inject({
                 method: 'POST',
                 url: '/authorize',
@@ -130,8 +189,11 @@ describe('registerOAuthRoutes', () => {
         expect(response.headers['retry-after']).toBeDefined();
         expect(response.headers['cache-control']).toBe('no-store');
         expect(response.headers['content-security-policy']).toContain('frame-ancestors \'none\'');
-        expect(response.body).toContain('Wait 15 minutes');
+        expect(response.body).toContain('Wait a minute');
         expect(response.body).toContain('Reference:');
+
+        // A flood of password attempts does not lock Google sign-in.
+        expect((await startGoogleLogin()).response.statusCode).toBe(302);
 
         for (let attempt = 0; attempt < 60; attempt++) {
             await server.inject({
@@ -275,5 +337,150 @@ describe('registerOAuthRoutes', () => {
 
         expect(token.statusCode).toBe(400);
         expect(token.json()).toMatchObject({ error: 'invalid_grant' });
+    });
+});
+
+describe('Google sign-in routes', () => {
+    it('shows the Google button and allows the redirect to Google in the CSP', async () => {
+        const response = await server.inject({
+            url: `/authorize?${new URLSearchParams(AUTHORIZE_QUERY).toString()}`,
+            headers: { host: AUTH_DOMAIN },
+        });
+
+        expect(response.body).toContain('<form method="get" action="/google/start">');
+        expect(response.body).toContain('Sign in with Google');
+        expect(response.headers['content-security-policy']).toContain('form-action \'self\' https://chatgpt.com https://accounts.google.com');
+    });
+
+    it('checks the ChatGPT request again before it starts the Google flow', async () => {
+        const response = await server.inject({
+            url: `/google/start?${new URLSearchParams({
+                ...AUTHORIZE_QUERY,
+                redirect_uri: 'https://evil.example.com/callback',
+            }).toString()}`,
+            headers: { host: AUTH_DOMAIN },
+        });
+
+        expect(response.statusCode).toBe(400);
+        expect(response.headers.location).toBeUndefined();
+        expect(response.headers['set-cookie']).toBeUndefined();
+        expect(response.body).toContain('Unknown client or redirect URI');
+    });
+
+    it('redirects to Google with a Secure, HttpOnly, SameSite=Lax transaction cookie', async () => {
+        const {
+            response, transactionCookie, state,
+        } = await startGoogleLogin();
+
+        expect(response.statusCode).toBe(302);
+        expect(String(response.headers.location)).toMatch(/^https:\/\/accounts\.google\.com\/o\/oauth2\/v2\/auth\?/);
+        expect(response.headers['cache-control']).toBe('no-store');
+        expect(transactionCookie).toMatchObject({
+            name: `__Host-google-login-${state}`,
+            path: '/',
+            secure: true,
+            httpOnly: true,
+            sameSite: 'Lax',
+            maxAge: 600,
+        });
+    });
+
+    it('completes the original ChatGPT request for an allowed Google account', async () => {
+        const {
+            transactionCookie, state, nonce,
+        } = await startGoogleLogin();
+
+        fakeGoogle.setIdTokenClaims({
+            nonce,
+            email: GOOGLE_EMAIL,
+            email_verified: true,
+        });
+
+        const callback = await callGoogleCallback({
+            state,
+            code: 'google-code',
+        }, transactionCookie);
+
+        expect(callback.statusCode).toBe(200);
+        expect(callback.body).toContain('Signed in successfully');
+        expect(callback.cookies).toContainEqual(expect.objectContaining({
+            name: transactionCookie?.name,
+            value: '',
+        }));
+        expect(loginAttempts).toEqual([
+            {
+                method: 'google',
+                result: 'success',
+                account: GOOGLE_EMAIL,
+            },
+        ]);
+
+        const location = continueUrlOf(callback.body);
+
+        expect(location.origin).toBe('https://chatgpt.com');
+        expect(location.searchParams.get('state')).toBe('original-state');
+
+        const token = await server.inject({
+            method: 'POST',
+            url: '/token',
+            headers: FORM_HEADERS,
+            payload: new URLSearchParams({
+                grant_type: 'authorization_code',
+                code: String(location.searchParams.get('code')),
+                client_id: AUTHORIZE_QUERY.client_id,
+                redirect_uri: AUTHORIZE_QUERY.redirect_uri,
+                code_verifier: CODE_VERIFIER,
+            }).toString(),
+        });
+
+        expect(token.statusCode).toBe(200);
+        expect(token.json()).toMatchObject({ token_type: 'Bearer' });
+    });
+
+    it('shows the login form again for a denied account or cancelled consent', async () => {
+        const denied = await startGoogleLogin();
+
+        fakeGoogle.setIdTokenClaims({
+            nonce: denied.nonce,
+            email: 'stranger@gmail.com',
+            email_verified: true,
+        });
+
+        const deniedCallback = await callGoogleCallback({
+            state: denied.state,
+            code: 'google-code',
+        }, denied.transactionCookie);
+
+        expect(deniedCallback.statusCode).toBe(401);
+        expect(deniedCallback.body).toContain('This Google account is not allowed.');
+        expect(deniedCallback.body).toContain('name="password"');
+        expect(loginAttempts).toEqual([
+            {
+                method: 'google',
+                result: 'denied',
+                account: 'stranger@gmail.com',
+            },
+        ]);
+
+        const cancelled = await startGoogleLogin();
+        const cancelledCallback = await callGoogleCallback({
+            state: cancelled.state,
+            error: 'access_denied',
+        }, cancelled.transactionCookie);
+
+        expect(cancelledCallback.statusCode).toBe(401);
+        expect(cancelledCallback.body).toContain('Google sign-in was cancelled.');
+    });
+
+    it('rejects a callback without its transaction cookie', async () => {
+        const { state } = await startGoogleLogin();
+        const callback = await callGoogleCallback({
+            state,
+            code: 'google-code',
+        }, undefined);
+
+        expect(callback.statusCode).toBe(400);
+        expect(callback.body).toContain('The Google sign-in has expired or was started in another browser.');
+        expect(fakeGoogle.tokenRequests).toHaveLength(0);
     });
 });

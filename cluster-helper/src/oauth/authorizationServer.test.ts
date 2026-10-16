@@ -1,10 +1,13 @@
 import { createHash } from 'node:crypto';
 
+import { decodeJwt } from 'jose';
 import {
     beforeEach, describe, expect, it,
 } from 'vitest';
 
-import { AuthorizationServer, createAuthorizationServer } from './authorizationServer';
+import {
+    AuthorizationServer, AuthorizeRequest, createAuthorizationServer, LoginAttempt,
+} from './authorizationServer';
 
 const ISSUER = 'https://auth.example.com';
 const RESOURCE = 'https://mcp.example.com/mcp';
@@ -23,16 +26,21 @@ const authorizeParams = {
     resource: RESOURCE,
 };
 
+const GOOGLE_EMAIL = 'admin@gmail.com';
+
 let currentTime: number;
 let server: AuthorizationServer;
+let loginAttempts: LoginAttempt[];
 
-function createServer(password = 'secret-password') {
+function createServer(password = 'secret-password', googleAdminEmails: string[] = [GOOGLE_EMAIL]) {
     return createAuthorizationServer({
         issuer: ISSUER,
         resource: RESOURCE,
         username: 'andrei',
         password,
         signingSecret: 'signing-secret',
+        googleAdminEmails: new Set(googleAdminEmails),
+        onLoginAttempt: (attempt) => loginAttempts.push(attempt),
         now: () => currentTime,
     });
 }
@@ -84,8 +92,40 @@ async function getTokens() {
     return body as { access_token: string; refresh_token: string };
 }
 
+function checkedRequest(): AuthorizeRequest {
+    const outcome = server.authorize(authorizeParams);
+
+    if (outcome.kind !== 'show-login') {
+        throw new Error(`Expected show-login, got ${outcome.kind}`);
+    }
+
+    return outcome.request;
+}
+
+async function getGoogleTokens() {
+    const outcome = server.completeAuthorization(checkedRequest(), {
+        method: 'google',
+        email: GOOGLE_EMAIL,
+    });
+    const code = redirectParams(outcome.kind === 'redirect' ? outcome.location : '').get('code') ?? '';
+    const { status, body } = await exchangeCode(code);
+
+    expect(status).toBe(200);
+
+    return body as { access_token: string; refresh_token: string };
+}
+
+function refresh(refreshToken: string, onServer = server) {
+    return onServer.token({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+        client_id: CLIENT_ID,
+    });
+}
+
 beforeEach(() => {
     currentTime = Date.UTC(2026, 9, 6);
+    loginAttempts = [];
     server = createServer();
 });
 
@@ -159,6 +199,74 @@ describe('login', () => {
             kind: 'show-login',
             error: 'Incorrect username or password.',
         });
+    });
+
+    it('reports every password attempt with the given username, never the password', async () => {
+        server.login({
+            ...authorizeParams,
+            username: 'guess',
+            password: 'wrong',
+        });
+        await getTokens();
+
+        expect(loginAttempts).toEqual([
+            {
+                method: 'password',
+                result: 'denied',
+                account: 'guess',
+            },
+            {
+                method: 'password',
+                result: 'success',
+                account: 'andrei',
+            },
+        ]);
+    });
+});
+
+describe('Google login', () => {
+    it('issues tokens for the same account with a hashed email, not the plain email', async () => {
+        const { access_token: accessToken, refresh_token: refreshToken } = await getGoogleTokens();
+
+        expect(await server.checkAccessToken(`Bearer ${accessToken}`)).toEqual({
+            kind: 'valid',
+            subject: 'andrei',
+        });
+
+        for (const token of [
+            accessToken,
+            refreshToken,
+        ]) {
+            expect(decodeJwt(token)).toMatchObject({
+                sub: 'andrei',
+                idp: 'google',
+                email_hash: expect.stringMatching(/^[\w-]{43}$/),
+            });
+            expect(JSON.stringify(decodeJwt(token))).not.toContain('admin');
+        }
+    });
+
+    it('keeps the provenance on refresh while the email is allowed', async () => {
+        const { refresh_token: refreshToken } = await getGoogleTokens();
+        const { status, body } = await refresh(refreshToken);
+
+        expect(status).toBe(200);
+        expect(decodeJwt(String((body as { refresh_token: string }).refresh_token))).toMatchObject({ idp: 'google' });
+    });
+
+    it('rejects the refresh after the email is removed, but keeps the access token until it expires', async () => {
+        const { access_token: accessToken, refresh_token: refreshToken } = await getGoogleTokens();
+        const serverWithoutEmail = createServer('secret-password', ['other@gmail.com']);
+
+        expect((await refresh(refreshToken, serverWithoutEmail)).body).toMatchObject({ error: 'invalid_grant' });
+        expect(await serverWithoutEmail.checkAccessToken(`Bearer ${accessToken}`)).toMatchObject({ kind: 'valid' });
+    });
+
+    it('keeps refreshing password tokens whatever the allowlist', async () => {
+        const { refresh_token: refreshToken } = await getTokens();
+
+        expect(decodeJwt(refreshToken)).not.toHaveProperty('idp');
+        expect((await refresh(refreshToken, createServer('secret-password', []))).status).toBe(200);
     });
 });
 

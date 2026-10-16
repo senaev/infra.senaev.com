@@ -228,3 +228,40 @@ To add or remove an allowed account, change both `GOOGLE_OAUTH_ADMIN_EMAILS` in 
 the test-user list in Google.
 
 Next: implementation, see Steps.
+
+### 2026-10-17 — Implementation
+
+Done directly on `main`, without a PR (owner's decision).
+
+- New dependencies: `openid-client@6.8.8`, `@fastify/cookie@11.1.3`.
+- [`googleLogin.ts`](../cluster-helper/src/oauth/googleLogin.ts): Google OIDC with PKCE,
+  state and nonce; static Google metadata, so startup does not depend on discovery; ID
+  token signature checked with Google's keys (`enableNonRepudiationChecks`). The
+  transaction is a `jose` `EncryptJWT` (`dir` + `A256GCM`, 10 minutes) in the cookie
+  `__Host-google-login-<state>`. `parseGoogleAdminEmails` rejects any entry that is not a
+  Gmail address, so a bad value stops the pod at start.
+- [`authorizationServer.ts`](../cluster-helper/src/oauth/authorizationServer.ts):
+  `completeAuthorization` is shared by both methods. Google-origin tokens carry
+  `idp: "google"` and `email_hash` (HMAC with the signing key); refresh copies them and
+  rejects an email that is no longer allowed. Tokens without `idp` behave as before.
+  `onLoginAttempt` reports every password attempt.
+- [`registerOAuthRoutes.ts`](../cluster-helper/src/oauth/registerOAuthRoutes.ts):
+  `GET /google/start` (checks the request again with `authorize`), `GET /google/callback`
+  (deletes the cookie whatever the result). CSP `form-action` includes
+  `https://accounts.google.com`. Rate limits: 60 per minute with separate keys `login`,
+  `google-start`, `google-callback`. Denied or cancelled Google login shows the login form
+  again with an error.
+- [`renderLoginPage.ts`](../cluster-helper/src/oauth/renderLoginPage.ts): "Sign in with
+  Google" form button; general success text.
+- [`index.ts`](../cluster-helper/src/index.ts): Telegram message to `TG_CLUSTER_CHAT_ID`
+  for each attempt (method, result, account); never a password, code or token.
+- Helm: three `GOOGLE_OAUTH_*` keys in `external-secret.yaml` and `cluster-helper.yaml`.
+- Tests: fake Google token endpoint and keys in
+  [`testing/fakeGoogle.ts`](../cluster-helper/src/oauth/testing/fakeGoogle.ts); 41 OAuth
+  tests. `npm run simple-checks` passes.
+
+Deploy order: the image build and the Helm deploy run in parallel. If the new image starts
+before the Helm change adds the variables, its pod fails at start and the old pod keeps
+running (RollingUpdate); the Helm deploy then replaces it.
+
+Next: after the deploy, run the checks in Verification.

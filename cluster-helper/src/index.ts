@@ -18,15 +18,22 @@ import {
     AUTH_MY_PASSWORD,
     AUTH_MY_USERNAME,
     AUTH_TOKEN_SIGNING_SECRET,
+    GOOGLE_OAUTH_ADMIN_EMAILS,
+    GOOGLE_OAUTH_CLIENT_ID,
+    GOOGLE_OAUTH_CLIENT_SECRET,
     MCP_DOMAIN,
+    TG_CLUSTER_CHAT_ID,
     TG_MEDIA_SERVER_CHAT_ID,
     TG_TOKEN_SENAEV_COM_BOT,
     WEBHOOK_DOMAIN,
 } from './env';
 import { handleAlisaRequest } from './handleAlisaRequest';
 import { logger } from './logger';
-import { createAuthorizationServer, MCP_SCOPE } from './oauth/authorizationServer';
-import { oauthRoutes } from './oauth/registerOAuthRoutes';
+import {
+    createAuthorizationServer, LoginAttempt, MCP_SCOPE,
+} from './oauth/authorizationServer';
+import { createGoogleLogin, parseGoogleAdminEmails } from './oauth/googleLogin';
+import { GOOGLE_CALLBACK_PATH, oauthRoutes } from './oauth/registerOAuthRoutes';
 import { createToolFamilies } from './chatGptMcp/toolFamilies';
 import { callCodeTool } from './codeToolsApi';
 import { callVaultTool, getShortLink } from './obsidianSyncApi';
@@ -241,12 +248,49 @@ const MCP_SERVER_OPTIONS: McpServerOptions = {
     ],
 };
 
+const MAX_NOTIFIED_ACCOUNT_LENGTH = 100;
+
+function notifyLoginAttempt({
+    method, result, account,
+}: LoginAttempt): void {
+    logger.info({
+        method,
+        result,
+    }, '🔑 OAuth sign-in attempt');
+
+    const text = [
+        result === 'success' ? '🔓 OAuth sign-in succeeded' : '⛔ OAuth sign-in denied',
+        `Method: ${method}`,
+        `Account: ${account.slice(0, MAX_NOTIFIED_ACCOUNT_LENGTH)}`,
+    ].join('\n');
+
+    sendTelegramMessage({
+        token: TG_TOKEN_SENAEV_COM_BOT,
+        chatId: TG_CLUSTER_CHAT_ID,
+        text,
+    }).catch((error: unknown) => {
+        logger.error(error, '❌ Failed to send the OAuth sign-in notification');
+    });
+}
+
+const googleAdminEmails = parseGoogleAdminEmails(GOOGLE_OAUTH_ADMIN_EMAILS);
+
 const authorizationServer = createAuthorizationServer({
     issuer: `https://${AUTH_DOMAIN}`,
     resource: MCP_RESOURCE,
     username: AUTH_MY_USERNAME,
     password: AUTH_MY_PASSWORD,
     signingSecret: AUTH_TOKEN_SIGNING_SECRET,
+    googleAdminEmails,
+    onLoginAttempt: notifyLoginAttempt,
+});
+
+const googleLogin = createGoogleLogin({
+    clientId: GOOGLE_OAUTH_CLIENT_ID,
+    clientSecret: GOOGLE_OAUTH_CLIENT_SECRET,
+    redirectUri: `https://${AUTH_DOMAIN}${GOOGLE_CALLBACK_PATH}`,
+    adminEmails: googleAdminEmails,
+    transactionSecret: AUTH_TOKEN_SIGNING_SECRET,
 });
 
 publicServer.post<{ Body: unknown }>(MCP_PATH, { constraints: { host: MCP_DOMAIN } }, async (request, reply) => {
@@ -324,6 +368,8 @@ async function main(): Promise<void> {
 
     await publicServer.register(oauthRoutes, {
         authorizationServer,
+        googleLogin,
+        onLoginAttempt: notifyLoginAttempt,
         authDomain: AUTH_DOMAIN,
         mcpDomain: MCP_DOMAIN,
         mcpPath: MCP_PATH,
