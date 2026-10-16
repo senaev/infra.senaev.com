@@ -1,6 +1,6 @@
 # 2026-10-16 — Google sign-in for the shared account
 
-- [ ] Add allowlisted Google sign-in next to password login for the existing shared account
+- [x] Add allowlisted Google sign-in next to password login for the existing shared account
 
 ## Goal
 
@@ -265,3 +265,25 @@ before the Helm change adds the variables, its pod fails at start and the old po
 running (RollingUpdate); the Helm deploy then replaces it.
 
 Next: after the deploy, run the checks in Verification.
+
+### 2026-10-17 — Google logo and production check
+
+The Google button shows the inline four-colour Google "G" SVG instead of text (`1cc1a35`);
+`aria-label` and `title` keep "Sign in with Google". Inline SVG needs no CSP change.
+
+Checked by the owner in production through ChatGPT: password login, Google login with an
+allowed account, and a denied Google account ("This Google account is not allowed.") all
+work.
+
+## Result
+
+Google sign-in works next to password login for the same shared account (`ceb0266`,
+`1cc1a35`). Only verified Gmail addresses in `GOOGLE_OAUTH_ADMIN_EMAILS` can sign in; the
+Google login transaction lives in an encrypted per-`state` cookie; Google-origin tokens
+carry a hashed email, and refresh stops after the email is removed. Every login attempt
+goes to Telegram.
+
+Open points, not checked:
+- Login from the ChatGPT mobile app (Google can block OAuth in an embedded webview).
+- Two parallel logins in two tabs, and the refresh rejection after an email is removed
+  (both covered by tests only).
