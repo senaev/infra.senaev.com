@@ -11,6 +11,7 @@ import {
     getCodeToolArgumentKeys,
     isCodeToolName,
     PROJECT_NAME_PATTERN,
+    SERVER_RULES,
 } from './codeToolDefinitions';
 import { SEARCH_LIMITS } from './codeToolLimits';
 
@@ -70,6 +71,12 @@ describe('code tool definitions', () => {
             expect(properties.timeoutSeconds).not.toHaveProperty('maximum');
             expect(properties.requestId).toBeDefined();
             expect(CODE_TOOL_DEFINITIONS[name].description).toContain('observes for up to 5 seconds');
+        }
+    });
+
+    test('every tool points to the server rules in /AGENTS.md', () => {
+        for (const name of CODE_TOOL_NAMES) {
+            expect(CODE_TOOL_DEFINITIONS[name].description).toContain(SERVER_RULES);
         }
     });
 

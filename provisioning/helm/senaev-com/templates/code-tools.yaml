@@ -22,6 +22,7 @@ spec:
         tags.datadoghq.com/version: latest
       annotations:
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
+        configmap.reloader.stakater.com/reload: "opencode-telegram-config"
     spec:
       # ReadWriteOnce permits both pods to mount the existing disk on the same node.
       nodeSelector:
@@ -97,6 +98,10 @@ spec:
               mountPath: /projects/git
             - name: ssh-dir
               mountPath: /root/.ssh
+            # The server rules that every code tool description points to.
+            - name: opencode-config
+              mountPath: /AGENTS.md
+              subPath: AGENTS.md
       volumes:
         - name: ssh-key
           secret:
@@ -107,6 +112,9 @@ spec:
                 mode: 0600
         - name: ssh-dir
           emptyDir: {}
+        - name: opencode-config
+          configMap:
+            name: opencode-telegram-config
         - name: projects-git
           persistentVolumeClaim:
             claimName: opencode-telegram-git
