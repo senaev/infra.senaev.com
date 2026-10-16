@@ -38,7 +38,7 @@ function textsOn(app: App, noteDate: Date): string[] {
 	return getDailyNoteMilestones(app, noteDate).map((milestone) => milestone.text);
 }
 
-describe('calculated milestones (`holiday-rule`)', () => {
+void describe('calculated milestones (`holiday-rule`)', () => {
 	const MOTHERS_DAY_PATH = "_wiki/milestones/Mother's Day.md";
 	const MOTHERS_DAY_RULE = 'FREQ=YEARLY;BYMONTH=11;BYDAY=-1SU';
 	const MOTHERS_DAY_2026 = day(2026, 11, 29);
@@ -49,29 +49,29 @@ describe('calculated milestones (`holiday-rule`)', () => {
 		]);
 	}
 
-	it('is listed on the calculated date, worded like a holiday, without an age', () => {
+	void it('is listed on the calculated date, worded like a holiday, without an age', () => {
 		assert.deepEqual(textsOn(mothersDayApp(), MOTHERS_DAY_2026), ["Mother's Day 💃"]);
 	});
 
-	it('links to its note', () => {
+	void it('links to its note', () => {
 		const [milestone] = getDailyNoteMilestones(mothersDayApp(), MOTHERS_DAY_2026);
 
 		assert.equal(milestone?.path, MOTHERS_DAY_PATH);
 	});
 
-	it('is announced with 🔜 on the day before', () => {
+	void it('is announced with 🔜 on the day before', () => {
 		assert.deepEqual(textsOn(mothersDayApp(), day(2026, 11, 28)), ["Mother's Day 🔜"]);
 	});
 
-	it('is gone the day after', () => {
+	void it('is gone the day after', () => {
 		assert.deepEqual(textsOn(mothersDayApp(), day(2026, 11, 30)), []);
 	});
 
-	it('is not listed two days before', () => {
+	void it('is not listed two days before', () => {
 		assert.deepEqual(textsOn(mothersDayApp(), day(2026, 11, 27)), []);
 	});
 
-	it('looks at the next year when tomorrow is 1 January', () => {
+	void it('looks at the next year when tomorrow is 1 January', () => {
 		const app = stubApp([
 			{ path: 'New Year.md', frontmatter: { 'holiday-rule': 'FREQ=YEARLY;BYMONTH=1;BYMONTHDAY=1' } },
 		]);
@@ -79,28 +79,28 @@ describe('calculated milestones (`holiday-rule`)', () => {
 		assert.deepEqual(textsOn(app, day(2026, 12, 31)), ['New Year 🔜']);
 	});
 
-	it('is hidden when its note has `milestones-hidden: true`', () => {
+	void it('is hidden when its note has `milestones-hidden: true`', () => {
 		assert.deepEqual(textsOn(mothersDayApp({ 'milestones-hidden': true }), MOTHERS_DAY_2026), []);
 	});
 
-	it('is ignored for a type without a rule property', () => {
+	void it('is ignored for a type without a rule property', () => {
 		const app = stubApp([{ path: '_people/@x.md', frontmatter: { 'birthday-rule': MOTHERS_DAY_RULE } }]);
 
 		assert.deepEqual(textsOn(app, MOTHERS_DAY_2026), []);
 	});
 
-	it('is ignored when the rule is not a string', () => {
+	void it('is ignored when the rule is not a string', () => {
 		const app = stubApp([{ path: MOTHERS_DAY_PATH, frontmatter: { 'holiday-rule': 42 } }]);
 
 		assert.deepEqual(textsOn(app, MOTHERS_DAY_2026), []);
 	});
 });
 
-describe('milestones-hidden', () => {
+void describe('milestones-hidden', () => {
 	const BIRTHDAY = '1964-04-14';
 	const ON_BIRTHDAY = day(2026, 4, 14);
 
-	it('hides every milestone of a note set to `true`', () => {
+	void it('hides every milestone of a note set to `true`', () => {
 		const app = stubApp([
 			{
 				path: '_people/@x.md',
@@ -111,7 +111,7 @@ describe('milestones-hidden', () => {
 		assert.deepEqual(textsOn(app, ON_BIRTHDAY), []);
 	});
 
-	it('hides tomorrow’s milestones too', () => {
+	void it('hides tomorrow’s milestones too', () => {
 		const app = stubApp([
 			{ path: '_people/@x.md', frontmatter: { birthday: BIRTHDAY, 'milestones-hidden': true } },
 		]);
@@ -119,7 +119,7 @@ describe('milestones-hidden', () => {
 		assert.deepEqual(textsOn(app, day(2026, 4, 13)), []);
 	});
 
-	it('leaves other notes alone', () => {
+	void it('leaves other notes alone', () => {
 		const app = stubApp([
 			{ path: '_people/@hidden.md', frontmatter: { birthday: BIRTHDAY, 'milestones-hidden': true } },
 			{ path: '_people/@mom.md', frontmatter: { birthday: BIRTHDAY } },
@@ -129,7 +129,7 @@ describe('milestones-hidden', () => {
 	});
 
 	for (const value of [false, 'true', 'yes', 1, null]) {
-		it(`does not hide for ${JSON.stringify(value)}`, () => {
+		void it(`does not hide for ${JSON.stringify(value)}`, () => {
 			const app = stubApp([
 				{ path: '_people/@mom.md', frontmatter: { birthday: BIRTHDAY, 'milestones-hidden': value } },
 			]);
@@ -139,14 +139,14 @@ describe('milestones-hidden', () => {
 	}
 });
 
-describe('frontmatter milestones', () => {
-	it('renders a birthday with the age', () => {
+void describe('frontmatter milestones', () => {
+	void it('renders a birthday with the age', () => {
 		const app = stubApp([{ path: '_people/@mom.md', frontmatter: { birthday: '1964-04-14' } }]);
 
 		assert.deepEqual(textsOn(app, day(2026, 4, 14)), ['@mom birthday (62) 🥳']);
 	});
 
-	it('omits the age for a placeholder year', () => {
+	void it('omits the age for a placeholder year', () => {
 		const app = stubApp([
 			{ path: '_wiki/milestones/New Year 🎄.md', frontmatter: { holiday: '0001-12-31' } },
 		]);
@@ -154,13 +154,13 @@ describe('frontmatter milestones', () => {
 		assert.deepEqual(textsOn(app, day(2026, 12, 31)), ['New Year 🎄 💃']);
 	});
 
-	it('renders a death anniversary with its own emoji', () => {
+	void it('renders a death anniversary with its own emoji', () => {
 		const app = stubApp([{ path: '_people/@x.md', frontmatter: { death: '1995-03-08' } }]);
 
 		assert.deepEqual(textsOn(app, day(2026, 3, 8)), ['@x death anniversary (31) ⚰️']);
 	});
 
-	it('lists several types from one note', () => {
+	void it('lists several types from one note', () => {
 		const app = stubApp([
 			{ path: '_people/@x.md', frontmatter: { birthday: '1936-05-02', death: '1995-05-02' } },
 		]);
@@ -171,7 +171,7 @@ describe('frontmatter milestones', () => {
 		]);
 	});
 
-	it('accepts a Date, which Obsidian yields for an unquoted YAML date', () => {
+	void it('accepts a Date, which Obsidian yields for an unquoted YAML date', () => {
 		const app = stubApp([
 			{ path: '_people/@mom.md', frontmatter: { birthday: new Date('1964-04-14') } },
 		]);
@@ -179,13 +179,13 @@ describe('frontmatter milestones', () => {
 		assert.deepEqual(textsOn(app, day(2026, 4, 14)), ['@mom birthday (62) 🥳']);
 	});
 
-	it('ignores the year when matching the day', () => {
+	void it('ignores the year when matching the day', () => {
 		const app = stubApp([{ path: '_people/@mom.md', frontmatter: { birthday: '1964-04-14' } }]);
 
 		assert.deepEqual(textsOn(app, day(2031, 4, 14)), ['@mom birthday (67) 🥳']);
 	});
 
-	it('puts tomorrow before today, marking only tomorrow with 🔜', () => {
+	void it('puts tomorrow before today, marking only tomorrow with 🔜', () => {
 		const app = stubApp([
 			{ path: '_people/@today.md', frontmatter: { birthday: '0001-04-14' } },
 			{ path: '_people/@tomorrow.md', frontmatter: { birthday: '0001-04-15' } },
@@ -197,7 +197,7 @@ describe('frontmatter milestones', () => {
 		]);
 	});
 
-	it('skips notes without frontmatter, an unknown property or another date', () => {
+	void it('skips notes without frontmatter, an unknown property or another date', () => {
 		const app = stubApp([
 			{ path: '_people/@none.md' },
 			{ path: '_people/@other.md', frontmatter: { anniversary: '0001-04-14' } },
@@ -208,19 +208,19 @@ describe('frontmatter milestones', () => {
 		assert.deepEqual(textsOn(app, day(2026, 4, 14)), []);
 	});
 
-	it('crosses a month boundary when looking at tomorrow', () => {
+	void it('crosses a month boundary when looking at tomorrow', () => {
 		const app = stubApp([{ path: '_people/@x.md', frontmatter: { birthday: '0001-05-01' } }]);
 
 		assert.deepEqual(textsOn(app, day(2026, 4, 30)), ['@x birthday 🔜']);
 	});
 
-	it('crosses a year boundary when looking at tomorrow', () => {
+	void it('crosses a year boundary when looking at tomorrow', () => {
 		const app = stubApp([{ path: '_people/@x.md', frontmatter: { birthday: '0001-01-01' } }]);
 
 		assert.deepEqual(textsOn(app, day(2026, 12, 31)), ['@x birthday 🔜']);
 	});
 
-	it('matches 29 February in a leap year', () => {
+	void it('matches 29 February in a leap year', () => {
 		const app = stubApp([{ path: '_people/@x.md', frontmatter: { birthday: '2000-02-29' } }]);
 
 		assert.deepEqual(textsOn(app, day(2028, 2, 29)), ['@x birthday (28) 🥳']);

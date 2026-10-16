@@ -31,16 +31,16 @@ function datesOfRuleIn(rule: string, year: number): string[] {
 		.map(isoDate);
 }
 
-describe('rule-test-vectors.json', () => {
+void describe('rule-test-vectors.json', () => {
 	for (const vector of ruleTestVectors.vectors) {
-		it(`${vector.name}, ${vector.year}`, () => {
+		void it(`${vector.name}, ${vector.year}`, () => {
 			assert.deepEqual(datesOfRuleIn(vector.rule, vector.year), vector.dates);
 		});
 	}
 });
 
-describe('last Sunday of November', () => {
-	it('matches exactly one day per year, a November Sunday in the last week', () => {
+void describe('last Sunday of November', () => {
+	void it('matches exactly one day per year, a November Sunday in the last week', () => {
 		for (let year = 1990; year <= 2060; year += 1) {
 			const matches = daysOfYear(year).filter((day) => ruleOccursOn(MOTHERS_DAY_RULE, day));
 
@@ -60,7 +60,7 @@ describe('last Sunday of November', () => {
 	});
 });
 
-describe('invalid rules', () => {
+void describe('invalid rules', () => {
 	const ANY_DAY: CalendarDay = { year: 2026, month: 1, date: 1 };
 
 	for (const rule of [
@@ -70,7 +70,7 @@ describe('invalid rules', () => {
 		'FREQ=YEARLY;BYMONTH=1;BYMONTHDAY=1;COUNT=3',
 		'DTSTART:20200101T000000Z\nRRULE:FREQ=YEARLY;BYMONTH=1;BYMONTHDAY=1',
 	]) {
-		it(`never match and warn: ${JSON.stringify(rule)}`, () => {
+		void it(`never match and warn: ${JSON.stringify(rule)}`, () => {
 			const warn = mock.method(console, 'warn', () => {});
 			try {
 				assert.equal(ruleOccursOn(rule, ANY_DAY), false);

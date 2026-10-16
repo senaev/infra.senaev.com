@@ -115,6 +115,7 @@ Run from the `plugins/senaev-personal-tools/` directory:
 
 ```bash
 npm install       # first time only
+npm run typecheck # TypeScript checks alone
 npm run build     # typecheck → tests → src/main.ts → ../../.obsidian/plugins/senaev-personal-tools/main.js
 npm test          # tests alone
 ```
@@ -174,7 +175,9 @@ npm run build
 
 - ESLint is preconfigured with `eslint-plugin-obsidianmd` for Obsidian-specific rules.
 - Run `npm run lint` to lint the project.
-- A GitHub Action automatically lints every commit on all branches.
+- `.github/workflows/plugin-checks.yml` checks only this plugin on every push and pull request: clean install, lint, TypeScript, tests, build, and committed build consistency.
+- `manifest.json` is a symlink to the installed manifest in `.obsidian/plugins/senaev-personal-tools/`, so lint and version tooling share the canonical metadata.
+- Node imports are allowed only in test files; test registrations explicitly use `void` because Node's runner manages their completion.
 
 ## File & folder conventions
 

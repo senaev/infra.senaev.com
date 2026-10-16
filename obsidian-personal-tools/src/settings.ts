@@ -1,9 +1,7 @@
-import { App, PluginSettingTab } from 'obsidian';
+import { App, PluginSettingTab, Setting } from 'obsidian';
 import SenaevPersonalTools from './main';
 
-export interface SenaevPluginSettings {
-	// Add settings here as features are added
-}
+export type SenaevPluginSettings = Record<string, never>;
 
 export const DEFAULT_SETTINGS: SenaevPluginSettings = {};
 
@@ -18,6 +16,6 @@ export class SenaevSettingTab extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
-		containerEl.createEl('h2', { text: 'Senaev Personal Tools' });
+		new Setting(containerEl).setName('Preferences').setHeading();
 	}
 }
