@@ -1,10 +1,6 @@
 /** Domain argument contracts; independent of transport and execution policy. */
 export const CODE_COMMAND_ARGUMENTS = {
     projects: [],
-    clone: [
-        'url',
-        'name',
-    ],
     list: [
         'project',
         'folder',

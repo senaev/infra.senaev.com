@@ -77,7 +77,6 @@ describe('handleMcpMessage', () => {
             'obsidian-operation_result',
             'obsidian-operation_cancel',
             'code-projects',
-            'code-clone',
             'code-list',
             'code-search',
             'code-read',

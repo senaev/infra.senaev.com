@@ -40,7 +40,3 @@ export const RUN_LIMITS = {
     /** For stdout and stderr together; the end of the output is kept, because errors are there. */
     maxOutputChars: 30_000,
 } as const;
-
-export const CLONE_LIMITS = {
-    maxUrlLength: 500,
-} as const;

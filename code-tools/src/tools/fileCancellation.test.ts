@@ -11,7 +11,6 @@ import {
 import { createFileDiffAsync } from 'senaev-utils/src/files/createFileDiffAsync';
 import { replaceExactlyOnceAsync as replaceText } from 'senaev-utils/src/files/textEdits';
 
-import { cloneTool } from './cloneTool';
 import { createTestProjects, type TestProjects } from './createTestProjects';
 import { patchTool } from './patchTool';
 import { readTool } from './readTool';
@@ -108,10 +107,6 @@ describe('cooperative file cancellation and atomicity', () => {
                         replace: 'new',
                     },
                 ],
-            }, execution),
-            (execution: CommandExecution) => cloneTool(projects.config, {
-                url: projects.path('demo'),
-                name: 'copy',
             }, execution),
         ];
 

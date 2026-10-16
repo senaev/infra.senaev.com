@@ -6,8 +6,6 @@ import {
 } from 'vitest';
 
 import { runCommand } from './runCommand';
-import { cloneTool } from './cloneTool';
-import { getRepositoryName } from './cloneCommand';
 import { createTestProjects, type TestProjects } from './createTestProjects';
 import { projectsTool } from './projectsTool';
 import { runTool } from './runTool';
@@ -55,46 +53,6 @@ describe('projectsTool', () => {
 
     it('rejects arguments it does not know', async () => {
         await expect(projectsTool(projects.config, { all: true })).rejects.toMatchObject({ code: 'invalid_arguments' });
-    });
-});
-
-describe('cloneTool', () => {
-    it('takes the project name from the repository URL', () => {
-        expect(getRepositoryName('git@github.com:senaev/infra.senaev.com.git')).toBe('infra.senaev.com');
-        expect(getRepositoryName('https://github.com/senaev/repo/')).toBe('repo');
-    });
-
-    it('clones a repository into a new project', async () => {
-        const result = await cloneTool(projects.config, {
-            url: projects.path('demo'),
-            name: 'demo-copy',
-        });
-
-        expect(result).toMatchObject({
-            project: 'demo-copy',
-            branch: 'main',
-        });
-        expect((await projectsTool(projects.config, {})).projects.map((project) => project.name)).toEqual([
-            'demo',
-            'demo-copy',
-            'other',
-        ]);
-    });
-
-    it('refuses an existing project, an option-like URL and a bad name', async () => {
-        await expect(cloneTool(projects.config, { url: projects.path('demo') })).rejects.toMatchObject({ code: 'already_exists' });
-        await expect(cloneTool(projects.config, { url: '--upload-pack=touch /tmp/x' })).rejects.toMatchObject({ code: 'invalid_arguments' });
-        await expect(cloneTool(projects.config, {
-            url: projects.path('demo'),
-            name: '../escape',
-        })).rejects.toMatchObject({ code: 'invalid_arguments' });
-    });
-
-    it('reports a failed clone with git\'s message', async () => {
-        await expect(cloneTool(projects.config, {
-            url: projects.path('missing'),
-            name: 'x',
-        })).rejects.toMatchObject({ code: 'command_failed' });
     });
 });
 

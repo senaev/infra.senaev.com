@@ -50,13 +50,6 @@ describe('all managed file tools', { timeout: 60000 }, () => {
     }
 
     function args(tool: string, suffix: string): Record<string, unknown> {
-        if (tool === 'clone') {
-            return {
-                url: projects.path('demo'),
-                name: `copy-${suffix}`,
-            };
-        }
-
         if (tool === 'write') {
             return {
                 project: 'demo',
@@ -95,7 +88,6 @@ describe('all managed file tools', { timeout: 60000 }, () => {
             'read',
             'write',
             'patch',
-            'clone',
         ]) {
             const payload = {
                 ...args(tool, executionPolicy),
@@ -130,7 +122,6 @@ describe('all managed file tools', { timeout: 60000 }, () => {
                 ]);
             } else {
                 const changed = {
-                    clone: `copy-${executionPolicy}`,
                     write: `${executionPolicy}.md`,
                     patch: 'README.md',
                 };
@@ -140,7 +131,7 @@ describe('all managed file tools', { timeout: 60000 }, () => {
         }
     });
 
-    it('queues all four tools, cancels without executing and runs parallel work while FIFO is blocked', async () => {
+    it('queues all three tools, cancels without executing and runs parallel work while FIFO is blocked', async () => {
         let entered: () => void = () => undefined;
         const started = new Promise<void>((resolve) => {
             entered = resolve;
@@ -163,7 +154,6 @@ describe('all managed file tools', { timeout: 60000 }, () => {
             'read',
             'write',
             'patch',
-            'clone',
         ]) {
             const spy = vi.spyOn(CODE_TOOLS, tool as keyof typeof CODE_TOOLS);
             const queued = (await call(tool, {

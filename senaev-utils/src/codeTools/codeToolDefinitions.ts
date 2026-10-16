@@ -14,7 +14,6 @@ import {
 
 import { PROJECT_NAME_PATTERN, type CodeCommandName } from './codeCommands';
 import {
-    CLONE_LIMITS,
     LIST_LIMITS,
     MAX_GLOB_LENGTH,
     PATCH_LIMITS,
@@ -37,10 +36,20 @@ const MANAGED_TOOL_DESCRIPTION = createManagedToolDescription(CODE_TOOL_PREFIX);
 const PROJECT_RULES = 'Before you change a project, read its AGENTS.md (or README.md) with code-read, if it is not in your context yet.';
 
 const GIT_RULES = [
-    'Work on a separate branch for each task: within the user\'s requested scope you may create and switch branches,',
+    'Workflow for a task: read the project\'s AGENTS.md; "git fetch" and create a new branch from the up-to-date default branch;',
+    'make the changes; run the project\'s checks; commit; push the branch; open a pull request with "gh pr create".',
+    'Within the user\'s requested scope you may create and switch branches,',
     'stage files, commit, push the working branch and open a pull request without asking again.',
     'Get explicit user consent before you commit to the default branch (e.g. "main"), push to it, or merge a pull request into it;',
     'permission to work on a branch or open a pull request is not permission to merge.',
+].join(' ');
+
+const CLONE_RULES = [
+    'Every project is a folder in "/projects/git" that holds one git repository.',
+    'To add a project, clone it next to the others with code-run in any existing project:',
+    '"git clone <url> /projects/git/<name>"; then it appears in code-projects.',
+    'GitHub works over SSH ("git@github.com:owner/repo.git") and HTTPS; "gh" is logged in.',
+    'Do not clone a repository into another project, and do not clone it again if code-projects already lists it.',
 ].join(' ');
 
 const PROJECT_PROPERTY = {
@@ -75,7 +84,8 @@ const projects: ToolDefinition = {
     description: [
         'Lists the code projects on the owner\'s server: one git repository per project, with its current branch,',
         'the number of changed files, the "origin" remote and whether it has an AGENTS.md.',
-        'Start here to find the project name for the other code tools. To add a project, use code-clone.',
+        'Start here to find the project name for the other code tools.',
+        CLONE_RULES,
         MANAGED_TOOL_DESCRIPTION,
     ].join(' '),
     inputSchema: {
@@ -84,40 +94,6 @@ const projects: ToolDefinition = {
         additionalProperties: false,
     },
     annotations: READ_ONLY_ANNOTATIONS,
-};
-
-const clone: ToolDefinition = {
-    title: 'Clone a git repository',
-    description: [
-        MANAGED_TOOL_DESCRIPTION,
-        'Clones into its own hidden temporary directory, then atomically publishes without replacing an existing destination. Concurrent clones of the same name conflict; abort cleans only its own temporary data. Progress logs are retained.',
-        'Clones a git repository into a new project on the owner\'s server. Fails if a project with that name already exists.',
-        'GitHub repositories work over SSH ("git@github.com:owner/repo.git") and over HTTPS.',
-    ].join(' '),
-    inputSchema: {
-        type: 'object',
-        properties: {
-            ...MANAGED_TOOL_PROPERTIES,
-            url: {
-                type: 'string',
-                maxLength: CLONE_LIMITS.maxUrlLength,
-                description: 'The repository URL, e.g. "git@github.com:senaev/infra.senaev.com.git".',
-            },
-            name: {
-                type: 'string',
-                pattern: PROJECT_NAME_PATTERN,
-                description: 'The project name. Default: the repository name from the URL.',
-            },
-        },
-        required: ['url'],
-        additionalProperties: false,
-    },
-    annotations: {
-        readOnlyHint: false,
-        destructiveHint: false,
-        idempotentHint: false,
-        openWorldHint: true,
-    },
 };
 
 const list: ToolDefinition = {
@@ -357,7 +333,8 @@ const run: ToolDefinition = {
     title: 'Run a shell command in a project',
     description: [
         'Runs a bash command in the project folder on the owner\'s server and returns the exit code, stdout and stderr.',
-        'Use it for tests, builds, linters and git: status, diff, log, checkout, commit, push. "gh" is available for GitHub pull requests.',
+        'Use it for tests, builds, linters and git: clone, status, diff, log, checkout, commit, push. "gh" is available for GitHub pull requests.',
+        CLONE_RULES,
         MANAGED_TOOL_DESCRIPTION,
         'A nonzero command exit code is retained as a normal command result with operation.state=failed; inspect exitCode before running dependent commands.',
         `Only the last ${formatNumber(RUN_LIMITS.maxOutputChars)} characters of the output are returned, so limit long output yourself, e.g. with "| tail -n 100".`,
@@ -394,7 +371,6 @@ const run: ToolDefinition = {
 /** In the order that `tools/list` shows them. */
 export const CODE_TOOL_DEFINITIONS = {
     projects,
-    clone,
     list,
     search,
     read,

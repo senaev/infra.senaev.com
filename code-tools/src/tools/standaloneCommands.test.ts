@@ -6,7 +6,6 @@ import {
     afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
 
-import { cloneCommand } from './cloneCommand';
 import { createTestProjects, type TestProjects } from './createTestProjects';
 import { listCommand } from './listCommand';
 import { patchCommand } from './patchCommand';
@@ -32,7 +31,7 @@ afterEach(async () => {
 });
 
 describe('standalone typed code commands', () => {
-    it('runs all eight commands with explicit capabilities without a manager', async () => {
+    it('runs all seven commands with explicit capabilities without a manager', async () => {
         const ownChanges: string[] = [];
         const ownLog = vi.fn();
         const execution = createCommandExecution({
@@ -46,15 +45,6 @@ describe('standalone typed code commands', () => {
                 'demo',
                 'source',
             ]);
-            const cloned = await cloneCommand(projects.config, {
-                url: projects.path('source'),
-                name: 'cloned',
-            }, execution);
-
-            expect(cloned).toMatchObject({
-                project: 'cloned',
-                branch: 'main',
-            });
             const listed = await listCommand(projects.config, {
                 project: 'demo',
                 folder: '',
@@ -147,7 +137,6 @@ describe('standalone typed code commands', () => {
             }, execution)).rejects.toMatchObject({ code: 'not_found' });
             expect(await readFile(projects.path('demo', 'created.md'), 'utf8')).toBe('changed\n');
             expect(ownChanges).toEqual([
-                'cloned',
                 'created.md',
                 'created.md',
             ]);
@@ -158,13 +147,12 @@ describe('standalone typed code commands', () => {
 
             expect(command.stdout).toBe('direct');
             expect(ownLog).toHaveBeenCalledWith('stdout', 'direct');
-            expect((await readdir(projects.config.projectsRoot)).some((path) => path.startsWith('.clone-'))).toBe(false);
         };
 
         await run();
     }, 30000);
 
-    it('pre-aborted execution starts none of the seven migrated business commands', async () => {
+    it('pre-aborted execution starts none of the six migrated business commands', async () => {
         const controller = new AbortController();
         const reason = new Error('cancel before business work');
         const changedPath = vi.fn();
@@ -178,10 +166,6 @@ describe('standalone typed code commands', () => {
         });
         const commands = [
             () => projectsCommand(projects.config, {}, execution),
-            () => cloneCommand(projects.config, {
-                url: projects.path('source'),
-                name: 'cancelled-clone',
-            }, execution),
             () => listCommand(projects.config, {
                 project: 'demo',
                 folder: '',

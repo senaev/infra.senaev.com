@@ -1,5 +1,5 @@
 import {
-    mkdir, readFile, writeFile,
+    mkdir, readFile, realpath, writeFile,
 } from 'node:fs/promises';
 import { join } from 'node:path';
 
@@ -78,6 +78,9 @@ describe('projects cancellation', () => {
         const calls = (await readFile(log, 'utf8')).trim().split('\n');
 
         expect(calls.length).toBeGreaterThan(0);
-        expect(calls.every((cwd) => cwd === projects.path('demo'))).toBe(true);
+        // On macOS the temporary folder is behind a symlink, and $PWD is the resolved path.
+        const demo = await realpath(projects.path('demo'));
+
+        expect(calls.every((cwd) => cwd === demo)).toBe(true);
     });
 });

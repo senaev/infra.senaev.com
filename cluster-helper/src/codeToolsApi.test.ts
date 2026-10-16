@@ -34,7 +34,6 @@ describe('code operation proxy', () => {
             'run',
             'list',
             'search',
-            'clone',
             'read',
             'write',
             'patch',
@@ -77,9 +76,6 @@ describe('code operation proxy', () => {
                 headers: expect.objectContaining({ authorization: 'Bearer internal-test' }),
             }));
         }
-
-        await callCodeTool('clone', { url: 'git@example.com:demo.git' });
-        expect(timeout).toHaveBeenLastCalledWith(15000);
     });
 
     it('preserves QUEUE_FULL as a tool error rather than a transport failure', async () => {

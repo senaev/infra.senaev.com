@@ -32,7 +32,6 @@ describe('code tool definitions', () => {
     test('lists the tools in a fixed order', () => {
         expect(CODE_TOOL_NAMES).toEqual([
             'projects',
-            'clone',
             'list',
             'search',
             'read',
@@ -81,7 +80,7 @@ describe('code tool definitions', () => {
     });
 
     test('require a project in every tool that works inside one', () => {
-        for (const name of CODE_TOOL_NAMES.filter((tool) => tool !== 'projects' && tool !== 'clone')) {
+        for (const name of CODE_TOOL_NAMES.filter((tool) => tool !== 'projects')) {
             expect(CODE_TOOL_DEFINITIONS[name].inputSchema.required).toContain('project');
         }
     });
