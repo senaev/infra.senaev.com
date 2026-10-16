@@ -24,12 +24,24 @@ export default tseslint.config(
 			},
 			parserOptions: {
 				projectService: {
-					allowDefaultProject: ['eslint.config.mts', 'manifest.json'],
+					allowDefaultProject: ['eslint.config.mts'],
 				},
 				tsconfigRootDir: import.meta.dirname,
-				extraFileExtensions: ['.json'],
 			},
 		},
 	},
 	...obsidianmd.configs.recommended,
+	{
+		rules: {
+			'obsidianmd/ui/sentence-case': ['error', {
+				brands: ['Google', 'Google Translate'],
+			}],
+		},
+	},
+	{
+		files: ['src/**/*.test.ts'],
+		languageOptions: { globals: globals.node },
+		// Tests run in Node; the shipped plugin must remain browser-compatible.
+		rules: { 'import/no-nodejs-modules': 'off' },
+	},
 );
