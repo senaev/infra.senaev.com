@@ -9,9 +9,7 @@ import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnk
 
 import { isNotePath } from '../access/vaultAccess';
 import { type PathError, walkVault } from '../access/walkVault';
-import {
-    isDiaryRangeRequested, matchesNoteScope, type NoteScope,
-} from '../noteScope';
+import { matchesNoteScope, type NoteScope } from '../noteScope';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
 
 import { findTaskLines, type TaskLine } from './findTaskLines';
@@ -31,34 +29,6 @@ export type TaskParseError = {
     raw: string;
     error: string;
 };
-
-type CachedNote = {
-    content: string;
-    hash: string;
-    taskLines: TaskLine[];
-};
-
-// Parsing Markdown is the slow part of a scan, and almost no note changes between two
-// calls, so the task lines of each note are kept until its text changes.
-const cache = new Map<string, CachedNote>();
-
-function readNoteTasks(path: string, content: string): CachedNote {
-    const cached = cache.get(path);
-
-    if (cached !== undefined && cached.content === content) {
-        return cached;
-    }
-
-    const note = {
-        content,
-        hash: hashContent(content),
-        taskLines: findTaskLines(content),
-    };
-
-    cache.set(path, note);
-
-    return note;
-}
 
 export function toVaultTask(path: string, hash: string, taskLine: TaskLine & { task: TaskFields }): VaultTask {
     return {
@@ -93,7 +63,8 @@ export async function scanVaultTasks(config: VaultToolsConfig, scope: NoteScope,
             continue;
         }
 
-        const { hash, taskLines } = readNoteTasks(path, content);
+        const taskLines = findTaskLines(content);
+        const hash = taskLines.length === 0 ? '' : hashContent(content);
 
         for (const taskLine of taskLines) {
             if (taskLine.parsed.ok) {
@@ -108,19 +79,6 @@ export async function scanVaultTasks(config: VaultToolsConfig, scope: NoteScope,
                     raw: taskLine.raw,
                     error: taskLine.parsed.error,
                 });
-            }
-        }
-    }
-
-    const isWholeVault = scope.folder === '' && scope.matchesGlob === null && !isDiaryRangeRequested(scope);
-
-    if (isWholeVault) {
-        const scannedPaths = new Set(paths);
-
-        // Forget deleted and renamed notes.
-        for (const path of cache.keys()) {
-            if (!scannedPaths.has(path)) {
-                cache.delete(path);
             }
         }
     }

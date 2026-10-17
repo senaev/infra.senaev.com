@@ -293,3 +293,16 @@ nested/callout/numbered (not editable by design): 61
 One format problem is left: a block ID. It is linked from `_people/@alex-gran-tc.md:163` (`[[@zimarev#^2024-11-21T16-38-40]]`), so deleting it breaks that link.
 
 The vault plugin no longer re-exports `isActiveDailyDate`; every place imports it from senaev-utils. The plugin is rebuilt.
+
+### 2026-10-17 — Remove the task scan cache
+
+The user decided to remove the in-memory cache from `scanVaultTasks.ts`; a better solution (notes kept in memory, updated on file changes) is for later. Each `obsidian-tasks_list` call now reads and parses every note, and it hashes only the notes that have tasks.
+
+```
+run 1: 2054 ms, files 3631, tasks 9972, parse errors 0
+run 2: 1929 ms, files 3631, tasks 9972, parse errors 0
+```
+
+The cost of the later solution, estimated before the decision:
+- The vault has 7.2 MB of note text, which is about 20–40 MB in memory with the parsed data.
+- The real cost is change detection: our own writes update the cache, an inotify watcher follows `ob sync`, and an mtime/size check catches missed events.
