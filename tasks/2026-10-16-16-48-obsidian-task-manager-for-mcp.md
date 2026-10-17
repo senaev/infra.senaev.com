@@ -1,6 +1,6 @@
 # 2026-10-16 — Obsidian task manager for MCP
 
-- [ ] Create and list Obsidian tasks through MCP
+- [x] Create and list Obsidian tasks through MCP
 
 > Moved from the vault (`tasks/2026-10-16-16-48-obsidian-task-manager-for-mcp.md`) on 2026-10-17.
 
@@ -306,3 +306,26 @@ run 2: 1929 ms, files 3631, tasks 9972, parse errors 0
 The cost of the later solution, estimated before the decision:
 - The vault has 7.2 MB of note text, which is about 20–40 MB in memory with the parsed data.
 - The real cost is change detection: our own writes update the cache, an inotify watcher follows `ob sync`, and an mtime/size check catches missed events.
+
+### 2026-10-17 — Verification by the owner
+
+- The Obsidian plugin works well: the daily note shows the tasks in the new order.
+- The ChatGPT tools work well.
+
+## Result
+
+Done. ChatGPT can list, create and change Obsidian tasks through `obsidian-tasks_list`, `obsidian-tasks_create` and `obsidian-tasks_update`. They use the same task format, daily filter and sort as Obsidian.
+
+- Code:
+  - senaev-utils `src/obsidianTasks/`: parser, writer, recurrence, daily filter and sort, shared with the vault plugin through npm.
+  - obsidian-sync `vault-tools/tasks/` and `tools/tasks*`.
+  - `obsidian-read` has `lineNumbers`.
+  - `POST /tasks` uses the shared writer under the file lock.
+  - Commits: `5cf3ce1`, `58c6b1f` (cache removed); logs in `99b4b38`, `600574a`.
+- Vault:
+  - The plugin uses senaev-utils, and the sort is priority → path → line (vault task `Tasks/2026-10-17-09-04-daily-tasks-from-senaev-utils.md`).
+  - 26 whitespace-only task lines were fixed, and the owner fixed the others by hand. The vault changes are not committed.
+- Open points:
+  - One line cannot be edited: `_people/@zimarev.md:212` has a block ID that a link in `_people/@alex-gran-tc.md:163` uses.
+  - A task scan takes about 2 s without a cache. Notes kept in memory, updated on file changes, are for later.
+  - Task detection is not exactly Obsidian's: we use remark plus a regex on each line, and Obsidian uses its metadata cache list items. `%%` comments and `$$` blocks can differ. We can check by comparing the counts with an unfiltered ```tasks``` query.
