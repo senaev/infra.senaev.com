@@ -18,13 +18,23 @@ function markdownHighlight(text: string): string {
     return `==${text.replace(/[\\`*_=[\]<>~|]/g, '\\$&')}==`;
 }
 
+/**
+ * Telegram makes a link out of every `@username` in the text. An invisible word joiner after
+ * the `@` breaks the username, so a person note name such as `@annadodonova` stays plain text.
+ */
+const WORD_JOINER = '\u2060';
+
+function preventMentionLinks(text: string): string {
+    return text.replaceAll('@', `@${WORD_JOINER}`);
+}
+
 function formatMilestone({
     fileName, type, age, emoji,
 }: Milestone): string {
     const label = TYPE_LABELS[type] ?? type;
 
     return [
-        markdownHighlight(fileName),
+        markdownHighlight(preventMentionLinks(fileName)),
         label === '' ? null : label,
         age === null ? null : `(${age})`,
         emoji,

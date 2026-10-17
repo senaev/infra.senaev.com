@@ -56,8 +56,8 @@ describe('formatDailyOverview', () => {
             '## 🔔 Доброе утро субботы, 29 ноября',
             '',
             '### Сегодня',
-            '- ==@yavladimirov== birthday (39) 🥳',
-            '- ==@sk-danil== birthday (37) 🥳',
+            '- ==@\u2060yavladimirov== birthday (39) 🥳',
+            '- ==@\u2060sk-danil== birthday (37) 🥳',
             '',
             '### Завтра',
             '- ==Mother\'s Day== 🔜',
@@ -85,7 +85,7 @@ describe('formatDailyOverview', () => {
             []
         ));
 
-        expect(text).toContain('- ==@x== death anniversary (31) ⚰️\n- ==@x== wedding 💍');
+        expect(text).toContain('- ==@\u2060x== death anniversary (31) ⚰️\n- ==@\u2060x== wedding 💍');
     });
 
     it('leaves out an empty day', () => {
@@ -152,6 +152,10 @@ describe('formatDailyOverview', () => {
             '## 🔔 Доброе утро пятницы, 9 января',
             '## 🔔 Доброе утро субботы, 10 января',
         ]);
+    });
+
+    it('breaks every @username with a word joiner, so Telegram does not link it', () => {
+        expect(formatDailyOverview(overview([milestone({ fileName: '@anna & @bob' })], []))).toContain('- ==@\u2060anna & @\u2060bob== birthday 🥳');
     });
 
     it('escapes markdown characters in the note name', () => {
