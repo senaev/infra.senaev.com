@@ -85,6 +85,8 @@ filter by function window.senaevPersonalTools.filterTasksForDaily({task, query})
 sort by function window.senaevPersonalTools.sortKeyForDaily({task})
 ```
 
+The rules themselves live in the `senaev-utils` npm package (`src/obsidianTasks/dailyTasks.ts` in the infra.senaev.com repo): `isTaskInDailyNote`, `isActiveDailyDate` and `getTaskSortKey`. The Obsidian MCP tools use the same code, so ChatGPT sees the same daily list. `filterTasksForDaily.ts` and `sortKeyForDaily.ts` here only convert the Tasks plugin `task` object (moment dates, priority names, 0-based line) to plain data. To change a rule, change senaev-utils, wait for the `ci` release, and update the exact version in `package.json`.
+
 `filterTasksForDaily` splits daily notes into two roles:
 
 - A **closed** task (done or cancelled) is listed on the note for the day it was closed on, so every past note stays a record of what was finished that day.
@@ -92,18 +94,17 @@ sort by function window.senaevPersonalTools.sortKeyForDaily({task})
 
 Tasks inside `periodic/` are always excluded so daily notes never echo each other.
 
-`isActiveDailyDate` (`src/tasks/activeDailyDate.ts`) picks the active note: today and any future date, plus the latest existing note when today's note does not exist yet. Both rules collapse into `noteDate >= today || noteDate === latestExistingDate`, because when today's note exists the latest date is already today or later and the second check cannot reach into the past. `YYYY-MM-DD` compares chronologically as a plain string, so no date parsing is needed. A note whose name is not a date — only `_templates/Daily note template.md` — counts as active, so the template still shows open tasks.
+`isActiveDailyDate` (senaev-utils, re-exported by `src/tasks/activeDailyDate.ts`) picks the active note: today and any future date, plus the latest existing note when today's note does not exist yet. Both rules collapse into `noteDate >= today || noteDate === latestExistingDate`, because when today's note exists the latest date is already today or later and the second check cannot reach into the past. `YYYY-MM-DD` compares chronologically as a plain string, so no date parsing is needed. A note whose name is not a date — only `_templates/Daily note template.md` — counts as active, so the template still shows open tasks.
 
 Without this scoping every past note repeats the whole open backlog, which is what made 600+ notes render the same list.
 
 `createIsActiveDailyDate` caches the latest existing date, since finding it scans every markdown file while the filter runs once per task per query. The cache is invalidated on vault `create`/`delete`/`rename` of a daily note; a rename checks the old path too. Today's date is read fresh on each call, so midnight needs no invalidation. A past note already open on screen keeps its old list until the Tasks plugin re-renders it, which reopening the note always does.
 
-`sortKeyForDaily` orders by priority (highest first), then file name, then description. All three tiers are packed into one `|`-separated string because the Tasks plugin accepts only a single scalar per `sort by function` and throws when two keys have different types — it has no hook for a real comparator, so a plugin cannot supply one. Details that matter if you change it:
+`sortKeyForDaily` orders by priority (highest first), then file path, then line, so tasks keep their order in the note. (Until 2026-10-17 it was file name, then description.) All three tiers are packed into one `|`-separated string because the Tasks plugin accepts only a single scalar per `sort by function` and throws when two keys have different types — it has no hook for a real comparator, so a plugin cannot supply one. Details that matter if you change it:
 
 - Priority leads as a single digit (`0` Highest … `5` Lowest), so plain ascending order already means highest-priority-first.
-- `|` is the separator because Obsidian forbids it in file names, keeping the file-name tier unambiguous, and because it is ordinary punctuation. A control character would be wrong here: the comparator calls `localeCompare` without `ignorePunctuation`, and control characters are collated away entirely.
-- The comparator uses `numeric: true`, so digit runs sort naturally (`task 2` before `task 10`) rather than lexicographically. This is not configurable from a note.
-- Descriptions are used raw, so tasks written as `[[Some link]]` group ahead of plain-text ones (`[` sorts before letters). Tasks' own `sort by description` strips the brackets instead, which is why it is not used here.
+- `|` is the separator because Obsidian forbids it in file names, keeping the path tier unambiguous, and because it is ordinary punctuation. A control character would be wrong here: the comparator calls `localeCompare` without `ignorePunctuation`, and control characters are collated away entirely.
+- The comparator uses `numeric: true`, so digit runs sort naturally (line `2` before line `10`) rather than lexicographically. This is not configurable from a note. senaev-utils' `compareTaskSortKeys` does the same comparison.
 
 Renaming this global is a breaking change: ~649 notes and `_templates/Daily note template.md` reference it by name.
 

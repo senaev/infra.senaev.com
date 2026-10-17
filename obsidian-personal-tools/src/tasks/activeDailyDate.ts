@@ -1,47 +1,16 @@
 import { Plugin } from 'obsidian';
+import { isActiveDailyDate } from 'senaev-utils/src/obsidianTasks/dailyTasks';
 import {
 	formatDailyNoteBasename,
 	getDailyNoteDateFromPath,
-	isDailyNoteDateString,
 	isDailyNoteFile,
 } from '../dailyNote/dailyNotePath';
 
+/** The rule lives in senaev-utils, shared with the Obsidian MCP tools. */
+export { isActiveDailyDate };
+
 /** A predicate telling whether the daily note for `noteDate` is the active one. */
 export type IsActiveDailyDate = (noteDate: string) => boolean;
-
-/**
- * Decides whether the daily note for `noteDate` is "active", meaning it is the
- * note that should list still-open tasks. Past notes are a record of what was
- * closed on the day, so they must not repeat the current backlog.
- *
- * Today and any future note is active. When today's note does not exist, the
- * latest existing note takes over — this keeps open tasks visible on the day's
- * note before it is created, and on the last note written if a day is skipped.
- *
- * Both rules collapse into the two comparisons below: when today's note does
- * exist, `latestExistingDate` is already today or later, so the second check
- * cannot add a past note.
- *
- * All arguments are `YYYY-MM-DD`, which compares chronologically as a string.
- */
-export function isActiveDailyDate({
-	noteDate,
-	today,
-	latestExistingDate,
-}: {
-	noteDate: string;
-	today: string;
-	latestExistingDate: string | null;
-}): boolean {
-	if (!isDailyNoteDateString(noteDate)) {
-		// The query does not run in a dated note — `_templates/Daily note
-		// template.md` is the one such case. There is no day to scope to, so
-		// list open tasks instead of silently hiding them.
-		return true;
-	}
-
-	return noteDate >= today || noteDate === latestExistingDate;
-}
 
 /**
  * Builds the predicate used by the daily task filter, backed by the vault.

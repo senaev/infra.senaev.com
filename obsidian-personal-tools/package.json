@@ -32,6 +32,7 @@
 		"esbuild@0.25.5": true
 	},
 	"dependencies": {
-		"rrule": "^2.8.1"
+		"rrule": "^2.8.1",
+		"senaev-utils": "1.0.0-ci.39062759981.1"
 	}
 }
