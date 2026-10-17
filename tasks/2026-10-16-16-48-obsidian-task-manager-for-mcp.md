@@ -253,3 +253,28 @@ Map(5) { 'block id' => 5, 'double space' => 23, 'trailing space' => 1, 'created'
 ```
 
 A cold scan takes 2.3 s, a warm scan 0.4 s (the cache skips remark). Input for step 11: 1 invalid date, 24 whitespace problems (23 of them in `periodic/`), 5 block IDs, 2 ➕ and 1 ⏳.
+
+### 2026-10-17 — Deploy, vault plugin, vault clean-up
+
+- Commit `5cf3ce1` was pushed. All service workflows passed, and senaev-utils was published as `1.0.0-ci.39062759981.1`. The npm metadata CDN showed the old `ci` tag for some minutes; `--prefer-online` found the new version.
+- Smoke test after the deploy: `s.senaev.com/1bxsl9` → 302 to `/cv/5min`, the static page → 200, the public note → 200.
+- Vault plugin (vault task `tasks/2026-10-17-09-04-daily-tasks-from-senaev-utils.md`):
+  - The plugin uses `isTaskInDailyNote`, `isActiveDailyDate` and `getTaskSortKey` from senaev-utils.
+  - Typecheck, 80 tests and lint pass; `main.js` is rebuilt.
+  - The vault is not committed.
+- Vault clean-up, step 1: `~/tmp/fix-task-spaces.ts` fixed 26 task lines whose only problem was extra spaces. It changes a line only when collapsing the spaces gives exactly the serialized line.
+
+  Correction: the "2 ➕" above was a mistake of my count. They were whitespace lines with `➕` inside a wikilink, and they are now fixed.
+
+  Scan after the fix:
+
+  ```
+  not editable: nested/callout/numbered 61, format 6
+  _people/@mom.md:46 invalid due date "2027-03-00"
+  ```
+
+  These 6 need a decision from the owner, because a fix would delete data:
+  - 5 block IDs (`^2024-11-21T16-49-07` etc.) in `_people/@alex-gran-tc.md`, `_people/@lavrinovich.md`, `_people/@zimarev.md`, `_wiki/Рационализм.md` and `@senaev/How to work/How to hire (find) an employee.md`;
+  - ⏳ in `tools/Terminal = Warp + ZSH + Oh My ZSH!.md:48`.
+
+  The invalid date needs the real day. The 61 nested, callout and numbered tasks cannot be edited by design.
