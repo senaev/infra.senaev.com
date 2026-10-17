@@ -15,7 +15,32 @@ type ReadRequest = {
     path: string;
     section: string | undefined;
     startChar: number;
+    lineNumbers: boolean;
 };
+
+/** The 1-based line number in `text` of the character at `index`. */
+function lineNumberAt(text: string, index: number): number {
+    let line = 1;
+
+    for (let position = text.indexOf('\n'); position !== -1 && position < index; position = text.indexOf('\n', position + 1)) {
+        line += 1;
+    }
+
+    return line;
+}
+
+/** "12: text" for every line; a final newline does not get a number of its own. */
+function numberLines(text: string, firstLine: number): string {
+    if (text === '') {
+        return '';
+    }
+
+    const lines = text.split('\n');
+    const hasFinalNewline = text.endsWith('\n');
+    const numbered = (hasFinalNewline ? lines.slice(0, -1) : lines).map((line, index) => `${firstLine + index}: ${line}`);
+
+    return `${numbered.join('\n')}${hasFinalNewline ? '\n' : ''}`;
+}
 
 async function readNote(config: VaultToolsConfig, request: ReadRequest, maxChars: number, execution: CommandExecution) {
     const absolutePath = await resolveExistingNote(config, request.path, execution);
@@ -24,8 +49,10 @@ async function readNote(config: VaultToolsConfig, request: ReadRequest, maxChars
     const section = request.section === undefined ? null : findSection(raw, request.section);
     const fullText = section === null ? body : raw.slice(section.start, section.end);
     const text = fullText.slice(request.startChar);
-    const content = text.slice(0, maxChars);
-    const isTruncated = content.length < text.length;
+    const sliced = text.slice(0, maxChars);
+    const isTruncated = sliced.length < text.length;
+    const contentStart = (section === null ? raw.length - body.length : section.start) + request.startChar;
+    const content = request.lineNumbers ? numberLines(sliced, lineNumberAt(raw, contentStart)) : sliced;
     const diaryDate = getDiaryDate(config, request.path);
 
     return {
@@ -45,7 +72,7 @@ async function readNote(config: VaultToolsConfig, request: ReadRequest, maxChars
         totalChars: fullText.length,
         content,
         truncated: isTruncated,
-        ...isTruncated && { nextStartChar: request.startChar + content.length },
+        ...isTruncated && { nextStartChar: request.startChar + sliced.length },
     };
 }
 
@@ -55,6 +82,7 @@ export type ReadCommandInput = {
     diaryTo: string | undefined;
     section: string | undefined;
     startChar: number;
+    lineNumbers: boolean;
 };
 
 async function resolveRequestedPaths(config: VaultToolsConfig, input: ReadCommandInput, execution: CommandExecution) {
@@ -82,7 +110,9 @@ async function resolveRequestedPaths(config: VaultToolsConfig, input: ReadComman
 export async function readCommand(config: VaultToolsConfig, input: ReadCommandInput, execution: CommandExecution) {
     execution.throwIfAborted();
     const { isDiaryRange, paths } = await resolveRequestedPaths(config, input, execution);
-    const { section, startChar } = input;
+    const {
+        section, startChar, lineNumbers,
+    } = input;
     const notes = [];
     const errors = [];
     let usedChars = 0;
@@ -105,6 +135,7 @@ export async function readCommand(config: VaultToolsConfig, input: ReadCommandIn
                 path,
                 section,
                 startChar,
+                lineNumbers,
             }, READ_LIMITS.maxCharsPerNote, execution);
 
             // A note that would only fit cut is left whole for the next call, unless it is

@@ -29,6 +29,7 @@ const readInput = {
     diaryTo: undefined,
     section: undefined,
     startChar: 0,
+    lineNumbers: false,
 };
 const searchInput = {
     scope,

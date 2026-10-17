@@ -1,7 +1,7 @@
+import { serializeTask } from 'senaev-utils/src/obsidianTasks/taskLine';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 
 import { logger } from '../logger';
-import { formatTaskLine } from '../tasks/formatTaskLine';
 import { prependTaskLine } from '../tasks/prependTaskLine';
 
 import type { VaultServer } from './createVaultServer';
@@ -31,7 +31,15 @@ export function registerTaskRoutes(server: VaultServer): void {
         }
 
         const normalizedDueDate = typeof dueDate === 'string' && dueDate.trim() !== '' ? dueDate.trim() : null;
-        const line = formatTaskLine(title.trim(), normalizedDueDate);
+        const line = serializeTask({
+            status: 'open',
+            description: title.trim(),
+            source: null,
+            priority: 'normal',
+            dueDate: normalizedDueDate,
+            closedDate: null,
+            recurrence: null,
+        });
 
         try {
             await prependTaskLine(line);

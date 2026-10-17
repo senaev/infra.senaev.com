@@ -1,7 +1,7 @@
 import { createCommandAdapter } from 'senaev-utils/src/toolServer/createCommandAdapter';
 import { READ_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
 import {
-    optionalInteger, optionalString, optionalStringArray,
+    optionalBoolean, optionalInteger, optionalString, optionalStringArray,
 } from 'senaev-utils/src/toolServer/toolArguments';
 import { invalidArguments } from 'senaev-utils/src/commands/CommandError';
 
@@ -35,6 +35,7 @@ function parseReadInput(input: unknown): ReadCommandInput {
         ...range,
         section,
         startChar,
+        lineNumbers: optionalBoolean(args, 'lineNumbers') === true,
     };
 }
 

@@ -19,7 +19,7 @@ Implement all task parsing, field handling and task creation/serialization logic
 
 Combinable filters for date ranges, completion history and folders are future scope—for example, tasks for November 2028 or tasks completed during 2025. (Changed 2026-10-17: due-date, closed-date, status, text and folder filters are in scope; see the Plan.)
 
-This task is currently at the documentation stage. No branch has been created or implementation started; do not start implementation yet.
+This task is currently at the documentation stage. No branch has been created or implementation started; do not start implementation yet. (2026-10-17: implementation started on `main`, see Findings.)
 
 ## Plan
 
@@ -221,3 +221,35 @@ Together with the ⏫ example above, these cover all five explicit priority mark
 - Recurrence: copy the Tasks plugin. Without `when done`, next due = old due + interval; with `when done`, next due = completion date + interval.
 - At the end of the project: scan the vault for tasks that fail the round-trip and fix them by hand where possible.
 - A task with an invalid date (e.g. `📅 2027-03-00`) is a parse error and is not in the list output. The vault clean-up finds these tasks.
+
+### 2026-10-17 — Implementation (steps 1–10)
+
+Work is on `main`, no branch (user's decision).
+
+- senaev-utils `src/obsidianTasks/`:
+  - `taskLine.ts`: parser, serializer, `findTaskEditBlocker`, `findTaskFieldsError`.
+  - `taskRecurrence.ts`: rrule validation and the next due date.
+  - `dailyTasks.ts`: daily filter, `isActiveDailyDate`, sort key, exclusions.
+  - `isoDay.ts`.
+  - `rrule` 2.8.1 added to the dependencies.
+- How the parser works: it reads every field of the Tasks emoji format (also ⏳ 🛫 ➕ 🏁 🆔 ⛔, trailing `#tags` and block links), as the plugin does. The model keeps only our fields. So a line with an unsupported field, another field order or extra spaces does not serialize back to itself and is not editable. This also prevents a `#tag` after 📅 from hiding the due date.
+- A written task must read back as the same fields (`findTaskFieldsError`). For example, a description that ends with `📅 2026-01-01` is refused when nothing follows it. With a source after it, the line reads back the same, as in the Tasks plugin, so it is accepted.
+- obsidian-sync:
+  - `vault-tools/tasks/`: `findTaskLines` (raw blocks from remark), `scanVaultTasks` (with a per-note cache), `taskFileEdits`.
+  - `markdown/rawBlocks.ts`; `textQuery.ts`, which `obsidian-search` now uses too.
+  - `tools/tasks{List,Create,Update}{Tool,Command}.ts`; `obsidian-read` has `lineNumbers`.
+  - `POST /tasks` uses `serializeTask` and `insertLines` under `withFileMutation`; `formatTaskLine.ts` is removed.
+  - cluster-helper needed no code change: its tool list comes from `VAULT_MCP_TOOL_DEFINITIONS`.
+- Checks: `npm run simple-checks` passes (lint, typecheck, 1,324 tests, syntax, helm).
+
+Scan of the local vault copy with `scanVaultTasks` (`~/tmp/scan-tasks.ts`):
+
+```
+run 1: 2276 ms, files 3630, tasks 9959, parse errors 1
+run 2: 438 ms, files 3630, tasks 9959, parse errors 1
+not editable: nested/callout/numbered 61, format 32
+  _people/@mom.md:46 invalid due date "2027-03-00"
+Map(5) { 'block id' => 5, 'double space' => 23, 'trailing space' => 1, 'created' => 2, 'scheduled' => 1 }
+```
+
+A cold scan takes 2.3 s, a warm scan 0.4 s (the cache skips remark). Input for step 11: 1 invalid date, 24 whitespace problems (23 of them in `periodic/`), 5 block IDs, 2 ➕ and 1 ⏳.

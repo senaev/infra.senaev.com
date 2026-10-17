@@ -29,6 +29,7 @@ export const VAULT_COMMAND_ARGUMENTS = {
         'diaryTo',
         'section',
         'startChar',
+        'lineNumbers',
     ],
     links: [
         'path',
@@ -51,7 +52,52 @@ export const VAULT_COMMAND_ARGUMENTS = {
         'newPath',
     ],
     diary_append: ['text'],
+    tasks_list: [
+        'dailyNote',
+        'status',
+        'priority',
+        'queries',
+        'match',
+        'wholeWord',
+        'dueFrom',
+        'dueTo',
+        'closedFrom',
+        'closedTo',
+        'folder',
+        'glob',
+        'offset',
+        'limit',
+    ],
+    tasks_create: [
+        'path',
+        'expectedHash',
+        'afterLine',
+        'blankLinesBefore',
+        'blankLinesAfter',
+        'description',
+        'source',
+        'priority',
+        'dueDate',
+        'recurrence',
+    ],
+    tasks_update: [
+        'path',
+        'line',
+        'expectedHash',
+        'changes',
+    ],
 } as const;
+
+/** The task fields that `tasks_update` can change. */
+export const TASK_CHANGE_FIELDS = [
+    'status',
+    'description',
+    'source',
+    'priority',
+    'dueDate',
+    'closedDate',
+    'recurrence',
+] as const;
 
 export type VaultCommandName = keyof typeof VAULT_COMMAND_ARGUMENTS;
 

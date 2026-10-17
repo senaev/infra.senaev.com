@@ -1,35 +1,28 @@
 import { createCommandAdapter } from 'senaev-utils/src/toolServer/createCommandAdapter';
 import { SEARCH_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
 import {
-    optionalBoolean, readPageArguments, optionalEnum, optionalInteger, optionalStringArray,
+    readPageArguments, optionalEnum, optionalInteger,
 } from 'senaev-utils/src/toolServer/toolArguments';
 import { invalidArguments } from 'senaev-utils/src/commands/CommandError';
 
 import { isDiaryRangeRequested } from '../noteScope';
 import { readNoteScope } from '../noteScopeArguments';
+import { readTextQuery } from '../textQuery';
 import { readVaultToolArguments } from '../toolArguments';
 
 import { type SearchCommandInput, searchCommand } from './searchCommand';
 
 function parseSearchInput(input: unknown): SearchCommandInput {
     const args = readVaultToolArguments(input, 'search');
-    const queries = optionalStringArray(args, 'queries', {
-        maxItems: SEARCH_LIMITS.maxQueries,
-        maxLength: SEARCH_LIMITS.maxQueryLength,
-    });
+    const textQuery = readTextQuery(args);
 
-    if (queries === undefined) {
+    if (textQuery === undefined) {
         throw invalidArguments('"queries" is required');
     }
 
     const scope = readNoteScope(args);
-    const isWholeWord = optionalBoolean(args, 'wholeWord') === true;
     const options = {
-        queries,
-        requireAll: optionalEnum(args, 'match', [
-            'any',
-            'all',
-        ] as const) === 'all',
+        ...textQuery,
         contextLines: optionalInteger(args, 'contextLines', {
             min: 0,
             max: SEARCH_LIMITS.maxContextLines,
@@ -48,7 +41,6 @@ function parseSearchInput(input: unknown): SearchCommandInput {
     return {
         scope,
         ...options,
-        wholeWord: isWholeWord,
         sort,
         offset,
         limit,

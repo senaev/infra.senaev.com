@@ -9,6 +9,7 @@ import { type PathError, walkVault } from '../access/walkVault';
 import {
     getDiaryDate, matchesNoteScope, type NoteScope,
 } from '../noteScope';
+import { compileTextQuery } from '../textQuery';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
 
 const SNIPPET_MAX_CHARS = 300;
@@ -34,21 +35,6 @@ type FileMatch = {
     matches: LineMatch[];
     omittedMatches: number;
 };
-
-/** Only syntax characters may be escaped in a `u`-flag pattern, so `-` stays as it is. */
-function escapeForRegExp(text: string): string {
-    return text.replace(/[\\^$.*+?()[\]{}|/]/g, '\\$&');
-}
-
-/**
- * Each query is a literal built into a pattern by us, never a pattern from the caller, so
- * there is no way to send a pattern that backtracks for ever.
- */
-function compileQuery(query: string, isWholeWord: boolean): RegExp {
-    const literal = escapeForRegExp(query);
-
-    return new RegExp(isWholeWord ? `(?<![\\p{L}\\p{N}_])${literal}(?![\\p{L}\\p{N}_])` : literal, 'iu');
-}
 
 function shorten(line: string, matchIndex = 0): string {
     const text = line.replace(/\r$/, '');
@@ -160,7 +146,7 @@ export async function searchCommand(config: VaultToolsConfig, input: SearchComma
     } = input;
     const options: SearchOptions = {
         ...input,
-        patterns: queries.map((query) => compileQuery(query, input.wholeWord)),
+        patterns: queries.map((query) => compileTextQuery(query, input.wholeWord)),
     };
     const walk = await walkVault(config, scope.folder, execution);
     const paths = walk.files.filter((path) => isNotePath(config, path) && matchesNoteScope(config, scope, path));

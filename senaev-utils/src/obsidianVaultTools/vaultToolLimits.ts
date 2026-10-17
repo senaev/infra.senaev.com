@@ -36,3 +36,22 @@ export const LINKS_LIMITS = {
 export const PATCH_LIMITS = {
     maxOperations: 20,
 } as const;
+
+export const TASKS_LIST_LIMITS = {
+    defaultLimit: 50,
+    maxLimit: 200,
+    maxOffset: 1_000_000,
+} as const;
+
+export const TASK_WRITE_LIMITS = {
+    maxBlankLines: 10,
+    maxDescriptionLength: 2_000,
+    maxSourceLength: 100,
+    maxRecurrenceLength: 100,
+} as const;
+
+/** The owner's time zone: "today" of the task tools and the default closed date. */
+export const TASKS_TIME_ZONE = 'Europe/Madrid';
+
+/** Where new tasks go when the user names no note, see "Adding tasks" in the vault's AGENTS.md. */
+export const DEFAULT_TASKS_NOTE_PATH = '@senaev/tasks/tasks_streaming.md';

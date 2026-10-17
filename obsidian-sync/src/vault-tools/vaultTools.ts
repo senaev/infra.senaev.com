@@ -9,6 +9,9 @@ import { moveTool } from './tools/moveTool';
 import { patchTool } from './tools/patchTool';
 import { readTool } from './tools/readTool';
 import { searchTool } from './tools/searchTool';
+import { tasksCreateTool } from './tools/tasksCreateTool';
+import { tasksListTool } from './tools/tasksListTool';
+import { tasksUpdateTool } from './tools/tasksUpdateTool';
 import type { VaultToolsConfig } from './vaultToolsConfig';
 
 export type VaultTool = CommandAdapter<VaultToolsConfig>;
@@ -23,4 +26,7 @@ export const VAULT_TOOLS: Readonly<Record<VaultCommandName, VaultTool>> = {
     patch: patchTool,
     move: moveTool,
     diary_append: diaryAppendTool,
+    tasks_list: tasksListTool,
+    tasks_create: tasksCreateTool,
+    tasks_update: tasksUpdateTool,
 };
