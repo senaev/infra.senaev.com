@@ -6,9 +6,6 @@ import {
 	isDailyNoteFile,
 } from '../dailyNote/dailyNotePath';
 
-/** The rule lives in senaev-utils, shared with the Obsidian MCP tools. */
-export { isActiveDailyDate };
-
 /** A predicate telling whether the daily note for `noteDate` is the active one. */
 export type IsActiveDailyDate = (noteDate: string) => boolean;
 

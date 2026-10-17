@@ -94,7 +94,7 @@ The rules themselves live in the `senaev-utils` npm package (`src/obsidianTasks/
 
 Tasks inside `periodic/` are always excluded so daily notes never echo each other.
 
-`isActiveDailyDate` (senaev-utils, re-exported by `src/tasks/activeDailyDate.ts`) picks the active note: today and any future date, plus the latest existing note when today's note does not exist yet. Both rules collapse into `noteDate >= today || noteDate === latestExistingDate`, because when today's note exists the latest date is already today or later and the second check cannot reach into the past. `YYYY-MM-DD` compares chronologically as a plain string, so no date parsing is needed. A note whose name is not a date — only `_templates/Daily note template.md` — counts as active, so the template still shows open tasks.
+`isActiveDailyDate` (senaev-utils) picks the active note: today and any future date, plus the latest existing note when today's note does not exist yet. Both rules collapse into `noteDate >= today || noteDate === latestExistingDate`, because when today's note exists the latest date is already today or later and the second check cannot reach into the past. `YYYY-MM-DD` compares chronologically as a plain string, so no date parsing is needed. A note whose name is not a date — only `_templates/Daily note template.md` — counts as active, so the template still shows open tasks.
 
 Without this scoping every past note repeats the whole open backlog, which is what made 600+ notes render the same list.
 

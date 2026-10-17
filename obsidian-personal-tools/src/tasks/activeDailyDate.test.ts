@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { isActiveDailyDate } from './activeDailyDate';
+import { isActiveDailyDate } from 'senaev-utils/src/obsidianTasks/dailyTasks';
 
 const TODAY = '2026-08-17';
 
