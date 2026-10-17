@@ -278,3 +278,18 @@ A cold scan takes 2.3 s, a warm scan 0.4 s (the cache skips remark). Input for s
   - ⏳ in `tools/Terminal = Warp + ZSH + Oh My ZSH!.md:48`.
 
   The invalid date needs the real day. The 61 nested, callout and numbered tasks cannot be edited by design.
+
+### 2026-10-17 — Vault re-check after the owner's fixes
+
+The owner fixed the lines by hand. `~/tmp/scan-context.ts` found this:
+
+```
+tasks 9972, parse errors 0
+_people/@zimarev.md:212 — expected: - [x] Распланировать траты по [[Air Retail Media]] на [[2025]] ✅ 2024-11-25
+> 212: - [x] Распланировать траты по [[Air Retail Media]] на [[2025]] ✅ 2024-11-25 ^2024-11-21T16-38-40
+nested/callout/numbered (not editable by design): 61
+```
+
+One format problem is left: a block ID. It is linked from `_people/@alex-gran-tc.md:163` (`[[@zimarev#^2024-11-21T16-38-40]]`), so deleting it breaks that link.
+
+The vault plugin no longer re-exports `isActiveDailyDate`; every place imports it from senaev-utils. The plugin is rebuilt.
