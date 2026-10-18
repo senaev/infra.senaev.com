@@ -160,3 +160,49 @@ OAuth mechanism that already protects `https://mcp.senaev.com/chat-gpt`.
   tests, docs and the rollout order.
 - The user added `INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_MCP_GRAFANA` to Vault
   `senaev-com-kv`. Step 6 now reads it through the ExternalSecret; no Helm-generated Secret.
+
+### 2026-10-18 — Implementation
+
+Branch `grafana-mcp-for-chatgpt`, one commit per part: the OAuth server with several
+resources, the `/grafana` proxy, the chart, the docs. Differences from the plan:
+
+- The init script is in `provisioning/helm/senaev-com/config/mcp-grafana/` (the chart keeps its
+  files in `config/`, not `files/`).
+- The init script creates the new token **before** it deletes the old ones, so a failure in the
+  middle leaves a working token. It was run against a fake Grafana API: it changed the role
+  Viewer → Editor, ignored the account `mcp-grafana-other` (the search is a substring match),
+  wrote the token file with mode `0600`, and logged no secret.
+- The proxy answers `502`, not `401`, when `mcp-grafana` rejects the internal token: a `401`
+  would tell ChatGPT that its own token is bad and start a new sign-in.
+- Both containers run as UID 1000, the user of the `mcp-grafana` image, so it can read the token file.
+
+### 2026-10-18 — CodeRabbit review of PR #93
+
+One finding, valid: `cluster-helper/src/index.ts` did not register the `/grafana` proxy, nor add
+it to the OAuth resources and metadata paths. When the commits were split, the backup copy of
+`index.ts` was made after the `/grafana` parts were removed, so they were lost. No test covers
+`index.ts`, so the checks passed. Fixed in the proxy commit.
+
+### 2026-10-18 — Robot review of PR #93: two blocking findings
+
+1. CI did not copy `provisioning/helm/common-values.yaml` to the server: each chart job sent only
+   `provisioning/helm/<chart>/`, but `upgrade-namespace.sh` reads the server copy of
+   `common-values.yaml`. So the new `grafanaAdminUser` would render empty in `vm-stack` and in
+   the `mcp-grafana` init container. Fix: `update-helm-charts.yml` now has one
+   `sync-provisioning` job that rsyncs the whole `provisioning/` folder (`--delete`, the same as
+   `scripts/rsync-provisioning.sh`) before the chart matrix. A `concurrency` group stops an older
+   run from overwriting a newer sync; a run in progress is not cancelled.
+2. Grafana had no persistent storage (the subchart default is `persistence.enabled: false`). Each
+   Grafana restart deleted the `mcp-grafana` service account and its token, and also the
+   dashboards and alerts made in the UI. Fix: `vm-stack` Grafana has a 1Gi PVC (default storage
+   class) and the `Recreate` strategy.
+
+Effects of the persistent Grafana:
+
+- The first deploy starts with an empty database, the same as each restart did before.
+- Grafana uses `GRAFANA_ADMIN_PASSWORD` only when it creates the database. To change the password
+  later, change it in Grafana too (`grafana cli admin reset-admin-password`), or the
+  `mcp-grafana` init container cannot log in.
+- On the merge, `vm-stack` and `senaev-com` deploy in parallel. If the `mcp-grafana` init
+  container runs before the new Grafana pod, its service account is lost with the old pod. Then
+  restart it once: `kubectl -n senaev-com rollout restart deploy/mcp-grafana`.
