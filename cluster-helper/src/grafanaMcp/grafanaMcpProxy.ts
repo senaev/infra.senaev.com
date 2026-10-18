@@ -26,6 +26,11 @@ const FORWARDED_RESPONSE_HEADERS = [
 ] as const;
 
 const JSON_RPC_INTERNAL_ERROR = -32603;
+const JSON_RPC_METHOD_NOT_FOUND = -32601;
+
+// ChatGPT sends this first, with a protocol version newer than mcp-grafana 2.0.2 handles, and
+// mcp-grafana answers 400. ChatGPT retries `initialize` only after a JSON-RPC "method not found".
+const SERVER_DISCOVER_METHOD = 'server/discover';
 
 export type GrafanaMcpProxyOptions = {
     path: string;
@@ -37,25 +42,40 @@ export type GrafanaMcpProxyOptions = {
     fetch?: typeof fetch;
 };
 
-function describeJsonRpcMessage(body: unknown) {
+function parseJsonRpcMessage(body: unknown): Record<string, unknown> | undefined {
     if (!Buffer.isBuffer(body)) {
-        return {};
+        return undefined;
     }
 
     try {
         const message: unknown = JSON.parse(body.toString('utf8'));
 
-        if (!isObject(message)) {
-            return {};
-        }
-
-        return {
-            method: message.method,
-            tool: isObject(message.params) ? message.params.name : undefined,
-        };
+        return isObject(message) ? message : undefined;
     } catch {
+        return undefined;
+    }
+}
+
+function describeJsonRpcMessage(message: Record<string, unknown> | undefined) {
+    if (message === undefined) {
         return {};
     }
+
+    return {
+        method: message.method,
+        tool: isObject(message.params) ? message.params.name : undefined,
+    };
+}
+
+function sendMethodNotFound(reply: FastifyReply, message: Record<string, unknown>) {
+    return reply.code(200).send({
+        jsonrpc: '2.0',
+        id: message.id ?? null,
+        error: {
+            code: JSON_RPC_METHOD_NOT_FOUND,
+            message: `Method not found: ${String(message.method)}`,
+        },
+    });
 }
 
 function forwardedRequestHeaders(request: FastifyRequest, upstreamToken: string): Record<string, string> {
@@ -126,10 +146,22 @@ export const grafanaMcpProxy: FastifyPluginCallback<GrafanaMcpProxyOptions> = (i
                 });
             }
 
+            const message = parseJsonRpcMessage(request.body);
             const exchange = {
                 httpMethod: request.method,
-                ...describeJsonRpcMessage(request.body),
+                protocolVersion: request.headers['mcp-protocol-version'],
+                ...describeJsonRpcMessage(message),
             };
+
+            if (message?.method === SERVER_DISCOVER_METHOD) {
+                request.log.info({
+                    ...exchange,
+                    status: 200,
+                }, '📈 Grafana MCP message');
+
+                return sendMethodNotFound(reply, message);
+            }
+
             const abortController = new AbortController();
 
             // `close` also comes after a normal end, when aborting changes nothing.

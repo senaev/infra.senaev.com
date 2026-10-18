@@ -180,6 +180,25 @@ describe('grafanaMcpProxy', () => {
         expect(received?.headers.host).not.toBe(MCP_DOMAIN);
     });
 
+    it('answers server/discover with method not found itself, so the client falls back to initialize', async () => {
+        const response = await callProxy({
+            body: '{"jsonrpc":"2.0","id":7,"method":"server/discover","params":{}}',
+            token: VALID_OAUTH_TOKEN,
+            headers: { 'mcp-protocol-version': '2026-07-28' },
+        });
+
+        expect(response.statusCode).toBe(200);
+        expect(response.json()).toEqual({
+            jsonrpc: '2.0',
+            id: 7,
+            error: {
+                code: -32601,
+                message: 'Method not found: server/discover',
+            },
+        });
+        expect(receivedRequests).toEqual([]);
+    });
+
     it('returns the session id but not other upstream headers', async () => {
         const response = await callProxy({
             body: '{}',
