@@ -38,6 +38,8 @@ vi.hoisted(() => {
     process.env.INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN = 'internal-token';
     process.env.CODE_TOOLS_URL = 'http://code-tools:8080';
     process.env.INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS = 'code-tools-token';
+    process.env.MCP_GRAFANA_URL = 'http://mcp-grafana:8000/mcp';
+    process.env.INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_MCP_GRAFANA = 'mcp-grafana-token';
 });
 
 function mockFetch(status: number, body: unknown) {

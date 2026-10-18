@@ -21,12 +21,15 @@ import {
     GOOGLE_OAUTH_ADMIN_EMAILS,
     GOOGLE_OAUTH_CLIENT_ID,
     GOOGLE_OAUTH_CLIENT_SECRET,
+    INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_MCP_GRAFANA,
     MCP_DOMAIN,
+    MCP_GRAFANA_URL,
     TG_CLUSTER_CHAT_ID,
     TG_MEDIA_SERVER_CHAT_ID,
     TG_TOKEN_SENAEV_COM_BOT,
     WEBHOOK_DOMAIN,
 } from './env';
+import { grafanaMcpProxy } from './grafanaMcp/grafanaMcpProxy';
 import { handleAlisaRequest } from './handleAlisaRequest';
 import { logger } from './logger';
 import {
@@ -239,6 +242,7 @@ async function replyToMcpMessage(message: unknown, reply: FastifyReply, options:
 // on MCP_DOMAIN is a protected resource, and a token is valid only for the one it was issued for.
 // /chat-gpt is first: it is the default for clients that send no `resource`.
 const MCP_PATH = '/chat-gpt';
+const GRAFANA_MCP_PATH = '/grafana';
 
 function mcpResource(path: string): string {
     return `https://${MCP_DOMAIN}${path}`;
@@ -286,7 +290,10 @@ const googleAdminEmails = parseGoogleAdminEmails(GOOGLE_OAUTH_ADMIN_EMAILS);
 
 const authorizationServer = createAuthorizationServer({
     issuer: `https://${AUTH_DOMAIN}`,
-    resources: [mcpResource(MCP_PATH)],
+    resources: [
+        mcpResource(MCP_PATH),
+        mcpResource(GRAFANA_MCP_PATH),
+    ],
     username: AUTH_MY_USERNAME,
     password: AUTH_MY_PASSWORD,
     signingSecret: AUTH_TOKEN_SIGNING_SECRET,
@@ -377,7 +384,19 @@ async function main(): Promise<void> {
         onLoginAttempt: notifyLoginAttempt,
         authDomain: AUTH_DOMAIN,
         mcpDomain: MCP_DOMAIN,
-        mcpPaths: [MCP_PATH],
+        mcpPaths: [
+            MCP_PATH,
+            GRAFANA_MCP_PATH,
+        ],
+    });
+
+    await publicServer.register(grafanaMcpProxy, {
+        path: GRAFANA_MCP_PATH,
+        mcpDomain: MCP_DOMAIN,
+        resourceMetadataUrl: mcpResourceMetadataUrl(GRAFANA_MCP_PATH),
+        checkAccessToken: (authorizationHeader) => authorizationServer.checkAccessToken(authorizationHeader, mcpResource(GRAFANA_MCP_PATH)),
+        upstreamUrl: MCP_GRAFANA_URL,
+        upstreamToken: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_MCP_GRAFANA,
     });
 
     await startTorrentOutboxProcessor();
