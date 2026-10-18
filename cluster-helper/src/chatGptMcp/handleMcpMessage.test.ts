@@ -2,7 +2,7 @@ import {
     describe, expect, it, vi,
 } from 'vitest';
 
-import { handleMcpMessage } from './handleMcpMessage';
+import { describeMcpExchange, handleMcpMessage } from './handleMcpMessage';
 import {
     type CallTool, createToolFamilies, listMcpTools, type ToolFamily,
 } from './toolFamilies';
@@ -262,5 +262,36 @@ describe('code tool proxy', () => {
                 content: [{ text: 'The code tools server is not available right now: The operation was aborted due to timeout' }],
             },
         });
+    });
+});
+
+describe('describeMcpExchange', () => {
+    it('logs the arguments of every code- tool', () => {
+        for (const tool of CODE_TOOLS) {
+            const args = {
+                project: 'demo',
+                command: 'npm run simple-checks',
+            };
+
+            expect(describeMcpExchange(request('tools/call', {
+                name: tool.name,
+                arguments: args,
+            }), null)).toMatchObject({
+                tool: tool.name,
+                arguments: args,
+            });
+        }
+    });
+
+    it('never logs the arguments of an obsidian- tool or of an unknown tool', () => {
+        for (const name of [
+            ...OBSIDIAN_TOOLS.map((tool) => tool.name),
+            'unknown-tool',
+        ]) {
+            expect(describeMcpExchange(request('tools/call', {
+                name,
+                arguments: { text: 'private diary text' },
+            }), null).arguments).toBeUndefined();
+        }
     });
 });
