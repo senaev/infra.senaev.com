@@ -272,3 +272,40 @@ GET (SSE stream)           -> 405
 The proxy and `mcp-grafana` work together, and the tool list has valid names and object schemas
 (no `$ref`). So the failure is probably in the cluster (for example `mcp-grafana` not ready,
 and the proxy answers 502). The cluster-helper and `mcp-grafana` logs are needed.
+
+### 2026-10-18 — Cause: `server/discover` gets 400 from mcp-grafana
+
+Datadog logs of cluster-helper. Every ChatGPT attempt on `/grafana` stopped at its first request:
+
+```
+21:05:43 📈 Grafana MCP message  httpMethod=POST method=server/discover status=400
+21:07:41 📈 Grafana MCP message  httpMethod=POST method=server/discover status=400
+21:07:44 📈 Grafana MCP message  httpMethod=POST method=server/discover status=400
+```
+
+On `/chat-gpt`, the same first request gets a JSON-RPC "method not found", and ChatGPT falls back
+to `initialize`:
+
+```
+20:55:24 🤖 ChatGPT MCP message | error.message: Method not found: server/discover
+20:55:24 🤖 ChatGPT MCP message  method=initialize protocolVersion=2025-11-25
+20:55:24 🤖 ChatGPT MCP message  method=notifications/initialized
+20:55:24 🤖 ChatGPT MCP message  method=tools/call
+```
+
+Local test with `mcp-grafana:2.0.2`: without a newer `mcp-protocol-version` header it answers
+`200 {"error":{"code":-32601,...}}`. With a newer one (`2026-07-28` in the test) it answers:
+
+```
+HTTP/1.1 400 Bad Request
+{"jsonrpc":"2.0","id":1,"error":{"code":-32602,"message":"missing or invalid _meta field \"io.modelcontextprotocol/protocolVersion\""}}
+```
+
+The fallback path works with it: `initialize` with `2025-11-25`, then `tools/list` → 200, 79 tools.
+
+Fix (pushed to `main`): the proxy answers `server/discover` itself with HTTP 200 and JSON-RPC
+`-32601`, the same as `/chat-gpt`. The proxy log now also has the `mcp-protocol-version` header.
+
+Second problem, from the Grafana logs: Grafana started on the new volume at 21:02
+(`Created default admin user=grafana_admin`), after the `mcp-grafana` init container made its
+token at 20:47 (`✅ Token created`). That token is gone, so `mcp-grafana` must restart once.
