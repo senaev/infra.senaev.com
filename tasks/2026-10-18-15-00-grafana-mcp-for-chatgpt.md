@@ -226,3 +226,13 @@ of `helm upgrade --wait`, so that release can be left in `pending-upgrade`.
 Fix (branch `fix-grafana-recreate-strategy`): `rollingUpdate: null` in the Grafana
 `deploymentStrategy` (it renders literally, so the patch deletes the field), and `fail-fast: false`
 in the chart matrix, so one failed chart never cancels another chart's Helm upgrade.
+
+### 2026-10-18 — `rollingUpdate: null` did not help
+
+Run `39165329920` (PR #94) failed on `vm-stack` with the same error. The server runs Helm 4
+(`level=WARN msg=...` logs), which uses server-side apply, and server-side apply treats a `null`
+as "not set", not as "delete". The `senaev-com` job only skipped its steps, because its chart did
+not change.
+
+Fix: keep `type: RollingUpdate` with `maxSurge: 0` and `maxUnavailable: 1`. With one replica,
+the old pod stops before the new one starts, so no type change and no manual patch are needed.
