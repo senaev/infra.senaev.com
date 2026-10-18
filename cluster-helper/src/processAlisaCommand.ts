@@ -72,6 +72,8 @@ async function parseAlisaCommandWithOpenRouter(command: string): Promise<ParsedA
                     'If there is no explicit assignment to Dad, Andrei, or the user\'s husband, keep type \'shopping\'; do not use the old objects-versus-actions or majority-category rule.',
                     '## Shopping',
                     'For type \'shopping\', return all requested entries in items, including actions. Preserve action wording and all details such as amounts, quantities, names and deadlines; do not turn actions into products.',
+                    'For purchase requests, each item must contain only the product or thing to buy, without the purchase command or list-management wording. Remove verbs meaning buy or purchase in any language, and adjust the item to a standalone name while preserving all product details, quantities and units.',
+                    'This purchase normalization applies only to things requested for purchase; preserve the wording of other actions in the shopping list.',
                     'Each item should start with a capital letter.',
                     '## Tasks',
                     ...TASKS_PROMPT_LINES,
