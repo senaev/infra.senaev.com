@@ -44,6 +44,8 @@ https://filebrowser.senaev.com/
 
 ### Unmanic
 
+https://unmanic.senaev.com/
+
 Settings → Plugins → INSTALL PLUGIN FROM FILE → `./unmanic-plugins`:
 
 - `Ignore video files under size`: https://github.com/Unmanic/plugin.ignore_under_size/releases
