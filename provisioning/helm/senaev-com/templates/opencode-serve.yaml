@@ -66,6 +66,12 @@ spec:
           ports:
             - name: opencode
               containerPort: 4096
+          # The agent runs heavy commands here too; see the same limit in code-tools.yaml.
+          resources:
+            requests:
+              memory: 512Mi
+            limits:
+              memory: 2Gi
           env:
             - name: GIT_AUTHOR_NAME
               value: Andrei Senaev
