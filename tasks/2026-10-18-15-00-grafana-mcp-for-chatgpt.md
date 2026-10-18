@@ -1,6 +1,6 @@
 # 2026-10-18 — Grafana MCP for ChatGPT behind the existing OAuth
 
-- [ ] ChatGPT reads and writes Grafana (metrics, dashboards, alerts) through `https://mcp.senaev.com/grafana`
+- [x] ChatGPT reads and writes Grafana (metrics, dashboards, alerts) through `https://mcp.senaev.com/grafana`
 
 ## Goal
 
@@ -309,3 +309,40 @@ Fix (pushed to `main`): the proxy answers `server/discover` itself with HTTP 200
 Second problem, from the Grafana logs: Grafana started on the new volume at 21:02
 (`Created default admin user=grafana_admin`), after the `mcp-grafana` init container made its
 token at 20:47 (`✅ Token created`). That token is gone, so `mcp-grafana` must restart once.
+
+### 2026-10-18 — Works end to end
+
+The user restarted `mcp-grafana`, then reconnected ChatGPT. Datadog logs:
+
+```
+21:17:15 ✅ Service account created
+21:17:15 ✅ Token created
+21:17:28 📈 Grafana MCP message  status=200   (server/discover, initialize, tools/list ...)
+21:18:36 📈 Grafana MCP message  tool=search_dashboards / list_datasources
+21:18:41 📈 Grafana MCP message  tool=query_prometheus  status=200
+```
+
+## Result
+
+ChatGPT reads and writes Grafana through `https://mcp.senaev.com/grafana` (PRs #93, #94, #95 and
+direct fixes on `main`):
+
+- The cluster-helper OAuth server issues tokens per MCP resource; `/chat-gpt` tokens stayed valid.
+- cluster-helper proxies `/grafana` to `mcp-grafana` (Editor) with an internal token; the
+  init container creates the Grafana service account and token on each pod start.
+- Grafana keeps its database on a 1Gi PVC (`RollingUpdate` with `maxSurge: 0`, not `Recreate`).
+- CI rsyncs the whole `provisioning/` folder before the chart jobs, does not cancel other charts
+  when one fails, and runs do not overlap.
+
+Problems on the way: CI did not copy `common-values.yaml`; `Recreate` was rejected because Helm 4
+server-side apply keeps the live `rollingUpdate` field; ChatGPT's `server/discover` probe got
+`400` from `mcp-grafana` 2.0.2; the first token was lost when Grafana moved to the new volume.
+
+Open points:
+
+- If Grafana loses its database again, the `mcp-grafana` token stays dead until a manual
+  restart: `/healthz` does not check Grafana. A liveness probe that checks the token would fix it.
+- `cluster-helper/src/index.ts` has no test for the `/grafana` wiring.
+- Grafana now reads `GRAFANA_ADMIN_PASSWORD` only when it creates its database. To change the
+  password, also run `grafana cli admin reset-admin-password`.
+- Remove the `server/discover` workaround when `mcp-grafana` handles the new protocol version.
