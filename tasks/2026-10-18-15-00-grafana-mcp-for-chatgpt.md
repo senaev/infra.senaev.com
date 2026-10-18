@@ -236,3 +236,15 @@ not change.
 
 Fix: keep `type: RollingUpdate` with `maxSurge: 0` and `maxUnavailable: 1`. With one replica,
 the old pod stops before the new one starts, so no type change and no manual patch are needed.
+
+### 2026-10-18 — `vm-stack` deployed
+
+Run `39165840673` (PR #95) passed:
+
+```
+out: ✅ [upgrade-namespace vm-stack telemetry] Helm upgrade chart=[vm-stack] namespace=[telemetry]
+```
+
+Grafana now runs on the `vm-stack-grafana` PVC. `senaev-com` is still not deployed: the run of
+PR #93 cancelled its upgrade, and later runs skipped it because the chart did not change. Its
+release state (`pending-upgrade` or not) must be checked on the server before a manual deploy.
