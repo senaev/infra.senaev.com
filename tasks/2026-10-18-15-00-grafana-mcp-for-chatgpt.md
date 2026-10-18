@@ -206,3 +206,23 @@ Effects of the persistent Grafana:
 - On the merge, `vm-stack` and `senaev-com` deploy in parallel. If the `mcp-grafana` init
   container runs before the new Grafana pod, its service account is lost with the old pod. Then
   restart it once: `kubectl -n senaev-com rollout restart deploy/mcp-grafana`.
+
+### 2026-10-18 — Deploy of PR #93 failed
+
+Run `39164733201`: `sync-provisioning` passed, `update-charts (vm-stack)` failed, and
+`update-charts (senaev-com)` was cancelled by the matrix `fail-fast`:
+
+```
+err: Error: UPGRADE FAILED: Deployment.apps "vm-stack-grafana" is invalid: spec.strategy.rollingUpdate: Forbidden: may not be specified when strategy `type` is 'Recreate'
+...
+update-charts (senaev-com)	Update chart	... out: 👉 [upgrade-namespace senaev-com senaev-com] Helm upgrade chart=[senaev-com] namespace=[senaev-com]
+update-charts (senaev-com)	Update chart	... ##[error]The operation was canceled.
+```
+
+The live Grafana Deployment has the defaulted `rollingUpdate` field, which the three-way patch
+keeps, and Kubernetes forbids it with `Recreate`. The `senaev-com` job was cancelled in the middle
+of `helm upgrade --wait`, so that release can be left in `pending-upgrade`.
+
+Fix (branch `fix-grafana-recreate-strategy`): `rollingUpdate: null` in the Grafana
+`deploymentStrategy` (it renders literally, so the patch deletes the field), and `fail-fast: false`
+in the chart matrix, so one failed chart never cancels another chart's Helm upgrade.
