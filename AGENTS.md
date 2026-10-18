@@ -70,7 +70,8 @@ for the last hour, then check the `📈 Grafana MCP message` logs of cluster-hel
 ## MCP endpoints
 
 cluster-helper serves two OAuth-protected MCP endpoints on `mcp.senaev.com`, with one
-authorization server on `auth.senaev.com` (`cluster-helper/src/oauth/`):
+authorization server on `auth.senaev.com` (`cluster-helper/src/oauth/`). The list of endpoints
+and their wiring are in `cluster-helper/src/mcpEndpoints.ts`, tested by `mcpEndpoints.test.ts`:
 
 | Path | Server |
 |---|---|

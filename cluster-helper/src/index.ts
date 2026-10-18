@@ -29,15 +29,14 @@ import {
     TG_TOKEN_SENAEV_COM_BOT,
     WEBHOOK_DOMAIN,
 } from './env';
-import { grafanaMcpProxy } from './grafanaMcp/grafanaMcpProxy';
 import { handleAlisaRequest } from './handleAlisaRequest';
 import { logger } from './logger';
+import { mcpEndpoints, mcpResources } from './mcpEndpoints';
 import {
     createAuthorizationServer, LoginAttempt, MCP_SCOPE,
 } from './oauth/authorizationServer';
 import { createGoogleLogin, parseGoogleAdminEmails } from './oauth/googleLogin';
-import { GOOGLE_CALLBACK_PATH, oauthRoutes } from './oauth/registerOAuthRoutes';
-import { sendBearerChallenge } from './oauth/sendBearerChallenge';
+import { GOOGLE_CALLBACK_PATH } from './oauth/registerOAuthRoutes';
 import { createToolFamilies } from './chatGptMcp/toolFamilies';
 import { callCodeTool } from './codeToolsApi';
 import { callVaultTool, getShortLink } from './obsidianSyncApi';
@@ -238,20 +237,6 @@ async function replyToMcpMessage(message: unknown, reply: FastifyReply, options:
     }
 }
 
-// OAuth-protected MCP endpoints. The authorization server is on AUTH_DOMAIN; each endpoint
-// on MCP_DOMAIN is a protected resource, and a token is valid only for the one it was issued for.
-// /chat-gpt is first: it is the default for clients that send no `resource`.
-const MCP_PATH = '/chat-gpt';
-const GRAFANA_MCP_PATH = '/grafana';
-
-function mcpResource(path: string): string {
-    return `https://${MCP_DOMAIN}${path}`;
-}
-
-function mcpResourceMetadataUrl(path: string): string {
-    return `https://${MCP_DOMAIN}/.well-known/oauth-protected-resource${path}`;
-}
-
 const MCP_SERVER_OPTIONS: McpServerOptions = {
     securitySchemes: [
         {
@@ -290,10 +275,7 @@ const googleAdminEmails = parseGoogleAdminEmails(GOOGLE_OAUTH_ADMIN_EMAILS);
 
 const authorizationServer = createAuthorizationServer({
     issuer: `https://${AUTH_DOMAIN}`,
-    resources: [
-        mcpResource(MCP_PATH),
-        mcpResource(GRAFANA_MCP_PATH),
-    ],
+    resources: mcpResources(MCP_DOMAIN),
     username: AUTH_MY_USERNAME,
     password: AUTH_MY_PASSWORD,
     signingSecret: AUTH_TOKEN_SIGNING_SECRET,
@@ -308,22 +290,6 @@ const googleLogin = createGoogleLogin({
     adminEmails: googleAdminEmails,
     transactionSecret: AUTH_TOKEN_SIGNING_SECRET,
 });
-
-publicServer.post<{ Body: unknown }>(MCP_PATH, { constraints: { host: MCP_DOMAIN } }, async (request, reply) => {
-    const check = await authorizationServer.checkAccessToken(request.headers.authorization, mcpResource(MCP_PATH));
-
-    if (check.kind !== 'valid') {
-        return sendBearerChallenge(reply, {
-            check,
-            resourceMetadataUrl: mcpResourceMetadataUrl(MCP_PATH),
-        });
-    }
-
-    return replyToMcpMessage(request.body, reply, MCP_SERVER_OPTIONS);
-});
-
-// No server-initiated SSE stream: the transport spec says to answer GET with 405.
-publicServer.get(MCP_PATH, { constraints: { host: MCP_DOMAIN } }, (_request, reply) => reply.code(405).header('Allow', 'POST').send());
 
 async function main(): Promise<void> {
     const botUser: TelegramUser = await getCurrentTelegramBotInfo(TG_TOKEN_SENAEV_COM_BOT);
@@ -378,25 +344,15 @@ async function main(): Promise<void> {
         return reply.send('OK');
     });
 
-    await publicServer.register(oauthRoutes, {
+    await publicServer.register(mcpEndpoints, {
         authorizationServer,
         googleLogin,
         onLoginAttempt: notifyLoginAttempt,
         authDomain: AUTH_DOMAIN,
         mcpDomain: MCP_DOMAIN,
-        mcpPaths: [
-            MCP_PATH,
-            GRAFANA_MCP_PATH,
-        ],
-    });
-
-    await publicServer.register(grafanaMcpProxy, {
-        path: GRAFANA_MCP_PATH,
-        mcpDomain: MCP_DOMAIN,
-        resourceMetadataUrl: mcpResourceMetadataUrl(GRAFANA_MCP_PATH),
-        checkAccessToken: (authorizationHeader) => authorizationServer.checkAccessToken(authorizationHeader, mcpResource(GRAFANA_MCP_PATH)),
-        upstreamUrl: MCP_GRAFANA_URL,
-        upstreamToken: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_MCP_GRAFANA,
+        replyToChatGptMessage: (message, reply) => replyToMcpMessage(message, reply, MCP_SERVER_OPTIONS),
+        grafanaUpstreamUrl: MCP_GRAFANA_URL,
+        grafanaUpstreamToken: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_MCP_GRAFANA,
     });
 
     await startTorrentOutboxProcessor();

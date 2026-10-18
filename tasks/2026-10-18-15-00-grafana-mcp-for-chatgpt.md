@@ -405,3 +405,19 @@ for `mcp-grafana`, and OpenAI has no public tracker. So the last open point of t
 wrong: keep the workaround until ChatGPT sends a well-formed 2026-07-28 probe. Related, for
 when it does: [grafana/mcp-grafana#1338](https://github.com/grafana/mcp-grafana/issues/1338)
 (open, `tools/list` at 2026-07-28 misses fields).
+
+### 2026-10-18 — Test for the MCP endpoint wiring
+
+For the open point "`index.ts` has no test for the `/grafana` wiring". The wiring moved from
+`index.ts` into the plugin `cluster-helper/src/mcpEndpoints.ts`: one `MCP_PATHS` list gives the
+authorization server resources (`mcpResources()`), the metadata routes, the `/chat-gpt` routes
+and the Grafana proxy. `index.ts` only registers it with its dependencies.
+
+`mcpEndpoints.test.ts` uses a real authorization server and real tokens for each path: each path
+answers 401 with its own metadata URL, serves its metadata, accepts its own token and rejects the
+other one, and sends the request to the right server. Both earlier regressions make it fail:
+
+```
+grafanaMcpProxy not registered  -> Tests  3 failed | 7 passed (10)
+/grafana removed from MCP_PATHS -> Tests  3 failed | 4 passed (7)
+```
