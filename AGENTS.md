@@ -48,7 +48,7 @@ Be extremely careful with these nodes and their networks:
 
 Each namespace is a Helm chart under `provisioning/helm/<chart>/`. All charts share `provisioning/helm/common-values.yaml` merged at deploy time alongside the chart's own `values.yaml`.
 
-CI deploys via `.github/workflows/update-helm-charts.yml` on push to `main`. It runs a matrix over all charts; each job skips if its chart directory didn't change, otherwise SCPs `provisioning/` to the server, SSHes in to run `upgrade-namespace.sh <chart> <namespace>`, and sends a Telegram notification.
+CI deploys via `.github/workflows/update-helm-charts.yml` on push to `main`. One job first rsyncs the whole `provisioning/` folder to the server (with `--delete`, so the server copy mirrors the repo, `common-values.yaml` included). Then it runs a matrix over all charts; each job skips if its chart directory didn't change, otherwise SSHes in to run `upgrade-namespace.sh <chart> <namespace>` and sends a Telegram notification. A change to `common-values.yaml` alone deploys no chart. Runs do not overlap, so an older sync cannot overwrite a newer one.
 
 ### Smoke test after a deploy
 
@@ -63,6 +63,29 @@ that the whole path works. Open each one and check the result:
 
 For the ChatGPT MCP connector, ask ChatGPT to read a note, search the vault and add a diary
 record, then check the `🤖 ChatGPT MCP message` logs of cluster-helper.
+
+For the Grafana MCP connector, ask ChatGPT to list the Grafana dashboards and to query `up`
+for the last hour, then check the `📈 Grafana MCP message` logs of cluster-helper.
+
+## MCP endpoints
+
+cluster-helper serves two OAuth-protected MCP endpoints on `mcp.senaev.com`, with one
+authorization server on `auth.senaev.com` (`cluster-helper/src/oauth/`):
+
+| Path | Server |
+|---|---|
+| `/chat-gpt` | cluster-helper itself: the obsidian-* and code-* tools |
+| `/grafana` | proxied to `mcp-grafana` (`provisioning/helm/senaev-com/templates/mcp-grafana.yaml`) |
+
+Each endpoint is its own OAuth resource (RFC 8707): the token `aud` is the resource that the
+client asked for, and a token for one endpoint is rejected by the other. ChatGPT needs one
+connector for each endpoint.
+
+`mcp-grafana` has Editor rights in Grafana. Its init container logs in with the Grafana admin
+and creates the `mcp-grafana` service account and a new token on every pod start, so there is
+no manual step on a new cluster. Only cluster-helper can reach it: a NetworkPolicy, and the
+Vault key `INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_MCP_GRAFANA`. See
+[`tasks/2026-10-18-15-00-grafana-mcp-for-chatgpt.md`](tasks/2026-10-18-15-00-grafana-mcp-for-chatgpt.md).
 
 ## Shared Toolchain
 

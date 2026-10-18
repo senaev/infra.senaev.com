@@ -1,0 +1,169 @@
+{{- if .Values.mcpGrafana.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcp-grafana-scripts
+  namespace: {{ .Release.Namespace }}
+data:
+  create-service-account-token.mjs: |
+{{ .Files.Get "config/mcp-grafana/create-service-account-token.mjs" | indent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-grafana
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  # Each pod start deletes the older tokens of the service account, so two pods must not overlap.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: mcp-grafana
+  template:
+    metadata:
+      labels:
+        app: mcp-grafana
+      annotations:
+        # A new admin password or internal token restarts the pod, which also makes a new Grafana token.
+        secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
+        checksum/script: {{ .Files.Get "config/mcp-grafana/create-service-account-token.mjs" | sha256sum }}
+    spec:
+      # The UID of the mcp-grafana image; the init container writes the token file as the same user.
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+      nodeSelector:
+        vps: {{ .Values.mcpGrafana.vps }}
+      initContainers:
+        - name: create-service-account-token
+          image: node:24-alpine
+          command: ["node", "/scripts/create-service-account-token.mjs"]
+          env:
+            - name: GRAFANA_URL
+              value: {{ .Values.mcpGrafana.grafanaUrl | quote }}
+            - name: GRAFANA_ADMIN_USER
+              value: {{ .Values.grafanaAdminUser | quote }}
+            - name: GRAFANA_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: GRAFANA_ADMIN_PASSWORD
+                  optional: false
+            - name: SERVICE_ACCOUNT_NAME
+              value: mcp-grafana
+            - name: SERVICE_ACCOUNT_ROLE
+              value: Editor
+            - name: TOKEN_FILE
+              value: /grafana-token/token
+          resources:
+            requests:
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+            - name: grafana-token
+              mountPath: /grafana-token
+      containers:
+        - name: mcp-grafana
+          image: {{ .Values.mcpGrafana.image }}
+          # The image entrypoint starts the SSE transport, so the command is set in full.
+          command:
+            - /app/mcp-grafana
+            - --transport
+            - streamable-http
+            - --address
+            - 0.0.0.0:8000
+            # The Host that cluster-helper sends; the default allows loopback only.
+            - --allowed-hosts
+            - mcp-grafana:8000
+            # Probes have no allowed Host, so health is on a side listener without that check.
+            - --healthz-address
+            - :8081
+            - --usage-stats
+            - disabled
+          ports:
+            - name: http
+              containerPort: 8000
+            - name: healthz
+              containerPort: 8081
+          env:
+            - name: GRAFANA_URL
+              value: {{ .Values.mcpGrafana.grafanaUrl | quote }}
+            - name: GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE
+              value: /grafana-token/token
+            - name: MCP_GRAFANA_SERVER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_MCP_GRAFANA
+                  optional: false
+          resources:
+            requests:
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: healthz
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: healthz
+            periodSeconds: 30
+            failureThreshold: 3
+          volumeMounts:
+            - name: grafana-token
+              mountPath: /grafana-token
+              readOnly: true
+      volumes:
+        - name: scripts
+          configMap:
+            name: mcp-grafana-scripts
+        - name: grafana-token
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-grafana
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: mcp-grafana
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+      protocol: TCP
+---
+# Editor rights in Grafana: only cluster-helper may connect, and it also sends the internal token.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mcp-grafana
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: mcp-grafana
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: cluster-helper
+      ports:
+        - protocol: TCP
+          port: 8000
+{{- end }}

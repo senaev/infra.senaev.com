@@ -6,14 +6,39 @@ on:
     paths:
       - 'provisioning/helm/**'
 
+# The sync mirrors the whole folder, so an older run must not overwrite a newer one. A run in
+# progress is not cancelled, so it never stops in the middle of a Helm upgrade.
+concurrency:
+  group: update-helm-charts-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   check:
     permissions:
       contents: read
     uses: ./.github/workflows/check.yml
 
-  update-charts:
+  # One sync of the whole folder before all chart jobs: the charts also read files outside
+  # their own directory, such as helm/common-values.yaml and control-plane/upgrade-namespace.sh.
+  sync-provisioning:
     needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Sync provisioning to server
+        uses: burnett01/rsync-deployments@9.0.0
+        with:
+          switches: -avzr --delete
+          path: "provisioning/"
+          remote_path: "/k3s-cluster/provisioning/"
+          remote_host: ${{ secrets.REMOTE_HOST }}
+          remote_user: ${{ secrets.REMOTE_USER }}
+          remote_key: ${{ secrets.REMOTE_SSH_KEY }}
+
+  update-charts:
+    needs: sync-provisioning
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -56,17 +81,6 @@ jobs:
           else
             echo "any_changed=true" >> "$GITHUB_OUTPUT"
           fi
-
-      - name: Sync provisioning to server
-        if: steps.changed-files.outputs.any_changed == 'true'
-        uses: burnett01/rsync-deployments@9.0.0
-        with:
-          switches: -avzr --delete
-          path: "provisioning/helm/${{ matrix.chart }}/"
-          remote_path: "/k3s-cluster/provisioning/helm/${{ matrix.chart }}/"
-          remote_host: ${{ secrets.REMOTE_HOST }}
-          remote_user: ${{ secrets.REMOTE_USER }}
-          remote_key: ${{ secrets.REMOTE_SSH_KEY }}
 
       - name: Update chart
         if: steps.changed-files.outputs.any_changed == 'true'

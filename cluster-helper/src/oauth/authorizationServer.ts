@@ -55,7 +55,8 @@ export type LoginAttempt = {
 
 export type AuthorizationServerConfig = {
     issuer: string;
-    resource: string;
+    /** The protected resources. The first one is the default when a client sends no `resource`. */
+    resources: readonly [string, ...string[]];
     username: string;
     password: string;
     signingSecret: string;
@@ -103,9 +104,11 @@ type TokenProvenance =
     | { idp: 'password' }
     | { idp: 'google'; emailHash: string };
 
-type VerifiedToken = {
+// What a token is issued for. A refresh keeps all of it, so it cannot switch resources.
+type TokenGrant = {
     clientId: string;
     provenance: TokenProvenance;
+    resource: string;
 };
 
 function readString(params: Params, name: string): string | undefined {
@@ -126,9 +129,14 @@ function isAllowedClient(clientId: string, redirectUri: string): boolean {
 
 export function createAuthorizationServer(config: AuthorizationServerConfig) {
     const {
-        issuer, resource, username, password,
+        issuer, resources, username, password,
     } = config;
+    const [defaultResource] = resources;
     const now = config.now ?? Date.now;
+
+    function isKnownResource(value: unknown): value is string {
+        return typeof value === 'string' && resources.includes(value);
+    }
 
     // The key also depends on the password, so changing the password in Vault revokes
     // every token at once. That is the only revocation there is: tokens are not stored.
@@ -194,8 +202,10 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
             return fail('invalid_request', 'PKCE with code_challenge_method=S256 is required');
         }
 
-        if ((readString(params, 'resource') ?? resource) !== resource) {
-            return fail('invalid_target', `The only resource is ${resource}`);
+        const resource = readString(params, 'resource') ?? defaultResource;
+
+        if (!isKnownResource(resource)) {
+            return fail('invalid_target', `The resource must be one of: ${resources.join(', ')}`);
         }
 
         return {
@@ -280,7 +290,9 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
 
     function signToken({
         type, ttlSeconds,
-    }: TokenKind, clientId: string, provenance: TokenProvenance, issuedAt: number): Promise<string> {
+    }: TokenKind, {
+        clientId, provenance, resource,
+    }: TokenGrant, issuedAt: number): Promise<string> {
         return new SignJWT({
             client_id: clientId,
             scope: MCP_SCOPE,
@@ -302,28 +314,27 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
             .sign(signingKey);
     }
 
-    async function issueTokens(clientId: string, provenance: TokenProvenance): Promise<TokenResponse> {
+    async function issueTokens(grant: TokenGrant): Promise<TokenResponse> {
         const issuedAt = Math.floor(now() / 1000);
 
         return {
             status: 200,
             body: {
-                access_token: await signToken(ACCESS_TOKEN, clientId, provenance, issuedAt),
+                access_token: await signToken(ACCESS_TOKEN, grant, issuedAt),
                 token_type: 'Bearer',
                 expires_in: ACCESS_TOKEN.ttlSeconds,
-                refresh_token: await signToken(REFRESH_TOKEN, clientId, provenance, issuedAt),
+                refresh_token: await signToken(REFRESH_TOKEN, grant, issuedAt),
                 scope: MCP_SCOPE,
             },
         };
     }
 
-    async function verifyToken(token: string, type: string): Promise<VerifiedToken | null> {
+    async function verifyToken(token: string, type: string): Promise<TokenGrant | null> {
         try {
             const { payload } = await jwtVerify(token, signingKey, {
                 algorithms: [SIGNING_ALGORITHM],
                 typ: type,
                 issuer,
-                audience: resource,
                 subject: username,
                 requiredClaims: ['exp'],
                 currentDate: new Date(now()),
@@ -331,10 +342,11 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
 
             const provenance = readProvenance(payload);
 
-            return typeof payload.client_id === 'string' && provenance !== null
+            return typeof payload.client_id === 'string' && provenance !== null && isKnownResource(payload.aud)
                 ? {
                     clientId: payload.client_id,
                     provenance,
+                    resource: payload.aud,
                 }
                 : null;
         } catch {
@@ -371,7 +383,11 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
             return tokenError('invalid_grant', 'PKCE verification failed');
         }
 
-        return issueTokens(request.clientId, provenanceOf(identity));
+        return issueTokens({
+            clientId: request.clientId,
+            provenance: provenanceOf(identity),
+            resource: request.resource,
+        });
     }
 
     async function exchangeRefreshToken(params: Params): Promise<TokenResponse> {
@@ -389,7 +405,7 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
             return tokenError('invalid_grant', 'The Google account of this refresh token is no longer allowed');
         }
 
-        return issueTokens(verified.clientId, provenance);
+        return issueTokens(verified);
     }
 
     return {
@@ -412,8 +428,8 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
             };
         },
 
-        /** RFC 9728, served at /.well-known/oauth-protected-resource on the MCP host. */
-        protectedResourceMetadata() {
+        /** RFC 9728, served at /.well-known/oauth-protected-resource<path> on the MCP host. */
+        protectedResourceMetadata(resource: string) {
             return {
                 resource,
                 authorization_servers: [issuer],
@@ -472,15 +488,17 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
             }
         },
 
-        /** Checks an `Authorization` header on a request to the protected resource. */
-        async checkAccessToken(authorizationHeader: string | undefined): Promise<AccessTokenCheck> {
+        /** Checks an `Authorization` header on a request to one of the protected resources. */
+        async checkAccessToken(authorizationHeader: string | undefined, resource: string): Promise<AccessTokenCheck> {
             const token = parseBearerToken(authorizationHeader);
 
             if (token === undefined) {
                 return { kind: 'missing' };
             }
 
-            return await verifyToken(token, ACCESS_TOKEN.type) === null
+            const verified = await verifyToken(token, ACCESS_TOKEN.type);
+
+            return verified?.resource !== resource
                 ? { kind: 'invalid' }
                 : {
                     kind: 'valid',

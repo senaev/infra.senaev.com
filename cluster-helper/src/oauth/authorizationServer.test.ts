@@ -11,6 +11,7 @@ import {
 
 const ISSUER = 'https://auth.example.com';
 const RESOURCE = 'https://mcp.example.com/mcp';
+const OTHER_RESOURCE = 'https://mcp.example.com/grafana';
 const CLIENT_ID = 'https://chatgpt.com/oauth/client.json';
 const REDIRECT_URI = 'https://chatgpt.com/connector_platform_oauth_redirect';
 const CODE_VERIFIER = 'a'.repeat(43);
@@ -35,7 +36,10 @@ let loginAttempts: LoginAttempt[];
 function createServer(password = 'secret-password', googleAdminEmails: string[] = [GOOGLE_EMAIL]) {
     return createAuthorizationServer({
         issuer: ISSUER,
-        resource: RESOURCE,
+        resources: [
+            RESOURCE,
+            OTHER_RESOURCE,
+        ],
         username: 'andrei',
         password,
         signingSecret: 'signing-secret',
@@ -53,9 +57,10 @@ function redirectParams(location: string): URLSearchParams {
     return url.searchParams;
 }
 
-function logIn(): string {
+function logIn(resource = RESOURCE): string {
     const outcome = server.login({
         ...authorizeParams,
+        resource,
         username: 'andrei',
         password: 'secret-password',
     });
@@ -84,8 +89,8 @@ function exchangeCode(code: string, overrides: Record<string, string> = {}) {
     });
 }
 
-async function getTokens() {
-    const { status, body } = await exchangeCode(logIn());
+async function getTokens(resource = RESOURCE) {
+    const { status, body } = await exchangeCode(logIn(resource), { resource });
 
     expect(status).toBe(200);
 
@@ -228,7 +233,7 @@ describe('Google login', () => {
     it('issues tokens for the same account with a hashed email, not the plain email', async () => {
         const { access_token: accessToken, refresh_token: refreshToken } = await getGoogleTokens();
 
-        expect(await server.checkAccessToken(`Bearer ${accessToken}`)).toEqual({
+        expect(await server.checkAccessToken(`Bearer ${accessToken}`, RESOURCE)).toEqual({
             kind: 'valid',
             subject: 'andrei',
         });
@@ -259,7 +264,7 @@ describe('Google login', () => {
         const serverWithoutEmail = createServer('secret-password', ['other@gmail.com']);
 
         expect((await refresh(refreshToken, serverWithoutEmail)).body).toMatchObject({ error: 'invalid_grant' });
-        expect(await serverWithoutEmail.checkAccessToken(`Bearer ${accessToken}`)).toMatchObject({ kind: 'valid' });
+        expect(await serverWithoutEmail.checkAccessToken(`Bearer ${accessToken}`, RESOURCE)).toMatchObject({ kind: 'valid' });
     });
 
     it('keeps refreshing password tokens whatever the allowlist', async () => {
@@ -274,7 +279,7 @@ describe('token', () => {
     it('exchanges a code for tokens that grant access to the resource', async () => {
         const { access_token: accessToken } = await getTokens();
 
-        expect(await server.checkAccessToken(`Bearer ${accessToken}`)).toEqual({
+        expect(await server.checkAccessToken(`Bearer ${accessToken}`, RESOURCE)).toEqual({
             kind: 'valid',
             subject: 'andrei',
         });
@@ -308,7 +313,7 @@ describe('token', () => {
     it('issues new tokens for a refresh token, but never accepts it as an access token', async () => {
         const { refresh_token: refreshToken } = await getTokens();
 
-        expect(await server.checkAccessToken(`Bearer ${refreshToken}`)).toEqual({ kind: 'invalid' });
+        expect(await server.checkAccessToken(`Bearer ${refreshToken}`, RESOURCE)).toEqual({ kind: 'invalid' });
 
         const { status, body } = await server.token({
             grant_type: 'refresh_token',
@@ -327,8 +332,8 @@ describe('token', () => {
 
 describe('checkAccessToken', () => {
     it('reports a missing or malformed header as missing', async () => {
-        expect(await server.checkAccessToken(undefined)).toEqual({ kind: 'missing' });
-        expect(await server.checkAccessToken('Basic abc')).toEqual({ kind: 'missing' });
+        expect(await server.checkAccessToken(undefined, RESOURCE)).toEqual({ kind: 'missing' });
+        expect(await server.checkAccessToken('Basic abc', RESOURCE)).toEqual({ kind: 'missing' });
     });
 
     it('rejects an expired access token', async () => {
@@ -336,12 +341,89 @@ describe('checkAccessToken', () => {
 
         currentTime += 61 * 60_000;
 
-        expect(await server.checkAccessToken(`Bearer ${accessToken}`)).toEqual({ kind: 'invalid' });
+        expect(await server.checkAccessToken(`Bearer ${accessToken}`, RESOURCE)).toEqual({ kind: 'invalid' });
     });
 
     it('rejects every token after the password changes', async () => {
         const { access_token: accessToken } = await getTokens();
 
-        expect(await createServer('new-password').checkAccessToken(`Bearer ${accessToken}`)).toEqual({ kind: 'invalid' });
+        expect(await createServer('new-password').checkAccessToken(`Bearer ${accessToken}`, RESOURCE)).toEqual({ kind: 'invalid' });
+    });
+});
+
+describe('several resources', () => {
+    it('issues a token for the requested resource, valid only for that resource', async () => {
+        const { access_token: accessToken } = await getTokens(OTHER_RESOURCE);
+
+        expect(decodeJwt(accessToken)).toMatchObject({ aud: OTHER_RESOURCE });
+        expect(await server.checkAccessToken(`Bearer ${accessToken}`, OTHER_RESOURCE)).toMatchObject({ kind: 'valid' });
+        expect(await server.checkAccessToken(`Bearer ${accessToken}`, RESOURCE)).toEqual({ kind: 'invalid' });
+    });
+
+    it('rejects a token of the first resource on the other one', async () => {
+        const { access_token: accessToken } = await getTokens();
+
+        expect(await server.checkAccessToken(`Bearer ${accessToken}`, OTHER_RESOURCE)).toEqual({ kind: 'invalid' });
+    });
+
+    it('uses the first resource when the client sends none', () => {
+        const { resource: _resource, ...paramsWithoutResource } = authorizeParams;
+
+        expect(server.authorize(paramsWithoutResource)).toMatchObject({
+            kind: 'show-login',
+            request: { resource: RESOURCE },
+        });
+    });
+
+    it('keeps the resource of the refresh token, whatever resource the refresh asks for', async () => {
+        const { refresh_token: refreshToken } = await getTokens(OTHER_RESOURCE);
+        const { body } = await server.token({
+            grant_type: 'refresh_token',
+            refresh_token: refreshToken,
+            client_id: CLIENT_ID,
+            resource: RESOURCE,
+        });
+        const accessToken = String((body as { access_token: string }).access_token);
+
+        expect(decodeJwt(accessToken)).toMatchObject({ aud: OTHER_RESOURCE });
+        expect(await server.checkAccessToken(`Bearer ${accessToken}`, RESOURCE)).toEqual({ kind: 'invalid' });
+    });
+
+    it('keeps accepting tokens issued by a server that knew only the first resource', async () => {
+        const { access_token: accessToken, refresh_token: refreshToken } = await getTokens();
+        const singleResourceServer = createAuthorizationServer({
+            issuer: ISSUER,
+            resources: [RESOURCE],
+            username: 'andrei',
+            password: 'secret-password',
+            signingSecret: 'signing-secret',
+            googleAdminEmails: new Set(),
+            now: () => currentTime,
+        });
+
+        expect(await singleResourceServer.checkAccessToken(`Bearer ${accessToken}`, RESOURCE)).toMatchObject({ kind: 'valid' });
+        expect((await refresh(refreshToken, singleResourceServer)).status).toBe(200);
+    });
+
+    it('rejects a token for a resource that the server no longer knows', async () => {
+        const { refresh_token: refreshToken } = await getTokens(OTHER_RESOURCE);
+        const singleResourceServer = createAuthorizationServer({
+            issuer: ISSUER,
+            resources: [RESOURCE],
+            username: 'andrei',
+            password: 'secret-password',
+            signingSecret: 'signing-secret',
+            googleAdminEmails: new Set(),
+            now: () => currentTime,
+        });
+
+        expect((await refresh(refreshToken, singleResourceServer)).body).toMatchObject({ error: 'invalid_grant' });
+    });
+
+    it('describes each resource in its metadata', () => {
+        expect(server.protectedResourceMetadata(OTHER_RESOURCE)).toMatchObject({
+            resource: OTHER_RESOURCE,
+            authorization_servers: [ISSUER],
+        });
     });
 });

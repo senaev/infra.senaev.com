@@ -28,4 +28,7 @@ export const INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN = requireEnv('IN
 /** code-tools runs in the opencode-serve container and serves the code-* MCP tools. */
 export const CODE_TOOLS_URL = requireEnv('CODE_TOOLS_URL');
 export const INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS = requireEnv('INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS');
+/** The streamable-HTTP endpoint of mcp-grafana, which the /grafana MCP endpoint proxies to. */
+export const MCP_GRAFANA_URL = requireEnv('MCP_GRAFANA_URL');
+export const INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_MCP_GRAFANA = requireEnv('INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_MCP_GRAFANA');
 export const TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID = requireEnv('TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID');

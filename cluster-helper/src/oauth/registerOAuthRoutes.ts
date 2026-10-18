@@ -118,7 +118,8 @@ export type OAuthRoutesOptions = {
     onLoginAttempt?: (attempt: LoginAttempt) => void;
     authDomain: string;
     mcpDomain: string;
-    mcpPath: string;
+    /** The MCP endpoints. The root metadata path answers for the first one. */
+    mcpPaths: readonly [string, ...string[]];
 };
 
 /**
@@ -133,7 +134,7 @@ export const oauthRoutes: FastifyPluginAsync<OAuthRoutesOptions> = async (instan
     onLoginAttempt,
     authDomain,
     mcpDomain,
-    mcpPath,
+    mcpPaths,
 }) => {
     await instance.register(formbody);
     await instance.register(cookie);
@@ -270,12 +271,15 @@ export const oauthRoutes: FastifyPluginAsync<OAuthRoutesOptions> = async (instan
 
     // RFC 9728 puts the metadata of https://host/mcp at /.well-known/oauth-protected-resource/mcp.
     // The root path is served too, because some clients look there first.
-    const protectedResourceMetadataPaths = [
-        '/.well-known/oauth-protected-resource',
-        `/.well-known/oauth-protected-resource${mcpPath}`,
-    ];
+    const serveProtectedResourceMetadata = (metadataPath: string, mcpPath: string) => {
+        const metadata = authorizationServer.protectedResourceMetadata(`https://${mcpDomain}${mcpPath}`);
 
-    for (const path of protectedResourceMetadataPaths) {
-        instance.get(path, onMcpDomain, (_request, reply) => reply.send(authorizationServer.protectedResourceMetadata()));
+        instance.get(metadataPath, onMcpDomain, (_request, reply) => reply.send(metadata));
+    };
+
+    serveProtectedResourceMetadata('/.well-known/oauth-protected-resource', mcpPaths[0]);
+
+    for (const mcpPath of mcpPaths) {
+        serveProtectedResourceMetadata(`/.well-known/oauth-protected-resource${mcpPath}`, mcpPath);
     }
 };
