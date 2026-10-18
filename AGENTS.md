@@ -83,7 +83,9 @@ connector for each endpoint.
 
 `mcp-grafana` has Editor rights in Grafana. Its init container logs in with the Grafana admin
 and creates the `mcp-grafana` service account and a new token on every pod start, so there is
-no manual step on a new cluster. Only cluster-helper can reach it: a NetworkPolicy, and the
+no manual step on a new cluster. The `watch-service-account-token` sidecar checks the token every
+minute and makes a new one if Grafana rejects it (for example after Grafana lost its database);
+`mcp-grafana` reads the token file on every call, so it needs no restart. Only cluster-helper can reach it: a NetworkPolicy, and the
 Vault key `INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_MCP_GRAFANA`. See
 [`tasks/2026-10-18-15-00-grafana-mcp-for-chatgpt.md`](tasks/2026-10-18-15-00-grafana-mcp-for-chatgpt.md).
 

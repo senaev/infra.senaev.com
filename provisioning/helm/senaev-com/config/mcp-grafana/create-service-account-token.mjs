@@ -1,7 +1,14 @@
 // Init container of the mcp-grafana pod. Grafana cannot create service accounts from
 // provisioning files, so this makes sure the service account exists with its role, gives
 // it a new token for this pod, and deletes its older tokens. It never logs a secret.
-import { writeFile } from 'node:fs/promises';
+//
+// With TOKEN_CHECK_INTERVAL_SECONDS it is the sidecar instead: it checks the token in a loop
+// and makes a new one when Grafana rejects it, for example after Grafana lost its database.
+// mcp-grafana reads the token file on every call, so it needs no restart. A liveness probe
+// cannot do this: a container restart does not run the init container again.
+import {
+    readFile, rename, writeFile,
+} from 'node:fs/promises';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 const GRAFANA_URL = requireEnv('GRAFANA_URL');
@@ -10,6 +17,7 @@ const ADMIN_PASSWORD = requireEnv('GRAFANA_ADMIN_PASSWORD');
 const SERVICE_ACCOUNT_NAME = requireEnv('SERVICE_ACCOUNT_NAME');
 const SERVICE_ACCOUNT_ROLE = requireEnv('SERVICE_ACCOUNT_ROLE');
 const TOKEN_FILE = requireEnv('TOKEN_FILE');
+const TOKEN_CHECK_INTERVAL_SECONDS = Number(process.env.TOKEN_CHECK_INTERVAL_SECONDS ?? 0);
 
 // On a new cluster, this chart can start before Grafana.
 const HEALTH_RETRY_INTERVAL_MS = 5_000;
@@ -108,9 +116,15 @@ async function findOrCreateServiceAccount() {
     return existing.id;
 }
 
-async function main() {
-    await waitForGrafana();
+// mcp-grafana can read the file at any moment, so it must never see a half-written token.
+async function writeTokenFile(key) {
+    const temporaryFile = `${TOKEN_FILE}.tmp`;
 
+    await writeFile(temporaryFile, key, { mode: 0o600 });
+    await rename(temporaryFile, TOKEN_FILE);
+}
+
+async function createToken() {
     const serviceAccountId = await findOrCreateServiceAccount();
     const oldTokens = await callGrafana('GET', `/api/serviceaccounts/${serviceAccountId}/tokens`);
 
@@ -118,7 +132,7 @@ async function main() {
     const tokenName = `${SERVICE_ACCOUNT_NAME}-${Date.now()}`;
     const { id: tokenId, key } = await callGrafana('POST', `/api/serviceaccounts/${serviceAccountId}/tokens`, { name: tokenName });
 
-    await writeFile(TOKEN_FILE, key, { mode: 0o600 });
+    await writeTokenFile(key);
     log('✅ Token created', {
         id: tokenId,
         name: tokenName,
@@ -134,4 +148,42 @@ async function main() {
     }
 }
 
-await main();
+// Only a 401 means that the token is gone. When Grafana is down or fails, the next check
+// tries again, so a Grafana restart does not make new tokens.
+async function isTokenRejected() {
+    try {
+        const token = (await readFile(TOKEN_FILE, 'utf8')).trim();
+        const response = await fetch(`${GRAFANA_URL}/api/org`, { headers: { authorization: `Bearer ${token}` } });
+
+        if (response.status === 401) {
+            return true;
+        }
+
+        if (!response.ok) {
+            log('⚠️ Token check failed', { status: response.status });
+        }
+    } catch (error) {
+        log('⚠️ Token check failed', { error: error.message });
+    }
+
+    return false;
+}
+
+async function watchToken() {
+    while (true) {
+        await sleep(TOKEN_CHECK_INTERVAL_SECONDS * 1000);
+
+        if (await isTokenRejected()) {
+            log('🔁 Grafana rejected the token, creating a new one');
+            await createToken();
+        }
+    }
+}
+
+await waitForGrafana();
+
+if (TOKEN_CHECK_INTERVAL_SECONDS > 0) {
+    await watchToken();
+} else {
+    await createToken();
+}

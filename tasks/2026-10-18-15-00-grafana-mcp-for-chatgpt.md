@@ -346,3 +346,27 @@ Open points:
 - Grafana now reads `GRAFANA_ADMIN_PASSWORD` only when it creates its database. To change the
   password, also run `grafana cli admin reset-admin-password`.
 - Remove the `server/discover` workaround when `mcp-grafana` handles the new protocol version.
+
+### 2026-10-18 — Token watcher sidecar (after the Result; not committed yet)
+
+For the first open point. A liveness probe cannot fix a dead token: a container restart does not
+run the init container again. But `mcp-grafana` reads the token file on every call
+(`mcpgrafana.go:82` in v2.0.2, "read fresh on every call so that rotated tokens ... are picked
+up"), so a new token in the file is enough.
+
+- `create-service-account-token.mjs` with `TOKEN_CHECK_INTERVAL_SECONDS` runs as the sidecar
+  `watch-service-account-token`: every 60 s it calls `GET /api/org` with the token, and only on a
+  `401` it makes a new token. It writes the file atomically (temporary file, then rename).
+- The env of both token containers is in `_helpers.tpl` (`senaev-com.mcpGrafanaTokenEnv`).
+
+Test against a fake Grafana API:
+
+```
+== 2. watch, valid token        -> no new token
+== 3. Grafana lost its database
+{"msg":"🔁 Grafana rejected the token, creating a new one"}
+{"msg":"✅ Service account created","id":12,"role":"Editor"}
+{"msg":"✅ Token created","id":13,...}
+== 4. Grafana down (3 s)
+{"msg":"⚠️ Token check failed","status":503}   (x3, no new token)
+```

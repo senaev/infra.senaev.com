@@ -30,7 +30,7 @@ spec:
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
         checksum/script: {{ .Files.Get "config/mcp-grafana/create-service-account-token.mjs" | sha256sum }}
     spec:
-      # The UID of the mcp-grafana image; the init container writes the token file as the same user.
+      # The UID of the mcp-grafana image; the token containers write the token file as the same user.
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
@@ -42,22 +42,7 @@ spec:
           image: node:24-alpine
           command: ["node", "/scripts/create-service-account-token.mjs"]
           env:
-            - name: GRAFANA_URL
-              value: {{ .Values.mcpGrafana.grafanaUrl | quote }}
-            - name: GRAFANA_ADMIN_USER
-              value: {{ .Values.grafanaAdminUser | quote }}
-            - name: GRAFANA_ADMIN_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: senaev-com-kv-secrets
-                  key: GRAFANA_ADMIN_PASSWORD
-                  optional: false
-            - name: SERVICE_ACCOUNT_NAME
-              value: mcp-grafana
-            - name: SERVICE_ACCOUNT_ROLE
-              value: Editor
-            - name: TOKEN_FILE
-              value: /grafana-token/token
+            {{- include "senaev-com.mcpGrafanaTokenEnv" . | nindent 12 }}
           resources:
             requests:
               memory: 32Mi
@@ -123,6 +108,24 @@ spec:
             - name: grafana-token
               mountPath: /grafana-token
               readOnly: true
+        - name: watch-service-account-token
+          image: node:24-alpine
+          command: ["node", "/scripts/create-service-account-token.mjs"]
+          env:
+            {{- include "senaev-com.mcpGrafanaTokenEnv" . | nindent 12 }}
+            - name: TOKEN_CHECK_INTERVAL_SECONDS
+              value: "60"
+          resources:
+            requests:
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+            - name: grafana-token
+              mountPath: /grafana-token
       volumes:
         - name: scripts
           configMap:
