@@ -385,3 +385,23 @@ Grafana UI. Datadog logs, Grafana and the `watch-service-account-token` containe
 ```
 
 The first open point of the Result is fixed.
+
+### 2026-10-18 — Correction: the `server/discover` workaround waits for ChatGPT, not mcp-grafana
+
+The proxy log now shows the header that ChatGPT sends:
+
+```
+server/discover  protocolVersion=2026-07-28  status=200   (answered by the proxy)
+initialize       protocolVersion=-           status=200
+tools/list       protocolVersion=2025-11-25  status=200
+```
+
+`mcp-grafana` 2.0.2 supports 2026-07-28, and rejects the probe because the body has no
+`_meta["io.modelcontextprotocol/protocolVersion"]`, which that protocol version requires in every
+request. The go-sdk maintainers confirmed this behaviour in
+[modelcontextprotocol/go-sdk#1346](https://github.com/modelcontextprotocol/go-sdk/issues/1346)
+(closed as not a bug: a header without `_meta` is a malformed request). No issue about this exists
+for `mcp-grafana`, and OpenAI has no public tracker. So the last open point of the Result is
+wrong: keep the workaround until ChatGPT sends a well-formed 2026-07-28 probe. Related, for
+when it does: [grafana/mcp-grafana#1338](https://github.com/grafana/mcp-grafana/issues/1338)
+(open, `tools/list` at 2026-07-28 misses fields).
