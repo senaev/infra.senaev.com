@@ -248,3 +248,27 @@ out: ✅ [upgrade-namespace vm-stack telemetry] Helm upgrade chart=[vm-stack] na
 Grafana now runs on the `vm-stack-grafana` PVC. `senaev-com` is still not deployed: the run of
 PR #93 cancelled its upgrade, and later runs skipped it because the chart did not change. Its
 release state (`pending-upgrade` or not) must be checked on the server before a manual deploy.
+
+### 2026-10-18 — ChatGPT: "Authentication succeeded, action discovery failed"
+
+The new cluster-helper is live: the unauthenticated request gets the right challenge.
+
+```
+$ curl -i -X POST https://mcp.senaev.com/grafana ...
+HTTP/2 401
+www-authenticate: Bearer resource_metadata="https://mcp.senaev.com/.well-known/oauth-protected-resource/grafana", scope="mcp"
+```
+
+Local test: `grafana/mcp-grafana:2.0.2` in Docker with the chart flags, behind the real
+`grafanaMcpProxy`, with ChatGPT's request sequence:
+
+```
+initialize                 -> 200 application/json
+notifications/initialized  -> 202
+tools/list                 -> 200, 102617 bytes, 79 tools
+GET (SSE stream)           -> 405
+```
+
+The proxy and `mcp-grafana` work together, and the tool list has valid names and object schemas
+(no `$ref`). So the failure is probably in the cluster (for example `mcp-grafana` not ready,
+and the proxy answers 502). The cluster-helper and `mcp-grafana` logs are needed.
