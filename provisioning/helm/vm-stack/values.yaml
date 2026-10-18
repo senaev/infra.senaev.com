@@ -18,12 +18,14 @@ victoria-metrics-k8s-stack:
     persistence:
       enabled: true
       size: 1Gi
-    # The disk is ReadWriteOnce and holds one SQLite file, so two pods must not overlap.
-    # The explicit null removes the rollingUpdate field that the live Deployment still has:
-    # Kubernetes rejects it together with Recreate.
+    # The disk is ReadWriteOnce and holds one SQLite file, so two pods must not overlap: the old
+    # pod stops before the new one starts. Not `Recreate`: Helm's server-side apply cannot remove
+    # the live rollingUpdate field, and Kubernetes rejects that field together with Recreate.
     deploymentStrategy:
-      type: Recreate
-      rollingUpdate: null
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 0
+        maxUnavailable: 1
     admin:
       existingSecret: senaev-com-kv-secrets
       userKey: GRAFANA_ADMIN_USER
