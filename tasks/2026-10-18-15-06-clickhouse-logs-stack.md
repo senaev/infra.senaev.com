@@ -1,79 +1,90 @@
-# 2026-10-18 — Self-hosted log storage on ClickHouse
+# 2026-10-18 — Collect pod logs into ClickHouse in OTel format
 
-- [ ] Collect and keep all container logs in the cluster in a self-hosted, ClickHouse-based tool, and query them in its UI
+- [ ] Collect all container logs with OpenTelemetry Collectors, keep them in our own ClickHouse in the standard OTel format, and view them in the existing Grafana
 
 ## Goal
 
-Today Datadog keeps all logs. We want our own open-source solution in the cluster to
-keep and query logs. Use a ClickHouse-based stack (SigNoz, Uptrace or HyperDX), because
-it gives a Datadog-like UI and can also take traces and metrics later.
+Our own log storage in the cluster, next to Datadog (Datadog does not change). The UI
+(SigNoz, HyperDX) and the ChatGPT MCP tools are out of scope.
 
-Datadog stays during the evaluation. We decide later whether to turn off Datadog log collection.
+Data path: OTel agent (DaemonSet) → OTLP → OTel gateway → ClickHouse `otel.otel_logs` → Grafana.
 
 ## Context
 
-- Datadog Agent chart: `provisioning/helm/datadog/values.yaml`. It collects logs from
-  `senaev-media` and `hetzner` only (`containerCollectAll`). See
-  `tasks/2026-06-15-connect-datadog-to-my-cluster.md`.
-- Metrics stack: VictoriaMetrics + Grafana in the `telemetry` namespace
-  (`provisioning/helm/vm-operator/`, `provisioning/helm/vm-stack/`). Operators and
-  stateful services are pinned to `hetzner` (`nodeSelector: vps: hetzner`).
-- Chart pattern: a thin wrapper chart with a vendored `.tgz` subchart in `charts/`,
-  deployed by `upgrade-namespace.sh <chart> <namespace>` and by CI
-  (`.github/workflows/update-helm-charts.yml`).
-- Ingress pattern: `ingressClassName: traefik-hetzner`, a `letsencrypt` certresolver, and
-  basic-auth middleware for admin UIs (see `vm-stack/values.yaml`).
+- Grafana: the `grafana` subchart of `victoria-metrics-k8s-stack` 0.72.2 in
+  `provisioning/helm/vm-stack/values.yaml`, `telemetry` namespace. Extra datasources go to
+  `defaultDatasources.extra` and are rendered into a ConfigMap. Do not put passwords there.
+- Chart pattern: a wrapper chart with a vendored `.tgz` in `charts/` (see `vm-operator`),
+  deployed by `upgrade-namespace.sh <chart> <namespace>` and by `update-helm-charts.yml`.
 - Secrets: Vault `senaev-com-kv` → External Secrets → `senaev-com-kv-secrets`.
-- `senaev-media` is a sensitive home node (see root `AGENTS.md`). A DaemonSet on it must
-  not touch the host network. Roll it out to that node last, and only after we ask the user.
+- Stateful services are pinned to `nodeSelector: vps: hetzner`.
+- `senaev-media` is a sensitive home node (see root `AGENTS.md`): no host network, roll out
+  to it last, and ask the user first.
 
 ## Plan
 
-1. **Tool: [SigNoz](https://github.com/SigNoz/signoz)** (decided 2026-10-18). Use the
-   official chart `signoz` from https://charts.signoz.io (0.146.0 on 2026-10-18). It
-   deploys ClickHouse, ZooKeeper, the SigNoz backend + UI and the SigNoz OTel collector.
-2. **Check capacity on `hetzner`** (read-only): `kubectl top nodes`, `df -h`, free RAM.
-   ClickHouse needs about 2–4 GiB RAM and a PVC. Decide the PVC size and the retention
-   (proposal: 14 days for logs).
-3. **Vendor the chart** into `provisioning/helm/<tool>/charts/` and add a wrapper `Chart.yaml`
-   and `values.yaml`:
-   - pin ClickHouse, the backend and the UI to `vps: hetzner`
-   - disable traces/metrics ingestion that we do not need yet, and set the retention TTL
-   - set resource requests/limits
-   - Ingress on `signoz.senaev.com`, TLS with `letsencrypt`, and auth
-     (the tool's own login, or a basic-auth middleware).
-4. **Log collection: a separate OTel Collector DaemonSet** (decided 2026-10-18). Use the
-   SigNoz `k8s-infra` chart (0.17.1 on 2026-10-18): the `filelog` receiver on
-   `/var/log/pods` and `k8sattributes` enrichment, with logs sent over OTLP to the SigNoz
-   collector. Turn off its metrics presets for now. Start on `hetzner` only, then add
-   `firstvds`, then `senaev-media` (ask first). The Datadog Agent does not change.
-5. **Secrets.** Put the admin password and any ClickHouse credentials in Vault →
-   `senaev-com-kv-secrets`.
-6. **CI.** Make sure the matrix in `update-helm-charts.yml` picks up the new chart. Run
-   `npm run check:helm`.
-7. **Alerting (optional).** Send an alert to Telegram when ClickHouse disk usage is high,
-   with a vmalert rule or the tool's own alerts through the cluster-helper webhook.
+1. **Capacity check on `hetzner`** (read-only): `kubectl top nodes`, `free -h`, `df -h`.
+   Decide the PVC size. Retention: 14 days.
+2. **ClickHouse**: 1 shard, 1 replica, `MergeTree`, no Keeper, a PVC, pinned to `hetzner`,
+   in-cluster access only.
+   ❓ Install with the Altinity `clickhouse-operator` (vendored chart + `ClickHouseInstallation`)?
+   Users:
+   - `otel_writer`: `CREATE` and `INSERT` on the `otel` database only
+   - `reader`: `readonly=1`, with limits on query time and result rows, and
+     `max_execution_time CHANGEABLE_IN_READONLY` (the Grafana plugin sets it on every query)
+3. **OTel gateway**: chart `opentelemetry-collector` 0.176.0
+   (https://open-telemetry.github.io/opentelemetry-helm-charts), `mode: deployment`,
+   1 replica, image `otel/opentelemetry-collector-contrib`, pinned to `hetzner`.
+   - receiver `otlp` (gRPC), cluster-internal Service
+   - exporter `clickhouse`: `database: otel`, `ttl: 336h`, `create_schema: true`, user `otel_writer`
+   - `sending_queue.batch` (`min_size: 5000`, `flush_timeout: 5s`) instead of the `batch` processor
+   - `sending_queue.storage` with `file_storage` on a small PVC
+4. **OTel agent**: the same chart, a second release, `mode: daemonset`.
+   - `presets.logsCollection` and `presets.kubernetesAttributes`
+   - exporter `otlp` to the gateway
+   - no host network, no metrics; set resource requests/limits
+   - rollout: `hetzner` → `firstvds` → `senaev-media` (ask first)
+5. **Grafana**, in `provisioning/helm/vm-stack/values.yaml`:
+   - `grafana.plugins: [grafana-clickhouse-datasource]`
+   - `grafana.envValueFrom.CLICKHOUSE_READER_PASSWORD` from `senaev-com-kv-secrets`
+   - in `defaultDatasources.extra`:
+     ```yaml
+     - name: ClickHouse Logs
+       type: grafana-clickhouse-datasource
+       jsonData:
+         host: <clickhouse-service>.<namespace>.svc.cluster.local
+         port: 9000
+         protocol: native
+         username: reader
+         defaultDatabase: otel
+         logs:
+           defaultDatabase: otel
+           defaultTable: otel_logs
+           otelEnabled: true
+       secureJsonData:
+         password: $CLICKHOUSE_READER_PASSWORD
+     ```
+6. **Secrets**: put the `otel_writer` and `reader` passwords in Vault.
+7. **CI**: the new charts are in the `update-helm-charts.yml` matrix; `npm run check:helm` passes.
+8. **Optional**: `vmagent` scrapes the ClickHouse and collector metrics, and a vmalert rule
+   sends a Telegram alert on high ClickHouse disk usage or exporter send failures.
 
 ## Verification
 
-- Open the UI at the chosen hostname, log in, and see logs from pods on `hetzner`
-  (for example traefik and cluster-helper) within one minute of their creation.
-- Filter by namespace, pod and container, and run a full-text search for a known log line.
-- Compare a sample with Datadog log search for the same time range: no gaps.
-- After the retention period, the oldest logs are removed and ClickHouse disk usage stays flat.
-- `senaev-media` stays reachable (`tailscale status` shows `direct`, SSH works) after the
-  collector is rolled out there.
+- Logs from every node with an agent arrive within one minute:
+  `SELECT ResourceAttributes['k8s.node.name'] AS node, count(), max(Timestamp) FROM otel.otel_logs WHERE Timestamp > now() - INTERVAL 5 MINUTE GROUP BY node`
+- Grafana: the datasource test passes. In Explore, logs show the level and the body, filter
+  by `k8s.namespace.name` and `k8s.pod.name`, and text search finds a known log line.
+- The log count for one pod and one hour is the same as in Datadog.
+- A restart of the agent or the gateway gives no gap and no duplicate log lines.
+- `reader` cannot run `INSERT` or `CREATE`.
+- After 14 days, old logs are removed and disk usage stays flat.
+- `senaev-media` stays reachable (`tailscale status` shows `direct`, SSH works).
 
 ## Findings
 
-### 2026-10-18 — Task created
-
-Options compared in chat: VictoriaLogs, Loki, OpenSearch, ClickHouse-based tools,
-Quickwit/OpenObserve. The user chose the ClickHouse-based stack.
-
 ### 2026-10-18 — Decisions
 
-- Tool: SigNoz (chart `signoz` 0.146.0).
-- Hostname: `logs.senaev.com`. *(Changed to `signoz.senaev.com` on 2026-10-18.)*
-- Collector: a separate OTel Collector DaemonSet (chart `k8s-infra` 0.17.1). Datadog
-  does not forward logs to SigNoz.
+ClickHouse with the standard OTel `clickhouseexporter` schema, so the data does not depend
+on one UI. Logs only: metrics stay in VictoriaMetrics. Grafana is the first way to view
+the logs.
