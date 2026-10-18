@@ -13,6 +13,14 @@ victoria-metrics-k8s-stack:
       vps: hetzner
     annotations:
       secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
+    # Keeps the Grafana database across restarts: the mcp-grafana service account and its
+    # token, and the dashboards and alerts made in the UI or over MCP.
+    persistence:
+      enabled: true
+      size: 1Gi
+    # The disk is ReadWriteOnce and holds one SQLite file, so two pods must not overlap.
+    deploymentStrategy:
+      type: Recreate
     admin:
       existingSecret: senaev-com-kv-secrets
       userKey: GRAFANA_ADMIN_USER
