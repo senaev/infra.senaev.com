@@ -41,6 +41,8 @@ jobs:
     needs: sync-provisioning
     runs-on: ubuntu-latest
     strategy:
+      # A cancelled job can stop a Helm upgrade in the middle and leave its release pending.
+      fail-fast: false
       matrix:
         chart: ['datadog', 'external-secrets', 'senaev-com', 'test', 'traefik', 'vault', 'vm-operator', 'vm-stack']
         include:
