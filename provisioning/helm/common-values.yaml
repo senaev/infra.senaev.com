@@ -7,5 +7,8 @@ obsidianTasksChatId: "-5365516821"
 trickyDadChatId: "-5242876030"
 telegramSenaevComBotDirectMessageWithOwnerChatId: "184352484"
 
+# The vm-stack chart creates this Grafana admin; mcp-grafana in senaev-com logs in with it.
+grafanaAdminUser: grafana_admin
+
 mediaServerNodeName: "senaev-media"
 mediaServerStoragePath: /mnt/sdb1

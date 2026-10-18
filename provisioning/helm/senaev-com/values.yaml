@@ -191,8 +191,8 @@ clusterHelper:
   # Public host for the Telegram webhook, Alisa and the short-link redirector. The app
   # registers this URL with Telegram at startup, so it must keep matching the ingress.
   webhookDomain: webhook-endpoint.senaev.com
-  # OAuth authorization server for the MCP endpoint at https://<mcpDomain>/chat-gpt. It is the
-  # token issuer, so changing it makes every issued token invalid.
+  # OAuth authorization server for the MCP endpoints at https://<mcpDomain>/chat-gpt and
+  # https://<mcpDomain>/grafana. It is the token issuer, so changing it makes every issued token invalid.
   authDomain: auth.senaev.com
   # Host of the OAuth-protected MCP endpoint. The tokens are issued for it, so changing it
   # makes every issued token invalid too.
@@ -231,6 +231,13 @@ opencodeTelegram:
   modelProvider: openrouter
   modelId: anthropic/claude-haiku-4.5
   opencodeDataPath: volumes/opencode-data
+
+# Grafana MCP server, reachable only through cluster-helper at https://<clusterHelper.mcpDomain>/grafana.
+mcpGrafana:
+  enabled: true
+  vps: hetzner
+  image: grafana/mcp-grafana:2.0.2
+  grafanaUrl: http://vm-stack-grafana.telemetry.svc.cluster.local
 
 vpnSubscription:
   enabled: true

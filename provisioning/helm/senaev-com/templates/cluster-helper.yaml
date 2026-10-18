@@ -119,6 +119,14 @@ spec:
                   name: senaev-com-kv-secrets
                   key: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
                   optional: false
+            - name: MCP_GRAFANA_URL
+              value: "http://mcp-grafana:8000/mcp"
+            - name: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_MCP_GRAFANA
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_MCP_GRAFANA
+                  optional: false
             - name: TG_TOKEN_SENAEV_COM_BOT
               valueFrom:
                 secretKeyRef:
