@@ -40,7 +40,10 @@ beforeEach(async () => {
     loginAttempts = [];
     authorizationServer = createAuthorizationServer({
         issuer: `https://${AUTH_DOMAIN}`,
-        resource: `https://${MCP_DOMAIN}/mcp`,
+        resources: [
+            `https://${MCP_DOMAIN}/mcp`,
+            `https://${MCP_DOMAIN}/grafana`,
+        ],
         username: 'andrei',
         password: 'secret-password',
         signingSecret: 'signing-secret',
@@ -60,7 +63,10 @@ beforeEach(async () => {
         onLoginAttempt: (attempt) => loginAttempts.push(attempt),
         authDomain: AUTH_DOMAIN,
         mcpDomain: MCP_DOMAIN,
-        mcpPath: '/mcp',
+        mcpPaths: [
+            '/mcp',
+            '/grafana',
+        ],
     });
 });
 
@@ -118,20 +124,24 @@ describe('registerOAuthRoutes', () => {
         expect(onOtherDomain.statusCode).toBe(401);
     });
 
-    it('serves the protected resource metadata on the MCP domain at both paths', async () => {
-        const paths = [
-            '/.well-known/oauth-protected-resource',
-            '/.well-known/oauth-protected-resource/mcp',
-        ];
+    it('serves the protected resource metadata on the MCP domain at the root and at each MCP path', async () => {
+        const resourceByPath = {
+            '/.well-known/oauth-protected-resource': `https://${MCP_DOMAIN}/mcp`,
+            '/.well-known/oauth-protected-resource/mcp': `https://${MCP_DOMAIN}/mcp`,
+            '/.well-known/oauth-protected-resource/grafana': `https://${MCP_DOMAIN}/grafana`,
+        };
 
-        for (const url of paths) {
+        for (const [
+            url,
+            resource,
+        ] of Object.entries(resourceByPath)) {
             const response = await server.inject({
                 url,
                 headers: { host: MCP_DOMAIN },
             });
 
             expect(response.json()).toMatchObject({
-                resource: `https://${MCP_DOMAIN}/mcp`,
+                resource,
                 authorization_servers: [`https://${AUTH_DOMAIN}`],
             });
         }

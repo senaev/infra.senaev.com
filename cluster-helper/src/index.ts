@@ -34,6 +34,7 @@ import {
 } from './oauth/authorizationServer';
 import { createGoogleLogin, parseGoogleAdminEmails } from './oauth/googleLogin';
 import { GOOGLE_CALLBACK_PATH, oauthRoutes } from './oauth/registerOAuthRoutes';
+import { sendBearerChallenge } from './oauth/sendBearerChallenge';
 import { createToolFamilies } from './chatGptMcp/toolFamilies';
 import { callCodeTool } from './codeToolsApi';
 import { callVaultTool, getShortLink } from './obsidianSyncApi';
@@ -55,7 +56,7 @@ const HOST = '0.0.0.0';
 // PUBLIC_PORT is what the five ingresses target -- webhook-endpoint.senaev.com,
 // auth.senaev.com, mcp.senaev.com, s.senaev.com and static.senaev.com. Every route on it is either
 // authenticated (Telegram secret token, Alisa secret path, OAuth bearer tokens for the
-// ChatGPT MCP endpoint), part of the OAuth flow, or safe to publish, and the catch-all
+// ChatGPT MCP endpoints), part of the OAuth flow, or safe to publish, and the catch-all
 // below answers 401 so nothing new leaks by accident.
 //
 // Serving both from one Fastify instance would publish the internal routes, so do not
@@ -234,11 +235,19 @@ async function replyToMcpMessage(message: unknown, reply: FastifyReply, options:
     }
 }
 
-// OAuth-protected MCP endpoint. The authorization server is on AUTH_DOMAIN; this endpoint
-// on MCP_DOMAIN is the protected resource that the tokens are issued for.
+// OAuth-protected MCP endpoints. The authorization server is on AUTH_DOMAIN; each endpoint
+// on MCP_DOMAIN is a protected resource, and a token is valid only for the one it was issued for.
+// /chat-gpt is first: it is the default for clients that send no `resource`.
 const MCP_PATH = '/chat-gpt';
-const MCP_RESOURCE = `https://${MCP_DOMAIN}${MCP_PATH}`;
-const MCP_RESOURCE_METADATA_URL = `https://${MCP_DOMAIN}/.well-known/oauth-protected-resource${MCP_PATH}`;
+
+function mcpResource(path: string): string {
+    return `https://${MCP_DOMAIN}${path}`;
+}
+
+function mcpResourceMetadataUrl(path: string): string {
+    return `https://${MCP_DOMAIN}/.well-known/oauth-protected-resource${path}`;
+}
+
 const MCP_SERVER_OPTIONS: McpServerOptions = {
     securitySchemes: [
         {
@@ -277,7 +286,7 @@ const googleAdminEmails = parseGoogleAdminEmails(GOOGLE_OAUTH_ADMIN_EMAILS);
 
 const authorizationServer = createAuthorizationServer({
     issuer: `https://${AUTH_DOMAIN}`,
-    resource: MCP_RESOURCE,
+    resources: [mcpResource(MCP_PATH)],
     username: AUTH_MY_USERNAME,
     password: AUTH_MY_PASSWORD,
     signingSecret: AUTH_TOKEN_SIGNING_SECRET,
@@ -294,17 +303,13 @@ const googleLogin = createGoogleLogin({
 });
 
 publicServer.post<{ Body: unknown }>(MCP_PATH, { constraints: { host: MCP_DOMAIN } }, async (request, reply) => {
-    const check = await authorizationServer.checkAccessToken(request.headers.authorization);
+    const check = await authorizationServer.checkAccessToken(request.headers.authorization, mcpResource(MCP_PATH));
 
     if (check.kind !== 'valid') {
-        // The challenge points the client at the resource metadata, which is how ChatGPT
-        // finds the authorization server and starts the OAuth flow.
-        const error = check.kind === 'invalid' ? ', error="invalid_token"' : '';
-
-        return reply
-            .code(401)
-            .header('WWW-Authenticate', `Bearer resource_metadata="${MCP_RESOURCE_METADATA_URL}", scope="${MCP_SCOPE}"${error}`)
-            .send({ error: 'unauthorized' });
+        return sendBearerChallenge(reply, {
+            check,
+            resourceMetadataUrl: mcpResourceMetadataUrl(MCP_PATH),
+        });
     }
 
     return replyToMcpMessage(request.body, reply, MCP_SERVER_OPTIONS);
@@ -372,7 +377,7 @@ async function main(): Promise<void> {
         onLoginAttempt: notifyLoginAttempt,
         authDomain: AUTH_DOMAIN,
         mcpDomain: MCP_DOMAIN,
-        mcpPath: MCP_PATH,
+        mcpPaths: [MCP_PATH],
     });
 
     await startTorrentOutboxProcessor();
