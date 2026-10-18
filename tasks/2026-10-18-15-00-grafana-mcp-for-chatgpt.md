@@ -370,3 +370,18 @@ Test against a fake Grafana API:
 == 4. Grafana down (3 s)
 {"msg":"⚠️ Token check failed","status":503}   (x3, no new token)
 ```
+
+### 2026-10-18 — Token watcher works in the cluster
+
+Pushed as `1ee4118` and deployed. The user deleted the `mcp-grafana` service account in the
+Grafana UI. Datadog logs, Grafana and the `watch-service-account-token` container:
+
+```
+21:31:53 grafana  msg="Failed to authenticate request" client=auth.client.api-key error="invalid API key"
+21:31:53 grafana  msg="Request Completed" method=GET path=/api/org status=401
+21:31:54 [watch-service-account-token] 🔁 Grafana rejected the token, creating a new one
+21:31:54 [watch-service-account-token] ✅ Service account created
+21:31:54 [watch-service-account-token] ✅ Token created
+```
+
+The first open point of the Result is fixed.
