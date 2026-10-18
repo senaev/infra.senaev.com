@@ -16,6 +16,14 @@
 3. Make the changes and run the project's checks.
 4. Commit, push the branch and open a pull request with `gh pr create`.
 
+## Commit messages and pull request titles
+
+Start every commit message and every pull request title with the GitMoji
+(https://gitmoji.dev/) for the type of change. Pick the most specific one that fits. If the
+task description suggests one, use it; otherwise choose based on the diff.
+
+Example: `🐛 Fix login redirect loop`
+
 ## Permissions
 
 - Within the user's requested scope, do not ask again to create or switch branches, commit,
