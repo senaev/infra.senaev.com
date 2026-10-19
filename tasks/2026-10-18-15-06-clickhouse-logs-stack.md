@@ -17,16 +17,20 @@ Data path: OTel agent (DaemonSet) → OTLP → OTel gateway → ClickHouse `otel
 - Chart pattern: a wrapper chart with a vendored `.tgz` in `charts/` (see `vm-operator`),
   deployed by `upgrade-namespace.sh <chart> <namespace>` and by `update-helm-charts.yml`.
 - Secrets: Vault `senaev-com-kv` → External Secrets → `senaev-com-kv-secrets`.
-- Stateful services are pinned to `nodeSelector: vps: hetzner`.
+- Pods are pinned with `nodeSelector: vps: <node>`. On `senaev-media`, data lives on a
+  `hostPath` under `mediaServerStoragePath` (`/mnt/sdb1`, `provisioning/helm/common-values.yaml`),
+  for example `/mnt/sdb1/volumes/minio`.
 - `senaev-media` is a sensitive home node (see root `AGENTS.md`): no host network, roll out
   to it last, and ask the user first.
 
 ## Plan
 
-1. **Capacity check on `hetzner`** (read-only): `kubectl top nodes`, `free -h`, `df -h`.
-   Decide the PVC size. Retention: 14 days.
-2. **ClickHouse**: 1 shard, 1 replica, `MergeTree`, no Keeper, a PVC, pinned to `hetzner`,
-   in-cluster access only.
+1. **Capacity check on `senaev-media`** (read-only): `kubectl top nodes`, `free -h`,
+   `df -h /mnt/sdb1`. Retention: 14 days.
+2. **ClickHouse on `senaev-media`**: 1 shard, 1 replica, `MergeTree`, no Keeper,
+   `nodeSelector: vps: senaev-media`, data on `hostPath` `/mnt/sdb1/volumes/clickhouse`,
+   in-cluster access only. Set memory limits, so ClickHouse cannot starve the media services.
+   Ask the user before the first deploy (sensitive node).
    ❓ Install with the Altinity `clickhouse-operator` (vendored chart + `ClickHouseInstallation`)?
    Users:
    - `otel_writer`: `CREATE` and `INSERT` on the `otel` database only
@@ -38,7 +42,9 @@ Data path: OTel agent (DaemonSet) → OTLP → OTel gateway → ClickHouse `otel
    - receiver `otlp` (gRPC), cluster-internal Service
    - exporter `clickhouse`: `database: otel`, `ttl: 336h`, `create_schema: true`, user `otel_writer`
    - `sending_queue.batch` (`min_size: 5000`, `flush_timeout: 5s`) instead of the `batch` processor
-   - `sending_queue.storage` with `file_storage` on a small PVC
+   - `sending_queue.storage` with `file_storage` on a small PVC. The gateway stays on
+     `hetzner`, so it buffers logs while the home link to `senaev-media` is down. Size the
+     queue and `retry_on_failure.max_elapsed_time` for an outage of at least 1 hour.
 4. **OTel agent**: the same chart, a second release, `mode: daemonset`.
    - `presets.logsCollection` and `presets.kubernetesAttributes`
    - exporter `otlp` to the gateway
@@ -77,6 +83,7 @@ Data path: OTel agent (DaemonSet) → OTLP → OTel gateway → ClickHouse `otel
   by `k8s.namespace.name` and `k8s.pod.name`, and text search finds a known log line.
 - The log count for one pod and one hour is the same as in Datadog.
 - A restart of the agent or the gateway gives no gap and no duplicate log lines.
+- ClickHouse scaled to 0 for 10 minutes, then back: the gateway sends the queued logs, no gap.
 - `reader` cannot run `INSERT` or `CREATE`.
 - After 14 days, old logs are removed and disk usage stays flat.
 - `senaev-media` stays reachable (`tailscale status` shows `direct`, SSH works).
@@ -88,3 +95,8 @@ Data path: OTel agent (DaemonSet) → OTLP → OTel gateway → ClickHouse `otel
 ClickHouse with the standard OTel `clickhouseexporter` schema, so the data does not depend
 on one UI. Logs only: metrics stay in VictoriaMetrics. Grafana is the first way to view
 the logs.
+
+### 2026-10-19 — ClickHouse on `senaev-media`
+
+ClickHouse lives on `senaev-media`, with data on `/mnt/sdb1`. The gateway stays on
+`hetzner` with a persistent queue, because the home link is less reliable.
