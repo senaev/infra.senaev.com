@@ -1,10 +1,11 @@
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
-import { readTextFile } from 'senaev-utils/src/files/readTextFile';
 import { READ_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
-import { hashContent } from 'senaev-utils/src/files/contentHash';
 import { CommandError } from 'senaev-utils/src/commands/CommandError';
 
-import { normalizeVaultPath, resolveExistingNote } from '../access/vaultAccess';
+import {
+    decodeText, hashBytes, readFileBytes, resolveExistingFile,
+} from '../access/vaultFiles';
+import { normalizeVaultPath, isNotePath } from '../access/vaultAccess';
 import { walkVault } from '../access/walkVault';
 import { splitNote } from '../markdown/frontmatter';
 import { findSection, formatHeadingPath } from '../markdown/sections';
@@ -43,9 +44,43 @@ function numberLines(text: string, firstLine: number): string {
 }
 
 async function readNote(config: VaultToolsConfig, request: ReadRequest, maxChars: number, execution: CommandExecution) {
-    const absolutePath = await resolveExistingNote(config, request.path, execution);
-    const raw = await readTextFile(absolutePath, execution);
-    const { body, ...frontmatter } = splitNote(raw);
+    const absolutePath = await resolveExistingFile(config, request.path, execution);
+    const data = await readFileBytes(absolutePath, execution);
+    const isNote = isNotePath(config, request.path);
+
+    if (!isNote && request.section !== undefined) {
+        throw new CommandError('invalid_arguments', 'Sections are supported only for Markdown notes');
+    }
+
+    let raw: string;
+
+    try {
+        raw = decodeText(request.path, data);
+    } catch (error) {
+        if (!(error instanceof CommandError) || error.code !== 'binary_file') {
+            throw error;
+        }
+
+        return {
+            path: request.path,
+            hash: hashBytes(data),
+            size: data.length,
+            binary: true,
+            frontmatter: null,
+            startChar: 0,
+            totalChars: 0,
+            content: '',
+            truncated: false,
+        };
+    }
+
+    const { body, ...frontmatter } = isNote
+        ? splitNote(raw)
+        : {
+            body: raw,
+            frontmatter: null,
+        };
+
     const section = request.section === undefined ? null : findSection(raw, request.section);
     const fullText = section === null ? body : raw.slice(section.start, section.end);
     const text = fullText.slice(request.startChar);
@@ -59,7 +94,9 @@ async function readNote(config: VaultToolsConfig, request: ReadRequest, maxChars
         path: request.path,
         ...diaryDate !== null && { diaryDate },
         // Always the hash of the whole file, also for a section or a truncated read.
-        hash: hashContent(raw),
+        hash: hashBytes(data),
+        size: data.length,
+        binary: false,
         ...frontmatter,
         ...section !== null && {
             section: {

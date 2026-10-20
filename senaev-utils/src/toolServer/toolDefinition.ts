@@ -1,5 +1,6 @@
 /** An MCP tool as ChatGPT sees it in `tools/list`, without its name. */
 export type ToolDefinition = {
+    _meta?: Record<string, unknown>;
     title: string;
     description: string;
     inputSchema: {

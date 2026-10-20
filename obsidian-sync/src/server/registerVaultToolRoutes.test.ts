@@ -89,13 +89,13 @@ describe('vault tool routes', () => {
             operation: { state: 'failed' },
             status: 'error',
             code: 'not_found',
-            message: 'Note "Missing.md" does not exist',
+            message: 'File does not exist',
         });
     });
 
     it('answers an unknown tool with 404, also for names inherited from Object', async () => {
         for (const tool of [
-            'delete',
+            'permanent_delete',
             'constructor',
         ]) {
             const response = await callTool(tool, {});

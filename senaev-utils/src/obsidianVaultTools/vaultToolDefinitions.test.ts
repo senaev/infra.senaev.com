@@ -30,6 +30,8 @@ describe('vault tool definitions', () => {
 
     test('lists the tools in a fixed order', () => {
         expect(VAULT_TOOL_NAMES).toEqual([
+            'upload',
+            'delete',
             'list',
             'search',
             'read',
@@ -59,6 +61,7 @@ describe('vault tool definitions', () => {
             'glob',
             'diaryFrom',
             'diaryTo',
+            'includeAttachments',
             'recursive',
             'offset',
             'limit',

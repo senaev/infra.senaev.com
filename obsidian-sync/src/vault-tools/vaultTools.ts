@@ -1,6 +1,8 @@
 import type { CommandAdapter } from 'senaev-utils/src/toolServer/createCommandAdapter';
 import type { VaultCommandName } from 'senaev-utils/src/obsidianVaultTools/vaultCommands';
 
+import { uploadTool } from './tools/uploadTool';
+import { deleteTool } from './tools/deleteTool';
 import { createTool } from './tools/createTool';
 import { diaryAppendTool } from './tools/diaryAppendTool';
 import { linksTool } from './tools/linksTool';
@@ -18,6 +20,8 @@ export type VaultTool = CommandAdapter<VaultToolsConfig>;
 
 /** Domain command registry; missing implementations fail to compile. */
 export const VAULT_TOOLS: Readonly<Record<VaultCommandName, VaultTool>> = {
+    upload: uploadTool,
+    delete: deleteTool,
     list: listTool,
     search: searchTool,
     read: readTool,

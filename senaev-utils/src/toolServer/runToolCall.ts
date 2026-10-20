@@ -4,6 +4,9 @@ import { OperationError } from '../operations/OperationError';
 import { type CommandErrorCode, CommandError } from '../commands/CommandError';
 
 const HTTP_STATUS_BY_CODE: Record<CommandErrorCode | OperationError['code'], number> = {
+    file_too_large: 413,
+    binary_file: 415,
+    download_failed: 502,
     QUEUE_FULL: 429,
     invalid_arguments: 400,
     unknown_tool: 404,

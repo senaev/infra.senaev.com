@@ -1,6 +1,15 @@
 /** Domain argument contracts; independent of transport and execution policy. */
 export const VAULT_COMMAND_ARGUMENTS = {
+    upload: [
+        'path',
+        'file',
+    ],
+    delete: [
+        'path',
+        'expectedHash',
+    ],
     list: [
+        'includeAttachments',
         'folder',
         'glob',
         'diaryFrom',

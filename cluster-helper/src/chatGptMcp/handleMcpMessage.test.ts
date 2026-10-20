@@ -64,6 +64,8 @@ describe('handleMcpMessage', () => {
         }).result;
 
         expect(tools.map((tool) => tool.name)).toEqual([
+            'obsidian-upload',
+            'obsidian-delete',
             'obsidian-list',
             'obsidian-search',
             'obsidian-read',
@@ -219,7 +221,7 @@ describe('Obsidian tool proxy', () => {
 
     it('does not forward an obsidian- name that is not a known tool', async () => {
         const callVaultTool = vi.fn();
-        const response = await handleMcpMessage(request('tools/call', { name: 'obsidian-delete' }), handlers({ callVaultTool }));
+        const response = await handleMcpMessage(request('tools/call', { name: 'obsidian-permanent_delete' }), handlers({ callVaultTool }));
 
         expect(callVaultTool).not.toHaveBeenCalled();
         expect(response).toMatchObject({ error: { code: -32602 } });
@@ -293,5 +295,60 @@ describe('describeMcpExchange', () => {
                 arguments: { text: 'private diary text' },
             }), null).arguments).toBeUndefined();
         }
+    });
+});
+
+describe('ChatGPT file references', () => {
+    it('advertises fileParams metadata and the complete optional file properties', async () => {
+        const response = await handleMcpMessage(request('tools/list'), handlers());
+
+        expect(response).toMatchObject({
+            result: {
+                tools: expect.arrayContaining([
+                    expect.objectContaining({
+                        name: 'obsidian-upload',
+                        _meta: { 'openai/fileParams': ['file'] },
+                        inputSchema: expect.objectContaining({
+                            properties: expect.objectContaining({
+                                file: expect.objectContaining({
+                                    required: [
+                                        'download_url',
+                                        'file_id',
+                                    ],
+                                    properties: {
+                                        download_url: { type: 'string' },
+                                        file_id: { type: 'string' },
+                                        mime_type: { type: 'string' },
+                                        file_name: { type: 'string' },
+                                    },
+                                }),
+                            }),
+                        }),
+                    }),
+                ]),
+            },
+        });
+    });
+
+    it('forwards file references unchanged and excludes signed URLs from exchange logs', async () => {
+        const args = {
+            path: 'finances/payslips/a.pdf',
+            file: {
+                download_url: 'https://files.oaiusercontent.com/a?secret=private',
+                file_id: 'file_a',
+            },
+        };
+        const callVaultTool = vi.fn().mockResolvedValue({
+            isError: false,
+            body: { status: 'ok' },
+        });
+        const message = request('tools/call', {
+            name: 'obsidian-upload',
+            arguments: args,
+        });
+
+        await handleMcpMessage(message, handlers({ callVaultTool }));
+        expect(callVaultTool).toHaveBeenCalledWith('upload', args);
+        expect(JSON.stringify(describeMcpExchange(message, null))).not.toContain('secret=private');
     });
 });

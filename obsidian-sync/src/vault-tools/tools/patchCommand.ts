@@ -9,7 +9,10 @@ import { withFileMutation } from 'senaev-utils/src/files/withFileMutation';
 import { replaceExactlyOnceAsync } from 'senaev-utils/src/files/textEdits';
 import { invalidArguments } from 'senaev-utils/src/commands/CommandError';
 
-import { normalizeVaultPath, resolveExistingNote } from '../access/vaultAccess';
+import {
+    decodeText, MAX_TEXT_BYTES, readFileBytes, resolveExistingFile,
+} from '../access/vaultFiles';
+import { normalizeVaultPath, isNotePath } from '../access/vaultAccess';
 import { setFrontmatterProperties } from '../markdown/frontmatter';
 import { findSection } from '../markdown/sections';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
@@ -94,8 +97,9 @@ export async function patchCommand(config: VaultToolsConfig, input: PatchCommand
     const { expectedHash, operations } = input;
 
     return await withFileMutation(join(config.root, path), async () => {
-        const absolutePath = await resolveExistingNote(config, path, execution);
-        const original = await readTextFile(absolutePath, execution);
+        const absolutePath = await resolveExistingFile(config, path, execution);
+        const original = decodeText(path, await readFileBytes(absolutePath, execution, MAX_TEXT_BYTES));
+        const isNote = isNotePath(config, path);
 
         assertExpectedHash(original, expectedHash, 'note');
 
@@ -103,7 +107,22 @@ export async function patchCommand(config: VaultToolsConfig, input: PatchCommand
 
         for (const operation of operations) {
             await execution.checkpoint();
-            updated = await buildOperation(operation, execution)(updated);
+
+            if (!isNote) {
+                if (operation.type === 'append' && operation.section === undefined) {
+                    updated += operation.text;
+                } else if (operation.type === 'replace') {
+                    updated = await replace(operation, execution)(updated);
+                } else {
+                    throw invalidArguments('Non-Markdown files support only replace and append without section');
+                }
+            } else {
+                updated = await buildOperation(operation, execution)(updated);
+            }
+        }
+
+        if (!isNote) {
+            decodeText(path, Buffer.from(updated));
         }
 
         const diff = await createFileDiffAsync(path, original, updated, execution);
