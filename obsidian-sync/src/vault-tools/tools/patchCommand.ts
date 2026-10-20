@@ -121,9 +121,7 @@ export async function patchCommand(config: VaultToolsConfig, input: PatchCommand
             }
         }
 
-        if (!isNote) {
-            decodeText(path, Buffer.from(updated));
-        }
+        decodeText(path, Buffer.from(updated));
 
         const diff = await createFileDiffAsync(path, original, updated, execution);
 

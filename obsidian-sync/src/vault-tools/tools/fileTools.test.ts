@@ -322,3 +322,22 @@ describe('file lifecycle', () => {
         expect(await readFile(vault.path(note.trashPath), 'utf8')).toBe('[[a.csv]]');
     });
 });
+
+describe('text size boundaries', () => {
+    it('refuses a Markdown edit that would exceed the readable text limit', async () => {
+        const original = 'x'.repeat(5 * 1024 * 1024);
+
+        vault = await createTestVault({ 'large.md': original });
+        await expect(patchTool(vault.config, {
+            path: 'large.md',
+            expectedHash: hashBytes(Buffer.from(original)),
+            operations: [
+                {
+                    type: 'append',
+                    text: 'extra',
+                },
+            ],
+        })).rejects.toMatchObject({ code: 'file_too_large' });
+        expect(await readFile(vault.path('large.md'), 'utf8')).toBe(original);
+    });
+});
