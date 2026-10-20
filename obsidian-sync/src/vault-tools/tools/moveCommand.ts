@@ -13,7 +13,7 @@ import { type FileDiff } from 'senaev-utils/src/files/createFileDiff';
 import { invalidArguments, CommandError } from 'senaev-utils/src/commands/CommandError';
 
 import {
-    assertByteHash, assertFilePath, decodeText, hashBytes, prepareNewVaultFile, readFileBytes, resolveExistingFile,
+    assertByteHash, assertFilePath, decodeText, hashBytes, MAX_FILE_BYTES, prepareNewVaultFile, readFileBytes, resolveExistingFile,
 } from '../access/vaultFiles';
 import { readVaultNotes, type VaultNotes } from '../access/readVaultNotes';
 import {
@@ -214,7 +214,7 @@ export async function moveCommand(config: VaultToolsConfig, input: MoveCommandIn
     const attachment = isNote ? null : sourceBytes;
 
     if (isNote) {
-        decodeText(path, sourceBytes);
+        decodeText(path, sourceBytes, MAX_FILE_BYTES);
     }
 
     if (isNote) {

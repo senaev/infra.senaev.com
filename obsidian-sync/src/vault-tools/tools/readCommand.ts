@@ -3,7 +3,7 @@ import { READ_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits
 import { CommandError } from 'senaev-utils/src/commands/CommandError';
 
 import {
-    decodeText, hashBytes, readFileBytes, resolveExistingFile,
+    decodeText, hashBytes, MAX_FILE_BYTES, MAX_TEXT_BYTES, readFileBytes, resolveExistingFile,
 } from '../access/vaultFiles';
 import { normalizeVaultPath, isNotePath } from '../access/vaultAccess';
 import { walkVault } from '../access/walkVault';
@@ -55,7 +55,7 @@ async function readNote(config: VaultToolsConfig, request: ReadRequest, maxChars
     let raw: string;
 
     try {
-        raw = decodeText(request.path, data);
+        raw = decodeText(request.path, data, isNote ? MAX_FILE_BYTES : MAX_TEXT_BYTES);
     } catch (error) {
         if (!(error instanceof CommandError) || error.code !== 'binary_file') {
             throw error;

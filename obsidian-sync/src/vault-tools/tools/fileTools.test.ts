@@ -1,5 +1,5 @@
 import {
-    readFile, readdir, symlink, writeFile,
+    readFile, readdir, symlink, truncate, writeFile,
 } from 'node:fs/promises';
 
 import {
@@ -389,6 +389,64 @@ describe('file lifecycle', () => {
 });
 
 describe('text size boundaries', () => {
+    it('paginates and moves Markdown over 5 MiB while refusing edits and oversized CSV reads', async () => {
+        const text = 'x'.repeat(5 * 1024 * 1024 + 1);
+
+        vault = await createTestVault({
+            'large.md': text,
+            'large.csv': text,
+        });
+        const first = (await readTool(vault.config, { paths: ['large.md'] })).notes[0];
+
+        expect(first).toMatchObject({
+            binary: false,
+            totalChars: text.length,
+            truncated: true,
+            hash: hashBytes(Buffer.from(text)),
+        });
+        expect(first?.content.length).toBeGreaterThan(0);
+        const last = (await readTool(vault.config, {
+            paths: ['large.md'],
+            startChar: text.length - 3,
+        })).notes[0];
+
+        expect(last).toMatchObject({
+            content: 'xxx',
+            truncated: false,
+        });
+        await expect(readTool(vault.config, { paths: ['large.csv'] }))
+            .rejects.toMatchObject({ code: 'file_too_large' });
+        await expect(patchTool(vault.config, {
+            path: 'large.md',
+            expectedHash: first?.hash,
+            operations: [
+                {
+                    type: 'append',
+                    text: 'extra',
+                },
+            ],
+        })).rejects.toMatchObject({ code: 'file_too_large' });
+        await moveTool(vault.config, {
+            path: 'large.md',
+            newPath: 'renamed.md',
+        });
+        expect(await readFile(vault.path('renamed.md'), 'utf8')).toBe(text);
+        await expect(readFile(vault.path('large.md'))).rejects.toMatchObject({ code: 'ENOENT' });
+    });
+
+    it('refuses Markdown read and move over 25 MiB without modifying the source', async () => {
+        vault = await createTestVault({ 'huge.md': '' });
+        await truncate(vault.path('huge.md'), MAX_FILE_BYTES + 1);
+        await expect(readTool(vault.config, { paths: ['huge.md'] }))
+            .rejects.toMatchObject({ code: 'file_too_large' });
+        await expect(moveTool(vault.config, {
+            path: 'huge.md',
+            newPath: 'renamed.md',
+        }))
+            .rejects.toMatchObject({ code: 'file_too_large' });
+        expect((await readdir(vault.config.root))).toEqual(['huge.md']);
+    });
+
     it('refuses a Markdown edit that would exceed the readable text limit', async () => {
         const original = 'x'.repeat(5 * 1024 * 1024);
 

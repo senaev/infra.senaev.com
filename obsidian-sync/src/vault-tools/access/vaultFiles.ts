@@ -111,13 +111,13 @@ export async function readFileBytes(path: string, execution: CommandExecution, m
 }
 
 /** Classify by extension only; preserve BOM, control characters and line endings. */
-export function decodeText(path: string, data: Uint8Array): string {
+export function decodeText(path: string, data: Uint8Array, maxBytes = MAX_TEXT_BYTES): string {
     if (!TEXT_EXTENSIONS.has(extname(path).toLowerCase())) {
         throw new CommandError('binary_file', 'This file type is not supported for text reading or editing');
     }
 
-    if (data.byteLength > MAX_TEXT_BYTES) {
-        throw new CommandError('file_too_large', 'Text files are limited to 5 MiB');
+    if (data.byteLength > maxBytes) {
+        throw new CommandError('file_too_large', `Text file exceeds the decoding limit of ${maxBytes} bytes`);
     }
 
     let text: string;

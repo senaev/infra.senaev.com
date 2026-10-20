@@ -51,7 +51,8 @@ an existing destination still cannot be overwritten.
 - `obsidian-read` accepts explicit text/attachment paths. Results retain the existing
   `notes` envelope. Supported UTF-8 text gets bounded/paginated content and its whole-file
   hash; binaries get `binary: true`, empty content, size and hash only. Reading/hashing
-  is capped at 25 MiB; text decoding/editing at 5 MiB.
+  is capped at 25 MiB. Markdown reading/moving supports up to 25 MiB;
+  other text decoding and all text editing remain capped at 5 MiB.
 - Supported text extensions: md, txt, csv, tsv, json, yaml, yml, xml, html, css, js, ts,
   log, svg, ini, toml, sql, sh, mjs, cjs. Classification uses only the final extension,
   case-insensitively; unknown or absent extensions are binary even for ASCII content.
