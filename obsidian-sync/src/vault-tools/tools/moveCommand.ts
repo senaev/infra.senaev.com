@@ -12,9 +12,12 @@ import { createFileExclusively, replaceFileAtomically } from 'senaev-utils/src/u
 import { type FileDiff } from 'senaev-utils/src/files/createFileDiff';
 import { invalidArguments, CommandError } from 'senaev-utils/src/commands/CommandError';
 
+import {
+    assertByteHash, assertFilePath, decodeText, hashBytes, MAX_FILE_BYTES, prepareNewVaultFile, readFileBytes, resolveExistingFile,
+} from '../access/vaultFiles';
 import { readVaultNotes, type VaultNotes } from '../access/readVaultNotes';
 import {
-    assertNotePath, normalizeVaultPath, prepareNewNote, resolveExistingNote,
+    assertNotePath, isNotePath, normalizeVaultPath, prepareNewNote, resolveExistingNote,
 } from '../access/vaultAccess';
 import { extractLinks } from '../markdown/extractLinks';
 import { createLinkIndex, resolveLink } from '../markdown/resolveLink';
@@ -198,38 +201,66 @@ export type MoveCommandInput = {
 export async function moveCommand(config: VaultToolsConfig, input: MoveCommandInput, execution: CommandExecution) {
     execution.throwIfAborted();
     const path = normalizeVaultPath(input.path, 'path');
-    const newPath = withNoteExtension(config, normalizeVaultPath(input.newPath, 'newPath'));
+    const isNote = isNotePath(config, path);
+    const requestedPath = normalizeVaultPath(input.newPath, 'newPath');
+    const newPath = isNote ? withNoteExtension(config, requestedPath) : requestedPath;
 
     if (newPath === path) {
         throw invalidArguments('"newPath" is the same as "path"');
     }
 
-    const oldAbsolutePath = await resolveExistingNote(config, path, execution);
+    const oldAbsolutePath = await resolveExistingFile(config, path, execution);
+    const sourceBytes = await readFileBytes(oldAbsolutePath, execution);
+    const attachment = isNote ? null : sourceBytes;
 
-    assertNotePath(config, newPath);
+    if (isNote) {
+        decodeText(path, sourceBytes, MAX_FILE_BYTES);
+    }
+
+    if (isNote) {
+        assertNotePath(config, newPath);
+    } else {
+        assertFilePath(config, newPath);
+    }
+
     await assertNothingAt(config, newPath, execution);
 
     const notes = await readVaultNotes(config, execution);
     const { updates, skippedLinks } = await planLinkUpdates(notes, path, newPath, execution);
     const movedNote = updates.find((update) => update.source === path);
 
-    if (movedNote === undefined) {
+    if (isNote && movedNote === undefined) {
         throw new Error(`Could not read "${path}"`);
     }
 
-    return withFileMutations(updates.flatMap((update) => [
-        join(config.root, update.source),
-        join(config.root, update.target),
-    ]), async () => {
+    return withFileMutations([
+        oldAbsolutePath,
+        join(config.root, newPath),
+        ...updates.flatMap((update) => [
+            join(config.root, update.source),
+            join(config.root, update.target),
+        ]),
+    ], async () => {
+        if (attachment !== null) {
+            assertByteHash(await readFileBytes(oldAbsolutePath, execution), hashBytes(attachment));
+        }
+
         const diffResult = await collectDiffs(updates, execution);
 
         for (const update of updates) {
             assertExpectedHash(await readTextFile(join(config.root, update.source), execution), hashContent(update.before), 'note');
         }
 
-        const newAbsolutePath = await prepareNewNote(config, newPath, execution);
+        const newAbsolutePath = isNote
+            ? await prepareNewNote(config, newPath, execution)
+            : await prepareNewVaultFile(config, newPath, execution);
+        const movedContent = attachment ?? movedNote?.after;
 
-        await createFileExclusively(newAbsolutePath, movedNote.after, execution.signal, () => execution.changedPath(newPath)).catch((error: unknown) => {
+        if (movedContent === undefined) {
+            throw new Error('Missing move source');
+        }
+
+        await createFileExclusively(newAbsolutePath, movedContent, execution.signal, () => execution.changedPath(newPath)).catch((error: unknown) => {
             execution.throwIfAborted();
             if (isAlreadyExistsError(error)) {
                 throw new CommandError('already_exists', `"${newPath}" already exists; choose another "newPath"`);
@@ -249,7 +280,12 @@ export async function moveCommand(config: VaultToolsConfig, input: MoveCommandIn
         }
 
         await execution.checkpoint();
-        assertExpectedHash(await readTextFile(oldAbsolutePath, execution), hashContent(movedNote.before), 'note');
+        if (attachment !== null) {
+            assertByteHash(await readFileBytes(oldAbsolutePath, execution), hashBytes(attachment));
+        } else if (movedNote !== undefined) {
+            assertExpectedHash(await readTextFile(oldAbsolutePath, execution), hashContent(movedNote.before), 'note');
+        }
+
         await unlink(oldAbsolutePath);
         execution.changedPath(path);
 

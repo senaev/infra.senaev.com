@@ -72,7 +72,6 @@ describe('vault exclusions', () => {
         'notes/node_modules/pkg/README.md',
         'notes/.hidden.md',
         'Drawing.excalidraw.md',
-        'image.png',
     ])('refuses to read %s', async (path) => {
         await expect(readTool(vault.config, { paths: [path] })).rejects.toMatchObject({ code: 'forbidden_path' });
     });

@@ -149,16 +149,17 @@ describe('moveTool', { timeout: 30000 }, () => {
         expect(await read(testVault, 'Note.md')).toBe('[[A]]');
     });
 
-    it('moves only notes', async () => {
+    it('moves attachments while retaining note path restrictions', async () => {
         const testVault = await vaultWith({
             'A.md': 'a',
             'image.png': 'png',
         });
 
-        await expect(moveTool(testVault.config, {
+        expect(await moveTool(testVault.config, {
             path: 'image.png',
             newPath: 'img.png',
-        })).rejects.toMatchObject({ code: 'forbidden_path' });
+        })).toMatchObject({ newPath: 'img.png' });
+        expect(await read(testVault, 'img.png')).toBe('png');
         await expect(moveTool(testVault.config, {
             path: 'A.md',
             newPath: 'plugins/A.md',

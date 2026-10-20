@@ -5,6 +5,10 @@ export type CommandErrorCode =
     | 'already_exists'
     | 'conflict'
     | 'ambiguous'
+    | 'file_too_large'
+    | 'binary_file'
+    | 'invalid_text_encoding'
+    | 'download_failed'
     | 'command_failed';
 
 /** An expected command failure with a message safe to return to its caller. */

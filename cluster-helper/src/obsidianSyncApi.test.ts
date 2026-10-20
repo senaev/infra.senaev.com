@@ -132,3 +132,26 @@ describe('the other obsidian-sync calls', () => {
         expect(new Headers(init.headers).get('authorization')).toBe('Bearer internal-token');
     });
 });
+
+describe('file-reference forwarding', () => {
+    it('posts the small file reference as JSON without embedding file bytes', async () => {
+        const fetchMock = mockFetch(200, {
+            status: 'ok',
+            path: 'finances/a.pdf',
+        });
+        const args = {
+            path: 'finances/a.pdf',
+            file: {
+                file_id: 'file_a',
+                download_url: 'https://files.oaiusercontent.com/a',
+            },
+        };
+
+        await callVaultTool('upload', args);
+        const { url, init } = sentRequest(fetchMock);
+
+        expect(url).toBe('http://obsidian-sync:8080/vault/upload');
+        expect(JSON.parse(init.body as string)).toEqual(args);
+        expect((init.headers as Record<string, string>).authorization).toBe('Bearer internal-token');
+    });
+});

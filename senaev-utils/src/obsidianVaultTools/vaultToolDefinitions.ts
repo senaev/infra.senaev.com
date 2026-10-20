@@ -68,7 +68,7 @@ const SCOPE_PROPERTIES = {
 const list: ToolDefinition = {
     title: 'List Obsidian notes',
     description: [
-        'Lists notes (.md files) and folders in the owner\'s Obsidian vault.',
+        'Lists notes and folders; includeAttachments also lists attachments with size and hash.',
         'Without filters it lists one folder level. With "recursive", "glob" or a diary range it lists matching notes at any depth.',
         'Use a diary range to find the diary entries of a period before you read them.',
         PAGED_RESULT_DESCRIPTION,
@@ -79,6 +79,10 @@ const list: ToolDefinition = {
         properties: {
             ...MANAGED_TOOL_PROPERTIES,
             ...SCOPE_PROPERTIES,
+            includeAttachments: {
+                type: 'boolean',
+                description: 'Include non-Markdown files and SHA-256 hashes for files up to 25 MiB. Default: false. Larger files have hashUnavailable.',
+            },
             recursive: {
                 type: 'boolean',
                 description: 'List notes in all subfolders, not only one level.',
@@ -166,6 +170,7 @@ const read: ToolDefinition = {
         'continue with "remainingPaths" (paths read) or with "diaryFrom" set to "nextDiaryFrom" (diary range read).',
         `A note longer than ${formatNumber(READ_LIMITS.maxCharsPerNote)} characters is cut with "truncated": true; read the rest with "startChar" set to "nextStartChar", or read one section.`,
         'Everything you read stays in the conversation, so to summarise a long diary range, read and summarise it in parts (e.g. one month at a time) and then combine the summaries.',
+        'Explicit paths also read supported UTF-8 text files up to 5 MiB; binaries return metadata and hash only (up to 25 MiB). Sections and frontmatter apply only to Markdown.',
         'Cite the source notes by their path or date.',
         VAULT_RULES,
     ].join(' '),
@@ -279,6 +284,7 @@ const patch: ToolDefinition = {
     description: [
         'Makes targeted edits to an existing note in the owner\'s Obsidian vault. Read the note with obsidian-read first and pass its "hash" as "expectedHash";',
         'if the note changed since then, the edit is refused with a conflict and you must read it again.',
+        'Supports UTF-8 text files up to 5 MiB, including CSV; binary editing is rejected. For non-Markdown, only replace and append without section are allowed; append is exact concatenation without added newlines.',
         'The operations run in order, and if one fails, nothing is written. Operation types:',
         '"append" adds "text" on a new line at the end of the note, or at the end of "section" (start "text" with an empty line to make a new paragraph);',
         '"replace" replaces the exact text "find", which must occur exactly once, with "replace";',
@@ -364,6 +370,7 @@ const move: ToolDefinition = {
         'Renames a note in the owner\'s Obsidian vault or moves it to another folder, with missing folders. Fails if a file already exists at the new path.',
         'Like Obsidian, it updates the links to the note in all other notes, and the relative links inside the moved note;',
         'a rewritten wikilink keeps its heading, block reference and display text.',
+        'Also moves attachments up to 25 MiB byte-for-byte and updates their Markdown backlinks/embeds. Attachment destinations require an exact filename; no .md suffix is added.',
         'Returns "diffs", the unified diff of every note whose text changed.',
         DIFF_PRESENTATION_DESCRIPTION,
         '"skippedLinks" lists links it did not change because they were ambiguous or matched only an alias before the move; tell the user about them.',
@@ -705,8 +712,92 @@ const tasks_update: ToolDefinition = {
     },
 };
 
+const upload: ToolDefinition = {
+    title: 'Upload a file to Obsidian',
+    description: [
+        'Saves a user-provided file to an exact vault-relative path, creating parent folders. Accepts ChatGPT file references, not local filesystem paths or base64.',
+        'Downloads the original bytes from the temporary download_url. Maximum 25 MiB and 60 seconds for download; expired URLs require a fresh file reference.',
+        'Refuses existing destinations. Returns path, size and SHA-256 hash. No file contents or signed URLs are returned.',
+        VAULT_RULES,
+    ].join(' '),
+    inputSchema: {
+        type: 'object',
+        properties: {
+            ...MANAGED_TOOL_PROPERTIES,
+            path: {
+                type: 'string',
+                description: 'Exact destination including extension, e.g. @senaev/finances/transactions/2026-10.csv.',
+            },
+            file: {
+                type: 'object',
+                properties: {
+                    download_url: { type: 'string' },
+                    file_id: { type: 'string' },
+                    mime_type: { type: 'string' },
+                    file_name: { type: 'string' },
+                },
+                required: [
+                    'download_url',
+                    'file_id',
+                ],
+                additionalProperties: false,
+            },
+        },
+        required: [
+            'path',
+            'file',
+        ],
+        additionalProperties: false,
+    },
+    _meta: { 'openai/fileParams': ['file'] },
+    annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+    },
+};
+
+const deleteFile: ToolDefinition = {
+    title: 'Move an Obsidian file to trash',
+    description: [
+        'Moves one note or attachment to recoverable .trash/mcp storage. Never permanently deletes it.',
+        'Read or list the file first and pass its hash as expectedHash. Directories are not accepted.',
+        'Returns trashPath and affected backlinks; note contents are not rewritten. Restore through the vault filesystem.',
+        'Cancellation can leave a trash copy alongside the original; inspect changedPaths before retrying.',
+        VAULT_RULES,
+    ].join(' '),
+    inputSchema: {
+        type: 'object',
+        properties: {
+            ...MANAGED_TOOL_PROPERTIES,
+            path: {
+                type: 'string',
+                description: 'Exact vault-relative file path.',
+            },
+            expectedHash: {
+                type: 'string',
+                description: 'Latest SHA-256 hash from obsidian-read or obsidian-list with includeAttachments.',
+            },
+        },
+        required: [
+            'path',
+            'expectedHash',
+        ],
+        additionalProperties: false,
+    },
+    annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: false,
+    },
+};
+
 /** In the order that `tools/list` shows them. */
 export const VAULT_TOOL_DEFINITIONS = {
+    upload,
+    delete: deleteFile,
     list,
     search,
     read,

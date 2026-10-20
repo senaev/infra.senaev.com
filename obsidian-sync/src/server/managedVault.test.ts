@@ -313,3 +313,70 @@ describe('managed vault routes', { timeout: 60000 }, () => {
         expect(blocked.signal()?.aborted).toBe(true);
     });
 });
+
+describe('managed file lifecycle', () => {
+    it('retains upload results and deduplicates retries before move and trash', async () => {
+        await setup();
+        const bytes = Buffer.from([
+            0,
+            1,
+            255,
+        ]);
+        const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(bytes)));
+
+        vi.stubGlobal('fetch', fetchMock);
+        try {
+            const args = {
+                path: 'files/receipt.pdf',
+                file: {
+                    file_id: 'file_receipt',
+                    download_url: 'https://files.oaiusercontent.com/receipt',
+                },
+                requestId: 'receipt-upload',
+            };
+            const first = await completed('upload', args);
+            const second = await completed('upload', args);
+
+            expect(first).toMatchObject({
+                status: 'ok',
+                path: args.path,
+                size: 3,
+            });
+            expect(second).toMatchObject({
+                status: 'ok',
+                path: args.path,
+                hash: first.hash,
+            });
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+            expect(await readFile(vault.path(args.path))).toEqual(bytes);
+            expect(await completed('read', { paths: [args.path] })).toMatchObject({
+                notes: [
+                    {
+                        path: args.path,
+                        hash: first.hash,
+                        binary: true,
+                    },
+                ],
+            });
+            expect(await completed('move', {
+                path: args.path,
+                newPath: 'files/moved.pdf',
+            })).toMatchObject({
+                status: 'ok',
+                newPath: 'files/moved.pdf',
+            });
+            const deleted = await completed('delete', {
+                path: 'files/moved.pdf',
+                expectedHash: first.hash,
+            });
+
+            expect(deleted).toMatchObject({
+                status: 'ok',
+                path: 'files/moved.pdf',
+            });
+            expect(await readFile(vault.path(deleted.trashPath as string))).toEqual(bytes);
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+});

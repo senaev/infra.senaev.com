@@ -15,6 +15,7 @@ function parseListInput(input: unknown): ListCommandInput {
 
     return {
         scope,
+        includeAttachments: optionalBoolean(args, 'includeAttachments') === true,
         recursive,
         offset,
         limit,

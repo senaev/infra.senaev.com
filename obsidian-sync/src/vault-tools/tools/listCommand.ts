@@ -1,8 +1,12 @@
 import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 
+import {
+    hashBytes, MAX_FILE_BYTES, readFileBytes, resolveExistingFile,
+} from '../access/vaultFiles';
 import { isNotePath } from '../access/vaultAccess';
 import {
     type FolderEntry, listFolder, walkVault,
@@ -12,31 +16,36 @@ import {
 } from '../noteScope';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
 
-async function describeEntry(config: VaultToolsConfig, entry: FolderEntry, execution: CommandExecution) {
+async function describeEntry(config: VaultToolsConfig, entry: FolderEntry, execution: CommandExecution, includeAttachments = false) {
     await execution.checkpoint();
     if (entry.type === 'folder') {
         return entry;
     }
 
-    const stats = await stat(join(config.root, entry.path)).catch(() => {
-        execution.throwIfAborted();
-
-        return null;
-    });
+    const stats = await stat(join(config.root, entry.path));
     const diaryDate = getDiaryDate(config, entry.path);
+    const metadata: { hash?: string; hashUnavailable?: string } = {};
+
+    if (includeAttachments) {
+        if (stats.size > MAX_FILE_BYTES) {
+            metadata.hashUnavailable = 'File exceeds 25 MiB';
+        } else {
+            metadata.hash = hashBytes(await readFileBytes(await resolveExistingFile(config, entry.path, execution), execution));
+        }
+    }
 
     return {
         ...entry,
+        ...metadata,
         ...diaryDate !== null && { diaryDate },
-        ...stats !== null && {
-            size: stats.size,
-            modified: stats.mtime.toISOString(),
-        },
+        size: stats.size,
+        modified: stats.mtime.toISOString(),
     };
 }
 
 export type ListCommandInput = {
     scope: NoteScope;
+    includeAttachments?: boolean;
     recursive: boolean;
     offset: number;
     limit: number;
@@ -59,7 +68,7 @@ export async function listCommand(config: VaultToolsConfig, input: ListCommandIn
         const walk = await walkVault(config, scope.folder, execution);
 
         entries = walk.files
-            .filter((path) => isNotePath(config, path) && matchesNoteScope(config, scope, path))
+            .filter((path) => (input.includeAttachments === true || isNotePath(config, path)) && matchesNoteScope(config, scope, path))
             .map((path) => {
                 return {
                     path,
@@ -69,16 +78,25 @@ export async function listCommand(config: VaultToolsConfig, input: ListCommandIn
         walkErrors = walk.errors;
     } else {
         entries = (await listFolder(config, scope.folder, execution))
-            .filter((entry) => entry.type === 'folder' || isNotePath(config, entry.path));
+            .filter((entry) => entry.type === 'folder' || input.includeAttachments === true || isNotePath(config, entry.path));
     }
 
     const page = entries.slice(offset, offset + limit);
     const nextOffset = offset + page.length < entries.length ? offset + page.length : null;
 
     const describedEntries = [];
+    const entryErrors: { path: string; message: string }[] = [];
 
     for (const entry of page) {
-        describedEntries.push(await describeEntry(config, entry, execution));
+        try {
+            describedEntries.push(await describeEntry(config, entry, execution, input.includeAttachments));
+        } catch (error) {
+            execution.throwIfAborted();
+            entryErrors.push({
+                path: entry.path,
+                message: stringifyUnknownError(error),
+            });
+        }
     }
 
     execution.throwIfAborted();
@@ -91,7 +109,8 @@ export async function listCommand(config: VaultToolsConfig, input: ListCommandIn
         limit,
         nextOffset,
         entries: describedEntries,
-        complete: walkErrors.length === 0,
+        complete: walkErrors.length === 0 && entryErrors.length === 0,
+        entryErrors,
         walkErrors,
     };
 }
