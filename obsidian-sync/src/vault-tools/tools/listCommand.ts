@@ -1,6 +1,7 @@
 import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 
 import {
@@ -21,15 +22,11 @@ async function describeEntry(config: VaultToolsConfig, entry: FolderEntry, execu
         return entry;
     }
 
-    const stats = await stat(join(config.root, entry.path)).catch(() => {
-        execution.throwIfAborted();
-
-        return null;
-    });
+    const stats = await stat(join(config.root, entry.path));
     const diaryDate = getDiaryDate(config, entry.path);
     const metadata: { hash?: string; hashUnavailable?: string } = {};
 
-    if (includeAttachments && stats !== null) {
+    if (includeAttachments) {
         if (stats.size > MAX_FILE_BYTES) {
             metadata.hashUnavailable = 'File exceeds 25 MiB';
         } else {
@@ -41,10 +38,8 @@ async function describeEntry(config: VaultToolsConfig, entry: FolderEntry, execu
         ...entry,
         ...metadata,
         ...diaryDate !== null && { diaryDate },
-        ...stats !== null && {
-            size: stats.size,
-            modified: stats.mtime.toISOString(),
-        },
+        size: stats.size,
+        modified: stats.mtime.toISOString(),
     };
 }
 
@@ -90,9 +85,18 @@ export async function listCommand(config: VaultToolsConfig, input: ListCommandIn
     const nextOffset = offset + page.length < entries.length ? offset + page.length : null;
 
     const describedEntries = [];
+    const entryErrors: { path: string; message: string }[] = [];
 
     for (const entry of page) {
-        describedEntries.push(await describeEntry(config, entry, execution, input.includeAttachments));
+        try {
+            describedEntries.push(await describeEntry(config, entry, execution, input.includeAttachments));
+        } catch (error) {
+            execution.throwIfAborted();
+            entryErrors.push({
+                path: entry.path,
+                message: stringifyUnknownError(error),
+            });
+        }
     }
 
     execution.throwIfAborted();
@@ -105,7 +109,8 @@ export async function listCommand(config: VaultToolsConfig, input: ListCommandIn
         limit,
         nextOffset,
         entries: describedEntries,
-        complete: walkErrors.length === 0,
+        complete: walkErrors.length === 0 && entryErrors.length === 0,
+        entryErrors,
         walkErrors,
     };
 }

@@ -27,9 +27,9 @@ No widget is needed for this tool-input mechanism.
 Source: https://developers.openai.com/plugins/reference#define-file-inputs
 
 Limits: 25 MiB decoded/downloaded bytes, 60 seconds per download, at most three redirects.
-Only HTTPS OpenAI file-storage hosts are accepted, including the named OpenAI Azure/S3
-storage accounts; every redirect is revalidated. Unexpected future download origins fail
-closed and require an allowlist update. Signed URLs and file data are not logged or returned.
+Only HTTPS hosts on oaiusercontent.com or its subdomains are accepted; every redirect
+is revalidated. Cloud account prefixes do not prove ownership. Any additional storage
+host requires verified ownership and an exact allowlist entry before it can be accepted. Signed URLs and file data are not logged or returned.
 Expired URLs require a fresh ChatGPT reference.
 
 Uploads create parent directories and exclusively reserve a hidden temporary file.
@@ -45,13 +45,18 @@ an existing destination still cannot be overwritten.
 
 - `obsidian-list` defaults to notes/folders. Set `includeAttachments: true` to include
   attachments and SHA-256 hashes. Files over 25 MiB remain listed with `hashUnavailable`.
+  Per-file metadata/read failures omit that entry and return `entryErrors` with
+  `complete: false`; other entries remain available. Pagination advances across the
+  original page, including failed entries; `total` counts initially discovered entries.
 - `obsidian-read` accepts explicit text/attachment paths. Results retain the existing
   `notes` envelope. Supported UTF-8 text gets bounded/paginated content and its whole-file
   hash; binaries get `binary: true`, empty content, size and hash only. Reading/hashing
   is capped at 25 MiB; text decoding/editing at 5 MiB.
 - Supported text extensions: md, txt, csv, tsv, json, yaml, yml, xml, html, css, js, ts,
-  log, svg, ini, toml, sql, sh, mjs, cjs. Invalid UTF-8 and binary control characters
-  are rejected for editing. PDF/XLSX/image data is never edited as text.
+  log, svg, ini, toml, sql, sh, mjs, cjs. Classification uses only the final extension,
+  case-insensitively; unknown or absent extensions are binary even for ASCII content.
+  Control characters are preserved. Allowlisted files must decode as UTF-8; otherwise
+  reading/editing returns `invalid_text_encoding` without reclassifying the file as binary.
 - `obsidian-patch` uses the hash from a fresh read. Non-Markdown files support exact
   single-match `replace` and `append` without a section. For these files append means
   literal concatenation: include any desired newline in text. BOM and CRLF remain intact.

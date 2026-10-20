@@ -7,6 +7,7 @@ export type CommandErrorCode =
     | 'ambiguous'
     | 'file_too_large'
     | 'binary_file'
+    | 'invalid_text_encoding'
     | 'download_failed'
     | 'command_failed';
 

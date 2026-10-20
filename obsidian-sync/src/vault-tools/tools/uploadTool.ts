@@ -19,7 +19,7 @@ import { normalizeVaultPath } from '../access/vaultAccess';
 import { readVaultToolArguments } from '../toolArguments';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
 
-/** Only OpenAI-managed download origins, including their named storage accounts. */
+/** Only OpenAI-controlled domains; cloud account name prefixes do not prove ownership. */
 export function validateDownloadUrl(input: string): URL {
     let url: URL;
 
@@ -30,7 +30,7 @@ export function validateDownloadUrl(input: string): URL {
     }
 
     const host = url.hostname.toLowerCase();
-    const allowed = host === 'oaiusercontent.com' || host.endsWith('.oaiusercontent.com') || /^(?:oaisdmntpr|oaisdsorpr|sdmntpr)[a-z0-9-]*\.blob\.core\.windows\.net$/u.test(host) || /^(?:oaisdmntpr|sdmntpr)[a-z0-9-]*\.s3(?:[.-][a-z0-9-]+)*\.amazonaws\.com$/u.test(host);
+    const allowed = host === 'oaiusercontent.com' || host.endsWith('.oaiusercontent.com');
 
     if (url.protocol !== 'https:' || url.username !== '' || url.password !== '' || (url.port !== '' && url.port !== '443') || !allowed) {
         throw invalidArguments('File download URL must use HTTPS on an approved OpenAI file storage host');

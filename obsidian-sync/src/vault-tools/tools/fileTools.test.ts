@@ -61,6 +61,10 @@ describe('file upload', () => {
     it.each([
         'http://files.oaiusercontent.com/a',
         'https://files.oaiusercontent.com.evil.test/a',
+        'https://sdmntpr-attacker.s3.amazonaws.com/a',
+        'https://oaisdmntprattacker.blob.core.windows.net/a',
+        'https://oaisdsorprattacker.blob.core.windows.net/a',
+        'https://sdmntpr-attacker.s3.us-east-1.amazonaws.com/a',
         'https://localhost/a',
         'https://127.0.0.1/a',
         'https://files.oaiusercontent.com:444/a',
@@ -93,11 +97,15 @@ describe('file upload', () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it('does not follow a redirect to an internal service and removes temporary files', async () => {
+    it.each([
+        'http://localhost/admin',
+        'https://sdmntpr-attacker.s3.amazonaws.com/a',
+        'https://oaisdmntprattacker.blob.core.windows.net/a',
+    ])('rejects redirect to %s and removes temporary files', async (location) => {
         vault = await createTestVault({});
         const fetchMock = vi.fn().mockResolvedValue(new Response(null, {
             status: 302,
-            headers: { location: 'http://localhost/admin' },
+            headers: { location },
         }));
 
         vi.stubGlobal('fetch', fetchMock);
@@ -170,6 +178,63 @@ describe('file upload', () => {
 });
 
 describe('file lifecycle', () => {
+    it('classifies text by case-insensitive extension and preserves control characters', async () => {
+        const text = '\u001b[31mred\u001b[0m\u0000';
+
+        vault = await createTestVault({
+            'a.TXT': text,
+            'a.MD': text,
+            'a.CSV': text,
+            'a.unknown': 'plain ASCII text',
+            'no-extension': 'plain ASCII text',
+        });
+        for (const path of [
+            'a.TXT',
+            'a.MD',
+            'a.CSV',
+        ]) {
+            const result = await readTool(vault.config, { paths: [path] });
+
+            expect(result.notes[0]).toMatchObject({
+                binary: false,
+                content: text,
+            });
+        }
+
+        for (const path of [
+            'a.unknown',
+            'no-extension',
+        ]) {
+            const result = await readTool(vault.config, { paths: [path] });
+
+            expect(result.notes[0]).toMatchObject({
+                binary: true,
+                content: '',
+            });
+        }
+
+        const before = (await readTool(vault.config, { paths: ['a.CSV'] })).notes[0];
+
+        await patchTool(vault.config, {
+            path: 'a.CSV',
+            expectedHash: before?.hash,
+            operations: [
+                {
+                    type: 'append',
+                    text: '\u001b[0m',
+                },
+            ],
+        });
+        expect(await readFile(vault.path('a.CSV'), 'utf8')).toBe(`${text}\u001b[0m`);
+    });
+
+    it('reports invalid UTF-8 in an allowlisted file as an encoding error', async () => {
+        vault = await createTestVault({ 'bad.txt': '' });
+        await writeFile(vault.path('bad.txt'), Buffer.from([255]));
+        await expect(readTool(vault.config, { paths: ['bad.txt'] }))
+            .rejects.toMatchObject({ code: 'invalid_text_encoding' });
+    });
+
     it('reads and edits CSV preserving BOM, CRLF and exact append semantics', async () => {
         const text = '\uFEFFname,value\r\n"one,two",1\r\n';
 
@@ -265,7 +330,7 @@ describe('file lifecycle', () => {
                     text: 'x',
                 },
             ],
-        })).rejects.toMatchObject({ code: 'binary_file' });
+        })).rejects.toMatchObject({ code: 'invalid_text_encoding' });
     });
 
     it('moves a binary attachment byte-for-byte and rewrites embeds and Markdown links', async () => {

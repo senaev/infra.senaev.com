@@ -6,6 +6,7 @@ import { type CommandErrorCode, CommandError } from '../commands/CommandError';
 const HTTP_STATUS_BY_CODE: Record<CommandErrorCode | OperationError['code'], number> = {
     file_too_large: 413,
     binary_file: 415,
+    invalid_text_encoding: 415,
     download_failed: 502,
     QUEUE_FULL: 429,
     invalid_arguments: 400,

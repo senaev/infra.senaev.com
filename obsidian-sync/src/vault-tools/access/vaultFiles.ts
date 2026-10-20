@@ -110,7 +110,7 @@ export async function readFileBytes(path: string, execution: CommandExecution, m
     }
 }
 
-/** Preserve the BOM and line endings; never decode binary attachments as editable text. */
+/** Classify by extension only; preserve BOM, control characters and line endings. */
 export function decodeText(path: string, data: Uint8Array): string {
     if (!TEXT_EXTENSIONS.has(extname(path).toLowerCase())) {
         throw new CommandError('binary_file', 'This file type is not supported for text reading or editing');
@@ -128,15 +128,7 @@ export function decodeText(path: string, data: Uint8Array): string {
             ignoreBOM: true,
         }).decode(data);
     } catch {
-        throw new CommandError('binary_file', 'File is not valid UTF-8 text');
-    }
-
-    for (let index = 0; index < text.length; index += 1) {
-        const code = text.charCodeAt(index);
-
-        if (code < 32 && code !== 9 && code !== 10 && code !== 13) {
-            throw new CommandError('binary_file', 'File contains binary control characters');
-        }
+        throw new CommandError('invalid_text_encoding', 'Text file is not valid UTF-8');
     }
 
     return text;
