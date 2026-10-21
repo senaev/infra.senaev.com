@@ -190,3 +190,36 @@ it('refuses concurrent resource transfers and admits the next one after completi
         spy.mockRestore();
     }
 });
+
+it('delivers managed chunks with exact bytes and rejects stale versions', async () => {
+    const bytes = Buffer.from('\ufeffcategory,amount\r\n"food, drinks",12.50\r\n');
+
+    await writeFile(vault.path('transactions.csv'), bytes);
+    const metadataResponse = await callTool('download', { path: 'transactions.csv' });
+    const metadata = metadataResponse.json<{ hash: string; chunkCount: number }>();
+    const args = {
+        path: 'transactions.csv',
+        expectedHash: metadata.hash,
+        chunkIndex: 0,
+    };
+
+    expect(metadata.chunkCount).toBe(1);
+    expect((await callTool('download_chunk', args, {})).statusCode).toBe(401);
+    const response = await callTool('download_chunk', args);
+    const chunk = response.json<{ data: string }>();
+
+    expect(response.json()).toMatchObject({
+        status: 'ok',
+        operation: {
+            tool: 'download_chunk',
+            state: 'completed',
+        },
+        isLast: true,
+    });
+    expect(Buffer.from(chunk.data, 'base64')).toEqual(bytes);
+    await writeFile(vault.path('transactions.csv'), 'changed');
+    expect((await callTool('download_chunk', args)).json()).toMatchObject({
+        status: 'error',
+        code: 'conflict',
+    });
+});

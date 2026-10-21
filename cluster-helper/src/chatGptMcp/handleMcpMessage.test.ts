@@ -65,6 +65,7 @@ describe('handleMcpMessage', () => {
 
         expect(tools.map((tool) => tool.name)).toEqual([
             'obsidian-download',
+            'obsidian-download_chunk',
             'obsidian-upload',
             'obsidian-delete',
             'obsidian-list',
