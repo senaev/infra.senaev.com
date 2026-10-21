@@ -20,6 +20,10 @@ RUN npm ci --omit=dev
 COPY senaev-utils/src /app/senaev-utils/src
 COPY cluster-helper /app/cluster-helper
 
+# Verify the real production dependency layout before publishing an image. Tests
+# install dev dependencies and cannot detect missing runtime imports in linked utils.
+RUN node --import tsx -e "require('./src/oauth/registerOAuthRoutes.ts')"
+
 # 80 is the internal listener: unauthenticated routes for alertmanager,
 # qbittorrent and vpn-subscription, reachable only inside the cluster.
 # 3000 is the public listener behind the ingresses. See src/index.ts.
