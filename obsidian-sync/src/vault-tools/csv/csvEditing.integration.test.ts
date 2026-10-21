@@ -2,14 +2,39 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 
 import {
-    afterEach, expect, it,
+    afterEach, expect, it, vi,
 } from 'vitest';
+import { CommandError } from 'senaev-utils/src/commands/CommandError';
 import { createCommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 
 import { createTestVault, type TestVault } from '../createTestVault';
 import { csvQueryTool } from '../tools/csvQueryTool';
 
 import { publishCsv } from './publishCsv';
+import {
+    runCsvQuery, type CsvQueryInput, type CsvQueryResult,
+} from './runCsvQuery';
+
+// These tests assert real SQL and real file persistence, not child-process startup.
+// Real permissions, cancellation/deadline and HTTP process wiring have separate integration coverage.
+vi.mock('./runCsvQuery', async () => {
+    const { createRequire } = await import('node:module');
+    const { execute } = createRequire(__filename)('./queryWorker.cjs') as {
+        execute: (input: CsvQueryInput) => { result?: CsvQueryResult; error?: string };
+    };
+
+    return {
+        runCsvQuery: vi.fn((input: CsvQueryInput) => {
+            const reply = execute(structuredClone(input));
+
+            if (reply.error || !reply.result) {
+                throw new CommandError('invalid_arguments', reply.error ?? 'Invalid engine result');
+            }
+
+            return Promise.resolve(reply.result);
+        }),
+    };
+});
 
 let vault: TestVault | undefined;
 const hash = (text: string) => createHash('sha256').update(text).digest('hex');
@@ -30,7 +55,7 @@ afterEach(async () => {
     await vault?.remove();
 });
 
-it('uses one command for CREATE, INSERT, UPDATE, SELECT and DELETE, returning current hashes', async () => {
+it('creates a CSV and uses its returned hash for the next INSERT', async () => {
     vault = await createTestVault({});
     const created = await csvQueryTool(vault.config, request('CREATE TABLE t(id TEXT, value TEXT)', null));
 
@@ -48,6 +73,11 @@ it('uses one command for CREATE, INSERT, UPDATE, SELECT and DELETE, returning cu
         affectedRows: 1,
         hash: hash('id,value\n00123,first\n'),
     });
+});
+
+it('updates through WITH and reads all source values as text', async () => {
+    vault = await createTestVault({ 'data.csv': 'id,value\n00123,first\n' });
+    const inserted = { hash: hash('id,value\n00123,first\n') };
     const updated = await csvQueryTool(vault.config, request('WITH chosen AS (SELECT \'00123\' AS id) UPDATE t SET value=\'updated\' WHERE id IN (SELECT id FROM chosen)', inserted.hash as string));
 
     expect(updated.hash).toBe(hash('id,value\n00123,updated\n'));
@@ -63,6 +93,11 @@ it('uses one command for CREATE, INSERT, UPDATE, SELECT and DELETE, returning cu
             ],
         ],
     });
+});
+
+it('returns unchanged hashes for unmatched deletes and keeps headers after deleting all rows', async () => {
+    vault = await createTestVault({ 'data.csv': 'id,value\n00123,updated\n' });
+    const updated = { hash: hash('id,value\n00123,updated\n') };
     const noop = await csvQueryTool(vault.config, request('DELETE FROM t WHERE id=\'missing\'', updated.hash as string));
 
     expect(noop).toMatchObject({
@@ -72,7 +107,7 @@ it('uses one command for CREATE, INSERT, UPDATE, SELECT and DELETE, returning cu
     });
     const deleted = await csvQueryTool(vault.config, request('DELETE FROM t', updated.hash as string));
 
-    expect(deleted.hash).toBe(created.hash);
+    expect(deleted.hash).toBe(hash('id,value\n'));
     expect(await readFile(vault.path('data.csv'), 'utf8')).toBe('id,value\n');
 });
 
@@ -313,13 +348,17 @@ it('treats a SELECT with expectedHash as a read and checks its precondition', as
 });
 
 it('exports a full-size edited CSV under the production worker limits', async () => {
-    const header = `${Array.from({ length: 100 }, (_, index) => `c${index}`).join(',')}\n`;
-    const row = `${','.repeat(99)}\n`;
-    const count = 40000;
+    // Exercise the byte boundary with few fields; the read stress test separately
+    // covers 40,000 records / 100 columns without paying both costs in this fixture.
+    const header = 'c0,c1,c2,c3\n';
+    const count = 1000;
+    const row = `${'x'.repeat(4000)},,,\n`;
     const padding = 4 * 1024 * 1024 - Buffer.byteLength(header) - count * Buffer.byteLength(row);
-    const block = Math.floor(padding / 4);
-    const text = header + Array.from({ length: 4 }, (_, index) => 'x'.repeat(index === 3 ? padding - 3 * block : block) + row).join('') + row.repeat(count - 4);
+    const text = header + 'y'.repeat(padding % 1000) + Array.from({ length: count }, () => 'y'.repeat(Math.floor(padding / count)) + row).join('');
+    const actual = await vi.importActual<typeof import('./runCsvQuery')>('./runCsvQuery');
 
+    vi.mocked(runCsvQuery).mockImplementationOnce(actual.runCsvQuery);
+    expect(Buffer.byteLength(text)).toBe(4 * 1024 * 1024);
     vault = await createTestVault({ 'data.csv': text });
     const result = await csvQueryTool(vault.config, request('UPDATE t SET c0=\'changed\' WHERE rowid=1', hash(text)));
     const saved = await readFile(vault.path('data.csv'), 'utf8');

@@ -257,31 +257,44 @@ function query(input) {
     }
 }
 
-// Parent sends bounded immutable snapshots; the worker never opens vault paths.
-const inputChunks = [];
-let inputBytes = 0;
-
-process.stdin.on('data', (chunk) => {
-    inputBytes += chunk.length;
-    if (inputBytes > 26000000) {
-        process.exit(1);
-    }
-
-    inputChunks.push(chunk);
-});
-process.stdin.on('end', () => {
+/** Same engine protocol for the subprocess and direct engine tests. */
+function execute(input) {
     try {
-        const input = JSON.parse(Buffer.concat(inputChunks).toString('utf8'));
-
-        inputChunks.length = 0;
-        process.stdout.write(JSON.stringify({ result: query(input) }));
+        return { result: query(input) };
     } catch (error) {
         // Never expose raw parser/SQLite messages, which can embed cell contents or SQL.
         const message = error instanceof PublicQueryError ? error.message : `Query rejected during ${stage}; check CSV structure, SQL, parameters and resource limits`;
 
-        process.stdout.write(JSON.stringify({ error: message }));
+        return { error: message };
     }
-});
+}
+
+module.exports = { execute };
+
+if (require.main === module) {
+    // Parent sends bounded immutable snapshots; the worker never opens vault paths.
+    const inputChunks = [];
+    let inputBytes = 0;
+
+    process.stdin.on('data', (chunk) => {
+        inputBytes += chunk.length;
+        if (inputBytes > 26000000) {
+            process.exit(1);
+        }
+
+        inputChunks.push(chunk);
+    });
+    process.stdin.on('end', () => {
+        try {
+            const input = JSON.parse(Buffer.concat(inputChunks).toString('utf8'));
+
+            inputChunks.length = 0;
+            process.stdout.write(JSON.stringify(execute(input)));
+        } catch {
+            process.stdout.write(JSON.stringify({ error: 'Invalid CSV query input' }));
+        }
+    });
+}
 
 /** SQLite compilation classifies writes even when the statement starts with WITH. */
 function classifyAndPrepare(db, input, sources) {

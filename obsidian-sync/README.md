@@ -108,4 +108,9 @@ and container. Keep Node/SQLite patched. Node 24.22+ is required.
 
 Tests cover full 4 MiB inputs, real deadline/cancellation, SQL classification,
 creation/zero-byte initialization, CRUD/no-op/error hashes, atomic publication and
-path/version conflicts. Fast unit lifecycle tests use mocks and fake timers.
+path/version conflicts. Fast unit lifecycle tests use mocks and fake timers. CRUD file tests invoke the
+same real SQLite engine directly, mocking only the subprocess boundary. Real HTTP,
+process isolation/deadline/cancellation and full-size checks remain integration
+coverage; their measured runtimes are reported separately from the 100 ms unit
+budget. The byte-limit edit fixture uses few fields; the separate wide read stress
+fixture covers 40000 records and 100 columns.
