@@ -712,6 +712,27 @@ const tasks_update: ToolDefinition = {
     },
 };
 
+const download: ToolDefinition = {
+    title: 'Download an Obsidian file',
+    description: [
+        'Returns a versioned MCP resource link for one vault file, including PDF, XLSX, CSV and images, up to 25 MiB. Read the resource with resources/read over this authenticated MCP connection to retrieve original bytes. The hash must still match; if the file changes, call download again. A resource link does not guarantee every ChatGPT client imports it as an attachment. No public download URL is created.',
+        VAULT_RULES,
+    ].join(' '),
+    inputSchema: {
+        type: 'object',
+        properties: {
+            ...MANAGED_TOOL_PROPERTIES,
+            path: {
+                type: 'string',
+                description: 'Exact vault-relative file path including extension.',
+            },
+        },
+        required: ['path'],
+        additionalProperties: false,
+    },
+    annotations: READ_ONLY,
+};
+
 const upload: ToolDefinition = {
     title: 'Upload a file to Obsidian',
     description: [
@@ -796,6 +817,7 @@ const deleteFile: ToolDefinition = {
 
 /** In the order that `tools/list` shows them. */
 export const VAULT_TOOL_DEFINITIONS = {
+    download,
     upload,
     delete: deleteFile,
     list,

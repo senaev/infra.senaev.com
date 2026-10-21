@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 
+import { ResourceReadGate } from 'senaev-utils/src/toolServer/ResourceReadGate';
 import Fastify, { FastifyReply } from 'fastify';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { callTelegramApi } from 'senaev-utils/src/utils/TelegramApi/callTelegramApi';
@@ -39,7 +40,9 @@ import { createGoogleLogin, parseGoogleAdminEmails } from './oauth/googleLogin';
 import { GOOGLE_CALLBACK_PATH } from './oauth/registerOAuthRoutes';
 import { createToolFamilies } from './chatGptMcp/toolFamilies';
 import { callCodeTool } from './codeToolsApi';
-import { callVaultTool, getShortLink } from './obsidianSyncApi';
+import {
+    callVaultTool, getShortLink, readVaultResource,
+} from './obsidianSyncApi';
 import { processTelegramWebhookData } from './processTelegramWebhookData';
 import { proxyPublicStaticFile } from './publicStaticProxy';
 import { formatTorrentEvent, isTorrentEvent } from './qbittorrent/formatTorrentEvent';
@@ -208,13 +211,33 @@ publicServer.post(`/${ALISA_WEBHOOK_SECRET}`, ({ body }, reply) => {
 // MCP server for the ChatGPT connector. The obsidian-* tools are forwarded to obsidian-sync,
 // which does all vault work, and the code-* tools to code-tools in the opencode-serve pod.
 const MCP_TOOL_FAMILIES = createToolFamilies({
+    readVaultResource,
     callVaultTool,
     callCodeTool,
 });
 
+const resourceReads = new ResourceReadGate();
+
 async function replyToMcpMessage(message: unknown, reply: FastifyReply, options: McpServerOptions) {
+    const isResourceRead = isObject(message) && message.method === 'resources/read';
+    const transfer = isResourceRead ? resourceReads.begin(reply.raw, 65_000) : null;
+
+    if (isResourceRead && transfer === null) {
+        return reply.code(429).header('Retry-After', '1').send({
+            jsonrpc: '2.0',
+            id: typeof message.id === 'string' || typeof message.id === 'number' ? message.id : null,
+            error: {
+                code: -32000,
+                message: 'Another file transfer is active; retry shortly',
+            },
+        });
+    }
+
     try {
-        const response = await handleMcpMessage(message, MCP_TOOL_FAMILIES, options);
+        const response = await handleMcpMessage(message, MCP_TOOL_FAMILIES, {
+            ...options,
+            ...transfer !== null && { signal: transfer.signal },
+        });
 
         logger.info(describeMcpExchange(message, response), '🤖 ChatGPT MCP message');
 
@@ -234,6 +257,8 @@ async function replyToMcpMessage(message: unknown, reply: FastifyReply, options:
                 message: 'Internal error',
             },
         });
+    } finally {
+        transfer?.finish();
     }
 }
 

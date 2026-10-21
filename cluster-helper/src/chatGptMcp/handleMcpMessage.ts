@@ -1,3 +1,4 @@
+import { parseVaultFileResourceUri } from 'senaev-utils/src/obsidianVaultTools/vaultFileResource';
 import { CODE_TOOL_PREFIX } from 'senaev-utils/src/codeTools/codeToolDefinitions';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
@@ -24,6 +25,7 @@ const JSON_RPC_METHOD_NOT_FOUND = -32601;
 const JSON_RPC_INVALID_PARAMS = -32602;
 
 export type McpServerOptions = {
+    signal?: AbortSignal;
     /** Per-tool auth policy that ChatGPT reads to show its account linking UI. */
     securitySchemes?: readonly Record<string, unknown>[];
 };
@@ -86,7 +88,27 @@ async function forwardToolCall(family: ToolFamily, toolName: string, args: unkno
         return toolResult(`${family.backendName} is not available right now: ${stringifyUnknownError(error)}`, true);
     }
 
-    return toolResult(JSON.stringify(reply.body), reply.isError, reply.body);
+    const result = toolResult(JSON.stringify(reply.body), reply.isError, reply.body);
+    // Only promote resource links from our download command, including its completed operation result.
+    let payload: Record<string, unknown> | null = null;
+
+    if (family.prefix === 'obsidian-' && toolName === 'download') {
+        payload = reply.body;
+    } else if (family.prefix === 'obsidian-' && toolName === 'operation_result' && isObject(reply.body.operation) && reply.body.operation.tool === 'download' && isObject(reply.body.result)) {
+        payload = reply.body.result;
+    }
+
+    if (!reply.isError && payload !== null && isObject(payload.resource) && payload.resource.type === 'resource_link') {
+        return {
+            ...result,
+            content: [
+                ...result.content,
+                payload.resource,
+            ],
+        };
+    }
+
+    return result;
 }
 
 function callTool(params: unknown, families: readonly ToolFamily[]) {
@@ -133,7 +155,7 @@ export function describeMcpExchange(message: unknown, response: JsonRpcResponse 
 export async function handleMcpMessage(
     message: unknown,
     families: readonly ToolFamily[],
-    { securitySchemes }: McpServerOptions = {}
+    { securitySchemes, signal }: McpServerOptions = {}
 ): Promise<JsonRpcResponse | null> {
     if (!isObject(message) || message.jsonrpc !== '2.0' || typeof message.method !== 'string') {
         return failure(null, JSON_RPC_INVALID_REQUEST, 'Invalid JSON-RPC message');
@@ -160,7 +182,10 @@ export async function handleMcpMessage(
 
         return success(id, {
             protocolVersion,
-            capabilities: { tools: {} },
+            capabilities: {
+                tools: {},
+                ...families.some((family) => family.readResource !== undefined) && { resources: {} },
+            },
             serverInfo: {
                 name: 'senaev-diary',
                 version: '1.0.0',
@@ -170,6 +195,32 @@ export async function handleMcpMessage(
 
     case 'ping':
         return success(id, {});
+    case 'resources/list':
+        return success(id, { resources: [] });
+    case 'resources/templates/list':
+        return success(id, { resourceTemplates: [] });
+    case 'resources/read': {
+        const reader = families.find((family) => family.prefix === 'obsidian-' && family.readResource !== undefined)?.readResource;
+
+        if (reader === undefined || !isObject(params) || typeof params.uri !== 'string') {
+            return failure(id, JSON_RPC_INVALID_PARAMS, 'Expected a vault resource URI');
+        }
+
+        try {
+            parseVaultFileResourceUri(params.uri);
+            const reply = await reader(params.uri, signal);
+
+            if (reply.isError) {
+                return failure(id, -32002, typeof reply.body.message === 'string' ? reply.body.message : 'File resource unavailable');
+            }
+
+            return success(id, { contents: reply.body.contents });
+        } catch {
+            // Do not expose backend addresses, tokens or file contents on transport errors.
+            return failure(id, -32002, 'File resource unavailable; request a fresh download link');
+        }
+    }
+
     case 'tools/list':
         return success(id, {
             tools: listMcpTools(families).map((tool) => {

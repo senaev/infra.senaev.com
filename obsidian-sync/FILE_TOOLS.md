@@ -95,3 +95,52 @@ Process-local mutation locks do not coordinate external Obsidian/git/sync writer
 Automated tests mock remote downloads and cover upload limits, redirects, cancellation,
 metadata forwarding, CSV fidelity and trash. Actual ChatGPT attachment routing and current
 download origins must still be verified after deployment.
+
+## Download through authenticated MCP resources
+
+Call `obsidian-download` with one exact vault-relative `path`. It returns metadata,
+SHA-256 and an MCP `resource_link` such as
+`obsidian-vault://file/<encoded-path>?sha256=<hash>`. Cluster Helper promotes the
+link into MCP content, also when download finishes through operation_result.
+
+The client retrieves bytes using `resources/read` on the same OAuth-protected
+MCP endpoint. Cluster Helper forwards this to the internal-token-protected
+`POST /vault-file-resource` route. The response is standard MCP resource contents
+with MIME type and a base64 blob, not a base64 string in model-facing tool text.
+No widget, public file route, signed URL, OpenAI API key or Files API upload is used.
+
+The URI identifies a file version; it is not a credential and has no time expiry.
+Every read repeats path, exclusion, symlink and regular-file validation, caps data
+at 25 MiB, and rejects content whose SHA-256 changed. The resource read has a
+60-second backend deadline and 65-second proxy timeout. It bypasses the managed
+JSON result retention/pagination quota; download metadata retains the normal
+queued/parallel/retry contract. File resource bytes are not retained in operation records.
+
+Each service permits one active resource transfer per process, holding its slot until
+both work and the HTTP response finish. Concurrent reads receive HTTP 429 with
+Retry-After: 1. Disconnects cancel backend reads/upstream fetches; deadlines also close
+stalled responses. These bounds limit simultaneous buffered/base64 copies, rather than
+turning this JSON-based protocol into streaming binary transfer.
+
+Downloads open with O_NOFOLLOW and validate the actual descriptor through Linux
+/proc/self/fd before and after reading, including parent-directory replacement races.
+They fail closed when procfs descriptor validation is unavailable. Deployment requires
+Linux containers with procfs mounted. File metadata changes during reading are rejected.
+
+MIME types use filename extensions, with application/octet-stream for unknown types.
+Resource access does not grant filesystem writes. Resource listings are empty; the
+caller selects files explicitly through download rather than exposing a vault catalog.
+
+Compatibility: standard MCP resource support is implemented, but automatic import
+as a ChatGPT analysable attachment is not established by the public file-input docs.
+The GPT Actions openaiFileResponse contract is not an MCP contract. After deploying
+both services, refresh tools, download a small PDF and CSV, request resources/read,
+compare decoded bytes/hash and verify ChatGPT can actually open/analyse them.
+If this client does not import resource blobs, keep this task open and investigate
+a supported host-specific file-output mechanism; do not claim a successful attachment
+download from metadata alone.
+
+References:
+- https://developers.openai.com/plugins/reference#tool-results
+- https://modelcontextprotocol.io/specification/2025-06-18/server/resources
+- https://developers.openai.com/api/docs/actions/sending-files (Actions only)

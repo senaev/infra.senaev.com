@@ -9,8 +9,8 @@ import type { ToolReply } from './toolFamilies';
  * transport failure, a timeout or a reply that is not a JSON object throws.
  */
 export async function callToolServer({
-    url, token, args, timeoutMs, serverName,
-}: { url: string; token: string; args: unknown; timeoutMs: number; serverName: string }): Promise<ToolReply> {
+    url, token, args, timeoutMs, serverName, signal,
+}: { url: string; token: string; args: unknown; timeoutMs: number; serverName: string; signal?: AbortSignal }): Promise<ToolReply> {
     const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -18,7 +18,12 @@ export async function callToolServer({
             authorization: createBearerAuthorizationHeader(token),
         },
         body: JSON.stringify(args),
-        signal: AbortSignal.timeout(timeoutMs),
+        signal: signal
+            ? AbortSignal.any([
+                signal,
+                AbortSignal.timeout(timeoutMs),
+            ])
+            : AbortSignal.timeout(timeoutMs),
     });
     const body: unknown = await response.json();
 

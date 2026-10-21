@@ -64,6 +64,7 @@ describe('handleMcpMessage', () => {
         }).result;
 
         expect(tools.map((tool) => tool.name)).toEqual([
+            'obsidian-download',
             'obsidian-upload',
             'obsidian-delete',
             'obsidian-list',
@@ -111,7 +112,7 @@ describe('handleMcpMessage', () => {
             .toMatchObject({ error: { code: -32602 } });
         expect(await handleMcpMessage(request('tools/call', { name: 'save_diary_text' }), handlers()))
             .toMatchObject({ error: { code: -32602 } });
-        expect(await handleMcpMessage(request('resources/list'), handlers()))
+        expect(await handleMcpMessage(request('unknown/method'), handlers()))
             .toMatchObject({ error: { code: -32601 } });
     });
 });
