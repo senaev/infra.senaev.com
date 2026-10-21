@@ -1,7 +1,10 @@
+import { writeFile } from 'node:fs/promises';
+
 import {
     afterAll, beforeAll, describe, expect, it,
 } from 'vitest';
 
+import { downloadTool } from '../vault-tools/tools/downloadTool';
 import { createTestVault, type TestVault } from '../vault-tools/createTestVault';
 
 import { createVaultServer, type VaultServer } from './createVaultServer';
@@ -104,4 +107,44 @@ describe('vault tool routes', () => {
             expect(response.json()).toMatchObject({ code: 'unknown_tool' });
         }
     });
+});
+
+it('serves private resource bytes only with internal authentication', async () => {
+    const result = await downloadTool(vault.config, { path: 'Note.md' });
+    const payload = { uri: result.resource.uri };
+
+    expect((await server.inject({
+        method: 'POST',
+        url: '/vault-file-resource',
+        payload,
+    })).statusCode).toBe(401);
+    const response = await server.inject({
+        method: 'POST',
+        url: '/vault-file-resource',
+        headers: AUTHORIZED,
+        payload,
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json<{ contents: { blob: string }[] }>();
+
+    expect(Buffer.from(body.contents[0]?.blob ?? '', 'base64').toString('utf8')).toBe('# Note\n');
+});
+
+it('transfers a resource larger than the managed result quota without pagination', async () => {
+    const text = 'x'.repeat(800_000);
+
+    await writeFile(vault.path('large.csv'), text);
+    const download = await downloadTool(vault.config, { path: 'large.csv' });
+    const response = await server.inject({
+        method: 'POST',
+        url: '/vault-file-resource',
+        headers: AUTHORIZED,
+        payload: { uri: download.resource.uri },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json<{ contents: { blob: string }[] }>();
+
+    expect(Buffer.from(body.contents[0]?.blob ?? '', 'base64').toString('utf8')).toBe(text);
 });

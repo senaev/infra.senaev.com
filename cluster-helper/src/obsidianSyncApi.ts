@@ -152,3 +152,14 @@ export async function addObsidianTasks(tasks: ObsidianTaskInput[]): Promise<void
         await addObsidianTask(task);
     }
 }
+
+/** Resource bytes use a separate authenticated route instead of managed result JSON pagination. */
+export function readVaultResource(uri: string): Promise<ToolReply> {
+    return callToolServer({
+        url: `${OBSIDIAN_SYNC_URL}/vault-file-resource`,
+        token: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN,
+        args: { uri },
+        timeoutMs: 65_000,
+        serverName: 'obsidian-sync',
+    });
+}

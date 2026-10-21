@@ -21,17 +21,21 @@ export type ToolFamily = {
     /** Names the backend in the error that ChatGPT gets when it cannot be reached. */
     backendName: string;
     call: CallTool;
+    readResource?: (uri: string) => Promise<ToolReply>;
 };
 
 export type McpTool = ToolDefinition & { name: string };
 
-export function createToolFamilies({ callVaultTool, callCodeTool }: { callVaultTool: CallTool; callCodeTool: CallTool }): ToolFamily[] {
+export function createToolFamilies({
+    callVaultTool, callCodeTool, readVaultResource,
+}: { callVaultTool: CallTool; callCodeTool: CallTool; readVaultResource?: (uri: string) => Promise<ToolReply> }): ToolFamily[] {
     return [
         {
             prefix: OBSIDIAN_TOOL_PREFIX,
             definitions: VAULT_MCP_TOOL_DEFINITIONS,
             backendName: 'The Obsidian vault',
             call: callVaultTool,
+            ...readVaultResource !== undefined && { readResource: readVaultResource },
         },
         {
             prefix: CODE_TOOL_PREFIX,

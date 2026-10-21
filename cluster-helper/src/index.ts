@@ -39,7 +39,9 @@ import { createGoogleLogin, parseGoogleAdminEmails } from './oauth/googleLogin';
 import { GOOGLE_CALLBACK_PATH } from './oauth/registerOAuthRoutes';
 import { createToolFamilies } from './chatGptMcp/toolFamilies';
 import { callCodeTool } from './codeToolsApi';
-import { callVaultTool, getShortLink } from './obsidianSyncApi';
+import {
+    callVaultTool, getShortLink, readVaultResource,
+} from './obsidianSyncApi';
 import { processTelegramWebhookData } from './processTelegramWebhookData';
 import { proxyPublicStaticFile } from './publicStaticProxy';
 import { formatTorrentEvent, isTorrentEvent } from './qbittorrent/formatTorrentEvent';
@@ -208,6 +210,7 @@ publicServer.post(`/${ALISA_WEBHOOK_SECRET}`, ({ body }, reply) => {
 // MCP server for the ChatGPT connector. The obsidian-* tools are forwarded to obsidian-sync,
 // which does all vault work, and the code-* tools to code-tools in the opencode-serve pod.
 const MCP_TOOL_FAMILIES = createToolFamilies({
+    readVaultResource,
     callVaultTool,
     callCodeTool,
 });
