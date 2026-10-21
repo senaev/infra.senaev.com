@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 import Fastify, { FastifyInstance } from 'fastify';
 import {
-    afterEach, beforeEach, describe, expect, it, vi,
+    afterEach, beforeAll, beforeEach, describe, expect, it, vi,
 } from 'vitest';
 
 import { createAuthorizationServer, LoginAttempt } from './authorizationServer';
@@ -32,6 +32,10 @@ let server: FastifyInstance;
 let authorizationServer: ReturnType<typeof createAuthorizationServer>;
 let fakeGoogle: FakeGoogle;
 let loginAttempts: LoginAttempt[];
+
+beforeAll(async () => {
+    await createFakeGoogle(GOOGLE_CLIENT_ID);
+});
 
 beforeEach(async () => {
     server = Fastify();

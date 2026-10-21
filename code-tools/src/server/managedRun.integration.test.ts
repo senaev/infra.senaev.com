@@ -107,7 +107,7 @@ describe('managed shell execution', () => {
                 expect.objectContaining({ text: 'ready\n' }),
                 expect.objectContaining({ text: 'diagnostic\n' }),
             ]));
-        });
+        }, { timeout: 5000 });
         const active = (await call('operation_status', { id })).json<Reply>();
 
         expect(active.operation).toMatchObject({

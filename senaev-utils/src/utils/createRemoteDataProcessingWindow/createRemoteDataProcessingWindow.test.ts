@@ -1,4 +1,5 @@
 import {
+    afterEach,
     describe,
     expect,
     it,
@@ -14,6 +15,10 @@ import { promiseTimeout } from '../timers/promiseTimeout/promiseTimeout';
 import {
     createRemoteDataProcessingWindow, RemoteDataProcessingWindowExtractItemsFunction, RemoteDataProcessingWindowLoadNextItemsReturnType,
 } from './createRemoteDataProcessingWindow';
+
+afterEach(() => {
+    vi.useRealTimers();
+});
 
 describe('createRemoteDataProcessingWindow', () => {
     it('should request data from remote source', async () => {
@@ -626,6 +631,7 @@ describe('createRemoteDataProcessingWindow', () => {
     });
 
     it('should wait for enough data in buffer to extract', async () => {
+        vi.useFakeTimers();
         let promise: Promise<unknown> | undefined = undefined;
 
         const loadNextItems = vi.fn(({ count }) => {
@@ -648,6 +654,7 @@ describe('createRemoteDataProcessingWindow', () => {
 
         // Wait for buffer to be filled
         // 1. Request 100 items
+        await vi.advanceTimersByTimeAsync(25);
         await (promise as unknown as Promise<unknown>);
 
         expect(loadNextItems).toHaveBeenCalledTimes(1);
@@ -686,6 +693,7 @@ describe('createRemoteDataProcessingWindow', () => {
 
         expect(loadNextItems).toHaveBeenCalledTimes(2);
 
+        await vi.advanceTimersByTimeAsync(75);
         await promise3;
         await (promise as unknown as Promise<unknown>);
 

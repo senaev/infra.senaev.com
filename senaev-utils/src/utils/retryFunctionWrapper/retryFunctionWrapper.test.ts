@@ -1,10 +1,30 @@
 import {
-    describe, expect, it, vi,
+    afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
 
 import { noop } from '../Function/noop';
 
 import { retryFunctionWrapper } from './retryFunctionWrapper';
+
+beforeEach(() => {
+    vi.useFakeTimers();
+});
+afterEach(() => {
+    vi.useRealTimers();
+});
+
+async function completeRetry<T>(promise: Promise<T>): Promise<T> {
+    const outcome = promise.then(
+        (value) => () => value,
+        (error: unknown) => () => {
+            throw error;
+        }
+    );
+
+    await vi.runAllTimersAsync();
+
+    return (await outcome)();
+}
 
 describe('retryFunctionWrapper', () => {
     it('resolves if the function succeeds on the first try', async () => {
@@ -15,7 +35,7 @@ describe('retryFunctionWrapper', () => {
             delay: 10,
         });
 
-        await expect(wrapped()).resolves.toBe('success');
+        await expect(completeRetry(wrapped())).resolves.toBe('success');
         expect(fn).toHaveBeenCalledTimes(1);
     });
 
@@ -36,7 +56,7 @@ describe('retryFunctionWrapper', () => {
             delay: 10,
         });
 
-        await expect(wrapped()).resolves.toBe('eventual success');
+        await expect(completeRetry(wrapped())).resolves.toBe('eventual success');
         expect(fn).toHaveBeenCalledTimes(3);
     });
 
@@ -48,7 +68,7 @@ describe('retryFunctionWrapper', () => {
             delay: 10,
         });
 
-        await expect(wrapped()).rejects.toThrow('fail always');
+        await expect(completeRetry(wrapped())).rejects.toThrow('fail always');
         expect(fn).toHaveBeenCalledTimes(3); // initial + 2 retries
     });
 
@@ -62,13 +82,12 @@ describe('retryFunctionWrapper', () => {
             onFailAttempt,
         });
 
-        await expect(wrapped()).rejects.toThrow('fail always');
+        await expect(completeRetry(wrapped())).rejects.toThrow('fail always');
         expect(onFailAttempt).toHaveBeenCalledTimes(2);
         expect(onFailAttempt).toHaveBeenCalledWith(expect.any(Error), 0);
     });
 
     it('waits for the specified delay between retries', async () => {
-        vi.useFakeTimers();
         let callCount = 0;
         const fn = vi.fn().mockImplementation(() => {
             callCount++;
@@ -101,8 +120,6 @@ describe('retryFunctionWrapper', () => {
 
         // Await the promise to ensure it resolves
         await expect(promise).resolves.toBe('success');
-
-        vi.useRealTimers();
     });
 
     it('handles synchronous errors as failed attempts', async () => {
@@ -122,7 +139,7 @@ describe('retryFunctionWrapper', () => {
             delay: 10,
         });
 
-        await expect(wrapped()).resolves.toBe('success');
+        await expect(completeRetry(wrapped())).resolves.toBe('success');
         expect(fn).toHaveBeenCalledTimes(3);
     });
 
@@ -145,7 +162,7 @@ describe('retryFunctionWrapper', () => {
             onFailAttempt,
         });
 
-        await expect(wrapped()).rejects.toBe(error3);
+        await expect(completeRetry(wrapped())).rejects.toBe(error3);
         expect(onFailAttempt).toHaveBeenCalledTimes(3);
         expect(onFailAttempt).toHaveBeenNthCalledWith(1, error1, 0);
         expect(onFailAttempt).toHaveBeenNthCalledWith(2, error2, 1);

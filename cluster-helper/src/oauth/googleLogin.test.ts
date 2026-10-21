@@ -1,5 +1,5 @@
 import {
-    beforeEach, describe, expect, it,
+    beforeAll, beforeEach, describe, expect, it,
 } from 'vitest';
 
 import type { AuthorizeRequest } from './authorizationServer';
@@ -23,6 +23,10 @@ const request: AuthorizeRequest = {
 let currentTime: number;
 let fakeGoogle: FakeGoogle;
 let googleLogin: GoogleLogin;
+
+beforeAll(async () => {
+    await createFakeGoogle(CLIENT_ID);
+});
 
 beforeEach(async () => {
     currentTime = Date.now();

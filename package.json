@@ -10,13 +10,15 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p senaev-utils --noEmit && tsc -p cluster-helper --noEmit && tsc -p code-tools --noEmit && tsc -p media-server-helper --noEmit && tsc -p obsidian-sync --noEmit && tsc -p vpn-subscription --noEmit",
-    "test": "vitest --run",
-    "test:watch": "vitest",
+    "test": "vitest --run --project=\"*-unit\" --project=senaev-utils-pure",
+    "test:watch": "vitest --project=\"*-unit\" --project=senaev-utils-pure",
     "check:python": "bash scripts/check-syntax.sh python",
     "check:shell": "bash scripts/check-syntax.sh shell",
     "check:helm": "bash scripts/check-syntax.sh helm",
-    "simple-checks": "concurrently --prefix-colors auto --timings --names lint,typecheck,test,check:python,check:shell,check:helm npm:lint npm:typecheck \"npm run test -- --maxWorkers=50%\" npm:check:python npm:check:shell npm:check:helm",
-    "prepare": "lefthook install"
+    "simple-checks": "concurrently --prefix-colors auto --timings --names lint,typecheck,test,check:python,check:shell,check:helm npm:lint npm:typecheck \"npm run test:all -- --maxWorkers=50%\" npm:check:python npm:check:shell npm:check:helm",
+    "prepare": "lefthook install",
+    "test:integration": "vitest --run --project=\"*-integration\"",
+    "test:all": "vitest --run"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",

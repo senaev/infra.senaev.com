@@ -59,13 +59,19 @@ export default defineConfig({
         projects: PACKAGES.flatMap((name) => {
             const isolated = {
                 test: {
-                    name,
+                    name: `${name}-unit`,
+                    slowTestThreshold: 100,
                     root: `./${name}`,
                     environment: 'node',
+                    exclude: [
+                        ...configDefaults.exclude,
+                        '**/*.integration.test.ts',
+                    ],
                     ...name === 'senaev-utils'
                         ? {
                             exclude: [
                                 ...configDefaults.exclude,
+                                '**/*.integration.test.ts',
                                 ...REUSABLE_UTIL_TESTS,
                             ],
                         }
@@ -82,12 +88,33 @@ export default defineConfig({
                 },
             };
 
+            const integration = {
+                test: {
+                    name: `${name}-integration`,
+                    root: `./${name}`,
+                    environment: 'node',
+                    include: ['**/*.integration.test.ts'],
+                    testTimeout: 15000,
+                    setupFiles: [
+                        ...SETUP_FILES[name] ?? [],
+                        ...[
+                            'code-tools',
+                            'obsidian-sync',
+                        ].includes(name)
+                            ? ['../senaev-utils/src/files/testing/mockFileDiff.ts']
+                            : [],
+                    ],
+                },
+            };
+
             return name === 'senaev-utils'
                 ? [
                     isolated,
+                    integration,
                     {
                         test: {
                             name: 'senaev-utils-pure',
+                            slowTestThreshold: 100,
                             root: './senaev-utils',
                             environment: 'node',
                             pool: 'threads',
@@ -96,7 +123,10 @@ export default defineConfig({
                         },
                     },
                 ]
-                : [isolated];
+                : [
+                    isolated,
+                    integration,
+                ];
         }),
     },
 });

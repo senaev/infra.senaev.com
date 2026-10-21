@@ -103,7 +103,9 @@ Run all checks from the repository root; the packages have no check scripts of t
 npm run simple-checks   # all checks below at once, concurrently -- what the pre-push hook runs
 npm run lint            # eslint, one root eslint.config.mjs for all packages
 npm run typecheck       # tsc --noEmit per package, in sequence
-npm test                # vitest, one project per package plus senaev-utils-pure
+npm test                # fast unit suite (100 ms per-case target, not a hard timeout)
+npm run test:integration # real filesystem/process/worker and dependency integration coverage
+npm run test:all         # both suites; this is the CI/pre-push test gate
 npm run check:python    # syntax of every *.py file (ast.parse, writes no __pycache__)
 npm run check:shell     # syntax of every *.sh file (sh -n for #!/bin/sh scripts, else bash -n)
 npm run check:helm      # helm lint of every chart, with common-values.yaml + its values.yaml
@@ -121,7 +123,7 @@ the exit code is non-zero if any of them failed.
 
 The concurrent check limits Vitest to half the available CPUs so native worker and
 child-process tests can make progress alongside lint and typecheck. Standalone
-`npm test` continues to use all available CPUs.
+`npm test` and `npm run test:all` continue to use all available CPUs when run alone.
 
 Because there is no workspace hoisting, typed linting, `tsc` and the tests each need the
 package's own `node_modules`. A fresh clone therefore needs `npm ci` at the root **and** in
@@ -135,7 +137,14 @@ Config lives at the root: `eslint.config.mjs` (React rules scoped to senaev-util
 `senaev-utils` tests in the `senaev-utils-pure` project. Keep tests with module mocks,
 environment mutations, DOM, filesystem or process behavior in the isolated project.
 Review isolation requirements before adding tests to an allowlisted directory.
-Use `npm test -- --project='senaev-utils*'` to run both library projects.
+Use `npm run test:all -- --project='senaev-utils*'` to run all library projects.
+
+Integration files end in `.integration.test.ts`; all others belong to unit projects.
+Keep real filesystem security, atomicity, process signals and worker cancellation in
+the integration suite. Higher-level code/vault file tests use the synchronous diff
+core as a double for native workers, keeping actual diff output and cooperative
+cancellation checkpoints; the library integration suite still tests real workers.
+Do not mock the behavior being asserted. CI and pre-push always run `test:all`.
 
 Every package extends `tsconfig.base.json`, so the library is held to the same strictness as
 the services — including `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`.

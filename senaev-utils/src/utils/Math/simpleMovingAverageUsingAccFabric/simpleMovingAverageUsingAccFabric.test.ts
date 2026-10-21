@@ -10,9 +10,9 @@ describe('simpleMovingAverageFabric', () => {
 
         expect(fabric(1)).toBe(undefined);
         expect(fabric(2)).toBe(undefined);
-        for (let i = 3; i < 10_000; i++) {
-            expect(fabric(i)).toBe(i - 1);
-        }
+        const actual = Array.from({ length: 9997 }, (_, index) => fabric(index + 3));
+
+        expect(actual).toEqual(Array.from({ length: 9997 }, (_, index) => index + 2));
     });
 
     it('should consider window size', () => {
@@ -53,12 +53,10 @@ describe('simpleMovingAverageFabric', () => {
     it('can calculate big windows', () => {
         const fabric = simpleMovingAverageUsingAccFabric(10_001);
 
-        for (let i = 0; i < 20_000; i++) {
-            if (i < 10_000) {
-                expect(fabric(i)).toBe(undefined);
-            } else {
-                expect(fabric(i)).closeTo(i - 5000, 1e-10);
-            }
-        }
+        const results = Array.from({ length: 20_000 }, (_, index) => fabric(index));
+
+        expect(results.slice(0, 10_000).every((value) => value === undefined)).toBe(true);
+        expect(results.slice(10_000).every((value, index) =>
+            typeof value === 'number' && Math.abs(value - (index + 5000)) <= 1e-10)).toBe(true);
     });
 });
