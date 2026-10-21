@@ -1,6 +1,7 @@
 import type { CommandAdapter } from 'senaev-utils/src/toolServer/createCommandAdapter';
 import type { VaultCommandName } from 'senaev-utils/src/obsidianVaultTools/vaultCommands';
 
+import { csvQueryTool } from './tools/csvQueryTool';
 import { downloadTool, downloadChunkTool } from './tools/downloadTool';
 import { uploadTool } from './tools/uploadTool';
 import { deleteTool } from './tools/deleteTool';
@@ -21,6 +22,7 @@ export type VaultTool = CommandAdapter<VaultToolsConfig>;
 
 /** Domain command registry; missing implementations fail to compile. */
 export const VAULT_TOOLS: Readonly<Record<VaultCommandName, VaultTool>> = {
+    csv_query: csvQueryTool,
     download: downloadTool,
     download_chunk: downloadChunkTool,
     upload: uploadTool,

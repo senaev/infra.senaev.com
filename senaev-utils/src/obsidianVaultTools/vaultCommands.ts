@@ -1,5 +1,11 @@
 /** Domain argument contracts; independent of transport and execution policy. */
 export const VAULT_COMMAND_ARGUMENTS = {
+    csv_query: [
+        'tables',
+        'sql',
+        'params',
+        'maxRows',
+    ],
     download: ['path'],
     download_chunk: [
         'path',

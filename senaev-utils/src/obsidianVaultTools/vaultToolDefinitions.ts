@@ -850,8 +850,79 @@ const deleteFile: ToolDefinition = {
     },
 };
 
+const csv_query: ToolDefinition = {
+    title: 'Query vault CSV files with SQLite',
+    description: [
+        'Runs one read-only SQLite statement against temporary in-memory tables built from selected CSV files; nothing is persisted.',
+        'tables is an array of {name, paths}; files in a table must have identical ordered headers. All source cells are TEXT, including empty strings; no type inference or money/date conversion. Use explicit SQL CAST; SQLite casts are permissive and integer division truncates.',
+        'CSV is strict UTF-8, comma-delimited with a header, optional BOM and standard double-quote escaping. Duplicate/empty headers are rejected. Each table adds TEXT columns _source_path and _source_record (1-based data record). Those names and rowid aliases are reserved.',
+        'Results contain columns and positional rows; integers outside the JavaScript safe range are decimal strings, BLOBs are rejected. Sources include byte hashes and record counts. Files are individual snapshots, not a simultaneous multi-file transaction.',
+        'Limits: 8 files, 4 MiB total CSV, 50000 data records, 100 columns per file, 64 KiB per record, 16000 SQL characters, 100 bound positional parameters, 1000 output rows and 256 KiB serialized query result. maxRows defaults to 200. Truncation is explicit; input is never silently truncated.',
+        'Query subprocess: 5 second deadline, one active query, SQLite 64 MiB allocation cap and V8 64 MiB old-space cap. Only approved tables and built-in analytical functions are allowed; writes, PRAGMA, ATTACH, extensions and arbitrary file/network access are unavailable. params accepts strings or null; cast parameters explicitly when needed.',
+        VAULT_RULES,
+    ].join(' '),
+    inputSchema: {
+        type: 'object',
+        properties: {
+            ...MANAGED_TOOL_PROPERTIES,
+            tables: {
+                type: 'array',
+                minItems: 1,
+                maxItems: 8,
+                items: {
+                    type: 'object',
+                    additionalProperties: false,
+                    required: [
+                        'name',
+                        'paths',
+                    ],
+                    properties: {
+                        name: {
+                            type: 'string',
+                            pattern: '^[A-Za-z][A-Za-z0-9_]{0,47}$',
+                        },
+                        paths: {
+                            type: 'array',
+                            minItems: 1,
+                            maxItems: 8,
+                            items: { type: 'string' },
+                        },
+                    },
+                },
+            },
+            sql: {
+                type: 'string',
+                minLength: 1,
+                maxLength: 16000,
+            },
+            params: {
+                type: 'array',
+                maxItems: 100,
+                items: {
+                    type: [
+                        'string',
+                        'null',
+                    ],
+                },
+            },
+            maxRows: {
+                type: 'integer',
+                minimum: 1,
+                maximum: 1000,
+            },
+        },
+        required: [
+            'tables',
+            'sql',
+        ],
+        additionalProperties: false,
+    },
+    annotations: READ_ONLY,
+};
+
 /** In the order that `tools/list` shows them. */
 export const VAULT_TOOL_DEFINITIONS = {
+    csv_query,
     download,
     download_chunk,
     upload,
