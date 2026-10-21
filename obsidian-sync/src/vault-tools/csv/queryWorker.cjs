@@ -140,18 +140,29 @@ function query(input) {
 
         const classification = classifyAndPrepare(db, input, sources);
         const {
-            statement, mutation, creating,
+            statement, mutation, creating, alter,
         } = classification;
 
         if (mutation) {
-            if (statement.columns().length) {
+            if (statement?.columns().length) {
                 fail('SQL edits with RETURNING are unsupported');
             }
 
             stage = 'SQL edit execution';
-            const { changes } = statement.run(...input.params);
+            let changes = 0;
 
-            db.setAuthorizer(null);
+            if (alter) {
+                if (input.params.length) {
+                    fail('Column changes do not accept bound parameters');
+                }
+
+                db.setAuthorizer(null);
+                applyColumnAlter(db, mutation, alter);
+            } else {
+                ({ changes } = statement.run(...input.params));
+                db.setAuthorizer(null);
+            }
+
             if (creating) {
                 // This grammar check rejects unsupported CSV schema features, not SQL classification.
                 const words = input.sql.replace(/--[^\n]*|\/\*[\s\S]*?\*\/|'(?:''|[^'])*'|"(?:""|[^"])*"|`(?:``|[^`])*`|\[[^\]]*\]/g, ' ');
@@ -189,8 +200,8 @@ function query(input) {
             }
 
             return exportMutation(db, mutation, sources, {
-                affectedRows: creating ? 0 : Number(changes),
-                creating,
+                affectedRows: creating || alter ? 0 : Number(changes),
+                schemaChanged: Boolean(creating || alter),
                 dialect: formats.get(mutation.name),
             });
         }
@@ -322,9 +333,24 @@ function classifyAndPrepare(db, input, sources) {
         'oid',
     ]);
     const canCreate = input.tables.some((table) => !table.headers && Object.hasOwn(table, 'expectedHash'));
+    const alter = parseColumnAlter(input.sql);
     let mutation;
     let creating = false;
+    let altering = false;
     const authorize = (action, first, second, database) => {
+        if (action === constants.SQLITE_ALTER_TABLE) {
+            const target = tables.get(second?.toLowerCase());
+
+            if (alter && first === 'main' && target?.headers && target.name.toLowerCase() === alter.table.toLowerCase() && target.sources.length === 1 && Object.hasOwn(target, 'expectedHash')) {
+                mutation = target;
+                altering = true;
+            }
+
+            // Probe SQLite's actual target without admitting schema writes or internal
+            // functions. Only a validated ADD/DROP reconstruction can run afterwards.
+            return constants.SQLITE_DENY;
+        }
+
         const table = tables.get(first?.toLowerCase());
 
         // Defensive SQLite forbids direct schema writes; CREATE TABLE needs these internal actions.
@@ -389,6 +415,15 @@ function classifyAndPrepare(db, input, sources) {
     } catch { /* Metadata-only reads are retried after adding provenance columns. */ }
 
     db.setAuthorizer(null);
+    if (altering) {
+        return {
+            statement: null,
+            mutation,
+            creating: false,
+            alter,
+        };
+    }
+
     for (const table of input.tables) {
         if (!table.headers || table === mutation) {
             continue;
@@ -422,7 +457,7 @@ function classifyAndPrepare(db, input, sources) {
 }
 
 function exportMutation(db, table, sources, {
-    affectedRows, creating, dialect,
+    affectedRows, schemaChanged, dialect,
 }) {
     stage = 'CSV export validation';
     const chunks = [
@@ -495,7 +530,7 @@ function exportMutation(db, table, sources, {
             table: table.name,
             csv: chunks.join(''),
             affectedRows,
-            creating,
+            schemaChanged,
             records,
         },
     };
@@ -519,4 +554,113 @@ function recordDelimiter(text) {
     }
 
     return '\n';
+}
+
+/** Recognize only complete ADD/DROP column syntax; identifiers are always re-quoted. */
+function parseColumnAlter(sql) {
+    const tokens = (sql.match(/--[^\n]*|\/\*[\s\S]*?(?:\*\/|$)|"(?:""|[^"])*"|'(?:''|[^'])*'|`(?:``|[^`])*`|\[[^\]]*\]|[A-Za-z_\u0080-\uFFFF][A-Za-z0-9_$\u0080-\uFFFF]*|[^\s]/g) ?? [])
+        .filter((token) => !token.startsWith('--') && !token.startsWith('/*'));
+    const keyword = (index, word) => tokens[index]?.toUpperCase() === word;
+    const identifier = (token) => {
+        if (!token) {
+            return undefined;
+        }
+
+        if (/^[A-Za-z_\u0080-\uFFFF][A-Za-z0-9_$\u0080-\uFFFF]*$/.test(token)) {
+            return token;
+        }
+
+        if (token.length >= 2 && token[0] === '[' && token.at(-1) === ']') {
+            return token.slice(1, -1);
+        }
+
+        if (token.length >= 2 && [
+            '"',
+            '\'',
+            '`',
+        ].includes(token[0]) && token.at(-1) === token[0]) {
+            return token.slice(1, -1).replaceAll(token[0].repeat(2), token[0]);
+        }
+
+        return undefined;
+    };
+
+    if (tokens.at(-1) === ';') {
+        tokens.pop();
+    }
+
+    if (!keyword(0, 'ALTER') || !keyword(1, 'TABLE')) {
+        return undefined;
+    }
+
+    let index = 2;
+    let table = identifier(tokens[index++]);
+
+    if (tokens[index] === '.') {
+        if (table?.toLowerCase() !== 'main') {
+            return undefined;
+        }
+
+        index++;
+        table = identifier(tokens[index++]);
+    }
+
+    const operation = tokens[index++]?.toUpperCase();
+
+    if (operation !== 'ADD' && operation !== 'DROP') {
+        return undefined;
+    }
+
+    if (keyword(index, 'COLUMN')) {
+        index++;
+    }
+
+    const column = identifier(tokens[index++]);
+
+    if (operation === 'ADD' && identifier(tokens[index])?.toUpperCase() === 'TEXT') {
+        index++;
+    }
+
+    if (!table || !column || index !== tokens.length) {
+        return undefined;
+    }
+
+    return {
+        operation,
+        table,
+        column,
+    };
+}
+
+/** CSV can persist headers and text cells, but no persistent schema metadata. */
+function applyColumnAlter(db, table, alter) {
+    const reserved = new Set([
+        'rowid',
+        '_rowid_',
+        'oid',
+        '_source_path',
+        '_source_record',
+    ]);
+
+    if (!alter.column.trim() || alter.column.includes('\0') || reserved.has(alter.column.toLowerCase())) {
+        fail('Invalid or reserved CSV column name');
+    }
+
+    // The supplied statement was only prepared under a denying authorizer. Execute
+    // this narrow trusted reconstruction, never arbitrary SQL with authorization off.
+    const definition = alter.operation === 'ADD' ? ' TEXT NOT NULL DEFAULT \'\'' : '';
+
+    db.exec(`ALTER TABLE ${quote(table.name)} ${alter.operation} COLUMN ${quote(alter.column)}${definition}`);
+    const headers = db.prepare(`PRAGMA table_xinfo(${quote(table.name)})`).all().map((column) => column.name);
+    const names = headers.map((name) => name.toLowerCase());
+
+    if (!headers.length || headers.length > 100 || new Set(names).size !== names.length || names.some((name) => reserved.has(name))) {
+        fail('CSV requires 1..100 unique, nonreserved columns');
+    }
+
+    if (headers.reduce((bytes, name) => bytes + Buffer.byteLength(name), 0) > 65536) {
+        fail('CSV header contents exceed 64 KiB');
+    }
+
+    table.headers = headers;
 }
