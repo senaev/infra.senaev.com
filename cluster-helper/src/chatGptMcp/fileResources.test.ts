@@ -79,7 +79,10 @@ it('reads binary resources without copying base64 into text or structured result
         callCodeTool: vi.fn(),
         readVaultResource,
     });
-    const response = await handleMcpMessage(request('resources/read', { uri }), families);
+    const { signal } = new AbortController();
+    const response = await handleMcpMessage(request('resources/read', { uri }), families, { signal });
+
+    expect(readVaultResource).toHaveBeenCalledWith(uri, signal);
 
     expect(response).toEqual({
         jsonrpc: '2.0',

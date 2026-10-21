@@ -116,6 +116,17 @@ at 25 MiB, and rejects content whose SHA-256 changed. The resource read has a
 JSON result retention/pagination quota; download metadata retains the normal
 queued/parallel/retry contract. File resource bytes are not retained in operation records.
 
+Each service permits one active resource transfer per process, holding its slot until
+both work and the HTTP response finish. Concurrent reads receive HTTP 429 with
+Retry-After: 1. Disconnects cancel backend reads/upstream fetches; deadlines also close
+stalled responses. These bounds limit simultaneous buffered/base64 copies, rather than
+turning this JSON-based protocol into streaming binary transfer.
+
+Downloads open with O_NOFOLLOW and validate the actual descriptor through Linux
+/proc/self/fd before and after reading, including parent-directory replacement races.
+They fail closed when procfs descriptor validation is unavailable. Deployment requires
+Linux containers with procfs mounted. File metadata changes during reading are rejected.
+
 MIME types use filename extensions, with application/octet-stream for unknown types.
 Resource access does not grant filesystem writes. Resource listings are empty; the
 caller selects files explicitly through download rather than exposing a vault catalog.

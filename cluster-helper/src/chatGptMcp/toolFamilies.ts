@@ -21,14 +21,14 @@ export type ToolFamily = {
     /** Names the backend in the error that ChatGPT gets when it cannot be reached. */
     backendName: string;
     call: CallTool;
-    readResource?: (uri: string) => Promise<ToolReply>;
+    readResource?: (uri: string, signal?: AbortSignal) => Promise<ToolReply>;
 };
 
 export type McpTool = ToolDefinition & { name: string };
 
 export function createToolFamilies({
     callVaultTool, callCodeTool, readVaultResource,
-}: { callVaultTool: CallTool; callCodeTool: CallTool; readVaultResource?: (uri: string) => Promise<ToolReply> }): ToolFamily[] {
+}: { callVaultTool: CallTool; callCodeTool: CallTool; readVaultResource?: (uri: string, signal?: AbortSignal) => Promise<ToolReply> }): ToolFamily[] {
     return [
         {
             prefix: OBSIDIAN_TOOL_PREFIX,

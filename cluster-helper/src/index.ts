@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 
+import { ResourceReadGate } from 'senaev-utils/src/toolServer/ResourceReadGate';
 import Fastify, { FastifyReply } from 'fastify';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { callTelegramApi } from 'senaev-utils/src/utils/TelegramApi/callTelegramApi';
@@ -215,9 +216,28 @@ const MCP_TOOL_FAMILIES = createToolFamilies({
     callCodeTool,
 });
 
+const resourceReads = new ResourceReadGate();
+
 async function replyToMcpMessage(message: unknown, reply: FastifyReply, options: McpServerOptions) {
+    const isResourceRead = isObject(message) && message.method === 'resources/read';
+    const transfer = isResourceRead ? resourceReads.begin(reply.raw, 65_000) : null;
+
+    if (isResourceRead && transfer === null) {
+        return reply.code(429).header('Retry-After', '1').send({
+            jsonrpc: '2.0',
+            id: typeof message.id === 'string' || typeof message.id === 'number' ? message.id : null,
+            error: {
+                code: -32000,
+                message: 'Another file transfer is active; retry shortly',
+            },
+        });
+    }
+
     try {
-        const response = await handleMcpMessage(message, MCP_TOOL_FAMILIES, options);
+        const response = await handleMcpMessage(message, MCP_TOOL_FAMILIES, {
+            ...options,
+            ...transfer !== null && { signal: transfer.signal },
+        });
 
         logger.info(describeMcpExchange(message, response), '🤖 ChatGPT MCP message');
 
@@ -237,6 +257,8 @@ async function replyToMcpMessage(message: unknown, reply: FastifyReply, options:
                 message: 'Internal error',
             },
         });
+    } finally {
+        transfer?.finish();
     }
 }
 

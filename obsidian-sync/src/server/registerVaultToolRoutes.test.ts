@@ -1,9 +1,10 @@
 import { writeFile } from 'node:fs/promises';
 
 import {
-    afterAll, beforeAll, describe, expect, it,
+    afterAll, beforeAll, describe, expect, it, vi,
 } from 'vitest';
 
+import * as downloadModule from '../vault-tools/tools/downloadTool';
 import { downloadTool } from '../vault-tools/tools/downloadTool';
 import { createTestVault, type TestVault } from '../vault-tools/createTestVault';
 
@@ -147,4 +148,45 @@ it('transfers a resource larger than the managed result quota without pagination
     const body = response.json<{ contents: { blob: string }[] }>();
 
     expect(Buffer.from(body.contents[0]?.blob ?? '', 'base64').toString('utf8')).toBe(text);
+});
+
+it('refuses concurrent resource transfers and admits the next one after completion', async () => {
+    const download = await downloadTool(vault.config, { path: 'Note.md' });
+    const original = downloadModule.readVaultFileResource;
+    let unblock!: () => void;
+    let entered!: () => void;
+    const waiting = new Promise<void>((resolve) => {
+        unblock = resolve;
+    });
+    const started = new Promise<void>((resolve) => {
+        entered = resolve;
+    });
+    const spy = vi.spyOn(downloadModule, 'readVaultFileResource').mockImplementationOnce(async (...args) => {
+        entered();
+        await waiting;
+
+        return original(...args);
+    });
+    const options = {
+        method: 'POST' as const,
+        url: '/vault-file-resource',
+        headers: AUTHORIZED,
+        payload: { uri: download.resource.uri },
+    };
+    const first = server.inject(options).then((response) => response);
+
+    try {
+        await started;
+        const busy = await server.inject(options);
+
+        expect(busy.statusCode).toBe(429);
+        expect(busy.headers['retry-after']).toBe('1');
+        unblock();
+        expect((await first).statusCode).toBe(200);
+        expect((await server.inject(options)).statusCode).toBe(200);
+    } finally {
+        unblock();
+        await first;
+        spy.mockRestore();
+    }
 });

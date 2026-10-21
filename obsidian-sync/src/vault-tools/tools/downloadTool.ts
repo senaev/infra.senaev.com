@@ -6,8 +6,9 @@ import { createCommandExecution, type CommandExecution } from 'senaev-utils/src/
 import { parseVaultFileResourceUri, vaultFileResourceUri } from 'senaev-utils/src/obsidianVaultTools/vaultFileResource';
 
 import {
-    assertByteHash, hashBytes, readFileBytes, resolveExistingFile,
+    assertByteHash, hashBytes,
 } from '../access/vaultFiles';
+import { readDownloadBytes } from '../access/readDownloadBytes';
 import { normalizeVaultPath } from '../access/vaultAccess';
 import { readVaultToolArguments } from '../toolArguments';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
@@ -37,7 +38,7 @@ function parse(input: unknown) {
 
 /** Prepare a versioned resource link without storing binary data in managed operation results. */
 async function download(config: VaultToolsConfig, { path }: ReturnType<typeof parse>, execution: CommandExecution) {
-    const bytes = await readFileBytes(await resolveExistingFile(config, path, execution), execution);
+    const bytes = await readDownloadBytes(config, path, execution);
     const hash = hashBytes(bytes);
 
     execution.throwIfAborted();
@@ -64,7 +65,7 @@ export async function readVaultFileResource(config: VaultToolsConfig, input: unk
     const uri = requiredNonEmptyString(args, 'uri');
     const { path: rawPath, hash } = parseVaultFileResourceUri(uri);
     const path = normalizeVaultPath(rawPath, 'path');
-    const bytes = await readFileBytes(await resolveExistingFile(config, path, execution), execution);
+    const bytes = await readDownloadBytes(config, path, execution);
 
     assertByteHash(bytes, hash);
     execution.throwIfAborted();
