@@ -120,6 +120,7 @@ export default defineConfig({
                             pool: 'threads',
                             isolate: false,
                             include: REUSABLE_UTIL_TESTS,
+                            exclude: [...configDefaults.exclude, '**/*.integration.test.ts'],
                         },
                     },
                 ]

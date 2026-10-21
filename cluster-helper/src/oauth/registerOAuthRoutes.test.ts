@@ -203,20 +203,18 @@ describe('registerOAuthRoutes', () => {
     it('shows rate-limit errors and keeps token errors as JSON', async () => {
         vi.useFakeTimers({ toFake: ['Date'] });
         requestPolicy.max = 1;
-        expect(vi.mocked(httpRateLimit).mock.calls.map(([key]) => key)).toEqual([
-            'login',
-            'google-start',
-            'google-callback',
-            'token',
+        expect(vi.mocked(httpRateLimit).mock.calls).toEqual([
+            ['login'],
+            ['google-start'],
+            ['google-callback'],
+            ['token'],
         ]);
-        for (let attempt = 0; attempt < 1; attempt++) {
-            await server.inject({
-                method: 'POST',
-                url: '/authorize',
-                headers: FORM_HEADERS,
-                payload: '',
-            });
-        }
+        await server.inject({
+            method: 'POST',
+            url: '/authorize',
+            headers: FORM_HEADERS,
+            payload: '',
+        });
 
         const response = await server.inject({
             method: 'POST',
@@ -235,14 +233,12 @@ describe('registerOAuthRoutes', () => {
         // A flood of password attempts does not lock Google sign-in.
         expect((await startGoogleLogin()).response.statusCode).toBe(302);
 
-        for (let attempt = 0; attempt < 1; attempt++) {
-            await server.inject({
-                method: 'POST',
-                url: '/token',
-                headers: FORM_HEADERS,
-                payload: '',
-            });
-        }
+        await server.inject({
+            method: 'POST',
+            url: '/token',
+            headers: FORM_HEADERS,
+            payload: '',
+        });
 
         const token = await server.inject({
             method: 'POST',
