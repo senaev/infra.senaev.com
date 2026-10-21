@@ -77,6 +77,10 @@ export function parseCsvQuery(input: unknown) {
         throw invalidArguments('params must contain at most 100 strings (up to 65536 characters) or null values');
     }
 
+    if (Buffer.byteLength(JSON.stringify(params)) > 65536) {
+        throw invalidArguments('Serialized params must fit within 64 KiB total');
+    }
+
     if (typeof maxRows !== 'number' || !Number.isInteger(maxRows) || maxRows < 1 || maxRows > 1000) {
         throw invalidArguments('maxRows must be 1..1000');
     }

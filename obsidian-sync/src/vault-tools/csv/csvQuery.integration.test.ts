@@ -201,3 +201,62 @@ it('securely reads real vault CSV snapshots and leaves the source bytes unchange
         sql: 'SELECT * FROM t',
     })).rejects.toMatchObject({ code: 'forbidden_path' });
 });
+
+it('accepts header-only files and safely quotes unusual column names', async () => {
+    expect((await run('SELECT COUNT(*) FROM t', 'id,amount\n')).rows).toEqual([[0]]);
+    expect((await run('SELECT "a""b", "__proto__" FROM t', '"a""b",__proto__\n00123,value\n')).rows).toEqual([
+        [
+            '00123',
+            'value',
+        ],
+    ]);
+});
+
+it('enforces SQLite expression/value limits and rejects BLOB/non-finite values', async () => {
+    await expect(run('SELECT printf(\'%1000000000s\', \'x\')')).rejects.toMatchObject({ code: 'invalid_arguments' });
+    await expect(run('SELECT x\'0001\'')).rejects.toThrow('BLOB');
+    await expect(run('SELECT 1e999')).rejects.toThrow('Non-finite');
+    await expect(run('SELECT * FROM t; SELECT 1')).rejects.toThrow('Exactly one');
+});
+
+it('kills an actual CPU-bound query at the deadline', async () => {
+    await expect(run('WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n) SELECT count(*) FROM n')).rejects.toThrow('5 second deadline');
+    expect((await run('SELECT 1')).rows).toEqual([[1]]);
+}, 10000);
+
+it('rejects invalid UTF-8, NULs and oversized snapshots before querying', async () => {
+    const { writeFile, truncate } = await import('node:fs/promises');
+
+    vault = await createTestVault({ 'a.csv': '' });
+    const request = {
+        tables: [
+            {
+                name: 't',
+                paths: ['a.csv'],
+            },
+        ],
+        sql: 'SELECT * FROM t',
+    };
+
+    await writeFile(vault.path('a.csv'), Buffer.from([255]));
+    await expect(csvQueryTool(vault.config, request)).rejects.toThrow('UTF-8');
+    await writeFile(vault.path('a.csv'), 'id\n\0');
+    await expect(csvQueryTool(vault.config, request)).rejects.toThrow('NUL');
+    await truncate(vault.path('a.csv'), 4 * 1024 * 1024 + 1);
+    await expect(csvQueryTool(vault.config, request)).rejects.toMatchObject({ code: 'file_too_large' });
+});
+
+it('supports analytical window functions without opening additional capabilities', async () => {
+    expect((await run('SELECT id, row_number() OVER (ORDER BY id), SUM(CAST(amount AS INTEGER)) OVER () FROM t')).rows).toEqual([
+        [
+            '00123',
+            1,
+            350,
+        ],
+        [
+            '00124',
+            2,
+            350,
+        ],
+    ]);
+});

@@ -34,7 +34,7 @@ snapshot; a set of files is not a transaction across concurrent external edits.
 
 The shared MCP definition documents exact limits: 8 files, 4 MiB total input,
 50000 records, 100 source columns, 64 KiB CSV records, 16000 SQL characters,
-100 string/null positional parameters, 1000 output rows and 256 KiB query output.
+100 string/null positional parameters (64 KiB serialized total), 1000 output rows and 256 KiB query output.
 `truncated` and `truncationReason` identify output row/byte limits. Input is never
 silently truncated. Use an explicit ORDER BY for reproducible previews. Caller SQL
 LIMIT applies normally and does not mean the server truncated output.
@@ -53,3 +53,18 @@ the subprocess shares the service container/UID and its OS/network boundary. No 
 function can perform network access. Keep Node/SQLite patched and use a separate
 container boundary if accepting arbitrary executable code or requiring isolation
 from native vulnerabilities. Raw SQL, cell contents and raw SQLite errors are not logged.
+
+Supported SQL functions (operators, CAST, CASE, subqueries and CTEs also work):
+
+```text
+abs avg coalesce concat concat_ws count date datetime format glob hex if ifnull
+ iif instr julianday length like likelihood likely lower ltrim max min nullif
+ printf quote replace round rtrim sign strftime string_agg group_concat substr
+ substring sum time timediff total trim typeof unicode unixepoch unlikely upper
+ row_number rank dense_rank percent_rank cume_dist ntile lag lead first_value
+ last_value nth_value
+```
+
+Query errors report the failure stage or a fixed validation message, never raw SQL
+or CSV contents. The five-second real deadline test intentionally belongs to the
+integration suite; unit lifecycle tests use fake timers and remain under 100 ms.

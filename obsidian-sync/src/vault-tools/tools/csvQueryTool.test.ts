@@ -88,6 +88,14 @@ it.each([
             },
         ],
     },
+    { params: null },
+    { maxRows: null },
+    {
+        params: [
+            'x'.repeat(40000),
+            'x'.repeat(40000),
+        ],
+    },
     { sql: '' },
     { sql: 'x'.repeat(16001) },
     { sql: 'SELECT\0' },

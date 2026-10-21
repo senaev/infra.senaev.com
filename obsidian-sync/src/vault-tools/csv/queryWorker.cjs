@@ -4,10 +4,13 @@ const { DatabaseSync, constants } = require('node:sqlite');
 
 const { parse } = require('csv-parse/sync');
 
-const allowedFunctions = new Set('abs avg coalesce concat concat_ws count date datetime format glob hex if ifnull iif instr julianday length like likelihood likely lower ltrim max min nullif printf quote replace round rtrim sign strftime string_agg substr substring sum time timediff total trim typeof unicode unixepoch unlikely upper'.split(' '));
+const allowedFunctions = new Set('group_concat row_number rank dense_rank percent_rank cume_dist ntile lag lead first_value last_value nth_value abs avg coalesce concat concat_ws count date datetime format glob hex if ifnull iif instr julianday length like likelihood likely lower ltrim max min nullif printf quote replace round rtrim sign strftime string_agg substr substring sum time timediff total trim typeof unicode unixepoch unlikely upper'.split(' '));
 const quote = (value) => `"${value.replaceAll('"', '""')}"`;
+let stage = 'initialization';
+
+class PublicQueryError extends Error {}
 const fail = (message) => {
-    throw new Error(message);
+    throw new PublicQueryError(message);
 };
 
 function query(input) {
@@ -47,11 +50,14 @@ function query(input) {
             let insert;
 
             for (const source of table.sources) {
+                stage = 'CSV parsing';
                 const records = parse(source.text, {
                     bom: true,
                     skip_empty_lines: false,
                     max_record_size: 65536,
                 });
+
+                stage = 'CSV validation/import';
                 const current = records.shift();
 
                 if (!current || current.length === 0 || current.length > 100) {
@@ -122,6 +128,7 @@ function query(input) {
 
             return constants.SQLITE_DENY;
         });
+        stage = 'SQL preparation/authorization';
         const statement = db.prepare(input.sql);
 
         // prepare compiles only the first statement. Reject any unconsumed SQL.
@@ -152,6 +159,7 @@ function query(input) {
         let rowBytes = 0;
         const baseBytes = Buffer.byteLength(JSON.stringify(result));
 
+        stage = 'SQL execution/result conversion';
         for (const raw of statement.iterate(...input.params)) {
             if (result.rows.length >= input.maxRows) {
                 result.truncated = true;
@@ -209,8 +217,10 @@ process.stdin.on('data', (chunk) => {
 process.stdin.on('end', () => {
     try {
         process.stdout.write(JSON.stringify({ result: query(JSON.parse(input)) }));
-    } catch {
-        // SQL/CSV errors can contain private values. Keep errors bounded and data-free.
-        process.stdout.write(JSON.stringify({ error: 'CSV query rejected: check CSV headers/records, SQL syntax, permitted functions, parameters and resource limits' }));
+    } catch (error) {
+        // Never expose raw parser/SQLite messages, which can embed cell contents or SQL.
+        const message = error instanceof PublicQueryError ? error.message : `Query rejected during ${stage}; check CSV structure, SQL, parameters and resource limits`;
+
+        process.stdout.write(JSON.stringify({ error: message }));
     }
 });
