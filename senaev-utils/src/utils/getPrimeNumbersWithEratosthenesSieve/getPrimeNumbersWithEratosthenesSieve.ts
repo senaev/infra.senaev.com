@@ -1,11 +1,15 @@
 import { PositiveInteger } from '../../types/Number/PositiveInteger';
 
 export function getPrimeNumbersWithEratosthenesSieve(max: PositiveInteger): PositiveInteger[] {
-    const sieve = Array.from({ length: max + 1 });
+    const sieve = new Uint8Array(max + 1);
 
     for (let base = 2; base <= max ** 0.5; base++) {
+        if (sieve[base]) {
+            continue;
+        }
+
         for (let i = base ** 2; i <= max; i += base) {
-            sieve[i] = true;
+            sieve[i] = 1;
         }
     }
 

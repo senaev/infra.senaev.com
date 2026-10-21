@@ -146,6 +146,29 @@ core as a double for native workers, keeping actual diff output and cooperative
 cancellation checkpoints; the library integration suite still tests real workers.
 Do not mock the behavior being asserted. CI and pre-push always run `test:all`.
 
+### Test design and runtime
+
+Every new or modified unit test must be designed to pass in **less than 100 ms**,
+including its per-test setup and cleanup. Investigate cases above that budget with
+standalone Vitest duration reports before considering the work complete.
+
+- Mock external services, network calls, subprocesses, workers and other expensive
+  collaborators when their real implementation is not the behavior being asserted.
+- Use fake timers for delays, retries, timeouts and polling. Advance the clock to
+  explicit boundaries; use controlled promises for synchronization instead of sleeps.
+- Use the smallest representative fixtures that cover the relevant boundaries.
+  Reuse immutable expensive fixtures, but keep mutable test state independent.
+- Never mock the function or behavior under test, remove assertions, skip coverage,
+  or increase timeouts merely to meet the budget.
+- When real cryptography, filesystem safety, process behavior or large stress inputs
+  are essential and cannot fit the budget, keep that coverage in an explicitly
+  documented integration test and retain fast unit coverage of the surrounding logic.
+  Moving a test is not a runtime optimization: report integration durations too.
+
+The 100 ms budget is a test-design requirement, not a brittle wall-clock timeout:
+shared CI load can affect measurements. Measure slow cases in isolation to distinguish
+unnecessary work from scheduling contention, then fix the cause.
+
 Every package extends `tsconfig.base.json`, so the library is held to the same strictness as
 the services — including `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`.
 senaev-utils overrides only `module`, `moduleResolution`, `esModuleInterop` and `lib`,
