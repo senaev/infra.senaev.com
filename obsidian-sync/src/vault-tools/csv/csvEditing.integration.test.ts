@@ -571,11 +571,16 @@ it('runs ADD and DROP through the restricted subprocess and atomic publisher', a
     expect(await readFile(vault.path('data.csv'), 'utf8')).toBe(text);
 });
 
+// Full header-size parsing is the behavior under test: retain real CSV/SQLite
+// execution as a large-input integration check, separate from the 100 ms unit budget.
 it('rejects header growth beyond import limits without rewriting the CSV', async () => {
-    const text = `${'a'.repeat(60000)}\n`;
+    const headers = Array.from({ length: 99 }, (_, index) => `c${index}_${'a'.repeat(600)}`);
+    const text = `${headers.join(',')}\n`;
+
+    expect(headers.reduce((bytes, header) => bytes + Buffer.byteLength(header), 0) + 6500).toBeGreaterThan(65536);
 
     vault = await createTestVault({ 'data.csv': text });
-    await expect(csvQueryTool(vault.config, request(`ALTER TABLE t ADD COLUMN "${'b'.repeat(6000)}" TEXT`, hash(text)))).rejects.toMatchObject({
+    await expect(csvQueryTool(vault.config, request(`ALTER TABLE t ADD COLUMN "${'b'.repeat(6500)}" TEXT`, hash(text)))).rejects.toMatchObject({
         code: 'invalid_arguments',
         details: { hash: hash(text) },
     });
