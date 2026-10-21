@@ -91,8 +91,24 @@ describe('managed shell execution', () => {
     });
 
     it('streams logs, cancels queued work and holds the shared slot until group cleanup', async () => {
-        const active = (await run('trap \'\' TERM; (trap \'\' TERM; sleep 30) & echo ready; echo diagnostic >&2; wait')).json<Reply>();
-        const { id } = active.operation;
+        // Exercise real process cleanup without waiting for the observation window;
+        // the HTTP observation boundary has its own contract test.
+        const running = run('trap \'\' TERM; (trap \'\' TERM; sleep 30) & echo ready; echo diagnostic >&2; wait');
+        let id = '';
+
+        await vi.waitFor(async () => {
+            const { operations } = (await call('operations')).json<{ operations: { id: string }[] }>();
+
+            id = operations[0]?.id ?? '';
+            expect(id).not.toBe('');
+            const status = (await call('operation_status', { id })).json<Reply>();
+
+            expect(status.logs).toEqual(expect.arrayContaining([
+                expect.objectContaining({ text: 'ready\n' }),
+                expect.objectContaining({ text: 'diagnostic\n' }),
+            ]));
+        });
+        const active = (await call('operation_status', { id })).json<Reply>();
 
         expect(active.operation).toMatchObject({
             state: 'running',
@@ -158,6 +174,7 @@ describe('managed shell execution', () => {
             expect((await call('operation_status', { id })).json<Reply>().operation.state).toBe('cancelled');
         }, { timeout: 4000 });
         expect(performance.now() - before).toBeGreaterThanOrEqual(900);
+        expect((await running).json<Reply>().operation.id).toBe(id);
         await vi.waitFor(async () => {
             expect((await call('operation_result', { id: next.operation.id })).json<Reply>().operation.state).toBe('completed');
         });

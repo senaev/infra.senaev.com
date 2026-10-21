@@ -105,6 +105,13 @@ function maskCode(content: string, root: Nodes): string {
  * properties count too, as they do in Obsidian; links in code do not.
  */
 export function extractLinks(content: string): ExtractedLink[] {
+    // Every supported link needs a bracket, an autolink delimiter, a URL scheme,
+    // an email address or a www. prefix. Avoid building a Markdown AST for plain
+    // text (including multi-megabyte notes), without guessing which links resolve.
+    if (!/\[|[<:@]|www\./i.test(content)) {
+        return [];
+    }
+
     const root = parseMarkdown(content);
     const lineOf = createLineLocator(content);
     const links: { offset: number; link: ExtractedLink }[] = [];

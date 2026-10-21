@@ -17,6 +17,7 @@ let server: VaultServer;
 afterEach(async () => {
     await server?.close();
     vi.restoreAllMocks();
+    vi.useRealTimers();
     await vault?.remove();
 });
 
@@ -274,11 +275,23 @@ describe('managed vault routes', { timeout: 60000 }, () => {
 
     it('returns a handle after observation, rejects bad cancel inputs and releases running work', async () => {
         await setup();
+        vi.useFakeTimers({
+            toFake: [
+                'setTimeout',
+                'clearTimeout',
+                'Date',
+                'performance',
+            ],
+        });
         const blocked = blockSearch();
-        const running = await call('search', {
+        const pending = call('search', {
             queries: ['held'],
             timeoutSeconds: 30,
         });
+
+        await blocked.ready;
+        await vi.advanceTimersByTimeAsync(5000);
+        const running = await pending;
 
         expect(running.operation.state).toBe('running');
         expect((await call('operation_cancel', {
@@ -294,19 +307,35 @@ describe('managed vault routes', { timeout: 60000 }, () => {
 
     it('enforces execution timeout without polling and closes running work', async () => {
         await setup();
+        vi.useFakeTimers({
+            toFake: [
+                'setTimeout',
+                'clearTimeout',
+                'Date',
+                'performance',
+            ],
+        });
         const blocked = blockSearch();
-        const timed = await call('search', {
+        const timingOut = call('search', {
             queries: ['held'],
             timeoutSeconds: 1,
             executionPolicy: 'parallel',
         });
 
+        await blocked.ready;
+        await vi.advanceTimersByTimeAsync(1000);
+        const timed = await timingOut;
+
         expect(timed.operation.state).toBe('timed_out');
-        const running = await call('search', {
+        const pending = call('search', {
             queries: ['held'],
             timeoutSeconds: 30,
             executionPolicy: 'parallel',
         });
+
+        await vi.waitFor(() => expect(blocked.spy).toHaveBeenCalledTimes(2));
+        await vi.advanceTimersByTimeAsync(5000);
+        const running = await pending;
 
         await server.close();
         expect(running.operation.state).toBe('running');

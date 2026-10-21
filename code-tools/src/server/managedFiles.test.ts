@@ -32,6 +32,7 @@ describe('all managed file tools', { timeout: 60000 }, () => {
         await server.close();
         await projects.remove();
         vi.restoreAllMocks();
+        vi.useRealTimers();
     });
     function call(tool: string, payload: Record<string, unknown> = {}) {
         return server.inject({
@@ -196,16 +197,29 @@ describe('all managed file tools', { timeout: 60000 }, () => {
         'write',
         'patch',
     ])('returns a long %s handle and retains terminal cancellation', async (tool) => {
+        await server.ready();
+        vi.useFakeTimers({
+            toFake: [
+                'setTimeout',
+                'clearTimeout',
+                'Date',
+                'performance',
+            ],
+        });
         vi.spyOn(CODE_TOOLS, tool as keyof typeof CODE_TOOLS).mockImplementation((_config, _input, execution) => new Promise<never>((_resolve, reject) => {
             const context = execution;
 
             context?.signal.addEventListener('abort', () => reject(context.signal.reason), { once: true });
         }));
-        const body = (await call(tool, {
+        const pending = call(tool, {
             ...args(tool, 'slow'),
             executionPolicy: 'parallel',
             requestId: tool,
-        })).json<Reply>();
+        });
+
+        await vi.waitFor(() => expect(CODE_TOOLS[tool as keyof typeof CODE_TOOLS]).toHaveBeenCalledOnce());
+        await vi.advanceTimersByTimeAsync(5000);
+        const body = (await pending).json<Reply>();
 
         expect(body.operation.state).toBe('running');
         expect((await call('operation_result', { id: body.operation.id })).json<Reply>().operation.state).toBe('running');
@@ -223,6 +237,15 @@ describe('all managed file tools', { timeout: 60000 }, () => {
         'queued',
         'parallel',
     ])('times out every file handler without polls under %s', async (executionPolicy) => {
+        await server.ready();
+        vi.useFakeTimers({
+            toFake: [
+                'setTimeout',
+                'clearTimeout',
+                'Date',
+                'performance',
+            ],
+        });
         for (const tool of [
             'read',
             'write',
@@ -233,11 +256,15 @@ describe('all managed file tools', { timeout: 60000 }, () => {
 
                 context?.signal.addEventListener('abort', () => reject(context.signal.reason), { once: true });
             }));
-            expect((await call(tool, {
+            const pending = call(tool, {
                 ...args(tool, 'deadline'),
                 executionPolicy,
                 timeoutSeconds: 1,
-            })).json<Reply>())
+            });
+
+            await vi.waitFor(() => expect(CODE_TOOLS[tool as keyof typeof CODE_TOOLS]).toHaveBeenCalledOnce());
+            await vi.advanceTimersByTimeAsync(1000);
+            expect((await pending).json<Reply>())
                 .toMatchObject({
                     code: 'timed_out',
                     operation: { state: 'timed_out' },

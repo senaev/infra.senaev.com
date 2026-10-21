@@ -103,7 +103,7 @@ Run all checks from the repository root; the packages have no check scripts of t
 npm run simple-checks   # all checks below at once, concurrently -- what the pre-push hook runs
 npm run lint            # eslint, one root eslint.config.mjs for all packages
 npm run typecheck       # tsc --noEmit per package, in sequence
-npm test                # vitest, one project per package
+npm test                # vitest, one project per package plus senaev-utils-pure
 npm run check:python    # syntax of every *.py file (ast.parse, writes no __pycache__)
 npm run check:shell     # syntax of every *.sh file (sh -n for #!/bin/sh scripts, else bash -n)
 npm run check:helm      # helm lint of every chart, with common-values.yaml + its values.yaml
@@ -119,6 +119,10 @@ slowest one instead of their sum. Output is streamed live behind a coloured `[li
 check runs to completion even when another fails, so one push reports every problem at once;
 the exit code is non-zero if any of them failed.
 
+The concurrent check limits Vitest to half the available CPUs so native worker and
+child-process tests can make progress alongside lint and typecheck. Standalone
+`npm test` continues to use all available CPUs.
+
 Because there is no workspace hoisting, typed linting, `tsc` and the tests each need the
 package's own `node_modules`. A fresh clone therefore needs `npm ci` at the root **and** in
 every package. `npm run ci:all` (`scripts/ci-all.sh`) does both, for every folder with a
@@ -126,6 +130,12 @@ committed `package-lock.json`; `.github/workflows/check.yml` runs it too.
 
 Config lives at the root: `eslint.config.mjs` (React rules scoped to senaev-utils),
 `tsconfig.base.json` and `vitest.config.mts`.
+
+`vitest.config.mts` reuses thread workers only for an explicit allowlist of pure
+`senaev-utils` tests in the `senaev-utils-pure` project. Keep tests with module mocks,
+environment mutations, DOM, filesystem or process behavior in the isolated project.
+Review isolation requirements before adding tests to an allowlisted directory.
+Use `npm test -- --project='senaev-utils*'` to run both library projects.
 
 Every package extends `tsconfig.base.json`, so the library is held to the same strictness as
 the services — including `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`.

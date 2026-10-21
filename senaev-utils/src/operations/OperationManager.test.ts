@@ -315,6 +315,7 @@ describe('OperationManager', () => {
     });
 
     it('validates policy, times out parallel work and interrupts every policy on close', async () => {
+        vi.useFakeTimers();
         const { manager } = createManager();
         const run = vi.fn(() => Promise.resolve({}));
 
@@ -335,7 +336,7 @@ describe('OperationManager', () => {
         const abortable = (execution: CommandExecution) => new Promise<Record<string, unknown>>((resolve) => {
             execution?.signal.addEventListener('abort', () => resolve({}), { once: true });
         });
-        const timeout = await manager.launch({
+        const timingOut = manager.launch({
             tool: 'run',
             args: {
                 executionPolicy: 'parallel',
@@ -343,6 +344,9 @@ describe('OperationManager', () => {
             },
             run: abortable,
         });
+
+        await vi.advanceTimersByTimeAsync(1000);
+        const timeout = await timingOut;
 
         expect(timeout.operation).toMatchObject({
             state: 'timed_out',
@@ -422,6 +426,7 @@ describe('OperationManager', () => {
     });
 
     it('observes for 5 seconds, admits five queued jobs immediately and cancels without executing', async () => {
+        vi.useFakeTimers();
         const { manager } = createManager();
         const gate = deferred<Record<string, unknown>>();
         const running = manager.launch({
@@ -462,6 +467,7 @@ describe('OperationManager', () => {
             args: { requestId: 'q0' },
             run: queuedRun,
         })).toEqual(queued[0]);
+        await vi.advanceTimersByTimeAsync(5000);
         const observed = await running;
 
         expect(observed.operation).toMatchObject({
@@ -626,6 +632,7 @@ describe('OperationManager', () => {
     });
 
     it('does not count queued time and enforces timeout without polling', async () => {
+        vi.useFakeTimers();
         const { manager } = createManager();
         const started = deferred<void>();
         const first = manager.launch({
@@ -647,6 +654,7 @@ describe('OperationManager', () => {
         });
         const { id } = second.operation as { id: string };
 
+        await vi.advanceTimersByTimeAsync(1100);
         await first;
         await waitFor(async () => {
             const result = await manager.control('operation_result', { id });
@@ -656,7 +664,7 @@ describe('OperationManager', () => {
         expect(await manager.control('operation_result', { id })).toMatchObject({ result: { value: 'not timed out in queue' } });
         await manager.close();
         const { manager: deadlineManager } = createManager();
-        const hung = await deadlineManager.launch({
+        const pendingDeadline = deadlineManager.launch({
             tool: 'run',
             args: { timeoutSeconds: 1 },
             run: (execution) => new Promise((resolve) => {
@@ -665,6 +673,9 @@ describe('OperationManager', () => {
                 signal?.addEventListener('abort', () => resolve({}), { once: true });
             }),
         });
+
+        await vi.advanceTimersByTimeAsync(1000);
+        const hung = await pendingDeadline;
 
         expect(hung.operation).toMatchObject({ state: 'timed_out' });
         await deadlineManager.close();

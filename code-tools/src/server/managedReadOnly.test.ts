@@ -2,7 +2,6 @@ import {
     chmod, mkdir, writeFile,
 } from 'node:fs/promises';
 import { join } from 'node:path';
-import { setTimeout as delay } from 'node:timers/promises';
 
 import { createCommandExecution, type CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { withCommandExecution } from 'senaev-utils/src/commands/testing/withCommandExecution';
@@ -62,6 +61,7 @@ describe('managed search and list', () => {
         await server.close();
         await projects.remove();
         vi.restoreAllMocks();
+        vi.useRealTimers();
         metadata.beforeStat = () => undefined;
     });
     function call(tool: string, payload: Record<string, unknown> = {}) {
@@ -142,6 +142,15 @@ describe('managed search and list', () => {
     });
 
     it('shares the queue, cancels waiting search without invoking it and excludes queue time', async () => {
+        await server.ready();
+        vi.useFakeTimers({
+            toFake: [
+                'setTimeout',
+                'clearTimeout',
+                'Date',
+                'performance',
+            ],
+        });
         let release: () => void = () => undefined;
         let started: () => void = () => undefined;
         const entered = new Promise<void>((resolve) => {
@@ -181,7 +190,7 @@ describe('managed search and list', () => {
             executionPolicy: 'parallel',
             paths: ['README.md'],
         })).statusCode).toBe(200);
-        await delay(1100);
+        await vi.advanceTimersByTimeAsync(1100);
         release();
         await active;
         await vi.waitFor(async () => {

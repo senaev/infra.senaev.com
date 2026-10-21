@@ -1,8 +1,9 @@
 import {
-    describe, expect, it,
+    describe, expect, it, vi,
 } from 'vitest';
 
 import { type ExtractedLink, extractLinks } from './extractLinks';
+import * as markdown from './parseMarkdown';
 
 function only(content: string): ExtractedLink {
     const links = extractLinks(content);
@@ -13,6 +14,27 @@ function only(content: string): ExtractedLink {
 }
 
 describe('extractLinks', () => {
+    it('skips Markdown parsing for large plain text without link candidates', () => {
+        const parse = vi.spyOn(markdown, 'parseMarkdown');
+
+        try {
+            expect(extractLinks('x'.repeat(5 * 1024 * 1024 + 1))).toEqual([]);
+            expect(parse).not.toHaveBeenCalled();
+        } finally {
+            parse.mockRestore();
+        }
+    });
+
+    it.each([
+        'https://example.com',
+        'www.example.com',
+        'WWW.example.com',
+        'person@example.com',
+        '<https://example.com>',
+    ])('preserves GFM autolinks without Markdown brackets: %s', (content) => {
+        expect(extractLinks(content)).toHaveLength(1);
+    });
+
     it('reads a plain wikilink', () => {
         expect(only('See [[My Note]] here')).toEqual({
             kind: 'wikilink',

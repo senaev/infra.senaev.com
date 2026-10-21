@@ -15,7 +15,7 @@
     "check:python": "bash scripts/check-syntax.sh python",
     "check:shell": "bash scripts/check-syntax.sh shell",
     "check:helm": "bash scripts/check-syntax.sh helm",
-    "simple-checks": "concurrently --prefix-colors auto --timings npm:lint npm:typecheck npm:test npm:check:python npm:check:shell npm:check:helm",
+    "simple-checks": "concurrently --prefix-colors auto --timings --names lint,typecheck,test,check:python,check:shell,check:helm npm:lint npm:typecheck \"npm run test -- --maxWorkers=50%\" npm:check:python npm:check:shell npm:check:helm",
     "prepare": "lefthook install"
   },
   "devDependencies": {
