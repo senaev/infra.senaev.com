@@ -67,8 +67,27 @@ Use the returned hash as the next write's version precondition:
 The same command accepts UPDATE and DELETE, including WITH statements/subqueries.
 One statement may mutate exactly one physical CSV; its table must map to one path
 and include expectedHash. Other tables may supply read-only join/subquery data.
+Column changes use the same command and hash precondition:
+
+```sql
+ALTER TABLE items ADD COLUMN comment TEXT;
+ALTER TABLE items DROP COLUMN comment;
+```
+
+Each example is a separate request. ADD accepts a column name with optional TEXT;
+existing records receive empty strings. DROP removes that column's header and
+values, preserving other columns and row order. The final column cannot be dropped.
+Schema changes publish their new headers even for empty tables, return affectedRows:0,
+and use the same column/record/byte limits, diffs, hashes and atomic publication.
+Only ADD/DROP column forms are allowed; renaming tables/columns and other DDL remain
+unsupported. Defaults and constraints are rejected because they cannot persist in CSV.
+The worker uses SQLite's authorizer to identify the mapped ALTER target, then runs
+only a narrowly validated reconstruction with quoted identifiers; ADD uses TEXT
+with an empty-string default internally. Arbitrary supplied SQL never runs with
+authorization disabled.
+
 The supplied hash is also checked on reads when present. No SQL keyword regex
-selects the execution mode. RETURNING, ALTER, DROP, triggers, arbitrary DDL and
+selects the execution mode. RETURNING, DROP TABLE, renaming, triggers, other DDL and
 multiple statements are unsupported. NULL/BLOB writes are rejected; omitted cells
 use empty-string defaults. CSV edits use standard quoting, preserve column order,
 BOM and record delimiter, and may normalize quote spelling. Field values are not
@@ -107,10 +126,10 @@ not protection against native engine exploits; the worker shares the service UID
 and container. Keep Node/SQLite patched. Node 24.22+ is required.
 
 Tests cover full 4 MiB inputs, real deadline/cancellation, SQL classification,
-creation/zero-byte initialization, CRUD/no-op/error hashes, atomic publication and
+creation/zero-byte initialization, ADD/DROP columns, CRUD/no-op/error hashes, atomic publication and
 path/version conflicts. Fast unit lifecycle tests use mocks and fake timers. CRUD file tests invoke the
 same real SQLite engine directly, mocking only the subprocess boundary. Real HTTP,
-process isolation/deadline/cancellation and full-size checks remain integration
+column-change subprocess execution, process isolation/deadline/cancellation and full-size checks remain integration
 coverage; their measured runtimes are reported separately from the 100 ms unit
 budget. The byte-limit edit fixture uses few fields; the separate wide read stress
 fixture covers 40000 records and 100 columns.

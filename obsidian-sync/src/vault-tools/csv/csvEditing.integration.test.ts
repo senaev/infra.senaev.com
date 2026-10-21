@@ -151,7 +151,7 @@ it('rechecks the file hash at publication and rejects create races', async () =>
 
 it.each([
     'DROP TABLE t',
-    'ALTER TABLE t ADD COLUMN extra TEXT',
+    'ALTER TABLE t RENAME COLUMN value TO extra',
     'CREATE TRIGGER x AFTER UPDATE ON t BEGIN DELETE FROM t; END',
     'ATTACH DATABASE \'/tmp/x\' AS x',
     'UPDATE t SET value=\'x\'; DELETE FROM t',
@@ -400,4 +400,184 @@ it('initializes a BOM-only file instead of treating CREATE as an unmatched edit'
         hash: hash('\uFEFFid,value\n'),
     });
     expect(await readFile(vault.path('data.csv'), 'utf8')).toBe('\uFEFFid,value\n');
+});
+
+it.each([
+    'ALTER TABLE t ADD COLUMN extra TEXT',
+    'ALTER TABLE t ADD extra',
+    'ALTER TABLE main.t ADD COLUMN "extra" TEXT;',
+    '-- leading comment\nALTER /* boundary */ TABLE `t` ADD [extra] text; -- trailing comment',
+    'ALTER TABLE \'t\' ADD COLUMN \'extra\' \'TEXT\'',
+])('adds an empty TEXT column and returns its saved hash: %s', async (sql) => {
+    const text = 'id,value\n00123,first\n';
+    const saved = 'id,value,extra\n00123,first,\n';
+
+    vault = await createTestVault({ 'data.csv': text });
+    const result = await csvQueryTool(vault.config, request(sql, hash(text)));
+
+    expect(result).toMatchObject({
+        changed: true,
+        affectedRows: 0,
+        hash: hash(saved),
+    });
+    expect(await readFile(vault.path('data.csv'), 'utf8')).toBe(saved);
+    expect((await csvQueryTool(vault.config, request('SELECT id,value,extra,typeof(extra) FROM t'))).rows).toEqual([
+        [
+            '00123',
+            'first',
+            '',
+            'text',
+        ],
+    ]);
+});
+
+it.each([
+    'ALTER TABLE t DROP COLUMN value',
+    'ALTER TABLE t DROP value;',
+    'ALTER TABLE "main"."t" DROP COLUMN [value] /* trailing comment */',
+])('drops only the selected column and preserves row order: %s', async (sql) => {
+    const text = 'id,value\n00123,first\n00124,second\n';
+    const saved = 'id\n00123\n00124\n';
+
+    vault = await createTestVault({ 'data.csv': text });
+    expect(await csvQueryTool(vault.config, request(sql, hash(text)))).toMatchObject({
+        changed: true,
+        affectedRows: 0,
+        hash: hash(saved),
+    });
+    expect(await readFile(vault.path('data.csv'), 'utf8')).toBe(saved);
+});
+
+it('changes headers in an empty table even though no rows are affected', async () => {
+    vault = await createTestVault({ 'data.csv': 'id,value\n' });
+    const added = await csvQueryTool(vault.config, request('ALTER TABLE t ADD extra', hash('id,value\n')));
+
+    expect(added.hash).toBe(hash('id,value,extra\n'));
+    const dropped = await csvQueryTool(vault.config, request('ALTER TABLE t DROP value', added.hash as string));
+
+    expect(dropped.hash).toBe(hash('id,extra\n'));
+    expect(await readFile(vault.path('data.csv'), 'utf8')).toBe('id,extra\n');
+});
+
+it.each([
+    'ALTER TABLE t RENAME TO other',
+    'ALTER TABLE t RENAME COLUMN value TO other',
+    'ALTER TABLE t ADD extra INTEGER',
+    'ALTER TABLE t ADD extra TEXT DEFAULT \'x\'',
+    'ALTER TABLE t ADD extra TEXT NOT NULL',
+    'ALTER TABLE t ADD extra TEXT UNIQUE',
+    'ALTER TABLE t ADD extra TEXT CHECK(length(extra)>0)',
+    'ALTER TABLE t ADD extra TEXT REFERENCES other(id)',
+    'ALTER TABLE t ADD extra TEXT COLLATE NOCASE',
+    'ALTER TABLE t ADD extra TEXT GENERATED ALWAYS AS (id)',
+    'ALTER TABLE t ADD _source_path TEXT',
+    'ALTER TABLE t ADD rowid TEXT',
+    'ALTER TABLE t ADD ID TEXT',
+    'ALTER TABLE t DROP _source_record',
+    'ALTER TABLE t DROP missing',
+    'ALTER TABLE t ADD extra TEXT; DELETE FROM t',
+    'ALTER TABLE temp.t ADD extra TEXT',
+    'ALTER TABLE missing ADD extra TEXT',
+])('rejects unsupported or invalid schema changes without publication: %s', async (sql) => {
+    const text = 'id,value\n00123,first\n';
+
+    vault = await createTestVault({ 'data.csv': text });
+    await expect(csvQueryTool(vault.config, request(sql, hash(text)))).rejects.toMatchObject({
+        code: 'invalid_arguments',
+        details: { hash: hash(text) },
+    });
+    expect(await readFile(vault.path('data.csv'), 'utf8')).toBe(text);
+});
+
+it('requires the latest hash and a single-file target for column changes', async () => {
+    const text = 'id,value\n00123,first\n';
+
+    vault = await createTestVault({
+        'data.csv': text,
+        'second.csv': text,
+    });
+    await expect(csvQueryTool(vault.config, request('ALTER TABLE t ADD extra', undefined))).rejects.toMatchObject({ code: 'invalid_arguments' });
+    await expect(csvQueryTool(vault.config, request('ALTER TABLE t DROP value', 'a'.repeat(64)))).rejects.toMatchObject({ code: 'conflict' });
+    await expect(csvQueryTool(vault.config, {
+        tables: [
+            {
+                name: 't',
+                paths: [
+                    'data.csv',
+                    'second.csv',
+                ],
+            },
+        ],
+        sql: 'ALTER TABLE t ADD extra',
+    })).rejects.toMatchObject({ code: 'invalid_arguments' });
+    expect(await readFile(vault.path('data.csv'), 'utf8')).toBe(text);
+});
+
+it('rejects dropping the last column and adding a 101st column', async () => {
+    const wide = `${Array.from({ length: 100 }, (_, index) => `c${index}`).join(',')}\n`;
+
+    vault = await createTestVault({
+        'data.csv': 'id\n00123\n',
+        'wide.csv': wide,
+    });
+    await expect(csvQueryTool(vault.config, request('ALTER TABLE t DROP id', hash('id\n00123\n')))).rejects.toMatchObject({ code: 'invalid_arguments' });
+    await expect(csvQueryTool(vault.config, {
+        tables: [
+            {
+                name: 't',
+                paths: ['wide.csv'],
+                expectedHash: hash(wide),
+            },
+        ],
+        sql: 'ALTER TABLE t ADD extra',
+    })).rejects.toMatchObject({ code: 'invalid_arguments' });
+    expect(await readFile(vault.path('wide.csv'), 'utf8')).toBe(wide);
+});
+
+it('quotes column identifiers safely and preserves BOM and CRLF across schema changes', async () => {
+    const text = '\uFEFFid,value\r\n00123,"café, 猫"\r\n';
+
+    vault = await createTestVault({ 'data.csv': text });
+    const result = await csvQueryTool(vault.config, request('ALTER TABLE t ADD COLUMN "x""; DROP TABLE t; --" TEXT', hash(text)));
+    const saved = await readFile(vault.path('data.csv'), 'utf8');
+
+    expect(saved).toBe('\uFEFFid,value,"x""; DROP TABLE t; --"\r\n00123,"café, 猫",\r\n');
+    expect(result.hash).toBe(hash(saved));
+    expect((await csvQueryTool(vault.config, request('SELECT id,value FROM t'))).rows).toEqual([
+        [
+            '00123',
+            'café, 猫',
+        ],
+    ]);
+    const dropped = await csvQueryTool(vault.config, request('ALTER TABLE t DROP COLUMN "x""; DROP TABLE t; --"', result.hash as string));
+
+    expect(dropped.hash).toBe(hash(text));
+    expect(await readFile(vault.path('data.csv'), 'utf8')).toBe(text);
+});
+
+it('runs ADD and DROP through the restricted subprocess and atomic publisher', async () => {
+    const text = 'id,value\n00123,first\n';
+    const actual = await vi.importActual<typeof import('./runCsvQuery')>('./runCsvQuery');
+
+    vault = await createTestVault({ 'data.csv': text });
+    vi.mocked(runCsvQuery).mockImplementationOnce(actual.runCsvQuery);
+    const added = await csvQueryTool(vault.config, request('ALTER TABLE t ADD extra TEXT', hash(text)));
+
+    expect(added.hash).toBe(hash('id,value,extra\n00123,first,\n'));
+    vi.mocked(runCsvQuery).mockImplementationOnce(actual.runCsvQuery);
+    const dropped = await csvQueryTool(vault.config, request('ALTER TABLE t DROP extra', added.hash as string));
+
+    expect(dropped.hash).toBe(hash(text));
+    expect(await readFile(vault.path('data.csv'), 'utf8')).toBe(text);
+});
+
+it('rejects header growth beyond import limits without rewriting the CSV', async () => {
+    const text = `${'a'.repeat(60000)}\n`;
+
+    vault = await createTestVault({ 'data.csv': text });
+    await expect(csvQueryTool(vault.config, request(`ALTER TABLE t ADD COLUMN "${'b'.repeat(6000)}" TEXT`, hash(text)))).rejects.toMatchObject({
+        code: 'invalid_arguments',
+        details: { hash: hash(text) },
+    });
+    expect(await readFile(vault.path('data.csv'), 'utf8')).toBe(text);
 });
