@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import Fastify, { FastifyInstance } from 'fastify';
+import { httpRateLimit } from 'senaev-utils/src/utils/http/httpRateLimit';
 import {
     afterEach, beforeAll, beforeEach, describe, expect, it, vi,
 } from 'vitest';
@@ -9,6 +10,20 @@ import { createAuthorizationServer, LoginAttempt } from './authorizationServer';
 import { createGoogleLogin } from './googleLogin';
 import { oauthRoutes } from './registerOAuthRoutes';
 import { createFakeGoogle, FakeGoogle } from './testing/fakeGoogle';
+
+// HTTP policy is covered with the real plugin in senaev-utils. Route tests only
+// need a few requests to check application-level error rendering and key isolation.
+const requestPolicy = vi.hoisted(() => {
+    return { max: 60 };
+});
+
+vi.mock(import('senaev-utils/src/utils/http/httpRateLimit.js'), async (importOriginal) => {
+    const original = await importOriginal();
+
+    return {
+        httpRateLimit: vi.fn((key: string) => original.httpRateLimit(key, { max: () => requestPolicy.max })),
+    };
+});
 
 const AUTH_DOMAIN = 'auth.example.com';
 const MCP_DOMAIN = 'mcp.example.com';
@@ -38,6 +53,8 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+    requestPolicy.max = 60;
+    vi.mocked(httpRateLimit).mockClear();
     server = Fastify();
     // Same catch-all as the public server: routes bound to another host must fall through to it.
     server.get('/*', (_request, reply) => reply.code(401).send('Unauthorized'));
@@ -108,6 +125,7 @@ function continueUrlOf(body: string): URL {
 
 afterEach(async () => {
     await server.close();
+    vi.useRealTimers();
 });
 
 describe('registerOAuthRoutes', () => {
@@ -183,7 +201,15 @@ describe('registerOAuthRoutes', () => {
     });
 
     it('shows rate-limit errors and keeps token errors as JSON', async () => {
-        for (let attempt = 0; attempt < 60; attempt++) {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        requestPolicy.max = 1;
+        expect(vi.mocked(httpRateLimit).mock.calls.map(([key]) => key)).toEqual([
+            'login',
+            'google-start',
+            'google-callback',
+            'token',
+        ]);
+        for (let attempt = 0; attempt < 1; attempt++) {
             await server.inject({
                 method: 'POST',
                 url: '/authorize',
@@ -209,7 +235,7 @@ describe('registerOAuthRoutes', () => {
         // A flood of password attempts does not lock Google sign-in.
         expect((await startGoogleLogin()).response.statusCode).toBe(302);
 
-        for (let attempt = 0; attempt < 60; attempt++) {
+        for (let attempt = 0; attempt < 1; attempt++) {
             await server.inject({
                 method: 'POST',
                 url: '/token',

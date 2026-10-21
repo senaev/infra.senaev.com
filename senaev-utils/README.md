@@ -9,3 +9,15 @@ Import utilities directly by path, for example:
 ```ts
 import { deepEqual } from 'senaev-utils/src/utils/Object/deepEqual/deepEqual';
 ```
+
+### Server HTTP request support
+
+`src/utils/http/registerHttpRequestSupport` registers form parsing, cookies and
+route-scoped rate limiting inside a Fastify plugin. `httpRateLimit` supplies
+independent route keys with a default budget of 60 requests per minute.
+The server helpers require the optional Fastify 5 and `@fastify/cookie`,
+`@fastify/formbody`, `@fastify/rate-limit` peers; other utility consumers do not.
+
+Test application responses with a mocked policy and fake clock. Keep the real
+request parser, cookie and rate-window contract checks in the utility's separate
+integration test; do not mock the HTTP response that an assertion is verifying.
