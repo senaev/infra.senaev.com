@@ -33,7 +33,7 @@ contains paths, SHA-256 hashes, sizes and record counts. `_source_record` is a T
 snapshot; a set of files is not a transaction across concurrent external edits.
 
 The shared MCP definition documents exact limits: 8 files, 4 MiB total input,
-50000 records, 100 source columns, 64 KiB CSV records, 16000 SQL characters,
+50000 records, 100 source columns, 64 KiB decoded cell contents per CSV record, 16000 SQL characters,
 100 string/null positional parameters (64 KiB serialized total), 1000 output rows and 256 KiB query output.
 `truncated` and `truncationReason` identify output row/byte limits. Input is never
 silently truncated. Use an explicit ORDER BY for reproducible previews. Caller SQL
@@ -68,3 +68,7 @@ abs avg coalesce concat concat_ws count date datetime format glob hex if ifnull
 Query errors report the failure stage or a fixed validation message, never raw SQL
 or CSV contents. The five-second real deadline test intentionally belongs to the
 integration suite; unit lifecycle tests use fake timers and remain under 100 ms.
+
+SQLite internal limits also bound values/rows to 256 KiB, result columns to 128,
+expression depth to 50, compound SELECTs to 20, function arguments to 32 and
+LIKE/GLOB patterns to 1024 bytes. Parser buffering has an additional 65536 limit.

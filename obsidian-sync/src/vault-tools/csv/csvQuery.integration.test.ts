@@ -260,3 +260,9 @@ it('supports analytical window functions without opening additional capabilities
         ],
     ]);
 });
+
+it('bounds decoded record bytes across multiple Unicode fields', async () => {
+    const text = `a,b,c\n${'猫'.repeat(10000)},${'猫'.repeat(10000)},${'猫'.repeat(10000)}\n`;
+
+    await expect(run('SELECT * FROM t', text)).rejects.toThrow('64 KiB');
+});

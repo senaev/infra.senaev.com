@@ -64,6 +64,17 @@ function query(input) {
                     fail('CSV requires 1..100 header columns');
                 }
 
+                // Parser buffer accounting mixes decoded characters and bytes across fields.
+                // Enforce a precise UTF-8 bound on decoded cell contents as well.
+                for (const record of [
+                    current,
+                    ...records,
+                ]) {
+                    if (record.reduce((bytes, cell) => bytes + Buffer.byteLength(cell), 0) > 65536) {
+                        fail('CSV decoded record contents exceed 64 KiB');
+                    }
+                }
+
                 const names = current.map((name) => name.toLowerCase());
 
                 if (current.some((name) => !name.trim() || name.includes('\0')) || new Set(names).size !== names.length || names.some((name) => [
