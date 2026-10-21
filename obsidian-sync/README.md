@@ -26,7 +26,7 @@ exposes its actual CSV columns only, so ordinary INSERT INTO t VALUES (...) work
 
 Every completed result includes `hashes: [{path, hash}]` and source hashes/record
 counts. A single-file result also includes `hash`. SELECT returns the loaded
-snapshot hash. Edits return the saved version's new hash; no-op edits return the
+snapshot hash. Edits return the saved version's new hash; edits matching no rows return the
 unchanged hash and preserve the original bytes. Expected failures include current
 hashes in details.hashes/details.hash when accessible; a missing/unavailable hash is null, and failures before
 identifying safe file paths have an empty hashes list. Managed queue/running

@@ -292,3 +292,43 @@ it('preserves a literal BOM inside the first column name', async () => {
     await csvQueryTool(vault.config, request('UPDATE t SET value=\'updated\'', hash(text)));
     expect((await csvQueryTool(vault.config, request('SELECT * FROM t'))).columns[0]?.name).toBe('\uFEFFid');
 });
+
+it('treats a SELECT with expectedHash as a read and checks its precondition', async () => {
+    const text = '"id","value"\r\n"001","first"\r\n';
+
+    vault = await createTestVault({ 'data.csv': text });
+    expect(await csvQueryTool(vault.config, request('SELECT id,value,_source_record FROM t', hash(text)))).toMatchObject({
+        changed: false,
+        hash: hash(text),
+        rows: [
+            [
+                '001',
+                'first',
+                '1',
+            ],
+        ],
+    });
+    await expect(csvQueryTool(vault.config, request('SELECT * FROM t', 'a'.repeat(64)))).rejects.toMatchObject({ code: 'conflict' });
+    expect(await readFile(vault.path('data.csv'), 'utf8')).toBe(text);
+});
+
+it('exports a full-size edited CSV under the production worker limits', async () => {
+    const header = `${Array.from({ length: 100 }, (_, index) => `c${index}`).join(',')}\n`;
+    const row = `${','.repeat(99)}\n`;
+    const count = 40000;
+    const padding = 4 * 1024 * 1024 - Buffer.byteLength(header) - count * Buffer.byteLength(row);
+    const block = Math.floor(padding / 4);
+    const text = header + Array.from({ length: 4 }, (_, index) => 'x'.repeat(index === 3 ? padding - 3 * block : block) + row).join('') + row.repeat(count - 4);
+
+    vault = await createTestVault({ 'data.csv': text });
+    const result = await csvQueryTool(vault.config, request('UPDATE t SET c0=\'changed\' WHERE rowid=1', hash(text)));
+    const saved = await readFile(vault.path('data.csv'), 'utf8');
+
+    expect(result).toMatchObject({
+        affectedRows: 1,
+        changed: true,
+        hash: hash(saved),
+    });
+    expect(saved.startsWith(`${header}changed,`)).toBe(true);
+    expect(saved.split('\n')).toHaveLength(count + 2);
+}, 10000);

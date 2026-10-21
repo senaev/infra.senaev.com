@@ -410,6 +410,25 @@ function exportMutation(db, table, sources, { affectedRows, dialect }) {
     const statement = db.prepare(`SELECT ${table.headers.map(quote).join(',')} FROM ${quote(table.name)} ORDER BY rowid`);
 
     statement.setReturnArrays(true);
+    // Reuse the serializer for small batches instead of constructing it for every row.
+    // At most 32 bounded records are retained, never the full result set.
+    const batch = [];
+    const flush = () => {
+        if (!batch.length) {
+            return;
+        }
+
+        const chunk = stringify(batch, { record_delimiter: dialect.recordDelimiter });
+
+        bytes += Buffer.byteLength(chunk);
+        if (bytes > 4194304) {
+            fail('Edited CSV exceeds 4 MiB');
+        }
+
+        chunks.push(chunk);
+        batch.length = 0;
+    };
+
     for (const row of statement.iterate()) {
         if (++records > 50000) {
             fail('Edited CSV exceeds 50000 records');
@@ -427,16 +446,13 @@ function exportMutation(db, table, sources, { affectedRows, dialect }) {
             fail('NUL characters cannot be persisted in CSV');
         }
 
-        const chunk = stringify([row], { record_delimiter: dialect.recordDelimiter });
-
-        bytes += Buffer.byteLength(chunk);
-        if (bytes > 4194304) {
-            fail('Edited CSV exceeds 4 MiB');
+        batch.push(row);
+        if (batch.length === 32) {
+            flush();
         }
-
-        chunks.push(chunk);
     }
 
+    flush();
     if (bytes > 4194304) {
         fail('Edited CSV exceeds 4 MiB');
     }
