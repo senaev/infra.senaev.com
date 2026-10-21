@@ -48,7 +48,12 @@ it('uses a sanitized environment, bounded heap and restricted filesystem permiss
     expect(spawn).toHaveBeenCalledWith(process.execPath, expect.arrayContaining([
         '--permission',
         '--max-old-space-size=64',
-    ]), expect.objectContaining({ env: { NODE_NO_WARNINGS: '1' } }));
+    ]), expect.objectContaining({
+        env: {
+            NODE_NO_WARNINGS: '1',
+            DD_INSTRUMENT_SERVICE_WITH_APM: 'false',
+        },
+    }));
 });
 
 it('kills on timeout but waits for close before settling', async () => {

@@ -106,3 +106,13 @@ describe('vault tool definitions', () => {
         }
     });
 });
+
+test('announces one SQL command as potentially mutating with nested version preconditions', () => {
+    expect(VAULT_TOOL_DEFINITIONS.csv_query.annotations).toMatchObject({
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+    });
+    expect(JSON.stringify(VAULT_TOOL_DEFINITIONS.csv_query.inputSchema)).toContain('expectedHash');
+    expect(VAULT_TOOL_NAMES.filter((name) => name.startsWith('csv_'))).toEqual(['csv_query']);
+});

@@ -1,80 +1,111 @@
+# Vault CSV SQL command
 
-### Read-only CSV SQL queries
+`POST /vault/csv_query` / MCP `obsidian-csv_query` runs one SQL statement. SQLite's
+authorization callbacks classify the operation during preparation; no edit flag,
+separate command, type inference or separate column-list argument is used.
 
-`POST /vault/csv_query` (MCP: `obsidian-csv_query`) creates a fresh in-memory
-SQLite database per request. Requires Node 24.22+ (the Node 24 image and `.nvmrc`
-provide the runtime). No database or cache is persisted; source CSV bytes never change.
+CSV files are authoritative. Every call builds temporary in-memory SQLite tables;
+no database or index is persisted. Every imported cell is TEXT, including empty
+strings and leading zeros. SQL explicitly controls casts; SQLite's numeric casts
+are permissive, and integer division truncates.
+
+## Reads and hashes
 
 ```json
 {
   "tables": [{"name": "transactions", "paths": ["data/september.csv", "data/october.csv"]}],
-  "sql": "SELECT category, SUM(CAST(amount AS INTEGER)) AS total FROM transactions WHERE category = ? GROUP BY category",
-  "params": ["Groceries"],
-  "maxRows": 200
+  "sql": "SELECT category, SUM(CAST(amount AS INTEGER)) FROM transactions GROUP BY category"
 }
 ```
 
-All imported cells are `TEXT NOT NULL`; empty cells stay empty strings. SQL owns
-all conversion, including money and dates. `CAST('invalid' AS INTEGER)` yields 0
-in SQLite, and integer division truncates: validate data in your query when needed.
-No automatic financial rules or cents conversion exist. Joined files in one table
-must have identical ordered headers. Separate tables may have different headers.
-CSV uses strict UTF-8, optional BOM, comma delimiters and standard quoted fields.
-Blank records are not skipped; malformed widths fail rather than being repaired.
-Headers must be nonempty and unique ignoring case. Reserved headers are
-`_source_path`, `_source_record`, `rowid`, `_rowid_` and `oid`.
+Read tables may combine files with identical ordered headers. Different tables
+may have different headers; map each path once and use SQL aliases for self-joins.
+Read-only tables expose TEXT `_source_path` and `_source_record` columns; record
+numbers are 1-based data-record indexes, not physical lines. A mutated table
+exposes its actual CSV columns only, so ordinary INSERT INTO t VALUES (...) works.
 
-Results use positional `rows` and ordered `columns` (duplicate result names are
-preserved). `declaredType` is TEXT for source fields and may be null for expressions;
-it is not a guarantee about expression value types. Integers beyond JS's safe range
-are decimal strings. BLOB and non-finite results fail explicitly. Source metadata
-contains paths, SHA-256 hashes, sizes and record counts. `_source_record` is a TEXT
-1-based data-record index, not a physical line number. Each file is a stable byte
-snapshot; a set of files is not a transaction across concurrent external edits.
+Every completed result includes `hashes: [{path, hash}]` and source hashes/record
+counts. A single-file result also includes `hash`. SELECT returns the loaded
+snapshot hash. Edits return the saved version's new hash; no-op edits return the
+unchanged hash and preserve the original bytes. Expected failures include current
+hashes in details.hashes/details.hash when accessible; a missing/unavailable hash is null, and failures before
+identifying safe file paths have an empty hashes list. Managed queue/running
+handles are not completed operations: retrieve their final result for hashes.
 
-The shared MCP definition documents exact limits: 8 files, 4 MiB total input,
-50000 records, 100 source columns, 64 KiB decoded cell contents per CSV record, 16000 SQL characters,
-100 string/null positional parameters (64 KiB serialized total), 1000 output rows and 256 KiB query output.
-`truncated` and `truncationReason` identify output row/byte limits. Input is never
-silently truncated. Use an explicit ORDER BY for reproducible previews. Caller SQL
-LIMIT applies normally and does not mean the server truncated output.
+Results use ordered columns and positional rows, preserving duplicate result
+names. Expression declared types may be null. Large integers are decimal strings;
+BLOB/non-finite results are rejected. Explicit truncation identifies output row or
+byte limits; caller SQL LIMIT is distinct from server truncation.
 
-Trusted setup alone creates tables. SQLite authorization then denies every action
-except SELECT/CTEs, reads of supplied tables and an explicit built-in function list.
-No extensions, file functions, user-defined functions, ATTACH or PRAGMA are exposed.
-One disposable subprocess at a time isolates synchronous SQL from the event loop;
-5-second deadline/cancellation kills and reaps it before admission is released.
-SQLite has a 64 MiB native allocation cap and V8 a 64 MiB old-space cap, plus reduced
-SQLite expression/value limits. These are not a total RSS cap. Child environment
-contains no application secrets or NODE_OPTIONS; Node permissions allow reads only
-of its entrypoint and CSV parser package, with no filesystem writes or child creation.
-Node permissions are defense in depth, not a sandbox against native engine exploits;
-the subprocess shares the service container/UID and its OS/network boundary. No SQL
-function can perform network access. Keep Node/SQLite patched and use a separate
-container boundary if accepting arbitrary executable code or requiring isolation
-from native vulnerabilities. Raw SQL, cell contents and raw SQLite errors are not logged.
+## Creating and editing
 
-Supported SQL functions (operators, CAST, CASE, subqueries and CTEs also work):
+Create a missing file directly, avoiding ChatGPT's zero-byte upload restriction:
 
-```text
-abs avg coalesce concat concat_ws count date datetime format glob hex if ifnull
- iif instr julianday length like likelihood likely lower ltrim max min nullif
- printf quote replace round rtrim sign strftime string_agg group_concat substr
- substring sum time timediff total trim typeof unicode unixepoch unlikely upper
- row_number rank dense_rank percent_rank cume_dist ntile lag lead first_value
- last_value nth_value
+```json
+{
+  "tables": [{"name": "items", "paths": ["data/items.csv"], "expectedHash": null}],
+  "sql": "CREATE TABLE items(id TEXT, value TEXT)"
+}
 ```
 
-Query errors report the failure stage or a fixed validation message, never raw SQL
-or CSV contents. The five-second real deadline test intentionally belongs to the
-integration suite; unit lifecycle tests use fake timers and remain under 100 ms.
+An existing zero-byte file is uninitialized: use CREATE TABLE with its actual
+empty-file SHA-256. Column names come from SQL. Optional TEXT declarations are
+accepted; constraints, defaults, generated columns and other types are rejected
+because CSV cannot persist them. A header-only CSV already represents an empty
+table. DELETE FROM items preserves the header instead of producing a zero-byte file.
 
-SQLite internal limits also bound values/rows to 256 KiB, result columns to 128,
-expression depth to 50, compound SELECTs to 20, function arguments to 32 and
-LIKE/GLOB patterns to 1024 bytes. Parser buffering has an additional 65536 limit.
+Use the returned hash as the next write's version precondition:
 
-CSV records are validated and inserted incrementally via the parser's record
-callback; parsed rows are not accumulated in a JavaScript array. Each source text
-is released after import. Worker stdin counts raw chunk bytes once and releases
-its input buffers after JSON decoding. Integration coverage includes the full
-4 MiB input limit with 40000 rows and 100 columns under the production heap cap.
+```json
+{
+  "tables": [{"name": "items", "paths": ["data/items.csv"], "expectedHash": "<latest SHA-256>"}],
+  "sql": "INSERT INTO items VALUES (?, ?)",
+  "params": ["00123", "first"]
+}
+```
+
+The same command accepts UPDATE and DELETE, including WITH statements/subqueries.
+One statement may mutate exactly one physical CSV; its table must map to one path
+and include expectedHash. Other tables may supply read-only join/subquery data.
+The supplied hash is also checked on reads when present. No SQL keyword regex
+selects the execution mode. RETURNING, ALTER, DROP, triggers, arbitrary DDL and
+multiple statements are unsupported. NULL/BLOB writes are rejected; omitted cells
+use empty-string defaults. CSV edits use standard quoting, preserve column order,
+BOM and record delimiter, and may normalize quote spelling. Field values are not
+trimmed, interpreted, converted to money or sanitized as spreadsheet formulas.
+
+Edits return affectedRows, changed, diff and the saved hash. No rows are persisted
+until SQL and export validation succeed. A shared in-process file reservation and
+fresh byte-hash check precede atomic publication. A validated directory descriptor
+anchors publication, preventing a substituted ancestor symlink from redirecting
+writes. Creation is exclusive. These checks do not transactionally lock external
+writers/replicas; cross-process atomic compare-and-swap is not claimed. Each input
+file is a snapshot, not a simultaneous transaction across all selected files.
+
+## Limits and isolation
+
+Strict UTF-8 CSV, comma separators, optional BOM, standard quoted fields. Blank
+records are not skipped; malformed widths and empty/duplicate/reserved headers
+fail. Reserved headers: _source_path, _source_record, rowid, _rowid_, oid.
+
+Limits: 8 files, 4 MiB total input and edited file size, 50000 records, 100 source
+columns, 64 KiB decoded cell contents per record, 16000 SQL characters, 100
+string/null parameters (64 KiB serialized total), 1000 output rows, 256 KiB query
+result budget including reserved hash metadata. maxRows defaults to 200. SQL edits
+are never silently truncated. Use ORDER BY for reproducible read previews.
+
+A disposable subprocess keeps synchronous SQLite off the server event loop. One
+CSV operation at a time; five-second worker deadline, termination/reaping on abort,
+64 MiB SQLite allocation cap and 64 MiB V8 old-space cap (not a total RSS cap).
+Records are inserted incrementally, and IPC input bytes are counted linearly.
+Only supplied tables and allowlisted built-in analytical functions are accessible.
+Filesystem/network functions, PRAGMA, ATTACH, extensions and user code are denied.
+Child environment contains no application secrets; auto-instrumentation is disabled
+only for the restricted child. Node permissions allow its entrypoint and CSV package
+reads but no filesystem writes or subprocesses. Permissions are defense in depth,
+not protection against native engine exploits; the worker shares the service UID
+and container. Keep Node/SQLite patched. Node 24.22+ is required.
+
+Tests cover full 4 MiB inputs, real deadline/cancellation, SQL classification,
+creation/zero-byte initialization, CRUD/no-op/error hashes, atomic publication and
+path/version conflicts. Fast unit lifecycle tests use mocks and fake timers.
