@@ -114,6 +114,7 @@ function query(input) {
                             } else {
                                 insert.run(...record);
                             }
+
                             sourceRecords++;
                         }
 
