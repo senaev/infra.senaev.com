@@ -64,6 +64,7 @@ describe('handleMcpMessage', () => {
         }).result;
 
         expect(tools.map((tool) => tool.name)).toEqual([
+            'obsidian-csv_query',
             'obsidian-download',
             'obsidian-download_chunk',
             'obsidian-upload',
