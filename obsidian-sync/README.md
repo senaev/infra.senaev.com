@@ -48,8 +48,8 @@ Create a missing file directly, avoiding ChatGPT's zero-byte upload restriction:
 }
 ```
 
-An existing zero-byte file is uninitialized: use CREATE TABLE with its actual
-empty-file SHA-256. Column names come from SQL. Optional TEXT declarations are
+An existing zero-byte or BOM-only file is uninitialized: use CREATE TABLE with
+its actual SHA-256. A BOM is preserved when the headers are saved. Column names come from SQL. Optional TEXT declarations are
 accepted; constraints, defaults, generated columns and other types are rejected
 because CSV cannot persist them. A header-only CSV already represents an empty
 table. DELETE FROM items preserves the header instead of producing a zero-byte file.

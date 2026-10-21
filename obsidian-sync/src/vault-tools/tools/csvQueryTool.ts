@@ -209,8 +209,8 @@ const executeCsvQuery = createCommandAdapter(parseCsvQuery, async (config: Vault
                 throw new CommandError('command_failed', 'Invalid CSV mutation result');
             }
 
-            // Zero matched rows preserve the original bytes, including its formatting.
-            const csv = mutation.affectedRows === 0 && original !== '' ? original : mutation.csv;
+            // Zero matched rows preserve formatting; initialization always publishes its headers.
+            const csv = !mutation.creating && mutation.affectedRows === 0 ? original : mutation.csv;
 
             publication = await publishCsv(config, {
                 path: mutation.path,

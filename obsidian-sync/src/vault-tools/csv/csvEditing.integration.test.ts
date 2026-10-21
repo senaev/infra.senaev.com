@@ -389,3 +389,15 @@ it('imports entirely empty records as empty TEXT cells alongside nonempty record
         ],
     ]);
 });
+
+it('initializes a BOM-only file instead of treating CREATE as an unmatched edit', async () => {
+    vault = await createTestVault({ 'data.csv': '\uFEFF' });
+    const result = await csvQueryTool(vault.config, request('CREATE TABLE t(id TEXT, value TEXT)', hash('\uFEFF')));
+
+    expect(result).toMatchObject({
+        changed: true,
+        affectedRows: 0,
+        hash: hash('\uFEFFid,value\n'),
+    });
+    expect(await readFile(vault.path('data.csv'), 'utf8')).toBe('\uFEFFid,value\n');
+});

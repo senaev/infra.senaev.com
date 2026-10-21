@@ -190,6 +190,7 @@ function query(input) {
 
             return exportMutation(db, mutation, sources, {
                 affectedRows: creating ? 0 : Number(changes),
+                creating,
                 dialect: formats.get(mutation.name),
             });
         }
@@ -420,7 +421,9 @@ function classifyAndPrepare(db, input, sources) {
     };
 }
 
-function exportMutation(db, table, sources, { affectedRows, dialect }) {
+function exportMutation(db, table, sources, {
+    affectedRows, creating, dialect,
+}) {
     stage = 'CSV export validation';
     const chunks = [
         stringify([table.headers], {
@@ -492,6 +495,7 @@ function exportMutation(db, table, sources, { affectedRows, dialect }) {
             table: table.name,
             csv: chunks.join(''),
             affectedRows,
+            creating,
             records,
         },
     };

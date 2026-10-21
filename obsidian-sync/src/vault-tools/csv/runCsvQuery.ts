@@ -16,7 +16,7 @@ export type CsvQueryResult = {
     columns: { name: string; declaredType: string | null }[];
     rows: (string | number | null)[][];
     sources: { table: string; path: string; hash: string | null; size: number; records: number }[];
-    mutation?: { path: string; table: string; csv: string; affectedRows: number; records: number };
+    mutation?: { path: string; table: string; csv: string; affectedRows: number; creating: boolean; records: number };
     truncated: boolean;
     truncationReason: 'row_limit' | 'byte_limit' | null;
 };
