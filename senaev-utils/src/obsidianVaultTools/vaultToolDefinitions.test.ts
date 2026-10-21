@@ -30,6 +30,7 @@ describe('vault tool definitions', () => {
 
     test('lists the tools in a fixed order', () => {
         expect(VAULT_TOOL_NAMES).toEqual([
+            'csv_query',
             'download',
             'download_chunk',
             'upload',

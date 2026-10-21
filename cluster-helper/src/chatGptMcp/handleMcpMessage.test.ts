@@ -64,6 +64,7 @@ describe('handleMcpMessage', () => {
         }).result;
 
         expect(tools.map((tool) => tool.name)).toEqual([
+            'obsidian-csv_query',
             'obsidian-download',
             'obsidian-download_chunk',
             'obsidian-upload',
@@ -352,5 +353,71 @@ describe('ChatGPT file references', () => {
         await handleMcpMessage(message, handlers({ callVaultTool }));
         expect(callVaultTool).toHaveBeenCalledWith('upload', args);
         expect(JSON.stringify(describeMcpExchange(message, null))).not.toContain('secret=private');
+    });
+});
+
+describe('CSV SQL proxy contract', () => {
+    it.each([
+        {
+            status: 'ok',
+            rows: [
+                [
+                    '00123',
+                    '9007199254740993',
+                ],
+            ],
+            columns: [
+                { name: 'x' },
+                { name: 'x' },
+            ],
+            truncated: true,
+            sources: [{ hash: 'a'.repeat(64) }],
+        },
+        {
+            status: 'ok',
+            operation: {
+                id: 'query-1',
+                state: 'running',
+            },
+        },
+        {
+            status: 'error',
+            code: 'invalid_arguments',
+            message: 'Query rejected during SQL preparation/authorization',
+        },
+    ])('preserves CSV arguments and structured query/operation/error results %#', async (body) => {
+        const args = {
+            tables: [
+                {
+                    name: 't',
+                    paths: ['a.csv'],
+                },
+            ],
+            sql: 'SELECT * FROM t WHERE id = ?',
+            params: ['00123'],
+            executionPolicy: 'parallel',
+        };
+        const callVaultTool = vi.fn().mockResolvedValue({
+            isError: body.status === 'error',
+            body,
+        });
+        const result = await handleMcpMessage(request('tools/call', {
+            name: 'obsidian-csv_query',
+            arguments: args,
+        }), handlers({ callVaultTool }));
+
+        expect(callVaultTool).toHaveBeenCalledWith('csv_query', args);
+        expect(result).toMatchObject({
+            result: {
+                isError: body.status === 'error',
+                structuredContent: body,
+                content: [
+                    {
+                        type: 'text',
+                        text: JSON.stringify(body),
+                    },
+                ],
+            },
+        });
     });
 });

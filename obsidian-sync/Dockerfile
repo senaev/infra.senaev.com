@@ -1,4 +1,4 @@
-FROM node:24-alpine
+FROM node:24.22.0-alpine
 
 # Provides the `ob` CLI used for Obsidian Sync login and continuous sync.
 RUN npm install -g obsidian-headless

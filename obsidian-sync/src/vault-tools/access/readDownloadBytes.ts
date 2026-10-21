@@ -13,7 +13,7 @@ import { MAX_FILE_BYTES, resolveExistingFile } from './vaultFiles';
 let activeReads = 0;
 const MAX_ACTIVE_READS = 2;
 
-type ByteRange = { offset: number; length: number };
+type ByteRange = { offset: number; length: number; maxBytes?: number };
 
 /** Shared process-wide admission for metadata, chunks and legacy resource reads, including parallel tools. */
 export async function readDownloadFile(config: VaultToolsConfig, path: string, execution: CommandExecution, range?: ByteRange) {
@@ -35,6 +35,7 @@ export async function readDownloadFile(config: VaultToolsConfig, path: string, e
 
 /** Hash the whole validated descriptor while retaining only the selected bytes (all bytes for legacy resources). */
 async function readOpenedFile(config: VaultToolsConfig, path: string, execution: CommandExecution, range?: ByteRange) {
+    const maxBytes = range?.maxBytes ?? MAX_FILE_BYTES;
     const absolute = await resolveExistingFile(config, path, execution);
     const expected = join(await realpath(config.root), path);
     const handle = await open(absolute, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK).catch((error: unknown) => {
@@ -67,8 +68,8 @@ async function readOpenedFile(config: VaultToolsConfig, path: string, execution:
             throw new CommandError('forbidden_path', 'Downloads require a regular file');
         }
 
-        if (initial.size > BigInt(MAX_FILE_BYTES)) {
-            throw new CommandError('file_too_large', 'File exceeds 25 MiB');
+        if (initial.size > BigInt(maxBytes)) {
+            throw new CommandError('file_too_large', `File exceeds ${maxBytes} byte read limit`);
         }
 
         const chunks: Buffer[] = [];
@@ -78,14 +79,14 @@ async function readOpenedFile(config: VaultToolsConfig, path: string, execution:
 
         for (;;) {
             await execution.checkpoint();
-            const { bytesRead } = await handle.read(chunk, 0, Math.min(chunk.length, MAX_FILE_BYTES - size + 1));
+            const { bytesRead } = await handle.read(chunk, 0, Math.min(chunk.length, maxBytes - size + 1));
 
             if (bytesRead === 0) {
                 break;
             }
 
-            if (size + bytesRead > MAX_FILE_BYTES) {
-                throw new CommandError('file_too_large', 'File exceeds 25 MiB');
+            if (size + bytesRead > maxBytes) {
+                throw new CommandError('file_too_large', `File exceeds ${maxBytes} byte read limit`);
             }
 
             digest.update(chunk.subarray(0, bytesRead));
