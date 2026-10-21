@@ -1,6 +1,11 @@
 /** Domain argument contracts; independent of transport and execution policy. */
 export const VAULT_COMMAND_ARGUMENTS = {
     download: ['path'],
+    download_chunk: [
+        'path',
+        'expectedHash',
+        'chunkIndex',
+    ],
     upload: [
         'path',
         'file',

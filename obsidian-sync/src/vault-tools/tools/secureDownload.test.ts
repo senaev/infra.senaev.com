@@ -8,7 +8,9 @@ import {
 
 import { createTestVault, type TestVault } from '../createTestVault';
 
-import { downloadTool, readVaultFileResource } from './downloadTool';
+import {
+    downloadTool, downloadChunkTool, readVaultFileResource,
+} from './downloadTool';
 
 vi.mock('node:fs/promises', async (original) => {
     const fs = await original<typeof import('node:fs/promises')>();
@@ -28,9 +30,26 @@ afterEach(async () => {
     await vault?.remove();
 });
 
+function readMode(mode: string, ref: Awaited<ReturnType<typeof downloadTool>>) {
+    if (mode === 'metadata') {
+        return downloadTool(vault.config, { path: ref.path });
+    }
+
+    if (mode === 'chunk') {
+        return downloadChunkTool(vault.config, {
+            path: ref.path,
+            expectedHash: ref.hash,
+            chunkIndex: 0,
+        });
+    }
+
+    return readVaultFileResource(vault.config, { uri: ref.resource.uri });
+}
+
 it.each([
     'metadata',
     'resource',
+    'chunk',
 ])('blocks leaf replacement after validation for %s reads', async (mode) => {
     vault = await createTestVault({
         'a.pdf': 'ordinary',
@@ -45,9 +64,7 @@ it.each([
 
         return actual.open(path, flags, permissions);
     });
-    const run = mode === 'metadata'
-        ? downloadTool(vault.config, { path: 'a.pdf' })
-        : readVaultFileResource(vault.config, { uri: ref.resource.uri });
+    const run = readMode(mode, ref);
 
     await expect(run).rejects.toMatchObject({ code: 'forbidden_path' });
 });
@@ -55,6 +72,7 @@ it.each([
 it.each([
     'metadata',
     'resource',
+    'chunk',
 ])('blocks parent-directory replacement after validation for %s reads', async (mode) => {
     vault = await createTestVault({
         'files/a.pdf': 'ordinary',
@@ -69,9 +87,7 @@ it.each([
 
         return actual.open(path, flags, permissions);
     });
-    const run = mode === 'metadata'
-        ? downloadTool(vault.config, { path: 'files/a.pdf' })
-        : readVaultFileResource(vault.config, { uri: ref.resource.uri });
+    const run = readMode(mode, ref);
 
     await expect(run).rejects.toMatchObject({ code: 'forbidden_path' });
 });

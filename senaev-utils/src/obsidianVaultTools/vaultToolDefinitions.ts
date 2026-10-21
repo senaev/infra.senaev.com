@@ -715,7 +715,7 @@ const tasks_update: ToolDefinition = {
 const download: ToolDefinition = {
     title: 'Download an Obsidian file',
     description: [
-        'Returns a versioned MCP resource link for one vault file, including PDF, XLSX, CSV and images, up to 25 MiB. Read the resource with resources/read over this authenticated MCP connection to retrieve original bytes. The hash must still match; if the file changes, call download again. A resource link does not guarantee every ChatGPT client imports it as an attachment. No public download URL is created.',
+        'Returns metadata only for one vault file up to 25 MiB: path, name, MIME type, size, SHA-256 hash, chunkSize in original bytes and chunkCount. Retrieve bytes with download_chunk using path, expectedHash and zero-based chunkIndex. Empty files have one empty chunk. Reconstruct the bytes in an execution environment and verify the whole SHA-256 before analysis; this is not automatic ChatGPT attachment import. A legacy authenticated MCP resource link is also returned for compatible clients. No public URL is created.',
         VAULT_RULES,
     ].join(' '),
     inputSchema: {
@@ -728,6 +728,41 @@ const download: ToolDefinition = {
             },
         },
         required: ['path'],
+        additionalProperties: false,
+    },
+    annotations: READ_ONLY,
+};
+
+const download_chunk: ToolDefinition = {
+    title: 'Download a chunk of an Obsidian file',
+    description: [
+        'Returns up to 12 KiB of original file bytes encoded as base64 in data, with path, size, hash, chunkSize, chunkCount, chunkIndex, offset, byteCount, encoding and isLast. First call download for metadata; pass its hash as expectedHash and request indexes 0 through chunkCount minus one. Every request revalidates and hashes the entire file up to 25 MiB; a changed hash returns conflict and requires restarting. Decode each chunk separately, concatenate by index, verify size and whole-file SHA-256 before opening. Bytes may be retained in authenticated in-memory operation results like other tool results; do not copy base64 into user-facing prose. Requires client execution tools to reconstruct files and does not promise a native ChatGPT attachment.',
+        VAULT_RULES,
+    ].join(' '),
+    inputSchema: {
+        type: 'object',
+        properties: {
+            ...MANAGED_TOOL_PROPERTIES,
+            path: {
+                type: 'string',
+                description: 'Exact vault-relative file path from download metadata.',
+            },
+            expectedHash: {
+                type: 'string',
+                pattern: '^[a-f0-9]{64}$',
+                description: 'Whole-file SHA-256 hash from download metadata.',
+            },
+            chunkIndex: {
+                type: 'integer',
+                minimum: 0,
+                description: 'Zero-based index; must be less than chunkCount.',
+            },
+        },
+        required: [
+            'path',
+            'expectedHash',
+            'chunkIndex',
+        ],
         additionalProperties: false,
     },
     annotations: READ_ONLY,
@@ -818,6 +853,7 @@ const deleteFile: ToolDefinition = {
 /** In the order that `tools/list` shows them. */
 export const VAULT_TOOL_DEFINITIONS = {
     download,
+    download_chunk,
     upload,
     delete: deleteFile,
     list,

@@ -144,3 +144,50 @@ References:
 - https://developers.openai.com/plugins/reference#tool-results
 - https://modelcontextprotocol.io/specification/2025-06-18/server/resources
 - https://developers.openai.com/api/docs/actions/sending-files (Actions only)
+
+
+## Download as metadata and bounded chunks
+
+Use this route when the client can execute code but cannot read MCP resource links.
+It transfers the original binary file, not extracted text. It does not automatically
+create a ChatGPT attachment or provide an execution environment in clients without one.
+
+1. Call `obsidian-download` with the exact vault-relative `path`. Metadata includes
+   `name`, `mimeType`, `size` in bytes, SHA-256 `hash`, `chunkSize` and `chunkCount`.
+   No base64 is returned here. The existing resource link remains for compatible clients.
+2. Call `obsidian-download_chunk` with `path`, `expectedHash` from that metadata and
+   zero-based `chunkIndex` from 0 through `chunkCount - 1`.
+3. Decode each response's `data` separately from base64 and concatenate decoded bytes
+   in index order. Do not concatenate independently padded base64 strings. Verify each
+   response's index, offset, byteCount, hash and file size; verify total size and whole-file
+   SHA-256 before opening or analysing the reconstructed file.
+
+Chunks contain at most 12 KiB (12,288 original bytes; 16,384 base64 characters), so normal
+replies fit within the existing 30,000-character operation-result page. Results include
+`path`, `hash`, `size`, `chunkSize`, `chunkCount`, `chunkIndex`, `offset`, `byteCount`,
+`isLast`, `encoding: "base64"` and `data`. Empty files have one empty chunk at index 0.
+Indexes outside the file or malformed hashes are rejected. A changed file yields `conflict`:
+discard previous chunks and request new metadata. Retry busy-capacity conflicts shortly;
+metadata/hash conflicts require a fresh version. The client must distinguish these messages.
+
+Every chunk request hashes the whole opened file while retaining only its selected range.
+Metadata hashes incrementally without retaining file bytes. Both reuse descriptor, exclusion,
+symlink and change-detection checks from resource reads, with a 25 MiB whole-file limit.
+Two file reads may run per backend process across metadata, chunk and legacy-resource calls;
+extra parallel calls fail with a capacity conflict. This bounds allocation, including tools
+launched outside the FIFO. Full-file hashing per chunk is intentionally simple/stateless but
+causes repeated I/O for large files; there is no transfer cache or snapshot session.
+
+Chunk tools use the ordinary managed execution/retry/cancellation contract and existing
+OAuth/internal-token routes; no new public endpoint, URL or request-body allowance is needed.
+Cancel queued/running operations using operation_cancel. An HTTP disconnect does not cancel
+managed work; poll its operation before retrying. Deferred results use operation_result and,
+if paginated, its resultJson pages. File chunks are retained in authenticated in-memory
+operation results (up to 100 terminal operations for seven days, pruned on activity), unlike
+legacy resource bytes. They are not added to routine request/result logs. Avoid printing
+base64 in user-facing text or persisting it unnecessarily; it is file content, not encryption.
+
+Deployment acceptance remains pending: refresh tools, reconstruct an actual vault PDF using
+these commands in the intended client, verify size/hash, render/open it, and answer a question
+from its contents without using old uploaded copies or prior summary notes. Repeat with CSV.
+Unit/proxy tests alone do not establish that an ordinary/mobile chat has execution tools.

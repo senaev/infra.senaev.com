@@ -108,3 +108,64 @@ it('rejects foreign URIs before backend access and sanitizes transport errors', 
     expect(response).toHaveProperty('error');
     expect(JSON.stringify(response)).not.toContain('internal-secret-address');
 });
+
+it('forwards chunk arguments and bytes, including deferred results, without logging file data', async () => {
+    const chunk = {
+        path: 'private/a.pdf',
+        hash: 'a'.repeat(64),
+        chunkIndex: 0,
+        data: 'AP+A',
+        isLast: true,
+    };
+    const callVaultTool = vi.fn().mockResolvedValue({
+        isError: false,
+        body: {
+            status: 'ok',
+            ...chunk,
+        },
+    });
+    const families = createToolFamilies({
+        callVaultTool,
+        callCodeTool: vi.fn(),
+    });
+    const args = {
+        path: chunk.path,
+        expectedHash: chunk.hash,
+        chunkIndex: 0,
+    };
+    const message = request('tools/call', {
+        name: 'obsidian-download_chunk',
+        arguments: args,
+    });
+    const response = await handleMcpMessage(message, families);
+
+    expect(callVaultTool).toHaveBeenCalledWith('download_chunk', args);
+    expect(response).toMatchObject({
+        result: {
+            structuredContent: chunk,
+            isError: false,
+        },
+    });
+    expect(JSON.stringify(describeMcpExchange(message, response))).not.toContain(chunk.path);
+    expect(JSON.stringify(describeMcpExchange(message, response))).not.toContain(chunk.data);
+    callVaultTool.mockResolvedValue({
+        isError: false,
+        body: {
+            status: 'ok',
+            operation: {
+                tool: 'download_chunk',
+                state: 'completed',
+            },
+            result: chunk,
+        },
+    });
+    expect(await handleMcpMessage(request('tools/call', {
+        name: 'obsidian-operation_result',
+        arguments: { id: 'operation-id' },
+    }), families)).toMatchObject({
+        result: {
+            structuredContent: { result: chunk },
+            isError: false,
+        },
+    });
+});
