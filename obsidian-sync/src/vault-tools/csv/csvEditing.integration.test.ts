@@ -371,3 +371,21 @@ it('exports a full-size edited CSV under the production worker limits', async ()
     expect(saved.startsWith(`${header}changed,`)).toBe(true);
     expect(saved.split('\n')).toHaveLength(count + 2);
 }, 10000);
+
+it('imports entirely empty records as empty TEXT cells alongside nonempty records', async () => {
+    vault = await createTestVault({ 'data.csv': 'id,value\n,\n001,\n' });
+    expect((await csvQueryTool(vault.config, request('SELECT id,value,typeof(id),typeof(value) FROM t'))).rows).toEqual([
+        [
+            '',
+            '',
+            'text',
+            'text',
+        ],
+        [
+            '001',
+            '',
+            'text',
+            'text',
+        ],
+    ]);
+});

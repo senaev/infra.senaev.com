@@ -56,6 +56,7 @@ function query(input) {
                 recordDelimiter: recordDelimiter(table.sources[0].text),
             });
             let insert;
+            let insertEmpty;
 
             for (const source of table.sources) {
                 let firstRecord = true;
@@ -69,7 +70,9 @@ function query(input) {
                     max_record_size: 65536,
                     // Returning null prevents csv-parse/sync from retaining records.
                     on_record(record) {
-                        if (record.reduce((bytes, cell) => bytes + Buffer.byteLength(cell), 0) > 65536) {
+                        const decodedBytes = record.reduce((bytes, cell) => bytes + (cell.length ? Buffer.byteLength(cell) : 0), 0);
+
+                        if (decodedBytes > 65536) {
                             fail('CSV decoded record contents exceed 64 KiB');
                         }
 
@@ -95,6 +98,7 @@ function query(input) {
                                 headers = record;
                                 db.exec(`CREATE TABLE ${quote(table.name)} (${[...headers].map((name) => `${quote(name)} TEXT NOT NULL DEFAULT ''`).join(',')}) STRICT`);
                                 insert = db.prepare(`INSERT INTO ${quote(table.name)} VALUES (${Array(headers.length).fill('?').join(',')})`);
+                                insertEmpty = db.prepare(`INSERT INTO ${quote(table.name)} DEFAULT VALUES`);
                             } else if (JSON.stringify(headers) !== JSON.stringify(record)) {
                                 fail('CSV headers differ within a table');
                             }
@@ -103,7 +107,13 @@ function query(input) {
                                 fail('CSV exceeds 50000 data records');
                             }
 
-                            insert.run(...record);
+                            // Every imported column defaults to empty TEXT. Avoid binding up to
+                            // 100 identical empty strings for an entirely empty record.
+                            if (decodedBytes === 0) {
+                                insertEmpty.run();
+                            } else {
+                                insert.run(...record);
+                            }
                             sourceRecords++;
                         }
 
