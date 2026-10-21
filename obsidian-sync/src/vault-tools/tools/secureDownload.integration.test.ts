@@ -122,6 +122,9 @@ it('rejects an in-place same-size change detected after hashing', async () => {
     vi.mocked(realpath).mockImplementation(async (path, options) => {
         if (String(path).startsWith('/proc/self/fd/') && ++descriptorChecks === 2) {
             await writeFile(vault.path('a.pdf'), 'modified');
+            // Filesystem clocks can give rapid writes identical timestamps. Make the
+            // simulated version change explicit without sleeping for another tick.
+            await actual.utimes(vault.path('a.pdf'), new Date(0), new Date(0));
         }
 
         return await actual.realpath(path, options);

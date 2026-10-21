@@ -6,7 +6,7 @@ import { CommandError } from 'senaev-utils/src/commands/CommandError';
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 
 export type CsvQueryInput = {
-    tables: { name: string; sources: { path: string; text: string; hash: string; size: number }[] }[];
+    tables: { name: string; expectedHash?: string | null; sources: { path: string; text: string; hash: string | null; size: number }[] }[];
     sql: string;
     params: (string | null)[];
     maxRows: number;
@@ -15,7 +15,8 @@ export type CsvQueryInput = {
 export type CsvQueryResult = {
     columns: { name: string; declaredType: string | null }[];
     rows: (string | number | null)[][];
-    sources: { table: string; path: string; hash: string; size: number; records: number }[];
+    sources: { table: string; path: string; hash: string | null; size: number; records: number }[];
+    mutation?: { path: string; table: string; csv: string; affectedRows: number; creating: boolean; records: number };
     truncated: boolean;
     truncationReason: 'row_limit' | 'byte_limit' | null;
 };
@@ -25,15 +26,21 @@ export async function runCsvQuery(input: CsvQueryInput, execution: CommandExecut
     execution.throwIfAborted();
     const worker = join(__dirname, 'queryWorker.cjs');
     const parser = dirname(dirname(dirname(createRequire(__filename).resolve('csv-parse/sync'))));
+    const stringifier = dirname(dirname(dirname(createRequire(__filename).resolve('csv-stringify/sync'))));
+    const writable = input.tables.some((table) => Object.hasOwn(table, 'expectedHash'));
     const child = spawn(process.execPath, [
         '--permission',
         `--allow-fs-read=${worker}`,
         `--allow-fs-read=${parser}`,
+        `--allow-fs-read=${stringifier}`,
         '--max-old-space-size=64',
         '--disable-proto=throw',
         worker,
     ], {
-        env: { NODE_NO_WARNINGS: '1' },
+        env: {
+            NODE_NO_WARNINGS: '1',
+            DD_INSTRUMENT_SERVICE_WITH_APM: 'false',
+        },
         stdio: [
             'pipe',
             'pipe',
@@ -43,6 +50,7 @@ export async function runCsvQuery(input: CsvQueryInput, execution: CommandExecut
 
     return await new Promise((resolve, reject) => {
         let output = '';
+        let outputBytes = 0;
         let failure: unknown;
         const stop = (error: unknown) => {
             failure ??= error;
@@ -55,7 +63,8 @@ export async function runCsvQuery(input: CsvQueryInput, execution: CommandExecut
         child.stdout.setEncoding('utf8');
         child.stdout.on('data', (chunk: string) => {
             output += chunk;
-            if (Buffer.byteLength(output) > 263000) {
+            outputBytes += Buffer.byteLength(chunk);
+            if (outputBytes > (writable ? 26000000 : 263000)) {
                 stop(new CommandError('command_failed', 'CSV query exceeded its output limit'));
             }
         });

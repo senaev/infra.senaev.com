@@ -6,6 +6,8 @@ import { normalizeVaultPath } from '../access/vaultAccess';
 import { readDownloadFile } from '../access/readDownloadBytes';
 import { readVaultToolArguments } from '../toolArguments';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
+import { publishCsv } from '../csv/publishCsv';
+import { assertFilePath } from '../access/vaultFiles';
 import { runCsvQuery, type CsvQueryInput } from '../csv/runCsvQuery';
 
 let activeQueries = 0;
@@ -28,6 +30,7 @@ export function parseCsvQuery(input: unknown) {
         const table = readToolArguments(value, [
             'name',
             'paths',
+            'expectedHash',
         ]);
         const name = requiredNonEmptyString(table, 'name');
 
@@ -58,13 +61,26 @@ export function parseCsvQuery(input: unknown) {
             throw invalidArguments('Duplicate paths within a table are not allowed');
         }
 
+        const { expectedHash } = table;
+
+        if (expectedHash !== undefined && (paths.length !== 1 || (expectedHash !== null && (typeof expectedHash !== 'string' || !/^[a-f0-9]{64}$/.test(expectedHash))))) {
+            throw invalidArguments('expectedHash requires one CSV path and a lowercase SHA-256 digest, or null to create a missing file');
+        }
+
         files += paths.length;
 
         return {
             name,
             paths,
+            ...expectedHash === undefined ? {} : { expectedHash: expectedHash as string | null },
         };
     });
+
+    const allPaths = tables.flatMap((table) => table.paths);
+
+    if (new Set(allPaths).size !== allPaths.length) {
+        throw invalidArguments('Map each CSV path once; use SQL aliases for self joins');
+    }
 
     if (files > 8) {
         throw invalidArguments('At most 8 CSV files are allowed');
@@ -93,7 +109,7 @@ export function parseCsvQuery(input: unknown) {
     };
 }
 
-export const csvQueryTool = createCommandAdapter(parseCsvQuery, async (config: VaultToolsConfig, input, execution) => {
+const executeCsvQuery = createCommandAdapter(parseCsvQuery, async (config: VaultToolsConfig, input, execution) => {
     if (activeQueries !== 0) {
         throw new CommandError('conflict', 'CSV query capacity is busy; retry shortly', {
             reason: 'csv_query_capacity',
@@ -104,19 +120,41 @@ export const csvQueryTool = createCommandAdapter(parseCsvQuery, async (config: V
     activeQueries++;
     const start = performance.now();
 
+    const observed: { path: string; hash: string | null }[] = [];
+
     try {
         let bytes = 0;
+        const originals = new Map<string, string>();
         const tables: CsvQueryInput['tables'] = [];
 
         for (const table of input.tables) {
             const sources: CsvQueryInput['tables'][number]['sources'] = [];
 
             for (const path of table.paths) {
+                assertFilePath(config, path);
                 const source = await readDownloadFile(config, path, execution, {
                     offset: 0,
                     length: 4 * 1024 * 1024 - bytes,
                     maxBytes: 4 * 1024 * 1024 - bytes,
+                }).catch((error: unknown) => {
+                    if (table.expectedHash === null && error instanceof CommandError && error.code === 'not_found') {
+                        return {
+                            bytes: Buffer.alloc(0),
+                            hash: null,
+                            size: 0,
+                        };
+                    }
+
+                    throw error;
                 });
+
+                observed.push({
+                    path,
+                    hash: source.hash,
+                });
+                if (table.expectedHash !== undefined && table.expectedHash !== source.hash) {
+                    throw new CommandError('conflict', 'CSV changed or already exists; use its current hash', { hash: source.hash });
+                }
 
                 bytes += source.size;
                 if (bytes > 4 * 1024 * 1024) {
@@ -138,6 +176,7 @@ export const csvQueryTool = createCommandAdapter(parseCsvQuery, async (config: V
                     throw invalidArguments('CSV must not contain NUL characters');
                 }
 
+                originals.set(path, text);
                 sources.push({
                     path,
                     text,
@@ -149,6 +188,7 @@ export const csvQueryTool = createCommandAdapter(parseCsvQuery, async (config: V
             tables.push({
                 name: table.name,
                 sources,
+                ...table.expectedHash === undefined ? {} : { expectedHash: table.expectedHash },
             });
         }
 
@@ -158,12 +198,101 @@ export const csvQueryTool = createCommandAdapter(parseCsvQuery, async (config: V
         }, execution);
 
         execution.throwIfAborted();
+        const { mutation, ...reply } = result;
+        let publication;
+
+        if (mutation) {
+            const table = input.tables.find((candidate) => candidate.name === mutation.table);
+            const original = originals.get(mutation.path);
+
+            if (!table || table.expectedHash === undefined || original === undefined || table.paths.length !== 1 || table.paths[0] !== mutation.path) {
+                throw new CommandError('command_failed', 'Invalid CSV mutation result');
+            }
+
+            // Zero matched rows preserve formatting; initialization always publishes its headers.
+            const csv = !mutation.creating && mutation.affectedRows === 0 ? original : mutation.csv;
+
+            publication = await publishCsv(config, {
+                path: mutation.path,
+                expectedHash: table.expectedHash,
+                original,
+                csv,
+            }, execution);
+            for (const source of reply.sources) {
+                if (source.path === mutation.path) {
+                    Object.assign(source, {
+                        hash: publication.hash,
+                        size: publication.size,
+                        records: mutation.records,
+                    });
+                }
+            }
+        }
+
+        const hashes = reply.sources.map(({ path, hash }) => {
+            return {
+                path,
+                hash,
+            };
+        });
 
         return {
-            ...result,
+            ...reply,
+            changed: publication?.changed ?? false,
+            ...publication,
+            hashes,
+            ...hashes.length === 1 ? { hash: hashes[0]?.hash } : {},
+            ...mutation ? { affectedRows: mutation.affectedRows } : {},
             durationMs: Math.round(performance.now() - start),
         };
+    } catch (error) {
+        if (error instanceof CommandError && observed.length) {
+            const hashes: { path: string; hash: string | null }[] = [];
+
+            for (const { path } of observed) {
+                try {
+                    hashes.push({
+                        path,
+                        hash: (await readDownloadFile(config, path, execution, {
+                            offset: 0,
+                            length: 0,
+                            maxBytes: 4194304,
+                        })).hash,
+                    });
+                } catch {
+                    hashes.push({
+                        path,
+                        hash: null,
+                    });
+                }
+            }
+
+            throw new CommandError(error.code, error.message, {
+                ...error.details,
+                hashes,
+                ...hashes.length === 1 ? { hash: hashes[0]?.hash } : {},
+            });
+        }
+
+        throw error;
     } finally {
         activeQueries--;
     }
 });
+
+/** Validation failures still use the common hash response shape; inaccessible files have no disclosed hash. */
+export const csvQueryTool: typeof executeCsvQuery = async (...args) => {
+    try {
+        return await executeCsvQuery(...args);
+    } catch (error) {
+        if (error instanceof CommandError) {
+            throw new CommandError(error.code, error.message, {
+                hashes: [],
+                hash: null,
+                ...error.details,
+            });
+        }
+
+        throw error;
+    }
+};

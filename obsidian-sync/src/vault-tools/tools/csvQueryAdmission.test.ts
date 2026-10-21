@@ -45,7 +45,10 @@ it('holds admission during snapshot reads and releases it after success', async 
     read.mockReturnValue(new Promise((resolve) => {
         release = resolve;
     }));
-    query.mockResolvedValue({ rows: [['00123']] });
+    query.mockResolvedValue({
+        rows: [['00123']],
+        sources: [],
+    });
     const first = csvQueryTool(config, request);
 
     await expect(csvQueryTool(config, request)).rejects.toMatchObject({
@@ -61,7 +64,10 @@ it('holds admission during snapshot reads and releases it after success', async 
 it('releases admission after snapshot or query errors', async () => {
     read.mockRejectedValueOnce(new Error('read failed')).mockResolvedValue(snapshot);
     await expect(csvQueryTool(config, request)).rejects.toThrow('read failed');
-    query.mockRejectedValueOnce(new Error('query failed')).mockResolvedValue({ rows: [] });
+    query.mockRejectedValueOnce(new Error('query failed')).mockResolvedValue({
+        rows: [],
+        sources: [],
+    });
     await expect(csvQueryTool(config, request)).rejects.toThrow('query failed');
     expect((await csvQueryTool(config, request)).rows).toEqual([]);
 });

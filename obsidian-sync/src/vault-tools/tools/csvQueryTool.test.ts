@@ -110,3 +110,69 @@ it.each([
         ...changes,
     })).toThrow();
 });
+
+it('accepts version preconditions without adding an operation flag', () => {
+    expect(parseCsvQuery({
+        ...valid,
+        tables: [
+            {
+                name: 't',
+                paths: ['a.csv'],
+                expectedHash: null,
+            },
+        ],
+    }).tables[0]?.expectedHash).toBeNull();
+    expect(parseCsvQuery({
+        ...valid,
+        tables: [
+            {
+                name: 't',
+                paths: ['a.csv'],
+                expectedHash: 'a'.repeat(64),
+            },
+        ],
+    }).tables[0]?.expectedHash).toBe('a'.repeat(64));
+});
+
+it.each([
+    {
+        tables: [
+            {
+                name: 't',
+                paths: ['a.csv'],
+                expectedHash: 'bad',
+            },
+        ],
+    },
+    {
+        tables: [
+            {
+                name: 't',
+                paths: [
+                    'a.csv',
+                    'b.csv',
+                ],
+                expectedHash: 'a'.repeat(64),
+            },
+        ],
+    },
+    {
+        tables: [
+            {
+                name: 't',
+                paths: ['a.csv'],
+            },
+            {
+                name: 'other',
+                paths: ['a.csv'],
+            },
+        ],
+    },
+    { editing: true },
+    { columns: ['id'] },
+])('rejects invalid edit metadata or a separate mode/schema argument %#', (changes) => {
+    expect(() => parseCsvQuery({
+        ...valid,
+        ...changes,
+    })).toThrow();
+});
