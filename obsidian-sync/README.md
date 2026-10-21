@@ -97,7 +97,7 @@ are never silently truncated. Use ORDER BY for reproducible read previews.
 A disposable subprocess keeps synchronous SQLite off the server event loop. One
 CSV operation at a time; five-second worker deadline, termination/reaping on abort,
 64 MiB SQLite allocation cap and 64 MiB V8 old-space cap (not a total RSS cap).
-Records are inserted incrementally, and IPC input bytes are counted linearly.
+Records are inserted incrementally, and IPC input and output bytes are counted linearly.
 Only supplied tables and allowlisted built-in analytical functions are accessible.
 Filesystem/network functions, PRAGMA, ATTACH, extensions and user code are denied.
 Child environment contains no application secrets; auto-instrumentation is disabled

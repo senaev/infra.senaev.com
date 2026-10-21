@@ -87,7 +87,11 @@ it.each([
     const assertion = expect(pending).rejects.toBeInstanceOf(Error);
 
     if (mode === 'output') {
-        child.stdout.emit('data', 'x'.repeat(263001));
+        child.stdout.emit('data', 'é'.repeat(65000));
+        child.stdout.emit('data', 'é'.repeat(65000));
+        expect(child.kill).not.toHaveBeenCalled();
+        child.stdout.emit('data', 'é'.repeat(1501));
+        expect(child.kill).toHaveBeenCalledWith('SIGKILL');
     }
 
     if (mode === 'stdin') {

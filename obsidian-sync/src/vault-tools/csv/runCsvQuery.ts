@@ -50,6 +50,7 @@ export async function runCsvQuery(input: CsvQueryInput, execution: CommandExecut
 
     return await new Promise((resolve, reject) => {
         let output = '';
+        let outputBytes = 0;
         let failure: unknown;
         const stop = (error: unknown) => {
             failure ??= error;
@@ -62,7 +63,8 @@ export async function runCsvQuery(input: CsvQueryInput, execution: CommandExecut
         child.stdout.setEncoding('utf8');
         child.stdout.on('data', (chunk: string) => {
             output += chunk;
-            if (Buffer.byteLength(output) > (writable ? 26000000 : 263000)) {
+            outputBytes += Buffer.byteLength(chunk);
+            if (outputBytes > (writable ? 26000000 : 263000)) {
                 stop(new CommandError('command_failed', 'CSV query exceeded its output limit'));
             }
         });
