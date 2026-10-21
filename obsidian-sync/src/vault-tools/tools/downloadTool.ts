@@ -92,7 +92,11 @@ export async function readVaultFileResource(config: VaultToolsConfig, input: unk
 
 function assertDownloadHash(currentHash: string, expectedHash: string): void {
     if (currentHash !== expectedHash) {
-        throw new CommandError('conflict', 'File changed; restart from download metadata', { currentHash });
+        throw new CommandError('conflict', 'File changed; restart from download metadata', {
+            currentHash,
+            reason: 'version_changed',
+            retryable: false,
+        });
     }
 }
 

@@ -167,8 +167,9 @@ replies fit within the existing 30,000-character operation-result page. Results 
 `path`, `hash`, `size`, `chunkSize`, `chunkCount`, `chunkIndex`, `offset`, `byteCount`,
 `isLast`, `encoding: "base64"` and `data`. Empty files have one empty chunk at index 0.
 Indexes outside the file or malformed hashes are rejected. A changed file yields `conflict`:
-discard previous chunks and request new metadata. Retry busy-capacity conflicts shortly;
-metadata/hash conflicts require a fresh version. The client must distinguish these messages.
+discard previous chunks and request new metadata. Capacity conflicts have details.reason = "download_capacity" and retryable = true; retry
+shortly. Content-change conflicts have details.reason = "version_changed" and retryable = false;
+discard collected chunks and request fresh metadata.
 
 Every chunk request hashes the whole opened file while retaining only its selected range.
 Metadata hashes incrementally without retaining file bytes. Both reuse descriptor, exclusion,

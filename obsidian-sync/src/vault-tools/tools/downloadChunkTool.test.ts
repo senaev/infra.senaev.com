@@ -28,7 +28,7 @@ it.each([
     65536 + 71,
 ])('reconstructs all %i bytes and advertises metadata without file contents', async (size) => {
     vault = await createTestVault({ 'files/a.PDF': '' });
-    const original = Buffer.from(Array.from({ length: size }, (_, i) => i % 256));
+    const original = Buffer.from(Array.from({ length: size }, (_, i) => (i + Math.floor(i / 65536)) % 256));
 
     await writeFile(vault.path('files/a.PDF'), original);
     const metadata = await downloadTool(vault.config, { path: 'files/a.PDF' });
@@ -92,7 +92,13 @@ it('rejects changed bytes even when size and the requested chunk are unchanged',
         path: 'a.bin',
         expectedHash: metadata.hash,
         chunkIndex: 0,
-    })).rejects.toMatchObject({ code: 'conflict' });
+    })).rejects.toMatchObject({
+        code: 'conflict',
+        details: {
+            reason: 'version_changed',
+            retryable: false,
+        },
+    });
 });
 
 it.each([
@@ -238,7 +244,13 @@ it('bounds parallel hashing and releases admission after completion', async () =
 
     try {
         await started;
-        await expect(downloadTool(vault.config, { path: 'a.bin' })).rejects.toMatchObject({ code: 'conflict' });
+        await expect(downloadTool(vault.config, { path: 'a.bin' })).rejects.toMatchObject({
+            code: 'conflict',
+            details: {
+                reason: 'download_capacity',
+                retryable: true,
+            },
+        });
         release();
         await Promise.all(requests);
         expect((await downloadTool(vault.config, { path: 'a.bin' })).size).toBe(7);

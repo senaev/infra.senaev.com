@@ -19,7 +19,10 @@ type ByteRange = { offset: number; length: number };
 export async function readDownloadFile(config: VaultToolsConfig, path: string, execution: CommandExecution, range?: ByteRange) {
     execution.throwIfAborted();
     if (activeReads >= MAX_ACTIVE_READS) {
-        throw new CommandError('conflict', 'Download capacity is busy; retry shortly');
+        throw new CommandError('conflict', 'Download capacity is busy; retry shortly', {
+            reason: 'download_capacity',
+            retryable: true,
+        });
     }
 
     activeReads++;
@@ -58,24 +61,24 @@ async function readOpenedFile(config: VaultToolsConfig, path: string, execution:
         };
 
         await validateDescriptor();
-        const initial = await handle.stat();
+        const initial = await handle.stat({ bigint: true });
 
         if (!initial.isFile()) {
             throw new CommandError('forbidden_path', 'Downloads require a regular file');
         }
 
-        if (initial.size > MAX_FILE_BYTES) {
+        if (initial.size > BigInt(MAX_FILE_BYTES)) {
             throw new CommandError('file_too_large', 'File exceeds 25 MiB');
         }
 
         const chunks: Buffer[] = [];
         const digest = createHash('sha256');
+        const chunk = Buffer.alloc(65536);
         let size = 0;
 
         for (;;) {
             await execution.checkpoint();
-            const chunk = Buffer.alloc(Math.min(65536, MAX_FILE_BYTES - size + 1));
-            const { bytesRead } = await handle.read(chunk);
+            const { bytesRead } = await handle.read(chunk, 0, Math.min(chunk.length, MAX_FILE_BYTES - size + 1));
 
             if (bytesRead === 0) {
                 break;
@@ -90,17 +93,20 @@ async function readOpenedFile(config: VaultToolsConfig, path: string, execution:
             const to = range === undefined ? bytesRead : Math.min(bytesRead, range.offset + range.length - size);
 
             if (to > from) {
-                chunks.push(chunk.subarray(from, to));
+                chunks.push(Buffer.from(chunk.subarray(from, to)));
             }
 
             size += bytesRead;
         }
 
         await validateDescriptor();
-        const final = await handle.stat();
+        const final = await handle.stat({ bigint: true });
 
-        if (initial.size !== final.size || initial.mtimeMs !== final.mtimeMs || initial.ctimeMs !== final.ctimeMs) {
-            throw new CommandError('conflict', 'File changed during download; request fresh metadata');
+        if (initial.size !== final.size || initial.mtimeNs !== final.mtimeNs || initial.ctimeNs !== final.ctimeNs) {
+            throw new CommandError('conflict', 'File changed during download; request fresh metadata', {
+                reason: 'version_changed',
+                retryable: false,
+            });
         }
 
         execution.throwIfAborted();
