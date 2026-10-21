@@ -50,72 +50,73 @@ function query(input) {
             let insert;
 
             for (const source of table.sources) {
-                stage = 'CSV parsing';
-                const records = parse(source.text, {
+                let firstRecord = true;
+                let sourceRecords = 0;
+
+                stage = 'CSV parsing/validation/import';
+                db.exec('BEGIN');
+                parse(source.text, {
                     bom: true,
                     skip_empty_lines: false,
                     max_record_size: 65536,
+                    // Returning null prevents csv-parse/sync from retaining records.
+                    on_record(record) {
+                        if (record.reduce((bytes, cell) => bytes + Buffer.byteLength(cell), 0) > 65536) {
+                            fail('CSV decoded record contents exceed 64 KiB');
+                        }
+
+                        if (firstRecord) {
+                            firstRecord = false;
+                            if (record.length === 0 || record.length > 100) {
+                                fail('CSV requires 1..100 header columns');
+                            }
+
+                            const names = record.map((name) => name.toLowerCase());
+
+                            if (record.some((name) => !name.trim() || name.includes('\0')) || new Set(names).size !== names.length || names.some((name) => [
+                                '_source_path',
+                                '_source_record',
+                                'rowid',
+                                '_rowid_',
+                                'oid',
+                            ].includes(name))) {
+                                fail('CSV has empty, duplicate or reserved headers');
+                            }
+
+                            if (!headers) {
+                                headers = record;
+                                db.exec(`CREATE TABLE ${quote(table.name)} (${[
+                                    ...headers,
+                                    '_source_path',
+                                    '_source_record',
+                                ].map((name) => `${quote(name)} TEXT NOT NULL`).join(',')}) STRICT`);
+                                insert = db.prepare(`INSERT INTO ${quote(table.name)} VALUES (${Array(headers.length + 2).fill('?').join(',')})`);
+                            } else if (JSON.stringify(headers) !== JSON.stringify(record)) {
+                                fail('CSV headers differ within a table');
+                            }
+                        } else {
+                            if (++totalRecords > 50000) {
+                                fail('CSV exceeds 50000 data records');
+                            }
+
+                            insert.run(...record, source.path, String(++sourceRecords));
+                        }
+
+                        return null;
+                    },
                 });
-
-                stage = 'CSV validation/import';
-                const current = records.shift();
-
-                if (!current || current.length === 0 || current.length > 100) {
-                    fail('CSV requires 1..100 header columns');
-                }
-
-                // Parser buffer accounting mixes decoded characters and bytes across fields.
-                // Enforce a precise UTF-8 bound on decoded cell contents as well.
-                for (const record of [
-                    current,
-                    ...records,
-                ]) {
-                    if (record.reduce((bytes, cell) => bytes + Buffer.byteLength(cell), 0) > 65536) {
-                        fail('CSV decoded record contents exceed 64 KiB');
-                    }
-                }
-
-                const names = current.map((name) => name.toLowerCase());
-
-                if (current.some((name) => !name.trim() || name.includes('\0')) || new Set(names).size !== names.length || names.some((name) => [
-                    '_source_path',
-                    '_source_record',
-                    'rowid',
-                    '_rowid_',
-                    'oid',
-                ].includes(name))) {
-                    fail('CSV has empty, duplicate or reserved headers');
-                }
-
-                if (!headers) {
-                    headers = current;
-                    db.exec(`CREATE TABLE ${quote(table.name)} (${[
-                        ...headers,
-                        '_source_path',
-                        '_source_record',
-                    ].map((name) => `${quote(name)} TEXT NOT NULL`).join(',')}) STRICT`);
-                    insert = db.prepare(`INSERT INTO ${quote(table.name)} VALUES (${Array(headers.length + 2).fill('?').join(',')})`);
-                } else if (JSON.stringify(headers) !== JSON.stringify(current)) {
-                    fail('CSV headers differ within a table');
-                }
-
-                if (totalRecords + records.length > 50000) {
-                    fail('CSV exceeds 50000 data records');
-                }
-
-                db.exec('BEGIN');
-                for (let index = 0; index < records.length; index++) {
-                    insert.run(...records[index], source.path, String(index + 1));
+                if (firstRecord) {
+                    fail('CSV requires a header');
                 }
 
                 db.exec('COMMIT');
-                totalRecords += records.length;
+                source.text = '';
                 sources.push({
                     table: table.name,
                     path: source.path,
                     hash: source.hash,
                     size: source.size,
-                    records: records.length,
+                    records: sourceRecords,
                 });
             }
         }
@@ -216,18 +217,23 @@ function query(input) {
 }
 
 // Parent sends bounded immutable snapshots; the worker never opens vault paths.
-let input = '';
+const inputChunks = [];
+let inputBytes = 0;
 
-process.stdin.setEncoding('utf8');
 process.stdin.on('data', (chunk) => {
-    input += chunk;
-    if (Buffer.byteLength(input) > 26000000) {
+    inputBytes += chunk.length;
+    if (inputBytes > 26000000) {
         process.exit(1);
     }
+
+    inputChunks.push(chunk);
 });
 process.stdin.on('end', () => {
     try {
-        process.stdout.write(JSON.stringify({ result: query(JSON.parse(input)) }));
+        const input = JSON.parse(Buffer.concat(inputChunks).toString('utf8'));
+
+        inputChunks.length = 0;
+        process.stdout.write(JSON.stringify({ result: query(input) }));
     } catch (error) {
         // Never expose raw parser/SQLite messages, which can embed cell contents or SQL.
         const message = error instanceof PublicQueryError ? error.message : `Query rejected during ${stage}; check CSV structure, SQL, parameters and resource limits`;

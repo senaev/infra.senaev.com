@@ -266,3 +266,18 @@ it('bounds decoded record bytes across multiple Unicode fields', async () => {
 
     await expect(run('SELECT * FROM t', text)).rejects.toThrow('64 KiB');
 });
+
+it('imports the full 4 MiB limit with many short fields without retaining all parsed rows', async () => {
+    const header = `${Array.from({ length: 100 }, (_, index) => `c${index}`).join(',')}\n`;
+    const row = `${','.repeat(99)}\n`;
+    const count = 40000;
+    const padding = 4 * 1024 * 1024 - Buffer.byteLength(header) - count * Buffer.byteLength(row);
+    const block = Math.floor(padding / 4);
+    const text = header + Array.from({ length: 4 }, (_, index) => 'x'.repeat(index === 3 ? padding - 3 * block : block) + row).join('') + row.repeat(count - 4);
+
+    expect(Buffer.byteLength(text)).toBe(4 * 1024 * 1024);
+    expect(await run('SELECT count(*) FROM t', text)).toMatchObject({
+        rows: [[count]],
+        truncated: false,
+    });
+}, 10000);

@@ -72,3 +72,9 @@ integration suite; unit lifecycle tests use fake timers and remain under 100 ms.
 SQLite internal limits also bound values/rows to 256 KiB, result columns to 128,
 expression depth to 50, compound SELECTs to 20, function arguments to 32 and
 LIKE/GLOB patterns to 1024 bytes. Parser buffering has an additional 65536 limit.
+
+CSV records are validated and inserted incrementally via the parser's record
+callback; parsed rows are not accumulated in a JavaScript array. Each source text
+is released after import. Worker stdin counts raw chunk bytes once and releases
+its input buffers after JSON decoding. Integration coverage includes the full
+4 MiB input limit with 40000 rows and 100 columns under the production heap cap.
