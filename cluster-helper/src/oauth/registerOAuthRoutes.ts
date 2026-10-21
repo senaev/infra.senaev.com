@@ -1,9 +1,9 @@
 import { randomBytes } from 'node:crypto';
 
-import cookie, { type CookieSerializeOptions } from '@fastify/cookie';
-import formbody from '@fastify/formbody';
-import rateLimit from '@fastify/rate-limit';
+import type { CookieSerializeOptions } from '@fastify/cookie';
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
+import { httpRateLimit } from 'senaev-utils/src/utils/http/httpRateLimit';
+import { registerHttpRequestSupport } from 'senaev-utils/src/utils/http/registerHttpRequestSupport';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 
 import type {
@@ -44,21 +44,6 @@ const TRANSACTION_COOKIE_OPTIONS: CookieSerializeOptions = {
     httpOnly: true,
     sameSite: 'lax',
 };
-
-// One key per route, not per IP: behind Traefik every request has the same source
-// address anyway. Too many attempts lock the route for a minute; tokens that are already
-// issued keep working. Separate keys keep a flood on one method from locking the other.
-function rateLimitFor(key: string) {
-    return {
-        config: {
-            rateLimit: {
-                max: 60,
-                timeWindow: '1 minute',
-                keyGenerator: () => key,
-            },
-        },
-    };
-}
 
 function asParams(value: unknown): Record<string, unknown> {
     return isObject(value) ? value : {};
@@ -136,9 +121,7 @@ export const oauthRoutes: FastifyPluginAsync<OAuthRoutesOptions> = async (instan
     mcpDomain,
     mcpPaths,
 }) => {
-    await instance.register(formbody);
-    await instance.register(cookie);
-    await instance.register(rateLimit, { global: false });
+    await registerHttpRequestSupport(instance);
 
     const onAuthDomain = { constraints: { host: authDomain } };
     const onMcpDomain = { constraints: { host: mcpDomain } };
@@ -175,12 +158,12 @@ export const oauthRoutes: FastifyPluginAsync<OAuthRoutesOptions> = async (instan
 
     instance.post('/authorize', {
         ...onAuthDomain,
-        ...rateLimitFor('login'),
+        ...httpRateLimit('login'),
     }, (request, reply) => sendAuthorizeOutcome(reply, authorizationServer.login(asParams(request.body))));
 
     instance.get(GOOGLE_START_PATH, {
         ...onAuthDomain,
-        ...rateLimitFor('google-start'),
+        ...httpRateLimit('google-start'),
     }, async (request, reply) => {
         // The hidden fields come from the browser, so the request is checked again here:
         // otherwise a link with another redirect_uri would send the code elsewhere.
@@ -241,7 +224,7 @@ export const oauthRoutes: FastifyPluginAsync<OAuthRoutesOptions> = async (instan
 
     instance.get(GOOGLE_CALLBACK_PATH, {
         ...onAuthDomain,
-        ...rateLimitFor('google-callback'),
+        ...httpRateLimit('google-callback'),
     }, async (request, reply) => {
         const query = new URL(request.url, `https://${authDomain}`).searchParams;
         const { result, cookieName } = await googleLogin.finish(query, request.cookies);
@@ -256,13 +239,7 @@ export const oauthRoutes: FastifyPluginAsync<OAuthRoutesOptions> = async (instan
 
     instance.post('/token', {
         ...onAuthDomain,
-        config: {
-            rateLimit: {
-                max: 60,
-                timeWindow: '1 minute',
-                keyGenerator: () => 'token',
-            },
-        },
+        ...httpRateLimit('token'),
     }, async (request, reply) => {
         const { status, body } = await authorizationServer.token(asParams(request.body));
 

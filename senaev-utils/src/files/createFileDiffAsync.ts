@@ -4,13 +4,20 @@ import { Worker } from 'node:worker_threads';
 import type { CommandExecution } from '../commands/CommandExecution';
 
 import {
-    buildFileDiff, FILE_DIFF_OPTIONS, type FileDiff,
+    buildFileDiff, createFileDiff, FILE_DIFF_OPTIONS, type FileDiff,
 } from './createFileDiff';
 
 // Diff can be quadratic. Run it in a disposable worker so the backend event loop,
 // deadline and cancellation endpoints stay responsive; wait for termination on abort.
 export async function createFileDiffAsync(path: string, before: string, after: string, execution: CommandExecution): Promise<FileDiff> {
     execution.throwIfAborted();
+    // These bounded cases only format equal/inserted/deleted lines: there is no
+    // competing edit search to isolate. Avoid worker startup for small creates.
+    // Keep arbitrary edits and large inputs cancellable in a disposable worker.
+    if (before.length + after.length <= 16_384 && (before === after || before === '' || after === '')) {
+        return createFileDiff(path, before, after);
+    }
+
     const { signal } = execution;
     const worker = new Worker(`
         const { parentPort, workerData } = require('node:worker_threads');

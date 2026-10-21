@@ -15,6 +15,14 @@ describe('createFileDiffAsync', { timeout: 15000 }, () => {
         },
         {
             before: '',
+            after: 'small create\n',
+        },
+        {
+            before: 'small delete\n',
+            after: '',
+        },
+        {
+            before: '',
             after: (`${'x'.repeat(100)}\n`).repeat(300),
         },
         {

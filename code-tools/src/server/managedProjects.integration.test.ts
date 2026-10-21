@@ -53,6 +53,7 @@ describe('managed execution HTTP contract', () => {
         await server.close();
         await projects.remove();
         vi.restoreAllMocks();
+        vi.useRealTimers();
     });
 
     function call(tool: string, payload: Record<string, unknown> = {}) {
@@ -293,8 +294,21 @@ describe('managed execution HTTP contract', () => {
     });
 
     it('enforces the runtime deadline without subsequent observation calls', async () => {
-        holdProjects();
-        const response = await call('projects', { timeoutSeconds: 1 });
+        await server.ready();
+        vi.useFakeTimers({
+            toFake: [
+                'setTimeout',
+                'clearTimeout',
+                'Date',
+                'performance',
+            ],
+        });
+        const { started } = holdProjects();
+        const pending = call('projects', { timeoutSeconds: 1 });
+
+        await started;
+        await vi.advanceTimersByTimeAsync(1000);
+        const response = await pending;
 
         expect(response.json<Reply>()).toMatchObject({
             status: 'error',

@@ -10,8 +10,7 @@ const KEY_ID = 'test-key';
 
 export type FakeGoogle = Awaited<ReturnType<typeof createFakeGoogle>>;
 
-/** Google's token endpoint and keys, served from memory to `customFetch`. */
-export async function createFakeGoogle(clientId: string) {
+async function createSigningKeys() {
     const { privateKey, publicKey } = await generateKeyPair('RS256');
     const otherKey = await generateKeyPair('RS256');
     const jwk = {
@@ -20,6 +19,22 @@ export async function createFakeGoogle(clientId: string) {
         alg: 'RS256',
         use: 'sig',
     };
+
+    return {
+        privateKey,
+        otherKey,
+        jwk,
+    };
+}
+
+// Keys are immutable; each fake still gets independent claims and request state.
+let signingKeys: ReturnType<typeof createSigningKeys> | undefined;
+
+/** Google's token endpoint and keys, served from memory to `customFetch`. */
+export async function createFakeGoogle(clientId: string) {
+    const {
+        privateKey, otherKey, jwk,
+    } = await (signingKeys ??= createSigningKeys());
 
     let idTokenClaims: Record<string, unknown> = {};
     let signWithOtherKey = false;

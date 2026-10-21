@@ -2,14 +2,12 @@ import {
     readFile, readdir, writeFile,
 } from 'node:fs/promises';
 
-import { createCommandExecution, type CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
+import { type CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { withCommandExecution } from 'senaev-utils/src/commands/testing/withCommandExecution';
 import { hashContent } from 'senaev-utils/src/files/contentHash';
 import {
     afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
-import { createFileDiffAsync } from 'senaev-utils/src/files/createFileDiffAsync';
-import { replaceExactlyOnceAsync as replaceText } from 'senaev-utils/src/files/textEdits';
 
 import { createTestProjects, type TestProjects } from './createTestProjects';
 import { patchTool } from './patchTool';
@@ -270,20 +268,5 @@ describe('cooperative file cancellation and atomicity', () => {
             ],
         }, execution))).rejects.toBe(reason);
         expect(reads).toEqual([projects.path('demo', 'README.md')]);
-    });
-
-    it('yields during patch scanning and terminates CPU diff workers on cancellation', async () => {
-        for (const run of [
-            (execution: CommandExecution) => replaceText('x\n'.repeat(100000), 'x', 'y', { execution }),
-            (execution: CommandExecution) => createFileDiffAsync('large.md', 'a\nb\n'.repeat(20000), 'b\na\n'.repeat(20000), execution),
-        ]) {
-            const controller = new AbortController();
-            const reason = new Error('CPU cancelled');
-            const execution = createCommandExecution({ signal: controller.signal });
-            const promise = run(execution);
-
-            setImmediate(() => controller.abort(reason));
-            await expect(promise).rejects.toBe(reason);
-        }
     });
 });

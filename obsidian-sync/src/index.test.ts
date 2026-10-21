@@ -30,6 +30,34 @@ vi.mock('./telegram-post-sync/startTelegramPostSync', () => {
     return { startTelegramPostSyncInBackground: mocks.background };
 });
 
+function completion() {
+    let resolve: () => void = () => undefined;
+    const promise = new Promise<void>((done) => {
+        resolve = done;
+    });
+
+    return {
+        promise,
+        resolve,
+    };
+}
+
+function observeExit() {
+    const exited = completion();
+    const exit = vi.spyOn(process, 'exit').mockImplementation(() => {
+        exited.resolve();
+
+        return undefined as never;
+    });
+
+    return {
+        exit,
+        finished: exited.promise,
+    };
+}
+
+let started = completion();
+let serverClosed = completion();
 let originalSignals: ((signal: 'SIGTERM') => void)[] = [];
 
 beforeEach(() => {
@@ -38,10 +66,17 @@ beforeEach(() => {
     originalSignals = process.listeners('SIGTERM');
     mocks.setup.mockResolvedValue(undefined);
     mocks.serve.mockResolvedValue({ close: mocks.closeServer });
-    mocks.closeServer.mockResolvedValue(undefined);
+    started = completion();
+    serverClosed = completion();
+    mocks.closeServer.mockImplementation(() => {
+        serverClosed.resolve();
+
+        return Promise.resolve();
+    });
     mocks.closeBackground.mockResolvedValue(undefined);
     mocks.background.mockReturnValue({ close: mocks.closeBackground });
     mocks.continuous.mockImplementation((signal: AbortSignal) => new Promise<void>((resolve) => {
+        started.resolve();
         signal.addEventListener('abort', () => resolve(), { once: true });
     }));
 });
@@ -66,45 +101,50 @@ function stop() {
 
 describe('Obsidian process wiring', () => {
     it('closes the HTTP manager and drains background work before exiting on a signal', async () => {
-        const exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+        const { exit, finished } = observeExit();
         let release: () => void = () => undefined;
 
         mocks.closeBackground.mockReturnValue(new Promise<void>((resolve) => {
             release = resolve;
         }));
         await import('./index.js');
-        await vi.waitFor(() => expect(mocks.continuous).toHaveBeenCalledTimes(1));
+        await started.promise;
+        expect(mocks.continuous).toHaveBeenCalledTimes(1);
         stop();
-        await vi.waitFor(() => expect(mocks.closeServer).toHaveBeenCalledTimes(1));
+        await serverClosed.promise;
+        expect(mocks.closeServer).toHaveBeenCalledTimes(1);
         expect(mocks.continuous.mock.calls[0]?.[0].aborted).toBe(true);
         expect(exit).not.toHaveBeenCalled();
         release();
-        await vi.waitFor(() => expect(exit).toHaveBeenCalledExactlyOnceWith(0));
+        await finished;
+        expect(exit).toHaveBeenCalledExactlyOnceWith(0);
     });
 
     it('waits for startup cleanup and never opens the server after a startup signal', async () => {
-        const exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+        const { exit, finished } = observeExit();
         let release: () => void = () => undefined;
 
         mocks.setup.mockReturnValue(new Promise<void>((resolve) => {
             release = resolve;
         }));
         await import('./index.js');
-        await vi.waitFor(() => expect(mocks.setup).toHaveBeenCalledTimes(1));
+        expect(mocks.setup).toHaveBeenCalledTimes(1);
         stop();
         await Promise.resolve();
         expect(exit).not.toHaveBeenCalled();
         release();
-        await vi.waitFor(() => expect(exit).toHaveBeenCalledExactlyOnceWith(0));
+        await finished;
+        expect(exit).toHaveBeenCalledExactlyOnceWith(0);
         expect(mocks.serve).not.toHaveBeenCalled();
     });
 
     it('closes resources when continuous sync fails', async () => {
-        const exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+        const { exit, finished } = observeExit();
 
         mocks.continuous.mockRejectedValue(new Error('sync died'));
         await import('./index.js');
-        await vi.waitFor(() => expect(exit).toHaveBeenCalledExactlyOnceWith(1));
+        await finished;
+        expect(exit).toHaveBeenCalledExactlyOnceWith(1);
         expect(mocks.closeServer).toHaveBeenCalledTimes(1);
         expect(mocks.closeBackground).toHaveBeenCalledTimes(1);
     });

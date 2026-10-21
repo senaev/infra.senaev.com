@@ -103,7 +103,9 @@ Run all checks from the repository root; the packages have no check scripts of t
 npm run simple-checks   # all checks below at once, concurrently -- what the pre-push hook runs
 npm run lint            # eslint, one root eslint.config.mjs for all packages
 npm run typecheck       # tsc --noEmit per package, in sequence
-npm test                # vitest, one project per package
+npm test                # fast unit suite (100 ms per-case target, not a hard timeout)
+npm run test:integration # real filesystem/process/worker and dependency integration coverage
+npm run test:all         # both suites; this is the CI/pre-push test gate
 npm run check:python    # syntax of every *.py file (ast.parse, writes no __pycache__)
 npm run check:shell     # syntax of every *.sh file (sh -n for #!/bin/sh scripts, else bash -n)
 npm run check:helm      # helm lint of every chart, with common-values.yaml + its values.yaml
@@ -119,6 +121,10 @@ slowest one instead of their sum. Output is streamed live behind a coloured `[li
 check runs to completion even when another fails, so one push reports every problem at once;
 the exit code is non-zero if any of them failed.
 
+The concurrent check limits Vitest to half the available CPUs so native worker and
+child-process tests can make progress alongside lint and typecheck. Standalone
+`npm test` and `npm run test:all` continue to use all available CPUs when run alone.
+
 Because there is no workspace hoisting, typed linting, `tsc` and the tests each need the
 package's own `node_modules`. A fresh clone therefore needs `npm ci` at the root **and** in
 every package. `npm run ci:all` (`scripts/ci-all.sh`) does both, for every folder with a
@@ -126,6 +132,42 @@ committed `package-lock.json`; `.github/workflows/check.yml` runs it too.
 
 Config lives at the root: `eslint.config.mjs` (React rules scoped to senaev-utils),
 `tsconfig.base.json` and `vitest.config.mts`.
+
+`vitest.config.mts` reuses thread workers only for an explicit allowlist of pure
+`senaev-utils` tests in the `senaev-utils-pure` project. Keep tests with module mocks,
+environment mutations, DOM, filesystem or process behavior in the isolated project.
+Review isolation requirements before adding tests to an allowlisted directory.
+Use `npm run test:all -- --project='senaev-utils*'` to run all library projects.
+
+Integration files end in `.integration.test.ts`; all others belong to unit projects.
+Keep real filesystem security, atomicity, process signals and worker cancellation in
+the integration suite. Higher-level code/vault file tests use the synchronous diff
+core as a double for native workers, keeping actual diff output and cooperative
+cancellation checkpoints; the library integration suite still tests real workers.
+Do not mock the behavior being asserted. CI and pre-push always run `test:all`.
+
+### Test design and runtime
+
+Every new or modified unit test must be designed to pass in **less than 100 ms**,
+including its per-test setup and cleanup. Investigate cases above that budget with
+standalone Vitest duration reports before considering the work complete.
+
+- Mock external services, network calls, subprocesses, workers and other expensive
+  collaborators when their real implementation is not the behavior being asserted.
+- Use fake timers for delays, retries, timeouts and polling. Advance the clock to
+  explicit boundaries; use controlled promises for synchronization instead of sleeps.
+- Use the smallest representative fixtures that cover the relevant boundaries.
+  Reuse immutable expensive fixtures, but keep mutable test state independent.
+- Never mock the function or behavior under test, remove assertions, skip coverage,
+  or increase timeouts merely to meet the budget.
+- When real cryptography, filesystem safety, process behavior or large stress inputs
+  are essential and cannot fit the budget, keep that coverage in an explicitly
+  documented integration test and retain fast unit coverage of the surrounding logic.
+  Moving a test is not a runtime optimization: report integration durations too.
+
+The 100 ms budget is a test-design requirement, not a brittle wall-clock timeout:
+shared CI load can affect measurements. Measure slow cases in isolation to distinguish
+unnecessary work from scheduling contention, then fix the cause.
 
 Every package extends `tsconfig.base.json`, so the library is held to the same strictness as
 the services — including `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`.
