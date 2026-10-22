@@ -1,5 +1,5 @@
 import { mkdirSync, realpathSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 
 import fastifyStatic from '@fastify/static';
 
@@ -57,7 +57,10 @@ export function registerPublicStaticRoutes(server: VaultServer): void {
          */
         allowedPath: (pathName: string): boolean => {
             try {
-                return realpathSync(join(realRoot, pathName)).startsWith(realRoot);
+                const realPath = realpathSync(join(realRoot, pathName));
+
+                // The separator stops a sibling such as `public-static-private` from passing.
+                return realPath === realRoot || realPath.startsWith(`${realRoot}${sep}`);
             } catch {
                 // Missing file: let the plugin answer with its normal 404.
                 return true;
