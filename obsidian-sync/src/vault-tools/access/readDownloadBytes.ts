@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import { constants } from 'node:fs';
-import { open, realpath } from 'node:fs/promises';
+import {
+    lstat, open, realpath,
+} from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { CommandError } from 'senaev-utils/src/commands/CommandError';
@@ -47,16 +49,20 @@ async function readOpenedFile(config: VaultToolsConfig, path: string, execution:
     });
 
     try {
+        // The opened descriptor must be the very file that the allowed path names now, with
+        // no symlink on the way: same device and inode. This also catches a parent folder
+        // that was replaced by a symlink while the file was opened.
         const validateDescriptor = async () => {
-            let actual: string;
+            const [
+                opened,
+                current,
+            ] = await Promise.all([
+                handle.stat({ bigint: true }),
+                lstat(expected, { bigint: true }).catch(() => null),
+            ]);
+            const currentReal = await realpath(expected).catch(() => null);
 
-            try {
-                actual = await realpath(`/proc/self/fd/${handle.fd}`);
-            } catch {
-                throw new CommandError('command_failed', 'Secure file downloads require Linux procfs descriptor validation');
-            }
-
-            if (actual !== expected) {
+            if (current === null || currentReal !== expected || opened.dev !== current.dev || opened.ino !== current.ino) {
                 throw new CommandError('forbidden_path', 'Opened file no longer matches its allowed vault path');
             }
         };

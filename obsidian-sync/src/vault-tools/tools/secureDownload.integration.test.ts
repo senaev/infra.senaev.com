@@ -1,5 +1,5 @@
 import {
-    open, realpath, rename, symlink, unlink, writeFile,
+    lstat, open, rename, symlink, unlink, writeFile,
 } from 'node:fs/promises';
 
 import {
@@ -18,18 +18,18 @@ vi.mock('node:fs/promises', async (original) => {
     return {
         ...fs,
         open: vi.fn(fs.open),
-        realpath: vi.fn(fs.realpath),
+        lstat: vi.fn(fs.lstat),
     };
 });
 let vault: TestVault;
 
 afterEach(async () => {
     vi.mocked(open).mockReset();
-    vi.mocked(realpath).mockReset();
+    vi.mocked(lstat).mockReset();
     const actual = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
 
     vi.mocked(open).mockImplementation(actual.open);
-    vi.mocked(realpath).mockImplementation(actual.realpath);
+    vi.mocked(lstat).mockImplementation(actual.lstat);
     await vault?.remove();
 });
 
@@ -95,22 +95,16 @@ it.each([
     await expect(run).rejects.toMatchObject({ code: 'forbidden_path' });
 });
 
-it('fails closed without procfs and releases the file read slot', async () => {
+it('fails closed when the opened file cannot be checked, and releases the file read slot', async () => {
     vault = await createTestVault({ 'a.pdf': 'ordinary' });
     const actual = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
 
-    vi.mocked(realpath).mockImplementation(async (path, options) => {
-        if (String(path).startsWith('/proc/self/fd/')) {
-            throw new Error('procfs unavailable');
-        }
-
-        return await actual.realpath(path, options);
-    });
+    vi.mocked(lstat).mockRejectedValue(new Error('lstat unavailable'));
     for (let attempt = 0; attempt < 3; attempt++) {
-        await expect(downloadTool(vault.config, { path: 'a.pdf' })).rejects.toMatchObject({ code: 'command_failed' });
+        await expect(downloadTool(vault.config, { path: 'a.pdf' })).rejects.toMatchObject({ code: 'forbidden_path' });
     }
 
-    vi.mocked(realpath).mockImplementation(actual.realpath);
+    vi.mocked(lstat).mockImplementation(actual.lstat);
     expect((await downloadTool(vault.config, { path: 'a.pdf' })).size).toBe(8);
 });
 
@@ -119,15 +113,15 @@ it('rejects an in-place same-size change detected after hashing', async () => {
     const actual = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
     let descriptorChecks = 0;
 
-    vi.mocked(realpath).mockImplementation(async (path, options) => {
-        if (String(path).startsWith('/proc/self/fd/') && ++descriptorChecks === 2) {
+    vi.mocked(lstat).mockImplementation(async (path, options) => {
+        if (++descriptorChecks === 2) {
             await writeFile(vault.path('a.pdf'), 'modified');
             // Filesystem clocks can give rapid writes identical timestamps. Make the
             // simulated version change explicit without sleeping for another tick.
             await actual.utimes(vault.path('a.pdf'), new Date(0), new Date(0));
         }
 
-        return await actual.realpath(path, options);
+        return await actual.lstat(path, options);
     });
     await expect(downloadTool(vault.config, { path: 'a.pdf' })).rejects.toMatchObject({
         code: 'conflict',

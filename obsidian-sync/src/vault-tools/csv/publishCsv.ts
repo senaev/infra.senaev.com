@@ -1,5 +1,7 @@
 import { constants } from 'node:fs';
-import { open, realpath } from 'node:fs/promises';
+import {
+    open, realpath, stat,
+} from 'node:fs/promises';
 import {
     basename, dirname, join,
 } from 'node:path';
@@ -19,7 +21,11 @@ import type { VaultToolsConfig } from '../vaultToolsConfig';
 
 export type CsvPublication = { path: string; expectedHash: string | null; original: string; csv: string };
 
-/** Process-local reservation plus a fresh hash check. Directory descriptor anchors atomic publication. */
+/**
+ * Process-local reservation plus a fresh hash check. The folder opened at the start must
+ * still be the real folder at the expected path (same device and inode, no symlink on the
+ * way) right before the write, so a folder swapped for a symlink is never written through.
+ */
 export function publishCsv(config: VaultToolsConfig, input: CsvPublication, execution: CommandExecution) {
     return withFileMutation(join(config.root, input.path), async () => {
         const absolute = input.expectedHash === null
@@ -29,9 +35,12 @@ export function publishCsv(config: VaultToolsConfig, input: CsvPublication, exec
 
         try {
             const expected = join(await realpath(config.root), dirname(input.path));
-            const descriptor = `/proc/self/fd/${handle.fd}`;
+            const opened = await handle.stat({ bigint: true });
             const verify = async () => {
-                if (await realpath(descriptor) !== expected) {
+                const currentReal = await realpath(expected).catch(() => null);
+                const current = currentReal === expected ? await stat(expected, { bigint: true }).catch(() => null) : null;
+
+                if (current === null || current.dev !== opened.dev || current.ino !== opened.ino) {
                     throw new CommandError('forbidden_path', 'CSV directory changed during publication');
                 }
             };
@@ -58,7 +67,8 @@ export function publishCsv(config: VaultToolsConfig, input: CsvPublication, exec
 
             execution.throwIfAborted();
             if (changed) {
-                const target = join(descriptor, basename(input.path));
+                await verify();
+                const target = join(expected, basename(input.path));
                 const published = () => execution.changedPath(input.path);
 
                 try {

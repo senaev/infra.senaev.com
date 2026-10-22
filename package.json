@@ -5,6 +5,9 @@
   "engines": {
     "node": ">=24"
   },
+  "volta": {
+    "node": "24.22.0"
+  },
   "scripts": {
     "ci:all": "bash scripts/ci-all.sh",
     "lint": "eslint .",

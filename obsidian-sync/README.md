@@ -95,9 +95,9 @@ trimmed, interpreted, converted to money or sanitized as spreadsheet formulas.
 
 Edits return affectedRows, changed, diff and the saved hash. No rows are persisted
 until SQL and export validation succeed. A shared in-process file reservation and
-fresh byte-hash check precede atomic publication. A validated directory descriptor
-anchors publication, preventing a substituted ancestor symlink from redirecting
-writes. Creation is exclusive. These checks do not transactionally lock external
+fresh byte-hash check precede atomic publication. Right before the write, the folder
+must still be the one opened at the start (same device and inode, no symlink on the
+way), so a substituted ancestor symlink cannot redirect writes. Creation is exclusive. These checks do not transactionally lock external
 writers/replicas; cross-process atomic compare-and-swap is not claimed. Each input
 file is a snapshot, not a simultaneous transaction across all selected files.
 

@@ -122,10 +122,10 @@ Retry-After: 1. Disconnects cancel backend reads/upstream fetches; deadlines als
 stalled responses. These bounds limit simultaneous buffered/base64 copies, rather than
 turning this JSON-based protocol into streaming binary transfer.
 
-Downloads open with O_NOFOLLOW and validate the actual descriptor through Linux
-/proc/self/fd before and after reading, including parent-directory replacement races.
-They fail closed when procfs descriptor validation is unavailable. Deployment requires
-Linux containers with procfs mounted. File metadata changes during reading are rejected.
+Downloads open with O_NOFOLLOW. Before and after reading, the opened descriptor must be
+the same file (device and inode) as the allowed path, and that path must have no symlink.
+This also catches parent-directory replacement races, and it fails closed when the path
+cannot be checked. File metadata changes during reading are rejected.
 
 MIME types use filename extensions, with application/octet-stream for unknown types.
 Resource access does not grant filesystem writes. Resource listings are empty; the
