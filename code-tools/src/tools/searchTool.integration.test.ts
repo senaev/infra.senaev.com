@@ -1,11 +1,14 @@
 import {
-    mkdir, symlink, writeFile,
+    mkdir, rename, symlink, writeFile,
 } from 'node:fs/promises';
 
 import { createCommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import {
-    afterEach, beforeEach, describe, expect, it,
+    afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
+import * as secureModule from 'senaev-utils/src/files/secureFilesystem/runSecureFilesystem';
+
+import * as processModule from '../process/runProcess';
 
 import { createTestProjects, type TestProjects } from './createTestProjects';
 import { searchTool } from './searchTool';
@@ -34,6 +37,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+    vi.restoreAllMocks();
     await projects.remove();
 });
 
@@ -183,4 +187,59 @@ describe('searchTool', () => {
             regex: true,
         })).rejects.toMatchObject({ code: 'invalid_arguments' });
     });
+});
+
+it('searches the private snapshot when the live folder changes just before rg starts', async () => {
+    await mkdir(projects.path('other'));
+    await writeFile(projects.path('other', 'secret.txt'), 'PRIVATE-FIXTURE');
+    const run = processModule.runProcess;
+
+    vi.spyOn(processModule, 'runProcess').mockImplementationOnce(async (...args) => {
+        await rename(projects.path('demo', 'src'), projects.path('demo', 'moved'));
+        await symlink(projects.path('other'), projects.path('demo', 'src'));
+
+        return await run(...args);
+    });
+    const result = await searchTool(projects.config, {
+        project: 'demo',
+        folder: 'src',
+        queries: [
+            'fetchUser',
+            'PRIVATE-FIXTURE',
+        ],
+    });
+
+    expect(result.files.map((file) => file.path)).toEqual(['src/api.ts']);
+    expect(JSON.stringify(result)).not.toContain('PRIVATE-FIXTURE');
+});
+
+it('does not copy a folder replaced with a symlink after validation', async () => {
+    await mkdir(projects.path('other'));
+    await writeFile(projects.path('other', 'secret.txt'), 'PRIVATE-FIXTURE');
+    const run = secureModule.runSecureFilesystem;
+
+    vi.spyOn(secureModule, 'runSecureFilesystem').mockImplementationOnce(async (...args) => {
+        await rename(projects.path('demo', 'src'), projects.path('demo', 'moved'));
+        await symlink(projects.path('other'), projects.path('demo', 'src'));
+
+        return await run(...args);
+    });
+    await expect(searchTool(projects.config, {
+        project: 'demo',
+        folder: 'src',
+        queries: ['PRIVATE-FIXTURE'],
+    }))
+        .rejects.toMatchObject({ code: 'invalid_arguments' });
+});
+
+it('preserves an explicit glob overriding an ignored file', async () => {
+    await writeFile(projects.path('demo', '.gitignore'), 'dist/\nignored.js\n');
+    await writeFile(projects.path('demo', 'ignored.js'), 'fetchUser();\n');
+    const result = await searchTool(projects.config, {
+        project: 'demo',
+        glob: '*.js',
+        queries: ['fetchUser'],
+    });
+
+    expect(result.files.map((file) => file.path)).toEqual(['ignored.js']);
 });

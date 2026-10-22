@@ -10,8 +10,7 @@ import { CommandError } from 'senaev-utils/src/commands/CommandError';
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { withFileMutation } from 'senaev-utils/src/files/withFileMutation';
 import { createFileDiffAsync } from 'senaev-utils/src/files/createFileDiffAsync';
-import { createFileExclusively, replaceFileAtomically } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
-import { isAlreadyExistsError } from 'senaev-utils/src/utils/Error/isAlreadyExistsError/isAlreadyExistsError';
+import { runSecureFilesystem } from 'senaev-utils/src/files/secureFilesystem/runSecureFilesystem';
 
 import {
     prepareNewVaultFile, resolveExistingFile, hashBytes,
@@ -24,7 +23,8 @@ export type CsvPublication = { path: string; expectedHash: string | null; origin
 /**
  * Process-local reservation plus a fresh hash check. The folder opened at the start must
  * still be the real folder at the expected path (same device and inode, no symlink on the
- * way) right before the write, so a folder swapped for a symlink is never written through.
+ * way) right before the write. Publication itself uses openat/linkat/renameat relative
+ * to that inherited descriptor, so a later parent swap cannot redirect it.
  */
 export function publishCsv(config: VaultToolsConfig, input: CsvPublication, execution: CommandExecution) {
     return withFileMutation(join(config.root, input.path), async () => {
@@ -68,22 +68,15 @@ export function publishCsv(config: VaultToolsConfig, input: CsvPublication, exec
             execution.throwIfAborted();
             if (changed) {
                 await verify();
-                const target = join(expected, basename(input.path));
-                const published = () => execution.changedPath(input.path);
-
-                try {
-                    if (input.expectedHash === null) {
-                        await createFileExclusively(target, input.csv, execution.signal, published);
-                    } else {
-                        await replaceFileAtomically(target, input.csv, execution.signal, published);
-                    }
-                } catch (error) {
-                    if (isAlreadyExistsError(error)) {
-                        throw new CommandError('conflict', 'CSV already exists; read its current hash before editing');
-                    }
-
-                    throw error;
-                }
+                await runSecureFilesystem({
+                    operation: 'publish',
+                    root: config.root,
+                    parent: dirname(input.path),
+                    name: basename(input.path),
+                    content: input.csv,
+                    exclusive: input.expectedHash === null,
+                }, execution, handle.fd);
+                execution.changedPath(input.path);
             }
 
             return {

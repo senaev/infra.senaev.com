@@ -133,3 +133,5 @@ column-change subprocess execution, full header-size stress checks, process isol
 coverage; their measured runtimes are reported separately from the 100 ms unit
 budget. The byte-limit edit fixture uses few fields; the separate wide read stress
 fixture covers 40000 records and 100 columns.
+
+CSV publication uses Python 3 descriptor-relative `openat`/`linkat`/`renameat` operations. Python 3 must be installed locally; the service image includes it. Publication stays attached to the verified directory even if its pathname is replaced during the write.

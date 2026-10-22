@@ -192,3 +192,5 @@ Deployment acceptance remains pending: refresh tools, reconstruct an actual vaul
 these commands in the intended client, verify size/hash, render/open it, and answer a question
 from its contents without using old uploaded copies or prior summary notes. Repeat with CSV.
 Unit/proxy tests alone do not establish that an ordinary/mobile chat has execution tools.
+
+CSV publication uses Python 3 descriptor-relative `openat`/`linkat`/`renameat` operations. Python 3 must be installed locally; the service image includes it. Publication stays attached to the verified directory even if its pathname is replaced during the write.
