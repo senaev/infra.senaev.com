@@ -1,6 +1,7 @@
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 
 import { logger } from '../logger';
+import { isAllowedShortLinkTarget } from '../short-links/shortLinksCsv';
 import { createShortLink, getShortLinkUrl } from '../short-links/shortLinksStore';
 
 import type { VaultServer } from './createVaultServer';
@@ -38,12 +39,12 @@ export function registerShortLinkRoutes(server: VaultServer): void {
             });
         }
 
-        if (!URL.canParse(trimmedLink)) {
+        if (!isAllowedShortLinkTarget(trimmedLink)) {
             return reply
                 .code(400)
                 .send({
                     status: 'error',
-                    message: 'Field "link" must be a valid URL',
+                    message: 'Field "link" must be a valid http(s) URL',
                 });
         }
 

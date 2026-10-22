@@ -80,9 +80,11 @@ export async function getMilestones(date?: string): Promise<MilestonesOverview> 
 /**
  * Resolves a short link id by calling the obsidian-sync container's
  * `GET /short_links/:id` HTTP API, which reads the mapping from the Obsidian
- * vault's short_links.md file.
+ * vault's short_links.csv file.
  *
  * Returns the target URL, or `null` if the short link id is not found.
+ * obsidian-sync already skips targets that are not http(s); the check is repeated here
+ * because this value goes straight into a public redirect.
  */
 export async function getShortLink(shortId: string): Promise<string | null> {
     const response = await fetchObsidianSync(`/short_links/${encodeURIComponent(shortId)}`);
@@ -93,15 +95,26 @@ export async function getShortLink(shortId: string): Promise<string | null> {
 
     const body = await readStatusResponse(response).catch((error: unknown) => {
         throw new Error(`Failed to resolve short link: ${stringifyUnknownError(error)}`, { cause: error });
-    }) as { url: string };
+    }) as { url: unknown };
+
+    if (typeof body.url !== 'string' || !isHttpUrl(body.url)) {
+        throw new Error('Short link target is not an http(s) URL');
+    }
 
     return body.url;
+}
+
+function isHttpUrl(url: string): boolean {
+    return URL.canParse(url) && [
+        'http:',
+        'https:',
+    ].includes(new URL(url).protocol);
 }
 
 /**
  * Creates a new short link by calling the obsidian-sync container's
  * `POST /short_links` HTTP API, which validates the link and appends it to
- * the Obsidian vault's short_links.md file.
+ * the Obsidian vault's short_links.csv file.
  *
  * Returns the newly assigned short link id. Throws with the obsidian-sync
  * error message (e.g. an invalid link) on failure.

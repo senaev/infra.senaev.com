@@ -1,6 +1,6 @@
 import { logger } from '../logger';
 
-/** Parses `short_links.md` contents into an id -> url map. */
+/** Parses the old `short_links.md` contents into an id -> url map, for the move to CSV. */
 export function parseShortLinksContent(content: string): Map<string, string> {
     const map = new Map<string, string>();
 

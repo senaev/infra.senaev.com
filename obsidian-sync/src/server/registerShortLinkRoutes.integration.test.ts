@@ -1,0 +1,119 @@
+import {
+    mkdir, readFile, rm, writeFile,
+} from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+
+import {
+    afterAll, afterEach, beforeEach, describe, expect, it, vi,
+} from 'vitest';
+
+import { LEGACY_SHORT_LINKS_FILE_PATH, SHORT_LINKS_FILE_PATH } from '../vaultPaths';
+
+import { createVaultServer, type VaultServer } from './createVaultServer';
+import { registerShortLinkRoutes } from './registerShortLinkRoutes';
+
+vi.mock('../vaultPaths', async () => {
+    const fs = await import('node:fs');
+    const os = await import('node:os');
+    const vault = fs.mkdtempSync(`${os.tmpdir()}/short-links-test-`);
+
+    return {
+        SHORT_LINKS_FILE_PATH: `${vault}/short_links/short_links.csv`,
+        LEGACY_SHORT_LINKS_FILE_PATH: `${vault}/short_links/short_links.md`,
+    };
+});
+
+const paths = {
+    vault: dirname(dirname(SHORT_LINKS_FILE_PATH)),
+    csv: SHORT_LINKS_FILE_PATH,
+    legacy: LEGACY_SHORT_LINKS_FILE_PATH,
+};
+
+let server: VaultServer;
+
+beforeEach(async () => {
+    await mkdir(join(paths.vault, 'short_links'), { recursive: true });
+    server = createVaultServer();
+    registerShortLinkRoutes(server);
+    await server.ready();
+});
+
+afterEach(async () => {
+    await server.close();
+    await rm(join(paths.vault, 'short_links'), {
+        recursive: true,
+        force: true,
+    });
+});
+
+afterAll(async () => {
+    await rm(paths.vault, {
+        recursive: true,
+        force: true,
+    });
+});
+
+async function resolve(id: string) {
+    const response = await server.inject({
+        method: 'GET',
+        url: `/short_links/${id}`,
+    });
+
+    return response.statusCode === 200 ? response.json<{ url: string }>().url : response.statusCode;
+}
+
+async function create(link: string) {
+    return await server.inject({
+        method: 'POST',
+        url: '/short_links',
+        payload: { link },
+    });
+}
+
+describe('short link routes', () => {
+    it('moves the links of short_links.md to short_links.csv once, without the targets that are not http(s)', async () => {
+        await writeFile(paths.legacy, '1bxsl9 https://senaev.com/cv/5min\nbad001 javascript:alert(1)\n');
+
+        expect(await resolve('1bxsl9')).toBe('https://senaev.com/cv/5min');
+        expect(await resolve('bad001')).toBe(404);
+        expect(await readFile(paths.csv, 'utf8')).toBe('id,url\n1bxsl9,https://senaev.com/cv/5min\n');
+
+        await writeFile(paths.legacy, '1bxsl9 https://changed.example.com\n');
+        expect(await resolve('1bxsl9')).toBe('https://senaev.com/cv/5min');
+        expect(await readFile(paths.legacy, 'utf8')).toBe('1bxsl9 https://changed.example.com\n');
+    });
+
+    it('creates the table with the first link, and appends the next ones', async () => {
+        const first = await create('https://example.com/a');
+        const second = await create('https://example.com/?b=1,2');
+        const firstId = first.json<{ id: string }>().id;
+        const secondId = second.json<{ id: string }>().id;
+
+        expect(first.statusCode).toBe(201);
+        expect(await resolve(firstId)).toBe('https://example.com/a');
+        expect(await resolve(secondId)).toBe('https://example.com/?b=1,2');
+        expect(await readFile(paths.csv, 'utf8')).toBe(`id,url\n${firstId},https://example.com/a\n${secondId},"https://example.com/?b=1,2"\n`);
+    });
+
+    it('reads a table changed by hand, and keeps its extra columns on append', async () => {
+        await writeFile(paths.csv, 'id,url,comment\na1,https://example.com/a,first\nevil01,javascript:alert(1),\n');
+
+        expect(await resolve('a1')).toBe('https://example.com/a');
+        expect(await resolve('evil01')).toBe(404);
+
+        const { id } = (await create('https://example.com/b')).json<{ id: string }>();
+
+        expect(await readFile(paths.csv, 'utf8')).toBe(`id,url,comment\na1,https://example.com/a,first\nevil01,javascript:alert(1),\n${id},https://example.com/b,\n`);
+    });
+
+    it.each([
+        'javascript:alert(1)',
+        'data:text/html,x',
+        'not a url',
+    ])('refuses to create a short link to %s', async (link) => {
+        const response = await create(link);
+
+        expect(response.statusCode).toBe(400);
+        expect(response.json()).toMatchObject({ message: 'Field "link" must be a valid http(s) URL' });
+    });
+});
