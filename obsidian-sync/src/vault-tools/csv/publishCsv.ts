@@ -23,8 +23,8 @@ export type CsvPublication = { path: string; expectedHash: string | null; origin
 /**
  * Process-local reservation plus a fresh hash check. The folder opened at the start must
  * still be the real folder at the expected path (same device and inode, no symlink on the
- * way) right before the write. Publication itself uses openat/linkat/renameat relative
- * to that inherited descriptor, so a later parent swap cannot redirect it.
+ * way). The write itself goes through that descriptor (openat/linkat/renameat in the
+ * Python helper, which checks the folder again), so a later parent swap cannot redirect it.
  */
 export function publishCsv(config: VaultToolsConfig, input: CsvPublication, execution: CommandExecution) {
     return withFileMutation(join(config.root, input.path), async () => {
@@ -67,7 +67,6 @@ export function publishCsv(config: VaultToolsConfig, input: CsvPublication, exec
 
             execution.throwIfAborted();
             if (changed) {
-                await verify();
                 await runSecureFilesystem({
                     operation: 'publish',
                     root: config.root,

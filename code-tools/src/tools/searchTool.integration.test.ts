@@ -6,7 +6,6 @@ import { createCommandExecution } from 'senaev-utils/src/commands/CommandExecuti
 import {
     afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
-import * as secureModule from 'senaev-utils/src/files/secureFilesystem/runSecureFilesystem';
 
 import * as processModule from '../process/runProcess';
 
@@ -189,7 +188,7 @@ describe('searchTool', () => {
     });
 });
 
-it('searches the private snapshot when the live folder changes just before rg starts', async () => {
+it('does not follow a folder that becomes a symlink just before rg starts', async () => {
     await mkdir(projects.path('other'));
     await writeFile(projects.path('other', 'secret.txt'), 'PRIVATE-FIXTURE');
     const run = processModule.runProcess;
@@ -209,27 +208,21 @@ it('searches the private snapshot when the live folder changes just before rg st
         ],
     });
 
-    expect(result.files.map((file) => file.path)).toEqual(['src/api.ts']);
+    expect(result.files).toEqual([]);
     expect(JSON.stringify(result)).not.toContain('PRIVATE-FIXTURE');
 });
 
-it('does not copy a folder replaced with a symlink after validation', async () => {
-    await mkdir(projects.path('other'));
-    await writeFile(projects.path('other', 'secret.txt'), 'PRIVATE-FIXTURE');
-    const run = secureModule.runSecureFilesystem;
-
-    vi.spyOn(secureModule, 'runSecureFilesystem').mockImplementationOnce(async (...args) => {
-        await rename(projects.path('demo', 'src'), projects.path('demo', 'moved'));
-        await symlink(projects.path('other'), projects.path('demo', 'src'));
-
-        return await run(...args);
-    });
-    await expect(searchTool(projects.config, {
+it.each([
+    'src',
+    'src/api.ts',
+])('returns only the files under the folder %s', async (folder) => {
+    const result = await searchTool(projects.config, {
         project: 'demo',
-        folder: 'src',
-        queries: ['PRIVATE-FIXTURE'],
-    }))
-        .rejects.toMatchObject({ code: 'invalid_arguments' });
+        folder,
+        queries: ['fetchUser'],
+    });
+
+    expect(result.files.map((file) => file.path)).toEqual(['src/api.ts']);
 });
 
 it('preserves an explicit glob overriding an ignored file', async () => {

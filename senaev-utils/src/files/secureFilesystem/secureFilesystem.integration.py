@@ -48,45 +48,34 @@ class FilesystemTests(unittest.TestCase):
                         os.close(3)
                     os.close(directory)
 
-    def test_file_open_refuses_parent_swapped_after_listing(self):
+    def test_refuses_a_directory_that_no_longer_matches_the_inherited_descriptor(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             (root / 'target').mkdir()
             (root / 'other').mkdir()
-            (root / 'target' / 'data.txt').write_text('ordinary')
-            (root / 'other' / 'data.txt').write_text('private')
-            directory = secure.open_directory(os.path.realpath(folder))
-            real_open = os.open
-
-            def swap_before_open(path, *args, **kwargs):
-                if path == 'target':
-                    (root / 'target').rename(root / 'moved')
-                    (root / 'target').symlink_to(root / 'other', target_is_directory=True)
-                return real_open(path, *args, **kwargs)
-
+            directory = os.open(root / 'other', secure.DIR_FLAGS)
             try:
-                with patch.object(secure.os, 'open', swap_before_open):
-                    with self.assertRaises(OSError):
-                        secure.read_file(directory, 'target/data.txt')
+                saved = os.dup(3)
+            except OSError:
+                saved = None
+            os.dup2(directory, 3)
+            try:
+                with self.assertRaises(secure.ForbiddenPath):
+                    secure.publish({'root': str(root), 'parent': 'target', 'name': 'data.csv',
+                                    'content': 'updated', 'exclusive': True})
+                self.assertFalse((root / 'other' / 'data.csv').exists())
             finally:
+                if saved is not None:
+                    os.dup2(saved, 3)
+                    os.close(saved)
+                elif directory != 3:
+                    os.close(3)
                 os.close(directory)
 
-    def test_snapshot_keeps_ignore_rules_and_skips_symlinks_and_large_files(self):
-        with tempfile.TemporaryDirectory() as folder, tempfile.TemporaryDirectory() as destination:
-            parent = Path(folder)
-            root = parent / 'project'
-            root.mkdir()
-            (root / '.gitignore').write_text('ignored.txt\n')
-            (root / 'ignored.txt').write_text('private')
-            (root / 'a.txt').write_text('ordinary')
-            (root / 'big.txt').write_bytes(b'x' * (secure.MAX_FILE + 1))
-            (root / 'link.txt').symlink_to(root / 'ignored.txt')
-            secure.snapshot(folder, 'project', destination)
-            result = Path(destination)
-            self.assertEqual((result / 'a.txt').read_text(), 'ordinary')
-            self.assertEqual((result / 'ignored.txt').read_text(), '')
-            self.assertFalse((result / 'link.txt').exists())
-            self.assertFalse((result / 'big.txt').exists())
+    def test_error_codes(self):
+        self.assertEqual(secure.error_code(FileExistsError()), 'conflict')
+        self.assertEqual(secure.error_code(secure.ForbiddenPath()), 'forbidden_path')
+        self.assertEqual(secure.error_code(OSError('No space left on device')), 'command_failed')
 
 
 if __name__ == '__main__':

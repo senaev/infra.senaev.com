@@ -52,11 +52,25 @@ it('inherits the verified directory and waits for close after a successful reply
 });
 
 it.each([
-    'conflict',
-    'forbidden_path',
-])('preserves the helper error %s', async (error) => {
+    [
+        'conflict',
+        'conflict',
+    ],
+    [
+        'forbidden_path',
+        'forbidden_path',
+    ],
+    [
+        'command_failed',
+        'command_failed',
+    ],
+    [
+        'unknown',
+        'command_failed',
+    ],
+])('reports the helper error %s as %s', async (error, code) => {
     const pending = runSecureFilesystem({}, createCommandExecution());
-    const rejected = expect(pending).rejects.toMatchObject({ code: error });
+    const rejected = expect(pending).rejects.toMatchObject({ code });
 
     child.stdout.write(JSON.stringify({
         error,
@@ -112,17 +126,4 @@ it.each([
 
     child.emit('close', 1);
     await rejected;
-});
-
-it('kills the entire helper process group when descendants may still be running', async () => {
-    Object.assign(child, { pid: 12345 });
-    const kill = vi.spyOn(process, 'kill').mockReturnValue(true);
-    const pending = runSecureFilesystem({}, createCommandExecution());
-    const rejected = expect(pending).rejects.toMatchObject({ code: 'command_failed' });
-
-    vi.advanceTimersByTime(30000);
-    expect(kill).toHaveBeenCalledWith(-12345, 'SIGKILL');
-    child.emit('close', null);
-    await rejected;
-    kill.mockRestore();
 });

@@ -1,8 +1,3 @@
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-
-import { runSecureFilesystem } from 'senaev-utils/src/files/secureFilesystem/runSecureFilesystem';
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { CommandError } from 'senaev-utils/src/commands/CommandError';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
@@ -158,7 +153,6 @@ function buildRipgrepArgs(options: {
     caseSensitive: boolean;
     contextLines: number;
     glob: string | undefined;
-    folder: string;
 }): string[] {
     return [
         '--json',
@@ -185,7 +179,7 @@ function buildRipgrepArgs(options: {
             query,
         ]),
         '--',
-        options.folder === '' ? '.' : options.folder,
+        '.',
     ];
 }
 
@@ -203,38 +197,23 @@ export async function searchCommand(config: CodeToolsConfig, input: SearchComman
     const folder = normalizeProjectPath(input.folder, 'folder');
 
     await assertExistingPathHasNoSymlink(project, folder, execution);
-    const snapshot = await mkdtemp(join(tmpdir(), 'code-search-'));
-    const result = await (async () => {
-        try {
-            await runSecureFilesystem({
-                operation: 'snapshot',
-                root: config.projectsRoot,
-                project: project.name,
-                destination: snapshot,
-                glob: input.glob,
-            }, execution);
-
-            return await runProcess('rg', buildRipgrepArgs({
-                ...input,
-                folder,
-            }), {
-                cwd: snapshot,
-                signal: execution.signal,
-                onOutput: execution.log,
-                maxOutputChars: MAX_RG_OUTPUT_CHARS,
-                keep: 'start',
-                env: config.commandEnv,
-            });
-        } finally {
-            await rm(snapshot, {
-                recursive: true,
-                force: true,
-            });
-        }
-    })();
+    // rg follows a symlink given as a path argument, but never one that it finds while it
+    // walks. So it always walks the whole project, and the folder is a filter on its
+    // results: a folder replaced with a symlink after the check above is skipped, not read.
+    const result = await runProcess('rg', buildRipgrepArgs(input), {
+        cwd: project.root,
+        signal: execution.signal,
+        onOutput: execution.log,
+        maxOutputChars: MAX_RG_OUTPUT_CHARS,
+        keep: 'start',
+        env: config.commandEnv,
+    });
 
     execution.throwIfAborted();
-    const files = (await parseRipgrepJson(result.stdout, execution)).sort((a, b) => a.path.localeCompare(b.path));
+    const isInFolder = (path: string) => folder === '' || path === folder || path.startsWith(`${folder}/`);
+    const files = (await parseRipgrepJson(result.stdout, execution))
+        .filter((file) => isInFolder(file.path))
+        .sort((a, b) => a.path.localeCompare(b.path));
 
     // Exit code 2 is an error, such as a bad regular expression or an unreadable file.
     if (result.exitCode === 2 && files.length === 0) {
