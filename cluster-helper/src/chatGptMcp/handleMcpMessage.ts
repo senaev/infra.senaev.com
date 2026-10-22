@@ -1,5 +1,4 @@
 import { parseVaultFileResourceUri } from 'senaev-utils/src/obsidianVaultTools/vaultFileResource';
-import { CODE_TOOL_PREFIX } from 'senaev-utils/src/codeTools/codeToolDefinitions';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 
@@ -120,17 +119,9 @@ function callTool(params: unknown, families: readonly ToolFamily[]) {
 }
 
 /**
- * Tools whose arguments are logged in full. The others (the obsidian- tools) are not: their
- * arguments hold the diary text. The code- arguments are commands and paths, which we need
- * to find the cause of an incident, such as the OOM of 2026-10-18.
+ * What to log about one message: the tool name, never its arguments. They can hold diary
+ * text, file contents, secrets written to a file, and signed download URLs.
  */
-const TOOL_PREFIXES_WITH_LOGGED_ARGUMENTS: readonly string[] = [CODE_TOOL_PREFIX];
-
-function isToolWithLoggedArguments(toolName: unknown): boolean {
-    return typeof toolName === 'string' && TOOL_PREFIXES_WITH_LOGGED_ARGUMENTS.some((prefix) => toolName.startsWith(prefix));
-}
-
-/** What to log about one message: the arguments only for TOOL_PREFIXES_WITH_LOGGED_ARGUMENTS. */
 export function describeMcpExchange(message: unknown, response: JsonRpcResponse | null) {
     const request = isObject(message) ? message : {};
     const params = isObject(request.params) ? request.params : {};
@@ -138,7 +129,6 @@ export function describeMcpExchange(message: unknown, response: JsonRpcResponse 
     return {
         method: request.method,
         tool: params.name,
-        arguments: isToolWithLoggedArguments(params.name) ? params.arguments : undefined,
         protocolVersion: params.protocolVersion,
         clientInfo: params.clientInfo,
         error: response !== null && 'error' in response ? response.error : undefined,
