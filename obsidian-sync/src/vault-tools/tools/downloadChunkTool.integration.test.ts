@@ -4,8 +4,9 @@ import {
 } from 'node:fs/promises';
 
 import {
-    afterEach, expect, it,
+    afterEach, expect, it, vi,
 } from 'vitest';
+import * as secure from 'senaev-utils/src/files/secureFilesystem/runSecureFilesystem';
 import { createCommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 
 import { createTestVault, type TestVault } from '../createTestVault';
@@ -172,16 +173,16 @@ it('honours cancellation while hashing before returning bytes', async () => {
     const metadata = await downloadTool(vault.config, { path: 'a.bin' });
     const abort = new AbortController();
     const execution = createCommandExecution({ signal: abort.signal });
-    const checkpoint = execution.checkpoint.bind(execution);
-    let calls = 0;
+    const runSecure = secure.runSecureFilesystem;
 
-    execution.checkpoint = async () => {
-        if (++calls === 2) {
-            abort.abort();
-        }
+    vi.spyOn(secure, 'runSecureFilesystem').mockImplementationOnce(async (...args) => {
+        // Start the actual secure reader, then cancel before it can return bytes.
+        const pending = runSecure(...args);
 
-        await checkpoint();
-    };
+        abort.abort();
+
+        return await pending;
+    });
 
     await expect(downloadChunkTool(vault.config, {
         path: 'a.bin',

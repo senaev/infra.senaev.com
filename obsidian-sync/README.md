@@ -135,3 +135,9 @@ column-change subprocess execution, full header-size stress checks, process isol
 coverage; their measured runtimes are reported separately from the 100 ms unit
 budget. The byte-limit edit fixture uses few fields; the separate wide read stress
 fixture covers 40000 records and 100 columns.
+
+Secure downloads use the same Python 3 helper as CSV publication. They open each path
+component relative to an opened parent with `O_NOFOLLOW`, then hash and read the pinned
+file descriptor. They do not infer descriptor safety by comparing separate pathname
+checks. Code search also uses the helper to `fchdir` into an opened project directory
+before replacing itself with ripgrep; it never builds a repository snapshot.

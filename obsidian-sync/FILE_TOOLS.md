@@ -122,10 +122,11 @@ Retry-After: 1. Disconnects cancel backend reads/upstream fetches; deadlines als
 stalled responses. These bounds limit simultaneous buffered/base64 copies, rather than
 turning this JSON-based protocol into streaming binary transfer.
 
-Downloads open with O_NOFOLLOW. Before and after reading, the opened descriptor must be
-the same file (device and inode) as the allowed path, and that path must have no symlink.
-This also catches parent-directory replacement races, and it fails closed when the path
-cannot be checked. File metadata changes during reading are rejected.
+Downloads use the Python 3 helper to open each path component relative to an already
+opened directory, with O_NOFOLLOW on every component. A parent or leaf replaced by a
+symlink cannot redirect the open. Hashing and byte selection use that one descriptor;
+size and modification metadata are checked before and after reading. The service image
+includes Python 3. Reads remain bounded, cancellable and limited to two active readers.
 
 MIME types use filename extensions, with application/octet-stream for unknown types.
 Resource access does not grant filesystem writes. Resource listings are empty; the

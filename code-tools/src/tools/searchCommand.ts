@@ -1,3 +1,4 @@
+import { SECURE_FILESYSTEM_HELPER } from 'senaev-utils/src/files/secureFilesystem/runSecureFilesystem';
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { CommandError } from 'senaev-utils/src/commands/CommandError';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
@@ -197,10 +198,19 @@ export async function searchCommand(config: CodeToolsConfig, input: SearchComman
     const folder = normalizeProjectPath(input.folder, 'folder');
 
     await assertExistingPathHasNoSymlink(project, folder, execution);
-    // rg follows a symlink given as a path argument, but never one that it finds while it
-    // walks. So it always walks the whole project, and the folder is a filter on its
-    // results: a folder replaced with a symlink after the check above is skipped, not read.
-    const result = await runProcess('rg', buildRipgrepArgs(input), {
+    // The launcher opens the project without following symlinks and fchdir pins that
+    // directory before exec. Replacing its pathname cannot redirect the search root.
+    // Folder filtering remains below; this launcher never copies the repository.
+    const result = await runProcess('python3', [
+        SECURE_FILESYSTEM_HELPER,
+        '--search',
+        config.projectsRoot,
+        project.name,
+        JSON.stringify([
+            'rg',
+            ...buildRipgrepArgs(input),
+        ]),
+    ], {
         cwd: project.root,
         signal: execution.signal,
         onOutput: execution.log,
@@ -210,6 +220,10 @@ export async function searchCommand(config: CodeToolsConfig, input: SearchComman
     });
 
     execution.throwIfAborted();
+    if (result.exitCode === 77) {
+        throw new CommandError('forbidden_path', 'Project directory changed before search');
+    }
+
     const isInFolder = (path: string) => folder === '' || path === folder || path.startsWith(`${folder}/`);
     const files = (await parseRipgrepJson(result.stdout, execution))
         .filter((file) => isInFolder(file.path))

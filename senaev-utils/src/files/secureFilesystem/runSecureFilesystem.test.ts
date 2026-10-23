@@ -127,3 +127,14 @@ it.each([
     child.emit('close', 1);
     await rejected;
 });
+
+it('returns a bounded typed read result from the secure helper', async () => {
+    const pending = runSecureFilesystem<{ bytes: string }>({ operation: 'read' }, createCommandExecution(), undefined, 20000);
+
+    child.stdout.write(JSON.stringify({
+        ok: true,
+        result: { bytes: 'eA==' },
+    }));
+    child.emit('close', 0);
+    await expect(pending).resolves.toEqual({ bytes: 'eA==' });
+});

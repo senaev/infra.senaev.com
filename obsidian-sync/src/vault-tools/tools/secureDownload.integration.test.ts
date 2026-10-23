@@ -1,10 +1,11 @@
 import {
-    lstat, open, rename, symlink, unlink, writeFile,
+    rename, symlink, unlink,
 } from 'node:fs/promises';
 
 import {
     afterEach, expect, it, vi,
 } from 'vitest';
+import * as secure from 'senaev-utils/src/files/secureFilesystem/runSecureFilesystem';
 
 import { createTestVault, type TestVault } from '../createTestVault';
 
@@ -12,24 +13,10 @@ import {
     downloadTool, downloadChunkTool, readVaultFileResource,
 } from './downloadTool';
 
-vi.mock('node:fs/promises', async (original) => {
-    const fs = await original<typeof import('node:fs/promises')>();
-
-    return {
-        ...fs,
-        open: vi.fn(fs.open),
-        lstat: vi.fn(fs.lstat),
-    };
-});
 let vault: TestVault;
 
 afterEach(async () => {
-    vi.mocked(open).mockReset();
-    vi.mocked(lstat).mockReset();
-    const actual = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
-
-    vi.mocked(open).mockImplementation(actual.open);
-    vi.mocked(lstat).mockImplementation(actual.lstat);
+    vi.restoreAllMocks();
     await vault?.remove();
 });
 
@@ -59,13 +46,13 @@ it.each([
         '.obsidian/private.txt': 'PRIVATE-FIXTURE',
     });
     const ref = await downloadTool(vault.config, { path: 'a.pdf' });
-    const actual = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
+    const runSecure = secure.runSecureFilesystem;
 
-    vi.mocked(open).mockImplementationOnce(async (path, flags, permissions) => {
+    vi.spyOn(secure, 'runSecureFilesystem').mockImplementationOnce(async (...args) => {
         await unlink(vault.path('a.pdf'));
         await symlink(vault.path('.obsidian/private.txt'), vault.path('a.pdf'));
 
-        return actual.open(path, flags, permissions);
+        return await runSecure(...args);
     });
     const run = readMode(mode, ref);
 
@@ -82,49 +69,26 @@ it.each([
         '.obsidian/a.pdf': 'PRIVATE-FIXTURE',
     });
     const ref = await downloadTool(vault.config, { path: 'files/a.pdf' });
-    const actual = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
+    const runSecure = secure.runSecureFilesystem;
 
-    vi.mocked(open).mockImplementationOnce(async (path, flags, permissions) => {
+    vi.spyOn(secure, 'runSecureFilesystem').mockImplementationOnce(async (...args) => {
         await rename(vault.path('files'), vault.path('original-files'));
         await symlink(vault.path('.obsidian'), vault.path('files'));
 
-        return actual.open(path, flags, permissions);
+        return await runSecure(...args);
     });
     const run = readMode(mode, ref);
 
     await expect(run).rejects.toMatchObject({ code: 'forbidden_path' });
 });
 
-it('fails closed when the opened file cannot be checked, and releases the file read slot', async () => {
+it('releases read admission when the secure reader fails', async () => {
     vault = await createTestVault({ 'a.pdf': 'ordinary' });
-    const actual = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
-
-    vi.mocked(lstat).mockRejectedValue(new Error('lstat unavailable'));
+    vi.spyOn(secure, 'runSecureFilesystem').mockRejectedValue(new Error('reader unavailable'));
     for (let attempt = 0; attempt < 3; attempt++) {
-        await expect(downloadTool(vault.config, { path: 'a.pdf' })).rejects.toMatchObject({ code: 'forbidden_path' });
+        await expect(downloadTool(vault.config, { path: 'a.pdf' })).rejects.toThrow('reader unavailable');
     }
 
-    vi.mocked(lstat).mockImplementation(actual.lstat);
+    vi.restoreAllMocks();
     expect((await downloadTool(vault.config, { path: 'a.pdf' })).size).toBe(8);
-});
-
-it('rejects an in-place same-size change detected after hashing', async () => {
-    vault = await createTestVault({ 'a.pdf': 'ordinary' });
-    const actual = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
-    let descriptorChecks = 0;
-
-    vi.mocked(lstat).mockImplementation(async (path, options) => {
-        if (++descriptorChecks === 2) {
-            await writeFile(vault.path('a.pdf'), 'modified');
-            // Filesystem clocks can give rapid writes identical timestamps. Make the
-            // simulated version change explicit without sleeping for another tick.
-            await actual.utimes(vault.path('a.pdf'), new Date(0), new Date(0));
-        }
-
-        return await actual.lstat(path, options);
-    });
-    await expect(downloadTool(vault.config, { path: 'a.pdf' })).rejects.toMatchObject({
-        code: 'conflict',
-        details: { reason: 'version_changed' },
-    });
 });

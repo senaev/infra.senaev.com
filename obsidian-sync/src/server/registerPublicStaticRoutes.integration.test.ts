@@ -37,6 +37,10 @@ beforeAll(async () => {
     symlinkSync(join(paths.vault, 'note.md'), join(paths.publicStatic, 'note.txt'));
     symlinkSync(join(paths.publicStatic, 'page.html'), join(paths.publicStatic, 'folder', 'inside.html'));
 
+    mkdirSync(join(paths.publicStatic, 'private-index'));
+    symlinkSync(join(paths.vault, 'note.md'), join(paths.publicStatic, 'private-index', 'index.html'));
+    symlinkSync(join(paths.publicStatic, 'page.html'), join(paths.publicStatic, 'folder', 'index.html'));
+
     server = createVaultServer();
     registerPublicStaticRoutes(server);
     await server.ready();
@@ -72,4 +76,22 @@ describe('public static routes', () => {
         expect(response.statusCode).not.toBe(200);
         expect(response.body).not.toContain('private');
     });
+});
+
+it.each([
+    'private-index',
+    'private-index/',
+    'private-index/index.html',
+])('blocks an escaped index through %s', async (path) => {
+    const response = await get(path);
+
+    expect(response.statusCode).toBe(404);
+    expect(response.body).not.toContain('private note');
+});
+
+it.each([
+    'folder',
+    'folder/',
+])('serves a safe index through %s', async (path) => {
+    expect((await get(path)).body).toBe('public page');
 });

@@ -236,3 +236,21 @@ it('preserves an explicit glob overriding an ignored file', async () => {
 
     expect(result.files.map((file) => file.path)).toEqual(['ignored.js']);
 });
+
+it('refuses a project root replaced after validation and before process launch', async () => {
+    await mkdir(projects.path('other'));
+    await writeFile(projects.path('other', 'secret.ts'), 'PRIVATE-ROOT-FIXTURE');
+    const run = processModule.runProcess;
+
+    vi.spyOn(processModule, 'runProcess').mockImplementationOnce(async (...args) => {
+        await rename(projects.path('demo'), projects.path('moved-demo'));
+        await symlink(projects.path('other'), projects.path('demo'));
+
+        return await run(...args);
+    });
+    await expect(searchTool(projects.config, {
+        project: 'demo',
+        queries: ['PRIVATE-ROOT-FIXTURE'],
+    }))
+        .rejects.toMatchObject({ code: 'forbidden_path' });
+});

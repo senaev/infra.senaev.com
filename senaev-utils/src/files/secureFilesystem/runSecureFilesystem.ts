@@ -7,16 +7,19 @@ import type { CommandExecution } from '../../commands/CommandExecution';
 const HELPER_ERROR_CODES = [
     'conflict',
     'forbidden_path',
+    'file_too_large',
 ] as const;
 
 function helperErrorCode(error: string | undefined) {
     return HELPER_ERROR_CODES.find((code) => code === error) ?? 'command_failed';
 }
 
+export const SECURE_FILESYSTEM_HELPER = join(__dirname, 'secureFilesystem.py');
+
 /** Wait for the helper to exit, including on cancellation, before releasing its descriptors. */
-export async function runSecureFilesystem(input: object, execution: CommandExecution, directoryFd?: number): Promise<void> {
+export async function runSecureFilesystem<T = void>(input: object, execution: CommandExecution, directoryFd?: number, maxOutputChars = 16000): Promise<T> {
     execution.throwIfAborted();
-    const child = spawn('python3', [join(__dirname, 'secureFilesystem.py')], {
+    const child = spawn('python3', [SECURE_FILESYSTEM_HELPER], {
         stdio: [
             'pipe',
             'pipe',
@@ -29,7 +32,7 @@ export async function runSecureFilesystem(input: object, execution: CommandExecu
         },
     });
 
-    await new Promise<void>((resolve, reject) => {
+    return await new Promise<T>((resolve, reject) => {
         let output = '';
         let failure: unknown;
         const stop = (error: unknown) => {
@@ -47,7 +50,7 @@ export async function runSecureFilesystem(input: object, execution: CommandExecu
         child.stdout?.setEncoding('utf8');
         child.stdout?.on('data', (chunk: string) => {
             output += chunk;
-            if (output.length > 16000) {
+            if (output.length > maxOutputChars) {
                 stop(new CommandError('command_failed', 'Secure filesystem helper exceeded its output limit'));
             }
         });
@@ -67,13 +70,13 @@ export async function runSecureFilesystem(input: object, execution: CommandExecu
             }
 
             try {
-                const result = JSON.parse(output) as { ok?: boolean; error?: string; message?: string };
+                const result = JSON.parse(output) as { ok?: boolean; error?: string; message?: string; result?: T; details?: Record<string, unknown> | null };
 
                 if (code !== 0 || result.ok !== true) {
-                    throw new CommandError(helperErrorCode(result.error), result.message ?? 'Secure filesystem operation failed');
+                    throw new CommandError(helperErrorCode(result.error), result.message ?? 'Secure filesystem operation failed', result.details ?? undefined);
                 }
 
-                resolve();
+                resolve(result.result as T);
             } catch (error) {
                 reject(error);
             }
