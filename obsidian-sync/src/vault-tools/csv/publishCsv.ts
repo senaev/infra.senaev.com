@@ -1,16 +1,11 @@
-import { constants } from 'node:fs';
-import {
-    open, realpath, stat,
-} from 'node:fs/promises';
-import {
-    basename, dirname, join,
-} from 'node:path';
+import { join } from 'node:path';
 
 import { CommandError } from 'senaev-utils/src/commands/CommandError';
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { withFileMutation } from 'senaev-utils/src/files/withFileMutation';
 import { createFileDiffAsync } from 'senaev-utils/src/files/createFileDiffAsync';
-import { runSecureFilesystem } from 'senaev-utils/src/files/secureFilesystem/runSecureFilesystem';
+import { createFileExclusively, replaceFileAtomically } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
+import { isAlreadyExistsError } from 'senaev-utils/src/utils/Error/isAlreadyExistsError/isAlreadyExistsError';
 
 import {
     prepareNewVaultFile, resolveExistingFile, hashBytes,
@@ -20,72 +15,54 @@ import type { VaultToolsConfig } from '../vaultToolsConfig';
 
 export type CsvPublication = { path: string; expectedHash: string | null; original: string; csv: string };
 
-/**
- * Process-local reservation plus a fresh hash check. The folder opened at the start must
- * still be the real folder at the expected path (same device and inode, no symlink on the
- * way). The write itself goes through that descriptor (openat/linkat/renameat in the
- * Python helper, which checks the folder again), so a later parent swap cannot redirect it.
- */
+/** Process-local reservation plus a fresh hash check before atomic publication. */
 export function publishCsv(config: VaultToolsConfig, input: CsvPublication, execution: CommandExecution) {
     return withFileMutation(join(config.root, input.path), async () => {
-        const absolute = input.expectedHash === null
+        const target = input.expectedHash === null
             ? await prepareNewVaultFile(config, input.path, execution)
             : await resolveExistingFile(config, input.path, execution);
-        const handle = await open(dirname(absolute), constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW);
+        const changed = input.expectedHash === null || input.csv !== input.original;
+        const diff = await createFileDiffAsync(input.path, input.original, input.csv, execution);
 
-        try {
-            const expected = join(await realpath(config.root), dirname(input.path));
-            const opened = await handle.stat({ bigint: true });
-            const verify = async () => {
-                const currentReal = await realpath(expected).catch(() => null);
-                const current = currentReal === expected ? await stat(expected, { bigint: true }).catch(() => null) : null;
+        if (input.expectedHash !== null) {
+            const fresh = await readDownloadFile(config, input.path, execution, {
+                offset: 0,
+                length: 0,
+                maxBytes: 4194304,
+            });
 
-                if (current === null || current.dev !== opened.dev || current.ino !== opened.ino) {
-                    throw new CommandError('forbidden_path', 'CSV directory changed during publication');
-                }
-            };
-
-            await verify();
-            const changed = input.expectedHash === null || input.csv !== input.original;
-            const diff = await createFileDiffAsync(input.path, input.original, input.csv, execution);
-
-            await verify();
-            if (input.expectedHash !== null) {
-                const fresh = await readDownloadFile(config, input.path, execution, {
-                    offset: 0,
-                    length: 0,
-                    maxBytes: 4194304,
+            if (fresh.hash !== input.expectedHash) {
+                throw new CommandError('conflict', 'CSV changed; read it again before retrying', {
+                    currentHash: fresh.hash,
+                    hash: fresh.hash,
                 });
-
-                if (fresh.hash !== input.expectedHash) {
-                    throw new CommandError('conflict', 'CSV changed; read it again before retrying', {
-                        currentHash: fresh.hash,
-                        hash: fresh.hash,
-                    });
-                }
             }
-
-            execution.throwIfAborted();
-            if (changed) {
-                await runSecureFilesystem({
-                    operation: 'publish',
-                    root: config.root,
-                    parent: dirname(input.path),
-                    name: basename(input.path),
-                    content: input.csv,
-                    exclusive: input.expectedHash === null,
-                }, execution, handle.fd);
-                execution.changedPath(input.path);
-            }
-
-            return {
-                changed,
-                hash: hashBytes(Buffer.from(input.csv)),
-                size: Buffer.byteLength(input.csv),
-                ...diff,
-            };
-        } finally {
-            await handle.close();
         }
+
+        execution.throwIfAborted();
+        if (changed) {
+            const published = () => execution.changedPath(input.path);
+
+            try {
+                if (input.expectedHash === null) {
+                    await createFileExclusively(target, input.csv, execution.signal, published);
+                } else {
+                    await replaceFileAtomically(target, input.csv, execution.signal, published);
+                }
+            } catch (error) {
+                if (isAlreadyExistsError(error)) {
+                    throw new CommandError('conflict', 'CSV already exists; read its current hash before editing');
+                }
+
+                throw error;
+            }
+        }
+
+        return {
+            changed,
+            hash: hashBytes(Buffer.from(input.csv)),
+            size: Buffer.byteLength(input.csv),
+            ...diff,
+        };
     }, execution);
 }

@@ -129,10 +129,6 @@ export async function getShortLinkUrl(id: string): Promise<string | null> {
  * this row.
  */
 export async function createShortLink(targetUrl: string): Promise<string> {
-    if (!isAllowedShortLinkTarget(targetUrl)) {
-        throw new Error('A short link target must be an http(s) URL');
-    }
-
     return await withWriteLock(() => withFileMutation(SHORT_LINKS_FILE_PATH, async () => {
         // Read again: the cache may be older than the file, and the whole file is written back.
         cache = null;

@@ -1,4 +1,7 @@
-import { runSecureFilesystem } from 'senaev-utils/src/files/secureFilesystem/runSecureFilesystem';
+import { createHash } from 'node:crypto';
+import { constants } from 'node:fs';
+import { open } from 'node:fs/promises';
+
 import { CommandError } from 'senaev-utils/src/commands/CommandError';
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 
@@ -29,31 +32,68 @@ export async function readDownloadFile(config: VaultToolsConfig, path: string, e
     }
 }
 
-/** Open every component relative to an already opened parent, never through symlinks. */
+/** Hash the whole file while retaining only the selected bytes (all bytes for legacy resources). */
 async function readOpenedFile(config: VaultToolsConfig, path: string, execution: CommandExecution, range?: ByteRange) {
     const maxBytes = range?.maxBytes ?? MAX_FILE_BYTES;
+    const absolute = await resolveExistingFile(config, path, execution);
+    const handle = await open(absolute, constants.O_RDONLY | constants.O_NONBLOCK);
 
-    // Visibility and ordinary not_found errors stay in the Node adapter. The helper
-    // independently opens the whole path without following any symlink, including races.
-    await resolveExistingFile(config, path, execution);
-    const retained = Math.min(range?.length ?? maxBytes, maxBytes);
-    const result = await runSecureFilesystem<{ bytes: string; size: number; hash: string }>({
-        operation: 'read',
-        root: config.root,
-        path,
-        maxBytes,
-        ...range === undefined
-            ? {}
-            : {
-                offset: range.offset,
-                length: range.length,
-            },
-    }, execution, undefined, Math.ceil(retained / 3) * 4 + 1024);
+    try {
+        const initial = await handle.stat({ bigint: true });
 
-    execution.throwIfAborted();
+        if (!initial.isFile()) {
+            throw new CommandError('forbidden_path', 'Downloads require a regular file');
+        }
 
-    return {
-        ...result,
-        bytes: Buffer.from(result.bytes, 'base64'),
-    };
+        if (initial.size > BigInt(maxBytes)) {
+            throw new CommandError('file_too_large', `File exceeds ${maxBytes} byte read limit`);
+        }
+
+        const chunks: Buffer[] = [];
+        const digest = createHash('sha256');
+        const chunk = Buffer.alloc(65536);
+        let size = 0;
+
+        for (;;) {
+            await execution.checkpoint();
+            const { bytesRead } = await handle.read(chunk, 0, Math.min(chunk.length, maxBytes - size + 1));
+
+            if (bytesRead === 0) {
+                break;
+            }
+
+            if (size + bytesRead > maxBytes) {
+                throw new CommandError('file_too_large', `File exceeds ${maxBytes} byte read limit`);
+            }
+
+            digest.update(chunk.subarray(0, bytesRead));
+            const from = range === undefined ? 0 : Math.max(0, range.offset - size);
+            const to = range === undefined ? bytesRead : Math.min(bytesRead, range.offset + range.length - size);
+
+            if (to > from) {
+                chunks.push(Buffer.from(chunk.subarray(from, to)));
+            }
+
+            size += bytesRead;
+        }
+
+        const final = await handle.stat({ bigint: true });
+
+        if (initial.size !== final.size || initial.mtimeNs !== final.mtimeNs || initial.ctimeNs !== final.ctimeNs) {
+            throw new CommandError('conflict', 'File changed during download; request fresh metadata', {
+                reason: 'version_changed',
+                retryable: false,
+            });
+        }
+
+        execution.throwIfAborted();
+
+        return {
+            bytes: Buffer.concat(chunks),
+            size,
+            hash: digest.digest('hex'),
+        };
+    } finally {
+        await handle.close();
+    }
 }

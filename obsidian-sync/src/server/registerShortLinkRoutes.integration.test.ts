@@ -6,6 +6,8 @@ import { dirname, join } from 'node:path';
 import {
     afterAll, afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
+import { createCommandExecution } from 'senaev-utils/src/commands/CommandExecution';
+import { withFileMutation } from 'senaev-utils/src/files/withFileMutation';
 
 import { LEGACY_SHORT_LINKS_FILE_PATH, SHORT_LINKS_FILE_PATH } from '../vaultPaths';
 
@@ -104,6 +106,17 @@ describe('short link routes', () => {
         const { id } = (await create('https://example.com/b')).json<{ id: string }>();
 
         expect(await readFile(paths.csv, 'utf8')).toBe(`id,url,comment\na1,https://example.com/a,first\nevil01,javascript:alert(1),\n${id},https://example.com/b,\n`);
+    });
+
+    it('answers 409 while another tool edits the table', async () => {
+        let release!: () => void;
+        const editing = withFileMutation(paths.csv, () => new Promise<void>((done) => {
+            release = done;
+        }), createCommandExecution());
+
+        expect((await create('https://example.com/a')).statusCode).toBe(409);
+        release();
+        await editing;
     });
 
     it.each([

@@ -1,8 +1,5 @@
 FROM node:24.22.0-alpine
 
-# Descriptor-relative CSV publication uses Python openat/linkat/renameat on Linux and macOS.
-RUN apk add --no-cache python3
-
 # Provides the `ob` CLI used for Obsidian Sync login and continuous sync.
 RUN npm install -g obsidian-headless
 

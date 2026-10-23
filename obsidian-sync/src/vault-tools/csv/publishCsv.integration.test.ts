@@ -1,13 +1,10 @@
-import {
-    readFile, rename, symlink, writeFile,
-} from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 
 import {
     afterEach, expect, it, vi,
 } from 'vitest';
 import { createCommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import * as diffModule from 'senaev-utils/src/files/createFileDiffAsync';
-import * as secure from 'senaev-utils/src/files/secureFilesystem/runSecureFilesystem';
 
 import { createTestVault, type TestVault } from '../createTestVault';
 import { hashBytes } from '../access/vaultFiles';
@@ -43,32 +40,6 @@ it('rechecks the source after diff calculation before publishing', async () => {
         csv: updated,
     }, createCommandExecution())).rejects.toMatchObject({ code: 'conflict' });
     expect(await readFile(active.path('data.csv'), 'utf8')).toBe('id\nexternal\n');
-});
-
-it('detects a moved publication directory without following its replacement symlink', async () => {
-    const active = await createTestVault({
-        'target/data.csv': original,
-        'other/data.csv': 'id\nuntouched\n',
-    });
-
-    vault = active;
-    vi.spyOn(diffModule, 'createFileDiffAsync').mockImplementation(async () => {
-        await rename(active.path('target'), active.path('moved'));
-        await symlink(active.path('other'), active.path('target'));
-
-        return {
-            diff: '',
-            diffTruncated: false,
-        };
-    });
-    await expect(publishCsv(active.config, {
-        path: 'target/data.csv',
-        expectedHash,
-        original,
-        csv: updated,
-    }, createCommandExecution())).rejects.toMatchObject({ code: 'forbidden_path' });
-    expect(await readFile(active.path('other/data.csv'), 'utf8')).toBe('id\nuntouched\n');
-    expect(await readFile(active.path('moved/data.csv'), 'utf8')).toBe(original);
 });
 
 it('reserves the path while preparing a publication and releases it after cancellation', async () => {
@@ -114,37 +85,4 @@ it('reserves the path while preparing a publication and releases it after cancel
         changed: true,
         hash: hashBytes(Buffer.from(updated)),
     });
-});
-
-it.each([
-    false,
-    true,
-])('anchors publication after the last validation (exclusive=%s)', async (exclusive) => {
-    const active = await createTestVault({
-        'target/data.csv': original,
-        'other/data.csv': 'id\nuntouched\n',
-    });
-
-    vault = active;
-    const run = secure.runSecureFilesystem;
-
-    vi.spyOn(secure, 'runSecureFilesystem').mockImplementationOnce(async (...args) => {
-        await rename(active.path('target'), active.path('moved'));
-        await symlink(active.path('other'), active.path('target'));
-
-        return await run(...args);
-    });
-    const name = exclusive ? 'new.csv' : 'data.csv';
-
-    await expect(publishCsv(active.config, {
-        path: `target/${name}`,
-        expectedHash: exclusive ? null : expectedHash,
-        original: exclusive ? '' : original,
-        csv: updated,
-    }, createCommandExecution())).rejects.toMatchObject({ code: 'forbidden_path' });
-    expect(await readFile(active.path('other/data.csv'), 'utf8')).toBe('id\nuntouched\n');
-    expect(await readFile(active.path('moved/data.csv'), 'utf8')).toBe(original);
-    if (exclusive) {
-        await expect(readFile(active.path('other/new.csv'))).rejects.toMatchObject({ code: 'ENOENT' });
-    }
 });

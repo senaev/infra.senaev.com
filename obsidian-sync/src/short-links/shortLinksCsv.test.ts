@@ -73,11 +73,10 @@ describe('appendShortLinkRow', () => {
     });
 
     it('puts the values in the columns of the file, keeps its line ending, and adds a missing one', () => {
-        expect(appendShortLinkRow('url,note,id\r\nhttps://a.com,x,a1', [
-            'url',
-            'note',
-            'id',
-        ], 'b2', 'https://b.com/?q=1,2')).toBe('url,note,id\r\nhttps://a.com,x,a1\r\n"https://b.com/?q=1,2",,b2\r\n');
+        const content = 'url,note, Id\r\nhttps://a.com,x,a1';
+        const { headers } = parseShortLinksCsv(content);
+
+        expect(appendShortLinkRow(content, headers, 'b2', 'https://b.com/?q=1,2')).toBe('url,note, Id\r\nhttps://a.com,x,a1\r\n"https://b.com/?q=1,2",,b2\r\n');
     });
 });
 

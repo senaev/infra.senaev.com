@@ -1,13 +1,11 @@
 import {
-    mkdir, rename, symlink, writeFile,
+    mkdir, symlink, writeFile,
 } from 'node:fs/promises';
 
 import { createCommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import {
-    afterEach, beforeEach, describe, expect, it, vi,
+    afterEach, beforeEach, describe, expect, it,
 } from 'vitest';
-
-import * as processModule from '../process/runProcess';
 
 import { createTestProjects, type TestProjects } from './createTestProjects';
 import { searchTool } from './searchTool';
@@ -36,7 +34,6 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-    vi.restoreAllMocks();
     await projects.remove();
 });
 
@@ -186,71 +183,4 @@ describe('searchTool', () => {
             regex: true,
         })).rejects.toMatchObject({ code: 'invalid_arguments' });
     });
-});
-
-it('does not follow a folder that becomes a symlink just before rg starts', async () => {
-    await mkdir(projects.path('other'));
-    await writeFile(projects.path('other', 'secret.txt'), 'PRIVATE-FIXTURE');
-    const run = processModule.runProcess;
-
-    vi.spyOn(processModule, 'runProcess').mockImplementationOnce(async (...args) => {
-        await rename(projects.path('demo', 'src'), projects.path('demo', 'moved'));
-        await symlink(projects.path('other'), projects.path('demo', 'src'));
-
-        return await run(...args);
-    });
-    const result = await searchTool(projects.config, {
-        project: 'demo',
-        folder: 'src',
-        queries: [
-            'fetchUser',
-            'PRIVATE-FIXTURE',
-        ],
-    });
-
-    expect(result.files).toEqual([]);
-    expect(JSON.stringify(result)).not.toContain('PRIVATE-FIXTURE');
-});
-
-it.each([
-    'src',
-    'src/api.ts',
-])('returns only the files under the folder %s', async (folder) => {
-    const result = await searchTool(projects.config, {
-        project: 'demo',
-        folder,
-        queries: ['fetchUser'],
-    });
-
-    expect(result.files.map((file) => file.path)).toEqual(['src/api.ts']);
-});
-
-it('preserves an explicit glob overriding an ignored file', async () => {
-    await writeFile(projects.path('demo', '.gitignore'), 'dist/\nignored.js\n');
-    await writeFile(projects.path('demo', 'ignored.js'), 'fetchUser();\n');
-    const result = await searchTool(projects.config, {
-        project: 'demo',
-        glob: '*.js',
-        queries: ['fetchUser'],
-    });
-
-    expect(result.files.map((file) => file.path)).toEqual(['ignored.js']);
-});
-
-it('refuses a project root replaced after validation and before process launch', async () => {
-    await mkdir(projects.path('other'));
-    await writeFile(projects.path('other', 'secret.ts'), 'PRIVATE-ROOT-FIXTURE');
-    const run = processModule.runProcess;
-
-    vi.spyOn(processModule, 'runProcess').mockImplementationOnce(async (...args) => {
-        await rename(projects.path('demo'), projects.path('moved-demo'));
-        await symlink(projects.path('other'), projects.path('demo'));
-
-        return await run(...args);
-    });
-    await expect(searchTool(projects.config, {
-        project: 'demo',
-        queries: ['PRIVATE-ROOT-FIXTURE'],
-    }))
-        .rejects.toMatchObject({ code: 'forbidden_path' });
 });

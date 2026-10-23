@@ -1,3 +1,4 @@
+import { CommandError } from 'senaev-utils/src/commands/CommandError';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 
 import { logger } from '../logger';
@@ -53,6 +54,13 @@ export function registerShortLinkRoutes(server: VaultServer): void {
         try {
             id = await createShortLink(trimmedLink);
         } catch (error) {
+            if (error instanceof CommandError && error.code === 'conflict') {
+                return reply.code(409).send({
+                    status: 'error',
+                    message: 'short_links.csv is being edited; retry shortly',
+                });
+            }
+
             logger.error(error, '❌ Failed to write short link to vault');
 
             return reply.code(500).send({

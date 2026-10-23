@@ -44,8 +44,9 @@ export function parseShortLinksCsv(content: string): ShortLinksTable {
         };
     }
 
-    const idIndex = headers.indexOf(ID_COLUMN);
-    const urlIndex = headers.indexOf(URL_COLUMN);
+    const columns = headers.map((header) => header.trim().toLowerCase());
+    const idIndex = columns.indexOf(ID_COLUMN);
+    const urlIndex = columns.indexOf(URL_COLUMN);
 
     if (idIndex === -1 || urlIndex === -1) {
         throw new Error(`short_links.csv must have the "${ID_COLUMN}" and "${URL_COLUMN}" columns`);
@@ -74,11 +75,13 @@ export function parseShortLinksCsv(content: string): ShortLinksTable {
 /** The file content with one more row. Keeps the line ending of the file. */
 export function appendShortLinkRow(content: string, headers: readonly string[], id: string, url: string): string {
     const row = headers.map((header) => {
-        if (header === ID_COLUMN) {
+        const column = header.trim().toLowerCase();
+
+        if (column === ID_COLUMN) {
             return id;
         }
 
-        return header === URL_COLUMN ? url : '';
+        return column === URL_COLUMN ? url : '';
     });
 
     if (content.trim() === '') {

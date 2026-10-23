@@ -1,4 +1,3 @@
-import { SECURE_FILESYSTEM_HELPER } from 'senaev-utils/src/files/secureFilesystem/runSecureFilesystem';
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { CommandError } from 'senaev-utils/src/commands/CommandError';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
@@ -154,6 +153,7 @@ function buildRipgrepArgs(options: {
     caseSensitive: boolean;
     contextLines: number;
     glob: string | undefined;
+    folder: string;
 }): string[] {
     return [
         '--json',
@@ -180,7 +180,7 @@ function buildRipgrepArgs(options: {
             query,
         ]),
         '--',
-        '.',
+        options.folder === '' ? '.' : options.folder,
     ];
 }
 
@@ -198,19 +198,10 @@ export async function searchCommand(config: CodeToolsConfig, input: SearchComman
     const folder = normalizeProjectPath(input.folder, 'folder');
 
     await assertExistingPathHasNoSymlink(project, folder, execution);
-    // The launcher opens the project without following symlinks and fchdir pins that
-    // directory before exec. Replacing its pathname cannot redirect the search root.
-    // Folder filtering remains below; this launcher never copies the repository.
-    const result = await runProcess('python3', [
-        SECURE_FILESYSTEM_HELPER,
-        '--search',
-        config.projectsRoot,
-        project.name,
-        JSON.stringify([
-            'rg',
-            ...buildRipgrepArgs(input),
-        ]),
-    ], {
+    const result = await runProcess('rg', buildRipgrepArgs({
+        ...input,
+        folder,
+    }), {
         cwd: project.root,
         signal: execution.signal,
         onOutput: execution.log,
@@ -220,14 +211,7 @@ export async function searchCommand(config: CodeToolsConfig, input: SearchComman
     });
 
     execution.throwIfAborted();
-    if (result.exitCode === 77) {
-        throw new CommandError('forbidden_path', 'Project directory changed before search');
-    }
-
-    const isInFolder = (path: string) => folder === '' || path === folder || path.startsWith(`${folder}/`);
-    const files = (await parseRipgrepJson(result.stdout, execution))
-        .filter((file) => isInFolder(file.path))
-        .sort((a, b) => a.path.localeCompare(b.path));
+    const files = (await parseRipgrepJson(result.stdout, execution)).sort((a, b) => a.path.localeCompare(b.path));
 
     // Exit code 2 is an error, such as a bad regular expression or an unreadable file.
     if (result.exitCode === 2 && files.length === 0) {

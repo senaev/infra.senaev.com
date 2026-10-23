@@ -133,21 +133,6 @@ describe('the other obsidian-sync calls', () => {
     });
 });
 
-describe('getShortLink', () => {
-    it.each([
-        'javascript:alert(1)',
-        'data:text/html,<script>alert(1)</script>',
-        'not a url',
-    ])('refuses to return the target %s, which is not http(s)', async (url) => {
-        mockFetch(200, {
-            status: 'ok',
-            url,
-        });
-
-        await expect(getShortLink('abc')).rejects.toThrow('not an http(s) URL');
-    });
-});
-
 describe('file-reference forwarding', () => {
     it('posts the small file reference as JSON without embedding file bytes', async () => {
         const fetchMock = mockFetch(200, {

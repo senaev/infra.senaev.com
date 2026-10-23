@@ -83,8 +83,6 @@ export async function getMilestones(date?: string): Promise<MilestonesOverview> 
  * vault's short_links.csv file.
  *
  * Returns the target URL, or `null` if the short link id is not found.
- * obsidian-sync already skips targets that are not http(s); the check is repeated here
- * because this value goes straight into a public redirect.
  */
 export async function getShortLink(shortId: string): Promise<string | null> {
     const response = await fetchObsidianSync(`/short_links/${encodeURIComponent(shortId)}`);
@@ -95,20 +93,9 @@ export async function getShortLink(shortId: string): Promise<string | null> {
 
     const body = await readStatusResponse(response).catch((error: unknown) => {
         throw new Error(`Failed to resolve short link: ${stringifyUnknownError(error)}`, { cause: error });
-    }) as { url: unknown };
-
-    if (typeof body.url !== 'string' || !isHttpUrl(body.url)) {
-        throw new Error('Short link target is not an http(s) URL');
-    }
+    }) as { url: string };
 
     return body.url;
-}
-
-function isHttpUrl(url: string): boolean {
-    return URL.canParse(url) && [
-        'http:',
-        'https:',
-    ].includes(new URL(url).protocol);
 }
 
 /**
