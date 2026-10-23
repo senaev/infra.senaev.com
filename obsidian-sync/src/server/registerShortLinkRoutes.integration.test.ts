@@ -9,7 +9,7 @@ import {
 import { createCommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { withFileMutation } from 'senaev-utils/src/files/withFileMutation';
 
-import { LEGACY_SHORT_LINKS_FILE_PATH, SHORT_LINKS_FILE_PATH } from '../vaultPaths';
+import { SHORT_LINKS_FILE_PATH } from '../vaultPaths';
 
 import { createVaultServer, type VaultServer } from './createVaultServer';
 import { registerShortLinkRoutes } from './registerShortLinkRoutes';
@@ -21,14 +21,12 @@ vi.mock('../vaultPaths', async () => {
 
     return {
         SHORT_LINKS_FILE_PATH: `${vault}/short_links/short_links.csv`,
-        LEGACY_SHORT_LINKS_FILE_PATH: `${vault}/short_links/short_links.md`,
     };
 });
 
 const paths = {
     vault: dirname(dirname(SHORT_LINKS_FILE_PATH)),
     csv: SHORT_LINKS_FILE_PATH,
-    legacy: LEGACY_SHORT_LINKS_FILE_PATH,
 };
 
 let server: VaultServer;
@@ -73,18 +71,6 @@ async function create(link: string) {
 }
 
 describe('short link routes', () => {
-    it('moves the links of short_links.md to short_links.csv once, without the targets that are not http(s)', async () => {
-        await writeFile(paths.legacy, '1bxsl9 https://senaev.com/cv/5min\nbad001 javascript:alert(1)\n');
-
-        expect(await resolve('1bxsl9')).toBe('https://senaev.com/cv/5min');
-        expect(await resolve('bad001')).toBe(404);
-        expect(await readFile(paths.csv, 'utf8')).toBe('id,url\n1bxsl9,https://senaev.com/cv/5min\n');
-
-        await writeFile(paths.legacy, '1bxsl9 https://changed.example.com\n');
-        expect(await resolve('1bxsl9')).toBe('https://senaev.com/cv/5min');
-        expect(await readFile(paths.legacy, 'utf8')).toBe('1bxsl9 https://changed.example.com\n');
-    });
-
     it('creates the table with the first link, and appends the next ones', async () => {
         const first = await create('https://example.com/a');
         const second = await create('https://example.com/?b=1,2');

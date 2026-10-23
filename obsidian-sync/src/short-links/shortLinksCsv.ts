@@ -96,14 +96,3 @@ export function appendShortLinkRow(content: string, headers: readonly string[], 
 
     return `${content}${separator}${stringify([row], { record_delimiter: recordDelimiter })}`;
 }
-
-/** The content of a new `short_links.csv` with these links. */
-export function formatShortLinksCsv(links: ReadonlyMap<string, string>): string {
-    return stringify([
-        [
-            ID_COLUMN,
-            URL_COLUMN,
-        ],
-        ...links,
-    ]);
-}

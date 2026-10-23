@@ -6,17 +6,14 @@ import { dirname } from 'node:path';
 
 import { createCommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { withFileMutation } from 'senaev-utils/src/files/withFileMutation';
-import { isAlreadyExistsError } from 'senaev-utils/src/utils/Error/isAlreadyExistsError/isAlreadyExistsError';
 import { isNotFoundError } from 'senaev-utils/src/utils/Error/isNotFoundError/isNotFoundError';
 import { createFileExclusively, replaceFileAtomically } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
 
-import { logger } from '../logger';
-import { LEGACY_SHORT_LINKS_FILE_PATH, SHORT_LINKS_FILE_PATH } from '../vaultPaths';
+import { SHORT_LINKS_FILE_PATH } from '../vaultPaths';
 
 import { generateUniqueShortLinkId } from './generateUniqueShortLinkId';
-import { parseShortLinksContent } from './parseShortLinksContent';
 import {
-    appendShortLinkRow, formatShortLinksCsv, isAllowedShortLinkTarget, parseShortLinksCsv, type ShortLinksTable,
+    appendShortLinkRow, parseShortLinksCsv, type ShortLinksTable,
 } from './shortLinksCsv';
 
 type ShortLinksCache = {
@@ -42,45 +39,9 @@ async function statIfExists(path: string): Promise<Stats | null> {
     }
 }
 
-/** Creates short_links.csv from the old short_links.md once, so that no shared link breaks. */
-async function migrateLegacyShortLinks(): Promise<void> {
-    let legacyContent: string;
-
-    try {
-        legacyContent = await readFile(LEGACY_SHORT_LINKS_FILE_PATH, 'utf8');
-    } catch (error) {
-        if (isNotFoundError(error)) {
-            return;
-        }
-
-        throw error;
-    }
-
-    const links = new Map([...parseShortLinksContent(legacyContent)].filter(([
-        , url,
-    ]) => isAllowedShortLinkTarget(url)));
-
-    try {
-        await createFileExclusively(SHORT_LINKS_FILE_PATH, formatShortLinksCsv(links));
-    } catch (error) {
-        if (isAlreadyExistsError(error)) {
-            return;
-        }
-
-        throw error;
-    }
-
-    logger.info({ count: links.size }, '✅ Moved the short links from short_links.md to short_links.csv; delete short_links.md by hand');
-}
-
 /** Ensures the cache reflects the file on disk, reloading only if it changed. `null` if there is no file. */
 async function ensureCacheFresh(): Promise<ShortLinksCache | null> {
-    let fileStat = await statIfExists(SHORT_LINKS_FILE_PATH);
-
-    if (fileStat === null) {
-        await migrateLegacyShortLinks();
-        fileStat = await statIfExists(SHORT_LINKS_FILE_PATH);
-    }
+    const fileStat = await statIfExists(SHORT_LINKS_FILE_PATH);
 
     if (fileStat === null) {
         cache = null;

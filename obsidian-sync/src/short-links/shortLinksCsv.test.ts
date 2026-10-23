@@ -3,7 +3,7 @@ import {
 } from 'vitest';
 
 import {
-    appendShortLinkRow, formatShortLinksCsv, isAllowedShortLinkTarget, parseShortLinksCsv,
+    appendShortLinkRow, isAllowedShortLinkTarget, parseShortLinksCsv,
 } from './shortLinksCsv';
 
 describe('isAllowedShortLinkTarget', () => {
@@ -77,22 +77,5 @@ describe('appendShortLinkRow', () => {
         const { headers } = parseShortLinksCsv(content);
 
         expect(appendShortLinkRow(content, headers, 'b2', 'https://b.com/?q=1,2')).toBe('url,note, Id\r\nhttps://a.com,x,a1\r\n"https://b.com/?q=1,2",,b2\r\n');
-    });
-});
-
-describe('formatShortLinksCsv', () => {
-    it('makes a table that parses back to the same links', () => {
-        const links = new Map([
-            [
-                'a1',
-                'https://example.com/?a=1,2',
-            ],
-            [
-                'b2',
-                'https://example.com/"quoted"',
-            ],
-        ]);
-
-        expect(parseShortLinksCsv(formatShortLinksCsv(links)).links).toEqual(links);
     });
 });

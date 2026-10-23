@@ -22,9 +22,6 @@ export const TASKS_FILE_PATH = join(OBSIDIAN_VAULT_PATH, '@senaev', 'tasks', 'ta
 /** `id,url` table backing the short link routes; obsidian-csv_query can read and edit it. */
 export const SHORT_LINKS_FILE_PATH = join(OBSIDIAN_VAULT_PATH, 'short_links', 'short_links.csv');
 
-/** The old flat `<id> <url>` file, read only to create SHORT_LINKS_FILE_PATH once. */
-export const LEGACY_SHORT_LINKS_FILE_PATH = join(OBSIDIAN_VAULT_PATH, 'short_links', 'short_links.md');
-
 /**
  * Owned by the senaev-personal-tools Obsidian plugin. Its source is synced with the vault,
  * so reading the config from here keeps one source of truth for the milestone rules.
