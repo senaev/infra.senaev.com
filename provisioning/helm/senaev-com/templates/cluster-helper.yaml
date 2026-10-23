@@ -255,4 +255,53 @@ spec:
     - name: webhook
       port: 3000
       targetPort: 3000
+---
+# The "internal" port has no authentication, and /telegram/send-message sends any text
+# from the bot, so only its known callers can reach it. The public "webhook" port is
+# reached through Traefik only.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cluster-helper
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: cluster-helper
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+          podSelector:
+            matchLabels:
+              app: traefik
+      ports:
+        - protocol: TCP
+          port: 3000
+    - from:
+        # Alertmanager: /alertmanager/webhook
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: telemetry
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: vmalertmanager
+        # /telegram/send-message
+        - podSelector:
+            matchLabels:
+              app: vpn-subscription
+        # /send-daily-overview
+        - podSelector:
+            matchLabels:
+              app: n8n
+        # /qbittorrent/torrent-event
+        - podSelector:
+            matchLabels:
+              app: qbittorrent
+      ports:
+        - protocol: TCP
+          port: 80
 {{- end }}

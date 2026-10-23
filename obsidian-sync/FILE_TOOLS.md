@@ -122,10 +122,8 @@ Retry-After: 1. Disconnects cancel backend reads/upstream fetches; deadlines als
 stalled responses. These bounds limit simultaneous buffered/base64 copies, rather than
 turning this JSON-based protocol into streaming binary transfer.
 
-Downloads open with O_NOFOLLOW and validate the actual descriptor through Linux
-/proc/self/fd before and after reading, including parent-directory replacement races.
-They fail closed when procfs descriptor validation is unavailable. Deployment requires
-Linux containers with procfs mounted. File metadata changes during reading are rejected.
+Downloads refuse paths with a symlink. They do not protect against a path that is replaced
+by a symlink while it is read. File metadata changes during reading are rejected.
 
 MIME types use filename extensions, with application/octet-stream for unknown types.
 Resource access does not grant filesystem writes. Resource listings are empty; the
@@ -172,7 +170,7 @@ shortly. Content-change conflicts have details.reason = "version_changed" and re
 discard collected chunks and request fresh metadata.
 
 Every chunk request hashes the whole opened file while retaining only its selected range.
-Metadata hashes incrementally without retaining file bytes. Both reuse descriptor, exclusion,
+Metadata hashes incrementally without retaining file bytes. Both reuse exclusion,
 symlink and change-detection checks from resource reads, with a 25 MiB whole-file limit.
 Two file reads may run per backend process across metadata, chunk and legacy-resource calls;
 extra parallel calls fail with a capacity conflict. This bounds allocation, including tools

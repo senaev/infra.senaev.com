@@ -1,5 +1,7 @@
-import { mkdirSync, realpathSync } from 'node:fs';
-import { join } from 'node:path';
+import {
+    mkdirSync, realpathSync, statSync,
+} from 'node:fs';
+import { join, sep } from 'node:path';
 
 import fastifyStatic from '@fastify/static';
 
@@ -57,10 +59,19 @@ export function registerPublicStaticRoutes(server: VaultServer): void {
          */
         allowedPath: (pathName: string): boolean => {
             try {
-                return realpathSync(join(realRoot, pathName)).startsWith(realRoot);
+                let realPath = realpathSync(join(realRoot, pathName));
+
+                // The static plugin selects an index after allowedPath. Validate that
+                // file too, rather than authorizing only its containing directory.
+                if (statSync(realPath).isDirectory()) {
+                    realPath = realpathSync(join(realPath, 'index.html'));
+                }
+
+                // The separator stops a sibling such as `public-static-private` from passing.
+                return realPath === realRoot || realPath.startsWith(`${realRoot}${sep}`);
             } catch {
-                // Missing file: let the plugin answer with its normal 404.
-                return true;
+                // Missing or unverifiable paths fail closed with the normal 404.
+                return false;
             }
         },
     });

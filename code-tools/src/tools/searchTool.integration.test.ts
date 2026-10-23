@@ -1,3 +1,7 @@
+import {
+    mkdir, symlink, writeFile,
+} from 'node:fs/promises';
+
 import { createCommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import {
     afterEach, beforeEach, describe, expect, it,
@@ -128,6 +132,48 @@ describe('searchTool', () => {
                 snippet: '3:export function fetchUser() {}',
             },
         ]);
+    });
+
+    it.each([
+        'outside-folder',
+        'outside-file',
+        'outside-folder/secret.txt',
+    ])('refuses to search through the symlink %s', async (folder) => {
+        await mkdir(projects.path('other'));
+        await writeFile(projects.path('other', 'secret.txt'), 'fetchUser secret\n');
+        await symlink(projects.path('other'), projects.path('demo', 'outside-folder'));
+        await symlink(projects.path('other', 'secret.txt'), projects.path('demo', 'outside-file'));
+
+        await expect(searchTool(projects.config, {
+            project: 'demo',
+            queries: ['secret'],
+            folder,
+        })).rejects.toMatchObject({ code: 'forbidden_path' });
+    });
+
+    it('skips symlinks inside the searched folder', async () => {
+        await mkdir(projects.path('other'));
+        await writeFile(projects.path('other', 'secret.txt'), 'fetchUser secret\n');
+        await symlink(projects.path('other'), projects.path('demo', 'src/outside-folder'));
+        await symlink(projects.path('other', 'secret.txt'), projects.path('demo', 'src/outside-file'));
+
+        const result = await searchTool(projects.config, {
+            project: 'demo',
+            queries: ['secret'],
+        });
+
+        expect(result.files).toEqual([]);
+    });
+
+    it('reports a missing folder as not found', async () => {
+        await expect(searchTool(projects.config, {
+            project: 'demo',
+            queries: ['fetchUser'],
+            folder: 'missing',
+        })).rejects.toMatchObject({
+            code: 'not_found',
+            message: '"missing" does not exist',
+        });
     });
 
     it('reports a bad regular expression as an argument error', async () => {

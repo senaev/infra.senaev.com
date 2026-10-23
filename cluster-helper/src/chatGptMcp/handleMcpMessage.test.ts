@@ -271,32 +271,21 @@ describe('code tool proxy', () => {
 });
 
 describe('describeMcpExchange', () => {
-    it('logs the arguments of every code- tool', () => {
-        for (const tool of CODE_TOOLS) {
-            const args = {
-                project: 'demo',
-                command: 'npm run simple-checks',
-            };
-
-            expect(describeMcpExchange(request('tools/call', {
-                name: tool.name,
-                arguments: args,
-            }), null)).toMatchObject({
-                tool: tool.name,
-                arguments: args,
-            });
-        }
-    });
-
-    it('never logs the arguments of an obsidian- tool or of an unknown tool', () => {
+    it('logs the tool name and never its arguments, for every tool', () => {
         for (const name of [
-            ...OBSIDIAN_TOOLS.map((tool) => tool.name),
+            ...ALL_TOOLS.map((tool) => tool.name),
             'unknown-tool',
         ]) {
-            expect(describeMcpExchange(request('tools/call', {
+            const description = describeMcpExchange(request('tools/call', {
                 name,
-                arguments: { text: 'private diary text' },
-            }), null).arguments).toBeUndefined();
+                arguments: {
+                    command: 'echo private-command',
+                    content: 'private-content',
+                },
+            }), null);
+
+            expect(description).toMatchObject({ tool: name });
+            expect(JSON.stringify(description)).not.toContain('private');
         }
     });
 });

@@ -95,6 +95,20 @@ export async function resolveExistingFile(project: Project, path: string, execut
     }
 }
 
+/** Proves that an existing file or folder has no symlink on the way, as a tool such as rg follows one given as an argument. */
+export async function assertExistingPathHasNoSymlink(project: Project, path: string, execution: CommandExecution): Promise<void> {
+    try {
+        await assertNoSymlinkOnPath(project.root, path, execution);
+    } catch (error) {
+        execution.throwIfAborted();
+        if (isNotFoundError(error)) {
+            throw new CommandError('not_found', `"${path}" does not exist`);
+        }
+
+        throw error;
+    }
+}
+
 /** Reads a UTF-8 text file. A file with a NUL byte near its start is treated as binary, as git does. */
 export async function readTextFile(absolutePath: string, path: string, execution: CommandExecution): Promise<string> {
     await execution.checkpoint();

@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto';
 import { constants } from 'node:fs';
-import { open, realpath } from 'node:fs/promises';
-import { join } from 'node:path';
+import { open } from 'node:fs/promises';
 
 import { CommandError } from 'senaev-utils/src/commands/CommandError';
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
@@ -33,35 +32,13 @@ export async function readDownloadFile(config: VaultToolsConfig, path: string, e
     }
 }
 
-/** Hash the whole validated descriptor while retaining only the selected bytes (all bytes for legacy resources). */
+/** Hash the whole file while retaining only the selected bytes (all bytes for legacy resources). */
 async function readOpenedFile(config: VaultToolsConfig, path: string, execution: CommandExecution, range?: ByteRange) {
     const maxBytes = range?.maxBytes ?? MAX_FILE_BYTES;
     const absolute = await resolveExistingFile(config, path, execution);
-    const expected = join(await realpath(config.root), path);
-    const handle = await open(absolute, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK).catch((error: unknown) => {
-        if (error instanceof Error && 'code' in error && error.code === 'ELOOP') {
-            throw new CommandError('forbidden_path', 'File changed to a symbolic link');
-        }
-
-        throw error;
-    });
+    const handle = await open(absolute, constants.O_RDONLY | constants.O_NONBLOCK);
 
     try {
-        const validateDescriptor = async () => {
-            let actual: string;
-
-            try {
-                actual = await realpath(`/proc/self/fd/${handle.fd}`);
-            } catch {
-                throw new CommandError('command_failed', 'Secure file downloads require Linux procfs descriptor validation');
-            }
-
-            if (actual !== expected) {
-                throw new CommandError('forbidden_path', 'Opened file no longer matches its allowed vault path');
-            }
-        };
-
-        await validateDescriptor();
         const initial = await handle.stat({ bigint: true });
 
         if (!initial.isFile()) {
@@ -100,7 +77,6 @@ async function readOpenedFile(config: VaultToolsConfig, path: string, execution:
             size += bytesRead;
         }
 
-        await validateDescriptor();
         const final = await handle.stat({ bigint: true });
 
         if (initial.size !== final.size || initial.mtimeNs !== final.mtimeNs || initial.ctimeNs !== final.ctimeNs) {

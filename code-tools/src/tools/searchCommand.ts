@@ -5,7 +5,9 @@ import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { runProcess } from '../process/runProcess';
 
 import type { CodeToolsConfig } from './codeToolsConfig';
-import { normalizeProjectPath, resolveNamedProject } from './projectAccess';
+import {
+    assertExistingPathHasNoSymlink, normalizeProjectPath, resolveNamedProject,
+} from './projectAccess';
 
 const MAX_RG_OUTPUT_CHARS = 10_000_000;
 
@@ -193,9 +195,12 @@ export async function searchCommand(config: CodeToolsConfig, input: SearchComman
     const {
         contextLines, maxMatchesPerFile, offset, limit,
     } = input;
+    const folder = normalizeProjectPath(input.folder, 'folder');
+
+    await assertExistingPathHasNoSymlink(project, folder, execution);
     const result = await runProcess('rg', buildRipgrepArgs({
         ...input,
-        folder: normalizeProjectPath(input.folder, 'folder'),
+        folder,
     }), {
         cwd: project.root,
         signal: execution.signal,

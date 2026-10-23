@@ -1,6 +1,8 @@
+import { CommandError } from 'senaev-utils/src/commands/CommandError';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 
 import { logger } from '../logger';
+import { isAllowedShortLinkTarget } from '../short-links/shortLinksCsv';
 import { createShortLink, getShortLinkUrl } from '../short-links/shortLinksStore';
 
 import type { VaultServer } from './createVaultServer';
@@ -38,12 +40,12 @@ export function registerShortLinkRoutes(server: VaultServer): void {
             });
         }
 
-        if (!URL.canParse(trimmedLink)) {
+        if (!isAllowedShortLinkTarget(trimmedLink)) {
             return reply
                 .code(400)
                 .send({
                     status: 'error',
-                    message: 'Field "link" must be a valid URL',
+                    message: 'Field "link" must be a valid http(s) URL',
                 });
         }
 
@@ -52,6 +54,13 @@ export function registerShortLinkRoutes(server: VaultServer): void {
         try {
             id = await createShortLink(trimmedLink);
         } catch (error) {
+            if (error instanceof CommandError && error.code === 'conflict') {
+                return reply.code(409).send({
+                    status: 'error',
+                    message: 'short_links.csv is being edited; retry shortly',
+                });
+            }
+
             logger.error(error, '❌ Failed to write short link to vault');
 
             return reply.code(500).send({

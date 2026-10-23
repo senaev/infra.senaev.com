@@ -80,7 +80,7 @@ export async function getMilestones(date?: string): Promise<MilestonesOverview> 
 /**
  * Resolves a short link id by calling the obsidian-sync container's
  * `GET /short_links/:id` HTTP API, which reads the mapping from the Obsidian
- * vault's short_links.md file.
+ * vault's short_links.csv file.
  *
  * Returns the target URL, or `null` if the short link id is not found.
  */
@@ -101,7 +101,7 @@ export async function getShortLink(shortId: string): Promise<string | null> {
 /**
  * Creates a new short link by calling the obsidian-sync container's
  * `POST /short_links` HTTP API, which validates the link and appends it to
- * the Obsidian vault's short_links.md file.
+ * the Obsidian vault's short_links.csv file.
  *
  * Returns the newly assigned short link id. Throws with the obsidian-sync
  * error message (e.g. an invalid link) on failure.
