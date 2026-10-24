@@ -13,7 +13,9 @@ import {
 import { readDownloadFile } from '../access/readDownloadBytes';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
 
-export type CsvPublication = { path: string; expectedHash: string | null; original: string; csv: string };
+import { readCsvParams } from './readCsvParams';
+
+export type CsvPublication = { path: string; expectedHash: string | null; original: string; csv: string; paramsHash?: string | null };
 
 /** Process-local reservation plus a fresh hash check before atomic publication. */
 export function publishCsv(config: VaultToolsConfig, input: CsvPublication, execution: CommandExecution) {
@@ -37,6 +39,10 @@ export function publishCsv(config: VaultToolsConfig, input: CsvPublication, exec
                     hash: fresh.hash,
                 });
             }
+        }
+
+        if (input.paramsHash !== undefined && (await readCsvParams(config, input.path, execution)).hash !== input.paramsHash) {
+            throw new CommandError('conflict', 'CSV params changed; retry with the current settings');
         }
 
         execution.throwIfAborted();

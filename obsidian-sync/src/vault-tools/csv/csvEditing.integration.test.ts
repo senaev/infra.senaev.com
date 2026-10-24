@@ -586,3 +586,87 @@ it('rejects header growth beyond import limits without rewriting the CSV', async
     });
     expect(await readFile(vault.path('data.csv'), 'utf8')).toBe(text);
 });
+
+it('loads sidecar sorting on INSERT, UPDATE and DELETE through the production subprocess', async () => {
+    const actual = await vi.importActual<typeof import('./runCsvQuery')>('./runCsvQuery');
+    const text = '\uFEFFid,value\r\na,2\r\nb,10\r\nc,2\r\n';
+
+    vault = await createTestVault({
+        'data.csv': text,
+        'data.csv.params.json': JSON.stringify({
+            sort: [
+                {
+                    expression: 'CAST(value AS REAL)',
+                    direction: 'DESC',
+                },
+            ],
+        }),
+    });
+    vi.mocked(runCsvQuery).mockImplementationOnce(actual.runCsvQuery);
+    const inserted = await csvQueryTool(vault.config, request('INSERT INTO t VALUES (\'d\',\'3\')', hash(text)));
+
+    expect(await readFile(vault.path('data.csv'), 'utf8')).toBe('\uFEFFid,value\r\nb,10\r\nd,3\r\na,2\r\nc,2\r\n');
+    const updated = await csvQueryTool(vault.config, request('UPDATE t SET value=\'20\' WHERE id=\'c\'', inserted.hash as string));
+
+    expect(await readFile(vault.path('data.csv'), 'utf8')).toBe('\uFEFFid,value\r\nc,20\r\nb,10\r\nd,3\r\na,2\r\n');
+    await csvQueryTool(vault.config, request('DELETE FROM t WHERE id=\'d\'', updated.hash as string));
+    expect(await readFile(vault.path('data.csv'), 'utf8')).toBe('\uFEFFid,value\r\nc,20\r\nb,10\r\na,2\r\n');
+});
+
+it('does not publish edits with invalid sidecars or removed sort columns', async () => {
+    const text = 'id,value\na,2\nb,10\n';
+
+    vault = await createTestVault({
+        'data.csv': text,
+        'data.csv.params.json': JSON.stringify({
+            sort: [
+                {
+                    expression: 'value',
+                    direction: 'DESC',
+                },
+            ],
+        }),
+    });
+    await expect(csvQueryTool(vault.config, request('ALTER TABLE t DROP value', hash(text)))).rejects.toMatchObject({ code: 'invalid_arguments' });
+    await writeFile(vault.path('data.csv.params.json'), '{invalid');
+    await expect(csvQueryTool(vault.config, request('UPDATE t SET id=id', hash(text)))).rejects.toMatchObject({ code: 'invalid_arguments' });
+    expect(await readFile(vault.path('data.csv'), 'utf8')).toBe(text);
+});
+
+it('bounds sidecar reads and rejects invalid UTF-8 and symlinks without changing the CSV', async () => {
+    const { symlink, unlink } = await import('node:fs/promises');
+    const text = 'id,value\na,2\n';
+
+    vault = await createTestVault({
+        'data.csv': text,
+        'data.csv.params.json': 'x'.repeat(16385),
+    });
+    await expect(csvQueryTool(vault.config, request('UPDATE t SET id=id', hash(text)))).rejects.toMatchObject({ code: 'file_too_large' });
+    await writeFile(vault.path('data.csv.params.json'), Buffer.from([255]));
+    await expect(csvQueryTool(vault.config, request('UPDATE t SET id=id', hash(text)))).rejects.toMatchObject({ code: 'invalid_arguments' });
+    await unlink(vault.path('data.csv.params.json'));
+    await symlink(vault.path('data.csv'), vault.path('data.csv.params.json'));
+    await expect(csvQueryTool(vault.config, request('UPDATE t SET id=id', hash(text)))).rejects.toMatchObject({ code: 'forbidden_path' });
+    expect(await readFile(vault.path('data.csv'), 'utf8')).toBe(text);
+});
+
+it('preserves an unmatched edit even when sidecar order differs', async () => {
+    const text = 'id,value\na,2\nb,10\n';
+
+    vault = await createTestVault({
+        'data.csv': text,
+        'data.csv.params.json': JSON.stringify({
+            sort: [
+                {
+                    expression: 'id',
+                    direction: 'DESC',
+                },
+            ],
+        }),
+    });
+    expect(await csvQueryTool(vault.config, request('DELETE FROM t WHERE id=\'missing\'', hash(text)))).toMatchObject({
+        changed: false,
+        hash: hash(text),
+    });
+    expect(await readFile(vault.path('data.csv'), 'utf8')).toBe(text);
+});

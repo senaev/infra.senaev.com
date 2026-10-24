@@ -7,6 +7,7 @@ import { readDownloadFile } from '../access/readDownloadBytes';
 import { readVaultToolArguments } from '../toolArguments';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
 import { publishCsv } from '../csv/publishCsv';
+import { readCsvParams } from '../csv/readCsvParams';
 import { assertFilePath } from '../access/vaultFiles';
 import { runCsvQuery, type CsvQueryInput } from '../csv/runCsvQuery';
 
@@ -125,6 +126,7 @@ const executeCsvQuery = createCommandAdapter(parseCsvQuery, async (config: Vault
     try {
         let bytes = 0;
         const originals = new Map<string, string>();
+        const paramsHashes = new Map<string, string | null>();
         const tables: CsvQueryInput['tables'] = [];
 
         for (const table of input.tables) {
@@ -185,7 +187,14 @@ const executeCsvQuery = createCommandAdapter(parseCsvQuery, async (config: Vault
                 });
             }
 
+            const csvParams = table.expectedHash === undefined ? undefined : await readCsvParams(config, table.paths[0]!, execution);
+
+            if (csvParams) {
+                paramsHashes.set(table.paths[0]!, csvParams.hash);
+            }
+
             tables.push({
+                ...csvParams?.text === undefined ? {} : { paramsText: csvParams.text },
                 name: table.name,
                 sources,
                 ...table.expectedHash === undefined ? {} : { expectedHash: table.expectedHash },
@@ -217,6 +226,7 @@ const executeCsvQuery = createCommandAdapter(parseCsvQuery, async (config: Vault
                 expectedHash: table.expectedHash,
                 original,
                 csv,
+                paramsHash: paramsHashes.get(mutation.path)!,
             }, execution);
             for (const source of reply.sources) {
                 if (source.path === mutation.path) {

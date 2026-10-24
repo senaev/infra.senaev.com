@@ -469,7 +469,18 @@ function exportMutation(db, table, sources, {
     ];
     let bytes = Buffer.byteLength(chunks[0]);
     let records = 0;
-    const statement = db.prepare(`SELECT ${table.headers.map(quote).join(',')} FROM ${quote(table.name)} ORDER BY rowid`);
+    const sort = parseSort(table.paramsText);
+    const order = sort.map(({ expression, direction }) => `(\n${expression}\n) ${direction}`).concat('rowid ASC').join(',');
+
+    // Settings are untrusted SQL expressions: never prepare them with authorization off.
+    db.setAuthorizer((action, first, second, database) => {
+        if (action === constants.SQLITE_SELECT || (action === constants.SQLITE_READ && database === 'main' && first === table.name) || (action === constants.SQLITE_FUNCTION && allowedFunctions.has(second))) {
+            return constants.SQLITE_OK;
+        }
+
+        return constants.SQLITE_DENY;
+    });
+    const statement = db.prepare(`SELECT ${table.headers.map(quote).join(',')} FROM ${quote(table.name)} ORDER BY ${order}`);
 
     statement.setReturnArrays(true);
     // Reuse the serializer for small batches instead of constructing it for every row.
@@ -663,4 +674,71 @@ function applyColumnAlter(db, table, alter) {
     }
 
     table.headers = headers;
+}
+
+/** Keep each fragment inside one parenthesized expression; SQLite handles its semantics. */
+function parseSort(text) {
+    if (text === undefined) {
+        return [];
+    }
+
+    let params;
+
+    try {
+        params = JSON.parse(text);
+    } catch {
+        fail('CSV params must be valid JSON');
+    }
+
+    if (!params || typeof params !== 'object' || Array.isArray(params) || Object.keys(params).some((key) => key !== 'sort') || !Array.isArray(params.sort) || params.sort.length > 16) {
+        fail('CSV params require a sort array with at most 16 entries');
+    }
+
+    return params.sort.map((item) => {
+        if (!item || typeof item !== 'object' || Array.isArray(item) || Object.keys(item).some((key) => key !== 'expression' && key !== 'direction') || typeof item.expression !== 'string' || !item.expression.trim() || item.expression.length > 1000 || item.expression.includes('\0') || typeof item.direction !== 'string' || ![
+            'ASC',
+            'DESC',
+        ].includes(item.direction.toUpperCase())) {
+            fail('Each CSV sort entry requires an expression (1..1000 characters) and ASC/DESC direction');
+        }
+
+        // Quoted literals/identifiers are single tokens, so their punctuation is harmless.
+        // Reject comments, bindings and statement separators; parentheses cannot escape the wrapper.
+        const tokens = item.expression.match(/"(?:""|[^"])*"|'(?:''|[^'])*'|`(?:``|[^`])*`|\[[^\]]*\]|--|\/\*|[^\s]/g) ?? [];
+        let depth = 0;
+
+        for (const token of tokens) {
+            if ([
+                '--',
+                '/*',
+                ';',
+                '?',
+                ':',
+                '@',
+                '$',
+                '\'',
+                '"',
+                '`',
+                '[',
+                ']',
+            ].includes(token)) {
+                fail('CSV sort expressions cannot contain comments, parameters or SQL statements');
+            }
+
+            if (token === '(') {
+                depth++;
+            } else if (token === ')' && --depth < 0) {
+                fail('Unbalanced CSV sort expression');
+            }
+        }
+
+        if (depth !== 0) {
+            fail('Unbalanced CSV sort expression');
+        }
+
+        return {
+            expression: item.expression,
+            direction: item.direction.toUpperCase(),
+        };
+    });
 }
