@@ -301,7 +301,7 @@ if (require.main === module) {
 
     process.stdin.on('data', (chunk) => {
         inputBytes += chunk.length;
-        if (inputBytes > 26000000) {
+        if (inputBytes > 65000000) {
             process.exit(1);
         }
 
@@ -494,8 +494,8 @@ function exportMutation(db, table, sources, {
         const chunk = stringify(batch, { record_delimiter: dialect.recordDelimiter });
 
         bytes += Buffer.byteLength(chunk);
-        if (bytes > 4194304) {
-            fail('Edited CSV exceeds 4 MiB');
+        if (bytes > 10485760) {
+            fail('Edited CSV exceeds 10 MiB');
         }
 
         chunks.push(chunk);
@@ -526,8 +526,8 @@ function exportMutation(db, table, sources, {
     }
 
     flush();
-    if (bytes > 4194304) {
-        fail('Edited CSV exceeds 4 MiB');
+    if (bytes > 10485760) {
+        fail('Edited CSV exceeds 10 MiB');
     }
 
     return {

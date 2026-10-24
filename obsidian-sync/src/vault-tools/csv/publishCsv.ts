@@ -30,7 +30,7 @@ export function publishCsv(config: VaultToolsConfig, input: CsvPublication, exec
             const fresh = await readDownloadFile(config, input.path, execution, {
                 offset: 0,
                 length: 0,
-                maxBytes: 4194304,
+                maxBytes: 10485760,
             });
 
             if (fresh.hash !== input.expectedHash) {

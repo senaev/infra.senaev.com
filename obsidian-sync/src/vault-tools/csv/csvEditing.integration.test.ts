@@ -353,12 +353,12 @@ it('exports a full-size edited CSV under the production worker limits', async ()
     const header = 'c0,c1,c2,c3\n';
     const count = 1000;
     const row = `${'x'.repeat(4000)},,,\n`;
-    const padding = 4 * 1024 * 1024 - Buffer.byteLength(header) - count * Buffer.byteLength(row);
+    const padding = 10 * 1024 * 1024 - Buffer.byteLength(header) - count * Buffer.byteLength(row);
     const text = header + 'y'.repeat(padding % 1000) + Array.from({ length: count }, () => 'y'.repeat(Math.floor(padding / count)) + row).join('');
     const actual = await vi.importActual<typeof import('./runCsvQuery')>('./runCsvQuery');
 
     vi.mocked(runCsvQuery).mockImplementationOnce(actual.runCsvQuery);
-    expect(Buffer.byteLength(text)).toBe(4 * 1024 * 1024);
+    expect(Buffer.byteLength(text)).toBe(10 * 1024 * 1024);
     vault = await createTestVault({ 'data.csv': text });
     const result = await csvQueryTool(vault.config, request('UPDATE t SET c0=\'changed\' WHERE rowid=1', hash(text)));
     const saved = await readFile(vault.path('data.csv'), 'utf8');

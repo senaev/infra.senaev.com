@@ -143,7 +143,7 @@ Strict UTF-8 CSV, comma separators, optional BOM, standard quoted fields. Blank
 records are not skipped; malformed widths and empty/duplicate/reserved headers
 fail. Reserved headers: _source_path, _source_record, rowid, _rowid_, oid.
 
-Limits: 8 files, 4 MiB total input and edited file size, 50000 records, 100 source
+Limits: 8 files, 10 MiB total input and edited file size, 50000 records, 100 source
 columns, 64 KiB decoded cell contents per record, 16000 SQL characters, 100
 string/null parameters (64 KiB serialized total), 1000 output rows, 256 KiB query
 result budget including reserved hash metadata. maxRows defaults to 200. SQL edits
@@ -161,7 +161,7 @@ reads but no filesystem writes or subprocesses. Permissions are defense in depth
 not protection against native engine exploits; the worker shares the service UID
 and container. Keep Node/SQLite patched. Node 24.22+ is required.
 
-Tests cover full 4 MiB inputs, real deadline/cancellation, SQL classification,
+Tests cover full 10 MiB inputs, real deadline/cancellation, SQL classification,
 creation/zero-byte initialization, ADD/DROP columns, CRUD/no-op/error hashes, atomic publication and
 path/version conflicts. Fast unit lifecycle tests use mocks and fake timers. CRUD file tests invoke the
 same real SQLite engine directly, mocking only the subprocess boundary. Real HTTP,

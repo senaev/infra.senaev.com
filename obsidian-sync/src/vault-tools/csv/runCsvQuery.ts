@@ -64,7 +64,7 @@ export async function runCsvQuery(input: CsvQueryInput, execution: CommandExecut
         child.stdout.on('data', (chunk: string) => {
             output += chunk;
             outputBytes += Buffer.byteLength(chunk);
-            if (outputBytes > (writable ? 26000000 : 263000)) {
+            if (outputBytes > (writable ? 65000000 : 263000)) {
                 stop(new CommandError('command_failed', 'CSV query exceeded its output limit'));
             }
         });

@@ -242,7 +242,7 @@ it('rejects invalid UTF-8, NULs and oversized snapshots before querying', async 
     await expect(csvQueryTool(vault.config, request)).rejects.toThrow('UTF-8');
     await writeFile(vault.path('a.csv'), 'id\n\0');
     await expect(csvQueryTool(vault.config, request)).rejects.toThrow('NUL');
-    await truncate(vault.path('a.csv'), 4 * 1024 * 1024 + 1);
+    await truncate(vault.path('a.csv'), 10 * 1024 * 1024 + 1);
     await expect(csvQueryTool(vault.config, request)).rejects.toMatchObject({ code: 'file_too_large' });
 });
 
@@ -267,15 +267,15 @@ it('bounds decoded record bytes across multiple Unicode fields', async () => {
     await expect(run('SELECT * FROM t', text)).rejects.toThrow('64 KiB');
 });
 
-it('imports the full 4 MiB limit with many short fields without retaining all parsed rows', async () => {
+it('imports the full 10 MiB limit with many short fields without retaining all parsed rows', async () => {
     const header = `${Array.from({ length: 100 }, (_, index) => `c${index}`).join(',')}\n`;
     const row = `${','.repeat(99)}\n`;
     const count = 40000;
-    const padding = 4 * 1024 * 1024 - Buffer.byteLength(header) - count * Buffer.byteLength(row);
-    const block = Math.floor(padding / 4);
-    const text = header + Array.from({ length: 4 }, (_, index) => 'x'.repeat(index === 3 ? padding - 3 * block : block) + row).join('') + row.repeat(count - 4);
+    const padding = 10 * 1024 * 1024 - Buffer.byteLength(header) - count * Buffer.byteLength(row);
+    const block = Math.floor(padding / 128);
+    const text = header + Array.from({ length: 128 }, (_, index) => 'x'.repeat(index === 127 ? padding - 127 * block : block) + row).join('') + row.repeat(count - 128);
 
-    expect(Buffer.byteLength(text)).toBe(4 * 1024 * 1024);
+    expect(Buffer.byteLength(text)).toBe(10 * 1024 * 1024);
     expect(await run('SELECT count(*) FROM t', text)).toMatchObject({
         rows: [[count]],
         truncated: false,

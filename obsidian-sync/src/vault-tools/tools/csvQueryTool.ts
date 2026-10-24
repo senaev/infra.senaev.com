@@ -136,8 +136,8 @@ const executeCsvQuery = createCommandAdapter(parseCsvQuery, async (config: Vault
                 assertFilePath(config, path);
                 const source = await readDownloadFile(config, path, execution, {
                     offset: 0,
-                    length: 4 * 1024 * 1024 - bytes,
-                    maxBytes: 4 * 1024 * 1024 - bytes,
+                    length: 10 * 1024 * 1024 - bytes,
+                    maxBytes: 10 * 1024 * 1024 - bytes,
                 }).catch((error: unknown) => {
                     if (table.expectedHash === null && error instanceof CommandError && error.code === 'not_found') {
                         return {
@@ -159,8 +159,8 @@ const executeCsvQuery = createCommandAdapter(parseCsvQuery, async (config: Vault
                 }
 
                 bytes += source.size;
-                if (bytes > 4 * 1024 * 1024) {
-                    throw invalidArguments('CSV inputs exceed 4 MiB total');
+                if (bytes > 10 * 1024 * 1024) {
+                    throw invalidArguments('CSV inputs exceed 10 MiB total');
                 }
 
                 let text: string;
@@ -266,7 +266,7 @@ const executeCsvQuery = createCommandAdapter(parseCsvQuery, async (config: Vault
                         hash: (await readDownloadFile(config, path, execution, {
                             offset: 0,
                             length: 0,
-                            maxBytes: 4194304,
+                            maxBytes: 10485760,
                         })).hash,
                     });
                 } catch {
