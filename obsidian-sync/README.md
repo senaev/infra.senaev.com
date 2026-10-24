@@ -93,7 +93,7 @@ use empty-string defaults. CSV edits use standard quoting, preserve column order
 BOM and record delimiter, and may normalize quote spelling. Field values are not
 trimmed, interpreted, converted to money or sanitized as spreadsheet formulas.
 
-Edits return affectedRows, changed, diff and the saved hash. No rows are persisted
+Edits return affectedRows, changed and the saved hash. CSV queries do not compute or return diffs. No rows are persisted
 until SQL and export validation succeed. A shared in-process file reservation and
 fresh byte-hash check precede atomic publication. Creation is exclusive. These checks do not transactionally lock external
 writers/replicas; cross-process atomic compare-and-swap is not claimed. Each input

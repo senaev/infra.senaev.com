@@ -118,6 +118,14 @@ it('returns saved and unchanged hashes through the same HTTP command, including 
         changed: true,
         hash: expect.stringMatching(/^[a-f0-9]{64}$/),
     });
+    for (const result of [
+        created,
+        inserted,
+    ]) {
+        expect(result).not.toHaveProperty('diff');
+        expect(result).not.toHaveProperty('diffTruncated');
+    }
+
     const read = await complete({
         tables: [
             {

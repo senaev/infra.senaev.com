@@ -3,7 +3,6 @@ import { join } from 'node:path';
 import { CommandError } from 'senaev-utils/src/commands/CommandError';
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { withFileMutation } from 'senaev-utils/src/files/withFileMutation';
-import { createFileDiffAsync } from 'senaev-utils/src/files/createFileDiffAsync';
 import { createFileExclusively, replaceFileAtomically } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
 import { isAlreadyExistsError } from 'senaev-utils/src/utils/Error/isAlreadyExistsError/isAlreadyExistsError';
 
@@ -24,7 +23,6 @@ export function publishCsv(config: VaultToolsConfig, input: CsvPublication, exec
             ? await prepareNewVaultFile(config, input.path, execution)
             : await resolveExistingFile(config, input.path, execution);
         const changed = input.expectedHash === null || input.csv !== input.original;
-        const diff = await createFileDiffAsync(input.path, input.original, input.csv, execution);
 
         if (input.expectedHash !== null) {
             const fresh = await readDownloadFile(config, input.path, execution, {
@@ -68,7 +66,6 @@ export function publishCsv(config: VaultToolsConfig, input: CsvPublication, exec
             changed,
             hash: hashBytes(Buffer.from(input.csv)),
             size: Buffer.byteLength(input.csv),
-            ...diff,
         };
     }, execution);
 }

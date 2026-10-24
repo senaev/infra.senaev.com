@@ -4,10 +4,10 @@ import {
     afterEach, expect, it, vi,
 } from 'vitest';
 import { createCommandExecution } from 'senaev-utils/src/commands/CommandExecution';
-import * as diffModule from 'senaev-utils/src/files/createFileDiffAsync';
 
 import { createTestVault, type TestVault } from '../createTestVault';
 import { hashBytes } from '../access/vaultFiles';
+import * as vaultFiles from '../access/vaultFiles';
 
 import { publishCsv } from './publishCsv';
 
@@ -21,17 +21,14 @@ afterEach(async () => {
     await vault?.remove();
 });
 
-it('rechecks the source after diff calculation before publishing', async () => {
+it('rechecks the source before publishing', async () => {
     const active = await createTestVault({ 'data.csv': original });
 
     vault = active;
-    vi.spyOn(diffModule, 'createFileDiffAsync').mockImplementation(async () => {
+    vi.spyOn(vaultFiles, 'resolveExistingFile').mockImplementationOnce(async () => {
         await writeFile(active.path('data.csv'), 'id\nexternal\n');
 
-        return {
-            diff: '',
-            diffTruncated: false,
-        };
+        return active.path('data.csv');
     });
     await expect(publishCsv(active.config, {
         path: 'data.csv',
@@ -55,14 +52,11 @@ it('reserves the path while preparing a publication and releases it after cancel
         release = resolve;
     });
 
-    vi.spyOn(diffModule, 'createFileDiffAsync').mockImplementation(async () => {
+    vi.spyOn(vaultFiles, 'resolveExistingFile').mockImplementationOnce(async () => {
         entered();
         await blocked;
 
-        return {
-            diff: '',
-            diffTruncated: false,
-        };
+        return active.path('data.csv');
     });
     const controller = new AbortController();
     const args = {
@@ -81,7 +75,11 @@ it('reserves the path while preparing a publication and releases it after cancel
     await aborted;
     expect(await readFile(active.path('data.csv'), 'utf8')).toBe(original);
     vi.restoreAllMocks();
-    expect(await publishCsv(active.config, args, createCommandExecution())).toMatchObject({
+    const saved = await publishCsv(active.config, args, createCommandExecution());
+
+    expect(saved).not.toHaveProperty('diff');
+    expect(saved).not.toHaveProperty('diffTruncated');
+    expect(saved).toMatchObject({
         changed: true,
         hash: hashBytes(Buffer.from(updated)),
     });
@@ -100,17 +98,14 @@ it.each([
     });
 
     vault = active;
-    vi.spyOn(diffModule, 'createFileDiffAsync').mockImplementation(async () => {
+    vi.spyOn(vaultFiles, 'resolveExistingFile').mockImplementationOnce(async () => {
         if (mode === 'removed') {
             await unlink(active.path('data.csv.params.json'));
         } else {
             await writeFile(active.path('data.csv.params.json'), '{"sort":[{"expression":"id","direction":"DESC"}]}');
         }
 
-        return {
-            diff: '',
-            diffTruncated: false,
-        };
+        return active.path('data.csv');
     });
     await expect(publishCsv(active.config, {
         path: 'data.csv',
