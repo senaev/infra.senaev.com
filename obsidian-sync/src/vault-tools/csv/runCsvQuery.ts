@@ -6,7 +6,7 @@ import { CommandError } from 'senaev-utils/src/commands/CommandError';
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 
 export type CsvQueryInput = {
-    tables: { name: string; expectedHash?: string | null; sources: { path: string; text: string; hash: string | null; size: number }[] }[];
+    tables: { name: string; expectedHash?: string | null; paramsText?: string; sources: { path: string; text: string; hash: string | null; size: number }[] }[];
     sql: string;
     params: (string | null)[];
     maxRows: number;

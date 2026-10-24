@@ -99,6 +99,44 @@ fresh byte-hash check precede atomic publication. Creation is exclusive. These c
 writers/replicas; cross-process atomic compare-and-swap is not claimed. Each input
 file is a snapshot, not a simultaneous transaction across all selected files.
 
+## Persistent sorting
+
+An optional sidecar beside each writable CSV controls its saved row order:
+`transactions.csv.params.json` for `transactions.csv`.
+
+```json
+{
+  "sort": [
+    {"expression": "occurred_datetime", "direction": "DESC"}
+  ]
+}
+```
+
+Keys apply in array order. `expression` is a SQLite expression, for example
+`CAST(amount AS REAL)` or `COALESCE(NULLIF(occurred_datetime, ''), value_datetime)`.
+`direction` is ASC or DESC (case-insensitive). Equal keys retain their previous
+relative order via a final `rowid ASC`. Empty strings use ordinary SQLite text
+ordering; there is no type or empty-value setting. Only original CSV columns are
+exported. With no sidecar or `{"sort":[]}`, existing row order is preserved.
+
+Sorting runs when INSERT/UPDATE/DELETE matches rows or a schema change is saved.
+Adding/editing the sidecar alone does not rewrite the CSV; neither does SELECT or
+an edit matching no rows. To explicitly apply settings, a hash-guarded
+`UPDATE t SET column_name=column_name` can be used. Expressions must remain valid
+after column changes, otherwise no CSV is saved.
+
+Sidecars are strict UTF-8 JSON objects containing only `sort`, bounded to 16 KiB,
+16 keys and 1000 characters per expression. Each entry contains only `expression`
+and `direction`. Invalid settings reject the edit. Expressions cannot contain SQL
+comments, bindings, statement separators or unbalanced parentheses, and are
+prepared under a read-only authorizer allowing only the edited table and the
+existing approved functions. Other tables, schema metadata and file/network
+functions are denied. Existing subprocess/resource limits cover sorting too.
+Sidecar paths use the normal vault path/symlink checks; their byte hashes
+(including absence) are rechecked before publication. As with CSV hash checks,
+this detects intervening changes but does not provide cross-process atomic
+compare-and-swap or a transaction across the CSV and sidecar.
+
 ## Limits and isolation
 
 Strict UTF-8 CSV, comma separators, optional BOM, standard quoted fields. Blank

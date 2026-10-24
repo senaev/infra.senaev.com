@@ -86,3 +86,38 @@ it('reserves the path while preparing a publication and releases it after cancel
         hash: hashBytes(Buffer.from(updated)),
     });
 });
+
+it.each([
+    'created',
+    'changed',
+    'removed',
+])('rejects params %s between the snapshot and publication', async (mode) => {
+    const { unlink } = await import('node:fs/promises');
+    const params = '{"sort":[]}';
+    const active = await createTestVault({
+        'data.csv': original,
+        ...mode === 'created' ? {} : { 'data.csv.params.json': params },
+    });
+
+    vault = active;
+    vi.spyOn(diffModule, 'createFileDiffAsync').mockImplementation(async () => {
+        if (mode === 'removed') {
+            await unlink(active.path('data.csv.params.json'));
+        } else {
+            await writeFile(active.path('data.csv.params.json'), '{"sort":[{"expression":"id","direction":"DESC"}]}');
+        }
+
+        return {
+            diff: '',
+            diffTruncated: false,
+        };
+    });
+    await expect(publishCsv(active.config, {
+        path: 'data.csv',
+        expectedHash,
+        original,
+        csv: updated,
+        paramsHash: mode === 'created' ? null : hashBytes(Buffer.from(params)),
+    }, createCommandExecution())).rejects.toMatchObject({ code: 'conflict' });
+    expect(await readFile(active.path('data.csv'), 'utf8')).toBe(original);
+});
