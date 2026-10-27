@@ -33,18 +33,16 @@ const PRIORITIES_LISTED_WITHOUT_DUE_DATE: readonly TaskPriority[] = [
 /**
  * Whether the daily note for `noteDate` is the "active" one, which lists the open tasks.
  * Past notes are a record of what was closed on the day, so they do not repeat the
- * backlog. Today and future notes are active; when today's note does not exist, the
- * latest existing note takes over. A note whose name is not a date (the template) is
- * active, so that it shows open tasks instead of looking broken.
+ * backlog. Only today and future notes are active, also when today's note does not exist.
+ * A note whose name is not a date (the template) is active, so that it shows open tasks
+ * instead of looking broken.
  */
-export function isActiveDailyDate({
-    noteDate, today, latestExistingDate,
-}: { noteDate: string; today: IsoDay; latestExistingDate: IsoDay | null }): boolean {
+export function isActiveDailyDate({ noteDate, today }: { noteDate: string; today: IsoDay }): boolean {
     if (!DAILY_NOTE_DATE.test(noteDate)) {
         return true;
     }
 
-    return noteDate >= today || noteDate === latestExistingDate;
+    return noteDate >= today;
 }
 
 export type DailyTask = {

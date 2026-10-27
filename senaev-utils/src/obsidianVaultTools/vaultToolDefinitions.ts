@@ -474,7 +474,7 @@ const tasks_list: ToolDefinition = {
         'Lists the tasks of the owner\'s Obsidian vault with their note "path", "line", the file "hash" and the line as written ("raw").',
         TASK_FORMAT_DESCRIPTION,
         'All filters are optional and combine with AND. Without filters it lists every task, also closed ones.',
-        '"dailyNote" gives exactly the task list of that daily note in Obsidian: the tasks closed on that day, and on the active note (today, or the latest daily note) also the open tasks due on or before it and the undated open tasks of normal or higher priority.',
+        '"dailyNote" gives exactly the task list of that daily note in Obsidian: the tasks closed on that day, and on the active note (today or a future day) also the open tasks due on or before it and the undated open tasks of normal or higher priority.',
         'Tasks are sorted by priority, then note path, then line. Tasks in periodic/ notes are part of the list but never of a daily note list.',
         'Lines that look like tasks but cannot be read (e.g. an invalid date) are not listed; they are counted in "parseErrors".',
         PAGED_RESULT_DESCRIPTION,

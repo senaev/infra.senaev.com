@@ -6,8 +6,7 @@ import { todayIsoDay } from 'senaev-utils/src/obsidianTasks/isoDay';
 import type { TaskPriority, TaskStatus } from 'senaev-utils/src/obsidianTasks/taskLine';
 import { TASKS_TIME_ZONE } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
 
-import { walkVault } from '../access/walkVault';
-import { getDiaryDate, type NoteScope } from '../noteScope';
+import type { NoteScope } from '../noteScope';
 import { createTextMatcher, type TextQuery } from '../textQuery';
 import { scanVaultTasks, type VaultTask } from '../tasks/scanVaultTasks';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
@@ -40,20 +39,12 @@ function isInRange(day: string | null, { from, to }: DayRange): boolean {
     return day !== null && (from === undefined || day >= from) && (to === undefined || day <= to);
 }
 
-async function findLatestDiaryDate(config: VaultToolsConfig, execution: CommandExecution): Promise<string | null> {
-    const walk = await walkVault(config, config.diaryFolder, execution);
-    const dates = walk.files.map((path) => getDiaryDate(config, path)).filter((date) => date !== null);
-
-    return dates.reduce<string | null>((latest, date) => (latest === null || date > latest ? date : latest), null);
-}
-
-async function createDailyNoteFilter(config: VaultToolsConfig, dailyNote: string, execution: CommandExecution) {
+function createDailyNoteFilter(dailyNote: string) {
     const today = todayIsoDay(TASKS_TIME_ZONE);
     const noteDate = dailyNote === 'today' ? today : dailyNote;
     const isActiveNote = isActiveDailyDate({
         noteDate,
         today,
-        latestExistingDate: await findLatestDiaryDate(config, execution),
     });
 
     return {
@@ -73,7 +64,7 @@ export async function tasksListCommand(config: VaultToolsConfig, input: TasksLis
         scope, statuses, priorities, textQuery, due, closed, offset, limit,
     } = input;
     const scan = await scanVaultTasks(config, scope, execution);
-    const dailyNote = input.dailyNote === undefined ? null : await createDailyNoteFilter(config, input.dailyNote, execution);
+    const dailyNote = input.dailyNote === undefined ? null : createDailyNoteFilter(input.dailyNote);
     const matchesText = textQuery === undefined ? null : createTextMatcher(textQuery);
     const tasks = scan.tasks.filter((task) => (statuses === undefined || statuses.includes(task.status)) && (priorities === undefined || priorities.includes(task.priority)) && (matchesText === null || matchesText(task.description)) && isInRange(task.dueDate, due) && isInRange(task.status === 'open' ? null : task.closedDate, closed) && (dailyNote === null || dailyNote.matches(task)));
 

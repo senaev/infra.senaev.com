@@ -153,14 +153,18 @@ describe('tasksListTool', () => {
         });
         expect(past.tasks.map((task) => task.description)).toEqual(['closed another day']);
 
-        // The latest daily note is the active one when today's note does not exist.
+        // A past note is not active, also when it is the latest one and today's note does not exist.
         const latest = await tasksListTool(testVault.config, { dailyNote: '2026-10-15' });
 
-        expect(latest.dailyNote?.isActive).toBe(true);
-        expect(latest.tasks.map((task) => task.description)).toEqual([
+        expect(latest.dailyNote?.isActive).toBe(false);
+        expect(latest.tasks.map((task) => task.description)).toEqual(['closed that day']);
+
+        const today = await tasksListTool(testVault.config, { dailyNote: 'today' });
+
+        expect(today.dailyNote?.isActive).toBe(true);
+        expect(today.tasks.map((task) => task.description)).toEqual([
             'overdue',
             'undated',
-            'closed that day',
         ]);
     });
 });

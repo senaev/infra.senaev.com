@@ -26,33 +26,21 @@ describe('isActiveDailyDate', () => {
         expect(isActiveDailyDate({
             noteDate: TODAY,
             today: TODAY,
-            latestExistingDate: TODAY,
         })).toBe(true);
         expect(isActiveDailyDate({
             noteDate: '2026-10-18',
             today: TODAY,
-            latestExistingDate: TODAY,
         })).toBe(true);
         expect(isActiveDailyDate({
             noteDate: '2026-10-16',
             today: TODAY,
-            latestExistingDate: TODAY,
         })).toBe(false);
-    });
-
-    test('the latest note is active when today\'s note does not exist', () => {
-        expect(isActiveDailyDate({
-            noteDate: '2026-10-16',
-            today: TODAY,
-            latestExistingDate: '2026-10-16',
-        })).toBe(true);
     });
 
     test('a note whose name is not a date is active', () => {
         expect(isActiveDailyDate({
             noteDate: 'Daily note template',
             today: TODAY,
-            latestExistingDate: TODAY,
         })).toBe(true);
     });
 });
