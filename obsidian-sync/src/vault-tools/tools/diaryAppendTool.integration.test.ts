@@ -9,7 +9,7 @@ import { createTestVault, type TestVault } from '../createTestVault';
 import { diaryAppendTool } from './diaryAppendTool';
 
 const DRAFT = '@senaev/daily_note_draft.md';
-const RECORD = /^\n\d{4}-\d{2}-\d{2} \d{2}-\d{2}-\d{2}\n\nМы гуляли\. ✍️\n$/;
+const RECORD = /^\n\[\[(\d{4}-\d{2}-\d{2})\|🎙️ \1 \d{2}:\d{2}\]\]: Мы гуляли\. ✍️\n$/;
 
 let vault: TestVault | undefined;
 
@@ -41,7 +41,7 @@ describe('diaryAppendTool', () => {
         // Only the new record is added; the old record is unchanged context.
         expect(result.diff).toContain(`--- a/${DRAFT}\n+++ b/${DRAFT}\n`);
         expect(result.diff).toContain(' Earlier record ✍️\n');
-        expect(result.diff).toContain('+Мы гуляли. ✍️\n');
+        expect(result.diff).toMatch(/\+\[\[.*\]\]: Мы гуляли\. ✍️\n/);
         expect(result.diff).not.toMatch(/^-(?!-- a\/)/m);
     });
 
