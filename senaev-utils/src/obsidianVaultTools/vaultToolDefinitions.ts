@@ -38,7 +38,7 @@ export const OBSIDIAN_TOOL_PREFIX = 'obsidian-';
 
 // The rules themselves live only in the vault's AGENTS.md. MCP `instructions` were tried and
 // dropped: ChatGPT read AGENTS.md through this sentence anyway (see
-// tasks/2026-10-10-obsidian-mcp-vault-rules-and-diary-tool.md in infra.senaev.com).
+// projects/2026-10-10-obsidian-mcp-vault-rules-and-diary-tool/README.md in infra.senaev.com).
 const VAULT_RULES = `${createManagedToolDescription(OBSIDIAN_TOOL_PREFIX)} ${MUTATION_CANCELLATION_DESCRIPTION} Move can leave the new note and only some rewritten backlinks when cancelled. If the vault rules from the root AGENTS.md are not in your context, read AGENTS.md with obsidian-read first.`;
 
 const DIARY_RANGE_PROPERTIES = {

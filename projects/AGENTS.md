@@ -1,14 +1,16 @@
-# AGENTS.md — tasks/
+# AGENTS.md — projects/
 
-Create a task file only at the user's explicit request. Each file is the working log
-of that task; append progress and results using the structure below.
+Create a project only at the user's explicit request. Each project is a folder; its
+`README.md` is the working log of that project. Append progress and results to it using
+the structure below. Put other files of the project (logs, scripts, diagrams, config
+snapshots) in the same folder, and link them from `README.md` by relative path.
 
-## File naming
+## Folder naming
 
-`YYYY-MM-DD-HH-mm-<short-slug>.md` — use the file creation date and time in UTC:
+`YYYY-MM-DD-HH-mm-<short-slug>/` — use the folder creation date and time in UTC:
 `HH` is the zero-padded 24-hour hour, `mm` is the zero-padded minute; the slug is 3–5 words.
-For example: `2026-10-11-08-35-add-task-creation-time.md`.
-Apply this format only to new tasks; do not rename existing task files.
+For example: `2026-10-11-08-35-add-task-creation-time/README.md`.
+Apply this format only to new projects; do not rename existing project folders.
 For an incident, name the symptom, not the cause (the cause is not known yet).
 
 ## Document structure
@@ -28,7 +30,7 @@ Check the status checkbox (`- [x]`) when the task is done and `## Result` is wri
 
 ## Rules
 
-- **Update the file during the session.** When the user pastes output, or a step is done,
+- **Update `README.md` during the session.** When the user pastes output, or a step is done,
   append it under `## Findings` first, then reply in chat.
 - **Append, do not rewrite.** Date each entry (`### YYYY-MM-DD — <step>`). To correct an
   earlier section, annotate it.

@@ -13,7 +13,7 @@
 ## Goal
 
 Follow-up to the review of the Obsidian MCP code after
-[`2026-10-10-obsidian-mcp-vault-rules-and-diary-tool.md`](2026-10-10-obsidian-mcp-vault-rules-and-diary-tool.md).
+[`2026-10-10-obsidian-mcp-vault-rules-and-diary-tool`](../2026-10-10-obsidian-mcp-vault-rules-and-diary-tool/README.md).
 Remove duplicated code by moving it to `senaev-utils`, and limit who can reach obsidian-sync
 on the network. No behaviour change for ChatGPT or for the other features.
 

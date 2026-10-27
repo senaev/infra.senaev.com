@@ -12,11 +12,11 @@ OAuth mechanism that already protects `https://mcp.senaev.com/chat-gpt`.
 ## Context
 
 - cluster-helper is the OAuth authorization server (`auth.senaev.com`) and the protected
-  resource (`mcp.senaev.com/chat-gpt`): [`cluster-helper/src/index.ts`](../cluster-helper/src/index.ts),
-  [`cluster-helper/src/oauth/`](../cluster-helper/src/oauth/).
+  resource (`mcp.senaev.com/chat-gpt`): [`cluster-helper/src/index.ts`](../../cluster-helper/src/index.ts),
+  [`cluster-helper/src/oauth/`](../../cluster-helper/src/oauth/).
 - The authorization server accepted only one resource (RFC 8707) and put it into the token `aud`.
 - Grafana is in the `vm-stack` chart, namespace `telemetry`, Service
-  `vm-stack-grafana:80`: [`provisioning/helm/vm-stack/values.yaml`](../provisioning/helm/vm-stack/values.yaml).
+  `vm-stack-grafana:80`: [`provisioning/helm/vm-stack/values.yaml`](../../provisioning/helm/vm-stack/values.yaml).
 - `mcp-grafana` 2.0.2 (`grafana/mcp-grafana:2.0.2`) has no OAuth. It has
   `-t streamable-http`, `--server-auth-token` (env `MCP_GRAFANA_SERVER_TOKEN`), `--allowed-hosts`,
   `--healthz-address`. It removes the validated `Authorization` header before it calls Grafana.
@@ -25,14 +25,14 @@ OAuth mechanism that already protects `https://mcp.senaev.com/chat-gpt`.
   `--allowed-hosts` defaults to loopback only. `/healthz` is served at the root, not under `/mcp`.
 - Grafana cannot create service accounts from provisioning files. The admin login is in Vault
   `senaev-com-kv` (`GRAFANA_ADMIN_PASSWORD`; the user is `grafana_admin`, set in
-  [`provisioning/helm/vm-stack/templates/external-secret.yaml`](../provisioning/helm/vm-stack/templates/external-secret.yaml)).
+  [`provisioning/helm/vm-stack/templates/external-secret.yaml`](../../provisioning/helm/vm-stack/templates/external-secret.yaml)).
   The `senaev-com` namespace does not have it yet: its
-  [`external-secret.yaml`](../provisioning/helm/senaev-com/templates/external-secret.yaml)
+  [`external-secret.yaml`](../../provisioning/helm/senaev-com/templates/external-secret.yaml)
   lists each key one by one.
 - `code-tools` is the pattern for an internal service that only cluster-helper may call
-  (NetworkPolicy + internal token): [`provisioning/helm/senaev-com/templates/code-tools.yaml`](../provisioning/helm/senaev-com/templates/code-tools.yaml).
+  (NetworkPolicy + internal token): [`provisioning/helm/senaev-com/templates/code-tools.yaml`](../../provisioning/helm/senaev-com/templates/code-tools.yaml).
   Its probes work with the NetworkPolicy in place, so node traffic is not blocked.
-- [`cluster-helper/src/publicStaticProxy.ts`](../cluster-helper/src/publicStaticProxy.ts) is the
+- [`cluster-helper/src/publicStaticProxy.ts`](../../cluster-helper/src/publicStaticProxy.ts) is the
   pattern for a streaming proxy (`fetch` + `Readable.from`).
 
 ## Plan
@@ -119,7 +119,7 @@ OAuth mechanism that already protects `https://mcp.senaev.com/chat-gpt`.
      `/chat-gpt` token; the upstream gets the internal token and not the OAuth token; the body
      is sent unchanged; `mcp-session-id` goes both ways; an SSE response is streamed; `502`
      when the upstream is down.
-8. Docs: an "MCP endpoints" note in [`AGENTS.md`](../AGENTS.md) (the two paths, the shared
+8. Docs: an "MCP endpoints" note in [`AGENTS.md`](../../AGENTS.md) (the two paths, the shared
    OAuth, how the Grafana token is made), and add `/grafana` to the smoke test there.
 9. Rollout: one PR. `npm run simple-checks` must pass. On merge, the Helm job and the
    cluster-helper image build run at the same time. If the new image starts before the Helm job

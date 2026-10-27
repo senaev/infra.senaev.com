@@ -27,7 +27,7 @@ function parse(line: string) {
 }
 
 // Verbatim lines from the vault, see "Examples from the vault" in
-// tasks/2026-10-16-16-48-obsidian-task-manager-for-mcp.md.
+// projects/2026-10-16-16-48-obsidian-task-manager-for-mcp/README.md.
 const VAULT_EXAMPLES: Array<[string, Partial<TaskFields>]> = [
     [
         '- [ ] Поставить новое стекло на телефон',
