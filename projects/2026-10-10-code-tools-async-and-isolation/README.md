@@ -18,7 +18,7 @@
 
 ## Context
 
-- Follows [`2026-10-10-remote-project-editing-via-mcp.md`](2026-10-10-remote-project-editing-via-mcp.md)
+- Follows [`2026-10-10-remote-project-editing-via-mcp`](../2026-10-10-remote-project-editing-via-mcp/README.md)
   (v1 of the `code-*` tools, done).
 - ChatGPT waited 119 s for one `code-run` call; its upper limit is not known. Today `run`
   and `clone` block for up to 300 s, and cluster-helper waits 330 s.

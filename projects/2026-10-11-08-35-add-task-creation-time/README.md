@@ -8,7 +8,7 @@ Include the UTC creation hour and minute in new task filenames. Keep existing ta
 
 ## Context
 
-Naming rules are documented in [../AGENTS.md](../AGENTS.md) and [AGENTS.md](AGENTS.md).
+Naming rules are documented in [../../AGENTS.md](../../AGENTS.md) and [../AGENTS.md](../AGENTS.md).
 
 ## Verification
 

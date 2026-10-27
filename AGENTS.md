@@ -6,13 +6,13 @@ This file provides guidance to any AI coding agent working with this repository.
 
 Personal infrastructure for `infra.senaev.com` — a distributed K3s cluster across multiple VPS providers, managed via Terraform, Helm, and shell scripts. Includes custom microservices and media server automation.
 
-## Task flow
+## Project flow
 
-Create a task file only when the user explicitly asks for one, not automatically for
-each request or command. Store it in [`tasks/`](tasks/) as
-`YYYY-MM-DD-HH-mm-<short-slug>.md`, using the UTC creation date and time.
-Keep existing filenames unchanged. Follow [`tasks/AGENTS.md`](tasks/AGENTS.md)
-to maintain the task's working log.
+Create a project only when the user explicitly asks for one, not automatically for
+each request or command. Store it in [`projects/`](projects/) as a folder
+`YYYY-MM-DD-HH-mm-<short-slug>/` with a `README.md`, using the UTC creation date and time.
+Keep existing folder names unchanged. Follow [`projects/AGENTS.md`](projects/AGENTS.md)
+to maintain the project's working log.
 
 ## Sensitive nodes: `proxmox` and `senaev-media`
 
@@ -32,7 +32,7 @@ Be extremely careful with these nodes and their networks:
   fully connected: after a restart, peers need the new disco key from the Tailscale
   coordination server, and the home ISP connection to it is unreliable. This caused a
   10-minute outage of senaev-media on 2026-10-05 — see
-  [`tasks/2026-10-04-k3s-dual-stack-ipv6.md`](tasks/2026-10-04-k3s-dual-stack-ipv6.md).
+  [`projects/2026-10-04-k3s-dual-stack-ipv6`](projects/2026-10-04-k3s-dual-stack-ipv6/README.md).
 - Prefer a change that fails safe: verify the result, keep the old state restorable, and
   give the user a rollback command before running anything risky.
 - Ask the user before any such change, even when the rest of the task is already approved.
@@ -42,7 +42,7 @@ Be extremely careful with these nodes and their networks:
 - Never run `kubectl` (or `helm` against a cluster) on the local machine: its kube context points at a work cluster, not at this one. To inspect this cluster, ask the user.
 - Full VPN services architecture in [`AGENTS.VPN.md`](AGENTS.VPN.md), human documentation is [`XRAY_VPN.md`](XRAY_VPN.md)
 - Worker nodes connect via Tailscale; Tailscale hostnames used throughout (not public IPs)
-- The cluster is dual-stack (IPv4 primary, IPv6 secondary). k3s takes node IPs from `tailscale0` (`--flannel-iface`), so no node IP is hard-coded. Pod/Service CIDRs live in `provisioning/common/.env` and are fixed at cluster creation — changing them needs a full rebuild. See [`tasks/2026-10-04-k3s-dual-stack-ipv6.md`](tasks/2026-10-04-k3s-dual-stack-ipv6.md)
+- The cluster is dual-stack (IPv4 primary, IPv6 secondary). k3s takes node IPs from `tailscale0` (`--flannel-iface`), so no node IP is hard-coded. Pod/Service CIDRs live in `provisioning/common/.env` and are fixed at cluster creation — changing them needs a full rebuild. See [`projects/2026-10-04-k3s-dual-stack-ipv6`](projects/2026-10-04-k3s-dual-stack-ipv6/README.md)
 - All alerting and operational notifications go to Telegram
 
 ## Service Deployment
@@ -89,7 +89,7 @@ no manual step on a new cluster. The `watch-service-account-token` sidecar check
 minute and makes a new one if Grafana rejects it (for example after Grafana lost its database);
 `mcp-grafana` reads the token file on every call, so it needs no restart. Only cluster-helper can reach it: a NetworkPolicy, and the
 Vault key `INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_MCP_GRAFANA`. See
-[`tasks/2026-10-18-15-00-grafana-mcp-for-chatgpt.md`](tasks/2026-10-18-15-00-grafana-mcp-for-chatgpt.md).
+[`projects/2026-10-18-15-00-grafana-mcp-for-chatgpt`](projects/2026-10-18-15-00-grafana-mcp-for-chatgpt/README.md).
 
 ## Shared Toolchain
 

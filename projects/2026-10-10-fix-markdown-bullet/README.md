@@ -6,7 +6,7 @@
 Read the repository instructions and make one small line change.
 
 ## Context
-Instructions: [root AGENTS.md](../AGENTS.md) and [tasks/AGENTS.md](AGENTS.md).
+Instructions: [root AGENTS.md](../../AGENTS.md) and [projects/AGENTS.md](../AGENTS.md).
 
 ## Verification
 The patch returned `"status":"ok","changed":true`; its diff contains exactly one changed line.

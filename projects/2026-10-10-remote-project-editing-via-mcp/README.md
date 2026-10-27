@@ -6,7 +6,7 @@
 
 Enable voice-driven development from the [[ChatGPT]] app on [[Android]] using the owner's existing authenticated MCP plugin running on his server. ChatGPT itself should inspect and edit remote repository files, run commands, verify changes and optionally prepare commits and pull requests.
 
-This document captures the discussion of 8 October 2026 and hands implementation over to the owner. Documentation is complete; implementation is not started. Follow [[tasks/AGENTS]] when continuing.
+This document captures the discussion of 8 October 2026 and hands implementation over to the owner. Documentation is complete; implementation is not started. Follow [[projects/AGENTS]] when continuing.
 
 ### Confirmed requirements
 
@@ -162,7 +162,7 @@ The file was moved from `obsidian-vault/tasks/` to this repository.
 - Image `opencode-serve/Dockerfile`: Debian, git, gh, ripgrep, jq, yq, make, Node 22
   (npm not confirmed). Runs as root, no resource limits.
 - Repos: PVC `opencode-telegram-git` at `/projects/git`, cloned by hand. It was probably
-  emptied by the k3s rebuild (`tasks/2026-10-04-k3s-dual-stack-ipv6.md`). Vault at `/projects/vault`.
+  emptied by the k3s rebuild (`projects/2026-10-04-k3s-dual-stack-ipv6/README.md`). Vault at `/projects/vault`.
 - Git: SSH key from `TELEGRAM_OPENCODE_SSH_PRIVATE_KEY` in the `ssh-dir` emptyDir, `GH_TOKEN`
   for `gh`, identity from `GIT_AUTHOR_*` / `GIT_COMMITTER_*` env.
 - No Service, no NetworkPolicy: any pod can reach opencode :4096 without auth.
@@ -440,5 +440,5 @@ problem), and branch, commit and push. 8 `code-*` tools in code-tools, which run
 Open points:
 - The Telegram opencode bot works after the NetworkPolicy change (confirmed by the owner).
 - Background commands, the pod rename and the vault removal continue in
-  [`2026-10-10-code-tools-async-and-isolation.md`](2026-10-10-code-tools-async-and-isolation.md).
+  [`2026-10-10-code-tools-async-and-isolation`](../2026-10-10-code-tools-async-and-isolation/README.md).
 - Not in v1: worktrees per session, request-ID deduplication, move and delete tools.

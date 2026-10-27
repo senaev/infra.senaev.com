@@ -12,7 +12,7 @@
 
 ## Goal
 
-Follow-up to [`2026-10-09-obsidian-mcp-tools.md`](2026-10-09-obsidian-mcp-tools.md). The
+Follow-up to [`2026-10-09-obsidian-mcp-tools`](../2026-10-09-obsidian-mcp-tools/README.md). The
 vault's root `AGENTS.md` becomes the single source of vault workflow rules for ChatGPT, and
 the diary command stops being special code in cluster-helper.
 
