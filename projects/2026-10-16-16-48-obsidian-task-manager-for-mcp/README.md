@@ -53,7 +53,7 @@ Serialization order: `- [s] description 🌱 source <priority> 🔁 recurrence �
    - Recurrence: validate with `rrule` (`RRule.fromText` after removing ` when done`); `dueDate` is required. Next occurrence as in Tasks: old due + interval, or completion date + interval with `when done`.
    - Daily filter (moved from the vault plugin, plain ISO dates) and sort: priority → path → line.
    - Exclusions: dot-folders and root folders `_templates`, `plugins/senaev-personal-tools`.
-   - Publish; then the vault task `obsidian-vault/tasks/2026-10-17-09-04-daily-tasks-from-senaev-utils.md`.
+   - Publish; then the vault project `obsidian-vault/projects/2026-10-17-09-04-daily-tasks-from-senaev-utils.md`.
 2. **obsidian-sync, task scanner:** walk the vault, use remark positions to skip frontmatter, code, HTML; find task lines with the Tasks list-item regex; collect `path`, `line`, `hash`.
 3. **Move the text matcher** out of `searchCommand.ts` into a shared module (`queries[]`, `match`, `wholeWord`).
 4. **`obsidian-tasks_list`** — filters (all optional, AND): `dailyNote` (`today` or `YYYY-MM-DD`; "today" = Europe/Madrid), `status[]`, `queries`/`match`/`wholeWord` on the description, `dueFrom`/`dueTo`, `closedFrom`/`closedTo`, `priority[]`, `folder`/`glob`, `offset`/`limit`.
@@ -208,7 +208,7 @@ Together with the ⏫ example above, these cover all five explicit priority mark
 - Task fields: status, description, source (editable, `🌱 <source>`), priority, `dueDate`, `closedDate` (✅ for done, ❌ for cancelled; cleared when reopened), recurrence. No scheduled or start date.
 - Strict round-trip rule: if `serialize(parse(line)) !== line`, the task cannot be edited; the tool returns an error.
 - `dueDate` is required to create a recurring task and to complete one; otherwise an error.
-- Sort: priority → file → line, implemented in senaev-utils. The vault plugin switches to it: vault task `tasks/2026-10-17-09-04-daily-tasks-from-senaev-utils.md`.
+- Sort: priority → file → line, implemented in senaev-utils. The vault plugin switches to it: vault project `projects/2026-10-17-09-04-daily-tasks-from-senaev-utils.md`.
 - Insert position is refused inside frontmatter, code fences, tables and HTML blocks (remark node positions).
 
 ### 2026-10-17 — Decisions from the fourth review
@@ -258,7 +258,7 @@ A cold scan takes 2.3 s, a warm scan 0.4 s (the cache skips remark). Input for s
 
 - Commit `5cf3ce1` was pushed. All service workflows passed, and senaev-utils was published as `1.0.0-ci.39062759981.1`. The npm metadata CDN showed the old `ci` tag for some minutes; `--prefer-online` found the new version.
 - Smoke test after the deploy: `s.senaev.com/1bxsl9` → 302 to `/cv/5min`, the static page → 200, the public note → 200.
-- Vault plugin (vault task `tasks/2026-10-17-09-04-daily-tasks-from-senaev-utils.md`):
+- Vault plugin (vault project `projects/2026-10-17-09-04-daily-tasks-from-senaev-utils.md`):
   - The plugin uses `isTaskInDailyNote`, `isActiveDailyDate` and `getTaskSortKey` from senaev-utils.
   - Typecheck, 80 tests and lint pass; `main.js` is rebuilt.
   - The vault is not committed.
