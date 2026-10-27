@@ -1,10 +1,7 @@
-import { TAbstractFile, TFile } from 'obsidian';
+import { TFile } from 'obsidian';
 
 /** Vault-root folder that periodic daily notes live in. */
 export const DAILY_NOTE_FOLDER = 'periodic/day/';
-
-/** Extension every note path ends with; also keeps date-named folders out. */
-const MARKDOWN_EXTENSION = '.md';
 
 /** Matches daily note basenames such as `2026-08-01`. */
 const DAILY_NOTE_BASENAME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -25,32 +22,6 @@ export function formatDailyNoteBasename(date: Date): string {
 /** Returns the vault path of the daily note for `date`, e.g. `periodic/day/2026-08-01.md`. */
 export function getDailyNotePath(date: Date): string {
 	return `${DAILY_NOTE_FOLDER}${formatDailyNoteBasename(date)}.md`;
-}
-
-/**
- * Returns the `YYYY-MM-DD` date of a daily note path, or `null` when `path` is
- * not one. Works on a raw path so it can also be used for the old path of a
- * rename event, where no file object exists any more.
- *
- * `YYYY-MM-DD` strings sort chronologically as plain strings, so callers can
- * compare the results directly.
- */
-export function getDailyNoteDateFromPath(path: string): string | null {
-	if (!path.startsWith(DAILY_NOTE_FOLDER) || !path.endsWith(MARKDOWN_EXTENSION)) {
-		return null;
-	}
-
-	const basename = path.slice(
-		DAILY_NOTE_FOLDER.length,
-		path.length - MARKDOWN_EXTENSION.length,
-	);
-
-	return DAILY_NOTE_BASENAME_PATTERN.test(basename) ? basename : null;
-}
-
-/** Whether `file` is a daily note, i.e. `periodic/day/YYYY-MM-DD.md`. */
-export function isDailyNoteFile(file: TAbstractFile): boolean {
-	return getDailyNoteDateFromPath(file.path) !== null;
 }
 
 /**

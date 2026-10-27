@@ -94,11 +94,11 @@ The rules themselves live in the `senaev-utils` npm package (`src/obsidianTasks/
 
 Tasks inside `periodic/` are always excluded so daily notes never echo each other.
 
-`isActiveDailyDate` (senaev-utils) picks the active note: today and any future date, plus the latest existing note when today's note does not exist yet. Both rules collapse into `noteDate >= today || noteDate === latestExistingDate`, because when today's note exists the latest date is already today or later and the second check cannot reach into the past. `YYYY-MM-DD` compares chronologically as a plain string, so no date parsing is needed. A note whose name is not a date — only `_templates/Daily note template.md` — counts as active, so the template still shows open tasks.
+`isActiveDailyDate` (senaev-utils) picks the active note: today and any future date (`noteDate >= today`). A past note never becomes active, even when today's note does not exist yet. Until 2026-10-27 the latest existing note took over in that case. `isActiveDailyDateFromToday` calls it with today's local date. `YYYY-MM-DD` compares chronologically as a plain string, so no date parsing is needed. A note whose name is not a date — only `_templates/Daily note template.md` — counts as active, so the template still shows open tasks.
 
 Without this scoping every past note repeats the whole open backlog, which is what made 600+ notes render the same list.
 
-`createIsActiveDailyDate` caches the latest existing date, since finding it scans every markdown file while the filter runs once per task per query. The cache is invalidated on vault `create`/`delete`/`rename` of a daily note; a rename checks the old path too. Today's date is read fresh on each call, so midnight needs no invalidation. A past note already open on screen keeps its old list until the Tasks plugin re-renders it, which reopening the note always does.
+The check needs no vault scan and no cache. Today's date is read fresh on each call, so midnight needs no invalidation. A past note already open on screen keeps its old list until the Tasks plugin re-renders it, which reopening the note always does.
 
 `sortKeyForDaily` orders by priority (highest first), then file path, then line, so tasks keep their order in the note. (Until 2026-10-17 it was file name, then description.) All three tiers are packed into one `|`-separated string because the Tasks plugin accepts only a single scalar per `sort by function` and throws when two keys have different types — it has no hook for a real comparator, so a plugin cannot supply one. Details that matter if you change it:
 
