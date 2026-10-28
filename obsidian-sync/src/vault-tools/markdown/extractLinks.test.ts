@@ -99,10 +99,10 @@ describe('extractLinks', () => {
     });
 
     it('marks embeds, for wikilinks and Markdown images', () => {
-        expect(only('![[daily_note_draft]]')).toMatchObject({
+        expect(only('![[daily_note_stream]]')).toMatchObject({
             kind: 'wikilink',
             embed: true,
-            target: 'daily_note_draft',
+            target: 'daily_note_stream',
         });
         expect(only('![photo](_Resources/photo%201.png)')).toMatchObject({
             kind: 'markdown',

@@ -8,7 +8,7 @@ import { createTestVault, type TestVault } from '../createTestVault';
 
 import { diaryAppendTool } from './diaryAppendTool';
 
-const DRAFT = '@senaev/daily_note_draft.md';
+const DRAFT = '@senaev/daily_note_stream.md';
 const RECORD = /^\n\[\[(\d{4}-\d{2}-\d{2})\|🎙️ \1 \d{2}:\d{2}\]\]: Мы гуляли\. ✍️\n$/;
 
 let vault: TestVault | undefined;
@@ -65,11 +65,11 @@ describe('diaryAppendTool', () => {
     });
 
     it('refuses to write through a symlinked folder', async () => {
-        const { config, path } = await vaultWith({ '.obsidian/daily_note_draft.md': 'private' });
+        const { config, path } = await vaultWith({ '.obsidian/daily_note_stream.md': 'private' });
 
         await symlink(path('.obsidian'), path('@senaev'));
 
         await expect(diaryAppendTool(config, { text: 'x' })).rejects.toMatchObject({ code: 'forbidden_path' });
-        expect(await readFile(path('.obsidian/daily_note_draft.md'), 'utf8')).toBe('private');
+        expect(await readFile(path('.obsidian/daily_note_stream.md'), 'utf8')).toBe('private');
     });
 });

@@ -54,7 +54,7 @@ describe('standalone typed Obsidian commands', { timeout: 30000 }, () => {
         vault = await createTestVault({
             'Source.md': original,
             'Backlink.md': '[[Source]]',
-            '@senaev/daily_note_draft.md': '',
+            '@senaev/daily_note_stream.md': '',
         });
         const ownChanges: string[] = [];
 
@@ -177,7 +177,7 @@ describe('standalone typed Obsidian commands', { timeout: 30000 }, () => {
                 'Backlink.md',
                 'Created.md',
                 'Source.md',
-                '@senaev/daily_note_draft.md',
+                '@senaev/daily_note_stream.md',
             ]);
         };
 
