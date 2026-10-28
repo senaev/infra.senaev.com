@@ -144,6 +144,6 @@ describe('isTaskPathExcluded', () => {
         expect(isTaskPathExcluded('_templates/Daily note template.md')).toBe(true);
         expect(isTaskPathExcluded('plugins/senaev-personal-tools/README.md')).toBe(true);
         expect(isTaskPathExcluded('notes/_templates/x.md')).toBe(false);
-        expect(isTaskPathExcluded('@senaev/tasks/tasks_streaming.md')).toBe(false);
+        expect(isTaskPathExcluded('@senaev/tasks/tasks_stream.md')).toBe(false);
     });
 });

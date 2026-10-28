@@ -25,7 +25,7 @@ afterEach(async () => {
     vault = undefined;
 });
 
-const STREAM = '@senaev/tasks/tasks_streaming.md';
+const STREAM = '@senaev/tasks/tasks_stream.md';
 
 describe('tasksListTool', () => {
     it('lists tasks sorted by priority, path and line, and reports unreadable lines', async () => {
@@ -170,7 +170,7 @@ describe('tasksListTool', () => {
 });
 
 describe('tasksCreateTool', () => {
-    it('adds a task at the top of tasks_streaming.md with a blank line after it', async () => {
+    it('adds a task at the top of tasks_stream.md with a blank line after it', async () => {
         const content = '- [ ] Old task 🌱 Alisa\n';
         const testVault = await vaultWith({ [STREAM]: content });
 
