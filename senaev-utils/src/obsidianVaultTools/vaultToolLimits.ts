@@ -54,4 +54,4 @@ export const TASK_WRITE_LIMITS = {
 export const TASKS_TIME_ZONE = 'Europe/Madrid';
 
 /** Where new tasks go when the user names no note, see "Adding tasks" in the vault's AGENTS.md. */
-export const DEFAULT_TASKS_NOTE_PATH = '@senaev/tasks/tasks_streaming.md';
+export const DEFAULT_TASKS_NOTE_PATH = '@senaev/tasks/tasks_stream.md';

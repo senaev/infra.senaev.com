@@ -17,7 +17,7 @@ export const PUBLIC_STATIC_DIR = join(OBSIDIAN_VAULT_PATH, 'public-static');
  * TASKS_FILE_PATH from the Obsidian plugin's (now removed) tasks-sync feature,
  * which that endpoint replaces.
  */
-export const TASKS_FILE_PATH = join(OBSIDIAN_VAULT_PATH, '@senaev', 'tasks', 'tasks_streaming.md');
+export const TASKS_FILE_PATH = join(OBSIDIAN_VAULT_PATH, '@senaev', 'tasks', 'tasks_stream.md');
 
 /** `id,url` table backing the short link routes; obsidian-csv_query can read and edit it. */
 export const SHORT_LINKS_FILE_PATH = join(OBSIDIAN_VAULT_PATH, 'short_links', 'short_links.csv');
