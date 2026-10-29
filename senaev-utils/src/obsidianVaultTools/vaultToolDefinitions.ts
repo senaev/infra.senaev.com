@@ -473,6 +473,7 @@ const tasks_list: ToolDefinition = {
     description: [
         'Lists the tasks of the owner\'s Obsidian vault with their note "path", "line", the file "hash" and the line as written ("raw").',
         TASK_FORMAT_DESCRIPTION,
+        'When displaying tasks to the user, copy each task\'s "raw" field verbatim. Preserve the original language, wording, spelling, checkbox, links, URLs, emojis, tags and dates. Do not translate, paraphrase, shorten, remove links or reconstruct tasks from parsed fields. Preserve the returned order. Put any explanation outside the copied task text. Follow this unless the user explicitly requests a different presentation.',
         'All filters are optional and combine with AND. Without filters it lists every task, also closed ones.',
         '"dailyNote" gives exactly the task list of that daily note in Obsidian: the tasks closed on that day, and on the active note (today or a future day) also the open tasks due on or before it and the undated open tasks of normal or higher priority.',
         'Tasks are sorted by priority, then note path, then line. Tasks in periodic/ notes are part of the list but never of a daily note list.',
