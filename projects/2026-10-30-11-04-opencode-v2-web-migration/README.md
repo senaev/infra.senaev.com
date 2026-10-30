@@ -180,6 +180,13 @@ This supersedes the earlier release-gate/tag decisions. The existing independent
 
 At the user request, removed opencode-serve/test-runtime.py and its additional CI step. Production startup/readiness/liveness probes and healthcheck.cjs remain unchanged. The shared check workflow is restored to its original version. No merge or deployment performed.
 
+
+### 2026-10-30 — Use the native OpenCode health command
+
+Replaced the custom healthcheck.cjs script with opencode --server http://127.0.0.1:4096 api get /api/info in all three Kubernetes probes. Removed the script and its Dockerfile copy. Explicit --server targets the existing process without starting a background service; the command reads OPENCODE_PASSWORD from the existing environment.
+
+Verified the exact 2.2.3 binary with isolated storage and dummy credentials before replacement: correct password exits 0, wrong password and stopped server exit nonzero, no background service registration created, approximately 0.25 seconds per request. Probe timings remain unchanged. No merge or deployment performed.
+
 ## Result
 
 Research and migration task created. Implementation remains open. No runtime settings changed.

@@ -75,18 +75,18 @@ spec:
               memory: 2Gi
           startupProbe:
             exec:
-              command: ["node", "/app/healthcheck.cjs"]
+              command: ["opencode", "--server", "http://127.0.0.1:4096", "api", "get", "/api/info"]
             periodSeconds: 5
             timeoutSeconds: 5
             failureThreshold: 60
           readinessProbe:
             exec:
-              command: ["node", "/app/healthcheck.cjs"]
+              command: ["opencode", "--server", "http://127.0.0.1:4096", "api", "get", "/api/info"]
             periodSeconds: 10
             timeoutSeconds: 5
           livenessProbe:
             exec:
-              command: ["node", "/app/healthcheck.cjs"]
+              command: ["opencode", "--server", "http://127.0.0.1:4096", "api", "get", "/api/info"]
             periodSeconds: 30
             timeoutSeconds: 5
             failureThreshold: 6

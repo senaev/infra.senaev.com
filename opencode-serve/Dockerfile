@@ -26,7 +26,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && node --version && npm --version && helm version --short
 
-COPY opencode-serve/start.sh opencode-serve/healthcheck.cjs /app/
+COPY opencode-serve/start.sh /app/start.sh
 
 WORKDIR /
 EXPOSE 4096
