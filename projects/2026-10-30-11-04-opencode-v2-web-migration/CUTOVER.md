@@ -86,3 +86,22 @@ or shared credentials are revoked by this migration.
 
 Do not mark deployment acceptance complete until browser, Telegram, private-network and restart
 checks have passed.
+
+## Credential trust boundary
+
+An isolated test of the exact 2.2.3 foreground server confirmed that a shell child inherits
+OPENCODE_PASSWORD. Native authentication protects entry to the service; it does not sandbox
+authorized agent tools, terminal commands, plugins or MCP processes from the container's
+credentials. This deployment already gives its single authorized user/agent root-level access
+and GitHub/provider credentials. Do not use it to run untrusted plugins or serve other users.
+
+Moving the password to another file owned by the same root user would not create process
+isolation. Hiding credentials from agent tools would require a separate isolation design;
+this PR does not claim that protection. Confirm this trust model before merging.
+
+Network acceptance results should be recorded independently:
+- Public IPv4 backend port 4096 is unreachable.
+- Public IPv6 backend port 4096 is unreachable (or no public IPv6 route exists).
+- Traefik can reach the service; unrelated pods cannot.
+- HTTP redirects to HTTPS.
+- No alternate ingress or remote tunnel bypasses the intended entry point.

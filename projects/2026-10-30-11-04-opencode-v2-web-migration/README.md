@@ -149,6 +149,17 @@ Checks ran sequentially on the 2 GiB Code Tools container to avoid exhausting it
 
 Ready for CI review. Before merge: populate Vault OPENCODE_PASSWORD, inspect live credential/config paths and take a consistent backup. No cluster changes made.
 
+
+### 2026-10-30 — CI and credential boundary review
+
+CI passed the repository checks and both server/bot container builds on implementation commit ddc12cb. PR builds did not publish or restart services.
+
+Evaluated the review concern about credentials in child environments using an isolated 2.2.3 server and a dummy password. The shell API confirmed password inheritance without printing a credential. Native authentication is access control, not an agent sandbox; same-root file/service storage would not isolate secrets either. Documented this single-user trusted-agent limitation in CUTOVER.md for user confirmation before merge. No unsupported credential-isolation workaround was added.
+
+The initial combined network acceptance item is superseded by independent IPv4, IPv6, internal policy, redirect and bypass checks in CUTOVER.md.
+
+Implementation and self-review complete; no runtime changes. Awaiting user confirmation of the documented credential trust boundary, Vault password provisioning and live preflight/backup before merge. Automated review may still be pending.
+
 ## Result
 
 Research and migration task created. Implementation remains open. No runtime settings changed.
