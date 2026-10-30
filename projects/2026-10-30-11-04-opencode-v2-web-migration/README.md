@@ -1,6 +1,6 @@
 # 2026-10-30 — Migrate OpenCode to V2 web access
 
-- [ ] Replace OpenCode 1 and its Telegram bot with persistent OpenCode 2 browser access over authenticated HTTPS, preserving repositories, credentials, configuration and integrations.
+- [x] Migrate OpenCode 1 to persistent OpenCode 2 browser access over authenticated HTTPS, preserving repositories, credentials, configuration and integrations, including Telegram.
 
 ## Goal
 
@@ -214,6 +214,11 @@ Transient V1/V2 mismatch warnings and certificate issuance resolved during the i
 
 Not exercised: authenticated browser interaction, a model request, Telegram voice round trip, credential rotation or host reboot. No messages were sent through Telegram. Deployment and monitoring checks passed; those manual/end-to-end acceptance items remain open.
 
+
+### 2026-10-30 — User acceptance complete
+
+User confirmed all suggested end-to-end checks passed: correct and incorrect password handling in Incognito, web agent responses, reconnection/session continuity, shared web/Telegram sessions, Telegram voice transcription and web permission prompts. Migration accepted and marked complete. Credential rotation and a host reboot were not part of these checks and remain optional separate maintenance verification; no success is claimed for them.
+
 ## Result
 
-OpenCode 2 web migration is implemented and deployed via PR #112. CI/CD, readiness, TLS, access protection, backend reachability and existing service smoke checks passed. Manual browser/voice acceptance and host-reboot verification remain open; see the latest dated findings.
+Complete. OpenCode 2 is deployed via PR #112 with native authentication, persistent storage and the retained Telegram/Groq integration. Automated deployment/monitoring checks passed, and the user confirmed end-to-end acceptance. Credential rotation and host-reboot testing were deferred to separate maintenance verification.
