@@ -153,3 +153,9 @@ root runtime remains the documented trusted-user choice because existing shared
 repositories are root-owned; changing their permissions is outside this task.
 Activation remains separate: merge/publish first, then enable the chart. No
 Vault secret value has been read or printed and no merge has been performed.
+
+### 2026-10-31 — Remove the additional deployment validation job
+
+At the user's request, removed the OMP-specific validate-deployment job and its
+build dependency, and removed chart-only triggers from the image workflow.
+Standard repository/Helm checks and the image's runtime smoke test remain.

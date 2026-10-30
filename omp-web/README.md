@@ -34,7 +34,8 @@ host and protocol, disables response buffering and allows long-lived streams.
 The image runs under tini so shutdown signals reach child processes.
 OMP Web explicitly permits its first image release before its Deployment exists;
 other service releases still fail if their Deployment is missing. Chart-only
-changes validate/deploy Helm without rebuilding or explicitly restarting OMP Web.
+changes use the standard Helm workflow without rebuilding or explicitly restarting
+OMP Web.
 
 ## Configuration and persistence
 

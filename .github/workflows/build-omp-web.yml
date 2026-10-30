@@ -9,9 +9,6 @@ on:
   pull_request:
     paths:
       - "omp-web/**"
-      - "provisioning/helm/senaev-com/templates/omp-web.yaml"
-      - "provisioning/helm/senaev-com/config/omp-web/**"
-      - "provisioning/helm/senaev-com/values.yaml"
       - ".github/workflows/build-service.yml"
       - ".github/workflows/build-omp-web.yml"
   workflow_dispatch:
@@ -22,25 +19,8 @@ jobs:
       contents: read
     uses: ./.github/workflows/check.yml
 
-  validate-deployment:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-      - name: Validate the enabled chart
-        run: |
-          helm lint provisioning/helm/senaev-com \
-            -f provisioning/helm/common-values.yaml \
-            -f provisioning/helm/senaev-com/values.yaml --set ompWeb.enabled=true
-      - name: Validate the proxy configuration
-        run: |
-          docker run --rm --network none --entrypoint nginx \
-            -v "$PWD/provisioning/helm/senaev-com/config/omp-web/nginx.conf:/etc/nginx/nginx.conf:ro" \
-            nginxinc/nginx-unprivileged:1.28.0-alpine -t
-
   build-and-push:
-    needs: [check, validate-deployment]
+    needs: check
     permissions:
       contents: read
       packages: write
