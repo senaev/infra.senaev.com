@@ -53,6 +53,3 @@ jobs:
       # The Python, shell and Helm syntax checks use python3, bash and helm from the runner image.
       - name: Lint, typecheck, test and syntax checks
         run: npm run simple-checks
-
-      - name: OpenCode container runtime integration checks
-        run: python3 opencode-serve/test-runtime.py

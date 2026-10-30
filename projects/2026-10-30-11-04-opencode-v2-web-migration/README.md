@@ -175,6 +175,11 @@ At the user request, removed the V2 image tags and restored the existing latest 
 
 This supersedes the earlier release-gate/tag decisions. The existing independent build/deploy workflows can have temporary version mismatches during cutover; no synchronization mechanism is added. Missing password or probe script fails startup/readiness. Preserve old image digests for rollback since latest is overwritten. Updated cutover guidance, including copying ephemeral configuration before merge/restart. No merge or deployment performed.
 
+
+### 2026-10-30 — Remove the additional runtime test
+
+At the user request, removed opencode-serve/test-runtime.py and its additional CI step. Production startup/readiness/liveness probes and healthcheck.cjs remain unchanged. The shared check workflow is restored to its original version. No merge or deployment performed.
+
 ## Result
 
 Research and migration task created. Implementation remains open. No runtime settings changed.
