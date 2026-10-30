@@ -75,6 +75,36 @@ What can go wrong:
 
 Open points: exact V2 release/artifact, real runtime drift, historical session compatibility, persisted credential paths, browser password-login behavior, hostname/DNS, ingress controller selectors and required Telegram feature replacements.
 
+
+### 2026-10-30 — Scope clarification and Telegram compatibility
+
+This entry supersedes earlier removal/session/concurrency requirements:
+- Dedicated hostname accepted (opencode.senaev.com remains the proposed spelling).
+- Keep Telegram as an additional client if validation succeeds; removal and bot-token revocation are no longer planned by default.
+- Historical V1 sessions may be lost. Session-history migration is not an acceptance requirement. Preserve repositories, credentials/configuration and persistence of new V2 sessions.
+- Simultaneous checkout coordination is explicitly out of scope. Health checks are required.
+
+Compatibility verified in upstream release v0.26.0 and source tag v0.26.4 (the version already pinned in our bot Dockerfile):
+- v0.26.0 release title/body declares V2 support.
+- src/config.ts reads OPENCODE_SERVER_VERSION and server credentials.
+- src/opencode/client.ts selects createV2OpencodeClient when configured v2 and sends HTTP Basic credentials.
+- src/opencode/v2/client.ts implements the V2 adapter.
+- Sources: https://github.com/grinev/opencode-telegram-bot/releases/tag/v0.26.0 and https://github.com/grinev/opencode-telegram-bot/tree/v0.26.4/src/opencode
+
+Our entrypoint writes an .env file but does not forward version/password settings; implementation must supply OPENCODE_SERVER_VERSION=v2, OPENCODE_SERVER_USERNAME=opencode, OPENCODE_SERVER_PASSWORD from the same Vault secret as server OPENCODE_PASSWORD, and explicit internal API URL. Keep Kubernetes as supervisor; bot auto-restart of OpenCode remains disabled. Test prompts, streams, permissions and Groq voice transcription against the selected V2 release.
+
+HTTPS is transport encryption, not a password scheme. Native OpenCode authentication and Traefik BasicAuth can both work over HTTPS. Prefer native authentication for one credential mechanism shared by web/API/bot, not because it is intrinsically stronger. V2 documents browser cookie sessions via pairing and Basic auth for other HTTP clients; validate fresh-browser password access through Traefik before claiming the no-SSH experience is complete. Do not add two independent BasicAuth layers without testing Authorization handling.
+
+Storage names mean Kubernetes PVC opencode-telegram-git, its claimName references, and the existing hostPath/subPath locations. Removing only the bot container does not delete this storage. Removing the whole Helm template or disabling opencodeTelegram.enabled would omit its PVC from the rendered release; Helm could then delete the PVC, and the storage reclaim policy determines whether backing data is removed. Keep the PVC resource declared and preserve its identity regardless of client choice. Code Tools also depends on the old labels/config/flag.
+
+Voice alternatives:
+1. Keep Telegram/Groq voice input alongside the web interface.
+2. Use Android/Gboard or desktop OS dictation in the browser prompt field.
+3. Evaluate native V2 voice: current API docs expose experimental voice models/session routes and upstream dev contains packages/app/src/voice. Availability and providers in the exact pinned release still need testing; do not equate this automatically with Telegram's record-and-transcribe workflow.
+4. A custom record/transcribe control using the existing Groq service is possible but adds frontend maintenance; defer unless the options above fail.
+
+Validation for this follow-up: upstream tagged bot source inspected; documentation-only change, diff whitespace check. No runtime changes.
+
 ## Result
 
 Research and migration task created. Implementation remains open. No runtime settings changed.
