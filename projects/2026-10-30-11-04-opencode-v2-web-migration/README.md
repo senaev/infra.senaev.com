@@ -160,6 +160,14 @@ The initial combined network acceptance item is superseded by independent IPv4, 
 
 Implementation and self-review complete; no runtime changes. Awaiting user confirmation of the documented credential trust boundary, Vault password provisioning and live preflight/backup before merge. Automated review may still be pending.
 
+### 2026-10-30 — User confirmation and Vault password
+
+User explicitly accepts the single-user trusted-agent model, including agent shell access to the OpenCode server password. This resolves the outstanding user decision about the credential trust boundary.
+
+User confirms OPENCODE_PASSWORD has been added to Vault. Recorded as user-confirmed; the secret was not read or independently verified.
+
+User requested only this project update. No merge, deployment, live preflight or other changes are authorized by this message.
+
 ## Result
 
 Research and migration task created. Implementation remains open. No runtime settings changed.
