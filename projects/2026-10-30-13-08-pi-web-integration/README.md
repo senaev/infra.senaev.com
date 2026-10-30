@@ -159,3 +159,10 @@ Vault secret value has been read or printed and no merge has been performed.
 At the user's request, removed the OMP-specific validate-deployment job and its
 build dependency, and removed chart-only triggers from the image workflow.
 Standard repository/Helm checks and the image's runtime smoke test remain.
+
+### 2026-10-31 — Manual first deployment
+
+The user will perform the first deployment manually. Removed the missing-
+deployment exception and its input entirely, restoring build-service.yml to
+the main-branch version. Subsequent image releases use normal rollout restart
+and fail when their Deployment is absent.

@@ -33,5 +33,4 @@ jobs:
       image_tag: omp-web
       publish_image: ${{ github.event_name != 'pull_request' }}
       deployment_name: omp-web
-      allow_missing_deployment: true
     secrets: inherit
