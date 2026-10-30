@@ -116,6 +116,15 @@ A proxy could authenticate the browser and inject backend Basic credentials, lea
 
 Separate Pi project created with requirements only; OpenCode remains the active focus.
 
+
+### 2026-10-30 — Native authentication selected
+
+User selected native OpenCode authentication. This supersedes the earlier undecided/proxy-only preference. Traefik remains responsible for HTTPS and routing, without a second password prompt. Keep the server password in Vault and supply it to the Telegram client internally.
+
+Before implementation, verify the pinned release supports fresh-browser access without an SSH-dependent pairing workflow. Remaining implementation research: exact V2 release/artifact and compatibility, live-versus-repository drift, effective credential/config paths, DNS/ingress routing and authentication-aware health checks. No need to preserve historical V1 sessions or solve simultaneous checkout coordination.
+
+Proposed defaults for the user: opencode.senaev.com, retain existing OpenRouter/model settings and Telegram/Groq, single-user access, generated strong Vault-managed password, brief planned cutover interruption. These defaults are proposals, not additional user decisions.
+
 ## Result
 
 Research and migration task created. Implementation remains open. No runtime settings changed.
