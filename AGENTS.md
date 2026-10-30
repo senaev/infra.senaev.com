@@ -51,6 +51,18 @@ Each namespace is a Helm chart under `provisioning/helm/<chart>/`. All charts sh
 
 CI deploys via `.github/workflows/update-helm-charts.yml` on push to `main`. One job first rsyncs the whole `provisioning/` folder to the server (with `--delete`, so the server copy mirrors the repo, `common-values.yaml` included). Then it runs a matrix over all charts; each job skips if its chart directory didn't change, otherwise SSHes in to run `upgrade-namespace.sh <chart> <namespace>` and sends a Telegram notification. A change to `common-values.yaml` alone deploys no chart. Runs do not overlap, so an older sync cannot overwrite a newer one.
 
+### Verify services with monitoring MCP tools
+
+When Datadog MCP or Grafana MCP tools are available, use their read-only metrics,
+logs and deployment information to check this personal infrastructure. Scope queries
+to the affected services and the relevant time window.
+
+After an authorized PR merge, wait for automatic CI/CD to finish, then inspect the
+available signals for deployment readiness, service health, restarts and errors in
+logs. Combine these findings with the relevant smoke tests below; a successful CI/CD
+run alone does not establish service health. Report what was verified, any problems
+found, and any checks that the available tools could not perform.
+
 ### Smoke test after a deploy
 
 These public URLs go through cluster-helper or nextjs-app to obsidian-sync, so they show
