@@ -105,6 +105,17 @@ Voice alternatives:
 
 Validation for this follow-up: upstream tagged bot source inspected; documentation-only change, diff whitespace check. No runtime changes.
 
+
+### 2026-10-30 — Authentication preference and source review
+
+User prefers reverse-proxy authentication only if OpenCode authentication can be completely disabled. Authentication remains undecided.
+
+Current upstream dev source reviewed: packages/cli/src/server-process.ts generates a password when one is not supplied and rejects an empty password with "Missing server password". packages/server/src/auth.ts has a lower-level optional-auth configuration, but the normal CLI startup does not expose that as a supported disable switch. Therefore proxy-only authentication with native authentication disabled is not currently established as supported; verify against the exact release before implementation.
+
+A proxy could authenticate the browser and inject backend Basic credentials, leaving OpenCode authentication enabled. This is a different arrangement from the requested complete disablement, requires explicit Authorization-header replacement and browser/streaming tests, and has not been selected. No authentication change or deployment performed.
+
+Separate Pi project created with requirements only; OpenCode remains the active focus.
+
 ## Result
 
 Research and migration task created. Implementation remains open. No runtime settings changed.
