@@ -1,0 +1,59 @@
+name: omp-web
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "omp-web/**"
+      - "provisioning/helm/senaev-com/templates/omp-web.yaml"
+      - "provisioning/helm/senaev-com/config/omp-web/**"
+      - "provisioning/helm/senaev-com/values.yaml"
+      - ".github/workflows/build-omp-web.yml"
+  pull_request:
+    paths:
+      - "omp-web/**"
+      - "provisioning/helm/senaev-com/templates/omp-web.yaml"
+      - "provisioning/helm/senaev-com/config/omp-web/**"
+      - "provisioning/helm/senaev-com/values.yaml"
+      - ".github/workflows/build-service.yml"
+      - ".github/workflows/build-omp-web.yml"
+  workflow_dispatch:
+
+jobs:
+  check:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/check.yml
+
+  validate-deployment:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate the enabled chart
+        run: |
+          helm lint provisioning/helm/senaev-com \
+            -f provisioning/helm/common-values.yaml \
+            -f provisioning/helm/senaev-com/values.yaml --set ompWeb.enabled=true
+      - name: Validate the proxy configuration
+        run: |
+          docker run --rm --network none --entrypoint nginx \
+            -v "$PWD/provisioning/helm/senaev-com/config/omp-web/nginx.conf:/etc/nginx/nginx.conf:ro" \
+            nginxinc/nginx-unprivileged:1.28.0-alpine -t
+
+  build-and-push:
+    needs: [check, validate-deployment]
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/build-service.yml
+    with:
+      workflow_title: omp-web
+      context: .
+      dockerfile: ./omp-web/Dockerfile
+      registry_image: ghcr.io/senaev/opencode-serve
+      image_tag: omp-web
+      publish_image: ${{ github.event_name != 'pull_request' }}
+      deployment_name: omp-web
+    secrets: inherit

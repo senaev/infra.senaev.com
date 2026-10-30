@@ -1,0 +1,280 @@
+{{- if .Values.ompWeb.enabled }}
+{{- if not .Values.opencodeTelegram.enabled }}
+{{- fail "ompWeb requires opencodeTelegram for the shared repository PVC and server instructions" }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: omp-web
+  namespace: {{ .Release.Namespace }}
+data:
+  nginx.conf: |
+{{ .Files.Get "config/omp-web/nginx.conf" | indent 4 }}
+  config.yml: |
+    modelRoles:
+      default: {{ .Values.ompWeb.model | quote }}
+    tools:
+      approvalMode: write
+  mcp.json: |
+{{ .Files.Get "config/omp-web/mcp.json" | indent 4 }}
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: omp-web-basicauth
+  namespace: {{ .Release.Namespace }}
+spec:
+  refreshInterval: 30s
+  secretStoreRef:
+    name: vault-cluster-secret-store
+    kind: ClusterSecretStore
+  target:
+    name: omp-web-basicauth
+    creationPolicy: Owner
+  data:
+    - secretKey: users
+      remoteRef:
+        key: senaev-com-kv
+        property: OMP_WEB_HTPASSWD_HASH_WITH_USERNAME
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: omp-web-basicauth
+  namespace: {{ .Release.Namespace }}
+spec:
+  basicAuth:
+    secret: omp-web-basicauth
+    removeHeader: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: omp-web
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: omp-web
+  template:
+    metadata:
+      labels:
+        app: omp-web
+        admission.datadoghq.com/enabled: "true"
+        tags.datadoghq.com/service: omp-web
+        tags.datadoghq.com/env: prod
+        tags.datadoghq.com/version: latest
+      annotations:
+        secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
+        configmap.reloader.stakater.com/reload: "omp-web,opencode-telegram-config"
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      nodeSelector:
+        vps: {{ .Values.opencodeTelegram.vps }}
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: opencode-telegram
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: omp-web
+          image: ghcr.io/senaev/opencode-serve:omp-web
+          imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              memory: 512Mi
+            limits:
+              memory: 2Gi
+          env:
+            - name: GIT_AUTHOR_NAME
+              value: Andrei Senaev
+            - name: GIT_AUTHOR_EMAIL
+              value: andrei.senaev@gmail.com
+            - name: GIT_COMMITTER_NAME
+              value: Andrei Senaev
+            - name: GIT_COMMITTER_EMAIL
+              value: andrei.senaev@gmail.com
+            - name: GH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: GH_TOKEN
+            - name: OPENROUTER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: OPENROUTER_API_KEY
+          startupProbe:
+            exec:
+              command: ["curl", "--fail", "--silent", "--output", "/dev/null", "--max-time", "3", "http://127.0.0.1:30177/api/sessions"]
+            periodSeconds: 5
+            failureThreshold: 60
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command: ["curl", "--fail", "--silent", "--output", "/dev/null", "--max-time", "3", "http://127.0.0.1:30177/api/sessions"]
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["curl", "--fail", "--silent", "--output", "/dev/null", "--max-time", "3", "http://127.0.0.1:30177/api/sessions"]
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 6
+          volumeMounts:
+            - name: projects-git
+              mountPath: /projects/git
+            - name: state
+              mountPath: /root/.omp
+            - name: ssh
+              mountPath: /root/.ssh
+              readOnly: true
+            - name: defaults
+              mountPath: /defaults
+              readOnly: true
+            - name: instructions
+              mountPath: /AGENTS.md
+              subPath: AGENTS.md
+              readOnly: true
+        # OMP Web stays on loopback with no app password. Only Traefik may
+        # reach this same-pod proxy; Traefik owns HTTPS and Basic Auth.
+        - name: proxy
+          image: nginxinc/nginx-unprivileged:1.28.0-alpine
+          command: ["nginx", "-g", "daemon off;"]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 101
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              memory: 16Mi
+            limits:
+              memory: 64Mi
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /api/sessions
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+          volumeMounts:
+            - name: defaults
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+              readOnly: true
+            - name: proxy-tmp
+              mountPath: /tmp
+      volumes:
+        - name: projects-git
+          persistentVolumeClaim:
+            claimName: opencode-telegram-git
+        - name: state
+          persistentVolumeClaim:
+            claimName: omp-web-state
+        - name: ssh
+          secret:
+            secretName: senaev-com-kv-secrets
+            defaultMode: 0600
+            items:
+              - key: TELEGRAM_OPENCODE_SSH_PRIVATE_KEY
+                path: id_rsa
+        - name: defaults
+          configMap:
+            name: omp-web
+        - name: instructions
+          configMap:
+            name: opencode-telegram-config
+        - name: proxy-tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: omp-web-state
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: {{ .Values.ompWeb.storageSize }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: omp-web
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: omp-web
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: omp-web
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: omp-web
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+          podSelector:
+            matchLabels:
+              app: traefik
+              traefik-deployment: hetzner
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: omp-web
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+    traefik.ingress.kubernetes.io/router.middlewares: {{ .Release.Namespace }}-omp-web-basicauth@kubernetescrd
+spec:
+  ingressClassName: traefik-hetzner
+  tls:
+    - hosts: [{{ .Values.ompWeb.hostname | quote }}]
+  rules:
+    - host: {{ .Values.ompWeb.hostname | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: omp-web
+                port:
+                  number: 8080
+{{- end }}

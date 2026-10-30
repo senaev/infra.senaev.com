@@ -96,3 +96,46 @@ fork. Implementation is pending; this entry records the proposed design.
 References: [OMP RPC](https://omp.sh/docs/rpc),
 [OMP Web deployment/authentication](https://github.com/kahme247/ompweb),
 [current deployment](../../provisioning/helm/senaev-com/templates/opencode-serve.yaml).
+
+### 2026-10-30 — Implementation and review
+
+The user authorized implementation and excluded coordination between agents from
+this project. The implementation uses upstream OMP 18.14.0 and OMP Web 0.6.0 in one
+custom image, with a same-pod nginx sidecar and Traefik Basic Auth. This supersedes
+the trusted-header plan: Traefik header middleware cannot reference a Secret
+directly, whereas loopback avoids a second password and secret distribution.
+
+OMP now uses the checksum-verified binary instead of the npm source dependency
+tree. Separate state and shared repository PVCs, one replica/Recreate, conditional
+ingress, probes, minimal credentials and an ingress NetworkPolicy are implemented.
+The feature remains disabled pending image publication, DNS and a Vault htpasswd
+entry. OpenCode and its Telegram client are unchanged.
+
+See [deployment, migration and acceptance steps](../../omp-web/README.md). Runtime
+compatibility, enabled/disabled Helm rendering, repository checks and PR image
+build results will be recorded below. Workstation-only OpenCode plugins and
+transcripts are explicitly not claimed as migrated.
+
+Review iterations simplified the runtime to a verified binary and a loopback
+proxy; retained the state PVC on disable; pinned and verified Helm/yq downloads;
+and made seeded configuration owner-writable with private state directories.
+The seeded files are required on first boot, avoiding a silent fallback to OMP's
+default approval mode if a configuration mount is missing.
+
+Runtime smoke passed: browser API session creation, Haiku-to-Sonnet selection,
+a harmless shell command, and role settings retained after a web-server restart.
+No model API request was made. OMP intentionally does not materialize empty
+conversations before an assistant message; real transcript recovery remains a
+post-deployment check. Both chart modes render, and the enabled chart lints.
+
+Local lint, typecheck, Python/shell syntax and default/enabled Helm checks passed.
+The first full suite passed 1660/1661 tests; an unchanged CSV validation test hit
+its real subprocess deadline under load. Its complete file passed 34/34 tests on
+isolated rerun. The normal pre-push hook and PR CI remain required.
+
+## Result
+
+Implementation is prepared on a branch for review; no merge or deployment has
+been performed. Activation requires DNS, the Vault Basic Auth entry, image
+publication and enabling the chart flag, followed by the browser/monitoring
+acceptance checks in the service README.
