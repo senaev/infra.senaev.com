@@ -13,10 +13,10 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         git openssh-client python3 \
         jq vim ripgrep fzf tree make unzip wget gh \
-    && curl -fsSL --retry 3 --retry-all-errors "https://github.com/anomalyco/opencode/releases/download/v1.19.0/opencode-linux-x64-baseline.tar.gz" -o /tmp/opencode.tar.gz \
-    && echo "6334d70db3990721ea454357e9cf2573c8685524ad7769af9d52cbffb7008438  /tmp/opencode.tar.gz" | sha256sum -c - \
+    && curl -fsSL --retry 3 --retry-all-errors "https://github.com/anomalyco/opencode/releases/download/v2.2.3/opencode-linux-x64-baseline.tar.gz" -o /tmp/opencode.tar.gz \
+    && echo "ef3aeeaf5522b10d69a3da7bbd6e6d8d259f845833d96b8310767d3407b18a35  /tmp/opencode.tar.gz" | sha256sum -c - \
     && tar -xzf /tmp/opencode.tar.gz -C /usr/local/bin opencode \
-    && test "$(opencode --version)" = "1.19.0" \
+    && test "$(opencode --version)" = "opencode v2.2.3" \
     && rm /tmp/opencode.tar.gz \
     && curl -fsSL "https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64" -o /usr/local/bin/yq \
     && chmod +x /usr/local/bin/yq \

@@ -51,6 +51,18 @@ Each namespace is a Helm chart under `provisioning/helm/<chart>/`. All charts sh
 
 CI deploys via `.github/workflows/update-helm-charts.yml` on push to `main`. One job first rsyncs the whole `provisioning/` folder to the server (with `--delete`, so the server copy mirrors the repo, `common-values.yaml` included). Then it runs a matrix over all charts; each job skips if its chart directory didn't change, otherwise SSHes in to run `upgrade-namespace.sh <chart> <namespace>` and sends a Telegram notification. A change to `common-values.yaml` alone deploys no chart. Runs do not overlap, so an older sync cannot overwrite a newer one.
 
+### Verify services with monitoring MCP tools
+
+When Datadog MCP or Grafana MCP tools are available, use their read-only metrics,
+logs and deployment information to check this personal infrastructure. Scope queries
+to the affected services and the relevant time window.
+
+For any change requiring post-CI/CD or post-deployment verification, wait for the
+relevant CI/CD or deployment to finish, then inspect the available signals for
+deployment readiness, service health, restarts and errors in logs. Combine these findings with the relevant smoke tests below; a successful CI/CD
+run alone does not establish service health. Report what was verified, any problems
+found, and any checks that the available tools could not perform.
+
 ### Smoke test after a deploy
 
 These public URLs go through cluster-helper or nextjs-app to obsidian-sync, so they show
@@ -232,6 +244,13 @@ bot stay in the `opencode-telegram` Deployment. Both pods mount the existing
 `opencode-telegram-git` PVC at `/projects/git`; required pod affinity puts Code Tools
 on OpenCode's node. Both use one replica and `Recreate`; a Code Tools update still
 has a short outage and loses in-memory operation IDs.
+
+OpenCode 2 serves its built-in web UI at `https://opencode.senaev.com` through the
+existing Traefik ingress. Native authentication uses Vault `OPENCODE_PASSWORD` via
+the separate `opencode-auth` secret; the Telegram client uses the same password over
+localhost. The shared PVC/deployment names remain unchanged. Config and state persist
+in the existing node-local data volume; health probes authenticate against `/api/info`.
+See `projects/2026-10-30-11-04-opencode-v2-web-migration/CUTOVER.md` before cutover.
 
 The shared working trees have no cross-process locking: coordinate edits between
 OpenCode and Code Tools. Do not enable overlapping Code Tools replicas without

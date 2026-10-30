@@ -5,6 +5,12 @@ on:
     branches: [main, master]
     paths:
       - "opencode-telegram-bot/**"
+      - ".github/workflows/build-opencode-telegram-bot.yml"
+  pull_request:
+    paths:
+      - "opencode-telegram-bot/**"
+      - ".github/workflows/build-service.yml"
+      - ".github/workflows/build-opencode-telegram-bot.yml"
   workflow_dispatch:
 
 jobs:
@@ -18,5 +24,6 @@ jobs:
       context: ./opencode-telegram-bot
       dockerfile: ./opencode-telegram-bot/Dockerfile
       registry_image: ghcr.io/senaev/opencode-telegram-bot
+      publish_image: ${{ github.event_name != 'pull_request' }}
       deployment_name: opencode-telegram
     secrets: inherit
