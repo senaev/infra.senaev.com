@@ -5,9 +5,6 @@ on:
     branches: [main, master]
     paths:
       - "omp-web/**"
-      - "provisioning/helm/senaev-com/templates/omp-web.yaml"
-      - "provisioning/helm/senaev-com/config/omp-web/**"
-      - "provisioning/helm/senaev-com/values.yaml"
       - ".github/workflows/build-omp-web.yml"
   pull_request:
     paths:
@@ -56,4 +53,5 @@ jobs:
       image_tag: omp-web
       publish_image: ${{ github.event_name != 'pull_request' }}
       deployment_name: omp-web
+      allow_missing_deployment: true
     secrets: inherit

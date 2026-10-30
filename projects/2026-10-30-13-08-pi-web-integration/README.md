@@ -139,3 +139,17 @@ Implementation is prepared on a branch for review; no merge or deployment has
 been performed. Activation requires DNS, the Vault Basic Auth entry, image
 publication and enabling the chart flag, followed by the browser/monitoring
 acceptance checks in the service README.
+
+### 2026-10-31 — Activation prerequisites and CI review
+
+The user created DNS and the Vault Basic Auth field. DNS for omp.senaev.com
+resolves to the same address as opencode.senaev.com. All initial PR build/test
+checks passed, including the image smoke test and proxy validation.
+
+Review follow-up limits image releases to image/workflow changes, preserving
+chart validation on pull requests. Missing deployments now fail for existing
+services; OMP Web alone opts into the first-image bootstrap exception. The
+root runtime remains the documented trusted-user choice because existing shared
+repositories are root-owned; changing their permissions is outside this task.
+Activation remains separate: merge/publish first, then enable the chart. No
+Vault secret value has been read or printed and no merge has been performed.

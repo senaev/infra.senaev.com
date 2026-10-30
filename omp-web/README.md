@@ -32,8 +32,9 @@ Do not remove this NetworkPolicy or publish either container directly.
 `/api/sessions` health probes make no model calls. nginx forwards the external
 host and protocol, disables response buffering and allows long-lived streams.
 The image runs under tini so shutdown signals reach child processes.
-The reusable release workflow skips restarting a Deployment that does not yet
-exist, allowing the first image to be published before the feature is enabled.
+OMP Web explicitly permits its first image release before its Deployment exists;
+other service releases still fail if their Deployment is missing. Chart-only
+changes validate/deploy Helm without rebuilding or explicitly restarting OMP Web.
 
 ## Configuration and persistence
 

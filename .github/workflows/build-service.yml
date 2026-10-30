@@ -21,6 +21,9 @@ on:
       deployment_name:
         required: true
         type: string
+      allow_missing_deployment:
+        type: boolean
+        default: false
       publish_image:
         type: boolean
         default: true
@@ -71,6 +74,9 @@ jobs:
             if [ -n "$deployment" ]; then
               kubectl -n senaev-com rollout restart "$deployment"
               kubectl -n senaev-com rollout status "$deployment" --timeout=180s
+            elif [ "${{ inputs.allow_missing_deployment }}" != "true" ]; then
+              echo "Deployment ${{ inputs.deployment_name }} is missing" >&2
+              exit 1
             fi
 
       - name: Notify Telegram
