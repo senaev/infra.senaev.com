@@ -31,5 +31,6 @@ jobs:
       dockerfile: ./opencode-serve/Dockerfile
       registry_image: ghcr.io/senaev/opencode-serve
       publish_image: ${{ github.event_name != 'pull_request' }}
+      image_tag: v2
       deployment_name: opencode-telegram
     secrets: inherit

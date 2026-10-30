@@ -125,6 +125,30 @@ Before implementation, verify the pinned release supports fresh-browser access w
 
 Proposed defaults for the user: opencode.senaev.com, retain existing OpenRouter/model settings and Telegram/Groq, single-user access, generated strong Vault-managed password, brief planned cutover interruption. These defaults are proposals, not additional user decisions.
 
+
+### 2026-10-30 — Implementation and first review
+
+Confirmed hostname opencode.senaev.com, Telegram/Groq, existing OpenRouter settings, single-user access and brief downtime. User reports DNS record added. Native authentication selected.
+
+Implemented pinned/checksummed OpenCode 2.2.3, native sign-in, Vault-backed password shared with Telegram, private Service and Traefik-only NetworkPolicy, persistent global config/state and authenticated startup/readiness/liveness probes. Retained deployment/PVC/Code Tools identity. Added Telegram V2 configuration and integration checks.
+
+Review corrections: isolate the password ExternalSecret from the shared application secret; retain V1 tags and use separate V2 tags to avoid image/manifest mismatch; wait for image workflows before chart cutover; preserve outside-project permission prompts and mount global AGENTS.md; restrict permissions of existing Telegram .env files before rewriting them.
+
+Validation so far: verified official archive checksum and exact binary version; ran isolated real V2 server with the existing OpenRouter config shape and dummy credentials; confirmed web shell 200, authenticated API 200 and missing/wrong-password API 401. Rendered chart assertions confirm private backend, ingress selector, probes and preserved shared PVC/Code Tools. Process integration tests cover credential handling and probe failure modes. Full repository checks and final review pending.
+
+No cluster inspection or deployment performed. [Cutover and acceptance guide](CUTOVER.md) records prerequisites and post-deploy checks. The new Vault property must exist before merge/cutover.
+
+
+### 2026-10-30 — Second review and validation
+
+Reviewed the complete implementation again across image build, startup/authentication, Helm release ordering, ingress/network policy, secrets, persistence, Telegram and Code Tools dependencies. No remaining code-level blocker found. Live deployment acceptance remains separate.
+
+All local repository checks passed: lint, typecheck, 193 test files / 1,661 tests (full suite, one worker, 167.93 seconds), Python/shell syntax and Helm lint. Three added process integration tests passed (~3.2 seconds). Rendered chart security/storage assertions passed. The image workflow gate was exercised with successful and failed build results. DNS for opencode.senaev.com resolves.
+
+Checks ran sequentially on the 2 GiB Code Tools container to avoid exhausting its memory; the pre-push duplicate full-suite run is excluded after this successful validation. CI still runs the normal concurrent checks and both PR container builds.
+
+Ready for CI review. Before merge: populate Vault OPENCODE_PASSWORD, inspect live credential/config paths and take a consistent backup. No cluster changes made.
+
 ## Result
 
 Research and migration task created. Implementation remains open. No runtime settings changed.

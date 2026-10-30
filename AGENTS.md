@@ -233,6 +233,13 @@ bot stay in the `opencode-telegram` Deployment. Both pods mount the existing
 on OpenCode's node. Both use one replica and `Recreate`; a Code Tools update still
 has a short outage and loses in-memory operation IDs.
 
+OpenCode 2 serves its built-in web UI at `https://opencode.senaev.com` through the
+existing Traefik ingress. Native authentication uses Vault `OPENCODE_PASSWORD` via
+the separate `opencode-auth` secret; the Telegram client uses the same password over
+localhost. The shared PVC/deployment names remain unchanged. Config and state persist
+in the existing node-local data volume; health probes authenticate against `/api/info`.
+See `projects/2026-10-30-11-04-opencode-v2-web-migration/CUTOVER.md` before cutover.
+
 The shared working trees have no cross-process locking: coordinate edits between
 OpenCode and Code Tools. Do not enable overlapping Code Tools replicas without
 addressing operation routing and filesystem coordination.

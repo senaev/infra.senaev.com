@@ -260,6 +260,13 @@ vpnSubscription:
 
 ingress:
   entries:
+    - name: opencode
+      className: traefik-hetzner
+      entrypoints: websecure
+      hosts:
+        - host: opencode.senaev.com
+          service: opencode
+          port: 4096
     - name: senaev-com-direct
       className: traefik-hetzner
       hosts:
