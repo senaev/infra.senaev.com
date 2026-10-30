@@ -14,13 +14,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  check:
-    permissions:
-      contents: read
-    uses: ./.github/workflows/check.yml
-
   build-and-push:
-    needs: check
     permissions:
       contents: read
       packages: write
@@ -30,7 +24,6 @@ jobs:
       context: ./opencode-telegram-bot
       dockerfile: ./opencode-telegram-bot/Dockerfile
       registry_image: ghcr.io/senaev/opencode-telegram-bot
-      image_tag: v2
       publish_image: ${{ github.event_name != 'pull_request' }}
       deployment_name: opencode-telegram
     secrets: inherit

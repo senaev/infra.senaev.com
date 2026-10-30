@@ -168,6 +168,13 @@ User confirms OPENCODE_PASSWORD has been added to Vault. Recorded as user-confir
 
 User requested only this project update. No merge, deployment, live preflight or other changes are authorized by this message.
 
+
+### 2026-10-30 — Simplify CI/CD and reuse latest images
+
+At the user request, removed the V2 image tags and restored the existing latest tags for both server and bot. Removed the entire cross-workflow image polling step and its additional Actions permissions/token/repository variables; update-helm-charts.yml is restored to the main-branch version. Also removed the newly added duplicate Telegram check job. Kept bot PR build validation and its no-publish/no-restart condition, plus focused runtime tests in the existing shared checks.
+
+This supersedes the earlier release-gate/tag decisions. The existing independent build/deploy workflows can have temporary version mismatches during cutover; no synchronization mechanism is added. Missing password or probe script fails startup/readiness. Preserve old image digests for rollback since latest is overwritten. Updated cutover guidance, including copying ephemeral configuration before merge/restart. No merge or deployment performed.
+
 ## Result
 
 Research and migration task created. Implementation remains open. No runtime settings changed.

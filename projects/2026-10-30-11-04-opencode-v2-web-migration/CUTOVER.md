@@ -12,8 +12,8 @@ need not survive; repositories, provider credentials and new V2 state must persi
    The browser username is opencode. A separate ExternalSecret creates opencode-auth so a missing
    property does not break the shared secret for other services.
 3. Inspect the running deployment and credential/config locations before cutover; the PR was
-   developed without querying the cluster. Preserve any settings in ephemeral global config in
-   the new persistent config directory after stopping OpenCode.
+   developed without querying the cluster. Back up any settings in ephemeral global config to protected storage before merging or
+   stopping/restarting OpenCode, then restore them into the new persistent config directory.
 4. Make a protected backup of /projects/git including uncommitted/untracked work, and
    /k3s-cluster/volumes/opencode-data on Hetzner. Record the Helm revision and actual image digests.
 
@@ -34,10 +34,12 @@ live database is not a verified backup.
 
 ## Release behavior
 
-The server and bot images publish under separate :v2 tags, leaving the previous :latest images
-available for rollback. PR builds do not publish or restart services. On merge, the Helm job waits
-for this commit's changed OpenCode image workflows to succeed before applying the chart. Existing
-service workflows still run their normal rollout checks.
+The server and bot reuse their existing :latest image tags. PR builds do not publish or restart
+services. Image builds and Helm deployment retain the existing independent workflows: there is
+no image polling or cross-workflow release gate. During the initial cutover, mixed image/config
+versions can temporarily fail startup/readiness until all workflows finish. Confirm every workflow
+and the final rollout succeeds; rerun a failed rollout after images/configuration are available.
+Rollback must use the previously recorded image digests because :latest is overwritten.
 
 Deployment/PVC names, node selection, Code Tools affinity, SSH secret reference and repository
 paths are unchanged. Only Traefik in namespace traefik with the existing Hetzner labels can connect
@@ -97,7 +99,7 @@ and GitHub/provider credentials. Do not use it to run untrusted plugins or serve
 
 Moving the password to another file owned by the same root user would not create process
 isolation. Hiding credentials from agent tools would require a separate isolation design;
-this PR does not claim that protection. Confirm this trust model before merging.
+this PR does not claim that protection. The user accepted this trust model on 2026-10-30.
 
 Network acceptance results should be recorded independently:
 - Public IPv4 backend port 4096 is unreachable.

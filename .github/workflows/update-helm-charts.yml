@@ -38,9 +38,6 @@ jobs:
           remote_key: ${{ secrets.REMOTE_SSH_KEY }}
 
   update-charts:
-    permissions:
-      contents: read
-      actions: read
     needs: sync-provisioning
     runs-on: ubuntu-latest
     strategy:
@@ -86,34 +83,6 @@ jobs:
           else
             echo "any_changed=true" >> "$GITHUB_OUTPUT"
           fi
-
-      # Image releases and chart deployment run independently. Wait for this commit's
-      # changed OpenCode images before cutover; old :latest tags remain untouched.
-      - name: Wait for OpenCode images
-        if: matrix.chart == 'senaev-com' && steps.changed-files.outputs.any_changed == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          BEFORE: ${{ github.event.before }}
-        run: |
-          set -euo pipefail
-          for service in opencode-serve opencode-telegram-bot; do
-            if git cat-file -e "$BEFORE^{commit}" 2>/dev/null &&
-              git diff --quiet "$BEFORE" "$GITHUB_SHA" -- "$service/" ".github/workflows/build-$service.yml"; then
-              continue
-            fi
-            deadline=$((SECONDS + 900))
-            while true; do
-              run=$(gh run list --commit "$GITHUB_SHA" --event push --workflow "build-$service.yml" --json status,conclusion --jq '.[0] // {}')
-              status=$(jq -r '.status // ""' <<< "$run")
-              if [[ "$status" == completed ]]; then
-                [[ "$(jq -r .conclusion <<< "$run")" == success ]] || exit 1
-                break
-              fi
-              (( SECONDS < deadline )) || { echo "Timed out waiting for $service"; exit 1; }
-              sleep 10
-            done
-          done
 
       - name: Update chart
         if: steps.changed-files.outputs.any_changed == 'true'
