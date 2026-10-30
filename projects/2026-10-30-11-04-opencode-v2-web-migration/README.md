@@ -1,6 +1,6 @@
 # 2026-10-30 — Migrate OpenCode to V2 web access
 
-- [ ] Replace OpenCode 1 and its Telegram bot with persistent OpenCode 2 browser access over authenticated HTTPS, preserving repositories, credentials, configuration and integrations.
+- [x] Migrate OpenCode 1 to persistent OpenCode 2 browser access over authenticated HTTPS, preserving repositories, credentials, configuration and integrations, including Telegram.
 
 ## Goal
 
@@ -187,6 +187,38 @@ Replaced the custom healthcheck.cjs script with opencode --server http://127.0.0
 
 Verified the exact 2.2.3 binary with isolated storage and dummy credentials before replacement: correct password exits 0, wrong password and stopped server exit nonzero, no background service registration created, approximately 0.25 seconds per request. Probe timings remain unchanged. No merge or deployment performed.
 
+
+### 2026-10-30 — Merged, deployed and checked
+
+Merged PR #112 as 7e97945cdfa493c107991a50accfaaec7de9b318 at 15:26 UTC. All four merge workflows completed successfully: Check, opencode-serve, opencode-telegram-bot and Update Helm Charts.
+
+Saved a protected repository backup on the existing shared volume at /projects/git/.migration-backups/opencode-2026-10-30/repositories.tar (excluding reproducible node_modules). Direct SSH preflight was unavailable because the Code Tools container had no trusted host key for hetzner; verification remained enabled. No live hostPath/global-config backup or secret read was performed, so do not assume the repository archive is a complete V1 runtime rollback backup.
+
+Post-deploy checks using Grafana MCP, Datadog MCP and public HTTP/TLS requests:
+- Both OpenCode containers ready; deployment available replicas 1; Code Tools available replicas 1. The final pod had zero container restarts at the observed sample.
+- HTTPS / returns 200 with a trusted Let's Encrypt certificate. HTTP redirects to HTTPS.
+- Unauthenticated /api/info returns 401. Native authenticated readiness probes pass.
+- Public IPv4 and configured IPv6 port 4096 refuse connections. The Code Tools pod also cannot connect directly to the internal OpenCode Service.
+- All three existing smoke URLs returned their expected redirect/content with HTTP 200.
+- Datadog logs confirm the V2 server became ready and Telegram started. No ongoing error logs found after 15:30:40 UTC through the final observation window around 15:32 UTC.
+
+Representative observed results:
+
+~~~text
+https://opencode.senaev.com/ 200
+https://opencode.senaev.com/api/info 401
+[OpenCodeReady] OpenCode server is ready: reason=startup
+~~~
+
+Transient V1/V2 mismatch warnings and certificate issuance resolved during the independent release jobs. One retained Telegram session still references the obsolete /projects/vault path and logged attach warnings; select a current repository/new session in Telegram. Historical-session continuity was explicitly out of scope.
+
+Not exercised: authenticated browser interaction, a model request, Telegram voice round trip, credential rotation or host reboot. No messages were sent through Telegram. Deployment and monitoring checks passed; those manual/end-to-end acceptance items remain open.
+
+
+### 2026-10-30 — User acceptance complete
+
+User confirmed all suggested end-to-end checks passed: correct and incorrect password handling in Incognito, web agent responses, reconnection/session continuity, shared web/Telegram sessions, Telegram voice transcription and web permission prompts. Migration accepted and marked complete. Credential rotation and a host reboot were not part of these checks and remain optional separate maintenance verification; no success is claimed for them.
+
 ## Result
 
-Research and migration task created. Implementation remains open. No runtime settings changed.
+Complete. OpenCode 2 is deployed via PR #112 with native authentication, persistent storage and the retained Telegram/Groq integration. Automated deployment/monitoring checks passed, and the user confirmed end-to-end acceptance. Credential rotation and host-reboot testing were deferred to separate maintenance verification.
