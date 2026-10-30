@@ -57,9 +57,9 @@ When Datadog MCP or Grafana MCP tools are available, use their read-only metrics
 logs and deployment information to check this personal infrastructure. Scope queries
 to the affected services and the relevant time window.
 
-After an authorized PR merge, wait for automatic CI/CD to finish, then inspect the
-available signals for deployment readiness, service health, restarts and errors in
-logs. Combine these findings with the relevant smoke tests below; a successful CI/CD
+For any change requiring post-CI/CD or post-deployment verification, wait for the
+relevant CI/CD or deployment to finish, then inspect the available signals for
+deployment readiness, service health, restarts and errors in logs. Combine these findings with the relevant smoke tests below; a successful CI/CD
 run alone does not establish service health. Report what was verified, any problems
 found, and any checks that the available tools could not perform.
 
