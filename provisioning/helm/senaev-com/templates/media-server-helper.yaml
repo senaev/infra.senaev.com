@@ -50,6 +50,7 @@ spec:
       containers:
         - name: media-server-helper
           image: ghcr.io/senaev/media-server-helper:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 3000
           env:

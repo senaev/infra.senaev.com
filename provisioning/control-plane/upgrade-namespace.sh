@@ -2,9 +2,9 @@
 set -euo pipefail
 
 # Upgrade helm chart in a given namespace.
-# Usage: $0 <chart> <namespace_name> [helm args...]
+# Usage: $0 <chart_path> <namespace_name> [helm args...]
 if [[ $# -lt 2 ]]; then
-  echo "Usage: $0 <chart> <namespace_name> [helm args...]" >&2
+  echo "Usage: $0 <chart_path> <namespace_name> [helm args...]" >&2
   echo "Example: $0 senaev-com senaev-com" >&2
   exit 1
 fi
@@ -12,15 +12,15 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 set -a; source "$SCRIPT_DIR/../common/.env"; set +a
 
-CHART="$1"
+HELM_PATH="$K3S_CLUSTER_PATH/provisioning/helm"
+CHART_PATH="$HELM_PATH/$1"
+RELEASE_NAME="${1##*/}"
 NS="$2"
 shift 2
 
-HELM_PATH="$K3S_CLUSTER_PATH/provisioning/helm"
-CHART_PATH="$HELM_PATH/$CHART"
 COMMON_VALUES="$HELM_PATH/common-values.yaml"
 
-LOG_PREFIX="[upgrade-namespace $CHART $NS]"
+LOG_PREFIX="[upgrade-namespace $RELEASE_NAME $NS]"
 
 echo "👉 $LOG_PREFIX Checking namespace=[$NS]"
 kubectl create namespace "$NS" --dry-run=client -o yaml | kubectl apply -f -
@@ -36,10 +36,10 @@ if [[ -d "$CHART_PATH/crds" ]]; then
   done
 fi
 
-echo "👉 $LOG_PREFIX Helm upgrade chart=[$CHART] namespace=[$NS]"
-helm upgrade --install "$CHART" "$CHART_PATH" \
+echo "👉 $LOG_PREFIX Helm upgrade release=[$RELEASE_NAME] namespace=[$NS]"
+helm upgrade --install "$RELEASE_NAME" "$CHART_PATH" \
 -n "$NS" \
 -f "$COMMON_VALUES" \
 -f "$CHART_PATH/values.yaml" \
 --take-ownership "$@"
-echo "✅ $LOG_PREFIX Helm upgrade chart=[$CHART] namespace=[$NS]"
+echo "✅ $LOG_PREFIX Helm upgrade release=[$RELEASE_NAME] namespace=[$NS]"

@@ -47,9 +47,23 @@ Be extremely careful with these nodes and their networks:
 
 ## Service Deployment
 
-Each namespace is a Helm chart under `provisioning/helm/<chart>/`. All charts share `provisioning/helm/common-values.yaml` merged at deploy time alongside the chart's own `values.yaml`.
+Charts live under `provisioning/helm/<chart>/` or grouped as
+`provisioning/helm/<namespace>/<chart>/`; the leaf directory is the release name.
+Releases in the same namespace deploy sequentially in path order. All charts share `provisioning/helm/common-values.yaml` merged at deploy time alongside the chart's own `values.yaml`.
 
-CI deploys via `.github/workflows/update-helm-charts.yml` on push to `main`. One job first rsyncs the whole `provisioning/` folder to the server (with `--delete`, so the server copy mirrors the repo, `common-values.yaml` included). Then it runs a matrix over all charts; each job skips if its chart directory didn't change, otherwise SSHes in to run `upgrade-namespace.sh <chart> <namespace>` and sends a Telegram notification. A change to `common-values.yaml` alone deploys no chart. Runs do not overlap, so an older sync cannot overwrite a newer one.
+CI is coordinated by `.github/workflows/deploy.yml`: check → discover affected
+images/charts → build and publish images → sync provisioning once → Helm upgrade
+and wait for readiness. New top-level `<service>/Dockerfile` files and Helm charts
+are discovered automatically; optional service exceptions can be declared in
+`.github/deploy-config.json`. Grouped charts derive their namespace from the folder.
+See [the deployment guide](.github/README.md) when adding a service.
+
+Services publish and deploy `:latest` with `imagePullPolicy: Always`. After Helm
+creates/updates releases, CI restarts workloads using rebuilt images and waits
+for rollout readiness. Chart-only updates do not trigger additional restarts.
+Common values or upgrade-script changes select every chart.
+Runs are serialized across builds and deployment; planning uses the last successful
+push deployment to include changes from replaced pending runs.
 
 ### Verify services with monitoring MCP tools
 
@@ -187,10 +201,9 @@ the services — including `noUncheckedIndexedAccess` and `exactOptionalProperty
 senaev-utils overrides only `module`, `moduleResolution`, `esModuleInterop` and `lib`,
 because browser bundlers compile it too.
 
-`.github/workflows/check.yml` is called by every service build workflow via `needs: check`,
-so nothing is deployed before lint, typecheck, tests and syntax checks pass. It also runs on
-its own when the shared config, a `*.py` or `*.sh` file, or a Helm chart changes, because
-these belong to no package and would otherwise reach `main` unchecked.
+`.github/workflows/check.yml` gates the coordinated deployment workflow and npm
+publishing. Deploy checks every push and pull request; PRs build affected images
+without publishing or accessing the cluster.
 
 ### Git hooks
 
@@ -216,7 +229,10 @@ The services in this repo consume it **by path**: `"senaev-utils": "file:../sena
 
 It is **also published to npm**, because `supabase-list-notes` lives in a separate repo and pins an exact published version. `.github/workflows/publish-senaev-utils.yml` lints, tests and typechecks it, then publishes `1.0.0-ci.<run_id>.<attempt>` under the `ci` dist-tag on every push to `main` that touches `senaev-utils/**`. That external consumer is why publishing stays on npm, and why the package must keep `@types/node` in `dependencies` and must not raise `engines.node` past `>=18`.
 
-Because the services link the library rather than install it, **Docker builds use the repository root as their build context** — each service's workflow passes `context: .` with `dockerfile: ./<service>/Dockerfile`, and the Dockerfile copies both `senaev-utils/` and the service directory. The root `.dockerignore` keeps that context small; services must not carry their own. Every service build workflow also triggers on `senaev-utils/**`, so a change to the library rebuilds all consumer images.
+Services linking the library use the repository root as their Docker context.
+The planner rebuilds packages declaring a `senaev-utils` dependency when the
+library changes. The root `.dockerignore` keeps that context small; services
+must not carry their own. Context exceptions are declared in the deployment config.
 
 Publishing uses npm **trusted publishing** (OIDC, no token). The trusted publisher on npmjs.com is bound to both the repository and the workflow filename, so renaming either breaks publishing until it is updated.
 
@@ -238,7 +254,7 @@ Credentials (`SUPABASE_PROJECT_URL`, `SUPABASE_PUBLISHABLE_KEY`) are stored in V
 ## Code Tools and OpenCode
 
 Code Tools has its own image (`code-tools/Dockerfile`,
-`ghcr.io/senaev/opencode-serve:code-tools`), Deployment and Service
+`ghcr.io/senaev/code-tools`), Deployment and Service
 (`provisioning/helm/senaev-com/templates/code-tools.yaml`). OpenCode and its Telegram
 bot stay in the `opencode-telegram` Deployment. Both pods mount the existing
 `opencode-telegram-git` PVC at `/projects/git`; required pod affinity puts Code Tools
@@ -256,8 +272,7 @@ The shared working trees have no cross-process locking: coordinate edits between
 OpenCode and Code Tools. Do not enable overlapping Code Tools replicas without
 addressing operation routing and filesystem coordination.
 
-Code Tools builds independently via `.github/workflows/build-code-tools.yml`.
-Service releases publish their image and restart an existing Deployment. PR image
-checks do neither. The Helm workflow checks the repository and waits for readiness;
-it does not build images or restart services outside the chart changes.
-Code Tools explicitly uses `imagePullPolicy: Always` for its mutable `code-tools` tag.
+Code Tools is discovered by the coordinated deployment workflow, with its own
+image build and `latest` image. OpenCode and its Telegram bot deploy together after
+all affected images are published. Helm handles both first installation and updates;
+image refreshes run after Helm in the same coordinated job.

@@ -79,6 +79,7 @@ spec:
       containers:
         - name: cluster-helper
           image: ghcr.io/senaev/cluster-helper:latest
+          imagePullPolicy: Always
           ports:
             # Only "webhook" is exposed through an ingress. "internal" carries the
             # unauthenticated routes and must stay reachable from inside the cluster only.

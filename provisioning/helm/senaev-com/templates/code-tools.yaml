@@ -55,8 +55,7 @@ spec:
               mountPath: /projects/git
       containers:
         - name: code-tools
-          image: ghcr.io/senaev/opencode-serve:code-tools
-          # This mutable non-latest tag must be refreshed on each service release.
+          image: ghcr.io/senaev/code-tools:latest
           imagePullPolicy: Always
           ports:
             - name: http

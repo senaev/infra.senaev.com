@@ -27,6 +27,7 @@ spec:
       containers:
         - name: vpn-subscription
           image: ghcr.io/senaev/vpn-subscription:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 3000
           env:

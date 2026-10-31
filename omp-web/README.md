@@ -10,8 +10,8 @@ The existing senaev-com Helm chart owns the Deployment, Service, state PVC,
 NetworkPolicy, ingress and Traefik Basic Auth middleware. It is disabled by default
 until these prerequisites are ready:
 
-1. Build/publish the image through the `omp-web` workflow. The image uses
-   `ghcr.io/senaev/opencode-serve:omp-web`, reusing the existing registry package.
+1. Build/publish the image through the `Deploy` workflow. The image is published
+   to `ghcr.io/senaev/omp-web:latest`.
 2. Point `omp.senaev.com` at the same ingress as `opencode.senaev.com`.
 3. Add `OMP_WEB_HTPASSWD_HASH_WITH_USERNAME` to Vault's `senaev-com-kv`.
    Its value is an htpasswd entry (`username:bcrypt-hash`), generated interactively
@@ -30,10 +30,8 @@ Do not remove this NetworkPolicy or publish either container directly.
 `/api/sessions` health probes make no model calls. nginx forwards the external
 host and protocol, disables response buffering and allows long-lived streams.
 The image runs under tini so shutdown signals reach child processes.
-The first deployment is manual. The release workflow uses the existing behavior:
-publish the image, then restart the Deployment; a missing Deployment is an error.
-Chart-only changes use the standard Helm workflow without rebuilding or explicitly
-restarting OMP Web.
+The coordinated Deploy workflow publishes affected images before Helm creates
+or updates the Deployment. CI then restarts workloads using rebuilt images; chart-only changes need no extra restart.
 
 ## Configuration and persistence
 
