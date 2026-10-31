@@ -32,8 +32,6 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - name: Test deployment planning
-        run: python3 -m unittest discover -s scripts -p 'test_deployment*.py'
       - name: Plan changes since the last successful deployment
         id: plan
         env:

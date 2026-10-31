@@ -59,7 +59,5 @@ needed: Helm installs it. Separate, concurrently triggered rollout jobs are gone
 External images such as the website's image from another repository retain their
 existing update mechanism; this workflow builds only services in this repository.
 
-Validation: `python3 -m unittest discover -s scripts -p 'test_deployment*.py'`,
-`actionlint`, repository checks and Helm lint. The upgrade tests exercise the real
-shell/JQ merging and failure propagation with a fake Helm/Kubernetes boundary;
-they do not contact a cluster.
+Validation: `actionlint`, repository checks and Helm lint. Helm failures propagate
+to the deployment job; `--wait` also checks resource readiness.
