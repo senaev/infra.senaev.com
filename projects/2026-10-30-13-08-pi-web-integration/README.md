@@ -166,3 +166,10 @@ The user will perform the first deployment manually. Removed the missing-
 deployment exception and its input entirely, restoring build-service.yml to
 the main-branch version. Subsequent image releases use normal rollout restart
 and fail when their Deployment is absent.
+
+### 2026-10-31 — Remove the image smoke script
+
+At the user's request, removed omp-web/smoke.py and its Docker build step.
+The image copies only start.sh; standard repository checks and manual
+post-deployment acceptance checks remain. Earlier smoke-test results above
+are historical and no longer describe a build requirement.

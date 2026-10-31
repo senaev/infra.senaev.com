@@ -30,8 +30,7 @@ ENV OMP_WEB_HOSTNAME=127.0.0.1 \
     OMP_WEB_NO_OPEN=1 \
     OMP_WEB_DISABLE_AUTOUPDATE=1 \
     NEXT_TELEMETRY_DISABLED=1
-COPY omp-web/start.sh omp-web/smoke.py /app/
-RUN python3 /app/smoke.py
+COPY omp-web/start.sh /app/
 
 WORKDIR /projects/git
 ENTRYPOINT ["/usr/bin/tini", "-g", "--"]

@@ -67,8 +67,7 @@ the explicitly provided credentials: this is a trusted single-user agent.
 
 ## Acceptance and rollback
 
-Before activation, require a green image build (including the runtime smoke test)
-and chart checks. After deployment check:
+Before activation, require a green image build and chart checks. After deployment check:
 
 - No/wrong Basic Auth credentials return 401, including API and streaming URLs;
   correct credentials open the UI without a second login.
