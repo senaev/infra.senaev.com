@@ -52,6 +52,24 @@ jobs:
           tags: ${{ inputs.registry_image }}:latest
           cache-from: type=gha,scope=${{ inputs.service }}
           cache-to: type=gha,mode=max,scope=${{ inputs.service }}
+      - name: Verify published image is publicly pullable before deployment
+        if: inputs.publish_image
+        env:
+          IMAGE_REPOSITORY: ${{ inputs.registry_image }}
+        run: |
+          python3 - <<'PYTHON'
+          import json, os, urllib.request, urllib.error
+          repository = os.environ['IMAGE_REPOSITORY'].removeprefix('ghcr.io/')
+          try:
+              url = 'https://ghcr.io/token?service=ghcr.io&scope=repository:' + repository + ':pull'
+              token = json.load(urllib.request.urlopen(url, timeout=20))['token']
+              request = urllib.request.Request('https://ghcr.io/v2/' + repository + '/manifests/latest',
+                  headers={'Authorization': 'Bearer ' + token,
+                           'Accept': 'application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.v2+json'}, method='HEAD')
+              urllib.request.urlopen(request, timeout=20).close()
+          except urllib.error.HTTPError as error:
+              raise SystemExit(f'{repository}: published image is not publicly pullable (HTTP {error.code}). Check package visibility/access before deploying.')
+          PYTHON
       - name: Notify Telegram
         if: always() && inputs.publish_image
         uses: ./.github/actions/notify-telegram
