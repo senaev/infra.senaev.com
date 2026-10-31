@@ -196,3 +196,12 @@ mcp, defaultModel and connectors sections. Helm renders OpenCode, its Telegram
 client and OMP model/provider settings from the same source. Connector API keys
 remain in Vault. OMP startup updates the managed default role while preserving
 other roles and settings; provider/MCP definitions remain managed files.
+
+### 2026-10-31 — Merge and activation
+
+PR #115 merged. Repository checks and the senaev-com/Traefik Helm upgrades
+passed. OMP image publication passed; its restart failed because the Deployment
+did not exist yet. Grafana confirmed OpenCode, its Telegram bot, Code Tools and
+Traefik ready; scoped Datadog errors were absent and public service checks passed.
+At the user's explicit request, enabled ompWeb directly on main so Helm CI
+creates the first Deployment and ingress. Browser/model/MCP checks remain pending.

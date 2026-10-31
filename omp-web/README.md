@@ -3,8 +3,6 @@
 Server-side OMP 18.14.0 with [kahme247/ompweb](https://github.com/kahme247/ompweb)
 0.6.0. The image includes Node.js 24, Bun, Git/SSH, gh, Python, Helm and the
 existing coding utilities. OMP's release binary is verified against its SHA-256.
-The image build exercises new sessions, model switching, a harmless shell command,
-and saved settings after restarting the web server, without calling a model.
 
 ## Deployment
 

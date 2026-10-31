@@ -226,7 +226,7 @@ n8n:
   containerDataPath: /home/node/.n8n
 
 ompWeb:
-  enabled: false # Enable after the image, DNS and Vault Basic Auth secret are ready.
+  enabled: true
   hostname: omp.senaev.com
   storageSize: 8Gi
 
