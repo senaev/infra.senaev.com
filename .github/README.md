@@ -32,6 +32,9 @@ A failed check/build blocks all deployment; Helm failures remain visible.
 4. Include a checksum in the pod template for mounted configuration that requires
    a restart (especially ConfigMap `subPath` mounts); OMP Web is an example.
 
+Code Tools and OMP Web publish to their own `ghcr.io/senaev/code-tools` and
+`ghcr.io/senaev/omp-web` packages, using the standard naming convention.
+
 No new workflow or deployment-name list is needed. Registry pull permissions,
 secrets and storage prerequisites must exist; the pipeline does not create Vault
 credentials or infer application ports/resources. Removing a whole chart does

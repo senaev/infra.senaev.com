@@ -10,8 +10,8 @@ The existing senaev-com Helm chart owns the Deployment, Service, state PVC,
 NetworkPolicy, ingress and Traefik Basic Auth middleware. It is disabled by default
 until these prerequisites are ready:
 
-1. Build/publish the image through the `Deploy` workflow. The image reuses
-   `ghcr.io/senaev/opencode-serve`; CI deploys its exact digest.
+1. Build/publish the image through the `Deploy` workflow. The image is published
+   to `ghcr.io/senaev/omp-web`; CI deploys its exact digest.
 2. Point `omp.senaev.com` at the same ingress as `opencode.senaev.com`.
 3. Add `OMP_WEB_HTPASSWD_HASH_WITH_USERNAME` to Vault's `senaev-com-kv`.
    Its value is an htpasswd entry (`username:bcrypt-hash`), generated interactively

@@ -6,7 +6,7 @@ RUN apk add --no-cache python3 make g++
 # This version filters missing project folders, including previously mounted worktrees.
 RUN npm install -g @grinev/opencode-telegram-bot@0.26.4
 
-COPY entrypoint.sh /entrypoint.sh
+COPY opencode-telegram-bot/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]

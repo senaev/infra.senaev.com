@@ -3,15 +3,5 @@
     "vm-operator": "telemetry",
     "vm-stack": "telemetry"
   },
-  "services": {
-    "code-tools": {
-      "repository": "ghcr.io/senaev/opencode-serve"
-    },
-    "omp-web": {
-      "repository": "ghcr.io/senaev/opencode-serve"
-    },
-    "opencode-telegram-bot": {
-      "context": "opencode-telegram-bot"
-    }
-  }
+  "services": {}
 }
