@@ -62,6 +62,10 @@ or updates the Deployment. CI then restarts workloads using rebuilt images; char
   paths and need separate adaptation if wanted. OpenCode sessions are not converted.
   The server's deployed configuration, rather than laptop-specific paths and
   Jira conventions, is the baseline for this service.
+- Voice recording uses the same Groq `whisper-large-v3-turbo` transcription as
+  Telegram. `speechToText` in the shared JSON config controls both; the API key
+  stays in Vault (`GROQ_API_KEY`). Record, stop and review the transcript before
+  sending. Test microphone permission and transcription in your phone's browser.
 - In-app version updates are disabled; change the pinned versions and rebuild.
 
 The app runs as root inside the pod to preserve access to existing root-owned

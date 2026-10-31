@@ -109,6 +109,15 @@ spec:
             limits:
               memory: 2Gi
           env:
+            - name: OMP_WEB_STT_ENDPOINT
+              value: {{ printf "%s/audio/transcriptions" (trimSuffix "/" $agent.speechToText.baseUrl) | quote }}
+            - name: OMP_WEB_STT_MODEL
+              value: {{ $agent.speechToText.model | quote }}
+            - name: OMP_WEB_STT_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: {{ $agent.speechToText.apiKeyEnv | quote }}
             - name: OMP_DEFAULT_MODEL
               value: {{ printf "%s/%s" $agent.defaultModel.provider $agent.defaultModel.id | quote }}
             - name: GIT_AUTHOR_NAME
