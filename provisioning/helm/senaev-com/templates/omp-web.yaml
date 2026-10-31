@@ -1,3 +1,4 @@
+{{- $agent := .Files.Get "config/coding-agents.json" | mustFromJson }}
 {{- if .Values.ompWeb.enabled }}
 {{- if not .Values.opencodeTelegram.enabled }}
 {{- fail "ompWeb requires opencodeTelegram for the shared repository PVC and server instructions" }}
@@ -12,12 +13,19 @@ data:
 {{ .Files.Get "config/omp-web/nginx.conf" | indent 4 }}
   config.yml: |
     modelRoles:
-      default: {{ .Values.ompWeb.model | quote }}
+      default: {{ printf "%s/%s" $agent.defaultModel.provider $agent.defaultModel.id | quote }}
     tools:
       approvalMode: write
+  models.yml: |
+    providers:
+{{- range $name, $connector := $agent.connectors }}
+      {{ $name | quote }}:
+        baseUrl: {{ $connector.baseUrl | quote }}
+        apiKey: {{ $connector.apiKeyEnv | quote }}
+{{- end }}
   mcp.json: |
 {{- $servers := dict }}
-{{- range $name, $server := (.Files.Get "config/mcp-servers.json" | fromJson) }}
+{{- range $name, $server := $agent.mcp }}
 {{- $_ := set $servers $name (merge (dict "type" "http") $server) }}
 {{- end }}
 {{ dict "mcpServers" $servers | toPrettyJson | indent 4 }}
@@ -100,6 +108,8 @@ spec:
             limits:
               memory: 2Gi
           env:
+            - name: OMP_DEFAULT_MODEL
+              value: {{ printf "%s/%s" $agent.defaultModel.provider $agent.defaultModel.id | quote }}
             - name: GIT_AUTHOR_NAME
               value: {{ .Values.owner.name | quote }}
             - name: GIT_AUTHOR_EMAIL
@@ -113,11 +123,13 @@ spec:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
                   key: GH_TOKEN
-            - name: OPENROUTER_API_KEY
+{{- range $connector := $agent.connectors }}
+            - name: {{ $connector.apiKeyEnv | quote }}
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: OPENROUTER_API_KEY
+                  key: {{ $connector.apiKeyEnv | quote }}
+{{- end }}
           startupProbe:
             exec:
               command: ["curl", "--fail", "--silent", "--output", "/dev/null", "--max-time", "3", "http://127.0.0.1:30177/api/sessions"]

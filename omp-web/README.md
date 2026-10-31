@@ -44,13 +44,19 @@ restarting OMP Web.
 - OpenRouter uses the existing Vault API key and the deployed OpenCode model,
   `anthropic/claude-haiku-4.5`. Git identity, gh token, SSH key and server
   `/AGENTS.md` follow the existing deployment.
-- Native `config.yml` is seeded only when absent; browser settings, OAuth
-  credentials, plugins and sessions survive pod replacement.
-- Edit `provisioning/helm/senaev-com/config/mcp-servers.json` for shared remote
-  MCP servers (`url` and optional `headers`). Helm generates OpenCode V2 and OMP
-  formats from it. Chart deployment updates OpenCode's configuration and restarts
-  OMP via ConfigMap reloader; OMP replaces its managed `mcp.json` on each start.
-  Edit the shared file rather than the generated MCP definitions in either app.
+- Edit `provisioning/helm/senaev-com/config/coding-agents.json` for shared
+  `mcp`, `defaultModel` (`provider` and `id`), and `connectors` (`baseUrl` and
+  `apiKeyEnv`). The environment variable names also identify keys in the
+  existing Vault-backed Kubernetes secret; never put API keys in this file.
+- Helm generates OpenCode V2 configuration (including the Telegram bot's model)
+  and OMP's native files from it. Connectors currently use OpenAI-compatible
+  endpoints in OpenCode and provider overrides in OMP; other provider protocols
+  need their own adapter rather than just another URL.
+- Chart deployment updates both services. OMP's ConfigMap reloader restarts the
+  pod; startup replaces managed MCP/provider files and updates only the default
+  model role. Other roles, saved settings, OAuth credentials, plugins and sessions
+  persist. Edit the shared file for managed settings; UI model changes can be
+  used during a session, but the shared default is reapplied at startup.
 - Shell execution needs approval initially (`tools.approvalMode: write`).
   OMP cannot reproduce OpenCode's permission schema by copying its JSON.
 - Only Datadog EU is configured. Authorize it separately in each app; an OAuth

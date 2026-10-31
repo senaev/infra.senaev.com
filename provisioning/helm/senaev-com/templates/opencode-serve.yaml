@@ -1,3 +1,4 @@
+{{- $agent := .Files.Get "config/coding-agents.json" | mustFromJson }}
 {{- if .Values.opencodeTelegram.enabled }}
 apiVersion: v1
 kind: ConfigMap
@@ -117,18 +118,23 @@ spec:
                   optional: false
             - name: OPENCODE_WORKDIR
               value: /projects/git
-            - name: OPENROUTER_API_KEY
+{{- range $connector := $agent.connectors }}
+            - name: {{ $connector.apiKeyEnv | quote }}
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: OPENROUTER_API_KEY
-                  optional: false
+                  key: {{ $connector.apiKeyEnv | quote }}
+{{- end }}
             - name: OPENCODE_CONFIG_CONTENT
 {{- $servers := dict }}
-{{- range $name, $server := (.Files.Get "config/mcp-servers.json" | fromJson) }}
+{{- range $name, $server := $agent.mcp }}
 {{- $_ := set $servers $name (merge (dict "type" "remote") $server) }}
 {{- end }}
-              value: {{ merge (dict "mcp" (dict "servers" $servers) "model" (printf "openrouter/%s" .Values.opencodeTelegram.modelId)) (`{"permissions":[{"action":"external_directory","resource":"*","effect":"ask"}],"provider":{"openrouter":{"npm":"@ai-sdk/openai-compatible","name":"OpenRouter","options":{"baseURL":"https://openrouter.ai/api/v1","apiKey":"{env:OPENROUTER_API_KEY}"}}}}` | fromJson) | toJson | quote }}
+{{- $providers := dict }}
+{{- range $name, $connector := $agent.connectors }}
+{{- $_ := set $providers $name (dict "npm" "@ai-sdk/openai-compatible" "name" $name "options" (dict "baseURL" $connector.baseUrl "apiKey" (printf "{env:%s}" $connector.apiKeyEnv))) }}
+{{- end }}
+              value: {{ dict "mcp" (dict "servers" $servers) "model" (printf "%s/%s" $agent.defaultModel.provider $agent.defaultModel.id) "provider" $providers "permissions" (list (dict "action" "external_directory" "resource" "*" "effect" "ask")) | toJson | quote }}
           volumeMounts:
             - name: projects-git
               mountPath: /projects/git
@@ -189,9 +195,9 @@ spec:
             - name: OPENCODE_API_URL
               value: "http://localhost:4096"
             - name: OPENCODE_MODEL_PROVIDER
-              value: {{ .Values.opencodeTelegram.modelProvider }}
+              value: {{ $agent.defaultModel.provider | quote }}
             - name: OPENCODE_MODEL_ID
-              value: {{ .Values.opencodeTelegram.modelId }}
+              value: {{ $agent.defaultModel.id | quote }}
             - name: OPEN_BROWSER_ROOTS
               value: /projects/git
             - name: STT_API_URL

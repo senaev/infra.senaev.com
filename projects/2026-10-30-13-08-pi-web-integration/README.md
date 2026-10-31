@@ -188,3 +188,11 @@ Moved the owner name and email to provisioning/helm/common-values.yaml.
 OpenCode, OMP Web and Code Tools use them for Git author/committer identity;
 Traefik uses the same email for ACME registration. The OpenCode init container
 receives identity through environment variables rather than shell interpolation.
+
+### 2026-10-31 — Unified coding-agent configuration
+
+Expanded and renamed the shared MCP file to config/coding-agents.json, with
+mcp, defaultModel and connectors sections. Helm renders OpenCode, its Telegram
+client and OMP model/provider settings from the same source. Connector API keys
+remain in Vault. OMP startup updates the managed default role while preserving
+other roles and settings; provider/MCP definitions remain managed files.

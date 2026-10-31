@@ -228,14 +228,11 @@ n8n:
 ompWeb:
   enabled: false # Enable after the image, DNS and Vault Basic Auth secret are ready.
   hostname: omp.senaev.com
-  model: openrouter/anthropic/claude-haiku-4.5
   storageSize: 8Gi
 
 opencodeTelegram:
   enabled: true
   vps: hetzner
-  modelProvider: openrouter
-  modelId: anthropic/claude-haiku-4.5
   opencodeDataPath: volumes/opencode-data
 
 # Grafana MCP server, reachable only through cluster-helper at https://<clusterHelper.mcpDomain>/grafana.

@@ -1,0 +1,17 @@
+{
+  "mcp": {
+    "datadog": {
+      "url": "https://mcp.datadoghq.eu/v1/mcp?toolsets=core,software-delivery"
+    }
+  },
+  "defaultModel": {
+    "provider": "openrouter",
+    "id": "anthropic/claude-haiku-4.5"
+  },
+  "connectors": {
+    "openrouter": {
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "apiKeyEnv": "OPENROUTER_API_KEY"
+    }
+  }
+}
