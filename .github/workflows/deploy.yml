@@ -104,6 +104,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      # Controllers/webhooks must finish upgrading before dependent charts apply.
+      max-parallel: 1
       matrix:
         include: ${{ fromJSON(needs.plan.outputs.charts) }}
     steps:
@@ -130,7 +132,8 @@ jobs:
                 .items[] | select(any(.spec.template.spec.containers[];
                   .image as $image | $images | index($image))) |
                 (.kind | ascii_downcase) + "/" + .metadata.name')
-            for workload in $workloads; do
+            printf '%s\n' "$workloads" | while IFS= read -r workload; do
+              [ -n "$workload" ] || continue
               kubectl -n ${{ matrix.namespace }} rollout restart "$workload"
               kubectl -n ${{ matrix.namespace }} rollout status "$workload" --timeout=180s
             done
