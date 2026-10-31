@@ -139,12 +139,14 @@ jobs:
           script: |
             set -e
             export SERVICE_IMAGES_FILE=/k3s-cluster/provisioning/service-images.json
-            /k3s-cluster/provisioning/control-plane/upgrade-namespace.sh ${{ matrix.chart }} ${{ matrix.namespace }} --wait --timeout 300s
+            for chart in ${{ join(matrix.charts, ' ') }}; do
+              /k3s-cluster/provisioning/control-plane/upgrade-namespace.sh "$chart" ${{ matrix.namespace }} --wait --timeout 300s
+            done
       - name: Notify Telegram
         if: always()
         uses: ./.github/actions/notify-telegram
         with:
           bot_token: ${{ secrets.TG_BOT_TOKEN }}
           status: ${{ job.status }}
-          title: Helm chart ${{ matrix.chart }}
+          title: Helm namespace ${{ matrix.namespace }}
           link_text: deployed

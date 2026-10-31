@@ -11,8 +11,10 @@ or manual dispatch rebuilds/applies everything.
 - Add `<service>/Dockerfile` and enabled Helm resources under
   `provisioning/helm/<chart>`. No separate workflow is needed.
 - Defaults: repository-root build context, `ghcr.io/<owner>/<service>` image,
-  `senaev-com` chart, namespace matching chart directory. Declare exceptions in
-  `deploy-config.json`; charts are discovered from `Chart.yaml`.
+  `senaev-com` chart. Charts are discovered from `Chart.yaml`; use `<namespace>/<chart>`
+  for grouped releases, or a flat chart directory when namespace and release match.
+  Releases in each namespace deploy sequentially in path order (operator before
+  stack in `telemetry`). Optional service exceptions go in `deploy-config.json`.
 - Use the service-directory name as the image key:
 
   ```yaml

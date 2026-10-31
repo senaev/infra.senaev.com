@@ -60,13 +60,13 @@ secrets:
 telemetry:
 	@$(MAKE) rsync
 
-	$(REMOTE) "$(DEPLOY) vm-operator telemetry"
+	$(REMOTE) "$(DEPLOY) telemetry/vm-operator telemetry"
 	@echo "👉 [Makefile] Waiting for vm-operator webhook to be ready (required for vm-stack CRs)"
 	$(REMOTE) "kubectl rollout status deployment/vm-operator-victoria-metrics-operator -n telemetry --timeout=120s"
 	@echo "✅ [Makefile] vm-operator webhook ready"
 
 	# vm-stack requires ExternalSecret CRDs for Grafana
-	$(REMOTE) "$(DEPLOY) vm-stack telemetry --set-string 'smokepingProber.extraTargets[0]=$(CONTROL_PLANE_SERVER_IP)'"
+	$(REMOTE) "$(DEPLOY) telemetry/vm-stack telemetry --set-string 'smokepingProber.extraTargets[0]=$(CONTROL_PLANE_SERVER_IP)'"
 
 traefik:
 	@$(MAKE) rsync

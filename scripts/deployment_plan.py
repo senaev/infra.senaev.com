@@ -22,8 +22,16 @@ def identifier(value):
 
 
 def plan(root, changed, repository):
-    config = json.loads((root / ".github/deploy-config.json").read_text())
-    charts = {identifier(p.parent.name) for p in (root / "provisioning/helm").glob("*/Chart.yaml")}
+    config_file = root / ".github/deploy-config.json"
+    config = json.loads(config_file.read_text()) if config_file.exists() else {"services": {}}
+    helm_root = root / "provisioning/helm"
+    charts = {}
+    for pattern in ["*/Chart.yaml", "*/*/Chart.yaml"]:
+        for chart_file in helm_root.glob(pattern):
+            path = chart_file.parent.relative_to(helm_root)
+            for part in path.parts:
+                identifier(part)
+            charts[str(path)] = path.parts[0]
     full = changed is None or bool(set(changed) & PIPELINE_FILES)
     selected_charts = set(charts) if full or bool(set(changed or []) & SHARED_CHART_FILES) else {
         name for name in charts if any(p.startswith(f"provisioning/helm/{name}/") for p in changed)
@@ -32,7 +40,7 @@ def plan(root, changed, repository):
     for dockerfile in sorted(root.glob("*/Dockerfile")):
         name = identifier(dockerfile.parent.name)
         options = config["services"].get(name, {})
-        chart = identifier(options.get("chart", "senaev-com"))
+        chart = options.get("chart", "senaev-com")
         if chart not in charts:
             raise ValueError(f"Service {name} references missing chart {chart}")
         paths = [f"{name}/", *options.get("paths", [])]
@@ -49,9 +57,13 @@ def plan(root, changed, repository):
             raise ValueError(f"Service {name} context must be '.' or its service directory")
         builds.append({"name": name, "context": context, "dockerfile": f"{name}/Dockerfile", "repository": image})
         selected_charts.add(chart)
+    # Serialize releases sharing a namespace. vm-operator sorts before vm-stack.
+    namespaces = {}
+    for path in sorted(selected_charts):
+        namespaces.setdefault(charts[path], []).append(path)
     return {
         "builds": builds,
-        "charts": [{"chart": name, "namespace": identifier(config["namespaces"].get(name, name))} for name in sorted(selected_charts)],
+        "charts": [{"namespace": namespace, "charts": paths} for namespace, paths in sorted(namespaces.items())],
     }
 
 

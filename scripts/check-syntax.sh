@@ -55,7 +55,7 @@ check_shell() {
 check_helm() {
   local failed=0 chart_dir
   local common_values="provisioning/helm/common-values.yaml"
-  for chart_dir in provisioning/helm/*/; do
+  for chart_dir in provisioning/helm/*/ provisioning/helm/*/*/; do
     chart_dir="${chart_dir%/}"
     [[ -f "$chart_dir/Chart.yaml" ]] || continue
 

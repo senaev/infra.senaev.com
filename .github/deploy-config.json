@@ -1,7 +1,0 @@
-{
-  "namespaces": {
-    "vm-operator": "telemetry",
-    "vm-stack": "telemetry"
-  },
-  "services": {}
-}

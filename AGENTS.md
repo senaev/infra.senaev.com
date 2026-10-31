@@ -47,12 +47,15 @@ Be extremely careful with these nodes and their networks:
 
 ## Service Deployment
 
-Each namespace is a Helm chart under `provisioning/helm/<chart>/`. All charts share `provisioning/helm/common-values.yaml` merged at deploy time alongside the chart's own `values.yaml`.
+Charts live under `provisioning/helm/<chart>/` or grouped as
+`provisioning/helm/<namespace>/<chart>/`; the leaf directory is the release name.
+Releases in the same namespace deploy sequentially in path order. All charts share `provisioning/helm/common-values.yaml` merged at deploy time alongside the chart's own `values.yaml`.
 
 CI is coordinated by `.github/workflows/deploy.yml`: check → discover affected
 images/charts → build and publish images → sync provisioning once → Helm upgrade
 and wait for readiness. New top-level `<service>/Dockerfile` files and Helm charts
-are discovered automatically; exceptions live in `.github/deploy-config.json`.
+are discovered automatically; optional service exceptions can be declared in
+`.github/deploy-config.json`. Grouped charts derive their namespace from the folder.
 See [the deployment guide](.github/README.md) when adding a service.
 
 Image references are pinned by digest through `serviceImages`. The upgrade script

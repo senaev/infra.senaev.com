@@ -18,6 +18,8 @@ shift 2
 
 HELM_PATH="$K3S_CLUSTER_PATH/provisioning/helm"
 CHART_PATH="$HELM_PATH/$CHART"
+# The leaf directory remains the Helm release name for namespace-grouped charts.
+CHART="${CHART##*/}"
 COMMON_VALUES="$HELM_PATH/common-values.yaml"
 
 LOG_PREFIX="[upgrade-namespace $CHART $NS]"
