@@ -201,15 +201,15 @@ spec:
             - name: OPEN_BROWSER_ROOTS
               value: /projects/git
             - name: STT_API_URL
-              value: "https://api.groq.com/openai/v1"
+              value: {{ $agent.speechToText.baseUrl | quote }}
             - name: STT_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: GROQ_API_KEY
+                  key: {{ $agent.speechToText.apiKeyEnv | quote }}
                   optional: false
             - name: STT_MODEL
-              value: "whisper-large-v3-turbo"
+              value: {{ $agent.speechToText.model | quote }}
 
       volumes:
         - name: opencode-data

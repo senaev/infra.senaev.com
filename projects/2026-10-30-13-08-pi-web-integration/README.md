@@ -223,3 +223,13 @@ requests return the expected Traefik Basic Auth challenge. Added a pod-template
 checksum for shared agent/nginx configuration so later chart edits reliably
 roll out even when ConfigMap reloader is unavailable. Authenticated browser,
 model execution and Datadog OAuth remain user acceptance checks.
+
+### 2026-10-31 — OMP Web voice transcription
+
+The user confirmed the deployed interface works, but recording reports:
+`STT not configured. Set OMP_WEB_STT_ENDPOINT or OMP_WEB_STT_MODEL.`
+OMP Web 0.6.0 already supports compatible transcription uploads. Configured its
+native STT variables using the same Groq endpoint, whisper-large-v3-turbo model
+and Vault GROQ_API_KEY as Telegram. Both now read shared speechToText settings.
+Helm lint passed; rendered endpoint/model/key references match and the existing
+Telegram/OpenCode Deployment is unchanged. Pending PR merge and phone recording check.
