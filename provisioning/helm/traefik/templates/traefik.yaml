@@ -38,7 +38,7 @@ spec:
             - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
             - "--entrypoints.websecure.address=:443"
             - "--entrypoints.websecure-xray.address=:8443"
-            - "--certificatesresolvers.letsencrypt.acme.email={{ $.Values.acme.email }}"
+            - {{ printf "--certificatesresolvers.letsencrypt.acme.email=%s" $.Values.owner.email | quote }}
             - "--certificatesresolvers.letsencrypt.acme.storage=/acme-data/acme.json"
             - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
           ports:
