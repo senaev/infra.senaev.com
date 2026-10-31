@@ -12,6 +12,3 @@ resources:
 acmeStoragePath: /k3s-cluster/volumes/traefik/acme
 
 image: traefik:v3.2
-
-acme:
-  email: andrei.senaev@gmail.com

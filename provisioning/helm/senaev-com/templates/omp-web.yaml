@@ -101,13 +101,13 @@ spec:
               memory: 2Gi
           env:
             - name: GIT_AUTHOR_NAME
-              value: Andrei Senaev
+              value: {{ .Values.owner.name | quote }}
             - name: GIT_AUTHOR_EMAIL
-              value: andrei.senaev@gmail.com
+              value: {{ .Values.owner.email | quote }}
             - name: GIT_COMMITTER_NAME
-              value: Andrei Senaev
+              value: {{ .Values.owner.name | quote }}
             - name: GIT_COMMITTER_EMAIL
-              value: andrei.senaev@gmail.com
+              value: {{ .Values.owner.email | quote }}
             - name: GH_TOKEN
               valueFrom:
                 secretKeyRef:

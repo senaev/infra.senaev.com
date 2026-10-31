@@ -12,3 +12,7 @@ grafanaAdminUser: grafana_admin
 
 mediaServerNodeName: "senaev-media"
 mediaServerStoragePath: /mnt/sdb1
+
+owner:
+  name: "Andrei Senaev"
+  email: "andrei.senaev@gmail.com"

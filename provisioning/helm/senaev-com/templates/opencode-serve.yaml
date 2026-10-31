@@ -44,13 +44,18 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - |
-              git config --global user.name "Andrei Senaev"
-              git config --global user.email "andrei.senaev@gmail.com"
+              git config --global user.name "$GIT_AUTHOR_NAME"
+              git config --global user.email "$GIT_AUTHOR_EMAIL"
               mkdir -p /root/.ssh
               cp /tmp/ssh/id_rsa /root/.ssh/id_rsa
               chmod 600 /root/.ssh/id_rsa
               ssh-keyscan github.com >> /root/.ssh/known_hosts 2>/dev/null
               mkdir -p /projects/git
+          env:
+            - name: GIT_AUTHOR_NAME
+              value: {{ .Values.owner.name | quote }}
+            - name: GIT_AUTHOR_EMAIL
+              value: {{ .Values.owner.email | quote }}
           volumeMounts:
             - name: ssh-key
               mountPath: /tmp/ssh
@@ -97,13 +102,13 @@ spec:
                   name: opencode-auth
                   key: password
             - name: GIT_AUTHOR_NAME
-              value: Andrei Senaev
+              value: {{ .Values.owner.name | quote }}
             - name: GIT_AUTHOR_EMAIL
-              value: andrei.senaev@gmail.com
+              value: {{ .Values.owner.email | quote }}
             - name: GIT_COMMITTER_NAME
-              value: Andrei Senaev
+              value: {{ .Values.owner.name | quote }}
             - name: GIT_COMMITTER_EMAIL
-              value: andrei.senaev@gmail.com
+              value: {{ .Values.owner.email | quote }}
             - name: GH_TOKEN
               valueFrom:
                 secretKeyRef:

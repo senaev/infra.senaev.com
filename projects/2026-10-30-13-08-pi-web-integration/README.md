@@ -181,3 +181,10 @@ config/mcp-servers.json is the shared source for OpenCode V2 and OMP; Helm
 renders their different formats. Chart deployment updates both. OMP MCP
 settings are now managed on every startup rather than seeded once; OAuth
 credentials remain app-specific. No merge or deployment was performed.
+
+### 2026-10-31 — Shared owner identity
+
+Moved the owner name and email to provisioning/helm/common-values.yaml.
+OpenCode, OMP Web and Code Tools use them for Git author/committer identity;
+Traefik uses the same email for ACME registration. The OpenCode init container
+receives identity through environment variables rather than shell interpolation.
