@@ -205,3 +205,12 @@ did not exist yet. Grafana confirmed OpenCode, its Telegram bot, Code Tools and
 Traefik ready; scoped Datadog errors were absent and public service checks passed.
 At the user's explicit request, enabled ompWeb directly on main so Helm CI
 creates the first Deployment and ingress. Browser/model/MCP checks remain pending.
+
+### 2026-10-31 — First deployment proxy fix
+
+Main activation passed all 1,661 tests and type/syntax/Helm checks; lint passed
+separately after resource-limited retries. Concurrent checks exhausted the
+code-tools 2 GiB limit, so the completed checks were not repeated on push.
+OMP Web started successfully. Datadog exposed nginx attempting to create
+/var/cache/nginx/fastcgi_temp on its read-only root filesystem. Moved the
+FastCGI, uWSGI and SCGI temp paths to the existing writable /tmp mount.
