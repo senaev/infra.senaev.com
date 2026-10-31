@@ -49,12 +49,16 @@ or updates the Deployment. CI then restarts workloads using rebuilt images; char
   endpoints in OpenCode and provider overrides in OMP; other provider protocols
   need their own adapter rather than just another URL.
 - Chart deployment updates both services. a pod-template checksum rolls out OMP
-  when shared settings change; startup replaces managed MCP/provider files and updates only the default
-  model role. Other roles, saved settings, OAuth credentials, plugins and sessions
+  when shared settings change; startup replaces managed MCP/provider files and updates the default
+  model role and tool approval mode. Other roles, saved settings, OAuth credentials, plugins and sessions
   persist. Edit the shared file for managed settings; UI model changes can be
   used during a session, but the shared default is reapplied at startup.
-- Shell execution needs approval initially (`tools.approvalMode: write`).
-  OMP cannot reproduce OpenCode's permission schema by copying its JSON.
+- Tool calls use `tools.approvalMode: yolo`: file reads, writes and arbitrary
+  commands run without approval prompts. Startup reapplies this mode to existing
+  state. No folder restrictions, per-tool approval overrides or bash pattern rules
+  are configured by this deployment. Project-level OMP configuration and explicit
+  tool policies can still override the global setting. Container filesystem
+  permissions and read-only mounts still apply; this grants no host access.
 - Only Datadog EU is configured. Authorize it separately in each app; an OAuth
   provider's loopback callback may need SSH forwarding from your laptop.
 - Laptop-only Trajectory, Datadog workspace plugins, Warp and custom OpenCode
@@ -79,7 +83,7 @@ Before activation, require a green image build and chart checks. After deploymen
 
 - No/wrong Basic Auth credentials return 401, including API and streaming URLs;
   correct credentials open the UI without a second login.
-- A new session can select a model, run a command, use MCP and render approvals.
+- A new session can select a model, run a command, read/write a file and use MCP without approval prompts.
   Verify browser Origin handling through the real HTTPS ingress.
 - Close/reopen the browser during work; confirm task completion and reconnect.
   Restart the pod separately and confirm saved settings and conversation history.

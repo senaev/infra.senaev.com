@@ -15,7 +15,7 @@ data:
     modelRoles:
       default: {{ printf "%s/%s" $agent.defaultModel.provider $agent.defaultModel.id | quote }}
     tools:
-      approvalMode: write
+      approvalMode: yolo
   models.yml: |
     providers:
 {{- range $name, $connector := $agent.connectors }}
