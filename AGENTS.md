@@ -58,9 +58,10 @@ are discovered automatically; optional service exceptions can be declared in
 `.github/deploy-config.json`. Grouped charts derive their namespace from the folder.
 See [the deployment guide](.github/README.md) when adding a service.
 
-Image references are pinned by digest through `serviceImages`. The upgrade script
-preserves deployed image pins across chart-only/manual upgrades while reading
-fresh chart defaults. Common values or upgrade-script changes select every chart.
+Services publish and deploy `:latest` with `imagePullPolicy: Always`. After Helm
+creates/updates releases, CI restarts workloads using rebuilt images and waits
+for rollout readiness. Chart-only updates do not trigger additional restarts.
+Common values or upgrade-script changes select every chart.
 Runs are serialized across builds and deployment; planning uses the last successful
 push deployment to include changes from replaced pending runs.
 
@@ -272,6 +273,6 @@ OpenCode and Code Tools. Do not enable overlapping Code Tools replicas without
 addressing operation routing and filesystem coordination.
 
 Code Tools is discovered by the coordinated deployment workflow, with its own
-image build and digest pin. OpenCode and its Telegram bot deploy together after
+image build and `latest` image. OpenCode and its Telegram bot deploy together after
 all affected images are published. Helm handles both first installation and updates;
-there is no separate rollout-restart job.
+image refreshes run after Helm in the same coordinated job.

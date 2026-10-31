@@ -35,34 +35,23 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Reject stale revisions before publishing latest
+        if: inputs.publish_image
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          current=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$GITHUB_REF_NAME" --jq .object.sha)
+          test "$current" = "$GITHUB_SHA"
       - name: Build image before any chart deployment
-        id: image
         uses: docker/build-push-action@v6
         with:
           context: ${{ inputs.context }}
           file: ${{ inputs.dockerfile }}
           platforms: linux/amd64
           push: ${{ inputs.publish_image }}
-          tags: ${{ inputs.registry_image }}:${{ inputs.service }}-${{ github.sha }}
+          tags: ${{ inputs.registry_image }}:latest
           cache-from: type=gha,scope=${{ inputs.service }}
           cache-to: type=gha,mode=max,scope=${{ inputs.service }}
-      - name: Record the immutable image reference
-        if: inputs.publish_image
-        env:
-          SERVICE: ${{ inputs.service }}
-          REPOSITORY: ${{ inputs.registry_image }}
-          DIGEST: ${{ steps.image.outputs.digest }}
-        run: |
-          mkdir -p /tmp/service-images
-          jq -n --arg service "$SERVICE" --arg image "$REPOSITORY@$DIGEST" \
-            '{($service): $image}' > "/tmp/service-images/$SERVICE.json"
-      - uses: actions/upload-artifact@v4
-        if: inputs.publish_image
-        with:
-          name: service-image-${{ inputs.service }}
-          path: /tmp/service-images/*.json
-          if-no-files-found: error
-          overwrite: true
       - name: Notify Telegram
         if: always() && inputs.publish_image
         uses: ./.github/actions/notify-telegram

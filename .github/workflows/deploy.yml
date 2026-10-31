@@ -79,28 +79,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/download-artifact@v4
-        if: needs.plan.outputs.builds != '[]'
-        with:
-          pattern: service-image-*
-          path: /tmp/service-images
-          merge-multiple: true
-      - name: Collect image overrides for Helm
-        env:
-          EXPECTED_BUILDS: ${{ needs.plan.outputs.builds }}
-        run: |
-          mkdir -p /tmp/service-images
-          python3 - <<'PYTHON'
-          import json, os, re
-          from pathlib import Path
-          images = {}
-          for path in Path('/tmp/service-images').glob('*.json'):
-              images.update(json.loads(path.read_text()))
-          expected = {build['name'] for build in json.loads(os.environ['EXPECTED_BUILDS'])}
-          if images.keys() != expected or any(not re.fullmatch(r'ghcr\.io/[a-z0-9._/-]+@sha256:[a-f0-9]{64}', image) for image in images.values()):
-              raise ValueError('Missing or invalid published image digests')
-          Path('provisioning/service-images.json').write_text(json.dumps(images))
-          PYTHON
       - name: Reject superseded revisions before changing the server
         env:
           GH_TOKEN: ${{ github.token }}
@@ -130,17 +108,31 @@ jobs:
         include: ${{ fromJSON(needs.plan.outputs.charts) }}
     steps:
       - uses: actions/checkout@v5
-      - name: Create or update the release and wait for readiness
+      - name: Create or update releases and refresh rebuilt images
+        env:
+          BUILT_IMAGES: ${{ needs.plan.outputs.builds }}
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.REMOTE_HOST }}
           username: ${{ secrets.REMOTE_USER }}
           key: ${{ secrets.REMOTE_SSH_KEY }}
+          envs: BUILT_IMAGES
           script: |
             set -e
-            export SERVICE_IMAGES_FILE=/k3s-cluster/provisioning/service-images.json
             for chart in ${{ join(matrix.charts, ' ') }}; do
               /k3s-cluster/provisioning/control-plane/upgrade-namespace.sh "$chart" ${{ matrix.namespace }} --wait --timeout 300s
+            done
+            # Helm has created any new workloads. Refresh only those using rebuilt
+            # latest images; chart-only changes need no additional restart.
+            resources=$(kubectl -n ${{ matrix.namespace }} get deployments,statefulsets,daemonsets -o json)
+            workloads=$(printf '%s' "$resources" | jq -r --argjson builds "$BUILT_IMAGES" '
+                [$builds[].repository + ":latest"] as $images |
+                .items[] | select(any(.spec.template.spec.containers[];
+                  .image as $image | $images | index($image))) |
+                (.kind | ascii_downcase) + "/" + .metadata.name')
+            for workload in $workloads; do
+              kubectl -n ${{ matrix.namespace }} rollout restart "$workload"
+              kubectl -n ${{ matrix.namespace }} rollout status "$workload" --timeout=180s
             done
       - name: Notify Telegram
         if: always()

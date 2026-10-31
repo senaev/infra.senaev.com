@@ -49,7 +49,8 @@ spec:
               mountPath: /downloads/converted-for-mobile
       containers:
         - name: media-server-helper
-          image: {{ index .Values.serviceImages "media-server-helper" | default "ghcr.io/senaev/media-server-helper:latest" | quote }}
+          image: ghcr.io/senaev/media-server-helper:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 3000
           env:

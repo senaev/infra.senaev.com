@@ -26,7 +26,8 @@ spec:
         vps: {{ .Values.vpnSubscription.vps }}
       containers:
         - name: vpn-subscription
-          image: {{ index .Values.serviceImages "vpn-subscription" | default "ghcr.io/senaev/vpn-subscription:latest" | quote }}
+          image: ghcr.io/senaev/vpn-subscription:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 3000
           env:

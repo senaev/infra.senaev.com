@@ -42,7 +42,8 @@ spec:
               mountPath: {{ .Values.obsidianSync.containerVaultPath }}
       containers:
         - name: obsidian-sync
-          image: {{ index .Values.serviceImages "obsidian-sync" | default "ghcr.io/senaev/obsidian-sync:latest" | quote }}
+          image: ghcr.io/senaev/obsidian-sync:latest
+          imagePullPolicy: Always
           ports:
             - name: http
               containerPort: 8080

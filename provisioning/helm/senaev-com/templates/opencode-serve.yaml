@@ -68,7 +68,7 @@ spec:
       containers:
         # OpenCode web and API share native authentication; the bot uses localhost.
         - name: opencode-serve
-          image: {{ index .Values.serviceImages "opencode-serve" | default "ghcr.io/senaev/opencode-serve:latest" | quote }}
+          image: ghcr.io/senaev/opencode-serve:latest
           imagePullPolicy: Always
           ports:
             - name: opencode
@@ -160,7 +160,7 @@ spec:
               subPath: CLAUDE.md
 
         - name: opencode-telegram-bot
-          image: {{ index .Values.serviceImages "opencode-telegram-bot" | default "ghcr.io/senaev/opencode-telegram-bot:latest" | quote }}
+          image: ghcr.io/senaev/opencode-telegram-bot:latest
           imagePullPolicy: Always
           volumeMounts:
             - name: projects-git

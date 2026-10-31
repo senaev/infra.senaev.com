@@ -16,6 +16,3 @@ mediaServerStoragePath: /mnt/sdb1
 owner:
   name: "Andrei Senaev"
   email: "andrei.senaev@gmail.com"
-
-# CI pins built service images by digest; upgrade-namespace.sh retains release pins.
-serviceImages: {}

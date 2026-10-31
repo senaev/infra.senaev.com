@@ -15,21 +15,19 @@ or manual dispatch rebuilds/applies everything.
   for grouped releases, or a flat chart directory when namespace and release match.
   Releases in each namespace deploy sequentially in path order (operator before
   stack in `telemetry`). Optional service exceptions go in `deploy-config.json`.
-- Use the service-directory name as the image key:
-
-  ```yaml
-  image: {{ index .Values.serviceImages "my-service" | default "ghcr.io/senaev/my-service:latest" | quote }}
-  ```
-
+- Use `ghcr.io/<owner>/<service>:latest` and `imagePullPolicy: Always` in the
+  pod template. CI refreshes matching Deployments/StatefulSets/DaemonSets after
+  Helm creates/updates the releases, then waits for rollout readiness.
 - Provide registry pull access, secrets/storage, and configuration checksums for
   required pod restarts (see OMP Web).
 
 ## Updates and recovery
 
-Source/shared-library changes rebuild affected consumers; chart-only changes
-preserve image digests. Common values/upgrade-script changes apply all charts.
-`upgrade-namespace.sh` retains image pins for manual upgrades too.
+Source/shared-library changes rebuild affected consumers and refresh their pods;
+chart-only changes do not trigger extra restarts. Common values/upgrade-script
+changes apply all charts.
 
-Fix failures and retry. Use `helm rollback`, or explicitly override
-`serviceImages.<service>` with a previous digest. Chart deletion does not uninstall
-its release. Images built outside this repository keep their existing pipeline.
+Fix failures and retry. `helm rollback` restores chart configuration; reverting
+application code requires rebuilding/publishing the desired code as `latest`.
+Chart deletion does not uninstall its release. Images built outside this repository
+keep their existing pipeline.
