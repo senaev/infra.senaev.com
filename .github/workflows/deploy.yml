@@ -2,7 +2,7 @@ name: Deploy
 
 on:
   push:
-    branches: [main, master]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -65,14 +65,14 @@ jobs:
       context: ${{ matrix.context }}
       dockerfile: ${{ matrix.dockerfile }}
       registry_image: ${{ matrix.repository }}
-      publish_image: ${{ github.event_name != 'pull_request' && github.ref_name == github.event.repository.default_branch }}
+      publish_image: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
     secrets: inherit
 
   sync-provisioning:
     needs: [check, plan, build]
     if: >-
       always() && github.event_name != 'pull_request' &&
-      github.ref_name == github.event.repository.default_branch &&
+      github.ref == 'refs/heads/main' &&
       needs.check.result == 'success' && needs.plan.result == 'success' &&
       (needs.build.result == 'success' || needs.build.result == 'skipped') &&
       needs.plan.outputs.charts != '[]'
