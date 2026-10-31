@@ -1,6 +1,6 @@
 # 2026-10-30 — Pi integration with a web interface
 
-- [ ] Add a Pi integration with a web interface using the existing repositories.
+- [x] Add a Pi integration with a web interface using the existing repositories.
 
 ## Goal
 
@@ -233,3 +233,22 @@ native STT variables using the same Groq endpoint, whisper-large-v3-turbo model
 and Vault GROQ_API_KEY as Telegram. Both now read shared speechToText settings.
 Helm lint passed; rendered endpoint/model/key references match and the existing
 Telegram/OpenCode Deployment is unchanged. Pending PR merge and phone recording check.
+
+### 2026-10-31 — Deployment and user acceptance completed
+
+[PR #118](https://github.com/senaev/infra.senaev.com/pull/118) merged and
+[deployment](https://github.com/senaev/infra.senaev.com/actions/runs/41209754156)
+passed. Helm release revision 32 deployed; OMP Web rolled out successfully.
+Grafana confirmed OMP and OpenCode available. Datadog showed one transient
+startup connection refusal followed by successful health checks.
+
+The user confirmed: "Looks like everything works." This completes the phone
+voice transcription acceptance check and supersedes the pending status above.
+
+## Result — completed 2026-10-31
+
+OMP and OMP Web are deployed at https://omp.senaev.com with persistent state,
+shared repositories and coding-agent configuration, Traefik Basic Auth, and
+Groq voice transcription using Telegram's existing Vault key. The user verified
+the interface and voice recognition. The project is complete; workstation-only
+plugins and OpenCode transcript migration remain outside the delivered scope.
