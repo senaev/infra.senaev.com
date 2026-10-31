@@ -50,8 +50,8 @@ restarting OMP Web.
   and OMP's native files from it. Connectors currently use OpenAI-compatible
   endpoints in OpenCode and provider overrides in OMP; other provider protocols
   need their own adapter rather than just another URL.
-- Chart deployment updates both services. OMP's ConfigMap reloader restarts the
-  pod; startup replaces managed MCP/provider files and updates only the default
+- Chart deployment updates both services. a pod-template checksum rolls out OMP
+  when shared settings change; startup replaces managed MCP/provider files and updates only the default
   model role. Other roles, saved settings, OAuth credentials, plugins and sessions
   persist. Edit the shared file for managed settings; UI model changes can be
   used during a session, but the shared default is reapplied at startup.

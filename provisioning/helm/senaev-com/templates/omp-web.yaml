@@ -80,6 +80,7 @@ spec:
         tags.datadoghq.com/env: prod
         tags.datadoghq.com/version: latest
       annotations:
+        checksum/config: {{ printf "%s\n%s" (.Files.Get "config/omp-web/nginx.conf") (.Files.Get "config/coding-agents.json") | sha256sum }}
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
         configmap.reloader.stakater.com/reload: "omp-web,opencode-telegram-config"
     spec:

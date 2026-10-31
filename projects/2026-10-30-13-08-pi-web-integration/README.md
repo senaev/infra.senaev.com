@@ -214,3 +214,12 @@ code-tools 2 GiB limit, so the completed checks were not repeated on push.
 OMP Web started successfully. Datadog exposed nginx attempting to create
 /var/cache/nginx/fastcgi_temp on its read-only root filesystem. Moved the
 FastCGI, uWSGI and SCGI temp paths to the existing writable /tmp mount.
+
+### 2026-10-31 — Activation verified
+
+Corrected Helm upgrade and release-job retry succeeded. Grafana reports both
+OMP Web and nginx ready; HTTPS certificate validation succeeds and unauthenticated
+requests return the expected Traefik Basic Auth challenge. Added a pod-template
+checksum for shared agent/nginx configuration so later chart edits reliably
+roll out even when ConfigMap reloader is unavailable. Authenticated browser,
+model execution and Datadog OAuth remain user acceptance checks.
