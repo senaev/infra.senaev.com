@@ -119,7 +119,11 @@ spec:
                   key: OPENROUTER_API_KEY
                   optional: false
             - name: OPENCODE_CONFIG_CONTENT
-              value: '{"permissions":[{"action":"external_directory","resource":"*","effect":"ask"}],"model":"openrouter/{{ .Values.opencodeTelegram.modelId }}","provider":{"openrouter":{"npm":"@ai-sdk/openai-compatible","name":"OpenRouter","options":{"baseURL":"https://openrouter.ai/api/v1","apiKey":"{env:OPENROUTER_API_KEY}"}}}}'
+{{- $servers := dict }}
+{{- range $name, $server := (.Files.Get "config/mcp-servers.json" | fromJson) }}
+{{- $_ := set $servers $name (merge (dict "type" "remote") $server) }}
+{{- end }}
+              value: {{ merge (dict "mcp" (dict "servers" $servers) "model" (printf "openrouter/%s" .Values.opencodeTelegram.modelId)) (`{"permissions":[{"action":"external_directory","resource":"*","effect":"ask"}],"provider":{"openrouter":{"npm":"@ai-sdk/openai-compatible","name":"OpenRouter","options":{"baseURL":"https://openrouter.ai/api/v1","apiKey":"{env:OPENROUTER_API_KEY}"}}}}` | fromJson) | toJson | quote }}
           volumeMounts:
             - name: projects-git
               mountPath: /projects/git

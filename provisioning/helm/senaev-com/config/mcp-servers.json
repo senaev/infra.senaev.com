@@ -1,0 +1,5 @@
+{
+  "datadog": {
+    "url": "https://mcp.datadoghq.eu/v1/mcp?toolsets=core,software-delivery"
+  }
+}

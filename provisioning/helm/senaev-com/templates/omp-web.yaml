@@ -16,7 +16,11 @@ data:
     tools:
       approvalMode: write
   mcp.json: |
-{{ .Files.Get "config/omp-web/mcp.json" | indent 4 }}
+{{- $servers := dict }}
+{{- range $name, $server := (.Files.Get "config/mcp-servers.json" | fromJson) }}
+{{- $_ := set $servers $name (merge (dict "type" "http") $server) }}
+{{- end }}
+{{ dict "mcpServers" $servers | toPrettyJson | indent 4 }}
 ---
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret

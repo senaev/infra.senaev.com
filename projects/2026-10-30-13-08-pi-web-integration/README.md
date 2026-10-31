@@ -173,3 +173,11 @@ At the user's request, removed omp-web/smoke.py and its Docker build step.
 The image copies only start.sh; standard repository checks and manual
 post-deployment acceptance checks remain. Earlier smoke-test results above
 are historical and no longer describe a build requirement.
+
+### 2026-10-31 — Shared remote MCP configuration
+
+Removed Atlassian and switched Datadog to the official EU /v1/mcp endpoint.
+config/mcp-servers.json is the shared source for OpenCode V2 and OMP; Helm
+renders their different formats. Chart deployment updates both. OMP MCP
+settings are now managed on every startup rather than seeded once; OAuth
+credentials remain app-specific. No merge or deployment was performed.

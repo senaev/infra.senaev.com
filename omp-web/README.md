@@ -44,14 +44,16 @@ restarting OMP Web.
 - OpenRouter uses the existing Vault API key and the deployed OpenCode model,
   `anthropic/claude-haiku-4.5`. Git identity, gh token, SSH key and server
   `/AGENTS.md` follow the existing deployment.
-- Native `config.yml` and `mcp.json` are seeded only when absent. Browser edits,
-  OAuth credentials, plugins and sessions survive pod replacement. A later
-  ConfigMap update does not overwrite an existing seeded file; change it in the
-  browser or deliberately update the persisted file.
+- Native `config.yml` is seeded only when absent; browser settings, OAuth
+  credentials, plugins and sessions survive pod replacement.
+- Edit `provisioning/helm/senaev-com/config/mcp-servers.json` for shared remote
+  MCP servers (`url` and optional `headers`). Helm generates OpenCode V2 and OMP
+  formats from it. Chart deployment updates OpenCode's configuration and restarts
+  OMP via ConfigMap reloader; OMP replaces its managed `mcp.json` on each start.
+  Edit the shared file rather than the generated MCP definitions in either app.
 - Shell execution needs approval initially (`tools.approvalMode: write`).
   OMP cannot reproduce OpenCode's permission schema by copying its JSON.
-- The existing personal config's Atlassian and Datadog remote MCP definitions
-  are translated to native OMP format. Authorize them from OMP Web; an OAuth
+- Only Datadog EU is configured. Authorize it separately in each app; an OAuth
   provider's loopback callback may need SSH forwarding from your laptop.
 - Laptop-only Trajectory, Datadog workspace plugins, Warp and custom OpenCode
   tools are not installed on the server. They use OpenCode APIs or workstation

@@ -2,14 +2,13 @@
 set -euo pipefail
 umask 077
 
-# Seed once; browser edits, credentials and plugins belong to the persistent home.
+# Seed app settings once; MCP definitions are managed by the shared chart config.
 mkdir -p "$HOME/.omp/agent"
 chmod 700 "$HOME/.omp" "$HOME/.omp/agent"
-for source in /defaults/config.yml /defaults/mcp.json; do
-    destination="$HOME/.omp/agent/$(basename "$source")"
-    if [ ! -e "$destination" ]; then
-        install -m 600 "$source" "$destination"
-    fi
-done
+if [ ! -e "$HOME/.omp/agent/config.yml" ]; then
+    install -m 600 /defaults/config.yml "$HOME/.omp/agent/config.yml"
+fi
+
+install -m 600 /defaults/mcp.json "$HOME/.omp/agent/mcp.json"
 
 exec ompweb
