@@ -1,0 +1,152 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Keep image publication and Helm writes ordered across the whole pipeline.
+# GitHub can replace a pending run; the planner compares with the last successful
+# deployment instead of event.before, so the replacement includes skipped changes.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    uses: ./.github/workflows/check.yml
+
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      builds: ${{ steps.plan.outputs.builds }}
+      charts: ${{ steps.plan.outputs.charts }}
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Test deployment planning
+        run: python3 -m unittest discover -s scripts -p 'test_deployment*.py'
+      - name: Plan changes since the last successful deployment
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          base="$PR_BASE"
+          if [[ "$EVENT" == push ]]; then
+            base=$(gh run list --workflow deploy.yml --branch "$GITHUB_REF_NAME" \
+              --event push --status success --limit 1 --json headSha --jq '.[0].headSha // ""')
+          fi
+          plan=$(python3 scripts/deployment_plan.py "$base" "$GITHUB_REPOSITORY")
+          echo "builds=$(jq -c .builds <<< "$plan")" >> "$GITHUB_OUTPUT"
+          echo "charts=$(jq -c .charts <<< "$plan")" >> "$GITHUB_OUTPUT"
+          echo "$plan" | jq .
+
+  build:
+    needs: [check, plan]
+    if: needs.plan.outputs.builds != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.builds) }}
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/build-service.yml
+    with:
+      service: ${{ matrix.name }}
+      context: ${{ matrix.context }}
+      dockerfile: ${{ matrix.dockerfile }}
+      registry_image: ${{ matrix.repository }}
+      publish_image: ${{ github.event_name != 'pull_request' && github.ref_name == github.event.repository.default_branch }}
+    secrets: inherit
+
+  sync-provisioning:
+    needs: [check, plan, build]
+    if: >-
+      always() && github.event_name != 'pull_request' &&
+      github.ref_name == github.event.repository.default_branch &&
+      needs.check.result == 'success' && needs.plan.result == 'success' &&
+      (needs.build.result == 'success' || needs.build.result == 'skipped') &&
+      needs.plan.outputs.charts != '[]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        if: needs.plan.outputs.builds != '[]'
+        with:
+          pattern: service-image-*
+          path: /tmp/service-images
+          merge-multiple: true
+      - name: Collect image overrides for Helm
+        env:
+          EXPECTED_BUILDS: ${{ needs.plan.outputs.builds }}
+        run: |
+          mkdir -p /tmp/service-images
+          python3 - <<'PYTHON'
+          import json, os, re
+          from pathlib import Path
+          images = {}
+          for path in Path('/tmp/service-images').glob('*.json'):
+              images.update(json.loads(path.read_text()))
+          expected = {build['name'] for build in json.loads(os.environ['EXPECTED_BUILDS'])}
+          if images.keys() != expected or any(not re.fullmatch(r'ghcr\.io/[a-z0-9._/-]+@sha256:[a-f0-9]{64}', image) for image in images.values()):
+              raise ValueError('Missing or invalid published image digests')
+          Path('provisioning/service-images.json').write_text(json.dumps(images))
+          PYTHON
+      - name: Reject superseded revisions before changing the server
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          current=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$GITHUB_REF_NAME" --jq .object.sha)
+          if [[ "$current" != "$GITHUB_SHA" ]]; then
+            echo "::error::This revision was superseded; the next deployment includes its changes."
+            exit 1
+          fi
+      - name: Sync this revision after all images are published
+        uses: burnett01/rsync-deployments@9.0.0
+        with:
+          switches: -avzr --delete
+          path: provisioning/
+          remote_path: /k3s-cluster/provisioning/
+          remote_host: ${{ secrets.REMOTE_HOST }}
+          remote_user: ${{ secrets.REMOTE_USER }}
+          remote_key: ${{ secrets.REMOTE_SSH_KEY }}
+
+  deploy:
+    needs: [plan, sync-provisioning]
+    if: always() && needs.sync-provisioning.result == 'success'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.charts) }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Create or update the release and wait for readiness
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.REMOTE_SSH_KEY }}
+          script: |
+            set -e
+            export SERVICE_IMAGES_FILE=/k3s-cluster/provisioning/service-images.json
+            /k3s-cluster/provisioning/control-plane/upgrade-namespace.sh ${{ matrix.chart }} ${{ matrix.namespace }} --wait --timeout 300s
+      - name: Notify Telegram
+        if: always()
+        uses: ./.github/actions/notify-telegram
+        with:
+          bot_token: ${{ secrets.TG_BOT_TOKEN }}
+          status: ${{ job.status }}
+          title: Helm chart ${{ matrix.chart }}
+          link_text: deployed

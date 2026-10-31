@@ -36,10 +36,23 @@ if [[ -d "$CHART_PATH/crds" ]]; then
   done
 fi
 
+# Preserve only deployed image pins, not stale chart defaults. Explicit Helm arguments
+# below can still override them for a deliberate rollback or manual image selection.
+releases=$(helm list -n "$NS" --all --filter "^$CHART$" -o json)
+images='{}'
+release_count=$(jq -er 'length' <<< "$releases")
+if [[ "$release_count" -gt 0 ]]; then
+  images=$(helm get values "$CHART" -n "$NS" -o json | jq -c '.serviceImages // {}')
+fi
+if [[ -n "${SERVICE_IMAGES_FILE:-}" ]]; then
+  images=$(jq -cn --argjson current "$images" --argjson updates "$(cat "$SERVICE_IMAGES_FILE")" '$current + $updates')
+fi
+
 echo "👉 $LOG_PREFIX Helm upgrade chart=[$CHART] namespace=[$NS]"
 helm upgrade --install "$CHART" "$CHART_PATH" \
 -n "$NS" \
 -f "$COMMON_VALUES" \
 -f "$CHART_PATH/values.yaml" \
+--set-json "serviceImages=$images" \
 --take-ownership "$@"
 echo "✅ $LOG_PREFIX Helm upgrade chart=[$CHART] namespace=[$NS]"

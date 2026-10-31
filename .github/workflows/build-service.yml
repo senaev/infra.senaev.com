@@ -3,7 +3,7 @@ name: Build Service
 on:
   workflow_call:
     inputs:
-      workflow_title:
+      service:
         required: true
         type: string
       context:
@@ -15,30 +15,19 @@ on:
       registry_image:
         required: true
         type: string
-      image_tag:
-        type: string
-        default: latest
-      deployment_name:
-        required: true
-        type: string
       publish_image:
+        required: true
         type: boolean
-        default: true
 
 jobs:
-  build-and-push:
+  build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
       - name: Log in to GitHub Container Registry
         if: inputs.publish_image
         uses: docker/login-action@v3
@@ -46,35 +35,39 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push Docker image
+      - name: Build image before any chart deployment
+        id: image
         uses: docker/build-push-action@v6
         with:
           context: ${{ inputs.context }}
           file: ${{ inputs.dockerfile }}
           platforms: linux/amd64
           push: ${{ inputs.publish_image }}
-          tags: ${{ inputs.registry_image }}:${{ inputs.image_tag }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Restart deployment via SSH
+          tags: ${{ inputs.registry_image }}:${{ inputs.service }}-${{ github.sha }}
+          cache-from: type=gha,scope=${{ inputs.service }}
+          cache-to: type=gha,mode=max,scope=${{ inputs.service }}
+      - name: Record the immutable image reference
         if: inputs.publish_image
-        uses: appleboy/ssh-action@v1.0.3
+        env:
+          SERVICE: ${{ inputs.service }}
+          REPOSITORY: ${{ inputs.registry_image }}
+          DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          mkdir -p /tmp/service-images
+          jq -n --arg service "$SERVICE" --arg image "$REPOSITORY@$DIGEST" \
+            '{($service): $image}' > "/tmp/service-images/$SERVICE.json"
+      - uses: actions/upload-artifact@v4
+        if: inputs.publish_image
         with:
-          host: ${{ secrets.REMOTE_HOST }}
-          username: ${{ secrets.REMOTE_USER }}
-          key: ${{ secrets.REMOTE_SSH_KEY }}
-          script: |
-            set -e
-            kubectl -n senaev-com rollout restart deployment/${{ inputs.deployment_name }}
-            kubectl -n senaev-com rollout status deployment/${{ inputs.deployment_name }} --timeout=180s
-
+          name: service-image-${{ inputs.service }}
+          path: /tmp/service-images/*.json
+          if-no-files-found: error
+          overwrite: true
       - name: Notify Telegram
         if: always() && inputs.publish_image
         uses: ./.github/actions/notify-telegram
         with:
           bot_token: ${{ secrets.TG_BOT_TOKEN }}
           status: ${{ job.status }}
-          title: ${{ inputs.workflow_title }}
+          title: Image ${{ inputs.service }}
           link_text: built

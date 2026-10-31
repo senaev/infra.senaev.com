@@ -97,7 +97,7 @@ spec:
               topologyKey: kubernetes.io/hostname
       containers:
         - name: omp-web
-          image: ghcr.io/senaev/opencode-serve:omp-web
+          image: {{ index .Values.serviceImages "omp-web" | default "ghcr.io/senaev/opencode-serve:omp-web" | quote }}
           imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false
