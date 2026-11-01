@@ -9,6 +9,9 @@ Deployment, ConfigMap and PVC names are retained to preserve resource identity
 and stored data. MCP endpoints live in the shared `config/coding-agents.json`;
 Telegram is a separate client of OpenCode.
 
+OpenCode and its MCP OAuth proxy resources are defined together in
+`provisioning/helm/senaev-com/templates/opencode-serve.yaml`.
+
 ## Remote MCP OAuth
 
 All remote MCP servers in `coding-agents.json` automatically share:
@@ -16,8 +19,9 @@ All remote MCP servers in `coding-agents.json` automatically share:
 - Public callback: `https://opencode.senaev.com/mcp/oauth/callback`
 - Internal loopback callback port: `4100`
 
-Existing OAuth options such as client IDs and scopes are preserved. Explicit
-`oauth: false` opts a server out. There is no provider-specific mapping, port
+Each shared remote MCP definition supplies a URL and an `oauth` object (empty
+when no client-specific options are needed). Client IDs and scopes are preserved.
+Callback configuration is applied unconditionally. There is no provider-specific mapping, port
 allocation or separate callback URL for each MCP. **Authorize one MCP at a time**:
 OpenCode creates a temporary listener for each attempt, so overlapping attempts
 cannot bind the same port. OAuth state binds a callback to the pending attempt.
