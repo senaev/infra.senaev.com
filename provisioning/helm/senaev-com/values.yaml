@@ -234,6 +234,11 @@ opencodeTelegram:
   enabled: true
   vps: hetzner
   opencodeDataPath: volumes/opencode-data
+  mcpOAuth:
+    hostname: opencode.senaev.com
+    # One fixed loopback callback port per MCP server; OAuth listeners are temporary.
+    servers:
+      datadog: 4100
 
 # Grafana MCP server, reachable only through cluster-helper at https://<clusterHelper.mcpDomain>/grafana.
 mcpGrafana:

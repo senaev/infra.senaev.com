@@ -34,6 +34,7 @@ spec:
         tags.datadoghq.com/env: prod
         tags.datadoghq.com/version: latest
       annotations:
+        checksum/mcp-oauth-proxy: {{ include (print $.Template.BasePath "/opencode-mcp-oauth.yaml") . | sha256sum }}
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets,opencode-auth"
         configmap.reloader.stakater.com/reload: "opencode-telegram-config"
     spec:
@@ -128,7 +129,12 @@ spec:
             - name: OPENCODE_CONFIG_CONTENT
 {{- $servers := dict }}
 {{- range $name, $server := $agent.mcp }}
-{{- $_ := set $servers $name (merge (dict "type" "remote") $server) }}
+{{- $remote := merge (dict "type" "remote") (deepCopy $server) }}
+{{- if hasKey $.Values.opencodeTelegram.mcpOAuth.servers $name }}
+{{- $port := index $.Values.opencodeTelegram.mcpOAuth.servers $name }}
+{{- $_ := set $remote "oauth" (merge (dict "redirect_uri" (printf "https://%s/mcp/oauth/%s/callback" $.Values.opencodeTelegram.mcpOAuth.hostname $name) "callback_port" $port) (default (dict) $remote.oauth)) }}
+{{- end }}
+{{- $_ := set $servers $name $remote }}
 {{- end }}
 {{- $providers := dict }}
 {{- range $name, $connector := $agent.connectors }}
@@ -158,6 +164,36 @@ spec:
             - name: opencode-config
               mountPath: /CLAUDE.md
               subPath: CLAUDE.md
+
+        - name: mcp-oauth-proxy
+          image: nginxinc/nginx-unprivileged:1.28.0-alpine
+          command: ["nginx", "-g", "daemon off;"]
+          ports:
+            - name: mcp-oauth
+              containerPort: 8081
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 101
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              memory: 16Mi
+            limits:
+              memory: 64Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: mcp-oauth
+          volumeMounts:
+            - name: mcp-oauth-proxy
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+              readOnly: true
+            - name: mcp-oauth-tmp
+              mountPath: /tmp
 
         - name: opencode-telegram-bot
           image: ghcr.io/senaev/opencode-telegram-bot:latest
@@ -212,6 +248,11 @@ spec:
               value: {{ $agent.speechToText.model | quote }}
 
       volumes:
+        - name: mcp-oauth-proxy
+          configMap:
+            name: opencode-mcp-oauth
+        - name: mcp-oauth-tmp
+          emptyDir: {}
         - name: opencode-data
           hostPath:
             path: {{ .Values.clusterRootPath }}/{{ .Values.opencodeTelegram.opencodeDataPath }}
@@ -268,6 +309,8 @@ spec:
       ports:
         - protocol: TCP
           port: 4096
+        - protocol: TCP
+          port: 8081
 ---
 apiVersion: v1
 kind: Service
