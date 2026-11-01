@@ -131,7 +131,7 @@ spec:
 {{- $servers := dict }}
 {{- range $name, $server := $agent.mcp }}
 {{- $remote := merge (dict "type" "remote") (deepCopy $server) }}
-{{- $_ := set $remote "oauth" (merge (dict "redirect_uri" (printf "https://%s/mcp/oauth/callback" $.Values.opencode.mcpOAuth.hostname) "callback_port" $.Values.opencode.mcpOAuth.callbackPort) $remote.oauth) }}
+{{- $_ := set $remote "oauth" (merge (dict "redirect_uri" (printf "https://%s/auth/mcp/callback" $.Values.opencode.mcpOAuth.hostname) "callback_port" $.Values.opencode.mcpOAuth.callbackPort) $remote.oauth) }}
 {{- $_ := set $servers $name $remote }}
 {{- end }}
 {{- $providers := dict }}
@@ -386,7 +386,7 @@ spec:
     - host: {{ $oauth.hostname | quote }}
       http:
         paths:
-          - path: /mcp/oauth/callback
+          - path: /auth/mcp/callback
             pathType: Exact
             backend:
               service:
@@ -411,7 +411,7 @@ http {
     listen 8081;
     server_name _;
     location = /healthz { return 200 'ok'; }
-    location = /mcp/oauth/callback {
+    location = /auth/mcp/callback {
       limit_except GET { deny all; }
       proxy_pass http://127.0.0.1:{{ .Values.opencode.mcpOAuth.callbackPort }};
       proxy_set_header Host 127.0.0.1;
