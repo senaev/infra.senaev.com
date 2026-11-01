@@ -1,3 +1,4 @@
+import { registerHeadingSync } from './headingSync/registerHeadingSync';
 import { Plugin } from 'obsidian';
 import {
 	DEFAULT_SETTINGS,
@@ -16,6 +17,7 @@ export default class SenaevPersonalTools extends Plugin {
 		this.addSettingTab(new SenaevSettingTab(this.app, this));
 
 		registerCommands(this);
+		registerHeadingSync(this);
 		registerDailyNoteWidgets(this);
 		registerTasksGlobals(this);
 	}

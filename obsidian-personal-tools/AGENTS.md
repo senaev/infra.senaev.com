@@ -408,3 +408,24 @@ this.registerInterval(
 - Developer policies: https://docs.obsidian.md/Developer+policies
 - Plugin guidelines: https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines
 - Style guide: https://help.obsidian.md/style-guide
+
+## H1 filename sync
+
+`src/headingSync/` replaces Filename Heading Sync 1.11.0, reviewed against upstream
+1.12.0 (https://github.com/dvcrn/obsidian-filename-heading-sync/tree/1.12.0).
+Only heading → filename synchronization is retained. After layout readiness, parsed metadata
+changes for the active Markdown note schedule a per-file 1000 ms debounce and serialized rename.
+The first parsed H1 (ATX or Setext) supplies the basename. Obsidian parsing excludes code and
+frontmatter. No startup scan, heading insertion, reverse sync, commands, or settings.
+Ignored folders, exact filenames and filename substrings are string lists in
+`headingSyncPolicy.ts`. Folder matching respects path segment boundaries at any depth; stream
+and short-link substring rules apply only to filenames. Excalidraw, Kanban and
+files outside the vault are excluded too. No heading means no rename. Stock upstream filename
+sanitization removes `\\/:|#^[]`, leaving the source H1 untouched. Optional length truncation
+is omitted, matching the existing configuration. Conflicts never overwrite; failures show a notice.
+Renaming uses FileManager to update links according to Obsidian preferences. The separate
+Filename Heading Sync plugin is disabled to prevent reverse-sync races.
+
+Manual QA: edit an H1 containing hashes; confirm only the filename loses hashes; test a
+duplicate target, excluded periodic/template/stream files, two rapidly edited notes, Setext
+H1, H1 examples inside fences, links to the renamed note, and unload during debounce.
