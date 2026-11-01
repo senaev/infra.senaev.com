@@ -16,7 +16,7 @@ Repository review (desired configuration, not a live cluster audit):
 - [Values](../../provisioning/helm/senaev-com/values.yaml) select OpenRouter and anthropic/claude-haiku-4.5.
 - Repositories use PVC opencode-telegram-git. OpenCode state uses a node-local hostPath with opencode-sessions subdirectory; Telegram uses a separate subdirectory. Global ~/.config/opencode is not explicitly persisted.
 - GitHub token, OpenRouter key and SSH key are secret references. Preserve their identities and access; never copy values into git.
-- [Code Tools](../../provisioning/helm/senaev-com/templates/code-tools.yaml) shares the PVC, config map and SSH secret, is gated by opencodeTelegram.enabled, and requires affinity to app=opencode-telegram.
+- [Code Tools](../../provisioning/helm/senaev-com/templates/code-tools.yaml) shares the PVC, config map and SSH secret, is gated by opencode.enabled, and requires affinity to app=opencode-telegram.
 - [Ingress](../../provisioning/helm/senaev-com/templates/ingress.yaml) already supports Traefik, letsencrypt and middleware. [Unmanic](../../provisioning/helm/senaev-com/templates/unmanic.yaml) demonstrates Vault-backed BasicAuth.
 - [OpenCode build](../../.github/workflows/build-opencode-serve.yml) targets deployment opencode-telegram. [Bot build](../../.github/workflows/build-opencode-telegram-bot.yml) must be retired as part of cleanup.
 
@@ -95,7 +95,7 @@ Our entrypoint writes an .env file but does not forward version/password setting
 
 HTTPS is transport encryption, not a password scheme. Native OpenCode authentication and Traefik BasicAuth can both work over HTTPS. Prefer native authentication for one credential mechanism shared by web/API/bot, not because it is intrinsically stronger. V2 documents browser cookie sessions via pairing and Basic auth for other HTTP clients; validate fresh-browser password access through Traefik before claiming the no-SSH experience is complete. Do not add two independent BasicAuth layers without testing Authorization handling.
 
-Storage names mean Kubernetes PVC opencode-telegram-git, its claimName references, and the existing hostPath/subPath locations. Removing only the bot container does not delete this storage. Removing the whole Helm template or disabling opencodeTelegram.enabled would omit its PVC from the rendered release; Helm could then delete the PVC, and the storage reclaim policy determines whether backing data is removed. Keep the PVC resource declared and preserve its identity regardless of client choice. Code Tools also depends on the old labels/config/flag.
+Storage names mean Kubernetes PVC opencode-telegram-git, its claimName references, and the existing hostPath/subPath locations. Removing only the bot container does not delete this storage. Removing the whole Helm template or disabling opencode.enabled would omit its PVC from the rendered release; Helm could then delete the PVC, and the storage reclaim policy determines whether backing data is removed. Keep the PVC resource declared and preserve its identity regardless of client choice. Code Tools also depends on the old labels/config/flag.
 
 Voice alternatives:
 1. Keep Telegram/Groq voice input alongside the web interface.

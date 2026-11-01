@@ -4,10 +4,10 @@ The image pins OpenCode 2.2.3. The native web UI and API use port 4096 and
 `OPENCODE_PASSWORD`; Telegram connects over localhost. State and credentials
 persist in the existing OpenCode data volume.
 
-The `opencodeTelegram` values key and `opencode-telegram` Deployment name are
-legacy names for the shared OpenCode pod. MCP endpoints live in the shared
-`config/coding-agents.json`; Helm generates the OpenCode server configuration,
-and Telegram is a separate client of that server.
+The chart uses the `opencode` values key for the OpenCode server. The existing
+`opencode-telegram` Deployment, ConfigMap and PVC names are retained to preserve
+resource identity and stored data. MCP endpoints live in the shared
+`config/coding-agents.json`; Telegram is a separate client of OpenCode.
 
 ## Remote MCP OAuth
 
@@ -35,7 +35,7 @@ and cookies and Authorization headers are not forwarded. Other paths return 404.
 When no authentication attempt is pending, the loopback listener is absent and
 the callback returns 502; it is not a health endpoint.
 
-`opencodeTelegram.mcpOAuth.hostname` controls the public hostname. The shared
+`opencode.mcpOAuth.hostname` controls the public hostname. The shared
 `coding-agents.json` owns server definitions; adding a remote server there is
 sufficient to generate its OpenCode configuration and callback routing on the
 next deployment. OpenCode-only settings are not copied into OMP. MCPs added

@@ -1,4 +1,4 @@
-{{- if .Values.opencodeTelegram.enabled }}
+{{- if .Values.opencode.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -26,7 +26,7 @@ spec:
     spec:
       # ReadWriteOnce permits both pods to mount the existing disk on the same node.
       nodeSelector:
-        vps: {{ .Values.opencodeTelegram.vps }}
+        vps: {{ .Values.opencode.vps }}
       affinity:
         podAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:

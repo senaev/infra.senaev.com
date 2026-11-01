@@ -230,7 +230,7 @@ ompWeb:
   hostname: omp.senaev.com
   storageSize: 8Gi
 
-opencodeTelegram:
+opencode:
   enabled: true
   vps: hetzner
   opencodeDataPath: volumes/opencode-data

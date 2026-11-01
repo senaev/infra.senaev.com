@@ -1,5 +1,5 @@
-{{- if .Values.opencodeTelegram.enabled }}
-{{- $oauth := .Values.opencodeTelegram.mcpOAuth }}
+{{- if .Values.opencode.enabled }}
+{{- $oauth := .Values.opencode.mcpOAuth }}
 {{- $callbacks := include "senaev-com.opencodeMcpOAuthCallbacks" . | mustFromJson }}
 apiVersion: v1
 kind: ConfigMap
