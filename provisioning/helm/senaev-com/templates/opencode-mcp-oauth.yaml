@@ -1,8 +1,5 @@
 {{- if .Values.opencode.enabled }}
 {{- $oauth := .Values.opencode.mcpOAuth }}
-{{- if or (lt (int $oauth.callbackPort) 1024) (gt (int $oauth.callbackPort) 65535) (eq (int $oauth.callbackPort) 4096) (eq (int $oauth.callbackPort) 8081) }}
-{{- fail "OpenCode OAuth callbackPort must be unprivileged and distinct from 4096/8081" }}
-{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
