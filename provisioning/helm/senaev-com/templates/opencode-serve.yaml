@@ -128,12 +128,10 @@ spec:
 {{- end }}
             - name: OPENCODE_CONFIG_CONTENT
 {{- $servers := dict }}
-{{- $callbacks := include "senaev-com.opencodeMcpOAuthCallbacks" . | mustFromJson }}
 {{- range $name, $server := $agent.mcp }}
 {{- $remote := merge (dict "type" "remote") (deepCopy $server) }}
-{{- if hasKey $callbacks $name }}
-{{- $callback := index $callbacks $name }}
-{{- $_ := set $remote "oauth" (merge (dict "redirect_uri" (printf "https://%s%s" $.Values.opencode.mcpOAuth.hostname $callback.path) "callback_port" $callback.port) (default (dict) $remote.oauth)) }}
+{{- if and (hasKey $server "url") (ne (toJson (get $server "oauth")) "false") }}
+{{- $_ := set $remote "oauth" (merge (dict "redirect_uri" (printf "https://%s/mcp/oauth/callback" $.Values.opencode.mcpOAuth.hostname) "callback_port" $.Values.opencode.mcpOAuth.callbackPort) (default (dict) $remote.oauth)) }}
 {{- end }}
 {{- $_ := set $servers $name $remote }}
 {{- end }}

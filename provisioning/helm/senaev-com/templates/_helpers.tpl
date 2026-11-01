@@ -112,25 +112,3 @@
 - name: TOKEN_FILE
   value: /grafana-token/token
 {{- end -}}
-
-{{/* Automatically route OAuth for remote MCP definitions; explicit oauth:false opts out.
-     Stable ports avoid changing existing provider registrations when another server is added. */}}
-{{- define "senaev-com.opencodeMcpOAuthCallbacks" -}}
-{{- $agent := .Files.Get "config/coding-agents.json" | mustFromJson -}}
-{{- $callbacks := dict -}}
-{{- $ports := dict -}}
-{{- range $name, $server := $agent.mcp -}}
-{{- if and (hasKey $server "url") (ne (toJson (get $server "oauth")) "false") -}}
-{{- if not (regexMatch "^[a-zA-Z0-9_-]+$" $name) -}}
-{{- fail "MCP OAuth callback names must contain only letters, digits, underscores or hyphens" -}}
-{{- end -}}
-{{- $port := add 10000 (mod (int64 (adler32sum $name)) 40000) -}}
-{{- if hasKey $ports (toString $port) -}}
-{{- fail (printf "MCP OAuth port collision between %s and %s; rename one server" (index $ports (toString $port)) $name) -}}
-{{- end -}}
-{{- $_ := set $ports (toString $port) $name -}}
-{{- $_ := set $callbacks $name (dict "port" $port "path" (printf "/mcp/oauth/%s/callback" $name)) -}}
-{{- end -}}
-{{- end -}}
-{{- $callbacks | toJson -}}
-{{- end -}}

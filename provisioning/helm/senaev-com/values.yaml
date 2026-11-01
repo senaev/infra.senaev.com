@@ -236,7 +236,8 @@ opencode:
   opencodeDataPath: volumes/opencode-data
   mcpOAuth:
     hostname: opencode.senaev.com
-    # Callback paths and stable loopback ports are derived from shared MCP definitions.
+    # All remote MCPs share one callback; authorize one server at a time.
+    callbackPort: 4100
 
 # Grafana MCP server, reachable only through cluster-helper at https://<clusterHelper.mcpDomain>/grafana.
 mcpGrafana:

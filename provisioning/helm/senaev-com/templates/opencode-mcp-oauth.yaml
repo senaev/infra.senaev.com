@@ -1,6 +1,8 @@
 {{- if .Values.opencode.enabled }}
 {{- $oauth := .Values.opencode.mcpOAuth }}
-{{- $callbacks := include "senaev-com.opencodeMcpOAuthCallbacks" . | mustFromJson }}
+{{- if or (lt (int $oauth.callbackPort) 1024) (gt (int $oauth.callbackPort) 65535) (eq (int $oauth.callbackPort) 4096) (eq (int $oauth.callbackPort) 8081) }}
+{{- fail "OpenCode OAuth callbackPort must be unprivileged and distinct from 4096/8081" }}
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -24,10 +26,9 @@ data:
         listen 8081;
         server_name _;
         location = /healthz { return 200 'ok'; }
-{{- range $name, $callback := $callbacks }}
-        location = {{ $callback.path }} {
+        location = /mcp/oauth/callback {
           limit_except GET { deny all; }
-          proxy_pass http://127.0.0.1:{{ $callback.port }};
+          proxy_pass http://127.0.0.1:{{ $oauth.callbackPort }};
           proxy_set_header Host 127.0.0.1;
           proxy_set_header Authorization "";
           proxy_set_header Cookie "";
@@ -36,7 +37,6 @@ data:
           add_header Cache-Control "no-store" always;
           add_header Referrer-Policy "no-referrer" always;
         }
-{{- end }}
         location / { return 404; }
       }
     }
@@ -74,8 +74,8 @@ spec:
     - host: {{ $oauth.hostname | quote }}
       http:
         paths:
-          - path: /mcp/oauth/
-            pathType: Prefix
+          - path: /mcp/oauth/callback
+            pathType: Exact
             backend:
               service:
                 name: opencode-mcp-oauth
