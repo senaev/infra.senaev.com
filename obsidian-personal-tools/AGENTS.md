@@ -1,5 +1,42 @@
 # AGENTS
 
+## Daily-note creation
+
+The personal plugin owns the editable daily-note template. `src/dailyNote/dailyNoteTemplate.ts`
+generates the existing habits, Tasks query, date-dependent tasks, quarterly achievements link
+and daily stream embed. The note filename supplies the calendar date; the current clock and
+Moment locale do not affect scheduling. Header/footer widgets remain separate.
+
+`_templates/Daily note template.md` now contains only `<!-- senaev:daily-note-template -->`.
+Periodic Notes, core Daily Notes (if enabled), and manual template insertion can still use that
+path. `registerDailyNoteCreation.ts` handles vault create/modify/rename and workspace file-open
+events after layout readiness, so direct file creation, calendar/Periodic Notes actions, full-path
+links, untitled-note renaming and opening notes synced from another device all work.
+Only direct `periodic/day/YYYY-MM-DD.md` files with real calendar dates qualify. A date-named
+note created elsewhere must first be moved into this folder. No whole-vault startup scan occurs.
+The active note is checked once at layout readiness.
+
+Initialization fills whitespace-only files, marker-only files and frontmatter-only files
+(optionally followed by the marker), preserving frontmatter. Existing body text, checked tasks,
+and notes with a marker embedded in prose or a fenced example are left unchanged. Opening an
+old empty daily note intentionally initializes it. A nonempty note is never regenerated on rename.
+`Vault.process` atomically rechecks content before writing; a preliminary read avoids no-op modify
+loops. Per-file jobs serialize overlapping events and recheck changes received during a write.
+Unload cancels pending work; failed work can be retried by reopening the note.
+
+The command **Senaev Personal Tools: Open or create today’s daily note** works without Periodic
+Notes and creates missing folders. Existing Periodic Notes commands and shortcuts keep working.
+The old Templater daily folder rule and `dailyBody.js` are removed. Templater stays enabled for
+manual insertion of the three static interview templates; their migration is a separate change.
+The manifest requires Obsidian 1.4.0 for the atomic processing and folder APIs.
+
+Validation: run lint, typecheck, tests and build. Fixtures capture complete output from the retired
+template/script for representative weekdays, weekends and month boundaries. For manual desktop
+and mobile QA, create a daily note via Periodic Notes/calendar, a full-path link, file explorer,
+rename/move, and the personal command; reopen it and check that task completion persists.
+Also open a marker-only synced note and verify that existing diary content is untouched.
+
+
 ## Features
 
 - **Daily note widgets** (`src/dailyNote/`) — injects a header (date heading → nav row → milestones) and a footer (milestones → nav row) into every `periodic/day/YYYY-MM-DD` note, in both Reading view and Live Preview. Needs no markup in the note itself. The milestones logic and config live in `src/milestones/` — see below.
