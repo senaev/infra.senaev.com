@@ -14,9 +14,15 @@ OpenCode and its MCP OAuth proxy resources are defined together in
 
 ## Remote MCP OAuth
 
+The callback uses `/auth/` because OpenCode 2.2.3's service worker explicitly
+excludes that prefix from its app-shell navigation fallback. A callback under
+`/mcp/` can be intercepted by the browser and load/crash the SPA instead of
+reaching the server.
+
+
 All remote MCP servers in `coding-agents.json` automatically share:
 
-- Public callback: `https://opencode.senaev.com/mcp/oauth/callback`
+- Public callback: `https://opencode.senaev.com/auth/mcp/callback`
 - Internal loopback callback port: `4100`
 
 Each shared remote MCP definition supplies a URL and an `oauth` object (empty
