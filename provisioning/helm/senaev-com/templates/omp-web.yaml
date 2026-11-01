@@ -1,7 +1,7 @@
 {{- $agent := .Files.Get "config/coding-agents.json" | mustFromJson }}
 {{- if .Values.ompWeb.enabled }}
-{{- if not .Values.opencodeTelegram.enabled }}
-{{- fail "ompWeb requires opencodeTelegram for the shared repository PVC and server instructions" }}
+{{- if not .Values.opencode.enabled }}
+{{- fail "ompWeb requires opencode for the shared repository PVC and server instructions" }}
 {{- end }}
 apiVersion: v1
 kind: ConfigMap
@@ -87,7 +87,7 @@ spec:
       automountServiceAccountToken: false
       terminationGracePeriodSeconds: 30
       nodeSelector:
-        vps: {{ .Values.opencodeTelegram.vps }}
+        vps: {{ .Values.opencode.vps }}
       affinity:
         podAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:

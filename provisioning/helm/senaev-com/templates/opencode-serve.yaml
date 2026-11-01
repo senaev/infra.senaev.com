@@ -1,5 +1,6 @@
 {{- $agent := .Files.Get "config/coding-agents.json" | mustFromJson }}
-{{- if .Values.opencodeTelegram.enabled }}
+{{- if .Values.opencode.enabled }}
+{{- $oauth := .Values.opencode.mcpOAuth }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -34,11 +35,12 @@ spec:
         tags.datadoghq.com/env: prod
         tags.datadoghq.com/version: latest
       annotations:
+        checksum/mcp-oauth-proxy: {{ include "senaev-com.opencodeMcpOAuthNginx" . | sha256sum }}
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets,opencode-auth"
         configmap.reloader.stakater.com/reload: "opencode-telegram-config"
     spec:
       nodeSelector:
-        vps: {{ .Values.opencodeTelegram.vps }}
+        vps: {{ .Values.opencode.vps }}
       initContainers:
         - name: git-init
           image: alpine/git:latest
@@ -128,7 +130,9 @@ spec:
             - name: OPENCODE_CONFIG_CONTENT
 {{- $servers := dict }}
 {{- range $name, $server := $agent.mcp }}
-{{- $_ := set $servers $name (merge (dict "type" "remote") $server) }}
+{{- $remote := merge (dict "type" "remote") (deepCopy $server) }}
+{{- $_ := set $remote "oauth" (merge (dict "redirect_uri" (printf "https://%s/mcp/oauth/callback" $.Values.opencode.mcpOAuth.hostname) "callback_port" $.Values.opencode.mcpOAuth.callbackPort) $remote.oauth) }}
+{{- $_ := set $servers $name $remote }}
 {{- end }}
 {{- $providers := dict }}
 {{- range $name, $connector := $agent.connectors }}
@@ -158,6 +162,36 @@ spec:
             - name: opencode-config
               mountPath: /CLAUDE.md
               subPath: CLAUDE.md
+
+        - name: mcp-oauth-proxy
+          image: nginxinc/nginx-unprivileged:1.28.0-alpine
+          command: ["nginx", "-g", "daemon off;"]
+          ports:
+            - name: mcp-oauth
+              containerPort: 8081
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 101
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              memory: 16Mi
+            limits:
+              memory: 64Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: mcp-oauth
+          volumeMounts:
+            - name: mcp-oauth-proxy
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+              readOnly: true
+            - name: mcp-oauth-tmp
+              mountPath: /tmp
 
         - name: opencode-telegram-bot
           image: ghcr.io/senaev/opencode-telegram-bot:latest
@@ -212,9 +246,14 @@ spec:
               value: {{ $agent.speechToText.model | quote }}
 
       volumes:
+        - name: mcp-oauth-proxy
+          configMap:
+            name: opencode-mcp-oauth
+        - name: mcp-oauth-tmp
+          emptyDir: {}
         - name: opencode-data
           hostPath:
-            path: {{ .Values.clusterRootPath }}/{{ .Values.opencodeTelegram.opencodeDataPath }}
+            path: {{ .Values.clusterRootPath }}/{{ .Values.opencode.opencodeDataPath }}
             type: DirectoryOrCreate
         - name: ssh-key
           secret:
@@ -268,6 +307,8 @@ spec:
       ports:
         - protocol: TCP
           port: 4096
+        - protocol: TCP
+          port: 8081
 ---
 apiVersion: v1
 kind: Service
@@ -302,4 +343,86 @@ spec:
       remoteRef:
         key: senaev-com-kv
         property: OPENCODE_PASSWORD
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opencode-mcp-oauth
+  namespace: {{ .Release.Namespace }}
+data:
+  nginx.conf: |
+{{ include "senaev-com.opencodeMcpOAuthNginx" . | indent 4 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opencode-mcp-oauth
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: opencode-telegram
+  ports:
+    - name: http
+      port: 8081
+      targetPort: mcp-oauth
+---
+# Callback only: OpenCode validates OAuth state and exchanges the code with PKCE.
+# Native web/API authentication remains on the existing port 4096 ingress.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: opencode-mcp-oauth
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+spec:
+  ingressClassName: traefik-hetzner
+  tls:
+    - hosts: [{{ $oauth.hostname | quote }}]
+  rules:
+    - host: {{ $oauth.hostname | quote }}
+      http:
+        paths:
+          - path: /mcp/oauth/callback
+            pathType: Exact
+            backend:
+              service:
+                name: opencode-mcp-oauth
+                port:
+                  number: 8081
 {{- end }}
+{{- define "senaev-com.opencodeMcpOAuthNginx" -}}
+worker_processes 1;
+pid /tmp/nginx.pid;
+# Callback request URIs contain authorization codes: never log them.
+error_log /dev/stderr crit;
+events { worker_connections 128; }
+http {
+  access_log off;
+  client_body_temp_path /tmp/client_temp;
+  proxy_temp_path /tmp/proxy_temp;
+  fastcgi_temp_path /tmp/fastcgi_temp;
+  uwsgi_temp_path /tmp/uwsgi_temp;
+  scgi_temp_path /tmp/scgi_temp;
+  server {
+    listen 8081;
+    server_name _;
+    location = /healthz { return 200 'ok'; }
+    location = /mcp/oauth/callback {
+      limit_except GET { deny all; }
+      proxy_pass http://127.0.0.1:{{ .Values.opencode.mcpOAuth.callbackPort }};
+      proxy_set_header Host 127.0.0.1;
+      proxy_set_header Authorization "";
+      proxy_set_header Cookie "";
+      proxy_connect_timeout 2s;
+      proxy_read_timeout 60s;
+      add_header Cache-Control "no-store" always;
+      add_header Referrer-Policy "no-referrer" always;
+    }
+    location / { return 404; }
+  }
+}
+{{- end -}}

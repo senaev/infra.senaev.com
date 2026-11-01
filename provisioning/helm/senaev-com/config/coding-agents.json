@@ -1,7 +1,8 @@
 {
   "mcp": {
     "datadog": {
-      "url": "https://mcp.datadoghq.eu/v1/mcp?toolsets=core,software-delivery"
+      "url": "https://mcp.datadoghq.eu/v1/mcp?toolsets=core,software-delivery",
+      "oauth": {}
     }
   },
   "defaultModel": {
