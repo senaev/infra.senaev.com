@@ -1,0 +1,160 @@
+{{- if .Values.llmServer.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-server
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: llm-server
+spec:
+  replicas: 1
+  # Two pods with the model in memory do not fit on the node at the same time.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: llm-server
+  template:
+    metadata:
+      labels:
+        app: llm-server
+    spec:
+      nodeSelector:
+        vps: {{ .Values.llmServer.vps }}
+      initContainers:
+        # Downloads the model once; the file stays on the media disk across pod restarts.
+        - name: download-model
+          image: curlimages/curl:8.23.0
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+          env:
+            - name: MODEL_FILE
+              value: {{ .Values.llmServer.model.file | quote }}
+            - name: MODEL_URL
+              value: {{ .Values.llmServer.model.url | quote }}
+            - name: MODEL_SHA256
+              value: {{ .Values.llmServer.model.sha256 | quote }}
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              target="/models/${MODEL_FILE}"
+              if [ -f "$target" ]; then
+                echo "Model ${MODEL_FILE} is already downloaded"
+                exit 0
+              fi
+              echo "Downloading ${MODEL_URL}"
+              curl --fail --location --retry 5 --continue-at - --output "${target}.part" "$MODEL_URL"
+              if ! echo "${MODEL_SHA256}  ${target}.part" | sha256sum -c -; then
+                rm -f "${target}.part"
+                exit 1
+              fi
+              mv "${target}.part" "$target"
+          resources:
+            requests:
+              memory: 32Mi
+            limits:
+              memory: 256Mi
+          volumeMounts:
+            - name: models
+              mountPath: /models
+      containers:
+        - name: llm-server
+          image: ghcr.io/ggml-org/llama.cpp:server-b12098
+          args:
+            - --model
+            - /models/{{ .Values.llmServer.model.file }}
+            - --host
+            - 0.0.0.0
+            - --port
+            - {{ .Values.llmServer.port | quote }}
+            - --threads
+            - {{ .Values.llmServer.threads | quote }}
+            - --ctx-size
+            - {{ .Values.llmServer.contextSize | quote }}
+            - --parallel
+            - "1"
+            - --flash-attn
+            - "on"
+            - --cache-type-k
+            - q8_0
+            - --cache-type-v
+            - q8_0
+            # Read the model into process memory instead of mmap: it counts against the pod
+            # limit, and the kernel cannot drop it as page cache and read it from disk again.
+            - --load-mode
+            - none
+            - --metrics
+          ports:
+            - name: http
+              containerPort: {{ .Values.llmServer.port }}
+          resources:
+            {{- toYaml .Values.llmServer.resources | nindent 12 }}
+          # /health returns 503 while the model loads.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: models
+              mountPath: /models
+              readOnly: true
+      volumes:
+        - name: models
+          hostPath:
+            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.llmServer.modelsVolumePath }}
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: llm-server
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: llm-server
+  ports:
+    - name: http
+      port: {{ .Values.llmServer.port }}
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: llm-server
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: llm-server
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        {{- range .Values.llmServer.allowedClients }}
+        - podSelector:
+            matchLabels:
+              app: {{ . }}
+        {{- end }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.llmServer.port }}
+{{- end }}

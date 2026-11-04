@@ -246,6 +246,34 @@ mcpGrafana:
   image: grafana/mcp-grafana:2.0.2
   grafanaUrl: http://vm-stack-grafana.telemetry.svc.cluster.local
 
+# Local LLM with an OpenAI-compatible API, cluster-internal only.
+# See projects/2026-10-18-16-05-home-development-llm-server/README.md
+llmServer:
+  enabled: true
+  vps: senaev-media
+  modelsVolumePath: volumes/llm-server/models
+  port: 8080
+  # One of the 4 cores stays free for Jellyfin and the node.
+  threads: 3
+  contextSize: 16384
+  model:
+    file: Qwen3-4B-Instruct-2507-Q4_K_M.gguf
+    url: https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/a06e946bb6b655725eafa393f4a9745d460374c9/Qwen3-4B-Instruct-2507-Q4_K_M.gguf
+    sha256: 3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597
+  # Model 2.3 GiB + q8_0 KV cache for 16k tokens ~1.2 GiB + compute buffers.
+  # request = limit, so the scheduler reserves the memory on the node.
+  resources:
+    requests:
+      cpu: 1
+      memory: 5Gi
+    limits:
+      cpu: 3
+      memory: 5Gi
+  # Pods (by "app" label) that may call the API.
+  allowedClients:
+    - n8n
+    - cluster-helper
+
 vpnSubscription:
   enabled: true
   vps: hetzner

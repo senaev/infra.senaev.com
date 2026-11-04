@@ -24,6 +24,9 @@ set -euo pipefail
 #   4. accept_ra=2 on the uplink interface, so SLAAC IPv6 keeps working with k3s forwarding.
 #   5. Tailscale MTU 1350 (TS_DEBUG_MTU), so dual-stack pods keep an MTU >= 1280 (IPv6
 #      minimum). See projects/2026-10-04-k3s-dual-stack-ipv6/README.md
+#   6. tailscaled protected from the OOM killer (OOMScoreAdjust=-1000), so a pod that fills
+#      the node memory cannot cut the node off the tailnet. Applied to the running process
+#      too, without a restart. See projects/2026-10-18-16-05-home-development-llm-server/README.md
 #
 # SAFETY
 #   The drop-in is only installed when sys-subsystem-net-devices-tailscale0.device is
@@ -45,6 +48,8 @@ DROPIN_FILENAME="10-tailscale-binding.conf"
 ACCEPT_RA_SYSCTL_PATH="/etc/sysctl.d/90-ipv6-accept-ra.conf"
 TAILSCALED_ENV_PATH="/etc/default/tailscaled"
 TAILSCALE_MTU="1350"
+TAILSCALED_OOM_DROPIN_PATH="/etc/systemd/system/tailscaled.service.d/oom-score.conf"
+TAILSCALED_OOM_SCORE_ADJ="-1000"
 
 SUDO=""
 if [[ "$(id -u)" -ne 0 ]]; then
@@ -97,6 +102,40 @@ if command -v tailscale &>/dev/null; then
   fi
 else
   echo "⚠️ $LOG_PREFIX tailscale binary not found, skipping auto-update configuration"
+fi
+
+# --------------------------------------------- protect tailscaled from the OOM killer (6) ---
+# Without it, the kernel OOM killer can select tailscaled when a pod fills the node memory,
+# and a home node then has no way in. The drop-in covers future starts; the running process
+# is updated in place, because restarting tailscaled is a risk of its own on a flaky uplink.
+
+if systemctl cat tailscaled &>/dev/null; then
+  echo "👉 $LOG_PREFIX Setting OOMScoreAdjust=${TAILSCALED_OOM_SCORE_ADJ} for tailscaled"
+  $SUDO mkdir -p "$(dirname "$TAILSCALED_OOM_DROPIN_PATH")"
+  $SUDO tee "$TAILSCALED_OOM_DROPIN_PATH" >/dev/null <<EOF
+# Managed by provisioning/common/bootstrap-node-networking.sh - do not edit by hand.
+# Keep the node reachable over the tailnet when a pod fills the node memory.
+[Service]
+OOMScoreAdjust=${TAILSCALED_OOM_SCORE_ADJ}
+EOF
+  $SUDO systemctl daemon-reload
+
+  TAILSCALED_PID="$(systemctl show tailscaled -p MainPID --value)"
+  if [[ "$TAILSCALED_PID" != "0" ]]; then
+    echo "$TAILSCALED_OOM_SCORE_ADJ" | $SUDO tee "/proc/${TAILSCALED_PID}/oom_score_adj" >/dev/null
+  fi
+
+  if [[ "$(systemctl show tailscaled -p OOMScoreAdjust --value)" != "$TAILSCALED_OOM_SCORE_ADJ" ]]; then
+    echo "❌ $LOG_PREFIX OOMScoreAdjust drop-in did not take effect for tailscaled"
+    exit 1
+  fi
+  if [[ "$TAILSCALED_PID" != "0" ]] && [[ "$(cat "/proc/${TAILSCALED_PID}/oom_score_adj")" != "$TAILSCALED_OOM_SCORE_ADJ" ]]; then
+    echo "❌ $LOG_PREFIX oom_score_adj of the running tailscaled (pid ${TAILSCALED_PID}) is not ${TAILSCALED_OOM_SCORE_ADJ}"
+    exit 1
+  fi
+  echo "✅ $LOG_PREFIX tailscaled is protected from the OOM killer"
+else
+  echo "⚠️ $LOG_PREFIX tailscaled unit not found, skipping OOM protection"
 fi
 
 # --------------------------------------------- verify the .device unit exists (safety) ---
