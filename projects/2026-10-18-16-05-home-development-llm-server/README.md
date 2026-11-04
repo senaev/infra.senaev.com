@@ -918,3 +918,23 @@ it is an older, unrelated issue. `llm-server` has 0 restarts.
 - `hetzner` passes the check: `BackendState` is `Running`, and there is no `KeyExpiry`.
   `Peer: null` confirms that `--peers=false` leaves out the peers, so a `KeyExpiry` match
   can only come from `Self`.
+- The user checked the other three nodes: they pass too. Committed as `c6af1fb`.
+
+### 2026-11-04 — Vulkan test on the iGPU (step 10)
+
+New value `llmServer.gpu` (now `true`). When it is set, `templates/llm-server.yaml`:
+
+- uses `ghcr.io/ggml-org/llama.cpp:server-vulkan-b12098` (same build as the CPU image);
+- adds `--n-gpu-layers all`, so all layers run on the iGPU;
+- mounts `/dev/dri` from the node, with `privileged: true` and the supplemental groups
+  44 (video) and 991 (render), the same as `jellyfin.yaml` and `unmanic.yaml`.
+
+With `gpu: false` the rendered manifest is the same as now (checked with `helm template`
+and `diff`). The other settings stay: f16 KV cache, context 8192, `--flash-attn on`,
+5Gi memory limit (on this iGPU, GPU memory is system RAM).
+
+Rollback: `gpu: false` and push; in an emergency (for example, Jellyfin stutters or the
+iGPU hangs): `kubectl -n senaev-com scale deploy/llm-server --replicas=0`.
+
+Test: the same ~1.2k-token prompt (CPU f16: 13.25 tokens/s prompt, 5.7 tokens/s
+generation). Then the same request while Jellyfin transcodes a video.

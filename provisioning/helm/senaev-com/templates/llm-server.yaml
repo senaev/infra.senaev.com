@@ -60,9 +60,21 @@ spec:
           volumeMounts:
             - name: models
               mountPath: /models
+      {{- if .Values.llmServer.gpu }}
+      # The video (44) and render (991) groups own /dev/dri on the node, as for Jellyfin.
+      securityContext:
+        supplementalGroups:
+          - 44
+          - 991
+      {{- end }}
       containers:
         - name: llm-server
-          image: ghcr.io/ggml-org/llama.cpp:server-b12098
+          image: ghcr.io/ggml-org/llama.cpp:server-{{ if .Values.llmServer.gpu }}vulkan-{{ end }}b12098
+          {{- if .Values.llmServer.gpu }}
+          # The device cgroup blocks /dev/dri for an unprivileged container, as for Jellyfin.
+          securityContext:
+            privileged: true
+          {{- end }}
           args:
             - --model
             - /models/{{ .Values.llmServer.model.file }}
@@ -82,6 +94,10 @@ spec:
             # limit, and the kernel cannot drop it as page cache and read it from disk again.
             - --load-mode
             - none
+            {{- if .Values.llmServer.gpu }}
+            - --n-gpu-layers
+            - all
+            {{- end }}
             - --metrics
           ports:
             - name: http
@@ -111,11 +127,21 @@ spec:
             - name: models
               mountPath: /models
               readOnly: true
+            {{- if .Values.llmServer.gpu }}
+            - name: dri
+              mountPath: /dev/dri
+            {{- end }}
       volumes:
         - name: models
           hostPath:
             path: {{ .Values.mediaServerStoragePath }}/{{ .Values.llmServer.modelsVolumePath }}
             type: DirectoryOrCreate
+        {{- if .Values.llmServer.gpu }}
+        - name: dri
+          hostPath:
+            path: /dev/dri
+            type: Directory
+        {{- end }}
 ---
 apiVersion: v1
 kind: Service

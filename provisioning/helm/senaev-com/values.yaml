@@ -255,6 +255,9 @@ llmServer:
   port: 8080
   # One of the 4 cores stays free for Jellyfin and the node.
   threads: 3
+  # Run the model on the iGPU (llama.cpp Vulkan backend). The iGPU is shared with Jellyfin
+  # and Unmanic. To go back to the CPU, set false.
+  gpu: true
   contextSize: 8192
   model:
     file: Qwen3-4B-Instruct-2507-Q4_K_M.gguf
