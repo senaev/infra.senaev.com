@@ -27,6 +27,8 @@ set -euo pipefail
 #   6. tailscaled protected from the OOM killer (OOMScoreAdjust=-1000), so a pod that fills
 #      the node memory cannot cut the node off the tailnet. Applied to the running process
 #      too, without a restart. See projects/2026-10-18-16-05-home-development-llm-server/README.md
+#   7. A check (no change) that tailscaled is logged in and its node key does not expire.
+#      An expired key took the whole cluster down on 2026-11-04 (same project).
 #
 # SAFETY
 #   The drop-in is only installed when sys-subsystem-net-devices-tailscale0.device is
@@ -136,6 +138,28 @@ EOF
   echo "✅ $LOG_PREFIX tailscaled is protected from the OOM killer"
 else
   echo "⚠️ $LOG_PREFIX tailscaled unit not found, skipping OOM protection"
+fi
+
+# ------------------------------------------------ require Tailscale key expiry off (7) ---
+# An expired node key logs tailscaled out, and the node drops off the tailnet. On hetzner
+# this made every worker NotReady; on a home node it would leave no way in. Key expiry can
+# only be disabled in the Tailscale admin console, so this step checks and fails loudly.
+
+if command -v tailscale &>/dev/null; then
+  echo "👉 $LOG_PREFIX Checking Tailscale login state and node key expiry"
+  TAILSCALE_SELF_STATUS="$($SUDO tailscale status --json --peers=false)"
+  if ! grep -Eq '"BackendState": *"Running"' <<<"$TAILSCALE_SELF_STATUS"; then
+    echo "❌ $LOG_PREFIX tailscaled is not logged in and running. Check: tailscale status"
+    exit 1
+  fi
+  # The field is omitted when key expiry is disabled for this machine.
+  TAILSCALE_KEY_EXPIRY="$(grep -Eo '"KeyExpiry": *"[^"]*"' <<<"$TAILSCALE_SELF_STATUS" || true)"
+  if [[ -n "$TAILSCALE_KEY_EXPIRY" ]]; then
+    echo "❌ $LOG_PREFIX Tailscale node key expires (${TAILSCALE_KEY_EXPIRY})."
+    echo "❌ $LOG_PREFIX Disable key expiry for this machine: https://login.tailscale.com/admin/machines"
+    exit 1
+  fi
+  echo "✅ $LOG_PREFIX Tailscale is running and its node key does not expire"
 fi
 
 # --------------------------------------------- verify the .device unit exists (safety) ---

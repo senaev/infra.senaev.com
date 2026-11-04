@@ -674,3 +674,247 @@ Metrics, 12:04–12:15 (prompt processing of task 158):
 `--cache-type-k q8_0 --cache-type-v q8_0` removed (the default is f16), `contextSize`
 16384 → 8192, so the pod stays within its 5Gi. `--flash-attn on` stays. Test after the
 deploy: the same ~1k-token prompt as before; compare `prompt_per_second` with 9.66.
+
+### 2026-11-04 — Deploy run `41854330220` failed: vm-operator webhook has no endpoints
+
+Commit `e01cfed`. `deploy (senaev-com)` failed after 18 s, before `llm-server` changed:
+
+```
+15:08:35 err: Error: UPGRADE FAILED: Internal error occurred: failed calling webhook "vmrules.operator.victoriametrics.com": failed to call webhook: Post "https://vm-operator-victoria-metrics-operator.telemetry.svc:9443/validate-operator-victoriametrics-com-v1beta1-vmrule?timeout=10s": no endpoints available for service "vm-operator-victoria-metrics-operator" && ... "vmservicescrapes.operator.victoriametrics.com" ... no endpoints available ...
+```
+
+Datadog, `kube_deployment:vm-operator-victoria-metrics-operator` (runs on `hetzner`):
+
+```
+14:39:18  Failed to update lock optimistically: Put "https://10.43.0.1:443/apis/coordination.k8s.io/v1/namespaces/telemetry/leases/57410f0d.victoriametrics.com?timeout=5s": net/http: request canceled (Client.Timeout exceeded while awaiting headers), falling back to slow path
+14:39:23  error retrieving resource lock telemetry/57410f0d.victoriametrics.com: Get "https://10.43.0.1:443/...": context deadline exceeded
+14:39:23  failed to renew lease telemetry/57410f0d.victoriametrics.com: context deadline exceeded
+14:39:23  cannot setup manager
+```
+
+- Not caused by this task: the `senaev-com` chart contains `VMRule` and `VMServiceScrape`
+  objects, and the operator's validating webhook must answer for them. The operator exited
+  at 14:39 because the Kubernetes API server did not answer its lease renewal within 5 s.
+  It has 28 restarts in total, so this happens often.
+- `hetzner` is under pressure: ~1.0 GB usable memory, ~0.95 GB swap used (6 h), load
+  1–4.7. A slow API server on a swapping control plane matches the lease timeouts. This is
+  the side finding from earlier, now with an effect.
+- In Datadog, `hetzner` metrics stop at ~14:50 and `senaev-media` metrics at ~14:40, and
+  there are no new `llm-server` logs: the agents may not report, or the data is late. Check
+  the node state directly.
+- `llm-server` still runs with the q8_0 cache: the f16 test is not deployed. Rerun the
+  failed job when the operator runs again.
+
+### 2026-11-04 — Incident: all three workers are `NotReady`
+
+On `hetzner`:
+
+```
+❯ tailscale status | grep -E 'senaev-media|proxmox'
+(no output)
+❯ kubectl get nodes
+NAME           STATUS     ROLES           AGE   VERSION
+firstvds       NotReady   <none>          29d   v1.36.5+k3s1
+hetzner        Ready      control-plane   29d   v1.36.5+k3s1
+proxmox        NotReady   <none>          29d   v1.36.5+k3s1
+senaev-media   NotReady   <none>          29d   v1.36.5+k3s1
+❯ kubectl -n telemetry get pods | grep -E 'operator|NAME'
+vm-operator-victoria-metrics-operator-68f5d7df8c-v678w         0/1     CrashLoopBackOff   38 (2m22s ago)   29d
+❯ kubectl -n senaev-com get pod -l app=llm-server
+llm-server-765bd4566c-shxf5   1/1     Terminating   0          3h20m
+❯ free -h
+Mem:           7.6Gi       6.4Gi       271Mi        69Mi       1.3Gi       1.2Gi
+Swap:          2.0Gi       885Mi       1.1Gi
+❯ kubectl top pod -A --sort-by=memory | head -15
+error: Metrics API not available
+```
+
+- **All workers lost the control plane at the same time**, including `firstvds`, which is
+  not at home. So the cause is on `hetzner`, not the home ISP.
+- `tailscale status` on `hetzner` lists neither home node. Either `tailscaled` on `hetzner`
+  is down, or it lost its peers. All workers join the control plane over the tailnet.
+- Ranked hypotheses:
+  1. **The OOM killer stopped `tailscaled` on `hetzner`** (memory pressure, swap in use;
+     the OOM protection from this task is not yet on `hetzner`). Signal: `oom-kill` lines
+     for `tailscaled` in `journalctl -k`, `tailscaled` not active or restarted ~14:40.
+  2. **`tailscaled` on `hetzner` runs but has no control connection or no peers.** Signal:
+     `tailscale status` shows a health warning, the journal has control/DERP errors.
+  3. **`hetzner` is too slow (swapping) for kubelet heartbeats and the API server.**
+     Signal: `tailscale status` is normal and the peers are `direct`, but the nodes are still
+     `NotReady`.
+- Effects: the node controller evicted the pods on the `NotReady` nodes (`llm-server` hangs
+  in `Terminating`, because its node cannot confirm). `metrics-server` runs on a worker, so
+  the Metrics API is gone. `vm-operator` crash-loops because it cannot talk to the API server
+  in time; that blocks every `senaev-com` deploy.
+- Read-only diagnosis first. Restarting `tailscaled` on `hetzner` is a high-risk step (root
+  `AGENTS.md`); ask the user first.
+
+### 2026-11-04 — Cause: `tailscaled` on `hetzner` is logged out
+
+```
+❯ tailscale status | head -8
+Logged out.
+❯ systemctl status tailscaled --no-pager | head -12
+     Active: active (running) since Mon 2026-10-05 19:44:08 UTC; 4 weeks 1 day ago
+     Status: "Needs login: "
+     Memory: 29.4M (peak: 113M, swap: 44.7M, swap peak: 105.1M)
+❯ journalctl -u tailscaled --since "-3h" --no-pager | grep -iE 'start|stop|control|health|error' | tail -25
+Nov 04 14:40:42 hetzner tailscaled[2749091]: magicsock: ReSTUN("refresh-for-peering") ignored; stopped, no private key
+... (the same until 14:41:41 and later)
+❯ journalctl -k --since "-3h" --no-pager | grep -iE 'oom|killed process' | tail -20
+(no output)
+❯ ip -br addr show tailscale0
+tailscale0       UNKNOWN        fe80::a24d:d2a0:8014:59ae/64
+```
+
+- **Hypothesis 1 (OOM kill) is refuted**: `tailscaled` runs since 2026-10-05, and there is no
+  OOM line.
+- **Root cause (to confirm): `tailscaled` on `hetzner` lost its login** at ~14:39–14:40, the
+  moment when the workers went `NotReady` and `vm-operator` could no longer reach the API.
+  It has no private key (`stopped, no private key`) and `tailscale0` has no `100.x` address,
+  so the workers cannot reach `100.120.76.115:6443`. The most likely reason is the
+  **Tailscale node key expiry** (180 days by default): the cluster was created about 150 days
+  before 2026-10-05, so ~180 days before today. The other nodes joined at about the same
+  time, so **their keys may expire soon too**. For a home node, an expired key means no way
+  in, which is exactly the unrecoverable case from the root `AGENTS.md`.
+- Memory pressure on `hetzner` is real but is not the cause of this outage.
+
+### 2026-11-04 — Recovered: key expiry disabled, `hetzner` logged in again
+
+The user disabled key expiry for all four machines in the Tailscale admin console and ran
+`tailscale login` on `hetzner`:
+
+```
+❯ ip -br addr show tailscale0
+tailscale0       UNKNOWN        100.120.76.115/32 fd7a:115c:a1e0::6936:4c73/128 fe80::a24d:d2a0:8014:59ae/64
+❯ tailscale status | head -6
+100.120.76.115  hetzner       andrei.senaev@  linux  -
+100.90.217.37   firstvds      andrei.senaev@  linux  idle, tx 5095872 rx 673182
+100.87.199.13   proxmox       andrei.senaev@  linux  idle, tx 2748608 rx 520104
+100.103.254.98  senaev-media  andrei.senaev@  linux  idle, tx 3829454 rx 713106
+❯ kubectl get nodes -w
+firstvds       Ready    <none>          29d   v1.36.5+k3s1
+hetzner        Ready    control-plane   29d   v1.36.5+k3s1
+proxmox        Ready    <none>          29d   v1.36.5+k3s1
+senaev-media   Ready    <none>          29d   v1.36.5+k3s1
+```
+
+- `hetzner` kept its tailnet IP `100.120.76.115`, so the workers reconnected without any
+  change. All four nodes are `Ready`; the home nodes recovered at once this time.
+- With key expiry disabled, no node can be locked out by an expired key again. Outage:
+  ~14:39 until the re-login (exact time not recorded).
+
+Datadog after the recovery:
+
+```
+llm-server (new pod on senaev-media):
+15:15:53  load_model: loading model '/models/Qwen3-4B-Instruct-2507-Q4_K_M.gguf'
+15:15:55  load_model: initializing, n_slots = 1, n_ctx_slot = 8192, kv_unified = 'false'
+15:15:55  server_on_li: listening on http://0.0.0.0:8080
+
+vm-operator (hetzner):
+15:16:54  Failed to update lock optimistically: Put "https://10.43.0.1:443/apis/coordination.k8s.io/v1/namespaces/telemetry/leases/57410f0d.victoriametrics.com?timeout=5s": context deadline exceeded ...
+15:16:59  failed to renew lease telemetry/57410f0d.victoriametrics.com: context deadline exceeded
+15:16:59  cannot setup manager
+```
+
+- **The f16 test is already live**: `n_ctx_slot = 8192` is the new value. Helm updated the
+  `llm-server` Deployment before the webhook error stopped the upgrade of the
+  `VMRule`/`VMServiceScrape` objects. The evicted pod was replaced by a pod with the new
+  arguments.
+- The vm-operator crash loop during the outage is explained: `10.43.0.1` (the
+  `kubernetes` Service) forwards to the API server on `hetzner`'s tailnet IP, which did not
+  exist while `tailscaled` was logged out. At 15:16 it still failed once, during the
+  recovery; it must start cleanly before the failed `senaev-com` job is rerun.
+
+### 2026-11-04 — f16 KV cache result: only 1.4× faster; the CPU is the limit
+
+`vm-operator-victoria-metrics-operator-68f5d7df8c-b5d89   1/1   Running   0   104s`, so the
+failed job of run `41854330220` was rerun (attempt 2).
+
+f16 KV cache, context 8192, ~1.2k-token prompt from `n8n`:
+
+```
+{
+  prompt_n: 1179,
+  prompt_ms: 88969.11,
+  prompt_per_second: 13.251790424789009,
+  predicted_n: 20,
+  predicted_ms: 3320.956,
+  predicted_per_second: 5.721244123680049
+}
+```
+
+- Prompt speed **13.25 tokens/s** (q8_0: 9.66). f16 helps a bit, but **hypothesis 3 is not
+  the main cause**.
+- Compute estimate: a 4B model needs ~8 GFLOP per prompt token, so 13 tokens/s ≈ 105 GFLOP/s.
+  The N150 E-cores (Gracemont) execute AVX2 on 128-bit units: ~16 FP32 FLOP per cycle per
+  core, ~3.4 GHz × 3 threads ≈ 160 GFLOP/s peak. **We get ~65% of the peak**: the code is
+  fine (AVX2 works, so hypothesis 2 is unlikely), the CPU is simply slow. The estimate in
+  the 2026-11-03 review (20–60 tokens/s for a 7B model) was too optimistic.
+- Generation with 1.2k tokens of context: 5.7 tokens/s (7.95 with a short context): the
+  attention part grows with the context.
+- Keep f16 with context 8192: faster, and a 16k context is of no use at this prompt speed
+  (16k tokens would take ~20 min).
+- What can still make prompts faster:
+  1. **The iGPU with the llama.cpp Vulkan backend (step 10).** Intel UHD with 24 EUs at
+     ~1 GHz has ~0.75 TFLOP/s FP16, several times more than the 3 E-cores, and prompt
+     processing is compute-bound. This is now the most promising step.
+  2. A smaller model: Qwen3-1.7B is ~2.5× faster, but weaker, especially in Russian.
+  3. The 4th core (`--threads 4`, no CPU limit): at most +33%, and nothing stays free for
+     Jellyfin.
+
+### 2026-11-04 — Deploy run `41854330220` attempt 2: success, verified
+
+All jobs succeeded (`plan`, `check`, `sync-provisioning`, `deploy (senaev-com)`).
+
+Smoke tests (root `AGENTS.md`):
+
+```
+https://s.senaev.com/1bxsl9                                302 https://senaev.com/cv/5min
+https://static.senaev.com/datadog-dc-by-org-id.html        200 text/html; charset=utf-8
+https://senaev.com/notes/my_blog_post_senaev_speaks_12     200 text/html; charset=utf-8
+```
+
+Datadog, `kubernetes_state.deployment.replicas_unavailable` by deployment, last 5 min: only
+`vault/external-secrets-cert-controller` = 1, and it has been 1 for the whole last 24 h, so
+it is an older, unrelated issue. `llm-server` has 0 restarts.
+
+### 2026-11-04 — Incident follow-up: key expiry check
+
+- `provisioning/common/bootstrap-node-networking.sh`, item 7: reads
+  `tailscale status --json --peers=false` and fails when `BackendState` is not `Running`, or
+  when `Self.KeyExpiry` is present (the field is omitted when key expiry is disabled,
+  `ipnstate.PeerStatus.KeyExpiry` with `omitempty`). It changes nothing: key expiry can only
+  be disabled in the admin console. It runs before the k3s binding, so a failed check leaves
+  no half-done change. `npm run check:shell` passes.
+- Root `AGENTS.md`, "Sensitive nodes": key expiry must stay disabled for every node, with a
+  link to this log.
+- Not done: no alert between bootstraps. The check runs only when a node is bootstrapped.
+
+### 2026-11-04 — Root cause confirmed; `hetzner` passes the new check
+
+`tailscale status --json --peers=false` on `hetzner` (cut):
+
+```
+  "BackendState": "Running",
+  "HaveNodeKey": true,
+  "Self": {
+    "HostName": "hetzner",
+    "TailscaleIPs": [ "100.120.76.115", "fd7a:115c:a1e0::6936:4c73" ],
+    "Created": "2026-05-08T14:39:11.143644701Z",
+    "Online": true,
+    ...
+  },
+  "Health": [],
+  "Peer": null,
+❯ tailscale status --json --peers=false | grep -E '"KeyExpiry"'
+(no match, grep exit code 1)
+```
+
+- **Root cause confirmed:** `hetzner` joined the tailnet on 2026-05-08 at 14:39 UTC. 180 days
+  later is 2026-11-04 at 14:39 UTC, the exact minute when `vm-operator` lost the API server
+  and the workers went `NotReady`. The default node key expiry is 180 days.
+- `hetzner` passes the check: `BackendState` is `Running`, and there is no `KeyExpiry`.
+  `Peer: null` confirms that `--peers=false` leaves out the peers, so a `KeyExpiry` match
+  can only come from `Self`.

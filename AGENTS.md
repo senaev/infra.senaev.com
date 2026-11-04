@@ -33,6 +33,11 @@ Be extremely careful with these nodes and their networks:
   coordination server, and the home ISP connection to it is unreliable. This caused a
   10-minute outage of senaev-media on 2026-10-05 — see
   [`projects/2026-10-04-k3s-dual-stack-ipv6`](projects/2026-10-04-k3s-dual-stack-ipv6/README.md).
+- Tailscale key expiry must stay disabled for every node (admin console, Machines). An
+  expired key logs `tailscaled` out; on a home node that means no way in. On 2026-11-04 it
+  logged hetzner out and made all workers `NotReady`. `bootstrap-node-networking.sh` fails
+  when a node key can expire. A new node needs key expiry disabled right after it joins. See
+  [`projects/2026-10-18-16-05-home-development-llm-server`](projects/2026-10-18-16-05-home-development-llm-server/README.md).
 - Prefer a change that fails safe: verify the result, keep the old state restorable, and
   give the user a rollback command before running anything risky.
 - Ask the user before any such change, even when the rest of the task is already approved.
