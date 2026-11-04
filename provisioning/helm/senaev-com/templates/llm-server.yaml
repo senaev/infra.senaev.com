@@ -78,10 +78,6 @@ spec:
             - "1"
             - --flash-attn
             - "on"
-            - --cache-type-k
-            - q8_0
-            - --cache-type-v
-            - q8_0
             # Read the model into process memory instead of mmap: it counts against the pod
             # limit, and the kernel cannot drop it as page cache and read it from disk again.
             - --load-mode

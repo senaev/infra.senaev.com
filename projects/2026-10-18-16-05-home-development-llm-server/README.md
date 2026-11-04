@@ -485,3 +485,192 @@ Some minutes later, on `hetzner`:
   call costs only CPU; without the key there is no Vault step and no risk to the
   `senaev-com-kv-secrets` sync, and `/metrics` is open for vmagent (step 8). Add a key
   if the API ever gets a public endpoint.
+
+### 2026-11-04 — Pushed to `main` (commit `e4fe4e3`)
+
+- Rebased on 42 new upstream commits. Upstream moved `tasks/` to `projects/<folder>/README.md`,
+  so this log moved to `projects/2026-10-18-16-05-home-development-llm-server/README.md`,
+  and the links in `bootstrap-node-networking.sh` and `values.yaml` were updated.
+- Upstream replaced `update-helm-charts.yml` with `.github/workflows/deploy.yml`, which runs
+  `upgrade-namespace.sh <chart> <ns> --wait --timeout 300s`. The first start of `llm-server`
+  downloads 2.5 GB over the home connection, so the `senaev-com` deploy can fail on this
+  timeout while the pod continues and becomes ready later. The user accepted this risk.
+- Pre-push `simple-checks` passed (lint, typecheck, 1661 tests, helm, shell, python).
+- Deploy run: `41824260679`.
+
+### 2026-11-04 — Deploy run `41824260679`: `senaev-com` failed on the wait timeout
+
+`check`, `plan` and `sync-provisioning` passed; no image was built (`BUILT_IMAGES: []`).
+`deploy (senaev-com, senaev-com)` failed after 5m22s:
+
+```
+11:52:45 out: ✅ [upgrade-namespace senaev-com senaev-com] Namespace=[senaev-com] exists
+11:57:56 out: 👉 [upgrade-namespace senaev-com senaev-com] Helm upgrade release=[senaev-com] namespace=[senaev-com]
+11:57:56 err: level=WARN msg="upgrade failed" name=senaev-com error="resource Deployment/senaev-com/llm-server not ready. status: InProgress, message: Available: 0/1\ncontext deadline exceeded"
+11:57:57 err: Error: UPGRADE FAILED: resource Deployment/senaev-com/llm-server not ready. status: InProgress, message: Available: 0/1
+```
+
+As expected: `llm-server` was the only resource that was not ready after 300 s, most
+likely because the init container was still downloading the model. Helm runs without
+`--atomic`, so nothing was rolled back: the objects stay and the pod continues. The
+release is marked `failed`; the next `senaev-com` deploy upgrades it normally. To confirm,
+check the pod state and the download log on the control plane.
+
+### 2026-11-04 — `llm-server` is running
+
+```
+NAME                          READY   STATUS    RESTARTS   AGE     IP            NODE
+llm-server-765bd4566c-shxf5   1/1     Running   0          6m44s   10.42.3.138   senaev-media
+
+download-model:
+100  2.32G 100  2.32G   0      0  8.87M      0   04:28   04:28          9.03M
+/models/Qwen3-4B-Instruct-2507-Q4_K_M.gguf.part: OK
+
+llm-server:
+warn: LLAMA_ARG_HOST environment variable is set, but will be overwritten by command line argument --host
+0.00.020.635 W srv  server_setup: security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)
+0.00.022.173 I srv    load_model: loading model '/models/Qwen3-4B-Instruct-2507-Q4_K_M.gguf'
+0.00.405.218 W load: control-looking token: 128247 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.04.372.812 I cmn          init: llama threadpool init, n_threads = 3
+0.05.201.747 I srv    load_model: initializing, n_slots = 1, n_ctx_slot = 16384, kv_unified = 'false'
+0.05.211.554 I srv  server_run_i: model loaded
+0.05.211.568 I srv  server_on_li: listening on http://0.0.0.0:8080
+
+kubectl top pod:
+llm-server-765bd4566c-shxf5   1m           3673Mi
+```
+
+- The download took 4m28s at ~9 MB/s, and the SHA-256 matched. With the model load, the
+  first start took a bit longer than the 300 s CI wait, which explains the failed deploy.
+- The model loads from the NVMe in 5.2 s. The pod uses 3673Mi of its 5Gi limit while idle
+  (model + KV cache allocated at start).
+- The warnings are harmless: the image sets `LLAMA_ARG_HOST`/`LLAMA_ARG_PORT`, and the flags
+  override them; no API key is a decision (NetworkPolicy), and CORS matters only for browsers,
+  which cannot reach the ClusterIP; the `</s>` token warning is a known quirk of this GGUF.
+- `ls` and `free -h` ran on `hetzner`, not on `senaev-media`: the path does not exist there,
+  and `free` shows 7.6Gi total with 2Gi swap. Side finding: `hetzner` has only 976Mi
+  available and uses 982Mi of swap. Not caused by this task, but worth a separate look.
+
+### 2026-11-04 — Node state and the first request
+
+`senaev-media`:
+
+```
+               total        used        free      shared  buff/cache   available
+Mem:            11Gi       5.1Gi       162Mi        76Mi       6.8Gi       6.6Gi
+Swap:             0B          0B          0B
+-rw-r--r-- 1 root root 2497281120 Nov  4 11:57 Qwen3-4B-Instruct-2507-Q4_K_M.gguf
+/dev/sdb1       492G  438G   29G  94% /mnt/sdb1
+```
+
+From the `n8n` pod, `POST /v1/chat/completions` with "Кратко: что такое Proxmox?":
+
+```
+Proxmox — это бесплатная и открытая платформа для виртуализации, работающая на Linux. ...
+{
+  prompt_n: 18,
+  prompt_ms: 1463.599,
+  prompt_per_second: 12.298450600198553,
+  predicted_n: 157,
+  predicted_ms: 19614.918,
+  predicted_per_second: 7.953130367407092
+}
+```
+
+- **The API works from `n8n`**, through the Service and the NetworkPolicy. The answer is
+  correct, fluent Russian.
+- **Generation: 7.95 tokens/s**, as estimated (8–10 for a 4B model). A 150-token answer
+  takes ~20 s.
+- Prompt speed 12.3 tokens/s is not representative: 18 tokens are mostly fixed overhead.
+  A long prompt is needed to measure it for summaries (step 9).
+- **Memory:** 6.6Gi still available in the VM with the model loaded. **Disk:** the model
+  file is 2.4 GiB; 29G free, 94% used.
+
+### 2026-11-04 — NetworkPolicy works; a long prompt timed out after 5 min
+
+From `nextjs-app` (not in `allowedClients`), `GET /health` with a 5 s timeout:
+
+```
+blocked
+```
+
+From `n8n`, a prompt of ~12k characters of Russian text (the same sentence 60 times,
+estimated ~3–4k tokens) with `max_tokens: 100`:
+
+```
+TypeError: fetch failed
+  [cause]: HeadersTimeoutError: Headers Timeout Error
+    code: 'UND_ERR_HEADERS_TIMEOUT'
+```
+
+- **The NetworkPolicy blocks other pods**, and allows `n8n` (previous entry).
+- The Node.js `fetch` (undici) waits at most 300 s for the response headers, and
+  `llama-server` sends them only after the prompt is processed. So prompt processing of
+  ~3–4k tokens took more than 300 s: **less than ~12 tokens/s**, the same as the 12.3 tokens/s
+  of the short prompt. On a CPU, prompt processing is normally several times faster than
+  generation (7.95 tokens/s here), so something slows it down.
+- Hypotheses, to check with the server log and the cgroup CPU statistics:
+  1. **CPU throttling by the 3-core limit (CFS quota).** llama.cpp threads wait for each
+     other at every step; when the quota throttles one thread, all of them stall. Signal:
+     `nr_throttled` / `throttled_usec` grow in `/sys/fs/cgroup/cpu.stat` of the pod during
+     a request. Fix: remove the CPU limit (keep the request) and rely on `--threads 3`.
+  2. **llama.cpp did not load the AVX2 CPU backend.** Signal: the `system_info` line at
+     start has no `AVX2 = 1`. Fix: pick the right image or backend.
+  3. **The quantised KV cache with flash attention is slow on this CPU.** Signal: the same
+     request is much faster with the default f16 cache. Fix: f16 cache with a smaller
+     context.
+- Datadog: the `datadog-prod-senaev-eu1` MCP server is not the org of this cluster. It has
+  no hosts named `senaev-media`, `hetzner` or `firstvds`, and its logs come from Datadog's
+  own production services. The cluster sends to `datadoghq.eu`
+  (`provisioning/helm/datadog/values.yaml`), so the right org must be connected to read
+  its logs.
+  *Correction, same day:* after a reconnect, `datadog-prod-senaev-eu1` is the right org
+  (hosts `hetzner-senaev-k3s`, `senaev-media-senaev-k3s`). See the next entry.
+
+### 2026-11-04 — Datadog: the CPU limit is not the cause
+
+`llm-server` logs (Datadog, `kube_deployment:llm-server`):
+
+```
+12:04:46  slot launch_slot_: id  0 | task 158 | processing task, is_child = 0
+12:08:17  slot print_timing: id  0 | task 158 | prompt processing, n_tokens =   2048, progress = 0.41, t = 212.10 s / 9.66 tokens per second
+12:09:46  srv          stop: cancel task, id_task = 158
+12:15:07  slot      release: id  0 | task 158 | stop processing: n_tokens = 4099, truncated = 0
+12:29:16  slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, f_sim_best = 0.819 (> 0.100 thold), f_keep = 1.000
+12:29:16  slot launch_slot_: id  0 | task 164 | processing task, is_child = 0
+12:34:17  srv          stop: cancel task, id_task = 164
+12:34:17  slot      release: id  0 | task 164 | stop processing: n_tokens = 5032, truncated = 0
+```
+
+Metrics, 12:04–12:15 (prompt processing of task 158):
+
+| Metric | Value |
+| --- | --- |
+| `container.cpu.usage{kube_deployment:llm-server}` | ~2.98e9 ns/s = **3.0 cores** (the full limit) |
+| `container.cpu.throttled.periods` | ~0.9 per second (~9% of the 100 ms periods) |
+| `container.cpu.throttled` | ~2–3e6 ns/s = **~0.3% of the time** |
+| `system.cpu.user{host:senaev-media-senaev-k3s}` | ~76% (3 of 4 cores) |
+
+- **The prompt had ~5,000 tokens** (2048 tokens = 41%), more than estimated. Prompt speed
+  was **9.66 tokens/s**: at that speed, 5,000 tokens take ~8.6 min.
+- The server cancels the task when the client closes the connection (`stop: cancel task`
+  at exactly 300 s), so a timed-out request does not keep the CPU busy.
+- **Hypothesis 1 (CPU throttling) is refuted.** The pod uses all 3 cores, and the quota
+  throttles it only ~0.3% of the time. The CPU is busy, but it does the work slowly.
+- Generation speed (7.95 tokens/s ≈ 18 GB/s of model reads) is close to the memory
+  bandwidth limit, so the AVX2 code path most likely works for matrix-vector work.
+  Prompt processing is matrix-matrix work and should be several times faster than
+  generation; here it is only ~1.2×.
+- **Hypothesis 3 is now the most likely:** the CPU flash-attention path with a q8_0 KV
+  cache is slow for prompt processing. Test: f16 KV cache, context 8192 (the f16 KV cache
+  for 8k tokens is ~1.1 GiB, so the pod stays within 5Gi), and compare a ~1k-token prompt.
+- The `system_info` line with the CPU features is not in Datadog. If the f16 test does not
+  help, check it with `kubectl logs` for hypothesis 2.
+- Side finding: Datadog shows all `llama.cpp` lines with `status: error`, because
+  llama.cpp writes its log to stderr. A log pipeline status remapper would fix this.
+
+### 2026-11-04 — Test of hypothesis 3: f16 KV cache, context 8192
+
+`--cache-type-k q8_0 --cache-type-v q8_0` removed (the default is f16), `contextSize`
+16384 → 8192, so the pod stays within its 5Gi. `--flash-attn on` stays. Test after the
+deploy: the same ~1k-token prompt as before; compare `prompt_per_second` with 9.66.
