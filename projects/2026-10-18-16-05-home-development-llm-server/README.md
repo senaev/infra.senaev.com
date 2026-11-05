@@ -98,8 +98,8 @@ current hardware can do (see "Deferred: new hardware" below).
    that playback does not stutter.
 10. **Optional**: test the llama.cpp Vulkan backend on the iGPU (`/dev/dri`, shared with
     Jellyfin and Unmanic). It can make prompt processing faster; generation speed stays
-    limited by memory bandwidth. *Done 2026-11-05: prompts 3.1× faster, Jellyfin not
-    affected; `gpu: true` kept. See Findings.*
+    limited by memory bandwidth. *2026-11-05: prompts 3.1× faster and Jellyfin not
+    affected, but the answers are garbage; `gpu: false` until a fix works. See Findings.*
 
 Candidate models (the budget for the pod is about 6 GB, see Findings):
 
@@ -1080,3 +1080,42 @@ public). Speed is already known, so this compares only quality.
   `5a3566e716d80f709ed7b79817eaf7733d2a1fce`, `gemma-3-4b-it-Q4_K_M.gguf`, 2 489 894 016
   bytes, sha256 `04a43a22e8d2003deda5acc262f68ec1005fa76c735a9962a8c77042a74a7d19`. Not
   gated. The vision projector (`mmproj`) is not needed.
+
+### 2026-11-05 — Qwen3 on the iGPU, `schema` mode: almost every answer is `work`
+
+```
+schema   | valid 26/26 | category 4/26 | sentiment 18/26 | urgent 11/26 | all 2/26 | avg 13853 ms
+  #1 category=work (expected finance), urgent=true (expected false) — Списание 1 290 ₽ по карте ...
+  #3 category=work (expected spam), urgent=true (expected false) — Поздравляем! Вы выиграли iPhone 17! ...
+  ... (22 of 26 answers are category=work, most with urgent=true)
+```
+
+- This is not a quality result: a 4B instruct model does not call a bank SMS or a phishing
+  message `work`. The answers hardly depend on the text, so the model output is broken.
+- Suspects, most likely first:
+  1. **The Vulkan backend computes wrong results on this iGPU.** The earlier speed tests
+     only read `timings`, never the answer text, so a wrong output was not noticed.
+  2. The JSON schema grammar in `llama-server` b12098 (then `free` mode must be correct).
+- Next: the `free` result, and a plain question to read the answer text.
+
+### 2026-11-05 — Vulkan output is garbage; back to the CPU
+
+The `free` mode of the same run:
+
+```
+free     | valid 0/26 | category 0/26 | sentiment 0/26 | urgent 0/26 | all 0/26 | avg 12453 ms
+  #1 invalid JSON: "ис ис ис ис ис ис ис ис ис ис ис ис ис ис ис ... (60 tokens)"
+  ... (the same for all 26 cases)
+```
+
+- **Confirmed: the Vulkan backend computes wrong results** on the Intel N150 iGPU (b12098,
+  `--flash-attn on`, f16 KV cache). Every answer is the same repeated token, so in
+  `schema` mode the grammar only picked the same labels. The speed numbers of step 10
+  are real, but the answers were never checked: **step 10 is not done**.
+- The time per request is generation only (60 tokens at ~5 tokens/s = ~12 s), so the
+  shared system prompt is reused from the cache.
+- **Decision: `gpu: false`**, because `n8n` and `cluster-helper` would get garbage too.
+  Then the benchmark runs on the CPU for a real Qwen3 baseline.
+- Later Vulkan fixes to try, one at a time, each checked by the answer text (not only
+  speed): `--flash-attn off`; the env variables `GGML_VK_DISABLE_INTEGER_DOT_PRODUCT=1`,
+  `GGML_VK_DISABLE_COOPMAT=1`, `GGML_VK_DISABLE_F16=1`; a newer llama.cpp build.
