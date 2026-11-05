@@ -256,8 +256,12 @@ llmServer:
   # One of the 4 cores stays free for Jellyfin and the node.
   threads: 3
   # Run the model on the iGPU (llama.cpp Vulkan backend). The iGPU is shared with Jellyfin
-  # and Unmanic. Off: on b12098 the Intel N150 iGPU gives garbage output.
-  gpu: false
+  # and Unmanic. With the defaults of b12098, the Intel N150 iGPU gives garbage output.
+  gpu: true
+  # ggml-vulkan switches, used only when gpu is true. The integer dot product shaders give
+  # garbage on Intel iGPUs: https://github.com/ggml-org/llama.cpp/issues/17056
+  vulkanEnv:
+    GGML_VK_DISABLE_INTEGER_DOT_PRODUCT: "1"
   contextSize: 8192
   model:
     file: Qwen3-4B-Instruct-2507-Q4_K_M.gguf

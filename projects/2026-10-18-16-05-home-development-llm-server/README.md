@@ -1116,6 +1116,27 @@ free     | valid 0/26 | category 0/26 | sentiment 0/26 | urgent 0/26 | all 0/26 
   shared system prompt is reused from the cache.
 - **Decision: `gpu: false`**, because `n8n` and `cluster-helper` would get garbage too.
   Then the benchmark runs on the CPU for a real Qwen3 baseline.
+- Check on the CPU (commit `fa2adc7`, deploy run `42024208840`), same build b12098, same
+  model file and flags, `temperature: 0`:
+
+  ```
+  Q: Какая столица Франции? Ответь одним предложением, затем перечисли три цвета радуги.
+  A: Столица Франции — Париж.
+     Красный, зелёный, синий.
+  ```
+
+  The answer is correct, so **the cause is the Vulkan backend**, not the model file, the
+  chat template or the server flags.
+- Known issue: llama.cpp [#17056](https://github.com/ggml-org/llama.cpp/issues/17056) and
+  [#17106](https://github.com/ggml-org/llama.cpp/issues/17106), Ollama
+  [#13086](https://github.com/ollama/ollama/issues/13086). The same garbage on Intel iGPUs
+  (Iris Xe, UHD 770 ADL-S, Arc) with Mesa ANV. Cause: the integer dot product matmul
+  shaders (`matmul_q4_k_q8_1`, the Q4_K and Q6_K MMQ path). Workarounds:
+  `GGML_VK_DISABLE_INTEGER_DOT_PRODUCT=1`, or `GGML_VK_DISABLE_F16=1`, which skips the same
+  path. Both are read by b12098 (`ggml-vulkan.cpp`).
+- New value `llmServer.vulkanEnv` (a map of env variables for the Vulkan container).
+  Attempt 1: `gpu: true`, `GGML_VK_DISABLE_INTEGER_DOT_PRODUCT=1`. Expected: correct
+  answers; prompt speed may drop below 40 tokens/s, because the fast int8 path is off.
 - Later Vulkan fixes to try, one at a time, each checked by the answer text (not only
   speed): `--flash-attn off`; the env variables `GGML_VK_DISABLE_INTEGER_DOT_PRODUCT=1`,
   `GGML_VK_DISABLE_COOPMAT=1`, `GGML_VK_DISABLE_F16=1`; a newer llama.cpp build.

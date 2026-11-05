@@ -74,6 +74,13 @@ spec:
           # The device cgroup blocks /dev/dri for an unprivileged container, as for Jellyfin.
           securityContext:
             privileged: true
+          {{- with .Values.llmServer.vulkanEnv }}
+          env:
+            {{- range $name, $value := . }}
+            - name: {{ $name }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- end }}
           {{- end }}
           args:
             - --model
