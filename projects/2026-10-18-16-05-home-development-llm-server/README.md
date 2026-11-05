@@ -1137,6 +1137,64 @@ free     | valid 0/26 | category 0/26 | sentiment 0/26 | urgent 0/26 | all 0/26 
 - New value `llmServer.vulkanEnv` (a map of env variables for the Vulkan container).
   Attempt 1: `gpu: true`, `GGML_VK_DISABLE_INTEGER_DOT_PRODUCT=1`. Expected: correct
   answers; prompt speed may drop below 40 tokens/s, because the fast int8 path is off.
-- Later Vulkan fixes to try, one at a time, each checked by the answer text (not only
-  speed): `--flash-attn off`; the env variables `GGML_VK_DISABLE_INTEGER_DOT_PRODUCT=1`,
-  `GGML_VK_DISABLE_COOPMAT=1`, `GGML_VK_DISABLE_F16=1`; a newer llama.cpp build.
+- **Attempt 1 fixes the output** (commit `4b359dc`, deploy run `42025002299`). The plain
+  question gives the same correct answer as the CPU: "Столица Франции — Париж. Красный,
+  зелёный, синий." Timings: 37 prompt tokens at 6.77 tokens/s (a very short prompt, so not
+  comparable), 27 generated tokens at 4.49 tokens/s.
+- Next: the ~1.2k-token speed test with `cache_prompt: false`, to compare with the CPU
+  (13.25) and the broken int8 path (40.49).
+- Other Vulkan switches, if needed later: `--flash-attn off`, `GGML_VK_DISABLE_COOPMAT=1`,
+  `GGML_VK_DISABLE_F16=1`, or a newer llama.cpp build. Check each one by the answer text,
+  not only by the speed.
+
+### 2026-11-05 — Qwen3 baseline (iGPU, integer dot product off)
+
+```
+schema   | valid 26/26 | category 25/26 | sentiment 23/26 | urgent 19/26 | all 16/26 | avg 9286 ms
+  #3 sentiment=negative (expected positive|neutral) — Поздравляем! Вы выиграли iPhone 17! ...
+  #5 urgent=true (expected false) — Пылесос купил месяц назад — уже сломался мотор, ...
+  #10 sentiment=positive (expected negative) — Ну спасибо, «Почта России», посылка шла ...
+  #13 urgent=true (expected false) — Начислено за октябрь: 6 842,17 ₽ за отопление и воду. ...
+  #15 urgent=true (expected false) — Анализы готовы: гемоглобин и ферритин в норме, ...
+  #16 sentiment=negative (expected positive|neutral) — Только до воскресенья! Скидки до 70% ...
+  #18 category=finance (expected spam), urgent=true (expected false) — Служба безопасности Сбербанка: ...
+  #21 urgent=true (expected false) — ФНС: срок уплаты имущественных налогов — 1 декабря. ...
+  #24 urgent=true (expected false) — Отель — кошмар: в номере плесень, ...
+  #26 urgent=false (expected true) — Купи по дороге хлеба и молока, пожалуйста.
+
+free     | valid 26/26 | category 25/26 | sentiment 23/26 | urgent 19/26 | all 16/26 | avg 8458 ms
+  (the same 10 mistakes)
+```
+
+- **Category: 25/26.** The only miss is the phishing message, which it calls `finance`.
+- **Sentiment: 23/26.** It misses the sarcasm (#10) and reads the tone of the spam as
+  negative (#3, #16).
+- **Urgent: 19/26, the weak point.** It marks a message urgent when it has a deadline
+  that is weeks away (#13, #21), or when the author is angry (#5, #24).
+- `free` gives the same answers as `schema`, and all of its JSON is valid, so Qwen3 keeps
+  the format without the grammar.
+- ~9 s for each message, mostly generation of ~25 JSON tokens at ~4.5 tokens/s.
+
+### 2026-11-05 — Speed of the fixed Vulkan path
+
+The ~1.2k-token prompt, `cache_prompt: false`, no Jellyfin playback. The answer is correct
+text now ("Proxmox VE — это платформа виртуализации с открытым ис", cut by `max_tokens`).
+
+```
+prompt_n: 1179, prompt_ms: 67467.274, prompt_per_second: 17.47513913189971
+predicted_n: 20, predicted_ms: 4413.658, predicted_per_second: 4.304819267827276
+```
+
+| Setup | Prompt, tokens/s | Generation, tokens/s | CPU |
+| --- | --- | --- | --- |
+| CPU, f16, 8k | 13.25 | 5.72 | 3 cores |
+| iGPU, integer dot product on (garbage output) | 40.49 | 5.16 | ≤0.3 cores |
+| **iGPU, integer dot product off** | **17.48** | **4.30** | ≤0.3 cores (expected, not measured) |
+
+- Prompts are 1.3× faster than on the CPU, and generation is 25% slower. For a whole request
+  they are about equal: one classification is ~10 s on both; a 1.2k-token text with a
+  150-token summary is ~100 s on the iGPU against ~115 s on the CPU.
+- **Decision: keep the iGPU.** The speed is the same, and 3 CPU cores stay free for
+  Jellyfin, qBittorrent and the rest.
+- The 40 tokens/s path stays a goal for a later llama.cpp build or Mesa update. Check the
+  answer text when you try it.

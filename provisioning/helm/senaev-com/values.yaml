@@ -263,10 +263,14 @@ llmServer:
   vulkanEnv:
     GGML_VK_DISABLE_INTEGER_DOT_PRODUCT: "1"
   contextSize: 8192
+  # Step 9 compares Gemma-3-4B-it with Qwen3. The Qwen3 file stays on the disk; to go back:
+  #   file: Qwen3-4B-Instruct-2507-Q4_K_M.gguf
+  #   url: https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/a06e946bb6b655725eafa393f4a9745d460374c9/Qwen3-4B-Instruct-2507-Q4_K_M.gguf
+  #   sha256: 3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597
   model:
-    file: Qwen3-4B-Instruct-2507-Q4_K_M.gguf
-    url: https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/a06e946bb6b655725eafa393f4a9745d460374c9/Qwen3-4B-Instruct-2507-Q4_K_M.gguf
-    sha256: 3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597
+    file: gemma-3-4b-it-Q4_K_M.gguf
+    url: https://huggingface.co/unsloth/gemma-3-4b-it-GGUF/resolve/5a3566e716d80f709ed7b79817eaf7733d2a1fce/gemma-3-4b-it-Q4_K_M.gguf
+    sha256: 04a43a22e8d2003deda5acc262f68ec1005fa76c735a9962a8c77042a74a7d19
   # Model 2.3 GiB + f16 KV cache for 8k tokens ~1.1 GiB + compute buffers.
   # request = limit, so the scheduler reserves the memory on the node.
   resources:
