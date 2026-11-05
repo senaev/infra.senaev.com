@@ -10,9 +10,9 @@ Personal infrastructure for `infra.senaev.com` — a distributed K3s cluster acr
 
 Create a project only when the user explicitly asks for one, not automatically for
 each request or command. Store it in [`projects/`](projects/) as a folder
-`YYYY-MM-DD-HH-mm-<short-slug>/` with a `README.md`, using the UTC creation date and time.
-Keep existing folder names unchanged. Follow [`projects/AGENTS.md`](projects/AGENTS.md)
-to maintain the project's working log.
+`YYYY-MM-DD-HH-mm-<short-slug>/`, using the UTC creation date and time.
+Keep existing folders unchanged. Follow [`projects/AGENTS.md`](projects/AGENTS.md)
+for the folder layout, the main document, the status and the worklog.
 
 ## Sensitive nodes: `proxmox` and `senaev-media`
 
