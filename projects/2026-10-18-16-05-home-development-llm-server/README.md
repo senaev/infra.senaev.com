@@ -98,7 +98,8 @@ current hardware can do (see "Deferred: new hardware" below).
    that playback does not stutter.
 10. **Optional**: test the llama.cpp Vulkan backend on the iGPU (`/dev/dri`, shared with
     Jellyfin and Unmanic). It can make prompt processing faster; generation speed stays
-    limited by memory bandwidth.
+    limited by memory bandwidth. *Done 2026-11-05: prompts 3.1× faster, Jellyfin not
+    affected; `gpu: true` kept. See Findings.*
 
 Candidate models (the budget for the pod is about 6 GB, see Findings):
 
@@ -938,3 +939,144 @@ iGPU hangs): `kubectl -n senaev-com scale deploy/llm-server --replicas=0`.
 
 Test: the same ~1.2k-token prompt (CPU f16: 13.25 tokens/s prompt, 5.7 tokens/s
 generation). Then the same request while Jellyfin transcodes a video.
+
+### 2026-11-04 — Vulkan pod is running (commit `47b83c4`, deploy run `41865671730`)
+
+All jobs succeeded. Datadog, `kube_deployment:llm-server`:
+
+```
+16:19:02  operator(): operator(): cleaning up before exit...        (old CPU pod)
+16:19:53  load_model: loading model '/models/Qwen3-4B-Instruct-2507-Q4_K_M.gguf'
+16:19:55  init: llama threadpool init, n_threads = 3
+16:20:04  load_model: initializing, n_slots = 1, n_ctx_slot = 8192, kv_unified = 'false'
+16:20:04  server_on_li: listening on http://0.0.0.0:8080
+```
+
+- The pod started without errors. The model load took 11.7 s (CPU image: 5.2 s), which
+  matches an upload of the weights to GPU buffers, but the log at this verbosity does not
+  name the Vulkan device or the offloaded layers. Confirm with `kubectl logs` and the
+  speed test. No request was sent to the new pod yet.
+- `kubectl logs ... | grep -iE 'vulkan|ggml_vk|offload|Intel'` returns nothing. Either the
+  Vulkan backend found no device (then the model runs on the CPU), or this log level hides
+  the device lines. Next: `llama-server --list-devices` inside the pod, which prints the
+  devices that the backends see.
+
+```
+❯ kubectl -n senaev-com exec deploy/llm-server -c llm-server -- /app/llama-server --list-devices
+Available devices:
+  Vulkan0: Intel(R) Graphics (ADL-N) (8972 MiB, 5126 MiB free)
+❯ kubectl -n senaev-com exec deploy/llm-server -c llm-server -- ls -l /dev/dri
+crw-rw---- 1 root video 226,   0 Nov  4 11:09 card0
+crw-rw---- 1 root 991   226, 128 Nov  4 11:09 renderD128
+```
+
+- **The Vulkan backend sees the iGPU** (`Intel(R) Graphics (ADL-N)`, the N150 iGPU). Its heap
+  is shared system memory (8972 MiB). ~3.8 GiB of it is in use, about the size of the model
+  plus the KV cache and buffers, so the running server very likely holds the model on the
+  GPU. The log level only hid the device lines.
+
+### 2026-11-05 — Vulkan result: prompts 3× faster, CPU almost free
+
+The same ~1.2k-token prompt from `n8n`, no Jellyfin playback:
+
+```
+{
+  prompt_n: 1179,
+  prompt_ms: 29120.758,
+  prompt_per_second: 40.48658348797102,
+  predicted_n: 20,
+  predicted_ms: 3680.304,
+  predicted_per_second: 5.162617001204248
+}
+```
+
+| Setup | Prompt, tokens/s | Generation, tokens/s | Pod CPU during the prompt | Host `cpu.user` |
+| --- | --- | --- | --- | --- |
+| CPU, q8_0 KV cache, 16k | 9.66 (~5k-token prompt) | 7.95 (short context) | 3.0 cores | ~76% |
+| CPU, f16 KV cache, 8k | 13.25 | 5.72 | 3.0 cores | ~76% |
+| **iGPU (Vulkan), f16, 8k** | **40.49** | 5.16 | ≤0.3 cores | ≤11.5% |
+
+- **Prompt processing is 3.1× faster** than on the CPU: a 1.2k-token prompt takes 29 s
+  instead of 89 s; a 5k-token text would take ~2 min instead of ~6.
+- **Generation stays the same** (5.2 vs 5.7 tokens/s), as expected: both read the model
+  from the same single-channel memory.
+- **The CPU stays almost free** (Datadog `container.cpu.usage{kube_deployment:llm-server}`
+  at most ~0.31 cores, host `system.cpu.user` at most 11.5%), so the CPU is available
+  for Jellyfin, qBittorrent and the rest. The new bottleneck is the shared iGPU.
+- Next: the same request while Jellyfin transcodes a video.
+
+### 2026-11-05 — With Jellyfin transcoding: the prompt came from the cache
+
+The same request while Jellyfin played a video with transcoding; no problems with the
+video:
+
+```
+{
+  cache_n: 1178,
+  prompt_n: 1,
+  prompt_ms: 303.756,
+  predicted_n: 20,
+  predicted_ms: 5862.423,
+  predicted_per_second: 3.2409807344164694
+}
+```
+
+- `cache_n: 1178`: `llama-server` reused the KV cache of the previous, identical prompt, so
+  only 1 prompt token was processed. **This run did not test prompt processing** next to
+  Jellyfin, only 6 s of generation.
+- Generation during transcoding: 3.24 tokens/s (5.16 without): ~37% slower, because
+  Jellyfin and the LLM share the iGPU and the memory bandwidth. The video did not stutter.
+- Repeat with `cache_prompt: false` in the request, so that the full prompt runs on the
+  iGPU for ~30 s while the video plays.
+
+### 2026-11-05 — With Jellyfin transcoding, full prompt: video OK, LLM still faster than CPU
+
+`cache_prompt: false`, while Jellyfin played a video with transcoding; no problems with
+the video:
+
+```
+{
+  cache_n: 0,
+  prompt_n: 1179,
+  prompt_ms: 51621.546,
+  prompt_per_second: 22.839300473488336,
+  predicted_n: 20,
+  predicted_ms: 5869.732,
+  predicted_per_second: 3.236945059842596
+}
+```
+
+| Setup | Prompt, tokens/s | Generation, tokens/s |
+| --- | --- | --- |
+| CPU, f16, 8k | 13.25 | 5.72 |
+| iGPU alone | 40.49 | 5.16 |
+| iGPU + Jellyfin transcoding | 22.84 | 3.24 |
+
+- **Jellyfin is not affected**: no stutter during 52 s of prompt processing on the shared
+  iGPU. The LLM yields: prompts drop to 56% and generation to 63% of the iGPU-alone speed.
+- Even with transcoding, prompts are **1.7× faster than on the CPU**, and the CPU stays free.
+- **Decision: keep `gpu: true`.**
+- Client timeouts: at 40 tokens/s, a full 8k-token context takes ~3.4 min; with transcoding
+  (~23 tokens/s) ~6 min, more than the 300 s default of Node.js `fetch`. Clients that send
+  long texts (n8n HTTP Request node) need a longer timeout, or `stream: true`.
+
+### 2026-11-05 — Step 9: Qwen3 vs Gemma-3 on Russian message classification
+
+The user chose **classification** as the task, on **public synthetic texts** (the repo is
+public). Speed is already known, so this compares only quality.
+
+- [`classification-benchmark.mjs`](classification-benchmark.mjs): 26 short Russian
+  messages (bank SMS, work chat, family, delivery, phishing, server alert, sarcasm, slang,
+  news). For each one, the model returns `{category, sentiment, urgent}` with 9 categories.
+  Where a text is ambiguous, the expected value lists every accepted answer.
+- `temperature: 0`, so the result is repeatable. Two modes:
+  - `schema`: `response_format` with a JSON schema (a grammar), as an n8n workflow would
+    use it. It tests only the choice;
+  - `free`: JSON is only asked for in the prompt. It tests whether the model follows the
+    format by itself.
+- Run order: Qwen3 (deployed now), then switch `llmServer.model` to Gemma-3-4B-it and run
+  again. Qwen3 stays on the disk, so going back is only a values change.
+- Gemma candidate: `unsloth/gemma-3-4b-it-GGUF`, revision
+  `5a3566e716d80f709ed7b79817eaf7733d2a1fce`, `gemma-3-4b-it-Q4_K_M.gguf`, 2 489 894 016
+  bytes, sha256 `04a43a22e8d2003deda5acc262f68ec1005fa76c735a9962a8c77042a74a7d19`. Not
+  gated. The vision projector (`mmproj`) is not needed.
