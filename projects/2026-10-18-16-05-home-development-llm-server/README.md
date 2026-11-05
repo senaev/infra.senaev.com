@@ -1198,3 +1198,43 @@ predicted_n: 20, predicted_ms: 4413.658, predicted_per_second: 4.304819267827276
   Jellyfin, qBittorrent and the rest.
 - The 40 tokens/s path stays a goal for a later llama.cpp build or Mesa update. Check the
   answer text when you try it.
+
+### 2026-11-05 — Gemma-3-4B-it result (commit `9fbb5d9`, deploy run `42060654895`)
+
+Download 2.31 GiB in 3 min 44 s (~10.6 MB/s), sha256 OK, model load 15.3 s. The fixed
+Vulkan path gives correct text for Gemma too ("Столицей Франции является Париж. Три цвета
+радуги: красный, оранжевый и желтый.").
+
+```
+schema   | valid 26/26 | category 24/26 | sentiment 23/26 | urgent 20/26 | all 17/26 | avg 26172 ms
+free     | valid 25/26 | category 23/26 | sentiment 23/26 | urgent 19/26 | all 17/26 | avg 25921 ms
+  #22 invalid JSON: "ОК. Пришлите мне сообщения.\n"
+```
+
+| Model | Category | Sentiment | Urgent | All 3 | Valid JSON (`free`) | Time per message |
+| --- | --- | --- | --- | --- | --- | --- |
+| Qwen3-4B-Instruct-2507 | 25/26 | 23/26 | 19/26 | 16/26 | 26/26 | ~9 s |
+| Gemma-3-4B-it | 24/26 | 23/26 | 20/26 | 17/26 | 25/26 | ~26 s |
+
+- **Quality is the same**: one more or one fewer answer in each field is noise on 26 cases.
+  Both models make the same main mistakes: phishing → `finance` (#18), sarcasm (#10), spam
+  tone (#3), and `urgent=true` for far deadlines and angry reviews (#13, #21, #24). Gemma
+  also calls the broken vacuum cleaner `home` (#5).
+- In `free` mode, Gemma once ignored the system prompt and answered the user ("ОК.
+  Пришлите мне сообщения."). Qwen3 kept the format every time.
+- **Gemma is ~3× slower here because it reprocesses the whole prompt** on every request.
+  The `llama-server` logs show `prompt eval time = ~16-20 s / ~250-270 tokens` for each
+  message: the shared system prompt is not reused. Gemma 3 uses sliding-window attention,
+  and its cache keeps only the window, so a prefix cannot be reused (it needs
+  `--swa-full`, which costs memory). Qwen3 reuses the prefix and processes only the new
+  message.
+- **Decision: keep Qwen3-4B-Instruct-2507** (the user agreed). Same quality, 3× faster
+  with a shared prompt, and more reliable JSON. The common weak point (`urgent`) is a
+  prompt problem, not a model problem.
+- `values.yaml` is back on Qwen3. The Gemma file stays in `/mnt/sdb1/volumes/llm-server/models`
+  (2.3 GiB); delete it by hand if the space is needed.
+- `classification-benchmark.mjs`: the `urgent` rule now says what is urgent (a deadline
+  today or tomorrow, a direct request to act now, an accident or a health risk) and what
+  is not (a deadline more than a day away, information only, an angry author, spam or
+  phishing that says «срочно»). The next run is a new baseline and cannot be compared with
+  the runs above.
