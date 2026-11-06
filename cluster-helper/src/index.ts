@@ -24,6 +24,8 @@ import {
     GOOGLE_OAUTH_CLIENT_ID,
     GOOGLE_OAUTH_CLIENT_SECRET,
     INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_MCP_GRAFANA,
+    LLM_ENDPOINT_API_KEY,
+    LLM_SERVER_URL,
     MCP_DOMAIN,
     MCP_GRAFANA_URL,
     TG_CLUSTER_CHAT_ID,
@@ -31,6 +33,8 @@ import {
     TG_TOKEN_SENAEV_COM_BOT,
 } from './env';
 import { handleAlisaRequest } from './handleAlisaRequest';
+import { LLM_ENDPOINT_PREFIX, llmEndpoint } from './llm/llmEndpoint';
+import { getLlmEndpointModels } from './llm/llmEndpointModels';
 import { logger } from './logger';
 import { mcpEndpoints, mcpResources } from './mcpEndpoints';
 import {
@@ -61,7 +65,7 @@ const HOST = '0.0.0.0';
 // PUBLIC_PORT is what the five ingresses target -- api.senaev.com,
 // auth.senaev.com, mcp.senaev.com, s.senaev.com and static.senaev.com. Every route on it is either
 // authenticated (Telegram secret token, Alisa secret path, OAuth bearer tokens for the
-// ChatGPT MCP endpoints), part of the OAuth flow, or safe to publish, and the catch-all
+// ChatGPT MCP endpoints, the API key of /llm), part of the OAuth flow, or safe to publish, and the catch-all
 // below answers 401 so nothing new leaks by accident.
 //
 // Serving both from one Fastify instance would publish the internal routes, so do not
@@ -378,6 +382,14 @@ async function main(): Promise<void> {
         replyToChatGptMessage: (message, reply) => replyToMcpMessage(message, reply, MCP_SERVER_OPTIONS),
         grafanaUpstreamUrl: MCP_GRAFANA_URL,
         grafanaUpstreamToken: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_MCP_GRAFANA,
+    });
+
+    // No host constraint: the same path serves https://api.senaev.com/llm and, inside the
+    // cluster, http://cluster-helper:3000/llm.
+    await publicServer.register(llmEndpoint, {
+        prefix: LLM_ENDPOINT_PREFIX,
+        apiKey: LLM_ENDPOINT_API_KEY,
+        models: getLlmEndpointModels(LLM_SERVER_URL),
     });
 
     await startTorrentOutboxProcessor();

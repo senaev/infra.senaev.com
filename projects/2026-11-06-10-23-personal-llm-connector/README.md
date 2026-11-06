@@ -58,19 +58,21 @@ list. Whether OpenCode reads the list by itself is not known yet.
 
 - Only models that run in the cluster. No OpenRouter models and no fallback chains in the
   connector; the OpenRouter fallback stays inside tricky-dad.
-- One list in the code, for example `cluster-helper/src/llm/llmEndpointModels.ts`. Each
-  entry has a public model id and the in-cluster upstream URL. The first and only entry:
-  `home/qwen3-4b` → `llm-server`.
+- One list in the code, `cluster-helper/src/llm/llmEndpointModels.ts`. Each entry has a
+  public model id and the in-cluster upstream URL. The first and only entry:
+  `home/qwen3-4b` → `llm-server`. The list is empty when `llmServer.enabled` is false.
 - `GET /models` is made from this list. To add a model, add one entry and push; the
   deploy makes it visible in the API.
 
 ### Requests
 
-- The request body goes to the upstream as it is, with only `model` replaced, so tools,
-  `response_format` and other OpenAI fields work.
+- The request body goes to the upstream unchanged (llama-server ignores `model`), so
+  tools, `response_format` and other OpenAI fields work.
 - `stream: true` is proxied as Server-Sent Events. OpenCode needs it.
-- No body size limit and no timeout for now. A long prompt to llm-server can take
-  several minutes.
+- No timeout: the upstream call uses `node:http`, because `fetch` stops waiting for the
+  response headers after 5 minutes, and llm-server sends them only after the whole answer
+  when the client does not stream. The body limit is 100 MB, which is no limit for an
+  8k-token model; the API key is checked before the body is read.
 - An unknown model gives `404`; an upstream error is passed to the client as it is.
 - Each request is logged with the model, the duration and the status; no prompt text in
   the logs.
@@ -82,7 +84,9 @@ list. Whether OpenCode reads the list by itself is not known yet.
 - The key is a new Vault entry, `LLM_ENDPOINT_API_KEY` in `senaev-com-kv`, and goes to
   cluster-helper through External Secrets as an environment variable.
 - cluster-helper compares the key in constant time and returns `401` without it, also
-  for internal requests: the same port is public.
+  for internal requests: the same port is public. `GET /models` needs the key too.
+- 📌 Before the deploy: add `LLM_ENDPOINT_API_KEY` to Vault `senaev-com-kv`. Without it
+  the ExternalSecret cannot sync and cluster-helper cannot start.
 - To change the key: put a new value in Vault, then update every client.
 
 ### Clients

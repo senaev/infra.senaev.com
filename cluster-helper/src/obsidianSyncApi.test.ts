@@ -11,6 +11,7 @@ vi.hoisted(() => {
         'TG_MEDIA_SERVER_CHAT_ID',
         'TG_CLUSTER_CHAT_ID',
         'API_DOMAIN',
+        'LLM_ENDPOINT_API_KEY',
         'ALISA_WEBHOOK_SECRET',
         'AUTH_DOMAIN',
         'MCP_DOMAIN',
