@@ -155,6 +155,8 @@ kind: Service
 metadata:
   name: llm-server
   namespace: {{ .Release.Namespace }}
+  labels:
+    app: llm-server
 spec:
   type: ClusterIP
   selector:
@@ -183,7 +185,27 @@ spec:
             matchLabels:
               app: {{ . }}
         {{- end }}
+        # vmagent: /metrics
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: telemetry
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: vmagent
       ports:
         - protocol: TCP
           port: {{ .Values.llmServer.port }}
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMServiceScrape
+metadata:
+  name: llm-server
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: llm-server
+  endpoints:
+    - port: http
+      path: /metrics
 {{- end }}

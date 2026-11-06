@@ -47,3 +47,34 @@ spec:
           labels:
             severity: critical
             route: senaev-com-alerts
+    {{- if .Values.llmServer.enabled }}
+    # The webhook in cluster-helper needs the job, instance and pod labels, so these rules use
+    # kube-state-metrics series and keep their labels.
+    - name: llm-server
+      rules:
+        - alert: llm-server-oom-killed
+          expr: |
+            (increase(kube_pod_container_status_restarts_total{namespace="{{ .Release.Namespace }}", container="llm-server"}[5m]) > 0)
+            and on(namespace, pod, container)
+            (kube_pod_container_status_last_terminated_reason{namespace="{{ .Release.Namespace }}", container="llm-server", reason="OOMKilled"} == 1)
+          labels:
+            severity: critical
+            route: senaev-com-alerts
+        - alert: llm-server-restarted
+          expr: |
+            (increase(kube_pod_container_status_restarts_total{namespace="{{ .Release.Namespace }}", container="llm-server"}[5m]) > 0)
+            unless on(namespace, pod, container)
+            (kube_pod_container_status_last_terminated_reason{namespace="{{ .Release.Namespace }}", container="llm-server", reason="OOMKilled"} == 1)
+          labels:
+            severity: warning
+            route: senaev-com-alerts
+        # Also covers a failed model download and CrashLoopBackOff. Scaling to 0 does not fire it.
+        - alert: llm-server-unavailable
+          expr: |
+            kube_deployment_status_replicas_available{namespace="{{ .Release.Namespace }}", deployment="llm-server"}
+            < kube_deployment_spec_replicas{namespace="{{ .Release.Namespace }}", deployment="llm-server"}
+          for: 10m
+          labels:
+            severity: critical
+            route: senaev-com-alerts
+    {{- end }}
