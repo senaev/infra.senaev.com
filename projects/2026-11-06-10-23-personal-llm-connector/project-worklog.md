@@ -1,5 +1,18 @@
 # Worklog
 
+## 2026-11-06 14:15 UTC — Host rename deployed (PR #123)
+
+Deploy run `42221871800` succeeded. `https://api.senaev.com` has a valid certificate and
+answers; `webhook-endpoint.senaev.com` still answers too. cluster-helper logs:
+
+```
+2026-11-06T13:02:48Z	✅ Webhook set	cluster-helper
+2026-11-06T13:02:48Z	✅ Cluster helper is ready	cluster-helper
+```
+
+The Telegram webhook is registered on the new host. Smoke tests pass. Not checked yet: a
+real Telegram message, and Alisa after its skill URL is changed in Yandex Dialogs.
+
 ## 2026-11-06 13:40 UTC — Host rename first, path `/llm`
 
 The user confirmed `api.senaev.com`, added its DNS record, and decided to rename the host
