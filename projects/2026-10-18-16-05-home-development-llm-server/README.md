@@ -1265,3 +1265,25 @@ free     | valid 26/26 | category 25/26 | sentiment 23/26 | urgent 21/26 | all 1
   n8n workflow: put the current date in the prompt, or extract the deadline as a date and
   compute `urgent` in code. Phishing (#18) is the only category mistake left.
 - Step 9 is done: **Qwen3-4B-Instruct-2507 on the iGPU** (Vulkan, integer dot product off).
+
+### 2026-11-06 — Step 8: scrape and alerts
+
+- `templates/llm-server.yaml`: a `VMServiceScrape` for `/metrics` (port `http`; the
+  `--metrics` flag is already on), the label `app: llm-server` on the Service for its
+  selector, and a NetworkPolicy rule that lets vmagent (`telemetry` namespace,
+  `app.kubernetes.io/name: vmagent`) reach the port. Without that rule the scrape is
+  blocked, because only `allowedClients` can connect.
+- `templates/alerts.yaml`, new group `llm-server` (only when `llmServer.enabled`), routed
+  to Telegram by `route: senaev-com-alerts`:
+
+  | Alert | Severity | Fires when |
+  | --- | --- | --- |
+  | `llm-server-oom-killed` | critical | the container restarted in the last 5 min, and its last termination reason is `OOMKilled` |
+  | `llm-server-restarted` | warning | the container restarted in the last 5 min for any other reason |
+  | `llm-server-unavailable` | critical | available replicas < desired replicas for 10 min: a failed download, CrashLoopBackOff, a pod that cannot be scheduled. Scaling to 0 does not fire it |
+
+- The cluster-helper webhook rejects an alert without the `job`, `instance` and `pod`
+  labels, so the rules use kube-state-metrics series, which have them, and no `absent()`.
+  The OOM and restart rules exclude each other, so one restart sends one message.
+- Test after the deploy: the target is `up` in vmalert/vmagent, and a restart (SIGTERM to
+  `llama-server`) sends `llm-server-restarted` to Telegram.
