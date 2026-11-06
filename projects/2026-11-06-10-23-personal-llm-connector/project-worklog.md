@@ -1,5 +1,21 @@
 # Worklog
 
+## 2026-11-06 14:20 UTC — `/llm` endpoint written (branch `llm-endpoint`)
+
+A Fastify plugin in cluster-helper (`cluster-helper/src/llm/llmEndpoint.ts`): API key check
+in `onRequest`, `GET /models` from `llmEndpointModels.ts`, `POST /chat/completions` passed
+unchanged to llm-server and streamed back. The upstream call uses `node:http`, not `fetch`,
+because fetch has a 5-minute headers timeout, and a long non-streaming prompt is slower.
+The NetworkPolicy lets n8n reach port 3000. The pod needs the new Vault key
+`LLM_ENDPOINT_API_KEY` before the deploy.
+
+Also: PR #124 is deployed, and the OpenCode `senaev-grafana` MCP works after
+`opencode mcp auth`:
+
+```
+{"login":"sa-1-mcp-grafana","name":"mcp-grafana","isGrafanaAdmin":false,"currentOrgId":1}
+```
+
 ## 2026-11-06 14:15 UTC — Host rename deployed (PR #123)
 
 Deploy run `42221871800` succeeded. `https://api.senaev.com` has a valid certificate and
