@@ -95,11 +95,13 @@ current hardware can do (see "Deferred: new hardware" below).
    pod restarts or is OOM-killed.
 9. **Benchmark**: for each candidate model, measure prompt processing and generation speed
    (tokens/s), and the memory use. Run a Jellyfin transcode at the same time and check
-   that playback does not stutter.
+   that playback does not stutter. *Done 2026-11-06: Qwen3 kept, Gemma-3 has the same
+   quality but is 3× slower; see Findings and `classification-benchmark.mjs`.*
 10. **Optional**: test the llama.cpp Vulkan backend on the iGPU (`/dev/dri`, shared with
     Jellyfin and Unmanic). It can make prompt processing faster; generation speed stays
-    limited by memory bandwidth. *2026-11-05: prompts 3.1× faster and Jellyfin not
-    affected, but the answers are garbage; `gpu: false` until a fix works. See Findings.*
+    limited by memory bandwidth. *Done 2026-11-05: the default int8 path gives garbage;
+    with `GGML_VK_DISABLE_INTEGER_DOT_PRODUCT=1` the answers are correct, prompts 1.3×
+    faster than the CPU, CPU free; `gpu: true` kept. See Findings.*
 
 Candidate models (the budget for the pod is about 6 GB, see Findings):
 
@@ -1231,10 +1233,35 @@ free     | valid 25/26 | category 23/26 | sentiment 23/26 | urgent 19/26 | all 1
 - **Decision: keep Qwen3-4B-Instruct-2507** (the user agreed). Same quality, 3× faster
   with a shared prompt, and more reliable JSON. The common weak point (`urgent`) is a
   prompt problem, not a model problem.
-- `values.yaml` is back on Qwen3. The Gemma file stays in `/mnt/sdb1/volumes/llm-server/models`
-  (2.3 GiB); delete it by hand if the space is needed.
+- `values.yaml` is back on Qwen3 (commit `90b1500`, deploy run `42069490875`). The user
+  deleted the Gemma file from `/mnt/sdb1/volumes/llm-server/models` by hand.
 - `classification-benchmark.mjs`: the `urgent` rule now says what is urgent (a deadline
   today or tomorrow, a direct request to act now, an accident or a health risk) and what
   is not (a deadline more than a day away, information only, an angry author, spam or
   phishing that says «срочно»). The next run is a new baseline and cannot be compared with
   the runs above.
+
+### 2026-11-06 — Qwen3 with the new `urgent` rule: final baseline, step 9 done
+
+```
+schema   | valid 26/26 | category 25/26 | sentiment 23/26 | urgent 21/26 | all 18/26 | avg 8517 ms
+  #3 sentiment=negative (expected positive|neutral) — Поздравляем! Вы выиграли iPhone 17! ...
+  #10 sentiment=positive (expected negative) — Ну спасибо, «Почта России», посылка шла ...
+  #13 urgent=true (expected false) — Начислено за октябрь: 6 842,17 ₽ ... Оплатить до 25 ноября.
+  #16 sentiment=negative (expected positive|neutral) — Только до воскресенья! Скидки до 70% ...
+  #18 category=finance (expected spam), urgent=true (expected false) — Служба безопасности Сбербанка: ...
+  #21 urgent=true (expected false) — ФНС: срок уплаты имущественных налогов — 1 декабря. ...
+  #24 urgent=true (expected false) — Отель — кошмар: в номере плесень, ...
+  #26 urgent=false (expected true) — Купи по дороге хлеба и молока, пожалуйста.
+
+free     | valid 26/26 | category 25/26 | sentiment 23/26 | urgent 21/26 | all 18/26 | avg 8506 ms
+  (the same 8 mistakes)
+```
+
+- `urgent` 19 → 21/26 and all three fields 16 → 18/26. The rule fixed #5 (angry review)
+  and #15 (test results). Still wrong: deadlines weeks away (#13, #21), one angry review
+  (#24), the phishing message (#18) and a casual request (#26).
+- A 4B model does not compare dates well, and it does not know today's date. For a real
+  n8n workflow: put the current date in the prompt, or extract the deadline as a date and
+  compute `urgent` in code. Phishing (#18) is the only category mistake left.
+- Step 9 is done: **Qwen3-4B-Instruct-2507 on the iGPU** (Vulkan, integer dot product off).
