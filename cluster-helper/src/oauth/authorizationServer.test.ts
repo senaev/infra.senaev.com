@@ -154,6 +154,36 @@ describe('authorize', () => {
         }).kind).toBe('show-login');
     });
 
+    it('accepts the OpenCode client with a loopback redirect URI on any port', () => {
+        for (const redirectUri of [
+            'http://127.0.0.1:19876/mcp/oauth/callback',
+            'http://127.0.0.1:53124/callback',
+            'http://localhost:53124/callback',
+        ]) {
+            expect(server.authorize({
+                ...authorizeParams,
+                client_id: 'https://opencode.ai/oauth/opencode/client.json',
+                redirect_uri: redirectUri,
+            }).kind).toBe('show-login');
+        }
+    });
+
+    it('rejects the OpenCode client with a redirect URI that is not its loopback callback', () => {
+        for (const redirectUri of [
+            'https://evil.example.com/callback',
+            'http://127.0.0.1.evil.example.com/callback',
+            'http://127.0.0.1:53124/other',
+            'http://localhost:53124/mcp/oauth/callback',
+            'https://127.0.0.1:53124/callback',
+        ]) {
+            expect(server.authorize({
+                ...authorizeParams,
+                client_id: 'https://opencode.ai/oauth/opencode/client.json',
+                redirect_uri: redirectUri,
+            }).kind).toBe('reject');
+        }
+    });
+
     it('rejects other clients and redirect URIs without redirecting', () => {
         expect(server.authorize({
             ...authorizeParams,
