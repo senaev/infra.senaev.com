@@ -40,6 +40,12 @@ const CHATGPT_STABLE_CLIENT_ID = 'https://chatgpt.com/oauth/client.json';
 const CHATGPT_STABLE_REDIRECT_URI = 'https://chatgpt.com/connector_platform_oauth_redirect';
 const CHATGPT_CALLBACK_CLIENT_ID = /^https:\/\/chatgpt\.com\/oauth\/([\w-]+)\/client\.json$/;
 
+// OpenCode also uses a Client ID Metadata Document. It listens on an ephemeral loopback
+// port for each login, so the port is not matched (RFC 8252, section 7.3). The paths are
+// the redirect_uris of the document.
+const OPENCODE_CLIENT_ID = 'https://opencode.ai/oauth/opencode/client.json';
+const OPENCODE_REDIRECT_URI = /^http:\/\/(?:127\.0\.0\.1(?::\d+)?\/(?:callback|mcp\/oauth\/callback)|localhost(?::\d+)?\/callback)$/;
+
 const PKCE_CODE_VERIFIER = /^[\w.~-]{43,128}$/;
 
 export type LoginIdentity =
@@ -120,6 +126,10 @@ function readString(params: Params, name: string): string | undefined {
 function isAllowedClient(clientId: string, redirectUri: string): boolean {
     if (clientId === CHATGPT_STABLE_CLIENT_ID) {
         return redirectUri === CHATGPT_STABLE_REDIRECT_URI;
+    }
+
+    if (clientId === OPENCODE_CLIENT_ID) {
+        return OPENCODE_REDIRECT_URI.test(redirectUri);
     }
 
     const callbackId = CHATGPT_CALLBACK_CLIENT_ID.exec(clientId)?.[1];
