@@ -91,7 +91,7 @@ current hardware can do (see "Deferred: new hardware" below).
    the laptop, use `kubectl port-forward` on the control plane.
 7. ~~**Secrets**: put `LLM_SERVER_API_KEY` in Vault `senaev-com-kv`.~~ Dropped 2026-11-04:
    no API key, the NetworkPolicy is the access control.
-8. **Monitoring**: vmagent scrapes `/metrics`; a vmalert rule sends a Telegram alert when the
+8. *Done 2026-11-06.* **Monitoring**: vmagent scrapes `/metrics`; a vmalert rule sends a Telegram alert when the
    pod restarts or is OOM-killed.
 9. **Benchmark**: for each candidate model, measure prompt processing and generation speed
    (tokens/s), and the memory use. Run a Jellyfin transcode at the same time and check
@@ -1287,3 +1287,8 @@ free     | valid 26/26 | category 25/26 | sentiment 23/26 | urgent 21/26 | all 1
   The OOM and restart rules exclude each other, so one restart sends one message.
 - Test after the deploy: the target is `up` in vmalert/vmagent, and a restart (SIGTERM to
   `llama-server`) sends `llm-server-restarted` to Telegram.
+- 2026-11-06, commit `097ef0c`, deploy run `42191639580`: after
+  `kubectl -n senaev-com exec deploy/llm-server -c llm-server -- kill 1`, the user got the
+  `llm-server-restarted` alert in Telegram. The OOM alert was not tested on purpose (it
+  needs a real OOM on senaev-media); its query is the restart query plus
+  `reason="OOMKilled"`. The `up{service="llm-server"}` result was not reported.
