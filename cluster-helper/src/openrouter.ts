@@ -1,4 +1,4 @@
-import { OPENROUTER_API_KEY, WEBHOOK_DOMAIN } from './env';
+import { API_DOMAIN, OPENROUTER_API_KEY } from './env';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const OPENROUTER_MODEL = 'google/gemini-3-flash-preview';
@@ -32,7 +32,7 @@ export async function callOpenRouter<T>({
             headers: {
                 Authorization: `Bearer ${OPENROUTER_API_KEY}`,
                 'Content-Type': 'application/json',
-                'HTTP-Referer': `https://${WEBHOOK_DOMAIN}`,
+                'HTTP-Referer': `https://${API_DOMAIN}`,
                 'X-Title': 'senaev.com cluster-helper',
             },
             body: JSON.stringify({

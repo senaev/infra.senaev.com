@@ -15,6 +15,7 @@ import {
 import { sendDailyOverview } from './dailyOverview/sendDailyOverview';
 import {
     ALISA_WEBHOOK_SECRET,
+    API_DOMAIN,
     AUTH_DOMAIN,
     AUTH_MY_PASSWORD,
     AUTH_MY_USERNAME,
@@ -28,7 +29,6 @@ import {
     TG_CLUSTER_CHAT_ID,
     TG_MEDIA_SERVER_CHAT_ID,
     TG_TOKEN_SENAEV_COM_BOT,
-    WEBHOOK_DOMAIN,
 } from './env';
 import { handleAlisaRequest } from './handleAlisaRequest';
 import { logger } from './logger';
@@ -58,7 +58,7 @@ const HOST = '0.0.0.0';
 // be an open relay if exposed. Its callers address it as http://cluster-helper:
 // alertmanager, qbittorrent's tg-notify.sh, and vpn-subscription.
 //
-// PUBLIC_PORT is what the five ingresses target -- webhook-endpoint.senaev.com,
+// PUBLIC_PORT is what the five ingresses target -- api.senaev.com,
 // auth.senaev.com, mcp.senaev.com, s.senaev.com and static.senaev.com. Every route on it is either
 // authenticated (Telegram secret token, Alisa secret path, OAuth bearer tokens for the
 // ChatGPT MCP endpoints), part of the OAuth flow, or safe to publish, and the catch-all
@@ -402,7 +402,7 @@ async function main(): Promise<void> {
     isReady = true;
     logger.info('✅ Cluster helper is ready');
 
-    const webhookUrl = `https://${WEBHOOK_DOMAIN}${TELEGRAM_WEBHOOK_PATH}`;
+    const webhookUrl = `https://${API_DOMAIN}${TELEGRAM_WEBHOOK_PATH}`;
 
     await callTelegramApi({
         method: 'setWebhook',

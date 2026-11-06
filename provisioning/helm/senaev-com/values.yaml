@@ -188,9 +188,9 @@ jellyfin:
 clusterHelper:
   enabled: true
   vps: hetzner
-  # Public host for the Telegram webhook, Alisa and the short-link redirector. The app
-  # registers this URL with Telegram at startup, so it must keep matching the ingress.
-  webhookDomain: webhook-endpoint.senaev.com
+  # Public API host: the Telegram webhook and Alisa. The app registers this URL with
+  # Telegram at startup, so it must keep matching the ingress.
+  apiDomain: api.senaev.com
   # OAuth authorization server for the MCP endpoints at https://<mcpDomain>/chat-gpt and
   # https://<mcpDomain>/grafana. It is the token issuer, so changing it makes every issued token invalid.
   authDomain: auth.senaev.com
@@ -322,6 +322,10 @@ ingress:
         - host: jellyfin.senaev.com
           service: jellyfin
           port: 8096
+        - host: api.senaev.com
+          service: cluster-helper
+          port: 3000
+        # Old name of api.senaev.com. Remove it when the Alisa skill URL points to api.senaev.com.
         - host: webhook-endpoint.senaev.com
           service: cluster-helper
           port: 3000
