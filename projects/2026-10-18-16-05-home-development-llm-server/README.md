@@ -1292,3 +1292,10 @@ free     | valid 26/26 | category 25/26 | sentiment 23/26 | urgent 21/26 | all 1
   `llm-server-restarted` alert in Telegram. The OOM alert was not tested on purpose (it
   needs a real OOM on senaev-media); its query is the restart query plus
   `reason="OOMKilled"`. The `up{service="llm-server"}` result was not reported.
+
+### 2026-11-06 — Follow-up projects
+
+- [`2026-11-06-10-23-tricky-dad-local-llm`](../2026-11-06-10-23-tricky-dad-local-llm/README.md):
+  tricky-dad on `llm-server`, OpenRouter as a fallback.
+- [`2026-11-06-10-23-personal-llm-connector`](../2026-11-06-10-23-personal-llm-connector/README.md):
+  one connector for all my LLMs, so a new model appears in every client.
