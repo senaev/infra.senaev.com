@@ -3,7 +3,7 @@ import { requireEnv } from 'senaev-utils/src/utils/env/requireEnv/requireEnv';
 export const TG_TOKEN_SENAEV_COM_BOT = requireEnv('TG_TOKEN_SENAEV_COM_BOT');
 export const TG_MEDIA_SERVER_CHAT_ID = requireEnv('TG_MEDIA_SERVER_CHAT_ID');
 export const TG_CLUSTER_CHAT_ID = requireEnv('TG_CLUSTER_CHAT_ID');
-export const WEBHOOK_DOMAIN = requireEnv('WEBHOOK_DOMAIN');
+export const API_DOMAIN = requireEnv('API_DOMAIN');
 export const ALISA_WEBHOOK_SECRET = requireEnv('ALISA_WEBHOOK_SECRET');
 export const AUTH_DOMAIN = requireEnv('AUTH_DOMAIN');
 export const MCP_DOMAIN = requireEnv('MCP_DOMAIN');

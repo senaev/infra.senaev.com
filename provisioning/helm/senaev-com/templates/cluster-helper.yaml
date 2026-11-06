@@ -88,8 +88,8 @@ spec:
             - containerPort: 3000
               name: webhook
           env:
-            - name: WEBHOOK_DOMAIN
-              value: {{ .Values.clusterHelper.webhookDomain }}
+            - name: API_DOMAIN
+              value: {{ .Values.clusterHelper.apiDomain }}
             - name: AUTH_DOMAIN
               value: {{ .Values.clusterHelper.authDomain }}
             - name: MCP_DOMAIN

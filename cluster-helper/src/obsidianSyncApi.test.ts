@@ -10,7 +10,7 @@ vi.hoisted(() => {
         'TG_TOKEN_SENAEV_COM_BOT',
         'TG_MEDIA_SERVER_CHAT_ID',
         'TG_CLUSTER_CHAT_ID',
-        'WEBHOOK_DOMAIN',
+        'API_DOMAIN',
         'ALISA_WEBHOOK_SECRET',
         'AUTH_DOMAIN',
         'MCP_DOMAIN',
