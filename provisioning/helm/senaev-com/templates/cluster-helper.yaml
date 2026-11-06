@@ -120,6 +120,10 @@ spec:
                   name: senaev-com-kv-secrets
                   key: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
                   optional: false
+            {{- if .Values.llmServer.enabled }}
+            - name: LLM_SERVER_URL
+              value: "http://llm-server:{{ .Values.llmServer.port }}"
+            {{- end }}
             - name: MCP_GRAFANA_URL
               value: "http://mcp-grafana:8000/mcp"
             - name: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_MCP_GRAFANA

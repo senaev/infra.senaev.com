@@ -17,7 +17,7 @@ import {
 } from './processMediaServerCallbackQuery';
 import { processMediaServerChatMessage } from './processMediaServerChatMessage';
 import { processOwnerDirectMessage } from './processOwnerDirectMessage';
-import { processTrickyDadChatMessage } from './processTrickyDadChatMessage';
+import { processTrickyDadChatMessage } from './trickyDad/processTrickyDadChatMessage';
 
 export async function processTelegramWebhookData({
     botUser,

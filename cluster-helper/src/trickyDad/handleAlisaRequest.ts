@@ -2,10 +2,11 @@ import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnk
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
 import { escapeHtml } from 'senaev-utils/src/utils/String/escapeHtml/escapeHtml';
 
-import { TG_TOKEN_SENAEV_COM_BOT, OBSIDIAN_TASKS_CHAT_ID } from './env';
-import { getRandomValueFromArray } from './getRandomValueFromArray';
-import { logger } from './logger';
-import { processAlisaCommand } from './processAlisaCommand';
+import { TG_TOKEN_SENAEV_COM_BOT, OBSIDIAN_TASKS_CHAT_ID } from '../env';
+import { getRandomValueFromArray } from '../getRandomValueFromArray';
+import { logger } from '../logger';
+
+import { runTrickyDadCommand } from './runTrickyDadCommand';
 import { sendTrickyDadErrorReport, sendTrickyDadReport } from './sendTrickyDadReport';
 import { TRICKY_DAD_FUNNY_RESPONSES } from './TRICKY_DAD_FUNNY_RESPONSES';
 
@@ -34,7 +35,7 @@ export function handleAlisaRequest(body: unknown): string {
             throw new Error('Missing command field in request');
         }
 
-        processAlisaCommand(command, 'Alisa')
+        runTrickyDadCommand(command, 'Alisa')
             .then((result) =>
                 sendTrickyDadReport({
                     command,

@@ -15,6 +15,8 @@ export const GOOGLE_OAUTH_CLIENT_SECRET = requireEnv('GOOGLE_OAUTH_CLIENT_SECRET
 /** Comma-separated Gmail addresses that may sign in with Google. */
 export const GOOGLE_OAUTH_ADMIN_EMAILS = requireEnv('GOOGLE_OAUTH_ADMIN_EMAILS');
 export const OPENROUTER_API_KEY = requireEnv('OPENROUTER_API_KEY');
+/** Optional: Helm sets it only when the home llm-server is enabled. */
+export const LLM_SERVER_URL = process.env.LLM_SERVER_URL || null;
 export const GROQ_API_KEY = requireEnv('GROQ_API_KEY');
 export const SUPABASE_PROJECT_URL = requireEnv('SUPABASE_PROJECT_URL');
 export const SUPABASE_PUBLISHABLE_KEY = requireEnv('SUPABASE_PUBLISHABLE_KEY');

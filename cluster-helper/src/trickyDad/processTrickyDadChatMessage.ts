@@ -1,12 +1,11 @@
 import { setTelegramMessageReaction } from 'senaev-utils/src/utils/TelegramApi/setTelegramMessageReaction';
 import { TelegramMessage } from 'senaev-utils/src/utils/TelegramApi/types';
 
-import {
-    OBSIDIAN_TASKS_CHAT_ID, TRICKY_DAD_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT,
-} from './env';
-import { logger } from './logger';
-import { parseTextOrAudioMessageFromTelegram } from './parseTextOrAudioMessageFromTelegram';
-import { processAlisaCommand } from './processAlisaCommand';
+import { TG_TOKEN_SENAEV_COM_BOT } from '../env';
+import { logger } from '../logger';
+import { parseTextOrAudioMessageFromTelegram } from '../parseTextOrAudioMessageFromTelegram';
+
+import { runTrickyDadCommand } from './runTrickyDadCommand';
 import { sendTrickyDadErrorReport, sendTrickyDadReport } from './sendTrickyDadReport';
 import { TrickyDadSource } from './TrickyDadSource';
 
@@ -24,10 +23,8 @@ export async function processTrickyDadChatMessage(
         return;
     }
 
-    const sourceChatId = source === 'Tricky Dad' ? TRICKY_DAD_CHAT_ID : OBSIDIAN_TASKS_CHAT_ID;
-
     await setTelegramMessageReaction({
-        chatId: sourceChatId,
+        chatId: String(message.chat.id),
         messageId: message.message_id,
         token: TG_TOKEN_SENAEV_COM_BOT,
         reactions: ['👀'],
@@ -39,7 +36,7 @@ export async function processTrickyDadChatMessage(
     }, '👉 Processing tricky dad chat message');
 
     try {
-        const result = await processAlisaCommand(command, source);
+        const result = await runTrickyDadCommand(command, source);
         const durationSeconds = ((Date.now() - startTime) / 1000).toFixed(2);
 
         logger.info({ result }, '✅ Finished processing tricky dad chat message');

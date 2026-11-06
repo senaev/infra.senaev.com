@@ -12,4 +12,5 @@ in each client.
 
 - Home model: `llm-server` (llama.cpp, OpenAI-compatible API). See
   [`2026-10-18-16-05-home-development-llm-server`](../2026-10-18-16-05-home-development-llm-server/README.md).
-- OpenRouter is already used by cluster-helper: `cluster-helper/src/openrouter.ts`.
+- cluster-helper already has a provider chain (llm-server, then OpenRouter):
+  `cluster-helper/src/llm/`.

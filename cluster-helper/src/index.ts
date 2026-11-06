@@ -30,7 +30,7 @@ import {
     TG_TOKEN_SENAEV_COM_BOT,
     WEBHOOK_DOMAIN,
 } from './env';
-import { handleAlisaRequest } from './handleAlisaRequest';
+import { handleAlisaRequest } from './trickyDad/handleAlisaRequest';
 import { logger } from './logger';
 import { mcpEndpoints, mcpResources } from './mcpEndpoints';
 import {
