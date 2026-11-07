@@ -81,7 +81,7 @@ describe('runTrickyDadCommand', () => {
         expect(addObsidianTasks).toHaveBeenCalledWith([
             {
                 title: 'Позвонить в банк 🌱 Alisa',
-                due_date: null,
+                date: null,
             },
         ]);
         expect(result.llmProvider).toBe('openrouter');

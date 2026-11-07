@@ -14,7 +14,7 @@ export function registerTaskRoutes(server: VaultServer): void {
             return reply.code(400).type('text/plain').send('Request body must be a JSON object');
         }
 
-        const { title, due_date: dueDate } = body;
+        const { title, date } = body;
 
         if (typeof title !== 'string' || title.trim() === '') {
             return reply
@@ -23,20 +23,20 @@ export function registerTaskRoutes(server: VaultServer): void {
                 .send('Field "title" is required and must be a non-empty string');
         }
 
-        if (dueDate !== undefined && dueDate !== null && typeof dueDate !== 'string') {
+        if (date !== undefined && date !== null && typeof date !== 'string') {
             return reply
                 .code(400)
                 .type('text/plain')
-                .send('Field "due_date" must be a string or null');
+                .send('Field "date" must be a string or null');
         }
 
-        const normalizedDueDate = typeof dueDate === 'string' && dueDate.trim() !== '' ? dueDate.trim() : null;
+        const normalizedDate = typeof date === 'string' && date.trim() !== '' ? date.trim() : null;
         const line = serializeTask({
             status: 'open',
             description: title.trim(),
             source: null,
             priority: 'normal',
-            dueDate: normalizedDueDate,
+            dueDate: normalizedDate,
             closedDate: null,
             recurrence: null,
         });

@@ -22,7 +22,7 @@ function planAddTasks(tasks: TaskWithDate[]): PlannedTrickyDadAction {
             await addObsidianTasks(tasks.map(({ title, date }): ObsidianTaskInput => {
                 return {
                     title: `${title} 🌱 ${source}`,
-                    due_date: date,
+                    date,
                 };
             }));
 

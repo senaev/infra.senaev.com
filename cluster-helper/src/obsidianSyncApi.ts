@@ -37,7 +37,7 @@ export function callVaultTool(vaultToolName: string, args: unknown): Promise<Too
 
 export type ObsidianTaskInput = {
     title: string;
-    due_date: string | null;
+    date: string | null;
 };
 
 export type Milestone = {
