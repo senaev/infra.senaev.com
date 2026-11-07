@@ -4,7 +4,9 @@ import {
 } from 'path';
 
 import { formatUtcDateTime } from 'senaev-utils/src/utils/Date/formatUtcDateTime/formatUtcDateTime';
-import { escapeHtml } from 'senaev-utils/src/utils/String/escapeHtml/escapeHtml';
+import {
+    telegramBold, telegramCode, telegramCodeBlock,
+} from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
 import { formatBytes } from 'senaev-utils/src/types/Bytes/formatBytes/formatBytes';
 import { createTelegramRichMessage } from 'senaev-utils/src/utils/TelegramApi/createTelegramRichMessage';
 
@@ -14,14 +16,14 @@ import { logger } from '../logger';
 import { type FileToRemove } from './getFilesToRemove';
 
 /**
- * Sends an HTML rich notification to the media-server chat.
+ * Sends a Rich Markdown notification to the media-server chat.
  * Long directory listings are split into multiple complete rich messages.
  */
 async function sendCleanupNotification(message: string): Promise<void> {
     logger.info({ characters: message.length }, '📤 Sending disk cleanup notification');
 
     await createTelegramRichMessage({
-        html: message,
+        markdown: message,
         chatId: TG_MEDIA_SERVER_CHAT_ID,
         token: TG_TOKEN_SENAEV_COM_BOT,
         media: [],
@@ -32,7 +34,7 @@ async function sendCleanupNotification(message: string): Promise<void> {
 
 function buildFileLine(file: FileToRemove): string {
     return [
-        escapeHtml(file.name),
+        file.name,
         formatBytes(file.size, { fractionDigits: 2 }),
         `(${formatUtcDateTime(new Date(file.createdAtMs))})`,
     ].join(' ');
@@ -134,7 +136,7 @@ function renderRemovedFilesTree(node: RemovedFilesTreeNode, prefix = ''): string
         const branchPrefix = isLastEntry ? '└── ' : '├── ';
         const childPrefix = `${prefix}${isLastEntry ? '    ' : '│   '}`;
 
-        lines.push(`${prefix}${branchPrefix}${escapeHtml(directoryName)}/`);
+        lines.push(`${prefix}${branchPrefix}${directoryName}/`);
         lines.push(...renderRemovedFilesTree(childNode, childPrefix));
     }
 
@@ -169,23 +171,23 @@ export async function sendRemovalNotification({
     usedBytesAfter: number;
 }): Promise<void> {
     const summaryLines = [
-        '<b>🗑️ Media Server Cleanup</b>',
+        telegramBold('🗑️ Media Server Cleanup'),
         '',
-        `<b>Removed files:</b> ${removedFiles.length}`,
-        `<b>Removed size:</b> ${formatBytes(removedBytes, { fractionDigits: 2 })}`,
-        `<b>Requested size:</b> ${formatBytes(bytesToRemove, { fractionDigits: 2 })}`,
-        `<b>Disk used before:</b> ${formatBytes(usedBytesBefore, { fractionDigits: 2 })} (${occupiedPercentBefore.toFixed(2)}%)`,
-        `<b>Disk used after:</b> ${formatBytes(usedBytesAfter, { fractionDigits: 2 })} (${occupiedPercentAfter.toFixed(2)}%)`,
-        `<b>Total disk size:</b> ${formatBytes(totalBytes, { fractionDigits: 2 })}`,
+        `${telegramBold('Removed files:')} ${removedFiles.length}`,
+        `${telegramBold('Removed size:')} ${formatBytes(removedBytes, { fractionDigits: 2 })}`,
+        `${telegramBold('Requested size:')} ${formatBytes(bytesToRemove, { fractionDigits: 2 })}`,
+        `${telegramBold('Disk used before:')} ${formatBytes(usedBytesBefore, { fractionDigits: 2 })} (${occupiedPercentBefore.toFixed(2)}%)`,
+        `${telegramBold('Disk used after:')} ${formatBytes(usedBytesAfter, { fractionDigits: 2 })} (${occupiedPercentAfter.toFixed(2)}%)`,
+        `${telegramBold('Total disk size:')} ${formatBytes(totalBytes, { fractionDigits: 2 })}`,
     ];
     const { rootPath, tree } = buildRemovedFilesTree(removedFiles);
     const treeLines = [
-        `${escapeHtml(rootPath)}/`,
+        `${rootPath}/`,
         ...renderRemovedFilesTree(tree),
     ];
     const fileLines = [
-        '<b>Removed:</b>',
-        `<pre>${treeLines.join('\n')}</pre>`,
+        telegramBold('Removed:'),
+        telegramCodeBlock(treeLines.join('\n')),
     ];
     const message = [
         ...summaryLines,
@@ -210,13 +212,13 @@ export async function sendManualCleanupRequiredNotification({
     occupiedPercent: number;
 }): Promise<void> {
     const message = [
-        '<b>⚠️ Manual cleanup required</b>',
+        telegramBold('⚠️ Manual cleanup required'),
         '',
         'Automatic cleanup could not free enough space.',
-        `<b>Needed to remove:</b> <code>${formatBytes(bytesToRemove, { fractionDigits: 2 })}</code>`,
-        `<b>Can remove automatically:</b> <code>${formatBytes(removableBytes, { fractionDigits: 2 })}</code>`,
-        `<b>Disk used now:</b> <code>${formatBytes(usedBytes, { fractionDigits: 2 })}</code> (${occupiedPercent.toFixed(2)}%)`,
-        `<b>Total disk size:</b> <code>${formatBytes(totalBytes, { fractionDigits: 2 })}</code>`,
+        `${telegramBold('Needed to remove:')} ${telegramCode(formatBytes(bytesToRemove, { fractionDigits: 2 }))}`,
+        `${telegramBold('Can remove automatically:')} ${telegramCode(formatBytes(removableBytes, { fractionDigits: 2 }))}`,
+        `${telegramBold('Disk used now:')} ${telegramCode(formatBytes(usedBytes, { fractionDigits: 2 }))} (${occupiedPercent.toFixed(2)}%)`,
+        `${telegramBold('Total disk size:')} ${telegramCode(formatBytes(totalBytes, { fractionDigits: 2 }))}`,
         '❗️❗️❗️ Please free additional space manually.',
     ].join('\n');
 

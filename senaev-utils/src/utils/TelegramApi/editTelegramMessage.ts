@@ -1,41 +1,24 @@
-import { callTelegramApi } from './callTelegramApi';
-import { InlineKeyboardMarkup, TelegramParseMode } from './types';
+import { editTelegramRichMessage } from './editTelegramRichMessage';
+import { InlineKeyboardMarkup } from './types';
 
-/**
- * Rewrites the text of an existing message.
- *
- * The parameter list deliberately mirrors `sendTelegramMessage`, so a caller can post a
- * placeholder and later edit it without reshaping its arguments.
- */
+/** Edit an existing Telegram Rich Markdown message (including progress messages). */
 export async function editTelegramMessage({
-    chatId,
-    messageId,
-    replyMarkup,
-    text,
-    token,
-    parseMode,
-    disableLinkPreview,
+    chatId, messageId, replyMarkup, text, token, disableLinkPreview,
 }: {
     chatId: number | string;
     messageId: number;
     replyMarkup?: InlineKeyboardMarkup | undefined;
     text: string;
     token: string;
-    parseMode?: TelegramParseMode;
     disableLinkPreview?: boolean;
 }): Promise<void> {
-    await callTelegramApi({
-        method: 'editMessageText',
+    await editTelegramRichMessage({
+        chatId: String(chatId),
+        messageId,
+        markdown: text,
         token,
-        body: {
-            chat_id: chatId,
-            message_id: messageId,
-            text,
-            ...(parseMode && { parse_mode: parseMode }),
-            ...(disableLinkPreview !== undefined && {
-                link_preview_options: { is_disabled: disableLinkPreview },
-            }),
-            ...(replyMarkup && { reply_markup: replyMarkup }),
-        },
+        media: [],
+        ...(replyMarkup && { replyMarkup }),
+        ...(disableLinkPreview !== undefined && { disableLinkPreview }),
     });
 }

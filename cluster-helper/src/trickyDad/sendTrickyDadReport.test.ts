@@ -178,12 +178,12 @@ describe('formatTrickyDadReport', () => {
             }),
         });
 
-        expect(text).toContain('🛒 <b>Хлеб</b>');
-        expect(text).toContain('👉 <b>Позвонить в банк</b>\n&lt;found&gt; 1');
-        expect(text).toContain('📍 Куда: 🛒 add_shopping_items, 👉 add_tasks');
-        expect(text).toContain('🤖 LLM: llm-server 90000ms ❌ → openrouter 900ms ✅');
-        expect(text).toContain('❌ llm-server: llm-server request timed out after 90000ms');
-        expect(text).toContain('🗄️ add_tasks: 300ms');
+        expect(text).toContain('🛒 **Хлеб**');
+        expect(text).toContain('👉 **Позвонить в банк**\n\\<found\\> 1');
+        expect(text).toContain('📍 Куда: 🛒 add\\_shopping\\_items, 👉 add\\_tasks');
+        expect(text).toContain('🤖 LLM: llm\\-server 90000ms ❌ → openrouter 900ms ✅');
+        expect(text).toContain('❌ llm\\-server: llm\\-server request timed out after 90000ms');
+        expect(text).toContain('🗄️ add\\_tasks: 300ms');
     });
 
     it('marks command fallback entries with ❌', () => {
@@ -197,8 +197,8 @@ describe('formatTrickyDadReport', () => {
             }),
         });
 
-        expect(text).toContain('❌ <b>Хлеб</b>');
-        expect(text).toContain('📍 Куда: ❌ command fallback → 🛒 add_shopping_items');
+        expect(text).toContain('❌ **Хлеб**');
+        expect(text).toContain('📍 Куда: ❌ command fallback → 🛒 add\\_shopping\\_items');
         expect(text).toContain('❌ LLM: Это приветствие');
     });
 });
@@ -258,10 +258,10 @@ describe('sendTrickyDadReport', () => {
 
         await sendTrickyDadReport(args);
 
-        const html = vi.mocked(createTelegramRichMessage).mock.calls[0]?.[0].html;
+        const markdown = vi.mocked(createTelegramRichMessage).mock.calls[0]?.[0].markdown;
 
-        expect(html).toBe(formatTrickyDadReport(args));
-        expect(html).toContain('🎬'.repeat(17000));
+        expect(markdown).toBe(formatTrickyDadReport(args));
+        expect(markdown).toContain('🎬'.repeat(17000));
     });
 
     it('passes complete generic errors to the shared sender', async () => {
@@ -270,8 +270,8 @@ describe('sendTrickyDadReport', () => {
             err: new Error('failure'),
         });
 
-        const html = vi.mocked(createTelegramRichMessage).mock.calls[0]?.[0].html;
+        const markdown = vi.mocked(createTelegramRichMessage).mock.calls[0]?.[0].markdown;
 
-        expect(html).toContain('A'.repeat(9000));
+        expect(markdown).toContain('A'.repeat(9000));
     });
 });

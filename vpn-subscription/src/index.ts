@@ -1,7 +1,9 @@
 import { createHash } from 'node:crypto';
 
 import Fastify, { type FastifyReply } from 'fastify';
-import { escapeHtml } from 'senaev-utils/src/utils/String/escapeHtml/escapeHtml';
+import {
+    telegramBold, telegramCode, escapeTelegramMarkdown,
+} from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
 
 import { logger } from './logger';
 import {
@@ -212,13 +214,13 @@ server.post<{ Params: { secret: string } }>('/:secret', async (request, reply) =
         ? request.headers['user-agent'].join(', ')
         : (request.headers['user-agent'] ?? 'unknown');
     const telegramMessage = [
-        '⚠️ <b>Новое сообщение об ошибке</b>',
-        `🛰️ <b>IP:</b> <code>${escapeHtml(senderIpAddress)}</code>`,
-        `🧭 <b>User-Agent:</b> <code>${escapeHtml(userAgent)}</code>`,
+        `⚠️ ${telegramBold('Новое сообщение об ошибке')}`,
+        `🛰️ ${telegramBold('IP:')} ${telegramCode(senderIpAddress)}`,
+        `🧭 ${telegramBold('User-Agent:')} ${telegramCode(userAgent)}`,
         '',
         '---',
         '',
-        escapeHtml(message),
+        escapeTelegramMarkdown(message),
     ].join('\n');
 
     const clusterHelperResponse = await fetch('http://cluster-helper/telegram/send-message', {
@@ -229,7 +231,6 @@ server.post<{ Params: { secret: string } }>('/:secret', async (request, reply) =
         body: JSON.stringify({
             chatId: String(VPN_SUBSCRIPTION_CHAT_ID),
             text: telegramMessage,
-            parseMode: 'HTML',
         }),
     });
 

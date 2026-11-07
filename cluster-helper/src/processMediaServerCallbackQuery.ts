@@ -8,13 +8,13 @@ import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnk
 import { callTelegramApi } from 'senaev-utils/src/utils/TelegramApi/callTelegramApi';
 import { createTelegramRichMessage } from 'senaev-utils/src/utils/TelegramApi/createTelegramRichMessage';
 import { TelegramMessage, TelegramUser } from 'senaev-utils/src/utils/TelegramApi/types';
-import { escapeHtml } from 'senaev-utils/src/utils/String/escapeHtml/escapeHtml';
+import { escapeTelegramMarkdown } from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
 import { type TelegramProgressMessage } from 'senaev-utils/src/utils/TelegramApi/startTelegramProgressMessage';
 
 import { TG_TOKEN_SENAEV_COM_BOT } from './env';
 import { logger } from './logger';
 import { downloadProwlarrRelease, ProwlarrRelease } from './prowlarr';
-import { startTelegramHtmlProgressMessage } from './telegramHtmlMessages';
+import { startTelegramMarkdownProgressMessage } from './telegramMarkdownMessages';
 import {
     editTelegramMessageWithTorrentSearchView,
     getTorrentSearchRelease,
@@ -85,7 +85,7 @@ function createDownloadProgressText({
     elapsedSeconds: number;
     release: ProwlarrRelease;
 }): string {
-    return escapeHtml([
+    return escapeTelegramMarkdown([
         `⬇️ ${release.title ?? 'Untitled'}`,
         '',
         `⏳ Отправляю в qBittorrent… ${elapsedSeconds} сек`,
@@ -102,7 +102,7 @@ async function sendCallbackQueryErrorMessage({
     await createTelegramRichMessage({
         token: TG_TOKEN_SENAEV_COM_BOT,
         chatId: String(message.chat.id),
-        html: escapeHtml(`❌ ${errorMessage}`),
+        markdown: escapeTelegramMarkdown(`❌ ${errorMessage}`),
         media: [],
         replyToMessageId: message.message_id,
     });
@@ -207,7 +207,7 @@ async function processMediaServerCallbackQueryInternal({
         // Handing a release to qBittorrent goes through Prowlarr and can take minutes, so
         // this reports into its own message rather than overwriting the search results --
         // the result list keeps its buttons and stays usable for the next release.
-        const progressMessage = startTelegramHtmlProgressMessage({
+        const progressMessage = startTelegramMarkdownProgressMessage({
             chatId: String(message.chat.id),
             replyToMessageId: message.message_id,
             buildText: (elapsedSeconds) => createDownloadProgressText({
@@ -226,7 +226,7 @@ async function processMediaServerCallbackQueryInternal({
 
         logger.info('👉 Editing Telegram message with started download details');
         await progressMessage.finish({
-            text: escapeHtml(createDownloadStartedText({
+            text: escapeTelegramMarkdown(createDownloadStartedText({
                 release,
                 startedAt: new Date(),
                 user: from,
@@ -274,7 +274,7 @@ export async function processMediaServerCallbackQuery({
             // The download already has a message of its own counting the seconds, so put the
             // failure there instead of leaving it stuck on the last tick beside a new message.
             if (progress.message) {
-                await progress.message.finish({ text: escapeHtml(`❌ ${errorMessage}`) });
+                await progress.message.finish({ text: escapeTelegramMarkdown(`❌ ${errorMessage}`) });
             } else {
                 await sendCallbackQueryErrorMessage({
                     errorMessage,

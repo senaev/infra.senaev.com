@@ -1,7 +1,13 @@
+import {
+    escapeTelegramMarkdown,
+    telegramBold,
+    telegramCode,
+    telegramExpandableBlockquote,
+    telegramLink,
+} from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
 import { formatUtcDateTime } from 'senaev-utils/src/utils/Date/formatUtcDateTime/formatUtcDateTime';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
-import { escapeHtml } from 'senaev-utils/src/utils/String/escapeHtml/escapeHtml';
 
 import { TG_CLUSTER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from '../env';
 import { logger } from '../logger';
@@ -131,19 +137,16 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): AlertIt
 
         const severityEmoji = ALERT_SEVERITIES[severity as keyof typeof ALERT_SEVERITIES];
 
-        const escapedAlertJson = escapeHtml(JSON.stringify(alert, null, 2));
-        const escapedAlertname = escapeHtml(alertname);
-        const escapedJob = escapeHtml(job);
-        const escapedPod = escapeHtml(pod);
         const normalizedGeneratorUrl = normalizeGrafanaUrl(generatorURL);
-        const escapedGeneratorUrl = escapeHtml(normalizedGeneratorUrl);
-
         const lines = [
-            `${statusEmoji}${severityEmoji} <b>${escapedAlertname}</b> <a href="${escapedGeneratorUrl}">🔗</a>`,
-            `<b>Time:</b> ${escapeHtml(formatAlertTimeRange(startsAt, endsAt))}`,
-            `<b>Job:</b> <code>${escapedJob}</code>`,
-            `<b>Pod:</b> <code>${escapedPod}</code>`,
-            `<blockquote expandable>${escapedAlertJson}</blockquote>`,
+            `${statusEmoji}${severityEmoji} ${telegramBold(alertname)} ${telegramLink({
+                text: '🔗',
+                url: normalizedGeneratorUrl,
+            })}`,
+            `${telegramBold('Time:')} ${escapeTelegramMarkdown(formatAlertTimeRange(startsAt, endsAt))}`,
+            `${telegramBold('Job:')} ${telegramCode(job)}`,
+            `${telegramBold('Pod:')} ${telegramCode(pod)}`,
+            telegramExpandableBlockquote(JSON.stringify(alert, null, 2).split('\n')),
         ];
 
         items.push({ message: lines.join('\n') });
@@ -162,7 +165,6 @@ export async function handleAlertmanagerWebhook(requestBody: unknown): Promise<v
                 chatId: TG_CLUSTER_CHAT_ID,
                 text: message,
                 token: TG_TOKEN_SENAEV_COM_BOT,
-                parseMode: 'HTML',
             });
             logger.info('✅ Alert sent to Telegram');
         }
@@ -171,7 +173,7 @@ export async function handleAlertmanagerWebhook(requestBody: unknown): Promise<v
 
         logger.info('👉 Sending error to Telegram');
         await sendTelegramMessage({
-            text: `❌ Error handling Alertmanager webhook:\n${stringifyUnknownError(err)}\n\nReceived body:\n${JSON.stringify(requestBody)}`,
+            text: `❌ Error handling Alertmanager webhook:\n${escapeTelegramMarkdown(stringifyUnknownError(err))}\n\nReceived body:\n${escapeTelegramMarkdown(JSON.stringify(requestBody) ?? 'undefined')}`,
             token: TG_TOKEN_SENAEV_COM_BOT,
             chatId: TG_CLUSTER_CHAT_ID,
         });

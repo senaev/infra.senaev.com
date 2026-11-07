@@ -26,7 +26,7 @@ const MESSAGE_ID = 555;
 
 /** Text of every rich-message edit the handle issued, in the order the writes completed. */
 function editedTexts(): string[] {
-    return editTelegramRichMessageMock.mock.calls.map(([parameters]) => parameters.html ?? '');
+    return editTelegramRichMessageMock.mock.calls.map(([parameters]) => parameters.markdown ?? '');
 }
 
 /**
@@ -65,7 +65,7 @@ describe('sendTelegramEditableMessage', () => {
         expect(createTelegramRichMessageMock).toHaveBeenCalledWith({
             chatId: '-100',
             token: 'token',
-            html: 'first',
+            markdown: 'first',
             media: [],
             disableLinkPreview: true,
         });
@@ -97,7 +97,7 @@ describe('sendTelegramEditableMessage', () => {
             chatId: '-100',
             messageId: MESSAGE_ID,
             token: 'token',
-            html: 'second',
+            markdown: 'second',
             media: [],
             disableLinkPreview: true,
         });

@@ -1,3 +1,4 @@
+import { escapeTelegramMarkdown } from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 import { getTelegramCommandFromMessage } from 'senaev-utils/src/utils/TelegramApi/getTelegramCommandFromMessage/getTelegramCommandFromMessage';
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
@@ -51,7 +52,7 @@ async function replyToOwner(message: TelegramMessage, text: string): Promise<voi
     await sendTelegramMessage({
         token: TG_TOKEN_SENAEV_COM_BOT,
         chatId: TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID,
-        text,
+        text: escapeTelegramMarkdown(text),
         replyToMessageId: message.message_id,
     });
 }
