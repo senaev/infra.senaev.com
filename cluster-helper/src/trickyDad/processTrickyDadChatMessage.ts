@@ -23,12 +23,20 @@ export async function processTrickyDadChatMessage(
         return;
     }
 
-    await setTelegramMessageReaction({
-        chatId: String(message.chat.id),
-        messageId: message.message_id,
-        token: TG_TOKEN_SENAEV_COM_BOT,
-        reactions: ['👀'],
-    });
+    try {
+        await setTelegramMessageReaction({
+            chatId: String(message.chat.id),
+            messageId: message.message_id,
+            token: TG_TOKEN_SENAEV_COM_BOT,
+            reactions: ['👀'],
+        });
+    } catch (err) {
+        // A failed acknowledgement should never prevent a command from running.
+        logger.warn({
+            err,
+            messageId: message.message_id,
+        }, '⚠️ Could not react to tricky dad message');
+    }
 
     logger.info({
         command,

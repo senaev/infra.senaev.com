@@ -1,4 +1,6 @@
-import { serializeTask } from 'senaev-utils/src/obsidianTasks/taskLine';
+import {
+    findTaskFieldsError, serializeTask, type TaskFields,
+} from 'senaev-utils/src/obsidianTasks/taskLine';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 
 import { logger } from '../logger';
@@ -14,7 +16,9 @@ export function registerTaskRoutes(server: VaultServer): void {
             return reply.code(400).type('text/plain').send('Request body must be a JSON object');
         }
 
-        const { title, date } = body;
+        const {
+            title, date, source,
+        } = body;
 
         if (typeof title !== 'string' || title.trim() === '') {
             return reply
@@ -30,16 +34,26 @@ export function registerTaskRoutes(server: VaultServer): void {
                 .send('Field "date" must be a string or null');
         }
 
-        const normalizedDate = typeof date === 'string' && date.trim() !== '' ? date.trim() : null;
-        const line = serializeTask({
+        if (source !== undefined && source !== null && typeof source !== 'string') {
+            return reply.code(400).type('text/plain').send('Field "source" must be a string or null');
+        }
+
+        const task: TaskFields = {
             status: 'open',
             description: title.trim(),
-            source: null,
+            source: source ?? null,
             priority: 'normal',
-            dueDate: normalizedDate,
+            dueDate: typeof date === 'string' && date.trim() !== '' ? date.trim() : null,
             closedDate: null,
             recurrence: null,
-        });
+        };
+        const validationError = findTaskFieldsError(task);
+
+        if (validationError !== null) {
+            return reply.code(400).type('text/plain').send(`Invalid task: ${validationError}`);
+        }
+
+        const line = serializeTask(task);
 
         try {
             await prependTaskLine(line);

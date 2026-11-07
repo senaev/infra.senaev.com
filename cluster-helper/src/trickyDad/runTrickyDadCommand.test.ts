@@ -80,8 +80,9 @@ describe('runTrickyDadCommand', () => {
         expect(addItemsToSupabaseGroceryList).toHaveBeenCalledWith(['Хлеб']);
         expect(addObsidianTasks).toHaveBeenCalledWith([
             {
-                title: 'Позвонить в банк 🌱 Alisa',
+                title: 'Позвонить в банк',
                 date: null,
+                source: 'Alisa',
             },
         ]);
         expect(result.llmProvider).toBe('openrouter');
