@@ -91,7 +91,7 @@ describe('planTrickyDadCommand', () => {
                     tasks: [
                         {
                             title: 'Позвонить в банк',
-                            due_date: '2026-11-07',
+                            date: '2026-11-07',
                         },
                     ],
                 },
@@ -162,7 +162,7 @@ describe('planTrickyDadCommand', () => {
             tasks: [
                 {
                     title: 'Купить хлеб',
-                    due_date: null,
+                    date: null,
                 },
             ],
         });
@@ -172,6 +172,20 @@ describe('planTrickyDadCommand', () => {
         expect(plan.actions.map(({ type }) => type)).toEqual(['add_tasks']);
         expect(getRequest().jsonSchema.name).toBe('add_tasks');
         expect(getRequest().messages[0]?.content).not.toContain('add_shopping_items');
+    });
+
+    it('rejects whitespace-only shopping items', async () => {
+        answerWith({
+            actions: [
+                {
+                    type: 'add_shopping_items',
+                    items: ['  '],
+                },
+            ],
+            error: null,
+        });
+
+        await expect(planTrickyDadCommand('купить', 'Tricky Dad')).rejects.toThrow('every item must be a non-empty string');
     });
 
     it('rejects an unknown action type, so the next provider tries', async () => {
@@ -197,12 +211,45 @@ describe('planTrickyDadCommand', () => {
             tasks: [
                 {
                     title: 'Позвонить',
-                    due_date: 'завтра',
+                    date: 'завтра',
                 },
             ],
         });
 
-        await expect(planTrickyDadCommand('позвонить завтра', 'Obsidian Tasks')).rejects.toThrow('due_date must be YYYY-MM-DD');
+        await expect(planTrickyDadCommand('позвонить завтра', 'Obsidian Tasks')).rejects.toThrow('date must be a real YYYY-MM-DD');
+    });
+
+    it.each([
+        '2026-02-30',
+        '2026-13-01',
+        '2026-11-00',
+    ])('rejects a nonexistent calendar date %s', async (date) => {
+        answerWith({
+            tasks: [
+                {
+                    title: 'Позвонить',
+                    date,
+                },
+            ],
+        });
+
+        await expect(planTrickyDadCommand('позвонить', 'Obsidian Tasks')).rejects.toThrow('date must be a real YYYY-MM-DD');
+    });
+
+    it('accepts a real leap day', async () => {
+        answerWith({
+            tasks: [
+                {
+                    title: 'Позвонить',
+                    date: '2028-02-29',
+                },
+            ],
+        });
+
+        const plan = await planTrickyDadCommand('позвонить', 'Obsidian Tasks');
+
+        expect(plan.isFallback).toBe(false);
+        expect(plan.actions).toHaveLength(1);
     });
 
     it('saves the raw command with the fallback action when the model gives a reason for no actions', async () => {

@@ -99,6 +99,43 @@ describe('requestChatCompletion', () => {
         await expect(request()).rejects.toThrow('llm-server response did not contain message content');
     });
 
+    it.each([
+        {
+            label: 'JSON body',
+            method: 'json',
+            status: 200,
+        },
+        {
+            label: 'error body',
+            method: 'text',
+            status: 503,
+        },
+    ])('keeps the provider timeout active while reading the $label', async ({ method, status }) => {
+        vi.useFakeTimers();
+        let signal: AbortSignal | undefined;
+
+        vi.stubGlobal('fetch', vi.fn((_url: string, init: RequestInit) => {
+            signal = init.signal as AbortSignal;
+            const readBody = () => new Promise<never>((_resolve, reject) => {
+                signal?.addEventListener('abort', () => reject(signal?.reason), { once: true });
+            });
+
+            return Promise.resolve({
+                ok: status === 200,
+                status,
+                json: method === 'json' ? readBody : vi.fn(),
+                text: method === 'text' ? readBody : vi.fn(),
+            } as unknown as Response);
+        }));
+
+        const assertion = expect(request()).rejects.toThrow('llm-server request timed out after 1000ms');
+
+        await vi.advanceTimersByTimeAsync(1000);
+        await assertion;
+        expect(signal?.aborted).toBe(true);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
     it('aborts the request after the provider timeout', async () => {
         vi.useFakeTimers();
         vi.stubGlobal('fetch', vi.fn((_url: string, init: RequestInit) => new Promise((_resolve, reject) => {

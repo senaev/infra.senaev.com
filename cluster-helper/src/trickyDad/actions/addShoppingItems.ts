@@ -1,23 +1,12 @@
+import { isNonEmptyArray } from 'senaev-utils/src/utils/Array/isNonEmptyArray/isNonEmptyArray';
+import { isNonEmptyString } from 'senaev-utils/src/utils/String/NonEmptyString/NonEmptyString';
+
 import { TRICKY_DAD_CHAT_ID } from '../../env';
 
 import { addItemsToSupabaseGroceryList } from './addItemsToSupabaseGroceryList';
-import type { PlannedTrickyDadAction, TrickyDadAction } from './TrickyDadAction';
+import type { TrickyDadAction } from './TrickyDadAction';
 
 const TYPE = 'add_shopping_items';
-
-function planAddShoppingItems(items: string[]): PlannedTrickyDadAction {
-    return {
-        type: TYPE,
-        emoji: '🛒',
-        reportChatId: TRICKY_DAD_CHAT_ID,
-        entries: items,
-        run: async () => {
-            await addItemsToSupabaseGroceryList(items);
-
-            return [];
-        },
-    };
-}
 
 export const ADD_SHOPPING_ITEMS_ACTION: TrickyDadAction = {
     type: TYPE,
@@ -33,19 +22,31 @@ export const ADD_SHOPPING_ITEMS_ACTION: TrickyDadAction = {
         },
     },
     parseArgs: ({ items }) => {
-        if (!Array.isArray(items) || items.length === 0) {
+        if (!isNonEmptyArray(items)) {
             throw new Error(`${TYPE}: items must be a non-empty array, got [${JSON.stringify(items)}]`);
         }
 
         const trimmed = items.map((item) => {
-            if (typeof item !== 'string' || item.trim() === '') {
+            const trimmedItem = isNonEmptyString(item) ? item.trim() : '';
+
+            if (!isNonEmptyString(trimmedItem)) {
                 throw new Error(`${TYPE}: every item must be a non-empty string, got [${JSON.stringify(item)}]`);
             }
 
-            return item.trim();
+            return trimmedItem;
         });
 
-        return planAddShoppingItems(trimmed);
+        return {
+            type: TYPE,
+            emoji: '🛒',
+            reportChatId: TRICKY_DAD_CHAT_ID,
+            entries: trimmed,
+            run: async () => {
+                await addItemsToSupabaseGroceryList(trimmed);
+
+                return [];
+            },
+        };
     },
-    fromRawCommand: (command) => planAddShoppingItems([command]),
+    fromRawCommand: (command) => ADD_SHOPPING_ITEMS_ACTION.parseArgs({ items: [command] }),
 };

@@ -50,7 +50,7 @@ const SHOPPING_AND_TASK_ANSWER = {
             tasks: [
                 {
                     title: 'Позвонить в банк',
-                    due_date: null,
+                    date: null,
                 },
             ],
         },

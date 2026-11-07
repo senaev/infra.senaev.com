@@ -1,3 +1,8 @@
+import { isIsoDay } from 'senaev-utils/src/obsidianTasks/isoDay';
+import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { isNonEmptyArray } from 'senaev-utils/src/utils/Array/isNonEmptyArray/isNonEmptyArray';
+import { isNonEmptyString } from 'senaev-utils/src/utils/String/NonEmptyString/NonEmptyString';
+
 import { OBSIDIAN_TASKS_CHAT_ID } from '../../env';
 import { addObsidianTasks, type ObsidianTaskInput } from '../../obsidianSyncApi';
 
@@ -5,19 +10,19 @@ import type { PlannedTrickyDadAction, TrickyDadAction } from './TrickyDadAction'
 
 const TYPE = 'add_tasks';
 
-const DUE_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+type TaskWithDate = { title: string; date: string | null };
 
-function planAddTasks(tasks: ObsidianTaskInput[]): PlannedTrickyDadAction {
+function planAddTasks(tasks: TaskWithDate[]): PlannedTrickyDadAction {
     return {
         type: TYPE,
         emoji: '👉',
         reportChatId: OBSIDIAN_TASKS_CHAT_ID,
         entries: tasks.map(({ title }) => title),
         run: async ({ source }) => {
-            await addObsidianTasks(tasks.map(({ title, due_date }) => {
+            await addObsidianTasks(tasks.map(({ title, date }): ObsidianTaskInput => {
                 return {
                     title: `${title} 🌱 ${source}`,
-                    due_date,
+                    due_date: date,
                 };
             }));
 
@@ -26,24 +31,26 @@ function planAddTasks(tasks: ObsidianTaskInput[]): PlannedTrickyDadAction {
     };
 }
 
-function parseTask(task: unknown): ObsidianTaskInput {
-    if (typeof task !== 'object' || task === null) {
+function parseTask(task: unknown): TaskWithDate {
+    if (!isObject(task) || Array.isArray(task)) {
         throw new Error(`${TYPE}: every task must be an object, got [${JSON.stringify(task)}]`);
     }
 
-    const { title, due_date } = task as Record<string, unknown>;
+    const { title, date } = task;
 
-    if (typeof title !== 'string' || title.trim() === '') {
+    const trimmedTitle = isNonEmptyString(title) ? title.trim() : '';
+
+    if (!isNonEmptyString(trimmedTitle)) {
         throw new Error(`${TYPE}: task title must be a non-empty string, got [${JSON.stringify(title)}]`);
     }
 
-    if (due_date !== null && (typeof due_date !== 'string' || !DUE_DATE_PATTERN.test(due_date))) {
-        throw new Error(`${TYPE}: task due_date must be YYYY-MM-DD or null, got [${JSON.stringify(due_date)}]`);
+    if (date !== null && (!isNonEmptyString(date) || !isIsoDay(date))) {
+        throw new Error(`${TYPE}: task date must be a real YYYY-MM-DD or null, got [${JSON.stringify(date)}]`);
     }
 
     return {
-        title: title.trim(),
-        due_date,
+        title: trimmedTitle,
+        date,
     };
 }
 
@@ -51,14 +58,14 @@ export const ADD_TASKS_ACTION: TrickyDadAction = {
     type: TYPE,
     whenToUse: [
         `Use ${TYPE} only for explicit assignments to Dad/Papa, Andrei or the user's husband, or explicit additions to his task list.`,
-        'Mentioning him or invoking the skill does not assign him an action. Apply this rule in every language; never infer an assignee from the action, deadline, place or speaker.',
+        'Mentioning him or invoking the skill does not assign him an action. Apply this rule in every language; never infer an assignee from the action, date, place or speaker.',
     ],
     instructions: [
         'Return each distinct action as a separate entry in tasks; never split a single action. Never return an empty tasks array.',
         'Keep task titles as close to the original wording as possible, changing only what is necessary. Never summarize or drop details; every detail must appear in a title.',
         'Preserve names, places, products, services, file names, commands, errors, IDs, numbers, amounts, times and quoted text exactly.',
         'Keep full URLs unchanged in the relevant title; a link applying to the whole message goes into every title.',
-        'Extract each deadline as due_date (YYYY-MM-DD), or null if absent. A deadline applying to the whole message applies to every task.',
+        'Extract each relevant date as date (YYYY-MM-DD), or null if absent. A date may be a start date, due date or any other kind; do not assume its meaning. A date applying to the whole message applies to every task.',
     ],
     argsProperties: {
         tasks: {
@@ -67,7 +74,7 @@ export const ADD_TASKS_ACTION: TrickyDadAction = {
                 type: 'object',
                 properties: {
                     title: { type: 'string' },
-                    due_date: {
+                    date: {
                         type: [
                             'string',
                             'null',
@@ -76,14 +83,14 @@ export const ADD_TASKS_ACTION: TrickyDadAction = {
                 },
                 required: [
                     'title',
-                    'due_date',
+                    'date',
                 ],
                 additionalProperties: false,
             },
         },
     },
     parseArgs: ({ tasks }) => {
-        if (!Array.isArray(tasks) || tasks.length === 0) {
+        if (!isNonEmptyArray(tasks)) {
             throw new Error(`${TYPE}: tasks must be a non-empty array, got [${JSON.stringify(tasks)}]`);
         }
 
@@ -92,7 +99,7 @@ export const ADD_TASKS_ACTION: TrickyDadAction = {
     fromRawCommand: (command) => planAddTasks([
         {
             title: command,
-            due_date: null,
+            date: null,
         },
     ]),
 };

@@ -30,10 +30,8 @@ export async function requestChatCompletion({
         controller.abort(new Error(`${provider.name} request timed out after ${provider.timeoutMs}ms`));
     }, provider.timeoutMs);
 
-    let response: Response;
-
     try {
-        response = await fetch(provider.url, {
+        const response = await fetch(provider.url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -54,6 +52,19 @@ export async function requestChatCompletion({
             }),
             signal: controller.signal,
         });
+
+        if (!response.ok) {
+            throw new Error(`${provider.name} request failed: ${response.status} ${await response.text()}`);
+        }
+
+        const data = (await response.json()) as ChatCompletionResponse;
+        const content = data.choices?.[0]?.message?.content;
+
+        if (typeof content !== 'string') {
+            throw new Error(`${provider.name} response did not contain message content`);
+        }
+
+        return content;
     } catch (error) {
         if (controller.signal.aborted) {
             throw controller.signal.reason;
@@ -63,17 +74,4 @@ export async function requestChatCompletion({
     } finally {
         clearTimeout(timeoutId);
     }
-
-    if (!response.ok) {
-        throw new Error(`${provider.name} request failed: ${response.status} ${await response.text()}`);
-    }
-
-    const data = (await response.json()) as ChatCompletionResponse;
-    const content = data.choices?.[0]?.message?.content;
-
-    if (typeof content !== 'string') {
-        throw new Error(`${provider.name} response did not contain message content`);
-    }
-
-    return content;
 }

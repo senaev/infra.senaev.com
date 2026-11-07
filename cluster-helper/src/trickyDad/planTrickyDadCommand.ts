@@ -1,3 +1,6 @@
+import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { isNonEmptyString } from 'senaev-utils/src/utils/String/NonEmptyString/NonEmptyString';
+
 import { callLlmJson, type LlmAttempt } from '../llm/callLlmJson';
 import { getDefaultLlmProviders } from '../llm/llmProviders';
 import type { ChatMessage, JsonSchemaFormat } from '../llm/requestChatCompletion';
@@ -41,7 +44,7 @@ function getArgsSchema(action: TrickyDadAction): Record<string, unknown> {
 }
 
 function requireObject(value: unknown, what: string): Record<string, unknown> {
-    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    if (!isObject(value) || Array.isArray(value)) {
         throw new Error(`${what} must be an object, got [${JSON.stringify(value)}]`);
     }
 
@@ -157,7 +160,7 @@ export function buildMultiActionRequest(actions: TrickyDadAction[]): LlmRequest<
 
             if (rawActions.length === 0) {
                 // An empty answer without a reason is a broken answer, so the next provider tries.
-                if (typeof error !== 'string' || error.trim() === '') {
+                if (!isNonEmptyString(error) || error.trim() === '') {
                     throw new Error('actions is empty and error has no reason');
                 }
 
@@ -170,7 +173,7 @@ export function buildMultiActionRequest(actions: TrickyDadAction[]): LlmRequest<
             return {
                 actions: rawActions.map((rawAction) => {
                     const { type, ...args } = requireObject(rawAction, 'action');
-                    const action = typeof type === 'string' ? actionsByType.get(type) : undefined;
+                    const action = isNonEmptyString(type) ? actionsByType.get(type) : undefined;
 
                     if (!action) {
                         throw new Error(`unknown action type [${JSON.stringify(type)}]`);
