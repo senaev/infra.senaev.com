@@ -41,8 +41,8 @@ export const OPENROUTER_PROVIDER: LlmProvider = {
     maxTokens: null,
 };
 
-/** The home llm-server first, when it is enabled, and OpenRouter as the fallback. */
-export function getDefaultLlmProviders(): LlmProvider[] {
+/** LLM provider fallback: try the home llm-server first (if enabled), then OpenRouter. */
+export function getLlmProviderFallbackOrder(): LlmProvider[] {
     return LLM_SERVER_URL
         ? [
             LLM_SERVER_PROVIDER,

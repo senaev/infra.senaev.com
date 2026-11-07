@@ -39,7 +39,7 @@ const TASKS = buildAction('add_tasks', '👉', 'tasks-chat', ['Позвонит�
 
 function buildResult(overrides: Partial<TrickyDadCommandResult> = {}): TrickyDadCommandResult {
     return {
-        isFallback: false,
+        isCommandFallback: false,
         error: null,
         llmProvider: 'llm-server',
         llmAttempts: [
@@ -85,13 +85,13 @@ describe('getTrickyDadReportChatIds', () => {
         ]);
     });
 
-    it('sends a fallback to the tasks chat, where failures are watched', () => {
-        expect(getTrickyDadReportChatIds(buildResult({ isFallback: true }), 'Alisa')).toEqual(['tasks-chat']);
+    it('sends a command fallback to the tasks chat, where failures are watched', () => {
+        expect(getTrickyDadReportChatIds(buildResult({ isCommandFallback: true }), 'Alisa')).toEqual(['tasks-chat']);
     });
 });
 
 describe('isTrickyDadCommandFailed', () => {
-    it('does not count a provider fallback as a failure', () => {
+    it('does not count an LLM provider fallback as a failure', () => {
         const result = buildResult({
             llmProvider: 'openrouter',
             llmAttempts: [
@@ -172,19 +172,19 @@ describe('formatTrickyDadReport', () => {
         expect(text).toContain('🗄️ add_tasks: 300ms');
     });
 
-    it('marks fallback entries with ❌', () => {
+    it('marks command fallback entries with ❌', () => {
         const text = formatTrickyDadReport({
             command: 'привет',
             source: 'Tricky Dad',
             durationSeconds: '1.00',
             result: buildResult({
-                isFallback: true,
+                isCommandFallback: true,
                 error: '❌ LLM: Это приветствие',
             }),
         });
 
         expect(text).toContain('❌ <b>Хлеб</b>');
-        expect(text).toContain('📍 Куда: ❌ fallback → 🛒 add_shopping_items');
+        expect(text).toContain('📍 Куда: ❌ command fallback → 🛒 add_shopping_items');
         expect(text).toContain('❌ LLM: Это приветствие');
     });
 });

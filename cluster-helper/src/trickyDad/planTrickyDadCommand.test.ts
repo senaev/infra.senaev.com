@@ -101,7 +101,7 @@ describe('planTrickyDadCommand', () => {
 
         const plan = await planTrickyDadCommand('купи хлеб, а папа пусть завтра позвонит в банк', 'Tricky Dad');
 
-        expect(plan.isFallback).toBe(false);
+        expect(plan.isCommandFallback).toBe(false);
         expect(plan.llmProvider).toBe('llm-server');
         expect(plan.actions.map(({
             type, entries, reportChatId,
@@ -263,11 +263,11 @@ describe('planTrickyDadCommand', () => {
 
         const plan = await planTrickyDadCommand('позвонить', 'Obsidian Tasks');
 
-        expect(plan.isFallback).toBe(false);
+        expect(plan.isCommandFallback).toBe(false);
         expect(plan.actions).toHaveLength(1);
     });
 
-    it('saves the raw command with the fallback action when the model gives a reason for no actions', async () => {
+    it('saves the raw command with the command fallback action when the model gives a reason for no actions', async () => {
         answerWith({
             actions: [],
             error: 'Это приветствие',
@@ -275,7 +275,7 @@ describe('planTrickyDadCommand', () => {
 
         const plan = await planTrickyDadCommand('привет', 'Tricky Dad');
 
-        expect(plan.isFallback).toBe(true);
+        expect(plan.isCommandFallback).toBe(true);
         expect(plan.error).toBe('❌ LLM: Это приветствие');
         expect(plan.actions.map(({ type, entries }) => [
             type,
@@ -297,7 +297,7 @@ describe('planTrickyDadCommand', () => {
 
         const plan = await planTrickyDadCommand('позвонить маме', 'Obsidian Tasks');
 
-        expect(plan.isFallback).toBe(true);
+        expect(plan.isCommandFallback).toBe(true);
         expect(plan.error).toBe('❌ No LLM provider gave a usable answer');
         expect(plan.actions.map(({ type, entries }) => [
             type,

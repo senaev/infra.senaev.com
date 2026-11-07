@@ -18,7 +18,7 @@ export type LlmJsonResult<T> =
     | { value: null; provider: null; attempts: LlmAttempt[] };
 
 /**
- * Asks each provider in order and returns the first answer that `parse` accepts. A provider
+ * LLM provider fallback: asks each provider in order and returns the first answer that `parse` accepts. A provider
  * that fails, times out, or returns JSON that `parse` rejects gives the request to the next one.
  */
 export async function callLlmJson<T>({

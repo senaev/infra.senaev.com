@@ -14,8 +14,8 @@ export type TrickyDadSourceConfig = {
      * the choice: the model only fills the arguments.
      */
     actions: TrickyDadAction[];
-    /** Gets the raw command when the model gives no usable answer, so nothing is lost. */
-    fallbackAction: TrickyDadAction;
+    /** Gets the raw command as a command fallback when neither LLM provider gives a usable answer. */
+    commandFallbackAction: TrickyDadAction;
 };
 
 export const TRICKY_DAD_SOURCES: Record<TrickyDadSource, TrickyDadSourceConfig> = {
@@ -25,13 +25,13 @@ export const TRICKY_DAD_SOURCES: Record<TrickyDadSource, TrickyDadSourceConfig> 
             ADD_TASKS_ACTION,
             ADD_SHOPPING_ITEMS_ACTION,
         ],
-        fallbackAction: ADD_SHOPPING_ITEMS_ACTION,
+        commandFallbackAction: ADD_SHOPPING_ITEMS_ACTION,
     },
     // Task-only on purpose: this chat must never write to the shopping list.
     'Obsidian Tasks': {
         chatId: OBSIDIAN_TASKS_CHAT_ID,
         actions: [ADD_TASKS_ACTION],
-        fallbackAction: ADD_TASKS_ACTION,
+        commandFallbackAction: ADD_TASKS_ACTION,
     },
     Alisa: {
         chatId: null,
@@ -39,6 +39,6 @@ export const TRICKY_DAD_SOURCES: Record<TrickyDadSource, TrickyDadSourceConfig> 
             ADD_TASKS_ACTION,
             ADD_SHOPPING_ITEMS_ACTION,
         ],
-        fallbackAction: ADD_SHOPPING_ITEMS_ACTION,
+        commandFallbackAction: ADD_SHOPPING_ITEMS_ACTION,
     },
 };

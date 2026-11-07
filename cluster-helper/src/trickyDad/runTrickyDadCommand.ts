@@ -77,11 +77,11 @@ export async function runTrickyDadCommand(
     const { actions, ...plan } = await planTrickyDadCommand(command, source);
     const llmDurationMs = Date.now() - llmStartTime;
 
-    if (plan.isFallback) {
+    if (plan.isCommandFallback) {
         logger.error({
             command,
             error: plan.error,
-        }, '❌ Cannot plan tricky dad command, falling back');
+        }, '❌ Cannot plan tricky dad command, using command fallback');
     }
 
     const actionResults = await Promise.all(actions.map((action) => runAction(action, command, source)));

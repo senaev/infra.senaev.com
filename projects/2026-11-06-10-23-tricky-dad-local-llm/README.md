@@ -1,7 +1,7 @@
 # 2026-11-06 — tricky-dad on the home llm-server
 
 Make tricky-dad easy to extend with new actions, and make it use the home `llm-server`
-first, with OpenRouter only as a fallback.
+first, with OpenRouter as the LLM provider fallback.
 
 ## Goal
 
@@ -29,21 +29,21 @@ first, with OpenRouter only as a fallback.
 
 1. **Action registry** (`cluster-helper/src/trickyDad/actions/`). An action has a type,
    "when to use" prompt lines, argument prompt lines, argument JSON schema properties,
-   `parseArgs()` (validation) and `fromRawCommand()` (fallback). Now: `add_shopping_items`,
+   `parseArgs()` (validation) and `fromRawCommand()` (command fallback). Now: `add_shopping_items`,
    `add_tasks`.
 2. **Sources** (`trickyDad/TrickyDadSource.ts`): each source has its allowed actions and its
-   fallback action. The Obsidian Tasks chat allows only `add_tasks`, so the model only fills
+   command fallback action. The Obsidian Tasks chat allows only `add_tasks`, so the model only fills
    the task arguments.
 3. **One LLM call** (`trickyDad/planTrickyDadCommand.ts`): for a source with several
    actions, the schema is `{actions: [anyOf one variant per action], error}`. One message can
    now do several actions. The date is the last line of the system prompt, so the rest stays
    the same prefix for the llm-server prompt cache.
-4. **Provider chain** (`cluster-helper/src/llm/`): `callLlmJson()` asks `llm-server` (90 s
+4. **LLM provider fallback** (`cluster-helper/src/llm/`): `callLlmJson()` asks `llm-server` (90 s
    timeout, `max_tokens` 1024), then OpenRouter. A failed request, invalid JSON, or arguments
    that `parseArgs()` rejects give the request to the next provider. `LLM_SERVER_URL` is set by
    Helm only when `llmServer.enabled`.
-5. **Fallback**: when no provider gives a usable answer, the raw command goes to the
-   fallback action of the source. Before, an OpenRouter error lost the command.
+5. **Command fallback**: when no provider gives a usable answer, the raw command goes to the
+   command fallback action of the source. Before, an OpenRouter error lost the command.
 6. **Report**: the LLM attempts (`llm-server 90000ms ❌ → openrouter 900ms ✅`), each
    action and its time, and all errors.
 7. Next actions (separate PRs): `list_shopping_items`, calendar events.

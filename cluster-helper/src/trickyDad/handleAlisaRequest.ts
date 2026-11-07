@@ -12,7 +12,7 @@ import { TRICKY_DAD_FUNNY_RESPONSES } from './TRICKY_DAD_FUNNY_RESPONSES';
 
 /**
  * Synchronous on purpose. Alisa times out quickly, so the command is dispatched as a
- * background promise and a fallback answer is returned at once, without awaiting it.
+ * background promise and an immediate acknowledgement is returned at once, without awaiting it.
  */
 export function handleAlisaRequest(body: unknown): string {
     const startTime = Date.now();
@@ -55,7 +55,7 @@ export function handleAlisaRequest(body: unknown): string {
 
         const responseText = getRandomValueFromArray(TRICKY_DAD_FUNNY_RESPONSES);
 
-        logger.info({ responseText }, '👉 Sending fallback response for Alisa command');
+        logger.info({ responseText }, '👉 Sending immediate response for Alisa command');
 
         return responseText;
     } catch (err) {

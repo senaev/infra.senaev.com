@@ -6,13 +6,13 @@ The user asked to make tricky-dad extensible (list items, calendar, other action
 the switch to llm-server, and approved this design:
 
 - one file for each action (`trickyDad/actions/`), with its prompt lines, schema
-  properties, validation and fallback;
+  properties, validation and command fallback;
 - allowed actions for each source; a source with one action skips the choice;
 - one LLM call with an `anyOf` schema, not native tool calling: one round trip, works the
   same on OpenRouter and llama.cpp (grammar), and keeps one prompt prefix in the llm-server
   cache (`--parallel 1`);
 - `callLlmJson()` tries llm-server, then OpenRouter; validation errors also fall back;
-- when no provider answers, the raw command goes to the fallback action (before, an
+- when no provider answers, the raw command goes to the command fallback action (before, an
   OpenRouter error lost it).
 
 Removed the dead `parseTaskMessageWithOpenRouter.ts`. Not tested against the real models

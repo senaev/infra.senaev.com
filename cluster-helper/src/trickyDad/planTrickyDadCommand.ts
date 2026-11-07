@@ -2,7 +2,7 @@ import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { isNonEmptyString } from 'senaev-utils/src/utils/String/NonEmptyString/NonEmptyString';
 
 import { callLlmJson, type LlmAttempt } from '../llm/callLlmJson';
-import { getDefaultLlmProviders } from '../llm/llmProviders';
+import { getLlmProviderFallbackOrder } from '../llm/llmProviders';
 import type { ChatMessage, JsonSchemaFormat } from '../llm/requestChatCompletion';
 
 import type { PlannedTrickyDadAction, TrickyDadAction } from './actions/TrickyDadAction';
@@ -12,8 +12,8 @@ export const ALISA_SKILL_NAME = 'Умный Папа';
 
 export type TrickyDadCommandPlan = {
     actions: PlannedTrickyDadAction[];
-    /** True when the raw command went to the fallback action of the source. */
-    isFallback: boolean;
+    /** True when the raw command went to the command fallback action of the source. */
+    isCommandFallback: boolean;
     /** Why the answer of the model was not used, or null. */
     error: string | null;
     /** The provider whose answer was used, or null when no provider gave a usable answer. */
@@ -197,14 +197,14 @@ export async function planTrickyDadCommand(
     command: string,
     source: TrickyDadSource
 ): Promise<TrickyDadCommandPlan> {
-    const { actions, fallbackAction } = TRICKY_DAD_SOURCES[source];
+    const { actions, commandFallbackAction } = TRICKY_DAD_SOURCES[source];
     const [onlyAction] = actions;
     const request = actions.length === 1 && onlyAction
         ? buildSingleActionRequest(onlyAction)
         : buildMultiActionRequest(actions);
 
     const result = await callLlmJson({
-        providers: getDefaultLlmProviders(),
+        providers: getLlmProviderFallbackOrder(),
         messages: [
             ...request.messages,
             {
@@ -224,15 +224,15 @@ export async function planTrickyDadCommand(
     if (result.value && result.value.actions.length > 0) {
         return {
             actions: result.value.actions,
-            isFallback: false,
+            isCommandFallback: false,
             error: null,
             ...llmInfo,
         };
     }
 
     return {
-        actions: [fallbackAction.fromRawCommand(command)],
-        isFallback: true,
+        actions: [commandFallbackAction.fromRawCommand(command)],
+        isCommandFallback: true,
         error: result.value
             ? `❌ LLM: ${result.value.error}`
             : '❌ No LLM provider gave a usable answer',

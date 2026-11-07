@@ -18,11 +18,11 @@ export function isTrickyDadCommandFailed(result: TrickyDadCommandResult): boolea
 
 /**
  * The chats that get the report: the report chat of each action, and the source chat, so
- * the sender always sees the result. A fallback goes to the tasks chat, where failures are
+ * the sender always sees the result. A command fallback goes to the tasks chat, where failures are
  * watched.
  */
 export function getTrickyDadReportChatIds(result: TrickyDadCommandResult, source: TrickyDadSource): string[] {
-    const reportChatIds = result.isFallback
+    const reportChatIds = result.isCommandFallback
         ? [OBSIDIAN_TASKS_CHAT_ID]
         : result.actionResults.map(({ action }) => action.reportChatId);
     const { chatId: sourceChatId } = TRICKY_DAD_SOURCES[source];
@@ -47,8 +47,8 @@ export function formatTrickyDadReport({
     result: TrickyDadCommandResult;
 }): string {
     const parts = result.actionResults.map(({ action, output }) => {
-        // A fallback is an unclassified command saved as-is: ❌ shows that classification failed.
-        const entryEmoji = result.isFallback ? '❌' : action.emoji;
+        // A command fallback is an unclassified command saved as-is: ❌ shows that classification failed.
+        const entryEmoji = result.isCommandFallback ? '❌' : action.emoji;
 
         return [
             ...action.entries.map((entry) => `${entryEmoji} ${telegramBold(entry)}`),
@@ -70,7 +70,7 @@ export function formatTrickyDadReport({
     const detailLines = [
         `🗣️ Команда: ${command}`,
         `📡 Откуда: ${source}`,
-        `📍 Куда: ${result.isFallback ? '❌ fallback → ' : ''}${destination}`,
+        `📍 Куда: ${result.isCommandFallback ? '❌ command fallback → ' : ''}${destination}`,
         `⏱️ Время: ${durationSeconds}s`,
         `🤖 LLM: ${llmAttempts || 'none'}`,
         ...result.actionResults.map(({ action, durationMs }) => `🗄️ ${action.type}: ${durationMs}ms`),
