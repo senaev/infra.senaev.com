@@ -64,7 +64,7 @@ function buildResult(overrides: Partial<TrickyDadCommandResult> = {}): TrickyDad
 
 describe('getTrickyDadReportChatIds', () => {
     it('sends a shopping result from the Tricky Dad chat only there', () => {
-        expect(getTrickyDadReportChatIds(buildResult(), 'Tricky Dad')).toEqual(['tricky-dad-chat']);
+        expect(getTrickyDadReportChatIds(buildResult(), 'Tricky Dad Telegram chat')).toEqual(['tricky-dad-chat']);
     });
 
     it('sends a task from the Tricky Dad chat to the tasks chat and back to the source chat', () => {
@@ -79,7 +79,7 @@ describe('getTrickyDadReportChatIds', () => {
             ],
         });
 
-        expect(getTrickyDadReportChatIds(result, 'Tricky Dad')).toEqual([
+        expect(getTrickyDadReportChatIds(result, 'Tricky Dad Telegram chat')).toEqual([
             'tasks-chat',
             'tricky-dad-chat',
         ]);
@@ -131,7 +131,7 @@ describe('formatTrickyDadReport', () => {
     it('lists the entries of every action and the LLM attempts', () => {
         const text = formatTrickyDadReport({
             command: 'купи хлеб, папа позвонит в банк',
-            source: 'Tricky Dad',
+            source: 'Tricky Dad Telegram chat',
             durationSeconds: '9.10',
             result: buildResult({
                 llmProvider: 'openrouter',
@@ -175,7 +175,7 @@ describe('formatTrickyDadReport', () => {
     it('marks command fallback entries with ❌', () => {
         const text = formatTrickyDadReport({
             command: 'привет',
-            source: 'Tricky Dad',
+            source: 'Tricky Dad Telegram chat',
             durationSeconds: '1.00',
             result: buildResult({
                 isCommandFallback: true,

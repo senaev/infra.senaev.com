@@ -98,7 +98,7 @@ describe('runTrickyDadCommand', () => {
             finishShopping = resolve;
         }));
 
-        const resultPromise = runTrickyDadCommand('купи хлеб, папа позвонит в банк', 'Tricky Dad');
+        const resultPromise = runTrickyDadCommand('купи хлеб, папа позвонит в банк', 'Tricky Dad Telegram chat');
 
         await vi.waitFor(() => {
             expect(addItemsToSupabaseGroceryList).toHaveBeenCalledTimes(1);
@@ -120,7 +120,7 @@ describe('runTrickyDadCommand', () => {
     it('reports a failed action and still runs the next one', async () => {
         vi.mocked(addItemsToSupabaseGroceryList).mockRejectedValue(new Error('Supabase is down'));
 
-        const result = await runTrickyDadCommand('купи хлеб, папа позвонит в банк', 'Tricky Dad');
+        const result = await runTrickyDadCommand('купи хлеб, папа позвонит в банк', 'Tricky Dad Telegram chat');
 
         expect(result.actionResults[0]?.error).toContain('❌ Failed to run add_shopping_items: ');
         expect(result.actionResults[0]?.error).toContain('Supabase is down');

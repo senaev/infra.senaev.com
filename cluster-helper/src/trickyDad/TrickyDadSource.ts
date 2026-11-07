@@ -4,7 +4,7 @@ import { ADD_SHOPPING_ITEMS_ACTION } from './actions/addShoppingItems';
 import { ADD_TASKS_ACTION } from './actions/addTasks';
 import type { TrickyDadAction } from './actions/TrickyDadAction';
 
-export type TrickyDadSource = 'Tricky Dad' | 'Obsidian Tasks' | 'Alisa';
+export type TrickyDadSource = 'Tricky Dad Telegram chat' | 'Obsidian Tasks Telegram chat' | 'Alisa';
 
 export type TrickyDadSourceConfig = {
     /** The Telegram chat of the source, or null for a source without one (Alisa). */
@@ -19,7 +19,7 @@ export type TrickyDadSourceConfig = {
 };
 
 export const TRICKY_DAD_SOURCES: Record<TrickyDadSource, TrickyDadSourceConfig> = {
-    'Tricky Dad': {
+    'Tricky Dad Telegram chat': {
         chatId: TRICKY_DAD_CHAT_ID,
         actions: [
             ADD_TASKS_ACTION,
@@ -28,7 +28,7 @@ export const TRICKY_DAD_SOURCES: Record<TrickyDadSource, TrickyDadSourceConfig> 
         commandFallbackAction: ADD_SHOPPING_ITEMS_ACTION,
     },
     // Task-only on purpose: this chat must never write to the shopping list.
-    'Obsidian Tasks': {
+    'Obsidian Tasks Telegram chat': {
         chatId: OBSIDIAN_TASKS_CHAT_ID,
         actions: [ADD_TASKS_ACTION],
         commandFallbackAction: ADD_TASKS_ACTION,

@@ -71,7 +71,7 @@ describe('planTrickyDadCommand', () => {
             error: null,
         });
 
-        await planTrickyDadCommand('купи хлеб', 'Tricky Dad');
+        await planTrickyDadCommand('купи хлеб', 'Tricky Dad Telegram chat');
 
         expect(getRequest().providers.map(({ name }) => name)).toEqual([
             'llm-server',
@@ -99,7 +99,7 @@ describe('planTrickyDadCommand', () => {
             error: null,
         });
 
-        const plan = await planTrickyDadCommand('купи хлеб, а папа пусть завтра позвонит в банк', 'Tricky Dad');
+        const plan = await planTrickyDadCommand('купи хлеб, а папа пусть завтра позвонит в банк', 'Tricky Dad Telegram chat');
 
         expect(plan.isCommandFallback).toBe(false);
         expect(plan.llmProvider).toBe('llm-server');
@@ -143,7 +143,7 @@ describe('planTrickyDadCommand', () => {
             error: null,
         });
 
-        await planTrickyDadCommand('купи хлеб', 'Tricky Dad');
+        await planTrickyDadCommand('купи хлеб', 'Tricky Dad Telegram chat');
 
         const [
             system,
@@ -167,7 +167,7 @@ describe('planTrickyDadCommand', () => {
             ],
         });
 
-        const plan = await planTrickyDadCommand('купить хлеб', 'Obsidian Tasks');
+        const plan = await planTrickyDadCommand('купить хлеб', 'Obsidian Tasks Telegram chat');
 
         expect(plan.actions.map(({ type }) => type)).toEqual(['add_tasks']);
         expect(getRequest().jsonSchema.name).toBe('add_tasks');
@@ -185,7 +185,7 @@ describe('planTrickyDadCommand', () => {
             error: null,
         });
 
-        await expect(planTrickyDadCommand('купить', 'Tricky Dad')).rejects.toThrow('every item must be a non-empty string');
+        await expect(planTrickyDadCommand('купить', 'Tricky Dad Telegram chat')).rejects.toThrow('every item must be a non-empty string');
     });
 
     it('rejects a partial response with actions and an error so the next provider retries', async () => {
@@ -199,7 +199,7 @@ describe('planTrickyDadCommand', () => {
             error: 'Could not create the requested task',
         });
 
-        await expect(planTrickyDadCommand('купи хлеб и создай задачу', 'Tricky Dad'))
+        await expect(planTrickyDadCommand('купи хлеб и создай задачу', 'Tricky Dad Telegram chat'))
             .rejects.toThrow('actions is non-empty but error is not null: "Could not create the requested task"');
     });
 
@@ -209,7 +209,7 @@ describe('planTrickyDadCommand', () => {
             error: null,
         });
 
-        await expect(planTrickyDadCommand('удали всё', 'Tricky Dad')).rejects.toThrow('unknown action type');
+        await expect(planTrickyDadCommand('удали всё', 'Tricky Dad Telegram chat')).rejects.toThrow('unknown action type');
     });
 
     it('rejects an empty answer without a reason, so the next provider tries', async () => {
@@ -218,7 +218,7 @@ describe('planTrickyDadCommand', () => {
             error: null,
         });
 
-        await expect(planTrickyDadCommand('привет', 'Tricky Dad')).rejects.toThrow('actions is empty');
+        await expect(planTrickyDadCommand('привет', 'Tricky Dad Telegram chat')).rejects.toThrow('actions is empty');
     });
 
     it('rejects invalid arguments, so the next provider tries', async () => {
@@ -231,7 +231,7 @@ describe('planTrickyDadCommand', () => {
             ],
         });
 
-        await expect(planTrickyDadCommand('позвонить завтра', 'Obsidian Tasks')).rejects.toThrow('date must be a real YYYY-MM-DD');
+        await expect(planTrickyDadCommand('позвонить завтра', 'Obsidian Tasks Telegram chat')).rejects.toThrow('date must be a real YYYY-MM-DD');
     });
 
     it.each([
@@ -248,7 +248,7 @@ describe('planTrickyDadCommand', () => {
             ],
         });
 
-        await expect(planTrickyDadCommand('позвонить', 'Obsidian Tasks')).rejects.toThrow('date must be a real YYYY-MM-DD');
+        await expect(planTrickyDadCommand('позвонить', 'Obsidian Tasks Telegram chat')).rejects.toThrow('date must be a real YYYY-MM-DD');
     });
 
     it('accepts a real leap day', async () => {
@@ -261,7 +261,7 @@ describe('planTrickyDadCommand', () => {
             ],
         });
 
-        const plan = await planTrickyDadCommand('позвонить', 'Obsidian Tasks');
+        const plan = await planTrickyDadCommand('позвонить', 'Obsidian Tasks Telegram chat');
 
         expect(plan.isCommandFallback).toBe(false);
         expect(plan.actions).toHaveLength(1);
@@ -273,7 +273,7 @@ describe('planTrickyDadCommand', () => {
             error: 'Это приветствие',
         });
 
-        const plan = await planTrickyDadCommand('привет', 'Tricky Dad');
+        const plan = await planTrickyDadCommand('привет', 'Tricky Dad Telegram chat');
 
         expect(plan.isCommandFallback).toBe(true);
         expect(plan.error).toBe('❌ LLM: Это приветствие');
@@ -295,7 +295,7 @@ describe('planTrickyDadCommand', () => {
             attempts: [],
         });
 
-        const plan = await planTrickyDadCommand('позвонить маме', 'Obsidian Tasks');
+        const plan = await planTrickyDadCommand('позвонить маме', 'Obsidian Tasks Telegram chat');
 
         expect(plan.isCommandFallback).toBe(true);
         expect(plan.error).toBe('❌ No LLM provider gave a usable answer');

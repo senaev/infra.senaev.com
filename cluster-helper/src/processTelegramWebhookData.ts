@@ -104,14 +104,14 @@ export async function processTelegramWebhookData({
 
     if (chatIdStr === OBSIDIAN_TASKS_CHAT_ID) {
         logger.info({ messageId: message.message_id }, '🆕 Received new message in tasks chat');
-        await processTrickyDadChatMessage(message as TelegramMessage, 'Obsidian Tasks');
+        await processTrickyDadChatMessage(message as TelegramMessage, 'Obsidian Tasks Telegram chat');
 
         return;
     }
 
     if (chatIdStr === TRICKY_DAD_CHAT_ID) {
         logger.info({ messageId: message.message_id }, '🆕 Received new message in tricky dad chat');
-        await processTrickyDadChatMessage(message as TelegramMessage, 'Tricky Dad');
+        await processTrickyDadChatMessage(message as TelegramMessage, 'Tricky Dad Telegram chat');
 
         return;
     }
