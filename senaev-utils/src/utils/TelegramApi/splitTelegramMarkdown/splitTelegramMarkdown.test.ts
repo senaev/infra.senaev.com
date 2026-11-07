@@ -31,6 +31,16 @@ describe('splitTelegramMarkdown', () => {
         expect(chunks.join('').split('x').length - 1).toBe(70_000);
     });
 
+    it('reopens bold markup when a long formatted title spans messages', () => {
+        const markdown = `**${'🎬'.repeat(20_000)}**`;
+        const chunks = splitTelegramMarkdown(markdown);
+
+        expect(chunks.length).toBeGreaterThan(1);
+        expect(withinLimit(chunks)).toBe(true);
+        expect(chunks.every((chunk) => chunk.startsWith('**') && chunk.endsWith('**'))).toBe(true);
+        expect(chunks.map((chunk) => chunk.slice(2, -2)).join('')).toBe('🎬'.repeat(20_000));
+    });
+
     it('keeps large collapsible details valid in every part', () => {
         const markdown = `<details><summary>Details</summary>\n\n${'foo\n'.repeat(9000)}</details>`;
         const chunks = splitTelegramMarkdown(markdown);

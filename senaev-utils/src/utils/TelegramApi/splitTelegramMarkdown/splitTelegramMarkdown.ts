@@ -16,6 +16,8 @@ export function splitTelegramMarkdown(markdown: string): string[] {
 
     const chunks: string[] = [];
     let chunk = '';
+    let chunkBytes = 0;
+    const inlineStyles: string[] = [];
     let lineCount = 0;
     let fence: string | undefined;
     let inDetails = false;
@@ -25,49 +27,37 @@ export function splitTelegramMarkdown(markdown: string): string[] {
             return;
         }
 
-        const suffix = `${fence ? `\n${fence}` : ''}${inDetails ? '\n</details>' : ''}`;
+        const suffix = `${inlineStyles.toReversed().join('')}${fence ? `\n${fence}` : ''}${inDetails ? '\n</details>' : ''}`;
 
         chunks.push(chunk + suffix);
-        chunk = `${inDetails ? `${DETAILS_OPEN}\n\n` : ''}${fence ? `${fence}\n` : ''}`;
+        chunk = `${inDetails ? `${DETAILS_OPEN}\n\n` : ''}${fence ? `${fence}\n` : ''}${inlineStyles.join('')}`;
+        chunkBytes = Buffer.byteLength(chunk);
         lineCount = 0;
     }
 
     function append(text: string): void {
-        // Most segments are a whole line. Split only for an exceptionally long line.
-        const tokens = Array.from(text.matchAll(/\\[^\n]|[^\n]|\n/gu), ([token]) => token);
-        let position = 0;
+        // Escapes and formatting delimiters are indivisible tokens. When a long formatted
+        // line is split, close active styles at the cut and reopen them in the next part.
+        for (const [token] of text.matchAll(/\\[^\n]|\*\*|\*|[^\n]|\n/gu)) {
+            const bytes = Buffer.byteLength(token);
 
-        while (position < tokens.length) {
-            const remainingBytes = CONTENT_BUDGET - Buffer.byteLength(chunk);
-            let count = 0;
-            let size = 0;
-
-            while (position + count < tokens.length) {
-                const token = tokens[position + count]!;
-                const bytes = Buffer.byteLength(token);
-
-                if (size + bytes > remainingBytes) {
-                    break;
-                }
-
-                size += bytes;
-                count++;
+            if (chunk && chunkBytes + bytes > CONTENT_BUDGET) {
+                flush();
             }
 
-            if (count === 0) {
-                flush();
-                if (Buffer.byteLength(chunk) >= CONTENT_BUDGET) {
-                    throw new Error('Telegram Markdown formatting wrapper exceeds the message limit');
-                }
-
-                continue;
+            if (chunkBytes + bytes > CONTENT_BUDGET) {
+                throw new Error('Telegram Markdown formatting wrapper exceeds the message limit');
             }
 
-            chunk += tokens.slice(position, position + count).join('');
-            position += count;
+            chunk += token;
+            chunkBytes += bytes;
 
-            if (position < tokens.length) {
-                flush();
+            if (!fence && (token === '**' || token === '*')) {
+                if (inlineStyles.at(-1) === token) {
+                    inlineStyles.pop();
+                } else {
+                    inlineStyles.push(token);
+                }
             }
         }
     }
