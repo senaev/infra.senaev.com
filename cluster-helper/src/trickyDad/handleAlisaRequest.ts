@@ -36,7 +36,20 @@ export function handleAlisaRequest(body: unknown): string {
         }
 
         if (command.trim() === '') {
-            return getRandomValueFromArray(TRICKY_DAD_FUNNY_RESPONSES);
+            const err = new Error('Empty command received from Alisa');
+
+            logger.error({
+                err,
+                body,
+            }, '❌ Empty Alisa command');
+            sendTrickyDadErrorReport({
+                command,
+                err,
+            }).catch((sendErr) => {
+                logger.error(sendErr, '❌ Failed to send empty-command error to Telegram');
+            });
+
+            return 'Ничего не понял. Можете, пожалуйста, повторить?';
         }
 
         runTrickyDadCommand(command, 'Alisa')

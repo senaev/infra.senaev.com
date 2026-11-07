@@ -4,7 +4,7 @@ import {
 
 import { handleAlisaRequest } from './handleAlisaRequest';
 import { runTrickyDadCommand } from './runTrickyDadCommand';
-import { TRICKY_DAD_FUNNY_RESPONSES } from './TRICKY_DAD_FUNNY_RESPONSES';
+import { sendTrickyDadErrorReport } from './sendTrickyDadReport';
 
 vi.mock('../env', () => {
     return {
@@ -35,6 +35,7 @@ vi.mock('./sendTrickyDadReport', () => {
 
 beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(sendTrickyDadErrorReport).mockResolvedValue(undefined);
 });
 
 describe('handleAlisaRequest', () => {
@@ -45,7 +46,11 @@ describe('handleAlisaRequest', () => {
     ])('does not dispatch an empty launch command [%s]', (command) => {
         const response = handleAlisaRequest({ request: { command } });
 
-        expect(TRICKY_DAD_FUNNY_RESPONSES).toContain(response);
+        expect(response).toBe('Ничего не понял. Можете, пожалуйста, повторить?');
+        expect(sendTrickyDadErrorReport).toHaveBeenCalledWith({
+            command,
+            err: expect.objectContaining({ message: 'Empty command received from Alisa' }),
+        });
         expect(runTrickyDadCommand).not.toHaveBeenCalled();
     });
 });

@@ -6,8 +6,7 @@ import {
 import { formatUtcDateTime } from 'senaev-utils/src/utils/Date/formatUtcDateTime/formatUtcDateTime';
 import { escapeHtml } from 'senaev-utils/src/utils/String/escapeHtml/escapeHtml';
 import { formatBytes } from 'senaev-utils/src/types/Bytes/formatBytes/formatBytes';
-import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
-import { truncateTelegramText } from 'senaev-utils/src/utils/TelegramApi/truncateTelegramText/truncateTelegramText';
+import { createTelegramRichMessage } from 'senaev-utils/src/utils/TelegramApi/createTelegramRichMessage';
 
 import { TG_MEDIA_SERVER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from '../env';
 import { logger } from '../logger';
@@ -15,24 +14,17 @@ import { logger } from '../logger';
 import { type FileToRemove } from './getFilesToRemove';
 
 /**
- * Sends one HTML notification to the media-server chat.
- *
- * The message is built from a directory listing, so its length has no upper bound and
- * Telegram would refuse it outright — it is cut here, after the logs have the full text.
+ * Sends an HTML rich notification to the media-server chat.
+ * Long directory listings are split into multiple complete rich messages.
  */
 async function sendCleanupNotification(message: string): Promise<void> {
-    const text = truncateTelegramText(message);
+    logger.info({ characters: message.length }, '📤 Sending disk cleanup notification');
 
-    logger.info({
-        characters: text.length,
-        truncated: text.length < message.length,
-    }, '📤 Sending disk cleanup notification');
-
-    await sendTelegramMessage({
-        text,
+    await createTelegramRichMessage({
+        html: message,
         chatId: TG_MEDIA_SERVER_CHAT_ID,
         token: TG_TOKEN_SENAEV_COM_BOT,
-        parseMode: 'HTML',
+        media: [],
     });
 
     logger.info('✅ Disk cleanup notification sent');

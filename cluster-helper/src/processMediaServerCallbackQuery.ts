@@ -6,10 +6,10 @@ import {
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 import { callTelegramApi } from 'senaev-utils/src/utils/TelegramApi/callTelegramApi';
-import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
+import { createTelegramRichMessage } from 'senaev-utils/src/utils/TelegramApi/createTelegramRichMessage';
 import { TelegramMessage, TelegramUser } from 'senaev-utils/src/utils/TelegramApi/types';
 import { escapeHtml } from 'senaev-utils/src/utils/String/escapeHtml/escapeHtml';
-import { truncateTelegramText } from 'senaev-utils/src/utils/TelegramApi/truncateTelegramText/truncateTelegramText';
+import { TELEGRAM_MESSAGE_MAX_LENGTH } from 'senaev-utils/src/utils/TelegramApi/truncateTelegramText/truncateTelegramText';
 import { type TelegramProgressMessage } from 'senaev-utils/src/utils/TelegramApi/startTelegramProgressMessage';
 
 import { TG_TOKEN_SENAEV_COM_BOT } from './env';
@@ -100,11 +100,11 @@ async function sendCallbackQueryErrorMessage({
     errorMessage: string;
     message: TelegramMessage;
 }): Promise<void> {
-    await sendTelegramMessage({
+    await createTelegramRichMessage({
         token: TG_TOKEN_SENAEV_COM_BOT,
         chatId: String(message.chat.id),
-        parseMode: 'HTML',
-        text: escapeHtml(truncateTelegramText(`❌ ${errorMessage}`)),
+        html: escapeHtml(`❌ ${errorMessage}`),
+        media: [],
         replyToMessageId: message.message_id,
     });
 }
@@ -275,9 +275,17 @@ export async function processMediaServerCallbackQuery({
             // The download already has a message of its own counting the seconds, so put the
             // failure there instead of leaving it stuck on the last tick beside a new message.
             if (progress.message) {
-                await progress.message.finish({
-                    text: escapeHtml(truncateTelegramText(`❌ ${errorMessage}`)),
-                });
+                if (`❌ ${errorMessage}`.length > TELEGRAM_MESSAGE_MAX_LENGTH) {
+                    // Editable progress messages have the smaller 4096 limit. Deliver the
+                    // complete error as a rich message instead of truncating it.
+                    await sendCallbackQueryErrorMessage({
+                        errorMessage,
+                        message: callbackQuery.message!,
+                    });
+                    await progress.message.finish({ text: '❌ Error details sent to chat' });
+                } else {
+                    await progress.message.finish({ text: escapeHtml(`❌ ${errorMessage}`) });
+                }
             } else {
                 await sendCallbackQueryErrorMessage({
                     errorMessage,

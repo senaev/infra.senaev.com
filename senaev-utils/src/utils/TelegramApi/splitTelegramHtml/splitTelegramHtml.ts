@@ -1,45 +1,52 @@
-import { TELEGRAM_MESSAGE_MAX_LENGTH } from '../truncateTelegramText/truncateTelegramText';
+/** Telegram rich-message limit. Using UTF-8 bytes is conservative for Unicode text. */
+export const TELEGRAM_RICH_MESSAGE_MAX_LENGTH = 32_768;
 
-/**
- * Splits Telegram HTML into complete, independently valid messages without dropping text.
- * Supports the tags emitted by formatTelegramHtml (bold and expandable blockquote),
- * plus the named entities emitted by escapeHtml. Counts visible UTF-16 units, not markup.
- */
+/** Split formatted rich HTML without losing characters or breaking formatting and escapes. */
 export function splitTelegramHtml(html: string): string[] {
-    const parts: string[] = [];
-    const openTags: Array<{ open: string; close: string }> = [];
-    let current = '';
-    let visibleLength = 0;
+    const chunks: string[] = [];
+    const tags: Array<{ open: string; close: string }> = [];
+    let chunk = '';
+    let chunkBytes = 0;
+    let hasContent = false;
 
-    const tokens = html.match(/<blockquote expandable>|<\/blockquote>|<b>|<\/b>|&(?:lt|gt|amp|quot);|[\s\S]/gu) ?? [];
+    const tokens = html.match(/<blockquote expandable>|<\/blockquote>|<\/?(?:b|i|pre|code)>|&(?:lt|gt|amp|quot);|[\s\S]/gu) ?? [];
 
     for (const token of tokens) {
-        if (token === '<b>' || token === '<blockquote expandable>') {
-            openTags.push({
+        const opening = /^<(?:b|i|pre|code|blockquote expandable)>$/u.test(token);
+        const closing = /^<\//u.test(token);
+        const nextTags = [...tags];
+
+        if (opening) {
+            const name = token.match(/^<(\w+)/u)?.[1];
+
+            nextTags.push({
                 open: token,
-                close: token === '<b>' ? '</b>' : '</blockquote>',
+                close: `</${name}>`,
             });
-        } else if (token === '</b>' || token === '</blockquote>') {
-            openTags.pop();
-        } else {
-            const tokenLength = token.startsWith('&') && token.endsWith(';') ? 1 : token.length;
-
-            if (visibleLength + tokenLength > TELEGRAM_MESSAGE_MAX_LENGTH && visibleLength > 0) {
-                parts.push(current + openTags.map(({ close }) => close).reverse().join(''));
-                // Reopen formatting on the next message. The token itself has not been consumed.
-                current = openTags.map(({ open }) => open).join('');
-                visibleLength = 0;
-            }
-
-            visibleLength += tokenLength;
+        } else if (closing) {
+            nextTags.pop();
         }
 
-        current += token;
+        const suffix = nextTags.map(({ close }) => close).reverse().join('');
+        const tokenBytes = Buffer.byteLength(token);
+
+        if (hasContent && chunkBytes + tokenBytes + Buffer.byteLength(suffix) > TELEGRAM_RICH_MESSAGE_MAX_LENGTH) {
+            chunk += tags.map(({ close }) => close).reverse().join('');
+            chunks.push(chunk);
+            chunk = tags.map(({ open }) => open).join('');
+            chunkBytes = Buffer.byteLength(chunk);
+            hasContent = false;
+        }
+
+        chunk += token;
+        chunkBytes += tokenBytes;
+        hasContent ||= !opening && !closing;
+        tags.splice(0, tags.length, ...nextTags);
     }
 
-    if (current !== '') {
-        parts.push(current);
+    if (chunk !== '') {
+        chunks.push(chunk);
     }
 
-    return parts;
+    return chunks;
 }

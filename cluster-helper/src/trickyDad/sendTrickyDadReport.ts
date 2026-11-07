@@ -1,6 +1,5 @@
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
-import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
-import { splitTelegramHtml } from 'senaev-utils/src/utils/TelegramApi/splitTelegramHtml/splitTelegramHtml';
+import { createTelegramRichMessage } from 'senaev-utils/src/utils/TelegramApi/createTelegramRichMessage';
 import { escapeHtml } from 'senaev-utils/src/utils/String/escapeHtml/escapeHtml';
 import {
     telegramBold,
@@ -117,7 +116,6 @@ export async function sendTrickyDadReport({
         result,
     });
 
-    const messages = splitTelegramHtml(text);
     const chatIds = getTrickyDadReportChatIds(result, source);
     const deliveries = await Promise.allSettled(chatIds.map(async (chatId) => {
         logger.info({
@@ -125,19 +123,13 @@ export async function sendTrickyDadReport({
             source,
         }, '👉 Sending tricky dad report');
 
-        // Keep parts ordered within a chat, but deliver independently to each chat.
-        for (const [
-            index,
-            message,
-        ] of messages.entries()) {
-            await sendTelegramMessage({
-                token: TG_TOKEN_SENAEV_COM_BOT,
-                chatId,
-                parseMode: 'HTML',
-                text: message,
-                ...(chatId === sourceChatId && replyToMessageId !== undefined && index === 0 && { replyToMessageId }),
-            });
-        }
+        await createTelegramRichMessage({
+            token: TG_TOKEN_SENAEV_COM_BOT,
+            chatId,
+            html: text,
+            media: [],
+            ...(chatId === sourceChatId && replyToMessageId !== undefined && { replyToMessageId }),
+        });
     }));
     const failures = deliveries.flatMap((delivery, index) => {
         if (delivery.status === 'fulfilled') {
@@ -170,12 +162,10 @@ export async function sendTrickyDadErrorReport({
 
     const text = escapeHtml(`❌ Failed to process command=[${command}]: ${stringifyUnknownError(err)}`);
 
-    for (const message of splitTelegramHtml(text)) {
-        await sendTelegramMessage({
-            token: TG_TOKEN_SENAEV_COM_BOT,
-            chatId: OBSIDIAN_TASKS_CHAT_ID,
-            parseMode: 'HTML',
-            text: message,
-        });
-    }
+    await createTelegramRichMessage({
+        token: TG_TOKEN_SENAEV_COM_BOT,
+        chatId: OBSIDIAN_TASKS_CHAT_ID,
+        html: text,
+        media: [],
+    });
 }
