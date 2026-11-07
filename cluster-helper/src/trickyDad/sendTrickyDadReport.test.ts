@@ -1,11 +1,13 @@
 import {
-    describe, expect, it, vi,
+    beforeEach, describe, expect, it, vi,
 } from 'vitest';
+import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
+import { TELEGRAM_MESSAGE_MAX_LENGTH } from 'senaev-utils/src/utils/TelegramApi/truncateTelegramText/truncateTelegramText';
 
 import type { PlannedTrickyDadAction } from './actions/TrickyDadAction';
 import type { TrickyDadCommandResult } from './runTrickyDadCommand';
 import {
-    formatTrickyDadReport, getTrickyDadReportChatIds, isTrickyDadCommandFailed,
+    formatTrickyDadReport, getTrickyDadReportChatIds, isTrickyDadCommandFailed, sendTrickyDadErrorReport, sendTrickyDadReport,
 } from './sendTrickyDadReport';
 
 vi.mock('../env', () => {
@@ -13,6 +15,19 @@ vi.mock('../env', () => {
         OBSIDIAN_TASKS_CHAT_ID: 'tasks-chat',
         TRICKY_DAD_CHAT_ID: 'tricky-dad-chat',
         TG_TOKEN_SENAEV_COM_BOT: 'token',
+    };
+});
+
+vi.mock('senaev-utils/src/utils/TelegramApi/sendTelegramMessage', () => {
+    return { sendTelegramMessage: vi.fn() };
+});
+
+vi.mock('../logger', () => {
+    return {
+        logger: {
+            info: vi.fn(),
+            error: vi.fn(),
+        },
     };
 });
 
@@ -186,5 +201,90 @@ describe('formatTrickyDadReport', () => {
         expect(text).toContain('❌ <b>Хлеб</b>');
         expect(text).toContain('📍 Куда: ❌ command fallback → 🛒 add_shopping_items');
         expect(text).toContain('❌ LLM: Это приветствие');
+    });
+});
+
+function readableText(html: string): string {
+    return html.replaceAll(/<\/?(?:b|blockquote(?: expandable)?)>/gu, '')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&quot;', '"');
+}
+
+beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(sendTelegramMessage).mockResolvedValue({ message_id: 1 });
+});
+
+describe('sendTrickyDadReport', () => {
+    const params = {
+        command: 'Позвонить в банк',
+        source: 'Tricky Dad Telegram chat' as const,
+        durationSeconds: '1.00',
+        result: buildResult({
+            actionResults: [
+                {
+                    action: TASKS,
+                    output: [],
+                    durationMs: 2,
+                    error: null,
+                },
+            ],
+        }),
+        replyToMessageId: 15,
+    };
+
+    it('tries every destination even when one Telegram chat fails', async () => {
+        vi.mocked(sendTelegramMessage).mockImplementation(({ chatId }) => chatId === 'tasks-chat'
+            ? Promise.reject(new Error('chat blocked'))
+            : Promise.resolve({ message_id: 1 }));
+
+        await expect(sendTrickyDadReport(params)).rejects.toThrow('one or more chats');
+        expect(vi.mocked(sendTelegramMessage).mock.calls.map(([{ chatId }]) => chatId)).toEqual([
+            'tasks-chat',
+            'tricky-dad-chat',
+        ]);
+        expect(vi.mocked(sendTelegramMessage).mock.calls[1]?.[0].replyToMessageId).toBe(15);
+    });
+
+    it('splits long HTML reports without losing any text', async () => {
+        const longEntry = `&<${'🎬'.repeat(2700)}`;
+        const longError = 'failure: '.repeat(1400);
+        const result = buildResult({
+            actionResults: [
+                {
+                    action: buildAction('add_shopping_items', '🛒', 'tricky-dad-chat', [longEntry]),
+                    output: [],
+                    durationMs: 2,
+                    error: longError,
+                },
+            ],
+        });
+        const args = {
+            ...params,
+            result,
+        };
+
+        await sendTrickyDadReport(args);
+
+        const messages = vi.mocked(sendTelegramMessage).mock.calls.map(([{ text }]) => text);
+
+        expect(messages.length).toBeGreaterThan(2);
+        expect(messages.every((message) => readableText(message).length <= TELEGRAM_MESSAGE_MAX_LENGTH)).toBe(true);
+        expect(messages.map(readableText).join('')).toBe(readableText(formatTrickyDadReport(args)));
+        expect(messages.every((message) => (message.match(/<b>/gu) ?? []).length === (message.match(/<\/b>/gu) ?? []).length && (message.match(/<blockquote expandable>/gu) ?? []).length === (message.match(/<\/blockquote>/gu) ?? []).length)).toBe(true);
+    });
+
+    it('splits long generic error reports, too', async () => {
+        await sendTrickyDadErrorReport({
+            command: 'A'.repeat(9000),
+            err: new Error('failure'),
+        });
+
+        const messages = vi.mocked(sendTelegramMessage).mock.calls.map(([{ text }]) => text);
+
+        expect(messages.length).toBeGreaterThan(1);
+        expect(messages.every((message) => readableText(message).length <= TELEGRAM_MESSAGE_MAX_LENGTH)).toBe(true);
     });
 });

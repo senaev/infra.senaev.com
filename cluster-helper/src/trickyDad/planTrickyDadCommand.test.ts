@@ -267,25 +267,58 @@ describe('planTrickyDadCommand', () => {
         expect(plan.actions).toHaveLength(1);
     });
 
-    it('saves the raw command with the command fallback action when the model gives a reason for no actions', async () => {
+    it('rejects an empty action list with a reason so the next provider can retry', async () => {
         answerWith({
             actions: [],
             error: 'Это приветствие',
         });
 
+        await expect(planTrickyDadCommand('привет', 'Tricky Dad Telegram chat'))
+            .rejects.toThrow('no actions returned: Это приветствие');
+    });
+
+    it('rejects repeated action types so the next provider can retry', async () => {
+        answerWith({
+            actions: [
+                {
+                    type: 'add_shopping_items',
+                    items: ['Хлеб'],
+                },
+                {
+                    type: 'add_shopping_items',
+                    items: ['Молоко'],
+                },
+            ],
+            error: null,
+        });
+
+        await expect(planTrickyDadCommand('купи хлеб и молоко', 'Tricky Dad Telegram chat'))
+            .rejects.toThrow('repeated action type');
+    });
+
+    it('keeps rejected empty-response reasons in the provider attempts when command fallback runs', async () => {
+        vi.mocked(callLlmJson).mockResolvedValue({
+            value: null,
+            provider: null,
+            attempts: [
+                {
+                    provider: 'llm-server',
+                    durationMs: 100,
+                    error: 'no actions returned: uncertain',
+                },
+                {
+                    provider: 'openrouter',
+                    durationMs: 150,
+                    error: 'invalid response',
+                },
+            ],
+        });
+
         const plan = await planTrickyDadCommand('привет', 'Tricky Dad Telegram chat');
 
         expect(plan.isCommandFallback).toBe(true);
-        expect(plan.error).toBe('❌ LLM: Это приветствие');
-        expect(plan.actions.map(({ type, entries }) => [
-            type,
-            entries,
-        ])).toEqual([
-            [
-                'add_shopping_items',
-                ['привет'],
-            ],
-        ]);
+        expect(plan.actions[0]?.entries).toEqual(['привет']);
+        expect(plan.llmAttempts[0]?.error).toContain('uncertain');
     });
 
     it('saves the raw command as a task in Obsidian Tasks when no provider answers', async () => {

@@ -159,15 +159,10 @@ export function buildMultiActionRequest(actions: TrickyDadAction[]): LlmRequest<
             }
 
             if (rawActions.length === 0) {
-                // An empty answer without a reason is a broken answer, so the next provider tries.
-                if (!isNonEmptyString(error) || error.trim() === '') {
-                    throw new Error('actions is empty and error has no reason');
-                }
-
-                return {
-                    actions: [],
-                    error,
-                };
+                // Let the next LLM provider try before using the command fallback.
+                throw new Error(isNonEmptyString(error)
+                    ? `no actions returned: ${error}`
+                    : 'actions is empty and error has no reason');
             }
 
             if (error !== null) {
@@ -175,6 +170,8 @@ export function buildMultiActionRequest(actions: TrickyDadAction[]): LlmRequest<
                 // Reject it so callLlmJson can try the next provider.
                 throw new Error(`actions is non-empty but error is not null: ${JSON.stringify(error)}`);
             }
+
+            const seenTypes = new Set<string>();
 
             return {
                 actions: rawActions.map((rawAction) => {
@@ -184,6 +181,12 @@ export function buildMultiActionRequest(actions: TrickyDadAction[]): LlmRequest<
                     if (!action) {
                         throw new Error(`unknown action type [${JSON.stringify(type)}]`);
                     }
+
+                    if (seenTypes.has(action.type)) {
+                        throw new Error(`repeated action type [${JSON.stringify(action.type)}]`);
+                    }
+
+                    seenTypes.add(action.type);
 
                     return action.parseArgs(args);
                 }),

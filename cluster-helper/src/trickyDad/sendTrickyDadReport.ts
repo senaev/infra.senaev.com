@@ -1,5 +1,6 @@
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
+import { splitTelegramHtml } from 'senaev-utils/src/utils/TelegramApi/splitTelegramHtml/splitTelegramHtml';
 import { escapeHtml } from 'senaev-utils/src/utils/String/escapeHtml/escapeHtml';
 import {
     telegramBold,
@@ -116,19 +117,45 @@ export async function sendTrickyDadReport({
         result,
     });
 
-    for (const chatId of getTrickyDadReportChatIds(result, source)) {
+    const messages = splitTelegramHtml(text);
+    const chatIds = getTrickyDadReportChatIds(result, source);
+    const deliveries = await Promise.allSettled(chatIds.map(async (chatId) => {
         logger.info({
             chatId,
             source,
         }, '👉 Sending tricky dad report');
 
-        await sendTelegramMessage({
-            token: TG_TOKEN_SENAEV_COM_BOT,
+        // Keep parts ordered within a chat, but deliver independently to each chat.
+        for (const [
+            index,
+            message,
+        ] of messages.entries()) {
+            await sendTelegramMessage({
+                token: TG_TOKEN_SENAEV_COM_BOT,
+                chatId,
+                parseMode: 'HTML',
+                text: message,
+                ...(chatId === sourceChatId && replyToMessageId !== undefined && index === 0 && { replyToMessageId }),
+            });
+        }
+    }));
+    const failures = deliveries.flatMap((delivery, index) => {
+        if (delivery.status === 'fulfilled') {
+            return [];
+        }
+
+        const chatId = chatIds[index];
+
+        logger.error({
             chatId,
-            parseMode: 'HTML',
-            text,
-            ...(chatId === sourceChatId && replyToMessageId !== undefined && { replyToMessageId }),
-        });
+            err: delivery.reason,
+        }, '❌ Failed to deliver tricky dad report');
+
+        return [new Error(`Failed to deliver report to chat ${chatId}: ${stringifyUnknownError(delivery.reason)}`)];
+    });
+
+    if (failures.length > 0) {
+        throw new AggregateError(failures, 'Failed to deliver tricky dad report to one or more chats');
     }
 }
 
@@ -141,10 +168,14 @@ export async function sendTrickyDadErrorReport({
 }): Promise<void> {
     logger.info('👉 Sending tricky dad error report');
 
-    await sendTelegramMessage({
-        token: TG_TOKEN_SENAEV_COM_BOT,
-        chatId: OBSIDIAN_TASKS_CHAT_ID,
-        parseMode: 'HTML',
-        text: escapeHtml(`❌ Failed to process command=[${command}]: ${stringifyUnknownError(err)}`),
-    });
+    const text = escapeHtml(`❌ Failed to process command=[${command}]: ${stringifyUnknownError(err)}`);
+
+    for (const message of splitTelegramHtml(text)) {
+        await sendTelegramMessage({
+            token: TG_TOKEN_SENAEV_COM_BOT,
+            chatId: OBSIDIAN_TASKS_CHAT_ID,
+            parseMode: 'HTML',
+            text: message,
+        });
+    }
 }

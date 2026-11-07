@@ -35,6 +35,10 @@ export function handleAlisaRequest(body: unknown): string {
             throw new Error('Missing command field in request');
         }
 
+        if (command.trim() === '') {
+            return getRandomValueFromArray(TRICKY_DAD_FUNNY_RESPONSES);
+        }
+
         runTrickyDadCommand(command, 'Alisa')
             .then((result) =>
                 sendTrickyDadReport({
