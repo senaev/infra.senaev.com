@@ -1,6 +1,6 @@
 # 2026-10-10 — Obsidian MCP: tool to rename and move notes
 
-- [ ] Add an MCP tool that renames and moves notes and fixes their links
+- [x] Add an MCP tool that renames and moves notes and fixes their links
 
 ## Goal
 
@@ -46,3 +46,7 @@ Decisions (from the user):
   link; a folder move that keeps `[[Name]]` and fixes relative Markdown links (with `%20`
   and `%28`); a new name that makes another note ambiguous; ambiguous and alias-only links
   are reported, not changed; no overwrite; only notes. `npm run simple-checks` passes.
+
+## Result — verified in production
+
+The `obsidian-move` tool is implemented and deployed, including rewriting backlinks and Markdown links. During the finance CSV migration on 2026-11-07 it successfully moved `transactions.csv.params.json` to `csv.params.json` within the vault, confirming production availability. Historical edge-case tests and implementation notes remain in Findings.
