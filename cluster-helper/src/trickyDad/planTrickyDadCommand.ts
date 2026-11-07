@@ -170,6 +170,12 @@ export function buildMultiActionRequest(actions: TrickyDadAction[]): LlmRequest<
                 };
             }
 
+            if (error !== null) {
+                // An incomplete plan must not be executed as a successful command.
+                // Reject it so callLlmJson can try the next provider.
+                throw new Error(`actions is non-empty but error is not null: ${JSON.stringify(error)}`);
+            }
+
             return {
                 actions: rawActions.map((rawAction) => {
                     const { type, ...args } = requireObject(rawAction, 'action');

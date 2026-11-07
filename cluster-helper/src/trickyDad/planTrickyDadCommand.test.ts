@@ -188,6 +188,21 @@ describe('planTrickyDadCommand', () => {
         await expect(planTrickyDadCommand('купить', 'Tricky Dad')).rejects.toThrow('every item must be a non-empty string');
     });
 
+    it('rejects a partial response with actions and an error so the next provider retries', async () => {
+        answerWith({
+            actions: [
+                {
+                    type: 'add_shopping_items',
+                    items: ['Хлеб'],
+                },
+            ],
+            error: 'Could not create the requested task',
+        });
+
+        await expect(planTrickyDadCommand('купи хлеб и создай задачу', 'Tricky Dad'))
+            .rejects.toThrow('actions is non-empty but error is not null: "Could not create the requested task"');
+    });
+
     it('rejects an unknown action type, so the next provider tries', async () => {
         answerWith({
             actions: [{ type: 'delete_everything' }],
