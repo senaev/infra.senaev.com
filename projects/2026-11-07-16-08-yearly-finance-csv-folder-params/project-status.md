@@ -1,15 +1,17 @@
-- [ ] Implement folder-level CSV settings and read-only MCP dataset selection; later migrate the financial data manually.
+- [x] Implement folder-level CSV settings and folder-based MCP queries; migrate the entire financial register to yearly files without data loss.
 
 ## Stage
 
-MCP refactor implemented in PR #128; local checks passed. Live vault transaction files remain unchanged.
+Completed and verified in production on 2026-11-07.
 
 ## Completed
 
-- Shared `csv.params.json` for direct CSV children; no per-file overrides or parent inheritance.
-- Support for up to 16 CSV paths and read-only folder mapping.
-- Migration scripts removed at the owner's request; manual SQL copy tested.
+- PR #128 merged and deployed; shared folder-wide `csv.params.json` and read-only folder queries are available.
+- Manually migrated 18,981 transactions into 12 yearly CSVs (2015–2026) without migration scripts.
+- Verified complete 18-column row multisets, including duplicate occurrences; no missing or extra rows. Verified each year's descending sort order.
+- Updated active finance documentation, verified Obsidian Sync, and retired the oversized original to recoverable trash.
+- Temporary migration backup CSVs were verified, then moved to recoverable trash at the owner's request. The active backup folder is empty; all 12 yearly files remain.
 
-## Next steps
+## Result
 
-Review and deploy PR. Migrate the vault separately using existing tools, verifying backup and row identity before removing the original.
+All requested migration and MCP changes are complete. The previous single-file `_source_record` row positions are historical and cannot be used as positions in the new yearly files.

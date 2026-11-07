@@ -1,3 +1,15 @@
+## 2026-11-07 18:39 UTC — Project completed and migration backups retired
+
+PR #128 was merged and deployed. The original register was manually partitioned into 12 annual files using MCP SQL; all 18,981 transactions were verified by comparing every 18-column row and duplicate multiplicity. The active finance documentation was updated and the oversized original moved to recoverable trash. On user request, both verified temporary backup files were subsequently moved to recoverable trash, leaving the active yearly files untouched.
+
+```text
+2015–2021: backup 8,446 rows; migrated 8,446; missing 0; extra 0
+2022–2026: backup 10,535 rows; migrated 10,535; missing 0; extra 0
+Total: 18,981 rows; missing 0; extra 0
+Active transactions: 2015.csv–2026.csv plus csv.params.json
+Active transactions-backup/: 0 files
+```
+
 ## 2026-11-07 16:42 UTC — MCP-only refactor verified
 
 Removed dedicated transaction migration scripts. Added read-only `folder` mapping for all direct CSV children with the same schema; writes continue to require a single `paths` entry and `expectedHash`. SQL INSERT ... SELECT from another CSV into a hash-guarded destination was tested as the basis for later manual migration.

@@ -33,6 +33,6 @@ Monitor the files in my Obsidian vault and warn before an individual file exceed
 
 ## Result
 
-Implemented in the PR worktree; unit/integration tests and Helm render checks pass. Production scrape, dashboard and alert delivery must be verified after merging and deploying the PR.
+Completed and deployed on 2026-11-07 through [PR #129](https://github.com/senaev/infra.senaev.com/pull/129). CI, Docker image, and both `senaev-com`/`telemetry/vm-stack` Helm releases succeeded. The [Grafana Obsidian Vault dashboard](https://grafana.senaev.com/d/obsidian-vault) is installed with eight panels. Live Prometheus scraping recovered from startup (`up=1`), the inventory scanner is healthy (`obsidian_vault_scan_success=1`), and file count, total bytes, file types and largest-file metrics are populated. The 4.5 MB VMRule alert is deployed, with no files above threshold or active alerts at verification. **One end-to-end check remains untested:** deliberately triggering Telegram delivery with a temporary oversized vault file and confirming resolution; no artificial file was introduced in the live vault.
 
 Related project files: [status](project-status.md) · [worklog](project-worklog.md).

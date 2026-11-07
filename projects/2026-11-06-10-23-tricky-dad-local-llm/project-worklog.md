@@ -1,3 +1,7 @@
+## 2026-11-07 19:10 UTC — Deployment confirmed, acceptance still partial
+
+PR #122 (`♻️ Tricky Dad action registry, llm-server first with OpenRouter fallback`) merged at 15:03 UTC. The user's Alisa request at 16:56 UTC reached `cluster-helper`; logs showed an llm-server rejection followed by successful OpenRouter fallback and completion of `add_shopping_items`. The broader multi-action and task-specific acceptance matrix from README has not been independently verified in this audit. Keeping status open for those checks.
+
 # Worklog
 
 ## 2026-11-06 12:35 UTC — Action registry and provider chain implemented

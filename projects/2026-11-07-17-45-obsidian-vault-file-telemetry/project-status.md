@@ -1,16 +1,16 @@
-- [ ] Add Obsidian vault file inventory metrics, largest-file reporting and an alert for files over 4.5 MB.
+- [x] Deploy Obsidian vault file counts, type/size metrics, largest-file diagnostics, and an alert rule for any file over 4.5 MB.
 
 ## Stage
 
-Implementation done locally in PR #129; awaiting final review, CI and production verification.
+Completed and operating in production on 2026-11-07.
 
 ## Completed
 
-- Metadata-only vault scan with 15-second scrape cache, extension totals, top ten, biggest file and 4.5 MB threshold.
-- Internal `/metrics` with low-cardinality labels and authenticated `/vault/file-stats` details.
-- VictoriaMetrics scraping, Grafana dashboard and Alertmanager-to-Telegram warning plus stale-data alert.
-- Tests for inventory counts, hidden/symlink exclusions, exact threshold, authentication and scan failure.
+- [PR #129](https://github.com/senaev/infra.senaev.com/pull/129) merged; GitHub CI and both Helm releases passed.
+- Metadata-only scanner, low-cardinality Prometheus metrics, authenticated top-ten/exact-path size diagnostics, and eight-panel [Obsidian Vault dashboard](https://grafana.senaev.com/d/obsidian-vault) deployed.
+- Verified live scrape `up=1`, inventory scanner health `1`, file totals and largest-file metrics; no container restarts or active alerts at verification.
+- VictoriaMetrics alert for the largest file above 4,500,000 bytes and a scanner-health alert are installed.
 
-## Next steps
+## Follow-up (nonblocking)
 
-Review/commit/push the implementation; check PR CI. After merge/deploy, verify Grafana scrape, dashboard, and end-to-end alert/resolve using a controlled temporary file.
+- A controlled >4.5 MB test file was **not** created in production. Real Telegram notification delivery and subsequent alert resolution were not exercised end-to-end; only deployment, rule configuration, scraping and live healthy-state evaluation were verified.

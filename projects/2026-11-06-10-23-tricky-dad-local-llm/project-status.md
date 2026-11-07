@@ -1,14 +1,16 @@
-- [ ] tricky-dad has an action registry, and uses the home llm-server first and OpenRouter as the LLM provider fallback
+- [ ] Verify the deployed Tricky Dad action registry and home llm-server-first provider chain across the planned end-to-end scenarios.
 
-Stage: implemented in a PR, not deployed yet.
+## Stage
 
-Done:
-- Action registry, source configs, one LLM call with a union schema, provider chain
-  (llm-server → OpenRouter), command fallback that saves the raw command, new report. Unit tests.
+PR #122 merged on 2026-11-07; implementation deployed. Partial production acceptance verified, full matrix remains open.
 
-Open questions:
-- How well Qwen3-4B follows the multi-action prompt. Check with the verification steps in
-  `README.md` after the deploy.
-- Which calendar the calendar action must use.
+## Completed
 
-Next: merge the PR, run the verification steps, then add `list_shopping_items`.
+- Action registry, source-specific allowed actions and fallback provider implementation are in `main`.
+- Alisa shopping-list command reached production and the `add_shopping_items` action finished successfully.
+- The same request exercised llm-server error handling and fallback to OpenRouter, as seen in Datadog logs on 2026-11-07.
+
+## Remaining verification
+
+- Confirm native llm-server success, task due dates and task/chat routing, multi-action command handling, and the Tasks-only source via the original README acceptance tests.
+- Separate follow-ups: `list_shopping_items` and calendar actions are outside the original implementation.
