@@ -11,6 +11,7 @@ import { registerPublicStaticRoutes } from './registerPublicStaticRoutes';
 import { registerShortLinkRoutes } from './registerShortLinkRoutes';
 import { registerTaskRoutes } from './registerTaskRoutes';
 import { registerVaultToolRoutes } from './registerVaultToolRoutes';
+import { registerVaultMetricsRoutes } from './registerVaultMetricsRoutes';
 
 const HOST = '0.0.0.0';
 const PORT = 8080;
@@ -21,6 +22,7 @@ export async function runVaultServer() {
 
     // First, so the check covers every route registered below.
     registerInternalTokenCheck(server, INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN);
+    registerVaultMetricsRoutes(server, OBSIDIAN_VAULT_PATH);
     registerVaultToolRoutes(server, createVaultToolsConfig(OBSIDIAN_VAULT_PATH));
     registerTaskRoutes(server);
     registerShortLinkRoutes(server);

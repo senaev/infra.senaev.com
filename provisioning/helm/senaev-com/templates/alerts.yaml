@@ -36,6 +36,30 @@ spec:
           labels:
             severity: warning
             route: senaev-com-alerts
+    - name: obsidian-vault
+      rules:
+        - alert: obsidian-vault-file-too-large
+          expr: |
+            obsidian_vault_largest_file_bytes{namespace="{{ .Release.Namespace }}"} > 4500000
+          for: 2m
+          labels:
+            severity: warning
+            route: senaev-com-alerts
+          annotations:
+            summary: "Obsidian vault file exceeds 4.5 MB: {{`{{ $labels.path }}`}}"
+            description: "Vault file {{`{{ $labels.path }}`}} is {{`{{ $value }}`}} bytes; Obsidian Sync Standard rejects files larger than 5 MB."
+        - alert: obsidian-vault-telemetry-unavailable
+          expr: |
+            (obsidian_vault_scan_success{namespace="{{ .Release.Namespace }}"} == 0)
+            or absent(obsidian_vault_scan_success{namespace="{{ .Release.Namespace }}"})
+            or (time() - obsidian_vault_last_scan_timestamp_seconds{namespace="{{ .Release.Namespace }}"} > 180)
+          for: 5m
+          labels:
+            severity: warning
+            route: senaev-com-alerts
+          annotations:
+            summary: "Obsidian vault telemetry unavailable or stale"
+            description: "Vault inventory scanning or metrics scraping has failed for more than five minutes."
     - name: node-connectivity
       rules:
         - alert: node-connectivity-failed-to-node-media

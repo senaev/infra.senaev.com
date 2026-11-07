@@ -159,6 +159,29 @@ modify the CSV sorting configuration. A folder containing both the original
 register and newly partitioned copies will count both: use explicit paths for
 migration verification until the original is retired.
 
+## Vault size telemetry
+
+`obsidian-sync` serves Prometheus metrics at `/metrics` for vmagent (cluster-internal
+only, allowed by NetworkPolicy). It scans filesystem metadata no more than once every
+15 seconds, without opening file contents or following symlinks. The inventory counts
+visible vault files, including attachments and backup CSVs, but excludes hidden paths
+(`.obsidian`, `.trash`, `.git`), `plugins/` and `node_modules/` at any depth.
+
+Metrics include `obsidian_vault_files_total`, `obsidian_vault_bytes_total`,
+`obsidian_vault_files_by_type{type=...}`, `obsidian_vault_bytes_by_type{type=...}`,
+`obsidian_vault_largest_file_bytes{path=...,type=...}`, `obsidian_vault_oversized_files`,
+`obsidian_vault_scan_success`, and `obsidian_vault_last_scan_timestamp_seconds`.
+Only the single largest file path is carried as a metric label; the authenticated
+`GET /vault/file-stats` returns a top-ten file list; add `?path=<vault-relative-path>`
+for a protected exact-match lookup of another file's byte size. A scan failure reports
+`obsidian_vault_scan_success 0` instead of stale file totals.
+
+The **Obsidian Vault** Grafana dashboard shows counts, sizes, file types, largest
+file path/size and scan status. Existing Alertmanager-to-Telegram routing triggers
+`obsidian-vault-file-too-large` for a largest file above **4,500,000 bytes** for
+2 minutes, and `obsidian-vault-telemetry-unavailable` for failed/stale scans for
+5 minutes. These rules live in the `senaev-com` Helm chart.
+
 ## Limits and isolation
 
 Strict UTF-8 CSV, comma separators, optional BOM, standard quoted fields. Blank

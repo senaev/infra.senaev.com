@@ -7,9 +7,10 @@ import type { VaultServer } from './createVaultServer';
 declare module 'fastify' {
     interface FastifyContextConfig {
         /**
-         * Lets a route answer without the internal token. Only the `?note=`/`?file=` routes
+         * Lets a route answer without the internal token. Only `?note=`/`?file=` and cluster-internal metrics
          * use it: nextjs-app calls them without credentials, and they serve only the
-         * already-published `<vault>/public` folder.
+         * already-published `<vault>/public` folder. `/metrics` is restricted to
+         * vmagent by Kubernetes NetworkPolicy and is not exposed via Ingress.
          */
         isPublicWithoutInternalToken?: boolean;
     }
