@@ -4,7 +4,6 @@ import {
 
 import { callTelegramRichMessageMethod } from './callTelegramRichMessageMethod';
 import { createTelegramRichMessage } from './createTelegramRichMessage';
-import { TELEGRAM_RICH_MESSAGE_MAX_LENGTH } from './splitTelegramMarkdown/splitTelegramMarkdown';
 
 vi.mock('./callTelegramRichMessageMethod', () => {
     return { callTelegramRichMessageMethod: vi.fn() };
@@ -39,29 +38,14 @@ describe('createTelegramRichMessage', () => {
         }));
     });
 
-    it('splits long Markdown, only replying and attaching media on the first part', async () => {
-        const firstId = await createTelegramRichMessage({
-            token: 'token',
-            chatId: '123',
-            markdown: '🎬'.repeat(20_000),
-            media: [
-                {
-                    id: 'photo',
-                    absolutePath: '/tmp/example.png',
-                },
-            ],
-            replyToMessageId: 9,
-        });
-        const calls = vi.mocked(callTelegramRichMessageMethod).mock.calls.map(([args]) => args);
-
-        expect(firstId).toBe(42);
-        expect(calls.length).toBeGreaterThan(1);
-        expect(calls.every((call) => Buffer.byteLength(call.markdown ?? '') <= TELEGRAM_RICH_MESSAGE_MAX_LENGTH)).toBe(true);
-        expect(calls.slice(1).every((call) => !('reply_parameters' in call.base) && call.media.length === 0)).toBe(true);
-        expect(calls.map((call) => call.markdown).join('')).toBe('🎬'.repeat(20_000));
-    });
-
-    it('attaches inline keyboards only to the final rich-message part', async () => {
+    it('forwards oversized Markdown without splitting, preserving media, replies and buttons', async () => {
+        const markdown = '🎬'.repeat(20_000);
+        const media = [
+            {
+                id: 'photo',
+                absolutePath: '/tmp/example.png',
+            },
+        ];
         const replyMarkup = {
             inline_keyboard: [
                 [
@@ -73,17 +57,40 @@ describe('createTelegramRichMessage', () => {
             ],
         };
 
-        await createTelegramRichMessage({
+        await expect(createTelegramRichMessage({
             token: 'token',
             chatId: '123',
-            markdown: 'a'.repeat(70_000),
-            media: [],
+            markdown,
+            media,
+            replyToMessageId: 9,
             replyMarkup,
-        });
-        const calls = vi.mocked(callTelegramRichMessageMethod).mock.calls.map(([args]) => args);
+        })).resolves.toBe(42);
 
-        expect(calls.length).toBeGreaterThan(1);
-        expect(calls.slice(0, -1).every(({ base }) => !('reply_markup' in base))).toBe(true);
-        expect(calls.at(-1)?.base.reply_markup).toBe(JSON.stringify(replyMarkup));
+        expect(callTelegramRichMessageMethod).toHaveBeenCalledExactlyOnceWith({
+            method: 'sendRichMessage',
+            base: {
+                chat_id: '123',
+                reply_parameters: '{"message_id":9}',
+                reply_markup: JSON.stringify(replyMarkup),
+            },
+            markdown,
+            media,
+            token: 'token',
+            onRateLimited: undefined,
+        });
+    });
+
+    it('propagates Telegram rejection for oversized messages without retrying or truncating', async () => {
+        const telegramError = new Error('sendRichMessage failed: Bad Request: message is too long');
+
+        vi.mocked(callTelegramRichMessageMethod).mockRejectedValueOnce(telegramError);
+
+        await expect(createTelegramRichMessage({
+            token: 'token',
+            chatId: '123',
+            markdown: 'x'.repeat(70_000),
+            media: [],
+        })).rejects.toBe(telegramError);
+        expect(callTelegramRichMessageMethod).toHaveBeenCalledTimes(1);
     });
 });

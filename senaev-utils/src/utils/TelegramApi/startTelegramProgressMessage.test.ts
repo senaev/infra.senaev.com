@@ -9,7 +9,6 @@ import {
 
 import { createTelegramRichMessage } from './createTelegramRichMessage';
 import { editTelegramRichMessage } from './editTelegramRichMessage';
-import { TELEGRAM_RICH_MESSAGE_MAX_LENGTH } from './splitTelegramMarkdown/splitTelegramMarkdown';
 import { startTelegramProgressMessage } from './startTelegramProgressMessage';
 
 vi.mock('./createTelegramRichMessage', () => {
@@ -282,17 +281,20 @@ describe('startTelegramProgressMessage', () => {
         expect(createTelegramRichMessageMock).toHaveBeenCalledTimes(1);
     });
 
-    it('sends oversized final content separately, then finishes the progress message', async () => {
+    it('propagates Telegram rejection when an oversized final message cannot be edited', async () => {
         const progress = start();
-        const content = 'x'.repeat(TELEGRAM_RICH_MESSAGE_MAX_LENGTH);
+        const content = 'x'.repeat(70_000);
+        const telegramError = new Error('editMessageText failed: Bad Request: message is too long');
 
-        await progress.finish({ text: content });
+        editTelegramRichMessageMock.mockRejectedValueOnce(telegramError);
 
-        expect(createTelegramRichMessageMock.mock.calls[1]?.[0]).toMatchObject({
+        await expect(progress.finish({ text: content })).rejects.toBe(telegramError);
+
+        expect(editTelegramRichMessageMock).toHaveBeenCalledWith(expect.objectContaining({
+            messageId: MESSAGE_ID,
             markdown: content,
-            chatId: '-100',
-        });
-        expect(editedTexts()).toEqual(['📄 Full message sent separately']);
+        }));
+        expect(createTelegramRichMessageMock).toHaveBeenCalledTimes(1);
     });
 
     describe('when the placeholder cannot be posted', () => {

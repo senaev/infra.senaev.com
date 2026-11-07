@@ -77,9 +77,3 @@ export type TelegramRichMessageMedia = {
     id: string;
     absolutePath: string;
 };
-
-export type TelegramForwardPayload = {
-    method: string;
-    token: string;
-    body?: Record<string, unknown>;
-};

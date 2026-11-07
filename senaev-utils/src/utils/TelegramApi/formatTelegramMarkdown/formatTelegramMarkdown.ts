@@ -3,16 +3,24 @@ export function escapeTelegramMarkdown(text: string): string {
     return text.replace(/[\\`*_{}[\]()#+\-.!|><=~$]/gu, '\\$&');
 }
 
+/** Keep surrounding whitespace outside emphasis: CommonMark will not parse ** padded **. */
 export function telegramBold(text: string): string {
-    return `**${escapeTelegramMarkdown(text)}**`;
-}
+    const match = /^(\s*)([\s\S]*?)(\s*)$/u.exec(text);
+    const content = match?.[2];
 
-export function telegramItalic(text: string): string {
-    return `*${escapeTelegramMarkdown(text)}*`;
+    if (!match || !content) {
+        return escapeTelegramMarkdown(text);
+    }
+
+    return `${match[1]}**${escapeTelegramMarkdown(content)}**${match[3]}`;
 }
 
 /** A CommonMark code span uses a delimiter longer than any run of backticks in the content. */
 export function telegramCode(text: string): string {
+    if (text.trim() === '') {
+        return escapeTelegramMarkdown(text);
+    }
+
     if (text.includes('\n')) {
         return telegramCodeBlock(text);
     }
@@ -37,7 +45,11 @@ export function telegramLink({ text, url }: { text: string; url: string }): stri
         return escapeTelegramMarkdown(text);
     }
 
-    const encodedUrl = encodeURI(url).replaceAll('(', '%28').replaceAll(')', '%29');
+    // encodeURI escapes '%' even in existing percent escapes. Restore valid %XX triplets.
+    const encodedUrl = encodeURI(url)
+        .replace(/%25([0-9a-f]{2})/giu, '%$1')
+        .replaceAll('(', '%28')
+        .replaceAll(')', '%29');
 
     return `[${escapeTelegramMarkdown(text)}](${encodedUrl})`;
 }
