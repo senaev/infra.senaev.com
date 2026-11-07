@@ -19,7 +19,7 @@ Monitor the files in my Obsidian vault and warn before an individual file exceed
 
 1. Count non-hidden vault content, including attachments and backup CSVs; exclude dot-prefixed paths (`.trash`, `.git`, `.obsidian`), `plugins/`, `node_modules/` and symlinks. Never read file contents.
 2. Scan on scrape with 15-second caching and single-flight concurrency. Failed scans expose `obsidian_vault_scan_success 0` and do not report stale inventory as current.
-3. Export bounded metrics: total count and bytes, counts and bytes grouped by extension, largest-file bytes with one `path` label, oversized-file count and scanner health. A separate authenticated endpoint returns the top ten files.
+3. Export bounded metrics: total count and bytes, counts and bytes grouped by extension, largest-file bytes with one `path` label, oversized-file count and scanner health. A separate authenticated endpoint returns the top ten files and supports exact-path size lookup.
 4. Add `VMServiceScrape` and a Grafana dashboard with totals, by-type figures and the largest file path/size. Restrict metrics scraping to telemetry vmagent through Kubernetes NetworkPolicy.
 5. Add a `VMRule` alert for the largest file exceeding **4,500,000 bytes** (2-minute delay), with file path and bytes in the notification; a second alert catches missing/stale scanner data.
 6. Test changes to the vault (file added, deleted, resized, renamed), extension categorization, hidden/trash paths, permission errors, symlinks, stale scanner data and alert resolve behavior. Document only the operational settings needed to maintain it.
@@ -34,3 +34,5 @@ Monitor the files in my Obsidian vault and warn before an individual file exceed
 ## Result
 
 Implemented in the PR worktree; unit/integration tests and Helm render checks pass. Production scrape, dashboard and alert delivery must be verified after merging and deploying the PR.
+
+Related project files: [status](project-status.md) · [worklog](project-worklog.md).

@@ -55,5 +55,23 @@ export function registerVaultMetricsRoutes(server: VaultServer, root: string): v
     });
 
     // Detailed filenames stay on the authenticated internal API (not Prometheus).
-    server.get('/vault/file-stats', () => scanVaultInventory(root));
+    // ?path= is an exact-match lookup in the scanned, allowed vault file inventory.
+    server.get<{ Querystring: { path?: string } }>('/vault/file-stats', async (request, reply) => {
+        if (request.query.path === undefined) {
+            return scanVaultInventory(root);
+        }
+
+        const snapshot = await scanVaultInventory(root, true);
+        const file = snapshot.files?.find(({ path }) => path === request.query.path);
+
+        if (!file) {
+            return reply.code(404).send({
+                status: 'error',
+                code: 'not_found',
+                message: 'Vault file not found',
+            });
+        }
+
+        return file;
+    });
 }

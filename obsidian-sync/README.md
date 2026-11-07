@@ -172,7 +172,8 @@ Metrics include `obsidian_vault_files_total`, `obsidian_vault_bytes_total`,
 `obsidian_vault_largest_file_bytes{path=...,type=...}`, `obsidian_vault_oversized_files`,
 `obsidian_vault_scan_success`, and `obsidian_vault_last_scan_timestamp_seconds`.
 Only the single largest file path is carried as a metric label; the authenticated
-`GET /vault/file-stats` returns a top-ten file list. A scan failure reports
+`GET /vault/file-stats` returns a top-ten file list; add `?path=<vault-relative-path>`
+for a protected exact-match lookup of another file's byte size. A scan failure reports
 `obsidian_vault_scan_success 0` instead of stale file totals.
 
 The **Obsidian Vault** Grafana dashboard shows counts, sizes, file types, largest

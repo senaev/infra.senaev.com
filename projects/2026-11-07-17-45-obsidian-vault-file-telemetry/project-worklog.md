@@ -2,7 +2,20 @@
 
 Added filesystem metadata scanner in `obsidian-sync`, `/metrics` for vmagent, an authenticated top-ten inventory endpoint, VictoriaMetrics scrape and VMRule alerts, and an Obsidian Vault Grafana dashboard. Only the largest filename is a metric label, so the system does not expose thousands of private file paths as series.
 
-Targeted tests pass and `helm template` with shared common-values renders the alert and scrape objects. Production verification awaits PR merge/deployment.
+Targeted tests pass and `helm template` with shared common-values renders the alert and scrape objects.
+
+```
+ Test Files  8 passed (8)
+      Tests  50 passed (50)
+
+$ helm template senaev-com provisioning/helm/senaev-com --namespace senaev-com -f provisioning/helm/common-values.yaml
+    - name: obsidian-vault
+        - alert: obsidian-vault-file-too-large
+          expr: obsidian_vault_largest_file_bytes{namespace="senaev-com"} > 4500000
+kind: VMServiceScrape
+metadata:
+  name: obsidian-sync
+``` Production verification awaits PR merge/deployment.
 
 ## 2026-11-07 17:45 UTC — New project scoped
 

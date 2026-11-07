@@ -55,6 +55,8 @@ export type VaultInventory = {
     byType: Record<string, { files: number; bytes: number }>;
     largest: VaultFileStat | null;
     largestFiles: VaultFileStat[];
+    /** Only present for authenticated per-file lookups; never exported as metrics. */
+    files?: VaultFileStat[];
     oversizedFiles: number;
 };
 
@@ -69,7 +71,7 @@ function fileType(name: string): string {
 }
 
 /** Read metadata only. Never follow symbolic links, including directory links. */
-export async function scanVaultInventory(root: string): Promise<VaultInventory> {
+export async function scanVaultInventory(root: string, includeFiles = false): Promise<VaultInventory> {
     const scanRoot = await lstat(root);
 
     if (!scanRoot.isDirectory() || scanRoot.isSymbolicLink()) {
@@ -84,6 +86,7 @@ export async function scanVaultInventory(root: string): Promise<VaultInventory> 
         largest: null,
         largestFiles: [],
         oversizedFiles: 0,
+        ...includeFiles ? { files: [] } : {},
     };
     const queue = [root];
 
@@ -142,6 +145,7 @@ export async function scanVaultInventory(root: string): Promise<VaultInventory> 
                 result.oversizedFiles++;
             }
 
+            result.files?.push(stat);
             result.largestFiles.push(stat);
             result.largestFiles.sort((a, b) => b.bytes - a.bytes || a.path.localeCompare(b.path));
             if (result.largestFiles.length > 10) {
