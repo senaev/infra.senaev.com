@@ -78,3 +78,7 @@
 ## Findings
 
 *(append results below)*
+
+## Result — 2026-11-07 audit
+
+OpenCode is currently configured with a persistent `/projects/git` volume and `git-init`, and the associated code tooling works with remote repositories. The earlier unchecked deployment checklist represents historical verification steps; these exact shell commands were not rerun in this audit.

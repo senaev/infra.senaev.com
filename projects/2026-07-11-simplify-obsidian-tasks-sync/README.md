@@ -145,3 +145,7 @@ id/version decisions outside this task's scope.
   carried over as-is.
 - Nothing committed or pushed in either repo — pending explicit go-ahead (repo git
   discipline: never stage/commit/push without an explicit request).
+
+## Result — 2026-11-07 audit
+
+Current Telegram/Alisa task actions write to Obsidian via `addObsidianTasks` and the protected `/tasks` route, not to the old Supabase tasks table. Historical changes to the separate Obsidian plugin were not independently reverified. This closes the task-write architecture goal but does not claim that the legacy Supabase table itself was dropped.

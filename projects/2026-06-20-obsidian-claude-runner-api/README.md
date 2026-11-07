@@ -266,3 +266,7 @@ Vault is treated as a codebase with full read/write access — no agent mode loc
 User will create a new Telegram bot (separate from the existing webhook-endpoint bot).
 `OPEN_BROWSER_ROOTS=/vault` restricts the bot's directory browser to the vault.
 `OBSIDIAN_SYNC_MODE` removed — bidirectional sync enabled. OpenCode edits will sync back to Obsidian cloud and appear on other devices.
+
+## Result — 2026-11-07 audit
+
+The original OpenCode + Telegram integration was built and tested in June 2026. OpenCode and its Telegram bot remain deployed, but later security/isolation work deliberately removed its direct vault mount. The initial project is historically complete, while direct vault access is no longer part of the current deployment.
