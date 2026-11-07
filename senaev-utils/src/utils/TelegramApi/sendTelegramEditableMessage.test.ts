@@ -7,26 +7,26 @@ import {
     vi,
 } from 'vitest';
 
-import { editTelegramMessage } from './editTelegramMessage';
+import { createTelegramRichMessage } from './createTelegramRichMessage';
+import { editTelegramRichMessage } from './editTelegramRichMessage';
 import { sendTelegramEditableMessage } from './sendTelegramEditableMessage';
-import { sendTelegramMessage } from './sendTelegramMessage';
 
-vi.mock('./sendTelegramMessage', () => {
-    return { sendTelegramMessage: vi.fn() };
+vi.mock('./createTelegramRichMessage', () => {
+    return { createTelegramRichMessage: vi.fn() };
 });
 
-vi.mock('./editTelegramMessage', () => {
-    return { editTelegramMessage: vi.fn() };
+vi.mock('./editTelegramRichMessage', () => {
+    return { editTelegramRichMessage: vi.fn() };
 });
 
-const sendTelegramMessageMock = vi.mocked(sendTelegramMessage);
-const editTelegramMessageMock = vi.mocked(editTelegramMessage);
+const createTelegramRichMessageMock = vi.mocked(createTelegramRichMessage);
+const editTelegramRichMessageMock = vi.mocked(editTelegramRichMessage);
 
 const MESSAGE_ID = 555;
 
-/** Text of every editMessageText the handle issued, in the order the writes completed. */
+/** Text of every rich-message edit the handle issued, in the order the writes completed. */
 function editedTexts(): string[] {
-    return editTelegramMessageMock.mock.calls.map(([parameters]) => parameters.text);
+    return editTelegramRichMessageMock.mock.calls.map(([parameters]) => parameters.html ?? '');
 }
 
 /**
@@ -44,7 +44,6 @@ function send({ onSendError }: { onSendError?: (error: unknown) => void } = {}) 
         chatId: '-100',
         token: 'token',
         text: 'first',
-        parseMode: 'HTML',
         disableLinkPreview: true,
         ...(onSendError && { onSendError }),
     });
@@ -52,8 +51,8 @@ function send({ onSendError }: { onSendError?: (error: unknown) => void } = {}) 
 
 describe('sendTelegramEditableMessage', () => {
     beforeEach(() => {
-        sendTelegramMessageMock.mockResolvedValue({ message_id: MESSAGE_ID });
-        editTelegramMessageMock.mockResolvedValue(undefined);
+        createTelegramRichMessageMock.mockResolvedValue(MESSAGE_ID);
+        editTelegramRichMessageMock.mockResolvedValue('updated');
     });
 
     afterEach(() => {
@@ -63,17 +62,17 @@ describe('sendTelegramEditableMessage', () => {
     it('should post the message with the given parameters', () => {
         send();
 
-        expect(sendTelegramMessageMock).toHaveBeenCalledWith({
+        expect(createTelegramRichMessageMock).toHaveBeenCalledWith({
             chatId: '-100',
             token: 'token',
-            text: 'first',
-            parseMode: 'HTML',
+            html: 'first',
+            media: [],
             disableLinkPreview: true,
         });
     });
 
     it('should return the handle without waiting for the message to be posted', () => {
-        sendTelegramMessageMock.mockImplementation(() => new Promise(() => {}));
+        createTelegramRichMessageMock.mockImplementation(() => new Promise(() => {}));
 
         expect(send().edit).toBeInstanceOf(Function);
     });
@@ -86,7 +85,7 @@ describe('sendTelegramEditableMessage', () => {
             replyToMessageId: 42,
         });
 
-        expect(sendTelegramMessageMock).toHaveBeenCalledWith(expect.objectContaining({
+        expect(createTelegramRichMessageMock).toHaveBeenCalledWith(expect.objectContaining({
             replyToMessageId: 42,
         }));
     });
@@ -94,32 +93,32 @@ describe('sendTelegramEditableMessage', () => {
     it('should edit the message it posted, keeping its id to itself', async () => {
         await send().edit({ text: 'second' });
 
-        expect(editTelegramMessageMock).toHaveBeenCalledWith({
+        expect(editTelegramRichMessageMock).toHaveBeenCalledWith({
             chatId: '-100',
             messageId: MESSAGE_ID,
             token: 'token',
-            text: 'second',
-            parseMode: 'HTML',
+            html: 'second',
+            media: [],
             disableLinkPreview: true,
         });
     });
 
     it('should wait for the message to be posted before editing it', async () => {
-        let releaseSend = (_: { message_id: number }): void => {};
+        let releaseSend = (_: number): void => {};
 
-        sendTelegramMessageMock.mockImplementationOnce(() => new Promise((resolve) => {
+        createTelegramRichMessageMock.mockImplementationOnce(() => new Promise((resolve) => {
             releaseSend = resolve;
         }));
 
         const editing = send().edit({ text: 'second' });
 
         await flushWrites();
-        expect(editTelegramMessageMock).not.toHaveBeenCalled();
+        expect(editTelegramRichMessageMock).not.toHaveBeenCalled();
 
-        releaseSend({ message_id: MESSAGE_ID });
+        releaseSend(MESSAGE_ID);
         await editing;
 
-        expect(editTelegramMessageMock).toHaveBeenCalledTimes(1);
+        expect(editTelegramRichMessageMock).toHaveBeenCalledTimes(1);
     });
 
     it('should pass replyMarkup through, and omit it when absent', async () => {
@@ -135,7 +134,7 @@ describe('sendTelegramEditableMessage', () => {
         const [
             withMarkup,
             withoutMarkup,
-        ] = editTelegramMessageMock.mock.calls;
+        ] = editTelegramRichMessageMock.mock.calls;
 
         expect(withMarkup?.[0]).toMatchObject({ replyMarkup });
         expect(withoutMarkup?.[0]).not.toHaveProperty('replyMarkup');
@@ -144,8 +143,8 @@ describe('sendTelegramEditableMessage', () => {
     it('should not start a write while an earlier one is still open', async () => {
         let releaseFirstEdit = (): void => {};
 
-        editTelegramMessageMock.mockImplementationOnce(() => new Promise<void>((resolve) => {
-            releaseFirstEdit = resolve;
+        editTelegramRichMessageMock.mockImplementationOnce(() => new Promise<'updated'>((resolve) => {
+            releaseFirstEdit = () => resolve('updated');
         }));
 
         const message = send();
@@ -156,7 +155,7 @@ describe('sendTelegramEditableMessage', () => {
         const secondEdit = message.edit({ text: 'third' });
 
         await flushWrites();
-        expect(editTelegramMessageMock).toHaveBeenCalledTimes(1);
+        expect(editTelegramRichMessageMock).toHaveBeenCalledTimes(1);
 
         releaseFirstEdit();
         await Promise.all([
@@ -173,15 +172,15 @@ describe('sendTelegramEditableMessage', () => {
     it('should drop a waiting write that a newer one supersedes', async () => {
         let releaseFirstEdit = (): void => {};
 
-        editTelegramMessageMock.mockImplementationOnce(() => new Promise<void>((resolve) => {
-            releaseFirstEdit = resolve;
+        editTelegramRichMessageMock.mockImplementationOnce(() => new Promise<'updated'>((resolve) => {
+            releaseFirstEdit = () => resolve('updated');
         }));
 
         const message = send();
         const firstEdit = message.edit({ text: 'second' });
 
         await flushWrites();
-        expect(editTelegramMessageMock).toHaveBeenCalledTimes(1);
+        expect(editTelegramRichMessageMock).toHaveBeenCalledTimes(1);
 
         const supersededEdit = message.edit({ text: 'third' });
         const newestEdit = message.edit({ text: 'fourth' });
@@ -202,13 +201,13 @@ describe('sendTelegramEditableMessage', () => {
     it('should reject when Telegram refuses a write', async () => {
         const failure = new Error('too many requests');
 
-        editTelegramMessageMock.mockRejectedValueOnce(failure);
+        editTelegramRichMessageMock.mockRejectedValueOnce(failure);
 
         await expect(send().edit({ text: 'second' })).rejects.toThrow(failure);
     });
 
     it('should keep accepting writes after one failed', async () => {
-        editTelegramMessageMock.mockRejectedValueOnce(new Error('too many requests'));
+        editTelegramRichMessageMock.mockRejectedValueOnce(new Error('too many requests'));
 
         const message = send();
 
@@ -225,7 +224,7 @@ describe('sendTelegramEditableMessage', () => {
         const failure = new Error('chat not found');
 
         beforeEach(() => {
-            sendTelegramMessageMock.mockRejectedValue(failure);
+            createTelegramRichMessageMock.mockRejectedValue(failure);
         });
 
         it('should report the failure through onSendError', async () => {
@@ -240,7 +239,7 @@ describe('sendTelegramEditableMessage', () => {
         it('should resolve a write without issuing it', async () => {
             await expect(send().edit({ text: 'second' })).resolves.toBeUndefined();
 
-            expect(editTelegramMessageMock).not.toHaveBeenCalled();
+            expect(editTelegramRichMessageMock).not.toHaveBeenCalled();
         });
     });
 });

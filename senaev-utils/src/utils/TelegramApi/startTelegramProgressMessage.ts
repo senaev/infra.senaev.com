@@ -30,7 +30,6 @@ export function startTelegramProgressMessage({
     const message = sendTelegramEditableMessage({
         chatId,
         token,
-        richHtml: true,
         disableLinkPreview: true,
         text: buildText(0),
         ...(replyToMessageId !== undefined && { replyToMessageId }),
