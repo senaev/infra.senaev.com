@@ -18,17 +18,15 @@ const LLM_SERVER_MAX_TOKENS = 1024;
 
 const OPENROUTER_TIMEOUT_MS = 60_000;
 
-export function getLlmServerProvider(url: string): LlmProvider {
-    return {
-        name: 'llm-server',
-        url: `${url}/v1/chat/completions`,
-        // llama-server serves one model and ignores this field.
-        model: 'default',
-        headers: {},
-        timeoutMs: LLM_SERVER_TIMEOUT_MS,
-        maxTokens: LLM_SERVER_MAX_TOKENS,
-    };
-}
+export const LLM_SERVER_PROVIDER: LlmProvider = {
+    name: 'llm-server',
+    url: `${LLM_SERVER_URL}/v1/chat/completions`,
+    // llama-server serves one model and ignores this field.
+    model: 'default',
+    headers: {},
+    timeoutMs: LLM_SERVER_TIMEOUT_MS,
+    maxTokens: LLM_SERVER_MAX_TOKENS,
+};
 
 export const OPENROUTER_PROVIDER: LlmProvider = {
     name: 'openrouter',
@@ -47,7 +45,7 @@ export const OPENROUTER_PROVIDER: LlmProvider = {
 export function getDefaultLlmProviders(): LlmProvider[] {
     return LLM_SERVER_URL
         ? [
-            getLlmServerProvider(LLM_SERVER_URL),
+            LLM_SERVER_PROVIDER,
             OPENROUTER_PROVIDER,
         ]
         : [OPENROUTER_PROVIDER];
