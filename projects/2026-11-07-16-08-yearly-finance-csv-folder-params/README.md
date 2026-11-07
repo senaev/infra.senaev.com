@@ -27,4 +27,6 @@ Allow Obsidian MCP to treat a directory of CSV files as one logical table, while
 
 ## Result
 
-MCP implementation will be delivered in PR #128; no migration automation or live vault changes are included.
+Completed on 2026-11-07. [PR #128](https://github.com/senaev/infra.senaev.com/pull/128) was merged and deployed with shared folder sorting and read-only folder queries, without migration scripts. The live 18,981 transactions were manually partitioned into `2015.csv`–`2026.csv` and independently checked against the original by grouping all 18 columns and their occurrence counts (no missing or extra rows); sorting was verified year by year. Finance references were updated, and Obsidian Sync confirmed synchronization. The original and temporary migration backups were subsequently moved to recoverable trash at the owner's request. The active dataset contains only 12 yearly CSVs and the shared configuration. Historical `_source_record` positions are no longer valid for those files.
+
+Related project files: [status](project-status.md) · [worklog](project-worklog.md).
