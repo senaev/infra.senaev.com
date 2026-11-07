@@ -12,7 +12,7 @@ vi.mock('../env', () => {
         TRICKY_DAD_CHAT_ID: 'tricky-dad-chat',
         LLM_SERVER_URL: 'http://llm-server:8080',
         OPENROUTER_API_KEY: 'key',
-        WEBHOOK_DOMAIN: 'example.com',
+        API_DOMAIN: 'example.com',
     };
 });
 

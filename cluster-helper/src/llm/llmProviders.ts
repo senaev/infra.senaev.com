@@ -1,5 +1,5 @@
 import {
-    LLM_SERVER_URL, OPENROUTER_API_KEY, WEBHOOK_DOMAIN,
+    LLM_SERVER_URL, OPENROUTER_API_KEY, API_DOMAIN,
 } from '../env';
 
 export type LlmProvider = {
@@ -34,7 +34,7 @@ export const OPENROUTER_PROVIDER: LlmProvider = {
     model: 'google/gemini-3-flash-preview',
     headers: {
         Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-        'HTTP-Referer': `https://${WEBHOOK_DOMAIN}`,
+        'HTTP-Referer': `https://${API_DOMAIN}`,
         'X-Title': 'senaev.com cluster-helper',
     },
     timeoutMs: OPENROUTER_TIMEOUT_MS,

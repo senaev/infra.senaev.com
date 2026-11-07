@@ -114,6 +114,10 @@ Each endpoint is its own OAuth resource (RFC 8707): the token `aud` is the resou
 client asked for, and a token for one endpoint is rejected by the other. ChatGPT needs one
 connector for each endpoint.
 
+There is no client registration: the allowed clients are hard-coded in
+`authorizationServer.ts` by their Client ID Metadata Document URL — ChatGPT, and OpenCode
+(`https://opencode.ai/oauth/opencode/client.json`, loopback redirect on any port).
+
 `mcp-grafana` has Editor rights in Grafana. Its init container logs in with the Grafana admin
 and creates the `mcp-grafana` service account and a new token on every pod start, so there is
 no manual step on a new cluster. The `watch-service-account-token` sidecar checks the token every
@@ -121,6 +125,16 @@ minute and makes a new one if Grafana rejects it (for example after Grafana lost
 `mcp-grafana` reads the token file on every call, so it needs no restart. Only cluster-helper can reach it: a NetworkPolicy, and the
 Vault key `INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_MCP_GRAFANA`. See
 [`projects/2026-10-18-15-00-grafana-mcp-for-chatgpt`](projects/2026-10-18-15-00-grafana-mcp-for-chatgpt/README.md).
+
+## LLM endpoint
+
+cluster-helper serves an OpenAI-compatible API for the models that run in the cluster, on
+the public port with no host constraint: `https://api.senaev.com/llm` from outside and
+`http://cluster-helper:3000/llm` inside (n8n is allowed by the NetworkPolicy). Routes:
+`GET /llm/models` and `POST /llm/chat/completions`; the body and the answer (also SSE) pass
+through unchanged. One API key for all clients, Vault `LLM_ENDPOINT_API_KEY`, checked
+before the body is read. The model list is `cluster-helper/src/llm/llmEndpointModels.ts`.
+See [`projects/2026-11-06-10-23-personal-llm-connector`](projects/2026-11-06-10-23-personal-llm-connector/README.md).
 
 ## Shared Toolchain
 
