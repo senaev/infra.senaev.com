@@ -1,25 +1,29 @@
 import { callTelegramRichMessageMethod } from './callTelegramRichMessageMethod';
-import { TelegramRichMessageMedia } from './types';
+import { InlineKeyboardMarkup, TelegramRichMessageMedia } from './types';
 
 export type EditRichMessageResult = 'updated' | 'unchanged';
 
 /**
- * Rewrites an existing channel post with rich-message content.
- *
- * Requires the bot to be a channel administrator with `can_edit_messages`, which is what
- * allows it to edit posts it did not author.
+ * Rewrites an existing rich message in a chat or channel.
+ * Editing another sender's channel post requires appropriate permissions.
  */
 export async function editTelegramRichMessage({
     chatId,
     messageId,
     markdown,
+    html,
+    replyMarkup,
+    disableLinkPreview,
     media,
     token,
     onRateLimited,
 }: {
     chatId: string;
     messageId: number;
-    markdown: string;
+    markdown?: string;
+    html?: string;
+    replyMarkup?: InlineKeyboardMarkup;
+    disableLinkPreview?: boolean;
     media: TelegramRichMessageMedia[];
     token: string;
     onRateLimited?: ((info: { retryAfterSeconds: number; attempt: number }) => void) | undefined;
@@ -29,8 +33,13 @@ export async function editTelegramRichMessage({
         base: {
             chat_id: chatId,
             message_id: String(messageId),
+            ...(disableLinkPreview !== undefined && {
+                link_preview_options: JSON.stringify({ is_disabled: disableLinkPreview }),
+            }),
+            ...(replyMarkup && { reply_markup: JSON.stringify(replyMarkup) }),
         },
-        markdown,
+        ...(markdown !== undefined && { markdown }),
+        ...(html !== undefined && { html }),
         media,
         token,
         onRateLimited,

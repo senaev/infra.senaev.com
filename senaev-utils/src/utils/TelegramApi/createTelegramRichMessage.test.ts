@@ -58,6 +58,33 @@ describe('createTelegramRichMessage', () => {
             .toBe(html.replaceAll(/<\/?pre>/gu, ''));
     });
 
+    it('puts inline keyboards only on the last rich-message part', async () => {
+        const replyMarkup = {
+            inline_keyboard: [
+                [
+                    {
+                        text: 'More',
+                        callback_data: 'next',
+                    },
+                ],
+            ],
+        };
+
+        await createTelegramRichMessage({
+            token: 'token',
+            chatId: '123',
+            html: `<pre>${'a'.repeat(70_000)}</pre>`,
+            media: [],
+            replyMarkup,
+        });
+
+        const calls = vi.mocked(callTelegramRichMessageMethod).mock.calls.map(([args]) => args);
+
+        expect(calls.length).toBeGreaterThan(1);
+        expect(calls.slice(0, -1).every(({ base }) => !('reply_markup' in base))).toBe(true);
+        expect(calls.at(-1)?.base.reply_markup).toBe(JSON.stringify(replyMarkup));
+    });
+
     it('preserves existing Markdown publishing', async () => {
         await createTelegramRichMessage({
             token: 'token',

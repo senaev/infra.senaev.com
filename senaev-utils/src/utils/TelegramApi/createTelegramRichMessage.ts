@@ -1,6 +1,6 @@
 import { callTelegramRichMessageMethod } from './callTelegramRichMessageMethod';
 import { splitTelegramHtml } from './splitTelegramHtml/splitTelegramHtml';
-import { TelegramRichMessageMedia } from './types';
+import { InlineKeyboardMarkup, TelegramRichMessageMedia } from './types';
 
 /**
  * Publishes a new rich-message post to a channel and returns its message id.
@@ -18,12 +18,16 @@ export async function createTelegramRichMessage({
     media,
     token,
     replyToMessageId,
+    replyMarkup,
+    disableLinkPreview,
     onRateLimited,
 }: {
     chatId: string;
     media: TelegramRichMessageMedia[];
     token: string;
     replyToMessageId?: number;
+    replyMarkup?: InlineKeyboardMarkup;
+    disableLinkPreview?: boolean;
     onRateLimited?: ((info: { retryAfterSeconds: number; attempt: number }) => void) | undefined;
 } & RichMessageContent): Promise<number> {
     const parts = html === undefined ? [markdown!] : splitTelegramHtml(html);
@@ -37,8 +41,14 @@ export async function createTelegramRichMessage({
             method: 'sendRichMessage',
             base: {
                 chat_id: chatId,
+                ...(disableLinkPreview !== undefined && {
+                    link_preview_options: JSON.stringify({ is_disabled: disableLinkPreview }),
+                }),
                 ...(index === 0 && replyToMessageId !== undefined && {
                     reply_parameters: JSON.stringify({ message_id: replyToMessageId }),
+                }),
+                ...(index === parts.length - 1 && replyMarkup && {
+                    reply_markup: JSON.stringify(replyMarkup),
                 }),
             },
             ...(html === undefined ? { markdown: part } : { html: part }),

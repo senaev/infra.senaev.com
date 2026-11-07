@@ -1,4 +1,6 @@
+import { createTelegramRichMessage } from './createTelegramRichMessage';
 import { editTelegramMessage } from './editTelegramMessage';
+import { editTelegramRichMessage } from './editTelegramRichMessage';
 import { sendTelegramMessage } from './sendTelegramMessage';
 import { InlineKeyboardMarkup, TelegramParseMode } from './types';
 
@@ -25,6 +27,7 @@ export function sendTelegramEditableMessage({
     disableLinkPreview,
     onSendError,
     parseMode,
+    richHtml,
     replyToMessageId,
     text,
     token,
@@ -33,19 +36,30 @@ export function sendTelegramEditableMessage({
     disableLinkPreview?: boolean | undefined;
     onSendError?: ((error: unknown) => void) | undefined;
     parseMode?: TelegramParseMode | undefined;
+    /** Uses editable rich HTML (32768-character limit) instead of a normal message. */
+    richHtml?: boolean;
     replyToMessageId?: number | undefined;
     text: string;
     token: string;
 }): TelegramEditableMessage {
-    const sentMessageId: Promise<number | undefined> = sendTelegramMessage({
-        chatId,
-        text,
-        token,
-        ...(parseMode !== undefined && { parseMode }),
-        ...(disableLinkPreview !== undefined && { disableLinkPreview }),
-        ...(replyToMessageId !== undefined && { replyToMessageId }),
-    }).then(
-        ({ message_id: messageId }) => messageId,
+    const sentMessageId: Promise<number | undefined> = (richHtml
+        ? createTelegramRichMessage({
+            chatId,
+            token,
+            html: text,
+            media: [],
+            ...(disableLinkPreview !== undefined && { disableLinkPreview }),
+            ...(replyToMessageId !== undefined && { replyToMessageId }),
+        })
+        : sendTelegramMessage({
+            chatId,
+            text,
+            token,
+            ...(parseMode !== undefined && { parseMode }),
+            ...(disableLinkPreview !== undefined && { disableLinkPreview }),
+            ...(replyToMessageId !== undefined && { replyToMessageId }),
+        }).then(({ message_id: messageId }) => messageId)).then(
+        (messageId) => messageId,
         (error: unknown) => {
             onSendError?.(error);
 
@@ -73,15 +87,27 @@ export function sendTelegramEditableMessage({
                     return;
                 }
 
-                await editTelegramMessage({
-                    chatId,
-                    messageId,
-                    token,
-                    text: editedText,
-                    ...(parseMode !== undefined && { parseMode }),
-                    ...(disableLinkPreview !== undefined && { disableLinkPreview }),
-                    ...(replyMarkup && { replyMarkup }),
-                });
+                if (richHtml) {
+                    await editTelegramRichMessage({
+                        chatId,
+                        messageId,
+                        token,
+                        html: editedText,
+                        media: [],
+                        ...(disableLinkPreview !== undefined && { disableLinkPreview }),
+                        ...(replyMarkup && { replyMarkup }),
+                    });
+                } else {
+                    await editTelegramMessage({
+                        chatId,
+                        messageId,
+                        token,
+                        text: editedText,
+                        ...(parseMode !== undefined && { parseMode }),
+                        ...(disableLinkPreview !== undefined && { disableLinkPreview }),
+                        ...(replyMarkup && { replyMarkup }),
+                    });
+                }
             });
 
             writes = result.catch(() => undefined);
