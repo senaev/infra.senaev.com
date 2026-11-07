@@ -1,6 +1,6 @@
-import { editTelegramMessage } from './editTelegramMessage';
-import { sendTelegramMessage } from './sendTelegramMessage';
-import { InlineKeyboardMarkup, TelegramParseMode } from './types';
+import { createTelegramRichMessage } from './createTelegramRichMessage';
+import { editTelegramRichMessage } from './editTelegramRichMessage';
+import { InlineKeyboardMarkup } from './types';
 
 export interface TelegramEditableMessage {
     edit: (parameters: {
@@ -10,7 +10,7 @@ export interface TelegramEditableMessage {
 }
 
 /**
- * Posts a message and hands back a handle that can rewrite it, hiding its id.
+ * Posts an editable rich HTML message and returns a handle that owns subsequent edits.
  *
  * Returns synchronously, while the message is still being posted: every later write waits
  * for the id on its own, so a caller never has to hold one or await the send.
@@ -24,7 +24,6 @@ export function sendTelegramEditableMessage({
     chatId,
     disableLinkPreview,
     onSendError,
-    parseMode,
     replyToMessageId,
     text,
     token,
@@ -32,26 +31,22 @@ export function sendTelegramEditableMessage({
     chatId: string;
     disableLinkPreview?: boolean | undefined;
     onSendError?: ((error: unknown) => void) | undefined;
-    parseMode?: TelegramParseMode | undefined;
     replyToMessageId?: number | undefined;
     text: string;
     token: string;
 }): TelegramEditableMessage {
-    const sentMessageId: Promise<number | undefined> = sendTelegramMessage({
+    const sentMessageId: Promise<number | undefined> = createTelegramRichMessage({
         chatId,
-        text,
         token,
-        ...(parseMode !== undefined && { parseMode }),
+        html: text,
+        media: [],
         ...(disableLinkPreview !== undefined && { disableLinkPreview }),
         ...(replyToMessageId !== undefined && { replyToMessageId }),
-    }).then(
-        ({ message_id: messageId }) => messageId,
-        (error: unknown) => {
-            onSendError?.(error);
+    }).catch((error: unknown) => {
+        onSendError?.(error);
 
-            return undefined;
-        }
-    );
+        return undefined;
+    });
 
     let writes: Promise<unknown> = Promise.resolve();
     let newestQueuedWrite = 0;
@@ -68,17 +63,16 @@ export function sendTelegramEditableMessage({
                 const messageId = await sentMessageId;
 
                 if (messageId === undefined) {
-                    // TODO: decide what a caller should be able to do about a message that was
-                    // never posted. For now the write is dropped, as the only caller wants.
+                    // Nothing to edit when the initial message could not be posted.
                     return;
                 }
 
-                await editTelegramMessage({
+                await editTelegramRichMessage({
                     chatId,
                     messageId,
                     token,
-                    text: editedText,
-                    ...(parseMode !== undefined && { parseMode }),
+                    html: editedText,
+                    media: [],
                     ...(disableLinkPreview !== undefined && { disableLinkPreview }),
                     ...(replyMarkup && { replyMarkup }),
                 });

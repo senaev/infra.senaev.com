@@ -2,16 +2,17 @@ import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnk
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
 import { escapeHtml } from 'senaev-utils/src/utils/String/escapeHtml/escapeHtml';
 
-import { TG_TOKEN_SENAEV_COM_BOT, OBSIDIAN_TASKS_CHAT_ID } from './env';
-import { getRandomValueFromArray } from './getRandomValueFromArray';
-import { logger } from './logger';
-import { processAlisaCommand } from './processAlisaCommand';
+import { TG_TOKEN_SENAEV_COM_BOT, OBSIDIAN_TASKS_CHAT_ID } from '../env';
+import { getRandomValueFromArray } from '../getRandomValueFromArray';
+import { logger } from '../logger';
+
+import { runTrickyDadCommand } from './runTrickyDadCommand';
 import { sendTrickyDadErrorReport, sendTrickyDadReport } from './sendTrickyDadReport';
 import { TRICKY_DAD_FUNNY_RESPONSES } from './TRICKY_DAD_FUNNY_RESPONSES';
 
 /**
  * Synchronous on purpose. Alisa times out quickly, so the command is dispatched as a
- * background promise and a fallback answer is returned at once, without awaiting it.
+ * background promise and an immediate acknowledgement is returned at once, without awaiting it.
  */
 export function handleAlisaRequest(body: unknown): string {
     const startTime = Date.now();
@@ -34,7 +35,24 @@ export function handleAlisaRequest(body: unknown): string {
             throw new Error('Missing command field in request');
         }
 
-        processAlisaCommand(command, 'Alisa')
+        if (command.trim() === '') {
+            const err = new Error('Empty command received from Alisa');
+
+            logger.error({
+                err,
+                body,
+            }, '❌ Empty Alisa command');
+            sendTrickyDadErrorReport({
+                command,
+                err,
+            }).catch((sendErr) => {
+                logger.error(sendErr, '❌ Failed to send empty-command error to Telegram');
+            });
+
+            return 'Ничего не понял. Можете, пожалуйста, повторить?';
+        }
+
+        runTrickyDadCommand(command, 'Alisa')
             .then((result) =>
                 sendTrickyDadReport({
                     command,
@@ -54,7 +72,7 @@ export function handleAlisaRequest(body: unknown): string {
 
         const responseText = getRandomValueFromArray(TRICKY_DAD_FUNNY_RESPONSES);
 
-        logger.info({ responseText }, '👉 Sending fallback response for Alisa command');
+        logger.info({ responseText }, '👉 Sending immediate response for Alisa command');
 
         return responseText;
     } catch (err) {

@@ -7,27 +7,28 @@ import {
     vi,
 } from 'vitest';
 
-import { editTelegramMessage } from './editTelegramMessage';
-import { sendTelegramMessage } from './sendTelegramMessage';
+import { createTelegramRichMessage } from './createTelegramRichMessage';
+import { editTelegramRichMessage } from './editTelegramRichMessage';
+import { TELEGRAM_RICH_MESSAGE_MAX_LENGTH } from './splitTelegramHtml/splitTelegramHtml';
 import { startTelegramProgressMessage } from './startTelegramProgressMessage';
 
-vi.mock('./sendTelegramMessage', () => {
-    return { sendTelegramMessage: vi.fn() };
+vi.mock('./createTelegramRichMessage', () => {
+    return { createTelegramRichMessage: vi.fn() };
 });
 
-vi.mock('./editTelegramMessage', () => {
-    return { editTelegramMessage: vi.fn() };
+vi.mock('./editTelegramRichMessage', () => {
+    return { editTelegramRichMessage: vi.fn() };
 });
 
-const sendTelegramMessageMock = vi.mocked(sendTelegramMessage);
-const editTelegramMessageMock = vi.mocked(editTelegramMessage);
+const createTelegramRichMessageMock = vi.mocked(createTelegramRichMessage);
+const editTelegramRichMessageMock = vi.mocked(editTelegramRichMessage);
 
 const MESSAGE_ID = 555;
 const INTERVAL_MS = 10_000;
 
 /** Text of every editMessageText the util issued, in the order the writes completed. */
 function editedTexts(): string[] {
-    return editTelegramMessageMock.mock.calls.map(([parameters]) => parameters.text);
+    return editTelegramRichMessageMock.mock.calls.map(([parameters]) => parameters.html ?? '');
 }
 
 function start({ onWriteError }: { onWriteError?: (error: unknown) => void } = {}) {
@@ -47,8 +48,8 @@ async function flushWrites(): Promise<void> {
 describe('startTelegramProgressMessage', () => {
     beforeEach(() => {
         vi.useFakeTimers();
-        sendTelegramMessageMock.mockResolvedValue({ message_id: MESSAGE_ID });
-        editTelegramMessageMock.mockResolvedValue(undefined);
+        createTelegramRichMessageMock.mockResolvedValue(MESSAGE_ID);
+        editTelegramRichMessageMock.mockResolvedValue('updated');
     });
 
     afterEach(() => {
@@ -59,8 +60,8 @@ describe('startTelegramProgressMessage', () => {
     it('should return the handle without waiting for the placeholder to be posted', () => {
         let postPlaceholder = (): void => {};
 
-        sendTelegramMessageMock.mockImplementationOnce(() => new Promise((resolve) => {
-            postPlaceholder = () => resolve({ message_id: MESSAGE_ID });
+        createTelegramRichMessageMock.mockImplementationOnce(() => new Promise((resolve) => {
+            postPlaceholder = () => resolve(MESSAGE_ID);
         }));
 
         const progress = start();
@@ -75,9 +76,9 @@ describe('startTelegramProgressMessage', () => {
 
         await flushWrites();
 
-        expect(sendTelegramMessageMock).toHaveBeenCalledTimes(1);
-        expect(sendTelegramMessageMock.mock.calls[0]?.[0].text).toBe('waiting 0');
-        expect(editTelegramMessageMock).not.toHaveBeenCalled();
+        expect(createTelegramRichMessageMock).toHaveBeenCalledTimes(1);
+        expect(createTelegramRichMessageMock.mock.calls[0]?.[0].html).toBe('waiting 0');
+        expect(editTelegramRichMessageMock).not.toHaveBeenCalled();
     });
 
     it('should refresh the count on every interval tick', async () => {
@@ -96,12 +97,12 @@ describe('startTelegramProgressMessage', () => {
 
         await progress.finish({ text: 'done' });
 
-        expect(editTelegramMessageMock).toHaveBeenCalledTimes(1);
+        expect(editTelegramRichMessageMock).toHaveBeenCalledTimes(1);
 
-        const parameters = editTelegramMessageMock.mock.calls[0]?.[0];
+        const parameters = editTelegramRichMessageMock.mock.calls[0]?.[0];
 
         expect(parameters?.messageId).toBe(MESSAGE_ID);
-        expect(parameters?.text).toBe('done');
+        expect(parameters?.html).toBe('done');
     });
 
     it('should pass replyMarkup through to the final write', async () => {
@@ -122,7 +123,7 @@ describe('startTelegramProgressMessage', () => {
             replyMarkup,
         });
 
-        expect(editTelegramMessageMock.mock.calls[0]?.[0].replyMarkup).toBe(replyMarkup);
+        expect(editTelegramRichMessageMock.mock.calls[0]?.[0].replyMarkup).toBe(replyMarkup);
     });
 
     it('should stop refreshing once finished', async () => {
@@ -137,14 +138,14 @@ describe('startTelegramProgressMessage', () => {
     // finish stops the refresh before it queues its own write, so nothing keeps ticking even
     // when that write fails -- the property that makes a separate stop method unnecessary.
     it('should stop refreshing even when the final write fails', async () => {
-        editTelegramMessageMock.mockRejectedValueOnce(new Error('final write failed'));
+        editTelegramRichMessageMock.mockRejectedValueOnce(new Error('final write failed'));
 
         const progress = start();
 
         await expect(progress.finish({ text: 'done' })).rejects.toThrow();
         await vi.advanceTimersByTimeAsync(INTERVAL_MS * 3);
 
-        expect(editTelegramMessageMock).toHaveBeenCalledTimes(1);
+        expect(editTelegramRichMessageMock).toHaveBeenCalledTimes(1);
     });
 
     // The bug this util exists to prevent: clearInterval does not recall a refresh that is
@@ -153,21 +154,21 @@ describe('startTelegramProgressMessage', () => {
     it('should apply the final text after a refresh that is already in flight', async () => {
         let releaseRefresh = (): void => {};
 
-        editTelegramMessageMock.mockImplementationOnce(() => new Promise<void>((resolve) => {
-            releaseRefresh = resolve;
+        editTelegramRichMessageMock.mockImplementationOnce(() => new Promise<'updated'>((resolve) => {
+            releaseRefresh = () => resolve('updated');
         }));
 
         const progress = start();
 
         // Let the refresh start, and leave its request hanging.
         await vi.advanceTimersByTimeAsync(INTERVAL_MS);
-        expect(editTelegramMessageMock).toHaveBeenCalledTimes(1);
+        expect(editTelegramRichMessageMock).toHaveBeenCalledTimes(1);
 
         const finished = progress.finish({ text: 'done' });
 
         // The final write must not have been issued while the refresh is still open.
         await flushWrites();
-        expect(editTelegramMessageMock).toHaveBeenCalledTimes(1);
+        expect(editTelegramRichMessageMock).toHaveBeenCalledTimes(1);
 
         releaseRefresh();
         await finished;
@@ -181,8 +182,8 @@ describe('startTelegramProgressMessage', () => {
     it('should drop a refresh that was queued before finishing', async () => {
         let releaseFirstRefresh = (): void => {};
 
-        editTelegramMessageMock.mockImplementationOnce(() => new Promise<void>((resolve) => {
-            releaseFirstRefresh = resolve;
+        editTelegramRichMessageMock.mockImplementationOnce(() => new Promise<'updated'>((resolve) => {
+            releaseFirstRefresh = () => resolve('updated');
         }));
 
         const progress = start();
@@ -190,7 +191,7 @@ describe('startTelegramProgressMessage', () => {
         // First refresh starts and hangs; the second queues up behind it.
         await vi.advanceTimersByTimeAsync(INTERVAL_MS);
         await vi.advanceTimersByTimeAsync(INTERVAL_MS);
-        expect(editTelegramMessageMock).toHaveBeenCalledTimes(1);
+        expect(editTelegramRichMessageMock).toHaveBeenCalledTimes(1);
 
         const finished = progress.finish({ text: 'done' });
 
@@ -207,8 +208,8 @@ describe('startTelegramProgressMessage', () => {
     it('should wait for the placeholder before editing it', async () => {
         let postPlaceholder = (): void => {};
 
-        sendTelegramMessageMock.mockImplementationOnce(() => new Promise((resolve) => {
-            postPlaceholder = () => resolve({ message_id: MESSAGE_ID });
+        createTelegramRichMessageMock.mockImplementationOnce(() => new Promise((resolve) => {
+            postPlaceholder = () => resolve(MESSAGE_ID);
         }));
 
         const progress = start();
@@ -216,7 +217,7 @@ describe('startTelegramProgressMessage', () => {
 
         // Nothing can be edited while the placeholder has no id yet.
         await flushWrites();
-        expect(editTelegramMessageMock).not.toHaveBeenCalled();
+        expect(editTelegramRichMessageMock).not.toHaveBeenCalled();
 
         postPlaceholder();
         await finished;
@@ -228,7 +229,7 @@ describe('startTelegramProgressMessage', () => {
         const onWriteError = vi.fn();
         const failure = new Error('refresh failed');
 
-        editTelegramMessageMock.mockRejectedValueOnce(failure);
+        editTelegramRichMessageMock.mockRejectedValueOnce(failure);
 
         const progress = start({ onWriteError });
 
@@ -247,7 +248,7 @@ describe('startTelegramProgressMessage', () => {
     it('should reject when the final write fails', async () => {
         const failure = new Error('final write failed');
 
-        editTelegramMessageMock.mockRejectedValueOnce(failure);
+        editTelegramRichMessageMock.mockRejectedValueOnce(failure);
 
         const progress = start();
 
@@ -255,7 +256,7 @@ describe('startTelegramProgressMessage', () => {
     });
 
     it('should still apply a later finish after an earlier one failed', async () => {
-        editTelegramMessageMock.mockRejectedValueOnce(new Error('final write failed'));
+        editTelegramRichMessageMock.mockRejectedValueOnce(new Error('final write failed'));
 
         const progress = start();
 
@@ -268,11 +269,37 @@ describe('startTelegramProgressMessage', () => {
         ]);
     });
 
+    it('edits a rich progress message with content beyond the ordinary 4096-character limit', async () => {
+        const progress = start();
+        const content = `<pre>${'a'.repeat(8_000)}</pre>`;
+
+        await progress.finish({ text: content });
+
+        expect(editTelegramRichMessageMock).toHaveBeenCalledWith(expect.objectContaining({
+            messageId: MESSAGE_ID,
+            html: content,
+        }));
+        expect(createTelegramRichMessageMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('sends oversized final content separately, then finishes the progress message', async () => {
+        const progress = start();
+        const content = `<pre>${'x'.repeat(TELEGRAM_RICH_MESSAGE_MAX_LENGTH)}</pre>`;
+
+        await progress.finish({ text: content });
+
+        expect(createTelegramRichMessageMock.mock.calls[1]?.[0]).toMatchObject({
+            html: content,
+            chatId: '-100',
+        });
+        expect(editedTexts()).toEqual(['📄 Full message sent separately']);
+    });
+
     describe('when the placeholder cannot be posted', () => {
         const failure = new Error('placeholder failed');
 
         beforeEach(() => {
-            sendTelegramMessageMock.mockRejectedValue(failure);
+            createTelegramRichMessageMock.mockRejectedValue(failure);
         });
 
         it('should report the failure through onWriteError', async () => {
@@ -290,8 +317,8 @@ describe('startTelegramProgressMessage', () => {
 
             await expect(progress.finish({ text: 'done' })).resolves.toBeUndefined();
 
-            expect(editTelegramMessageMock).not.toHaveBeenCalled();
-            expect(sendTelegramMessageMock).toHaveBeenCalledTimes(1);
+            expect(editTelegramRichMessageMock).not.toHaveBeenCalled();
+            expect(createTelegramRichMessageMock).toHaveBeenCalledTimes(1);
         });
 
         it('should stop refreshing instead of retrying forever', async () => {
@@ -301,7 +328,7 @@ describe('startTelegramProgressMessage', () => {
 
             await vi.advanceTimersByTimeAsync(INTERVAL_MS * 5);
 
-            expect(editTelegramMessageMock).not.toHaveBeenCalled();
+            expect(editTelegramRichMessageMock).not.toHaveBeenCalled();
             expect(onWriteError).toHaveBeenCalledTimes(1);
         });
     });

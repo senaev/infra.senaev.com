@@ -17,7 +17,7 @@ import {
 } from './processMediaServerCallbackQuery';
 import { processMediaServerChatMessage } from './processMediaServerChatMessage';
 import { processOwnerDirectMessage } from './processOwnerDirectMessage';
-import { processTrickyDadChatMessage } from './processTrickyDadChatMessage';
+import { processTrickyDadChatMessage } from './trickyDad/processTrickyDadChatMessage';
 
 export async function processTelegramWebhookData({
     botUser,
@@ -104,14 +104,14 @@ export async function processTelegramWebhookData({
 
     if (chatIdStr === OBSIDIAN_TASKS_CHAT_ID) {
         logger.info({ messageId: message.message_id }, '🆕 Received new message in tasks chat');
-        await processTrickyDadChatMessage(message as TelegramMessage, 'Obsidian Tasks');
+        await processTrickyDadChatMessage(message as TelegramMessage, 'Tasks Telegram chat');
 
         return;
     }
 
     if (chatIdStr === TRICKY_DAD_CHAT_ID) {
         logger.info({ messageId: message.message_id }, '🆕 Received new message in tricky dad chat');
-        await processTrickyDadChatMessage(message as TelegramMessage, 'Tricky Dad');
+        await processTrickyDadChatMessage(message as TelegramMessage, 'Tricky Dad Telegram chat');
 
         return;
     }

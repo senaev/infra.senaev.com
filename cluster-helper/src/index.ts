@@ -32,7 +32,7 @@ import {
     TG_MEDIA_SERVER_CHAT_ID,
     TG_TOKEN_SENAEV_COM_BOT,
 } from './env';
-import { handleAlisaRequest } from './handleAlisaRequest';
+import { handleAlisaRequest } from './trickyDad/handleAlisaRequest';
 import { LLM_ENDPOINT_PREFIX, llmEndpoint } from './llm/llmEndpoint';
 import { getLlmEndpointModels } from './llm/llmEndpointModels';
 import { logger } from './logger';

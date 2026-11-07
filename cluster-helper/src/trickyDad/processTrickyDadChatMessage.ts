@@ -1,12 +1,11 @@
 import { setTelegramMessageReaction } from 'senaev-utils/src/utils/TelegramApi/setTelegramMessageReaction';
 import { TelegramMessage } from 'senaev-utils/src/utils/TelegramApi/types';
 
-import {
-    OBSIDIAN_TASKS_CHAT_ID, TRICKY_DAD_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT,
-} from './env';
-import { logger } from './logger';
-import { parseTextOrAudioMessageFromTelegram } from './parseTextOrAudioMessageFromTelegram';
-import { processAlisaCommand } from './processAlisaCommand';
+import { TG_TOKEN_SENAEV_COM_BOT } from '../env';
+import { logger } from '../logger';
+import { parseTextOrAudioMessageFromTelegram } from '../parseTextOrAudioMessageFromTelegram';
+
+import { runTrickyDadCommand } from './runTrickyDadCommand';
 import { sendTrickyDadErrorReport, sendTrickyDadReport } from './sendTrickyDadReport';
 import { TrickyDadSource } from './TrickyDadSource';
 
@@ -24,14 +23,20 @@ export async function processTrickyDadChatMessage(
         return;
     }
 
-    const sourceChatId = source === 'Tricky Dad' ? TRICKY_DAD_CHAT_ID : OBSIDIAN_TASKS_CHAT_ID;
-
-    await setTelegramMessageReaction({
-        chatId: sourceChatId,
-        messageId: message.message_id,
-        token: TG_TOKEN_SENAEV_COM_BOT,
-        reactions: ['👀'],
-    });
+    try {
+        await setTelegramMessageReaction({
+            chatId: String(message.chat.id),
+            messageId: message.message_id,
+            token: TG_TOKEN_SENAEV_COM_BOT,
+            reactions: ['👀'],
+        });
+    } catch (err) {
+        // A failed acknowledgement should never prevent a command from running.
+        logger.warn({
+            err,
+            messageId: message.message_id,
+        }, '⚠️ Could not react to tricky dad message');
+    }
 
     logger.info({
         command,
@@ -39,7 +44,7 @@ export async function processTrickyDadChatMessage(
     }, '👉 Processing tricky dad chat message');
 
     try {
-        const result = await processAlisaCommand(command, source);
+        const result = await runTrickyDadCommand(command, source);
         const durationSeconds = ((Date.now() - startTime) / 1000).toFixed(2);
 
         logger.info({ result }, '✅ Finished processing tricky dad chat message');
