@@ -101,8 +101,9 @@ file is a snapshot, not a simultaneous transaction across all selected files.
 
 ## Persistent sorting
 
-An optional sidecar beside each writable CSV controls its saved row order:
-`transactions.csv.params.json` for `transactions.csv`.
+An optional `csv.params.json` in the same directory controls the saved row order for
+every CSV directly in that directory. No per-file overrides or inheritance from
+parent directories: use separate folders for different sorting policies.
 
 ```json
 {
@@ -117,25 +118,43 @@ Keys apply in array order. `expression` is a SQLite expression, for example
 `direction` is ASC or DESC (case-insensitive). Equal keys retain their previous
 relative order via a final `rowid ASC`. Empty strings use ordinary SQLite text
 ordering; there is no type or empty-value setting. Only original CSV columns are
-exported. With no sidecar or `{"sort":[]}`, existing row order is preserved.
+exported. With no folder configuration or `{"sort":[]}`, existing row order is preserved.
 
 Sorting runs when INSERT/UPDATE/DELETE matches rows or a schema change is saved.
-Adding/editing the sidecar alone does not rewrite the CSV; neither does SELECT or
+Adding/editing the folder configuration alone does not rewrite the CSV; neither does SELECT or
 an edit matching no rows. To explicitly apply settings, a hash-guarded
 `UPDATE t SET column_name=column_name` can be used. Expressions must remain valid
 after column changes, otherwise no CSV is saved.
 
-Sidecars are strict UTF-8 JSON objects containing only `sort`, bounded to 16 KiB,
+Folder configurations are strict UTF-8 JSON objects containing only `sort`, bounded to 16 KiB,
 16 keys and 1000 characters per expression. Each entry contains only `expression`
 and `direction`. Invalid settings reject the edit. Expressions cannot contain SQL
 comments, bindings, statement separators or unbalanced parentheses, and are
 prepared under a read-only authorizer allowing only the edited table and the
 existing approved functions. Other tables, schema metadata and file/network
 functions are denied. Existing subprocess/resource limits cover sorting too.
-Sidecar paths use the normal vault path/symlink checks; their byte hashes
+Configuration paths use the normal vault path/symlink checks; their byte hashes
 (including absence) are rechecked before publication. As with CSV hash checks,
 this detects intervening changes but does not provide cross-process atomic
-compare-and-swap or a transaction across the CSV and sidecar.
+compare-and-swap or a transaction across the CSV and configuration.
+
+## One-time yearly finance migration
+
+The `@senaev/finances/transactions/transactions.csv` migration is deliberately
+separate from ordinary SQL queries. In the deployed `obsidian-sync` container, run:
+
+```sh
+npm run migrate:transactions                       # dry-run: inspect years and sizes
+npm run migrate:transactions -- --stage           # archive original and create yearly CSVs
+# Verify the archive and all yearly files have synced to another device; update finance docs.
+npm run migrate:transactions -- --finalize        # reverify and retire oversized original
+```
+
+The sibling `transactions-backup/` folder holds a compressed, byte-for-byte copy
+of the original CSV and its prior sort configuration. The archive must fit the
+Sync Standard file limit. Staging never deletes the original; finalization checks
+all source values and duplicate occurrences before retiring it. If files already
+exist, or validation fails, the migration stops without overwriting them.
 
 ## Limits and isolation
 
@@ -143,7 +162,7 @@ Strict UTF-8 CSV, comma separators, optional BOM, standard quoted fields. Blank
 records are not skipped; malformed widths and empty/duplicate/reserved headers
 fail. Reserved headers: _source_path, _source_record, rowid, _rowid_, oid.
 
-Limits: 8 files, 10 MiB total input and edited file size, 50000 records, 100 source
+Limits: 16 files across at most 8 tables, 10 MiB total input and edited file size, 50000 records, 100 source
 columns, 64 KiB decoded cell contents per record, 16000 SQL characters, 100
 string/null parameters (64 KiB serialized total), 1000 output rows, 256 KiB query
 result budget including reserved hash metadata. maxRows defaults to 200. SQL edits

@@ -593,7 +593,7 @@ it('loads sidecar sorting on INSERT, UPDATE and DELETE through the production su
 
     vault = await createTestVault({
         'data.csv': text,
-        'data.csv.params.json': JSON.stringify({
+        'csv.params.json': JSON.stringify({
             sort: [
                 {
                     expression: 'CAST(value AS REAL)',
@@ -618,7 +618,7 @@ it('does not publish edits with invalid sidecars or removed sort columns', async
 
     vault = await createTestVault({
         'data.csv': text,
-        'data.csv.params.json': JSON.stringify({
+        'csv.params.json': JSON.stringify({
             sort: [
                 {
                     expression: 'value',
@@ -628,7 +628,7 @@ it('does not publish edits with invalid sidecars or removed sort columns', async
         }),
     });
     await expect(csvQueryTool(vault.config, request('ALTER TABLE t DROP value', hash(text)))).rejects.toMatchObject({ code: 'invalid_arguments' });
-    await writeFile(vault.path('data.csv.params.json'), '{invalid');
+    await writeFile(vault.path('csv.params.json'), '{invalid');
     await expect(csvQueryTool(vault.config, request('UPDATE t SET id=id', hash(text)))).rejects.toMatchObject({ code: 'invalid_arguments' });
     expect(await readFile(vault.path('data.csv'), 'utf8')).toBe(text);
 });
@@ -639,13 +639,13 @@ it('bounds sidecar reads and rejects invalid UTF-8 and symlinks without changing
 
     vault = await createTestVault({
         'data.csv': text,
-        'data.csv.params.json': 'x'.repeat(16385),
+        'csv.params.json': 'x'.repeat(16385),
     });
     await expect(csvQueryTool(vault.config, request('UPDATE t SET id=id', hash(text)))).rejects.toMatchObject({ code: 'file_too_large' });
-    await writeFile(vault.path('data.csv.params.json'), Buffer.from([255]));
+    await writeFile(vault.path('csv.params.json'), Buffer.from([255]));
     await expect(csvQueryTool(vault.config, request('UPDATE t SET id=id', hash(text)))).rejects.toMatchObject({ code: 'invalid_arguments' });
-    await unlink(vault.path('data.csv.params.json'));
-    await symlink(vault.path('data.csv'), vault.path('data.csv.params.json'));
+    await unlink(vault.path('csv.params.json'));
+    await symlink(vault.path('data.csv'), vault.path('csv.params.json'));
     await expect(csvQueryTool(vault.config, request('UPDATE t SET id=id', hash(text)))).rejects.toMatchObject({ code: 'forbidden_path' });
     expect(await readFile(vault.path('data.csv'), 'utf8')).toBe(text);
 });
@@ -655,7 +655,7 @@ it('preserves an unmatched edit even when sidecar order differs', async () => {
 
     vault = await createTestVault({
         'data.csv': text,
-        'data.csv.params.json': JSON.stringify({
+        'csv.params.json': JSON.stringify({
             sort: [
                 {
                     expression: 'id',
@@ -669,4 +669,73 @@ it('preserves an unmatched edit even when sidecar order differs', async () => {
         hash: hash(text),
     });
     expect(await readFile(vault.path('data.csv'), 'utf8')).toBe(text);
+});
+
+it('applies one folder sorting policy to all sibling CSV files, with no per-file overrides', async () => {
+    const params = JSON.stringify({
+        sort: [
+            {
+                expression: 'CAST(value AS INTEGER)',
+                direction: 'DESC',
+            },
+        ],
+    });
+
+    vault = await createTestVault({
+        'finances/2025.csv': 'id,value\na,2\nb,10\n',
+        'finances/2026.csv': 'id,value\nc,3\nd,20\n',
+        'finances/csv.params.json': params,
+        'finances/2025.csv.params.json': JSON.stringify({
+            sort: [
+                {
+                    expression: 'id',
+                    direction: 'ASC',
+                },
+            ],
+        }),
+    });
+    const edit = (path: string, text: string) => csvQueryTool(vault!.config, {
+        tables: [
+            {
+                name: 't',
+                paths: [path],
+                expectedHash: hash(text),
+            },
+        ],
+        sql: 'INSERT INTO t VALUES (\'z\', \'1\')',
+    });
+
+    await edit('finances/2025.csv', 'id,value\na,2\nb,10\n');
+    await edit('finances/2026.csv', 'id,value\nc,3\nd,20\n');
+
+    expect(await readFile(vault.path('finances/2025.csv'), 'utf8')).toBe('id,value\nb,10\na,2\nz,1\n');
+    expect(await readFile(vault.path('finances/2026.csv'), 'utf8')).toBe('id,value\nd,20\nc,3\nz,1\n');
+});
+
+it('does not inherit a parent folder sorting policy into subfolders', async () => {
+    const text = 'id,value\na,2\nb,10\n';
+
+    vault = await createTestVault({
+        'csv.params.json': JSON.stringify({
+            sort: [
+                {
+                    expression: 'value',
+                    direction: 'DESC',
+                },
+            ],
+        }),
+        'nested/data.csv': text,
+    });
+    await csvQueryTool(vault.config, {
+        tables: [
+            {
+                name: 't',
+                paths: ['nested/data.csv'],
+                expectedHash: hash(text),
+            },
+        ],
+        sql: 'UPDATE t SET value=value',
+    });
+
+    expect(await readFile(vault.path('nested/data.csv'), 'utf8')).toBe(text);
 });

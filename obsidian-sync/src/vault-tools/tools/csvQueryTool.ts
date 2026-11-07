@@ -40,8 +40,8 @@ export function parseCsvQuery(input: unknown) {
         }
 
         names.add(name.toLowerCase());
-        if (!Array.isArray(table.paths) || table.paths.length < 1 || table.paths.length > 8) {
-            throw invalidArguments('Each table requires 1..8 CSV paths');
+        if (!Array.isArray(table.paths) || table.paths.length < 1 || table.paths.length > 16) {
+            throw invalidArguments('Each table requires 1..16 CSV paths');
         }
 
         const paths = table.paths.map((path: unknown) => {
@@ -83,8 +83,8 @@ export function parseCsvQuery(input: unknown) {
         throw invalidArguments('Map each CSV path once; use SQL aliases for self joins');
     }
 
-    if (files > 8) {
-        throw invalidArguments('At most 8 CSV files are allowed');
+    if (files > 16) {
+        throw invalidArguments('At most 16 CSV files are allowed');
     }
 
     const params = args.params === undefined ? [] : args.params;
