@@ -1,41 +1,29 @@
-import { callTelegramApi } from './callTelegramApi';
-import { InlineKeyboardMarkup, TelegramParseMode } from './types';
+import { createTelegramRichMessage } from './createTelegramRichMessage';
+import { InlineKeyboardMarkup } from './types';
 
 export type SendTelegramMessageParameters = {
+    /** Telegram Rich Markdown. Escape untrusted content with escapeTelegramMarkdown. */
     text: string;
     chatId: string;
     token: string;
-    parseMode?: TelegramParseMode;
     disableLinkPreview?: boolean;
     replyToMessageId?: number;
     replyMarkup?: InlineKeyboardMarkup;
 };
 
-export function sendTelegramMessage({
-    text,
-    chatId,
-    token,
-    parseMode,
-    disableLinkPreview,
-    replyToMessageId,
-    replyMarkup,
+/** A single, rich-only entry point for Telegram messages, including long notifications. */
+export async function sendTelegramMessage({
+    text, chatId, token, disableLinkPreview, replyToMessageId, replyMarkup,
 }: SendTelegramMessageParameters): Promise<{ message_id: number }> {
-    return callTelegramApi<{ message_id: number }>({
-        method: 'sendMessage',
+    const messageId = await createTelegramRichMessage({
+        markdown: text,
+        chatId,
         token,
-        body: {
-            chat_id: chatId,
-            text,
-            ...(parseMode && { parse_mode: parseMode }),
-            ...(disableLinkPreview !== undefined && {
-                link_preview_options: {
-                    is_disabled: disableLinkPreview,
-                },
-            }),
-            ...(replyMarkup && { reply_markup: replyMarkup }),
-            ...(replyToMessageId && {
-                reply_parameters: { message_id: replyToMessageId },
-            }),
-        },
+        media: [],
+        ...(disableLinkPreview !== undefined && { disableLinkPreview }),
+        ...(replyToMessageId !== undefined && { replyToMessageId }),
+        ...(replyMarkup && { replyMarkup }),
     });
+
+    return { message_id: messageId };
 }

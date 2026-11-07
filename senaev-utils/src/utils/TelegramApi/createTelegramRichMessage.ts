@@ -1,5 +1,5 @@
 import { callTelegramRichMessageMethod } from './callTelegramRichMessageMethod';
-import { splitTelegramHtml } from './splitTelegramHtml/splitTelegramHtml';
+import { splitTelegramMarkdown } from './splitTelegramMarkdown/splitTelegramMarkdown';
 import { InlineKeyboardMarkup, TelegramRichMessageMedia } from './types';
 
 /**
@@ -8,13 +8,10 @@ import { InlineKeyboardMarkup, TelegramRichMessageMedia } from './types';
  * Unlike editing, this is NOT idempotent — every call creates another post. Callers must
  * persist the returned id before anything can trigger a second attempt.
  */
-type RichMessageContent = { markdown: string; html?: never } | { html: string; markdown?: never };
-
 /** Send one or more rich messages. Returns the first message ID for compatibility with callers. */
 export async function createTelegramRichMessage({
     chatId,
     markdown,
-    html,
     media,
     token,
     replyToMessageId,
@@ -23,14 +20,15 @@ export async function createTelegramRichMessage({
     onRateLimited,
 }: {
     chatId: string;
+    markdown: string;
     media: TelegramRichMessageMedia[];
     token: string;
     replyToMessageId?: number;
     replyMarkup?: InlineKeyboardMarkup;
     disableLinkPreview?: boolean;
     onRateLimited?: ((info: { retryAfterSeconds: number; attempt: number }) => void) | undefined;
-} & RichMessageContent): Promise<number> {
-    const parts = html === undefined ? [markdown!] : splitTelegramHtml(html);
+}): Promise<number> {
+    const parts = splitTelegramMarkdown(markdown);
     let firstMessageId: number | undefined;
 
     for (const [
@@ -51,7 +49,7 @@ export async function createTelegramRichMessage({
                     reply_markup: JSON.stringify(replyMarkup),
                 }),
             },
-            ...(html === undefined ? { markdown: part } : { html: part }),
+            markdown: part,
             media: index === 0 ? media : [],
             token,
             onRateLimited,

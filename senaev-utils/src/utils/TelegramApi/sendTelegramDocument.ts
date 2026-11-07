@@ -1,5 +1,5 @@
 import { createTelegramApiBaseUrl } from './createTelegramApiBaseUrl';
-import { TelegramApiResponse, TelegramParseMode } from './types';
+import { TelegramApiResponse } from './types';
 
 export async function sendTelegramDocument({
     chatId,
@@ -7,14 +7,12 @@ export async function sendTelegramDocument({
     token,
     content,
     caption,
-    parseMode,
 }: {
     chatId: string;
     filename: string;
     token: string;
     content: string;
     caption?: string;
-    parseMode?: TelegramParseMode;
 }): Promise<void> {
     const telegramApiBaseUrl = createTelegramApiBaseUrl(token);
     const formData = new FormData();
@@ -24,10 +22,6 @@ export async function sendTelegramDocument({
 
     if (caption) {
         formData.append('caption', caption);
-    }
-
-    if (parseMode) {
-        formData.append('parse_mode', parseMode);
     }
 
     const res = await fetch(`${telegramApiBaseUrl}/sendDocument`, {

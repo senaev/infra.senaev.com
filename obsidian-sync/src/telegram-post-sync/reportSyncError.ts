@@ -1,3 +1,4 @@
+import { escapeTelegramMarkdown } from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
 import { trySendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/trySendTelegramMessage';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 
@@ -17,7 +18,7 @@ export async function reportSyncError(context: string, error: unknown): Promise<
     }, '❌ Telegram post sync failed');
 
     const result = await trySendTelegramMessage({
-        text: `❌ obsidian-sync\n${context}\n${stringifyUnknownError(error)}`,
+        text: `❌ obsidian-sync\n${escapeTelegramMarkdown(context)}\n${escapeTelegramMarkdown(stringifyUnknownError(error))}`,
         chatId: TG_CLUSTER_CHAT_ID,
         token: TG_TOKEN_SENAEV_COM_BOT,
         disableLinkPreview: true,

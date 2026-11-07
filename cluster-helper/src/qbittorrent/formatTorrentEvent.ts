@@ -1,5 +1,9 @@
+import {
+    escapeTelegramMarkdown,
+    telegramBold,
+    telegramLink,
+} from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
 import { formatBytes } from 'senaev-utils/src/types/Bytes/formatBytes/formatBytes';
-import { escapeHtml } from 'senaev-utils/src/utils/String/escapeHtml/escapeHtml';
 
 export interface TorrentEvent {
     event: 'torrent_added' | 'torrent_finished';
@@ -29,9 +33,12 @@ function extractTrackerDomain(tracker: string): string {
 }
 
 function formatTorrentAdded(event: TorrentEvent): string {
-    const lines: string[] = [`🚀 <b>Началась загрузка:</b> ${escapeHtml(event.name)}`];
+    const lines: string[] = [`🚀 ${telegramBold('Началась загрузка:')} ${escapeTelegramMarkdown(event.name)}`];
 
-    lines.push('<a href="https://qbittorrent.senaev.ru/">Отслеживать</a>');
+    lines.push(telegramLink({
+        text: 'Отслеживать',
+        url: 'https://qbittorrent.senaev.ru/',
+    }));
     lines.push('');
 
     const size = Number(event.sizeBytes);
@@ -51,7 +58,7 @@ function formatTorrentAdded(event: TorrentEvent): string {
     }
 
     if (event.tracker) {
-        lines.push(`🌐 ${escapeHtml(extractTrackerDomain(event.tracker))}`);
+        lines.push(`🌐 ${escapeTelegramMarkdown(extractTrackerDomain(event.tracker))}`);
     }
 
     return lines.join('\n');
@@ -59,9 +66,15 @@ function formatTorrentAdded(event: TorrentEvent): string {
 
 function formatTorrentFinished(event: TorrentEvent): string {
     return [
-        `🏁 <b>Загрузка завершена:</b> ${escapeHtml(event.name)}`,
-        '<a href="https://jellyfin.senaev.ru/">Смотреть</a>',
-        '<a href="https://filebrowser.senaev.ru/files/volumes/qbittorrent/downloads/completed/">Скачать</a>',
+        `🏁 ${telegramBold('Загрузка завершена:')} ${escapeTelegramMarkdown(event.name)}`,
+        telegramLink({
+            text: 'Смотреть',
+            url: 'https://jellyfin.senaev.ru/',
+        }),
+        telegramLink({
+            text: 'Скачать',
+            url: 'https://filebrowser.senaev.ru/files/volumes/qbittorrent/downloads/completed/',
+        }),
     ].join('\n');
 }
 

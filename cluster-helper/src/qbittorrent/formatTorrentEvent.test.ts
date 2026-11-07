@@ -21,26 +21,26 @@ function buildEvent(overrides: Partial<TorrentEvent> = {}): TorrentEvent {
 }
 
 describe('formatTorrentEvent', () => {
-    // The result is sent to Telegram with HTML parse mode, so an unescaped character in a
+    // The result is sent to Telegram as Rich Markdown, so an unescaped character in a
     // torrent name would break the message rather than merely look wrong.
-    it('escapes HTML in the torrent name', () => {
+    it('escapes Markdown in the torrent name', () => {
         const text = formatTorrentEvent(buildEvent({ name: 'Tom & Jerry <1940>' }));
 
-        expect(text).toContain('Tom &amp; Jerry &lt;1940&gt;');
+        expect(text).toContain('Tom & Jerry \\<1940\\>');
         expect(text).not.toContain('<1940>');
     });
 
     it('escapes the ampersand before the other entities', () => {
         const text = formatTorrentEvent(buildEvent({ name: '&<' }));
 
-        expect(text).toContain('&amp;&lt;');
+        expect(text).toContain('&\\<');
         expect(text).not.toContain('&amp;lt;');
     });
 
     it('reports size and file count for a started download', () => {
         const text = formatTorrentEvent(buildEvent());
 
-        expect(text).toContain('🚀 <b>Началась загрузка:</b> Some Release');
+        expect(text).toContain('🚀 **Началась загрузка:** Some Release');
         expect(text).toContain('1.0 GB · 3 files');
     });
 
@@ -63,20 +63,20 @@ describe('formatTorrentEvent', () => {
     it('shows only the tracker hostname', () => {
         const text = formatTorrentEvent(buildEvent());
 
-        expect(text).toContain('🌐 tracker.example.com');
+        expect(text).toContain('🌐 tracker\\.example\\.com');
     });
 
     // qBittorrent reports pseudo-trackers such as "** [DHT] **", which are not URLs.
     it('falls back to the raw tracker value when it is not a URL', () => {
         const text = formatTorrentEvent(buildEvent({ tracker: '** [DHT] **' }));
 
-        expect(text).toContain('🌐 ** [DHT] **');
+        expect(text).toContain('🌐 \\*\\* \\[DHT\\] \\*\\*');
     });
 
     it('renders the finished template instead of the download details', () => {
         const text = formatTorrentEvent(buildEvent({ event: 'torrent_finished' }));
 
-        expect(text).toContain('🏁 <b>Загрузка завершена:</b> Some Release');
+        expect(text).toContain('🏁 **Загрузка завершена:** Some Release');
         expect(text).not.toContain('💾');
     });
 });

@@ -4,6 +4,7 @@ import { ResourceReadGate } from 'senaev-utils/src/toolServer/ResourceReadGate';
 import Fastify, { FastifyReply } from 'fastify';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { callTelegramApi } from 'senaev-utils/src/utils/TelegramApi/callTelegramApi';
+import { escapeTelegramMarkdown } from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
 import { getCurrentTelegramBotInfo } from 'senaev-utils/src/utils/TelegramApi/getCurrentTelegramBotInfo';
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
 import { TelegramUpdate, TelegramUser } from 'senaev-utils/src/utils/TelegramApi/types';
@@ -145,7 +146,6 @@ internalServer.post<{ Body: unknown }>('/qbittorrent/torrent-event', async (requ
     await sendTelegramMessage({
         text: formatTorrentEvent(request.body),
         chatId: TG_MEDIA_SERVER_CHAT_ID,
-        parseMode: 'HTML',
         token: TG_TOKEN_SENAEV_COM_BOT,
     });
     reply.code(204).send();
@@ -287,8 +287,8 @@ function notifyLoginAttempt({
 
     const text = [
         result === 'success' ? '🔓 OAuth sign-in succeeded' : '⛔ OAuth sign-in denied',
-        `Method: ${method}`,
-        `Account: ${account.slice(0, MAX_NOTIFIED_ACCOUNT_LENGTH)}`,
+        `Method: ${escapeTelegramMarkdown(method)}`,
+        `Account: ${escapeTelegramMarkdown(account.slice(0, MAX_NOTIFIED_ACCOUNT_LENGTH))}`,
     ].join('\n');
 
     sendTelegramMessage({

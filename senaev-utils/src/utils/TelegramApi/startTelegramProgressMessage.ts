@@ -1,5 +1,5 @@
 import { createTelegramRichMessage } from './createTelegramRichMessage';
-import { TELEGRAM_RICH_MESSAGE_MAX_LENGTH } from './splitTelegramHtml/splitTelegramHtml';
+import { splitTelegramMarkdown } from './splitTelegramMarkdown/splitTelegramMarkdown';
 import { sendTelegramEditableMessage } from './sendTelegramEditableMessage';
 import { InlineKeyboardMarkup } from './types';
 
@@ -57,13 +57,13 @@ export function startTelegramProgressMessage({
         finish: async ({ text, replyMarkup }) => {
             stopRefreshing();
 
-            if (Buffer.byteLength(text) > TELEGRAM_RICH_MESSAGE_MAX_LENGTH) {
+            if (splitTelegramMarkdown(text).length > 1) {
                 // A rich message can be edited up to its limit. For longer final content,
                 // post the entire report (splitting as needed) before closing the progress.
                 await createTelegramRichMessage({
                     chatId,
                     token,
-                    html: text,
+                    markdown: text,
                     media: [],
                     disableLinkPreview: true,
                     ...(replyToMessageId !== undefined && { replyToMessageId }),

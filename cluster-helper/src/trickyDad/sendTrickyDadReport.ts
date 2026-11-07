@@ -1,10 +1,10 @@
-import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
-import { createTelegramRichMessage } from 'senaev-utils/src/utils/TelegramApi/createTelegramRichMessage';
-import { escapeHtml } from 'senaev-utils/src/utils/String/escapeHtml/escapeHtml';
 import {
+    escapeTelegramMarkdown,
     telegramBold,
     telegramExpandableBlockquote,
-} from 'senaev-utils/src/utils/TelegramApi/formatTelegramHtml/formatTelegramHtml';
+} from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
+import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
+import { createTelegramRichMessage } from 'senaev-utils/src/utils/TelegramApi/createTelegramRichMessage';
 
 import { OBSIDIAN_TASKS_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from '../env';
 import { logger } from '../logger';
@@ -52,7 +52,7 @@ export function formatTrickyDadReport({
 
         return [
             ...action.entries.map((entry) => `${entryEmoji} ${telegramBold(entry)}`),
-            ...output.map((line) => escapeHtml(line)),
+            ...output.map((line) => escapeTelegramMarkdown(line)),
         ].join('\n');
     });
 
@@ -126,7 +126,7 @@ export async function sendTrickyDadReport({
         await createTelegramRichMessage({
             token: TG_TOKEN_SENAEV_COM_BOT,
             chatId,
-            html: text,
+            markdown: text,
             media: [],
             ...(chatId === sourceChatId && replyToMessageId !== undefined && { replyToMessageId }),
         });
@@ -160,12 +160,12 @@ export async function sendTrickyDadErrorReport({
 }): Promise<void> {
     logger.info('👉 Sending tricky dad error report');
 
-    const text = escapeHtml(`❌ Failed to process command=[${command}]: ${stringifyUnknownError(err)}`);
+    const text = escapeTelegramMarkdown(`❌ Failed to process command=[${command}]: ${stringifyUnknownError(err)}`);
 
     await createTelegramRichMessage({
         token: TG_TOKEN_SENAEV_COM_BOT,
         chatId: OBSIDIAN_TASKS_CHAT_ID,
-        html: text,
+        markdown: text,
         media: [],
     });
 }

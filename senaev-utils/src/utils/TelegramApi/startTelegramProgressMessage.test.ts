@@ -9,7 +9,7 @@ import {
 
 import { createTelegramRichMessage } from './createTelegramRichMessage';
 import { editTelegramRichMessage } from './editTelegramRichMessage';
-import { TELEGRAM_RICH_MESSAGE_MAX_LENGTH } from './splitTelegramHtml/splitTelegramHtml';
+import { TELEGRAM_RICH_MESSAGE_MAX_LENGTH } from './splitTelegramMarkdown/splitTelegramMarkdown';
 import { startTelegramProgressMessage } from './startTelegramProgressMessage';
 
 vi.mock('./createTelegramRichMessage', () => {
@@ -28,7 +28,7 @@ const INTERVAL_MS = 10_000;
 
 /** Text of every editMessageText the util issued, in the order the writes completed. */
 function editedTexts(): string[] {
-    return editTelegramRichMessageMock.mock.calls.map(([parameters]) => parameters.html ?? '');
+    return editTelegramRichMessageMock.mock.calls.map(([parameters]) => parameters.markdown ?? '');
 }
 
 function start({ onWriteError }: { onWriteError?: (error: unknown) => void } = {}) {
@@ -77,7 +77,7 @@ describe('startTelegramProgressMessage', () => {
         await flushWrites();
 
         expect(createTelegramRichMessageMock).toHaveBeenCalledTimes(1);
-        expect(createTelegramRichMessageMock.mock.calls[0]?.[0].html).toBe('waiting 0');
+        expect(createTelegramRichMessageMock.mock.calls[0]?.[0].markdown).toBe('waiting 0');
         expect(editTelegramRichMessageMock).not.toHaveBeenCalled();
     });
 
@@ -102,7 +102,7 @@ describe('startTelegramProgressMessage', () => {
         const parameters = editTelegramRichMessageMock.mock.calls[0]?.[0];
 
         expect(parameters?.messageId).toBe(MESSAGE_ID);
-        expect(parameters?.html).toBe('done');
+        expect(parameters?.markdown).toBe('done');
     });
 
     it('should pass replyMarkup through to the final write', async () => {
@@ -271,25 +271,25 @@ describe('startTelegramProgressMessage', () => {
 
     it('edits a rich progress message with content beyond the ordinary 4096-character limit', async () => {
         const progress = start();
-        const content = `<pre>${'a'.repeat(8_000)}</pre>`;
+        const content = `\`\`\`\n${'a'.repeat(8_000)}\n\`\`\``;
 
         await progress.finish({ text: content });
 
         expect(editTelegramRichMessageMock).toHaveBeenCalledWith(expect.objectContaining({
             messageId: MESSAGE_ID,
-            html: content,
+            markdown: content,
         }));
         expect(createTelegramRichMessageMock).toHaveBeenCalledTimes(1);
     });
 
     it('sends oversized final content separately, then finishes the progress message', async () => {
         const progress = start();
-        const content = `<pre>${'x'.repeat(TELEGRAM_RICH_MESSAGE_MAX_LENGTH)}</pre>`;
+        const content = 'x'.repeat(TELEGRAM_RICH_MESSAGE_MAX_LENGTH);
 
         await progress.finish({ text: content });
 
         expect(createTelegramRichMessageMock.mock.calls[1]?.[0]).toMatchObject({
-            html: content,
+            markdown: content,
             chatId: '-100',
         });
         expect(editedTexts()).toEqual(['📄 Full message sent separately']);

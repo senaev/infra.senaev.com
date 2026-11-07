@@ -4,7 +4,7 @@ import {
 
 import { callTelegramRichMessageMethod } from './callTelegramRichMessageMethod';
 import { createTelegramRichMessage } from './createTelegramRichMessage';
-import { TELEGRAM_RICH_MESSAGE_MAX_LENGTH } from './splitTelegramHtml/splitTelegramHtml';
+import { TELEGRAM_RICH_MESSAGE_MAX_LENGTH } from './splitTelegramMarkdown/splitTelegramMarkdown';
 
 vi.mock('./callTelegramRichMessageMethod', () => {
     return { callTelegramRichMessageMethod: vi.fn() };
@@ -19,11 +19,11 @@ beforeEach(() => {
 });
 
 describe('createTelegramRichMessage', () => {
-    it('sends short HTML as one rich message', async () => {
+    it('always sends Rich Markdown, keeping replies, previews and media', async () => {
         const messageId = await createTelegramRichMessage({
             token: 'token',
             chatId: '123',
-            html: '<b>hello</b>',
+            markdown: '**hello**',
             media: [],
             replyToMessageId: 7,
         });
@@ -31,7 +31,7 @@ describe('createTelegramRichMessage', () => {
         expect(messageId).toBe(42);
         expect(callTelegramRichMessageMethod).toHaveBeenCalledWith(expect.objectContaining({
             method: 'sendRichMessage',
-            html: '<b>hello</b>',
+            markdown: '**hello**',
             base: {
                 chat_id: '123',
                 reply_parameters: '{"message_id":7}',
@@ -39,26 +39,29 @@ describe('createTelegramRichMessage', () => {
         }));
     });
 
-    it('splits large HTML safely, preserving every character and only replying on the first part', async () => {
-        const html = `<pre>${'🎬&amp;'.repeat(7500)}</pre>`;
+    it('splits long Markdown, only replying and attaching media on the first part', async () => {
         const firstId = await createTelegramRichMessage({
             token: 'token',
             chatId: '123',
-            html,
-            media: [],
+            markdown: '🎬'.repeat(20_000),
+            media: [
+                {
+                    id: 'photo',
+                    absolutePath: '/tmp/example.png',
+                },
+            ],
             replyToMessageId: 9,
         });
-        const calls = vi.mocked(callTelegramRichMessageMethod).mock.calls.map(([arg]) => arg);
+        const calls = vi.mocked(callTelegramRichMessageMethod).mock.calls.map(([args]) => args);
 
         expect(firstId).toBe(42);
         expect(calls.length).toBeGreaterThan(1);
-        expect(calls.every((call) => Buffer.byteLength(call.html ?? '') <= TELEGRAM_RICH_MESSAGE_MAX_LENGTH)).toBe(true);
-        expect(calls.slice(1).every((call) => !('reply_parameters' in call.base))).toBe(true);
-        expect(calls.map((call) => call.html!.replaceAll(/<\/?pre>/gu, '')).join(''))
-            .toBe(html.replaceAll(/<\/?pre>/gu, ''));
+        expect(calls.every((call) => Buffer.byteLength(call.markdown ?? '') <= TELEGRAM_RICH_MESSAGE_MAX_LENGTH)).toBe(true);
+        expect(calls.slice(1).every((call) => !('reply_parameters' in call.base) && call.media.length === 0)).toBe(true);
+        expect(calls.map((call) => call.markdown).join('')).toBe('🎬'.repeat(20_000));
     });
 
-    it('puts inline keyboards only on the last rich-message part', async () => {
+    it('attaches inline keyboards only to the final rich-message part', async () => {
         const replyMarkup = {
             inline_keyboard: [
                 [
@@ -73,25 +76,14 @@ describe('createTelegramRichMessage', () => {
         await createTelegramRichMessage({
             token: 'token',
             chatId: '123',
-            html: `<pre>${'a'.repeat(70_000)}</pre>`,
+            markdown: 'a'.repeat(70_000),
             media: [],
             replyMarkup,
         });
-
         const calls = vi.mocked(callTelegramRichMessageMethod).mock.calls.map(([args]) => args);
 
         expect(calls.length).toBeGreaterThan(1);
         expect(calls.slice(0, -1).every(({ base }) => !('reply_markup' in base))).toBe(true);
         expect(calls.at(-1)?.base.reply_markup).toBe(JSON.stringify(replyMarkup));
-    });
-
-    it('preserves existing Markdown publishing', async () => {
-        await createTelegramRichMessage({
-            token: 'token',
-            chatId: '123',
-            markdown: '**Title**',
-            media: [],
-        });
-        expect(callTelegramRichMessageMethod).toHaveBeenCalledWith(expect.objectContaining({ markdown: '**Title**' }));
     });
 });

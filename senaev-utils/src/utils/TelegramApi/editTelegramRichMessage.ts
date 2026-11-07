@@ -11,7 +11,6 @@ export async function editTelegramRichMessage({
     chatId,
     messageId,
     markdown,
-    html,
     replyMarkup,
     disableLinkPreview,
     media,
@@ -20,8 +19,7 @@ export async function editTelegramRichMessage({
 }: {
     chatId: string;
     messageId: number;
-    markdown?: string;
-    html?: string;
+    markdown: string;
     replyMarkup?: InlineKeyboardMarkup;
     disableLinkPreview?: boolean;
     media: TelegramRichMessageMedia[];
@@ -38,8 +36,7 @@ export async function editTelegramRichMessage({
             }),
             ...(replyMarkup && { reply_markup: JSON.stringify(replyMarkup) }),
         },
-        ...(markdown !== undefined && { markdown }),
-        ...(html !== undefined && { html }),
+        markdown,
         media,
         token,
         onRateLimited,

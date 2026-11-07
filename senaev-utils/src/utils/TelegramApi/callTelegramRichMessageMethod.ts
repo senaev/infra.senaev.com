@@ -23,7 +23,6 @@ export type RichMessageCallResult<T> = { status: 'ok'; result: T } | { status: '
 async function buildForm(
     base: Record<string, string>,
     markdown: string | undefined,
-    html: string | undefined,
     media: TelegramRichMessageMedia[]
 ): Promise<FormData> {
     const form = new FormData();
@@ -37,7 +36,6 @@ async function buildForm(
 
     const richMessage = {
         ...(markdown !== undefined && { markdown }),
-        ...(html !== undefined && { html }),
         ...(media.length > 0 && {
             media: media.map(({ id }) => {
                 return {
@@ -78,7 +76,6 @@ export async function callTelegramRichMessageMethod<T>({
     method,
     base,
     markdown,
-    html,
     media,
     token,
     onRateLimited,
@@ -86,7 +83,6 @@ export async function callTelegramRichMessageMethod<T>({
     method: string;
     base: Record<string, string>;
     markdown?: string;
-    html?: string;
     media: TelegramRichMessageMedia[];
     token: string;
     onRateLimited?: ((info: { retryAfterSeconds: number; attempt: number }) => void) | undefined;
@@ -96,7 +92,7 @@ export async function callTelegramRichMessageMethod<T>({
     for (let attempt = 0; attempt <= MAX_RATE_LIMIT_RETRIES; attempt++) {
         const response = await fetch(url, {
             method: 'POST',
-            body: await buildForm(base, markdown, html, media),
+            body: await buildForm(base, markdown, media),
         });
         const payload = (await response.json()) as TelegramApiResponse<T>;
 

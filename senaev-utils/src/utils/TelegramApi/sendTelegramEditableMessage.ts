@@ -10,7 +10,7 @@ export interface TelegramEditableMessage {
 }
 
 /**
- * Posts an editable rich HTML message and returns a handle that owns subsequent edits.
+ * Posts an editable Rich Markdown message and returns a handle that owns subsequent edits.
  *
  * Returns synchronously, while the message is still being posted: every later write waits
  * for the id on its own, so a caller never has to hold one or await the send.
@@ -38,7 +38,7 @@ export function sendTelegramEditableMessage({
     const sentMessageId: Promise<number | undefined> = createTelegramRichMessage({
         chatId,
         token,
-        html: text,
+        markdown: text,
         media: [],
         ...(disableLinkPreview !== undefined && { disableLinkPreview }),
         ...(replyToMessageId !== undefined && { replyToMessageId }),
@@ -71,7 +71,7 @@ export function sendTelegramEditableMessage({
                     chatId,
                     messageId,
                     token,
-                    html: editedText,
+                    markdown: editedText,
                     media: [],
                     ...(disableLinkPreview !== undefined && { disableLinkPreview }),
                     ...(replyMarkup && { replyMarkup }),

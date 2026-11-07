@@ -21,7 +21,6 @@ status_json() {
 send_telegram_message() {
   local text="$1"
   local copy_text="$2"
-  local parse_mode="$3"
   local payload
   local response
   local http_code
@@ -30,11 +29,9 @@ send_telegram_message() {
     --arg chat_id "-1003971743999" \
     --arg text "$text" \
     --arg copy_text "$copy_text" \
-    --arg parse_mode "$parse_mode" \
     '{
       chat_id: $chat_id,
-      text: $text,
-      parse_mode: $parse_mode,
+      rich_message: { markdown: $text },
       reply_markup: {
         inline_keyboard: [
           [
@@ -57,23 +54,16 @@ send_telegram_message() {
       -X POST \
       -H "Content-Type: application/json" \
       -d "$payload" \
-      "https://api.telegram.org/bot${TOKEN_SENAEV_COM_BOT}/sendMessage"
+      "https://api.telegram.org/bot${TOKEN_SENAEV_COM_BOT}/sendRichMessage"
   )"
 
   if [[ "$http_code" != "200" ]]; then
-    echo "❌ [bootstrap-vault] Telegram sendMessage failed with HTTP $http_code: $(cat "$response")"
+    echo "❌ [bootstrap-vault] Telegram sendRichMessage failed with HTTP $http_code: $(cat "$response")"
     rm -f "$response"
     return 1
   fi
 
   rm -f "$response"
-}
-
-escape_html() {
-  printf '%s' "$1" \
-    | sed -e 's/&/\&amp;/g' \
-          -e 's/</\&lt;/g' \
-          -e 's/>/\&gt;/g'
 }
 
 echo "👉 [bootstrap-vault] Checking vault status"
@@ -108,9 +98,8 @@ if [[ "$INITIALIZED" != "true" ]]; then
 
   echo "👉 [bootstrap-vault] Sending Vault init secrets to Telegram"
   ROOT_TOKEN="$(echo "$INIT_JSON" | jq -r '.root_token')"
-  ROOT_TOKEN_HTML="$(escape_html "$ROOT_TOKEN")"
-  TELEGRAM_MESSAGE=$'Vault initialized.\nCopy root token: <tg-spoiler>'"$ROOT_TOKEN_HTML"$'</tg-spoiler>\nGo to Vault: https://vault.senaev.com/ui/vault/secrets/kv/kv/senaev-com-kv/details/edit\nAnd paste secret: https://t.me/c/1593601675/8'
-  send_telegram_message "$TELEGRAM_MESSAGE" "$ROOT_TOKEN" "HTML" \
+  TELEGRAM_MESSAGE=$'Vault initialized.\nCopy root token: ||```` '"$ROOT_TOKEN"$' ````||\nGo to Vault: https://vault.senaev.com/ui/vault/secrets/kv/kv/senaev-com-kv/details/edit\nAnd paste secret: https://t.me/c/1593601675/8'
+  send_telegram_message "$TELEGRAM_MESSAGE" "$ROOT_TOKEN" \
     || { echo "❌ [bootstrap-vault] Failed to send Vault root token to Telegram"; exit 1; }
   echo "✅ [bootstrap-vault] Vault root token sent to Telegram"
 else
