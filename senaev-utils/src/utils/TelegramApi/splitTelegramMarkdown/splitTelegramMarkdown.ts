@@ -27,7 +27,7 @@ export function splitTelegramMarkdown(markdown: string): string[] {
             return;
         }
 
-        const suffix = `${inlineStyles.toReversed().join('')}${fence ? `\n${fence}` : ''}${inDetails ? '\n</details>' : ''}`;
+        const suffix = `${inlineStyles.slice().reverse().join('')}${fence ? `\n${fence}` : ''}${inDetails ? '\n</details>' : ''}`;
 
         chunks.push(chunk + suffix);
         chunk = `${inDetails ? `${DETAILS_OPEN}\n\n` : ''}${fence ? `${fence}\n` : ''}${inlineStyles.join('')}`;
@@ -38,7 +38,8 @@ export function splitTelegramMarkdown(markdown: string): string[] {
     function append(text: string): void {
         // Escapes and formatting delimiters are indivisible tokens. When a long formatted
         // line is split, close active styles at the cut and reopen them in the next part.
-        for (const [token] of text.matchAll(/\\[^\n]|\*\*|\*|[^\n]|\n/gu)) {
+        for (const match of text.matchAll(/\\[^\n]|\*\*|\*|[^\n]|\n/gu)) {
+            const token = match[0]!;
             const bytes = Buffer.byteLength(token);
 
             if (chunk && chunkBytes + bytes > CONTENT_BUDGET) {
