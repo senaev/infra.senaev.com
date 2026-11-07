@@ -13,7 +13,7 @@ first, with OpenRouter as the LLM provider fallback.
 
 ## Context
 
-- Entry points: the Tricky Dad and Obsidian Tasks Telegram chats
+- Entry points: the Tricky Dad and Tasks Telegram chats
   (`cluster-helper/src/trickyDad/processTrickyDadChatMessage.ts`) and the Alisa voice skill
   (`cluster-helper/src/trickyDad/handleAlisaRequest.ts`). Alisa answers at once with a funny
   phrase; the command runs in the background, and Telegram gets a message only on failure.

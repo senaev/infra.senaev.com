@@ -167,7 +167,7 @@ describe('planTrickyDadCommand', () => {
             ],
         });
 
-        const plan = await planTrickyDadCommand('купить хлеб', 'Obsidian Tasks Telegram chat');
+        const plan = await planTrickyDadCommand('купить хлеб', 'Tasks Telegram chat');
 
         expect(plan.actions.map(({ type }) => type)).toEqual(['add_tasks']);
         expect(getRequest().jsonSchema.name).toBe('add_tasks');
@@ -231,7 +231,7 @@ describe('planTrickyDadCommand', () => {
             ],
         });
 
-        await expect(planTrickyDadCommand('позвонить завтра', 'Obsidian Tasks Telegram chat')).rejects.toThrow('date must be a real YYYY-MM-DD');
+        await expect(planTrickyDadCommand('позвонить завтра', 'Tasks Telegram chat')).rejects.toThrow('date must be a real YYYY-MM-DD');
     });
 
     it.each([
@@ -248,7 +248,7 @@ describe('planTrickyDadCommand', () => {
             ],
         });
 
-        await expect(planTrickyDadCommand('позвонить', 'Obsidian Tasks Telegram chat')).rejects.toThrow('date must be a real YYYY-MM-DD');
+        await expect(planTrickyDadCommand('позвонить', 'Tasks Telegram chat')).rejects.toThrow('date must be a real YYYY-MM-DD');
     });
 
     it('accepts a real leap day', async () => {
@@ -261,7 +261,7 @@ describe('planTrickyDadCommand', () => {
             ],
         });
 
-        const plan = await planTrickyDadCommand('позвонить', 'Obsidian Tasks Telegram chat');
+        const plan = await planTrickyDadCommand('позвонить', 'Tasks Telegram chat');
 
         expect(plan.isCommandFallback).toBe(false);
         expect(plan.actions).toHaveLength(1);
@@ -295,7 +295,7 @@ describe('planTrickyDadCommand', () => {
             attempts: [],
         });
 
-        const plan = await planTrickyDadCommand('позвонить маме', 'Obsidian Tasks Telegram chat');
+        const plan = await planTrickyDadCommand('позвонить маме', 'Tasks Telegram chat');
 
         expect(plan.isCommandFallback).toBe(true);
         expect(plan.error).toBe('❌ No LLM provider gave a usable answer');
