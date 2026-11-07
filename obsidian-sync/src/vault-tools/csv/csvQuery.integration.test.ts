@@ -1,3 +1,5 @@
+import { readFile as readFsFile } from 'node:fs/promises';
+
 import {
     afterEach, expect, it,
 } from 'vitest';
@@ -281,3 +283,100 @@ it('imports the full 10 MiB limit with many short fields without retaining all p
         truncated: false,
     });
 }, 10000);
+
+it('discovers direct sibling CSV files from a folder as one logical read-only table', async () => {
+    vault = await createTestVault({
+        'finances/2025.csv': 'id,amount\na,10\n',
+        'finances/2026.csv': 'id,amount\nb,20\n',
+        'finances/csv.params.json': '{"sort":[]}',
+        'finances/nested/2024.csv': 'id,amount\nc,40\n',
+        'finances/ignore.txt': 'not csv',
+    });
+
+    const result = await csvQueryTool(vault.config, {
+        tables: [
+            {
+                name: 'transactions',
+                folder: 'finances',
+            },
+        ],
+        sql: 'SELECT id, amount, _source_path, _source_record FROM transactions ORDER BY id',
+    });
+
+    expect(result.rows).toEqual([
+        [
+            'a',
+            '10',
+            'finances/2025.csv',
+            '1',
+        ],
+        [
+            'b',
+            '20',
+            'finances/2026.csv',
+            '1',
+        ],
+    ]);
+    expect(result.sources).toHaveLength(2);
+});
+
+it('rejects folder queries that are empty, too large, duplicated, or try to write', async () => {
+    const contents: Record<string, string> = {
+        'finances/2025.csv': 'id,amount\na,10\n',
+        'finances/2026.csv': 'id,amount\nb,20\n',
+        'empty/readme.md': 'empty',
+    };
+
+    for (let year = 2000; year < 2017; year++) {
+        contents[`many/${year}.csv`] = 'id,amount\na,1\n';
+    }
+
+    vault = await createTestVault(contents);
+    const query = (folder: string, sql = 'SELECT count(*) FROM t') => csvQueryTool(vault!.config, {
+        tables: [
+            {
+                name: 't',
+                folder,
+            },
+        ],
+        sql,
+    });
+
+    await expect(query('empty')).rejects.toMatchObject({ code: 'invalid_arguments' });
+    await expect(query('many')).rejects.toMatchObject({ code: 'invalid_arguments' });
+    await expect(query('finances', 'UPDATE t SET amount=0')).rejects.toMatchObject({ code: 'invalid_arguments' });
+    await expect(csvQueryTool(vault.config, {
+        tables: [
+            {
+                name: 't',
+                folder: 'finances',
+            },
+            {
+                name: 'other',
+                paths: ['finances/2025.csv'],
+            },
+        ],
+        sql: 'SELECT count(*) FROM t',
+    })).rejects.toMatchObject({ code: 'invalid_arguments' });
+    expect(await readFsFile(vault.path('finances/2025.csv'), 'utf8')).toBe('id,amount\na,10\n');
+});
+
+it('rejects CSV symlinks discovered in a folder rather than following them', async () => {
+    const { symlink } = await import('node:fs/promises');
+
+    vault = await createTestVault({
+        'finances/2025.csv': 'id,amount\na,10\n',
+        'private.csv': 'id,amount\nsecret,123\n',
+    });
+    await symlink(vault.path('private.csv'), vault.path('finances/2026.csv'));
+
+    await expect(csvQueryTool(vault.config, {
+        tables: [
+            {
+                name: 't',
+                folder: 'finances',
+            },
+        ],
+        sql: 'SELECT * FROM t',
+    })).rejects.toMatchObject({ code: 'forbidden_path' });
+});

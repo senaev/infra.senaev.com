@@ -1,8 +1,11 @@
+import { readdir } from 'node:fs/promises';
+import { join } from 'node:path/posix';
+
 import { CommandError, invalidArguments } from 'senaev-utils/src/commands/CommandError';
 import { createCommandAdapter } from 'senaev-utils/src/toolServer/createCommandAdapter';
 import { readToolArguments, requiredNonEmptyString } from 'senaev-utils/src/toolServer/toolArguments';
 
-import { normalizeVaultPath } from '../access/vaultAccess';
+import { normalizeVaultPath, resolveExistingFolder } from '../access/vaultAccess';
 import { readDownloadFile } from '../access/readDownloadBytes';
 import { readVaultToolArguments } from '../toolArguments';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
@@ -31,6 +34,7 @@ export function parseCsvQuery(input: unknown) {
         const table = readToolArguments(value, [
             'name',
             'paths',
+            'folder',
             'expectedHash',
         ]);
         const name = requiredNonEmptyString(table, 'name');
@@ -40,11 +44,22 @@ export function parseCsvQuery(input: unknown) {
         }
 
         names.add(name.toLowerCase());
-        if (!Array.isArray(table.paths) || table.paths.length < 1 || table.paths.length > 16) {
+        const { folder } = table;
+        const hasFolder = folder !== undefined;
+
+        if (hasFolder === (table.paths !== undefined)) {
+            throw invalidArguments('Supply either folder or paths for each table, not both');
+        }
+
+        if (hasFolder && (typeof folder !== 'string' || !folder.trim() || table.expectedHash !== undefined)) {
+            throw invalidArguments('folder must be a nonempty read-only directory without expectedHash');
+        }
+
+        if (!hasFolder && (!Array.isArray(table.paths) || table.paths.length < 1 || table.paths.length > 16)) {
             throw invalidArguments('Each table requires 1..16 CSV paths');
         }
 
-        const paths = table.paths.map((path: unknown) => {
+        const paths = (hasFolder ? [] : table.paths as unknown[]).map((path: unknown) => {
             if (typeof path !== 'string' || path.length > 1024) {
                 throw invalidArguments('CSV paths must be strings up to 1024 characters');
             }
@@ -73,6 +88,7 @@ export function parseCsvQuery(input: unknown) {
         return {
             name,
             paths,
+            ...hasFolder ? { folder: normalizeVaultPath(folder as string, 'folder') } : {},
             ...expectedHash === undefined ? {} : { expectedHash: expectedHash as string | null },
         };
     });
@@ -128,8 +144,40 @@ const executeCsvQuery = createCommandAdapter(parseCsvQuery, async (config: Vault
         const originals = new Map<string, string>();
         const paramsHashes = new Map<string, string | null>();
         const tables: CsvQueryInput['tables'] = [];
+        const expandedTables: { name: string; paths: string[]; expectedHash?: string | null }[] = [];
 
+        // Discover direct CSV children only. Folder selections are always read-only;
+        // each matched file still goes through normal path/symlink and byte checks.
         for (const table of input.tables) {
+            let { paths } = table;
+
+            if ('folder' in table && table.folder !== undefined) {
+                const absolute = await resolveExistingFolder(config, table.folder, execution);
+                const names = await readdir(absolute);
+
+                paths = names.filter((name) => name.toLowerCase().endsWith('.csv'))
+                    .map((name) => normalizeVaultPath(join(table.folder!, name), 'path'))
+                    .sort();
+            }
+
+            if (!paths.length || paths.length > 16) {
+                throw invalidArguments('Each table must resolve to 1..16 CSV files');
+            }
+
+            expandedTables.push({
+                name: table.name,
+                paths,
+                ...table.expectedHash === undefined ? {} : { expectedHash: table.expectedHash },
+            });
+        }
+
+        const allPaths = expandedTables.flatMap(({ paths }) => paths);
+
+        if (allPaths.length > 16 || new Set(allPaths).size !== allPaths.length) {
+            throw invalidArguments('At most 16 distinct CSV files may be mapped across all tables');
+        }
+
+        for (const table of expandedTables) {
             const sources: CsvQueryInput['tables'][number]['sources'] = [];
 
             for (const path of table.paths) {
@@ -211,7 +259,7 @@ const executeCsvQuery = createCommandAdapter(parseCsvQuery, async (config: Vault
         let publication;
 
         if (mutation) {
-            const table = input.tables.find((candidate) => candidate.name === mutation.table);
+            const table = expandedTables.find((candidate) => candidate.name === mutation.table);
             const original = originals.get(mutation.path);
 
             if (!table || table.expectedHash === undefined || original === undefined || table.paths.length !== 1 || table.paths[0] !== mutation.path) {

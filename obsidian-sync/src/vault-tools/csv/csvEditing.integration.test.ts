@@ -739,3 +739,40 @@ it('does not inherit a parent folder sorting policy into subfolders', async () =
 
     expect(await readFile(vault.path('nested/data.csv'), 'utf8')).toBe(text);
 });
+
+it('copies selected rows between CSVs using SQL while writing only the hash-guarded destination', async () => {
+    const original = 'id,occurred_datetime,value_datetime\na,2025-01-10,\nb,,2025-07-01\nc,2026-03-01,\n';
+    const target = 'id,occurred_datetime,value_datetime\n';
+
+    vault = await createTestVault({
+        'finances/transactions.csv': original,
+        'finances/2025.csv': target,
+        'finances/csv.params.json': JSON.stringify({
+            sort: [
+                {
+                    expression: 'COALESCE(NULLIF(occurred_datetime, \'\'), NULLIF(value_datetime, \'\'))',
+                    direction: 'DESC',
+                },
+            ],
+        }),
+    });
+    const result = await csvQueryTool(vault.config, {
+        tables: [
+            {
+                name: 'source',
+                paths: ['finances/transactions.csv'],
+            },
+            {
+                name: 'year',
+                paths: ['finances/2025.csv'],
+                expectedHash: hash(target),
+            },
+        ],
+        sql: 'INSERT INTO year SELECT id, occurred_datetime, value_datetime FROM source WHERE SUBSTR(COALESCE(NULLIF(occurred_datetime, \'\'), NULLIF(value_datetime, \'\')), 1, 4) = \'2025\'',
+    });
+
+    expect(result.affectedRows).toBe(2);
+    expect(await readFile(vault.path('finances/2025.csv'), 'utf8'))
+        .toBe('id,occurred_datetime,value_datetime\nb,,2025-07-01\na,2025-01-10,\n');
+    expect(await readFile(vault.path('finances/transactions.csv'), 'utf8')).toBe(original);
+});

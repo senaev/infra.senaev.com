@@ -138,23 +138,26 @@ Configuration paths use the normal vault path/symlink checks; their byte hashes
 this detects intervening changes but does not provide cross-process atomic
 compare-and-swap or a transaction across the CSV and configuration.
 
-## One-time yearly finance migration
+## Folder-based CSV queries
 
-The `@senaev/finances/transactions/transactions.csv` migration is deliberately
-separate from ordinary SQL queries. In the deployed `obsidian-sync` container, run:
+For a read-only query across CSVs in one folder, set a table's `folder` instead
+of `paths`:
 
-```sh
-npm run migrate:transactions                       # dry-run: inspect years and sizes
-npm run migrate:transactions -- --stage           # archive original and create yearly CSVs
-# Verify the archive and all yearly files have synced to another device; update finance docs.
-npm run migrate:transactions -- --finalize        # reverify and retire oversized original
+```json
+{"tables":[{"name":"transactions","folder":"@senaev/finances/transactions"}],"sql":"SELECT COUNT(*) FROM transactions"}
 ```
 
-The sibling `transactions-backup/` folder holds a compressed, byte-for-byte copy
-of the original CSV and its prior sort configuration. The archive must fit the
-Sync Standard file limit. Staging never deletes the original; finalization checks
-all source values and duplicate occurrences before retiring it. If files already
-exist, or validation fails, the migration stops without overwriting them.
+The tool discovers direct `.csv` children in stable filename order, treats them
+as one logical table, and ignores nested directories and non-CSV files. Every
+CSV must have the same ordered headers; each is subject to the existing vault
+access checks. Folder queries cannot write or use `expectedHash`. To edit,
+specify a single CSV using `paths` and its latest `expectedHash`.
+
+At most 16 files can be mapped per query, within the existing 10 MiB total
+input cap; no files are skipped when a limit is exceeded. SQL queries never
+modify the CSV sorting configuration. A folder containing both the original
+register and newly partitioned copies will count both: use explicit paths for
+migration verification until the original is retired.
 
 ## Limits and isolation
 

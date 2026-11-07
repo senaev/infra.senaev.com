@@ -1,28 +1,30 @@
-# 2026-11-07 — Yearly finance CSVs with shared folder settings
+# 2026-11-07 — Shared CSV folder settings and yearly finance register
 
-Split the financial transaction register into yearly CSV files that Obsidian Sync can synchronize, preserving all transaction information and making sorting consistent without duplicated configuration files.
+Allow Obsidian MCP to treat a directory of CSV files as one logical table, while keeping each file independently editable and safely synchronized.
 
 ## Goal
 
-- Replace the oversized single `transactions.csv` with `YYYY.csv` files using the same 18 columns and original source-field values.
-- Use one `csv.params.json` per folder to sort every CSV directly inside it; no per-file overrides or inherited settings.
-- Retain the chronological ordering based on `occurred_datetime`, otherwise `value_datetime`, otherwise `transaction_datetime`, while preserving stable order for equal keys.
-- Keep a compressed, byte-for-byte recoverable original in an adjacent backup folder outside the active dataset, verify all 18,981 transaction occurrences, and do not lose duplicates or historical context.
-- Keep the existing `obsidian-csv_query` interface and support reading up to 16 files together, within its existing 10 MiB input budget; writes remain single-file operations.
-- Update the active finance framework and only directly affected links, preserving historical import logs as records of what actually happened.
+- One `csv.params.json` applies to every CSV directly within its folder, without per-file overrides or inheritance from parent folders.
+- An MCP `folder` table source discovers sibling CSVs for read-only queries. Explicit `paths` with `expectedHash` remain the only way to write; preserve existing protections, resource bounds and SQL behavior.
+- Support at least the 12 yearly transaction files under the existing 10 MiB input limit.
+- Split the oversized financial register into per-year CSVs **manually**, preserving its 18-column schema, all row occurrences, original dates, descriptions, duplicates and import references.
+- Keep an independently verified backup in an adjacent vault folder before altering the register; update active finance documentation with minimal changes while preserving historical records.
 
 ## Plan
 
-1. Add folder-level config loading with safe hash rechecks and coverage for missing, changed, invalid and shared configs.
-2. Increase the CSV file-count limit, preserving resource bounds and existing write constraints.
-3. Stage a compressed, checksum-verified original in the adjacent `transactions-backup/` directory and keep the original live CSV until remote sync is verified.
-4. Partition rows by the first available of occurrence/value/booking datetime into 2015–2026 CSVs, preserving all 18 column values, repeated transactions and source identifiers.
-5. Validate exact row multisets, schema, year partition, counts, sorting and size under the 5 MB Sync Standard limit. Run explicit finalization only after the archive and all yearly files are confirmed synced.
-6. Update finance documentation and any references that rely on a single path or unstable `_source_record` position. Confirm Obsidian Sync downloads and the new MCP query behavior after deployment.
+1. Add one folder-level CSV sorting policy and validate its hash before publishing a write.
+2. Add read-only folder discovery to `obsidian-csv_query`, with security and limit tests.
+3. After PR review and deployment, use the existing Obsidian SQL and file/code tools to copy the original into an adjacent backup and manually populate yearly CSVs.
+4. Verify original versus reconstructed datasets, counts and duplicates per year; check every file is under Obsidian Sync's size limit and has synced before retiring the original.
+5. Update the active finance framework and links without rewriting historical import evidence.
 
 ## Verification
 
-- Before/after source hashes, per-year row counts, 18-column header equality, and exact occurrence-sensitive whole-row comparisons; totals by account and currency as secondary cross-checks.
-- One shared folder policy applies consistently to all CSVs, while other folders are unaffected.
-- Every synced CSV is below 5 MB, and historical source identifiers remain unmodified.
-- No duplicate transaction data in the active dataset; no loss of the recoverable original.
+- Queries across folders and explicit paths behave consistently without bypassing symlink, size, schema, or write checks.
+- 18,981 original transactions are preserved with identical field values and duplicate occurrences; comparisons are based on records, not only row counts or financial totals.
+- Sorting uses the occurrence datetime first, then the value date, then the booking date, while preserving stable ties.
+- Financial data and docs remain unchanged until the manual migration, and the original stays independently recoverable.
+
+## Result
+
+MCP implementation will be delivered in PR #128; no migration automation or live vault changes are included.

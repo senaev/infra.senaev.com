@@ -1,3 +1,20 @@
+## 2026-11-07 16:42 UTC — MCP-only refactor verified
+
+Removed dedicated transaction migration scripts. Added read-only `folder` mapping for all direct CSV children with the same schema; writes continue to require a single `paths` entry and `expectedHash`. SQL INSERT ... SELECT from another CSV into a hash-guarded destination was tested as the basis for later manual migration.
+
+```
+TypeScript: pass
+ESLint: pass
+Test Files: 5 passed (5)
+Tests: 189 passed (189)
+```
+
+No live vault data was changed.
+
+## 2026-11-07 16:34 UTC — Script-free migration decision
+
+Owner requested removing all migration scripts from PR #128. MCP alone will support folder-wide `csv.params.json`, reading direct CSV children by `folder`, and up to 16 files. Live vault migration and backup/documentation updates will be performed manually with existing tools only after review and deployment. The existing vault repo checkout has uncommitted changes and is left untouched.
+
 ## 2026-11-07 16:27 UTC — Implementation and local verification
 
 Folder-level sorting and 16-file reads implemented. Yearly migration utility runs a read-only dry-run by default, stages verified `YYYY.csv` files and a byte-perfect compressed archive in an adjacent backup directory, then requires a separate finalization after independent sync confirmation. No live vault data was modified.

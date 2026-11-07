@@ -855,12 +855,12 @@ const csv_query: ToolDefinition = {
     title: 'Read and edit vault CSV files with SQL',
     description: [
         'Runs one SQLite statement against temporary tables built from selected CSV files. SELECT returns rows; INSERT/UPDATE/DELETE atomically save the affected CSV; CREATE TABLE initializes a new or zero-byte CSV with header names; ALTER TABLE ADD COLUMN and DROP COLUMN persist column changes. SQL determines the operation; there is no editing flag or separate edit command.',
-        'tables is an array of {name, paths, expectedHash?}; files in a table must have identical ordered headers. All source cells are TEXT, including empty strings; no type inference or money/date conversion. Use explicit SQL CAST; SQLite casts are permissive and integer division truncates.',
+        'tables is an array of {name, paths?, folder?, expectedHash?}; choose exactly one of paths or folder. Folder discovers only direct .csv children, maps them as one read-only logical SQL table, and ignores subfolders/non-CSV files. Folder selections never accept expectedHash or edits. Files in a table must have identical ordered headers. All source cells are TEXT, including empty strings; no type inference or money/date conversion. Use explicit SQL CAST; SQLite casts are permissive and integer division truncates.',
         'CSV is strict UTF-8, comma-delimited with a header, optional BOM and standard double-quote escaping. Duplicate/empty headers are rejected. Read-only tables add TEXT columns _source_path and _source_record (1-based data record); the mutated table exposes CSV columns only. Those names and rowid aliases are reserved.',
         'Results contain columns and positional rows; integers outside the JavaScript safe range are decimal strings, BLOBs are rejected. Every result includes hashes [{path,hash}] and sources with byte hashes/record counts; single-file responses also include hash. Edits return the saved hash, affectedRows and changed; CSV queries do not compute or return diffs; edits matching no rows preserve the previous bytes/hash. Errors include hashes when readable; unknown/unavailable hashes are null. Files are individual snapshots, not a simultaneous multi-file transaction.',
         'Limits: 16 files across up to 8 tables, 10 MiB total CSV, 50000 data records, 100 columns per file, 64 KiB decoded cell contents per record, 16000 SQL characters, 100 bound positional parameters (64 KiB serialized total), 1000 output rows and 256 KiB serialized query result. maxRows defaults to 200. Truncation is explicit; input is never silently truncated.',
         'Query subprocess: 5 second deadline, one active query, SQLite 64 MiB allocation cap and V8 64 MiB old-space cap. Only approved tables and built-in analytical functions are allowed; PRAGMA, ATTACH, schema changes, triggers, extensions and arbitrary file/network access are unavailable except plain CREATE TABLE for a mapped uninitialized file and ADD/DROP COLUMN on a mapped single-file table. Renaming columns/tables and dropping tables remain unsupported. params accepts strings or null; cast parameters explicitly when needed.',
-        'To edit, map the writable table to exactly one path and provide its latest expectedHash. Use expectedHash:null only to create a missing file through CREATE TABLE. Reads may combine files; a statement may mutate only one physical CSV. SQL values are TEXT; ADD COLUMN accepts a name with optional TEXT and fills existing rows with empty strings. DROP COLUMN removes its header and cells; at least one column must remain. Schema changes return affectedRows:0 with the saved hash. Constraints, defaults, other types, RETURNING and multi-statement SQL are unsupported. Deleting all rows keeps the header. SQL errors/timeouts/cancellation before publication leave the CSV unchanged. Publication serializes in-process edits and rechecks the source hash; external writers are not transactionally locked.',
+        'To edit, map the writable table to exactly one explicit path and provide its latest expectedHash. A folder selection is always read-only. Use expectedHash:null only to create a missing file through CREATE TABLE. Reads may combine files; a statement may mutate only one physical CSV. SQL values are TEXT; ADD COLUMN accepts a name with optional TEXT and fills existing rows with empty strings. DROP COLUMN removes its header and cells; at least one column must remain. Schema changes return affectedRows:0 with the saved hash. Constraints, defaults, other types, RETURNING and multi-statement SQL are unsupported. Deleting all rows keeps the header. SQL errors/timeouts/cancellation before publication leave the CSV unchanged. Publication serializes in-process edits and rechecks the source hash; external writers are not transactionally locked.',
         'Optional csv.params.json in the same folder applies one sorting policy to every CSV directly in that folder (no per-file overrides or parent-folder inheritance): {"sort":[{"expression":"occurred_datetime","direction":"DESC"}]}. Expressions use SQLite syntax and approved functions on the edited table only; direction is ASC/DESC. Keys apply in array order with stable ties, computed keys are not CSV columns. No sidecar or an empty sort array preserves row order. Sorting runs on matched edits and schema changes, not SELECT, unmatched edits or merely changing the sidecar. Invalid settings or changed sidecar hashes reject publication. Limits: 16 KiB JSON, 16 sort keys, 1000 characters per expression; SQL comments, parameters and statement separators are unsupported.',
         VAULT_RULES,
     ].join(' '),
@@ -877,7 +877,6 @@ const csv_query: ToolDefinition = {
                     additionalProperties: false,
                     required: [
                         'name',
-                        'paths',
                     ],
                     properties: {
                         expectedHash: {
@@ -896,6 +895,12 @@ const csv_query: ToolDefinition = {
                             minItems: 1,
                             maxItems: 16,
                             items: { type: 'string' },
+                            description: 'Explicit CSV files. Choose paths or folder, not both.',
+                        },
+                        folder: {
+                            type: 'string',
+                            minLength: 1,
+                            description: 'Vault-relative folder: query its direct CSV children as one read-only table. Does not include nested folders.',
                         },
                     },
                 },

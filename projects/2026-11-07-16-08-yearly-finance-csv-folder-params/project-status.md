@@ -1,16 +1,15 @@
-- [ ] Complete yearly financial CSV migration and shared folder sorting configuration without losing data.
+- [ ] Implement folder-level CSV settings and read-only MCP dataset selection; later migrate the financial data manually.
 
 ## Stage
 
-Code implemented and locally verified in isolated worktree. Live vault remains unchanged; pull request review and deployment needed before migration.
+MCP refactor implemented in PR #128; local checks passed. Live vault transaction files remain unchanged.
 
 ## Completed
 
-- Folder-wide `csv.params.json` replaces per-file sidecars without inheritance.
-- Read-only queries accept up to 16 CSV paths; the 10 MiB input and single-file write limits remain.
-- Two-phase dry-run/stage/finalize migration with exact gzip backup and occurrence-sensitive row verification.
-- Targeted lint, TypeScript and 110 tests pass, including subprocess integration cases.
+- Shared `csv.params.json` for direct CSV children; no per-file overrides or parent inheritance.
+- Support for up to 16 CSV paths and read-only folder mapping.
+- Migration scripts removed at the owner's request; manual SQL copy tested.
 
 ## Next steps
 
-Review and merge PR, deploy, run dry-run/stage, independently verify Obsidian Sync, update live finance framework/references, then finalize.
+Review and deploy PR. Migrate the vault separately using existing tools, verifying backup and row identity before removing the original.

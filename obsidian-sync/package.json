@@ -5,8 +5,7 @@
   "type": "commonjs",
   "main": "src/index.ts",
   "scripts": {
-    "start": "tsx src/index.ts",
-    "migrate:transactions": "tsx src/migrations/runYearlyTransactionsMigration.ts"
+    "start": "tsx src/index.ts"
   },
   "dependencies": {
     "@fastify/static": "10.1.5",
