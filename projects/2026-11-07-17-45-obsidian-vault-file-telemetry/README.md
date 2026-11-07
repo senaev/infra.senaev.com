@@ -17,11 +17,11 @@ Monitor the files in my Obsidian vault and warn before an individual file exceed
 
 ## Plan
 
-1. Define which vault files count for this report: include normal vault content and attachments; exclude backup/trash, Git metadata, temporary files and dependency folders. Explicitly decide how `.obsidian` configuration and hidden files should be treated so totals and alerts match files Obsidian Sync can actually synchronize. Do not follow symlinks.
-2. Add a lightweight periodic read-only filesystem scan close to `obsidian-sync`, using file metadata rather than reading file contents. Define its update interval and behavior for failed scans.
-3. Export low-cardinality metrics: file count, count by type, total bytes, bytes by type, maximum individual file size, over-threshold file count and scanner freshness/health. Preserve the largest file name and top-largest list in restricted diagnostic output or logs without creating a time series per file.
-4. Configure scraping in the existing VictoriaMetrics setup and provide a Grafana view of totals, file types, storage and the largest files, including the actual filename and size.
-5. Add a `VMRule` alert for a file exceeding **4,500,000 bytes**, routed through the existing Alertmanager notifications. Include the file path and current size in the notification without publishing the vault listing.
+1. Count non-hidden vault content, including attachments and backup CSVs; exclude dot-prefixed paths (`.trash`, `.git`, `.obsidian`), `plugins/`, `node_modules/` and symlinks. Never read file contents.
+2. Scan on scrape with 15-second caching and single-flight concurrency. Failed scans expose `obsidian_vault_scan_success 0` and do not report stale inventory as current.
+3. Export bounded metrics: total count and bytes, counts and bytes grouped by extension, largest-file bytes with one `path` label, oversized-file count and scanner health. A separate authenticated endpoint returns the top ten files.
+4. Add `VMServiceScrape` and a Grafana dashboard with totals, by-type figures and the largest file path/size. Restrict metrics scraping to telemetry vmagent through Kubernetes NetworkPolicy.
+5. Add a `VMRule` alert for the largest file exceeding **4,500,000 bytes** (2-minute delay), with file path and bytes in the notification; a second alert catches missing/stale scanner data.
 6. Test changes to the vault (file added, deleted, resized, renamed), extension categorization, hidden/trash paths, permission errors, symlinks, stale scanner data and alert resolve behavior. Document only the operational settings needed to maintain it.
 
 ## Verification
@@ -33,4 +33,4 @@ Monitor the files in my Obsidian vault and warn before an individual file exceed
 
 ## Result
 
-Pending implementation and production verification.
+Implemented in the PR worktree; unit/integration tests and Helm render checks pass. Production scrape, dashboard and alert delivery must be verified after merging and deploying the PR.

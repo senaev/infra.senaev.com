@@ -2,14 +2,15 @@
 
 ## Stage
 
-Project scoped; implementation not started.
+Implementation done locally in PR #129; awaiting final review, CI and production verification.
 
-## Decisions
+## Completed
 
-- Reuse the existing Obsidian filesystem access and VictoriaMetrics / Alertmanager stack.
-- Warning threshold: 4,500,000 bytes, before the 5 MB Sync Standard limit.
-- Keep metric labels low-cardinality and do not publish private vault filenames.
+- Metadata-only vault scan with 15-second scrape cache, extension totals, top ten, biggest file and 4.5 MB threshold.
+- Internal `/metrics` with low-cardinality labels and authenticated `/vault/file-stats` details.
+- VictoriaMetrics scraping, Grafana dashboard and Alertmanager-to-Telegram warning plus stale-data alert.
+- Tests for inventory counts, hidden/symlink exclusions, exact threshold, authentication and scan failure.
 
 ## Next steps
 
-Choose the detailed scan/metrics exposure approach; implement, test and deploy the inventory, Grafana view and alert; verify the notification end-to-end.
+Review/commit/push the implementation; check PR CI. After merge/deploy, verify Grafana scrape, dashboard, and end-to-end alert/resolve using a controlled temporary file.
