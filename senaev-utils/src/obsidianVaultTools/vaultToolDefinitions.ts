@@ -875,9 +875,7 @@ const csv_query: ToolDefinition = {
                 items: {
                     type: 'object',
                     additionalProperties: false,
-                    required: [
-                        'name',
-                    ],
+                    required: ['name'],
                     properties: {
                         expectedHash: {
                             type: [
