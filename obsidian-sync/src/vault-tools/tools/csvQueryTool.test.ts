@@ -176,3 +176,80 @@ it.each([
         ...changes,
     })).toThrow();
 });
+
+it('accepts yearly datasets containing 12 files, but rejects more than 16', () => {
+    const paths = Array.from({ length: 12 }, (_, index) => `${2015 + index}.csv`);
+
+    expect(parseCsvQuery({
+        ...valid,
+        tables: [
+            {
+                name: 'transactions',
+                paths,
+            },
+        ],
+    }).tables[0]?.paths).toEqual(paths);
+    expect(() => parseCsvQuery({
+        ...valid,
+        tables: [
+            {
+                name: 'transactions',
+                paths: Array.from({ length: 17 }, (_, index) => `${index}.csv`),
+            },
+        ],
+    })).toThrow();
+});
+
+it('accepts read-only folder tables without paths', () => {
+    expect(parseCsvQuery({
+        ...valid,
+        tables: [
+            {
+                name: 'transactions',
+                folder: 'finances/transactions',
+            },
+        ],
+    }).tables).toEqual([
+        {
+            name: 'transactions',
+            folder: 'finances/transactions',
+            paths: [],
+        },
+    ]);
+});
+
+it.each([
+    {
+        name: 't',
+        folder: 'finances',
+        paths: ['a.csv'],
+    },
+    {
+        name: 't',
+        folder: 'finances',
+        expectedHash: null,
+    },
+    {
+        name: 't',
+        folder: 'finances',
+        expectedHash: 'a'.repeat(64),
+    },
+    {
+        name: 't',
+        folder: '../secret',
+    },
+    {
+        name: 't',
+        folder: '',
+    },
+    {
+        name: 't',
+        folder: 5,
+    },
+    { name: 't' },
+])('rejects ambiguous or writable folder mapping %#', (table) => {
+    expect(() => parseCsvQuery({
+        ...valid,
+        tables: [table],
+    })).toThrow();
+});

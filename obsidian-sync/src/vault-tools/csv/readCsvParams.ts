@@ -1,12 +1,14 @@
+import { dirname, join } from 'node:path/posix';
+
 import { CommandError, invalidArguments } from 'senaev-utils/src/commands/CommandError';
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 
 import { readDownloadFile } from '../access/readDownloadBytes';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
 
-/** Optional, bounded snapshot; use the same path/symlink checks as the CSV itself. */
+/** One optional sorting policy for CSV files directly inside the same folder. */
 export async function readCsvParams(config: VaultToolsConfig, csvPath: string, execution: CommandExecution) {
-    const source = await readDownloadFile(config, `${csvPath}.params.json`, execution, {
+    const source = await readDownloadFile(config, join(dirname(csvPath), 'csv.params.json'), execution, {
         offset: 0,
         length: 16384,
         maxBytes: 16384,

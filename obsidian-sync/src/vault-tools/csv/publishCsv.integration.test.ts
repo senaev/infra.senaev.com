@@ -94,15 +94,15 @@ it.each([
     const params = '{"sort":[]}';
     const active = await createTestVault({
         'data.csv': original,
-        ...mode === 'created' ? {} : { 'data.csv.params.json': params },
+        ...mode === 'created' ? {} : { 'csv.params.json': params },
     });
 
     vault = active;
     vi.spyOn(vaultFiles, 'resolveExistingFile').mockImplementationOnce(async () => {
         if (mode === 'removed') {
-            await unlink(active.path('data.csv.params.json'));
+            await unlink(active.path('csv.params.json'));
         } else {
-            await writeFile(active.path('data.csv.params.json'), '{"sort":[{"expression":"id","direction":"DESC"}]}');
+            await writeFile(active.path('csv.params.json'), '{"sort":[{"expression":"id","direction":"DESC"}]}');
         }
 
         return active.path('data.csv');
