@@ -84,11 +84,7 @@ export async function runTrickyDadCommand(
         }, '❌ Cannot plan tricky dad command, falling back');
     }
 
-    const actionResults: TrickyDadActionResult[] = [];
-
-    for (const action of actions) {
-        actionResults.push(await runAction(action, command, source));
-    }
+    const actionResults = await Promise.all(actions.map((action) => runAction(action, command, source)));
 
     return {
         ...plan,
