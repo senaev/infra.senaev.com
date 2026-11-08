@@ -1,0 +1,12 @@
+# Preserve the subscription image's existing internal URL after the namespace move.
+apiVersion: v1
+kind: Service
+metadata:
+  name: cluster-helper
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: ExternalName
+  externalName: cluster-helper.senaev-com.svc.cluster.local
+  ports:
+    - port: 80
+      targetPort: 80

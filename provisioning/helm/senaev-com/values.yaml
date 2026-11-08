@@ -12,36 +12,6 @@ webdavSenaevRu:
   enabled: true
   vps: senaev-media
 
-xrayVpn:
-  enabled: true
-  instances:
-    - name: xray-vpn-firstvds
-      vps: firstvds
-      realityServerName: senaev.ru
-      profiles:
-        - user: user-socks
-          uuidMacro: "{XRAY_USER_UUID:1}"
-          outbound: outbound-hetzner
-        - user: user-freedom
-          uuidMacro: "{XRAY_USER_UUID:4}"
-          outbound: outbound-freedom
-    - name: xray-vpn-hetzner
-      vps: hetzner
-      realityServerName: senaev.com
-      profiles:
-        - user: user-socks
-          uuidMacro: "{XRAY_USER_UUID:2}"
-          outbound: outbound-firstvds
-        - user: user-socks-senaev-media
-          uuidMacro: "{XRAY_USER_UUID:3}"
-          outbound: outbound-senaev-media
-        - user: user-freedom
-          uuidMacro: "{XRAY_USER_UUID:5}"
-          outbound: outbound-freedom
-    - name: xray-vpn-senaev-media
-      vps: senaev-media
-      profiles: []
-
 qbittorrent:
   enabled: true
   volumePath: volumes/qbittorrent
@@ -282,25 +252,6 @@ llmServer:
     - n8n
     - cluster-helper
 
-vpnSubscription:
-  enabled: true
-  vps: hetzner
-  entries:
-    - name: "💄 0. firstvds → freedom"
-      link: "vless://{XRAY_USER_UUID:6}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
-    - name: "🇫🇮 1. firstvds → hetzner"
-      link: "vless://{XRAY_USER_UUID:1}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
-    - name: "🇷🇺 2. hetzner → firstvds"
-      link: "vless://{XRAY_USER_UUID:2}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
-    - name: "🇷🇺 3. hetzner → senaev-media"
-      link: "vless://{XRAY_USER_UUID:3}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
-    - name: "💄 4. hetzner → freedom"
-      link: "vless://{XRAY_USER_UUID:5}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
-    # IPv6 literal of hetzner (there are no AAAA records). It changes only if the server is
-    # recreated. See projects/2026-10-04-k3s-dual-stack-ipv6/README.md
-    - name: "🌐 5. hetzner IPv6 → freedom"
-      link: "vless://{XRAY_USER_UUID:5}@[2a01:4f9:c013:5425::1]:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
-
 ingress:
   entries:
     - name: opencode
@@ -334,9 +285,6 @@ ingress:
           port: 3000
         - host: mcp.senaev.com
           service: cluster-helper
-          port: 3000
-        - host: vpn-subscription.senaev.com
-          service: vpn-subscription
           port: 3000
         - host: n8n.senaev.com
           service: n8n

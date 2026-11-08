@@ -1,7 +1,7 @@
 -include .env
 export
 
-.PHONY: default terraform cluster rsync control-plane workers worker-firstvds worker-proxmox worker-senaev-media services senaev-com secrets telemetry traefik datadog test
+.PHONY: default terraform cluster rsync control-plane workers worker-firstvds worker-proxmox worker-senaev-media services senaev-com vpn secrets telemetry traefik datadog test
 
 CONTROL_PLANE_SERVER_ADDRESS := $(CONTROL_PLANE_SERVER_USERNAME)@$(CONTROL_PLANE_SERVER_IP)
 REMOTE := @ssh "$(CONTROL_PLANE_SERVER_ADDRESS)"
@@ -91,6 +91,8 @@ services:
 
 	@$(MAKE) senaev-com
 
+	@$(MAKE) vpn
+
 	@$(MAKE) test
 
 	@echo "✅ [Makefile] k8s services deployed"
@@ -103,6 +105,12 @@ senaev-com:
 	$(REMOTE) "$(DEPLOY) senaev-com senaev-com"
 
 	@echo "✅ [Makefile] senaev-com services deployed"
+
+# After senaev-com: the VPN subscription reports through cluster-helper in senaev-com.
+vpn:
+	@$(MAKE) rsync
+
+	$(REMOTE) "$(DEPLOY) vpn vpn"
 
 test:
 	@$(MAKE) rsync

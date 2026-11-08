@@ -1,4 +1,4 @@
-{{- if .Values.xrayVpn.enabled }}
+{{- if and .Values.xrayVpn.enabled .Values.ingress.enabled }}
 {{- range $instance := .Values.xrayVpn.instances }}
 {{- if not (empty $instance.realityServerName) }}
 ---

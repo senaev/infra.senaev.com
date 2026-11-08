@@ -8,7 +8,7 @@ metadata:
   namespace: {{ $root.Release.Namespace }}
 data:
   full-config.json: |
-{{ include "senaev-com.xrayVpnConfig" (dict "root" $root "instance" $instance) | nindent 4 }}
+{{ include "vpn.xrayVpnConfig" (dict "root" $root "instance" $instance) | nindent 4 }}
 ---
 apiVersion: apps/v1
 kind: Deployment

@@ -304,8 +304,13 @@ spec:
           podSelector:
             matchLabels:
               app.kubernetes.io/name: vmalertmanager
-        # /telegram/send-message
-        - podSelector:
+        # /telegram/send-message; retain the old caller during cutover/rollback.
+        - namespaceSelector:
+            matchExpressions:
+              - key: kubernetes.io/metadata.name
+                operator: In
+                values: [senaev-com, vpn]
+          podSelector:
             matchLabels:
               app: vpn-subscription
         # /send-daily-overview
