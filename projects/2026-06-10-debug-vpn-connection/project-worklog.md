@@ -1,3 +1,39 @@
+## 2026-11-08 23:08 UTC — Deployed baseline identifies Hetzner-entry transfer stalls
+
+PR #135 deployed after removing an invalid IPv4-mapped IPv6 NetworkPolicy exclusion
+in PR #137. Deployment run 42531233399 succeeded. All six probe deployments are
+available and scraped on senaev-media; existing VPN services remain available and
+website smoke checks returned 200.
+
+VictoriaMetrics current-pod download counters:
+```
+profile 0: success=4 failure=1
+profile 1: success=5 failure=0
+profile 2: success=0 failure=4
+profile 3: success=0 failure=4
+profile 4: success=0 failure=4
+profile 5: success=0 failure=4
+```
+
+Datadog examples, 23:08 UTC:
+```
+profile 1: bytes=65536 http_status=200 curl_exit=0 duration_ms=2897
+profile 2: bytes=5476  http_status=200 curl_exit=28 duration_ms=8009
+profile 3: bytes=5502  http_status=200 curl_exit=28 duration_ms=8010
+profile 4: bytes=6883  http_status=200 curl_exit=28 duration_ms=8011
+profile 5: bytes=0     http_status=0   curl_exit=28 duration_ms=3010
+```
+
+Profiles 2–4 have successful exit-IP validation and mostly successful light HTTPS.
+All direct HTTPS/exit controls pass. FirstVDS → Hetzner works while direct entry
+to Hetzner stalls regardless of its eventual exit: investigate that shared entry
+path first. No root cause established. IPv6 failure needs an independent same-pod
+reachability control; historical home IPv6 absence is not proof about current pods.
+
+Prepared a bounded manual experiment to distinguish short timeout from sustained
+stall and add the missing direct bulk control, without changing deployments, secrets,
+host networking, or the existing routine criteria. No new server settings applied.
+
 ## 2026-11-08 18:28 UTC — Add VictoriaMetrics and Grafana visualization
 
 Added a bounded Prometheus exporter on port 8080, scraped every 30s by VMPodScrape.

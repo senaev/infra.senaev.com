@@ -1,25 +1,33 @@
-- [ ] Restore working VPN access through the firstvds entry point from the affected Russian ISPs.
+- [ ] Restore reliable VPN access from the affected Russian ISPs.
 
 ## Stage
 
-Repeatable diagnostics prepared for review; broader VPN repair remains open.
+Repeatable probes deployed (PRs #135, #137); baseline collected. Repair remains open.
 
-## Done
+## Verified baseline
 
-- VPN services migrated into release/namespace `vpn` (PR #132).
-- ESO namespace/CRD retention fixed (PR #133).
-- Direct-exit subscription UUID seed corrected (PR #134), deployed successfully;
-  user confirmed the refreshed Happ profile works on their current connection.
+All six probes are scraped on senaev-media. Deployment run 42531233399 succeeded.
+At 2026-11-08 23:08 UTC, the current pods recorded:
 
-## Current work
+| Profile | 64 KiB successes / attempts | Other observations |
+|---|---|---|
+| 0 — firstvds → freedom | 4/5 | Occasional connection timeout |
+| 1 — firstvds → hetzner | 5/5 | HTTPS and exit validation pass |
+| 2 — hetzner → firstvds | 0/4 | HTTPS mostly passes; exit validation 4/4 |
+| 3 — hetzner → senaev-media | 0/4 | HTTPS mostly passes; exit validation 4/4 |
+| 4 — hetzner → freedom | 0/4 | HTTPS mostly passes; exit validation 4/4 |
+| 5 — hetzner IPv6 → freedom | 0/4 | HTTPS and VPN exit checks fail |
 
-Six isolated VPN probe clients on `senaev-media`, using the existing subscription
-profiles. Small checks approximately every 30s; exit validation and a 64 KiB transfer
-approximately every 300s. Structured logs, VictoriaMetrics scraping and a provisioned Grafana dashboard, direct
-controls, bounded resources, no host network changes.
+All direct HTTPS and direct exit controls pass. Profiles 2–4 return HTTP 200 but
+receive only a small partial payload before the eight-second limit. Profile 1
+finishes 65536 bytes in about 2.9 seconds. These observations implicate the direct
+home-to-Hetzner entry path, but do not establish DPI, MTU, or a server bug.
 
 ## Next steps
 
-Review/merge the probe PR, verify both intervals from the Russian home ISP and run
-on-demand fresh-client/invalid-credential checks. Record the baseline before designing
-restricted debugging-branch deployments. No probe workloads have been deployed yet.
+Run the bounded same-pod controls in [BASELINE-EXPERIMENT.md](BASELINE-EXPERIMENT.md):
+direct versus proxied download, eight versus thirty seconds, and IPv6 TCP reachability.
+The routine bulk test currently has no direct bulk control. Do not tune server/host
+networking or relax routine success criteria before collecting these controls.
+Code Tools has no usable management SSH access; executing in the probe pods requires
+an operator on the personal cluster management host. Logs and metrics remain readable.
