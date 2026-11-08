@@ -24,6 +24,7 @@ def identifier(value):
 def plan(root, changed, repository):
     config_file = root / ".github/deploy-config.json"
     config = json.loads(config_file.read_text()) if config_file.exists() else {"services": {}}
+    chart_options = config.get("charts", {})
     helm_root = root / "provisioning/helm"
     charts = {}
     for pattern in ["*/Chart.yaml", "*/*/Chart.yaml"]:
@@ -31,7 +32,11 @@ def plan(root, changed, repository):
             path = chart_file.parent.relative_to(helm_root)
             for part in path.parts:
                 identifier(part)
-            charts[str(path)] = path.parts[0]
+            namespace = chart_options.get(str(path), {}).get("namespace", path.parts[0])
+            charts[str(path)] = identifier(namespace)
+    unknown_charts = set(chart_options) - set(charts)
+    if unknown_charts:
+        raise ValueError(f"deploy-config.json references missing charts: {sorted(unknown_charts)}")
     full = changed is None or bool(set(changed) & PIPELINE_FILES)
     selected_charts = set(charts) if full or bool(set(changed or []) & SHARED_CHART_FILES) else {
         name for name in charts if any(p.startswith(f"provisioning/helm/{name}/") for p in changed)

@@ -1,4 +1,9 @@
 {
+  "charts": {
+    "external-secrets": {
+      "namespace": "vault"
+    }
+  },
   "services": {
     "vpn-subscription": {
       "chart": "vpn"

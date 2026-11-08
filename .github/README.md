@@ -14,7 +14,9 @@ or manual dispatch rebuilds/applies everything.
   `senaev-com` chart. Charts are discovered from `Chart.yaml`; use `<namespace>/<chart>`
   for grouped releases, or a flat chart directory when namespace and release match.
   Releases in each namespace deploy sequentially in path order (operator before
-  stack in `telemetry`). Optional service exceptions go in `deploy-config.json`.
+  stack in `telemetry`). Optional service exceptions go in `deploy-config.json`; a flat
+  chart can set a different namespace under `charts.<chart>.namespace` (`external-secrets`
+  deploys to `vault`, the same as `make services`).
 - Use `ghcr.io/<owner>/<service>:latest` and `imagePullPolicy: Always` in the
   pod template. CI refreshes matching Deployments/StatefulSets/DaemonSets after
   Helm creates/updates the releases, then waits for rollout readiness.
