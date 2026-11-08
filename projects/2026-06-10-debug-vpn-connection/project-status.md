@@ -2,16 +2,24 @@
 
 ## Stage
 
-Namespace migration done; VPN repair remains open.
+Repeatable diagnostics prepared for review; broader VPN repair remains open.
 
 ## Done
 
-- Xray servers and `vpn-subscription` run in release/namespace `vpn` (PR #132), with the
-  same Vault store. Verified by the user: VPN from Happ, subscription, MCP connectors.
-- ESO fixed: one release in `vault`, CRDs kept on uninstall (PR #133).
+- VPN services migrated into release/namespace `vpn` (PR #132).
+- ESO namespace/CRD retention fixed (PR #133).
+- Direct-exit subscription UUID seed corrected (PR #134), deployed successfully;
+  user confirmed the refreshed Happ profile works on their current connection.
+
+## Current work
+
+Six isolated VPN probe clients on `senaev-media`, using the existing subscription
+profiles. Small checks approximately every 30s; exit validation and a 64 KiB transfer
+approximately every 300s. Structured logs, VictoriaMetrics scraping and a provisioned Grafana dashboard, direct
+controls, bounded resources, no host network changes.
 
 ## Next steps
 
-Review and deploy the firstvds direct-exit subscription fix (UUID seed `6` → `4`),
-then refresh the subscription in Happ and test that profile. The fix is prepared in a PR;
-it has not been deployed. Then design the debugging environment for the remaining repair.
+Review/merge the probe PR, verify both intervals from the Russian home ISP and run
+on-demand fresh-client/invalid-credential checks. Record the baseline before designing
+restricted debugging-branch deployments. No probe workloads have been deployed yet.

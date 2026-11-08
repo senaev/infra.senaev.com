@@ -1,3 +1,45 @@
+## 2026-11-08 18:28 UTC — Add VictoriaMetrics and Grafana visualization
+
+Added a bounded Prometheus exporter on port 8080, scraped every 30s by VMPodScrape.
+Only telemetry vmagent can reach the port; SOCKS remains loopback-only. The provisioned
+VPN Probes — Russia dashboard shows fresh direct/VPN connectivity, exit/download
+checks, latency, success rate, traffic and sample age. No unbounded IP/run-ID labels.
+CodeRabbit findings fixed: failed direct controls fail the full round, and arbitrary
+invalid-request failures are inconclusive rather than proof of credential rejection.
+
+Validation output:
+
+```
+Ran 15 tests in 0.021s
+OK
+PASS: actual HTTP exporter serves numeric metrics
+PASS: scrape wiring, vmagent-only ingress, no exposed Service, and provisioned 14-panel dashboard
+```
+
+VictoriaMetrics accepted the combined PromQL syntax validation; no probe data is
+expected before deployment. PR #135 remains the scope; nothing has been deployed.
+
+## 2026-11-08 16:45 UTC — Prepare repeatable VPN diagnostics
+
+Added one non-root, resource-limited Xray client/runner per subscription profile,
+pinned to senaev-media. Explicit loopback SOCKS requests do not alter host networking.
+NetworkPolicy allows only DNS and public HTTPS. Routine checks run serially at ~30s
+and ~300s; bulk payload is capped at 64 KiB/profile/round (~108 MiB/day for six).
+JSON logs are collected by Datadog; on-demand fresh-client and credential controls
+are separate from routine traffic. No server tuning or debugging-branch deploys yet.
+
+Validation output:
+
+```
+Ran 10 tests in 0.011s
+OK
+PASS: six isolated probe deployments, no host networking/storage/API token or exposed Service; disabling probes leaves existing resources identical.
+```
+
+The UUID fix in PR #134 is deployed and user-tested. These new diagnostics are still
+pending review/deployment and must establish a Russian-ISP baseline before the repair
+can be considered complete.
+
 ## 2026-11-08 15:52 UTC — Prepare firstvds subscription UUID fix
 
 Changed only the firstvds → freedom subscription entry from seed `6` to seed `4`,

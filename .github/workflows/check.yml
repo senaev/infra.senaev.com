@@ -37,3 +37,6 @@ jobs:
       # The Python, shell and Helm syntax checks use python3, bash and helm from the runner image.
       - name: Lint, typecheck, test and syntax checks
         run: npm run simple-checks
+
+      - name: VPN probe unit tests
+        run: python3 -m unittest discover -s vpn-probe -p "test_*.py"

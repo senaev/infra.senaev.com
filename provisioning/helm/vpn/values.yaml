@@ -50,3 +50,15 @@ vpnSubscription:
 # Disable only while preparing the namespace before the cutover; see the project runbook.
 ingress:
   enabled: true
+
+vpnProbe:
+  enabled: true
+  vps: senaev-media
+  # UUID seeds identify subscription routes, including the IPv6 entry using seed 5.
+  # "direct" compares the home exit to the probe's own public home IP.
+  expectedExits:
+    "1": senaev.com
+    "2": senaev.ru
+    "3": direct
+    "4": senaev.ru
+    "5": senaev.com

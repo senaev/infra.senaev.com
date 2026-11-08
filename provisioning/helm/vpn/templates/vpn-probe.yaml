@@ -1,0 +1,158 @@
+{{- if .Values.vpnProbe.enabled }}
+{{- range $index, $entry := .Values.vpnSubscription.entries }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vpn-probe-{{ $index }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app: vpn-probe
+    vpn-profile: {{ $index | quote }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: vpn-probe
+      vpn-profile: {{ $index | quote }}
+  template:
+    metadata:
+      labels:
+        app: vpn-probe
+        vpn-profile: {{ $index | quote }}
+        tags.datadoghq.com/service: vpn-probe
+        tags.datadoghq.com/env: prod
+      annotations:
+        secret.reloader.stakater.com/reload: senaev-com-kv-secrets
+        ad.datadoghq.com/probe.logs: '[{"source":"python","service":"vpn-probe"}]'
+    spec:
+      nodeSelector:
+        vps: {{ $.Values.vpnProbe.vps }}
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: probe
+          image: ghcr.io/senaev/vpn-probe:latest
+          imagePullPolicy: Always
+          ports:
+            - name: metrics
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          env:
+            - name: PROFILE_INDEX
+              value: {{ $index | quote }}
+            - name: PROFILE_NAME
+              value: {{ $entry.name | quote }}
+            - name: PROFILE_LINK
+              value: {{ $entry.link | quote }}
+            - name: EXPECTED_EXITS
+              value: {{ toJson $.Values.vpnProbe.expectedExits | quote }}
+            - name: XRAY_USER_UUID
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: XRAY_USER_UUID
+            - name: XRAY_REALITY_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: XRAY_REALITY_PUBLIC_KEY
+          resources:
+            requests:
+              cpu: 10m
+              memory: 48Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          volumeMounts:
+            - name: scratch
+              mountPath: /tmp
+      volumes:
+        - name: scratch
+          emptyDir:
+            sizeLimit: 16Mi
+{{- end }}
+---
+# Only vmagent can scrape metrics; SOCKS remains inaccessible outside pod loopback.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: vpn-probe
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: vpn-probe
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: telemetry
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: vmagent
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16]
+        - ipBlock:
+            cidr: ::/0
+            except: ["fc00::/7", "fe80::/10", "::1/128", "::/128", "::ffff:0:0/96"]
+      ports:
+        - protocol: TCP
+          port: 443
+{{- end }}
+
+{{- if .Values.vpnProbe.enabled }}
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMPodScrape
+metadata:
+  name: vpn-probe
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: vpn-probe
+  podMetricsEndpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 5s
+      relabelConfigs:
+        - targetLabel: job
+          replacement: vpn-probe
+        - sourceLabels: [__meta_kubernetes_pod_node_name]
+          targetLabel: source_node
+        - sourceLabels: [__meta_kubernetes_pod_label_vpn_profile]
+          targetLabel: profile_index
+{{- end }}

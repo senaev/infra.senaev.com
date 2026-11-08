@@ -81,3 +81,11 @@ Secrets:
 | `VPN_SUBSCRIPTION_CHAT` | Telegram group URL for error reports |
 
 Pod reloader watches both the Vault secret and config ConfigMap — any change triggers a rolling restart.
+
+## Diagnostic clients
+
+`vpn-probe` builds the Python/curl runner and pinned Xray client. The VPN chart creates
+one isolated pod per subscription entry on senaev-media. Results go to Datadog as
+`service:vpn-probe`. VMPodScrape collects metrics every 30s on port 8080, reachable
+only by telemetry vmagent. The provisioned Grafana dashboard UID is `vpn-probes`.
+There is no inbound Service or host network configuration.
