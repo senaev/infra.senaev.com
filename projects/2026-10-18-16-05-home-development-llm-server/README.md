@@ -10,10 +10,12 @@ budget is €1,000 for the complete usable machine, including VAT and delivery.
 | Component | Requirement |
 | --- | --- |
 | CPU | Powerful enough for development, VMs and concurrent services; compare concrete CPUs |
-| GPU | Capable integrated graphics; Radeon 780M in the preferred Beelink SER8 |
+| GPU | Intel integrated graphics / Quick Sync preferred for Jellyfin in a Linux VM |
 | RAM | At least 32 GB |
 | Storage | At least 1 TB SSD |
-| Total price | No more than €1,000 |
+| Total price | No more than €1,000 including VAT and Madrid delivery |
+| Power recovery | BIOS automatic power-on when AC power returns |
+| GPU virtualization | Full GPU passthrough to a Linux VM on Proxmox for Jellyfin, including reliable VM reboot and shutdown/start |
 
 ## Context
 
@@ -32,26 +34,26 @@ reliability and low maintenance. The machine will be in the living room, so low 
 is important. Only SSD support is needed. Self-assembly is acceptable, but ready-made
 machines are preferred when competitively priced.
 
-## Preferred candidate — 2026-11-08
+## Current shortlist — 2026-11-08
 
-**Beelink SER8, Ryzen 7 8745HS, 32 GB DDR5 RAM and 1 TB NVMe SSD** is the
-best candidate for now. The user will most probably order it; no order has been placed.
-The observed EU-store price was €929, subject to confirming VAT and delivery within
-the €1,000 total budget. The listing indicated approximately 35 days preorder shipping.
+The earlier SER8 preference is on hold: reliable GPU passthrough to a Linux VM for
+Jellyfin is now mandatory. Intel Quick Sync is preferred. New and trustworthy
+refurbished/used machines are acceptable. No order has been placed.
 
-- Ryzen 7 8745HS: 8 cores / 16 threads, Radeon 780M integrated graphics.
-- Two replaceable DDR5 SO-DIMM slots, normally occupied by 2 × 16 GB in this configuration.
-  Upgrading to 64 GB requires replacing both modules with 2 × 32 GB. Larger kits need
-  exact kit/BIOS compatibility checks; the advertised 256 GB ceiling is not independently verified.
-- Two M.2 2280 NVMe SSD slots; one occupied by the supplied 1 TB drive, one vacant.
-- Chosen for compact size, capable CPU/graphics, replaceable RAM and storage expansion.
-  Exact-unit noise and Proxmox stability remain acceptance checks after delivery.
+See [Intel options and prices](research-intel-options.md). Strongest price lead:
+VORPC refurbished Dell OptiPlex Micro 7010, advertised i5-13500T / 32 GB / 1 TB,
+€533.34 VAT included with free shipping advertised. Confirm exact CPU (seller allows
+equivalents), Service Tag, noise, return terms and Linux VM passthrough before purchase.
+GMKtec M3 Pro and a DeskMini B760 build remain alternatives. No candidate is yet
+verified against every requirement.
 
 ## Plan
 
-1. Recheck the exact SER8 8745HS 32 GB/1 TB configuration, seller, stock/preorder date,
+1. Recheck the exact Intel CPU/GPU, 32 GB/1 TB configuration, seller and stock,
    return terms and final price including VAT and delivery to Madrid before ordering.
-2. Confirm firmware/Linux compatibility and any required GPU access for the intended services.
+2. Confirm BIOS AC recovery and full GPU passthrough into a Linux VM for Jellyfin.
+   Verify hardware decoding/encoding, required codecs and HDR tone mapping; repeat
+   guest reboot and VM shutdown/start cycles without rebooting the host.
 3. After delivery, install Proxmox and verify headless boot, networking, hardware,
    stability and living-room noise before migrating workloads.
 
@@ -68,4 +70,4 @@ the €1,000 total budget. The listing indicated approximately 35 days preorder 
 
 New hardware only; compact and quiet for the living room; SSD storage only. See
 [options and delivered-price comparison](research-options.md) and the
-[118-page source register](research-sources.md). SER8 is the preferred candidate; purchase is still pending.
+[118-page source register](research-sources.md). Intel shortlist supersedes the SER8 preference; purchase is pending.

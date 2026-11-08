@@ -2,24 +2,13 @@
 
 ## Current decision — 2026-11-08
 
-**Preferred: Beelink SER8 8745HS, 32 GB DDR5 / 1 TB NVMe SSD.** The user will
-most probably order it. No order has been placed. Observed EU-store price: €929;
-confirm VAT, Madrid delivery total, approximately 35-day preorder timing and return terms.
+SER8 preference is on hold. Mandatory: automatic AC power recovery and reliable GPU
+passthrough to a Linux VM for Jellyfin. Intel Quick Sync is preferred. Trustworthy
+refurbished/used hardware and self-assembly are acceptable. Compact size, low living-room
+noise and €1,000 including VAT/delivery remain requirements.
 
-[Exact EU listing](https://eu.bee-link.com/products/beelink-ser8-8745hs).
-The 32 GB configuration normally uses both RAM slots (2 × 16 GB); one of two M.2
-SSD slots remains free. RAM is replaceable. Plan 64 GB as 2 × 32 GB; verify any
-higher-capacity kit and firmware before relying on the advertised maximum.
-
-The machine will run Proxmox in the living room: low noise is a priority. Only SSD
-support is needed. Assembly is acceptable, but complete machines offer better value
-in the price checks discussed. SER9 Pro H255 (€819 for 32 GB/1 TB in the user's
-screenshot) has soldered RAM. SER9 MAX H255 (€999 for 32 GB/1 TB OpenClaw edition)
-adds 10GbE and replaceable RAM but little CPU/GPU benefit over SER8.
-
-The initial Intel-first recommendation and price tables below are historical research,
-not the current purchase recommendation. In particular, the GMKtec M3 lost preference
-because of noise concerns. Recheck all component prices before reusing custom-build totals.
+See [current Intel shortlist and prices](research-intel-options.md). The remaining
+research below is historical, not the current recommendation.
 
 ## Research coverage and limits
 

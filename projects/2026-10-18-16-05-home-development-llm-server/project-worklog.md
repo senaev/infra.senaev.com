@@ -1,3 +1,16 @@
+## 2026-11-08 18:21 UTC — Mandatory AC recovery and Jellyfin GPU passthrough; Intel prices
+
+User request:
+
+> Also let's add automatic enablement when power on and passing through GPU to the virtual machines as a requirement for our project.
+
+Added BIOS AC recovery and reliable full GPU passthrough to a Linux VM for Jellyfin.
+SER8 preference is on hold; trustworthy refurbished/used Intel machines are acceptable.
+Recorded three price paths and limits in research-intel-options.md. VORPC Dell Micro
+7010 i5-13500T 32 GB/1 TB at €533.34 VAT included is the strongest price lead; exact
+CPU, VM GPU recovery and noise need confirmation. No order, seller communication or
+deployment change was made.
+
 ## 2026-11-08 16:37 UTC — Beelink SER8 chosen as preferred purchase candidate
 
 User decision:
