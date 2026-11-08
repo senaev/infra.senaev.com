@@ -12,5 +12,6 @@ Namespace migration done; VPN repair remains open.
 
 ## Next steps
 
-Design the debugging environment for the firstvds repair. The existing firstvds
-subscription UUID mismatch (seed `6` vs. accepted `1`/`4`) remains for that investigation.
+Review and deploy the firstvds direct-exit subscription fix (UUID seed `6` → `4`),
+then refresh the subscription in Happ and test that profile. The fix is prepared in a PR;
+it has not been deployed. Then design the debugging environment for the remaining repair.

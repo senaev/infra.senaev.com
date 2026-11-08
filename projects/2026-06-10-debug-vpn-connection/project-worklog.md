@@ -1,3 +1,12 @@
+## 2026-11-08 15:52 UTC — Prepare firstvds subscription UUID fix
+
+Changed only the firstvds → freedom subscription entry from seed `6` to seed `4`,
+matching the existing firstvds direct-exit client. Server credentials, Vault values,
+routing and other profiles are unchanged. Helm lint and rendered comparison passed;
+only the subscription environment value changes. Pending review, deployment and a
+subscription refresh/test in Happ. This fixes a credential mismatch, not proof that
+the separate ISP-related failure is resolved.
+
 ## 2026-11-08 15:03 UTC — VPN namespace migration done; ESO incident during cutover
 
 PR #132 is merged and deployed. Xray servers and `vpn-subscription` run in the `vpn`
