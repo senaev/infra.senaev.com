@@ -10,7 +10,7 @@ budget is €1,000 for the complete usable machine, including VAT and delivery.
 | Component | Requirement |
 | --- | --- |
 | CPU | Powerful enough for development, VMs and concurrent services; compare concrete CPUs |
-| GPU | Media and general server use; Intel integrated graphics is the initial preference |
+| GPU | Capable integrated graphics; Radeon 780M in the preferred Beelink SER8 |
 | RAM | At least 32 GB |
 | Storage | At least 1 TB SSD |
 | Total price | No more than €1,000 |
@@ -27,19 +27,33 @@ The previous implementation, benchmarks and operational findings are preserved i
 [LLM experiments](llm-experiments.md) as historical context. This project update does
 not change the running LLM service.
 
-Previous preferences: headless operation, wired networking, Proxmox, reliability,
-low temperatures and low maintenance. Revisit passive cooling and compact size if
-those conflict with the new CPU/GPU requirements and budget.
+Confirmed preferences: compact size, headless operation, wired networking, Proxmox,
+reliability and low maintenance. The machine will be in the living room, so low noise
+is important. Only SSD support is needed. Self-assembly is acceptable, but ready-made
+machines are preferred when competitively priced.
+
+## Preferred candidate — 2026-11-08
+
+**Beelink SER8, Ryzen 7 8745HS, 32 GB DDR5 RAM and 1 TB NVMe SSD** is the
+best candidate for now. The user will most probably order it; no order has been placed.
+The observed EU-store price was €929, subject to confirming VAT and delivery within
+the €1,000 total budget. The listing indicated approximately 35 days preorder shipping.
+
+- Ryzen 7 8745HS: 8 cores / 16 threads, Radeon 780M integrated graphics.
+- Two replaceable DDR5 SO-DIMM slots, normally occupied by 2 × 16 GB in this configuration.
+  Upgrading to 64 GB requires replacing both modules with 2 × 32 GB. Larger kits need
+  exact kit/BIOS compatibility checks; the advertised 256 GB ceiling is not independently verified.
+- Two M.2 2280 NVMe SSD slots; one occupied by the supplied 1 TB drive, one vacant.
+- Chosen for compact size, capable CPU/graphics, replaceable RAM and storage expansion.
+  Exact-unit noise and Proxmox stability remain acceptance checks after delivery.
 
 ## Plan
 
-1. Clarify the intended GPU workloads and acceptable size/noise; decide whether
-   refurbished or used hardware is acceptable.
-2. Compare complete machines and custom builds available in Spain, within the total
-   budget. Record exact CPU, GPU/VRAM, RAM, SSD, upgrade options and warranty.
-3. Check Linux/Proxmox compatibility and GPU passthrough if needed; compare cooling,
-   power consumption and measured performance for the intended workloads.
-4. Present a shortlist and choose a configuration with the user before purchase.
+1. Recheck the exact SER8 8745HS 32 GB/1 TB configuration, seller, stock/preorder date,
+   return terms and final price including VAT and delivery to Madrid before ordering.
+2. Confirm firmware/Linux compatibility and any required GPU access for the intended services.
+3. After delivery, install Proxmox and verify headless boot, networking, hardware,
+   stability and living-room noise before migrating workloads.
 
 ## Verification
 
@@ -52,6 +66,6 @@ those conflict with the new CPU/GPU requirements and budget.
 
 ## Hardware research — 2026-11-08
 
-New hardware only; up to roughly 10–15 litres; media/general-server GPU use. See
+New hardware only; compact and quiet for the living room; SSD storage only. See
 [options and delivered-price comparison](research-options.md) and the
-[118-page source register](research-sources.md). No hardware selected or ordered.
+[118-page source register](research-sources.md). SER8 is the preferred candidate; purchase is still pending.

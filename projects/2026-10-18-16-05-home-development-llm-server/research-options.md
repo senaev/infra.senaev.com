@@ -1,16 +1,25 @@
 # Home server options for Spain — 8 November 2026
 
-## Recommendation
+## Current decision — 2026-11-08
 
-For the stated media/general-server use, start with Intel integrated graphics and Quick Sync.
-A discrete gaming GPU is not currently justified by the workload. The two practical directions
-are a complete GMKtec M3 for about €609 delivered, or a self-assembled ASRock DeskMini B760
-for about €885–940 delivered. Neither takes internal 3.5-inch hard drives or a conventional GPU card.
+**Preferred: Beelink SER8 8745HS, 32 GB DDR5 / 1 TB NVMe SSD.** The user will
+most probably order it. No order has been placed. Observed EU-store price: €929;
+confirm VAT, Madrid delivery total, approximately 35-day preorder timing and return terms.
 
-The user confirmed: new hardware only; up to roughly 10–15 litres; Proxmox; at least
-32 GB RAM and 1 TB SSD; €1,000 including delivery to Spain. Assembly preference,
-noise constraints, internal HDD requirements and exact concurrent workloads remain unanswered.
-These are shortlisted candidates, not a purchase decision.
+[Exact EU listing](https://eu.bee-link.com/products/beelink-ser8-8745hs).
+The 32 GB configuration normally uses both RAM slots (2 × 16 GB); one of two M.2
+SSD slots remains free. RAM is replaceable. Plan 64 GB as 2 × 32 GB; verify any
+higher-capacity kit and firmware before relying on the advertised maximum.
+
+The machine will run Proxmox in the living room: low noise is a priority. Only SSD
+support is needed. Assembly is acceptable, but complete machines offer better value
+in the price checks discussed. SER9 Pro H255 (€819 for 32 GB/1 TB in the user's
+screenshot) has soldered RAM. SER9 MAX H255 (€999 for 32 GB/1 TB OpenClaw edition)
+adds 10GbE and replaceable RAM but little CPU/GPU benefit over SER8.
+
+The initial Intel-first recommendation and price tables below are historical research,
+not the current purchase recommendation. In particular, the GMKtec M3 lost preference
+because of noise concerns. Recheck all component prices before reusing custom-build totals.
 
 ## Research coverage and limits
 
