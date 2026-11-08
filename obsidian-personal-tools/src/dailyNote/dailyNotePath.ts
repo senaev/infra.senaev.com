@@ -1,4 +1,4 @@
-import { TFile } from 'obsidian';
+import type { TFile } from 'obsidian';
 
 /** Vault-root folder that periodic daily notes live in. */
 export const DAILY_NOTE_FOLDER = 'periodic/day/';

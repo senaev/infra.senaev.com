@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { DAILY_NOTE_TEMPLATE_MARKER as marker, dailyDateFromPath, initializeDailyNote, parseDailyDate, renderDailyNote } from './dailyNoteTemplate';
+import { DAILY_NOTE_TEMPLATE_MARKER as marker, dailyDateFromPath, dailyNotePathForRootNote, initializeDailyNote, parseDailyDate, renderDailyNote } from './dailyNoteTemplate';
 
 void test('schedules tasks by the note date, including overlapping monthly/weekend rules', () => {
 	const cases = [
@@ -35,6 +35,13 @@ void test('validates real calendar dates and only direct daily-folder children',
 	for (const path of ['2026-10-29.md', 'other/2026-10-29.md', 'periodic/day/nested/2026-10-29.md', 'periodic/day/2026-02-30.md', 'periodic/day/2026-10-29.txt']) {
 		assert.equal(dailyDateFromPath(path), null);
 		assert.equal(initializeDailyNote(path, marker), marker);
+	}
+});
+
+void test('maps only date-named vault-root notes to the daily folder', () => {
+	assert.equal(dailyNotePathForRootNote('2026-11-08.md'), 'periodic/day/2026-11-08.md');
+	for (const path of ['periodic/day/2026-11-08.md', 'other/2026-11-08.md', '2026-02-30.md', '2026-11-08 2.md', '2026-11-08.txt', 'note.md']) {
+		assert.equal(dailyNotePathForRootNote(path), null, path);
 	}
 });
 

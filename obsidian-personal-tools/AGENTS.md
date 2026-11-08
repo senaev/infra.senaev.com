@@ -12,8 +12,11 @@ Periodic Notes, core Daily Notes (if enabled), and manual template insertion can
 path. `registerDailyNoteCreation.ts` handles vault create/modify/rename and workspace file-open
 events after layout readiness, so direct file creation, calendar/Periodic Notes actions, full-path
 links, untitled-note renaming and opening notes synced from another device all work.
-Only direct `periodic/day/YYYY-MM-DD.md` files with real calendar dates qualify. A date-named
-note created elsewhere must first be moved into this folder. No whole-vault startup scan occurs.
+Only direct `periodic/day/YYYY-MM-DD.md` files with real calendar dates qualify. Clicking an
+unresolved `[[YYYY-MM-DD]]` link creates the note in the vault root, so a newly created blank
+root `YYYY-MM-DD.md` is moved into this folder with FileManager, and the rename event then
+initializes it. A root note with content, or one whose target already exists, is not moved.
+A date-named note created in any other folder must be moved by hand. No whole-vault startup scan occurs.
 The active note is checked once at layout readiness.
 
 Initialization fills whitespace-only files, marker-only files and frontmatter-only files

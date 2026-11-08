@@ -1,3 +1,5 @@
+import { DAILY_NOTE_FOLDER } from './dailyNotePath';
+
 /** Marker used by Periodic Notes, core Templates and manual insertion. */
 export const DAILY_NOTE_TEMPLATE_MARKER = '<!-- senaev:daily-note-template -->';
 
@@ -17,8 +19,18 @@ export function parseDailyDate(value: string): Date | null {
 
 /** Only direct children of the configured daily folder are daily notes. */
 export function dailyDateFromPath(path: string): string | null {
-	const match = /^periodic\/day\/(\d{4}-\d{2}-\d{2})\.md$/.exec(path);
+	if (!path.startsWith(DAILY_NOTE_FOLDER)) return null;
+	const match = /^(\d{4}-\d{2}-\d{2})\.md$/.exec(path.slice(DAILY_NOTE_FOLDER.length));
 	return match?.[1] && parseDailyDate(match[1]) ? match[1] : null;
+}
+
+/**
+ * Clicking an unresolved `[[YYYY-MM-DD]]` link creates the note in the vault root.
+ * Returns the daily-folder path such a note belongs to, or `null` for any other path.
+ */
+export function dailyNotePathForRootNote(path: string): string | null {
+	const match = /^(\d{4}-\d{2}-\d{2})\.md$/.exec(path);
+	return match?.[1] && parseDailyDate(match[1]) ? `${DAILY_NOTE_FOLDER}${match[1]}.md` : null;
 }
 
 function renderDailyBody(value: string): string {
