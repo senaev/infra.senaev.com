@@ -38,7 +38,7 @@ PASS: six isolated probe deployments, no host networking/storage/API token or ex
 
 The UUID fix in PR #134 is deployed and user-tested. These new diagnostics are still
 pending review/deployment and must establish a Russian-ISP baseline before the repair
-can be considered complete. See ../../vpn-probe/README.md for verification/recovery.
+can be considered complete.
 
 ## 2026-11-08 15:52 UTC — Prepare firstvds subscription UUID fix
 

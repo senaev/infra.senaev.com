@@ -741,5 +741,5 @@ No debugging client or automated experiments are included in this step.
 ## 2026-11-08 — Repeatable diagnostic baseline
 
 Prepare six isolated clients on senaev-media, with lightweight checks every ~30s and
-bounded exit/download checks every ~300s. See [probe design, operation and verification](../../vpn-probe/README.md).
+bounded exit/download checks every ~300s.
 Pending deployment; this establishes evidence before any automated server changes.

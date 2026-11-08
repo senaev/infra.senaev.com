@@ -88,5 +88,4 @@ Pod reloader watches both the Vault secret and config ConfigMap — any change t
 one isolated pod per subscription entry on senaev-media. Results go to Datadog as
 `service:vpn-probe`. VMPodScrape collects metrics every 30s on port 8080, reachable
 only by telemetry vmagent. The provisioned Grafana dashboard UID is `vpn-probes`.
-There is no inbound Service or host network configuration. See
-[vpn-probe/README.md](vpn-probe/README.md) for cadence, traffic budget, controls and recovery.
+There is no inbound Service or host network configuration.
