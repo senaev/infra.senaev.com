@@ -1,3 +1,16 @@
+## 2026-11-08 19:18 UTC — Dell requirements and retailer checked
+
+Completed Dell/VORPC investigation in research-intel-options.md. Latest listing:
+> 599,89 €
+> Solo quedan 10 disponibles
+
+Price supersedes earlier €533.34 observation. Dell confirms compact dimensions,
+64 GB RAM ceiling and AC Recovery. Passthrough/reset reliability and noise remain
+unverified. Retailer identity matches independent listings; Trustpilot 4.4/5,
+PcComponentes 3.8/5 and shop deactivated for unknown reason. Documented conflicting
+return-shipping marketing and customized-configuration exclusion; written testing
+and return confirmation needed. No seller contact, order or deployment changes.
+
 ## 2026-11-08 18:21 UTC — Mandatory AC recovery and Jellyfin GPU passthrough; Intel prices
 
 User request:

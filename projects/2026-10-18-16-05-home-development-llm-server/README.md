@@ -42,7 +42,7 @@ refurbished/used machines are acceptable. No order has been placed.
 
 See [Intel options and prices](research-intel-options.md). Strongest price lead:
 VORPC refurbished Dell OptiPlex Micro 7010, advertised i5-13500T / 32 GB / 1 TB,
-€533.34 VAT included with free shipping advertised. Confirm exact CPU (seller allows
+€599.89 VAT included with free shipping advertised. Confirm exact CPU (seller allows
 equivalents), Service Tag, noise, return terms and Linux VM passthrough before purchase.
 GMKtec M3 Pro and a DeskMini B760 build remain alternatives. No candidate is yet
 verified against every requirement.

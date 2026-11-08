@@ -19,13 +19,13 @@ Jellyfin guidance: https://jellyfin.org/docs/general/administration/hardware-sel
 [Dell OptiPlex Micro 7010 at VORPC](https://vorpc.es/mini-pc-dell-optiplex-micro-7010-i5-13-gen-32gb-1tb-m-2-nvme-windows-11-reacondicionado/)
 
 - Advertised i5-13500T, 32 GB DDR4, 1 TB NVMe; refurbished.
-- €533.34 VAT included; free 24/48-hour delivery advertised, not a completed checkout.
+- Latest recheck: €599.89 VAT included (previous observation €533.34); free mainland delivery advertised, not a completed checkout.
 - Collection at Calle Marquetería 1, second floor, Móstoles.
 - Product-specific warranty: two years, extra year offered for €29. General three-year
   marketing conflicts with this; confirm invoice terms. Advertised 30-day free returns.
 - Seller permits equivalent CPU substitutions. Require exact CPU, Service Tag, RAM
   layout, SSD model/SMART health, included PSU and permission to test Proxmox in writing.
-- Trustpilot: 4.4/5 from 4,583 reviews, including mixed support experiences; not a guarantee.
+- Trustpilot: 4.4/5 from approximately 4,585 reviews, including mixed support experiences; not a guarantee.
   https://es.trustpilot.com/review/vorpc.es
 - Dell exact-model manual documents AC Recovery under AC Behavior:
   https://www.dell.com/support/manuals/en-nz/optiplex-7010-micro/optiplex-micro-7010-owners-manual/system-setup-options?guid=guid-e51b3f72-31b7-40d4-abd4-9e8d4477616d&lang=en-us
@@ -75,3 +75,55 @@ https://www.idealo.es/precios/200610286/crucial-32gb-kit-sodimm-ddr4-3200-cl22-c
 
 Before purchase confirm 14th-gen BIOS support, cooler fit/thermal limits, AC recovery,
 noise and IOMMU isolation/full Linux VM passthrough. Noctua does not guarantee silence.
+
+## Dell and VORPC investigation — 8 November 2026
+
+Verdict: conditional candidate, not all requirements verified. Do not treat CPU
+virtualization capability as proof of reliable full iGPU passthrough.
+
+- Dell confirms two DDR4-3200 SO-DIMM slots, maximum 64 GB (2 x 32 GB).
+  Seller does not identify whether supplied 32 GB is 1 x 32 or 2 x 16 GB.
+- Dimensions: 182 x 36 x 178 mm. One storage M.2 socket plus 2.5-inch SATA bay;
+  this is the base Micro, not the Micro Plus with different expansion. Confirm SATA
+  cable/caddy before adding a SATA SSD. No mechanical disk is needed.
+- The advertised i5-13500T maps to UHD 770 in Dell documentation. Seller's generic
+  graphics label and equivalent-CPU substitution clause require exact-unit confirmation.
+- Dell documents BIOS AC Recovery; default is Power Off. Set Power On and test
+  actual AC removal/restoration, with Proxmox guests configured to start at boot.
+- No exact-configuration acoustic measurement found. Refurbished fan condition and
+  sustained load matter; assess noise in the actual living-room position.
+- Exact-model owner reports UHD 770 passthrough to a Plex VM. This does not establish
+  Linux Jellyfin compatibility or repeated GPU reset/restart reliability. The same
+  thread reports e1000e network hangs; unplugging Ethernet restores access. Owner
+  applied a NIC-offloading workaround but no long-term outcome is posted.
+  https://forum.proxmox.com/threads/optiplex-7010-proxmox-and-vms-unresponsive-and-inaccessible-tips-to-troubleshoot.168610/
+
+Retailer assessment: identifiable Spanish business, mixed independent reputation.
+VORPC legal notice names Eco Sistemas Informáticos España SL, CIF B09982273,
+Calle Marquetería 1, Móstoles; independent company directories and PcComponentes
+seller identity match. Trustpilot is 4.4/5 from about 4,585 reviews. PcComponentes is
+3.8/5 from 83 reviews and says the shop is currently deactivated; reason unknown.
+- https://vorpc.es/aviso-legal/
+- https://www.iberinform.es/empresa/9987455/eco-sistemas-informaticos-espana
+- https://www.pccomponentes.com/tiendas/vorpc-store
+
+Published terms: refurbished hardware two-year warranty. Thirty-day returns allow
+reasonable testing but require factory restoration. General policy makes buyer pay
+change-of-mind return shipping unless an offer says otherwise, whereas this product
+advertises free returns. Custom RAM/SSD configurations are excluded in published
+policy. Obtain written confirmation that this listed 32 GB/1 TB SKU is returnable
+after installing/testing Proxmox, and who pays shipping. Software/passthrough failure
+is not automatically a hardware warranty claim. Merely opening the case does not
+automatically void warranty, but intervention-caused damage is excluded.
+https://vorpc.es/reembolso_devoluciones/
+
+Before purchase: exact i5-13500T with no substitution; Service Tag and unlocked BIOS;
+RAM layout; SSD model/SMART health; correct included PSU; return/testing agreement.
+Acceptance: AC restoration, headless boot, hardware Jellyfin transcodes, ten guest
+reboots and shutdown/start cycles, sustained Ethernet traffic and acceptable noise.
+No seller contacted and no purchase made.
+
+Dell primary references:
+- https://www.dell.com/support/manuals/en-us/optiplex-7010-micro/optiplex-micro-7010-owners-manual/memory?guid=guid-e9d2ea83-38a4-431d-803c-96d63c1dbc34&lang=en-us
+- https://www.dell.com/support/manuals/en-us/optiplex-7010-micro/optiplex-micro-7010-owners-manual/storage?guid=guid-0e172724-3ca9-42d4-ad08-97cc95069e8f&lang=en-us
+- https://www.dell.com/support/manuals/en-us/optiplex-7010-micro/optiplex-micro-7010-owners-manual/gpuintegrated?guid=guid-0f264593-4edf-4b32-99db-62322993f7af&lang=en-us
