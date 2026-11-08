@@ -1,10 +1,9 @@
-- [ ] Finish the local LLM deployment project and its model-quality/performance acceptance checks.
+- [ ] Buy a powerful home server with a capable GPU, at least 32 GB RAM and 1 TB SSD, within €1,000 total.
 
-## Stage
+Stage: requirements updated; hardware selection has not started.
 
-Partially implemented in production: the `llm-server` service and its Prometheus scrape are deployed and live. Model selection and evaluation remain open in the original README.
+Done: replaced the local-LLM goal with the server purchase goal; preserved the old
+LLM work in [llm-experiments.md](llm-experiments.md).
 
-## Remaining
-
-- Complete the unresolved model-quality/performance checks and decide the production model configuration.
-- Do not confuse a healthy LLM endpoint with acceptance of all originally planned inference capabilities.
+Open: GPU workloads and VRAM, size/noise limits, and acceptance of used/refurbished hardware.
+Next: clarify those points, then compare configurations available in Spain.
