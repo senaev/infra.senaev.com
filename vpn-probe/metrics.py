@@ -27,7 +27,8 @@ class ProbeMetrics:
         self.results = {}
 
     def record(self, profile, check, route, result, now=None):
-        if check not in {'https', 'exit_ip', 'download_64k'} or route not in {'direct', 'vpn'}:
+        if check not in {'https', 'exit_ip', 'download_64k', 'download_64k_30s',
+                         'ipv6_entry', 'ipv6_control'} or route not in {'direct', 'vpn'}:
             return
         now = time.time() if now is None else now
         with self.lock:

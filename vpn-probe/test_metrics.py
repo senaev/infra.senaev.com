@@ -33,3 +33,15 @@ class MetricsTests(unittest.TestCase):
         self.assertTrue(all(line.startswith('#') for line in metrics.render().splitlines()))
         metrics.record('one', 'https', 'direct', {'ok': False}, now=10)
         self.assertIn('vpn_probe_last_success_timestamp_seconds{profile="one",check="https",route="direct"} 0', metrics.render())
+
+
+    def test_diagnostic_checks_are_exported_separately(self):
+        metrics = ProbeMetrics()
+        for check in ['download_64k', 'download_64k_30s', 'ipv6_entry', 'ipv6_control']:
+            metrics.record('one', check, 'direct', {'ok': True}, now=1)
+        metrics.record('one', 'download_64k', 'direct', {'ok': False}, now=2)
+        text = metrics.render()
+        self.assertIn('vpn_probe_success{profile="one",check="download_64k",route="direct"} 0', text)
+        self.assertIn('vpn_probe_success{profile="one",check="download_64k_30s",route="direct"} 1', text)
+        for check in ['ipv6_entry', 'ipv6_control']:
+            self.assertIn(f'check="{check}"', text)

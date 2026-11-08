@@ -54,19 +54,19 @@ def client_config(link, base_uuid, public_key, port=1080, invalid=False):
                                    "shortId": params.get("sid", [""])[0]}}}]}, seed[1]
 
 
-def request(url, proxy, max_bytes, expected_status=200, expected_bytes=None):
+def request(url, proxy, max_bytes, expected_status=200, expected_bytes=None, timeout=8):
     """Disable curlrc, redirects, retries and ambient proxy settings."""
     with tempfile.TemporaryDirectory(prefix="vpn-response-") as folder:
         body = Path(folder) / "body"
         command = ["curl", "--disable", "--silent", "--show-error", "--fail",
-                   "--proto", "=https", "--ipv4", "--connect-timeout", "3", "--max-time", "8",
+                   "--proto", "=https", "--ipv4", "--connect-timeout", "3", "--max-time", str(timeout),
                    "--max-filesize", str(max_bytes), "--limit-rate", "32768",
                    "--proxy", proxy, "--noproxy", "", "--output", str(body),
                    "--write-out", "%{json}", url]
         started = time.monotonic()
         try:
             run = subprocess.run(command, env=PROXY_ENV, capture_output=True,
-                                 text=True, timeout=10, check=False)
+                                 text=True, timeout=timeout + 2, check=False)
             info = json.loads(run.stdout) if run.stdout else {}
             status = int(info.get("http_code", 0))
             size = body.stat().st_size if body.exists() else 0
@@ -146,10 +146,42 @@ def heavy(profile, proxy, expected_host):
         result["failure"] = "exit_validation_failed"
     emit(profile, "exit_ip", "vpn", result)
     exit_ok = result["ok"]
-    result, _ = request("https://speed.cloudflare.com/__down?bytes=65536", proxy,
-                        65536, expected_bytes=65536)
-    emit(profile, "download_64k", "vpn", result)
-    return direct["ok"] and exit_ok and result["ok"]
+    passed = direct["ok"] and exit_ok
+    next_light = time.monotonic() + 30
+    for timeout, check in [(8, "download_64k"), (30, "download_64k_30s")]:
+        for route, address in [("direct", ""), ("vpn", proxy)]:
+            if STOP.is_set():
+                return False
+            result, _ = request("https://speed.cloudflare.com/__down?bytes=65536",
+                                address, 65536, expected_bytes=65536, timeout=timeout)
+            emit(profile, check, route, {**result, "budget_seconds": timeout})
+            passed = result["ok"] and passed
+            # Keep light checks alive during the bounded longer experiment.
+            if time.monotonic() >= next_light and not STOP.is_set():
+                passed = light(profile, proxy) and passed
+                next_light = time.monotonic() + 30
+    return passed
+
+
+def ipv6_controls(profile, address):
+    """TCP reachability only, independent of Reality authentication."""
+    for check, target in [("ipv6_entry", address),
+                          ("ipv6_control", "2606:4700:4700::1111")]:
+        if STOP.is_set():
+            return False
+        started = time.monotonic()
+        try:
+            with socket.socket(socket.AF_INET6, socket.SOCK_STREAM) as connection:
+                connection.settimeout(3)
+                connection.connect((target, 443))
+            result = {"ok": True}
+        except OSError as error:
+            result = {"ok": False, "errno": error.errno,
+                      "failure": type(error).__name__}
+        emit(profile, check, "direct", {
+            **result, "duration_ms": round((time.monotonic() - started) * 1000)})
+    # Reachability controls inform diagnosis; they do not define VPN success.
+
 
 
 def stop_client(child):
@@ -246,6 +278,9 @@ def run(args):
                     due_light = time.monotonic() + 30
                 if now >= due_heavy:
                     passed = heavy(profile, proxy, expected) and passed
+                    address = config["outbounds"][0]["settings"]["vnext"][0]["address"]
+                    if ":" in address:
+                        ipv6_controls(profile, address)
                     due_heavy = time.monotonic() + 300
                 if args.once:
                     return 0 if passed else 1
