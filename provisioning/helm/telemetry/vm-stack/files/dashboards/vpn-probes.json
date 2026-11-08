@@ -572,9 +572,9 @@
     },
     {
       "id": 10,
-      "title": "64 KiB download result",
+      "title": "64 KiB downloads — 8s vs 30s, direct vs VPN",
       "type": "state-timeline",
-      "description": "Requires HTTP 200 and exactly 65,536 bytes. Partial bodies and oversized responses fail.",
+      "description": "Separate 8s and 30s results; a long-budget success does not override an 8s failure.",
       "datasource": {
         "type": "prometheus",
         "uid": "P4169E866C3094E38"
@@ -588,12 +588,12 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "vpn_probe_success{job=\"vpn-probe\",profile=~\"$profile\",check=\"download_64k\",route=\"vpn\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",check=\"download_64k\",route=\"vpn\"}) < 420)",
+          "expr": "vpn_probe_success{job=\"vpn-probe\",profile=~\"$profile\",check=~\"download_64k|download_64k_30s\",route=~\"$route\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",check=~\"download_64k|download_64k_30s\",route=~\"$route\"}) < 420)",
           "datasource": {
             "type": "prometheus",
             "uid": "P4169E866C3094E38"
           },
-          "legendFormat": "{{profile}} / {{route}}",
+          "legendFormat": "{{profile}} · {{route}} · {{check}}",
           "instant": false,
           "range": true
         }
@@ -723,7 +723,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"exit_ip|download_64k\"}",
+          "expr": "time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"exit_ip|download_64k|download_64k_30s|ipv6_entry|ipv6_control\"}",
           "datasource": {
             "type": "prometheus",
             "uid": "P4169E866C3094E38"
@@ -849,6 +849,92 @@
         },
         "tooltip": {
           "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 15,
+      "title": "IPv6 TCP reachability — entry vs independent control",
+      "type": "state-timeline",
+      "description": "Only on the IPv6 profile. TCP connect to Hetzner and Cloudflare on port 443; this does not validate Reality or prove a VPN works.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P4169E866C3094E38"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 48,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "vpn_probe_success{job=\"vpn-probe\",profile=~\"$profile\",check=~\"ipv6_entry|ipv6_control\",route=\"direct\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",check=~\"ipv6_entry|ipv6_control\",route=\"direct\"}) < 420)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "legendFormat": "{{profile}} · {{route}} · {{check}}",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "No fresh sample",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "FAIL",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "PASS",
+                  "color": "green"
+                }
+              }
+            }
+          ],
+          "custom": {
+            "spanNulls": false,
+            "fillOpacity": 90,
+            "lineWidth": 0
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "mergeValues": true,
+        "showValue": "never",
+        "alignValue": "left",
+        "rowHeight": 0.8,
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
         }
       }
     }

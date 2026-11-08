@@ -25,9 +25,7 @@ home-to-Hetzner entry path, but do not establish DPI, MTU, or a server bug.
 
 ## Next steps
 
-Run the bounded same-pod controls in [BASELINE-EXPERIMENT.md](BASELINE-EXPERIMENT.md):
+Review and deploy the [automated baseline experiment](BASELINE-EXPERIMENT.md):
 direct versus proxied download, eight versus thirty seconds, and IPv6 TCP reachability.
-The routine bulk test currently has no direct bulk control. Do not tune server/host
-networking or relax routine success criteria before collecting these controls.
-Code Tools has no usable management SSH access; executing in the probe pods requires
-an operator on the personal cluster management host. Logs and metrics remain readable.
+The checker extension and dashboard are prepared in PR #138; not deployed yet.
+After merge, collect several heavy rounds before tuning server or host networking.

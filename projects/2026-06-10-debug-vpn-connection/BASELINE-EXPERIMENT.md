@@ -1,102 +1,40 @@
-# Baseline and next controlled experiment
+# Automated baseline experiment
 
-Four to five heavy rounds establish a repeatable difference: direct Hetzner-entry
-profiles 2–4 receive HTTP 200 and partial downloads, whereas profile 1 enters FirstVDS
-and exits Hetzner successfully. Exit validation passes on profiles 0–4. IPv6 profile 5
-does not connect. See project-status.md for counters and project-worklog.md for evidence.
+The existing VPN checker runs these serially in every heavy round, approximately
+five minutes after the preceding heavy round finishes:
 
-This narrows the shared failing segment, but does not prove throttling, DPI, MTU,
-or an Xray issue. There is no direct bulk control in the routine checks yet.
+- Existing direct/VPN exit-IP checks.
+- Direct and VPN 64 KiB downloads with the original eight-second limit.
+- Separate direct and VPN 64 KiB downloads with a thirty-second limit.
+- On the IPv6 profile only: three-second TCP connects to the configured IPv6 entry
+  and Cloudflare's independent IPv6 endpoint on port 443.
 
-## Run on the personal cluster management host
+Short-budget failures remain failures even when long-budget downloads pass.
+Light HTTPS checks are refreshed between transfers if thirty seconds have elapsed;
+a running download can delay the next light check. No overlapping heavy rounds.
+Each download remains capped at 64 KiB and 32 KiB/s, without redirects or retries.
+Four downloads per profile per round cap payload at approximately 432 MiB/day for
+six profiles (plus small checks and protocol overhead), up from 108 MiB/day.
 
-Do not run against a work kubecontext. This starts short-lived Python/curl processes
-inside the existing unprivileged probes; it does not edit configuration, restart Xray,
-print credentials, or change host networking. Run once, serially, with no background
-loop. It can take about four minutes in the worst case.
+Existing bounded metrics and JSON logs expose separate checks:
+`download_64k`, `download_64k_30s`, `ipv6_entry`, `ipv6_control`.
+Direct/VPN use the existing route label. No IP, credential or arbitrary-target labels.
+The Grafana download panel compares both budgets/routes; a separate panel displays
+IPv6 transport controls. TCP success alone is not VPN success.
 
-Compare profiles 0, 1 and 4 from the same source node using the existing local SOCKS
-client. Each request allows at most 64 KiB at 32 KiB/s, no redirects or retries.
-Twelve requests total: at most 768 KiB of response payload, plus protocol overhead.
-Retain all results, including failed direct controls.
+## Interpret the next rounds
 
-```bash
-for index in 0 1 4; do
-  kubectl -n vpn exec -i deployment/vpn-probe-$index -c probe -- python - <<'PY'
-import json
-import os
-from pathlib import Path
-import subprocess
-import tempfile
+- Direct and profile 1 downloads pass but profile 4 stalls at thirty seconds:
+  investigate the shared home-to-Hetzner public entry path. This does not yet prove DPI,
+  MTU, or a server bug.
+- Profile 4 completes at thirty seconds: inspect throughput and the short-budget
+  result instead of declaring the original failure fixed.
+- Direct bulk controls also fail: investigate the source-to-target path before
+  attributing failure to the VPN.
+- Both IPv6 connects fail: source IPv6 reachability is suspect. ENETUNREACH is stronger
+  evidence than a timeout, which can also mean filtering.
+- Only Hetzner's IPv6 connect fails: investigate external IPv6 ingress.
+- Both IPv6 connects pass: investigate Reality/SNI next.
 
-env = {k: v for k, v in os.environ.items()
-       if k.lower() not in {"http_proxy", "https_proxy", "all_proxy", "no_proxy"}}
-for route, proxy in [("direct", ""), ("vpn", "socks5h://127.0.0.1:1080")]:
-    for budget in [8, 30]:
-        with tempfile.TemporaryDirectory(prefix="vpn-control-") as folder:
-            body = Path(folder) / "body"
-            cmd = ["curl", "--disable", "--silent", "--show-error", "--fail",
-                   "--proto", "=https", "--ipv4", "--connect-timeout", "3",
-                   "--max-time", str(budget), "--max-filesize", "65536",
-                   "--limit-rate", "32768", "--proxy", proxy, "--noproxy", "",
-                   "--output", str(body), "--write-out", "%{json}",
-                   "https://speed.cloudflare.com/__down?bytes=65536"]
-            run = subprocess.run(cmd, env=env, capture_output=True, text=True,
-                                 timeout=budget + 2, check=False)
-            info = json.loads(run.stdout or "{}")
-            print(json.dumps({
-                "profile_index": os.environ["PROFILE_INDEX"], "route": route,
-                "budget_seconds": budget, "curl_exit": run.returncode,
-                "http_status": info.get("http_code", 0),
-                "bytes": body.stat().st_size if body.exists() else 0,
-                "duration_seconds": info.get("time_total", 0),
-                "tls_seconds": info.get("time_appconnect", 0)
-            }), flush=True)
-PY
-done
-```
-
-## Independent IPv6 control
-
-Run two bounded TCP handshakes from the IPv6 probe, to Hetzner and an independent
-public endpoint. No TLS payload or application credentials. A successful TCP connect
-does not prove the VPN handshake works.
-
-```bash
-kubectl -n vpn exec -i deployment/vpn-probe-5 -c probe -- python - <<'PY'
-import json
-import socket
-for name, address in [
-    ("hetzner", "2a01:4f9:c013:5425::1"),
-    ("cloudflare", "2606:4700:4700::1111")
-]:
-    with socket.socket(socket.AF_INET6, socket.SOCK_STREAM) as connection:
-        connection.settimeout(3)
-        try:
-            connection.connect((address, 443))
-            result = {"connected": True}
-        except OSError as error:
-            result = {"connected": False, "errno": error.errno,
-                      "reason": type(error).__name__}
-        print(json.dumps({"target": name, **result}), flush=True)
-PY
-```
-
-## Decide from the results
-
-- Direct downloads succeed, profile 1 succeeds, profile 4 still stalls at thirty
-  seconds: investigate the home-to-Hetzner public entry path. Next compare a client
-  fingerprint on a separate temporary client; do not change subscription defaults.
-- Profile 4 completes at thirty seconds: report measured throughput; do not simply
-  declare the routine failures fixed by increasing its timeout.
-- Direct downloads also stall: investigate the source-to-test-target path before
-  attributing failure to VPN configuration.
-- Both IPv6 connects fail: source IPv6 reachability is suspect. An immediate
-  ENETUNREACH is stronger evidence than a timeout, which can also mean filtering.
-- Cloudflare IPv6 connects but Hetzner does not: investigate Hetzner's external IPv6
-  ingress path before changing the client.
-- Both connect: investigate Reality/SNI next; transport reachability is established.
-
-Do not infer a specific cause from Datadog's error severity alone: Xray stderr debug
-and info messages are also labelled as error. Server log timestamps have a different
-displayed timezone; correlate using Datadog event timestamps.
+The baseline is recorded in project-status.md and project-worklog.md.
+This extension is pending deployment; it adds no server or host-network changes.

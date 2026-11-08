@@ -105,7 +105,7 @@ class ControlTests(unittest.TestCase):
     @patch('probe.request')
     def test_wrong_exit_is_not_a_success(self, request, emit, resolve):
         request.side_effect = [({'ok':True}, 'ip=1.1.1.1'),
-                               ({'ok':True}, 'ip=3.3.3.3'), ({'ok':True}, '')]
+                               ({'ok':True}, 'ip=3.3.3.3')] + [({'ok':True}, '')] * 4
         self.assertFalse(probe.heavy('test', 'socks5h://127.0.0.1:1080', 'senaev.com'))
         self.assertFalse(emit.call_args_list[1].args[3]['ok'])
 
@@ -116,7 +116,7 @@ class ReviewRegressionTests(unittest.TestCase):
     @patch('probe.request')
     def test_failed_direct_trace_fails_entire_round(self, request, emit, resolve):
         request.side_effect = [({'ok':False}, ''),
-                               ({'ok':True}, 'ip=2.2.2.2'), ({'ok':True}, '')]
+                               ({'ok':True}, 'ip=2.2.2.2')] + [({'ok':True}, '')] * 4
         self.assertFalse(probe.heavy('test', 'socks5h://127.0.0.1:1080', 'senaev.com'))
 
     @patch('probe.stop_client')
@@ -130,6 +130,69 @@ class ReviewRegressionTests(unittest.TestCase):
             self.assertEqual(probe.negative('test', LINK, 'b', 'p', '/tmp'), 2)
             self.assertEqual(emit.call_args.args[3]['outcome'], 'inconclusive')
             self.assertFalse(emit.call_args.args[3]['rejected'])
+
+
+class DiagnosticTests(unittest.TestCase):
+    @patch('probe.subprocess.run')
+    def test_long_request_has_bounded_curl_and_process_timeouts(self, run):
+        run.return_value = subprocess.CompletedProcess([], 0, '{"http_code":200}', '')
+        probe.request('https://example.test', '', 65536, timeout=30)
+        args = run.call_args.args[0]
+        self.assertEqual(args[args.index('--max-time') + 1], '30')
+        self.assertEqual(run.call_args.kwargs['timeout'], 32)
+        self.assertEqual(args[args.index('--max-filesize') + 1], '65536')
+
+    @patch('probe.resolve_exit', return_value={'2.2.2.2'})
+    @patch('probe.emit')
+    @patch('probe.request')
+    def test_download_controls_keep_short_failure_when_long_passes(self, request, emit, resolve):
+        request.side_effect = [
+            ({'ok':True}, 'ip=1.1.1.1'), ({'ok':True}, 'ip=2.2.2.2'),
+            ({'ok':True}, ''), ({'ok':False}, ''),
+            ({'ok':True}, ''), ({'ok':True}, '')]
+        self.assertFalse(probe.heavy('test', 'socks5h://127.0.0.1:1080', 'senaev.com'))
+        downloads = request.call_args_list[2:]
+        self.assertEqual([x.args[1] for x in downloads],
+                         ['', 'socks5h://127.0.0.1:1080'] * 2)
+        self.assertEqual([x.kwargs['timeout'] for x in downloads], [8, 8, 30, 30])
+        self.assertEqual([x.args[1] for x in emit.call_args_list[2:]],
+                         ['download_64k', 'download_64k', 'download_64k_30s', 'download_64k_30s'])
+
+    @patch('probe.resolve_exit', return_value={'2.2.2.2'})
+    @patch('probe.emit')
+    @patch('probe.request')
+    def test_failed_direct_bulk_control_fails_round_even_when_vpn_passes(self, request, emit, resolve):
+        request.side_effect = [
+            ({'ok':True}, 'ip=1.1.1.1'), ({'ok':True}, 'ip=2.2.2.2'),
+            ({'ok':False}, ''), ({'ok':True}, ''),
+            ({'ok':True}, ''), ({'ok':True}, '')]
+        self.assertFalse(probe.heavy('test', 'socks5h://127.0.0.1:1080', 'senaev.com'))
+
+    @patch('probe.light', return_value=True)
+    @patch('probe.time.monotonic', side_effect=[0, 31, 31, 32, 62, 62, 63])
+    @patch('probe.resolve_exit', return_value={'2.2.2.2'})
+    @patch('probe.emit')
+    @patch('probe.request')
+    def test_light_checks_refresh_during_long_round(self, request, emit, resolve, monotonic, light):
+        request.side_effect = [
+            ({'ok':True}, 'ip=1.1.1.1'), ({'ok':True}, 'ip=2.2.2.2')
+        ] + [({'ok':True}, '')] * 4
+        self.assertTrue(probe.heavy('test', 'socks5h://127.0.0.1:1080', 'senaev.com'))
+        self.assertEqual(light.call_count, 2)
+
+    @patch('probe.emit')
+    @patch('probe.socket.socket')
+    def test_ipv6_controls_distinguish_unreachable_entry_from_working_control(self, socket, emit):
+        connection = socket.return_value.__enter__.return_value
+        connection.connect.side_effect = [OSError(101, 'unreachable'), None]
+        probe.ipv6_controls('test', '2001:db8::1')
+        self.assertEqual(connection.settimeout.call_args_list[0].args, (3,))
+        first, second = emit.call_args_list
+        self.assertEqual(first.args[1:3], ('ipv6_entry', 'direct'))
+        self.assertFalse(first.args[3]['ok'])
+        self.assertEqual(first.args[3]['errno'], 101)
+        self.assertEqual(second.args[1:3], ('ipv6_control', 'direct'))
+        self.assertTrue(second.args[3]['ok'])
 
 
 if __name__ == '__main__':

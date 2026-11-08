@@ -1,3 +1,16 @@
+## 2026-11-08 23:15 UTC — Automate the next controls in the existing checker
+
+User requested automatic probes instead of operator-run commands. Extended each
+heavy round with direct/VPN 64 KiB transfers at separate eight- and thirty-second
+limits, plus IPv6 entry/control TCP checks only for the IPv6 profile. Existing
+eight-second criteria remain unchanged. Light checks refresh between longer transfers.
+Metrics keep separate fixed check names; Grafana compares both download budgets/routes
+and shows IPv6 transport controls. Payload upper bound rises from approximately
+108 to 432 MiB/day for six profiles, excluding small checks and protocol overhead.
+
+PR #138 now includes implementation and replaces the manual experiment instructions.
+No server, host-network, secrets, or permission changes. Validation: 21 Python tests pass; all Python syntax and Helm chart checks pass. Pending review/deployment.
+
 ## 2026-11-08 23:08 UTC — Deployed baseline identifies Hetzner-entry transfer stalls
 
 PR #135 deployed after removing an invalid IPv4-mapped IPv6 NetworkPolicy exclusion
