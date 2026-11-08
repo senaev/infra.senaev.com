@@ -81,3 +81,10 @@ Secrets:
 | `VPN_SUBSCRIPTION_CHAT` | Telegram group URL for error reports |
 
 Pod reloader watches both the Vault secret and config ConfigMap — any change triggers a rolling restart.
+
+## Diagnostic clients
+
+`vpn-probe` builds the Python/curl runner and pinned Xray client. The VPN chart creates
+one isolated pod per subscription entry on senaev-media. Results go to Datadog as
+`service:vpn-probe`; there is no inbound Service or host network configuration. See
+[vpn-probe/README.md](vpn-probe/README.md) for cadence, traffic budget, controls and recovery.

@@ -1,3 +1,24 @@
+## 2026-11-08 16:45 UTC — Prepare repeatable VPN diagnostics
+
+Added one non-root, resource-limited Xray client/runner per subscription profile,
+pinned to senaev-media. Explicit loopback SOCKS requests do not alter host networking.
+NetworkPolicy allows only DNS and public HTTPS. Routine checks run serially at ~30s
+and ~300s; bulk payload is capped at 64 KiB/profile/round (~108 MiB/day for six).
+JSON logs are collected by Datadog; on-demand fresh-client and credential controls
+are separate from routine traffic. No server tuning or debugging-branch deploys yet.
+
+Validation output:
+
+```
+Ran 10 tests in 0.011s
+OK
+PASS: six isolated probe deployments, no host networking/storage/API token or exposed Service; disabling probes leaves existing resources identical.
+```
+
+The UUID fix in PR #134 is deployed and user-tested. These new diagnostics are still
+pending review/deployment and must establish a Russian-ISP baseline before the repair
+can be considered complete. See ../../vpn-probe/README.md for verification/recovery.
+
 ## 2026-11-08 15:52 UTC — Prepare firstvds subscription UUID fix
 
 Changed only the firstvds → freedom subscription entry from seed `6` to seed `4`,

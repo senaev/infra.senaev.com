@@ -7,6 +7,9 @@
   "services": {
     "vpn-subscription": {
       "chart": "vpn"
+    },
+    "vpn-probe": {
+      "chart": "vpn"
     }
   }
 }
