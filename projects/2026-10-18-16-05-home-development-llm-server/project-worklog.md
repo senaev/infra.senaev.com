@@ -1,3 +1,20 @@
+## 2026-11-08 21:51 UTC — Dell ordered from VORPC
+
+User reported:
+> I ordered Dell
+
+Order confirmation screenshot:
+> Número de pedido: 102889
+> Fecha: 08/11/2026
+> Total: 599,89 € EUR
+> Método de pago: Google Pay (WooPayments)
+> Envío GRATIS en 48–72 horas
+
+Product: refurbished Dell OptiPlex Micro 7010, i5 13 Gen, 32 GB RAM, 1 TB M.2 NVMe.
+Recorded order received, not dispatched/delivered. No address or payment-card details
+copied into repository. Dell replaces shortlist; actual CPU, AC recovery, noise,
+network stability and reliable Linux VM Jellyfin passthrough remain acceptance checks.
+
 ## 2026-11-08 19:18 UTC — Dell requirements and retailer checked
 
 Completed Dell/VORPC investigation in research-intel-options.md. Latest listing:

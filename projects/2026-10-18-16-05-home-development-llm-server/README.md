@@ -34,28 +34,25 @@ reliability and low maintenance. The machine will be in the living room, so low 
 is important. Only SSD support is needed. Self-assembly is acceptable, but ready-made
 machines are preferred when competitively priced.
 
-## Current shortlist — 2026-11-08
+## Ordered — 2026-11-08
 
-The earlier SER8 preference is on hold: reliable GPU passthrough to a Linux VM for
-Jellyfin is now mandatory. Intel Quick Sync is preferred. New and trustworthy
-refurbished/used machines are acceptable. No order has been placed.
-
-See [Intel options and prices](research-intel-options.md). Strongest price lead:
-VORPC refurbished Dell OptiPlex Micro 7010, advertised i5-13500T / 32 GB / 1 TB,
-€599.89 VAT included with free shipping advertised. Confirm exact CPU (seller allows
-equivalents), Service Tag, noise, return terms and Linux VM passthrough before purchase.
-GMKtec M3 Pro and a DeskMini B760 build remain alternatives. No candidate is yet
-verified against every requirement.
+User ordered the refurbished Dell OptiPlex Micro 7010 from VORPC, order **102889**.
+Confirmation screenshot: 32 GB RAM, 1 TB M.2 NVMe, **€599.89 total including VAT**,
+free shipping advertised in 48–72 hours, paid using Google Pay (WooPayments).
+Order received by retailer; dispatch and delivery are not confirmed.
+Advertised CPU is i5-13500T; verify the actual unit on arrival.
+The Dell supersedes the earlier SER8 preference and other shortlist candidates.
+See [Intel research and retailer checks](research-intel-options.md).
 
 ## Plan
 
-1. Recheck the exact Intel CPU/GPU, 32 GB/1 TB configuration, seller and stock,
-   return terms and final price including VAT and delivery to Madrid before ordering.
-2. Confirm BIOS AC recovery and full GPU passthrough into a Linux VM for Jellyfin.
-   Verify hardware decoding/encoding, required codecs and HDR tone mapping; repeat
+1. Await dispatch/delivery; retain invoice and confirm return/testing conditions.
+2. Check actual CPU, unlocked BIOS, RAM layout, SSD health and included power supply.
+3. Enable BIOS AC Recovery Power On; install Proxmox and configure VM autostart.
+4. Test headless AC restoration, wired networking, temperatures and living-room noise.
+5. Pass the iGPU to the Linux Jellyfin VM; prove hardware transcoding and repeat
    guest reboot and VM shutdown/start cycles without rebooting the host.
-3. After delivery, install Proxmox and verify headless boot, networking, hardware,
-   stability and living-room noise before migrating workloads.
+6. Migrate workloads only after acceptance checks pass.
 
 ## Verification
 
@@ -68,6 +65,6 @@ verified against every requirement.
 
 ## Hardware research — 2026-11-08
 
-New hardware only; compact and quiet for the living room; SSD storage only. See
+Compact and quiet for the living room; SSD storage only; refurbished accepted. See
 [options and delivered-price comparison](research-options.md) and the
-[118-page source register](research-sources.md). Intel shortlist supersedes the SER8 preference; purchase is pending.
+[118-page source register](research-sources.md). Dell ordered; delivery and acceptance tests are pending.

@@ -1,22 +1,14 @@
-- [ ] Buy a compact, quiet Proxmox server with 32 GB RAM, 1 TB SSD and reliable Linux VM GPU passthrough for Jellyfin, within €1,000 delivered.
+- [ ] Receive and validate the ordered Dell Proxmox server, including reliable Linux VM GPU passthrough for Jellyfin.
 
-Stage: Intel shortlist reopened; no purchase selected or ordered.
+Stage: ordered from VORPC on 2026-11-08; awaiting dispatch/delivery.
+Dell OptiPlex Micro 7010, refurbished, 32 GB RAM / 1 TB NVMe; advertised i5-13500T.
+Order 102889: €599.89 including VAT and free delivery, paid via Google Pay.
+Checkout advertises 48–72-hour shipping; no dispatch or arrival confirmed.
 
-Mandatory: BIOS automatic power-on after AC restoration; GPU passthrough to a
-Linux VM for Jellyfin, surviving repeated guest reboot and VM shutdown/start.
-Low living-room noise, wired networking, SSD-only storage and RAM upgrades matter.
-New and trustworthy refurbished/used machines are acceptable; assembly is acceptable.
+Next: retain invoice, clarify Proxmox testing/returns, inspect exact hardware and SSD
+health. Then test BIOS AC recovery, headless boot, VM autostart, Ethernet stability,
+living-room noise and full iGPU passthrough to Linux Jellyfin VM across repeated
+reboot/shutdown/start cycles. Do not migrate workloads until acceptance passes.
 
-Best price lead: VORPC Dell OptiPlex Micro 7010, advertised i5-13500T / 32 GB / 1 TB,
-€599.89 including VAT, free delivery advertised. Confirm exact CPU/Service Tag because
-seller permits equivalent substitutions. Dell documents AC Recovery; GPU passthrough
-and actual-unit noise remain unverified. SER8 preference is on hold.
-
-Alternatives: GMKtec M3 Pro and DeskMini B760 build. See
-[Intel prices and checks](research-intel-options.md). Next: confirm hardware, returns,
-Madrid delivered total and prove passthrough/restart behaviour before migration.
-
-VORPC investigation: identifiable business, but PcComponentes shop deactivated
-(reason unknown). Return shipping/custom-configuration terms conflict with product
-marketing; obtain written Proxmox-testing/return agreement. GPU reset, noise and
-sustained NIC stability remain acceptance tests. See detailed Intel research.
+Dell is the selected purchase; SER8 and other shortlist options superseded.
+See [Intel research](research-intel-options.md) for seller and hardware caveats.
