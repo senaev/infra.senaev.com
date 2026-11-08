@@ -10,7 +10,7 @@ budget is €1,000 for the complete usable machine, including VAT and delivery.
 | Component | Requirement |
 | --- | --- |
 | CPU | Powerful enough for development, VMs and concurrent services; compare concrete CPUs |
-| GPU | A capable graphics processor; exact workload, discrete vs integrated, and VRAM remain to be decided |
+| GPU | Media and general server use; Intel integrated graphics is the initial preference |
 | RAM | At least 32 GB |
 | Storage | At least 1 TB SSD |
 | Total price | No more than €1,000 |
@@ -49,3 +49,9 @@ those conflict with the new CPU/GPU requirements and budget.
 - Check compatibility, cooling, warranty and return conditions before ordering.
 - After delivery, verify installed hardware, stability, temperatures and the intended
   development/VM workloads.
+
+## Hardware research — 2026-11-08
+
+New hardware only; up to roughly 10–15 litres; media/general-server GPU use. See
+[options and delivered-price comparison](research-options.md) and the
+[118-page source register](research-sources.md). No hardware selected or ordered.
