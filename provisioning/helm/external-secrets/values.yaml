@@ -1,6 +1,12 @@
 external-secrets:
   installCRDs: true
 
+  # Without this, deleting the release deletes the CRDs, and with them every
+  # ExternalSecret in the cluster and the Kubernetes Secrets that they own.
+  crds:
+    annotations:
+      helm.sh/resource-policy: keep
+
   nodeSelector:
     vps: hetzner
 
