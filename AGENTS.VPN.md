@@ -1,14 +1,14 @@
 # VPN Architecture
 
-Xray VPN with VLESS+Reality protocol, deployed across 4 VPS nodes. Clients receive connection configs via the `vpn-subscription` web service.
+Xray VPN with VLESS+Reality protocol, deployed across 3 nodes. Clients receive connection configs via the `vpn-subscription` web service.
 
 Key generation: see `XRAY_VPN.md`.
 
 ## Components
 
-### Xray VPN servers (4 instances)
+### Xray VPN servers (3 instances)
 
-Each instance runs as a Kubernetes Deployment in the `senaev-com` namespace on its respective node:
+Each instance runs as a Kubernetes Deployment in the `vpn` namespace (release `vpn`, chart `provisioning/helm/vpn`) on its respective node:
 
 Inter-instance routing uses internal Socks proxies (port 1080). Instances chain traffic to each other before exiting to the internet.
 
@@ -58,7 +58,19 @@ Xray config is generated at pod start by an initContainer (node:22-alpine):
 
 ## Secrets
 
-All secrets live in HashiCorp Vault under key `senaev-com-kv`, synced to Kubernetes via the ExternalSecrets operator:
+All secrets live in HashiCorp Vault under key `senaev-com-kv`, synced to the `vpn` namespace via the existing ClusterSecretStore and ExternalSecrets operator.
+The Vault store and property names are unchanged. The new namespaced Kubernetes secret
+contains only VPN properties; the old shared secret is left unchanged during migration
+to avoid reloader restarts of unrelated services.
+
+The subscription service keeps its existing `http://cluster-helper` URL via an ExternalName
+Service pointing to `cluster-helper.senaev-com.svc.cluster.local`. NetworkPolicy permits
+subscription pods in `vpn` and the old namespace during cutover/rollback. Website fallback
+ingresses remain in `senaev-com`; Xray already uses fully qualified Traefik service names.
+
+See [cutover and rollback](projects/2026-06-10-debug-vpn-connection/NAMESPACE-MIGRATION.md).
+
+Secrets:
 
 | Secret | Purpose |
 |---|---|

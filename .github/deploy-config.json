@@ -1,0 +1,7 @@
+{
+  "services": {
+    "vpn-subscription": {
+      "chart": "vpn"
+    }
+  }
+}

@@ -731,3 +731,9 @@ The pending next step is unchanged and is client-side only, so it is unaffected 
 revert: test TLS fragmentation in Hiddify, then `fp=chrome` → `fp=firefox`, tailing
 `kubectl logs -n senaev-com deploy/xray-vpn-firstvds -f` during each attempt to see whether
 the connection reaches the pod at all.
+
+## 2026-11-08 — Namespace migration preparation
+
+Move the unchanged VPN services into their own `vpn` Helm release before building a
+future debugging environment. See [cutover and rollback](NAMESPACE-MIGRATION.md).
+No debugging client or automated experiments are included in this step.

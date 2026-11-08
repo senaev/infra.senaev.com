@@ -2,8 +2,16 @@
 
 ## Stage
 
-Open; the original investigation's later client-side tests did not confirm a stable working solution.
+Preparing the namespace migration for review; VPN repair remains open.
+
+## Current work
+
+Move existing Xray servers and subscription/web interface into release/namespace `vpn`,
+using the same Vault store. Preserve protocol/configuration and website fallbacks.
+See [migration runbook](NAMESPACE-MIGRATION.md) for staged cutover and rollback.
 
 ## Next steps
 
-Test from an affected client and update the investigation with the observed result before marking complete.
+Review and stage migration before merging. Verify deployment and public paths, then
+design the debugging environment separately. No live migration has been performed.
+The existing firstvds subscription UUID mismatch remains for the repair investigation.
