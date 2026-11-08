@@ -184,7 +184,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "vpn_probe_success{job=\"vpn-probe\",profile=~\"$profile\",check=\"exit_ip\",route=\"vpn\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",check=\"exit_ip\",route=\"vpn\"}) < 420)",
+          "expr": "vpn_probe_success{job=\"vpn-probe\",profile=~\"$profile\",check=\"exit_ip\",route=\"vpn\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",check=\"exit_ip\",route=\"vpn\"}) < 540)",
           "datasource": {
             "type": "prometheus",
             "uid": "P4169E866C3094E38"
@@ -502,7 +502,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "vpn_probe_success{job=\"vpn-probe\",profile=~\"$profile\",check=\"exit_ip\",route=\"vpn\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",check=\"exit_ip\",route=\"vpn\"}) < 420)",
+          "expr": "vpn_probe_success{job=\"vpn-probe\",profile=~\"$profile\",check=\"exit_ip\",route=\"vpn\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",check=\"exit_ip\",route=\"vpn\"}) < 540)",
           "datasource": {
             "type": "prometheus",
             "uid": "P4169E866C3094E38"
@@ -588,7 +588,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "vpn_probe_success{job=\"vpn-probe\",profile=~\"$profile\",check=~\"download_64k|download_64k_30s\",route=~\"$route\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",check=~\"download_64k|download_64k_30s\",route=~\"$route\"}) < 420)",
+          "expr": "vpn_probe_success{job=\"vpn-probe\",profile=~\"$profile\",check=~\"download_64k|download_64k_30s\",route=~\"$route\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",check=~\"download_64k|download_64k_30s\",route=~\"$route\"}) < 540)",
           "datasource": {
             "type": "prometheus",
             "uid": "P4169E866C3094E38"
@@ -709,7 +709,7 @@
       "id": 12,
       "title": "Heavy-check sample age",
       "type": "timeseries",
-      "description": "Expected under 420 seconds. High age indicates the runner is no longer producing checks.",
+      "description": "Expected under 540 seconds. High age indicates the runner is no longer producing checks.",
       "datasource": {
         "type": "prometheus",
         "uid": "P4169E866C3094E38"
@@ -870,7 +870,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "vpn_probe_success{job=\"vpn-probe\",profile=~\"$profile\",check=~\"ipv6_entry|ipv6_control\",route=\"direct\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",check=~\"ipv6_entry|ipv6_control\",route=\"direct\"}) < 420)",
+          "expr": "vpn_probe_success{job=\"vpn-probe\",profile=~\"$profile\",check=~\"ipv6_entry|ipv6_control\",route=\"direct\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",check=~\"ipv6_entry|ipv6_control\",route=\"direct\"}) < 540)",
           "datasource": {
             "type": "prometheus",
             "uid": "P4169E866C3094E38"
