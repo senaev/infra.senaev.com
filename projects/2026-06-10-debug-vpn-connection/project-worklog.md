@@ -1,3 +1,31 @@
+## 2026-11-08 15:03 UTC — VPN namespace migration done; ESO incident during cutover
+
+PR #132 is merged and deployed. Xray servers and `vpn-subscription` run in the `vpn`
+release/namespace. The user confirmed: VPN works from Happ, `vpn-subscription` works,
+the MCP connectors work. Smoke tests pass, including `https://senaev.ru` through the
+Xray fallback.
+
+The cutover found an older problem: CI installed a second ESO release in namespace
+`external-secrets` (the planner took the namespace from the chart folder), while
+`make services` installs it in `vault`. Both releases changed the same cluster-scoped
+RBAC and webhook configs, so cert-controller was not ready and the webhook failed with
+x509 errors. Fixes in PR #132: CI deploys `external-secrets` to `vault`
+(`charts.<chart>.namespace` in `.github/deploy-config.json`), `bootstrap-secrets.sh`
+waits until the webhook accepts a dry-run request, and the `Makefile` got a `vpn` target.
+
+Removing the extra release with `helm uninstall` deleted the ESO CRDs, because the
+chart has no keep policy. Every ExternalSecret became `Terminating`, and the `datadog`
+deploy failed:
+
+```
+resource ExternalSecret/datadog/senaev-com-kv-secrets not ready. status: Terminating, message: Resource scheduled for deletion
+```
+
+Recovery: removed the finalizers, let the CRDs and owned Secrets go, then a full deploy
+recreated all from Vault. PR #133 adds `helm.sh/resource-policy: keep` to the ESO CRDs.
+After deploy run 42491488254, all 11 ExternalSecrets log `reconciled secret`, and
+Datadog shows no ESO errors after 14:42 UTC.
+
 ## 2026-11-08 — Prepare VPN namespace migration
 
 Kept the existing project. Extracted unchanged Xray configuration and subscription

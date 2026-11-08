@@ -2,16 +2,15 @@
 
 ## Stage
 
-Preparing the namespace migration for review; VPN repair remains open.
+Namespace migration done; VPN repair remains open.
 
-## Current work
+## Done
 
-Move existing Xray servers and subscription/web interface into release/namespace `vpn`,
-using the same Vault store. Preserve protocol/configuration and website fallbacks.
-See [migration runbook](NAMESPACE-MIGRATION.md) for staged cutover and rollback.
+- Xray servers and `vpn-subscription` run in release/namespace `vpn` (PR #132), with the
+  same Vault store. Verified by the user: VPN from Happ, subscription, MCP connectors.
+- ESO fixed: one release in `vault`, CRDs kept on uninstall (PR #133).
 
 ## Next steps
 
-Review and stage migration before merging. Verify deployment and public paths, then
-design the debugging environment separately. No live migration has been performed.
-The existing firstvds subscription UUID mismatch remains for the repair investigation.
+Design the debugging environment for the firstvds repair. The existing firstvds
+subscription UUID mismatch (seed `6` vs. accepted `1`/`4`) remains for that investigation.
