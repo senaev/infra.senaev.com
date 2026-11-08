@@ -54,7 +54,6 @@ ingress:
 vpnProbe:
   enabled: true
   vps: senaev-media
-  image: ghcr.io/senaev/vpn-probe:latest
   # UUID seeds identify subscription routes, including the IPv6 entry using seed 5.
   # "direct" compares the home exit to the probe's own public home IP.
   expectedExits:
