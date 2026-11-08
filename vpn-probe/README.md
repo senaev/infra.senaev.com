@@ -7,7 +7,7 @@ No inbound Service, TUN, host network, host ports, host mounts or host routing/D
 SOCKS listens only on pod loopback. Only the runner's explicitly proxied requests use it.
 
 The pods have bounded CPU/memory, read-only root filesystems, dropped capabilities and
-no service-account token. Their NetworkPolicy denies inbound connections and permits
+no service-account token. Their NetworkPolicy allows inbound metrics only from telemetry vmagent and permits
 only CoreDNS plus TCP/443 to public addresses (excluding private, link-local and tailnet
 ranges). No Kubernetes API access, host changes or server reconfiguration is needed.
 Existing VPN server and subscription manifests are unchanged.
@@ -39,6 +39,30 @@ existing server's IPv4-preferred freedom outbound. The IPv6 subscription still d
 its entry over IPv6 through Xray. IPv6-only destination handling and Android/Happ TUN
 behavior are outside this first baseline.
 
+## VictoriaMetrics and Grafana
+
+The routine runner exposes Prometheus metrics on pod port 8080 at `/metrics`.
+A VMPodScrape collects them every 30s; NetworkPolicy allows this port only from
+`telemetry` pods labeled `app.kubernetes.io/name: vmagent`. SOCKS stays loopback-only;
+there is no public Service or ingress.
+
+The provisioned **VPN Probes — Russia** dashboard (UID `vpn-probes`) uses the existing
+VictoriaMetrics datasource. It shows exporter availability, per-profile direct/VPN
+status timelines, duration and success rate, expected-exit and 64 KiB download results,
+payload volume/rate, failures and sample age. Light results older than 90s and heavy
+results older than 420s are excluded from fresh-status panels. No sample is not a pass.
+An exporter being UP is not proof that the VPN works.
+
+Metrics include `vpn_probe_checks_total`, `vpn_probe_received_bytes_total`,
+`vpn_probe_success`, last-check/last-success timestamps, duration, HTTP status, curl
+exit code and payload size. Labels are bounded to configured profile/check/route and
+counter result; IPs, credentials, URLs and run IDs are never metric labels. Counters
+reset on pod restart and dashboard queries account for resets. Manual commands emit
+logs only, without starting another metrics server or affecting routine samples.
+
+Dashboard: `https://grafana.senaev.com/d/vpn-probes`. Actual exit IPs and detailed
+failures remain in Datadog logs. No alerts are added in this PR.
+
 ## Results and on-demand runs
 
 Each check writes JSON to stdout for Datadog (`service:vpn-probe kube_namespace:vpn`):
@@ -54,8 +78,8 @@ From an authorized personal-cluster management terminal (never a work kubecontex
 kubectl -n vpn logs deployment/vpn-probe-0 -c probe --tail=30
 # A fresh client on a separate loopback port: reconnect plus one full diagnostic round.
 kubectl -n vpn exec deployment/vpn-probe-0 -c probe -- python /app/probe.py --once
-# Working credentials first, then a fresh client with a random UUID; positive control
-# must succeed before a rejection can count. Does not modify server credentials.
+# Working credentials first, then a fresh client with a random UUID. A subsequent
+# failure is inconclusive (exit 2); correlate server logs for actual rejection evidence.
 kubectl -n vpn exec deployment/vpn-probe-0 -c probe -- python /app/probe.py --invalid
 ```
 
@@ -68,13 +92,15 @@ Rendered configs and response bodies are temporary, mode-restricted pod files.
 
 ## Deployment and recovery
 
-The existing pipeline builds `vpn-probe` and deploys release `vpn`. Adding its service
+The existing pipeline builds `vpn-probe` and deploys `vpn` plus the dashboard in `telemetry/vm-stack`. Adding its service
 mapping triggers a full deployment on the first merge under the current planner;
 subsequent probe source/chart changes select only VPN. This PR does not introduce
-branch deployments, alerts, dashboards or an autonomous configuration-editing loop.
+branch deployments, alerts or an autonomous configuration-editing loop.
 
 After deployment verify all six pods are on `senaev-media`, CoreDNS egress works,
-JSON records appear in Datadog, direct controls pass, and both routine intervals run.
+JSON records appear in Datadog, direct controls pass, both routine intervals run, and
+VictoriaMetrics has `up{job="vpn-probe"}` plus fresh check metrics. Open the provisioned
+Grafana dashboard and confirm results/ages and both intervals before trusting it.
 A working profile should report its expected exit; a broken profile must never pass
 via direct fallback. Compare at least two five-minute rounds before establishing the
 baseline. Then run the on-demand invalid-credentials control on a working profile.

@@ -16,6 +16,9 @@ import time
 from urllib.parse import parse_qs, urlsplit
 import uuid
 
+from metrics import ProbeMetrics, start_server
+
+METRICS = ProbeMetrics()
 STOP = threading.Event()
 PROXY_ENV = {key: value for key, value in os.environ.items()
              if key.lower() not in {"http_proxy", "https_proxy", "all_proxy", "no_proxy"}}
@@ -90,6 +93,7 @@ def trace_ip(body):
 
 
 def emit(profile, check, route, result):
+    METRICS.record(profile, check, route, result)
     print(json.dumps({"service": "vpn-probe", "profile": profile, "check": check,
                       "route": route, "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                       "run_id": str(uuid.uuid4()), "client_version": "26.9.30",
@@ -145,7 +149,7 @@ def heavy(profile, proxy, expected_host):
     result, _ = request("https://speed.cloudflare.com/__down?bytes=65536", proxy,
                         65536, expected_bytes=65536)
     emit(profile, "download_64k", "vpn", result)
-    return exit_ok and result["ok"]
+    return direct["ok"] and exit_ok and result["ok"]
 
 
 def stop_client(child):
@@ -190,9 +194,13 @@ def negative(profile, link, base, key, folder):
             emit(profile, "invalid_credentials", "vpn", {"ok": False, "failure": "positive_control_failed"})
             return 1
         if invalid:
-            passed = not result["ok"]
-            emit(profile, "invalid_credentials", "vpn", {"ok": passed, "rejected": passed})
-            return 0 if passed else 1
+            # A timeout/HTTP error is not evidence of server-side credential rejection.
+            emit(profile, "invalid_credentials", "vpn", {
+                "ok": False, "rejected": False, "request_failed": not result["ok"],
+                "outcome": "inconclusive" if not result["ok"] else "unexpected_success",
+                "curl_exit": result.get("curl_exit", -1),
+                "http_status": result.get("http_status", 0)})
+            return 2 if not result["ok"] else 1
     return 1
 
 
@@ -205,7 +213,12 @@ def main():
         with open("/tmp/vpn-manual.lock", "w") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             return run(args)
-    return run(args)
+    server = start_server(METRICS)
+    try:
+        return run(args)
+    finally:
+        server.shutdown()
+        server.server_close()
 
 
 def run(args):

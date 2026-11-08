@@ -1,3 +1,24 @@
+## 2026-11-08 18:28 UTC — Add VictoriaMetrics and Grafana visualization
+
+Added a bounded Prometheus exporter on port 8080, scraped every 30s by VMPodScrape.
+Only telemetry vmagent can reach the port; SOCKS remains loopback-only. The provisioned
+VPN Probes — Russia dashboard shows fresh direct/VPN connectivity, exit/download
+checks, latency, success rate, traffic and sample age. No unbounded IP/run-ID labels.
+CodeRabbit findings fixed: failed direct controls fail the full round, and arbitrary
+invalid-request failures are inconclusive rather than proof of credential rejection.
+
+Validation output:
+
+```
+Ran 15 tests in 0.021s
+OK
+PASS: actual HTTP exporter serves numeric metrics
+PASS: scrape wiring, vmagent-only ingress, no exposed Service, and provisioned 14-panel dashboard
+```
+
+VictoriaMetrics accepted the combined PromQL syntax validation; no probe data is
+expected before deployment. PR #135 remains the scope; nothing has been deployed.
+
 ## 2026-11-08 16:45 UTC — Prepare repeatable VPN diagnostics
 
 Added one non-root, resource-limited Xray client/runner per subscription profile,

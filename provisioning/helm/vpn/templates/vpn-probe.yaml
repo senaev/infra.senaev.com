@@ -42,6 +42,9 @@ spec:
         - name: probe
           image: {{ $.Values.vpnProbe.image }}
           imagePullPolicy: Always
+          ports:
+            - name: metrics
+              containerPort: 8080
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -82,7 +85,7 @@ spec:
             sizeLimit: 16Mi
 {{- end }}
 ---
-# No inbound access is needed: SOCKS is loopback-only; logs leave via the node agent.
+# Only vmagent can scrape metrics; SOCKS remains inaccessible outside pod loopback.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -93,7 +96,17 @@ spec:
     matchLabels:
       app: vpn-probe
   policyTypes: [Ingress, Egress]
-  ingress: []
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: telemetry
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: vmagent
+      ports:
+        - protocol: TCP
+          port: 8080
   egress:
     - to:
         - namespaceSelector:
@@ -117,4 +130,29 @@ spec:
       ports:
         - protocol: TCP
           port: 443
+{{- end }}
+
+{{- if .Values.vpnProbe.enabled }}
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMPodScrape
+metadata:
+  name: vpn-probe
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: vpn-probe
+  podMetricsEndpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 5s
+      relabelConfigs:
+        - targetLabel: job
+          replacement: vpn-probe
+        - sourceLabels: [__meta_kubernetes_pod_node_name]
+          targetLabel: source_node
+        - sourceLabels: [__meta_kubernetes_pod_label_vpn_profile]
+          targetLabel: profile_index
 {{- end }}

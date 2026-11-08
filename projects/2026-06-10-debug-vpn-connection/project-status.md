@@ -15,8 +15,8 @@ Repeatable diagnostics prepared for review; broader VPN repair remains open.
 
 Six isolated VPN probe clients on `senaev-media`, using the existing subscription
 profiles. Small checks approximately every 30s; exit validation and a 64 KiB transfer
-approximately every 300s. Structured logs, direct controls, bounded resources, no host
-network changes. See [probe documentation](../../vpn-probe/README.md).
+approximately every 300s. Structured logs, VictoriaMetrics scraping and a provisioned Grafana dashboard, direct
+controls, bounded resources, no host network changes. See [probe documentation](../../vpn-probe/README.md).
 
 ## Next steps
 

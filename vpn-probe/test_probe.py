@@ -110,5 +110,27 @@ class ControlTests(unittest.TestCase):
         self.assertFalse(emit.call_args_list[1].args[3]['ok'])
 
 
+class ReviewRegressionTests(unittest.TestCase):
+    @patch('probe.resolve_exit', return_value={'2.2.2.2'})
+    @patch('probe.emit')
+    @patch('probe.request')
+    def test_failed_direct_trace_fails_entire_round(self, request, emit, resolve):
+        request.side_effect = [({'ok':False}, ''),
+                               ({'ok':True}, 'ip=2.2.2.2'), ({'ok':True}, '')]
+        self.assertFalse(probe.heavy('test', 'socks5h://127.0.0.1:1080', 'senaev.com'))
+
+    @patch('probe.stop_client')
+    @patch('probe.start_client')
+    @patch('probe.emit')
+    @patch('probe.request')
+    def test_invalid_timeout_or_http_failure_is_inconclusive(self, request, emit, start, stop):
+        for failure in [{'ok':False, 'curl_exit':28, 'http_status':0},
+                        {'ok':False, 'curl_exit':22, 'http_status':503}]:
+            request.side_effect = [({'ok':True}, ''), (failure, '')]
+            self.assertEqual(probe.negative('test', LINK, 'b', 'p', '/tmp'), 2)
+            self.assertEqual(emit.call_args.args[3]['outcome'], 'inconclusive')
+            self.assertFalse(emit.call_args.args[3]['rejected'])
+
+
 if __name__ == '__main__':
     unittest.main()
