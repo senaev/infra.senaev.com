@@ -1,3 +1,41 @@
+## 2026-11-09 12:01 UTC — Prepare XHTTP response diagnostics after failed live control
+
+PR #144 merged at 9aa1193 and deployed in run 42610055670. Backend and both probe
+pods are available with zero restarts; all five manual website smoke checks pass.
+First live candidate exit control from senaev-media:
+
+```
+check=exit_ip route=xhttp curl_exit=28 http_status=0 bytes=0 duration_ms=8013 tls_ms=2875
+experiment_id=b9586e0d-3cd3-42fe-b193-7d63d07b997b
+```
+
+Backend received XHTTP requests (X-Forwarded-For warnings at 11:44:44 UTC).
+Destination TLS completed, but no HTTP status/body arrived by the deadline.
+This does not establish where packets stalled. Payloads were skipped by design;
+baseline/direct 4 KiB checks passed. Only one candidate exit attempt is observed.
+
+User approved tracing before changing transport. Prepared opt-in experimental Info
+logs and extra numeric curl response-stage fields. Once per failed matrix, compare
+direct/TCP trace and then three small serial XHTTP diagnostics separated by quiet
+intervals, including a separately labelled 30s trace. Never override the original
+failed exit validation. Profile 4 grace increases to 45s for bounded long-request
+and two-child cleanup; existing backend/probe isolation is preserved.
+
+Validation:
+```
+Ran 47 tests in 0.099s
+OK
+Python syntax OK: 15 file(s)
+Helm charts OK
+PASS: real curl exposes numeric response-stage fields; no body/headers emitted
+PASS: diagnostics only changes experimental flags and profile 4 grace; routing, TLS paths, secrets, policies and other workloads unchanged
+```
+Tests cover bounded/serial controls, once-per-round invocation, cancellation, rollback
+behavior, sanitized timing fields and no candidate promotion after long-budget success.
+
+Pending review/deployment. No protocol, TLS verification, production subscription,
+host networking, privileges or image-base changes.
+
 ## 2026-11-09 — Address CodeRabbit before merge
 
 Candidate startup failure now emits a failed candidate_startup metric/log and

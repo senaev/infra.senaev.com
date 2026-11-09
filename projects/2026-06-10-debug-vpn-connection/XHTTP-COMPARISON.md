@@ -80,4 +80,6 @@ Set vpnXhttpExperiment.enabled=false to remove backend/Service/Ingress/NetworkPo
 and extra client, restoring the prior matrix exactly. controlledExperiment=false
 restores routine four-profile checks and omits the backend.
 
-Pending review/deployment. Russian-ISP reachability remains unverified.
+Deployed in PR #144. The first home-source exit check timed out despite destination
+TLS completion, so candidate payloads were skipped. The next
+[response diagnostics](XHTTP-RESPONSE-DIAGNOSTICS.md) are prepared for review.

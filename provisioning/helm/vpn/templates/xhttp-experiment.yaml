@@ -47,6 +47,8 @@ spec:
               port: xhttp
             periodSeconds: 5
           env:
+            - name: XHTTP_DIAGNOSTICS
+              value: {{ default false .Values.vpnXhttpExperiment.diagnostics | quote }}
             - name: XHTTP_PATH
               value: {{ .Values.vpnXhttpExperiment.path | quote }}
             - name: XRAY_USER_UUID

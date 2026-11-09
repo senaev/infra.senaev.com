@@ -2,7 +2,7 @@
 
 ## Stage
 
-FirstVDS entry-only and jitter deployed (PR #143); XHTTP/TLS comparison prepared. Repair remains open.
+XHTTP/TLS comparison deployed (PR #144); focused response diagnostics prepared. Repair remains open.
 
 ## Verified baseline
 
@@ -66,11 +66,15 @@ transport comparison; current pinned TCP/Reality profile remains unchanged.
 PR #143 deployed in run 42588940242. All VPN pods were available with zero restarts,
 all three config reloads were observed, and all five website smoke checks passed.
 
-Review the [XHTTP/TLS comparison](XHTTP-COMPARISON.md). A private dedicated backend
-on Hetzner and an extra client only in profile 4 use the same public hostname/port
-and exit. Production subscriptions and existing Xray configs are unchanged.
-Fixed routes vpn and xhttp run serially with candidate exit validation.
-This compares full setups, including different TLS termination, not transport alone.
+PR #144 deployed in run 42610055670. The backend and both probes are healthy with
+zero restarts, and all five website smoke checks pass. Candidate startup succeeded.
+Its first exit check reached the backend and completed destination TLS at 2875ms,
+but returned curl 28 / HTTP 0 / zero body bytes at 8013ms. Candidate payloads were
+correctly skipped while baseline 4 KiB checks passed. No cause established yet.
 
-Pending review/deployment. Disable vpnXhttpExperiment.enabled to restore the prior
-matrix; controlledExperiment=false restores routine four-profile checks.
+Prepare the [focused response diagnostics](XHTTP-RESPONSE-DIAGNOSTICS.md):
+experimental-only Info logs, numeric request/response timing, direct/baseline trace
+controls and three bounded candidate requests after failed exit validation.
+The original failure remains a failure even if a diagnostic succeeds.
+Pending review/deployment. Toggle diagnostics=false to restore prior behavior;
+vpnXhttpExperiment.enabled=false still removes the entire candidate.
