@@ -320,9 +320,9 @@ def h1_transfer_controls(profile, proxy, child, experiment_id, fresh=None):
         url = f"https://speed.cloudflare.com/__down?bytes={size}"
         check = f"transfer_h1_cloudflare_{size}"
         direct, _ = request(url, "", size, expected_bytes=size)
-        guard()
         emit(profile, check, "direct", {**direct, "experiment_id": experiment_id,
                                        "requested_bytes": size})
+        guard()
         jitter = random.uniform(2, 7)
         if experiment_wait(jitter, child, profile, experiment_id):
             return False

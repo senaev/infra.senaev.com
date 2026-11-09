@@ -1,3 +1,12 @@
+## 2026-11-09 18:35 UTC — Address payload-check review before merge
+
+CodeRabbit identified two valid points. Preserve the completed direct measurement
+before a temporary-client liveness failure; a regression test verifies no VPN
+request follows. Clarify the planned payload totals: curl read-ahead on streams
+with unknown length and protocol overhead prevent a strict wire-byte claim.
+No timeout/rate/acceptance limit changed. Prior cap wording below is superseded
+by this clarification. Rerun unit/syntax checks before merge.
+
 ## 2026-11-09 17:29 UTC — H1 works from home; prepare bounded payload validation
 
 User authorized merge, deployment follow-up, testing and preparation of the next

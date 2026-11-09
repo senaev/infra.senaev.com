@@ -55,3 +55,20 @@ class H1SizeTests(unittest.TestCase):
         self.assertFalse(probe.xhttp_transport_controls('test', None, 'round'))
         self.assertEqual(fresh.call_count, 2)
         self.assertFalse(any(c.kwargs.get('measure_sizes') for c in fresh.call_args_list))
+
+    @patch('probe.emit')
+    @patch('probe.experiment_wait', return_value=False)
+    @patch('probe.request')
+    def test_completed_direct_result_is_preserved_when_client_dies(self, request, wait, emit):
+        fresh = Mock()
+        fresh.poll.return_value = None
+        def finish_direct(*args, **kwargs):
+            fresh.poll.return_value = 1
+            return {'ok': True, 'bytes': 4096}, ''
+        request.side_effect = finish_direct
+        with self.assertRaisesRegex(RuntimeError, 'fresh_client_exited'):
+            probe.h1_transfer_controls('test', 'h1', None, 'round', fresh=fresh)
+        request.assert_called_once()
+        emit.assert_called_once()
+        self.assertEqual(emit.call_args.args[1:3], ('transfer_h1_cloudflare_4096', 'direct'))
+        self.assertEqual(emit.call_args.args[3]['bytes'], 4096)

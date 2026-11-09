@@ -28,10 +28,13 @@ process guards still invalidate a genuinely broken original matrix cycle.
 
 ## Limits and interpretation
 
-Added maximum response payload:4KiB exit recheck plus2×(4+16+64)KiB =172KiB per
-eligible round. Together with existing diagnostics: home at most188KiB per failed
-matrix; Hetzner at most184KiB per cycle. Actual requests remain rate limited and
-never overlap. No extra process runs concurrently with the existing version arms.
+Planned successful-response payload allowance:4KiB exit recheck plus2×(4+16+64)KiB =172KiB per
+eligible round. Including existing diagnostics, the planned totals are188KiB per
+failed home matrix and184KiB per Hetzner cycle. These are not strict wire-byte
+limits: curl can read ahead before enforcing --max-filesize on a length-unknown
+stream, and headers/TLS/XHTTP overhead are additional. Exact-size acceptance,
+request timeouts and the configured transfer-rate limit remain enforced. Requests
+are serial within each control. No extra process runs concurrently with the existing version arms.
 
 This intentionally measures an exit-validated H1 process reused across requests
 and quiet intervals, resembling normal client use. Failure can reflect size,
