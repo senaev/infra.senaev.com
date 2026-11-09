@@ -7,7 +7,7 @@ import { appendAliasesToTitle } from './appendAliasesToTitle';
 import { cutHistorySection } from './cutHistorySection';
 import { ensureEmptyLineAfterTables } from './ensureEmptyLineAfterTables';
 import { markTitleAsProvisioned } from './markTitleAsProvisioned';
-import { replaceWikiLinksWithCode } from './replaceWikiLinksWithCode';
+import { replaceWikiLinksWithHighlights } from './replaceWikiLinksWithHighlights';
 import { resolveImageEmbeds } from './resolveImageEmbeds';
 
 export type RenderedNote = {
@@ -35,7 +35,7 @@ export function renderNoteForTelegram(rawContent: string): RenderedNote {
 
     const withoutHistory = cutHistorySection(body);
     const { markdown: withImages, media } = resolveImageEmbeds(withoutHistory);
-    const withLinks = replaceWikiLinksWithCode(withImages);
+    const withLinks = replaceWikiLinksWithHighlights(withImages);
     const spaced = ensureEmptyLineAfterTables(withLinks);
     const marked = markTitleAsProvisioned(spaced.trim());
 
