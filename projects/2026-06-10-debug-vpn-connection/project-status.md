@@ -84,7 +84,7 @@ trace controls all failed at the unchanged 3s connection limit, without destinat
 TLS or an HTTP request. The 30s control did not exercise a 30s response wait.
 Candidate payloads were correctly skipped; no candidate promotion occurred.
 
-Next: compare an explicitly fresh XHTTP client with the reused client for the same
+Prepared in PR #146: compare an explicitly fresh XHTTP client with the reused client for the same
 small target and unchanged budgets. This can test client/outer-connection state;
 it does not yet distinguish network interference from a client/proxy defect.
 Do not change production subscriptions, transport, routing or host networking.

@@ -759,6 +759,7 @@ FirstVDS entry-only configuration and randomized checker timing are deployed.
 
 ## XHTTP response stall
 
-The first candidate exit check timed out after destination TLS completed. Candidate
-payload tests were skipped. [Focused diagnostics](XHTTP-RESPONSE-DIAGNOSTICS.md) are
-prepared to distinguish forwarding/target/response effects before transport tuning.
+Deployed diagnostics confirmed the initial post-TLS stall and later connection
+timeouts; direct/TCP controls passed. Candidate payload tests stay skipped.
+The next [focused comparison](XHTTP-RESPONSE-DIAGNOSTICS.md) in PR #146 tests a
+fresh versus reused XHTTP client with the same request and unchanged budgets.

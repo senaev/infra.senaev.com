@@ -252,8 +252,42 @@ def xhttp_exit_control(profile, proxy, experiment_id, timeout=8, check="exit_ip"
     return result["ok"]
 
 
-def xhttp_response_diagnostics(profile, baseline, candidate, child, experiment_id):
-    """Bounded controls after failed exit validation; never promote the candidate."""
+def fresh_xhttp_exit_control(profile, child, experiment_id):
+    """One request through a separate process; never reset the matrix candidate."""
+    if STOP.is_set():
+        return
+    fresh = None
+    try:
+        config, _ = client_config(os.environ["XHTTP_PROFILE_LINK"],
+                                  os.environ["XRAY_USER_UUID"],
+                                  os.environ["XRAY_REALITY_PUBLIC_KEY"], port=1083)
+        config["log"]["loglevel"] = "info"
+        with tempfile.TemporaryDirectory(prefix="vpn-fresh-client-") as folder:
+            try:
+                fresh = start_client(config, folder)
+                if STOP.is_set():
+                    return
+                check_experiment_client(child, profile, experiment_id)
+                if fresh.poll() is not None and not STOP.is_set():
+                    raise RuntimeError("fresh_client_exited")
+                xhttp_exit_control(profile, "socks5h://127.0.0.1:1083", experiment_id,
+                                   check="diagnostic_fresh_trace")
+                check_experiment_client(child, profile, experiment_id)
+                if fresh.poll() is not None and not STOP.is_set():
+                    raise RuntimeError("fresh_client_exited")
+            finally:
+                if fresh is not None:
+                    stop_client(fresh)
+    except (KeyError, ValueError, RuntimeError, OSError) as error:
+        check_experiment_client(child, profile, experiment_id)
+        emit(profile, "diagnostic_fresh_trace", "xhttp", {
+            "ok": False, "failure": "fresh_client_unavailable",
+            "error_type": type(error).__name__, "experiment_id": experiment_id})
+    check_experiment_client(child, profile, experiment_id)
+
+
+def xhttp_response_diagnostics(profile, baseline, candidate, child, experiment_id, fresh_first=False):
+    """Same trace/budgets through reused and fresh clients; never promote either."""
     trace = "https://www.cloudflare.com/cdn-cgi/trace"
     for route, address in [("direct", ""), ("vpn", baseline)]:
         if STOP.is_set():
@@ -262,24 +296,21 @@ def xhttp_response_diagnostics(profile, baseline, candidate, child, experiment_i
         result, _ = request(trace, address, 4096)
         check_experiment_client(child, profile, experiment_id)
         emit(profile, "diagnostic_trace", route, {**result, "experiment_id": experiment_id})
-    checks = [
-        ("diagnostic_https", "https://www.gstatic.com/generate_204", 204, None),
-        ("diagnostic_256b", "https://httpbingo.org/bytes/256", 200, 256),
-        ("diagnostic_trace_30s", trace, 200, None),
-    ]
-    for check, url, status, size in checks:
+    modes = ["reused", "fresh"] if not fresh_first else ["fresh", "reused"]
+    for mode in modes:
         if experiment_wait(random.uniform(60, 90), child, profile, experiment_id):
             return
         if STOP.is_set():
             return
         check_experiment_client(child, profile, experiment_id)
-        if check == "diagnostic_trace_30s":
-            xhttp_exit_control(profile, candidate, experiment_id, timeout=30, check=check)
+        emit(profile, "diagnostic_client_order", "xhttp", {
+            "ok": True, "mode": mode, "fresh_first": fresh_first,
+            "experiment_id": experiment_id})
+        if mode == "fresh":
+            fresh_xhttp_exit_control(profile, child, experiment_id)
         else:
-            result, _ = request(url, candidate, size if size is not None else 4096,
-                                expected_status=status, expected_bytes=size)
-            check_experiment_client(child, profile, experiment_id)
-            emit(profile, check, "xhttp", {**result, "experiment_id": experiment_id})
+            xhttp_exit_control(profile, candidate, experiment_id,
+                               check="diagnostic_reused_trace")
         check_experiment_client(child, profile, experiment_id)
 
 
@@ -328,7 +359,8 @@ def transfer_round(profile, proxy, child=None, rotation=0, xhttp_proxy=None, dia
                     candidate_exit_ok = xhttp_exit_control(profile, address, experiment_id)
                     check_experiment_client(child, profile, experiment_id)
                     if not candidate_exit_ok and diagnostics:
-                        xhttp_response_diagnostics(profile, proxy, address, child, experiment_id)
+                        xhttp_response_diagnostics(profile, proxy, address, child, experiment_id,
+                                                   fresh_first=bool(rotation % 2))
                 if not candidate_exit_ok:
                     emit(profile, "transfer_skipped", route, {
                         "ok": False, "failure": "exit_control_failed", **variant_context})

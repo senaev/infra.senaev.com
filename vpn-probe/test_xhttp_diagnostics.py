@@ -1,7 +1,8 @@
 import json
+import os
 import subprocess
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import probe
 from xhttp_server import server_config
@@ -10,18 +11,23 @@ from xhttp_server import server_config
 class DiagnosticTests(unittest.TestCase):
     @patch('probe.emit')
     @patch('probe.experiment_wait', return_value=False)
-    @patch('probe.xhttp_exit_control', return_value=True)
+    @patch('probe.fresh_xhttp_exit_control')
+    @patch('probe.xhttp_exit_control')
     @patch('probe.request', return_value=({'ok': True}, ''))
-    def test_controls_are_bounded_serial_and_long_trace_is_separate(self, request, exit_control, wait, emit):
-        probe.xhttp_response_diagnostics('test', 'baseline', 'candidate', None, 'round')
-        self.assertEqual([x.args[1] for x in request.call_args_list],
-                         ['', 'baseline', 'candidate', 'candidate'])
-        self.assertEqual(wait.call_count, 3)
+    def test_same_trace_budgets_and_alternating_serial_order(self, request, reused, fresh, wait, emit):
+        calls = []
+        reused.side_effect = lambda *a, **kw: calls.append('reused')
+        fresh.side_effect = lambda *a, **kw: calls.append('fresh')
+        for fresh_first in [False, True]:
+            probe.xhttp_response_diagnostics('test', 'baseline', 'candidate', None, 'round', fresh_first)
+        self.assertEqual(calls, ['reused', 'fresh', 'fresh', 'reused'])
+        self.assertEqual([x.args[1] for x in request.call_args_list], ['', 'baseline'] * 2)
+        self.assertTrue(all(x.args[0] == 'https://www.cloudflare.com/cdn-cgi/trace'
+                            and x.args[2] == 4096 for x in request.call_args_list))
+        self.assertEqual(wait.call_count, 4)
         self.assertTrue(all(60 <= x.args[0] <= 90 for x in wait.call_args_list))
-        exit_control.assert_called_once_with('test', 'candidate', 'round',
-                                             timeout=30, check='diagnostic_trace_30s')
-        self.assertEqual(request.call_args_list[-1].kwargs['expected_bytes'], 256)
-        self.assertEqual(request.call_args_list[-1].args[2], 256)
+        reused.assert_called_with('test', 'candidate', 'round', check='diagnostic_reused_trace')
+        fresh.assert_called_with('test', None, 'round')
 
     @patch('probe.emit')
     @patch('probe.experiment_wait', return_value=True)
@@ -34,12 +40,14 @@ class DiagnosticTests(unittest.TestCase):
 
     @patch('probe.emit')
     @patch('probe.experiment_wait', return_value=False)
+    @patch('probe.fresh_xhttp_exit_control')
     @patch('probe.xhttp_exit_control', side_effect=[False, True])
     @patch('probe.request', return_value=({'ok': True}, ''))
-    def test_long_diagnostic_success_does_not_promote_failed_candidate(self, request, exit_control, wait, emit):
+    def test_diagnostic_success_does_not_promote_failed_candidate(self, request, exit_control, fresh, wait, emit):
         self.assertFalse(probe.transfer_round('test', 'baseline', xhttp_proxy='candidate', diagnostics=True))
         self.assertEqual(exit_control.call_count, 2)
-        self.assertEqual(request.call_count, 22)
+        self.assertEqual(request.call_count, 20)
+        fresh.assert_called_once()
         skips = [c for c in emit.call_args_list if c.args[1] == 'transfer_skipped']
         self.assertEqual(len(skips), 6)
         self.assertFalse(any(c.args[2] == 'xhttp' and c.args[1].startswith('transfer_')
@@ -72,3 +80,74 @@ class DiagnosticTests(unittest.TestCase):
     def test_info_logging_is_only_enabled_explicitly_on_experimental_backend(self):
         self.assertEqual(server_config('base', '/test/')['log']['loglevel'], 'warning')
         self.assertEqual(server_config('base', '/test/', diagnostics=True)['log']['loglevel'], 'info')
+
+
+class FreshClientTests(unittest.TestCase):
+    def setUp(self):
+        self.env = patch.dict(os.environ, {
+            'XHTTP_PROFILE_LINK': 'vless://{XRAY_USER_UUID:xhttp-probe}@senaev.com:443?type=xhttp&security=tls&fp=chrome&sni=senaev.com&mode=packet-up&path=/test/',
+            'XRAY_USER_UUID': 'base', 'XRAY_REALITY_PUBLIC_KEY': 'unused'})
+        self.env.start()
+        self.addCleanup(self.env.stop)
+
+    @patch('probe.stop_client')
+    @patch('probe.start_client')
+    @patch('probe.xhttp_exit_control')
+    def test_fresh_config_differs_only_in_local_port_and_always_stops(self, control, start, stop):
+        fresh = Mock()
+        fresh.poll.return_value = None
+        start.return_value = fresh
+        control.side_effect = OSError('private-detail')
+        with patch('probe.emit') as emit:
+            probe.fresh_xhttp_exit_control('test', None, 'round')
+        config = start.call_args.args[0]
+        expected, _ = probe.client_config(os.environ['XHTTP_PROFILE_LINK'], 'base', 'unused', port=1082)
+        expected['log']['loglevel'] = 'info'
+        config['inbounds'][0]['port'] = 1082
+        self.assertEqual(config, expected)
+        control.assert_called_once_with('test', 'socks5h://127.0.0.1:1083', 'round', check='diagnostic_fresh_trace')
+        stop.assert_called_once_with(fresh)
+        self.assertFalse(emit.call_args.args[3]['ok'])
+        self.assertNotIn('private-detail', str(emit.call_args))
+
+    @patch('probe.stop_client')
+    @patch('probe.start_client')
+    @patch('probe.xhttp_exit_control')
+    def test_cancel_after_start_stops_fresh_without_request(self, control, start, stop):
+        with patch('probe.STOP') as stopping:
+            stopping.is_set.side_effect = [False, True]
+            probe.fresh_xhttp_exit_control('test', None, 'round')
+        control.assert_not_called()
+        stop.assert_called_once_with(start.return_value)
+
+    @patch('probe.emit')
+    @patch('probe.start_client', side_effect=RuntimeError('private-detail'))
+    @patch('probe.xhttp_exit_control')
+    def test_failed_start_is_labelled_and_does_not_stop_baseline(self, control, start, emit):
+        baseline = Mock()
+        baseline.poll.return_value = None
+        probe.fresh_xhttp_exit_control('test', baseline, 'round')
+        control.assert_not_called()
+        self.assertEqual(emit.call_args.args[1], 'diagnostic_fresh_trace')
+        self.assertFalse(emit.call_args.args[3]['ok'])
+        self.assertNotIn('private-detail', str(emit.call_args))
+        baseline.terminate.assert_not_called()
+
+    @patch('probe.stop_client')
+    @patch('probe.start_client')
+    @patch('probe.xhttp_exit_control')
+    def test_parent_failure_still_invalidates_round_and_cleans_up(self, control, start, stop):
+        baseline = Mock()
+        baseline.poll.return_value = 1
+        with patch('probe.emit'):
+            with self.assertRaisesRegex(RuntimeError, 'client_exited'):
+                probe.fresh_xhttp_exit_control('test', baseline, 'round')
+        stop.assert_called_once_with(start.return_value)
+        control.assert_not_called()
+
+    @patch('probe.start_client')
+    def test_already_cancelled_diagnostic_starts_nothing(self, start):
+        with patch('probe.STOP') as stopping:
+            stopping.is_set.return_value = True
+            probe.fresh_xhttp_exit_control('test', None, 'round')
+        start.assert_not_called()

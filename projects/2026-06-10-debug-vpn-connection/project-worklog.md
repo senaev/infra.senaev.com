@@ -1,3 +1,33 @@
+## 2026-11-09 12:44 UTC — Prepare fresh versus reused XHTTP comparison
+
+User approved the next comparison. Extended existing PR #146: replace the three
+previous candidate diagnostics with a same-URL reused/fresh pair, alternating
+order each matrix. Both keep 8s total / 3s connect, 4 KiB cap, 32 KiB/s and expected
+exit validation. Four added requests per failed round (16 KiB maximum payload).
+
+Fresh client uses temporary config and loopback 1083, same settings/credentials as
+the persistent candidate, with bounded startup and unconditional cleanup. Parent
+failure still invalidates the round; temporary client failure is labelled and
+preserves the baseline. Original failed exit control never promotes the candidate.
+New fixed checks automatically appear in existing diagnostic dashboard panels.
+No chart, production subscription, server, ingress, secret or host network change.
+Validation:
+```
+Ran 53 tests in 0.105s — OK
+Python syntax OK: 15 file(s)
+PASS: verified TLS -> Reality fallback -> Traefik -> h2c XHTTP: 4096/16384/65536 bytes
+PASS: two fresh-client controls validate TLS/exit and release loopback 1083
+PASS: invalid VLESS credential cannot reach the HTTPS origin
+PASS: ordinary website route preserved
+```
+Real pinned-binary integration completed in 4.49s. Unit tests cover order,
+unchanged config/budgets, cancellation, cleanup, sanitized startup failure,
+parent failure, no candidate promotion and separate bounded metrics. Current
+live profile 4 memory was 30285824 bytes against its 128Mi limit; a third temporary
+process remains within that same enforced limit, so post-deploy OOM/restart checks
+remain necessary. No live fresh-client result exists yet.
+Pending CI/review/deployment; previous #145 evidence is retained below.
+
 ## 2026-11-09 12:27 UTC — Deploy response diagnostics and observe first sequence
 
 User approved merge/deployment. PR #145 merged at
