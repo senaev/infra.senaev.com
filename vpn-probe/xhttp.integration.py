@@ -169,8 +169,12 @@ def main():
                 return config, seed
 
             def local_trace(url, *args, **kwargs):
-                assert url == "https://www.cloudflare.com/cdn-cgi/trace"
-                return original_request(f"https://localhost:{origin_port}/cdn-cgi/trace", *args, **kwargs)
+                if url.startswith("https://speed.cloudflare.com/__down?bytes="):
+                    url = f"https://localhost:{origin_port}/bytes/{int(url.rsplit('=', 1)[1])}"
+                else:
+                    assert url == "https://www.cloudflare.com/cdn-cgi/trace"
+                    url = f"https://localhost:{origin_port}/cdn-cgi/trace"
+                return original_request(url, *args, **kwargs)
 
             with patch.dict(os.environ, {"XHTTP_PROFILE_LINK": link, "XRAY_USER_UUID": base,
                                          "XRAY_REALITY_PUBLIC_KEY": "unused",
@@ -194,6 +198,17 @@ def main():
                     assert "failure" not in emitted.call_args.args[3]
                     with socket.socket() as connection:
                         assert connection.connect_ex(("127.0.0.1", 1083)) != 0
+                emitted.reset_mock()
+                with patch.object(probe, "experiment_wait", return_value=False):
+                    assert probe.fresh_xhttp_exit_control("local", None, "sizes", native_tls=True,
+                                                         http1=True, measure_sizes=True)
+                sizes = [c for c in emitted.call_args_list if c.args[1].startswith("transfer_h1_")]
+                assert len(sizes) == 6
+                assert all(c.args[3]["ok"] for c in sizes)
+                assert [c.args[3]["bytes"] for c in sizes if c.args[2] == "xhttp"] == [4096, 16384, 65536]
+                with socket.socket() as connection:
+                    assert connection.connect_ex(("127.0.0.1", 1083)) != 0
+            print("PASS: exit-validated native HTTP1 client transfers 4/16/64 KiB with direct controls and cleanup")
             print("PASS: native HTTP2/HTTP1.1 controls validate exit, reject untrusted TLS and release loopback 1083")
             bad_port = free_port()
             invalid, _ = probe.client_config(link, base, "unused", port=bad_port, invalid=True)

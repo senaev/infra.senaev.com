@@ -1,3 +1,60 @@
+## 2026-11-09 17:29 UTC — H1 works from home; prepare bounded payload validation
+
+User authorized merge, deployment follow-up, testing and preparation of the next
+step if needed. Addressed two CodeRabbit documentation findings before merge.
+PR #150 merged at7a97606a30a67c02e573be71723240f679231f2f; run42661613767 succeeded.
+All intended VPN workloads available, three checker targets scraped, new pods at
+zero restarts, five website smoke checks passed. No host-network change.
+
+First H2-first native version pair: Hetzner H2/H1 passed682/981ms. Home H2 stalled
+at8011ms after TLS1340ms; home H1 returned HTTP200/214 bytes in2064ms with expected
+exit validation. Direct/TCP home controls passed508/795ms. Raw H1 success:
+```yaml
+- timestamp: "2026-11-09T17:21:30Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: senaev-media-senaev-k3s
+  attributes:
+    custom.bytes: 214
+    custom.check: diagnostic_native_h1_trace
+    custom.curl_exit: 0
+    custom.duration_ms: 2064
+    custom.experiment_id: 5d17fbdc-0f77-4c18-84b5-d405b28cc9be
+    custom.http_status: 200
+    custom.ok: true
+    custom.profile: "\U0001F484 4. hetzner → freedom"
+    custom.request_bytes: 93
+    custom.response_header_bytes: 913
+    custom.route: xhttp
+    custom.tls_ms: 1403
+```
+[Full source/health/deployment/metric export](sources/2026-11-09-http-version-comparison.txt).
+Before rollout, Chrome/native H2 each passed13/13 on Hetzner and failed5/5 on home.
+This supports an H1 workaround for tiny responses, not a repair or proven cause.
+
+Prepared the next PR: keep the version pair, then after successful H1 control run
+one fresh-client exit recheck and paired direct/H1 Cloudflare4/16/64KiB ladder.
+Run only after the complete pair; preserve jitter, budgets, rate, credentials,
+TLS verification and original acceptance. Additional cap172KiB/eligible round;
+no overlapping traffic or concurrent extra process. No server/subscription change.
+
+Validation output:
+```
+Ran 70 tests in 0.154s
+OK
+PASS: exit-validated native HTTP1 client transfers 4/16/64 KiB with direct controls and cleanup
+PASS: native HTTP2/HTTP1.1 controls validate exit, reject untrusted TLS and release loopback 1083
+PASS: invalid VLESS credential cannot reach the HTTPS origin
+PASS: ordinary website route preserved
+Python syntax OK: 17 file(s)
+```
+Pinned-binary integration and syntax completed in7.29s; waits mocked locally only.
+Unit tests cover same-client exit gating, no promotion, after-pair order, caps,
+direct failure/inconclusive marking, cancellation, temporary-child failure and
+cleanup. No live H1 payload result exists. Pending review/CI/deployment of next PR.
+
 ## 2026-11-09 15:34 UTC — Prepare native HTTP-version comparison
 
 User approved the next stage. Latest snapshot still shows one completed #149 home
