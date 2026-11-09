@@ -184,6 +184,95 @@ def ipv6_controls(profile, address):
 
 
 
+def check_recovery_client(child, profile, experiment_id=None):
+    if child is not None and not STOP.is_set() and child.poll() is not None:
+        emit(profile, "recovery_client_alive", "vpn", {
+            "ok": False, "failure": "client_exited", "cycle_invalid": True,
+            **({"experiment_id": experiment_id} if experiment_id else {})})
+        raise RuntimeError("client_exited")
+
+
+def recovery_wait(delay, child, profile, experiment_id=None):
+    if child is None:
+        return STOP.wait(delay)
+    deadline = time.monotonic() + delay
+    while not STOP.is_set():
+        check_recovery_client(child, profile, experiment_id)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return False
+        if STOP.wait(min(1, remaining)):
+            return True
+    return True
+
+
+def recovery_round(profile, proxy, child=None):
+    """One bounded trigger, then observations at absolute post-download offsets."""
+    experiment_id = str(uuid.uuid4())
+    check_recovery_client(child, profile, experiment_id)
+    emit(profile, "recovery_client_alive", "vpn", {
+        "ok": True, "experiment_id": experiment_id})
+
+    def observe(check, route, url, address, status=204, **context):
+        if STOP.is_set():
+            return False
+        check_recovery_client(child, profile, experiment_id)
+        anchor = context.pop("_anchor", None)
+        if anchor is not None:
+            context["actual_delay_seconds"] = round(time.monotonic() - anchor, 3)
+        result, _ = request(url, address, 4096, expected_status=status)
+        check_recovery_client(child, profile, experiment_id)
+        emit(profile, check, route, {
+            **result, "experiment_id": experiment_id, **context})
+        return result["ok"]
+
+    small_url = "https://www.gstatic.com/generate_204"
+    plain_url = "https://senaev.com/robots.txt"
+    direct_ok = observe("recovery_before", "direct", small_url, "")
+    plain_ok = observe("recovery_plain_before", "direct", plain_url, "", 200)
+    vpn_ok = observe("recovery_before", "vpn", small_url, proxy)
+    if STOP.is_set():
+        return False
+    if not (direct_ok and plain_ok and vpn_ok):
+        emit(profile, "recovery_skipped", "vpn", {
+            "ok": False, "experiment_id": experiment_id,
+            "failure": "positive_control_failed"})
+        return False
+
+    check_recovery_client(child, profile, experiment_id)
+    result, _ = request("https://speed.cloudflare.com/__down?bytes=65536",
+                        proxy, 65536, expected_bytes=65536)
+    check_recovery_client(child, profile, experiment_id)
+    # Anchor offsets at completion before logging or issuing any controls.
+    finished = time.monotonic()
+    emit(profile, "recovery_download", "vpn", {
+        **result, "experiment_id": experiment_id})
+    passed = result["ok"]
+    for offset in [5, 30, 60]:
+        if recovery_wait(max(0, finished + offset - time.monotonic()),
+                         child, profile, experiment_id):
+            return False
+        context = {"requested_delay_seconds": offset, "_anchor": finished}
+        passed = observe(f"recovery_after_{offset}s", "vpn",
+                         small_url, proxy, **context) and passed
+        if STOP.is_set():
+            return False
+        passed = observe(f"recovery_plain_after_{offset}s", "direct",
+                         plain_url, "", 200, **context) and passed
+        passed = observe(f"recovery_after_{offset}s", "direct",
+                         small_url, "", **context) and passed
+    return passed
+
+
+def recovery_loop(profile, proxy, once=False, child=None):
+    # Quiet startup and between cycles. No routine light/heavy traffic in this mode.
+    while not recovery_wait(300, child, profile):
+        passed = recovery_round(profile, proxy, child=child)
+        if once:
+            return 0 if passed else 1
+    return 1 if once else 0
+
+
 def stop_client(child):
     if child.poll() is None:
         child.terminate()
@@ -266,6 +355,8 @@ def run(args):
         child = start_client(config, folder)
         proxy = f'socks5h://127.0.0.1:{config["inbounds"][0]["port"]}'
         try:
+            if os.environ.get("RECOVERY_EXPERIMENT") == "true":
+                return recovery_loop(profile, proxy, once=args.once, child=child)
             # Stagger profiles; serial rounds skip missed slots instead of catching up.
             STOP.wait(int(os.environ.get("PROFILE_INDEX", "0")) * 3 if not args.once else 0)
             due_light = due_heavy = time.monotonic()

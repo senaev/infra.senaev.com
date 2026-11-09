@@ -195,5 +195,119 @@ class DiagnosticTests(unittest.TestCase):
         self.assertTrue(second.args[3]['ok'])
 
 
+class RecoveryTests(unittest.TestCase):
+    @patch('probe.emit')
+    @patch('probe.request')
+    def test_absolute_offsets_single_trigger_and_controls_continue_after_failure(self, request, emit):
+        clock = [0.0]
+        starts = []
+        def fetch(url, proxy, *args, **kwargs):
+            starts.append(clock[0])
+            clock[0] += 1
+            return {'ok': 'speed.cloudflare' not in url}, ''
+        def wait(delay):
+            clock[0] += delay
+            return False
+        request.side_effect = fetch
+        stop = Mock()
+        stop.is_set.return_value = False
+        stop.wait.side_effect = wait
+        with patch('probe.STOP', stop), patch('probe.time.monotonic', side_effect=lambda: clock[0]):
+            self.assertFalse(probe.recovery_round('test', 'socks5h://127.0.0.1:1080'))
+        self.assertEqual(request.call_count, 13)
+        self.assertEqual([starts[i] for i in [4, 7, 10]], [9, 34, 64])
+        self.assertEqual(sum('speed.cloudflare' in call.args[0] for call in request.call_args_list), 1)
+        self.assertEqual(len({call.args[3]['experiment_id'] for call in emit.call_args_list}), 1)
+        delays = [call.args[3]['actual_delay_seconds'] for call in emit.call_args_list[5:]]
+        self.assertEqual(delays, [5, 6, 7, 30, 31, 32, 60, 61, 62])
+        self.assertEqual(emit.call_args_list[-1].args[1:3], ('recovery_after_60s', 'direct'))
+
+    @patch('probe.emit')
+    @patch('probe.request')
+    def test_no_download_without_all_positive_controls(self, request, emit):
+        request.side_effect = [({'ok':True}, ''), ({'ok':False}, ''), ({'ok':True}, '')]
+        self.assertFalse(probe.recovery_round('test', 'proxy'))
+        self.assertEqual(request.call_count, 3)
+        self.assertEqual(emit.call_args.args[1], 'recovery_skipped')
+
+    @patch('probe.emit')
+    @patch('probe.request', return_value=({'ok':True}, ''))
+    def test_shutdown_interrupts_post_download_wait(self, request, emit):
+        stop = Mock()
+        stop.is_set.return_value = False
+        stop.wait.return_value = True
+        with patch('probe.STOP', stop):
+            self.assertFalse(probe.recovery_round('test', 'proxy'))
+        self.assertEqual(request.call_count, 4)
+
+    @patch('probe.recovery_round', return_value=True)
+    def test_quiet_start_and_single_cycle_mode(self, run_round):
+        stop = Mock()
+        stop.wait.return_value = False
+        with patch('probe.STOP', stop):
+            self.assertEqual(probe.recovery_loop('test', 'proxy', once=True), 0)
+        stop.wait.assert_called_once_with(300)
+        run_round.assert_called_once_with('test', 'proxy', child=None)
+
+    @patch('probe.emit')
+    @patch('probe.request')
+    def test_shutdown_during_plain_observation_stops_further_requests(self, request, emit):
+        import threading
+        stop = threading.Event()
+        def fetch(*args, **kwargs):
+            if request.call_count == 6:
+                stop.set()
+            return {'ok': True}, ''
+        request.side_effect = fetch
+        with patch('probe.STOP', stop), patch('probe.recovery_wait', return_value=False):
+            self.assertFalse(probe.recovery_round('test', 'proxy'))
+        self.assertEqual(request.call_count, 6)
+
+    @patch('probe.emit')
+    @patch('probe.request')
+    def test_client_exit_during_download_invalidates_cycle_and_exits(self, request, emit):
+        child = Mock()
+        child.poll.return_value = None
+        def fetch(*args, **kwargs):
+            if request.call_count == 4:
+                child.poll.return_value = 1
+            return {'ok': True}, ''
+        request.side_effect = fetch
+        with self.assertRaisesRegex(RuntimeError, 'client_exited'):
+            probe.recovery_round('test', 'proxy', child=child)
+        result = emit.call_args.args[3]
+        self.assertTrue(result['cycle_invalid'])
+        self.assertEqual(result['failure'], 'client_exited')
+        self.assertEqual(emit.call_args.args[1], 'recovery_client_alive')
+        self.assertEqual(request.call_count, 4)
+
+    @patch('probe.emit')
+    def test_client_exit_detected_during_quiet_wait(self, emit):
+        child = Mock()
+        child.poll.return_value = 1
+        with self.assertRaisesRegex(RuntimeError, 'client_exited'):
+            probe.recovery_wait(300, child, 'test')
+
+    @patch('probe.emit')
+    def test_client_exit_mid_wait_preserves_cycle_id(self, emit):
+        child = Mock()
+        child.poll.side_effect = [None, 1]
+        stop = Mock()
+        stop.is_set.return_value = False
+        stop.wait.return_value = False
+        with patch('probe.STOP', stop):
+            with self.assertRaisesRegex(RuntimeError, 'client_exited'):
+                probe.recovery_wait(60, child, 'test', 'cycle-one')
+        stop.wait.assert_called_once_with(1)
+        self.assertEqual(emit.call_args.args[3]['experiment_id'], 'cycle-one')
+
+    def test_graceful_stop_is_success_only_for_continuous_mode(self):
+        stop = Mock()
+        stop.wait.return_value = True
+        with patch('probe.STOP', stop):
+            self.assertEqual(probe.recovery_loop('test', 'proxy'), 0)
+            self.assertEqual(probe.recovery_loop('test', 'proxy', once=True), 1)
+
+
 if __name__ == '__main__':
     unittest.main()
