@@ -39,7 +39,7 @@ filebrowser:
       memory: 128Mi
 
 unmanic:
-  enabled: true
+  enabled: false
   vps: senaev-media
   volumePath: volumes/unmanic
   resources:
