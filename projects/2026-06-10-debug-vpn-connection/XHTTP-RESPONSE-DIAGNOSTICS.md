@@ -190,5 +190,30 @@ Manual real-binary integration verifies both arms through Reality fallback,
 Traefik TLS and h2c backend, correct exit validation, rejection of untrusted TLS,
 loopback cleanup, invalid UUID isolation and ordinary website routing. No image
 base, subscription, ingress, server, secret, policy or host networking changes.
-New comparison is prepared in PR #149 and not deployed. Existing controls continue
-until merge. diagnostics=false disables extra client comparisons as before.
+PR #149 deployed successfully in run42642463181 (main fd84179).
+diagnostics=false disables extra client comparisons as before.
+
+## First TLS-client comparison — 2026-11-09
+
+| Source / client | UTC | Result |
+|---|---|---|
+| Hetzner Chrome | 15:23:08 | HTTP200,216 bytes,1027ms; TLS887ms |
+| Hetzner native | 15:24:15 | HTTP200,216 bytes,714ms; TLS515ms |
+| Home Chrome | 15:24:21 | HTTP0,headers/body0,8011ms; TLS701ms; request93 bytes |
+| Home native | 15:25:38 | HTTP0,headers/body0,8015ms; TLS852ms; request93 bytes |
+
+Hetzner experiment b1f739ec-91e9-4bec-a750-f7429a9e8cc4; home experiment
+4bc80e66-85ba-4c36-94aa-74d2d7aaa7f0. Home direct/TCP traces passed in506/758ms.
+Both candidate arms use validated TLS and the same expected exit check. Neither
+home result had an HTTP response; diagnostic success never promoted the matrix.
+
+[Captured logs, metrics, smoke and readiness](sources/2026-11-09-tls-comparison.txt).
+The new native metric is exported for both sources. Short pauses were logged as
+3.469339486264396s (direct) and2.7775221349829446s (TCP); their request durations
+exclude these waits. This verifies jitter deployment, not a causal effect on stalls.
+
+One Chrome-first pair does not settle causality. TLS implementation/fingerprint
+alone did not rescue home traffic. Continue reversed-order rounds and focus on
+shared XHTTP/HTTP2 behavior versus source/path effects; preserve the Hetzner control.
+All intended workloads remained available, pods had zero restarts, and all five
+website smoke checks passed after deployment. No startup/exit failures were found.

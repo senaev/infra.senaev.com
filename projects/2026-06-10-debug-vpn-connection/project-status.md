@@ -2,9 +2,9 @@
 
 ## Current stage
 
-PR #147 is deployed in combined run42626865899 (main271f5de). Hetzner XHTTP source
-control passed; home XHTTP still stalls. PR #149 prepares the next Chrome/native
-TLS comparison and short request jitter; this comparison is not deployed.
+PR #149 deployed successfully at fd84179 in run42642463181. First Chrome/native
+TLS pair is complete: both work from Hetzner, both stall from home after TLS.
+Added jitter is visible in logs. Repair remains open; no new runtime change prepared.
 
 ## Deployed configuration
 
@@ -35,15 +35,27 @@ passed; one intermediate senaev.ru SSL timeout cleared on immediate rerun.
 [Captured evidence](sources/2026-11-09-hetzner-source-control.txt) and
 [worklog](project-worklog.md) retain the detailed history.
 
-## Next iteration — PR #149
+## Latest TLS-client comparison
 
-Compare fresh Chrome/native TLS over HTTP/2 from both sources, alternating order.
-Same endpoint, credentials, verification and request limits. Add2–7s jitter before
-direct/TCP diagnostic traces and between prechecks/downloads; retain longer jitter.
-Native TLS does not disable certificate checks. Home diagnostic response cap stays
-16KiB/failed matrix; Hetzner becomes12KiB/cycle. Existing Grafana panels cover both.
+Fresh Chrome/native TLS use HTTP/2 from both sources, alternating order. Endpoint,
+credentials, certificate verification and request limits remain fixed. Short2–7s
+jitter now precedes direct/TCP diagnostic traces and precheck/download gaps.
+Existing60–90s/300–360s jitter remains. Native TLS does not disable certificate checks.
 
-Source/path dependence outranks universal endpoint failure, but self-connect, DNS,
-latency, time and node-policy effects remain confounders. No native-TLS live result
-exists yet. Review CI before merge, then check rollout/smoke/metrics and several
-alternating rounds. Keep production subscriptions and host networking unchanged.
+First round (Chrome first):
+- Hetzner Chrome: HTTP200,216 bytes,1027ms; native: HTTP200,216 bytes,714ms.
+- Home Chrome: HTTP0,headers/body0,8011ms after TLS701ms.
+- Home native: HTTP0,headers/body0,8015ms after TLS852ms.
+- Home direct/TCP controls passed in506/758ms, with logged jitter3.469/2.778s.
+
+All intended workloads available, three targets scraped, new pods at zero restarts,
+all five website smoke checks passed, no client startup/exit failures found.
+[Raw first-round evidence](sources/2026-11-09-tls-comparison.txt).
+
+## Next investigation
+
+Changing TLS client alone did not resolve the home stall in this first round.
+Observe reversed-order rounds; prioritize the shared XHTTP/HTTP2 path while keeping
+Hetzner as a working control. No particular filtering mechanism, MTU issue or proxy
+bug is established. Validate any further transport variant locally before proposing
+production changes. Keep subscriptions and host networking unchanged.
