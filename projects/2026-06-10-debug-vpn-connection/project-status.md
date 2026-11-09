@@ -2,7 +2,7 @@
 
 ## Stage
 
-Recovery experiment deployed (PR #139); size/destination matrix prepared. Repair remains open.
+Size/destination matrix deployed (PR #141); FirstVDS entry-only role and bounded jitter prepared. Repair remains open.
 
 ## Verified baseline
 
@@ -40,22 +40,27 @@ small VPN, direct and ordinary-HTTPS checks passed at 5/30/60 seconds after down
 This cycle found no disruption lasting at least five seconds after the download;
 shorter and per-connection effects remain possible. Website smoke checks pass.
 
-## Next steps
+## Matrix result and current work
 
-Review/deploy the [size and destination matrix](TRANSFER-MATRIX.md): compare
-4/16/64 KiB direct and VPN downloads from Cloudflare and HTTPBingo on profiles 1/4.
-It replaces the recovery sequence and preserves quiet intervals and client guards.
-Set controlledExperiment=false to restore five remaining routine checker profiles.
-Not deployed yet.
+PR #141 deployed successfully in run 42584028890. First full matrix:
+profile 4 passes 4 KiB but fails 16/64 KiB against both Cloudflare and HTTPBingo;
+profile 1 and every direct control pass. This points toward size/path dependence,
+without proving DPI, MTU or a transport defect.
 
+PR #142 deployed in run 42585994166: FirstVDS → freedom removed, FirstVDS config
+reload confirmed and all five website smoke checks pass. Stable checker IDs retained.
 
-## FirstVDS direct-exit removal
+User now wants FirstVDS removed as an exit entirely, while keeping Hetzner and
+senaev-media exits. Prepared changes remove profile 2 and FirstVDS's internal SOCKS
+exit listener, freedom outbound and references from other nodes. FirstVDS remains
+the entry for profile 1. Checker IDs 1/3/4/5 stay stable; active experiment remains 1/4.
 
-Prepared a separate PR removing the FirstVDS → freedom subscription and seed-4
-server client/routing rule. Stable probeIndex values preserve checker IDs 1–5,
-including active experiment profiles 1 and 4. The unused exit mapping is removed,
-which will restart the checker pods on deployment. Collect the current matrix first.
-FirstVDS remains the entry for profile 1 and the exit for profile 2; removing this
-direct-entry/direct-exit route does not conceal the FirstVDS address generally.
-Pending review and deployment; existing cached seed-4 links stop working only after
-the Xray configuration is reloaded.
+Also prepared bounded jitter: matrix pauses 60–90s / 300–360s; routine light checks
+30–45s, routine heavy checks 300–360s, routine startup 0–20s. Existing request time,
+size and rate limits are unchanged. No fail-closed policy or Happ auth change is
+included pending the user's understanding/decision. XHTTP is the next separate
+transport comparison; current pinned TCP/Reality profile remains unchanged.
+
+Pending review/deployment. Set controlledExperiment=false to restore four routine
+checker profiles. Server config/port changes will restart affected VPN pods, so
+expect a short interruption and re-run website smoke checks after deployment.

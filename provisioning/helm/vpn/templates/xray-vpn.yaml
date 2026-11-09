@@ -102,7 +102,9 @@ spec:
           image: teddysun/xray:26.9.30
           ports:
             - containerPort: 443
+            {{- if ne $instance.exitEnabled false }}
             - containerPort: 1080
+            {{- end }}
           volumeMounts:
             - name: xray-vpn-config
               mountPath: /etc/xray
@@ -127,9 +129,11 @@ spec:
     - name: reality
       port: 443
       targetPort: 443
+    {{- if ne $instance.exitEnabled false }}
     - name: socks
       port: 1080
       targetPort: 1080
+    {{- end }}
 ---
 {{- end }}
 {{- end }}

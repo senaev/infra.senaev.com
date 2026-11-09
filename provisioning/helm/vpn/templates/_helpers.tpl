@@ -42,6 +42,7 @@
     "streamSettings" $streamSettings
   ) -}}
 {{- end -}}
+{{- if ne $instance.exitEnabled false }}
 {{- $inbounds = append $inbounds (dict
   "tag" "inbound-socks"
   "port" 1080
@@ -51,8 +52,10 @@
     "udp" true
   )
 ) -}}
+{{- end }}
 {{- $outbounds := list -}}
 {{- range $xrayInstance := $root.Values.xrayVpn.instances }}
+  {{- if ne $xrayInstance.exitEnabled false }}
   {{- $outbounds = append $outbounds (dict
     "tag" (printf "outbound-%s" $xrayInstance.vps)
     "protocol" "socks"
@@ -63,6 +66,7 @@
       ))
     )
   ) -}}
+  {{- end }}
 {{- end -}}
 {{- /*
   UseIPv4v6: IPv4 whenever the domain has an A record, IPv6 only for IPv6-only domains.
@@ -70,6 +74,7 @@
   ("network is unreachable"), so no IPv6 blackhole is needed.
   See projects/2026-10-04-k3s-dual-stack-ipv6/README.md
 */ -}}
+{{- if ne $instance.exitEnabled false }}
 {{- $outbounds = append $outbounds (dict
   "tag" "outbound-freedom"
   "protocol" "freedom"
@@ -80,6 +85,7 @@
   "inboundTag" (list "inbound-socks")
   "outboundTag" "outbound-freedom"
 ) -}}
+{{- end }}
 {{- $config := dict
   "log" (dict
     "access" "/dev/stdout"

@@ -1,3 +1,24 @@
+## 2026-11-09 08:49 UTC — Prepare FirstVDS entry-only role and checker jitter
+
+User explicitly retained Hetzner and senaev-media as exits, requested removal of
+FirstVDS as an exit, and approved timing randomization. Set exitEnabled=false for
+FirstVDS: remove profile 2 / UUID seed 2, its subscription and expected exit, the
+FirstVDS SOCKS listener/Service port, its freedom outbound and all cross-node SOCKS
+outbounds targeting it. Remaining checker IDs stay 1/3/4/5, active profiles 1/4.
+
+Jitter matrix quiet windows to 60–90s between conditions and 300–360s between rounds;
+record the condition's sampled quiet interval in logs. Routine startup is 0–20s,
+light cadence 30–45s and heavy cadence 300–360s. Preserve request size/rate/time limits,
+serial execution, minimum quiet periods, shutdown and child-exit guards. Dashboard
+matrix freshness increases to 20 minutes for the longer bounded cycle.
+
+The first full #141 matrix passed all direct controls and profile 1; profile 4
+passed 4 KiB but failed 16/64 KiB on both targets. #142 deployed successfully,
+FirstVDS reload was observed, all five manual website smoke checks passed.
+No new fail-closed routing, Happ authentication, XHTTP or host networking changes
+are included. Those were discussed separately; XHTTP remains the next comparison.
+Pending review/deployment.
+
 ## 2026-11-09 08:21 UTC — Prepare removal of FirstVDS direct exit
 
 User requested removing FirstVDS → freedom. Delete its subscription entry, server

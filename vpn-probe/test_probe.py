@@ -196,15 +196,18 @@ class DiagnosticTests(unittest.TestCase):
 
 
 class TransferTests(unittest.TestCase):
+    @patch('probe.random.uniform', return_value=75)
     @patch('probe.emit')
     @patch('probe.experiment_wait', return_value=False)
     @patch('probe.request', return_value=({'ok': True}, ''))
-    def test_exact_sizes_targets_routes_and_quiet_intervals(self, request, wait, emit):
+    def test_exact_sizes_targets_routes_and_quiet_intervals(self, request, wait, emit, uniform):
         self.assertTrue(probe.transfer_round('test', 'proxy'))
         calls = request.call_args_list
         self.assertEqual(len(calls), 18)
         self.assertEqual(wait.call_count, 5)
-        self.assertTrue(all(c.args[0] == 60 for c in wait.call_args_list))
+        self.assertTrue(all(c.args[0] == 75 for c in wait.call_args_list))
+        self.assertEqual(uniform.call_count, 5)
+        self.assertTrue(all(c.args == (60, 90) for c in uniform.call_args_list))
         for index, size in enumerate([4096, 4096, 16384, 16384, 65536, 65536]):
             direct, before, vpn = calls[index * 3:index * 3 + 3]
             self.assertEqual(direct.args[1:], ('', size))
@@ -293,13 +296,16 @@ class TransferTests(unittest.TestCase):
         stop.wait.assert_called_once_with(1)
         self.assertEqual(emit.call_args.args[3]['experiment_id'], 'cycle-one')
 
+    @patch('probe.random.uniform', return_value=330)
     @patch('probe.transfer_round', return_value=True)
-    def test_quiet_start_once_and_graceful_shutdown(self, run_round):
+    def test_quiet_start_once_and_graceful_shutdown(self, run_round, uniform):
         stop = Mock()
+        stop.is_set.return_value = False
         stop.wait.return_value = False
         with patch('probe.STOP', stop):
             self.assertEqual(probe.experiment_loop('test', 'proxy', once=True), 0)
-        stop.wait.assert_called_once_with(300)
+        stop.wait.assert_called_once_with(330)
+        uniform.assert_called_once_with(300, 360)
         stop.wait.return_value = True
         with patch('probe.STOP', stop):
             self.assertEqual(probe.experiment_loop('test', 'proxy'), 0)

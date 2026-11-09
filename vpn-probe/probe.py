@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import re
+import random
 import signal
 import socket
 import subprocess
@@ -225,13 +226,15 @@ def transfer_round(profile, proxy, child=None, rotation=0):
     conditions = conditions[offset:] + conditions[:offset]
     passed = True
     for index, (target, template, size) in enumerate(conditions):
-        if index and experiment_wait(60, child, profile, experiment_id):
+        quiet = random.uniform(60, 90) if index else 0
+        if index and experiment_wait(quiet, child, profile, experiment_id):
             return False
         if STOP.is_set():
             return False
         check = f"transfer_{target}_{size}"
         context = {"experiment_id": experiment_id, "target": target,
-                   "requested_bytes": size, "condition_index": index}
+                   "requested_bytes": size, "condition_index": index,
+                   "quiet_seconds_before": quiet}
         check_experiment_client(child, profile, experiment_id)
         direct, _ = request(template.format(size), "", size, expected_bytes=size)
         check_experiment_client(child, profile, experiment_id)
@@ -263,7 +266,10 @@ def transfer_round(profile, proxy, child=None, rotation=0):
 def experiment_loop(profile, proxy, once=False, child=None):
     # Five quiet minutes before each full matrix; one minute between conditions.
     rotation = 0
-    while not experiment_wait(300, child, profile):
+    while not STOP.is_set():
+        quiet = random.uniform(300, 360)
+        if experiment_wait(quiet, child, profile):
+            break
         passed = transfer_round(profile, proxy, child=child, rotation=rotation)
         if once:
             return 0 if passed else 1
@@ -357,7 +363,7 @@ def run(args):
             if os.environ.get("CONTROLLED_EXPERIMENT") == "true":
                 return experiment_loop(profile, proxy, once=args.once, child=child)
             # Stagger profiles; serial rounds skip missed slots instead of catching up.
-            STOP.wait(int(os.environ.get("PROFILE_INDEX", "0")) * 3 if not args.once else 0)
+            STOP.wait(random.uniform(0, 20) if not args.once else 0)
             due_light = due_heavy = time.monotonic()
             while not STOP.is_set():
                 if child.poll() is not None:
@@ -365,13 +371,13 @@ def run(args):
                 now = time.monotonic()
                 if now >= due_light:
                     passed = light(profile, proxy)
-                    due_light = time.monotonic() + 30
+                    due_light = time.monotonic() + random.uniform(30, 45)
                 if now >= due_heavy:
                     passed = heavy(profile, proxy, expected) and passed
                     address = config["outbounds"][0]["settings"]["vnext"][0]["address"]
                     if ":" in address:
                         ipv6_controls(profile, address)
-                    due_heavy = time.monotonic() + 300
+                    due_heavy = time.monotonic() + random.uniform(300, 360)
                 if args.once:
                     return 0 if passed else 1
                 STOP.wait(0.5)

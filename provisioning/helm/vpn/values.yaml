@@ -3,6 +3,7 @@ xrayVpn:
   instances:
     - name: xray-vpn-firstvds
       vps: firstvds
+      exitEnabled: false
       realityServerName: senaev.ru
       profiles:
         - user: user-socks
@@ -12,9 +13,6 @@ xrayVpn:
       vps: hetzner
       realityServerName: senaev.com
       profiles:
-        - user: user-socks
-          uuidMacro: "{XRAY_USER_UUID:2}"
-          outbound: outbound-firstvds
         - user: user-socks-senaev-media
           uuidMacro: "{XRAY_USER_UUID:3}"
           outbound: outbound-senaev-media
@@ -33,9 +31,6 @@ vpnSubscription:
     - probeIndex: 1
       name: "🇫🇮 1. firstvds → hetzner"
       link: "vless://{XRAY_USER_UUID:1}@senaev.ru:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.ru&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
-    - probeIndex: 2
-      name: "🇷🇺 2. hetzner → firstvds"
-      link: "vless://{XRAY_USER_UUID:2}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
     - probeIndex: 3
       name: "🇷🇺 3. hetzner → senaev-media"
       link: "vless://{XRAY_USER_UUID:3}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
@@ -54,13 +49,12 @@ ingress:
 
 vpnProbe:
   enabled: true
-  # Temporary controlled experiment; false restores all five routine profiles.
+  # Temporary controlled experiment; false restores all four routine profiles.
   controlledExperiment: true
   vps: senaev-media
   # UUID seeds identify subscription routes, including the IPv6 entry using seed 5.
   # "direct" compares the home exit to the probe's own public home IP.
   expectedExits:
     "1": senaev.com
-    "2": senaev.ru
     "3": direct
     "5": senaev.com
