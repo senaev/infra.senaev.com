@@ -63,4 +63,5 @@ vpnProbe:
 vpnXhttpExperiment:
   enabled: true
   diagnostics: true
+  sourceControl: true
   path: /_vpn-xhttp-test/

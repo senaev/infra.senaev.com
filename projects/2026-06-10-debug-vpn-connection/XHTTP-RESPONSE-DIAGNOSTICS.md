@@ -125,3 +125,43 @@ PR #146 now includes the bounded fresh/reused comparison described above, alongs
 the deployed evidence. It is not deployed. The historical table remains the result
 of #145, not a result of the new comparison. Production subscriptions, ingress,
 secrets, server transport settings and host networking are unchanged.
+
+## Prepared source control — Hetzner
+
+Add one isolated vpn-source-control-hetzner pod on Hetzner, using the same existing
+probe image and fresh-client function. It accesses senaev.com:443 with the same
+XHTTP path/UUID/TLS verification, never a private backend URL. Every cycle waits
+300–360s, makes one direct trace (4 KiB cap), waits 60–90s, then makes one fresh
+XHTTP trace with the same 8s total / 3s connect budget and 32 KiB/s rate cap. At most
+8 KiB response payload per cycle. There is no size matrix or reused client here.
+
+Metrics/log profile is `XHTTP source control — Hetzner`, with source_node and a
+separate profile_index=`source-control-hetzner` target label. Existing VMPodScrape,
+NetworkPolicy and dynamic dashboard profile selection cover the new pod. Compare
+fresh trace results in panels 20/21 with the home profile, joining direct controls
+by experiment_id in logs. No additional image, endpoint or service account rights.
+
+Existing Deployment selectors remain distinct. The new pod inherits the current
+DNS/public-443 egress and telemetry-only metrics ingress policy. A separate policy
+selects only this control and permits TCP443 to Hetzner's Traefik pod, accommodating
+public self-connect DNAT before policy enforcement. It allows neither backend8081
+nor fallback8443. Home policies, server configuration and subscriptions are unchanged.
+The pod is nonroot, readonly, drops all capabilities, has no mounted service-account
+token and retains the existing 200m/128Mi resource limits. Only one fresh client
+exists for its bounded request; cleanup is unchanged.
+
+This is a same-host public-endpoint self-connect control, not an independent
+external Europe-to-Hetzner route. Different DNS answers, destination routing,
+hairpin/NAT behavior, node policy and request times remain confounders. Success
+here while home fails points toward a source/path-dependent issue, not proof of
+DPI. Failure here can also be local hairpin/policy behavior; inspect backend logs
+before blaming XHTTP. Several comparable rounds are necessary.
+
+Rollback: vpnXhttpExperiment.sourceControl=false removes only the control
+Deployment and scoped frontend policy. Disabling diagnostics, experiment,
+controlledExperiment, probes or ingress also omits this control. Render checks
+verify the explicit rollback exactly matches main's chart output.
+
+After merge: verify rollout, source_node, scraper health, zero restarts/OOMs,
+website smoke checks, direct and validated fresh controls, and backend logs.
+No live result from this source exists yet.
