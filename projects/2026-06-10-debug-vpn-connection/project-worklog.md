@@ -1,3 +1,58 @@
+## 2026-11-09 — Address CodeRabbit before merge
+
+Candidate startup failure now emits a failed candidate_startup metric/log and
+continues independent baseline measurements. An already-running client's later exit
+still invalidates the cycle and restarts the checker. Added a regression test
+covering baseline preservation and sanitized logging. Clarified actual egress
+exclusions, normal dashboard gaps under rotating order, and deployed README status.
+
+Verification excerpts from this PR's checks:
+```
+PASS: disabled mode equals baseline; production resources/subscription unchanged; only probe 4 gets candidate; isolated private backend and scoped path/policy; ingress-off disables experiment
+Ran 40 tests in 0.062s
+OK
+Python syntax OK: 14 file(s)
+Helm charts OK
+Configuration OK.
+Configuration OK.
+```
+The rendered check verifies rollback/isolation; unit/syntax/Helm checks verify code
+and manifests. Both pinned Xray client/backend configs validate; CI's image build
+passed. The updated startup regression is run again before push.
+
+## 2026-11-09 11:13 UTC — Prepare isolated XHTTP/TLS comparison
+
+PR #143 deployed in run 42588940242: config reloads observed, zero VPN pod restarts
+and all five website smoke checks passed. User requested the next XHTTP experiment.
+
+Prepared a dedicated backend behind a scoped path on existing senaev.com:443 TLS
+fallback, plus a second loopback client only in profile 4. Existing server configs
+and subscriptions stay unchanged. Dedicated derived UUID seed xhttp-probe uses the
+existing secret. TLS verification remains enabled; Xray stays pinned to 26.9.30.
+Serial baseline/candidate transfers alternate order and preserve quiet periods,
+exit validation, failure invalidation and cancellation. TLS termination/proxying
+also changes, so improvement cannot be attributed to transport alone.
+
+Checksum-verified official Xray 26.9.30 / Traefik 3.2.0 local integration output:
+```
+PASS: verified TLS -> Reality fallback -> Traefik -> h2c XHTTP: 4096 bytes
+PASS: verified TLS -> Reality fallback -> Traefik -> h2c XHTTP: 16384 bytes
+PASS: verified TLS -> Reality fallback -> Traefik -> h2c XHTTP: 65536 bytes
+PASS: invalid VLESS credential cannot reach the HTTPS origin
+PASS: ordinary website route preserved
+```
+
+Temporary certificates/credentials and loopback listeners only; no cluster changes.
+The test trusts its certificate with verification enabled and explicitly permits
+its loopback origin. Production retains Xray private-target blocking and a NetworkPolicy with explicit
+RFC1918/tailnet/loopback/link-local/ULA exclusions; the policy does not enumerate
+every special-use range (such as 198.18.0.0/15). The reusable test waits for Traefik TLS routing readiness.
+
+Rendered verification: disabled mode equals baseline; existing resources/subscription
+unchanged; only probe 4 gets candidate; private backend accepts only Hetzner Traefik.
+Build-time real-binary tests cover both new configurations. Unit/syntax and Helm
+checks are recorded in the PR. Pending review/deployment.
+
 ## 2026-11-09 08:49 UTC — Prepare FirstVDS entry-only role and checker jitter
 
 User explicitly retained Hetzner and senaev-media as exits, requested removal of

@@ -35,24 +35,36 @@ def client_config(link, base_uuid, public_key, port=1080, invalid=False):
     link = link.replace(seed[0], str(uuid.uuid4()) if invalid else derived)
     url = urlsplit(link.replace("{XRAY_REALITY_PUBLIC_KEY}", public_key))
     params = parse_qs(url.query, keep_blank_values=True)
-    if (url.scheme != "vless" or not url.hostname or not url.port or
-            params.get("type") != ["tcp"] or params.get("security") != ["reality"] or
-            params.get("flow") != ["xtls-rprx-vision"]):
-        raise ValueError("Only VLESS TCP Reality Vision profiles are supported")
+    if url.scheme != "vless" or not url.hostname or not url.port:
+        raise ValueError("Invalid VLESS endpoint")
+    transport, security = params.get("type"), params.get("security")
+    user = {"id": url.username, "encryption": "none"}
+    if transport == ["tcp"] and security == ["reality"] and params.get("flow") == ["xtls-rprx-vision"]:
+        user["flow"] = "xtls-rprx-vision"
+        stream = {"network": "tcp", "security": "reality", "realitySettings": {
+            "serverName": params["sni"][0], "fingerprint": params["fp"][0],
+            "password": params["pbk"][0], "shortId": params.get("sid", [""])[0]}}
+    elif transport == ["xhttp"] and security == ["tls"] and not params.get("flow"):
+        path = params.get("path", [""])[0]
+        if not path.startswith("/") or not path.endswith("/") or params.get("mode") != ["packet-up"]:
+            raise ValueError("XHTTP requires a path and packet-up mode")
+        stream = {"network": "xhttp", "security": "tls",
+                  "tlsSettings": {"serverName": params["sni"][0],
+                                  "fingerprint": params["fp"][0], "alpn": ["h2"],
+                                  "allowInsecure": False},
+                  "xhttpSettings": {"path": path, "mode": "packet-up",
+                                    "extra": {"xmux": {"maxConnections": 1,
+                                                      "hKeepAlivePeriod": -1}}}}
+    else:
+        raise ValueError("Unsupported VPN transport/security combination")
     return {
         "log": {"access": "none", "error": "/dev/stderr", "loglevel": "warning"},
         "inbounds": [{"listen": "127.0.0.1", "port": port, "protocol": "socks",
                       "settings": {"auth": "noauth", "udp": False}}],
         # Deliberately no freedom/direct fallback outbound.
         "outbounds": [{"protocol": "vless", "settings": {"vnext": [{
-            "address": url.hostname, "port": url.port, "users": [{
-                "id": url.username, "encryption": "none", "flow": params["flow"][0]}]}]},
-            "streamSettings": {"network": "tcp", "security": "reality",
-                               "realitySettings": {
-                                   "serverName": params["sni"][0],
-                                   "fingerprint": params["fp"][0],
-                                   "password": params["pbk"][0],
-                                   "shortId": params.get("sid", [""])[0]}}}]}, seed[1]
+            "address": url.hostname, "port": url.port, "users": [user]}]},
+            "streamSettings": stream}]}, seed[1]
 
 
 def request(url, proxy, max_bytes, expected_status=200, expected_bytes=None, timeout=8):
@@ -186,11 +198,14 @@ def ipv6_controls(profile, address):
 
 
 def check_experiment_client(child, profile, experiment_id=None):
-    if child is not None and not STOP.is_set() and child.poll() is not None:
-        emit(profile, "experiment_client_alive", "vpn", {
-            "ok": False, "failure": "client_exited", "cycle_invalid": True,
-            **({"experiment_id": experiment_id} if experiment_id else {})})
-        raise RuntimeError("client_exited")
+    children = child if isinstance(child, tuple) else (child,)
+    for index, process in enumerate(children):
+        if process is not None and not STOP.is_set() and process.poll() is not None:
+            emit(profile, "experiment_client_alive", "vpn", {
+                "ok": False, "failure": "client_exited", "cycle_invalid": True,
+                "client_index": index,
+                **({"experiment_id": experiment_id} if experiment_id else {})})
+            raise RuntimeError("client_exited")
 
 
 def experiment_wait(delay, child, profile, experiment_id=None):
@@ -214,7 +229,24 @@ TRANSFER_TARGETS = (
 TRANSFER_SIZES = (4096, 16384, 65536)
 
 
-def transfer_round(profile, proxy, child=None, rotation=0):
+def xhttp_exit_control(profile, proxy, experiment_id):
+    if STOP.is_set():
+        return False
+    result, body = request("https://www.cloudflare.com/cdn-cgi/trace", proxy, 4096)
+    if STOP.is_set():
+        return False
+    try:
+        if result["ok"]:
+            observed = trace_ip(body)
+            result.update(exit_ip=observed, expected_exit="senaev.com",
+                          ok=observed in resolve_exit("senaev.com"))
+    except (ValueError, OSError, subprocess.SubprocessError):
+        result.update(ok=False, failure="exit_validation_failed")
+    emit(profile, "exit_ip", "xhttp", {**result, "experiment_id": experiment_id})
+    return result["ok"]
+
+
+def transfer_round(profile, proxy, child=None, rotation=0, xhttp_proxy=None):
     """Fixed size/destination matrix, paired direct/VPN, no overlapping transfers."""
     experiment_id = str(uuid.uuid4())
     check_experiment_client(child, profile, experiment_id)
@@ -225,6 +257,8 @@ def transfer_round(profile, proxy, child=None, rotation=0):
     offset = rotation % len(conditions)
     conditions = conditions[offset:] + conditions[:offset]
     passed = True
+    candidate_exit_ok = None
+    variants = [("vpn", proxy)] + ([("xhttp", xhttp_proxy)] if xhttp_proxy else [])
     for index, (target, template, size) in enumerate(conditions):
         quiet = random.uniform(60, 90) if index else 0
         if index and experiment_wait(quiet, child, profile, experiment_id):
@@ -243,34 +277,55 @@ def transfer_round(profile, proxy, child=None, rotation=0):
         if STOP.is_set():
             return False
 
-        before, _ = request("https://www.gstatic.com/generate_204", proxy,
-                            4096, expected_status=204)
-        check_experiment_client(child, profile, experiment_id)
-        emit(profile, "transfer_precheck", "vpn", {**before, **context})
-        if STOP.is_set():
-            return False
-        if not before["ok"]:
-            emit(profile, "transfer_skipped", "vpn", {
-                "ok": False, "failure": "positive_control_failed", **context})
-            passed = False
-            continue
-        result, _ = request(template.format(size), proxy, size, expected_bytes=size)
-        check_experiment_client(child, profile, experiment_id)
-        emit(profile, check, "vpn", {
-            **result, **context, "direct_control_ok": direct["ok"],
-            "comparison_inconclusive": not direct["ok"]})
-        passed = result["ok"] and passed
+        ordered = variants if (index + rotation) % 2 == 0 else list(reversed(variants))
+        for variant_index, (route, address) in enumerate(ordered):
+            variant_context = context
+            if variant_index:
+                pause = random.uniform(60, 90)
+                if experiment_wait(pause, child, profile, experiment_id):
+                    return False
+                variant_context = {**context, "quiet_seconds_before": pause}
+            if route == "xhttp":
+                if candidate_exit_ok is None:
+                    check_experiment_client(child, profile, experiment_id)
+                    candidate_exit_ok = xhttp_exit_control(profile, address, experiment_id)
+                    check_experiment_client(child, profile, experiment_id)
+                if not candidate_exit_ok:
+                    emit(profile, "transfer_skipped", route, {
+                        "ok": False, "failure": "exit_control_failed", **variant_context})
+                    passed = False
+                    continue
+            if STOP.is_set():
+                return False
+            before, _ = request("https://www.gstatic.com/generate_204", address,
+                                4096, expected_status=204)
+            check_experiment_client(child, profile, experiment_id)
+            emit(profile, "transfer_precheck", route, {**before, **variant_context})
+            if STOP.is_set():
+                return False
+            if not before["ok"]:
+                emit(profile, "transfer_skipped", route, {
+                    "ok": False, "failure": "positive_control_failed", **variant_context})
+                passed = False
+                continue
+            result, _ = request(template.format(size), address, size, expected_bytes=size)
+            check_experiment_client(child, profile, experiment_id)
+            emit(profile, check, route, {
+                **result, **variant_context, "direct_control_ok": direct["ok"],
+                "comparison_inconclusive": not direct["ok"]})
+            passed = result["ok"] and passed
     return passed
 
 
-def experiment_loop(profile, proxy, once=False, child=None):
+def experiment_loop(profile, proxy, once=False, child=None, xhttp_proxy=None):
     # Five quiet minutes before each full matrix; one minute between conditions.
     rotation = 0
     while not STOP.is_set():
         quiet = random.uniform(300, 360)
         if experiment_wait(quiet, child, profile):
             break
-        passed = transfer_round(profile, proxy, child=child, rotation=rotation)
+        passed = transfer_round(profile, proxy, child=child, rotation=rotation,
+                                xhttp_proxy=xhttp_proxy)
         if once:
             return 0 if passed else 1
         rotation += 1
@@ -289,7 +344,7 @@ def stop_client(child):
 
 
 def start_client(config, folder):
-    path = Path(folder) / "config.json"
+    path = Path(folder) / f"config-{config['inbounds'][0]['port']}.json"
     path.write_text(json.dumps(config))
     path.chmod(0o600)
     child = subprocess.Popen(["xray", "run", "-config", str(path)], stdout=subprocess.DEVNULL)
@@ -358,10 +413,26 @@ def run(args):
         if args.invalid:
             return negative(profile, link, base, key, folder)
         child = start_client(config, folder)
+        xhttp_child = None
         proxy = f'socks5h://127.0.0.1:{config["inbounds"][0]["port"]}'
         try:
             if os.environ.get("CONTROLLED_EXPERIMENT") == "true":
-                return experiment_loop(profile, proxy, once=args.once, child=child)
+                xhttp_proxy = None
+                if os.environ.get("XHTTP_PROFILE_LINK"):
+                    try:
+                        candidate, _ = client_config(os.environ["XHTTP_PROFILE_LINK"],
+                                                     base, key, port=1082)
+                        xhttp_child = start_client(candidate, folder)
+                        xhttp_proxy = "socks5h://127.0.0.1:1082"
+                        emit(profile, "candidate_startup", "xhttp", {"ok": True})
+                    except (KeyError, ValueError, RuntimeError, OSError) as error:
+                        # Candidate failure must not suppress the independent baseline.
+                        emit(profile, "candidate_startup", "xhttp", {
+                            "ok": False, "failure": "candidate_unavailable",
+                            "error_type": type(error).__name__})
+                return experiment_loop(profile, proxy, once=args.once,
+                                       child=(child, xhttp_child),
+                                       xhttp_proxy=xhttp_proxy)
             # Stagger profiles; serial rounds skip missed slots instead of catching up.
             STOP.wait(random.uniform(0, 20) if not args.once else 0)
             due_light = due_heavy = time.monotonic()
@@ -382,6 +453,8 @@ def run(args):
                     return 0 if passed else 1
                 STOP.wait(0.5)
         finally:
+            if xhttp_child is not None:
+                stop_client(xhttp_child)
             stop_client(child)
     return 0
 
