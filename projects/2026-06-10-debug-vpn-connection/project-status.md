@@ -4,7 +4,8 @@
 
 PR #149 deployed successfully at fd84179 in run42642463181. First Chrome/native
 TLS pair is complete: both work from Hetzner, both stall from home after TLS.
-Added jitter is visible in logs. Repair remains open; no new runtime change prepared.
+Added jitter is visible in logs. PR #150 prepares native HTTP/2 versus HTTP/1.1.
+Repair remains open; the new HTTP-version comparison is not deployed.
 
 ## Deployed configuration
 
@@ -52,10 +53,17 @@ All intended workloads available, three targets scraped, new pods at zero restar
 all five website smoke checks passed, no client startup/exit failures found.
 [Raw first-round evidence](sources/2026-11-09-tls-comparison.txt).
 
-## Next investigation
+## Next investigation — PR #150 prepared
 
-Changing TLS client alone did not resolve the home stall in this first round.
-Observe reversed-order rounds; prioritize the shared XHTTP/HTTP2 path while keeping
-Hetzner as a working control. No particular filtering mechanism, MTU issue or proxy
-bug is established. Validate any further transport variant locally before proposing
-production changes. Keep subscriptions and host networking unchanged.
+Replace the completed Chrome/native diagnostic pair with fresh native-TLS clients
+over HTTP/2 and HTTP/1.1 on home and Hetzner, alternating order. Only ALPN differs;
+endpoint, TLS implementation, certificate verification, packet-up, budgets, rate,
+size, jitter and original candidate acceptance stay fixed. Existing native H2
+metric remains; H1 has a separate fixed check in existing panels20/21. Traffic
+volume and number of temporary processes do not increase.
+
+Local pinned-binary integration validates both versions, expected exit, rejection
+of untrusted certificates and process cleanup. No live H1 result exists yet.
+Observe reversed-order rounds after deployment; a version-dependent result still
+does not establish DPI, MTU or a proxy bug. No production subscription, server,
+network policy, secret or host networking change. Keep Hetzner as a positive control.

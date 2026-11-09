@@ -18,7 +18,7 @@ class SourceControlTests(unittest.TestCase):
         self.assertEqual(fresh.call_args.args[2], emit.call_args.args[3]['experiment_id'])
         self.assertTrue(300 <= wait.call_args_list[0].args[0] <= 360)
         self.assertEqual(wait.call_count, 1)
-        self.assertEqual(fresh.call_args.kwargs, {'native_first': False})
+        self.assertEqual(fresh.call_args.kwargs, {'http1_first': False})
 
     @patch('probe.emit')
     @patch('probe.experiment_wait', return_value=False)

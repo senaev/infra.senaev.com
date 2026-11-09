@@ -770,3 +770,6 @@ a contemporaneous home trace still stalled after destination TLS. See
 
 PR #149 deployed fresh Chrome/native TLS over HTTP/2 and short request jitter.
 In the first round both clients passed on Hetzner and stalled from home. [Details and limits](XHTTP-RESPONSE-DIAGNOSTICS.md#validation-and-scope-of-this-iteration).
+
+PR #150 prepares the next comparison: fresh native TLS with HTTP/2 versus HTTP/1.1
+from both sources, retaining jitter and limits. [Scope and local verification](XHTTP-RESPONSE-DIAGNOSTICS.md#next-comparison-prepared--native-http2-versus-http11).

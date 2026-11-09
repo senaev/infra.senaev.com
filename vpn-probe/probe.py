@@ -252,11 +252,14 @@ def xhttp_exit_control(profile, proxy, experiment_id, timeout=8, check="exit_ip"
     return result["ok"]
 
 
-def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False):
+def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, http1=False):
     """One request through a separate process; never reset the matrix candidate."""
     if STOP.is_set():
         return False
-    check = "diagnostic_native_trace" if native_tls else "diagnostic_fresh_trace"
+    if http1 and not native_tls:
+        raise ValueError("HTTP1 diagnostic requires native TLS")
+    check = ("diagnostic_native_h1_trace" if http1 else
+             "diagnostic_native_trace" if native_tls else "diagnostic_fresh_trace")
     passed = False
     fresh = None
     try:
@@ -266,6 +269,8 @@ def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False):
         config["log"]["loglevel"] = "info"
         if native_tls:
             config["outbounds"][0]["streamSettings"]["tlsSettings"]["fingerprint"] = "unsafe"
+        if http1:
+            config["outbounds"][0]["streamSettings"]["tlsSettings"]["alpn"] = ["http/1.1"]
         with tempfile.TemporaryDirectory(prefix="vpn-fresh-client-") as folder:
             try:
                 fresh = start_client(config, folder)
@@ -292,11 +297,11 @@ def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False):
     return passed
 
 
-def xhttp_transport_controls(profile, child, experiment_id, native_first=False):
-    """Fresh processes for both TLS clients; original matrix acceptance is untouched."""
+def xhttp_transport_controls(profile, child, experiment_id, http1_first=False):
+    """Fresh processes for both HTTP versions; original matrix acceptance is untouched."""
     passed = True
-    versions = [True, False] if native_first else [False, True]
-    for native_tls in versions:
+    versions = [True, False] if http1_first else [False, True]
+    for http1 in versions:
         quiet = random.uniform(60, 90)
         if experiment_wait(quiet, child, profile, experiment_id):
             return False
@@ -304,17 +309,18 @@ def xhttp_transport_controls(profile, child, experiment_id, native_first=False):
             return False
         check_experiment_client(child, profile, experiment_id)
         emit(profile, "diagnostic_transport_order", "xhttp", {
-            "ok": True, "tls_client": "native" if native_tls else "chrome", "native_first": native_first,
+            "ok": True, "tls_client": "native", "http_version": "1.1" if http1 else "2",
+            "http1_first": http1_first,
             "quiet_seconds_before": quiet,
             "experiment_id": experiment_id})
-        result = fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=native_tls)
+        result = fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=True, http1=http1)
         check_experiment_client(child, profile, experiment_id)
         passed = result and passed
     return passed
 
 
-def xhttp_response_diagnostics(profile, baseline, child, experiment_id, native_first=False):
-    """Same trace/budgets through fresh Chrome/native TLS clients; never promote either."""
+def xhttp_response_diagnostics(profile, baseline, child, experiment_id, http1_first=False):
+    """Same trace/budgets through fresh native TLS H2/H1 clients; never promote either."""
     trace = "https://www.cloudflare.com/cdn-cgi/trace"
     for route, address in [("direct", ""), ("vpn", baseline)]:
         jitter = random.uniform(2, 7)
@@ -327,7 +333,7 @@ def xhttp_response_diagnostics(profile, baseline, child, experiment_id, native_f
         check_experiment_client(child, profile, experiment_id)
         emit(profile, "diagnostic_trace", route, {**result, "experiment_id": experiment_id,
                                                    "request_jitter_seconds": jitter})
-    xhttp_transport_controls(profile, child, experiment_id, native_first=native_first)
+    xhttp_transport_controls(profile, child, experiment_id, http1_first=http1_first)
 
 
 def transfer_round(profile, proxy, child=None, rotation=0, xhttp_proxy=None, diagnostics=False):
@@ -376,7 +382,7 @@ def transfer_round(profile, proxy, child=None, rotation=0, xhttp_proxy=None, dia
                     check_experiment_client(child, profile, experiment_id)
                     if not candidate_exit_ok and diagnostics:
                         xhttp_response_diagnostics(profile, proxy, child, experiment_id,
-                                                   native_first=bool(rotation % 2))
+                                                   http1_first=bool(rotation % 2))
                 if not candidate_exit_ok:
                     emit(profile, "transfer_skipped", route, {
                         "ok": False, "failure": "exit_control_failed", **variant_context})
@@ -485,7 +491,7 @@ def xhttp_source_control(profile, once=False):
         experiment_id = str(uuid.uuid4())
         result, _ = request("https://www.cloudflare.com/cdn-cgi/trace", "", 4096)
         emit(profile, "diagnostic_trace", "direct", {**result, "experiment_id": experiment_id})
-        passed = xhttp_transport_controls(profile, None, experiment_id, native_first=bool(rotation % 2))
+        passed = xhttp_transport_controls(profile, None, experiment_id, http1_first=bool(rotation % 2))
         rotation += 1
         if once:
             return 0 if passed and result["ok"] else 1

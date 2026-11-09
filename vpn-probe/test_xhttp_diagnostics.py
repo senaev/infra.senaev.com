@@ -20,9 +20,10 @@ class DiagnosticTests(unittest.TestCase):
     @patch('probe.experiment_wait', return_value=False)
     @patch('probe.fresh_xhttp_exit_control', return_value=True)
     def test_same_trace_budgets_and_alternating_serial_order(self, fresh, wait, emit):
-        for native_first in [False, True]:
-            self.assertTrue(probe.xhttp_transport_controls('test', None, 'round', native_first))
-        self.assertEqual([x.kwargs['native_tls'] for x in fresh.call_args_list], [False, True, True, False])
+        for http1_first in [False, True]:
+            self.assertTrue(probe.xhttp_transport_controls('test', None, 'round', http1_first))
+        self.assertEqual([x.kwargs['http1'] for x in fresh.call_args_list], [False, True, True, False])
+        self.assertTrue(all(x.kwargs['native_tls'] is True for x in fresh.call_args_list))
         self.assertTrue(all(x.args == ('test', None, 'round') for x in fresh.call_args_list))
         self.assertEqual(wait.call_count, 4)
         self.assertTrue(all(60 <= x.args[0] <= 90 for x in wait.call_args_list))
@@ -38,7 +39,7 @@ class DiagnosticTests(unittest.TestCase):
                             and x.args[2] == 4096 for x in request.call_args_list))
         self.assertEqual(wait.call_count, 2)
         self.assertTrue(all(2 <= x.args[0] <= 7 for x in wait.call_args_list))
-        versions.assert_called_once_with('test', None, 'round', native_first=False)
+        versions.assert_called_once_with('test', None, 'round', http1_first=False)
 
     @patch('probe.emit')
     @patch('probe.experiment_wait', return_value=True)
@@ -173,3 +174,24 @@ class FreshClientTests(unittest.TestCase):
         self.assertEqual(start.call_args.args[0], expected)
         control.assert_called_once_with('test', 'socks5h://127.0.0.1:1083', 'round', check='diagnostic_native_trace')
         stop.assert_called_once_with(start.return_value)
+
+    @patch('probe.stop_client')
+    @patch('probe.start_client')
+    @patch('probe.xhttp_exit_control', return_value=True)
+    def test_native_http1_changes_only_alpn_and_separate_check(self, control, start, stop):
+        start.return_value.poll.return_value = None
+        self.assertTrue(probe.fresh_xhttp_exit_control('test', None, 'round', native_tls=True))
+        h2 = start.call_args.args[0]
+        self.assertTrue(probe.fresh_xhttp_exit_control('test', None, 'round', native_tls=True, http1=True))
+        h1 = start.call_args.args[0]
+        h2['outbounds'][0]['streamSettings']['tlsSettings']['alpn'] = ['http/1.1']
+        self.assertEqual(h1, h2)
+        self.assertFalse(h1['outbounds'][0]['streamSettings']['tlsSettings']['allowInsecure'])
+        self.assertEqual(control.call_args.kwargs['check'], 'diagnostic_native_h1_trace')
+        self.assertEqual(stop.call_count, 2)
+
+    @patch('probe.start_client')
+    def test_http1_without_native_tls_is_rejected_before_start(self, start):
+        with self.assertRaises(ValueError):
+            probe.fresh_xhttp_exit_control('test', None, 'round', http1=True)
+        start.assert_not_called()

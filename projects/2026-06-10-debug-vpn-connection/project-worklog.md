@@ -1,3 +1,32 @@
+## 2026-11-09 15:34 UTC — Prepare native HTTP-version comparison
+
+User approved the next stage. Latest snapshot still shows one completed #149 home
+pair (both TLS clients failed) and one completed Hetzner pair (both passed); no
+reversed-order home result is claimed. Prepared PR #150 to replace that pair with
+fresh native-TLS HTTP2/HTTP1.1 controls on both sources, alternating order. Only
+ALPN changes. Original Chrome/H2 candidate, acceptance, request limits, traffic
+count, jitter, endpoint/UUID and verification are unchanged. Separate H1 check
+uses the existing Grafana diagnostic regex. No chart/server/policy/host change.
+
+This avoids the invalid earlier Chrome+HTTP1 combination: both new arms use native
+Go TLS and are checked through the real local chain. Verbatim validation output:
+```
+Ran 63 tests in 0.177s
+OK
+Python syntax OK: 16 file(s)
+PASS: verified TLS -> Reality fallback -> Traefik -> h2c XHTTP: 4096 bytes
+PASS: verified TLS -> Reality fallback -> Traefik -> h2c XHTTP: 16384 bytes
+PASS: verified TLS -> Reality fallback -> Traefik -> h2c XHTTP: 65536 bytes
+PASS: native HTTP2/HTTP1.1 controls validate exit, reject untrusted TLS and release loopback 1083
+PASS: invalid VLESS credential cannot reach the HTTPS origin
+PASS: ordinary website route preserved
+```
+Combined unit/syntax/integration verification completed in6.61s. Tests assert only
+ALPN differs between native arms, invalid Chrome/H1 is rejected before startup,
+both arms execute after a failure, order reversal, cancellation, cleanup and no
+promotion of the failed matrix. Real integration logs report HTTP version2 and1.1.
+No live H1 result yet; pending CI/review/merge/deployment.
+
 ## 2026-11-09 15:28 UTC — Deploy TLS comparison and observe the first pair
 
 User authorized merge, deployment follow-up and logs/metrics checks. PR #149 merged
