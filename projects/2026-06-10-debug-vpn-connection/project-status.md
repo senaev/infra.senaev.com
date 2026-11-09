@@ -40,7 +40,8 @@ passed; one intermediate senaev.ru SSL timeout cleared on immediate rerun.
 
 Fresh Chrome/native TLS use HTTP/2 from both sources, alternating order. Endpoint,
 credentials, certificate verification and request limits remain fixed. Short2–7s
-jitter now precedes direct/TCP diagnostic traces and precheck/download gaps.
+jitter now precedes home direct/TCP diagnostic traces and precheck/download gaps.
+The Hetzner direct control follows its randomized 300–360s round wait.
 Existing60–90s/300–360s jitter remains. Native TLS does not disable certificate checks.
 
 First round (Chrome first):
