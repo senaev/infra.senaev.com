@@ -1,3 +1,25 @@
+## 2026-11-09 08:21 UTC — Prepare removal of FirstVDS direct exit
+
+User requested removing FirstVDS → freedom. Delete its subscription entry, server
+VLESS client UUID seed 4, corresponding user route and obsolete expected-exit mapping.
+Preserve every remaining link and stable checker IDs by adding explicit probeIndex
+values rather than renumbering array positions. Controlled selection remains 1/4.
+The subscription service already projects name/link, ignoring checker metadata.
+
+Validation:
+```
+PASS: removed seed-4 server client/rule/subscription; other servers identical; remaining probe IDs/routes/selectors preserved, only obsolete exit map key removed
+Helm charts OK
+```
+
+The complete diff comparison found expected-exit map cleanup changes the remaining
+checker pod environments; rollout will restart them. Wait for the current matrix
+before deploying this separate PR. The FirstVDS Xray reloader will also restart its
+pod, briefly affecting FirstVDS entry and its website fallback. Removal is not live
+yet. Cached seed-4 links are invalidated server-side after reload; other FirstVDS
+entry/exit routes remain by design. No host networking, credentials or permissions
+changed.
+
 ## 2026-11-09 08:04 UTC — Prepare size/destination transfer matrix
 
 Recovery experiment #139 deployed in run 42581455020. First-cycle logs:

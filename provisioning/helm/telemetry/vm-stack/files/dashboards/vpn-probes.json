@@ -36,7 +36,7 @@
       "id": 2,
       "title": "Reachable probe exporters",
       "type": "stat",
-      "description": "Expected: six exporters. This is not VPN connectivity.",
+      "description": "Expected: two exporters in controlled experiment mode, five in routine mode. This is not VPN connectivity.",
       "datasource": {
         "type": "prometheus",
         "uid": "P4169E866C3094E38"
