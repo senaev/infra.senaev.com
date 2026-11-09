@@ -26,7 +26,11 @@ attempt on FirstVDS involved different conditions.
 
 Separate non-root backend on Hetzner, using the existing pinned checker image.
 NetworkPolicy allows inbound 8081 only from Hetzner Traefik pods, and outbound DNS
-and public TCP 443. Private/tailnet destinations remain blocked. Only checker
+and public TCP 443. The policy explicitly excludes RFC1918, tailnet, loopback, IPv4 link-local,
+IPv6 ULA/link-local and unspecified ranges. It does not enumerate every special-use
+range (for example, 198.18.0.0/15). Pinned Xray's default private-target blocking is
+an additional restriction; this is not a guarantee that every non-public address
+is excluded by NetworkPolicy. Only checker
 profile 4 gets an extra loopback client on 1082. Profile 1 stays the working reference.
 No new public port, DNS record, production profile, host-network setting, secret
 store or privilege. Disabled ingress/routine mode omit the candidate.
@@ -36,7 +40,10 @@ store or privilege. Disabled ingress/routine mode omit the candidate.
 Each size/destination condition has a direct control and serial TCP/Reality and
 XHTTP/TLS transfers. Variant order alternates; condition order rotates. Quiet
 intervals remain 60–90s between variants/conditions and 300–360s between rounds.
-Both client processes are monitored; an exit invalidates the cycle.
+Both started client processes are monitored; a later exit invalidates the cycle.
+If candidate startup itself fails, a failed candidate_startup metric/log is emitted
+and baseline-only measurements continue. Candidate startup is retried only when the
+checker restarts; inspect this failure before interpreting an absent xhttp series.
 
 XHTTP must first validate its public exit against senaev.com. Failure skips candidate
 transfers while baseline checks continue. Each variant also needs a small HTTPS
@@ -52,7 +59,9 @@ Profile 4's full round can take roughly 17–28 minutes including quiet time. Di
 controls precede the pair, not both variants simultaneously. Other clients, target
 behavior, CPU, reuse and unsynchronized profiles remain confounders.
 Logs correlate cycle/condition/route; fixed route xhttp is exported to Grafana.
-Matrix/candidate-exit freshness is thirty minutes. Inspect skipped/invalid cycles.
+Matrix/candidate-exit freshness is thirty minutes. Rotating a condition from first
+to last can produce normal gaps exceeding this window; missing data alone is not
+proof of a skipped or invalid cycle. Inspect logs, sample timestamps and client state.
 
 ## Verification and rollback
 

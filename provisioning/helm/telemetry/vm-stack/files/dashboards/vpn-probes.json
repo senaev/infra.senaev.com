@@ -942,7 +942,7 @@
       "id": 16,
       "title": "TCP/Reality vs XHTTP/TLS — size / destination / route",
       "type": "state-timeline",
-      "description": "Fixed size/destination checks, paired direct and VPN. Results older than 30 minutes are hidden. Failed direct controls make paired comparisons inconclusive; see logs. Client exit invalidates the cycle. Route vpn is baseline TCP/Reality; xhttp is the candidate on profile 4. This also changes TLS termination and proxying.",
+      "description": "Fixed size/destination checks, paired direct and VPN. Results older than 30 minutes are hidden. Failed direct controls make paired comparisons inconclusive; see logs. Client exit invalidates the cycle. Route vpn is baseline TCP/Reality; xhttp is the candidate on profile 4. This also changes TLS termination and proxying. Rotating order may leave normal gaps longer than the freshness window; a gap alone is not evidence of failure.",
       "datasource": {
         "type": "prometheus",
         "uid": "P4169E866C3094E38"
@@ -1028,7 +1028,7 @@
       "id": 17,
       "title": "TCP/Reality vs XHTTP/TLS — duration",
       "type": "timeseries",
-      "description": "Fixed size/destination checks, paired direct and VPN. Results older than 30 minutes are hidden. Failed direct controls make paired comparisons inconclusive; see logs. Client exit invalidates the cycle. Route vpn is baseline TCP/Reality; xhttp is the candidate on profile 4. This also changes TLS termination and proxying.",
+      "description": "Fixed size/destination checks, paired direct and VPN. Results older than 30 minutes are hidden. Failed direct controls make paired comparisons inconclusive; see logs. Client exit invalidates the cycle. Route vpn is baseline TCP/Reality; xhttp is the candidate on profile 4. This also changes TLS termination and proxying. Rotating order may leave normal gaps longer than the freshness window; a gap alone is not evidence of failure.",
       "datasource": {
         "type": "prometheus",
         "uid": "P4169E866C3094E38"
@@ -1077,7 +1077,7 @@
       "id": 18,
       "title": "TCP/Reality vs XHTTP/TLS — received bytes",
       "type": "timeseries",
-      "description": "Fixed size/destination checks, paired direct and VPN. Results older than 30 minutes are hidden. Failed direct controls make paired comparisons inconclusive; see logs. Client exit invalidates the cycle. Route vpn is baseline TCP/Reality; xhttp is the candidate on profile 4. This also changes TLS termination and proxying.",
+      "description": "Fixed size/destination checks, paired direct and VPN. Results older than 30 minutes are hidden. Failed direct controls make paired comparisons inconclusive; see logs. Client exit invalidates the cycle. Route vpn is baseline TCP/Reality; xhttp is the candidate on profile 4. This also changes TLS termination and proxying. Rotating order may leave normal gaps longer than the freshness window; a gap alone is not evidence of failure.",
       "datasource": {
         "type": "prometheus",
         "uid": "P4169E866C3094E38"
@@ -1124,9 +1124,9 @@
     },
     {
       "id": 19,
-      "title": "XHTTP candidate — expected Hetzner exit",
+      "title": "XHTTP candidate — startup and expected exit",
       "type": "stat",
-      "description": "Candidate must reach the trace endpoint and match the current senaev.com exit address before its matrix transfers run. Thirty-minute freshness for the longer serial round.",
+      "description": "Candidate must reach the trace endpoint and match the current senaev.com exit address before its matrix transfers run. Thirty-minute freshness for the longer serial round. Rotating order may leave normal gaps longer than the freshness window; a gap alone is not evidence of failure.",
       "datasource": {
         "type": "prometheus",
         "uid": "P4169E866C3094E38"
@@ -1140,12 +1140,12 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "vpn_probe_success{job=\"vpn-probe\",profile=~\"$profile\",check=\"exit_ip\",route=\"xhttp\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",check=\"exit_ip\",route=\"xhttp\"}) < 1800)",
+          "expr": "vpn_probe_success{job=\"vpn-probe\",profile=~\"$profile\",check=~\"exit_ip|candidate_startup\",route=\"xhttp\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",check=~\"exit_ip|candidate_startup\",route=\"xhttp\"}) < 1800)",
           "datasource": {
             "type": "prometheus",
             "uid": "P4169E866C3094E38"
           },
-          "legendFormat": "{{profile}} · xhttp",
+          "legendFormat": "{{profile}} · {{check}}",
           "instant": true,
           "range": false
         }

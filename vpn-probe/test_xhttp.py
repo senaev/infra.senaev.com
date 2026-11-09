@@ -111,3 +111,26 @@ class XhttpTests(unittest.TestCase):
         with patch('probe.STOP', stop):
             self.assertFalse(probe.xhttp_exit_control('test', 'proxy', 'round'))
         request.assert_not_called()
+
+    @patch('probe.signal.signal')
+    @patch('probe.emit')
+    @patch('probe.stop_client')
+    @patch('probe.start_client')
+    @patch('probe.experiment_loop', return_value=0)
+    def test_failed_candidate_start_preserves_baseline(self, loop, start, stop, emit, signal):
+        baseline = Mock()
+        start.side_effect = [baseline, RuntimeError('private-error-detail')]
+        env = {
+            'PROFILE_NAME': 'test',
+            'PROFILE_LINK': 'vless://{XRAY_USER_UUID:5}@senaev.com:443?type=tcp&security=reality&flow=xtls-rprx-vision&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid=',
+            'XRAY_USER_UUID': 'base', 'XRAY_REALITY_PUBLIC_KEY': 'unused',
+            'EXPECTED_EXITS': '{"5":"senaev.com"}',
+            'CONTROLLED_EXPERIMENT': 'true', 'XHTTP_PROFILE_LINK': LINK}
+        with patch.dict(os.environ, env):
+            self.assertEqual(probe.run(Mock(once=False, invalid=False)), 0)
+        self.assertEqual(loop.call_args.kwargs['child'], (baseline, None))
+        self.assertIsNone(loop.call_args.kwargs['xhttp_proxy'])
+        stop.assert_called_once_with(baseline)
+        self.assertEqual(emit.call_args.args[1:3], ('candidate_startup', 'xhttp'))
+        self.assertFalse(emit.call_args.args[3]['ok'])
+        self.assertNotIn('private-error-detail', str(emit.call_args))

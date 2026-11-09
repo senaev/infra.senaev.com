@@ -419,10 +419,17 @@ def run(args):
             if os.environ.get("CONTROLLED_EXPERIMENT") == "true":
                 xhttp_proxy = None
                 if os.environ.get("XHTTP_PROFILE_LINK"):
-                    candidate, _ = client_config(os.environ["XHTTP_PROFILE_LINK"],
-                                                 base, key, port=1082)
-                    xhttp_child = start_client(candidate, folder)
-                    xhttp_proxy = "socks5h://127.0.0.1:1082"
+                    try:
+                        candidate, _ = client_config(os.environ["XHTTP_PROFILE_LINK"],
+                                                     base, key, port=1082)
+                        xhttp_child = start_client(candidate, folder)
+                        xhttp_proxy = "socks5h://127.0.0.1:1082"
+                        emit(profile, "candidate_startup", "xhttp", {"ok": True})
+                    except (KeyError, ValueError, RuntimeError, OSError) as error:
+                        # Candidate failure must not suppress the independent baseline.
+                        emit(profile, "candidate_startup", "xhttp", {
+                            "ok": False, "failure": "candidate_unavailable",
+                            "error_type": type(error).__name__})
                 return experiment_loop(profile, proxy, once=args.once,
                                        child=(child, xhttp_child),
                                        xhttp_proxy=xhttp_proxy)
