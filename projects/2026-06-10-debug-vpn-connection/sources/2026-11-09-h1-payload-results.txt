@@ -1,0 +1,426 @@
+First #151 payload cycle. Selected-field Datadog connector response verbatim; parsed interpretation is in project-status.md.
+
+<METADATA>
+  <displayed_items>18</displayed_items>
+  <count>18</count>
+  <logs_explorer_url>https://senaev-eu1.datadoghq.eu/logs?from_ts=1794247260000&live=false&query=service%3Avpn-probe+%40check%3A%28diagnostic_native_trace+OR+diagnostic_native_h1_trace+OR+diagnostic_h1_size_exit+OR+transfer_h1_%2A%29&stream_sort=asc&to_ts=1794248280000</logs_explorer_url>
+</METADATA>
+<YAML_DATA>
+- timestamp: "2026-11-09T18:07:38Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: hetzner-senaev-k3s
+  attributes:
+    custom.bytes: 216
+    custom.check: diagnostic_native_trace
+    custom.curl_exit: 0
+    custom.duration_ms: 847
+    custom.experiment_id: 0dc6abd1-50cf-4f78-b15a-a82d3a678eb2
+    custom.http_status: 200
+    custom.ok: true
+    custom.profile: XHTTP source control — Hetzner
+    custom.request_bytes: 93
+    custom.response_header_bytes: 915
+    custom.route: xhttp
+    custom.tls_ms: 695
+- timestamp: "2026-11-09T18:09:04Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: hetzner-senaev-k3s
+  attributes:
+    custom.bytes: 216
+    custom.check: diagnostic_native_h1_trace
+    custom.curl_exit: 0
+    custom.duration_ms: 848
+    custom.experiment_id: 0dc6abd1-50cf-4f78-b15a-a82d3a678eb2
+    custom.http_status: 200
+    custom.ok: true
+    custom.profile: XHTTP source control — Hetzner
+    custom.request_bytes: 93
+    custom.response_header_bytes: 919
+    custom.route: xhttp
+    custom.tls_ms: 654
+- timestamp: "2026-11-09T18:09:53Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: senaev-media-senaev-k3s
+  attributes:
+    custom.bytes: 0
+    custom.check: diagnostic_native_trace
+    custom.curl_exit: 28
+    custom.duration_ms: 8010
+    custom.experiment_id: 67cb9de7-57fc-46ca-96b0-c239fb09f354
+    custom.http_status: 0
+    custom.ok: false
+    custom.profile: "\U0001F484 4. hetzner → freedom"
+    custom.request_bytes: 93
+    custom.response_header_bytes: 0
+    custom.route: xhttp
+    custom.tls_ms: 788
+- timestamp: "2026-11-09T18:10:09Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: hetzner-senaev-k3s
+  attributes:
+    custom.bytes: 214
+    custom.check: diagnostic_h1_size_exit
+    custom.curl_exit: 0
+    custom.duration_ms: 699
+    custom.experiment_id: 0dc6abd1-50cf-4f78-b15a-a82d3a678eb2
+    custom.http_status: 200
+    custom.ok: true
+    custom.profile: XHTTP source control — Hetzner
+    custom.request_bytes: 93
+    custom.response_header_bytes: 918
+    custom.route: xhttp
+    custom.tls_ms: 463
+- timestamp: "2026-11-09T18:11:21Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: senaev-media-senaev-k3s
+  attributes:
+    custom.bytes: 214
+    custom.check: diagnostic_native_h1_trace
+    custom.curl_exit: 0
+    custom.duration_ms: 2068
+    custom.experiment_id: 67cb9de7-57fc-46ca-96b0-c239fb09f354
+    custom.http_status: 200
+    custom.ok: true
+    custom.profile: "\U0001F484 4. hetzner → freedom"
+    custom.request_bytes: 93
+    custom.response_header_bytes: 926
+    custom.route: xhttp
+    custom.tls_ms: 1443
+- timestamp: "2026-11-09T18:11:31Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: hetzner-senaev-k3s
+  attributes:
+    custom.bytes: 4096
+    custom.check: transfer_h1_cloudflare_4096
+    custom.curl_exit: 0
+    custom.duration_ms: 514
+    custom.experiment_id: 0dc6abd1-50cf-4f78-b15a-a82d3a678eb2
+    custom.http_status: 200
+    custom.ok: true
+    custom.profile: XHTTP source control — Hetzner
+    custom.request_bytes: 101
+    custom.response_header_bytes: 1333
+    custom.route: direct
+    custom.tls_ms: 301
+- timestamp: "2026-11-09T18:11:33Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: hetzner-senaev-k3s
+  attributes:
+    custom.bytes: 4096
+    custom.check: transfer_h1_cloudflare_4096
+    custom.curl_exit: 0
+    custom.direct_control_ok: true
+    custom.duration_ms: 493
+    custom.experiment_id: 0dc6abd1-50cf-4f78-b15a-a82d3a678eb2
+    custom.http_status: 200
+    custom.ok: true
+    custom.profile: XHTTP source control — Hetzner
+    custom.request_bytes: 101
+    custom.response_header_bytes: 1331
+    custom.route: xhttp
+    custom.tls_ms: 293
+- timestamp: "2026-11-09T18:12:33Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: senaev-media-senaev-k3s
+  attributes:
+    custom.bytes: 214
+    custom.check: diagnostic_h1_size_exit
+    custom.curl_exit: 0
+    custom.duration_ms: 1429
+    custom.experiment_id: 67cb9de7-57fc-46ca-96b0-c239fb09f354
+    custom.http_status: 200
+    custom.ok: true
+    custom.profile: "\U0001F484 4. hetzner → freedom"
+    custom.request_bytes: 93
+    custom.response_header_bytes: 915
+    custom.route: xhttp
+    custom.tls_ms: 1314
+- timestamp: "2026-11-09T18:12:47Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: hetzner-senaev-k3s
+  attributes:
+    custom.bytes: 16384
+    custom.check: transfer_h1_cloudflare_16384
+    custom.curl_exit: 0
+    custom.duration_ms: 840
+    custom.experiment_id: 0dc6abd1-50cf-4f78-b15a-a82d3a678eb2
+    custom.http_status: 200
+    custom.ok: true
+    custom.profile: XHTTP source control — Hetzner
+    custom.request_bytes: 102
+    custom.response_header_bytes: 1324
+    custom.route: direct
+    custom.tls_ms: 264
+- timestamp: "2026-11-09T18:12:54Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: hetzner-senaev-k3s
+  attributes:
+    custom.bytes: 16384
+    custom.check: transfer_h1_cloudflare_16384
+    custom.curl_exit: 0
+    custom.direct_control_ok: true
+    custom.duration_ms: 977
+    custom.experiment_id: 0dc6abd1-50cf-4f78-b15a-a82d3a678eb2
+    custom.http_status: 200
+    custom.ok: true
+    custom.profile: XHTTP source control — Hetzner
+    custom.request_bytes: 102
+    custom.response_header_bytes: 1326
+    custom.route: xhttp
+    custom.tls_ms: 391
+- timestamp: "2026-11-09T18:14:03Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: senaev-media-senaev-k3s
+  attributes:
+    custom.bytes: 4096
+    custom.check: transfer_h1_cloudflare_4096
+    custom.curl_exit: 0
+    custom.duration_ms: 638
+    custom.experiment_id: 67cb9de7-57fc-46ca-96b0-c239fb09f354
+    custom.http_status: 200
+    custom.ok: true
+    custom.profile: "\U0001F484 4. hetzner → freedom"
+    custom.request_bytes: 101
+    custom.response_header_bytes: 1344
+    custom.route: direct
+    custom.tls_ms: 442
+- timestamp: "2026-11-09T18:14:13Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: senaev-media-senaev-k3s
+  attributes:
+    custom.bytes: 0
+    custom.check: transfer_h1_cloudflare_4096
+    custom.curl_exit: 28
+    custom.direct_control_ok: true
+    custom.duration_ms: 8012
+    custom.experiment_id: 67cb9de7-57fc-46ca-96b0-c239fb09f354
+    custom.http_status: 0
+    custom.ok: false
+    custom.profile: "\U0001F484 4. hetzner → freedom"
+    custom.request_bytes: 101
+    custom.response_header_bytes: 0
+    custom.route: xhttp
+    custom.tls_ms: 617
+- timestamp: "2026-11-09T18:14:20Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: hetzner-senaev-k3s
+  attributes:
+    custom.bytes: 65536
+    custom.check: transfer_h1_cloudflare_65536
+    custom.curl_exit: 0
+    custom.duration_ms: 2211
+    custom.experiment_id: 0dc6abd1-50cf-4f78-b15a-a82d3a678eb2
+    custom.http_status: 200
+    custom.ok: true
+    custom.profile: XHTTP source control — Hetzner
+    custom.request_bytes: 102
+    custom.response_header_bytes: 1336
+    custom.route: direct
+    custom.tls_ms: 162
+- timestamp: "2026-11-09T18:14:25Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: hetzner-senaev-k3s
+  attributes:
+    custom.bytes: 65536
+    custom.check: transfer_h1_cloudflare_65536
+    custom.curl_exit: 0
+    custom.direct_control_ok: true
+    custom.duration_ms: 2360
+    custom.experiment_id: 0dc6abd1-50cf-4f78-b15a-a82d3a678eb2
+    custom.http_status: 200
+    custom.ok: true
+    custom.profile: XHTTP source control — Hetzner
+    custom.request_bytes: 102
+    custom.response_header_bytes: 1330
+    custom.route: xhttp
+    custom.tls_ms: 283
+- timestamp: "2026-11-09T18:15:28Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: senaev-media-senaev-k3s
+  attributes:
+    custom.bytes: 16384
+    custom.check: transfer_h1_cloudflare_16384
+    custom.curl_exit: 0
+    custom.duration_ms: 1035
+    custom.experiment_id: 67cb9de7-57fc-46ca-96b0-c239fb09f354
+    custom.http_status: 200
+    custom.ok: true
+    custom.profile: "\U0001F484 4. hetzner → freedom"
+    custom.request_bytes: 102
+    custom.response_header_bytes: 1337
+    custom.route: direct
+    custom.tls_ms: 436
+- timestamp: "2026-11-09T18:15:42Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: senaev-media-senaev-k3s
+  attributes:
+    custom.bytes: 0
+    custom.check: transfer_h1_cloudflare_16384
+    custom.curl_exit: 28
+    custom.direct_control_ok: true
+    custom.duration_ms: 8012
+    custom.experiment_id: 67cb9de7-57fc-46ca-96b0-c239fb09f354
+    custom.http_status: 0
+    custom.ok: false
+    custom.profile: "\U0001F484 4. hetzner → freedom"
+    custom.request_bytes: 102
+    custom.response_header_bytes: 0
+    custom.route: xhttp
+    custom.tls_ms: 593
+- timestamp: "2026-11-09T18:16:57Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: senaev-media-senaev-k3s
+  attributes:
+    custom.bytes: 65536
+    custom.check: transfer_h1_cloudflare_65536
+    custom.curl_exit: 0
+    custom.duration_ms: 2505
+    custom.experiment_id: 67cb9de7-57fc-46ca-96b0-c239fb09f354
+    custom.http_status: 200
+    custom.ok: true
+    custom.profile: "\U0001F484 4. hetzner → freedom"
+    custom.request_bytes: 102
+    custom.response_header_bytes: 1339
+    custom.route: direct
+    custom.tls_ms: 442
+- timestamp: "2026-11-09T18:17:03Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: senaev-media-senaev-k3s
+  attributes:
+    custom.bytes: 0
+    custom.check: transfer_h1_cloudflare_65536
+    custom.curl_exit: 28
+    custom.direct_control_ok: true
+    custom.duration_ms: 3010
+    custom.experiment_id: 67cb9de7-57fc-46ca-96b0-c239fb09f354
+    custom.http_status: 0
+    custom.ok: false
+    custom.profile: "\U0001F484 4. hetzner → freedom"
+    custom.request_bytes: 0
+    custom.response_header_bytes: 0
+    custom.route: xhttp
+    custom.tls_ms: 0
+</YAML_DATA>
+
+
+Grafana queries and raw connector responses:
+[
+  {
+    "query": "max by(deployment)(kube_deployment_status_replicas_available{namespace=\"vpn\"})",
+    "result": {
+      "status": "fulfilled",
+      "value": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"data\":[{\"metric\":{\"deployment\":\"vpn-probe-1\"},\"value\":[1794248391.539,\"1\"]},{\"metric\":{\"deployment\":\"vpn-probe-3\"},\"value\":[1794248391.539,\"0\"]},{\"metric\":{\"deployment\":\"vpn-probe-4\"},\"value\":[1794248391.539,\"1\"]},{\"metric\":{\"deployment\":\"vpn-probe-5\"},\"value\":[1794248391.539,\"0\"]},{\"metric\":{\"deployment\":\"vpn-source-control-hetzner\"},\"value\":[1794248391.539,\"1\"]},{\"metric\":{\"deployment\":\"vpn-subscription\"},\"value\":[1794248391.539,\"1\"]},{\"metric\":{\"deployment\":\"vpn-xhttp-experiment\"},\"value\":[1794248391.539,\"1\"]},{\"metric\":{\"deployment\":\"xray-vpn-firstvds\"},\"value\":[1794248391.539,\"1\"]},{\"metric\":{\"deployment\":\"xray-vpn-hetzner\"},\"value\":[1794248391.539,\"1\"]},{\"metric\":{\"deployment\":\"xray-vpn-senaev-media\"},\"value\":[1794248391.539,\"1\"]}]}"
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  },
+  {
+    "query": "up{job=\"vpn-probe\"}",
+    "result": {
+      "status": "fulfilled",
+      "value": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"data\":[{\"metric\":{\"__name__\":\"up\",\"container\":\"probe\",\"endpoint\":\"metrics\",\"instance\":\"10.42.0.235:8080\",\"job\":\"vpn-probe\",\"namespace\":\"vpn\",\"pod\":\"vpn-source-control-hetzner-5d76cf9f47-w2kmp\",\"profile_index\":\"source-control-hetzner\",\"prometheus\":\"telemetry/vm-stack-victoria-metrics-k8s-stack\",\"source_node\":\"hetzner\"},\"value\":[1794248391.317,\"1\"]},{\"metric\":{\"__name__\":\"up\",\"container\":\"probe\",\"endpoint\":\"metrics\",\"instance\":\"10.42.3.219:8080\",\"job\":\"vpn-probe\",\"namespace\":\"vpn\",\"pod\":\"vpn-probe-1-5b88c844c8-s694r\",\"profile_index\":\"1\",\"prometheus\":\"telemetry/vm-stack-victoria-metrics-k8s-stack\",\"source_node\":\"senaev-media\"},\"value\":[1794248391.317,\"1\"]},{\"metric\":{\"__name__\":\"up\",\"container\":\"probe\",\"endpoint\":\"metrics\",\"instance\":\"10.42.3.220:8080\",\"job\":\"vpn-probe\",\"namespace\":\"vpn\",\"pod\":\"vpn-probe-4-88d75d447-82d84\",\"profile_index\":\"4\",\"prometheus\":\"telemetry/vm-stack-victoria-metrics-k8s-stack\",\"source_node\":\"senaev-media\"},\"value\":[1794248391.317,\"1\"]}]}"
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  },
+  {
+    "query": "max by(pod)(kube_pod_container_status_restarts_total{namespace=\"vpn\",pod=~\"vpn-probe.*|vpn-xhttp.*|vpn-source-control.*\"})",
+    "result": {
+      "status": "fulfilled",
+      "value": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"data\":[{\"metric\":{\"pod\":\"vpn-probe-1-5b88c844c8-s694r\"},\"value\":[1794248391.372,\"0\"]},{\"metric\":{\"pod\":\"vpn-probe-4-88d75d447-82d84\"},\"value\":[1794248391.372,\"0\"]},{\"metric\":{\"pod\":\"vpn-source-control-hetzner-5d76cf9f47-w2kmp\"},\"value\":[1794248391.372,\"0\"]},{\"metric\":{\"pod\":\"vpn-xhttp-experiment-769665594b-qqzjh\"},\"value\":[1794248391.372,\"0\"]}]}"
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  },
+  {
+    "query": "max by(source_node,check,route)(vpn_probe_success{job=\"vpn-probe\",check=~\"diagnostic_h1_size_exit|transfer_h1_.*\"})",
+    "result": {
+      "status": "fulfilled",
+      "value": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"data\":[{\"metric\":{\"check\":\"diagnostic_h1_size_exit\",\"route\":\"xhttp\",\"source_node\":\"hetzner\"},\"value\":[1794248392.275,\"1\"]},{\"metric\":{\"check\":\"diagnostic_h1_size_exit\",\"route\":\"xhttp\",\"source_node\":\"senaev-media\"},\"value\":[1794248392.275,\"1\"]},{\"metric\":{\"check\":\"transfer_h1_cloudflare_16384\",\"route\":\"direct\",\"source_node\":\"hetzner\"},\"value\":[1794248392.275,\"1\"]},{\"metric\":{\"check\":\"transfer_h1_cloudflare_16384\",\"route\":\"direct\",\"source_node\":\"senaev-media\"},\"value\":[1794248392.275,\"1\"]},{\"metric\":{\"check\":\"transfer_h1_cloudflare_16384\",\"route\":\"xhttp\",\"source_node\":\"hetzner\"},\"value\":[1794248392.275,\"1\"]},{\"metric\":{\"check\":\"transfer_h1_cloudflare_16384\",\"route\":\"xhttp\",\"source_node\":\"senaev-media\"},\"value\":[1794248392.275,\"0\"]},{\"metric\":{\"check\":\"transfer_h1_cloudflare_4096\",\"route\":\"direct\",\"source_node\":\"hetzner\"},\"value\":[1794248392.275,\"1\"]},{\"metric\":{\"check\":\"transfer_h1_cloudflare_4096\",\"route\":\"direct\",\"source_node\":\"senaev-media\"},\"value\":[1794248392.275,\"1\"]},{\"metric\":{\"check\":\"transfer_h1_cloudflare_4096\",\"route\":\"xhttp\",\"source_node\":\"hetzner\"},\"value\":[1794248392.275,\"1\"]},{\"metric\":{\"check\":\"transfer_h1_cloudflare_4096\",\"route\":\"xhttp\",\"source_node\":\"senaev-media\"},\"value\":[1794248392.275,\"0\"]},{\"metric\":{\"check\":\"transfer_h1_cloudflare_65536\",\"route\":\"direct\",\"source_node\":\"hetzner\"},\"value\":[1794248392.275,\"1\"]},{\"metric\":{\"check\":\"transfer_h1_cloudflare_65536\",\"route\":\"direct\",\"source_node\":\"senaev-media\"},\"value\":[1794248392.275,\"1\"]},{\"metric\":{\"check\":\"transfer_h1_cloudflare_65536\",\"route\":\"xhttp\",\"source_node\":\"hetzner\"},\"value\":[1794248392.275,\"1\"]},{\"metric\":{\"check\":\"transfer_h1_cloudflare_65536\",\"route\":\"xhttp\",\"source_node\":\"senaev-media\"},\"value\":[1794248392.275,\"0\"]}]}"
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  }
+]

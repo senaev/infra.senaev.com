@@ -252,15 +252,18 @@ def xhttp_exit_control(profile, proxy, experiment_id, timeout=8, check="exit_ip"
     return result["ok"]
 
 
-def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, http1=False, measure_sizes=False):
-    """One request through a separate process; never reset the matrix candidate."""
+def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, http1=False, measure_sizes=False, immediate_payload=False):
+    """Fresh-process trace and optional payloads; never reset the matrix candidate."""
     if STOP.is_set():
         return False
-    if measure_sizes and not http1:
+    if (measure_sizes or immediate_payload) and not http1:
         raise ValueError("Size diagnostic requires HTTP1")
+    if measure_sizes and immediate_payload:
+        raise ValueError("Payload modes are mutually exclusive")
     if http1 and not native_tls:
         raise ValueError("HTTP1 diagnostic requires native TLS")
-    check = ("diagnostic_h1_size_exit" if measure_sizes else
+    check = ("diagnostic_h1_fresh_size_exit" if immediate_payload else
+             "diagnostic_h1_size_exit" if measure_sizes else
              "diagnostic_native_h1_trace" if http1 else
              "diagnostic_native_trace" if native_tls else "diagnostic_fresh_trace")
     passed = False
@@ -287,9 +290,10 @@ def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, ht
                 check_experiment_client(child, profile, experiment_id)
                 if fresh.poll() is not None and not STOP.is_set():
                     raise RuntimeError("fresh_client_exited")
-                if passed and measure_sizes:
+                if passed and (measure_sizes or immediate_payload):
                     passed = h1_transfer_controls(profile, "socks5h://127.0.0.1:1083",
-                                                  child, experiment_id, fresh=fresh)
+                                                  child, experiment_id, fresh=fresh,
+                                                  immediate=immediate_payload)
             finally:
                 if fresh is not None:
                     stop_client(fresh)
@@ -303,22 +307,22 @@ def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, ht
     return passed
 
 
-def h1_transfer_controls(profile, proxy, child, experiment_id, fresh=None):
-    """One size ladder on the exit-validated H1 client, serial and bounded."""
+def h1_transfer_controls(profile, proxy, child, experiment_id, fresh=None, immediate=False):
+    """Exit-validated H1 ladder or one immediate 4 KiB pair, serial and bounded."""
     def guard():
         check_experiment_client(child, profile, experiment_id)
         if fresh is not None and not STOP.is_set() and fresh.poll() is not None:
             raise RuntimeError("fresh_client_exited")
 
     passed = True
-    for size in TRANSFER_SIZES:
-        if experiment_wait(random.uniform(60, 90), child, profile, experiment_id):
+    for size in ((4096,) if immediate else TRANSFER_SIZES):
+        if not immediate and experiment_wait(random.uniform(60, 90), child, profile, experiment_id):
             return False
         if STOP.is_set():
             return False
         guard()
         url = f"https://speed.cloudflare.com/__down?bytes={size}"
-        check = f"transfer_h1_cloudflare_{size}"
+        check = f"transfer_h1_{'fresh_' if immediate else ''}cloudflare_{size}"
         direct, _ = request(url, "", size, expected_bytes=size)
         emit(profile, check, "direct", {**direct, "experiment_id": experiment_id,
                                        "requested_bytes": size})
@@ -367,6 +371,13 @@ def xhttp_transport_controls(profile, child, experiment_id, http1_first=False):
             return False
         result = fresh_xhttp_exit_control(profile, child, experiment_id,
                                          native_tls=True, http1=True, measure_sizes=True)
+        passed = result and passed
+        # Independent fresh-process control: retain quiet time before startup,
+        # then one small payload without the ladder's 60–90s post-exit idle.
+        if experiment_wait(random.uniform(60, 90), child, profile, experiment_id):
+            return False
+        result = fresh_xhttp_exit_control(profile, child, experiment_id,
+                                         native_tls=True, http1=True, immediate_payload=True)
         passed = result and passed
     return passed
 

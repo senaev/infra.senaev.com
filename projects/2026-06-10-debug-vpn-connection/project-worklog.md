@@ -1,3 +1,55 @@
+## 2026-11-09 18:19 UTC — Deploy payload ladder; prepare fresh-process control
+
+User authorized merge, deployment follow-up, tests and preparation of the next
+step. PR #151 merged at23dc7d9d65e8850779969ec5f5f88558eaf3da12; deploy42669746004
+succeeded. All intended workloads available,3 scrape targets up, checker/backend
+pods at zero restarts. All5 website smoke tests passed at18:02 and18:19 UTC.
+
+First payload cycle: home H1 trace/exit recheck passed but4/16/64KiB all failed.
+Hetzner passed all three exact sizes; every paired direct control passed. Home
+4/16KiB completed TLS but got zero response headers/body;64KiB failed setup.
+This is not a clean size threshold. Selected-field connector output and metric
+responses are retained [verbatim](sources/2026-11-09-h1-payload-results.txt).
+Verbatim home final measurement excerpt:
+```yaml
+- timestamp: "2026-11-09T18:17:03Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: senaev-media-senaev-k3s
+  attributes:
+    custom.bytes: 0
+    custom.check: transfer_h1_cloudflare_65536
+    custom.curl_exit: 28
+    custom.duration_ms: 3010
+    custom.http_status: 0
+    custom.ok: false
+```
+
+Prepared a bounded next control: retain the reused ladder, then quiet60–90s
+before starting another fresh H1 client. Revalidate exit and run one paired4KiB
+download without60–90s post-exit idle; direct request and2–7s jitter remain.
+Adds12KiB planned response allowance and separate fixed metrics; no server,
+subscription, policy, secret, privilege or host-network changes. Fresh success
+would implicate process history/idle, without distinguishing them or proving DPI.
+Next PR remains unmerged and undeployed.
+
+Verbatim local validation:
+```
+Ran 76 tests in 0.213s
+OK
+Python syntax OK: 17 file(s)
+PASS: immediate fresh H1 control validates exit, transfers paired 4 KiB and cleans up
+PASS: exit-validated native HTTP1 client transfers 4/16/64 KiB with direct controls and cleanup
+PASS: native HTTP2/HTTP1.1 controls validate exit, reject untrusted TLS and release loopback 1083
+PASS: invalid VLESS credential cannot reach the HTTPS origin
+PASS: ordinary website route preserved
+```
+Unit/syntax/real-process integration completed in7.007s. Fake waits apply only
+locally. Tests cover fresh exit gating, failure-independent execution, bounded
+one-size traffic, ordering, cancellation, cleanup and invalid mode rejection.
+
 ## 2026-11-09 17:55 UTC — Address payload-check review before merge
 
 CodeRabbit identified two valid points. Preserve the completed direct measurement

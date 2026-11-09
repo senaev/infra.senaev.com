@@ -771,9 +771,14 @@ a contemporaneous home trace still stalled after destination TLS. See
 PR #149 deployed fresh Chrome/native TLS over HTTP/2 and short request jitter.
 In the first round both clients passed on Hetzner and stalled from home. [Details and limits](XHTTP-RESPONSE-DIAGNOSTICS.md#validation-and-scope-of-this-iteration).
 
-PR #150 prepares the next comparison: fresh native TLS with HTTP/2 versus HTTP/1.1
+PR #150 deployed the comparison: fresh native TLS with HTTP/2 versus HTTP/1.1
 from both sources, retaining jitter and limits. [Scope and local verification](XHTTP-RESPONSE-DIAGNOSTICS.md#next-comparison-prepared--native-http2-versus-http11).
 
 PR #150 deployed: the first native H1 trace worked from home while H2 stalled;
-both passed on Hetzner. [Next payload validation](H1-PAYLOAD-VALIDATION.md) is prepared
-before any user-profile change or repair claim.
+both passed on Hetzner. PR #151 then deployed [payload validation](H1-PAYLOAD-VALIDATION.md).
+Its first ladder passed4/16/64KiB on Hetzner but failed all three from home; paired
+direct controls passed. H1 is not a working payload workaround yet.
+[Raw results](sources/2026-11-09-h1-payload-results.txt) and
+[current stage](project-status.md) record the limits. The next prepared control
+compares one fresh, exit-validated4KiB request without the long post-exit idle;
+it is not deployed and changes no user profile.
