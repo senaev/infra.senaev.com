@@ -195,101 +195,93 @@ class DiagnosticTests(unittest.TestCase):
         self.assertTrue(second.args[3]['ok'])
 
 
-class RecoveryTests(unittest.TestCase):
+class TransferTests(unittest.TestCase):
     @patch('probe.emit')
+    @patch('probe.experiment_wait', return_value=False)
+    @patch('probe.request', return_value=({'ok': True}, ''))
+    def test_exact_sizes_targets_routes_and_quiet_intervals(self, request, wait, emit):
+        self.assertTrue(probe.transfer_round('test', 'proxy'))
+        calls = request.call_args_list
+        self.assertEqual(len(calls), 18)
+        self.assertEqual(wait.call_count, 5)
+        self.assertTrue(all(c.args[0] == 60 for c in wait.call_args_list))
+        for index, size in enumerate([4096, 4096, 16384, 16384, 65536, 65536]):
+            direct, before, vpn = calls[index * 3:index * 3 + 3]
+            self.assertEqual(direct.args[1:], ('', size))
+            self.assertEqual(vpn.args[1:], ('proxy', size))
+            self.assertEqual(direct.args[0], vpn.args[0])
+            self.assertEqual(direct.kwargs['expected_bytes'], size)
+            self.assertEqual(before.kwargs['expected_status'], 204)
+        self.assertEqual(len({c.args[3]['experiment_id'] for c in emit.call_args_list}), 1)
+
+    @patch('probe.emit')
+    @patch('probe.experiment_wait', return_value=False)
+    @patch('probe.request', return_value=({'ok': True}, ''))
+    def test_condition_rotation(self, request, wait, emit):
+        probe.transfer_round('test', 'proxy', rotation=1)
+        self.assertEqual(request.call_args_list[0].args[0], 'https://httpbingo.org/bytes/4096')
+        self.assertEqual(request.call_args_list[-1].args[0], 'https://speed.cloudflare.com/__down?bytes=4096')
+
+    @patch('probe.emit')
+    @patch('probe.experiment_wait', return_value=False)
     @patch('probe.request')
-    def test_absolute_offsets_single_trigger_and_controls_continue_after_failure(self, request, emit):
-        clock = [0.0]
-        starts = []
-        def fetch(url, proxy, *args, **kwargs):
-            starts.append(clock[0])
-            clock[0] += 1
-            return {'ok': 'speed.cloudflare' not in url}, ''
-        def wait(delay):
-            clock[0] += delay
-            return False
-        request.side_effect = fetch
-        stop = Mock()
-        stop.is_set.return_value = False
-        stop.wait.side_effect = wait
-        with patch('probe.STOP', stop), patch('probe.time.monotonic', side_effect=lambda: clock[0]):
-            self.assertFalse(probe.recovery_round('test', 'socks5h://127.0.0.1:1080'))
-        self.assertEqual(request.call_count, 13)
-        self.assertEqual([starts[i] for i in [4, 7, 10]], [9, 34, 64])
-        self.assertEqual(sum('speed.cloudflare' in call.args[0] for call in request.call_args_list), 1)
-        self.assertEqual(len({call.args[3]['experiment_id'] for call in emit.call_args_list}), 1)
-        delays = [call.args[3]['actual_delay_seconds'] for call in emit.call_args_list[5:]]
-        self.assertEqual(delays, [5, 6, 7, 30, 31, 32, 60, 61, 62])
-        self.assertEqual(emit.call_args_list[-1].args[1:3], ('recovery_after_60s', 'direct'))
+    def test_failed_direct_control_marks_comparison_inconclusive_and_continues(self, request, wait, emit):
+        request.side_effect = [({'ok': False}, '')] + [({'ok': True}, '')] * 17
+        self.assertFalse(probe.transfer_round('test', 'proxy'))
+        result = emit.call_args_list[3].args[3]
+        self.assertTrue(result['ok'])
+        self.assertTrue(result['comparison_inconclusive'])
+        self.assertEqual(request.call_count, 18)
 
     @patch('probe.emit')
+    @patch('probe.experiment_wait', return_value=False)
     @patch('probe.request')
-    def test_no_download_without_all_positive_controls(self, request, emit):
-        request.side_effect = [({'ok':True}, ''), ({'ok':False}, ''), ({'ok':True}, '')]
-        self.assertFalse(probe.recovery_round('test', 'proxy'))
-        self.assertEqual(request.call_count, 3)
-        self.assertEqual(emit.call_args.args[1], 'recovery_skipped')
-
-    @patch('probe.emit')
-    @patch('probe.request', return_value=({'ok':True}, ''))
-    def test_shutdown_interrupts_post_download_wait(self, request, emit):
-        stop = Mock()
-        stop.is_set.return_value = False
-        stop.wait.return_value = True
-        with patch('probe.STOP', stop):
-            self.assertFalse(probe.recovery_round('test', 'proxy'))
-        self.assertEqual(request.call_count, 4)
-
-    @patch('probe.recovery_round', return_value=True)
-    def test_quiet_start_and_single_cycle_mode(self, run_round):
-        stop = Mock()
-        stop.wait.return_value = False
-        with patch('probe.STOP', stop):
-            self.assertEqual(probe.recovery_loop('test', 'proxy', once=True), 0)
-        stop.wait.assert_called_once_with(300)
-        run_round.assert_called_once_with('test', 'proxy', child=None)
+    def test_failed_positive_control_skips_only_its_transfer(self, request, wait, emit):
+        request.side_effect = [({'ok': True}, ''), ({'ok': False}, '')] + [({'ok': True}, '')] * 15
+        self.assertFalse(probe.transfer_round('test', 'proxy'))
+        self.assertEqual(request.call_count, 17)
+        self.assertEqual(emit.call_args_list[3].args[1], 'transfer_skipped')
 
     @patch('probe.emit')
     @patch('probe.request')
-    def test_shutdown_during_plain_observation_stops_further_requests(self, request, emit):
+    def test_shutdown_during_request_prevents_more_requests(self, request, emit):
         import threading
-        stop = threading.Event()
-        def fetch(*args, **kwargs):
-            if request.call_count == 6:
-                stop.set()
-            return {'ok': True}, ''
-        request.side_effect = fetch
-        with patch('probe.STOP', stop), patch('probe.recovery_wait', return_value=False):
-            self.assertFalse(probe.recovery_round('test', 'proxy'))
-        self.assertEqual(request.call_count, 6)
+        for halt_at in [1, 2, 3]:
+            with self.subTest(halt_at=halt_at):
+                request.reset_mock()
+                stop = threading.Event()
+                def fetch(*args, **kwargs):
+                    if request.call_count == halt_at:
+                        stop.set()
+                    return {'ok': True}, ''
+                request.side_effect = fetch
+                with patch('probe.STOP', stop):
+                    self.assertFalse(probe.transfer_round('test', 'proxy'))
+                self.assertEqual(request.call_count, halt_at)
+
+    @patch('probe.emit')
+    @patch('probe.experiment_wait', return_value=True)
+    @patch('probe.request', return_value=({'ok': True}, ''))
+    def test_shutdown_in_quiet_interval_stops_remaining_conditions(self, request, wait, emit):
+        self.assertFalse(probe.transfer_round('test', 'proxy'))
+        self.assertEqual(request.call_count, 3)
 
     @patch('probe.emit')
     @patch('probe.request')
-    def test_client_exit_during_download_invalidates_cycle_and_exits(self, request, emit):
+    def test_child_exit_invalidates_cycle(self, request, emit):
         child = Mock()
         child.poll.return_value = None
         def fetch(*args, **kwargs):
-            if request.call_count == 4:
-                child.poll.return_value = 1
+            child.poll.return_value = 1
             return {'ok': True}, ''
         request.side_effect = fetch
         with self.assertRaisesRegex(RuntimeError, 'client_exited'):
-            probe.recovery_round('test', 'proxy', child=child)
-        result = emit.call_args.args[3]
-        self.assertTrue(result['cycle_invalid'])
-        self.assertEqual(result['failure'], 'client_exited')
-        self.assertEqual(emit.call_args.args[1], 'recovery_client_alive')
-        self.assertEqual(request.call_count, 4)
+            probe.transfer_round('test', 'proxy', child=child)
+        self.assertTrue(emit.call_args.args[3]['cycle_invalid'])
+        self.assertEqual(emit.call_args.args[1], 'experiment_client_alive')
 
     @patch('probe.emit')
-    def test_client_exit_detected_during_quiet_wait(self, emit):
-        child = Mock()
-        child.poll.return_value = 1
-        with self.assertRaisesRegex(RuntimeError, 'client_exited'):
-            probe.recovery_wait(300, child, 'test')
-
-    @patch('probe.emit')
-    def test_client_exit_mid_wait_preserves_cycle_id(self, emit):
+    def test_child_exit_mid_wait_preserves_cycle_id(self, emit):
         child = Mock()
         child.poll.side_effect = [None, 1]
         stop = Mock()
@@ -297,16 +289,21 @@ class RecoveryTests(unittest.TestCase):
         stop.wait.return_value = False
         with patch('probe.STOP', stop):
             with self.assertRaisesRegex(RuntimeError, 'client_exited'):
-                probe.recovery_wait(60, child, 'test', 'cycle-one')
+                probe.experiment_wait(60, child, 'test', 'cycle-one')
         stop.wait.assert_called_once_with(1)
         self.assertEqual(emit.call_args.args[3]['experiment_id'], 'cycle-one')
 
-    def test_graceful_stop_is_success_only_for_continuous_mode(self):
+    @patch('probe.transfer_round', return_value=True)
+    def test_quiet_start_once_and_graceful_shutdown(self, run_round):
         stop = Mock()
+        stop.wait.return_value = False
+        with patch('probe.STOP', stop):
+            self.assertEqual(probe.experiment_loop('test', 'proxy', once=True), 0)
+        stop.wait.assert_called_once_with(300)
         stop.wait.return_value = True
         with patch('probe.STOP', stop):
-            self.assertEqual(probe.recovery_loop('test', 'proxy'), 0)
-            self.assertEqual(probe.recovery_loop('test', 'proxy', once=True), 1)
+            self.assertEqual(probe.experiment_loop('test', 'proxy'), 0)
+            self.assertEqual(probe.experiment_loop('test', 'proxy', once=True), 1)
 
 
 if __name__ == '__main__':

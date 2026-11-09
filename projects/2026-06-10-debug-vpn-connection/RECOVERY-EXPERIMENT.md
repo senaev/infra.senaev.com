@@ -1,3 +1,5 @@
+> Deployed in PR #139. The [size/destination matrix](TRANSFER-MATRIX.md) is the proposed next step and replaces this mode. The current toggle is controlledExperiment; the recoveryExperiment name below is historical.
+
 # Controlled post-download recovery experiment
 
 Hypothesis: a VPN-shaped transfer on direct home-to-Hetzner entry triggers a

@@ -29,7 +29,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "**Source: senaev-media, Russia.** Each subscription profile has its own isolated Xray client. Only explicit test requests use its loopback SOCKS proxy; host traffic keeps its existing route.\n\n**Light checks:** direct + VPN HTTPS every ~30s. **Heavy checks:** direct/VPN exit IP and a capped 64 KiB download every ~5 min. Green requires a fresh successful sample; gaps mean no fresh samples. Scrape UP is exporter reachability, not tunnel health. Compare direct controls before attributing failures to VPN.\n\nThe download is rate-limited, not a speed benchmark. Actual exit IPs and failure details remain in Datadog logs.\n\n**Recovery experiment:** when enabled, only profiles 1 and 4 run. Routine panels have no new samples. After five quiet minutes, each cycle checks small HTTPS, sends one 64 KiB download, then checks at 5/30/60 seconds after download completion. See recovery panels below. A failed precheck skips the download; ordinary HTTPS and direct controls help interpret failures. Experiment IDs and actual delays are in logs."
+        "content": "**Source: senaev-media, Russia.** Each subscription profile has its own isolated Xray client. Only explicit test requests use its loopback SOCKS proxy; host traffic keeps its existing route.\n\n**Light checks:** direct + VPN HTTPS every ~30s. **Heavy checks:** direct/VPN exit IP and a capped 64 KiB download every ~5 min. Green requires a fresh successful sample; gaps mean no fresh samples. Scrape UP is exporter reachability, not tunnel health. Compare direct controls before attributing failures to VPN.\n\nThe download is rate-limited, not a speed benchmark. Actual exit IPs and failure details remain in Datadog logs.\n \n**Transfer matrix:** controlledExperiment keeps only profiles 1 and 4 active.\nRoutine/recovery panels have no new samples. Every matrix compares direct/VPN\n4, 16 and 64 KiB downloads from Cloudflare and HTTPBingo, with 60 quiet seconds\nbetween conditions and five quiet minutes between matrices. Order rotates.\nA failed small VPN precheck skips that transfer; check logs for skipped conditions,\ndirect_control_ok, cycle IDs and client-exit invalidation. Results cannot alone prove DPI.\n"
       }
     },
     {
@@ -940,9 +940,9 @@
     },
     {
       "id": 16,
-      "title": "Recovery experiment — before, trigger, 5s / 30s / 60s",
+      "title": "Transfer matrix — size / destination / route",
       "type": "state-timeline",
-      "description": "Only profiles 1 and 4 during the controlled experiment. Results older than ten minutes are hidden. Fixed phase names; see logs for experiment ID and actual post-download delay.",
+      "description": "Fixed size/destination checks, paired direct and VPN. Results older than 15 minutes are hidden. Failed direct controls make paired comparisons inconclusive; see logs. Client exit invalidates the cycle.",
       "datasource": {
         "type": "prometheus",
         "uid": "P4169E866C3094E38"
@@ -956,7 +956,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "vpn_probe_success{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"recovery_.*\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"recovery_.*\"}) < 600)",
+          "expr": "vpn_probe_success{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"transfer_.*|experiment_client_alive\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"transfer_.*|experiment_client_alive\"}) < 900)",
           "datasource": {
             "type": "prometheus",
             "uid": "P4169E866C3094E38"
@@ -1026,9 +1026,9 @@
     },
     {
       "id": 17,
-      "title": "Recovery experiment — check duration",
+      "title": "Transfer matrix — duration",
       "type": "timeseries",
-      "description": "Only profiles 1 and 4 during the controlled experiment. Results older than ten minutes are hidden. Fixed phase names; see logs for experiment ID and actual post-download delay.",
+      "description": "Fixed size/destination checks, paired direct and VPN. Results older than 15 minutes are hidden. Failed direct controls make paired comparisons inconclusive; see logs. Client exit invalidates the cycle.",
       "datasource": {
         "type": "prometheus",
         "uid": "P4169E866C3094E38"
@@ -1042,7 +1042,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "vpn_probe_duration_seconds{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"recovery_.*\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"recovery_.*\"}) < 600)",
+          "expr": "vpn_probe_duration_seconds{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"transfer_.*|experiment_client_alive\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"transfer_.*|experiment_client_alive\"}) < 900)",
           "datasource": {
             "type": "prometheus",
             "uid": "P4169E866C3094E38"
@@ -1075,9 +1075,9 @@
     },
     {
       "id": 18,
-      "title": "Recovery experiment — received bytes",
+      "title": "Transfer matrix — received bytes",
       "type": "timeseries",
-      "description": "Only profiles 1 and 4 during the controlled experiment. Results older than ten minutes are hidden. Fixed phase names; see logs for experiment ID and actual post-download delay.",
+      "description": "Fixed size/destination checks, paired direct and VPN. Results older than 15 minutes are hidden. Failed direct controls make paired comparisons inconclusive; see logs. Client exit invalidates the cycle.",
       "datasource": {
         "type": "prometheus",
         "uid": "P4169E866C3094E38"
@@ -1091,7 +1091,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "vpn_probe_response_bytes{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"recovery_.*\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"recovery_.*\"}) < 600)",
+          "expr": "vpn_probe_response_bytes{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"transfer_.*|experiment_client_alive\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"transfer_.*|experiment_client_alive\"}) < 900)",
           "datasource": {
             "type": "prometheus",
             "uid": "P4169E866C3094E38"

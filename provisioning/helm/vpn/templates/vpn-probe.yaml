@@ -10,7 +10,7 @@ metadata:
     app: vpn-probe
     vpn-profile: {{ $index | quote }}
 spec:
-  replicas: {{ if and $.Values.vpnProbe.recoveryExperiment (not (has $index (list 1 4))) }}0{{ else }}1{{ end }}
+  replicas: {{ if and $.Values.vpnProbe.controlledExperiment (not (has $index (list 1 4))) }}0{{ else }}1{{ end }}
   strategy:
     type: Recreate
   selector:
@@ -51,8 +51,8 @@ spec:
             capabilities:
               drop: [ALL]
           env:
-            - name: RECOVERY_EXPERIMENT
-              value: {{ default false $.Values.vpnProbe.recoveryExperiment | quote }}
+            - name: CONTROLLED_EXPERIMENT
+              value: {{ default false $.Values.vpnProbe.controlledExperiment | quote }}
             - name: PROFILE_INDEX
               value: {{ $index | quote }}
             - name: PROFILE_NAME

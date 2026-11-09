@@ -2,7 +2,7 @@
 
 ## Stage
 
-Extended probes deployed (PR #138); controlled recovery experiment prepared. Repair remains open.
+Recovery experiment deployed (PR #139); size/destination matrix prepared. Repair remains open.
 
 ## Verified baseline
 
@@ -32,9 +32,18 @@ The 30-second attempts failed at the three-second connection limit, not after
 thirty seconds of transfer. Both independent IPv6 controls returned errno 101
 (network unreachable). Existing VPN deployments and website smoke checks remain healthy.
 
+## Recovery cycle result
+
+Deployment run 42581455020 succeeded. Only profiles 1 and 4 run, with zero restarts.
+Profile 1 transferred all 64 KiB; profile 4 stalled at 5518 bytes. Both profiles'
+small VPN, direct and ordinary-HTTPS checks passed at 5/30/60 seconds after download.
+This cycle found no disruption lasting at least five seconds after the download;
+shorter and per-connection effects remain possible. Website smoke checks pass.
+
 ## Next steps
 
-Review and deploy the [controlled recovery experiment](RECOVERY-EXPERIMENT.md).
-It temporarily pauses all checker profiles except 1 and 4, replaces their routine
-checks with an isolated trigger/recovery sequence, and restores the routine suite
-when recoveryExperiment is set to false. Not deployed yet.
+Review/deploy the [size and destination matrix](TRANSFER-MATRIX.md): compare
+4/16/64 KiB direct and VPN downloads from Cloudflare and HTTPBingo on profiles 1/4.
+It replaces the recovery sequence and preserves quiet intervals and client guards.
+Set controlledExperiment=false to restore six routine checker profiles.
+Not deployed yet.

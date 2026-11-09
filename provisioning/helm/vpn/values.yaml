@@ -54,7 +54,7 @@ ingress:
 vpnProbe:
   enabled: true
   # Temporary controlled experiment; false restores all six routine profiles.
-  recoveryExperiment: true
+  controlledExperiment: true
   vps: senaev-media
   # UUID seeds identify subscription routes, including the IPv6 entry using seed 5.
   # "direct" compares the home exit to the probe's own public home IP.
