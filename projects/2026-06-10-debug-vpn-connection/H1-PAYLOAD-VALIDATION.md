@@ -3,7 +3,7 @@
 The first #150 home H1 trace returned214 bytes with the correct exit in2064ms;
 H2 stalled. A small successful response is insufficient to restore user profiles.
 
-## Proposed experiment
+## Deployed experiment (#151)
 
 Keep the deployed H2/H1 trace pair and its alternating order. Run the payload
 phase only after the whole pair completes, when its H1 trace passed. This prevents
@@ -56,7 +56,44 @@ Chrome/H2 candidate. Disabling diagnostics removes the home comparison/payload
 phase and the Hetzner control as before; reverting this commit removes only the
 new payload step while retaining #150's version comparison.
 
-No live payload result yet. Local pinned-binary integration exercises exit
-validation followed by all three sizes with direct controls on one H1 client,
-TLS trust enforcement and cleanup. After deployment: verify health, smoke, scrape,
-exit revalidation, exact byte counts and several rounds before changing Happ.
+## First live result
+
+PR #151 deployed at23dc7d9. In its first complete cycle, fresh H1 traces and size
+exit checks passed from both sources. Hetzner passed4/16/64KiB; home failed all
+three while all direct controls passed. Home4/16KiB completed destination TLS but
+received zero response headers/body;64KiB failed during setup. This is not a clean
+size threshold. [Captured evidence](sources/2026-11-09-h1-payload-results.txt).
+
+## Next control — fresh client without long post-exit idle
+
+Retain the deployed ladder and version pair unchanged. If the version-pair H1
+trace passed, after the complete ladder wait60–90s and start another verified
+native H1 client on the same loopback1083. Validate its expected exit, recording
+diagnostic_h1_fresh_size_exit. Only on success run one paired direct/H1 Cloudflare
+4KiB request, recorded as transfer_h1_fresh_cloudflare_4096. The direct request
+and2–7s jitter remain between exit validation and the payload; the extra60–90s
+post-exit idle is omitted only for this control. It is not a first-request payload
+test: the exit trace still precedes the download on the same process.
+
+Run even when the original ladder failed, but never bypass this new process's exit
+validation. Failed direct control makes the comparison inconclusive. Requests and
+processes remain serial, with identical budgets, exact-size acceptance, TLS,
+credentials, endpoint and cleanup. Existing Grafana regex panels include both new
+checks. No server/chart/subscription/host-network changes.
+
+Additional planned response allowance is12KiB (4KiB trace + two4KiB transfers).
+New planned successful totals are200KiB/home failed matrix and196KiB/Hetzner
+eligible cycle; read-ahead/protocol-overhead caveats above still apply. Adds about
+one60–90s quiet interval plus bounded startup/requests, not a tighter probe cadence.
+Revert this follow-up to retain the deployed #151 ladder.
+
+If the fresh4KiB succeeds while the reused4KiB fails, process history/idle becomes
+a stronger lead. If it fails too, removing long idle alone did not restore payloads.
+This sequential comparison also changes process age and follows earlier traffic;
+it does not isolate idle as a sole cause. Repeat both source controls before
+changing destinations or Happ. No live result exists for this new control.
+
+Local validation:76 fast unit tests,17 Python files parsed, diff check, and real
+pinned Xray/Traefik integration pass. Integration checks the new exit-gated4KiB
+pair and cleanup alongside the existing64KiB ladder, trust rejection, invalid
+credential rejection and website fallback.

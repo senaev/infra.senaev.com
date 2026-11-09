@@ -11,10 +11,10 @@ from xhttp_server import server_config
 class DiagnosticTests(unittest.TestCase):
     @patch('probe.emit')
     @patch('probe.experiment_wait', return_value=False)
-    @patch('probe.fresh_xhttp_exit_control', side_effect=[False, True, True])
+    @patch('probe.fresh_xhttp_exit_control', side_effect=[False, True, True, True])
     def test_failure_of_first_tls_client_does_not_skip_the_second(self, fresh, wait, emit):
         self.assertFalse(probe.xhttp_transport_controls('test', None, 'round'))
-        self.assertEqual(fresh.call_count, 3)
+        self.assertEqual(fresh.call_count, 4)
 
     @patch('probe.emit')
     @patch('probe.experiment_wait', return_value=False)
@@ -22,14 +22,14 @@ class DiagnosticTests(unittest.TestCase):
     def test_same_trace_budgets_and_alternating_serial_order(self, fresh, wait, emit):
         for http1_first in [False, True]:
             self.assertTrue(probe.xhttp_transport_controls('test', None, 'round', http1_first))
-        arms = [x for x in fresh.call_args_list if not x.kwargs.get('measure_sizes')]
+        arms = [x for x in fresh.call_args_list if not x.kwargs.get('measure_sizes') and not x.kwargs.get('immediate_payload')]
         self.assertEqual([x.kwargs['http1'] for x in arms], [False, True, True, False])
         self.assertEqual(sum(x.kwargs.get('measure_sizes', False) for x in fresh.call_args_list), 2)
         self.assertEqual([x.kwargs.get('measure_sizes', False) for x in fresh.call_args_list],
-                         [False, False, True, False, False, True])
+                         [False, False, True, False, False, False, True, False])
         self.assertTrue(all(x.kwargs['native_tls'] is True for x in fresh.call_args_list))
         self.assertTrue(all(x.args == ('test', None, 'round') for x in fresh.call_args_list))
-        self.assertEqual(wait.call_count, 6)
+        self.assertEqual(wait.call_count, 8)
         self.assertTrue(all(60 <= x.args[0] <= 90 for x in wait.call_args_list))
 
     @patch('probe.emit')
@@ -61,7 +61,7 @@ class DiagnosticTests(unittest.TestCase):
         self.assertFalse(probe.transfer_round('test', 'baseline', xhttp_proxy='candidate', diagnostics=True))
         exit_control.assert_called_once()
         self.assertEqual(request.call_count, 20)
-        self.assertEqual(fresh.call_count, 3)
+        self.assertEqual(fresh.call_count, 4)
         skips = [c for c in emit.call_args_list if c.args[1] == 'transfer_skipped']
         self.assertEqual(len(skips), 6)
         self.assertFalse(any(c.args[2] == 'xhttp' and c.args[1].startswith('transfer_')
@@ -222,3 +222,30 @@ class FreshClientTests(unittest.TestCase):
                                                        http1=True, measure_sizes=True))
         self.assertEqual(sizes.call_args.kwargs['fresh'], start.return_value)
         stop.assert_called_once_with(start.return_value)
+
+    @patch('probe.h1_transfer_controls', return_value=True)
+    @patch('probe.stop_client')
+    @patch('probe.start_client')
+    @patch('probe.xhttp_exit_control')
+    def test_immediate_payload_requires_own_exit_and_cleans_up(self, control, start, stop, sizes):
+        start.return_value.poll.return_value = None
+        for accepted in [False, True]:
+            with self.subTest(accepted=accepted):
+                control.return_value = accepted
+                sizes.reset_mock()
+                self.assertEqual(probe.fresh_xhttp_exit_control('test', None, 'round',
+                    native_tls=True, http1=True, immediate_payload=True), accepted)
+                self.assertEqual(control.call_args.kwargs['check'], 'diagnostic_h1_fresh_size_exit')
+                if accepted:
+                    self.assertTrue(sizes.call_args.kwargs['immediate'])
+                    self.assertIs(sizes.call_args.kwargs['fresh'], start.return_value)
+                else:
+                    sizes.assert_not_called()
+        self.assertEqual(stop.call_count, 2)
+
+    @patch('probe.start_client')
+    def test_conflicting_payload_modes_are_rejected_before_startup(self, start):
+        with self.assertRaises(ValueError):
+            probe.fresh_xhttp_exit_control('test', None, 'round', native_tls=True,
+                http1=True, measure_sizes=True, immediate_payload=True)
+        start.assert_not_called()

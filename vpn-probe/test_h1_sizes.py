@@ -72,3 +72,34 @@ class H1SizeTests(unittest.TestCase):
         emit.assert_called_once()
         self.assertEqual(emit.call_args.args[1:3], ('transfer_h1_cloudflare_4096', 'direct'))
         self.assertEqual(emit.call_args.args[3]['bytes'], 4096)
+
+    @patch('probe.emit')
+    @patch('probe.experiment_wait', return_value=False)
+    @patch('probe.request', return_value=({'ok': True}, ''))
+    def test_immediate_control_has_one_small_pair_and_only_short_jitter(self, request, wait, emit):
+        self.assertTrue(probe.h1_transfer_controls('test', 'h1', None, 'round', immediate=True))
+        self.assertEqual(request.call_count, 2)
+        self.assertEqual(request.call_args_list[0].args,
+                         ('https://speed.cloudflare.com/__down?bytes=4096', '', 4096))
+        self.assertEqual(request.call_args_list[1].args,
+                         ('https://speed.cloudflare.com/__down?bytes=4096', 'h1', 4096))
+        wait.assert_called_once()
+        self.assertTrue(2 <= wait.call_args.args[0] <= 7)
+        self.assertTrue(all(c.args[1] == 'transfer_h1_fresh_cloudflare_4096'
+                            for c in emit.call_args_list))
+
+    @patch('probe.emit')
+    @patch('probe.experiment_wait', return_value=False)
+    @patch('probe.fresh_xhttp_exit_control', side_effect=[False, True, False, True])
+    def test_failed_reused_ladder_still_runs_independent_fresh_control(self, fresh, wait, emit):
+        self.assertFalse(probe.xhttp_transport_controls('test', None, 'round'))
+        self.assertTrue(fresh.call_args_list[2].kwargs['measure_sizes'])
+        self.assertTrue(fresh.call_args_list[3].kwargs['immediate_payload'])
+        self.assertTrue(60 <= wait.call_args_list[-1].args[0] <= 90)
+
+    @patch('probe.emit')
+    @patch('probe.experiment_wait', side_effect=[False, False, False, True])
+    @patch('probe.fresh_xhttp_exit_control', side_effect=[True, True, False])
+    def test_cancel_before_fresh_control_starts_no_extra_process(self, fresh, wait, emit):
+        self.assertFalse(probe.xhttp_transport_controls('test', None, 'round'))
+        self.assertEqual(fresh.call_count, 3)
