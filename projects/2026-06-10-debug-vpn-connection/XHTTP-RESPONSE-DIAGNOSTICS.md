@@ -67,4 +67,40 @@ Use normal CI to rebuild the changed existing image before charts. After deploym
 run the manual website smoke script, check client/backend readiness/restarts and
 observe the next failed-exit sequence. No packet capture, host-network changes,
 Happ settings, production subscriptions, new privileges or additional image.
-Pending review/deployment.
+Deployed via PR #145, run 42614899253 (main 960f34c).
+
+## First deployed sequence — 2026-11-09
+
+Experiment 94802da3-527a-47ea-a954-10b391454510, home source senaev-media.
+
+| UTC | Control | Result | Evidence |
+|---|---|---|---|
+| 12:21:26 | XHTTP trace, 8s | Failed | curl 28, 8010ms, TLS 840ms, request 93 bytes, HTTP 0, headers/body 0 |
+| 12:21:27 | Direct trace | Passed | HTTP 200, 219 body bytes, 501ms |
+| 12:21:28 | TCP/Reality trace | Passed | HTTP 200, 214 body bytes, 685ms |
+| 12:22:35 | XHTTP gstatic 204 | Failed | curl 28, 3009ms, TLS 0, request/header/body 0 |
+| 12:23:52 | XHTTP HTTPBingo 256 bytes | Failed | curl 28, 3009ms, TLS 0, request/header/body 0 |
+| 12:24:56 | XHTTP trace, total budget 30s | Failed | curl 28, 3011ms, TLS 0, request/header/body 0 |
+
+Backend logs at 12:21:19 show VLESS accepted Cloudflare and freedom opened TCP to
+104.16.123.96:443. The client reports XHTTP packet-up over HTTP/2. At 12:22:19 the
+backend logged `failed to read body payload > stream error: stream ID 7; CANCEL`.
+No corresponding gstatic/HTTPBingo backend destination logs were found in this
+window. Absence of an Info log does not prove packet loss. CANCEL can be cleanup,
+so it is a clue rather than the established cause.
+
+The first failure is after destination TLS; later failures are during connection
+setup. Curl request byte counts are not proof of receipt at the destination.
+The long variant retains connect-timeout=3 and therefore supplies no evidence
+about a 30-second response wait. Tiny controls failing also means this candidate
+problem cannot be explained solely by the existing large-response size threshold.
+
+Next controlled hypothesis: a fresh XHTTP client for the same small request versus
+the reused process/connection. Preserve target, TLS verification, budgets and quiet
+intervals; label results separately and keep original acceptance unchanged. A
+fresh-client recovery would implicate state/reuse but would not prove its cause.
+No production change is justified by this one diagnostic sequence alone.
+
+Deployment health: all intended VPN workloads available, new experimental pods at
+zero restarts, all five manual website smoke checks passed. Probes 3/5 remain
+intentionally scaled to zero in the existing controlled experiment.

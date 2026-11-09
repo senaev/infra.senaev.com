@@ -1,3 +1,34 @@
+## 2026-11-09 12:27 UTC — Deploy response diagnostics and observe first sequence
+
+User approved merge/deployment. PR #145 merged at
+960f34c0e0e0242b3ef355ff79b2ed8eee4da570; run 42614899253 completed successfully
+(checks, image build, provisioning sync, VPN and telemetry deploys). New probe and
+backend pods were available with zero restarts. All five website smoke checks
+passed; Grafana panels 20/21 and diagnostic metrics were verified.
+
+First complete sequence, experiment 94802da3-527a-47ea-a954-10b391454510:
+```
+12:21:26 exit_ip xhttp ok=false curl_exit=28 duration_ms=8010 tls_ms=840 request_bytes=93 response_header_bytes=0 http_status=0 bytes=0
+12:21:27 diagnostic_trace direct ok=true http_status=200 bytes=219 duration_ms=501
+12:21:28 diagnostic_trace vpn ok=true http_status=200 bytes=214 duration_ms=685
+12:22:35 diagnostic_https xhttp ok=false curl_exit=28 duration_ms=3009 tls_ms=0 request_bytes=0
+12:23:52 diagnostic_256b xhttp ok=false curl_exit=28 duration_ms=3009 tls_ms=0 request_bytes=0
+12:24:56 diagnostic_trace_30s xhttp ok=false curl_exit=28 duration_ms=3011 tls_ms=0 request_bytes=0 budget_seconds=30
+```
+Backend accepted VLESS and opened Cloudflare TCP at 12:21:19; at 12:22:19 it logged:
+```
+transport/internet/splithttp: failed to read body payload > stream error: stream ID 7; CANCEL
+```
+No later gstatic/HTTPBingo backend destination logs found in the inspected window.
+The first failure follows destination TLS; subsequent failures hit the unchanged
+3s connection limit, so the 30s total budget did not test a longer response wait.
+Candidate payloads remain skipped. Root cause remains unproven.
+
+Next hypothesis: compare fresh versus reused XHTTP client for the same small
+request, preserving endpoint/budgets/quiet intervals. Do not infer DPI or a mux bug
+from this one sequence; do not modify production subscriptions or host networking.
+CodeRabbit did not review #145 because its review limit was reached.
+
 ## 2026-11-09 12:01 UTC — Prepare XHTTP response diagnostics after failed live control
 
 PR #144 merged at 9aa1193 and deployed in run 42610055670. Backend and both probe

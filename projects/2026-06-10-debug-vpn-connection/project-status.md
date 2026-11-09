@@ -2,7 +2,7 @@
 
 ## Stage
 
-XHTTP/TLS comparison deployed (PR #144); focused response diagnostics prepared. Repair remains open.
+XHTTP response diagnostics deployed (PR #145); first diagnostic sequence complete. Repair remains open.
 
 ## Verified baseline
 
@@ -72,9 +72,21 @@ Its first exit check reached the backend and completed destination TLS at 2875ms
 but returned curl 28 / HTTP 0 / zero body bytes at 8013ms. Candidate payloads were
 correctly skipped while baseline 4 KiB checks passed. No cause established yet.
 
-Prepare the [focused response diagnostics](XHTTP-RESPONSE-DIAGNOSTICS.md):
-experimental-only Info logs, numeric request/response timing, direct/baseline trace
-controls and three bounded candidate requests after failed exit validation.
-The original failure remains a failure even if a diagnostic succeeds.
-Pending review/deployment. Toggle diagnostics=false to restore prior behavior;
-vpnXhttpExperiment.enabled=false still removes the entire candidate.
+PR #145 merged at 960f34c and deployed successfully in run 42614899253.
+New checkers/backend were available with zero restarts; all five manual website
+smoke checks passed. Dashboard panels 20/21 are provisioned and metrics are scraped.
+
+First complete diagnostic sequence (12:21–12:25 UTC): direct and TCP/Reality trace
+passed; XHTTP trace completed destination TLS in 840ms and curl reported 93 request
+bytes, but no HTTP headers/body before its 8s deadline. Backend accepted VLESS and
+opened Cloudflare TCP. Subsequent gstatic 204, HTTPBingo 256-byte and 30s-budget
+trace controls all failed at the unchanged 3s connection limit, without destination
+TLS or an HTTP request. The 30s control did not exercise a 30s response wait.
+Candidate payloads were correctly skipped; no candidate promotion occurred.
+
+Next: compare an explicitly fresh XHTTP client with the reused client for the same
+small target and unchanged budgets. This can test client/outer-connection state;
+it does not yet distinguish network interference from a client/proxy defect.
+Do not change production subscriptions, transport, routing or host networking.
+See [diagnostic evidence](XHTTP-RESPONSE-DIAGNOSTICS.md). Toggle diagnostics=false
+to remove extra controls/logging; enabled=false removes the entire candidate.
