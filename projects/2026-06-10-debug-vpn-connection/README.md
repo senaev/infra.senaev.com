@@ -764,5 +764,6 @@ timeouts; direct/TCP controls passed. Candidate payload tests stay skipped.
 The next [focused comparison](XHTTP-RESPONSE-DIAGNOSTICS.md) in PR #146 tests a
 fresh versus reused XHTTP client with the same request and unchanged budgets.
 
-The next source control runs the same small public-endpoint XHTTP trace from
-Hetzner in an isolated pod. See [scope and interpretation](XHTTP-RESPONSE-DIAGNOSTICS.md#prepared-source-control--hetzner).
+The isolated Hetzner source control is deployed and its first XHTTP trace passed;
+a contemporaneous home trace still stalled after destination TLS. See
+[scope and interpretation](XHTTP-RESPONSE-DIAGNOSTICS.md#source-control--hetzner).

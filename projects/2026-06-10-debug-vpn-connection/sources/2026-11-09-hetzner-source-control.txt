@@ -1,0 +1,121 @@
+<METADATA>
+  <displayed_items>5</displayed_items>
+  <count>5</count>
+  <logs_explorer_url>https://senaev-eu1.datadoghq.eu/logs?from_ts=1794231900000&live=false&query=service%3Avpn-probe+%40check%3A%28exit_ip+OR+diagnostic_fresh_trace+OR+diagnostic_trace%29&stream_sort=desc&to_ts=1794232128961</logs_explorer_url>
+</METADATA>
+<YAML_DATA>
+- timestamp: "2026-11-09T13:47:29Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: senaev-media-senaev-k3s
+  attributes:
+    custom.bytes: 214
+    custom.check: diagnostic_trace
+    custom.curl_exit: 0
+    custom.duration_ms: 704
+    custom.experiment_id: 022c46b2-f499-4857-874f-8686c0f952bd
+    custom.http_status: 200
+    custom.ok: true
+    custom.profile: "\U0001F484 4. hetzner → freedom"
+    custom.request_bytes: 93
+    custom.response_header_bytes: 917
+    custom.route: vpn
+    custom.tls_ms: 627
+- timestamp: "2026-11-09T13:47:28Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: senaev-media-senaev-k3s
+  attributes:
+    custom.bytes: 219
+    custom.check: diagnostic_trace
+    custom.curl_exit: 0
+    custom.duration_ms: 499
+    custom.experiment_id: 022c46b2-f499-4857-874f-8686c0f952bd
+    custom.http_status: 200
+    custom.ok: true
+    custom.profile: "\U0001F484 4. hetzner → freedom"
+    custom.request_bytes: 93
+    custom.response_header_bytes: 917
+    custom.route: direct
+    custom.tls_ms: 445
+- timestamp: "2026-11-09T13:47:28Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: senaev-media-senaev-k3s
+  attributes:
+    custom.bytes: 0
+    custom.check: exit_ip
+    custom.curl_exit: 28
+    custom.duration_ms: 8011
+    custom.experiment_id: 022c46b2-f499-4857-874f-8686c0f952bd
+    custom.http_status: 0
+    custom.ok: false
+    custom.profile: "\U0001F484 4. hetzner → freedom"
+    custom.request_bytes: 93
+    custom.response_header_bytes: 0
+    custom.route: xhttp
+    custom.tls_ms: 750
+- timestamp: "2026-11-09T13:46:35Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: hetzner-senaev-k3s
+  attributes:
+    custom.bytes: 214
+    custom.check: diagnostic_fresh_trace
+    custom.curl_exit: 0
+    custom.duration_ms: 930
+    custom.exit_ip: 77.42.120.71
+    custom.expected_exit: senaev.com
+    custom.experiment_id: 301b4bac-33f3-4b16-a813-1e8edb7663cf
+    custom.http_status: 200
+    custom.ok: true
+    custom.profile: XHTTP source control — Hetzner
+    custom.request_bytes: 93
+    custom.response_header_bytes: 919
+    custom.route: xhttp
+    custom.tls_ms: 831
+- timestamp: "2026-11-09T13:45:25Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: hetzner-senaev-k3s
+  attributes:
+    custom.bytes: 214
+    custom.check: diagnostic_trace
+    custom.curl_exit: 0
+    custom.duration_ms: 282
+    custom.experiment_id: 301b4bac-33f3-4b16-a813-1e8edb7663cf
+    custom.http_status: 200
+    custom.ok: true
+    custom.profile: XHTTP source control — Hetzner
+    custom.request_bytes: 93
+    custom.response_header_bytes: 917
+    custom.route: direct
+    custom.tls_ms: 191
+</YAML_DATA>
+
+{"conclusion":"success","jobs":[{"conclusion":"success","name":"plan","status":"completed"},{"conclusion":"success","name":"check / Lint, Typecheck, Test, Syntax","status":"completed"},{"conclusion":"success","name":"build (vpn-probe, ., vpn-probe/Dockerfile, ghcr.io/senaev/vpn-probe) / build","status":"completed"},{"conclusion":"success","name":"build (obsidian-sync, ., obsidian-sync/Dockerfile, ghcr.io/senaev/obsidian-sync) / build","status":"completed"},{"conclusion":"success","name":"sync-provisioning","status":"completed"},{"conclusion":"success","name":"deploy (senaev-com, senaev-com)","status":"completed"},{"conclusion":"success","name":"deploy (vpn, vpn)","status":"completed"}],"status":"completed"}
+PASS https://senaev.com -> https://senaev.com/
+PASS https://s.senaev.com/1bxsl9 -> https://senaev.com/cv/5min
+PASS https://static.senaev.com/datadog-dc-by-org-id.html -> https://static.senaev.com/datadog-dc-by-org-id.html
+PASS https://senaev.com/notes/my_blog_post_senaev_speaks_12 -> https://senaev.com/notes/my_blog_post_senaev_speaks_12
+One later smoke repetition returned:
+curl: (28) SSL connection timeout
+FAIL https://senaev.ru: curl request failed
+1 smoke check(s) failed
+An immediate bounded rerun follows:
+PASS https://senaev.ru -> https://senaev.ru/
+PASS https://senaev.com -> https://senaev.com/
+PASS https://s.senaev.com/1bxsl9 -> https://senaev.com/cv/5min
+PASS https://static.senaev.com/datadog-dc-by-org-id.html -> https://static.senaev.com/datadog-dc-by-org-id.html
+PASS https://senaev.com/notes/my_blog_post_senaev_speaks_12 -> https://senaev.com/notes/my_blog_post_senaev_speaks_12
+All 5 website smoke checks passed

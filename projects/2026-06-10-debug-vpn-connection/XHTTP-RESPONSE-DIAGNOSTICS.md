@@ -126,7 +126,7 @@ the deployed evidence. It is not deployed. The historical table remains the resu
 of #145, not a result of the new comparison. Production subscriptions, ingress,
 secrets, server transport settings and host networking are unchanged.
 
-## Prepared source control — Hetzner
+## Source control — Hetzner
 
 Add one isolated vpn-source-control-hetzner pod on Hetzner, using the same existing
 probe image and fresh-client function. It accesses senaev.com:443 with the same
@@ -164,4 +164,17 @@ verify the explicit rollback exactly matches main's chart output.
 
 After merge: verify rollout, source_node, scraper health, zero restarts/OOMs,
 website smoke checks, direct and validated fresh controls, and backend logs.
-No live result from this source exists yet.
+Deployed via PR #147 in combined run 42626865899. First source result:
+
+| Source / route | UTC | Result |
+|---|---|---|
+| Hetzner direct | 13:45:25 | HTTP200, 214 bytes, 282ms |
+| Hetzner fresh XHTTP | 13:46:35 | HTTP200, 214 bytes, 930ms; expected exit validated |
+| Home initial XHTTP | 13:47:28 | TLS750ms, request93 bytes, HTTP0, headers/body0, timeout8011ms |
+| Home direct / TCP trace | 13:47:28–29 | HTTP200, 499/704ms |
+
+[Verbatim selected-field connector export](sources/2026-11-09-hetzner-source-control.txt).
+One successful self-connect narrows universal setup failures but does not prove
+DPI or any particular transport defect. Continue comparing the independent home
+and Hetzner controls before tuning transport. The home fresh/reused pair also
+failed with its order reversed in the preceding deployment.

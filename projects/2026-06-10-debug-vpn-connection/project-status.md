@@ -2,7 +2,7 @@
 
 ## Stage
 
-Fresh/reused comparison deployed (PR #146); Hetzner source control prepared. Repair remains open.
+Hetzner source control deployed (PR #147) and first XHTTP request passed; home request still stalls. Repair remains open.
 
 ## Verified baseline
 
@@ -106,3 +106,25 @@ with the existing time/rate limits, separate profile and existing dashboard/scra
 The new local frontend-only policy supports public-address self-connect DNAT;
 no existing workload/network policy changes. This controls for source/host effects
 but does not reproduce an independent external network path. Pending PR/deployment.
+
+## Hetzner source result
+
+PR #147 merged at eb818385. Its original pipeline stopped at the stale-main guard
+when #148 merged; combined deployment 42626865899 succeeded at main 271f5de.
+All intended VPN workloads are available, all three probe targets are scraped,
+all experimental/checker pods have zero restarts, and the latest five website
+smoke checks pass. One intermediate senaev.ru SSL timeout cleared on immediate
+rerun; it remains a transient observation, not proof of deployment impact.
+
+First Hetzner cycle: direct trace HTTP200 / 214 bytes / 282ms at 13:45:25 UTC;
+fresh XHTTP trace HTTP200 / 214 bytes / 930ms, expected exit validated, at 13:46:35.
+Home candidate at 13:47:28 still failed: destination TLS 750ms, request93 bytes,
+HTTP0, header/body0, total8011ms. Its direct/TCP traces passed in 499/704ms.
+Earlier home fresh/reused tests failed in both request orders.
+
+The same deployed endpoint can work from Hetzner. Prioritize source/path dependence
+over a universal credential/ingress/backend failure. This one same-host success
+is not proof of ISP filtering: self-connect, DNS, path, latency and timing differ.
+Keep the working control running, repeat comparable pairs, then isolate the home
+XHTTP upload/response transport without changing production subscriptions.
+See [captured source results](sources/2026-11-09-hetzner-source-control.txt).

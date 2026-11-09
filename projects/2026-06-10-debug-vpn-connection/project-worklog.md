@@ -1,3 +1,37 @@
+## 2026-11-09 13:49 UTC — Deploy source control; Hetzner succeeds while home stalls
+
+User approved merge and continued investigation. PR #147 merged at eb818385.
+Run 42626704217 stopped at the stale-main guard before publishing/deployment after
+#148 merged. Combined run 42626865899 at 271f5de completed successfully, including
+the VPN image and release. All intended VPN deployments available; targets1/4 and
+source-control-hetzner scraped with source_node=hetzner on the new target. All new
+checker/backend pods at zero restarts. Initial five website smoke checks passed.
+A later repetition hit one SSL connection timeout on senaev.ru; an immediate
+bounded rerun passed all five. Both outcomes are recorded in the source export.
+No causal link to this deployment is established.
+
+First source cycle succeeded; contemporaneous home control failed. Verbatim
+selected-field connector export: [source evidence](sources/2026-11-09-hetzner-source-control.txt).
+Parsed summary (not original stdout):
+```
+13:45:25 Hetzner direct HTTP200 bytes214 duration282ms
+13:46:35 Hetzner fresh XHTTP HTTP200 bytes214 duration930ms TLS831ms expected_exit_validated=true
+13:47:28 home XHTTP HTTP0 bytes0 duration8011ms TLS750ms request_bytes93 response_header_bytes0
+13:47:28 home direct HTTP200 bytes219 duration499ms
+13:47:29 home TCP HTTP200 bytes214 duration704ms
+```
+Hetzner experiment301b4bac-33f3-4b16-a813-1e8edb7663cf; home
+022c46b2-f499-4857-874f-8686c0f952bd. Backend logs confirm the home request was
+accepted and opened Cloudflare TCP at 13:47:20. The preceding home round also
+failed fresh/reused controls with order reversed (13:25:46 / 13:27:16 UTC).
+
+The deployed endpoint is capable of returning a validated response from its own
+Hetzner host. Source/path dependence now outranks universal endpoint/credential
+failure, but one self-connect success does not distinguish ISP interference,
+transport behavior, latency, DNS or node policy effects. Keep this positive control,
+repeat comparable pairs, and investigate the home upload/response transport next.
+No further production config change made in this observation step.
+
 ## 2026-11-09 13:25 UTC — Prepare Hetzner public-endpoint source control
 
 User approved comparing the same XHTTP request from Hetzner. Prepared one isolated
