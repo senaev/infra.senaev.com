@@ -1,3 +1,40 @@
+## 2026-11-09 00:14 UTC — Prepare controlled post-download recovery sequence
+
+PR #138 deployed successfully in run 42537716826. All six checkers were scraped
+on senaev-media with zero restarts, dashboard panels were present, and all five
+website smoke URLs returned 200. Logs from the first extended round:
+
+```
+profile 1 download_64k_30s vpn: bytes=65536 curl_exit=0 duration_ms=2894
+profile 4 download_64k_30s vpn: bytes=0 curl_exit=28 duration_ms=3009
+profile 5 ipv6_entry direct: errno=101 ok=false
+profile 5 ipv6_control direct: errno=101 ok=false
+```
+
+Direct bulk controls passed for all profiles; profiles 2–4 failed both VPN budgets.
+The long-budget failure was a three-second connection timeout, not a measured
+thirty-second transfer stall. IPv6 source transport is unavailable.
+
+User approved preparing the next investigation as a PR: only checker profiles 1
+and 4 run; all others pause. Five quiet minutes precede each cycle. Require working
+small precontrols, send one bounded VPN download, then collect VPN/plain HTTPS/direct
+controls at 5/30/60s absolute post-download offsets, with actual timing and a shared
+cycle ID in logs. No routine checker traffic during this mode. Separate fixed metric
+phases and dashboard panels expose the results. Toggle recoveryExperiment false
+to restore the full routine suite. No server or host-network changes. Pending deployment.
+
+Validation:
+```
+Ran 26 tests in 0.046s
+OK
+Python syntax OK: 11 file(s)
+Helm charts OK
+PASS: only profiles 1/4 active in experiment; false restores six; non-probe resources identical; isolation preserved
+```
+Fake-clock tests verify absolute offsets, one trigger, correlation, continued
+observations after failure, cancellation, and the quiet startup. No live experiments
+were run while preparing this PR.
+
 ## 2026-11-08 23:15 UTC — Automate the next controls in the existing checker
 
 User requested automatic probes instead of operator-run commands. Extended each

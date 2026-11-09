@@ -45,3 +45,15 @@ class MetricsTests(unittest.TestCase):
         self.assertIn('vpn_probe_success{profile="one",check="download_64k_30s",route="direct"} 1', text)
         for check in ['ipv6_entry', 'ipv6_control']:
             self.assertIn(f'check="{check}"', text)
+
+    def test_recovery_phases_are_fixed_and_experiment_id_is_not_a_label(self):
+        metrics = ProbeMetrics()
+        for check in ['recovery_before', 'recovery_plain_before', 'recovery_download',
+                      'recovery_after_5s', 'recovery_after_30s', 'recovery_after_60s',
+                      'recovery_plain_after_5s', 'recovery_plain_after_30s',
+                      'recovery_plain_after_60s']:
+            metrics.record('one', check, 'vpn', {'ok': True, 'experiment_id': 'unique-id'}, now=1)
+            self.assertIn(f'check="{check}"', metrics.render())
+        metrics.record('one', 'recovery_skipped', 'vpn', {'ok': False}, now=1)
+        self.assertNotIn('recovery_skipped', metrics.render())
+        self.assertNotIn('unique-id', metrics.render())

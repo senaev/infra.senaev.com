@@ -743,3 +743,10 @@ No debugging client or automated experiments are included in this step.
 Prepare six isolated clients on senaev-media, with lightweight checks every ~30s and
 bounded exit/download checks every ~300s.
 Deployed through PRs #135 and #137. Several rounds show repeatable transfer stalls on direct Hetzner entry, while FirstVDS → Hetzner downloads succeed. See [current baseline and next experiment](BASELINE-EXPERIMENT.md) and [project status](project-status.md).
+
+
+## Controlled recovery investigation
+
+The [next experiment](RECOVERY-EXPERIMENT.md) tests whether a transfer precedes a
+temporary connectivity loss. PR #138's automatic controls are deployed; this next
+checker-only configuration is prepared for review.

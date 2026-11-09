@@ -2,7 +2,7 @@
 
 ## Stage
 
-Repeatable probes deployed (PRs #135, #137); baseline collected. Repair remains open.
+Extended probes deployed (PR #138); controlled recovery experiment prepared. Repair remains open.
 
 ## Verified baseline
 
@@ -23,9 +23,18 @@ receive only a small partial payload before the eight-second limit. Profile 1
 finishes 65536 bytes in about 2.9 seconds. These observations implicate the direct
 home-to-Hetzner entry path, but do not establish DPI, MTU, or a server bug.
 
+## Latest verification
+
+PR #138 deployment run 42537716826 succeeded. All six probes ran on senaev-media
+with zero restarts; metrics and new dashboard panels were verified. Direct bulk
+controls pass, profiles 0–1 pass both budgets, and profiles 2–4 fail both.
+The 30-second attempts failed at the three-second connection limit, not after
+thirty seconds of transfer. Both independent IPv6 controls returned errno 101
+(network unreachable). Existing VPN deployments and website smoke checks remain healthy.
+
 ## Next steps
 
-Review and deploy the [automated baseline experiment](BASELINE-EXPERIMENT.md):
-direct versus proxied download, eight versus thirty seconds, and IPv6 TCP reachability.
-The checker extension and dashboard are prepared in PR #138; not deployed yet.
-After merge, collect several heavy rounds before tuning server or host networking.
+Review and deploy the [controlled recovery experiment](RECOVERY-EXPERIMENT.md).
+It temporarily pauses all checker profiles except 1 and 4, replaces their routine
+checks with an isolated trigger/recovery sequence, and restores the routine suite
+when recoveryExperiment is set to false. Not deployed yet.

@@ -29,7 +29,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "**Source: senaev-media, Russia.** Each subscription profile has its own isolated Xray client. Only explicit test requests use its loopback SOCKS proxy; host traffic keeps its existing route.\n\n**Light checks:** direct + VPN HTTPS every ~30s. **Heavy checks:** direct/VPN exit IP and a capped 64 KiB download every ~5 min. Green requires a fresh successful sample; gaps mean no fresh samples. Scrape UP is exporter reachability, not tunnel health. Compare direct controls before attributing failures to VPN.\n\nThe download is rate-limited, not a speed benchmark. Actual exit IPs and failure details remain in Datadog logs."
+        "content": "**Source: senaev-media, Russia.** Each subscription profile has its own isolated Xray client. Only explicit test requests use its loopback SOCKS proxy; host traffic keeps its existing route.\n\n**Light checks:** direct + VPN HTTPS every ~30s. **Heavy checks:** direct/VPN exit IP and a capped 64 KiB download every ~5 min. Green requires a fresh successful sample; gaps mean no fresh samples. Scrape UP is exporter reachability, not tunnel health. Compare direct controls before attributing failures to VPN.\n\nThe download is rate-limited, not a speed benchmark. Actual exit IPs and failure details remain in Datadog logs.\n\n**Recovery experiment:** when enabled, only profiles 1 and 4 run. Routine panels have no new samples. After five quiet minutes, each cycle checks small HTTPS, sends one 64 KiB download, then checks at 5/30/60 seconds after download completion. See recovery panels below. A failed precheck skips the download; ordinary HTTPS and direct controls help interpret failures. Experiment IDs and actual delays are in logs."
       }
     },
     {
@@ -917,6 +917,208 @@
               }
             }
           ],
+          "custom": {
+            "spanNulls": false,
+            "fillOpacity": 90,
+            "lineWidth": 0
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "mergeValues": true,
+        "showValue": "never",
+        "alignValue": "left",
+        "rowHeight": 0.8,
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      }
+    },
+    {
+      "id": 16,
+      "title": "Recovery experiment — before, trigger, 5s / 30s / 60s",
+      "type": "state-timeline",
+      "description": "Only profiles 1 and 4 during the controlled experiment. Results older than ten minutes are hidden. Fixed phase names; see logs for experiment ID and actual post-download delay.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P4169E866C3094E38"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 56,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "vpn_probe_success{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"recovery_.*\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"recovery_.*\"}) < 600)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "legendFormat": "{{profile}} · {{check}} · {{route}}",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "No fresh sample",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "FAIL",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "PASS",
+                  "color": "green"
+                }
+              }
+            }
+          ],
+          "custom": {
+            "spanNulls": false,
+            "fillOpacity": 90,
+            "lineWidth": 0
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "mergeValues": true,
+        "showValue": "never",
+        "alignValue": "left",
+        "rowHeight": 0.8,
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      }
+    },
+    {
+      "id": 17,
+      "title": "Recovery experiment — check duration",
+      "type": "state-timeline",
+      "description": "Only profiles 1 and 4 during the controlled experiment. Results older than ten minutes are hidden. Fixed phase names; see logs for experiment ID and actual post-download delay.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P4169E866C3094E38"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 64,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "vpn_probe_duration_seconds{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"recovery_.*\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"recovery_.*\"}) < 600)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "legendFormat": "{{profile}} · {{check}} · {{route}}",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "No fresh sample",
+          "min": 0,
+          "max": 1,
+          "custom": {
+            "spanNulls": false,
+            "fillOpacity": 90,
+            "lineWidth": 0
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "mergeValues": true,
+        "showValue": "never",
+        "alignValue": "left",
+        "rowHeight": 0.8,
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      }
+    },
+    {
+      "id": 18,
+      "title": "Recovery experiment — received bytes",
+      "type": "state-timeline",
+      "description": "Only profiles 1 and 4 during the controlled experiment. Results older than ten minutes are hidden. Fixed phase names; see logs for experiment ID and actual post-download delay.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P4169E866C3094E38"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 64,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "vpn_probe_response_bytes{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"recovery_.*\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"recovery_.*\"}) < 600)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "legendFormat": "{{profile}} · {{check}} · {{route}}",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "No fresh sample",
+          "min": 0,
+          "max": 1,
           "custom": {
             "spanNulls": false,
             "fillOpacity": 90,
