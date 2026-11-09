@@ -180,13 +180,18 @@ def main():
                     patch.object(probe, "request", side_effect=local_trace), \
                     patch.object(probe, "resolve_exit", return_value={"127.0.0.1"}), \
                     patch.object(probe, "emit") as emitted:
-                for _ in range(2):
-                    assert probe.fresh_xhttp_exit_control("local", None, "integration")
-                    assert emitted.call_args.args[1] == "diagnostic_fresh_trace"
+                for native_tls in [False, True]:
+                    assert probe.fresh_xhttp_exit_control("local", None, "integration", native_tls=native_tls)
+                    assert emitted.call_args.args[1] == ("diagnostic_native_trace" if native_tls else "diagnostic_fresh_trace")
                     assert emitted.call_args.args[3]["ok"], emitted.call_args
                     with socket.socket() as connection:
                         assert connection.connect_ex(("127.0.0.1", 1083)) != 0
-            print("PASS: two fresh-client controls validate TLS/exit and release loopback 1083")
+                    count = len(origin_requests)
+                    with patch.object(probe, "client_config", side_effect=original_config):
+                        assert not probe.fresh_xhttp_exit_control("local", None, "untrusted", native_tls=native_tls)
+                    assert len(origin_requests) == count
+                    assert not emitted.call_args.args[3]["ok"]
+            print("PASS: fresh Chrome/native HTTP2 controls validate exit, reject untrusted TLS and release loopback 1083")
             bad_port = free_port()
             invalid, _ = probe.client_config(link, base, "unused", port=bad_port, invalid=True)
             invalid["outbounds"][0]["streamSettings"]["tlsSettings"]["certificates"] = [

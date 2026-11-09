@@ -1,3 +1,39 @@
+## 2026-11-09 14:32 UTC — Prepare TLS-client comparison and short request jitter
+
+User approved the next investigation stage and randomized gaps between requests.
+Existing long waits are already jittered60–90s and300–360s. Add2–7s before each
+direct/TCP diagnostic trace and between successful precheck and matrix download.
+Waits are cancellable and logged separately from request duration.
+
+Replace home reused/fresh pair with fresh Chrome/native TLS HTTP2 pair, shared by
+the Hetzner source control, alternating order per round. HTTP2, packet-up, endpoint,
+UUID, certificate verification and all limits stay fixed. Home remains four added
+4KiB requests; Hetzner now has direct plus two arms (12KiB maximum payload/cycle).
+Native uses fingerprint=unsafe solely to select native Go TLS, with allowInsecure
+still false. Local untrusted-certificate rejection is required for both arms.
+
+An ALPN-only HTTP1.1 trial was rejected after real integration showed a mismatch
+with the pinned Chrome uTLS handshake. No such config is shipped. Pinned-source
+inspection and actual native-client integration validate the chosen comparison.
+No production subscription, server, chart, policy, secret or host network change.
+
+Validation output:
+```
+Ran 61 tests in 0.161s
+OK
+PASS: verified TLS -> Reality fallback -> Traefik -> h2c XHTTP: 4096 bytes
+PASS: verified TLS -> Reality fallback -> Traefik -> h2c XHTTP: 16384 bytes
+PASS: verified TLS -> Reality fallback -> Traefik -> h2c XHTTP: 65536 bytes
+PASS: fresh Chrome/native HTTP2 controls validate exit, reject untrusted TLS and release loopback 1083
+PASS: invalid VLESS credential cannot reach the HTTPS origin
+PASS: ordinary website route preserved
+Python syntax OK: 16 file(s)
+```
+Local integration plus unit checks completed in6.16s. Unit timing uses fake waits,
+including request-cancellation cases. Original exit failure still prevents payload
+promotion. Existing Grafana diagnostic regex includes the new fixed native check.
+Prepared in PR #149; pending review/CI/deployment. Evidence from #147 retained below.
+
 ## 2026-11-09 13:49 UTC — Deploy source control; Hetzner succeeds while home stalls
 
 User approved merge and continued investigation. PR #147 merged at eb818385.

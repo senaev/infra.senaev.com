@@ -48,7 +48,7 @@ class XhttpTests(unittest.TestCase):
     def test_variants_run_serially_and_alternate_order(self, request, emit, wait, uniform, exit_control):
         self.assertTrue(probe.transfer_round('test', 'baseline', xhttp_proxy='candidate'))
         self.assertEqual(request.call_count, 30)
-        self.assertEqual(wait.call_count, 11)
+        self.assertEqual(wait.call_count, 23)
         first = [c.args[1] for c in request.call_args_list[:5]]
         second = [c.args[1] for c in request.call_args_list[5:10]]
         self.assertEqual(first, ['', 'baseline', 'baseline', 'candidate', 'candidate'])

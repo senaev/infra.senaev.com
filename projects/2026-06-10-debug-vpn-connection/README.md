@@ -767,3 +767,6 @@ fresh versus reused XHTTP client with the same request and unchanged budgets.
 The isolated Hetzner source control is deployed and its first XHTTP trace passed;
 a contemporaneous home trace still stalled after destination TLS. See
 [scope and interpretation](XHTTP-RESPONSE-DIAGNOSTICS.md#source-control--hetzner).
+
+Prepared next in PR #149: compare fresh Chrome/native TLS over HTTP/2 from both
+sources, and add short request jitter. [Details and limits](XHTTP-RESPONSE-DIAGNOSTICS.md#validation-and-scope-of-this-iteration).

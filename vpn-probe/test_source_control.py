@@ -8,7 +8,7 @@ import probe
 class SourceControlTests(unittest.TestCase):
     @patch('probe.emit')
     @patch('probe.experiment_wait', return_value=False)
-    @patch('probe.fresh_xhttp_exit_control', return_value=True)
+    @patch('probe.xhttp_transport_controls', return_value=True)
     @patch('probe.request', return_value=({'ok': True}, ''))
     def test_one_round_has_same_small_target_and_bounded_quiet_intervals(self, request, fresh, wait, emit):
         self.assertEqual(probe.xhttp_source_control('hetzner', once=True), 0)
@@ -17,27 +17,27 @@ class SourceControlTests(unittest.TestCase):
         self.assertEqual(fresh.call_args.args[:2], ('hetzner', None))
         self.assertEqual(fresh.call_args.args[2], emit.call_args.args[3]['experiment_id'])
         self.assertTrue(300 <= wait.call_args_list[0].args[0] <= 360)
-        self.assertTrue(60 <= wait.call_args_list[1].args[0] <= 90)
-        self.assertEqual(wait.call_count, 2)
+        self.assertEqual(wait.call_count, 1)
+        self.assertEqual(fresh.call_args.kwargs, {'native_first': False})
 
     @patch('probe.emit')
     @patch('probe.experiment_wait', return_value=False)
-    @patch('probe.fresh_xhttp_exit_control', return_value=False)
+    @patch('probe.xhttp_transport_controls', return_value=False)
     @patch('probe.request', return_value=({'ok': True}, ''))
     def test_failed_candidate_does_not_report_round_success(self, request, fresh, wait, emit):
         self.assertEqual(probe.xhttp_source_control('hetzner', once=True), 1)
 
     @patch('probe.emit')
     @patch('probe.experiment_wait', return_value=False)
-    @patch('probe.fresh_xhttp_exit_control', return_value=True)
+    @patch('probe.xhttp_transport_controls', return_value=True)
     @patch('probe.request', return_value=({'ok': False}, ''))
     def test_failed_direct_control_keeps_comparison_inconclusive(self, request, fresh, wait, emit):
         self.assertEqual(probe.xhttp_source_control('hetzner', once=True), 1)
         fresh.assert_called_once()
 
     @patch('probe.emit')
-    @patch('probe.experiment_wait', side_effect=[False, True])
-    @patch('probe.fresh_xhttp_exit_control')
+    @patch('probe.experiment_wait', return_value=True)
+    @patch('probe.xhttp_transport_controls')
     @patch('probe.request', return_value=({'ok': True}, ''))
     def test_shutdown_before_candidate_starts_no_client(self, request, fresh, wait, emit):
         self.assertEqual(probe.xhttp_source_control('hetzner', once=True), 1)

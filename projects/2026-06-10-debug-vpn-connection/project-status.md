@@ -2,7 +2,7 @@
 
 ## Stage
 
-Hetzner source control deployed (PR #147) and first XHTTP request passed; home request still stalls. Repair remains open.
+Hetzner control works; home XHTTP stalls. Chrome/native TLS comparison and added jitter prepared in PR #149. Repair remains open.
 
 ## Verified baseline
 
@@ -128,3 +128,12 @@ is not proof of ISP filtering: self-connect, DNS, path, latency and timing diffe
 Keep the working control running, repeat comparable pairs, then isolate the home
 XHTTP upload/response transport without changing production subscriptions.
 See [captured source results](sources/2026-11-09-hetzner-source-control.txt).
+
+## Next controlled iteration prepared
+
+Replace the completed reused/fresh comparison with fresh Chrome/native TLS clients,
+both on HTTP/2, on home and Hetzner. Alternate order, same endpoint/credentials,
+verification/budgets/rate/size. Added jitter2–7s for direct/TCP diagnostic controls
+and precheck-to-download gaps; existing60–90s/300–360s jitter remains. No runtime
+result yet. Native option does not disable certificate verification. See the
+[comparison scope](XHTTP-RESPONSE-DIAGNOSTICS.md#validation-and-scope-of-this-iteration).
