@@ -32,7 +32,10 @@ Python syntax OK: 16 file(s)
 Local integration plus unit checks completed in6.16s. Unit timing uses fake waits,
 including request-cancellation cases. Original exit failure still prevents payload
 promotion. Existing Grafana diagnostic regex includes the new fixed native check.
-Prepared in PR #149; pending review/CI/deployment. Evidence from #147 retained below.
+Addressed CodeRabbit documentation findings: rewrote current status instead of
+appending stale stages, corrected prior deployment descriptions and saved original
+backend/initial-smoke excerpts. Prepared in PR #149; pending CI/deployment.
+Evidence from #147 retained below.
 
 ## 2026-11-09 13:49 UTC — Deploy source control; Hetzner succeeds while home stalls
 
@@ -57,8 +60,13 @@ Parsed summary (not original stdout):
 13:47:29 home TCP HTTP200 bytes214 duration704ms
 ```
 Hetzner experiment301b4bac-33f3-4b16-a813-1e8edb7663cf; home
-022c46b2-f499-4857-874f-8686c0f952bd. Backend logs confirm the home request was
-accepted and opened Cloudflare TCP at 13:47:20. The preceding home round also
+022c46b2-f499-4857-874f-8686c0f952bd. Verbatim backend excerpt:
+```
+2026/11/09 13:47:20.900220 [Info] [3640721331] proxy/freedom: connection opened to tcp:www.cloudflare.com:443, local endpoint 10.42.0.230:39854, remote endpoint 104.16.124.96:443
+```
+This supports backend acceptance/outbound setup, not HTTP response delivery.
+The initial smoke stdout is also saved in the linked source export.
+ The preceding home round also
 failed fresh/reused controls with order reversed (13:25:46 / 13:27:16 UTC).
 
 The deployed endpoint is capable of returning a validated response from its own

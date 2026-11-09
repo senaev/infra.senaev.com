@@ -761,8 +761,8 @@ FirstVDS entry-only configuration and randomized checker timing are deployed.
 
 Deployed diagnostics confirmed the initial post-TLS stall and later connection
 timeouts; direct/TCP controls passed. Candidate payload tests stay skipped.
-The next [focused comparison](XHTTP-RESPONSE-DIAGNOSTICS.md) in PR #146 tests a
-fresh versus reused XHTTP client with the same request and unchanged budgets.
+The [fresh/reused comparison](XHTTP-RESPONSE-DIAGNOSTICS.md) deployed in PR #146;
+both request orders failed from home with the same post-TLS/setup pattern.
 
 The isolated Hetzner source control is deployed and its first XHTTP trace passed;
 a contemporaneous home trace still stalled after destination TLS. See

@@ -1,3 +1,15 @@
+Initial website smoke output observed after deployment at 13:40 UTC:
+PASS https://senaev.ru -> https://senaev.ru/
+PASS https://senaev.com -> https://senaev.com/
+PASS https://s.senaev.com/1bxsl9 -> https://senaev.com/cv/5min
+PASS https://static.senaev.com/datadog-dc-by-org-id.html -> https://static.senaev.com/datadog-dc-by-org-id.html
+PASS https://senaev.com/notes/my_blog_post_senaev_speaks_12 -> https://senaev.com/notes/my_blog_post_senaev_speaks_12
+All 5 website smoke checks passed
+
+Verbatim backend message excerpts retrieved via Datadog:
+2026/11/09 13:47:20.885057 [Info] [3640721331] proxy/vless/inbound: received request for tcp:www.cloudflare.com:443
+2026/11/09 13:47:20.900220 [Info] [3640721331] proxy/freedom: connection opened to tcp:www.cloudflare.com:443, local endpoint 10.42.0.230:39854, remote endpoint 104.16.124.96:443
+
 <METADATA>
   <displayed_items>5</displayed_items>
   <count>5</count>
