@@ -40,6 +40,9 @@ filebrowser:
 
 unmanic:
   enabled: true
+  # Temporarily pause background media processing while investigating Jellyfin stutter.
+  # Restore to 1 to resume processing.
+  replicas: 0
   vps: senaev-media
   volumePath: volumes/unmanic
   resources:

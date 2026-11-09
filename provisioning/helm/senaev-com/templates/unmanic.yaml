@@ -57,7 +57,7 @@ metadata:
   labels:
     app: unmanic
 spec:
-  replicas: 1
+  replicas: {{ .Values.unmanic.replicas }}
   selector:
     matchLabels:
       app: unmanic
