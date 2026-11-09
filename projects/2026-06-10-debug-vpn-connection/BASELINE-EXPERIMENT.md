@@ -37,4 +37,4 @@ IPv6 transport controls. TCP success alone is not VPN success.
 - Both IPv6 connects pass: investigate Reality/SNI next.
 
 The baseline is recorded in project-status.md and project-worklog.md.
-This extension is pending deployment; it adds no server or host-network changes.
+Deployed in PR #138 (run 42537716826). The next step is the [controlled recovery experiment](RECOVERY-EXPERIMENT.md), which temporarily replaces this routine suite.

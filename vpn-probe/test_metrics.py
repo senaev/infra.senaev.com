@@ -48,7 +48,7 @@ class MetricsTests(unittest.TestCase):
 
     def test_recovery_phases_are_fixed_and_experiment_id_is_not_a_label(self):
         metrics = ProbeMetrics()
-        for check in ['recovery_before', 'recovery_plain_before', 'recovery_download',
+        for check in ['recovery_client_alive', 'recovery_before', 'recovery_plain_before', 'recovery_download',
                       'recovery_after_5s', 'recovery_after_30s', 'recovery_after_60s',
                       'recovery_plain_after_5s', 'recovery_plain_after_30s',
                       'recovery_plain_after_60s']:

@@ -1,3 +1,22 @@
+## 2026-11-09 07:43 UTC — Address CodeRabbit review on PR #139
+
+Accepted both runtime findings: monitor the Xray child during recovery waits and
+requests; invalidate a cycle on child exit and terminate for restart. Continuous
+graceful shutdown now exits zero while interrupted one-shot checks fail. Added
+the suggested shutdown-during-observation regression test. Fixed stale baseline
+links/status and documented that the checker image must be rebuilt before charts.
+
+Historical bulk evidence is preserved verbatim in
+[sources/2026-11-09-deployed-bulk-metrics.json](sources/2026-11-09-deployed-bulk-metrics.json).
+VictoriaMetrics instant query at 2026-11-09T00:03:50Z:
+`max by(profile_index,check,route)(vpn_probe_success{job="vpn-probe",check=~"download_64k.*"})`.
+The response includes all direct controls and both budgets for profiles 2–4, including
+profile 4's original eight-second failure. No results were inferred from exit codes.
+
+Validation: 31 Python tests pass, including client exit during download, exit during
+quiet wait, graceful/interrupted shutdown, and no further requests after shutdown
+during a plain observation. Pending deployment.
+
 ## 2026-11-09 00:14 UTC — Prepare controlled post-download recovery sequence
 
 PR #138 deployed successfully in run 42537716826. All six checkers were scraped

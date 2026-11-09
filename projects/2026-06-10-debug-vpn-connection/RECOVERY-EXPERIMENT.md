@@ -12,6 +12,11 @@ Other checker profiles (0, 2, 3, 5) have zero replicas, including the IPv6 profi
 whose source lacks public IPv6 reachability. VPN servers and subscriptions are unchanged.
 Set the flag to false and deploy to restore all six routine checker profiles.
 
+Deploy through the normal CI workflow: it rebuilds and publishes the modified
+vpn-probe image before applying charts and refreshing workloads. A chart-only
+deployment against the previous image would pause four profiles but leave the
+remaining clients running the old routine checks; do not deploy only the chart.
+
 No host route/firewall changes, server tuning, new image, service, permissions or secrets.
 Both clients keep the existing loopback-only SOCKS setup.
 
@@ -27,7 +32,13 @@ No routine light/heavy checks run in this mode.
 3. At absolute offsets 5, 30 and 60 seconds after that download finishes:
    VPN gstatic first, ordinary HTTPS to Hetzner second, direct gstatic third.
    Failed download or observations do not stop the remaining observations.
-   Shutdown interrupts waits and prevents new requests.
+   Shutdown interrupts waits and prevents new requests. The Xray child is checked
+during idle/post-download waits (at most one second apart) and before/after requests.
+If it exits, a recovery_client_alive failure logs cycle_invalid=true with the cycle
+ID, and the checker exits so Kubernetes restarts it. Discard that cycle's earlier
+phase samples; they are not evidence of network-induced recovery. Idle client exits
+are logged without a cycle ID. Graceful continuous shutdown returns exit code zero;
+an interrupted one-shot run remains unsuccessful.
 
 Offsets refer to request start, not completion. Logs record requested and actual
 offsets for each request; slow earlier controls can delay a later target time.
