@@ -58,3 +58,8 @@ vpnProbe:
     "1": senaev.com
     "3": direct
     "5": senaev.com
+
+# Diagnostic only: never included in the user-facing subscription.
+vpnXhttpExperiment:
+  enabled: true
+  path: /_vpn-xhttp-test/

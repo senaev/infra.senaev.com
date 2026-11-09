@@ -52,6 +52,10 @@ spec:
             capabilities:
               drop: [ALL]
           env:
+            {{- if and $.Values.vpnXhttpExperiment.enabled $.Values.vpnProbe.controlledExperiment $.Values.ingress.enabled (eq $index 4) }}
+            - name: XHTTP_PROFILE_LINK
+              value: {{ printf "vless://{XRAY_USER_UUID:xhttp-probe}@senaev.com:443?type=xhttp&security=tls&fp=chrome&sni=senaev.com&mode=packet-up&path=%s" ($.Values.vpnXhttpExperiment.path | urlquery) | quote }}
+            {{- end }}
             - name: CONTROLLED_EXPERIMENT
               value: {{ default false $.Values.vpnProbe.controlledExperiment | quote }}
             - name: PROFILE_INDEX

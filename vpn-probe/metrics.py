@@ -32,7 +32,7 @@ class ProbeMetrics:
                          'transfer_precheck', 'transfer_cloudflare_4096',
                          'transfer_cloudflare_16384', 'transfer_cloudflare_65536',
                          'transfer_httpbingo_4096', 'transfer_httpbingo_16384',
-                         'transfer_httpbingo_65536'} or route not in {'direct', 'vpn'}:
+                         'transfer_httpbingo_65536'} or route not in {'direct', 'vpn', 'xhttp'}:
             return
         now = time.time() if now is None else now
         with self.lock:

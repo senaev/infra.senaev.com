@@ -2,7 +2,7 @@
 
 ## Stage
 
-Size/destination matrix deployed (PR #141); FirstVDS entry-only role and bounded jitter prepared. Repair remains open.
+FirstVDS entry-only and jitter deployed (PR #143); XHTTP/TLS comparison prepared. Repair remains open.
 
 ## Verified baseline
 
@@ -51,16 +51,26 @@ PR #142 deployed in run 42585994166: FirstVDS → freedom removed, FirstVDS conf
 reload confirmed and all five website smoke checks pass. Stable checker IDs retained.
 
 User now wants FirstVDS removed as an exit entirely, while keeping Hetzner and
-senaev-media exits. Prepared changes remove profile 2 and FirstVDS's internal SOCKS
+senaev-media exits. Deployed changes remove profile 2 and FirstVDS's internal SOCKS
 exit listener, freedom outbound and references from other nodes. FirstVDS remains
 the entry for profile 1. Checker IDs 1/3/4/5 stay stable; active experiment remains 1/4.
 
-Also prepared bounded jitter: matrix pauses 60–90s / 300–360s; routine light checks
+Deployed bounded jitter: matrix pauses 60–90s / 300–360s; routine light checks
 30–45s, routine heavy checks 300–360s, routine startup 0–20s. Existing request time,
 size and rate limits are unchanged. No fail-closed policy or Happ auth change is
 included pending the user's understanding/decision. XHTTP is the next separate
 transport comparison; current pinned TCP/Reality profile remains unchanged.
 
-Pending review/deployment. Set controlledExperiment=false to restore four routine
-checker profiles. Server config/port changes will restart affected VPN pods, so
-expect a short interruption and re-run website smoke checks after deployment.
+## Next step
+
+PR #143 deployed in run 42588940242. All VPN pods were available with zero restarts,
+all three config reloads were observed, and all five website smoke checks passed.
+
+Review the [XHTTP/TLS comparison](XHTTP-COMPARISON.md). A private dedicated backend
+on Hetzner and an extra client only in profile 4 use the same public hostname/port
+and exit. Production subscriptions and existing Xray configs are unchanged.
+Fixed routes vpn and xhttp run serially with candidate exit validation.
+This compares full setups, including different TLS termination, not transport alone.
+
+Pending review/deployment. Disable vpnXhttpExperiment.enabled to restore the prior
+matrix; controlledExperiment=false restores routine four-profile checks.

@@ -748,3 +748,10 @@ Deployed through PRs #135 and #137. Several rounds show repeatable transfer stal
 ## Controlled recovery investigation
 
 The [recovery experiment](RECOVERY-EXPERIMENT.md) deployed in PR #139. Its first cycle found successful small checks at 5/30/60s after a stalled transfer. The [size/destination matrix](TRANSFER-MATRIX.md) is deployed; its first round found size-dependent failures on direct Hetzner entry. Entry-only FirstVDS and bounded checker timing variation are prepared for review.
+
+
+## XHTTP comparison
+
+The [XHTTP/TLS candidate](XHTTP-COMPARISON.md) is prepared for review alongside the
+deployed TCP/Reality baseline, with a dedicated backend and no subscription changes.
+FirstVDS entry-only configuration and randomized checker timing are deployed.

@@ -1,3 +1,35 @@
+## 2026-11-09 11:13 UTC — Prepare isolated XHTTP/TLS comparison
+
+PR #143 deployed in run 42588940242: config reloads observed, zero VPN pod restarts
+and all five website smoke checks passed. User requested the next XHTTP experiment.
+
+Prepared a dedicated backend behind a scoped path on existing senaev.com:443 TLS
+fallback, plus a second loopback client only in profile 4. Existing server configs
+and subscriptions stay unchanged. Dedicated derived UUID seed xhttp-probe uses the
+existing secret. TLS verification remains enabled; Xray stays pinned to 26.9.30.
+Serial baseline/candidate transfers alternate order and preserve quiet periods,
+exit validation, failure invalidation and cancellation. TLS termination/proxying
+also changes, so improvement cannot be attributed to transport alone.
+
+Checksum-verified official Xray 26.9.30 / Traefik 3.2.0 local integration output:
+```
+PASS: verified TLS -> Reality fallback -> Traefik -> h2c XHTTP: 4096 bytes
+PASS: verified TLS -> Reality fallback -> Traefik -> h2c XHTTP: 16384 bytes
+PASS: verified TLS -> Reality fallback -> Traefik -> h2c XHTTP: 65536 bytes
+PASS: invalid VLESS credential cannot reach the HTTPS origin
+PASS: ordinary website route preserved
+```
+
+Temporary certificates/credentials and loopback listeners only; no cluster changes.
+The test trusts its certificate with verification enabled and explicitly permits
+its loopback origin. Production retains private-target blocking and public-only
+NetworkPolicy. The reusable test waits for Traefik TLS routing readiness.
+
+Rendered verification: disabled mode equals baseline; existing resources/subscription
+unchanged; only probe 4 gets candidate; private backend accepts only Hetzner Traefik.
+Build-time real-binary tests cover both new configurations. Unit/syntax and Helm
+checks are recorded in the PR. Pending review/deployment.
+
 ## 2026-11-09 08:49 UTC — Prepare FirstVDS entry-only role and checker jitter
 
 User explicitly retained Hetzner and senaev-media as exits, requested removal of
