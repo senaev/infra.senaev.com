@@ -57,3 +57,10 @@ class MetricsTests(unittest.TestCase):
         metrics.record('one', 'transfer_skipped', 'vpn', {'ok': False}, now=1)
         self.assertNotIn('transfer_skipped', metrics.render())
         self.assertNotIn('unique-id', metrics.render())
+
+    def test_fresh_and_reused_results_remain_separate_in_dashboard_metrics(self):
+        metrics = ProbeMetrics()
+        for check, ok in [('diagnostic_fresh_trace', True), ('diagnostic_reused_trace', False)]:
+            metrics.record('one', check, 'xhttp', {'ok': ok, 'experiment_id': 'secret-id'}, now=1)
+            self.assertIn(f'vpn_probe_success{{profile="one",check="{check}",route="xhttp"}} {int(ok)}', metrics.render())
+        self.assertNotIn('secret-id', metrics.render())

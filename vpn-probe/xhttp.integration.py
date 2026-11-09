@@ -14,6 +14,7 @@ import tempfile
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from unittest.mock import patch
 
 import probe
 from xhttp_server import server_config
@@ -51,6 +52,8 @@ def main():
                 if self.server.server_port == origin_port:
                     origin_requests.append(self.path)
                 data = bytes(int(self.path.rsplit("/", 1)[1])) if self.path.startswith("/bytes/") else b"website-ok"
+                if self.path == "/cdn-cgi/trace":
+                    data = b"ip=127.0.0.1\n"
                 self.send_response(200)
                 self.send_header("Content-Length", str(len(data)))
                 self.end_headers()
@@ -154,6 +157,36 @@ def main():
                 assert run.returncode == 0 and len(run.stdout) == size, (
                     size, run.returncode, run.stderr.decode())
                 print(f"PASS: verified TLS -> Reality fallback -> Traefik -> h2c XHTTP: {size} bytes")
+            # Exercise real fresh-process startup, verified TLS, request and cleanup twice.
+            with socket.socket() as connection:
+                assert connection.connect_ex(("127.0.0.1", 1083)) != 0, "Test port 1083 is occupied"
+            original_config, original_request = probe.client_config, probe.request
+
+            def trusted_config(*args, **kwargs):
+                config, seed = original_config(*args, **kwargs)
+                config["outbounds"][0]["streamSettings"]["tlsSettings"]["certificates"] = [
+                    {"certificateFile": str(cert), "usage": "verify"}]
+                return config, seed
+
+            def local_trace(url, *args, **kwargs):
+                assert url == "https://www.cloudflare.com/cdn-cgi/trace"
+                return original_request(f"https://localhost:{origin_port}/cdn-cgi/trace", *args, **kwargs)
+
+            with patch.dict(os.environ, {"XHTTP_PROFILE_LINK": link, "XRAY_USER_UUID": base,
+                                         "XRAY_REALITY_PUBLIC_KEY": "unused",
+                                         "PATH": str(Path(xray).parent) + os.pathsep + os.environ["PATH"]}), \
+                    patch.dict(probe.PROXY_ENV, {"CURL_CA_BUNDLE": str(cert)}), \
+                    patch.object(probe, "client_config", side_effect=trusted_config), \
+                    patch.object(probe, "request", side_effect=local_trace), \
+                    patch.object(probe, "resolve_exit", return_value={"127.0.0.1"}), \
+                    patch.object(probe, "emit") as emitted:
+                for _ in range(2):
+                    probe.fresh_xhttp_exit_control("local", None, "integration")
+                    assert emitted.call_args.args[1] == "diagnostic_fresh_trace"
+                    assert emitted.call_args.args[3]["ok"], emitted.call_args
+                    with socket.socket() as connection:
+                        assert connection.connect_ex(("127.0.0.1", 1083)) != 0
+            print("PASS: two fresh-client controls validate TLS/exit and release loopback 1083")
             bad_port = free_port()
             invalid, _ = probe.client_config(link, base, "unused", port=bad_port, invalid=True)
             invalid["outbounds"][0]["streamSettings"]["tlsSettings"]["certificates"] = [

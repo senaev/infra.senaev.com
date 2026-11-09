@@ -17,21 +17,35 @@ verification, multiplexing or the ordinary acceptance criteria.
 After the first failed 8s candidate exit check in each matrix, run once:
 
 1. The same Cloudflare trace direct, then through the TCP/Reality baseline (8s each).
-2. A small gstatic HTTPS 204 over XHTTP.
-3. A 256-byte HTTPBingo response over XHTTP.
-4. A separately labelled 30s candidate trace, validating its expected Hetzner exit.
+2. The same trace through the existing XHTTP client and a fresh XHTTP process,
+   alternating fresh/reused order by matrix rotation.
 
-Wait 60–90 quiet seconds before each additional candidate request, with the same
-child-exit and cancellation guards. Requests remain serial, capped at 4 KiB and
-32 KiB/s. Failed controls do not stop the remaining diagnostics. No full candidate
-matrix is allowed after the original exit control fails, even if the long diagnostic
-passes. A long success can reflect extra time, recovery during quiet intervals or
-order effects; it does not alone prove that eight seconds was too short.
+Wait 60–90 quiet seconds before each XHTTP comparison request. Both use exactly
+the same endpoint, credentials, TLS/transport settings, 4 KiB body cap, 32 KiB/s
+rate limit, 8s total budget and 3s connection limit. Both validate the expected
+Hetzner exit. Separate fixed checks are diagnostic_reused_trace and
+diagnostic_fresh_trace; existing Grafana diagnostic panels include both.
 
-Five additional small requests per failed matrix, at most 16640 bytes of response
-payload plus protocol overhead. No retries beyond this bounded once-per-round
-sequence. Long curl subprocess bound is 32 seconds; profile 4 receives a 45-second
-termination grace to allow bounded cleanup of both Xray children. Others remain 30s.
+The fresh process uses only loopback port 1083 and a temporary 0600 configuration,
+with no routing or host network changes. It is stopped in a finally block before
+its temporary directory is removed, even on failure/cancellation. At most one
+extra idle/active Xray process is present alongside the two existing clients; the
+existing pod memory/CPU limits stay in force. Startup failures are sanitized and
+labelled as fresh_client_unavailable. Parent client failure still invalidates the
+round. The existing matrix candidate is never restarted or replaced.
+
+Four additional serial requests per failed matrix, at most 16 KiB of response
+payload plus protocol overhead. This replaces the previous three candidate
+controls (gstatic, HTTPBingo, 30s trace), rather than adding requests to them.
+The original candidate failure stays failed even if a diagnostic passes; no
+candidate payload matrix is permitted in that round. diagnostics=false removes
+both extra controls and experimental Info logging. Profile 4 retains its existing
+45-second shutdown grace for request/startup and child cleanup.
+
+Order alternation reduces one fixed ordering bias but does not remove time,
+recovery or shared-path effects. A fresh process resets DNS, sessions and connection
+pools together, so recovery implicates process/connection state without proving
+a particular mux bug. One pair is exploratory; compare several rounds.
 
 ## Evidence and interpretation
 
@@ -45,8 +59,8 @@ rounded zero is not by itself proof that no packet arrived. These timings descri
 the inner curl request, not the complete outer XHTTP handshake count or wire delivery.
 
 - Direct and baseline trace succeed, candidate fails: focus on candidate forwarding.
-- Candidate HTTPS 204 succeeds but trace/256 bytes fail: investigate destination,
-  response size or streaming effects.
+- Fresh trace succeeds while reused fails: prioritize process/connection state.
+- Both fail: freshness alone does not resolve the candidate path; investigate further.
 - Candidate diagnostics all fail after TLS: correlate client XHTTP HTTP/2 errors,
   backend VLESS destination/connection logs and the matching time window.
 - Direct/baseline controls also fail: broader reachability or target state is involved.
@@ -67,4 +81,47 @@ Use normal CI to rebuild the changed existing image before charts. After deploym
 run the manual website smoke script, check client/backend readiness/restarts and
 observe the next failed-exit sequence. No packet capture, host-network changes,
 Happ settings, production subscriptions, new privileges or additional image.
-Pending review/deployment.
+Deployed via PR #145, run 42614899253 (main 960f34c).
+
+## First deployed sequence — 2026-11-09
+
+Experiment 94802da3-527a-47ea-a954-10b391454510, home source senaev-media.
+
+| UTC | Control | Result | Evidence |
+|---|---|---|---|
+| 12:21:26 | XHTTP trace, 8s | Failed | curl 28, 8010ms, TLS 840ms, request 93 bytes, HTTP 0, headers/body 0 |
+| 12:21:27 | Direct trace | Passed | HTTP 200, 219 body bytes, 501ms |
+| 12:21:28 | TCP/Reality trace | Passed | HTTP 200, 214 body bytes, 685ms |
+| 12:22:35 | XHTTP gstatic 204 | Failed | curl 28, 3009ms, TLS 0, request/header/body 0 |
+| 12:23:52 | XHTTP HTTPBingo 256 bytes | Failed | curl 28, 3009ms, TLS 0, request/header/body 0 |
+| 12:24:56 | XHTTP trace, total budget 30s | Failed | curl 28, 3011ms, TLS 0, request/header/body 0 |
+
+Backend logs at 12:21:19 show VLESS accepted Cloudflare and freedom opened TCP to
+104.16.123.96:443. The client reports XHTTP packet-up over HTTP/2. At 12:22:19 the
+backend logged `failed to read body payload > stream error: stream ID 7; CANCEL`.
+No corresponding gstatic/HTTPBingo backend destination logs were found in this
+window. Absence of an Info log does not prove packet loss. CANCEL can be cleanup,
+so it is a clue rather than the established cause.
+
+The first failure is after destination TLS; later failures are during connection
+setup. Curl request byte counts are not proof of receipt at the destination.
+The long variant retains connect-timeout=3 and therefore supplies no evidence
+about a 30-second response wait. Tiny controls failing also means this candidate
+problem cannot be explained solely by the existing large-response size threshold.
+
+Next controlled hypothesis: a fresh XHTTP client for the same small request versus
+the reused process/connection. Preserve target, TLS verification, budgets and quiet
+intervals; label results separately and keep original acceptance unchanged. A
+fresh-client recovery would implicate state/reuse but would not prove its cause.
+No production change is justified by this one diagnostic sequence alone.
+
+Deployment health: all intended VPN workloads available, new experimental pods at
+zero restarts, all five manual website smoke checks passed. Probes 3/5 remain
+intentionally scaled to zero in the existing controlled experiment.
+
+## Prepared follow-up — fresh versus reused
+
+PR #146 now includes the bounded fresh/reused comparison described above, alongside
+the deployed evidence. It is not deployed. The historical table remains the result
+of #145, not a result of the new comparison. Production subscriptions, ingress,
+secrets, server transport settings and host networking are unchanged.

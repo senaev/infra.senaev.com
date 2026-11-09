@@ -1,3 +1,93 @@
+## 2026-11-09 12:44 UTC — Prepare fresh versus reused XHTTP comparison
+
+User approved the next comparison. Extended existing PR #146: replace the three
+previous candidate diagnostics with a same-URL reused/fresh pair, alternating
+order each matrix. Both keep 8s total / 3s connect, 4 KiB cap, 32 KiB/s and expected
+exit validation. Four added requests per failed round (16 KiB maximum payload).
+
+Fresh client uses temporary config and loopback 1083, same settings/credentials as
+the persistent candidate, with bounded startup and unconditional cleanup. Parent
+failure still invalidates the round; temporary client failure is labelled and
+preserves the baseline. Original failed exit control never promotes the candidate.
+New fixed checks automatically appear in existing diagnostic dashboard panels.
+No chart, production subscription, server, ingress, secret or host network change.
+Validation:
+```
+Ran 53 tests in 0.105s — OK
+Python syntax OK: 15 file(s)
+PASS: verified TLS -> Reality fallback -> Traefik -> h2c XHTTP: 4096/16384/65536 bytes
+PASS: two fresh-client controls validate TLS/exit and release loopback 1083
+PASS: invalid VLESS credential cannot reach the HTTPS origin
+PASS: ordinary website route preserved
+```
+Real pinned-binary integration completed in 4.49s. Unit tests cover order,
+unchanged config/budgets, cancellation, cleanup, sanitized startup failure,
+parent failure, no candidate promotion and separate bounded metrics. Current
+live profile 4 memory was 30285824 bytes against its 128Mi limit; a third temporary
+process remains within that same enforced limit, so post-deploy OOM/restart checks
+remain necessary. No live fresh-client result exists yet.
+Reviewed CodeRabbit comments: saved auditable verification exports and clarified
+parsed summaries; order alternation and explicit time/recovery caveats address the
+comparison bias. Pending CI/review/deployment; previous #145 evidence is retained below.
+
+## 2026-11-09 12:27 UTC — Deploy response diagnostics and observe first sequence
+
+User approved merge/deployment. PR #145 merged at
+960f34c0e0e0242b3ef355ff79b2ed8eee4da570; run 42614899253 completed successfully
+(checks, image build, provisioning sync, VPN and telemetry deploys). New probe and
+backend pods were available with zero restarts. All five website smoke checks
+passed; Grafana panels 20/21 and diagnostic metrics were verified.
+
+Verbatim selected-field Datadog export, historical pod/metric snapshots,
+deployment output, repeated website smoke output and dashboard panel selection:
+[saved verification output](sources/2026-11-09-xhttp-diagnostics.txt).
+The export is the connector's retrieved YAML, not reconstructed original probe
+stdout. For example, the retrieved record contains:
+```yaml
+- timestamp: "2026-11-09T12:24:56Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: senaev-media-senaev-k3s
+  attributes:
+    custom.bytes: 0
+    custom.check: diagnostic_trace_30s
+    custom.curl_exit: 28
+    custom.duration_ms: 3011
+    custom.experiment_id: 94802da3-527a-47ea-a954-10b391454510
+    custom.http_status: 0
+    custom.ok: false
+    custom.request_bytes: 0
+    custom.response_header_bytes: 0
+    custom.route: xhttp
+    custom.tls_ms: 0
+```
+These snapshots support deployment health and the failure-stage interpretation.
+The five website checks were repeated when saving this evidence, at 12:47 UTC.
+Parsed summary of the first complete sequence (not original stdout):
+```
+12:21:26 exit_ip xhttp ok=false curl_exit=28 duration_ms=8010 tls_ms=840 request_bytes=93 response_header_bytes=0 http_status=0 bytes=0
+12:21:27 diagnostic_trace direct ok=true http_status=200 bytes=219 duration_ms=501
+12:21:28 diagnostic_trace vpn ok=true http_status=200 bytes=214 duration_ms=685
+12:22:35 diagnostic_https xhttp ok=false curl_exit=28 duration_ms=3009 tls_ms=0 request_bytes=0
+12:23:52 diagnostic_256b xhttp ok=false curl_exit=28 duration_ms=3009 tls_ms=0 request_bytes=0
+12:24:56 diagnostic_trace_30s xhttp ok=false curl_exit=28 duration_ms=3011 tls_ms=0 request_bytes=0 budget_seconds=30
+```
+Backend accepted VLESS and opened Cloudflare TCP at 12:21:19; at 12:22:19 it logged:
+```
+transport/internet/splithttp: failed to read body payload > stream error: stream ID 7; CANCEL
+```
+No later gstatic/HTTPBingo backend destination logs found in the inspected window.
+The first failure follows destination TLS; subsequent failures hit the unchanged
+3s connection limit, so the 30s total budget did not test a longer response wait.
+Candidate payloads remain skipped. Root cause remains unproven.
+
+Next hypothesis: compare fresh versus reused XHTTP client for the same small
+request, preserving endpoint/budgets/quiet intervals. Do not infer DPI or a mux bug
+from this one sequence; do not modify production subscriptions or host networking.
+CodeRabbit did not review #145 because its review limit was reached.
+
 ## 2026-11-09 12:01 UTC — Prepare XHTTP response diagnostics after failed live control
 
 PR #144 merged at 9aa1193 and deployed in run 42610055670. Backend and both probe

@@ -30,7 +30,8 @@ class ProbeMetrics:
         if check not in {'https', 'exit_ip', 'download_64k', 'download_64k_30s',
                          'ipv6_entry', 'ipv6_control', 'experiment_client_alive',
                          'diagnostic_trace', 'diagnostic_https', 'diagnostic_256b',
-                         'diagnostic_trace_30s', 'candidate_startup', 'transfer_precheck', 'transfer_cloudflare_4096',
+                         'diagnostic_trace_30s', 'diagnostic_fresh_trace', 'diagnostic_reused_trace',
+                         'candidate_startup', 'transfer_precheck', 'transfer_cloudflare_4096',
                          'transfer_cloudflare_16384', 'transfer_cloudflare_65536',
                          'transfer_httpbingo_4096', 'transfer_httpbingo_16384',
                          'transfer_httpbingo_65536'} or route not in {'direct', 'vpn', 'xhttp'}:
