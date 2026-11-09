@@ -1,3 +1,81 @@
+## 2026-11-09 14:32 UTC — Prepare TLS-client comparison and short request jitter
+
+User approved the next investigation stage and randomized gaps between requests.
+Existing long waits are already jittered60–90s and300–360s. Add2–7s before each
+direct/TCP diagnostic trace and between successful precheck and matrix download.
+Waits are cancellable and logged separately from request duration.
+
+Replace home reused/fresh pair with fresh Chrome/native TLS HTTP2 pair, shared by
+the Hetzner source control, alternating order per round. HTTP2, packet-up, endpoint,
+UUID, certificate verification and all limits stay fixed. Home remains four added
+4KiB requests; Hetzner now has direct plus two arms (12KiB maximum payload/cycle).
+Native uses fingerprint=unsafe solely to select native Go TLS, with allowInsecure
+still false. Local untrusted-certificate rejection is required for both arms.
+
+An ALPN-only HTTP1.1 trial was rejected after real integration showed a mismatch
+with the pinned Chrome uTLS handshake. No such config is shipped. Pinned-source
+inspection and actual native-client integration validate the chosen comparison.
+No production subscription, server, chart, policy, secret or host network change.
+
+Validation output:
+```
+Ran 61 tests in 0.161s
+OK
+PASS: verified TLS -> Reality fallback -> Traefik -> h2c XHTTP: 4096 bytes
+PASS: verified TLS -> Reality fallback -> Traefik -> h2c XHTTP: 16384 bytes
+PASS: verified TLS -> Reality fallback -> Traefik -> h2c XHTTP: 65536 bytes
+PASS: fresh Chrome/native HTTP2 controls validate exit, reject untrusted TLS and release loopback 1083
+PASS: invalid VLESS credential cannot reach the HTTPS origin
+PASS: ordinary website route preserved
+Python syntax OK: 16 file(s)
+```
+Local integration plus unit checks completed in6.16s. Unit timing uses fake waits,
+including request-cancellation cases. Original exit failure still prevents payload
+promotion. Existing Grafana diagnostic regex includes the new fixed native check.
+Addressed CodeRabbit documentation findings: rewrote current status instead of
+appending stale stages, corrected prior deployment descriptions and saved original
+backend/initial-smoke excerpts. Prepared in PR #149; pending CI/deployment.
+Evidence from #147 retained below.
+
+## 2026-11-09 13:49 UTC — Deploy source control; Hetzner succeeds while home stalls
+
+User approved merge and continued investigation. PR #147 merged at eb818385.
+Run 42626704217 stopped at the stale-main guard before publishing/deployment after
+#148 merged. Combined run 42626865899 at 271f5de completed successfully, including
+the VPN image and release. All intended VPN deployments available; targets1/4 and
+source-control-hetzner scraped with source_node=hetzner on the new target. All new
+checker/backend pods at zero restarts. Initial five website smoke checks passed.
+A later repetition hit one SSL connection timeout on senaev.ru; an immediate
+bounded rerun passed all five. Both outcomes are recorded in the source export.
+No causal link to this deployment is established.
+
+First source cycle succeeded; contemporaneous home control failed. Verbatim
+selected-field connector export: [source evidence](sources/2026-11-09-hetzner-source-control.txt).
+Parsed summary (not original stdout):
+```
+13:45:25 Hetzner direct HTTP200 bytes214 duration282ms
+13:46:35 Hetzner fresh XHTTP HTTP200 bytes214 duration930ms TLS831ms expected_exit_validated=true
+13:47:28 home XHTTP HTTP0 bytes0 duration8011ms TLS750ms request_bytes93 response_header_bytes0
+13:47:28 home direct HTTP200 bytes219 duration499ms
+13:47:29 home TCP HTTP200 bytes214 duration704ms
+```
+Hetzner experiment301b4bac-33f3-4b16-a813-1e8edb7663cf; home
+022c46b2-f499-4857-874f-8686c0f952bd. Verbatim backend excerpt:
+```
+2026/11/09 13:47:20.900220 [Info] [3640721331] proxy/freedom: connection opened to tcp:www.cloudflare.com:443, local endpoint 10.42.0.230:39854, remote endpoint 104.16.124.96:443
+```
+This supports backend acceptance/outbound setup, not HTTP response delivery.
+The initial smoke stdout is also saved in the linked source export.
+ The preceding home round also
+failed fresh/reused controls with order reversed (13:25:46 / 13:27:16 UTC).
+
+The deployed endpoint is capable of returning a validated response from its own
+Hetzner host. Source/path dependence now outranks universal endpoint/credential
+failure, but one self-connect success does not distinguish ISP interference,
+transport behavior, latency, DNS or node policy effects. Keep this positive control,
+repeat comparable pairs, and investigate the home upload/response transport next.
+No further production config change made in this observation step.
+
 ## 2026-11-09 13:25 UTC — Prepare Hetzner public-endpoint source control
 
 User approved comparing the same XHTTP request from Hetzner. Prepared one isolated

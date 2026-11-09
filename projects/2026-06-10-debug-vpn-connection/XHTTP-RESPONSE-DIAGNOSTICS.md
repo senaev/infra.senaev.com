@@ -14,38 +14,36 @@ only the extra XHTTP client and isolated backend. Production clients/server conf
 stay at their existing logging levels. Do not change transport, fingerprint, TLS
 verification, multiplexing or the ordinary acceptance criteria.
 
-After the first failed 8s candidate exit check in each matrix, run once:
+After the first failed 8s candidate exit check in each home matrix, run once:
 
-1. The same Cloudflare trace direct, then through the TCP/Reality baseline (8s each).
-2. The same trace through the existing XHTTP client and a fresh XHTTP process,
-   alternating fresh/reused order by matrix rotation.
+1. The same Cloudflare trace direct, then through TCP/Reality, with a random 2–7s
+   pause before each control.
+2. Fresh XHTTP traces with Chrome TLS and native Go TLS, alternating order each
+   matrix. Wait 60–90 random quiet seconds before each one.
 
-Wait 60–90 quiet seconds before each XHTTP comparison request. Both use exactly
-the same endpoint, credentials, TLS/transport settings, 4 KiB body cap, 32 KiB/s
-rate limit, 8s total budget and 3s connection limit. Both validate the expected
-Hetzner exit. Separate fixed checks are diagnostic_reused_trace and
-diagnostic_fresh_trace; existing Grafana diagnostic panels include both.
+Both TLS arms keep HTTP/2, packet-up, the same hostname/path/UUID, certificate
+verification, 4 KiB cap, 32 KiB/s and 8s total / 3s connect budgets. Only the TLS
+client fingerprint/implementation changes. Chrome keeps diagnostic_fresh_trace;
+native uses diagnostic_native_trace. Both appear in existing Grafana panels20/21.
+The native arm sets Xray fingerprint=unsafe to choose the native Go TLS client;
+this does not set allowInsecure. Both must reject an untrusted server certificate.
 
-The fresh process uses only loopback port 1083 and a temporary 0600 configuration,
-with no routing or host network changes. It is stopped in a finally block before
-its temporary directory is removed, even on failure/cancellation. At most one
-extra idle/active Xray process is present alongside the two existing clients; the
-existing pod memory/CPU limits stay in force. Startup failures are sanitized and
-labelled as fresh_client_unavailable. Parent client failure still invalidates the
-round. The existing matrix candidate is never restarted or replaced.
+Both use separate fresh processes on loopback1083 and temporary 0600 config, with
+unconditional cleanup. Existing candidate and original matrix acceptance remain
+unchanged; diagnostic success never promotes a failed exit control. Four added
+home requests per failed matrix, at most16 KiB response payload plus overhead.
+This replaces the reused/fresh diagnostic pair rather than adding more home probes.
 
-Four additional serial requests per failed matrix, at most 16 KiB of response
-payload plus protocol overhead. This replaces the previous three candidate
-controls (gstatic, HTTPBingo, 30s trace), rather than adding requests to them.
-The original candidate failure stays failed even if a diagnostic passes; no
-candidate payload matrix is permitted in that round. diagnostics=false removes
-both extra controls and experimental Info logging. Profile 4 retains its existing
-45-second shutdown grace for request/startup and child cleanup.
+The transfer matrix also gains random 2–7s pauses between each successful HTTPS
+precheck and its download. Existing condition pauses60–90s, round pauses300–360s,
+routine light30–45s and heavy300–360s stay unchanged. Short/long waits preserve
+cancellation/child guards. Logs record request_jitter_seconds/quiet_seconds_before;
+request duration excludes the waits. No catch-up requests or retries are added.
 
-Order alternation reduces one fixed ordering bias but does not remove time,
-recovery or shared-path effects. A fresh process resets DNS, sessions and connection
-pools together, so recovery implicates process/connection state without proving
-a particular mux bug. One pair is exploratory; compare several rounds.
+Order alternation and jitter do not remove time/recovery/shared-path effects.
+Native success with Chrome failure implicates TLS-client/path interaction, not a
+proven filtering mechanism. Compare both sources and several rounds. Differences
+include the TLS implementation as well as its advertised handshake fingerprint.
 
 ## Evidence and interpretation
 
@@ -59,8 +57,8 @@ rounded zero is not by itself proof that no packet arrived. These timings descri
 the inner curl request, not the complete outer XHTTP handshake count or wire delivery.
 
 - Direct and baseline trace succeed, candidate fails: focus on candidate forwarding.
-- Fresh trace succeeds while reused fails: prioritize process/connection state.
-- Both fail: freshness alone does not resolve the candidate path; investigate further.
+- Native trace succeeds while Chrome fails: prioritize TLS-client/path interaction.
+- Both fail from home but pass on Hetzner: continue investigating source/path dependence.
 - Candidate diagnostics all fail after TLS: correlate client XHTTP HTTP/2 errors,
   backend VLESS destination/connection logs and the matching time window.
 - Direct/baseline controls also fail: broader reachability or target state is involved.
@@ -119,21 +117,21 @@ Deployment health: all intended VPN workloads available, new experimental pods a
 zero restarts, all five manual website smoke checks passed. Probes 3/5 remain
 intentionally scaled to zero in the existing controlled experiment.
 
-## Prepared follow-up — fresh versus reused
+## Prior fresh/reused comparison
 
-PR #146 now includes the bounded fresh/reused comparison described above, alongside
-the deployed evidence. It is not deployed. The historical table remains the result
-of #145, not a result of the new comparison. Production subscriptions, ingress,
-secrets, server transport settings and host networking are unchanged.
+PR #146 deployed the bounded fresh/reused comparison. Both request orders failed
+from home: fresh Chrome clients completed destination TLS but stalled before HTTP;
+reused clients timed out during setup. The new TLS-client pair replaces that test.
 
-## Prepared source control — Hetzner
+## Source control — Hetzner
 
 Add one isolated vpn-source-control-hetzner pod on Hetzner, using the same existing
 probe image and fresh-client function. It accesses senaev.com:443 with the same
 XHTTP path/UUID/TLS verification, never a private backend URL. Every cycle waits
-300–360s, makes one direct trace (4 KiB cap), waits 60–90s, then makes one fresh
-XHTTP trace with the same 8s total / 3s connect budget and 32 KiB/s rate cap. At most
-8 KiB response payload per cycle. There is no size matrix or reused client here.
+300–360s, makes one direct trace (4 KiB cap), waits 60–90s, then runs the same fresh
+Chrome/native TLS pair, with 60–90s pauses and alternating order per round. Same
+8s total / 3s connect budget and 32 KiB/s rate cap. Three requests per cycle, at
+most12 KiB response payload. There is no size matrix or persistent client here.
 
 Metrics/log profile is `XHTTP source control — Hetzner`, with source_node and a
 separate profile_index=`source-control-hetzner` target label. Existing VMPodScrape,
@@ -164,4 +162,33 @@ verify the explicit rollback exactly matches main's chart output.
 
 After merge: verify rollout, source_node, scraper health, zero restarts/OOMs,
 website smoke checks, direct and validated fresh controls, and backend logs.
-No live result from this source exists yet.
+Deployed via PR #147 in combined run 42626865899. First source result:
+
+| Source / route | UTC | Result |
+|---|---|---|
+| Hetzner direct | 13:45:25 | HTTP200, 214 bytes, 282ms |
+| Hetzner fresh XHTTP | 13:46:35 | HTTP200, 214 bytes, 930ms; expected exit validated |
+| Home initial XHTTP | 13:47:28 | TLS750ms, request93 bytes, HTTP0, headers/body0, timeout8011ms |
+| Home direct / TCP trace | 13:47:28–29 | HTTP200, 499/704ms |
+
+[Verbatim selected-field connector export](sources/2026-11-09-hetzner-source-control.txt).
+One successful self-connect narrows universal setup failures but does not prove
+DPI or any particular transport defect. Continue comparing the independent home
+and Hetzner controls before tuning transport. The home fresh/reused pair also
+failed with its order reversed in the preceding deployment.
+
+## Validation and scope of this iteration
+
+The pinned Xray v26.9.30 dialer selects HTTP/1.1 for that ALPN alone, but the Chrome
+uTLS profile in the real integration negotiated HTTP/2 and produced malformed
+HTTP/1.x responses when only ALPN was changed. That invalid comparison is not
+included. The chosen Chrome/native comparison keeps ALPN=h2 on both arms.
+Sources: [pinned dialer](https://github.com/XTLS/Xray-core/blob/v26.9.30/transport/internet/splithttp/dialer.go)
+and [pinned TLS clients](https://github.com/XTLS/Xray-core/blob/v26.9.30/transport/internet/tls/tls.go).
+
+Manual real-binary integration verifies both arms through Reality fallback,
+Traefik TLS and h2c backend, correct exit validation, rejection of untrusted TLS,
+loopback cleanup, invalid UUID isolation and ordinary website routing. No image
+base, subscription, ingress, server, secret, policy or host networking changes.
+New comparison is prepared in PR #149 and not deployed. Existing controls continue
+until merge. diagnostics=false disables extra client comparisons as before.

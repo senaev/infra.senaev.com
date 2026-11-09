@@ -196,7 +196,7 @@ class DiagnosticTests(unittest.TestCase):
 
 
 class TransferTests(unittest.TestCase):
-    @patch('probe.random.uniform', return_value=75)
+    @patch('probe.random.uniform', side_effect=lambda low, high: (low + high) / 2)
     @patch('probe.emit')
     @patch('probe.experiment_wait', return_value=False)
     @patch('probe.request', return_value=({'ok': True}, ''))
@@ -204,10 +204,11 @@ class TransferTests(unittest.TestCase):
         self.assertTrue(probe.transfer_round('test', 'proxy'))
         calls = request.call_args_list
         self.assertEqual(len(calls), 18)
-        self.assertEqual(wait.call_count, 5)
-        self.assertTrue(all(c.args[0] == 75 for c in wait.call_args_list))
-        self.assertEqual(uniform.call_count, 5)
-        self.assertTrue(all(c.args == (60, 90) for c in uniform.call_args_list))
+        self.assertEqual(wait.call_count, 11)
+        self.assertEqual(sum(c.args[0] == 75 for c in wait.call_args_list), 5)
+        self.assertEqual(sum(c.args[0] == 4.5 for c in wait.call_args_list), 6)
+        self.assertEqual(sum(c.args == (60, 90) for c in uniform.call_args_list), 5)
+        self.assertEqual(sum(c.args == (2, 7) for c in uniform.call_args_list), 6)
         for index, size in enumerate([4096, 4096, 16384, 16384, 65536, 65536]):
             direct, before, vpn = calls[index * 3:index * 3 + 3]
             self.assertEqual(direct.args[1:], ('', size))
@@ -245,9 +246,10 @@ class TransferTests(unittest.TestCase):
         self.assertEqual(request.call_count, 17)
         self.assertEqual(emit.call_args_list[3].args[1], 'transfer_skipped')
 
+    @patch('probe.experiment_wait', side_effect=lambda *args: probe.STOP.is_set())
     @patch('probe.emit')
     @patch('probe.request')
-    def test_shutdown_during_request_prevents_more_requests(self, request, emit):
+    def test_shutdown_during_request_prevents_more_requests(self, request, emit, wait):
         import threading
         for halt_at in [1, 2, 3]:
             with self.subTest(halt_at=halt_at):
@@ -267,7 +269,7 @@ class TransferTests(unittest.TestCase):
     @patch('probe.request', return_value=({'ok': True}, ''))
     def test_shutdown_in_quiet_interval_stops_remaining_conditions(self, request, wait, emit):
         self.assertFalse(probe.transfer_round('test', 'proxy'))
-        self.assertEqual(request.call_count, 3)
+        self.assertEqual(request.call_count, 2)
 
     @patch('probe.emit')
     @patch('probe.request')

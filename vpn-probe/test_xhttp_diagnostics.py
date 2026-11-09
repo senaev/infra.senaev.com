@@ -11,43 +11,52 @@ from xhttp_server import server_config
 class DiagnosticTests(unittest.TestCase):
     @patch('probe.emit')
     @patch('probe.experiment_wait', return_value=False)
-    @patch('probe.fresh_xhttp_exit_control')
-    @patch('probe.xhttp_exit_control')
-    @patch('probe.request', return_value=({'ok': True}, ''))
-    def test_same_trace_budgets_and_alternating_serial_order(self, request, reused, fresh, wait, emit):
-        calls = []
-        reused.side_effect = lambda *a, **kw: calls.append('reused')
-        fresh.side_effect = lambda *a, **kw: calls.append('fresh')
-        for fresh_first in [False, True]:
-            probe.xhttp_response_diagnostics('test', 'baseline', 'candidate', None, 'round', fresh_first)
-        self.assertEqual(calls, ['reused', 'fresh', 'fresh', 'reused'])
-        self.assertEqual([x.args[1] for x in request.call_args_list], ['', 'baseline'] * 2)
-        self.assertTrue(all(x.args[0] == 'https://www.cloudflare.com/cdn-cgi/trace'
-                            and x.args[2] == 4096 for x in request.call_args_list))
-        self.assertEqual(wait.call_count, 4)
-        self.assertTrue(all(60 <= x.args[0] <= 90 for x in wait.call_args_list))
-        reused.assert_called_with('test', 'candidate', 'round', check='diagnostic_reused_trace')
-        fresh.assert_called_with('test', None, 'round')
-
-    @patch('probe.emit')
-    @patch('probe.experiment_wait', return_value=True)
-    @patch('probe.xhttp_exit_control')
-    @patch('probe.request', return_value=({'ok': False}, ''))
-    def test_shutdown_during_quiet_wait_stops_candidate_requests(self, request, exit_control, wait, emit):
-        probe.xhttp_response_diagnostics('test', 'baseline', 'candidate', None, 'round')
-        self.assertEqual(request.call_count, 2)
-        exit_control.assert_not_called()
+    @patch('probe.fresh_xhttp_exit_control', side_effect=[False, True])
+    def test_failure_of_first_tls_client_does_not_skip_the_second(self, fresh, wait, emit):
+        self.assertFalse(probe.xhttp_transport_controls('test', None, 'round'))
+        self.assertEqual(fresh.call_count, 2)
 
     @patch('probe.emit')
     @patch('probe.experiment_wait', return_value=False)
+    @patch('probe.fresh_xhttp_exit_control', return_value=True)
+    def test_same_trace_budgets_and_alternating_serial_order(self, fresh, wait, emit):
+        for native_first in [False, True]:
+            self.assertTrue(probe.xhttp_transport_controls('test', None, 'round', native_first))
+        self.assertEqual([x.kwargs['native_tls'] for x in fresh.call_args_list], [False, True, True, False])
+        self.assertTrue(all(x.args == ('test', None, 'round') for x in fresh.call_args_list))
+        self.assertEqual(wait.call_count, 4)
+        self.assertTrue(all(60 <= x.args[0] <= 90 for x in wait.call_args_list))
+
+    @patch('probe.emit')
+    @patch('probe.experiment_wait', return_value=False)
+    @patch('probe.xhttp_transport_controls')
+    @patch('probe.request', return_value=({'ok': True}, ''))
+    def test_direct_and_tcp_trace_controls_have_short_jitter(self, request, versions, wait, emit):
+        probe.xhttp_response_diagnostics('test', 'baseline', None, 'round')
+        self.assertEqual([x.args[1] for x in request.call_args_list], ['', 'baseline'])
+        self.assertTrue(all(x.args[0] == 'https://www.cloudflare.com/cdn-cgi/trace'
+                            and x.args[2] == 4096 for x in request.call_args_list))
+        self.assertEqual(wait.call_count, 2)
+        self.assertTrue(all(2 <= x.args[0] <= 7 for x in wait.call_args_list))
+        versions.assert_called_once_with('test', None, 'round', native_first=False)
+
+    @patch('probe.emit')
+    @patch('probe.experiment_wait', return_value=True)
     @patch('probe.fresh_xhttp_exit_control')
-    @patch('probe.xhttp_exit_control', side_effect=[False, True])
+    def test_shutdown_during_quiet_wait_starts_no_candidate(self, fresh, wait, emit):
+        self.assertFalse(probe.xhttp_transport_controls('test', None, 'round'))
+        fresh.assert_not_called()
+
+    @patch('probe.emit')
+    @patch('probe.experiment_wait', return_value=False)
+    @patch('probe.fresh_xhttp_exit_control', return_value=True)
+    @patch('probe.xhttp_exit_control', return_value=False)
     @patch('probe.request', return_value=({'ok': True}, ''))
     def test_diagnostic_success_does_not_promote_failed_candidate(self, request, exit_control, fresh, wait, emit):
         self.assertFalse(probe.transfer_round('test', 'baseline', xhttp_proxy='candidate', diagnostics=True))
-        self.assertEqual(exit_control.call_count, 2)
+        exit_control.assert_called_once()
         self.assertEqual(request.call_count, 20)
-        fresh.assert_called_once()
+        self.assertEqual(fresh.call_count, 2)
         skips = [c for c in emit.call_args_list if c.args[1] == 'transfer_skipped']
         self.assertEqual(len(skips), 6)
         self.assertFalse(any(c.args[2] == 'xhttp' and c.args[1].startswith('transfer_')
@@ -151,3 +160,16 @@ class FreshClientTests(unittest.TestCase):
             stopping.is_set.return_value = True
             probe.fresh_xhttp_exit_control('test', None, 'round')
         start.assert_not_called()
+
+    @patch('probe.stop_client')
+    @patch('probe.start_client')
+    @patch('probe.xhttp_exit_control', return_value=True)
+    def test_native_tls_only_changes_fingerprint_and_metric_label(self, control, start, stop):
+        start.return_value.poll.return_value = None
+        self.assertTrue(probe.fresh_xhttp_exit_control('test', None, 'round', native_tls=True))
+        expected, _ = probe.client_config(os.environ['XHTTP_PROFILE_LINK'], 'base', 'unused', port=1083)
+        expected['log']['loglevel'] = 'info'
+        expected['outbounds'][0]['streamSettings']['tlsSettings']['fingerprint'] = 'unsafe'
+        self.assertEqual(start.call_args.args[0], expected)
+        control.assert_called_once_with('test', 'socks5h://127.0.0.1:1083', 'round', check='diagnostic_native_trace')
+        stop.assert_called_once_with(start.return_value)

@@ -252,10 +252,11 @@ def xhttp_exit_control(profile, proxy, experiment_id, timeout=8, check="exit_ip"
     return result["ok"]
 
 
-def fresh_xhttp_exit_control(profile, child, experiment_id):
+def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False):
     """One request through a separate process; never reset the matrix candidate."""
     if STOP.is_set():
         return False
+    check = "diagnostic_native_trace" if native_tls else "diagnostic_fresh_trace"
     passed = False
     fresh = None
     try:
@@ -263,6 +264,8 @@ def fresh_xhttp_exit_control(profile, child, experiment_id):
                                   os.environ["XRAY_USER_UUID"],
                                   os.environ["XRAY_REALITY_PUBLIC_KEY"], port=1083)
         config["log"]["loglevel"] = "info"
+        if native_tls:
+            config["outbounds"][0]["streamSettings"]["tlsSettings"]["fingerprint"] = "unsafe"
         with tempfile.TemporaryDirectory(prefix="vpn-fresh-client-") as folder:
             try:
                 fresh = start_client(config, folder)
@@ -272,7 +275,7 @@ def fresh_xhttp_exit_control(profile, child, experiment_id):
                 if fresh.poll() is not None and not STOP.is_set():
                     raise RuntimeError("fresh_client_exited")
                 passed = xhttp_exit_control(profile, "socks5h://127.0.0.1:1083", experiment_id,
-                                            check="diagnostic_fresh_trace")
+                                            check=check)
                 check_experiment_client(child, profile, experiment_id)
                 if fresh.poll() is not None and not STOP.is_set():
                     raise RuntimeError("fresh_client_exited")
@@ -282,39 +285,49 @@ def fresh_xhttp_exit_control(profile, child, experiment_id):
     except (KeyError, ValueError, RuntimeError, OSError) as error:
         passed = False
         check_experiment_client(child, profile, experiment_id)
-        emit(profile, "diagnostic_fresh_trace", "xhttp", {
+        emit(profile, check, "xhttp", {
             "ok": False, "failure": "fresh_client_unavailable",
             "error_type": type(error).__name__, "experiment_id": experiment_id})
     check_experiment_client(child, profile, experiment_id)
     return passed
 
 
-def xhttp_response_diagnostics(profile, baseline, candidate, child, experiment_id, fresh_first=False):
-    """Same trace/budgets through reused and fresh clients; never promote either."""
+def xhttp_transport_controls(profile, child, experiment_id, native_first=False):
+    """Fresh processes for both TLS clients; original matrix acceptance is untouched."""
+    passed = True
+    versions = [True, False] if native_first else [False, True]
+    for native_tls in versions:
+        quiet = random.uniform(60, 90)
+        if experiment_wait(quiet, child, profile, experiment_id):
+            return False
+        if STOP.is_set():
+            return False
+        check_experiment_client(child, profile, experiment_id)
+        emit(profile, "diagnostic_transport_order", "xhttp", {
+            "ok": True, "tls_client": "native" if native_tls else "chrome", "native_first": native_first,
+            "quiet_seconds_before": quiet,
+            "experiment_id": experiment_id})
+        result = fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=native_tls)
+        check_experiment_client(child, profile, experiment_id)
+        passed = result and passed
+    return passed
+
+
+def xhttp_response_diagnostics(profile, baseline, child, experiment_id, native_first=False):
+    """Same trace/budgets through fresh Chrome/native TLS clients; never promote either."""
     trace = "https://www.cloudflare.com/cdn-cgi/trace"
     for route, address in [("direct", ""), ("vpn", baseline)]:
+        jitter = random.uniform(2, 7)
+        if experiment_wait(jitter, child, profile, experiment_id):
+            return
         if STOP.is_set():
             return
         check_experiment_client(child, profile, experiment_id)
         result, _ = request(trace, address, 4096)
         check_experiment_client(child, profile, experiment_id)
-        emit(profile, "diagnostic_trace", route, {**result, "experiment_id": experiment_id})
-    modes = ["reused", "fresh"] if not fresh_first else ["fresh", "reused"]
-    for mode in modes:
-        if experiment_wait(random.uniform(60, 90), child, profile, experiment_id):
-            return
-        if STOP.is_set():
-            return
-        check_experiment_client(child, profile, experiment_id)
-        emit(profile, "diagnostic_client_order", "xhttp", {
-            "ok": True, "mode": mode, "fresh_first": fresh_first,
-            "experiment_id": experiment_id})
-        if mode == "fresh":
-            fresh_xhttp_exit_control(profile, child, experiment_id)
-        else:
-            xhttp_exit_control(profile, candidate, experiment_id,
-                               check="diagnostic_reused_trace")
-        check_experiment_client(child, profile, experiment_id)
+        emit(profile, "diagnostic_trace", route, {**result, "experiment_id": experiment_id,
+                                                   "request_jitter_seconds": jitter})
+    xhttp_transport_controls(profile, child, experiment_id, native_first=native_first)
 
 
 def transfer_round(profile, proxy, child=None, rotation=0, xhttp_proxy=None, diagnostics=False):
@@ -362,8 +375,8 @@ def transfer_round(profile, proxy, child=None, rotation=0, xhttp_proxy=None, dia
                     candidate_exit_ok = xhttp_exit_control(profile, address, experiment_id)
                     check_experiment_client(child, profile, experiment_id)
                     if not candidate_exit_ok and diagnostics:
-                        xhttp_response_diagnostics(profile, proxy, address, child, experiment_id,
-                                                   fresh_first=bool(rotation % 2))
+                        xhttp_response_diagnostics(profile, proxy, child, experiment_id,
+                                                   native_first=bool(rotation % 2))
                 if not candidate_exit_ok:
                     emit(profile, "transfer_skipped", route, {
                         "ok": False, "failure": "exit_control_failed", **variant_context})
@@ -382,10 +395,14 @@ def transfer_round(profile, proxy, child=None, rotation=0, xhttp_proxy=None, dia
                     "ok": False, "failure": "positive_control_failed", **variant_context})
                 passed = False
                 continue
+            jitter = random.uniform(2, 7)
+            if experiment_wait(jitter, child, profile, experiment_id):
+                return False
             result, _ = request(template.format(size), address, size, expected_bytes=size)
             check_experiment_client(child, profile, experiment_id)
             emit(profile, check, route, {
-                **result, **variant_context, "direct_control_ok": direct["ok"],
+                **result, **variant_context, "request_jitter_seconds": jitter,
+                "direct_control_ok": direct["ok"],
                 "comparison_inconclusive": not direct["ok"]})
             passed = result["ok"] and passed
     return passed
@@ -461,15 +478,15 @@ def negative(profile, link, base, key, folder):
 
 def xhttp_source_control(profile, once=False):
     """Low-volume public-endpoint control from a separate source node."""
+    rotation = 0
     while not STOP.is_set():
         if experiment_wait(random.uniform(300, 360), None, profile):
             break
         experiment_id = str(uuid.uuid4())
         result, _ = request("https://www.cloudflare.com/cdn-cgi/trace", "", 4096)
         emit(profile, "diagnostic_trace", "direct", {**result, "experiment_id": experiment_id})
-        if experiment_wait(random.uniform(60, 90), None, profile, experiment_id):
-            break
-        passed = fresh_xhttp_exit_control(profile, None, experiment_id)
+        passed = xhttp_transport_controls(profile, None, experiment_id, native_first=bool(rotation % 2))
+        rotation += 1
         if once:
             return 0 if passed and result["ok"] else 1
     return 1 if once else 0

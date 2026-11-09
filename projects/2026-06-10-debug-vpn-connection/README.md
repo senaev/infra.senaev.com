@@ -761,8 +761,12 @@ FirstVDS entry-only configuration and randomized checker timing are deployed.
 
 Deployed diagnostics confirmed the initial post-TLS stall and later connection
 timeouts; direct/TCP controls passed. Candidate payload tests stay skipped.
-The next [focused comparison](XHTTP-RESPONSE-DIAGNOSTICS.md) in PR #146 tests a
-fresh versus reused XHTTP client with the same request and unchanged budgets.
+The [fresh/reused comparison](XHTTP-RESPONSE-DIAGNOSTICS.md) deployed in PR #146;
+both request orders failed from home with the same post-TLS/setup pattern.
 
-The next source control runs the same small public-endpoint XHTTP trace from
-Hetzner in an isolated pod. See [scope and interpretation](XHTTP-RESPONSE-DIAGNOSTICS.md#prepared-source-control--hetzner).
+The isolated Hetzner source control is deployed and its first XHTTP trace passed;
+a contemporaneous home trace still stalled after destination TLS. See
+[scope and interpretation](XHTTP-RESPONSE-DIAGNOSTICS.md#source-control--hetzner).
+
+Prepared next in PR #149: compare fresh Chrome/native TLS over HTTP/2 from both
+sources, and add short request jitter. [Details and limits](XHTTP-RESPONSE-DIAGNOSTICS.md#validation-and-scope-of-this-iteration).
