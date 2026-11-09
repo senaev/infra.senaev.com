@@ -18,32 +18,32 @@ After the first failed 8s candidate exit check in each home matrix, run once:
 
 1. The same Cloudflare trace direct, then through TCP/Reality, with a random 2–7s
    pause before each control.
-2. Fresh XHTTP traces with Chrome TLS and native Go TLS, alternating order each
+2. Fresh native-TLS XHTTP traces over HTTP/2 and HTTP/1.1, alternating order each
    matrix. Wait 60–90 random quiet seconds before each one.
 
-Both TLS arms keep HTTP/2, packet-up, the same hostname/path/UUID, certificate
-verification, 4 KiB cap, 32 KiB/s and 8s total / 3s connect budgets. Only the TLS
-client fingerprint/implementation changes. Chrome keeps diagnostic_fresh_trace;
-native uses diagnostic_native_trace. Both appear in existing Grafana panels20/21.
-The native arm sets Xray fingerprint=unsafe to choose the native Go TLS client;
-this does not set allowInsecure. Both must reject an untrusted server certificate.
+Both arms use native Go TLS (fingerprint=unsafe), the same server name/path/UUID,
+verified certificates, packet-up, a 4 KiB cap, 32 KiB/s and 8s total / 3s connect
+budgets. Only ALPN changes: h2 versus http/1.1. Existing native H2 results retain
+check=diagnostic_native_trace; H1 uses diagnostic_native_h1_trace. Existing Grafana
+panels20/21 include both. HTTP1 with the Chrome fingerprint is rejected before
+client startup; that earlier invalid combination is not part of this comparison.
 
-Both use separate fresh processes on loopback1083 and temporary 0600 config, with
-unconditional cleanup. Existing candidate and original matrix acceptance remain
-unchanged; diagnostic success never promotes a failed exit control. Four added
-home requests per failed matrix, at most16 KiB response payload plus overhead.
-This replaces the reused/fresh diagnostic pair rather than adding more home probes.
+Both arms use separate fresh processes on loopback1083 and temporary0600 config,
+with unconditional cleanup. The original Chrome/H2 matrix candidate is unchanged;
+diagnostic success never promotes a failed exit control. Four extra home requests
+per failed matrix, at most16 KiB response payload. This replaces the completed
+Chrome/native comparison without adding more requests or concurrent clients.
 
-The transfer matrix also gains random 2–7s pauses between each successful HTTPS
-precheck and its download. Existing condition pauses60–90s, round pauses300–360s,
-routine light30–45s and heavy300–360s stay unchanged. Short/long waits preserve
-cancellation/child guards. Logs record request_jitter_seconds/quiet_seconds_before;
-request duration excludes the waits. No catch-up requests or retries are added.
+All deployed jitter remains: short2–7s before home direct/TCP diagnostic controls and
+between precheck/download; condition/client60–90s, round300–360s, routine light
+30–45s and heavy300–360s. Waits retain cancellation/child guards and separate log
+fields. No extra retries, raised budgets or full H1 download matrix are added.
 
-Order alternation and jitter do not remove time/recovery/shared-path effects.
-Native success with Chrome failure implicates TLS-client/path interaction, not a
-proven filtering mechanism. Compare both sources and several rounds. Differences
-include the TLS implementation as well as its advertised handshake fingerprint.
+A successful H1 arm with failed H2 would prioritize HTTP-version/path interaction,
+not prove ISP filtering or a particular bug. Changing HTTP version inherently
+changes framing, multiplexing and connection usage as well as ALPN. Both failing
+would mean H2 alone does not explain this trace failure. Compare both sources and
+reversed order; time/DNS/path/latency remain confounders.
 
 ## Evidence and interpretation
 
@@ -57,7 +57,7 @@ rounded zero is not by itself proof that no packet arrived. These timings descri
 the inner curl request, not the complete outer XHTTP handshake count or wire delivery.
 
 - Direct and baseline trace succeed, candidate fails: focus on candidate forwarding.
-- Native trace succeeds while Chrome fails: prioritize TLS-client/path interaction.
+- Native H1 succeeds while native H2 fails: prioritize HTTP-version/path interaction.
 - Both fail from home but pass on Hetzner: continue investigating source/path dependence.
 - Candidate diagnostics all fail after TLS: correlate client XHTTP HTTP/2 errors,
   backend VLESS destination/connection logs and the matching time window.
@@ -129,7 +129,7 @@ Add one isolated vpn-source-control-hetzner pod on Hetzner, using the same exist
 probe image and fresh-client function. It accesses senaev.com:443 with the same
 XHTTP path/UUID/TLS verification, never a private backend URL. Every cycle waits
 300–360s, makes one direct trace (4 KiB cap), waits 60–90s, then runs the same fresh
-Chrome/native TLS pair, with 60–90s pauses and alternating order per round. Same
+native H2/H1 pair, with 60–90s pauses and alternating order per round. Same
 8s total / 3s connect budget and 32 KiB/s rate cap. Three requests per cycle, at
 most12 KiB response payload. There is no size matrix or persistent client here.
 
@@ -190,5 +190,47 @@ Manual real-binary integration verifies both arms through Reality fallback,
 Traefik TLS and h2c backend, correct exit validation, rejection of untrusted TLS,
 loopback cleanup, invalid UUID isolation and ordinary website routing. No image
 base, subscription, ingress, server, secret, policy or host networking changes.
-New comparison is prepared in PR #149 and not deployed. Existing controls continue
-until merge. diagnostics=false disables extra client comparisons as before.
+PR #149 deployed successfully in run42642463181 (main fd84179).
+diagnostics=false disables extra client comparisons as before.
+
+## First TLS-client comparison — 2026-11-09
+
+| Source / client | UTC | Result |
+|---|---|---|
+| Hetzner Chrome | 15:23:08 | HTTP200,216 bytes,1027ms; TLS887ms |
+| Hetzner native | 15:24:15 | HTTP200,216 bytes,714ms; TLS515ms |
+| Home Chrome | 15:24:21 | HTTP0,headers/body0,8011ms; TLS701ms; request93 bytes |
+| Home native | 15:25:38 | HTTP0,headers/body0,8015ms; TLS852ms; request93 bytes |
+
+Hetzner experiment b1f739ec-91e9-4bec-a750-f7429a9e8cc4; home experiment
+4bc80e66-85ba-4c36-94aa-74d2d7aaa7f0. Home direct/TCP traces passed in506/758ms.
+Both candidate arms use validated TLS and the same expected exit check. Neither
+home result had an HTTP response; diagnostic success never promoted the matrix.
+
+[Captured logs, metrics, smoke and readiness](sources/2026-11-09-tls-comparison.txt).
+The new native metric is exported for both sources. Short pauses were logged as
+3.469339486264396s (direct) and2.7775221349829446s (TCP); their request durations
+exclude these waits. This verifies jitter deployment, not a causal effect on stalls.
+
+One Chrome-first pair does not settle causality. TLS implementation/fingerprint
+alone did not rescue home traffic. Continue reversed-order rounds and focus on
+shared XHTTP/HTTP2 behavior versus source/path effects; preserve the Hetzner control.
+All intended workloads remained available, pods had zero restarts, and all five
+website smoke checks passed after deployment. No startup/exit failures were found.
+
+## Next comparison prepared — native HTTP/2 versus HTTP/1.1
+
+PR #150 extends the deployed evidence with the next bounded comparison. It is not
+deployed. The first #149 pair passed with both TLS clients on Hetzner and stalled
+with both on home. Its reversed-order home pair has not yet been observed.
+
+Using native TLS for both new arms avoids the earlier Chrome ALPN mismatch.
+Pinned-binary integration confirms both versions actually forward the request
+through Reality fallback → Traefik TLS → existing h2c backend. Both validate exit,
+reject the untrusted test certificate, and release loopback1083 after success and
+failure. Server-side h2c is unchanged: only the client-facing HTTP version differs.
+The native metric pair is already covered by the dashboard's diagnostic regex.
+
+No subscription, server, ingress, chart, network policy, secret, image base or host
+network change. diagnostics=false disables the home pair and removes the Hetzner
+control as before; the new variant is never delivered to Happ subscriptions.

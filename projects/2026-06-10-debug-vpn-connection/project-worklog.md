@@ -1,3 +1,77 @@
+## 2026-11-09 15:34 UTC — Prepare native HTTP-version comparison
+
+User approved the next stage. Latest snapshot still shows one completed #149 home
+pair (both TLS clients failed) and one completed Hetzner pair (both passed); no
+reversed-order home result is claimed. Prepared PR #150 to replace that pair with
+fresh native-TLS HTTP2/HTTP1.1 controls on both sources, alternating order. Only
+ALPN changes. Original Chrome/H2 candidate, acceptance, request limits, traffic
+count, jitter, endpoint/UUID and verification are unchanged. Separate H1 check
+uses the existing Grafana diagnostic regex. No chart/server/policy/host change.
+
+This avoids the invalid earlier Chrome+HTTP1 combination: both new arms use native
+Go TLS and are checked through the real local chain. Verbatim validation output:
+```
+Ran 63 tests in 0.177s
+OK
+Python syntax OK: 16 file(s)
+PASS: verified TLS -> Reality fallback -> Traefik -> h2c XHTTP: 4096 bytes
+PASS: verified TLS -> Reality fallback -> Traefik -> h2c XHTTP: 16384 bytes
+PASS: verified TLS -> Reality fallback -> Traefik -> h2c XHTTP: 65536 bytes
+PASS: native HTTP2/HTTP1.1 controls validate exit, reject untrusted TLS and release loopback 1083
+PASS: invalid VLESS credential cannot reach the HTTPS origin
+PASS: ordinary website route preserved
+```
+Combined unit/syntax/integration verification completed in6.61s. Tests assert only
+ALPN differs between native arms, invalid Chrome/H1 is rejected before startup,
+both arms execute after a failure, order reversal, cancellation, cleanup and no
+promotion of the failed matrix. Real integration logs report HTTP version2 and1.1.
+No live H1 result yet; pending CI/review/merge/deployment.
+
+## 2026-11-09 15:28 UTC — Deploy TLS comparison and observe the first pair
+
+User authorized merge, deployment follow-up and logs/metrics checks. PR #149 merged
+at fd84179f4a3cd9d769f65cfffa3d42abae2feefd. Run42642463181 succeeded. All intended
+VPN workloads available, all three checker targets scraped, all new checker/backend
+pods at zero restarts. Five website smoke checks passed; no candidate/fresh startup
+or client-exit failures were found in the inspected window.
+
+First pair, Chrome first on both sources: Hetzner Chrome1027ms/native714ms passed
+HTTP200 with216 bytes and expected exit validation. Home Chrome8011ms/native8015ms
+both failed after destination TLS (701/852ms), request93 bytes and no HTTP headers
+or body. Home direct/TCP traces passed506/758ms. Logs and metrics agree.
+
+Verbatim home native record from the selected-field Datadog export:
+```yaml
+- timestamp: "2026-11-09T15:25:38Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: senaev-media-senaev-k3s
+  attributes:
+    custom.bytes: 0
+    custom.check: diagnostic_native_trace
+    custom.curl_exit: 28
+    custom.duration_ms: 8015
+    custom.experiment_id: 4bc80e66-85ba-4c36-94aa-74d2d7aaa7f0
+    custom.http_status: 0
+    custom.ok: false
+    custom.profile: "\U0001F484 4. hetzner → freedom"
+    custom.request_bytes: 93
+    custom.response_header_bytes: 0
+    custom.route: xhttp
+    custom.tls_ms: 852
+```
+[Full verification output](sources/2026-11-09-tls-comparison.txt) includes deployment,
+readiness/restarts, smoke, all first-round controls and metrics. Short jitter was
+observed as3.469339486264396s and2.7775221349829446s on the home direct/TCP controls;
+request duration excludes the pauses. Existing longer jitter remains in place.
+
+Changing TLS client alone did not fix the home stall in this first Chrome-first
+round. Keep watching reversed-order rounds; prioritize the shared XHTTP/HTTP2 path
+versus source/path effects, without asserting DPI, MTU or a specific proxy bug.
+No further runtime modification made. This documentation update records the result.
+
 ## 2026-11-09 14:32 UTC — Prepare TLS-client comparison and short request jitter
 
 User approved the next investigation stage and randomized gaps between requests.
