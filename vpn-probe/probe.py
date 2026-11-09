@@ -89,7 +89,11 @@ def request(url, proxy, max_bytes, expected_status=200, expected_bytes=None, tim
             result = {"ok": ok, "curl_exit": run.returncode, "http_status": status,
                       "bytes": size, "duration_ms": round((time.monotonic()-started)*1000),
                       "connect_ms": round(float(info.get("time_connect", 0))*1000),
-                      "tls_ms": round(float(info.get("time_appconnect", 0))*1000)}
+                      "tls_ms": round(float(info.get("time_appconnect", 0))*1000),
+                      "first_byte_ms": round(float(info.get("time_starttransfer", 0))*1000),
+                      "pretransfer_ms": round(float(info.get("time_pretransfer", 0))*1000),
+                      "request_bytes": int(info.get("size_request", 0)),
+                      "response_header_bytes": int(info.get("size_header", 0))}
             # Never log curl stderr, full trace bodies or credential-bearing config.
             content = body.read_text(errors="replace") if size <= 4096 and body.exists() else ""
             return result, content
@@ -229,10 +233,11 @@ TRANSFER_TARGETS = (
 TRANSFER_SIZES = (4096, 16384, 65536)
 
 
-def xhttp_exit_control(profile, proxy, experiment_id):
+def xhttp_exit_control(profile, proxy, experiment_id, timeout=8, check="exit_ip"):
     if STOP.is_set():
         return False
-    result, body = request("https://www.cloudflare.com/cdn-cgi/trace", proxy, 4096)
+    result, body = request("https://www.cloudflare.com/cdn-cgi/trace", proxy, 4096,
+                           timeout=timeout)
     if STOP.is_set():
         return False
     try:
@@ -242,11 +247,43 @@ def xhttp_exit_control(profile, proxy, experiment_id):
                           ok=observed in resolve_exit("senaev.com"))
     except (ValueError, OSError, subprocess.SubprocessError):
         result.update(ok=False, failure="exit_validation_failed")
-    emit(profile, "exit_ip", "xhttp", {**result, "experiment_id": experiment_id})
+    emit(profile, check, "xhttp", {**result, "experiment_id": experiment_id,
+                                   "budget_seconds": timeout})
     return result["ok"]
 
 
-def transfer_round(profile, proxy, child=None, rotation=0, xhttp_proxy=None):
+def xhttp_response_diagnostics(profile, baseline, candidate, child, experiment_id):
+    """Bounded controls after failed exit validation; never promote the candidate."""
+    trace = "https://www.cloudflare.com/cdn-cgi/trace"
+    for route, address in [("direct", ""), ("vpn", baseline)]:
+        if STOP.is_set():
+            return
+        check_experiment_client(child, profile, experiment_id)
+        result, _ = request(trace, address, 4096)
+        check_experiment_client(child, profile, experiment_id)
+        emit(profile, "diagnostic_trace", route, {**result, "experiment_id": experiment_id})
+    checks = [
+        ("diagnostic_https", "https://www.gstatic.com/generate_204", 204, None),
+        ("diagnostic_256b", "https://httpbingo.org/bytes/256", 200, 256),
+        ("diagnostic_trace_30s", trace, 200, None),
+    ]
+    for check, url, status, size in checks:
+        if experiment_wait(random.uniform(60, 90), child, profile, experiment_id):
+            return
+        if STOP.is_set():
+            return
+        check_experiment_client(child, profile, experiment_id)
+        if check == "diagnostic_trace_30s":
+            xhttp_exit_control(profile, candidate, experiment_id, timeout=30, check=check)
+        else:
+            result, _ = request(url, candidate, size if size is not None else 4096,
+                                expected_status=status, expected_bytes=size)
+            check_experiment_client(child, profile, experiment_id)
+            emit(profile, check, "xhttp", {**result, "experiment_id": experiment_id})
+        check_experiment_client(child, profile, experiment_id)
+
+
+def transfer_round(profile, proxy, child=None, rotation=0, xhttp_proxy=None, diagnostics=False):
     """Fixed size/destination matrix, paired direct/VPN, no overlapping transfers."""
     experiment_id = str(uuid.uuid4())
     check_experiment_client(child, profile, experiment_id)
@@ -290,6 +327,8 @@ def transfer_round(profile, proxy, child=None, rotation=0, xhttp_proxy=None):
                     check_experiment_client(child, profile, experiment_id)
                     candidate_exit_ok = xhttp_exit_control(profile, address, experiment_id)
                     check_experiment_client(child, profile, experiment_id)
+                    if not candidate_exit_ok and diagnostics:
+                        xhttp_response_diagnostics(profile, proxy, address, child, experiment_id)
                 if not candidate_exit_ok:
                     emit(profile, "transfer_skipped", route, {
                         "ok": False, "failure": "exit_control_failed", **variant_context})
@@ -317,7 +356,7 @@ def transfer_round(profile, proxy, child=None, rotation=0, xhttp_proxy=None):
     return passed
 
 
-def experiment_loop(profile, proxy, once=False, child=None, xhttp_proxy=None):
+def experiment_loop(profile, proxy, once=False, child=None, xhttp_proxy=None, diagnostics=False):
     # Five quiet minutes before each full matrix; one minute between conditions.
     rotation = 0
     while not STOP.is_set():
@@ -325,7 +364,7 @@ def experiment_loop(profile, proxy, once=False, child=None, xhttp_proxy=None):
         if experiment_wait(quiet, child, profile):
             break
         passed = transfer_round(profile, proxy, child=child, rotation=rotation,
-                                xhttp_proxy=xhttp_proxy)
+                                xhttp_proxy=xhttp_proxy, diagnostics=diagnostics)
         if once:
             return 0 if passed else 1
         rotation += 1
@@ -422,6 +461,8 @@ def run(args):
                     try:
                         candidate, _ = client_config(os.environ["XHTTP_PROFILE_LINK"],
                                                      base, key, port=1082)
+                        if os.environ.get("XHTTP_DIAGNOSTICS") == "true":
+                            candidate["log"]["loglevel"] = "info"
                         xhttp_child = start_client(candidate, folder)
                         xhttp_proxy = "socks5h://127.0.0.1:1082"
                         emit(profile, "candidate_startup", "xhttp", {"ok": True})
@@ -432,7 +473,8 @@ def run(args):
                             "error_type": type(error).__name__})
                 return experiment_loop(profile, proxy, once=args.once,
                                        child=(child, xhttp_child),
-                                       xhttp_proxy=xhttp_proxy)
+                                       xhttp_proxy=xhttp_proxy,
+                                       diagnostics=os.environ.get("XHTTP_DIAGNOSTICS") == "true")
             # Stagger profiles; serial rounds skip missed slots instead of catching up.
             STOP.wait(random.uniform(0, 20) if not args.once else 0)
             due_light = due_heavy = time.monotonic()

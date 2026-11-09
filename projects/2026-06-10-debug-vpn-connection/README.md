@@ -752,6 +752,13 @@ The [recovery experiment](RECOVERY-EXPERIMENT.md) deployed in PR #139. Its first
 
 ## XHTTP comparison
 
-The [XHTTP/TLS candidate](XHTTP-COMPARISON.md) is prepared for review alongside the
+The [XHTTP/TLS candidate](XHTTP-COMPARISON.md) deployed in PR #144 alongside the
 deployed TCP/Reality baseline, with a dedicated backend and no subscription changes.
 FirstVDS entry-only configuration and randomized checker timing are deployed.
+
+
+## XHTTP response stall
+
+The first candidate exit check timed out after destination TLS completed. Candidate
+payload tests were skipped. [Focused diagnostics](XHTTP-RESPONSE-DIAGNOSTICS.md) are
+prepared to distinguish forwarding/target/response effects before transport tuning.

@@ -62,4 +62,5 @@ vpnProbe:
 # Diagnostic only: never included in the user-facing subscription.
 vpnXhttpExperiment:
   enabled: true
+  diagnostics: true
   path: /_vpn-xhttp-test/

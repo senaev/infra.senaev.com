@@ -32,7 +32,7 @@ spec:
       nodeSelector:
         vps: {{ $.Values.vpnProbe.vps }}
       automountServiceAccountToken: false
-      terminationGracePeriodSeconds: 30
+      terminationGracePeriodSeconds: {{ if and $.Values.vpnXhttpExperiment.enabled $.Values.vpnXhttpExperiment.diagnostics $.Values.vpnProbe.controlledExperiment $.Values.ingress.enabled (eq $index 4) }}45{{ else }}30{{ end }}
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
@@ -53,6 +53,8 @@ spec:
               drop: [ALL]
           env:
             {{- if and $.Values.vpnXhttpExperiment.enabled $.Values.vpnProbe.controlledExperiment $.Values.ingress.enabled (eq $index 4) }}
+            - name: XHTTP_DIAGNOSTICS
+              value: {{ default false $.Values.vpnXhttpExperiment.diagnostics | quote }}
             - name: XHTTP_PROFILE_LINK
               value: {{ printf "vless://{XRAY_USER_UUID:xhttp-probe}@senaev.com:443?type=xhttp&security=tls&fp=chrome&sni=senaev.com&mode=packet-up&path=%s" ($.Values.vpnXhttpExperiment.path | urlquery) | quote }}
             {{- end }}

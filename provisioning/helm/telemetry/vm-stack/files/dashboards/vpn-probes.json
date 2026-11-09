@@ -29,7 +29,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "**Source: senaev-media, Russia.** Each subscription profile has its own isolated Xray client. Only explicit test requests use its loopback SOCKS proxy; host traffic keeps its existing route.\n\n**Light checks:** direct + VPN HTTPS every ~30s. **Heavy checks:** direct/VPN exit IP and a capped 64 KiB download every ~5 min. Green requires a fresh successful sample; gaps mean no fresh samples. Scrape UP is exporter reachability, not tunnel health. Compare direct controls before attributing failures to VPN.\n\nThe download is rate-limited, not a speed benchmark. Actual exit IPs and failure details remain in Datadog logs.\n \n**Transfer matrix:** controlledExperiment keeps only profiles 1 and 4 active.\nRoutine/recovery panels have no new samples. Every matrix compares direct/VPN\n4, 16 and 64 KiB downloads from Cloudflare and HTTPBingo, with 60–90 quiet seconds\nbetween conditions and 300–360 quiet seconds between matrices. Order rotates.\nA failed small VPN precheck skips that transfer; check logs for skipped conditions,\ndirect_control_ok, cycle IDs and client-exit invalidation. Results cannot alone prove DPI.\n\n\n**XHTTP candidate (profile 4 only):** vpn = TCP/Reality; xhttp = XHTTP over verified TLS.\nBoth use senaev.com:443 and exit Hetzner. The candidate adds TLS termination/h2c proxying,\nso this compares complete setups, not transport alone. Variants run serially with\n60–90 quiet seconds between them and alternating order. Each round first validates\nthe candidate exit. Check logs for skipped candidates and invalidated cycles.\n"
+        "content": "**Source: senaev-media, Russia.** Each subscription profile has its own isolated Xray client. Only explicit test requests use its loopback SOCKS proxy; host traffic keeps its existing route.\n\n**Light checks:** direct + VPN HTTPS every ~30s. **Heavy checks:** direct/VPN exit IP and a capped 64 KiB download every ~5 min. Green requires a fresh successful sample; gaps mean no fresh samples. Scrape UP is exporter reachability, not tunnel health. Compare direct controls before attributing failures to VPN.\n\nThe download is rate-limited, not a speed benchmark. Actual exit IPs and failure details remain in Datadog logs.\n \n**Transfer matrix:** controlledExperiment keeps only profiles 1 and 4 active.\nRoutine/recovery panels have no new samples. Every matrix compares direct/VPN\n4, 16 and 64 KiB downloads from Cloudflare and HTTPBingo, with 60–90 quiet seconds\nbetween conditions and 300–360 quiet seconds between matrices. Order rotates.\nA failed small VPN precheck skips that transfer; check logs for skipped conditions,\ndirect_control_ok, cycle IDs and client-exit invalidation. Results cannot alone prove DPI.\n\n\n**XHTTP candidate (profile 4 only):** vpn = TCP/Reality; xhttp = XHTTP over verified TLS.\nBoth use senaev.com:443 and exit Hetzner. The candidate adds TLS termination/h2c proxying,\nso this compares complete setups, not transport alone. Variants run serially with\n60–90 quiet seconds between them and alternating order. Each round first validates\nthe candidate exit. Check logs for skipped candidates and invalidated cycles.\n\n\n**Response diagnostics:** after a failed candidate exit check, compare the same trace\ndirect/baseline, then small XHTTP requests and a separately reported 30s trace with\nquiet gaps. This never overrides the failed original 8s control. Info logs apply\nonly to the experimental client/backend. Set vpnXhttpExperiment.diagnostics=false\nto disable these additional requests and restore warning-level logging.\n"
       }
     },
     {
@@ -942,7 +942,7 @@
       "id": 16,
       "title": "TCP/Reality vs XHTTP/TLS — size / destination / route",
       "type": "state-timeline",
-      "description": "Fixed size/destination checks, paired direct and VPN. Results older than 30 minutes are hidden. Failed direct controls make paired comparisons inconclusive; see logs. Client exit invalidates the cycle. Route vpn is baseline TCP/Reality; xhttp is the candidate on profile 4. This also changes TLS termination and proxying. Rotating order may leave normal gaps longer than the freshness window; a gap alone is not evidence of failure.",
+      "description": "Fixed size/destination checks, paired direct and VPN. Results older than 40 minutes are hidden. Failed direct controls make paired comparisons inconclusive; see logs. Client exit invalidates the cycle. Route vpn is baseline TCP/Reality; xhttp is the candidate on profile 4. This also changes TLS termination and proxying. Rotating order may leave normal gaps longer than the freshness window; a gap alone is not evidence of failure.",
       "datasource": {
         "type": "prometheus",
         "uid": "P4169E866C3094E38"
@@ -956,7 +956,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "vpn_probe_success{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"transfer_.*|experiment_client_alive\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"transfer_.*|experiment_client_alive\"}) < 1800)",
+          "expr": "vpn_probe_success{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"transfer_.*|experiment_client_alive\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"transfer_.*|experiment_client_alive\"}) < 2400)",
           "datasource": {
             "type": "prometheus",
             "uid": "P4169E866C3094E38"
@@ -1028,7 +1028,7 @@
       "id": 17,
       "title": "TCP/Reality vs XHTTP/TLS — duration",
       "type": "timeseries",
-      "description": "Fixed size/destination checks, paired direct and VPN. Results older than 30 minutes are hidden. Failed direct controls make paired comparisons inconclusive; see logs. Client exit invalidates the cycle. Route vpn is baseline TCP/Reality; xhttp is the candidate on profile 4. This also changes TLS termination and proxying. Rotating order may leave normal gaps longer than the freshness window; a gap alone is not evidence of failure.",
+      "description": "Fixed size/destination checks, paired direct and VPN. Results older than 40 minutes are hidden. Failed direct controls make paired comparisons inconclusive; see logs. Client exit invalidates the cycle. Route vpn is baseline TCP/Reality; xhttp is the candidate on profile 4. This also changes TLS termination and proxying. Rotating order may leave normal gaps longer than the freshness window; a gap alone is not evidence of failure.",
       "datasource": {
         "type": "prometheus",
         "uid": "P4169E866C3094E38"
@@ -1042,7 +1042,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "vpn_probe_duration_seconds{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"transfer_.*|experiment_client_alive\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"transfer_.*|experiment_client_alive\"}) < 1800)",
+          "expr": "vpn_probe_duration_seconds{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"transfer_.*|experiment_client_alive\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"transfer_.*|experiment_client_alive\"}) < 2400)",
           "datasource": {
             "type": "prometheus",
             "uid": "P4169E866C3094E38"
@@ -1077,7 +1077,7 @@
       "id": 18,
       "title": "TCP/Reality vs XHTTP/TLS — received bytes",
       "type": "timeseries",
-      "description": "Fixed size/destination checks, paired direct and VPN. Results older than 30 minutes are hidden. Failed direct controls make paired comparisons inconclusive; see logs. Client exit invalidates the cycle. Route vpn is baseline TCP/Reality; xhttp is the candidate on profile 4. This also changes TLS termination and proxying. Rotating order may leave normal gaps longer than the freshness window; a gap alone is not evidence of failure.",
+      "description": "Fixed size/destination checks, paired direct and VPN. Results older than 40 minutes are hidden. Failed direct controls make paired comparisons inconclusive; see logs. Client exit invalidates the cycle. Route vpn is baseline TCP/Reality; xhttp is the candidate on profile 4. This also changes TLS termination and proxying. Rotating order may leave normal gaps longer than the freshness window; a gap alone is not evidence of failure.",
       "datasource": {
         "type": "prometheus",
         "uid": "P4169E866C3094E38"
@@ -1091,7 +1091,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "vpn_probe_response_bytes{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"transfer_.*|experiment_client_alive\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"transfer_.*|experiment_client_alive\"}) < 1800)",
+          "expr": "vpn_probe_response_bytes{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"transfer_.*|experiment_client_alive\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"transfer_.*|experiment_client_alive\"}) < 2400)",
           "datasource": {
             "type": "prometheus",
             "uid": "P4169E866C3094E38"
@@ -1126,7 +1126,7 @@
       "id": 19,
       "title": "XHTTP candidate — startup and expected exit",
       "type": "stat",
-      "description": "Candidate must reach the trace endpoint and match the current senaev.com exit address before its matrix transfers run. Thirty-minute freshness for the longer serial round. Rotating order may leave normal gaps longer than the freshness window; a gap alone is not evidence of failure.",
+      "description": "Candidate must reach the trace endpoint and match the current senaev.com exit address before its matrix transfers run. Forty-minute freshness for the longer serial round. Rotating order may leave normal gaps longer than the freshness window; a gap alone is not evidence of failure.",
       "datasource": {
         "type": "prometheus",
         "uid": "P4169E866C3094E38"
@@ -1140,7 +1140,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "vpn_probe_success{job=\"vpn-probe\",profile=~\"$profile\",check=~\"exit_ip|candidate_startup\",route=\"xhttp\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",check=~\"exit_ip|candidate_startup\",route=\"xhttp\"}) < 1800)",
+          "expr": "vpn_probe_success{job=\"vpn-probe\",profile=~\"$profile\",check=~\"exit_ip|candidate_startup\",route=\"xhttp\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",check=~\"exit_ip|candidate_startup\",route=\"xhttp\"}) < 2400)",
           "datasource": {
             "type": "prometheus",
             "uid": "P4169E866C3094E38"
@@ -1202,6 +1202,141 @@
         "graphMode": "none",
         "textMode": "auto",
         "orientation": "auto"
+      }
+    },
+    {
+      "id": 20,
+      "title": "XHTTP response diagnostics — control results",
+      "type": "state-timeline",
+      "description": "Runs only after a failed candidate exit check. Direct/baseline trace controls, small candidate requests and a separate 30s trace. A long-budget success does not promote the failed candidate; quiet gaps and order differ.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P4169E866C3094E38"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 76,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "vpn_probe_success{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"diagnostic_.*\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"diagnostic_.*\"}) < 2400)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "legendFormat": "{{profile}} · {{check}} · {{route}}",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "No fresh sample",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "FAIL",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "PASS",
+                  "color": "green"
+                }
+              }
+            }
+          ],
+          "custom": {
+            "spanNulls": false,
+            "fillOpacity": 90,
+            "lineWidth": 0
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "mergeValues": true,
+        "showValue": "never",
+        "alignValue": "left",
+        "rowHeight": 0.8,
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      }
+    },
+    {
+      "id": 21,
+      "title": "XHTTP response diagnostics — request duration",
+      "type": "timeseries",
+      "description": "Runs only after a failed candidate exit check. Direct/baseline trace controls, small candidate requests and a separate 30s trace. A long-budget success does not promote the failed candidate; quiet gaps and order differ.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P4169E866C3094E38"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 84,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "vpn_probe_duration_seconds{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"diagnostic_.*\"} and on(instance,profile,check,route) ((time() - vpn_probe_last_check_timestamp_seconds{job=\"vpn-probe\",profile=~\"$profile\",route=~\"$route\",check=~\"diagnostic_.*\"}) < 2400)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "legendFormat": "{{profile}} · {{check}} · {{route}}",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "No fresh sample"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
       }
     }
   ],
