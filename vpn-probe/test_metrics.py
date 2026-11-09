@@ -46,14 +46,14 @@ class MetricsTests(unittest.TestCase):
         for check in ['ipv6_entry', 'ipv6_control']:
             self.assertIn(f'check="{check}"', text)
 
-    def test_recovery_phases_are_fixed_and_experiment_id_is_not_a_label(self):
+    def test_transfer_conditions_are_fixed_and_ids_are_not_labels(self):
         metrics = ProbeMetrics()
-        for check in ['recovery_client_alive', 'recovery_before', 'recovery_plain_before', 'recovery_download',
-                      'recovery_after_5s', 'recovery_after_30s', 'recovery_after_60s',
-                      'recovery_plain_after_5s', 'recovery_plain_after_30s',
-                      'recovery_plain_after_60s']:
+        for check in ['experiment_client_alive', 'transfer_precheck',
+                      'transfer_cloudflare_4096', 'transfer_cloudflare_16384',
+                      'transfer_cloudflare_65536', 'transfer_httpbingo_4096',
+                      'transfer_httpbingo_16384', 'transfer_httpbingo_65536']:
             metrics.record('one', check, 'vpn', {'ok': True, 'experiment_id': 'unique-id'}, now=1)
             self.assertIn(f'check="{check}"', metrics.render())
-        metrics.record('one', 'recovery_skipped', 'vpn', {'ok': False}, now=1)
-        self.assertNotIn('recovery_skipped', metrics.render())
+        metrics.record('one', 'transfer_skipped', 'vpn', {'ok': False}, now=1)
+        self.assertNotIn('transfer_skipped', metrics.render())
         self.assertNotIn('unique-id', metrics.render())

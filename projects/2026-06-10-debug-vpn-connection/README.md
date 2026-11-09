@@ -747,6 +747,4 @@ Deployed through PRs #135 and #137. Several rounds show repeatable transfer stal
 
 ## Controlled recovery investigation
 
-The [next experiment](RECOVERY-EXPERIMENT.md) tests whether a transfer precedes a
-temporary connectivity loss. PR #138's automatic controls are deployed; this next
-checker-only configuration is prepared for review.
+The [recovery experiment](RECOVERY-EXPERIMENT.md) deployed in PR #139. Its first cycle found successful small checks at 5/30/60s after a stalled transfer. The [size/destination matrix](TRANSFER-MATRIX.md) is the next proposed investigation.

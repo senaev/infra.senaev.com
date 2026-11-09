@@ -1,3 +1,38 @@
+## 2026-11-09 08:04 UTC — Prepare size/destination transfer matrix
+
+Recovery experiment #139 deployed in run 42581455020. First-cycle logs:
+
+```
+profile 1 recovery_download: bytes=65536 duration_ms=2996 ok=true
+profile 4 recovery_download: bytes=5518 duration_ms=8010 ok=false
+profile 4 recovery_after_5s vpn: duration_ms=709 ok=true
+profile 4 recovery_after_60s vpn: actual_delay_seconds=60 ok=true
+```
+
+All 5/30/60s VPN/direct/plain controls passed for both profiles. This weakens a
+post-transfer disruption lasting at least five seconds, without excluding shorter
+or per-flow disruption. User approved a size/destination comparison.
+
+Replace recovery mode with a fixed six-condition matrix: Cloudflare and HTTPBingo
+at 4/16/64 KiB, paired direct and VPN, with a small VPN precheck, five quiet minutes
+between matrices and sixty quiet seconds between conditions. Rotate order by one
+condition each round. Preserve two active profiles and existing client/shutdown
+guards. Rename the temporary flag to controlledExperiment; false restores routine
+six-profile checks. Remove superseded recovery execution code/metric phases rather
+than keeping another experiment mode. No server or host-network changes.
+
+HTTPBingo preparation from Code Tools:
+```
+200 4096
+200 16384
+200 65536
+```
+These are target availability checks from Code Tools, not Russian source results.
+Validation: 31 Python tests pass; all Python syntax and Helm checks pass.
+Rendered mode comparisons confirm two active/six restored checker replicas and
+unchanged non-probe resources. HTTPBingo availability is verified only from Code Tools.
+Pending PR review/deployment.
+
 ## 2026-11-09 07:43 UTC — Address CodeRabbit review on PR #139
 
 Accepted both runtime findings: monitor the Xray child during recovery waits and
