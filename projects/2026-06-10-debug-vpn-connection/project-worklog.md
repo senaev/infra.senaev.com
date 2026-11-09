@@ -26,7 +26,9 @@ parent failure, no candidate promotion and separate bounded metrics. Current
 live profile 4 memory was 30285824 bytes against its 128Mi limit; a third temporary
 process remains within that same enforced limit, so post-deploy OOM/restart checks
 remain necessary. No live fresh-client result exists yet.
-Pending CI/review/deployment; previous #145 evidence is retained below.
+Reviewed CodeRabbit comments: saved auditable verification exports and clarified
+parsed summaries; order alternation and explicit time/recovery caveats address the
+comparison bias. Pending CI/review/deployment; previous #145 evidence is retained below.
 
 ## 2026-11-09 12:27 UTC — Deploy response diagnostics and observe first sequence
 
@@ -36,7 +38,34 @@ User approved merge/deployment. PR #145 merged at
 backend pods were available with zero restarts. All five website smoke checks
 passed; Grafana panels 20/21 and diagnostic metrics were verified.
 
-First complete sequence, experiment 94802da3-527a-47ea-a954-10b391454510:
+Verbatim selected-field Datadog export, historical pod/metric snapshots,
+deployment output, repeated website smoke output and dashboard panel selection:
+[saved verification output](sources/2026-11-09-xhttp-diagnostics.txt).
+The export is the connector's retrieved YAML, not reconstructed original probe
+stdout. For example, the retrieved record contains:
+```yaml
+- timestamp: "2026-11-09T12:24:56Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: senaev-media-senaev-k3s
+  attributes:
+    custom.bytes: 0
+    custom.check: diagnostic_trace_30s
+    custom.curl_exit: 28
+    custom.duration_ms: 3011
+    custom.experiment_id: 94802da3-527a-47ea-a954-10b391454510
+    custom.http_status: 0
+    custom.ok: false
+    custom.request_bytes: 0
+    custom.response_header_bytes: 0
+    custom.route: xhttp
+    custom.tls_ms: 0
+```
+These snapshots support deployment health and the failure-stage interpretation.
+The five website checks were repeated when saving this evidence, at 12:47 UTC.
+Parsed summary of the first complete sequence (not original stdout):
 ```
 12:21:26 exit_ip xhttp ok=false curl_exit=28 duration_ms=8010 tls_ms=840 request_bytes=93 response_header_bytes=0 http_status=0 bytes=0
 12:21:27 diagnostic_trace direct ok=true http_status=200 bytes=219 duration_ms=501

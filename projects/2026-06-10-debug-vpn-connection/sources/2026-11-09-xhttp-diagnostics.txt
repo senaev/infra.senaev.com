@@ -1,0 +1,134 @@
+Datadog diagnostic export (selected fields, 2026-11-09 12:21–12:25 UTC)
+<METADATA>
+  <displayed_items>6</displayed_items>
+  <count>6</count>
+  <logs_explorer_url>https://senaev-eu1.datadoghq.eu/logs?from_ts=1794226860000&live=false&query=service%3Avpn-probe+%40experiment_id%3A94802da3-527a-47ea-a954-10b391454510+%28%40check%3Aexit_ip+OR+%40check%3Adiagnostic%2A%29&stream_sort=desc&to_ts=1794227110000</logs_explorer_url>
+</METADATA>
+<YAML_DATA>
+- timestamp: "2026-11-09T12:24:56Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: senaev-media-senaev-k3s
+  attributes:
+    custom.bytes: 0
+    custom.check: diagnostic_trace_30s
+    custom.curl_exit: 28
+    custom.duration_ms: 3011
+    custom.experiment_id: 94802da3-527a-47ea-a954-10b391454510
+    custom.http_status: 0
+    custom.ok: false
+    custom.request_bytes: 0
+    custom.response_header_bytes: 0
+    custom.route: xhttp
+    custom.tls_ms: 0
+- timestamp: "2026-11-09T12:23:52Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: senaev-media-senaev-k3s
+  attributes:
+    custom.bytes: 0
+    custom.check: diagnostic_256b
+    custom.curl_exit: 28
+    custom.duration_ms: 3009
+    custom.experiment_id: 94802da3-527a-47ea-a954-10b391454510
+    custom.http_status: 0
+    custom.ok: false
+    custom.request_bytes: 0
+    custom.response_header_bytes: 0
+    custom.route: xhttp
+    custom.tls_ms: 0
+- timestamp: "2026-11-09T12:22:35Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: senaev-media-senaev-k3s
+  attributes:
+    custom.bytes: 0
+    custom.check: diagnostic_https
+    custom.curl_exit: 28
+    custom.duration_ms: 3009
+    custom.experiment_id: 94802da3-527a-47ea-a954-10b391454510
+    custom.http_status: 0
+    custom.ok: false
+    custom.request_bytes: 0
+    custom.response_header_bytes: 0
+    custom.route: xhttp
+    custom.tls_ms: 0
+- timestamp: "2026-11-09T12:21:28Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: senaev-media-senaev-k3s
+  attributes:
+    custom.bytes: 214
+    custom.check: diagnostic_trace
+    custom.curl_exit: 0
+    custom.duration_ms: 685
+    custom.experiment_id: 94802da3-527a-47ea-a954-10b391454510
+    custom.http_status: 200
+    custom.ok: true
+    custom.request_bytes: 93
+    custom.response_header_bytes: 916
+    custom.route: vpn
+    custom.tls_ms: 604
+- timestamp: "2026-11-09T12:21:27Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: senaev-media-senaev-k3s
+  attributes:
+    custom.bytes: 219
+    custom.check: diagnostic_trace
+    custom.curl_exit: 0
+    custom.duration_ms: 501
+    custom.experiment_id: 94802da3-527a-47ea-a954-10b391454510
+    custom.http_status: 200
+    custom.ok: true
+    custom.request_bytes: 93
+    custom.response_header_bytes: 921
+    custom.route: direct
+    custom.tls_ms: 450
+- timestamp: "2026-11-09T12:21:26Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: senaev-media-senaev-k3s
+  attributes:
+    custom.bytes: 0
+    custom.check: exit_ip
+    custom.curl_exit: 28
+    custom.duration_ms: 8010
+    custom.experiment_id: 94802da3-527a-47ea-a954-10b391454510
+    custom.http_status: 0
+    custom.ok: false
+    custom.request_bytes: 93
+    custom.response_header_bytes: 0
+    custom.route: xhttp
+    custom.tls_ms: 840
+</YAML_DATA>
+
+
+Historical restarts at 12:27:12 UTC
+{"data":[{"metric":{"pod":"vpn-probe-1-675c7c4b58-cnp7m"},"value":[1794227232,"0"]},{"metric":{"pod":"vpn-probe-4-cb7d7599-qfb2n"},"value":[1794227232,"0"]},{"metric":{"pod":"vpn-xhttp-experiment-67dfcb8b45-rqhns"},"value":[1794227232,"0"]}]}
+
+Historical availability at 12:27:12 UTC
+{"data":[{"metric":{"deployment":"vpn-probe-1"},"value":[1794227232,"1"]},{"metric":{"deployment":"vpn-probe-3"},"value":[1794227232,"0"]},{"metric":{"deployment":"vpn-probe-4"},"value":[1794227232,"1"]},{"metric":{"deployment":"vpn-probe-5"},"value":[1794227232,"0"]},{"metric":{"deployment":"vpn-subscription"},"value":[1794227232,"1"]},{"metric":{"deployment":"vpn-xhttp-experiment"},"value":[1794227232,"1"]},{"metric":{"deployment":"xray-vpn-firstvds"},"value":[1794227232,"1"]},{"metric":{"deployment":"xray-vpn-hetzner"},"value":[1794227232,"1"]},{"metric":{"deployment":"xray-vpn-senaev-media"},"value":[1794227232,"1"]}]}
+{"conclusion":"success","jobs":[{"conclusion":"success","name":"plan","status":"completed"},{"conclusion":"success","name":"check / Lint, Typecheck, Test, Syntax","status":"completed"},{"conclusion":"success","name":"build (vpn-probe, ., vpn-probe/Dockerfile, ghcr.io/senaev/vpn-probe) / build","status":"completed"},{"conclusion":"success","name":"sync-provisioning","status":"completed"},{"conclusion":"success","name":"deploy (vpn, vpn)","status":"completed"},{"conclusion":"success","name":"deploy (telemetry, telemetry/vm-stack)","status":"completed"}],"status":"completed"}
+PASS https://senaev.ru -> https://senaev.ru/
+PASS https://senaev.com -> https://senaev.com/
+PASS https://s.senaev.com/1bxsl9 -> https://senaev.com/cv/5min
+PASS https://static.senaev.com/datadog-dc-by-org-id.html -> https://static.senaev.com/datadog-dc-by-org-id.html
+PASS https://senaev.com/notes/my_blog_post_senaev_speaks_12 -> https://senaev.com/notes/my_blog_post_senaev_speaks_12
+All 5 website smoke checks passed
+Historical diagnostic metrics at 12:27:12 UTC
+{"data":[{"metric":{"check":"diagnostic_256b","profile_index":"4","route":"xhttp"},"value":[1794227232,"0"]},{"metric":{"check":"diagnostic_https","profile_index":"4","route":"xhttp"},"value":[1794227232,"0"]},{"metric":{"check":"diagnostic_trace","profile_index":"4","route":"direct"},"value":[1794227232,"1"]},{"metric":{"check":"diagnostic_trace","profile_index":"4","route":"vpn"},"value":[1794227232,"1"]},{"metric":{"check":"diagnostic_trace_30s","profile_index":"4","route":"xhttp"},"value":[1794227232,"0"]},{"metric":{"check":"exit_ip","profile_index":"4","route":"xhttp"},"value":[1794227232,"0"]}]}
+Current dashboard panel selection (id/title)
+[{"id":20,"title":"XHTTP response diagnostics — control results"},{"id":21,"title":"XHTTP response diagnostics — request duration"}]
