@@ -196,3 +196,6 @@ Client startup/exit failure search
 <TSV_DATA>
 </TSV_DATA>
 
+
+Historical scrape status at 2026-11-09 15:18:16 UTC, query up{job="vpn-probe"}:
+{"data":[{"metric":{"__name__":"up","container":"probe","endpoint":"metrics","instance":"10.42.0.231:8080","job":"vpn-probe","namespace":"vpn","pod":"vpn-source-control-hetzner-68f99d8477-v8259","profile_index":"source-control-hetzner","prometheus":"telemetry/vm-stack-victoria-metrics-k8s-stack","source_node":"hetzner"},"value":[1794237496,"1"]},{"metric":{"__name__":"up","container":"probe","endpoint":"metrics","instance":"10.42.3.215:8080","job":"vpn-probe","namespace":"vpn","pod":"vpn-probe-1-6494bd7ccd-jhwc7","profile_index":"1","prometheus":"telemetry/vm-stack-victoria-metrics-k8s-stack","source_node":"senaev-media"},"value":[1794237496,"1"]},{"metric":{"__name__":"up","container":"probe","endpoint":"metrics","instance":"10.42.3.216:8080","job":"vpn-probe","namespace":"vpn","pod":"vpn-probe-4-7596cc5cb6-twx2t","profile_index":"4","prometheus":"telemetry/vm-stack-victoria-metrics-k8s-stack","source_node":"senaev-media"},"value":[1794237496,"1"]}]}

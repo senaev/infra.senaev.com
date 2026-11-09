@@ -34,7 +34,7 @@ diagnostic success never promotes a failed exit control. Four extra home request
 per failed matrix, at most16 KiB response payload. This replaces the completed
 Chrome/native comparison without adding more requests or concurrent clients.
 
-All deployed jitter remains: short2–7s before direct/TCP diagnostic controls and
+All deployed jitter remains: short2–7s before home direct/TCP diagnostic controls and
 between precheck/download; condition/client60–90s, round300–360s, routine light
 30–45s and heavy300–360s. Waits retain cancellation/child guards and separate log
 fields. No extra retries, raised budgets or full H1 download matrix are added.
