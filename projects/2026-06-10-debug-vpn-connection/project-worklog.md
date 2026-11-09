@@ -1,3 +1,61 @@
+## 2026-11-09 22:13 UTC — Deploy fresh4KiB; prepare fresh16KiB and metrics fix
+
+User authorized merge #152 and preparation of the next step. PR workflow
+42673339670 passed on attempt3 including image build; no workflow code change.
+PR #152 merged at28741738523416a79af2a357e579e5a1283f1ab4. Deployment42706106663
+succeeded. All intended services available,3 targets scraped, checker/backend
+pods zero restarts. All5 website smoke tests passed at21:52 and22:12 UTC.
+
+Pre-rollout counters: home H1 trace/size-exit8/8; reused4KiB7/8 and16/64KiB0/8.
+Hetzner trace/exit16/16;4KiB16/16 and16/64KiB15/16. This supersedes any inference
+from the first #151 cycle that home4KiB consistently fails.
+
+First #152 fresh4KiB passed home905ms and Hetzner535ms with valid expected exits.
+Home reused4KiB passed883ms,16KiB failed setup3011ms,64KiB stalled8012ms after
+TLS600ms. Direct and Hetzner ladder controls passed. One fresh cycle does not
+establish idle as a cause. Verbatim excerpt from selected-field connector output:
+```yaml
+- timestamp: "2026-11-09T22:08:51Z"
+  message: ""
+  service: vpn-probe
+  env: prod
+  status: info
+  host: senaev-media-senaev-k3s
+  attributes:
+    custom.bytes: 4096
+    custom.check: transfer_h1_fresh_cloudflare_4096
+    custom.curl_exit: 0
+    custom.duration_ms: 905
+```
+[Full captured responses, counters and health](sources/2026-11-09-h1-fresh-control.txt).
+
+Found #152 observability omission: fresh check names were missing from the metrics
+allowlist, so Grafana did not receive them. Logs establish their results. Prepared
+the fixed bounded allowlist and tests for actual emit→exporter propagation.
+Do not describe missing fresh metrics as a runtime failure or scrape outage.
+
+Prepared next test: retain fresh4KiB, then separate exit-validated fresh16KiB with
+60–90s before startup and2–7s between direct/H1 requests. Distinct processes prevent
+earlier client state from carrying over. Adds36KiB planned successful responses;
+236KiB/home and232KiB/Hetzner totals are not strict wire limits. No destination,
+server, chart, secret, privilege, policy, host route/firewall/Tailscale or Happ change.
+The next PR remains unmerged and undeployed.
+
+Verbatim checks:
+```
+Ran 82 tests in 0.179s
+OK
+Python syntax OK: 17 file(s)
+PASS: independent fresh H1 clients validate exit, transfer paired 4/16 KiB and clean up
+PASS: exit-validated native HTTP1 client transfers 4/16/64 KiB with direct controls and cleanup
+PASS: native HTTP2/HTTP1.1 controls validate exit, reject untrusted TLS and release loopback 1083
+PASS: invalid VLESS credential cannot reach the HTTPS origin
+PASS: ordinary website route preserved
+```
+Real-process integration plus the preceding80-test/syntax run took6.515s;
+the exporter regressions brought the final fast suite to82 tests. Quiet waits
+are mocked only locally. Review and CI of the next PR follow.
+
 ## 2026-11-09 18:19 UTC — Deploy payload ladder; prepare fresh-process control
 
 User authorized merge, deployment follow-up, tests and preparation of the next

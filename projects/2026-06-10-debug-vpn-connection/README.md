@@ -779,6 +779,9 @@ both passed on Hetzner. PR #151 then deployed [payload validation](H1-PAYLOAD-VA
 Its first ladder passed4/16/64KiB on Hetzner but failed all three from home; paired
 direct controls passed. H1 is not a working payload workaround yet.
 [Raw results](sources/2026-11-09-h1-payload-results.txt) and
-[current stage](project-status.md) record the limits. The next prepared control
-compares one fresh, exit-validated4KiB request without the long post-exit idle;
-it is not deployed and changes no user profile.
+[current stage](project-status.md) record the limits. PR #152 deployed the fresh, exit-validated4KiB comparison without long post-exit
+idle. Its first cycle passed on home and Hetzner; home reused16/64KiB still failed.
+[Current evidence](sources/2026-11-09-h1-fresh-control.txt) also records the longer
+#151 baseline (home4KiB7/8,16/64KiB0/8). Fresh checks are logged but missing from
+the deployed metrics allowlist. The next prepared PR fixes that omission and adds
+a separate fresh16KiB control, retaining4KiB and all bounds. No user profile changes.
