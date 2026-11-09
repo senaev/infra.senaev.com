@@ -60,7 +60,9 @@ class MetricsTests(unittest.TestCase):
 
     def test_fresh_and_reused_results_remain_separate_in_dashboard_metrics(self):
         metrics = ProbeMetrics()
-        for check, ok in [('diagnostic_fresh_trace', True), ('diagnostic_native_trace', False), ('diagnostic_native_h1_trace', True), ('diagnostic_reused_trace', False)]:
+        for check, ok in [('diagnostic_fresh_trace', True), ('diagnostic_native_trace', False), ('diagnostic_native_h1_trace', True), ('diagnostic_h1_size_exit', True),
+                          ('transfer_h1_cloudflare_4096', True), ('transfer_h1_cloudflare_16384', False),
+                          ('transfer_h1_cloudflare_65536', True), ('diagnostic_reused_trace', False)]:
             metrics.record('one', check, 'xhttp', {'ok': ok, 'experiment_id': 'secret-id'}, now=1)
             self.assertIn(f'vpn_probe_success{{profile="one",check="{check}",route="xhttp"}} {int(ok)}', metrics.render())
         self.assertNotIn('secret-id', metrics.render())

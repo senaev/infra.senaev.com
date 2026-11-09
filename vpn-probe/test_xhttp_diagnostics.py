@@ -11,10 +11,10 @@ from xhttp_server import server_config
 class DiagnosticTests(unittest.TestCase):
     @patch('probe.emit')
     @patch('probe.experiment_wait', return_value=False)
-    @patch('probe.fresh_xhttp_exit_control', side_effect=[False, True])
+    @patch('probe.fresh_xhttp_exit_control', side_effect=[False, True, True])
     def test_failure_of_first_tls_client_does_not_skip_the_second(self, fresh, wait, emit):
         self.assertFalse(probe.xhttp_transport_controls('test', None, 'round'))
-        self.assertEqual(fresh.call_count, 2)
+        self.assertEqual(fresh.call_count, 3)
 
     @patch('probe.emit')
     @patch('probe.experiment_wait', return_value=False)
@@ -22,10 +22,14 @@ class DiagnosticTests(unittest.TestCase):
     def test_same_trace_budgets_and_alternating_serial_order(self, fresh, wait, emit):
         for http1_first in [False, True]:
             self.assertTrue(probe.xhttp_transport_controls('test', None, 'round', http1_first))
-        self.assertEqual([x.kwargs['http1'] for x in fresh.call_args_list], [False, True, True, False])
+        arms = [x for x in fresh.call_args_list if not x.kwargs.get('measure_sizes')]
+        self.assertEqual([x.kwargs['http1'] for x in arms], [False, True, True, False])
+        self.assertEqual(sum(x.kwargs.get('measure_sizes', False) for x in fresh.call_args_list), 2)
+        self.assertEqual([x.kwargs.get('measure_sizes', False) for x in fresh.call_args_list],
+                         [False, False, True, False, False, True])
         self.assertTrue(all(x.kwargs['native_tls'] is True for x in fresh.call_args_list))
         self.assertTrue(all(x.args == ('test', None, 'round') for x in fresh.call_args_list))
-        self.assertEqual(wait.call_count, 4)
+        self.assertEqual(wait.call_count, 6)
         self.assertTrue(all(60 <= x.args[0] <= 90 for x in wait.call_args_list))
 
     @patch('probe.emit')
@@ -57,7 +61,7 @@ class DiagnosticTests(unittest.TestCase):
         self.assertFalse(probe.transfer_round('test', 'baseline', xhttp_proxy='candidate', diagnostics=True))
         exit_control.assert_called_once()
         self.assertEqual(request.call_count, 20)
-        self.assertEqual(fresh.call_count, 2)
+        self.assertEqual(fresh.call_count, 3)
         skips = [c for c in emit.call_args_list if c.args[1] == 'transfer_skipped']
         self.assertEqual(len(skips), 6)
         self.assertFalse(any(c.args[2] == 'xhttp' and c.args[1].startswith('transfer_')
@@ -195,3 +199,26 @@ class FreshClientTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             probe.fresh_xhttp_exit_control('test', None, 'round', http1=True)
         start.assert_not_called()
+
+    @patch('probe.h1_transfer_controls')
+    @patch('probe.stop_client')
+    @patch('probe.start_client')
+    @patch('probe.xhttp_exit_control', return_value=False)
+    def test_payloads_require_successful_exit_on_the_same_client(self, control, start, stop, sizes):
+        start.return_value.poll.return_value = None
+        self.assertFalse(probe.fresh_xhttp_exit_control('test', None, 'round', native_tls=True,
+                                                       http1=True, measure_sizes=True))
+        sizes.assert_not_called()
+        stop.assert_called_once_with(start.return_value)
+        self.assertEqual(control.call_args.kwargs['check'], 'diagnostic_h1_size_exit')
+
+    @patch('probe.h1_transfer_controls', return_value=False)
+    @patch('probe.stop_client')
+    @patch('probe.start_client')
+    @patch('probe.xhttp_exit_control', return_value=True)
+    def test_payload_failure_stops_fresh_client_and_fails_control(self, control, start, stop, sizes):
+        start.return_value.poll.return_value = None
+        self.assertFalse(probe.fresh_xhttp_exit_control('test', None, 'round', native_tls=True,
+                                                       http1=True, measure_sizes=True))
+        self.assertEqual(sizes.call_args.kwargs['fresh'], start.return_value)
+        stop.assert_called_once_with(start.return_value)

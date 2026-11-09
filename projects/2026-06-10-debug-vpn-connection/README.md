@@ -773,3 +773,7 @@ In the first round both clients passed on Hetzner and stalled from home. [Detail
 
 PR #150 prepares the next comparison: fresh native TLS with HTTP/2 versus HTTP/1.1
 from both sources, retaining jitter and limits. [Scope and local verification](XHTTP-RESPONSE-DIAGNOSTICS.md#next-comparison-prepared--native-http2-versus-http11).
+
+PR #150 deployed: the first native H1 trace worked from home while H2 stalled;
+both passed on Hetzner. [Next payload validation](H1-PAYLOAD-VALIDATION.md) is prepared
+before any user-profile change or repair claim.

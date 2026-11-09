@@ -2,10 +2,10 @@
 
 ## Current stage
 
-PR #149 deployed successfully at fd84179 in run42642463181. First Chrome/native
-TLS pair is complete: both work from Hetzner, both stall from home after TLS.
-Added jitter is visible in logs. PR #150 prepares native HTTP/2 versus HTTP/1.1.
-Repair remains open; the new HTTP-version comparison is not deployed.
+PR #150 deployed at 7a97606 in run42661613767. In the first version pair, native
+HTTP/1.1 worked from home while HTTP/2 stalled. Both passed on Hetzner. Repair
+remains open: only a small trace response has been validated from home.
+The next PR prepares bounded H1 payload-size checks; they are not deployed.
 
 ## Deployed configuration
 
@@ -54,17 +54,24 @@ All intended workloads available, three targets scraped, new pods at zero restar
 all five website smoke checks passed, no client startup/exit failures found.
 [Raw first-round evidence](sources/2026-11-09-tls-comparison.txt).
 
-## Next investigation — PR #150 prepared
+## Latest HTTP-version result
 
-Replace the completed Chrome/native diagnostic pair with fresh native-TLS clients
-over HTTP/2 and HTTP/1.1 on home and Hetzner, alternating order. Only ALPN differs;
-endpoint, TLS implementation, certificate verification, packet-up, budgets, rate,
-size, jitter and original candidate acceptance stay fixed. Existing native H2
-metric remains; H1 has a separate fixed check in existing panels20/21. Traffic
-volume and number of temporary processes do not increase.
+First pair (H2 first): home native H2 timed out at8011ms after TLS1340ms;
+home native H1 returned HTTP200/214 bytes in2064ms with expected exit validation.
+Hetzner H2/H1 both passed in682/981ms. Home direct/TCP controls passed508/795ms.
+All intended workloads available, three targets scraped, new pods at zero restarts
+and all five website smoke checks passed. [Captured evidence](sources/2026-11-09-http-version-comparison.txt).
 
-Local pinned-binary integration validates both versions, expected exit, rejection
-of untrusted certificates and process cleanup. No live H1 result exists yet.
-Observe reversed-order rounds after deployment; a version-dependent result still
-does not establish DPI, MTU or a proxy bug. No production subscription, server,
-network policy, secret or host networking change. Keep Hetzner as a positive control.
+This supports a version-dependent workaround for small requests, without proving
+DPI or a specific proxy defect. The previous Chrome/native H2 experiment ended
+with13/13 successes per client on Hetzner and0/5 per client on home. Observe the
+reversed-order version rounds; no user-facing subscription change is justified yet.
+
+## Next step prepared — H1 payload validation
+
+Keep the version pair. After it finishes, and only if its H1 trace passed, start a
+separate native H1 client and revalidate its exit. Then compare paired direct/H1
+Cloudflare transfers at4/16/64KiB on that same validated process, with existing
+budgets/rate limits and bounded jitter. No candidate promotion or traffic overlap.
+See [scope and rollback](H1-PAYLOAD-VALIDATION.md). Prepare/review the PR, then
+verify deployment and repeat size checks before changing Happ profiles.

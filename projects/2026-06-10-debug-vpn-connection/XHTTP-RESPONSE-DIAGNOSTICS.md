@@ -220,8 +220,7 @@ website smoke checks passed after deployment. No startup/exit failures were foun
 
 ## Next comparison prepared — native HTTP/2 versus HTTP/1.1
 
-PR #150 extends the deployed evidence with the next bounded comparison. It is not
-deployed. The first #149 pair passed with both TLS clients on Hetzner and stalled
+PR #150 deployed the bounded version comparison in run42661613767. The first #149 pair passed with both TLS clients on Hetzner and stalled
 with both on home. Its reversed-order home pair has not yet been observed.
 
 Using native TLS for both new arms avoids the earlier Chrome ALPN mismatch.
@@ -234,3 +233,21 @@ The native metric pair is already covered by the dashboard's diagnostic regex.
 No subscription, server, ingress, chart, network policy, secret, image base or host
 network change. diagnostics=false disables the home pair and removes the Hetzner
 control as before; the new variant is never delivered to Happ subscriptions.
+
+## First HTTP-version round — 2026-11-09
+
+| Source / native TLS version | UTC | Result |
+|---|---|---|
+| Hetzner H2 | 17:17:40 | HTTP200,216 bytes,682ms |
+| Hetzner H1 | 17:19:03 | HTTP200,214 bytes,981ms |
+| Home H2 | 17:20:00 | HTTP0,headers/body0,8011ms; TLS1340ms |
+| Home H1 | 17:21:30 | HTTP200,214 bytes,2064ms; TLS1403ms; expected exit validated |
+
+Home experiment5d17fbdc-0f77-4c18-84b5-d405b28cc9be; Hetzner
+63e5215b-2239-4b4b-a6db-1a560c4efe5a. Home direct/TCP traces passed508/795ms.
+[Verbatim evidence and health output](sources/2026-11-09-http-version-comparison.txt).
+One H2-first pair suggests a useful H1 workaround for small requests; timing/order
+and inherent framing/connection differences prevent a causal diagnosis.
+
+[Next prepared step](H1-PAYLOAD-VALIDATION.md): validate4/16/64KiB through H1 after
+successful exit control. This is not deployed and does not change user profiles.
