@@ -20,8 +20,8 @@ downloads do not stop the remaining comparisons, but the paired VPN result is
 explicitly marked comparison_inconclusive in logs. Successful transfers require
 HTTP 200 and exactly the requested byte count.
 
-There are five quiet minutes at startup and between complete matrices, and one
-quiet minute between the six conditions. Conditions rotate by one position each
+Quiet intervals are independently sampled from 300–360 seconds at startup and
+between complete matrices, and 60–90 seconds between the six conditions. Conditions rotate by one position each
 round to expose order effects. Requests stay serial, with three-second connect and
 eight-second total limits, no retry/redirect, 32 KiB/s limit, and a hard per-response
 payload cap equal to requested size. Existing client-exit and shutdown guards apply.
@@ -30,13 +30,13 @@ No routine or old recovery sequence runs concurrently.
 The bulk upper bound is approximately 95 MiB/day across two profiles: 672 KiB per
 complete matrix, at most 144 matrices/day given mandatory quiet intervals.
 Small prechecks and protocol overhead are additional. Each condition repeats roughly
-every 10–13 minutes; this is deliberately slower than the light routine suite.
+every 10–17 minutes; this is deliberately slower than the light routine suite.
 
 Metrics use six fixed size/destination check names plus the existing route label.
 No URLs, cycle IDs or arbitrary size labels are exported. Logs include cycle ID,
 condition index, target name, requested bytes, and direct-control validity.
 Grafana compares condition success, duration and received bytes. Samples older than
-15 minutes are hidden; skipped conditions have no fabricated download sample.
+20 minutes are hidden; skipped conditions have no fabricated download sample.
 Check logs for skipped cycles or client-exit invalidation before interpreting charts.
 
 ## Interpretation and limits
@@ -56,8 +56,11 @@ its reachability after deployment.
 
 `vpnProbe.controlledExperiment: true` enables this matrix and keeps only profiles
 1 and 4. It replaces the previous recoveryExperiment flag and mode; false restores
-all five remaining routine checkers. No server, host-network, secret or permission changes.
+all four remaining routine checkers. No server, host-network, secret or permission changes.
 
 Use normal CI: build/publish the changed checker image, apply charts, refresh
 workloads. A chart-only rollout with an older image cannot execute this experiment.
-Pending merge/deployment.
+PR #141 is deployed. Its first matrix passed 4 KiB but failed 16/64 KiB on profile 4
+against both targets; profile 1 and all direct controls passed. This is one round,
+not proof of a specific cause. The timing variation and entry-only FirstVDS update
+are prepared in a follow-up PR, not deployed yet.
