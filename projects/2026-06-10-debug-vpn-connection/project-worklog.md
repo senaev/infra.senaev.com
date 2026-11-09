@@ -1,4 +1,4 @@
-## 2026-11-09 18:35 UTC — Address payload-check review before merge
+## 2026-11-09 17:55 UTC — Address payload-check review before merge
 
 CodeRabbit identified two valid points. Preserve the completed direct measurement
 before a temporary-client liveness failure; a regression test verifies no VPN
