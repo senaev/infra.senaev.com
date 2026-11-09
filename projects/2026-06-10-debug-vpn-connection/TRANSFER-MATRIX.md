@@ -56,7 +56,7 @@ its reachability after deployment.
 
 `vpnProbe.controlledExperiment: true` enables this matrix and keeps only profiles
 1 and 4. It replaces the previous recoveryExperiment flag and mode; false restores
-all six routine checkers. No server, host-network, secret or permission changes.
+all five remaining routine checkers. No server, host-network, secret or permission changes.
 
 Use normal CI: build/publish the changed checker image, apply charts, refresh
 workloads. A chart-only rollout with an older image cannot execute this experiment.

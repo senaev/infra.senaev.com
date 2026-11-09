@@ -45,5 +45,17 @@ shorter and per-connection effects remain possible. Website smoke checks pass.
 Review/deploy the [size and destination matrix](TRANSFER-MATRIX.md): compare
 4/16/64 KiB direct and VPN downloads from Cloudflare and HTTPBingo on profiles 1/4.
 It replaces the recovery sequence and preserves quiet intervals and client guards.
-Set controlledExperiment=false to restore six routine checker profiles.
+Set controlledExperiment=false to restore five remaining routine checker profiles.
 Not deployed yet.
+
+
+## FirstVDS direct-exit removal
+
+Prepared a separate PR removing the FirstVDS → freedom subscription and seed-4
+server client/routing rule. Stable probeIndex values preserve checker IDs 1–5,
+including active experiment profiles 1 and 4. The unused exit mapping is removed,
+which will restart the checker pods on deployment. Collect the current matrix first.
+FirstVDS remains the entry for profile 1 and the exit for profile 2; removing this
+direct-entry/direct-exit route does not conceal the FirstVDS address generally.
+Pending review and deployment; existing cached seed-4 links stop working only after
+the Xray configuration is reloaded.

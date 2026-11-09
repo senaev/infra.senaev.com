@@ -1,5 +1,6 @@
 {{- if .Values.vpnProbe.enabled }}
-{{- range $index, $entry := .Values.vpnSubscription.entries }}
+{{- range $entry := .Values.vpnSubscription.entries }}
+{{- $index := int $entry.probeIndex }}
 ---
 apiVersion: apps/v1
 kind: Deployment
