@@ -1,3 +1,34 @@
+## 2026-11-09 13:25 UTC — Prepare Hetzner public-endpoint source control
+
+User approved comparing the same XHTTP request from Hetzner. Prepared one isolated
+control pod, reusing the current image and fresh-client function. Direct trace and
+fresh XHTTP trace only, 300–360s before each round and 60–90s between requests;
+4 KiB each, 8s total / 3s connect and 32 KiB/s. Separate fixed profile, existing
+scrape/policy/dashboard. Existing resources render identically.
+
+Source-only additive egress policy permits local Traefik TCP443 after possible
+public self-connect DNAT. It does not permit private backend8081 or fallback8443.
+No changes to production clients, subscriptions, routing, credentials or host network.
+This is a same-host public endpoint control, with hairpin/time/DNS confounders;
+it cannot alone establish DPI or a server bug. SourceControl=false removes it.
+
+Validation output:
+```
+Ran 58 tests in 0.125s — OK
+Python syntax OK: 16 file(s)
+1 chart(s) linted, 0 chart(s) failed
+PASS: rollback equals main; enabled mode adds only one Deployment and its scoped frontend NetworkPolicy
+PASS: verified TLS -> Reality fallback -> Traefik -> h2c XHTTP: 4096 bytes
+PASS: verified TLS -> Reality fallback -> Traefik -> h2c XHTTP: 16384 bytes
+PASS: verified TLS -> Reality fallback -> Traefik -> h2c XHTTP: 65536 bytes
+PASS: two fresh-client controls validate TLS/exit and release loopback 1083
+PASS: invalid VLESS credential cannot reach the HTTPS origin
+PASS: ordinary website route preserved
+```
+Unit coverage includes bounded source rounds, direct/candidate failures,
+cancellation and dispatch without baseline configuration. Pinned-binary integration
+also asserts the fresh helper returns the actual validated result. Pending CI/review.
+
 ## 2026-11-09 12:44 UTC — Prepare fresh versus reused XHTTP comparison
 
 User approved the next comparison. Extended existing PR #146: replace the three

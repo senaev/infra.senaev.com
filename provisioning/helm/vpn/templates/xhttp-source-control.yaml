@@ -1,0 +1,111 @@
+{{- if and .Values.vpnXhttpExperiment.enabled .Values.vpnXhttpExperiment.diagnostics .Values.vpnXhttpExperiment.sourceControl .Values.vpnProbe.enabled .Values.vpnProbe.controlledExperiment .Values.ingress.enabled }}
+# Distinct profile label avoids overlap with home probe Deployment selectors.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vpn-source-control-hetzner
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: vpn-probe
+    vpn-profile: "source-control-hetzner"
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: vpn-probe
+      vpn-profile: "source-control-hetzner"
+  template:
+    metadata:
+      labels:
+        app: vpn-probe
+        vpn-profile: "source-control-hetzner"
+        tags.datadoghq.com/service: vpn-probe
+        tags.datadoghq.com/env: prod
+      annotations:
+        secret.reloader.stakater.com/reload: senaev-com-kv-secrets
+        ad.datadoghq.com/probe.logs: '[{"source":"python","service":"vpn-probe"}]'
+    spec:
+      nodeSelector:
+        vps: hetzner
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: probe
+          image: ghcr.io/senaev/vpn-probe:latest
+          imagePullPolicy: Always
+          ports:
+            - name: metrics
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          env:
+            - name: XHTTP_SOURCE_CONTROL
+              value: "true"
+            - name: PROFILE_NAME
+              value: "XHTTP source control — Hetzner"
+            - name: XHTTP_PROFILE_LINK
+              value: {{ printf "vless://{XRAY_USER_UUID:xhttp-probe}@senaev.com:443?type=xhttp&security=tls&fp=chrome&sni=senaev.com&mode=packet-up&path=%s" (.Values.vpnXhttpExperiment.path | urlquery) | quote }}
+            - name: PROFILE_LINK
+              value: "$(XHTTP_PROFILE_LINK)"
+            - name: XRAY_USER_UUID
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: XRAY_USER_UUID
+            - name: XRAY_REALITY_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: XRAY_REALITY_PUBLIC_KEY
+          resources:
+            requests:
+              cpu: 10m
+              memory: 48Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          volumeMounts:
+            - name: scratch
+              mountPath: /tmp
+      volumes:
+        - name: scratch
+          emptyDir:
+            sizeLimit: 16Mi
+---
+# Public self-connect may be DNATed to the local Traefik pod before policy checks.
+# Permit only its public frontend, never the private XHTTP backend or TLS fallback.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: vpn-source-control-hetzner-frontend
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: vpn-probe
+      vpn-profile: source-control-hetzner
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+          podSelector:
+            matchLabels:
+              app: traefik
+              traefik-deployment: hetzner
+      ports:
+        - protocol: TCP
+          port: 443
+{{- end }}

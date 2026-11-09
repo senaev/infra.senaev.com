@@ -2,7 +2,7 @@
 
 ## Stage
 
-XHTTP response diagnostics deployed (PR #145); first diagnostic sequence complete. Repair remains open.
+Fresh/reused comparison deployed (PR #146); Hetzner source control prepared. Repair remains open.
 
 ## Verified baseline
 
@@ -90,3 +90,19 @@ it does not yet distinguish network interference from a client/proxy defect.
 Do not change production subscriptions, transport, routing or host networking.
 See [diagnostic evidence](XHTTP-RESPONSE-DIAGNOSTICS.md). Toggle diagnostics=false
 to remove extra controls/logging; enabled=false removes the entire candidate.
+
+## Source comparison prepared
+
+PR #146 deployed in run 42620755377. All intended workloads available, new pods
+had zero restarts, and all five website smoke checks passed. First home pair:
+reused trace failed setup at 3009ms; fresh trace completed destination TLS at
+732ms and reported 93 request bytes but no HTTP headers/body by 8011ms. Direct and
+TCP trace controls passed in 504/717ms. Resetting the client did not restore HTTP.
+One pair alone does not settle the reuse or network-interference hypotheses.
+
+Prepared a separate low-volume Hetzner pod using the same public endpoint and
+fresh-client function. At most two 4 KiB trace requests per 6–8 minute cycle,
+with the existing time/rate limits, separate profile and existing dashboard/scrape.
+The new local frontend-only policy supports public-address self-connect DNAT;
+no existing workload/network policy changes. This controls for source/host effects
+but does not reproduce an independent external network path. Pending PR/deployment.

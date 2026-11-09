@@ -255,7 +255,8 @@ def xhttp_exit_control(profile, proxy, experiment_id, timeout=8, check="exit_ip"
 def fresh_xhttp_exit_control(profile, child, experiment_id):
     """One request through a separate process; never reset the matrix candidate."""
     if STOP.is_set():
-        return
+        return False
+    passed = False
     fresh = None
     try:
         config, _ = client_config(os.environ["XHTTP_PROFILE_LINK"],
@@ -266,12 +267,12 @@ def fresh_xhttp_exit_control(profile, child, experiment_id):
             try:
                 fresh = start_client(config, folder)
                 if STOP.is_set():
-                    return
+                    return False
                 check_experiment_client(child, profile, experiment_id)
                 if fresh.poll() is not None and not STOP.is_set():
                     raise RuntimeError("fresh_client_exited")
-                xhttp_exit_control(profile, "socks5h://127.0.0.1:1083", experiment_id,
-                                   check="diagnostic_fresh_trace")
+                passed = xhttp_exit_control(profile, "socks5h://127.0.0.1:1083", experiment_id,
+                                            check="diagnostic_fresh_trace")
                 check_experiment_client(child, profile, experiment_id)
                 if fresh.poll() is not None and not STOP.is_set():
                     raise RuntimeError("fresh_client_exited")
@@ -279,11 +280,13 @@ def fresh_xhttp_exit_control(profile, child, experiment_id):
                 if fresh is not None:
                     stop_client(fresh)
     except (KeyError, ValueError, RuntimeError, OSError) as error:
+        passed = False
         check_experiment_client(child, profile, experiment_id)
         emit(profile, "diagnostic_fresh_trace", "xhttp", {
             "ok": False, "failure": "fresh_client_unavailable",
             "error_type": type(error).__name__, "experiment_id": experiment_id})
     check_experiment_client(child, profile, experiment_id)
+    return passed
 
 
 def xhttp_response_diagnostics(profile, baseline, candidate, child, experiment_id, fresh_first=False):
@@ -456,6 +459,22 @@ def negative(profile, link, base, key, folder):
     return 1
 
 
+def xhttp_source_control(profile, once=False):
+    """Low-volume public-endpoint control from a separate source node."""
+    while not STOP.is_set():
+        if experiment_wait(random.uniform(300, 360), None, profile):
+            break
+        experiment_id = str(uuid.uuid4())
+        result, _ = request("https://www.cloudflare.com/cdn-cgi/trace", "", 4096)
+        emit(profile, "diagnostic_trace", "direct", {**result, "experiment_id": experiment_id})
+        if experiment_wait(random.uniform(60, 90), None, profile, experiment_id):
+            break
+        passed = fresh_xhttp_exit_control(profile, None, experiment_id)
+        if once:
+            return 0 if passed and result["ok"] else 1
+    return 1 if once else 0
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--once", action="store_true", help="Fresh client; one light/heavy round")
@@ -477,6 +496,10 @@ def run(args):
     for sig in [signal.SIGTERM, signal.SIGINT]:
         signal.signal(sig, lambda *_: STOP.set())
     profile = os.environ["PROFILE_NAME"]
+    if os.environ.get("XHTTP_SOURCE_CONTROL") == "true":
+        if args.invalid:
+            raise ValueError("Source control does not run credential rejection tests")
+        return xhttp_source_control(profile, once=args.once)
     link, base, key = (os.environ[k] for k in ["PROFILE_LINK", "XRAY_USER_UUID", "XRAY_REALITY_PUBLIC_KEY"])
     config, seed = client_config(link, base, key, port=1081 if args.once else 1080)
     expected = json.loads(os.environ["EXPECTED_EXITS"])[seed]

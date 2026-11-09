@@ -181,7 +181,7 @@ def main():
                     patch.object(probe, "resolve_exit", return_value={"127.0.0.1"}), \
                     patch.object(probe, "emit") as emitted:
                 for _ in range(2):
-                    probe.fresh_xhttp_exit_control("local", None, "integration")
+                    assert probe.fresh_xhttp_exit_control("local", None, "integration")
                     assert emitted.call_args.args[1] == "diagnostic_fresh_trace"
                     assert emitted.call_args.args[3]["ok"], emitted.call_args
                     with socket.socket() as connection:
