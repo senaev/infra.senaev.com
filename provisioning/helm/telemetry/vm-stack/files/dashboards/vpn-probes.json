@@ -1027,7 +1027,7 @@
     {
       "id": 17,
       "title": "Recovery experiment — check duration",
-      "type": "state-timeline",
+      "type": "timeseries",
       "description": "Only profiles 1 and 4 during the controlled experiment. Results older than ten minutes are hidden. Fixed phase names; see logs for experiment ID and actual post-download delay.",
       "datasource": {
         "type": "prometheus",
@@ -1056,36 +1056,27 @@
         "defaults": {
           "unit": "s",
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
-          "noValue": "No fresh sample",
-          "min": 0,
-          "max": 1,
-          "custom": {
-            "spanNulls": false,
-            "fillOpacity": 90,
-            "lineWidth": 0
-          }
+          "noValue": "No fresh sample"
         },
         "overrides": []
       },
       "options": {
-        "mergeValues": true,
-        "showValue": "never",
-        "alignValue": "left",
-        "rowHeight": 0.8,
         "legend": {
-          "showLegend": false
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
-          "mode": "single"
+          "mode": "multi"
         }
       }
     },
     {
       "id": 18,
       "title": "Recovery experiment — received bytes",
-      "type": "state-timeline",
+      "type": "timeseries",
       "description": "Only profiles 1 and 4 during the controlled experiment. Results older than ten minutes are hidden. Fixed phase names; see logs for experiment ID and actual post-download delay.",
       "datasource": {
         "type": "prometheus",
@@ -1114,29 +1105,20 @@
         "defaults": {
           "unit": "bytes",
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
-          "noValue": "No fresh sample",
-          "min": 0,
-          "max": 1,
-          "custom": {
-            "spanNulls": false,
-            "fillOpacity": 90,
-            "lineWidth": 0
-          }
+          "noValue": "No fresh sample"
         },
         "overrides": []
       },
       "options": {
-        "mergeValues": true,
-        "showValue": "never",
-        "alignValue": "left",
-        "rowHeight": 0.8,
         "legend": {
-          "showLegend": false
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
-          "mode": "single"
+          "mode": "multi"
         }
       }
     }
