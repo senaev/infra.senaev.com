@@ -77,7 +77,7 @@ class H1SizeTests(unittest.TestCase):
     @patch('probe.experiment_wait', return_value=False)
     @patch('probe.request', return_value=({'ok': True}, ''))
     def test_immediate_control_has_one_small_pair_and_only_short_jitter(self, request, wait, emit):
-        self.assertTrue(probe.h1_transfer_controls('test', 'h1', None, 'round', immediate=True))
+        self.assertTrue(probe.h1_transfer_controls('test', 'h1', None, 'round', immediate_size=4096))
         self.assertEqual(request.call_count, 2)
         self.assertEqual(request.call_args_list[0].args,
                          ('https://speed.cloudflare.com/__down?bytes=4096', '', 4096))
@@ -90,11 +90,12 @@ class H1SizeTests(unittest.TestCase):
 
     @patch('probe.emit')
     @patch('probe.experiment_wait', return_value=False)
-    @patch('probe.fresh_xhttp_exit_control', side_effect=[False, True, False, True])
+    @patch('probe.fresh_xhttp_exit_control', side_effect=[False, True, False, False, True])
     def test_failed_reused_ladder_still_runs_independent_fresh_control(self, fresh, wait, emit):
         self.assertFalse(probe.xhttp_transport_controls('test', None, 'round'))
         self.assertTrue(fresh.call_args_list[2].kwargs['measure_sizes'])
-        self.assertTrue(fresh.call_args_list[3].kwargs['immediate_payload'])
+        self.assertEqual([c.kwargs.get('payload_size') for c in fresh.call_args_list[3:]],
+                         [4096, 16384])
         self.assertTrue(60 <= wait.call_args_list[-1].args[0] <= 90)
 
     @patch('probe.emit')
@@ -103,3 +104,41 @@ class H1SizeTests(unittest.TestCase):
     def test_cancel_before_fresh_control_starts_no_extra_process(self, fresh, wait, emit):
         self.assertFalse(probe.xhttp_transport_controls('test', None, 'round'))
         self.assertEqual(fresh.call_count, 3)
+
+
+    @patch('probe.emit')
+    @patch('probe.experiment_wait', return_value=False)
+    @patch('probe.request', return_value=({'ok': True}, ''))
+    def test_fresh_16k_has_exact_cap_and_no_long_post_exit_wait(self, request, wait, emit):
+        self.assertTrue(probe.h1_transfer_controls('test', 'h1', None, 'round',
+                                                 immediate_size=16384))
+        self.assertEqual(request.call_count, 2)
+        for call in request.call_args_list:
+            self.assertEqual(call.args[0], 'https://speed.cloudflare.com/__down?bytes=16384')
+            self.assertEqual(call.args[2], 16384)
+            self.assertEqual(call.kwargs, {'expected_bytes': 16384})
+        wait.assert_called_once()
+        self.assertTrue(2 <= wait.call_args.args[0] <= 7)
+        self.assertTrue(all(c.args[1] == 'transfer_h1_fresh_cloudflare_16384'
+                            for c in emit.call_args_list))
+
+    @patch('probe.emit')
+    @patch('probe.experiment_wait', side_effect=[False, False, False, False, True])
+    @patch('probe.fresh_xhttp_exit_control', return_value=True)
+    def test_cancel_before_fresh_16k_starts_no_second_size_client(self, fresh, wait, emit):
+        self.assertFalse(probe.xhttp_transport_controls('test', None, 'round'))
+        self.assertEqual(fresh.call_count, 4)
+        self.assertEqual(fresh.call_args.kwargs['payload_size'], 4096)
+
+    @patch('probe.experiment_wait', return_value=False)
+    @patch('probe.request', side_effect=[({'ok': True, 'bytes': 16384}, ''),
+                                       ({'ok': False, 'bytes': 0}, '')])
+    def test_actual_emit_exports_fresh_16k_control_to_metrics(self, request, wait):
+        from metrics import ProbeMetrics
+        metrics = ProbeMetrics()
+        with patch('probe.METRICS', metrics), patch('builtins.print'):
+            self.assertFalse(probe.h1_transfer_controls('test', 'h1', None, 'round',
+                                                       immediate_size=16384))
+        rendered = metrics.render()
+        self.assertIn('check="transfer_h1_fresh_cloudflare_16384",route="direct"} 1', rendered)
+        self.assertIn('check="transfer_h1_fresh_cloudflare_16384",route="xhttp"} 0', rendered)

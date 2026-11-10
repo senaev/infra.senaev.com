@@ -208,17 +208,18 @@ def main():
                 assert [c.args[3]["bytes"] for c in sizes if c.args[2] == "xhttp"] == [4096, 16384, 65536]
                 with socket.socket() as connection:
                     assert connection.connect_ex(("127.0.0.1", 1083)) != 0
-                emitted.reset_mock()
-                with patch.object(probe, "experiment_wait", return_value=False):
-                    assert probe.fresh_xhttp_exit_control("local", None, "fresh-size", native_tls=True,
-                                                         http1=True, immediate_payload=True)
-                sizes = [c for c in emitted.call_args_list
-                         if c.args[1] == "transfer_h1_fresh_cloudflare_4096"]
-                assert len(sizes) == 2 and all(c.args[3]["ok"] for c in sizes)
-                assert all(c.args[3]["bytes"] == 4096 for c in sizes)
-                with socket.socket() as connection:
-                    assert connection.connect_ex(("127.0.0.1", 1083)) != 0
-            print("PASS: immediate fresh H1 control validates exit, transfers paired 4 KiB and cleans up")
+                for size in [4096, 16384]:
+                    emitted.reset_mock()
+                    with patch.object(probe, "experiment_wait", return_value=False):
+                        assert probe.fresh_xhttp_exit_control("local", None, "fresh-size", native_tls=True,
+                                                             http1=True, payload_size=size)
+                    sizes = [c for c in emitted.call_args_list
+                             if c.args[1] == f"transfer_h1_fresh_cloudflare_{size}"]
+                    assert len(sizes) == 2 and all(c.args[3]["ok"] for c in sizes)
+                    assert all(c.args[3]["bytes"] == size for c in sizes)
+                    with socket.socket() as connection:
+                        assert connection.connect_ex(("127.0.0.1", 1083)) != 0
+            print("PASS: independent fresh H1 clients validate exit, transfer paired 4/16 KiB and clean up")
             print("PASS: exit-validated native HTTP1 client transfers 4/16/64 KiB with direct controls and cleanup")
             print("PASS: native HTTP2/HTTP1.1 controls validate exit, reject untrusted TLS and release loopback 1083")
             bad_port = free_port()

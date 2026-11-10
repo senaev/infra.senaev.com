@@ -64,7 +64,7 @@ three while all direct controls passed. Home4/16KiB completed destination TLS bu
 received zero response headers/body;64KiB failed during setup. This is not a clean
 size threshold. [Captured evidence](sources/2026-11-09-h1-payload-results.txt).
 
-## Next control — fresh client without long post-exit idle
+## Fresh client without long post-exit idle (#152 deployed)
 
 Retain the deployed ladder and version pair unchanged. If the version-pair H1
 trace passed, after the complete ladder wait60–90s and start another verified
@@ -78,8 +78,9 @@ test: the exit trace still precedes the download on the same process.
 Run even when the original ladder failed, but never bypass this new process's exit
 validation. Failed direct control makes the comparison inconclusive. Requests and
 processes remain serial, with identical budgets, exact-size acceptance, TLS,
-credentials, endpoint and cleanup. Existing Grafana regex panels include both new
-checks. No server/chart/subscription/host-network changes.
+credentials, endpoint and cleanup. Existing Grafana regex panels match both new
+check names, but #152 omitted them from the exporter allowlist. They are logged
+only until the follow-up fixes the allowlist; absent fresh metrics are not failures. No server/chart/subscription/host-network changes.
 
 Additional planned response allowance is12KiB (4KiB trace + two4KiB transfers).
 New planned successful totals are200KiB/home failed matrix and196KiB/Hetzner
@@ -91,9 +92,49 @@ If the fresh4KiB succeeds while the reused4KiB fails, process history/idle becom
 a stronger lead. If it fails too, removing long idle alone did not restore payloads.
 This sequential comparison also changes process age and follows earlier traffic;
 it does not isolate idle as a sole cause. Repeat both source controls before
-changing destinations or Happ. No live result exists for this new control.
+changing destinations or Happ.
+
+First #152 cycle: fresh home4KiB passed905ms at22:08:51 UTC after a successful
+1881ms exit check; Hetzner passed535ms at22:06:53 after870ms exit validation.
+Reused home4KiB passed883ms,16KiB failed setup3011ms,64KiB stalled8012ms after
+TLS600ms. Direct controls and Hetzner's reused ladder passed. This is one fresh
+cycle and both fresh/reused4KiB worked, so it does not identify idle as the cause.
+[Captured evidence](sources/2026-11-09-h1-fresh-control.txt).
 
 Local validation:76 fast unit tests,17 Python files parsed, diff check, and real
 pinned Xray/Traefik integration pass. Integration checks the new exit-gated4KiB
 pair and cleanup alongside the existing64KiB ladder, trust rejection, invalid
 credential rejection and website fallback.
+
+
+## Next prepared control — independent fresh16KiB
+
+Keep the deployed version pair, reused ladder and fresh4KiB measurement. After
+fresh4KiB completes, wait60–90s before creating a separate native H1 process for
+16KiB. Validate its exit as diagnostic_h1_fresh_size_exit_16384; only a successful
+exit permits one direct/H1 pair transfer_h1_fresh_cloudflare_16384 with2–7s jitter
+and no60–90s post-exit idle. Each process stops before the next starts. If the4KiB
+measurement fails, the independent16KiB control still runs with its own exit gate.
+Both sources use the same sequence and limits. No live fresh16KiB result exists.
+
+The first payload after a trace is now tested at16KiB without inheriting the
+reused ladder's process. A fresh16KiB pass alongside a reused failure strengthens
+process-history/idle as a lead; failure would show that a new process and removal
+of the long idle are insufficient. Source, destination, timing and earlier traffic
+still matter. This does not prove a byte threshold or DPI. Retain repeated rounds
+and the Hetzner/direct controls; do not promote a Happ profile.
+
+Fix the #152 exporter omission by allowing the four fixed fresh check names
+(existing4KiB exit/download plus new16KiB exit/download). No arbitrary check names,
+IDs or URLs become metric labels. Existing dashboard regexes then display them.
+
+Additional planned response allowance beyond #152:4KiB exit + two16KiB transfers
+=36KiB. New planned successful totals:236KiB/home failed matrix and232KiB/Hetzner
+eligible cycle, with the same read-ahead and protocol-overhead caveats. Adds one
+60–90s pre-start quiet interval plus bounded startup/requests. No new destination,
+timeout, rate limit, server, chart, secret, policy, privilege or host-network change.
+Reverting the follow-up restores #152's runtime; retain the exporter fix if needed.
+
+Local checks:82 unit tests,17 Python files parsed, diff check, pinned Xray/Traefik
+integration with distinct fresh4/16KiB clients, verified exit, exact sizes and
+loopback cleanup. Existing trust/invalid-credential/website checks remain.

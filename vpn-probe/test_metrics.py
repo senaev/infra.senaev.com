@@ -66,3 +66,20 @@ class MetricsTests(unittest.TestCase):
             metrics.record('one', check, 'xhttp', {'ok': ok, 'experiment_id': 'secret-id'}, now=1)
             self.assertIn(f'vpn_probe_success{{profile="one",check="{check}",route="xhttp"}} {int(ok)}', metrics.render())
         self.assertNotIn('secret-id', metrics.render())
+
+    def test_fresh_payload_controls_export_success_and_failure_without_ids(self):
+        metrics = ProbeMetrics()
+        for check in ['diagnostic_h1_fresh_size_exit', 'diagnostic_h1_fresh_size_exit_16384',
+                      'transfer_h1_fresh_cloudflare_4096', 'transfer_h1_fresh_cloudflare_16384']:
+            for route in ['direct', 'xhttp']:
+                metrics.record('one', check, route,
+                               {'ok': True, 'bytes': 16384, 'experiment_id': 'private-id'}, now=1)
+                metrics.record('one', check, route, {'ok': False, 'bytes': 0}, now=2)
+                labels = f'profile="one",check="{check}",route="{route}"'
+                text = metrics.render()
+                self.assertIn(f'vpn_probe_checks_total{{{labels},result="success"}} 1', text)
+                self.assertIn(f'vpn_probe_checks_total{{{labels},result="failure"}} 1', text)
+                self.assertIn(f'vpn_probe_success{{{labels}}} 0', text)
+        metrics.record('one', 'transfer_h1_fresh_cloudflare_999999', 'xhttp', {'ok': True})
+        self.assertNotIn('999999', metrics.render())
+        self.assertNotIn('private-id', metrics.render())
