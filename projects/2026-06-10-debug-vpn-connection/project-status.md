@@ -2,65 +2,36 @@
 
 ## Current stage
 
-PR #152 deployed at2874173 in successful run42706106663. The full PR workflow
-also passed on retry, including image build; no workflow change was needed.
-Fresh immediate4KiB control passed in the first cycle: home905ms, Hetzner535ms,
-both exact4096 bytes after successful expected-exit checks. Reused4KiB also
-passed; home16/64KiB failed3011/8012ms. Direct controls and the Hetzner ladder
-passed. No Happ or production-subscription promotion is justified.
+PR #154 merged atd17f690; deployment42787487968 failed because Hetzner's Kubernetes
+API is down. Build/publication and provisioning sync passed. Do not claim a
+fresh16KiB result or exporter-fix rollout.
 
-Before rollout, home H1 traces and size exit checks passed8/8. Reused4KiB passed
-7/8, but16/64KiB each failed8/8. All paired direct controls passed. Hetzner H1
-traces/exits passed16/16;4KiB16/16 and16/64KiB15/16. Initial all-size home
-failure was not representative of later4KiB rounds. These counters strengthen
-the need to distinguish size and process history without proving a cause.
-[Pre-rollout counters and deployment evidence](sources/2026-11-09-h1-fresh-control.txt).
+## Incident
 
-## Deployed configuration
+Remote Tailscale update at06:26 UTC /07:26 Madrid upgraded Hetzner1.102.2→1.104.5.
+Interface deletion stopped bound K3s; Tailscale recovered, K3s did not. The recovery
+rule exists but did not restart it. AutoUpdate Apply=True. No new OOM/full disk.
+senaev.ru times out; same-IP jellyfin.senaev.ru responds302 and senaev.com200.
+FirstVDS journal remains unavailable because SSH authentication failed; the exact
+failing fallback hop is not proven.
+[Evidence, recovery proposal and check design](SENAEV-RU-AVAILABILITY.md).
 
-VPN services remain isolated in namespace vpn. FirstVDS is entry-only; Hetzner
-and senaev-media remain exits. Home matrix profiles1/4 run; profiles3/5 are
-intentionally zero. Hetzner provides a separate same-host public-endpoint control.
-Pinned Xray26.9.30, verified TLS, explicit loopback SOCKS, exit validation,
-8s total/3s connect budget,32KiB/s cap and bounded jitter remain in effect.
-No host routes, firewall, Tailscale, credentials or production subscriptions changed.
+## VPN evidence retained
 
-## Historical first payload evidence (#151)
+Before #152: home H1 traces/exit8/8; reused4KiB7/8 and16/64KiB0/8.
+First #152 fresh4KiB passed905ms/home and535ms/Hetzner. Home reused4KiB worked,
+16/64KiB failed. This does not identify idle as the cause.
+#154 fresh16KiB and metric allowlist changes are merged, deployment blocked.
 
-Both fresh H1 exit checks passed. Home H1 version trace passed2068ms and size-phase
-exit passed1429ms. Home4/16KiB then stalled8012ms after TLS617/593ms, with curl
-reporting101/102 request bytes and no response headers/body. Home64KiB failed
-during setup3010ms, TLS0/request0. Hetzner payloads passed493/977/2360ms with
-exact4096/16384/65536 bytes. This is not a clean size threshold or proof of DPI.
-The reused process was idle60–90s before each payload; destination and connection
-state remain possible explanations.
+## Next PR prepared
 
-All intended workloads available, all3 targets scraped, checker/backend pods at
-zero restarts. All5 website smoke checks passed twice after deployment. No fresh
-client startup/exit failures found in the initial check.
-[Captured selected-field logs and metric responses](sources/2026-11-09-h1-payload-results.txt).
+Direct HEAD availability from home and Hetzner using existing checker pods,
+30–45s jittered waits and bounded verified TLS. Grafana status/latency/age panels
+hide stale green samples after120s.90 tests, syntax, chart lint/render and
+dashboard validation pass. This availability change is not merged or deployed.
 
-## Deployed fresh control (#152)
+## Open actions
 
-Keep the existing ladder unchanged. After it, wait60–90s, start a separate native
-H1 process, validate the expected exit, then run one paired direct/H1 4KiB download
-without the long post-exit idle (direct request and2–7s jitter still intervene).
-Run from home and Hetzner; preserve failed baseline acceptance and all isolation.
-See [design and interpretation](H1-PAYLOAD-VALIDATION.md#fresh-client-without-long-post-exit-idle-152-deployed).
-Deployed. Compare repeated rounds before attributing a cause.
-
-
-## Observability issue and next prepared step
-
-The deployed #152 fresh checks are logged, but its metrics exporter allowlist
-omitted their names. Therefore their absence in Grafana is not a failed check;
-the first fresh result above is established by logs. The next PR adds the fixed
-fresh check names to the exporter with regression coverage.
-
-Retain fresh4KiB, then wait60–90s before a separate fresh16KiB process. Each
-process must pass its own exit check before one paired direct/H1 payload, with
-2–7s jitter and unchanged bounds. A failed earlier measurement does not suppress
-the independent16KiB control. This distinguishes a larger payload on a fresh
-process from reused-client history; it still sends a trace first and runs
-sequentially after earlier traffic. Adds36KiB planned responses per eligible
-cycle, with read-ahead/overhead caveats. Prepared, not deployed.
+Confirm Tailscale/device addresses, approve/start K3s on Hetzner, verify overlay/API/
+nodes/websites, retry #154 deployment. No host services changed during diagnosis.
+Review future Tailscale update/recovery policy separately; no home network changes.

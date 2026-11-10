@@ -1,3 +1,55 @@
+## 2026-11-10 09:19 UTC — Merge #154; diagnose outage; prepare website metrics
+
+User requested merge, senaev.ru investigation near06:00 and checker availability
+metrics. #154 merged atd17f690f6fdd87ecc87b9362cdef4dbff21fc580. Deployment42787487968
+failed at its first Kubernetes operation after build/publication and sync:
+```
+error: error validating "STDIN": error validating data: failed to download openapi: Get "https://127.0.0.1:6443/openapi/v2?timeout=32s": dial tcp 127.0.0.1:6443: connect: connection refused
+```
+Do not describe this as deployed. Cached Ready gauges were misleading.
+
+Read-only inspection used existing GitHub Actions SSH secret references in a
+temporary unmerged diagnostic branch. No key value was read/exported. Runs
+42788224267/42788499576/42788785692 inspected Hetzner. FirstVDS attempt42789398256
+failed authentication before host commands. The diagnostic workflow was restored
+afterward and is not part of this PR. No host services changed.
+
+Selected raw journal excerpt:
+```
+Nov 10 06:26:18 hetzner tailscaled[2749091]: c2n: POST /update received
+Nov 10 06:26:18 hetzner tailscaled[2749091]: c2n: running "systemd-run --wait --pipe --collect /usr/bin/tailscale update --yes"
+Nov 10 06:26:31 hetzner systemd[1]: Stopping k3s.service - Lightweight Kubernetes...
+Nov 10 06:26:34 hetzner systemd[1]: Stopped k3s.service - Lightweight Kubernetes.
+```
+Tailscale1.102.2→1.104.5 removed tailscale0/flannel.1. BindsTo stopped K3s;
+Tailscale returned, K3s stayed inactive. Rule sets SYSTEMD_WANTS, device Wants is
+empty, AutoUpdate Apply=True. Precise hook failure remains open. No new OOM kill;
+root disk~23% free. Time06:26 UTC/07:26 Madrid is not proof of an earlier website
+onset. [Raw selected sources](sources/2026-11-10-senaev-ru-incident.txt).
+
+Direct verified HEAD: senaev.ru curl28/HTTP0; senaev.com200; same-IP jellyfin.senaev.ru302. Confirmed Hetzner API/overlay fault strongly explains
+broken cross-node service/DNS paths, but the exact fallback hop is unverified.
+No restart performed; recovery proposal is documented.
+
+Prepared website_senaev_ru HEAD worker in existing home profile1/Hetzner source
+control:30–45s wait,3s/8s curl/10s process bounds, no proxy/body/redirects/retries.
+Independent requests can overlap matrix quiet intervals without changing VPN
+acceptance. Fixed metrics allowlist, JSON-output lock, Grafana status/duration/age
+with120s freshness. No image/secret/RBAC/policy/host-network change.
+
+Verbatim checks:
+```
+Ran 90 tests in 0.246s
+OK
+Python syntax OK: 18 file(s)
+PASS: website worker enabled only on home profile1 and Hetzner source control
+PASS: dashboard JSON, unique panel IDs and independent website queries
+1 chart(s) linted, 0 chart(s) failed
+```
+Both VPN/telemetry chart lints pass. Coverage includes HEAD failures/recovery,
+bounds, cancellation, real emit→exporter propagation and lifecycle/manual modes.
+Existing integration is rerun before PR. Live rollout is blocked by the API.
+
 ## 2026-11-09 22:13 UTC — Deploy fresh4KiB; prepare fresh16KiB and metrics fix
 
 User authorized merge #152 and preparation of the next step. PR workflow
