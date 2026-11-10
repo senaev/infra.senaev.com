@@ -20,7 +20,8 @@ set -euo pipefail
 #   2. A udev rule that starts k3s again the moment tailscale0 returns. BindsTo stops a
 #      unit but never restarts it, so this half is required for the pair to self-recover
 #      without any timer or polling loop.
-#   3. Tailscale auto-updates disabled, removing the most common trigger.
+#   3. Tailscale auto-updates disabled, removing the most common trigger. Fails when they
+#      are still on after the change (the tailnet setting is in terraform/tailscale.tf).
 #   4. accept_ra=2 on the uplink interface, so SLAAC IPv6 keeps working with k3s forwarding.
 #   5. Tailscale MTU 1350 (TS_DEBUG_MTU), so dual-stack pods keep an MTU >= 1280 (IPv6
 #      minimum). See projects/2026-10-04-k3s-dual-stack-ipv6/README.md
@@ -89,19 +90,26 @@ DROPIN_PATH="${DROPIN_DIR}/${DROPIN_FILENAME}"
 
 if command -v tailscale &>/dev/null; then
   echo "👉 $LOG_PREFIX Disabling Tailscale auto-updates"
-  if $SUDO tailscale set --auto-update=false 2>/dev/null; then
-    echo "✅ $LOG_PREFIX Tailscale auto-updates disabled"
-  else
-    echo "⚠️ $LOG_PREFIX Could not disable Tailscale auto-updates (not logged in, or overridden by tailnet policy)"
+  if ! $SUDO tailscale set --auto-update=false; then
+    echo "❌ $LOG_PREFIX Could not disable Tailscale auto-updates (not logged in, or overridden by tailnet policy)"
+    exit 1
   fi
 
-  # Surface the effective value: a tailnet-wide policy can override the local preference,
-  # which is how hetzner updated to 1.102.2 despite this being set at provisioning time.
-  AUTO_UPDATE_PREFS="$($SUDO tailscale debug prefs 2>/dev/null | grep -iA3 '"AutoUpdate"' || true)"
-  if [[ -n "$AUTO_UPDATE_PREFS" ]]; then
-    echo "ℹ️ $LOG_PREFIX Effective AutoUpdate prefs:"
-    echo "$AUTO_UPDATE_PREFS"
+  # Check the effective value: a tailnet-wide setting can turn the local preference back on.
+  # That is how hetzner updated itself on 2026-11-10 and left k3s stopped for 15 hours.
+  # The tailnet setting is managed in terraform/tailscale.tf.
+  AUTO_UPDATE_PREFS="$($SUDO tailscale debug prefs | grep -iA3 '"AutoUpdate"' || true)"
+  if [[ -z "$AUTO_UPDATE_PREFS" ]]; then
+    echo "❌ $LOG_PREFIX Cannot read the AutoUpdate prefs. Check: tailscale debug prefs"
+    exit 1
   fi
+  if grep -Eq '"Apply": *true' <<<"$AUTO_UPDATE_PREFS"; then
+    echo "❌ $LOG_PREFIX Tailscale auto-updates are still on:"
+    echo "$AUTO_UPDATE_PREFS"
+    echo "❌ $LOG_PREFIX Turn off Auto-update Tailscale for the tailnet and for this machine: https://login.tailscale.com/admin/settings/device-management"
+    exit 1
+  fi
+  echo "✅ $LOG_PREFIX Tailscale auto-updates disabled"
 else
   echo "⚠️ $LOG_PREFIX tailscale binary not found, skipping auto-update configuration"
 fi

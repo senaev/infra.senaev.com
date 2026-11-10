@@ -84,14 +84,19 @@ found, and any checks that the available tools could not perform.
 
 ### Smoke test after a deploy
 
+Run `bash scripts/smoke-test-websites.sh` (no cluster access needed). It checks that each
+URL below returns HTTP 200 at the expected final URL, and exits non-zero on any failure.
 These public URLs go through cluster-helper or nextjs-app to obsidian-sync, so they show
-that the whole path works. Open each one and check the result:
+that the whole path works. The main pages show that the Traefik ingress on hetzner and on
+firstvds reaches nextjs-app. When you change the list, change the script and this table together:
 
 | URL | Path | Expected result |
 |---|---|---|
 | https://s.senaev.com/1bxsl9 | short link: cluster-helper → obsidian-sync | redirect to https://senaev.com/cv/5min |
 | https://static.senaev.com/datadog-dc-by-org-id.html | static file: cluster-helper → obsidian-sync | the HTML page |
 | https://senaev.com/notes/my_blog_post_senaev_speaks_12 | public note: nextjs-app → obsidian-sync | the rendered note |
+| https://senaev.com/ | main page: hetzner Traefik (xray fallback) → nextjs-app | the main page |
+| https://senaev.ru/ | main page: firstvds Traefik (xray fallback) → nextjs-app | the main page |
 
 For the ChatGPT MCP connector, ask ChatGPT to read a note, search the vault and add a diary
 record, then check the `🤖 ChatGPT MCP message` logs of cluster-helper.
