@@ -15,9 +15,8 @@ jobs:
           key: ${{ secrets.REMOTE_SSH_KEY }}
           script: |
             date -u
-            systemctl show k3s -p ActiveState -p SubState -p BindsTo -p PartOf -p Requires -p After -p Restart -p ExecStartPre
-            systemctl show tailscaled -p ActiveState -p SubState -p ActiveEnterTimestamp -p NRestarts
-            journalctl --utc -u tailscaled --since '2026-11-10 06:25:00' --until '2026-11-10 06:29:00' --no-pager -n 70 | sed -E '/(token|password|secret|authorization|private.key)/Id'
-            journalctl --utc --since '2026-11-10 06:26:00' --until '2026-11-10 06:27:00' --no-pager | grep -E 'tailscale|k3s.service|apt|needrestart|sudo.*COMMAND' | sed -E '/(token|password|secret|authorization|private.key)/Id' | tail -n 65
-            tail -n 55 /var/log/apt/history.log
-            systemctl cat k3s | grep -E '^#|^\[|^BindsTo|^PartOf|^Requires|^After|^Restart|^ExecStartPre'
+            if test -f /etc/udev/rules.d/99-tailscale-k3s.rules; then cat /etc/udev/rules.d/99-tailscale-k3s.rules; else echo 'K3s recovery udev rule MISSING'; fi
+            systemctl show sys-subsystem-net-devices-tailscale0.device -p ActiveState -p Wants -p SysFSPath
+            udevadm info --query=property --path=/sys/class/net/tailscale0 | grep -E '^SYSTEMD_WANTS=|^TAGS='
+            tailscale debug prefs | python3 -c 'import json,sys; print("AutoUpdate:",json.load(sys.stdin).get("AutoUpdate"))'
+            journalctl --utc -u tailscaled --since '2026-11-10 06:24:00' --until '2026-11-10 06:27:00' --no-pager | grep -Ei 'update|apt-get|restarting|version|Stopping|Started|signal' | sed -E '/(token|password|secret|authorization|private.key)/Id' | tail -n 35
