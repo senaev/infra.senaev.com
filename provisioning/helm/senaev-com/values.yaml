@@ -195,19 +195,51 @@ n8n:
   volumePath: volumes/n8n
   containerDataPath: /home/node/.n8n
 
-ompWeb:
-  enabled: true
-  hostname: omp.senaev.com
-  storageSize: 8Gi
-
-opencode:
-  enabled: true
-  vps: hetzner
-  opencodeDataPath: volumes/opencode-data
-  mcpOAuth:
-    hostname: opencode.senaev.com
-    # All remote MCPs share one callback; authorize one server at a time.
-    callbackPort: 4100
+# Each entry owns its resources, data, credentials and ingress independently.
+# Keep the empty prefix and existing paths for this installation's Helm/PVC identity.
+codingAgentInstances:
+  personal:
+    resourcePrefix: ""
+    owner:
+      name: Andrei Senaev
+      email: andrei.senaev@gmail.com
+    agentConfigFile: config/coding-agents.json
+    instructionsPath: config/opencode-telegram
+    secrets:
+      name: senaev-com-kv-secrets
+      storeName: vault-cluster-secret-store
+      storeKind: ClusterSecretStore
+      vaultPath: senaev-com-kv
+      opencodePassword: OPENCODE_PASSWORD
+      ompHtpasswd: OMP_WEB_HTPASSWD_HASH_WITH_USERNAME
+      githubToken: GH_TOKEN
+      sshPrivateKey: TELEGRAM_OPENCODE_SSH_PRIVATE_KEY
+      telegramToken: TG_TOKEN_OPENCODE_SENAEV_BOT
+      telegramAllowedUser: TG_SENAEV_USER_ID
+      codeToolsToken: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
+    ingress:
+      className: traefik-hetzner
+      traefikDeployment: hetzner
+      namespace: traefik
+      entrypoints: websecure
+      certResolver: letsencrypt
+    opencode:
+      enabled: true
+      vps: hetzner
+      hostname: opencode.senaev.com
+      ingressName: senaev-com-opencode
+      dataPath: /k3s-cluster/volumes/opencode-data
+      projectsStorageSize: 16Gi
+      mcpOAuth:
+        hostname: opencode.senaev.com
+        # All remote MCPs share one callback; authorize one server at a time.
+        callbackPort: 4100
+    ompWeb:
+      enabled: true
+      hostname: omp.senaev.com
+      storageSize: 8Gi
+    codeTools:
+      enabled: true
 
 # Grafana MCP server, reachable only through cluster-helper at https://<clusterHelper.mcpDomain>/grafana.
 mcpGrafana:
@@ -254,13 +286,6 @@ llmServer:
 
 ingress:
   entries:
-    - name: opencode
-      className: traefik-hetzner
-      entrypoints: websecure
-      hosts:
-        - host: opencode.senaev.com
-          service: opencode
-          port: 4096
     - name: senaev-com-direct
       className: traefik-hetzner
       hosts:

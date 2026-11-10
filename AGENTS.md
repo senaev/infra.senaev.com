@@ -295,3 +295,8 @@ Code Tools is discovered by the coordinated deployment workflow, with its own
 image build and `latest` image. OpenCode and its Telegram bot deploy together after
 all affected images are published. Helm handles both first installation and updates;
 image refreshes run after Helm in the same coordinated job.
+
+Coding-agent deployment values now live in `codingAgentInstances.personal`.
+OpenCode, OMP and optional Code Tools render per-instance resources; see
+`provisioning/helm/senaev-com/CODING_AGENTS.md` for the configuration contract.
+Preserve the personal instance's resource names, PVCs and host data directory.

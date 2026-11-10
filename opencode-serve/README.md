@@ -4,7 +4,9 @@ The image pins OpenCode 2.2.3. Its native web UI and API use port 4096 and
 `OPENCODE_PASSWORD`; Telegram connects over localhost. State and credentials
 persist in the existing OpenCode data volume.
 
-The chart uses the `opencode` values key. Existing `opencode-telegram`
+The chart uses `codingAgentInstances.personal.opencode` for the current installation.
+See [instance configuration](../provisioning/helm/senaev-com/CODING_AGENTS.md)
+for independent nodes, ingress, credentials and storage. Existing `opencode-telegram`
 Deployment, ConfigMap and PVC names are retained to preserve resource identity
 and stored data. MCP endpoints live in the shared `config/coding-agents.json`;
 Telegram is a separate client of OpenCode.

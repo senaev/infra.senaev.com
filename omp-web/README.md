@@ -7,8 +7,7 @@ existing coding utilities. OMP's release binary is verified against its SHA-256.
 ## Deployment
 
 The existing senaev-com Helm chart owns the Deployment, Service, state PVC,
-NetworkPolicy, ingress and Traefik Basic Auth middleware. It is disabled by default
-until these prerequisites are ready:
+NetworkPolicy, ingress and Traefik Basic Auth middleware. The current personal instance is enabled. For a new instance, prepare these prerequisites:
 
 1. Build/publish the image through the `Deploy` workflow. The image is published
    to `ghcr.io/senaev/omp-web:latest`.
@@ -16,7 +15,7 @@ until these prerequisites are ready:
 3. Add `OMP_WEB_HTPASSWD_HASH_WITH_USERNAME` to Vault's `senaev-com-kv`.
    Its value is an htpasswd entry (`username:bcrypt-hash`), generated interactively
    with `htpasswd -nB <username>`. Do not commit it or use a plaintext password.
-4. Set `ompWeb.enabled: true` in the chart values through a reviewed PR.
+4. Set `codingAgentInstances.personal.ompWeb.enabled: true` in the chart values through a reviewed PR.
    Normal Helm CI deploys it; no cluster changes are part of this implementation.
 5. Open `https://omp.senaev.com`, select a directory under `/projects/git`,
    and create a session. Select the full tool preset when you need subagents.
@@ -34,6 +33,9 @@ The coordinated Deploy workflow publishes affected images before Helm creates
 or updates the Deployment. CI then restarts workloads using rebuilt images; chart-only changes need no extra restart.
 
 ## Configuration and persistence
+
+See [instance configuration](../provisioning/helm/senaev-com/CODING_AGENTS.md)
+for configuring another VPS, Traefik, domains, credentials and isolated storage.
 
 - The existing repository PVC is mounted at `/projects/git`, on the existing
   OpenCode node. OMP state has its own 8 GiB PVC at `/root/.omp`.
@@ -91,7 +93,7 @@ Before activation, require a green image build and chart checks. After deploymen
 - Inspect available Datadog/Grafana readiness, restarts, memory and error logs.
   Confirm OpenCode and Telegram still work.
 
-Disable `ompWeb.enabled` to remove its running resources. The state PVC has
+Disable `codingAgentInstances.personal.ompWeb.enabled` to remove its running resources. The state PVC has
 Helm's `keep` policy and remains for reactivation; deletion is a separate manual
 action. Back up the volume independently. For a version rollback, retain the
 state PVC and restore the previous image build; back up first because upstream state migrations may not be reversible.
