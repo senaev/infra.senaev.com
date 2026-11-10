@@ -1,42 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Makes the k3s <-> tailscale0 dependency explicit to systemd.
+# Harden node networking without stopping k3s when tailscale0 disappears.
+# K3s >= v1.36.2+k3s1 passes the interface name to Flannel's native VXLAN
+# recreation loop (k3s-io/k3s#14086). The old BindsTo/udev pair can instead
+# leave k3s stopped after a short Tailscale restart; remove those managed files.
+# See projects/2026-06-10-debug-vpn-connection/K3S-TAILSCALE-RECOVERY.md.
 #
-# WHY THIS EXISTS
-#   k3s runs with --flannel-iface=tailscale0, so flannel creates flannel.1 (and flannel-v6.1
-#   on the dual-stack cluster) as a VXLAN device whose PARENT LINK is tailscale0. When tailscaled restarts (auto-update, package
-#   upgrade, manual restart) the kernel deletes tailscale0 and, with it, every child device
-#   - including flannel.1. The already-running k3s process never notices and never
-#   recreates it, so ALL cross-node pod networking dies while the node still reports Ready.
-#
-#   This happened at 2026-08-09 06:16 UTC on hetzner, senaev-media and proxmox, and went
-#   unnoticed for 6 days. Full analysis:
-#   projects/2026-08-15-firstvds-https-hangs-no-web-traffic/README.md
-#
-# WHAT THIS INSTALLS
-#   1. A systemd drop-in binding k3s to the tailscale0 .device unit, so k3s is stopped when
-#      the interface disappears rather than left running with a dead overlay.
-#   2. A udev rule that starts k3s again the moment tailscale0 returns. BindsTo stops a
-#      unit but never restarts it, so this half is required for the pair to self-recover
-#      without any timer or polling loop.
-#   3. Tailscale auto-updates disabled, removing the most common trigger.
-#   4. accept_ra=2 on the uplink interface, so SLAAC IPv6 keeps working with k3s forwarding.
-#   5. Tailscale MTU 1350 (TS_DEBUG_MTU), so dual-stack pods keep an MTU >= 1280 (IPv6
-#      minimum). See projects/2026-10-04-k3s-dual-stack-ipv6/README.md
-#   6. tailscaled protected from the OOM killer (OOMScoreAdjust=-1000), so a pod that fills
-#      the node memory cannot cut the node off the tailnet. Applied to the running process
-#      too, without a restart. See projects/2026-10-18-16-05-home-development-llm-server/README.md
-#   7. A check (no change) that tailscaled is logged in and its node key does not expire.
-#      An expired key took the whole cluster down on 2026-11-04 (same project).
-#
-# SAFETY
-#   The drop-in is only installed when sys-subsystem-net-devices-tailscale0.device is
-#   actually active. If that unit does not exist (some TUN devices are not udev-tagged for
-#   systemd), BindsTo + After would make k3s permanently unstartable. In that case this
-#   script removes any previously installed drop-in and exits non-zero instead.
-#
-# Idempotent: safe to run on every deployment.
+# Retains auto-update preferences, OOM protection, key-expiry checks, IPv6 RA
+# and MTU configuration. The existing MTU correction can restart services;
+# use the narrow migration commands in the guide for existing nodes.
 #
 # Usage: bootstrap-node-networking.sh [k3s|k3s-agent]
 #        The unit is auto-detected when not given.
@@ -70,12 +43,12 @@ if [[ -z "$K3S_UNIT" ]]; then
 fi
 
 if [[ -z "$K3S_UNIT" ]]; then
-  echo "✅ $LOG_PREFIX No k3s unit on this host yet, nothing to bind (will be applied after install)"
+  echo "✅ $LOG_PREFIX No k3s unit on this host yet, nothing to configure (will be applied after install)"
   exit 0
 fi
 
 if [[ ! -f "/etc/systemd/system/${K3S_UNIT}.service" ]]; then
-  echo "✅ $LOG_PREFIX Unit=[${K3S_UNIT}] not installed yet, nothing to bind"
+  echo "✅ $LOG_PREFIX Unit=[${K3S_UNIT}] not installed yet, nothing to configure"
   exit 0
 fi
 
@@ -84,8 +57,17 @@ echo "👉 $LOG_PREFIX Hardening node networking for unit=[${K3S_UNIT}]"
 DROPIN_DIR="/etc/systemd/system/${K3S_UNIT}.service.d"
 DROPIN_PATH="${DROPIN_DIR}/${DROPIN_FILENAME}"
 
+# Fail before changing host configuration on versions not covered by this migration.
+# Older release branches may also contain the upstream fix; upgrade/verify separately.
+K3S_VERSION="$(k3s --version | awk 'NR == 1 { print $3 }')"
+if [[ ! "$K3S_VERSION" =~ ^v1\.([0-9]+)\.([0-9]+)\+k3s[0-9]+$ ]] ||
+   (( 10#${BASH_REMATCH[1]:-0} < 36 || (10#${BASH_REMATCH[1]:-0} == 36 && 10#${BASH_REMATCH[2]:-0} < 2) )); then
+  echo "❌ $LOG_PREFIX Native recovery migration requires stable K3s >= v1.36.2+k3s1; found ${K3S_VERSION}"
+  exit 1
+fi
+
 # ------------------------------------------------- disable Tailscale auto-updates (2) ---
-# Done first: it is useful even when the binding below is refused.
+# Keep the effective preference visible; tailnet policy can override it.
 
 if command -v tailscale &>/dev/null; then
   echo "👉 $LOG_PREFIX Disabling Tailscale auto-updates"
@@ -162,71 +144,18 @@ if command -v tailscale &>/dev/null; then
   echo "✅ $LOG_PREFIX Tailscale is running and its node key does not expire"
 fi
 
-# --------------------------------------------- verify the .device unit exists (safety) ---
+# --------------------------------------- remove obsolete interface restart coupling ---
 
-echo "👉 $LOG_PREFIX Checking systemd device unit=[${DEVICE_UNIT}]"
-if ! systemctl is-active --quiet "$DEVICE_UNIT" 2>/dev/null; then
-  echo "❌ $LOG_PREFIX Device unit=[${DEVICE_UNIT}] is not active."
-  echo "❌ $LOG_PREFIX Installing a BindsTo drop-in now would make unit=[${K3S_UNIT}] permanently unstartable."
-
-  if [[ -f "$DROPIN_PATH" ]]; then
-    echo "👉 $LOG_PREFIX Removing previously installed drop-in to avoid trapping k3s"
-    $SUDO rm -f "$DROPIN_PATH"
-    $SUDO systemctl daemon-reload
-    echo "✅ $LOG_PREFIX Stale drop-in removed"
-  fi
-
-  echo "❌ $LOG_PREFIX Is ${TAILSCALE_IFACE} up? Run: ip -br link show ${TAILSCALE_IFACE}"
-  exit 1
-fi
-echo "✅ $LOG_PREFIX Device unit=[${DEVICE_UNIT}] is active"
-
-# ------------------------------------------------------ install the systemd drop-in (1) ---
-
-echo "👉 $LOG_PREFIX Installing systemd drop-in at [${DROPIN_PATH}]"
-$SUDO mkdir -p "$DROPIN_DIR"
-$SUDO tee "$DROPIN_PATH" >/dev/null <<EOF
-# Managed by provisioning/common/bootstrap-node-networking.sh - do not edit by hand.
-#
-# flannel.1 is a VXLAN child device of ${TAILSCALE_IFACE}. If the parent link is deleted the
-# kernel deletes flannel.1 too, and a running k3s never rebuilds it - which silently kills
-# all cross-node pod networking. Binding the two makes systemd stop k3s instead, and the
-# companion udev rule at ${UDEV_RULE_PATH} starts it again when the interface returns.
-#
-# See projects/2026-08-15-firstvds-https-hangs-no-web-traffic/README.md
-[Unit]
-BindsTo=${DEVICE_UNIT}
-After=${DEVICE_UNIT}
-EOF
-echo "✅ $LOG_PREFIX Drop-in installed"
-
-# --------------------------------------------------------- install the udev rule (1/b) ---
-
-echo "👉 $LOG_PREFIX Installing udev rule at [${UDEV_RULE_PATH}]"
-$SUDO tee "$UDEV_RULE_PATH" >/dev/null <<EOF
-# Managed by provisioning/common/bootstrap-node-networking.sh - do not edit by hand.
-#
-# BindsTo= stops ${K3S_UNIT} when ${TAILSCALE_IFACE} disappears but never starts it again.
-# This rule closes that loop so the node recovers on its own when tailscaled comes back.
-ACTION=="add|move", SUBSYSTEM=="net", KERNEL=="${TAILSCALE_IFACE}", TAG+="systemd", ENV{SYSTEMD_WANTS}+="${K3S_UNIT}.service"
-EOF
-echo "✅ $LOG_PREFIX udev rule installed"
-
-# ------------------------------------------------------------------------- apply both ---
-
-echo "👉 $LOG_PREFIX Reloading systemd and udev"
+# Only these two files were managed by the former binding/recovery workaround.
+$SUDO rm -f "$DROPIN_PATH" "$UDEV_RULE_PATH"
 $SUDO systemctl daemon-reload
 $SUDO udevadm control --reload-rules
-echo "✅ $LOG_PREFIX systemd and udev reloaded"
-
-# Verify the binding is actually in effect, so a silent typo cannot pass as success.
-echo "👉 $LOG_PREFIX Verifying binding on unit=[${K3S_UNIT}]"
-if systemctl show "$K3S_UNIT" -p BindsTo --value | grep -q "$DEVICE_UNIT"; then
-  echo "✅ $LOG_PREFIX unit=[${K3S_UNIT}] is bound to [${DEVICE_UNIT}]"
-else
-  echo "❌ $LOG_PREFIX Binding did not take effect on unit=[${K3S_UNIT}]"
+K3S_BINDS_TO="$(systemctl show "$K3S_UNIT" -p BindsTo --value)"
+if grep -Fwq "$DEVICE_UNIT" <<<"$K3S_BINDS_TO"; then
+  echo "❌ $LOG_PREFIX Another drop-in still binds ${K3S_UNIT} to ${DEVICE_UNIT}; inspect systemctl cat ${K3S_UNIT}"
   exit 1
 fi
+echo "✅ $LOG_PREFIX Obsolete interface binding removed; no service restart requested"
 
 # -------------------------------------------- accept IPv6 router advertisements (4) ---
 # k3s sets net.ipv6.conf.all.forwarding=1, and with forwarding on the kernel ignores router
@@ -262,8 +191,7 @@ fi
 # Linux disables IPv6 on interfaces below 1280, so dual-stack pods would get no IPv6 address.
 # TS_DEBUG_MTU is an unsupported debug knob, so the result is verified and a no-op fails loudly.
 #
-# Placed after the binding above on purpose: restarting tailscaled deletes flannel.1, and
-# k3s is restarted below so flannel rebuilds it with the new MTU.
+# A changed MTU still needs an explicit k3s restart so Flannel reads the new value.
 
 get_tailscale_mtu() {
   cat "/sys/class/net/${TAILSCALE_IFACE}/mtu" 2>/dev/null || echo 0
@@ -326,10 +254,8 @@ else
   fi
   echo "✅ $LOG_PREFIX ${TAILSCALE_IFACE} has IPv4 and IPv6 addresses"
 
-  # The udev rule also starts k3s, but an explicit restart guarantees that flannel reads the
-  # new MTU instead of relying on BindsTo having caught the short interface removal.
-  # The restart can still collide with the udev-triggered start, so a failed first attempt
-  # is tolerated and systemd's Restart=always gets time to bring the unit up.
+  # Native interface recreation is not a live MTU reconfiguration mechanism.
+  # Restart explicitly after an MTU change; retain systemd's startup retry budget.
   echo "👉 $LOG_PREFIX Restarting unit=[${K3S_UNIT}] so flannel uses the new MTU"
   if ! $SUDO systemctl restart "$K3S_UNIT"; then
     echo "⚠️ $LOG_PREFIX First start of unit=[${K3S_UNIT}] failed, waiting for systemd to retry"
@@ -355,14 +281,14 @@ fi
 # The overlay device itself must exist whenever tailscale0 does. Report only - repairing it
 # here would mean restarting k3s mid-deployment, which is the caller's decision.
 if ip link show flannel.1 &>/dev/null; then
-  echo "✅ $LOG_PREFIX flannel.1 is present (mtu $(cat /sys/class/net/flannel.1/mtu)), cross-node pod networking is up"
+  echo "✅ $LOG_PREFIX flannel.1 is present (mtu $(cat /sys/class/net/flannel.1/mtu)); verify cross-node traffic separately"
 else
   echo "⚠️ $LOG_PREFIX flannel.1 is MISSING while ${TAILSCALE_IFACE} is up - cross-node pod networking is down"
   echo "⚠️ $LOG_PREFIX Repair with: systemctl restart ${K3S_UNIT}"
 fi
 
 if ip link show flannel-v6.1 &>/dev/null; then
-  echo "✅ $LOG_PREFIX flannel-v6.1 is present (mtu $(cat /sys/class/net/flannel-v6.1/mtu)), IPv6 pod networking is up"
+  echo "✅ $LOG_PREFIX flannel-v6.1 is present (mtu $(cat /sys/class/net/flannel-v6.1/mtu)); verify IPv6 traffic separately"
 else
   echo "⚠️ $LOG_PREFIX flannel-v6.1 is MISSING - IPv6 pod networking is down (expected only on a cluster created before dual-stack)"
   echo "⚠️ $LOG_PREFIX Repair with: systemctl restart ${K3S_UNIT}"

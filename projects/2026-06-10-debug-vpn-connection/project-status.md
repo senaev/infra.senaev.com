@@ -1,6 +1,20 @@
 - [ ] Restore reliable VPN access from the affected Russian ISPs.
 
-## Current stage
+## Current incident follow-up
+
+Prepared removal of obsolete K3s BindsTo/udev recovery coupling with a supported
+installed-version gate. Native Flannel recreation is already present in pinned
+K3s v1.36.5+k3s1. Hetzner's dependency stop is confirmed; FirstVDS's exact failing
+hop remains unconfirmed. No live host changes. Review, then a separately approved
+canary with rollback; home nodes stay untouched. Cross-node dual-stack recovery
+and cold boot remain runtime validation gaps.
+[Migration guide](K3S-TAILSCALE-RECOVERY.md).
+
+PR #154 merged at d17f690; deployment42787487968 failed on the local K3s API
+connection before Helm updates. Its new probes are not confirmed deployed.
+Availability checks are in separate open PR #155; this branch does not include them.
+
+## Previous VPN stage
 
 PR #152 deployed at2874173 in successful run42706106663. The full PR workflow
 also passed on retry, including image build; no workflow change was needed.

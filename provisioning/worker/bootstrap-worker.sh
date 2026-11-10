@@ -23,7 +23,7 @@ if bash "$SCRIPT_DIR/check-worker.sh" "$CONTROL_PLANE_SERVER_URL" "$NODE_TOKEN" 
   echo "✅ $LOG_PREFIX Worker is OK"
 
   # Applied even when the worker needs no reinstall - a healthy k3s-agent is precisely the
-  # case that can still be missing the tailscale0 binding. Deliberately NOT part of
+  # case that can still have obsolete interface restart coupling. Deliberately NOT part of
   # check-worker.sh: a failed check there triggers a full uninstall/reinstall, and this
   # condition only ever warrants a config refresh.
   bash "$SCRIPT_DIR/../common/bootstrap-node-networking.sh" k3s-agent
@@ -98,6 +98,6 @@ curl -sfL https://get.k3s.io | \
     sh -
 echo "✅ $LOG_PREFIX Installed k3s agent"
 
-echo "👉 $LOG_PREFIX Hardening node networking (k3s-agent <-> tailscale0 binding)"
+echo "👉 $LOG_PREFIX Hardening node networking (native Flannel recovery)"
 bash "$SCRIPT_DIR/../common/bootstrap-node-networking.sh" k3s-agent
 echo "✅ $LOG_PREFIX Node networking hardened"

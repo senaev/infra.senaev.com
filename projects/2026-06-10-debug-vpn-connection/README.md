@@ -785,3 +785,8 @@ idle. Its first cycle passed on home and Hetzner; home reused16/64KiB still fail
 #151 baseline (home4KiB7/8,16/64KiB0/8). Fresh checks are logged but missing from
 the deployed metrics allowlist. The next prepared PR fixes that omission and adds
 a separate fresh16KiB control, retaining4KiB and all bounds. No user profile changes.
+
+## K3s / Tailscale incident follow-up
+
+[Native recovery migration, staged rollout and rollback](K3S-TAILSCALE-RECOVERY.md).
+Prepared for review; no host change or Tailscale restart is included.

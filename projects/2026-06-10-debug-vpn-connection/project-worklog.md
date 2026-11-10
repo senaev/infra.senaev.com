@@ -1,3 +1,27 @@
+## 2026-11-10 19:08 UTC — Prepare native K3s / Flannel recovery migration
+
+User requested a PR after discussing Hetzner's confirmed dependency stop and
+FirstVDS's still-unconfirmed failing hop. Remove obsolete managed BindsTo/udev
+coupling; require supported installed stable K3s before changing configuration.
+Preserve MTU/RA, OOM, key-expiry and update safeguards. No upgrade, timer, daemon,
+cluster/network flag change or live host action. Narrow staged migration and
+backup/rollback commands avoid the full bootstrap's existing MTU restart path.
+Home nodes stay untouched; fault injection requires separate approval.
+
+Reviewed actual cleanup failures and corrected two misleading device-presence
+messages. Native device recreation still needs end-to-end dual-stack route,
+DNS/service validation and cold-boot checks. Do not claim the incident resolved.
+CI does not execute host bootstrap; planner may retry earlier undeployed changes.
+
+Verbatim local verification:
+```
+Shell syntax OK: 18 file(s)
+PASS: 8 installed-version cases; cleanup and repeated cleanup; residual dependency and systemctl read failure; no service actions or udev trigger
+```
+The focused harness executed the actual version/cleanup blocks with temporary
+paths and fake external commands, never touching host systemd or networking.
+`git diff --check` passed. Full shared CI/review will follow PR creation.
+
 ## 2026-11-09 22:13 UTC — Deploy fresh4KiB; prepare fresh16KiB and metrics fix
 
 User authorized merge #152 and preparation of the next step. PR workflow

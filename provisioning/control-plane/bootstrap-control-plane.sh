@@ -45,7 +45,7 @@ fi
 
 # Runs unconditionally, outside the install guard above: an already-installed k3s is
 # exactly the case that needs this applied. See the script header for the failure mode.
-echo "👉 [bootstrap-control-plane] Hardening node networking (k3s <-> tailscale0 binding)"
+echo "👉 [bootstrap-control-plane] Hardening node networking (native Flannel recovery)"
 bash "$SCRIPT_DIR/../common/bootstrap-node-networking.sh" k3s
 echo "✅ [bootstrap-control-plane] Node networking hardened"
 
