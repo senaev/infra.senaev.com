@@ -15,9 +15,9 @@ jobs:
           key: ${{ secrets.REMOTE_SSH_KEY }}
           script: |
             date -u
-            hostname
-            systemctl show k3s -p ActiveState -p SubState -p Result -p ExecMainStatus -p ActiveEnterTimestamp -p InactiveEnterTimestamp -p NRestarts
-            journalctl --utc -u k3s --since '2026-11-10 04:30:00' --until '2026-11-10 07:00:00' --no-pager -n 180 | sed -E '/(token|password|secret|authorization|private.key)/Id'
-            journalctl --utc -u k3s --since '2026-11-10 07:00:00' --no-pager -n 45 | sed -E '/(token|password|secret|authorization|private.key)/Id'
-            journalctl --utc -u apt-daily-upgrade.service -u unattended-upgrades.service --since '2026-11-10 04:30:00' --until '2026-11-10 07:00:00' --no-pager -n 35
-            ss -lntp | awk 'NR == 1 || /:6443 |:22 /'
+            systemctl show k3s -p ActiveState -p SubState -p BindsTo -p PartOf -p Requires -p After -p Restart -p ExecStartPre
+            systemctl show tailscaled -p ActiveState -p SubState -p ActiveEnterTimestamp -p NRestarts
+            journalctl --utc -u tailscaled --since '2026-11-10 06:25:00' --until '2026-11-10 06:29:00' --no-pager -n 70 | sed -E '/(token|password|secret|authorization|private.key)/Id'
+            journalctl --utc --since '2026-11-10 06:26:00' --until '2026-11-10 06:27:00' --no-pager | grep -E 'tailscale|k3s.service|apt|needrestart|sudo.*COMMAND' | sed -E '/(token|password|secret|authorization|private.key)/Id' | tail -n 65
+            tail -n 55 /var/log/apt/history.log
+            systemctl cat k3s | grep -E '^#|^\[|^BindsTo|^PartOf|^Requires|^After|^Restart|^ExecStartPre'
