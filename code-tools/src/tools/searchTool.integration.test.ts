@@ -7,14 +7,14 @@ import {
     afterEach, beforeEach, describe, expect, it,
 } from 'vitest';
 
-import { createTestProjects, type TestProjects } from './createTestProjects';
+import { createTestRepositories, type TestRepositories } from './createTestRepositories';
 import { searchTool } from './searchTool';
 import { formatSnippet } from './searchCommand';
 
-let projects: TestProjects;
+let repos: TestRepositories;
 
 beforeEach(async () => {
-    projects = await createTestProjects({
+    repos = await createTestRepositories({
         demo: {
             '.gitignore': 'dist/\n',
             '.github/ci.yml': 'run: fetchUser\n',
@@ -34,7 +34,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-    await projects.remove();
+    await repos.remove();
 });
 
 describe('formatSnippet', () => {
@@ -69,20 +69,20 @@ describe('formatSnippet', () => {
 
 describe('searchTool', () => {
     it('finds literal text in all files except ignored ones, with absolute paths and line numbers', async () => {
-        const result = await searchTool(projects.config, {
-            folder: projects.path('demo'),
+        const result = await searchTool(repos.config, {
+            folder: repos.path('demo'),
             queries: ['fetchUser('],
             contextLines: 0,
         });
 
         expect(result).toMatchObject({
-            folder: projects.path('demo'),
+            folder: repos.path('demo'),
             matchedFiles: 1,
             totalMatches: 2,
             truncated: false,
             files: [
                 {
-                    path: projects.path('demo', 'src/api.ts'),
+                    path: repos.path('demo', 'src/api.ts'),
                     matchCount: 2,
                     omittedMatches: 0,
                     snippet: '3:export function fetchUser() {}\n--\n6:fetchUser();',
@@ -92,30 +92,30 @@ describe('searchTool', () => {
     });
 
     it('searches dotfiles too, and limits the scope with a glob', async () => {
-        const all = await searchTool(projects.config, {
-            folder: projects.path('demo'),
+        const all = await searchTool(repos.config, {
+            folder: repos.path('demo'),
             queries: ['fetchuser'],
         });
-        const yamlOnly = await searchTool(projects.config, {
-            folder: projects.path('demo'),
+        const yamlOnly = await searchTool(repos.config, {
+            folder: repos.path('demo'),
             queries: ['fetchuser'],
             glob: '*.yml',
         });
 
         expect(all.files.map((file) => file.path)).toEqual([
-            projects.path('demo', '.github/ci.yml'),
-            projects.path('demo', 'src/api.ts'),
+            repos.path('demo', '.github/ci.yml'),
+            repos.path('demo', 'src/api.ts'),
         ]);
-        expect(yamlOnly.files.map((file) => file.path)).toEqual([projects.path('demo', '.github/ci.yml')]);
+        expect(yamlOnly.files.map((file) => file.path)).toEqual([repos.path('demo', '.github/ci.yml')]);
     });
 
     it('reads queries as literal text unless "regex" is true', async () => {
-        const literal = await searchTool(projects.config, {
-            folder: projects.path('demo'),
+        const literal = await searchTool(repos.config, {
+            folder: repos.path('demo'),
             queries: ['(1+2)'],
         });
-        const regex = await searchTool(projects.config, {
-            folder: projects.path('demo', 'src'),
+        const regex = await searchTool(repos.config, {
+            folder: repos.path('demo', 'src'),
             queries: ['fetchUsers?\\(\\)'],
             regex: true,
             caseSensitive: true,
@@ -123,10 +123,10 @@ describe('searchTool', () => {
             contextLines: 0,
         });
 
-        expect(literal.files.map((file) => file.path)).toEqual([projects.path('demo', 'src/util.ts')]);
+        expect(literal.files.map((file) => file.path)).toEqual([repos.path('demo', 'src/util.ts')]);
         expect(regex.files).toEqual([
             {
-                path: projects.path('demo', 'src/api.ts'),
+                path: repos.path('demo', 'src/api.ts'),
                 matchCount: 3,
                 omittedMatches: 2,
                 snippet: '3:export function fetchUser() {}',
@@ -135,26 +135,26 @@ describe('searchTool', () => {
     });
 
     it('searches a folder outside any git repository at a normalized path', async () => {
-        await mkdir(projects.path('plain/sub'), { recursive: true });
-        await writeFile(projects.path('plain', 'sub/notes.txt'), 'fetchUser later\n');
+        await mkdir(repos.path('plain/sub'), { recursive: true });
+        await writeFile(repos.path('plain', 'sub/notes.txt'), 'fetchUser later\n');
 
-        const result = await searchTool(projects.config, {
-            folder: `${projects.path('plain', 'sub/..')}/`,
+        const result = await searchTool(repos.config, {
+            folder: `${repos.path('plain', 'sub/..')}/`,
             queries: ['fetchUser'],
         });
 
-        expect(result.folder).toBe(projects.path('plain'));
-        expect(result.files.map((file) => file.path)).toEqual([projects.path('plain', 'sub/notes.txt')]);
+        expect(result.folder).toBe(repos.path('plain'));
+        expect(result.files.map((file) => file.path)).toEqual([repos.path('plain', 'sub/notes.txt')]);
     });
 
     it('skips symlinks inside the searched folder', async () => {
-        await mkdir(projects.path('other'));
-        await writeFile(projects.path('other', 'secret.txt'), 'fetchUser secret\n');
-        await symlink(projects.path('other'), projects.path('demo', 'src/outside-folder'));
-        await symlink(projects.path('other', 'secret.txt'), projects.path('demo', 'src/outside-file'));
+        await mkdir(repos.path('other'));
+        await writeFile(repos.path('other', 'secret.txt'), 'fetchUser secret\n');
+        await symlink(repos.path('other'), repos.path('demo', 'src/outside-folder'));
+        await symlink(repos.path('other', 'secret.txt'), repos.path('demo', 'src/outside-file'));
 
-        const result = await searchTool(projects.config, {
-            folder: projects.path('demo'),
+        const result = await searchTool(repos.config, {
+            folder: repos.path('demo'),
             queries: ['secret'],
         });
 
@@ -162,22 +162,22 @@ describe('searchTool', () => {
     });
 
     it('reports a missing folder as not found and a relative folder as an argument error', async () => {
-        await expect(searchTool(projects.config, {
-            folder: projects.path('demo', 'missing'),
+        await expect(searchTool(repos.config, {
+            folder: repos.path('demo', 'missing'),
             queries: ['fetchUser'],
         })).rejects.toMatchObject({
             code: 'not_found',
-            message: `Folder "${projects.path('demo', 'missing')}" does not exist`,
+            message: `Folder "${repos.path('demo', 'missing')}" does not exist`,
         });
-        await expect(searchTool(projects.config, {
+        await expect(searchTool(repos.config, {
             folder: 'demo',
             queries: ['fetchUser'],
         })).rejects.toMatchObject({ code: 'invalid_arguments' });
     });
 
     it('reports a bad regular expression as an argument error', async () => {
-        await expect(searchTool(projects.config, {
-            folder: projects.path('demo'),
+        await expect(searchTool(repos.config, {
+            folder: repos.path('demo'),
             queries: ['('],
             regex: true,
         })).rejects.toMatchObject({ code: 'invalid_arguments' });

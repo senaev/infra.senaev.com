@@ -1,4 +1,4 @@
-import { lstat } from 'node:fs/promises';
+import { readdir, stat } from 'node:fs/promises';
 import { posix } from 'node:path';
 
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
@@ -13,35 +13,43 @@ type Entry = {
     type: 'file' | 'folder';
 };
 
-/** The files and folders directly in the listed folder, folders first; paths stay relative. */
-async function listOneLevel(files: readonly string[], execution: CommandExecution): Promise<Entry[]> {
-    const folders = new Set<string>();
-    const directFiles: string[] = [];
+async function isFolder(path: string): Promise<boolean> {
+    try {
+        return (await stat(path)).isDirectory();
+    } catch {
+        return false;
+    }
+}
 
-    let index = 0;
+/**
+ * Everything directly in the folder except .git, like `ls -A`: also ignored entries such as
+ * node_modules, empty folders and symbolic links, which are typed by their target. Folders first.
+ */
+async function listOneLevel(folder: string, execution: CommandExecution): Promise<Entry[]> {
+    await execution.checkpoint();
+    const dirents = await readdir(folder, { withFileTypes: true });
+    const folders: string[] = [];
+    const files: string[] = [];
 
-    for (const file of files) {
-        if (index++ % 128 === 0) {
-            await execution.checkpoint();
+    for (const dirent of dirents) {
+        await execution.checkpoint();
+        if (dirent.name === '.git') {
+            continue;
         }
 
-        const slash = file.indexOf('/');
+        const isFolderEntry = dirent.isDirectory() || (dirent.isSymbolicLink() && await isFolder(posix.join(folder, dirent.name)));
 
-        if (slash === -1) {
-            directFiles.push(file);
-        } else {
-            folders.add(file.slice(0, slash));
-        }
+        (isFolderEntry ? folders : files).push(dirent.name);
     }
 
     return [
-        ...[...folders].sort().map((path): Entry => {
+        ...folders.sort().map((path): Entry => {
             return {
                 path,
                 type: 'folder',
             };
         }),
-        ...directFiles.map((path): Entry => {
+        ...files.sort().map((path): Entry => {
             return {
                 path,
                 type: 'file',
@@ -66,7 +74,7 @@ async function toResultEntry(folder: string, entry: Entry, execution: CommandExe
         return {
             path,
             type: entry.type,
-            size: (await lstat(path)).size,
+            size: (await stat(path)).size,
         };
     } catch {
         execution.throwIfAborted();
@@ -90,11 +98,15 @@ export async function listCommand(config: CodeToolsConfig, input: ListCommandInp
     } = input;
 
     await assertExistingFolder(folder, execution);
-    const files = await listFiles(config, folder, execution);
     const matchesGlob = glob === undefined ? null : compileFileGlob(glob);
     let entries: Entry[] = [];
+    let warnings: string | undefined;
 
     if (recursive || matchesGlob !== null) {
+        const listed = await listFiles(config, folder, execution);
+        const { files } = listed;
+
+        warnings = listed.warnings;
         for (let index = 0; index < files.length; index++) {
             if (index % 128 === 0) {
                 await execution.checkpoint();
@@ -110,7 +122,7 @@ export async function listCommand(config: CodeToolsConfig, input: ListCommandInp
             }
         }
     } else {
-        entries = await listOneLevel(files, execution);
+        entries = await listOneLevel(folder, execution);
     }
 
     const page = entries.slice(offset, offset + limit);
@@ -129,6 +141,7 @@ export async function listCommand(config: CodeToolsConfig, input: ListCommandInp
         total: entries.length,
         entries: resultEntries,
         nextOffset,
+        ...warnings !== undefined && { warnings },
     };
 }
 

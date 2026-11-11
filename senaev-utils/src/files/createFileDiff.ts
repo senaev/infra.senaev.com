@@ -19,7 +19,8 @@ export function buildFileDiff(
     const {
         path, before, after,
     } = input;
-    const patch = createPatch(`a/${path}`, `b/${path}`, before, after, undefined, undefined, { context: options.contextLines })
+    const name = path.replace(/^\/+/, '');
+    const patch = createPatch(`a/${name}`, `b/${name}`, before, after, undefined, undefined, { context: options.contextLines })
         .replace(/^=+\n/, '');
 
     return {

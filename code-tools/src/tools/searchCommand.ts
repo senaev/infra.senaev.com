@@ -8,6 +8,7 @@ import { runProcess } from '../process/runProcess';
 
 import type { CodeToolsConfig } from './codeToolsConfig';
 import { assertExistingFolder, normalizeAbsolutePath } from './fileAccess';
+import { RIPGREP_FILE_SELECTION_ARGS } from './listFiles';
 
 const MAX_RG_OUTPUT_CHARS = 10_000_000;
 
@@ -156,11 +157,7 @@ function buildRipgrepArgs(options: {
 }): string[] {
     return [
         '--json',
-        '--no-config',
-        // Dotfiles such as .github are code too; .gitignore still applies.
-        '--hidden',
-        '--glob',
-        '!.git',
+        ...RIPGREP_FILE_SELECTION_ARGS,
         ...options.regex ? [] : ['--fixed-strings'],
         options.caseSensitive ? '--case-sensitive' : '--ignore-case',
         '--context',

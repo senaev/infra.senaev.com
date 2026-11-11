@@ -1,23 +1,24 @@
 import {
-    mkdir, readFile, stat, writeFile,
+    lstat, mkdir, readFile, stat, symlink, writeFile,
 } from 'node:fs/promises';
 
+import { createCommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { hashContent } from 'senaev-utils/src/files/contentHash';
 import {
     afterEach, beforeEach, describe, expect, it,
 } from 'vitest';
 
-import { createTestProjects, type TestProjects } from './createTestProjects';
+import { createTestRepositories, type TestRepositories } from './createTestRepositories';
 import { listTool } from './listTool';
 import { patchTool } from './patchTool';
 import { readTool } from './readTool';
 import { sliceLines } from './readCommand';
 import { writeTool } from './writeTool';
 
-let projects: TestProjects;
+let repos: TestRepositories;
 
 beforeEach(async () => {
-    projects = await createTestProjects({
+    repos = await createTestRepositories({
         demo: {
             '.gitignore': 'dist/\n',
             '.github/workflows/ci.yml': 'on: push\n',
@@ -30,11 +31,11 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-    await projects.remove();
+    await repos.remove();
 });
 
 function demo(path = ''): string {
-    return projects.path('demo', path);
+    return repos.path('demo', path);
 }
 
 async function readHash(path: string): Promise<string> {
@@ -43,37 +44,104 @@ async function readHash(path: string): Promise<string> {
 
 /** A folder with files that is not in a git repository. */
 async function createPlainFolder(): Promise<string> {
-    const folder = projects.path('plain');
+    const folder = repos.path('plain');
 
-    await mkdir(projects.path('plain', 'sub'), { recursive: true });
-    await writeFile(projects.path('plain', '.hidden'), 'hidden\n');
-    await writeFile(projects.path('plain', 'note.txt'), 'note\n');
-    await writeFile(projects.path('plain', 'sub/deep.txt'), 'deep\n');
+    await mkdir(repos.path('plain', 'sub'), { recursive: true });
+    await writeFile(repos.path('plain', '.hidden'), 'hidden\n');
+    await writeFile(repos.path('plain', 'note.txt'), 'note\n');
+    await writeFile(repos.path('plain', 'sub/deep.txt'), 'deep\n');
 
     return folder;
 }
 
 describe('listTool', () => {
-    it('lists one level with absolute paths, folders first, without ignored files and .git', async () => {
-        const result = await listTool(projects.config, { folder: demo() });
+    it('lists one level with absolute paths, folders first, with ignored entries and without .git', async () => {
+        const result = await listTool(repos.config, { folder: demo() });
 
         expect(result.folder).toBe(demo());
         expect(result.entries.map((entry) => entry.path)).toEqual([
             demo('.github'),
+            demo('dist'),
             demo('src'),
             demo('.gitignore'),
             demo('README.md'),
         ]);
     });
 
-    it('lists files at any depth with "recursive" or "glob", and shows new untracked files', async () => {
-        await writeFile(demo('src/new.ts'), '');
+    it('lists an empty folder and types symbolic links by their target at one level', async () => {
+        await mkdir(demo('empty'));
+        await symlink('src', demo('linked-folder'));
+        await symlink('README.md', demo('linked-file'));
+        await symlink('missing', demo('dangling'));
 
-        const recursive = await listTool(projects.config, {
+        const result = await listTool(repos.config, { folder: demo() });
+
+        expect(result.entries).toEqual([
+            {
+                path: demo('.github'),
+                type: 'folder',
+            },
+            {
+                path: demo('dist'),
+                type: 'folder',
+            },
+            {
+                path: demo('empty'),
+                type: 'folder',
+            },
+            {
+                path: demo('linked-folder'),
+                type: 'folder',
+            },
+            {
+                path: demo('src'),
+                type: 'folder',
+            },
+            {
+                path: demo('.gitignore'),
+                type: 'file',
+                size: 6,
+            },
+            {
+                path: demo('README.md'),
+                type: 'file',
+                size: 7,
+            },
+            {
+                path: demo('dangling'),
+                type: 'file',
+            },
+            {
+                path: demo('linked-file'),
+                type: 'file',
+                size: 7,
+            },
+        ]);
+    });
+
+    it('applies a .gitignore of a parent folder to a recursive list of a subfolder', async () => {
+        await writeFile(demo('.gitignore'), 'dist/\n*.log\n');
+        await writeFile(demo('src/x.log'), 'log\n');
+
+        const result = await listTool(repos.config, {
             folder: demo('src'),
             recursive: true,
         });
-        const globbed = await listTool(projects.config, {
+
+        expect(result.entries.map((entry) => entry.path)).toEqual([
+            demo('src/a.ts'),
+            demo('src/lib/c.ts'),
+        ]);
+    });
+
+    it('lists files at any depth with "recursive" or "glob", and shows new untracked files', async () => {
+        await writeFile(demo('src/new.ts'), '');
+
+        const recursive = await listTool(repos.config, {
+            folder: demo('src'),
+            recursive: true,
+        });
+        const globbed = await listTool(repos.config, {
             folder: demo(),
             glob: 'c.ts',
         });
@@ -99,7 +167,7 @@ describe('listTool', () => {
     });
 
     it('pages the entries', async () => {
-        const result = await listTool(projects.config, {
+        const result = await listTool(repos.config, {
             folder: demo(),
             recursive: true,
             limit: 2,
@@ -118,30 +186,30 @@ describe('listTool', () => {
 
     it('lists a folder outside any git repository, dotfiles included', async () => {
         const folder = await createPlainFolder();
-        const result = await listTool(projects.config, {
+        const result = await listTool(repos.config, {
             folder,
             recursive: true,
         });
 
         expect(result.entries.map((entry) => entry.path)).toEqual([
-            projects.path('plain', '.hidden'),
-            projects.path('plain', 'note.txt'),
-            projects.path('plain', 'sub/deep.txt'),
+            repos.path('plain', '.hidden'),
+            repos.path('plain', 'note.txt'),
+            repos.path('plain', 'sub/deep.txt'),
         ]);
     });
 
     it('normalizes the folder path', async () => {
-        const result = await listTool(projects.config, { folder: `${demo('src/lib/../..')}/` });
+        const result = await listTool(repos.config, { folder: `${demo('src/lib/../..')}/` });
 
         expect(result.folder).toBe(demo());
         expect(result.entries.map((entry) => entry.path)).toContain(demo('README.md'));
     });
 
     it('returns no entries for an empty folder', async () => {
-        await mkdir(projects.path('empty'));
+        await mkdir(repos.path('empty'));
 
-        expect(await listTool(projects.config, { folder: projects.path('empty') })).toEqual({
-            folder: projects.path('empty'),
+        expect(await listTool(repos.config, { folder: repos.path('empty') })).toEqual({
+            folder: repos.path('empty'),
             total: 0,
             entries: [],
             nextOffset: null,
@@ -149,8 +217,8 @@ describe('listTool', () => {
     });
 
     it('rejects a missing folder and a relative folder', async () => {
-        await expect(listTool(projects.config, { folder: demo('missing') })).rejects.toMatchObject({ code: 'not_found' });
-        await expect(listTool(projects.config, { folder: 'demo/src' })).rejects.toMatchObject({ code: 'invalid_arguments' });
+        await expect(listTool(repos.config, { folder: demo('missing') })).rejects.toMatchObject({ code: 'not_found' });
+        await expect(listTool(repos.config, { folder: 'demo/src' })).rejects.toMatchObject({ code: 'invalid_arguments' });
     });
 });
 
@@ -212,7 +280,7 @@ describe('readTool', () => {
             `${'x'.repeat(40000)}\nEND\n`,
         ]) {
             await writeFile(demo('long.txt'), text);
-            await expect(readTool(projects.config, { paths: [demo('long.txt')] }))
+            await expect(readTool(repos.config, { paths: [demo('long.txt')] }))
                 .rejects.toMatchObject({
                     code: 'command_failed',
                     message: expect.stringContaining('use head, tail or sed'),
@@ -226,7 +294,7 @@ describe('readTool', () => {
 
         await writeFile(demo('first.txt'), first);
         await writeFile(demo('second.txt'), second);
-        const page = await readTool(projects.config, {
+        const page = await readTool(repos.config, {
             paths: [
                 demo('first.txt'),
                 demo('second.txt'),
@@ -235,14 +303,14 @@ describe('readTool', () => {
 
         expect(page.files.map((file) => file.content)).toEqual([first]);
         expect(page.remainingPaths).toEqual([demo('second.txt')]);
-        const next = await readTool(projects.config, { paths: page.remainingPaths });
+        const next = await readTool(repos.config, { paths: page.remainingPaths });
 
         expect(next.files[0]?.content).toBe(second);
         expect(next.files[0]?.hash).toBe(hashContent(second));
     });
 
     it('reads files with their hash, and reports a bad path without failing the others', async () => {
-        const result = await readTool(projects.config, {
+        const result = await readTool(repos.config, {
             paths: [
                 demo('src/a.ts'),
                 demo('missing.ts'),
@@ -282,14 +350,14 @@ describe('readTool', () => {
     it('reads a file outside any git repository and returns its normalized path', async () => {
         await createPlainFolder();
 
-        const result = await readTool(projects.config, { paths: [projects.path('plain', 'sub/../note.txt')] });
+        const result = await readTool(repos.config, { paths: [repos.path('plain', 'sub/../note.txt')] });
 
         expect(result.files.map((file) => [
             file.path,
             file.content,
         ])).toEqual([
             [
-                projects.path('plain', 'note.txt'),
+                repos.path('plain', 'note.txt'),
                 'note\n',
             ],
         ]);
@@ -302,14 +370,14 @@ describe('readTool', () => {
             2,
         ]));
 
-        await expect(readTool(projects.config, { paths: ['src/a.ts'] })).rejects.toMatchObject({ code: 'invalid_arguments' });
-        await expect(readTool(projects.config, { paths: [demo('image.bin')] })).rejects.toMatchObject({ code: 'forbidden_path' });
+        await expect(readTool(repos.config, { paths: ['src/a.ts'] })).rejects.toMatchObject({ code: 'invalid_arguments' });
+        await expect(readTool(repos.config, { paths: [demo('image.bin')] })).rejects.toMatchObject({ code: 'forbidden_path' });
     });
 });
 
 describe('writeTool', () => {
     it('creates a file with missing folders, and refuses to overwrite it without a hash', async () => {
-        const created = await writeTool(projects.config, {
+        const created = await writeTool(repos.config, {
             path: demo('src/new/d.ts'),
             content: 'export const d = 4;\n',
         });
@@ -319,9 +387,9 @@ describe('writeTool', () => {
             created: true,
             hash: hashContent('export const d = 4;\n'),
         });
-        expect(created.diff).toContain(`+++ b/${demo('src/new/d.ts')}`);
+        expect(created.diff).toContain(`+++ b${demo('src/new/d.ts')}\n`);
         expect(created.diff).toContain('+export const d = 4;');
-        await expect(writeTool(projects.config, {
+        await expect(writeTool(repos.config, {
             path: demo('src/new/d.ts'),
             content: 'x',
         })).rejects.toMatchObject({ code: 'already_exists' });
@@ -331,7 +399,7 @@ describe('writeTool', () => {
         await writeFile(demo('run.sh'), 'echo 1\n', { mode: 0o755 });
 
         const hash = await readHash('run.sh');
-        const replaced = await writeTool(projects.config, {
+        const replaced = await writeTool(repos.config, {
             path: demo('run.sh'),
             content: 'echo 2\n',
             expectedHash: hash,
@@ -342,7 +410,7 @@ describe('writeTool', () => {
             changed: true,
         });
         expect((await stat(demo('run.sh'))).mode & 0o777).toBe(0o755);
-        await expect(writeTool(projects.config, {
+        await expect(writeTool(repos.config, {
             path: demo('run.sh'),
             content: 'echo 3\n',
             expectedHash: hash,
@@ -350,23 +418,90 @@ describe('writeTool', () => {
     });
 
     it('writes outside any git repository at a normalized path, and rejects a relative path', async () => {
-        const written = await writeTool(projects.config, {
-            path: projects.path('plain', 'x/../new.txt'),
+        const written = await writeTool(repos.config, {
+            path: repos.path('plain', 'x/../new.txt'),
             content: 'plain\n',
         });
 
-        expect(written.path).toBe(projects.path('plain', 'new.txt'));
-        expect(await readFile(projects.path('plain', 'new.txt'), 'utf8')).toBe('plain\n');
-        await expect(writeTool(projects.config, {
+        expect(written.path).toBe(repos.path('plain', 'new.txt'));
+        expect(await readFile(repos.path('plain', 'new.txt'), 'utf8')).toBe('plain\n');
+        await expect(writeTool(repos.config, {
             path: 'plain/other.txt',
             content: 'x',
         })).rejects.toMatchObject({ code: 'invalid_arguments' });
+    });
+
+    it('replaces the target of a symbolic link and keeps the link', async () => {
+        await symlink('AGENTS.md', demo('CLAUDE.md'));
+        await writeFile(demo('AGENTS.md'), 'rules\n');
+        const changedPaths: string[] = [];
+
+        const written = await writeTool(repos.config, {
+            path: demo('CLAUDE.md'),
+            content: 'new rules\n',
+            expectedHash: hashContent('rules\n'),
+        }, createCommandExecution({ changedPath: (path) => changedPaths.push(path) }));
+
+        expect(written).toMatchObject({
+            path: demo('CLAUDE.md'),
+            changed: true,
+        });
+        expect(written.diff).toContain(`+++ b${demo('CLAUDE.md')}\n`);
+        expect(await readFile(demo('AGENTS.md'), 'utf8')).toBe('new rules\n');
+        expect((await lstat(demo('CLAUDE.md'))).isSymbolicLink()).toBe(true);
+        expect(changedPaths).toEqual([demo('AGENTS.md')]);
+    });
+
+    it('rejects a new file at the path of a folder', async () => {
+        await expect(writeTool(repos.config, {
+            path: demo('src'),
+            content: 'x',
+        })).rejects.toMatchObject({
+            code: 'invalid_arguments',
+            message: expect.stringContaining('is a folder'),
+        });
+    });
+
+    it('rejects a new file at "/"', async () => {
+        await expect(writeTool(repos.config, {
+            path: '/',
+            content: 'x',
+        })).rejects.toMatchObject({
+            code: 'invalid_arguments',
+            message: expect.stringContaining('is a folder'),
+        });
+    });
+
+    it('fails when a parent of the new file is a regular file', async () => {
+        const changedPaths: string[] = [];
+
+        await expect(writeTool(repos.config, {
+            path: demo('README.md/x.txt'),
+            content: 'x',
+        }, createCommandExecution({ changedPath: (path) => changedPaths.push(path) })))
+            .rejects.toMatchObject({ code: 'command_failed' });
+        expect(changedPaths).toEqual([]);
+        expect(await readFile(demo('README.md'), 'utf8')).toBe('# Demo\n');
+    });
+
+    it('reports the first folder that it created as changed', async () => {
+        const changedPaths: string[] = [];
+
+        await writeTool(repos.config, {
+            path: repos.path('plain', 'deep/new.txt'),
+            content: 'x',
+        }, createCommandExecution({ changedPath: (path) => changedPaths.push(path) }));
+
+        expect(changedPaths).toEqual([
+            repos.path('plain'),
+            repos.path('plain', 'deep/new.txt'),
+        ]);
     });
 });
 
 describe('patchTool', () => {
     it('replaces text and returns a hash that the next patch can use', async () => {
-        const first = await patchTool(projects.config, {
+        const first = await patchTool(repos.config, {
             path: demo('src/a.ts'),
             expectedHash: await readHash('src/a.ts'),
             operations: [
@@ -376,7 +511,7 @@ describe('patchTool', () => {
                 },
             ],
         });
-        const second = await patchTool(projects.config, {
+        const second = await patchTool(repos.config, {
             path: demo('src/a.ts'),
             expectedHash: first.hash,
             operations: [
@@ -388,14 +523,39 @@ describe('patchTool', () => {
         });
 
         expect(first.path).toBe(demo('src/a.ts'));
-        expect(first.diff).toContain(`--- a/${demo('src/a.ts')}`);
+        expect(first.diff).toContain(`--- a${demo('src/a.ts')}\n+++ b${demo('src/a.ts')}\n`);
         expect(first.diff).toContain('-export const a = 1;\n+export const a = 10;');
         expect(second.changed).toBe(true);
         expect(await readFile(demo('src/a.ts'), 'utf8')).toBe('export const a = 10;\nexport const b = 20;\n');
     });
 
+    it('patches the target of a symbolic link and keeps the link', async () => {
+        await symlink('AGENTS.md', demo('CLAUDE.md'));
+        await writeFile(demo('AGENTS.md'), 'rules\n');
+        const changedPaths: string[] = [];
+
+        const patched = await patchTool(repos.config, {
+            path: demo('CLAUDE.md'),
+            expectedHash: hashContent('rules\n'),
+            operations: [
+                {
+                    find: 'rules',
+                    replace: 'new rules',
+                },
+            ],
+        }, createCommandExecution({ changedPath: (path) => changedPaths.push(path) }));
+
+        expect(patched).toMatchObject({
+            path: demo('CLAUDE.md'),
+            changed: true,
+        });
+        expect(await readFile(demo('AGENTS.md'), 'utf8')).toBe('new rules\n');
+        expect((await lstat(demo('CLAUDE.md'))).isSymbolicLink()).toBe(true);
+        expect(changedPaths).toEqual([demo('AGENTS.md')]);
+    });
+
     it('writes nothing when one operation fails, and names the lines of an ambiguous text', async () => {
-        const call = patchTool(projects.config, {
+        const call = patchTool(repos.config, {
             path: demo('src/a.ts'),
             expectedHash: await readHash('src/a.ts'),
             operations: [
@@ -430,12 +590,12 @@ describe('patchTool', () => {
             },
         ];
 
-        await expect(patchTool(projects.config, {
+        await expect(patchTool(repos.config, {
             path: 'src/a.ts',
             expectedHash: await readHash('src/a.ts'),
             operations,
         })).rejects.toMatchObject({ code: 'invalid_arguments' });
-        await expect(patchTool(projects.config, {
+        await expect(patchTool(repos.config, {
             path: demo('missing.ts'),
             expectedHash: await readHash('src/a.ts'),
             operations,

@@ -7,7 +7,7 @@ import {
     it,
 } from 'vitest';
 
-import { createTestProjects, type TestProjects } from '../tools/createTestProjects';
+import { createTestRepositories, type TestRepositories } from '../tools/createTestRepositories';
 
 import { createCodeToolsServer, type CodeToolsServer } from './createCodeToolsServer';
 
@@ -15,17 +15,17 @@ const TOKEN = 'test-token';
 const AUTHORIZED = { authorization: createBearerAuthorizationHeader(TOKEN) };
 
 describe('createCodeToolsServer', () => {
-    let projects: TestProjects;
+    let repos: TestRepositories;
     let server: CodeToolsServer;
 
     beforeEach(async () => {
-        projects = await createTestProjects({ demo: { 'README.md': 'hello\n' } });
-        server = createCodeToolsServer(TOKEN, projects.config);
+        repos = await createTestRepositories({ demo: { 'README.md': 'hello\n' } });
+        server = createCodeToolsServer(TOKEN, repos.config);
     });
 
     afterEach(async () => {
         await server.close();
-        await projects.remove();
+        await repos.remove();
     });
 
     it('answers the health check without a token', async () => {
@@ -39,7 +39,7 @@ describe('createCodeToolsServer', () => {
         const response = await server.inject({
             method: 'POST',
             url: '/code/list',
-            payload: { folder: projects.root },
+            payload: { folder: repos.root },
         });
 
         expect(response.statusCode).toBe(401);
@@ -50,7 +50,7 @@ describe('createCodeToolsServer', () => {
             method: 'POST',
             url: '/code/read',
             headers: AUTHORIZED,
-            payload: { paths: [projects.path('demo', 'README.md')] },
+            payload: { paths: [repos.path('demo', 'README.md')] },
         });
 
         expect(response.statusCode).toBe(200);
@@ -71,7 +71,7 @@ describe('createCodeToolsServer', () => {
             method: 'POST',
             url: '/code/read',
             headers: AUTHORIZED,
-            payload: { paths: [projects.path('nope', 'README.md')] },
+            payload: { paths: [repos.path('nope', 'README.md')] },
         });
 
         expect(unknown.statusCode).toBe(404);

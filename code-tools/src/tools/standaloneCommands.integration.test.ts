@@ -1,4 +1,6 @@
+import { existsSync } from 'node:fs';
 import { readFile, readdir } from 'node:fs/promises';
+import { join } from 'node:path';
 
 import { createCommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { hashContent } from 'senaev-utils/src/files/contentHash';
@@ -6,7 +8,7 @@ import {
     afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
 
-import { createTestProjects, type TestProjects } from './createTestProjects';
+import { createTestRepositories, type TestRepositories } from './createTestRepositories';
 import { listCommand } from './listCommand';
 import { patchCommand } from './patchCommand';
 import { readCommand } from './readCommand';
@@ -14,10 +16,10 @@ import { runCommand } from './runCommand';
 import { searchCommand } from './searchCommand';
 import { writeCommand } from './writeCommand';
 
-let projects: TestProjects;
+let repos: TestRepositories;
 
 beforeEach(async () => {
-    projects = await createTestProjects({
+    repos = await createTestRepositories({
         demo: {
             'sample.md': 'alpha\nbeta\n',
             'AGENTS.md': 'test rules',
@@ -26,7 +28,7 @@ beforeEach(async () => {
     });
 });
 afterEach(async () => {
-    await projects.remove();
+    await repos.remove();
 });
 
 describe('standalone typed code commands', () => {
@@ -37,17 +39,17 @@ describe('standalone typed code commands', () => {
             log: ownLog,
             changedPath: (path) => ownChanges.push(path),
         });
-        const listed = await listCommand(projects.config, {
-            folder: projects.path('demo'),
+        const listed = await listCommand(repos.config, {
+            folder: repos.path('demo'),
             glob: undefined,
             recursive: false,
             offset: 0,
             limit: 10,
         }, execution);
 
-        expect(listed.entries.map((entry) => entry.path)).toContain(projects.path('demo', 'sample.md'));
-        const read = await readCommand(projects.config, {
-            paths: [projects.path('demo', 'sample.md')],
+        expect(listed.entries.map((entry) => entry.path)).toContain(repos.path('demo', 'sample.md'));
+        const read = await readCommand(repos.config, {
+            paths: [repos.path('demo', 'sample.md')],
             startLine: 1,
             lineCount: 1,
         }, execution);
@@ -57,8 +59,8 @@ describe('standalone typed code commands', () => {
             hash: hashContent('alpha\nbeta\n'),
             nextStartLine: 2,
         });
-        const search = await searchCommand(projects.config, {
-            folder: projects.path('demo'),
+        const search = await searchCommand(repos.config, {
+            folder: repos.path('demo'),
             queries: ['alpha'],
             regex: false,
             caseSensitive: false,
@@ -74,18 +76,18 @@ describe('standalone typed code commands', () => {
             totalMatches: 1,
             files: [
                 {
-                    path: projects.path('demo', 'sample.md'),
+                    path: repos.path('demo', 'sample.md'),
                     snippet: '1:alpha',
                 },
             ],
         });
-        const created = projects.path('demo', 'created.md');
-        const written = await writeCommand(projects.config, {
+        const created = repos.path('demo', 'created.md');
+        const written = await writeCommand(repos.config, {
             path: created,
             content: 'created\n',
             expectedHash: undefined,
         }, execution);
-        const patched = await patchCommand(projects.config, {
+        const patched = await patchCommand(repos.config, {
             path: created,
             expectedHash: written.hash,
             operations: [
@@ -97,7 +99,7 @@ describe('standalone typed code commands', () => {
         }, execution);
 
         expect(patched.hash).toBe(hashContent('changed\n'));
-        await expect(patchCommand(projects.config, {
+        await expect(patchCommand(repos.config, {
             path: created,
             expectedHash: written.hash,
             operations: [
@@ -107,7 +109,7 @@ describe('standalone typed code commands', () => {
                 },
             ],
         }, execution)).rejects.toMatchObject({ code: 'conflict' });
-        await expect(patchCommand(projects.config, {
+        await expect(patchCommand(repos.config, {
             path: created,
             expectedHash: patched.hash,
             operations: [
@@ -126,13 +128,13 @@ describe('standalone typed code commands', () => {
             created,
             created,
         ]);
-        const command = await runCommand(projects.config, {
-            cwd: projects.path('demo'),
+        const command = await runCommand(repos.config, {
+            cwd: repos.path('demo'),
             command: 'printf direct',
         }, execution);
 
         expect(command).toMatchObject({
-            cwd: projects.path('demo'),
+            cwd: repos.path('demo'),
             stdout: 'direct',
         });
         expect(ownLog).toHaveBeenCalledWith('stdout', 'direct');
@@ -151,20 +153,20 @@ describe('standalone typed code commands', () => {
             log,
         });
         const commands = [
-            () => listCommand(projects.config, {
-                folder: projects.path('demo'),
+            () => listCommand(repos.config, {
+                folder: repos.path('demo'),
                 glob: undefined,
                 recursive: false,
                 offset: 0,
                 limit: 10,
             }, execution),
-            () => readCommand(projects.config, {
-                paths: [projects.path('demo', 'sample.md')],
+            () => readCommand(repos.config, {
+                paths: [repos.path('demo', 'sample.md')],
                 startLine: 1,
                 lineCount: 1,
             }, execution),
-            () => searchCommand(projects.config, {
-                folder: projects.path('demo'),
+            () => searchCommand(repos.config, {
+                folder: repos.path('demo'),
                 queries: ['alpha'],
                 regex: false,
                 caseSensitive: false,
@@ -174,13 +176,13 @@ describe('standalone typed code commands', () => {
                 offset: 0,
                 limit: 1,
             }, execution),
-            () => writeCommand(projects.config, {
-                path: projects.path('demo', 'never.md'),
+            () => writeCommand(repos.config, {
+                path: repos.path('demo', 'never.md'),
                 content: 'never',
                 expectedHash: undefined,
             }, execution),
-            () => patchCommand(projects.config, {
-                path: projects.path('demo', 'sample.md'),
+            () => patchCommand(repos.config, {
+                path: repos.path('demo', 'sample.md'),
                 expectedHash: hashContent('alpha\nbeta\n'),
                 operations: [
                     {
@@ -189,8 +191,8 @@ describe('standalone typed code commands', () => {
                     },
                 ],
             }, execution),
-            () => runCommand(projects.config, {
-                cwd: projects.path('demo'),
+            () => runCommand(repos.config, {
+                cwd: repos.path('demo'),
                 command: 'touch never-run',
             }, execution),
         ];
@@ -199,45 +201,46 @@ describe('standalone typed code commands', () => {
         expect(results.every((result) => result.status === 'rejected' && result.reason === reason)).toBe(true);
         expect(changedPath).not.toHaveBeenCalled();
         expect(log).not.toHaveBeenCalled();
-        expect((await readdir(projects.root)).sort()).toEqual([
+        expect((await readdir(repos.root)).sort()).toEqual([
             'demo',
             'source',
         ]);
-        expect((await readdir(projects.path('demo'))).sort()).toEqual([
+        expect((await readdir(repos.path('demo'))).sort()).toEqual([
             '.git',
             'AGENTS.md',
             'sample.md',
         ]);
-        expect(await readFile(projects.path('demo', 'sample.md'), 'utf8')).toBe('alpha\nbeta\n');
+        expect(await readFile(repos.path('demo', 'sample.md'), 'utf8')).toBe('alpha\nbeta\n');
     });
 
     it('validates paths when typed commands are called without the input adapter', async () => {
         const execution = createCommandExecution();
 
-        await expect(writeCommand(projects.config, {
+        await expect(writeCommand(repos.config, {
             path: 'demo/relative.md',
             content: 'bad',
             expectedHash: undefined,
         }, execution)).rejects.toMatchObject({ code: 'invalid_arguments' });
-        await expect(readCommand(projects.config, {
-            paths: [`${projects.path('demo')}\0/sample.md`],
+        await expect(readCommand(repos.config, {
+            paths: [`${repos.path('demo')}\0/sample.md`],
             startLine: 1,
             lineCount: 10,
         }, execution)).rejects.toMatchObject({ code: 'invalid_arguments' });
-        await expect(listCommand(projects.config, {
+        await expect(listCommand(repos.config, {
             folder: 'demo',
             glob: undefined,
             recursive: false,
             offset: 0,
             limit: 10,
         }, execution)).rejects.toMatchObject({ code: 'invalid_arguments' });
-        await expect(runCommand(projects.config, {
-            cwd: projects.path('missing'),
+        await expect(runCommand(repos.config, {
+            cwd: repos.path('missing'),
             command: 'true',
         }, execution)).rejects.toMatchObject({ code: 'not_found' });
-        expect((await readdir(projects.root)).sort()).toEqual([
+        expect((await readdir(repos.root)).sort()).toEqual([
             'demo',
             'source',
         ]);
+        expect(existsSync(join(process.cwd(), 'demo/relative.md'))).toBe(false);
     });
 });

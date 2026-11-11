@@ -1,5 +1,5 @@
 import {
-    mkdir, readFile, stat,
+    mkdir, readFile, realpath, stat,
 } from 'node:fs/promises';
 import { posix } from 'node:path';
 
@@ -49,13 +49,26 @@ export async function assertExistingFile(path: string, execution: CommandExecuti
     }
 }
 
+/**
+ * The real path of an existing file. Writes go there: a rename onto a symbolic link would
+ * replace the link and leave its target unchanged.
+ */
+export async function resolveExistingFile(path: string, execution: CommandExecution): Promise<string> {
+    await assertExistingFile(path, execution);
+    const target = await realpath(path);
+
+    execution.throwIfAborted();
+
+    return target;
+}
+
 export async function assertExistingFolder(path: string, execution: CommandExecution): Promise<void> {
     if (!(await statOrNotFound(path, 'Folder', execution)).isDirectory()) {
         throw new CommandError('not_found', `"${path}" is not a folder`);
     }
 }
 
-/** Creates the missing parent folders of a new file. */
+/** Creates the missing parent folders of a new file and reports the first one it created. */
 export async function createParentFolders(path: string, execution: CommandExecution): Promise<void> {
     await execution.checkpoint();
     try {
@@ -66,7 +79,7 @@ export async function createParentFolders(path: string, execution: CommandExecut
         }
     } catch (error) {
         execution.throwIfAborted();
-        throw new CommandError('forbidden_path', `Cannot create the folder of "${path}": ${error instanceof Error ? error.message : String(error)}`);
+        throw new CommandError('command_failed', `Cannot create the folder of "${path}": ${error instanceof Error ? error.message : String(error)}`);
     }
 
     execution.throwIfAborted();

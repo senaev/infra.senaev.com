@@ -1,10 +1,12 @@
 - [ ] Code Tools works in any folder by absolute paths; repositories and worktrees live under `/code`.
 
-**Stage:** implementation in the `code-tools-worktrees` branch.
+**Stage:** PR #160 open; fixing the review findings.
 
 **Done:**
-- Contract and code-tools: absolute paths, `cwd` for `run`, `code-projects` removed, `list` on `rg`.
+- Contract and code-tools: absolute paths, `cwd` for `run`, `code-projects` removed.
 - Helm: new `<name>-code` PVC at `/code` next to `/projects`; `/AGENTS.md` describes the folder layout.
-- All tests updated; `npm run simple-checks` passes (1747 tests).
+- Review fixes in the source code (symlink writes, one-level list with `readdir`, partial `rg` results, smaller items).
 
-**Next steps:** commit, PR, review cycles, deploy, connector refresh by the user.
+**In progress:** tests for the review fixes.
+
+**Next steps:** full checks, push to PR #160, deploy, connector refresh by the user.

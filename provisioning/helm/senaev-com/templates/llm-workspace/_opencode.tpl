@@ -213,7 +213,7 @@ spec:
             - name: OPENCODE_MODEL_ID
               value: {{ $agent.defaultModel.id | quote }}
             - name: OPEN_BROWSER_ROOTS
-              value: /projects
+              value: /projects,/code
             - name: STT_API_URL
               value: {{ $agent.speechToText.baseUrl | quote }}
             - name: STT_API_KEY

@@ -12,6 +12,7 @@ Lightweight disk usage diagnostics and clear low-space alerts for every VPS.
 
 - Work in the worktree `/code/worktrees/infra.senaev.com/disk-usage-telemetry` (branch `disk-usage-telemetry`), after [Code Tools worktrees](../2026-11-11-19-02-code-tools-worktrees/README.md) is deployed.
 - Earlier incident: [firstvds disk space low](../2026-07-27-firstvds-disk-space-low/).
+- The `/code` PVC uses `local-path`, which does not enforce its size. Worktrees with their own `node_modules` fill the hetzner root disk, which also holds the control plane. The low-space alert must exist before agents use worktrees much (PR #160 review).
 
 ## Plan
 

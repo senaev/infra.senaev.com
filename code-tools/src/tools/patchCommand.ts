@@ -7,7 +7,7 @@ import { replaceExactlyOnceAsync as replaceText } from 'senaev-utils/src/files/t
 
 import type { CodeToolsConfig } from './codeToolsConfig';
 import {
-    assertExistingFile, normalizeAbsolutePath, readTextFile,
+    normalizeAbsolutePath, readTextFile, resolveExistingFile,
 } from './fileAccess';
 
 export type Replacement = {
@@ -25,9 +25,10 @@ export async function patchCommand(_config: CodeToolsConfig, input: PatchCommand
     const path = normalizeAbsolutePath(input.path, 'path');
     const { expectedHash, operations } = input;
 
-    return await withFileMutation(path, async () => {
-        await assertExistingFile(path, execution);
-        const original = await readTextFile(path, execution);
+    const target = await resolveExistingFile(path, execution);
+
+    return await withFileMutation(target, async () => {
+        const original = await readTextFile(target, execution);
 
         assertExpectedHash(original, expectedHash, 'file');
 
@@ -43,8 +44,8 @@ export async function patchCommand(_config: CodeToolsConfig, input: PatchCommand
         execution.throwIfAborted();
 
         if (updated !== original) {
-            assertExpectedHash(await readTextFile(path, execution), expectedHash, 'file');
-            await replaceFileAtomically(path, updated, execution.signal, () => execution.changedPath(path));
+            assertExpectedHash(await readTextFile(target, execution), expectedHash, 'file');
+            await replaceFileAtomically(target, updated, execution.signal, () => execution.changedPath(target));
         }
 
         await execution.checkpoint();

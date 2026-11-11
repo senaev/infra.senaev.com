@@ -63,8 +63,9 @@ const list: ToolDefinition = {
     title: 'List files',
     description: [
         'Lists the files and folders in a folder on the owner\'s server, with absolute paths.',
-        'Hidden files are shown; .git folders, and in a git repository the files ignored by .gitignore, are not.',
-        'Without "recursive" or "glob" it lists one folder level; with them it lists matching files at any depth.',
+        'Without "recursive" or "glob" it lists everything in one folder level except .git, like "ls -A".',
+        'With them it lists matching files at any depth, as code-search sees them: hidden files are shown;',
+        '.git, symbolic links and, in a git repository, the files ignored by .gitignore are not.',
         PAGED_RESULT_DESCRIPTION,
         MANAGED_TOOL_DESCRIPTION,
         SERVER_RULES,

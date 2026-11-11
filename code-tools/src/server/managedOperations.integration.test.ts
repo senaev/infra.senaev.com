@@ -8,7 +8,7 @@ import {
 } from 'vitest';
 
 import { CODE_TOOLS } from '../tools/codeTools';
-import { createTestProjects, type TestProjects } from '../tools/createTestProjects';
+import { createTestRepositories, type TestRepositories } from '../tools/createTestRepositories';
 
 import { createCodeToolsServer, type CodeToolsServer } from './createCodeToolsServer';
 
@@ -41,17 +41,17 @@ function deferred() {
 }
 
 describe('managed execution HTTP contract', () => {
-    let projects: TestProjects;
+    let repos: TestRepositories;
     let server: CodeToolsServer;
 
     beforeEach(async () => {
-        projects = await createTestProjects({ demo: { 'README.md': 'hello\n' } });
-        server = createCodeToolsServer(TOKEN, projects.config);
+        repos = await createTestRepositories({ demo: { 'README.md': 'hello\n' } });
+        server = createCodeToolsServer(TOKEN, repos.config);
     });
 
     afterEach(async () => {
         await server.close();
-        await projects.remove();
+        await repos.remove();
         vi.restoreAllMocks();
         vi.useRealTimers();
     });
@@ -74,7 +74,7 @@ describe('managed execution HTTP contract', () => {
 
     function list(args: Record<string, unknown> = {}) {
         return call('list', {
-            folder: projects.root,
+            folder: repos.root,
             ...args,
         });
     }
@@ -105,7 +105,7 @@ describe('managed execution HTTP contract', () => {
             status: 'ok',
             entries: [
                 {
-                    path: projects.path('demo'),
+                    path: repos.path('demo'),
                     type: 'folder',
                 },
             ],
@@ -164,7 +164,7 @@ describe('managed execution HTTP contract', () => {
                 ...HEADERS,
                 'content-type': 'application/json',
             },
-            body: JSON.stringify({ folder: projects.root }),
+            body: JSON.stringify({ folder: repos.root }),
             signal: client.signal,
         }).catch((error: unknown) => error);
 
@@ -185,7 +185,7 @@ describe('managed execution HTTP contract', () => {
         const reply = (await list()).json<Reply>();
 
         await server.close();
-        server = createCodeToolsServer(TOKEN, projects.config);
+        server = createCodeToolsServer(TOKEN, repos.config);
         expect((await call('operation_status', { id: reply.operation.id })).statusCode).toBe(404);
         expect((await call('operations')).json<Reply>().operations).toEqual([]);
     });
@@ -253,16 +253,16 @@ describe('managed execution HTTP contract', () => {
         expect((await list({ requestId: 'q0' })).json<Reply>().operation.id).toBe(queued[0]);
 
         expect((await call('run', {
-            cwd: projects.path('demo'),
+            cwd: repos.path('demo'),
             command: 'printf direct',
         })).statusCode).toBe(429);
         const read = await completed('read', {
             executionPolicy: 'parallel',
-            paths: [projects.path('demo', 'README.md')],
+            paths: [repos.path('demo', 'README.md')],
         });
         const write = await completed('write', {
             executionPolicy: 'parallel',
-            path: projects.path('demo', 'README.md'),
+            path: repos.path('demo', 'README.md'),
             expectedHash: read.files?.[0]?.hash,
             content: 'updated\n',
         });
@@ -270,7 +270,7 @@ describe('managed execution HTTP contract', () => {
         expect(write.operation.state).toBe('completed');
         const patch = await completed('patch', {
             executionPolicy: 'parallel',
-            path: projects.path('demo', 'README.md'),
+            path: repos.path('demo', 'README.md'),
             expectedHash: write.hash,
             operations: [
                 {
@@ -283,7 +283,7 @@ describe('managed execution HTTP contract', () => {
         expect(patch.operation.state).toBe('completed');
         expect((await completed('read', {
             executionPolicy: 'parallel',
-            paths: [projects.path('demo', 'README.md')],
+            paths: [repos.path('demo', 'README.md')],
         })).files?.[0]?.content).toBe('patched\n');
         for (const id of queued) {
             expect((await call('operation_cancel', { id })).json<Reply>().operation.state).toBe('cancelled');
@@ -328,7 +328,7 @@ describe('managed execution HTTP contract', () => {
 
         expect((await call('read', {
             executionPolicy: 'parallel',
-            paths: [projects.path('demo', 'README.md')],
+            paths: [repos.path('demo', 'README.md')],
         })).statusCode).toBe(409);
         expect(launch).toHaveBeenCalledTimes(1);
         expect((await list()).statusCode).toBe(409);

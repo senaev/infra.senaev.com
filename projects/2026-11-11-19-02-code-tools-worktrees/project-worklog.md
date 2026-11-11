@@ -1,5 +1,14 @@
 # Worklog
 
+## 2026-11-11 23:30 UTC — Review findings of PR #160 fixed
+
+A seven-agent review found 2 blocking and 8 non-blocking issues. The user chose to fix all of them and to keep both `code-list` and `code-search` (removing them was the proposed simplification).
+
+- write/patch resolve a symlink and write its target; before, the rename replaced the link.
+- A one-level list uses `readdir` (like `ls -A`, without `.git`): it shows empty and ignored folders and symlinks, and works on `/`. A recursive list keeps `rg` and returns `warnings` when `rg` read only a part.
+- Smaller fixes: an "is a folder" error for write, `command_failed` for a failed `mkdir`, diff headers without `a//`, `/code` in `OPEN_BROWSER_ROOTS`, test renames, new tests.
+- The PVC size is not enforced by `local-path`; this is in `AGENTS.md` and in the disk-usage-telemetry project.
+
 ## 2026-11-11 21:40 UTC — A new PVC at /code, no migration
 
 The user decided: create a new `<name>-code` PVC for every workspace (senaev and galkin) and mount it at `/code` next to `/projects`. `/projects` and its PVC stay unchanged, and nothing is copied; the user fixes the structure manually. Only `/code` is pre-defined; `projects/` and `worktrees/` are not created. This removes the migration risk.

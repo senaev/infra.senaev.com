@@ -287,7 +287,9 @@ and `Recreate`; a Code Tools update still has a short outage and loses in-memory
 
 The code tools take absolute paths and work in any folder. The repository layout under
 `/code` (`projects/<repo>` and `worktrees/<repo>/<branch>`) is described only in the
-workspace instructions, `/AGENTS.md`.
+workspace instructions, `/AGENTS.md`. The PVCs use `local-path`, which does not enforce their
+size: worktrees with their own `node_modules` use the node's root disk, which on hetzner also
+holds the control plane.
 
 OpenCode 2 serves its built-in web UI at `https://opencode.senaev.com` through the
 existing Traefik ingress. Native authentication uses Vault `OPENCODE_PASSWORD` via

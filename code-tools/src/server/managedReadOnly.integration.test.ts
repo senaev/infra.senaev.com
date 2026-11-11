@@ -11,7 +11,7 @@ import {
 } from 'vitest';
 
 import { CODE_TOOLS } from '../tools/codeTools';
-import { createTestProjects, type TestProjects } from '../tools/createTestProjects';
+import { createTestRepositories, type TestRepositories } from '../tools/createTestRepositories';
 import { listTool } from '../tools/listTool';
 import { searchTool } from '../tools/searchTool';
 import { parseRipgrepJson } from '../tools/searchCommand';
@@ -27,10 +27,10 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 
     return {
         ...original,
-        lstat: (...args: Parameters<typeof original.lstat>) => {
+        stat: (...args: Parameters<typeof original.stat>) => {
             metadata.beforeStat(args[0]);
 
-            return original.lstat(...args);
+            return original.stat(...args);
         },
     };
 });
@@ -45,21 +45,21 @@ type Reply = {
 };
 
 describe('managed search and list', () => {
-    let projects: TestProjects;
+    let repos: TestRepositories;
     let server: CodeToolsServer;
 
     beforeEach(async () => {
-        projects = await createTestProjects({
+        repos = await createTestRepositories({
             demo: {
                 'README.md': 'needle\n',
                 'src/a.ts': 'needle\n',
             },
         });
-        server = createCodeToolsServer('read-only-test', projects.config);
+        server = createCodeToolsServer('read-only-test', repos.config);
     });
     afterEach(async () => {
         await server.close();
-        await projects.remove();
+        await repos.remove();
         vi.restoreAllMocks();
         vi.useRealTimers();
         metadata.beforeStat = () => undefined;
@@ -74,12 +74,12 @@ describe('managed search and list', () => {
     }
 
     async function fakeExecutable(name: string, content: string) {
-        const bin = projects.path('demo', '.test-bin');
+        const bin = repos.path('demo', '.test-bin');
 
         await mkdir(bin, { recursive: true });
         await writeFile(join(bin, name), content);
         await chmod(join(bin, name), 0o755);
-        projects.config.commandEnv.PATH = `${bin}:${process.env.PATH ?? ''}`;
+        repos.config.commandEnv.PATH = `${bin}:${process.env.PATH ?? ''}`;
     }
 
     it('preserves real results, no matches and search errors with shared execution arguments', async () => {
@@ -88,7 +88,7 @@ describe('managed search and list', () => {
             'search',
         ]) {
             const args = {
-                folder: projects.path('demo'),
+                folder: repos.path('demo'),
                 requestId: tool,
                 timeoutSeconds: 10800,
                 ...tool === 'search' ? { queries: ['needle'] } : { recursive: true },
@@ -106,7 +106,7 @@ describe('managed search and list', () => {
         }
 
         expect((await call('search', {
-            folder: projects.path('demo'),
+            folder: repos.path('demo'),
             queries: ['missing'],
         })).json<Reply>())
             .toMatchObject({
@@ -115,7 +115,7 @@ describe('managed search and list', () => {
                 operation: { state: 'completed' },
             });
         expect((await call('search', {
-            folder: projects.path('demo'),
+            folder: repos.path('demo'),
             queries: ['('],
             regex: true,
         })).json<Reply>())
@@ -124,7 +124,7 @@ describe('managed search and list', () => {
                 code: 'invalid_arguments',
                 operation: { state: 'failed' },
             });
-        expect((await call('list', { folder: projects.path('missing') })).json<Reply>()).toMatchObject({
+        expect((await call('list', { folder: repos.path('missing') })).json<Reply>()).toMatchObject({
             status: 'error',
             code: 'not_found',
             operation: { state: 'failed' },
@@ -134,7 +134,7 @@ describe('managed search and list', () => {
             'search',
         ]) {
             expect((await call(tool, {
-                folder: projects.path('demo'),
+                folder: repos.path('demo'),
                 ...tool === 'search' ? { queries: ['needle'] } : {},
                 timeoutSeconds: 0,
             })).statusCode).toBe(400);
@@ -168,17 +168,17 @@ describe('managed search and list', () => {
         });
         const search = vi.spyOn(CODE_TOOLS, 'search');
         const active = call('run', {
-            cwd: projects.root,
+            cwd: repos.root,
             command: 'true',
         });
 
         await entered;
         const queuedSearch = (await call('search', {
-            folder: projects.path('demo'),
+            folder: repos.path('demo'),
             queries: ['needle'],
         })).json<Reply>();
         const queuedList = (await call('list', {
-            folder: projects.path('demo'),
+            folder: repos.path('demo'),
             timeoutSeconds: 1,
         })).json<Reply>();
 
@@ -190,7 +190,7 @@ describe('managed search and list', () => {
             });
         expect((await call('read', {
             executionPolicy: 'parallel',
-            paths: [projects.path('demo', 'README.md')],
+            paths: [repos.path('demo', 'README.md')],
         })).statusCode).toBe(200);
         await vi.advanceTimersByTimeAsync(1100);
         release();
@@ -205,7 +205,7 @@ describe('managed search and list', () => {
     it('aborts ripgrep on the common deadline and never returns a partial success', async () => {
         await fakeExecutable('rg', '#!/bin/bash\ntrap \'\' TERM\nprintf \'partial-json-output\\n\'\nsleep 30 &\nwait\n');
         const body = (await call('search', {
-            folder: projects.path('demo'),
+            folder: repos.path('demo'),
             queries: ['needle'],
             timeoutSeconds: 1,
         })).json<Reply>();
@@ -226,7 +226,8 @@ describe('managed search and list', () => {
         await fakeExecutable('rg', '#!/bin/bash\ntrap \'\' TERM\nprintf \'list-started\\n\'\nsleep 30 &\nwait\n');
         const before = performance.now();
         const body = (await call('list', {
-            folder: projects.path('demo'),
+            folder: repos.path('demo'),
+            recursive: true,
             timeoutSeconds: 1,
         })).json<Reply>();
 
@@ -234,7 +235,7 @@ describe('managed search and list', () => {
         expect(performance.now() - before).toBeGreaterThanOrEqual(1900);
         expect((await call('read', {
             executionPolicy: 'parallel',
-            paths: [projects.path('demo', 'README.md')],
+            paths: [repos.path('demo', 'README.md')],
         })).statusCode).toBe(200);
     }, 8000);
 
@@ -246,13 +247,13 @@ describe('managed search and list', () => {
         metadata.beforeStat = (path) => {
             const value = String(path);
 
-            if (value === projects.path('demo', 'README.md')) {
+            if (value === repos.path('demo', 'README.md')) {
                 readPaths.push(value);
                 controller.abort(reason);
                 throw reason;
             }
 
-            if (value === projects.path('demo', 'src/a.ts')) {
+            if (value === repos.path('demo', 'src/a.ts')) {
                 readPaths.push(value);
             }
         };
@@ -261,11 +262,11 @@ describe('managed search and list', () => {
             signal: controller.signal,
             log: () => undefined,
             changedPaths: new Set<string>(),
-        }, (execution: CommandExecution) => listTool(projects.config, {
-            folder: projects.path('demo'),
+        }, (execution: CommandExecution) => listTool(repos.config, {
+            folder: repos.path('demo'),
             recursive: true,
         }, execution))).rejects.toBe(reason);
-        expect(readPaths).toEqual([projects.path('demo', 'README.md')]);
+        expect(readPaths).toEqual([repos.path('demo', 'README.md')]);
     });
 
     it('checks already-aborted contexts and yields while parsing large result batches', async () => {
@@ -283,8 +284,8 @@ describe('managed search and list', () => {
             listTool,
             searchTool,
         ]) {
-            await expect(withCommandExecution<unknown>(context, (execution: CommandExecution) => tool(projects.config, {
-                folder: projects.path('demo'),
+            await expect(withCommandExecution<unknown>(context, (execution: CommandExecution) => tool(repos.config, {
+                folder: repos.path('demo'),
                 queries: ['needle'],
             }, execution))).rejects.toBe(reason);
         }
