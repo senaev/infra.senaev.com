@@ -1,3 +1,15 @@
+## 2026-11-11 08:46 UTC — Purchase project completed and closed
+
+User confirmed:
+> I ordered Dell for the price that was listed. Something like 599.89.
+> And now it is being shipped to my office.
+> So we can mark this project as completed. And close it
+
+Marked purchase complete: VORPC Dell Micro 7010, 32 GB / 1 TB, order 102889,
+€599.89 delivered. Shipping to office is user-confirmed; arrival remains pending.
+Hardware inspection and Proxmox/Jellyfin acceptance testing remain follow-up and
+are not represented as passed. Updated README result and project status together.
+
 ## 2026-11-08 21:51 UTC — Dell ordered from VORPC
 
 User reported:

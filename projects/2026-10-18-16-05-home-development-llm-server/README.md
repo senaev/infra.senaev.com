@@ -1,6 +1,6 @@
 # 2026-10-18 — Buy a new home server within €1,000
 
-- [ ] Select and buy a powerful home server with a capable GPU, at least 32 GB RAM and at least 1 TB SSD, for no more than €1,000 total.
+- [x] Select and buy a powerful home server with a capable GPU, at least 32 GB RAM and at least 1 TB SSD, for no more than €1,000 total.
 
 ## Goal
 
@@ -39,12 +39,12 @@ machines are preferred when competitively priced.
 User ordered the refurbished Dell OptiPlex Micro 7010 from VORPC, order **102889**.
 Confirmation screenshot: 32 GB RAM, 1 TB M.2 NVMe, **€599.89 total including VAT**,
 free shipping advertised in 48–72 hours, paid using Google Pay (WooPayments).
-Order received by retailer; dispatch and delivery are not confirmed.
+As confirmed by the user on 2026-11-11, the order is being shipped to their office. Delivery is not yet confirmed.
 Advertised CPU is i5-13500T; verify the actual unit on arrival.
 The Dell supersedes the earlier SER8 preference and other shortlist candidates.
 See [Intel research and retailer checks](research-intel-options.md).
 
-## Plan
+## Post-delivery follow-up (outside the completed purchase project)
 
 1. Await dispatch/delivery; retain invoice and confirm return/testing conditions.
 2. Check actual CPU, unlocked BIOS, RAM layout, SSD health and included power supply.
@@ -68,3 +68,11 @@ See [Intel research and retailer checks](research-intel-options.md).
 Compact and quiet for the living room; SSD storage only; refurbished accepted. See
 [options and delivered-price comparison](research-options.md) and the
 [118-page source register](research-sources.md). Dell ordered; delivery and acceptance tests are pending.
+
+## Result
+
+Completed and closed on 2026-11-11 at the user’s request. Purchased the refurbished
+Dell OptiPlex Micro 7010, 32 GB RAM / 1 TB NVMe, from VORPC for €599.89 including
+VAT and delivery (order 102889). The machine is being shipped to the user’s office.
+The purchase is €400.11 below the €1,000 budget. Hardware inspection, Proxmox setup
+and Jellyfin passthrough testing remain post-delivery work; they are not claimed complete.
