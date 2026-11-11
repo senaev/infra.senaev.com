@@ -12,7 +12,7 @@ import { load, loadAll } from 'js-yaml';
 
 const chart = 'provisioning/helm/senaev-com';
 const defaults = load(readFileSync(`${chart}/values.yaml`, 'utf8'));
-const { senaev } = defaults.codingAgentInstances;
+const { senaev } = defaults.llmWorkspaces;
 
 /** Render real Helm manifests with temporary instance overrides, cleaning up on failure. */
 function render(instances) {
@@ -21,7 +21,7 @@ function render(instances) {
     try {
         const override = join(temp, 'values.json');
 
-        writeFileSync(override, JSON.stringify({ codingAgentInstances: instances }));
+        writeFileSync(override, JSON.stringify({ llmWorkspaces: instances }));
 
         return spawnSync('helm', [
             'template',
@@ -64,29 +64,27 @@ function documents(instances) {
 function family() {
     const instance = structuredClone(senaev);
 
-    instance.owner = {
-        name: 'Family',
-        email: 'family@example.com',
-    };
-    instance.opencode.vps = 'new-vps';
+    instance.vps = 'new-vps';
     instance.opencode.dataPath = '/k3s-cluster/volumes/family-opencode';
     instance.opencode.hostname = 'opencode.example.ru';
     instance.opencode.mcpOAuth.hostname = 'opencode.example.ru';
     instance.ompWeb.hostname = 'omp.example.ru';
     instance.traefik = 'firstvds';
-    for (const key of [
-        'opencodePassword',
-        'ompHtpasswd',
-        'githubToken',
-        'sshPrivateKey',
-        'telegramToken',
-        'telegramAllowedUser',
+    for (const secrets of [
+        instance.git,
+        instance.telegram,
+        instance.opencode.secrets,
+        instance.ompWeb.secrets,
+        instance.codeTools.secrets,
     ]) {
-        instance.secrets[key] = `FAMILY_${key}`;
+        for (const key of Object.keys(secrets)) {
+            secrets[key] = `FAMILY_${key}`;
+        }
     }
 
-    instance.agent = JSON.parse(readFileSync(`${chart}/${instance.agentConfigFile}`, 'utf8'));
-    delete instance.agentConfigFile;
+    instance.git.name = 'Family';
+    instance.git.email = 'family@example.com';
+
     instance.agent.mcp = {};
     instance.agent.connectors.openrouter.secretKey = 'FAMILY_OPENROUTER';
     instance.agent.speechToText.secretKey = 'FAMILY_GROQ';
@@ -239,7 +237,7 @@ test('two instances isolate nodes, routes, selectors, credentials and data witho
     assert.deepEqual(JSON.parse(env.find((item) => item.name === 'OPENCODE_CONFIG_CONTENT').value).mcp.servers, {});
     const bot = pod.containers.find((container) => container.name === 'opencode-telegram-bot');
 
-    assert.equal(bot.env.find((item) => item.name === 'TELEGRAM_BOT_TOKEN').valueFrom.secretKeyRef.key, 'FAMILY_telegramToken');
+    assert.equal(bot.env.find((item) => item.name === 'TELEGRAM_BOT_TOKEN').valueFrom.secretKeyRef.key, 'FAMILY_token');
     for (const name of [
         'family-opencode',
         'family-opencode-mcp-oauth',
@@ -272,7 +270,7 @@ test('OAuth callback and optional Code Tools follow their own instance', () => {
         oauth: {},
     };
     instance.codeTools.enabled = true;
-    instance.secrets.codeToolsToken = 'FAMILY_CODE_TOOLS';
+    instance.codeTools.secrets.codeToolsToken = 'FAMILY_CODE_TOOLS';
     const docs = documents({ family: instance });
     const pod = get(docs, 'Deployment', 'family-opencode-telegram').spec.template.spec;
     const config = JSON.parse(pod.containers[0].env.find((item) => item.name === 'OPENCODE_CONFIG_CONTENT').value);
@@ -332,11 +330,11 @@ test('rejects an instance name that is not a DNS prefix', () => {
 test('rejects incomplete instances rather than inheriting senaev credentials', () => {
     const instance = family();
 
-    delete instance.secrets.telegramToken;
+    delete instance.telegram.token;
     const result = render({ family: instance });
 
     assert.notEqual(result.status, 0);
-    assert.ok(result.stderr.includes('telegramToken'), result.stderr);
+    assert.ok(result.stderr.includes('/llmWorkspaces/family/telegram\': missing property \'token\''), result.stderr);
 });
 
 test('rejects missing instruction files and missing Code Tools authentication', () => {
@@ -346,9 +344,9 @@ test('rejects missing instruction files and missing Code Tools authentication', 
     assert.notEqual(render({ family: instance }).status, 0);
     instance.instructionsPath = senaev.instructionsPath;
     instance.codeTools.enabled = true;
-    delete instance.secrets.codeToolsToken;
+    delete instance.codeTools.secrets.codeToolsToken;
     const result = render({ family: instance });
 
     assert.notEqual(result.status, 0);
-    assert.ok(result.stderr.includes('Code Tools requires secrets.codeToolsToken'), result.stderr);
+    assert.ok(result.stderr.includes('Code Tools requires codeTools.secrets.codeToolsToken'), result.stderr);
 });

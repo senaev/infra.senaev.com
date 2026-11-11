@@ -1,4 +1,4 @@
-{{- define "senaev-com.codingAgent.opencode" -}}
+{{- define "senaev-com.llmWorkspace.opencode" -}}
 {{- $agent := .Values.agent }}
 {{- if .Values.opencode.enabled }}
 {{- $oauth := .Values.opencode.mcpOAuth }}
@@ -41,7 +41,7 @@ spec:
         configmap.reloader.stakater.com/reload: {{ list (printf "%s-opencode-telegram-config" .Values.name) | join "," | quote }}
     spec:
       nodeSelector:
-        vps: {{ .Values.opencode.vps }}
+        vps: {{ .Values.vps }}
       initContainers:
         - name: git-init
           image: alpine/git:latest
@@ -57,9 +57,9 @@ spec:
               mkdir -p /projects/git
           env:
             - name: GIT_AUTHOR_NAME
-              value: {{ .Values.owner.name | quote }}
+              value: {{ .Values.git.name | quote }}
             - name: GIT_AUTHOR_EMAIL
-              value: {{ .Values.owner.email | quote }}
+              value: {{ .Values.git.email | quote }}
           volumeMounts:
             - name: ssh-key
               mountPath: /tmp/ssh
@@ -76,7 +76,7 @@ spec:
           ports:
             - name: opencode
               containerPort: 4096
-          # The agent runs heavy commands here too; see the same limit in code-tools.yaml.
+          # The agent runs heavy commands here too; see the same limit in _code-tools.tpl.
           resources:
             requests:
               memory: 512Mi
@@ -106,18 +106,18 @@ spec:
                   name: {{ printf "%s-opencode-auth" .Values.name }}
                   key: password
             - name: GIT_AUTHOR_NAME
-              value: {{ .Values.owner.name | quote }}
+              value: {{ .Values.git.name | quote }}
             - name: GIT_AUTHOR_EMAIL
-              value: {{ .Values.owner.email | quote }}
+              value: {{ .Values.git.email | quote }}
             - name: GIT_COMMITTER_NAME
-              value: {{ .Values.owner.name | quote }}
+              value: {{ .Values.git.name | quote }}
             - name: GIT_COMMITTER_EMAIL
-              value: {{ .Values.owner.email | quote }}
+              value: {{ .Values.git.email | quote }}
             - name: GH_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: {{ .Values.secrets.githubToken }}
+                  key: {{ .Values.git.githubToken }}
                   optional: false
             - name: OPENCODE_WORKDIR
               value: /projects/git
@@ -219,13 +219,13 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: {{ .Values.secrets.telegramToken }}
+                  key: {{ .Values.telegram.token }}
                   optional: false
             - name: TELEGRAM_ALLOWED_USER_ID
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: {{ .Values.secrets.telegramAllowedUser }}
+                  key: {{ .Values.telegram.allowedUser }}
                   optional: false
             - name: OPENCODE_API_URL
               value: "http://localhost:4096"
@@ -260,7 +260,7 @@ spec:
           secret:
             secretName: senaev-com-kv-secrets
             items:
-              - key: {{ .Values.secrets.sshPrivateKey }}
+              - key: {{ .Values.git.sshPrivateKey }}
                 path: id_rsa
                 mode: 0600
         - name: ssh-dir
@@ -345,7 +345,7 @@ spec:
     - secretKey: password
       remoteRef:
         key: senaev-com-kv
-        property: {{ .Values.secrets.opencodePassword }}
+        property: {{ .Values.opencode.secrets.opencodePassword }}
 ---
 apiVersion: v1
 kind: ConfigMap

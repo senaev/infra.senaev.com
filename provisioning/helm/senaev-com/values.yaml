@@ -197,25 +197,37 @@ n8n:
 
 # Each entry owns its resources, data, credentials and ingress independently.
 # The entry name is the prefix of its resource names: renaming an entry replaces its PVCs.
-codingAgentInstances:
+llmWorkspaces:
   senaev:
-    owner:
+    vps: hetzner
+    traefik: hetzner
+    instructionsPath: config/senaev-llm-instructions-path
+    agent:
+      mcp:
+        datadog:
+          url: https://mcp.datadoghq.eu/v1/mcp?toolsets=core,software-delivery
+          oauth: {}
+      defaultModel:
+        provider: openrouter
+        id: anthropic/claude-haiku-4.5
+      connectors:
+        openrouter:
+          baseUrl: https://openrouter.ai/api/v1
+          apiKeyEnv: OPENROUTER_API_KEY
+      speechToText:
+        baseUrl: https://api.groq.com/openai/v1
+        model: whisper-large-v3-turbo
+        apiKeyEnv: GROQ_API_KEY
+    git:
       name: Andrei Senaev
       email: andrei.senaev@gmail.com
-    agentConfigFile: config/senaev-coding-agents.json
-    instructionsPath: config/senaev-llm-instructions-path
-    secrets:
-      opencodePassword: OPENCODE_PASSWORD
-      ompHtpasswd: OMP_WEB_HTPASSWD_HASH_WITH_USERNAME
       githubToken: GH_TOKEN
       sshPrivateKey: TELEGRAM_OPENCODE_SSH_PRIVATE_KEY
-      telegramToken: TG_TOKEN_OPENCODE_SENAEV_BOT
-      telegramAllowedUser: TG_SENAEV_USER_ID
-      codeToolsToken: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
-    traefik: hetzner
+    telegram:
+      token: TG_TOKEN_OPENCODE_SENAEV_BOT
+      allowedUser: TG_SENAEV_USER_ID
     opencode:
       enabled: true
-      vps: hetzner
       hostname: opencode.senaev.com
       dataPath: /k3s-cluster/volumes/opencode-data
       projectsStorageSize: 16Gi
@@ -223,12 +235,18 @@ codingAgentInstances:
         hostname: opencode.senaev.com
         # All remote MCPs share one callback; authorize one server at a time.
         callbackPort: 4100
+      secrets:
+        opencodePassword: OPENCODE_PASSWORD
     ompWeb:
       enabled: true
       hostname: omp.senaev.com
       storageSize: 8Gi
+      secrets:
+        ompHtpasswd: OMP_WEB_HTPASSWD_HASH_WITH_USERNAME
     codeTools:
       enabled: true
+      secrets:
+        codeToolsToken: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
 
 # Grafana MCP server, reachable only through cluster-helper at https://<clusterHelper.mcpDomain>/grafana.
 mcpGrafana:

@@ -1,4 +1,0 @@
-{{- range $name, $instance := .Values.codingAgentInstances }}
----
-{{ include "senaev-com.codingAgentComponent" (dict "root" $ "name" $name "instance" $instance "component" "opencode") }}
-{{- end }}

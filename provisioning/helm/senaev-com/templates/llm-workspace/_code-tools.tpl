@@ -1,4 +1,4 @@
-{{- define "senaev-com.codingAgent.codeTools" -}}
+{{- define "senaev-com.llmWorkspace.codeTools" -}}
 {{- if and .Values.opencode.enabled .Values.codeTools.enabled }}
 apiVersion: apps/v1
 kind: Deployment
@@ -27,7 +27,7 @@ spec:
     spec:
       # ReadWriteOnce permits both pods to mount the existing disk on the same node.
       nodeSelector:
-        vps: {{ .Values.opencode.vps }}
+        vps: {{ .Values.vps }}
       affinity:
         podAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -75,20 +75,20 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: {{ required "Code Tools requires secrets.codeToolsToken" .Values.secrets.codeToolsToken }}
+                  key: {{ required "Code Tools requires codeTools.secrets.codeToolsToken" .Values.codeTools.secrets.codeToolsToken }}
             - name: GIT_AUTHOR_NAME
-              value: {{ .Values.owner.name | quote }}
+              value: {{ .Values.git.name | quote }}
             - name: GIT_AUTHOR_EMAIL
-              value: {{ .Values.owner.email | quote }}
+              value: {{ .Values.git.email | quote }}
             - name: GIT_COMMITTER_NAME
-              value: {{ .Values.owner.name | quote }}
+              value: {{ .Values.git.name | quote }}
             - name: GIT_COMMITTER_EMAIL
-              value: {{ .Values.owner.email | quote }}
+              value: {{ .Values.git.email | quote }}
             - name: GH_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: {{ .Values.secrets.githubToken }}
+                  key: {{ .Values.git.githubToken }}
           startupProbe:
             httpGet:
               path: /health
@@ -114,7 +114,7 @@ spec:
           secret:
             secretName: senaev-com-kv-secrets
             items:
-              - key: {{ .Values.secrets.sshPrivateKey }}
+              - key: {{ .Values.git.sshPrivateKey }}
                 path: id_rsa
                 mode: 0600
         - name: ssh-dir

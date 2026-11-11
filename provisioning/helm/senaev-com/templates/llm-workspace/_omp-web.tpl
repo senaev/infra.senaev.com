@@ -1,4 +1,4 @@
-{{- define "senaev-com.codingAgent.ompWeb" -}}
+{{- define "senaev-com.llmWorkspace.ompWeb" -}}
 {{- $agent := .Values.agent }}
 {{- if .Values.ompWeb.enabled }}
 {{- if not .Values.opencode.enabled }}
@@ -48,7 +48,7 @@ spec:
     - secretKey: users
       remoteRef:
         key: senaev-com-kv
-        property: {{ .Values.secrets.ompHtpasswd }}
+        property: {{ .Values.ompWeb.secrets.ompHtpasswd }}
 ---
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
@@ -81,14 +81,14 @@ spec:
         tags.datadoghq.com/env: prod
         tags.datadoghq.com/version: latest
       annotations:
-        checksum/config: {{ printf "%s\n%s" (.Files.Get "config/omp-web/nginx.conf") (.Values.agentConfigContent) | sha256sum }}
+        checksum/config: {{ printf "%s\n%s" (.Files.Get "config/omp-web/nginx.conf") (.Values.agent | toJson) | sha256sum }}
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
         configmap.reloader.stakater.com/reload: {{ list (printf "%s-omp-web" .Values.name) (printf "%s-opencode-telegram-config" .Values.name) | join "," | quote }}
     spec:
       automountServiceAccountToken: false
       terminationGracePeriodSeconds: 30
       nodeSelector:
-        vps: {{ .Values.opencode.vps }}
+        vps: {{ .Values.vps }}
       affinity:
         podAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -122,18 +122,18 @@ spec:
             - name: OMP_DEFAULT_MODEL
               value: {{ printf "%s/%s" $agent.defaultModel.provider $agent.defaultModel.id | quote }}
             - name: GIT_AUTHOR_NAME
-              value: {{ .Values.owner.name | quote }}
+              value: {{ .Values.git.name | quote }}
             - name: GIT_AUTHOR_EMAIL
-              value: {{ .Values.owner.email | quote }}
+              value: {{ .Values.git.email | quote }}
             - name: GIT_COMMITTER_NAME
-              value: {{ .Values.owner.name | quote }}
+              value: {{ .Values.git.name | quote }}
             - name: GIT_COMMITTER_EMAIL
-              value: {{ .Values.owner.email | quote }}
+              value: {{ .Values.git.email | quote }}
             - name: GH_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: {{ .Values.secrets.githubToken }}
+                  key: {{ .Values.git.githubToken }}
 {{- range $connector := $agent.connectors }}
             - name: {{ $connector.apiKeyEnv | quote }}
               valueFrom:
@@ -218,7 +218,7 @@ spec:
             secretName: senaev-com-kv-secrets
             defaultMode: 0600
             items:
-              - key: {{ .Values.secrets.sshPrivateKey }}
+              - key: {{ .Values.git.sshPrivateKey }}
                 path: id_rsa
         - name: defaults
           configMap:
