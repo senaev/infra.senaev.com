@@ -93,7 +93,7 @@ firstvds reaches nextjs-app. When you change the list, change the script and thi
 | URL | Path | Expected result |
 |---|---|---|
 | https://s.senaev.com/1bxsl9 | short link: cluster-helper → obsidian-sync | redirect to https://senaev.com/cv/5min |
-| https://static.senaev.com/datadog-dc-by-org-id.html | static file: cluster-helper → obsidian-sync | the HTML page |
+| https://static.senaev.com/hello-world/ | static file: cluster-helper → obsidian-sync | the `hello-world/index.html` page |
 | https://senaev.com/notes/my_blog_post_senaev_speaks_12 | public note: nextjs-app → obsidian-sync | the rendered note |
 | https://senaev.com/ | main page: hetzner Traefik (xray fallback) → nextjs-app | the main page |
 | https://senaev.ru/ | main page: firstvds Traefik (xray fallback) → nextjs-app | the main page |
