@@ -298,6 +298,7 @@ image refreshes run after Helm in the same coordinated job.
 
 Coding-agent deployment values live in `codingAgentInstances.senaev`.
 OpenCode, OMP and optional Code Tools render per-instance resources, and the entry
-name prefixes all their names; see `provisioning/helm/senaev-com/CODING_AGENTS.md`
-for the configuration contract. Do not rename the `senaev` entry: that replaces its
-PVCs, and cluster-helper calls `senaev-code-tools`. Preserve its host data directory.
+name prefixes all their names. A new entry inherits nothing from `senaev`; the schema
+is `provisioning/helm/senaev-com/values.schema.json`. Do not rename the `senaev` entry:
+that replaces its PVCs, and cluster-helper calls `senaev-code-tools`. Preserve its
+host data directory.
