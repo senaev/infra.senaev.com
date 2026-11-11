@@ -7,7 +7,7 @@ existing coding utilities. OMP's release binary is verified against its SHA-256.
 ## Deployment
 
 The existing senaev-com Helm chart owns the Deployment, Service, state PVC,
-NetworkPolicy, ingress and Traefik Basic Auth middleware. The current personal instance is enabled. For a new instance, prepare these prerequisites:
+NetworkPolicy, ingress and Traefik Basic Auth middleware. The current `senaev` instance is enabled. For a new instance, prepare these prerequisites:
 
 1. Build/publish the image through the `Deploy` workflow. The image is published
    to `ghcr.io/senaev/omp-web:latest`.
@@ -15,14 +15,14 @@ NetworkPolicy, ingress and Traefik Basic Auth middleware. The current personal i
    `ingress` settings.
 3. Add the instance's `secrets.ompHtpasswd` property to its `secrets.vaultPath`
    in the Vault selected by `secrets.storeName` and `secrets.storeKind`.
-   Personal-instance example: `OMP_WEB_HTPASSWD_HASH_WITH_USERNAME` in `senaev-com-kv`.
+   `senaev` instance example: `OMP_WEB_HTPASSWD_HASH_WITH_USERNAME` in `senaev-com-kv`.
    Its value is an htpasswd entry (`username:bcrypt-hash`), generated interactively
    with `htpasswd -nB <username>`. Do not commit it or use a plaintext password.
 4. Set `codingAgentInstances.<instance>.ompWeb.enabled: true` in the chart values
    through a reviewed PR. Configure that instance's own domains and secrets; do
-   not edit `personal` when adding another instance.
+   not edit `senaev` when adding another instance.
    Normal Helm CI deploys it; no cluster changes are part of this implementation.
-5. Open `https://<ompWeb.hostname>` for the target instance (personal example:
+5. Open `https://<ompWeb.hostname>` for the target instance (`senaev` example:
    `https://omp.senaev.com`), select a directory under `/projects/git`,
    and create a session. Select the full tool preset when you need subagents.
 
@@ -99,7 +99,7 @@ Before activation, require a green image build and chart checks. After deploymen
 - Inspect available Datadog/Grafana readiness, restarts, memory and error logs.
   Confirm OpenCode and Telegram still work.
 
-Disable `codingAgentInstances.personal.ompWeb.enabled` to remove its running resources. The state PVC has
+Disable `codingAgentInstances.senaev.ompWeb.enabled` to remove its running resources. The state PVC has
 Helm's `keep` policy and remains for reactivation; deletion is a separate manual
 action. Back up the volume independently. For a version rollback, retain the
 state PVC and restore the previous image build; back up first because upstream state migrations may not be reversible.

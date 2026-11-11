@@ -277,6 +277,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: {{ printf "%sopencode-telegram-git" .Values.resourcePrefix }}
   namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/resource-policy: keep
 spec:
   accessModes:
     - ReadWriteOnce
@@ -400,7 +402,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ .Values.opencode.ingressName }}
+  name: {{ printf "%sopencode" .Values.resourcePrefix }}
   namespace: {{ .Release.Namespace }}
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: {{ .Values.ingress.entrypoints }}

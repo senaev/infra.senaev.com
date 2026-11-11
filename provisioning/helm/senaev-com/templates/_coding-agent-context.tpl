@@ -1,17 +1,12 @@
 {{/* Each component gets only its instance values: no credential/data fallback. */}}
 {{- define "senaev-com.codingAgentComponent" -}}
-{{- $seenPrefixes := dict -}}
 {{- $seenPaths := dict -}}
 {{- $seenHosts := dict -}}
-{{- $seenIngresses := dict -}}
 {{- range $name, $instance := .root.Values.codingAgentInstances -}}
   {{- if or $instance.opencode.enabled $instance.ompWeb.enabled $instance.codeTools.enabled -}}
-    {{- $prefix := $instance.resourcePrefix -}}
-    {{- if not (or (eq $prefix "") (regexMatch "^[a-z][a-z0-9-]{0,29}-$" $prefix)) -}}
-      {{- fail (printf "codingAgentInstances.%s.resourcePrefix must be empty or a DNS prefix ending in '-' (max 31 characters)" $name) -}}
+    {{- if not (regexMatch "^[a-z][a-z0-9-]{0,29}$" $name) -}}
+      {{- fail (printf "codingAgentInstances.%s: the name is the resource prefix, so it must be lowercase DNS characters, start with a letter and have at most 30 characters" $name) -}}
     {{- end -}}
-    {{- if hasKey $seenPrefixes $prefix -}}{{ fail "codingAgentInstances must have distinct resourcePrefix values" }}{{- end -}}
-    {{- $_ := set $seenPrefixes $prefix true -}}
     {{- if not $instance.opencode.enabled -}}{{ fail "OMP and Code Tools require their instance's OpenCode" }}{{- end -}}
     {{- $path := required "Each instance requires opencode.dataPath" $instance.opencode.dataPath -}}
     {{- if not (hasPrefix "/" $path) -}}{{ fail "opencode.dataPath must be absolute" }}{{- end -}}
@@ -23,9 +18,6 @@
       {{- end -}}
     {{- end -}}
     {{- $_ := set $seenPaths $path true -}}
-    {{- $ingress := required "Each instance requires opencode.ingressName" $instance.opencode.ingressName -}}
-    {{- if hasKey $seenIngresses $ingress -}}{{ fail "codingAgentInstances must have distinct opencode.ingressName values" }}{{- end -}}
-    {{- $_ := set $seenIngresses $ingress true -}}
     {{- $hosts := list (required "Each instance requires opencode.hostname" $instance.opencode.hostname) -}}
     {{- if $instance.ompWeb.enabled -}}{{ $hosts = append $hosts (required "OMP requires ompWeb.hostname" $instance.ompWeb.hostname) }}{{- end -}}
     {{- $callbackHost := $instance.opencode.mcpOAuth.hostname -}}
@@ -37,6 +29,7 @@
   {{- end -}}
 {{- end -}}
 {{- $values := deepCopy .instance -}}
+{{- $_ := set $values "resourcePrefix" (printf "%s-" .name) -}}
 {{- $agent := $values.agent -}}
 {{- $agentContent := $agent | toJson -}}
 {{- if not $agent -}}

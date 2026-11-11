@@ -7,10 +7,12 @@
   "properties": {
     "codingAgentInstances": {
       "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9-]{0,29}$"
+      },
       "additionalProperties": {
         "type": "object",
         "required": [
-          "resourcePrefix",
           "owner",
           "instructionsPath",
           "secrets",
@@ -20,10 +22,6 @@
           "codeTools"
         ],
         "properties": {
-          "resourcePrefix": {
-            "type": "string",
-            "pattern": "^$|^[a-z][a-z0-9-]{0,29}-$"
-          },
           "owner": {
             "type": "object",
             "required": [
@@ -204,7 +202,6 @@
               "enabled",
               "vps",
               "hostname",
-              "ingressName",
               "dataPath",
               "projectsStorageSize",
               "mcpOAuth"
@@ -218,10 +215,6 @@
                 "minLength": 1
               },
               "hostname": {
-                "type": "string",
-                "minLength": 1
-              },
-              "ingressName": {
                 "type": "string",
                 "minLength": 1
               },

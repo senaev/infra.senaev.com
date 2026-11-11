@@ -12,7 +12,7 @@ import { load, loadAll } from 'js-yaml';
 
 const chart = 'provisioning/helm/senaev-com';
 const defaults = load(readFileSync(`${chart}/values.yaml`, 'utf8'));
-const { personal } = defaults.codingAgentInstances;
+const { senaev } = defaults.codingAgentInstances;
 
 /** Render real Helm manifests with temporary instance overrides, cleaning up on failure. */
 function render(instances) {
@@ -60,11 +60,10 @@ function documents(instances) {
     return docs;
 }
 
-/** Build an isolated second-instance fixture without personal MCPs or credential references. */
+/** Build an isolated second-instance fixture without senaev MCPs or credential references. */
 function family() {
-    const instance = structuredClone(personal);
+    const instance = structuredClone(senaev);
 
-    instance.resourcePrefix = 'family-';
     instance.owner = {
         name: 'Family',
         email: 'family@example.com',
@@ -72,7 +71,6 @@ function family() {
     instance.opencode.vps = 'new-vps';
     instance.opencode.dataPath = '/k3s-cluster/volumes/family-opencode';
     instance.opencode.hostname = 'opencode.example.ru';
-    instance.opencode.ingressName = 'family-opencode';
     instance.opencode.mcpOAuth.hostname = 'opencode.example.ru';
     instance.ompWeb.hostname = 'omp.example.ru';
     instance.ingress.className = 'traefik-ru';
@@ -160,7 +158,7 @@ function checkReferences(docs, prefix) {
     for (const ingress of docs.filter((doc) => doc.kind === 'Ingress' && [
         `${prefix}opencode-mcp-oauth`,
         `${prefix}omp-web`,
-        prefix ? `${prefix}opencode` : 'senaev-com-opencode',
+        `${prefix}opencode`,
     ].includes(doc.metadata.name))) {
         for (const rule of ingress.spec.rules) {
             for (const path of rule.http.paths) {
@@ -174,17 +172,37 @@ function checkReferences(docs, prefix) {
     get(docs, 'ExternalSecret', middleware.spec.basicAuth.secret);
 }
 
-test('existing instance preserves names, node, PVC identities and state directory', () => {
+test('the instance name prefixes resources and keeps node, PVCs and state directory', () => {
     const docs = documents({});
-    const pod = get(docs, 'Deployment', 'opencode-telegram').spec.template.spec;
+    const pod = get(docs, 'Deployment', 'senaev-opencode-telegram').spec.template.spec;
 
     assert.deepEqual(pod.nodeSelector, { vps: 'hetzner' });
     assert.equal(pod.volumes.find((volume) => volume.name === 'opencode-data').hostPath.path, '/k3s-cluster/volumes/opencode-data');
-    assert.equal(get(docs, 'PersistentVolumeClaim', 'opencode-telegram-git').spec.resources.requests.storage, '16Gi');
-    assert.equal(get(docs, 'PersistentVolumeClaim', 'omp-web-state').spec.resources.requests.storage, '8Gi');
-    get(docs, 'Deployment', 'code-tools');
-    get(docs, 'Ingress', 'senaev-com-opencode');
-    checkReferences(docs, '');
+    for (const [
+        name,
+        size,
+    ] of [
+            [
+                'senaev-opencode-telegram-git',
+                '16Gi',
+            ],
+            [
+                'senaev-omp-web-state',
+                '8Gi',
+            ],
+        ]) {
+        const claim = get(docs, 'PersistentVolumeClaim', name);
+
+        assert.equal(claim.spec.resources.requests.storage, size);
+        assert.equal(claim.metadata.annotations['helm.sh/resource-policy'], 'keep');
+    }
+
+    get(docs, 'Deployment', 'senaev-code-tools');
+    get(docs, 'Ingress', 'senaev-opencode');
+    const clusterHelper = get(docs, 'Deployment', 'cluster-helper').spec.template.spec.containers[0];
+
+    assert.equal(clusterHelper.env.find((item) => item.name === 'CODE_TOOLS_URL').value, 'http://senaev-code-tools:8080');
+    checkReferences(docs, 'senaev-');
 });
 
 test('two instances isolate nodes, routes, selectors, credentials and data without Code Tools for family', () => {
@@ -246,7 +264,7 @@ test('two instances isolate nodes, routes, selectors, credentials and data witho
 
     assert.equal(affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].labelSelector.matchLabels.app, 'family-opencode-telegram');
     assert.equal(get(docs, 'ExternalSecret', 'family-opencode-auth').spec.data[0].remoteRef.key, 'family-kv');
-    assert.equal(get(docs, 'Deployment', 'opencode-telegram').spec.template.spec.nodeSelector.vps, 'hetzner');
+    assert.equal(get(docs, 'Deployment', 'senaev-opencode-telegram').spec.template.spec.nodeSelector.vps, 'hetzner');
 });
 
 test('OAuth callback and optional Code Tools follow their own instance', () => {
@@ -275,39 +293,25 @@ for (const [
     expected,
 ] of [
         [
-            'duplicate prefix',
-            (instance) => {
-                instance.resourcePrefix = '';
-            },
-            'distinct resourcePrefix',
-        ],
-        [
             'shared state directory',
             (instance) => {
-                instance.opencode.dataPath = personal.opencode.dataPath;
+                instance.opencode.dataPath = senaev.opencode.dataPath;
             },
             'non-overlapping',
         ],
         [
             'nested state directory',
             (instance) => {
-                instance.opencode.dataPath = `${personal.opencode.dataPath}/child`;
+                instance.opencode.dataPath = `${senaev.opencode.dataPath}/child`;
             },
             'non-overlapping',
         ],
         [
             'shared web hostname',
             (instance) => {
-                instance.ompWeb.hostname = personal.ompWeb.hostname;
+                instance.ompWeb.hostname = senaev.ompWeb.hostname;
             },
             'distinct web hostnames',
-        ],
-        [
-            'shared ingress name',
-            (instance) => {
-                instance.opencode.ingressName = personal.opencode.ingressName;
-            },
-            'distinct opencode.ingressName',
         ],
     ]) {
     test(`rejects ${name}`, () => {
@@ -321,7 +325,14 @@ for (const [
     });
 }
 
-test('rejects incomplete instances rather than inheriting personal credentials', () => {
+test('rejects an instance name that is not a DNS prefix', () => {
+    const result = render({ Family_1: family() });
+
+    assert.notEqual(result.status, 0);
+    assert.ok(result.stderr.includes('Family_1'), result.stderr);
+});
+
+test('rejects incomplete instances rather than inheriting senaev credentials', () => {
     const instance = family();
 
     delete instance.secrets.telegramToken;
@@ -336,7 +347,7 @@ test('rejects missing instruction files and missing Code Tools authentication', 
 
     instance.instructionsPath = 'config/missing-family-rules';
     assert.notEqual(render({ family: instance }).status, 0);
-    instance.instructionsPath = personal.instructionsPath;
+    instance.instructionsPath = senaev.instructionsPath;
     instance.codeTools.enabled = true;
     delete instance.secrets.codeToolsToken;
     const result = render({ family: instance });

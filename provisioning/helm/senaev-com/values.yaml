@@ -196,10 +196,9 @@ n8n:
   containerDataPath: /home/node/.n8n
 
 # Each entry owns its resources, data, credentials and ingress independently.
-# Keep the empty prefix and existing paths for this installation's Helm/PVC identity.
+# The entry name is the prefix of its resource names: renaming an entry replaces its PVCs.
 codingAgentInstances:
-  personal:
-    resourcePrefix: ""
+  senaev:
     owner:
       name: Andrei Senaev
       email: andrei.senaev@gmail.com
@@ -227,7 +226,6 @@ codingAgentInstances:
       enabled: true
       vps: hetzner
       hostname: opencode.senaev.com
-      ingressName: senaev-com-opencode
       dataPath: /k3s-cluster/volumes/opencode-data
       projectsStorageSize: 16Gi
       mcpOAuth:
