@@ -4,8 +4,8 @@ variable "HETZNER_TOKEN" {
   sensitive   = true
 }
 
-variable "TAILSCALE_API_KEY" {
-  description = "Tailscale API key (Personal Settings → Keys, expires in 90 days)"
+variable "TAILSCALE_AUTH_KEY" {
+  description = "One-time Tailscale auth key for the control plane to join the tailnet, created by hand"
   type        = string
   sensitive   = true
 }

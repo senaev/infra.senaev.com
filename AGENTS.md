@@ -38,6 +38,14 @@ Be extremely careful with these nodes and their networks:
   logged hetzner out and made all workers `NotReady`. `bootstrap-node-networking.sh` fails
   when a node key can expire. A new node needs key expiry disabled right after it joins. See
   [`projects/2026-10-18-16-05-home-development-llm-server`](projects/2026-10-18-16-05-home-development-llm-server/README.md).
+- Tailscale auto-updates must stay off. An auto-update restarts `tailscaled`, which removes
+  `tailscale0` and stops k3s; on 2026-11-10 this left the control plane down for 15 hours. The
+  tailnet setting is manual (admin console, Settings → Device management → Auto-update Tailscale:
+  off). Each node also turns off its own auto-update in `bootstrap-server.sh.tpl` and
+  `bootstrap-node-networking.sh`, which also verifies it.
+- Terraform does not use the Tailscale API. To create the control plane, generate a one-time
+  auth key by hand (admin console, Settings → Keys) and put it in `terraform.tfvars` as
+  `TAILSCALE_AUTH_KEY`.
 - Prefer a change that fails safe: verify the result, keep the old state restorable, and
   give the user a rollback command before running anything risky.
 - Ask the user before any such change, even when the rest of the task is already approved.
