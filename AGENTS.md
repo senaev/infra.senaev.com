@@ -280,9 +280,9 @@ Credentials (`SUPABASE_PROJECT_URL`, `SUPABASE_PUBLISHABLE_KEY`) are stored in V
 Code Tools has its own image (`code-tools/Dockerfile`,
 `ghcr.io/senaev/code-tools`), Deployment and Service
 (`provisioning/helm/senaev-com/templates/llm-workspace/_code-tools.tpl`). OpenCode and its Telegram
-bot stay in the `senaev-opencode-telegram` Deployment. Both pods mount the
-`senaev-opencode-telegram-git` PVC at `/projects/git`; required pod affinity puts Code Tools
-on OpenCode's node. Both use one replica and `Recreate`; a Code Tools update still
+bot stay in the `senaev-opencode-telegram` Deployment. Both pods, and OMP, mount the
+workspace's `senaev-projects` PVC at `/projects`; the workspace `vps` node selector puts
+them on one node. Both use one replica and `Recreate`; a Code Tools update still
 has a short outage and loses in-memory operation IDs.
 
 OpenCode 2 serves its built-in web UI at `https://opencode.senaev.com` through the
@@ -301,10 +301,31 @@ image build and `latest` image. OpenCode and its Telegram bot deploy together af
 all affected images are published. Helm handles both first installation and updates;
 image refreshes run after Helm in the same coordinated job.
 
-LLM workspace values live in `llmWorkspaces.senaev`, and the templates in
-`provisioning/helm/senaev-com/templates/llm-workspace/`.
-OpenCode, OMP and optional Code Tools render per-workspace resources, and the entry
-name prefixes all their names. A new entry inherits nothing from `senaev`; the schema
-is `provisioning/helm/senaev-com/values.schema.json`. Do not rename the `senaev` entry:
-that replaces its PVCs, and cluster-helper calls `senaev-code-tools`. Preserve its
-host data directory.
+LLM workspace values live in `llmWorkspaces`, and the templates in
+`provisioning/helm/senaev-com/templates/llm-workspace/`. The entry name prefixes all
+resource names. Each workspace has its own projects PVC (`<name>-projects`) and
+instructions ConfigMap (`<name>-instructions`, from `instructionsPath`), and enables any of
+OpenCode, OMP and Code Tools. OpenCode requires `git` and `telegram`; Code Tools requires
+OpenCode. A new entry inherits nothing from another; the schema is
+`provisioning/helm/senaev-com/values.schema.json`.
+
+OMP runs every command without approval, so it is isolated. It reads its keys only from its
+own `<name>-omp-web-env` secret, not from `senaev-com-kv-secrets`, because a node can read
+every secret that its pods use. Its NetworkPolicy allows egress only to DNS and the public
+internet: no pods, Services, nodes, tailnet or private networks.
+
+| Workspace | Node | Components | Ingress |
+|---|---|---|---|
+| `senaev` | hetzner | OpenCode, OMP (`omp.senaev.com`), Code Tools | traefik-hetzner |
+| `galkin` | galkin | OMP only (`omp.galkin.senaev.com`) | traefik-hetzner (DNS points to hetzner) |
+
+Do not rename the `senaev` entry: that replaces its PVCs, and cluster-helper calls
+`senaev-code-tools`. Preserve its host data directory.
+
+## Datadog APM whitelist
+
+The Datadog node agent runs only on the nodes in the `agents` node affinity of
+`provisioning/helm/datadog/values.yaml`. APM injection uses the same node list as a whitelist
+in `apm.instrumentation.targets`. The admission webhook runs before scheduling and selects
+pods only by labels, so a pod with `admission.datadoghq.com/enabled: "true"` must also have a
+`vps` label equal to its `nodeSelector.vps`. To enable APM on a node, add it to both lists.

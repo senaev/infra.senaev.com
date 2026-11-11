@@ -18,3 +18,7 @@ VPS_MEDIA_LABEL    = "senaev-media"
 VPS_FIRSTVDS_HOST     = "22.22.222.22"
 VPS_FIRSTVDS_USERNAME = "root"
 VPS_FIRSTVDS_LABEL    = "firstvds"
+
+VPS_GALKIN_HOST     = "33.33.33.33"
+VPS_GALKIN_USERNAME = "root"
+VPS_GALKIN_LABEL    = "galkin"

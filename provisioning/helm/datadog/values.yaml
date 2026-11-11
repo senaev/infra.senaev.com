@@ -60,11 +60,22 @@ datadog:
         # `enabledNamespaces: [senaev-com]` setting silently instrumented the
         # xray-vpn Go binary, pulling ~900Mi of unused init-container images
         # on every pod restart. See projects/2026-07-27-firstvds-disk-space-low/README.md.
+        #
+        # Whitelist of nodes: the admission webhook runs before scheduling and
+        # selects only by pod labels, so instrumented pods also carry their
+        # `vps` label. Keep this list equal to the `agents` node affinity below:
+        # a tracer on a node without a node Agent has nowhere to send traces.
         targets:
           - name: apm-instrumented
             podSelector:
               matchLabels:
                 admission.datadoghq.com/enabled: "true"
+              matchExpressions:
+                - key: vps
+                  operator: In
+                  values:
+                    - senaev-media
+                    - hetzner
 
     dogstatsd:
       useHostPort: true
@@ -93,7 +104,8 @@ datadog:
         value: '{"https://orchestrator.datad0g.com": ["$(DD_API_KEY_STAGING)"]}'
 
   # Node Agent DaemonSet: restricted to the media node and the control plane via
-  # node affinity on the `vps` label. No taints exist today, but tolerate
+  # node affinity on the `vps` label. Keep the list equal to the APM `targets`
+  # whitelist above. No taints exist today, but tolerate
   # everything defensively so future taints don't silently drop these nodes.
   agents:
     enabled: true

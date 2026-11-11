@@ -1,6 +1,6 @@
 import { requireEnv } from 'senaev-utils/src/utils/env/requireEnv/requireEnv';
 
-/** The folder with one cloned repository per project, `/projects/git` in the container. */
+/** The folder with one cloned repository per project, `/projects` in the container. */
 export const CODE_TOOLS_PROJECTS_PATH = requireEnv('CODE_TOOLS_PROJECTS_PATH');
 
 /** cluster-helper sends it on every call; every route requires it. */

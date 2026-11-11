@@ -60,3 +60,18 @@ variable "VPS_FIRSTVDS_LABEL" {
   description = "FIRSTVDS worker VPS label"
   type        = string
 }
+
+variable "VPS_GALKIN_HOST" {
+  description = "Galkin worker host"
+  type        = string
+}
+
+variable "VPS_GALKIN_USERNAME" {
+  description = "Galkin worker SSH username"
+  type        = string
+}
+
+variable "VPS_GALKIN_LABEL" {
+  description = "Galkin worker VPS label"
+  type        = string
+}
