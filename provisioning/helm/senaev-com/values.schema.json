@@ -106,10 +106,6 @@
           "secrets": {
             "type": "object",
             "required": [
-              "name",
-              "storeName",
-              "storeKind",
-              "vaultPath",
               "opencodePassword",
               "ompHtpasswd",
               "githubToken",
@@ -118,22 +114,6 @@
               "telegramAllowedUser"
             ],
             "properties": {
-              "name": {
-                "type": "string",
-                "minLength": 1
-              },
-              "storeName": {
-                "type": "string",
-                "minLength": 1
-              },
-              "storeKind": {
-                "type": "string",
-                "minLength": 1
-              },
-              "vaultPath": {
-                "type": "string",
-                "minLength": 1
-              },
               "opencodePassword": {
                 "type": "string",
                 "minLength": 1

@@ -5,7 +5,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ printf "%sopencode-telegram-config" .Values.resourcePrefix }}
+  name: {{ printf "%s-opencode-telegram-config" .Values.name }}
   namespace: {{ .Release.Namespace }}
 data:
   AGENTS.md: |
@@ -16,29 +16,29 @@ data:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ printf "%sopencode-telegram" .Values.resourcePrefix }}
+  name: {{ printf "%s-opencode-telegram" .Values.name }}
   namespace: {{ .Release.Namespace }}
   labels:
-    app: {{ printf "%sopencode-telegram" .Values.resourcePrefix }}
+    app: {{ printf "%s-opencode-telegram" .Values.name }}
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      app: {{ printf "%sopencode-telegram" .Values.resourcePrefix }}
+      app: {{ printf "%s-opencode-telegram" .Values.name }}
   template:
     metadata:
       labels:
-        app: {{ printf "%sopencode-telegram" .Values.resourcePrefix }}
+        app: {{ printf "%s-opencode-telegram" .Values.name }}
         admission.datadoghq.com/enabled: "true"
         tags.datadoghq.com/service: opencode-telegram
         tags.datadoghq.com/env: prod
         tags.datadoghq.com/version: latest
       annotations:
         checksum/mcp-oauth-proxy: {{ include "senaev-com.opencodeMcpOAuthNginx" . | sha256sum }}
-        secret.reloader.stakater.com/reload: {{ printf "%s,%sopencode-auth" .Values.secrets.name .Values.resourcePrefix | quote }}
-        configmap.reloader.stakater.com/reload: {{ list (printf "%sopencode-telegram-config" .Values.resourcePrefix) | join "," | quote }}
+        secret.reloader.stakater.com/reload: {{ printf "senaev-com-kv-secrets,%s-opencode-auth" .Values.name | quote }}
+        configmap.reloader.stakater.com/reload: {{ list (printf "%s-opencode-telegram-config" .Values.name) | join "," | quote }}
     spec:
       nodeSelector:
         vps: {{ .Values.opencode.vps }}
@@ -103,7 +103,7 @@ spec:
             - name: OPENCODE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ printf "%sopencode-auth" .Values.resourcePrefix }}
+                  name: {{ printf "%s-opencode-auth" .Values.name }}
                   key: password
             - name: GIT_AUTHOR_NAME
               value: {{ .Values.owner.name | quote }}
@@ -116,7 +116,7 @@ spec:
             - name: GH_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: {{ $.Values.secrets.name }}
+                  name: senaev-com-kv-secrets
                   key: {{ .Values.secrets.githubToken }}
                   optional: false
             - name: OPENCODE_WORKDIR
@@ -125,7 +125,7 @@ spec:
             - name: {{ $connector.apiKeyEnv | quote }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $.Values.secrets.name }}
+                  name: senaev-com-kv-secrets
                   key: {{ default $connector.apiKeyEnv $connector.secretKey | quote }}
 {{- end }}
             - name: OPENCODE_CONFIG_CONTENT
@@ -213,18 +213,18 @@ spec:
             - name: OPENCODE_SERVER_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ printf "%sopencode-auth" .Values.resourcePrefix }}
+                  name: {{ printf "%s-opencode-auth" .Values.name }}
                   key: password
             - name: TELEGRAM_BOT_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: {{ $.Values.secrets.name }}
+                  name: senaev-com-kv-secrets
                   key: {{ .Values.secrets.telegramToken }}
                   optional: false
             - name: TELEGRAM_ALLOWED_USER_ID
               valueFrom:
                 secretKeyRef:
-                  name: {{ $.Values.secrets.name }}
+                  name: senaev-com-kv-secrets
                   key: {{ .Values.secrets.telegramAllowedUser }}
                   optional: false
             - name: OPENCODE_API_URL
@@ -240,7 +240,7 @@ spec:
             - name: STT_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ $.Values.secrets.name }}
+                  name: senaev-com-kv-secrets
                   key: {{ default $agent.speechToText.apiKeyEnv $agent.speechToText.secretKey | quote }}
                   optional: false
             - name: STT_MODEL
@@ -249,7 +249,7 @@ spec:
       volumes:
         - name: mcp-oauth-proxy
           configMap:
-            name: {{ printf "%sopencode-mcp-oauth" .Values.resourcePrefix }}
+            name: {{ printf "%s-opencode-mcp-oauth" .Values.name }}
         - name: mcp-oauth-tmp
           emptyDir: {}
         - name: opencode-data
@@ -258,7 +258,7 @@ spec:
             type: DirectoryOrCreate
         - name: ssh-key
           secret:
-            secretName: {{ $.Values.secrets.name }}
+            secretName: senaev-com-kv-secrets
             items:
               - key: {{ .Values.secrets.sshPrivateKey }}
                 path: id_rsa
@@ -267,15 +267,15 @@ spec:
           emptyDir: {}
         - name: projects-git
           persistentVolumeClaim:
-            claimName: {{ printf "%sopencode-telegram-git" .Values.resourcePrefix }}
+            claimName: {{ printf "%s-opencode-telegram-git" .Values.name }}
         - name: opencode-config
           configMap:
-            name: {{ printf "%sopencode-telegram-config" .Values.resourcePrefix }}
+            name: {{ printf "%s-opencode-telegram-config" .Values.name }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ printf "%sopencode-telegram-git" .Values.resourcePrefix }}
+  name: {{ printf "%s-opencode-telegram-git" .Values.name }}
   namespace: {{ .Release.Namespace }}
   annotations:
     helm.sh/resource-policy: keep
@@ -290,12 +290,12 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ printf "%sopencode-telegram" .Values.resourcePrefix }}
+  name: {{ printf "%s-opencode-telegram" .Values.name }}
   namespace: {{ .Release.Namespace }}
 spec:
   podSelector:
     matchLabels:
-      app: {{ printf "%sopencode-telegram" .Values.resourcePrefix }}
+      app: {{ printf "%s-opencode-telegram" .Values.name }}
   policyTypes:
     - Ingress
   ingress:
@@ -316,12 +316,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ printf "%sopencode" .Values.resourcePrefix }}
+  name: {{ printf "%s-opencode" .Values.name }}
   namespace: {{ .Release.Namespace }}
 spec:
   type: ClusterIP
   selector:
-    app: {{ printf "%sopencode-telegram" .Values.resourcePrefix }}
+    app: {{ printf "%s-opencode-telegram" .Values.name }}
   ports:
     - name: http
       port: 4096
@@ -331,26 +331,26 @@ spec:
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
-  name: {{ printf "%sopencode-auth" .Values.resourcePrefix }}
+  name: {{ printf "%s-opencode-auth" .Values.name }}
   namespace: {{ .Release.Namespace }}
 spec:
   refreshInterval: 30s
   secretStoreRef:
-    name: {{ .Values.secrets.storeName }}
-    kind: {{ .Values.secrets.storeKind }}
+    name: vault-cluster-secret-store
+    kind: ClusterSecretStore
   target:
-    name: {{ printf "%sopencode-auth" .Values.resourcePrefix }}
+    name: {{ printf "%s-opencode-auth" .Values.name }}
     creationPolicy: Owner
   data:
     - secretKey: password
       remoteRef:
-        key: {{ .Values.secrets.vaultPath }}
+        key: senaev-com-kv
         property: {{ .Values.secrets.opencodePassword }}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ printf "%sopencode-mcp-oauth" .Values.resourcePrefix }}
+  name: {{ printf "%s-opencode-mcp-oauth" .Values.name }}
   namespace: {{ .Release.Namespace }}
 data:
   nginx.conf: |
@@ -359,12 +359,12 @@ data:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ printf "%sopencode-mcp-oauth" .Values.resourcePrefix }}
+  name: {{ printf "%s-opencode-mcp-oauth" .Values.name }}
   namespace: {{ .Release.Namespace }}
 spec:
   type: ClusterIP
   selector:
-    app: {{ printf "%sopencode-telegram" .Values.resourcePrefix }}
+    app: {{ printf "%s-opencode-telegram" .Values.name }}
   ports:
     - name: http
       port: 8081
@@ -375,7 +375,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ printf "%sopencode-mcp-oauth" .Values.resourcePrefix }}
+  name: {{ printf "%s-opencode-mcp-oauth" .Values.name }}
   namespace: {{ .Release.Namespace }}
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
@@ -393,7 +393,7 @@ spec:
             pathType: Exact
             backend:
               service:
-                name: {{ printf "%sopencode-mcp-oauth" .Values.resourcePrefix }}
+                name: {{ printf "%s-opencode-mcp-oauth" .Values.name }}
                 port:
                   number: 8081
 {{- end }}
@@ -402,7 +402,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ printf "%sopencode" .Values.resourcePrefix }}
+  name: {{ printf "%s-opencode" .Values.name }}
   namespace: {{ .Release.Namespace }}
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
@@ -420,7 +420,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ printf "%sopencode" .Values.resourcePrefix }}
+                name: {{ printf "%s-opencode" .Values.name }}
                 port:
                   number: 4096
 {{- end }}

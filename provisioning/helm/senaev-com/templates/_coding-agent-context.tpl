@@ -29,7 +29,7 @@
   {{- end -}}
 {{- end -}}
 {{- $values := deepCopy .instance -}}
-{{- $_ := set $values "resourcePrefix" (printf "%s-" .name) -}}
+{{- $_ := set $values "name" .name -}}
 {{- $agent := $values.agent -}}
 {{- $agentContent := $agent | toJson -}}
 {{- if not $agent -}}

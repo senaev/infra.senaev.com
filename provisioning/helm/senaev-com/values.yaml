@@ -205,10 +205,6 @@ codingAgentInstances:
     agentConfigFile: config/senaev-coding-agents.json
     instructionsPath: config/senaev-llm-instructions-path
     secrets:
-      name: senaev-com-kv-secrets
-      storeName: vault-cluster-secret-store
-      storeKind: ClusterSecretStore
-      vaultPath: senaev-com-kv
       opencodePassword: OPENCODE_PASSWORD
       ompHtpasswd: OMP_WEB_HTPASSWD_HASH_WITH_USERNAME
       githubToken: GH_TOKEN
@@ -216,7 +212,6 @@ codingAgentInstances:
       telegramToken: TG_TOKEN_OPENCODE_SENAEV_BOT
       telegramAllowedUser: TG_SENAEV_USER_ID
       codeToolsToken: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
-    # The vps of the Traefik that serves this instance's domains.
     traefik: hetzner
     opencode:
       enabled: true

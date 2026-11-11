@@ -74,8 +74,6 @@ function family() {
     instance.opencode.mcpOAuth.hostname = 'opencode.example.ru';
     instance.ompWeb.hostname = 'omp.example.ru';
     instance.traefik = 'firstvds';
-    instance.secrets.name = 'family-credentials';
-    instance.secrets.vaultPath = 'family-kv';
     for (const key of [
         'opencodePassword',
         'ompHtpasswd',
@@ -224,7 +222,7 @@ test('two instances isolate nodes, routes, selectors, credentials and data witho
 
                 if (ref) {
                     assert.ok([
-                        'family-credentials',
+                        'senaev-com-kv-secrets',
                         'family-opencode-auth',
                     ].includes(ref.name), ref.name);
                 }
@@ -262,7 +260,7 @@ test('two instances isolate nodes, routes, selectors, credentials and data witho
     const { affinity } = get(docs, 'Deployment', 'family-omp-web').spec.template.spec;
 
     assert.equal(affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].labelSelector.matchLabels.app, 'family-opencode-telegram');
-    assert.equal(get(docs, 'ExternalSecret', 'family-opencode-auth').spec.data[0].remoteRef.key, 'family-kv');
+    assert.equal(get(docs, 'ExternalSecret', 'family-opencode-auth').spec.data[0].remoteRef.property, 'FAMILY_opencodePassword');
     assert.equal(get(docs, 'Deployment', 'senaev-opencode-telegram').spec.template.spec.nodeSelector.vps, 'hetzner');
 });
 
