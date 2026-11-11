@@ -1,0 +1,6 @@
+{{- range $name, $workspace := .Values.llmWorkspaces }}
+{{- range $component := list "opencode" "ompWeb" "codeTools" }}
+---
+{{ include "senaev-com.llmWorkspace.component" (dict "root" $ "name" $name "workspace" $workspace "component" $component) }}
+{{- end }}
+{{- end }}

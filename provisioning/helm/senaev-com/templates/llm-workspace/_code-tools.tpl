@@ -1,8 +1,9 @@
-{{- if .Values.opencode.enabled }}
+{{- define "senaev-com.llmWorkspace.codeTools" -}}
+{{- if and .Values.opencode.enabled .Values.codeTools.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: code-tools
+  name: {{ printf "%s-code-tools" .Values.name }}
   namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
@@ -11,28 +12,28 @@ spec:
     type: Recreate
   selector:
     matchLabels:
-      app: code-tools
+      app: {{ printf "%s-code-tools" .Values.name }}
   template:
     metadata:
       labels:
-        app: code-tools
+        app: {{ printf "%s-code-tools" .Values.name }}
         admission.datadoghq.com/enabled: "true"
         tags.datadoghq.com/service: code-tools
         tags.datadoghq.com/env: prod
         tags.datadoghq.com/version: latest
       annotations:
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
-        configmap.reloader.stakater.com/reload: "opencode-telegram-config"
+        configmap.reloader.stakater.com/reload: {{ list (printf "%s-opencode-telegram-config" .Values.name) | join "," | quote }}
     spec:
       # ReadWriteOnce permits both pods to mount the existing disk on the same node.
       nodeSelector:
-        vps: {{ .Values.opencode.vps }}
+        vps: {{ .Values.vps }}
       affinity:
         podAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             - labelSelector:
                 matchLabels:
-                  app: opencode-telegram
+                  app: {{ printf "%s-opencode-telegram" .Values.name }}
               topologyKey: kubernetes.io/hostname
       initContainers:
         - name: git-init
@@ -74,20 +75,20 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
+                  key: {{ required "Code Tools requires codeTools.secrets.codeToolsToken" .Values.codeTools.secrets.codeToolsToken }}
             - name: GIT_AUTHOR_NAME
-              value: {{ .Values.owner.name | quote }}
+              value: {{ .Values.git.name | quote }}
             - name: GIT_AUTHOR_EMAIL
-              value: {{ .Values.owner.email | quote }}
+              value: {{ .Values.git.email | quote }}
             - name: GIT_COMMITTER_NAME
-              value: {{ .Values.owner.name | quote }}
+              value: {{ .Values.git.name | quote }}
             - name: GIT_COMMITTER_EMAIL
-              value: {{ .Values.owner.email | quote }}
+              value: {{ .Values.git.email | quote }}
             - name: GH_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: GH_TOKEN
+                  key: {{ .Values.git.githubToken }}
           startupProbe:
             httpGet:
               path: /health
@@ -113,26 +114,26 @@ spec:
           secret:
             secretName: senaev-com-kv-secrets
             items:
-              - key: TELEGRAM_OPENCODE_SSH_PRIVATE_KEY
+              - key: {{ .Values.git.sshPrivateKey }}
                 path: id_rsa
                 mode: 0600
         - name: ssh-dir
           emptyDir: {}
         - name: opencode-config
           configMap:
-            name: opencode-telegram-config
+            name: {{ printf "%s-opencode-telegram-config" .Values.name }}
         - name: projects-git
           persistentVolumeClaim:
-            claimName: opencode-telegram-git
+            claimName: {{ printf "%s-opencode-telegram-git" .Values.name }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: code-tools
+  name: {{ printf "%s-code-tools" .Values.name }}
   namespace: {{ .Release.Namespace }}
 spec:
   selector:
-    app: code-tools
+    app: {{ printf "%s-code-tools" .Values.name }}
   ports:
     - name: http
       port: 8080
@@ -143,12 +144,12 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: code-tools
+  name: {{ printf "%s-code-tools" .Values.name }}
   namespace: {{ .Release.Namespace }}
 spec:
   podSelector:
     matchLabels:
-      app: code-tools
+      app: {{ printf "%s-code-tools" .Values.name }}
   policyTypes:
     - Ingress
   ingress:
@@ -160,3 +161,4 @@ spec:
         - protocol: TCP
           port: 8080
 {{- end }}
+{{- end -}}

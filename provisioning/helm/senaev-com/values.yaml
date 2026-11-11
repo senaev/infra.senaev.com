@@ -195,19 +195,58 @@ n8n:
   volumePath: volumes/n8n
   containerDataPath: /home/node/.n8n
 
-ompWeb:
-  enabled: true
-  hostname: omp.senaev.com
-  storageSize: 8Gi
-
-opencode:
-  enabled: true
-  vps: hetzner
-  opencodeDataPath: volumes/opencode-data
-  mcpOAuth:
-    hostname: opencode.senaev.com
-    # All remote MCPs share one callback; authorize one server at a time.
-    callbackPort: 4100
+# Each entry owns its resources, data, credentials and ingress independently.
+# The entry name is the prefix of its resource names: renaming an entry replaces its PVCs.
+llmWorkspaces:
+  senaev:
+    vps: hetzner
+    traefik: hetzner
+    instructionsPath: config/senaev-llm-instructions-path
+    agent:
+      mcp:
+        datadog:
+          url: https://mcp.datadoghq.eu/v1/mcp?toolsets=core,software-delivery
+          oauth: {}
+      defaultModel:
+        provider: openrouter
+        id: anthropic/claude-haiku-4.5
+      connectors:
+        openrouter:
+          baseUrl: https://openrouter.ai/api/v1
+          apiKeyEnv: OPENROUTER_API_KEY
+      speechToText:
+        baseUrl: https://api.groq.com/openai/v1
+        model: whisper-large-v3-turbo
+        apiKeyEnv: GROQ_API_KEY
+    git:
+      name: Andrei Senaev
+      email: andrei.senaev@gmail.com
+      githubToken: GH_TOKEN
+      sshPrivateKey: TELEGRAM_OPENCODE_SSH_PRIVATE_KEY
+    telegram:
+      token: TG_TOKEN_OPENCODE_SENAEV_BOT
+      allowedUser: TG_SENAEV_USER_ID
+    opencode:
+      enabled: true
+      hostname: opencode.senaev.com
+      dataPath: /k3s-cluster/volumes/opencode-data
+      projectsStorageSize: 16Gi
+      mcpOAuth:
+        hostname: opencode.senaev.com
+        # All remote MCPs share one callback; authorize one server at a time.
+        callbackPort: 4100
+      secrets:
+        opencodePassword: OPENCODE_PASSWORD
+    ompWeb:
+      enabled: true
+      hostname: omp.senaev.com
+      storageSize: 8Gi
+      secrets:
+        ompHtpasswd: OMP_WEB_HTPASSWD_HASH_WITH_USERNAME
+    codeTools:
+      enabled: true
+      secrets:
+        codeToolsToken: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
 
 # Grafana MCP server, reachable only through cluster-helper at https://<clusterHelper.mcpDomain>/grafana.
 mcpGrafana:
@@ -254,13 +293,6 @@ llmServer:
 
 ingress:
   entries:
-    - name: opencode
-      className: traefik-hetzner
-      entrypoints: websecure
-      hosts:
-        - host: opencode.senaev.com
-          service: opencode
-          port: 4096
     - name: senaev-com-direct
       className: traefik-hetzner
       hosts:

@@ -1,46 +1,47 @@
-{{- $agent := .Files.Get "config/coding-agents.json" | mustFromJson }}
+{{- define "senaev-com.llmWorkspace.opencode" -}}
+{{- $agent := .Values.agent }}
 {{- if .Values.opencode.enabled }}
 {{- $oauth := .Values.opencode.mcpOAuth }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: opencode-telegram-config
+  name: {{ printf "%s-opencode-telegram-config" .Values.name }}
   namespace: {{ .Release.Namespace }}
 data:
   AGENTS.md: |
-{{ .Files.Get "config/opencode-telegram/AGENTS.md" | indent 4 }}
+{{ .Files.Get (printf "%s/AGENTS.md" .Values.instructionsPath) | required "Missing instance AGENTS.md" | indent 4 }}
   CLAUDE.md: |
-{{ .Files.Get "config/opencode-telegram/CLAUDE.md" | indent 4 }}
+{{ .Files.Get (printf "%s/CLAUDE.md" .Values.instructionsPath) | required "Missing instance CLAUDE.md" | indent 4 }}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: opencode-telegram
+  name: {{ printf "%s-opencode-telegram" .Values.name }}
   namespace: {{ .Release.Namespace }}
   labels:
-    app: opencode-telegram
+    app: {{ printf "%s-opencode-telegram" .Values.name }}
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      app: opencode-telegram
+      app: {{ printf "%s-opencode-telegram" .Values.name }}
   template:
     metadata:
       labels:
-        app: opencode-telegram
+        app: {{ printf "%s-opencode-telegram" .Values.name }}
         admission.datadoghq.com/enabled: "true"
         tags.datadoghq.com/service: opencode-telegram
         tags.datadoghq.com/env: prod
         tags.datadoghq.com/version: latest
       annotations:
         checksum/mcp-oauth-proxy: {{ include "senaev-com.opencodeMcpOAuthNginx" . | sha256sum }}
-        secret.reloader.stakater.com/reload: "senaev-com-kv-secrets,opencode-auth"
-        configmap.reloader.stakater.com/reload: "opencode-telegram-config"
+        secret.reloader.stakater.com/reload: {{ printf "senaev-com-kv-secrets,%s-opencode-auth" .Values.name | quote }}
+        configmap.reloader.stakater.com/reload: {{ list (printf "%s-opencode-telegram-config" .Values.name) | join "," | quote }}
     spec:
       nodeSelector:
-        vps: {{ .Values.opencode.vps }}
+        vps: {{ .Values.vps }}
       initContainers:
         - name: git-init
           image: alpine/git:latest
@@ -56,9 +57,9 @@ spec:
               mkdir -p /projects/git
           env:
             - name: GIT_AUTHOR_NAME
-              value: {{ .Values.owner.name | quote }}
+              value: {{ .Values.git.name | quote }}
             - name: GIT_AUTHOR_EMAIL
-              value: {{ .Values.owner.email | quote }}
+              value: {{ .Values.git.email | quote }}
           volumeMounts:
             - name: ssh-key
               mountPath: /tmp/ssh
@@ -75,7 +76,7 @@ spec:
           ports:
             - name: opencode
               containerPort: 4096
-          # The agent runs heavy commands here too; see the same limit in code-tools.yaml.
+          # The agent runs heavy commands here too; see the same limit in _code-tools.tpl.
           resources:
             requests:
               memory: 512Mi
@@ -102,21 +103,21 @@ spec:
             - name: OPENCODE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: opencode-auth
+                  name: {{ printf "%s-opencode-auth" .Values.name }}
                   key: password
             - name: GIT_AUTHOR_NAME
-              value: {{ .Values.owner.name | quote }}
+              value: {{ .Values.git.name | quote }}
             - name: GIT_AUTHOR_EMAIL
-              value: {{ .Values.owner.email | quote }}
+              value: {{ .Values.git.email | quote }}
             - name: GIT_COMMITTER_NAME
-              value: {{ .Values.owner.name | quote }}
+              value: {{ .Values.git.name | quote }}
             - name: GIT_COMMITTER_EMAIL
-              value: {{ .Values.owner.email | quote }}
+              value: {{ .Values.git.email | quote }}
             - name: GH_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: GH_TOKEN
+                  key: {{ .Values.git.githubToken }}
                   optional: false
             - name: OPENCODE_WORKDIR
               value: /projects/git
@@ -125,7 +126,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: {{ $connector.apiKeyEnv | quote }}
+                  key: {{ default $connector.apiKeyEnv $connector.secretKey | quote }}
 {{- end }}
             - name: OPENCODE_CONFIG_CONTENT
 {{- $servers := dict }}
@@ -212,19 +213,19 @@ spec:
             - name: OPENCODE_SERVER_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: opencode-auth
+                  name: {{ printf "%s-opencode-auth" .Values.name }}
                   key: password
             - name: TELEGRAM_BOT_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: TG_TOKEN_OPENCODE_SENAEV_BOT
+                  key: {{ .Values.telegram.token }}
                   optional: false
             - name: TELEGRAM_ALLOWED_USER_ID
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: TG_SENAEV_USER_ID
+                  key: {{ .Values.telegram.allowedUser }}
                   optional: false
             - name: OPENCODE_API_URL
               value: "http://localhost:4096"
@@ -240,7 +241,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: {{ $agent.speechToText.apiKeyEnv | quote }}
+                  key: {{ default $agent.speechToText.apiKeyEnv $agent.speechToText.secretKey | quote }}
                   optional: false
             - name: STT_MODEL
               value: {{ $agent.speechToText.model | quote }}
@@ -248,51 +249,53 @@ spec:
       volumes:
         - name: mcp-oauth-proxy
           configMap:
-            name: opencode-mcp-oauth
+            name: {{ printf "%s-opencode-mcp-oauth" .Values.name }}
         - name: mcp-oauth-tmp
           emptyDir: {}
         - name: opencode-data
           hostPath:
-            path: {{ .Values.clusterRootPath }}/{{ .Values.opencode.opencodeDataPath }}
+            path: {{ .Values.opencode.dataPath }}
             type: DirectoryOrCreate
         - name: ssh-key
           secret:
             secretName: senaev-com-kv-secrets
             items:
-              - key: TELEGRAM_OPENCODE_SSH_PRIVATE_KEY
+              - key: {{ .Values.git.sshPrivateKey }}
                 path: id_rsa
                 mode: 0600
         - name: ssh-dir
           emptyDir: {}
         - name: projects-git
           persistentVolumeClaim:
-            claimName: opencode-telegram-git
+            claimName: {{ printf "%s-opencode-telegram-git" .Values.name }}
         - name: opencode-config
           configMap:
-            name: opencode-telegram-config
+            name: {{ printf "%s-opencode-telegram-config" .Values.name }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: opencode-telegram-git
+  name: {{ printf "%s-opencode-telegram-git" .Values.name }}
   namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/resource-policy: keep
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 16Gi
+      storage: {{ .Values.opencode.projectsStorageSize }}
 ---
 # Only the existing HTTPS ingress controller can reach the web/API port.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: opencode-telegram
+  name: {{ printf "%s-opencode-telegram" .Values.name }}
   namespace: {{ .Release.Namespace }}
 spec:
   podSelector:
     matchLabels:
-      app: opencode-telegram
+      app: {{ printf "%s-opencode-telegram" .Values.name }}
   policyTypes:
     - Ingress
   ingress:
@@ -303,7 +306,7 @@ spec:
           podSelector:
             matchLabels:
               app: traefik
-              traefik-deployment: hetzner
+              traefik-deployment: {{ .Values.traefik }}
       ports:
         - protocol: TCP
           port: 4096
@@ -313,12 +316,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: opencode
+  name: {{ printf "%s-opencode" .Values.name }}
   namespace: {{ .Release.Namespace }}
 spec:
   type: ClusterIP
   selector:
-    app: opencode-telegram
+    app: {{ printf "%s-opencode-telegram" .Values.name }}
   ports:
     - name: http
       port: 4096
@@ -328,7 +331,7 @@ spec:
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
-  name: opencode-auth
+  name: {{ printf "%s-opencode-auth" .Values.name }}
   namespace: {{ .Release.Namespace }}
 spec:
   refreshInterval: 30s
@@ -336,18 +339,18 @@ spec:
     name: vault-cluster-secret-store
     kind: ClusterSecretStore
   target:
-    name: opencode-auth
+    name: {{ printf "%s-opencode-auth" .Values.name }}
     creationPolicy: Owner
   data:
     - secretKey: password
       remoteRef:
         key: senaev-com-kv
-        property: OPENCODE_PASSWORD
+        property: {{ .Values.opencode.secrets.opencodePassword }}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: opencode-mcp-oauth
+  name: {{ printf "%s-opencode-mcp-oauth" .Values.name }}
   namespace: {{ .Release.Namespace }}
 data:
   nginx.conf: |
@@ -356,12 +359,12 @@ data:
 apiVersion: v1
 kind: Service
 metadata:
-  name: opencode-mcp-oauth
+  name: {{ printf "%s-opencode-mcp-oauth" .Values.name }}
   namespace: {{ .Release.Namespace }}
 spec:
   type: ClusterIP
   selector:
-    app: opencode-telegram
+    app: {{ printf "%s-opencode-telegram" .Values.name }}
   ports:
     - name: http
       port: 8081
@@ -372,14 +375,14 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: opencode-mcp-oauth
+  name: {{ printf "%s-opencode-mcp-oauth" .Values.name }}
   namespace: {{ .Release.Namespace }}
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
     traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
 spec:
-  ingressClassName: traefik-hetzner
+  ingressClassName: {{ printf "traefik-%s" .Values.traefik }}
   tls:
     - hosts: [{{ $oauth.hostname | quote }}]
   rules:
@@ -390,10 +393,38 @@ spec:
             pathType: Exact
             backend:
               service:
-                name: opencode-mcp-oauth
+                name: {{ printf "%s-opencode-mcp-oauth" .Values.name }}
                 port:
                   number: 8081
 {{- end }}
+{{- if .Values.opencode.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ printf "%s-opencode" .Values.name }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+spec:
+  ingressClassName: {{ printf "traefik-%s" .Values.traefik }}
+  tls:
+    - hosts: [{{ .Values.opencode.hostname | quote }}]
+  rules:
+    - host: {{ .Values.opencode.hostname | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ printf "%s-opencode" .Values.name }}
+                port:
+                  number: 4096
+{{- end }}
+{{- end -}}
 {{- define "senaev-com.opencodeMcpOAuthNginx" -}}
 worker_processes 1;
 pid /tmp/nginx.pid;

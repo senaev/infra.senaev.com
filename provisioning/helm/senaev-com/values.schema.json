@@ -1,0 +1,260 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "llmWorkspaces"
+  ],
+  "properties": {
+    "llmWorkspaces": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9-]{0,29}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "agent",
+          "instructionsPath",
+          "git",
+          "telegram",
+          "vps",
+          "traefik",
+          "opencode",
+          "ompWeb",
+          "codeTools"
+        ],
+        "properties": {
+          "instructionsPath": {
+            "type": "string",
+            "minLength": 1
+          },
+          "agent": {
+            "type": "object",
+            "required": [
+              "mcp",
+              "defaultModel",
+              "connectors",
+              "speechToText"
+            ],
+            "properties": {
+              "mcp": {
+                "type": "object"
+              },
+              "defaultModel": {
+                "type": "object",
+                "required": [
+                  "provider",
+                  "id"
+                ],
+                "properties": {
+                  "provider": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "connectors": {
+                "type": "object"
+              },
+              "speechToText": {
+                "type": "object",
+                "required": [
+                  "baseUrl",
+                  "model",
+                  "apiKeyEnv"
+                ],
+                "properties": {
+                  "baseUrl": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "model": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "apiKeyEnv": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          },
+          "git": {
+            "type": "object",
+            "required": [
+              "name",
+              "email",
+              "githubToken",
+              "sshPrivateKey"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "email": {
+                "type": "string",
+                "minLength": 1
+              },
+              "githubToken": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sshPrivateKey": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "telegram": {
+            "type": "object",
+            "required": [
+              "token",
+              "allowedUser"
+            ],
+            "properties": {
+              "token": {
+                "type": "string",
+                "minLength": 1
+              },
+              "allowedUser": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "vps": {
+            "type": "string",
+            "minLength": 1
+          },
+          "traefik": {
+            "type": "string",
+            "minLength": 1
+          },
+          "opencode": {
+            "type": "object",
+            "required": [
+              "enabled",
+              "hostname",
+              "dataPath",
+              "projectsStorageSize",
+              "mcpOAuth",
+              "secrets"
+            ],
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "vps": {
+                "type": "string",
+                "minLength": 1
+              },
+              "hostname": {
+                "type": "string",
+                "minLength": 1
+              },
+              "dataPath": {
+                "type": "string",
+                "pattern": "^/[^/]"
+              },
+              "projectsStorageSize": {
+                "type": "string",
+                "minLength": 1
+              },
+              "mcpOAuth": {
+                "type": "object",
+                "required": [
+                  "hostname",
+                  "callbackPort"
+                ],
+                "properties": {
+                  "hostname": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "callbackPort": {
+                    "type": "integer",
+                    "minimum": 1024,
+                    "maximum": 65535
+                  }
+                }
+              },
+              "secrets": {
+                "type": "object",
+                "required": [
+                  "opencodePassword"
+                ],
+                "properties": {
+                  "opencodePassword": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          },
+          "ompWeb": {
+            "type": "object",
+            "required": [
+              "enabled",
+              "hostname",
+              "storageSize",
+              "secrets"
+            ],
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "hostname": {
+                "type": "string",
+                "minLength": 1
+              },
+              "storageSize": {
+                "type": "string",
+                "minLength": 1
+              },
+              "secrets": {
+                "type": "object",
+                "required": [
+                  "ompHtpasswd"
+                ],
+                "properties": {
+                  "ompHtpasswd": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          },
+          "codeTools": {
+            "type": "object",
+            "required": [
+              "enabled",
+              "secrets"
+            ],
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "secrets": {
+                "type": "object",
+                "properties": {
+                  "codeToolsToken": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

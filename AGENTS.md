@@ -279,16 +279,16 @@ Credentials (`SUPABASE_PROJECT_URL`, `SUPABASE_PUBLISHABLE_KEY`) are stored in V
 
 Code Tools has its own image (`code-tools/Dockerfile`,
 `ghcr.io/senaev/code-tools`), Deployment and Service
-(`provisioning/helm/senaev-com/templates/code-tools.yaml`). OpenCode and its Telegram
-bot stay in the `opencode-telegram` Deployment. Both pods mount the existing
-`opencode-telegram-git` PVC at `/projects/git`; required pod affinity puts Code Tools
+(`provisioning/helm/senaev-com/templates/llm-workspace/_code-tools.tpl`). OpenCode and its Telegram
+bot stay in the `senaev-opencode-telegram` Deployment. Both pods mount the
+`senaev-opencode-telegram-git` PVC at `/projects/git`; required pod affinity puts Code Tools
 on OpenCode's node. Both use one replica and `Recreate`; a Code Tools update still
 has a short outage and loses in-memory operation IDs.
 
 OpenCode 2 serves its built-in web UI at `https://opencode.senaev.com` through the
 existing Traefik ingress. Native authentication uses Vault `OPENCODE_PASSWORD` via
-the separate `opencode-auth` secret; the Telegram client uses the same password over
-localhost. The shared PVC/deployment names remain unchanged. Config and state persist
+the separate `senaev-opencode-auth` secret; the Telegram client uses the same password over
+localhost. Config and state persist
 in the existing node-local data volume; health probes authenticate against `/api/info`.
 See `projects/2026-10-30-11-04-opencode-v2-web-migration/CUTOVER.md` before cutover.
 
@@ -300,3 +300,11 @@ Code Tools is discovered by the coordinated deployment workflow, with its own
 image build and `latest` image. OpenCode and its Telegram bot deploy together after
 all affected images are published. Helm handles both first installation and updates;
 image refreshes run after Helm in the same coordinated job.
+
+LLM workspace values live in `llmWorkspaces.senaev`, and the templates in
+`provisioning/helm/senaev-com/templates/llm-workspace/`.
+OpenCode, OMP and optional Code Tools render per-workspace resources, and the entry
+name prefixes all their names. A new entry inherits nothing from `senaev`; the schema
+is `provisioning/helm/senaev-com/values.schema.json`. Do not rename the `senaev` entry:
+that replaces its PVCs, and cluster-helper calls `senaev-code-tools`. Preserve its
+host data directory.
