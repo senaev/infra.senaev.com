@@ -1,19 +1,34 @@
 import { Notice, TFile, normalizePath, type Plugin } from 'obsidian';
-import { RENAME_DELAY_MS, targetPath } from './headingSyncPolicy';
+import { RENAME_DELAY_MS, isIgnoredPath, targetPath } from './headingSyncPolicy';
+import { headingFromFilename, insertHeading } from './headingInsertion';
 
-/** One-way H1 → filename. Never writes note content or scans the vault. */
+/** H1 → filename; a note without an H1 gets one from its filename. Never scans the vault. */
 export function registerHeadingSync(plugin: Plugin): void {
 	const { app } = plugin;
 	const timers = new Map<TFile, number>();
 	const jobs = new Map<TFile, Promise<void>>();
 	let stopped = false;
 
-	async function rename(file: TFile): Promise<void> {
+	async function sync(file: TFile): Promise<void> {
 		if (stopped || !file.parent || app.vault.getAbstractFileByPath(file.path) !== file) return;
+		if (isIgnoredPath(file.path)) return;
 		const cache = app.metadataCache.getFileCache(file);
 		if (file.path.endsWith('.excalidraw.md') || cache?.frontmatter?.['excalidraw-plugin'] || cache?.frontmatter?.['kanban-plugin']) return;
 		const heading = cache?.headings?.find(item => item.level === 1)?.heading;
+		if (heading) await renameToHeading(file, heading);
+		else await insertFilenameHeading(file);
+	}
+
+	async function insertFilenameHeading(file: TFile): Promise<void> {
+		const heading = headingFromFilename(file.basename);
 		if (!heading) return;
+		const read = await app.vault.cachedRead(file);
+		if (stopped || insertHeading(read, heading) === null) return;
+		// Content edited after the read is left alone; its own metadata change schedules a new sync.
+		await app.vault.process(file, content => content === read ? insertHeading(content, heading) ?? content : content);
+	}
+
+	async function renameToHeading(file: TFile, heading: string): Promise<void> {
 		const path = targetPath(file.path, heading);
 		if (!path) return;
 		const target = normalizePath(path);
@@ -34,7 +49,7 @@ export function registerHeadingSync(plugin: Plugin): void {
 		timers.set(file, window.setTimeout(() => {
 			timers.delete(file);
 			const job = (jobs.get(file) ?? Promise.resolve())
-				.then(() => rename(file))
+				.then(() => sync(file))
 				.catch((error: unknown) => {
 					console.error('H1 filename sync failed', file.path, error);
 					if (!stopped) new Notice(`Could not sync heading for ${file.path}. See console.`);
