@@ -281,9 +281,13 @@ Code Tools has its own image (`code-tools/Dockerfile`,
 `ghcr.io/senaev/code-tools`), Deployment and Service
 (`provisioning/helm/senaev-com/templates/llm-workspace/_code-tools.tpl`). OpenCode and its Telegram
 bot stay in the `senaev-opencode-telegram` Deployment. Both pods, and OMP, mount the
-workspace's `senaev-projects` PVC at `/projects`; the workspace `vps` node selector puts
-them on one node. Both use one replica and `Recreate`; a Code Tools update still
-has a short outage and loses in-memory operation IDs.
+workspace's `senaev-projects` PVC at `/projects` and its `senaev-code` PVC at `/code`; the
+workspace `vps` node selector puts them on one node. Code Tools and OpenCode use one replica
+and `Recreate`; a Code Tools update still has a short outage and loses in-memory operation IDs.
+
+The code tools take absolute paths and work in any folder. The repository layout under
+`/code` (`projects/<repo>` and `worktrees/<repo>/<branch>`) is described only in the
+workspace instructions, `/AGENTS.md`.
 
 OpenCode 2 serves its built-in web UI at `https://opencode.senaev.com` through the
 existing Traefik ingress. Native authentication uses Vault `OPENCODE_PASSWORD` via

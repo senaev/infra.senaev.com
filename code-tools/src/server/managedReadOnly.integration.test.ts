@@ -88,7 +88,7 @@ describe('managed search and list', () => {
             'search',
         ]) {
             const args = {
-                project: 'demo',
+                folder: projects.path('demo'),
                 requestId: tool,
                 timeoutSeconds: 10800,
                 ...tool === 'search' ? { queries: ['needle'] } : { recursive: true },
@@ -106,7 +106,7 @@ describe('managed search and list', () => {
         }
 
         expect((await call('search', {
-            project: 'demo',
+            folder: projects.path('demo'),
             queries: ['missing'],
         })).json<Reply>())
             .toMatchObject({
@@ -115,7 +115,7 @@ describe('managed search and list', () => {
                 operation: { state: 'completed' },
             });
         expect((await call('search', {
-            project: 'demo',
+            folder: projects.path('demo'),
             queries: ['('],
             regex: true,
         })).json<Reply>())
@@ -124,7 +124,7 @@ describe('managed search and list', () => {
                 code: 'invalid_arguments',
                 operation: { state: 'failed' },
             });
-        expect((await call('list', { project: 'missing' })).json<Reply>()).toMatchObject({
+        expect((await call('list', { folder: projects.path('missing') })).json<Reply>()).toMatchObject({
             status: 'error',
             code: 'not_found',
             operation: { state: 'failed' },
@@ -134,7 +134,7 @@ describe('managed search and list', () => {
             'search',
         ]) {
             expect((await call(tool, {
-                project: 'demo',
+                folder: projects.path('demo'),
                 ...tool === 'search' ? { queries: ['needle'] } : {},
                 timeoutSeconds: 0,
             })).statusCode).toBe(400);
@@ -160,22 +160,25 @@ describe('managed search and list', () => {
             release = resolve;
         });
 
-        vi.spyOn(CODE_TOOLS, 'projects').mockImplementation(async () => {
+        vi.spyOn(CODE_TOOLS, 'run').mockImplementation(async () => {
             started();
             await gate;
 
-            return { projects: [] };
+            return { exitCode: 0 };
         });
         const search = vi.spyOn(CODE_TOOLS, 'search');
-        const active = call('projects');
+        const active = call('run', {
+            cwd: projects.root,
+            command: 'true',
+        });
 
         await entered;
         const queuedSearch = (await call('search', {
-            project: 'demo',
+            folder: projects.path('demo'),
             queries: ['needle'],
         })).json<Reply>();
         const queuedList = (await call('list', {
-            project: 'demo',
+            folder: projects.path('demo'),
             timeoutSeconds: 1,
         })).json<Reply>();
 
@@ -186,9 +189,8 @@ describe('managed search and list', () => {
                 startedAt: null,
             });
         expect((await call('read', {
-            project: 'demo',
             executionPolicy: 'parallel',
-            paths: ['README.md'],
+            paths: [projects.path('demo', 'README.md')],
         })).statusCode).toBe(200);
         await vi.advanceTimersByTimeAsync(1100);
         release();
@@ -203,7 +205,7 @@ describe('managed search and list', () => {
     it('aborts ripgrep on the common deadline and never returns a partial success', async () => {
         await fakeExecutable('rg', '#!/bin/bash\ntrap \'\' TERM\nprintf \'partial-json-output\\n\'\nsleep 30 &\nwait\n');
         const body = (await call('search', {
-            project: 'demo',
+            folder: projects.path('demo'),
             queries: ['needle'],
             timeoutSeconds: 1,
         })).json<Reply>();
@@ -220,20 +222,19 @@ describe('managed search and list', () => {
         expect(retained.logs).toContainEqual(expect.objectContaining({ text: 'partial-json-output\n' }));
     }, 8000);
 
-    it('waits for sibling git cleanup before list releases its slot', async () => {
-        await fakeExecutable('git', '#!/bin/bash\nif [[ "$*" == *--deleted* ]]; then exit 2; fi\ntrap \'\' TERM\nprintf \'list-started\\n\'\nsleep 30 &\nwait\n');
+    it('waits for ripgrep cleanup before list releases its slot', async () => {
+        await fakeExecutable('rg', '#!/bin/bash\ntrap \'\' TERM\nprintf \'list-started\\n\'\nsleep 30 &\nwait\n');
         const before = performance.now();
         const body = (await call('list', {
-            project: 'demo',
+            folder: projects.path('demo'),
             timeoutSeconds: 1,
         })).json<Reply>();
 
         expect(body.operation.state).toBe('timed_out');
         expect(performance.now() - before).toBeGreaterThanOrEqual(1900);
         expect((await call('read', {
-            project: 'demo',
             executionPolicy: 'parallel',
-            paths: ['README.md'],
+            paths: [projects.path('demo', 'README.md')],
         })).statusCode).toBe(200);
     }, 8000);
 
@@ -261,7 +262,7 @@ describe('managed search and list', () => {
             log: () => undefined,
             changedPaths: new Set<string>(),
         }, (execution: CommandExecution) => listTool(projects.config, {
-            project: 'demo',
+            folder: projects.path('demo'),
             recursive: true,
         }, execution))).rejects.toBe(reason);
         expect(readPaths).toEqual([projects.path('demo', 'README.md')]);
@@ -283,7 +284,7 @@ describe('managed search and list', () => {
             searchTool,
         ]) {
             await expect(withCommandExecution<unknown>(context, (execution: CommandExecution) => tool(projects.config, {
-                project: 'demo',
+                folder: projects.path('demo'),
                 queries: ['needle'],
             }, execution))).rejects.toBe(reason);
         }

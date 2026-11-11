@@ -203,6 +203,7 @@ llmWorkspaces:
     traefik: hetzner
     instructionsPath: config/senaev-llm-instructions-path
     projectsStorageSize: 16Gi
+    codeStorageSize: 16Gi
     agent:
       mcp:
         datadog:
@@ -253,6 +254,7 @@ llmWorkspaces:
     traefik: hetzner
     instructionsPath: config/galkin-llm-instructions-path
     projectsStorageSize: 8Gi
+    codeStorageSize: 8Gi
     agent:
       mcp: {}
       defaultModel:

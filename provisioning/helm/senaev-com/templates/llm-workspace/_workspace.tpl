@@ -24,5 +24,19 @@ spec:
   resources:
     requests:
       storage: {{ .Values.projectsStorageSize }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ printf "%s-code" .Values.name }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.codeStorageSize }}
 {{- end }}
 {{- end -}}

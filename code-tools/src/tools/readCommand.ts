@@ -6,8 +6,8 @@ import { invalidArguments, CommandError } from 'senaev-utils/src/commands/Comman
 
 import type { CodeToolsConfig } from './codeToolsConfig';
 import {
-    normalizeProjectPath, type Project, readTextFile, resolveExistingFile, resolveNamedProject,
-} from './projectAccess';
+    assertExistingFile, normalizeAbsolutePath, readTextFile,
+} from './fileAccess';
 
 type LineRange = {
     startLine: number;
@@ -49,11 +49,13 @@ export function sliceLines(content: string, { startLine, lineCount }: LineRange,
     };
 }
 
-async function readOneFile(project: Project, request: { path: string; range: LineRange; maxChars: number }, execution: CommandExecution) {
+async function readOneFile(request: { path: string; range: LineRange; maxChars: number }, execution: CommandExecution) {
     const {
         path, range, maxChars,
     } = request;
-    const raw = await readTextFile(await resolveExistingFile(project, path, execution), path, execution);
+
+    await assertExistingFile(path, execution);
+    const raw = await readTextFile(path, execution);
 
     const offsets = await createLineOffsetsAsync(raw, execution.checkpoint);
 
@@ -65,10 +67,9 @@ async function readOneFile(project: Project, request: { path: string; range: Lin
     };
 }
 
-export type ReadCommandInput = { project: string; paths: readonly string[]; startLine: number; lineCount: number };
+export type ReadCommandInput = { paths: readonly string[]; startLine: number; lineCount: number };
 
-export async function readCommand(config: CodeToolsConfig, input: ReadCommandInput, execution: CommandExecution) {
-    const project = await resolveNamedProject(config, input.project, execution);
+export async function readCommand(_config: CodeToolsConfig, input: ReadCommandInput, execution: CommandExecution) {
     const {
         paths, startLine, lineCount,
     } = input;
@@ -90,8 +91,8 @@ export async function readCommand(config: CodeToolsConfig, input: ReadCommandInp
         const maxChars = READ_LIMITS.maxCharsPerFile;
 
         try {
-            const file = await readOneFile(project, {
-                path: normalizeProjectPath(requestedPath, 'paths'),
+            const file = await readOneFile({
+                path: normalizeAbsolutePath(requestedPath, 'paths'),
                 range,
                 maxChars,
             }, execution);
@@ -125,7 +126,6 @@ export async function readCommand(config: CodeToolsConfig, input: ReadCommandInp
     }
 
     return {
-        project: project.name,
         files,
         remainingPaths,
         errors,

@@ -35,7 +35,6 @@ function parsePatchInput(input: unknown): PatchCommandInput {
     const args = readCodeToolArguments(input, 'patch');
 
     return {
-        project: requiredNonEmptyString(args, 'project'),
         path: requiredNonEmptyString(args, 'path'),
         expectedHash: readExpectedHash(args, 'expectedHash'),
         operations: readOperations(args.operations),

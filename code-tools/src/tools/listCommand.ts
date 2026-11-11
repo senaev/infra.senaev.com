@@ -1,23 +1,20 @@
 import { lstat } from 'node:fs/promises';
-import { join } from 'node:path';
+import { posix } from 'node:path';
 
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { compileFileGlob } from 'senaev-utils/src/files/compileFileGlob';
-import { CommandError } from 'senaev-utils/src/commands/CommandError';
-
-import { listProjectFiles } from '../git/runGit';
 
 import type { CodeToolsConfig } from './codeToolsConfig';
-import { normalizeProjectPath, resolveNamedProject } from './projectAccess';
+import { assertExistingFolder, normalizeAbsolutePath } from './fileAccess';
+import { listFiles } from './listFiles';
 
 type Entry = {
     path: string;
     type: 'file' | 'folder';
 };
 
-/** The files and folders directly in `folder`, folders first. */
-async function listOneLevel(files: readonly string[], folder: string, execution: CommandExecution): Promise<Entry[]> {
-    const prefix = folder === '' ? '' : `${folder}/`;
+/** The files and folders directly in the listed folder, folders first; paths stay relative. */
+async function listOneLevel(files: readonly string[], execution: CommandExecution): Promise<Entry[]> {
     const folders = new Set<string>();
     const directFiles: string[] = [];
 
@@ -28,13 +25,12 @@ async function listOneLevel(files: readonly string[], folder: string, execution:
             await execution.checkpoint();
         }
 
-        const rest = file.slice(prefix.length);
-        const slash = rest.indexOf('/');
+        const slash = file.indexOf('/');
 
         if (slash === -1) {
             directFiles.push(file);
         } else {
-            folders.add(`${prefix}${rest.slice(0, slash)}`);
+            folders.add(file.slice(0, slash));
         }
     }
 
@@ -54,66 +50,57 @@ async function listOneLevel(files: readonly string[], folder: string, execution:
     ];
 }
 
-async function withSize(root: string, entry: Entry, execution: CommandExecution) {
+/** The entry with an absolute path, and with its size if it is a file. */
+async function toResultEntry(folder: string, entry: Entry, execution: CommandExecution) {
     await execution.checkpoint();
+    const path = posix.join(folder, entry.path);
+
     if (entry.type === 'folder') {
-        return entry;
+        return {
+            path,
+            type: entry.type,
+        };
     }
 
     try {
         return {
-            ...entry,
-            size: (await lstat(join(root, entry.path))).size,
+            path,
+            type: entry.type,
+            size: (await lstat(path)).size,
         };
     } catch {
         execution.throwIfAborted();
 
-        return entry;
+        return {
+            path,
+            type: entry.type,
+        };
     }
 }
 
 export type ListCommandInput = {
-    project: string; folder: string; glob: string | undefined; recursive: boolean; offset: number; limit: number;
+    folder: string; glob: string | undefined; recursive: boolean; offset: number; limit: number;
 };
 
 export async function listCommand(config: CodeToolsConfig, input: ListCommandInput, execution: CommandExecution) {
     execution.throwIfAborted();
-    const project = await resolveNamedProject(config, input.project, execution);
-    const folder = normalizeProjectPath(input.folder, 'folder');
+    const folder = normalizeAbsolutePath(input.folder, 'folder');
     const {
         glob, recursive, offset, limit,
     } = input;
 
-    const prefix = folder === '' ? '' : `${folder}/`;
-    const files = await listProjectFiles(config, project.root, execution);
-    const filesInFolder: string[] = [];
-
-    for (let index = 0; index < files.length; index++) {
-        if (index % 128 === 0) {
-            await execution.checkpoint();
-        }
-
-        const file = files[index];
-
-        if (file !== undefined && file.startsWith(prefix)) {
-            filesInFolder.push(file);
-        }
-    }
-
-    if (folder !== '' && filesInFolder.length === 0) {
-        throw new CommandError('not_found', `Folder "${folder}" has no files that git shows`);
-    }
-
+    await assertExistingFolder(folder, execution);
+    const files = await listFiles(config, folder, execution);
     const matchesGlob = glob === undefined ? null : compileFileGlob(glob);
     let entries: Entry[] = [];
 
     if (recursive || matchesGlob !== null) {
-        for (let index = 0; index < filesInFolder.length; index++) {
+        for (let index = 0; index < files.length; index++) {
             if (index % 128 === 0) {
                 await execution.checkpoint();
             }
 
-            const path = filesInFolder[index];
+            const path = files[index];
 
             if (path !== undefined && (matchesGlob === null || matchesGlob(path))) {
                 entries.push({
@@ -123,25 +110,24 @@ export async function listCommand(config: CodeToolsConfig, input: ListCommandInp
             }
         }
     } else {
-        entries = await listOneLevel(filesInFolder, folder, execution);
+        entries = await listOneLevel(files, execution);
     }
 
     const page = entries.slice(offset, offset + limit);
     const nextOffset = offset + page.length < entries.length ? offset + page.length : null;
 
-    const sizedEntries = [];
+    const resultEntries = [];
 
     for (const entry of page) {
-        sizedEntries.push(await withSize(project.root, entry, execution));
+        resultEntries.push(await toResultEntry(folder, entry, execution));
     }
 
     execution.throwIfAborted();
 
     return {
-        project: project.name,
         folder,
         total: entries.length,
-        entries: sizedEntries,
+        entries: resultEntries,
         nextOffset,
     };
 }

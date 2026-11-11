@@ -43,7 +43,7 @@ describe('managed shell execution', () => {
 
     function run(command: string, args: Record<string, unknown> = {}) {
         return call('run', {
-            project: 'demo',
+            cwd: projects.path('demo'),
             command,
             ...args,
         });
@@ -158,16 +158,13 @@ describe('managed shell execution', () => {
             state: 'cancelled',
             startedAt: null,
         });
-        const read = await call('read', {
-            project: 'demo',
-            paths: ['README.md'],
-        });
+        const read = await call('read', { paths: [projects.path('demo', 'README.md')] });
 
         expect(read.statusCode).toBe(200);
         const before = performance.now();
 
         await call('operation_cancel', { id });
-        const next = (await call('projects')).json<Reply>();
+        const next = (await call('list', { folder: projects.root })).json<Reply>();
 
         expect(next.operation.state).toBe('queued');
         await vi.waitFor(async () => {

@@ -53,16 +53,14 @@ describe('all managed file tools', { timeout: 60000 }, () => {
     function args(tool: string, suffix: string): Record<string, unknown> {
         if (tool === 'write') {
             return {
-                project: 'demo',
-                path: `${suffix}.md`,
+                path: projects.path('demo', `${suffix}.md`),
                 content: 'written\n',
             };
         }
 
         if (tool === 'patch') {
             return {
-                project: 'demo',
-                path: 'README.md',
+                path: projects.path('demo', 'README.md'),
                 expectedHash: hashContent('hello\nsecond\n'),
                 operations: [
                     {
@@ -74,8 +72,7 @@ describe('all managed file tools', { timeout: 60000 }, () => {
         }
 
         return {
-            project: 'demo',
-            paths: ['README.md'],
+            paths: [projects.path('demo', 'README.md')],
             startLine: 2,
             lineCount: 1,
         };
@@ -123,8 +120,8 @@ describe('all managed file tools', { timeout: 60000 }, () => {
                 ]);
             } else {
                 const changed = {
-                    write: `${executionPolicy}.md`,
-                    patch: 'README.md',
+                    write: projects.path('demo', `${executionPolicy}.md`),
+                    patch: projects.path('demo', 'README.md'),
                 };
 
                 expect(first.operation.changedPaths).toContain(changed[tool as keyof typeof changed]);
@@ -138,11 +135,11 @@ describe('all managed file tools', { timeout: 60000 }, () => {
             entered = resolve;
         });
 
-        vi.spyOn(CODE_TOOLS, 'projects').mockImplementation((_config, _input, execution) => new Promise((resolve) => {
-            execution?.signal.addEventListener('abort', () => resolve({ projects: [] }), { once: true });
+        vi.spyOn(CODE_TOOLS, 'list').mockImplementation((_config, _input, execution) => new Promise((resolve) => {
+            execution?.signal.addEventListener('abort', () => resolve({ entries: [] }), { once: true });
             entered();
         }));
-        const active = call('projects');
+        const active = call('list', { folder: projects.root });
 
         await started;
         const discovery = (await call('operations')).json<{ operations: { id: string; state: string }[] }>();
@@ -279,8 +276,7 @@ describe('all managed file tools', { timeout: 60000 }, () => {
         ]) {
             const payload = tool === 'write'
                 ? {
-                    project: 'demo',
-                    path: 'README.md',
+                    path: projects.path('demo', 'README.md'),
                     content: 'new',
                     expectedHash: '0'.repeat(64),
                 }

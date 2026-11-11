@@ -183,6 +183,8 @@ spec:
           volumeMounts:
             - name: projects
               mountPath: /projects
+            - name: code
+              mountPath: /code
             - name: state
               mountPath: /root/.omp
 {{- if .Values.git }}
@@ -234,6 +236,9 @@ spec:
         - name: projects
           persistentVolumeClaim:
             claimName: {{ printf "%s-projects" .Values.name }}
+        - name: code
+          persistentVolumeClaim:
+            claimName: {{ printf "%s-code" .Values.name }}
         - name: state
           persistentVolumeClaim:
             claimName: {{ printf "%s-omp-web-state" .Values.name }}

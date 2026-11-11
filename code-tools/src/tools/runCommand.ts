@@ -4,25 +4,25 @@ import { RUN_LIMITS } from 'senaev-utils/src/codeTools/codeToolLimits';
 import { runProcess, type ProcessResult } from '../process/runProcess';
 
 import type { CodeToolsConfig } from './codeToolsConfig';
-import { resolveNamedProject } from './projectAccess';
+import { assertExistingFolder, normalizeAbsolutePath } from './fileAccess';
 
-export type RunCommandInput = { project: string; command: string };
-export type RunCommandResult = ProcessResult & { project: string };
+export type RunCommandInput = { cwd: string; command: string };
+export type RunCommandResult = ProcessResult & { cwd: string };
 
 /** Run a shell command with explicit cancellation and output observers. */
 export async function runCommand(config: CodeToolsConfig, input: RunCommandInput, execution: CommandExecution): Promise<RunCommandResult> {
     execution.throwIfAborted();
-    const project = await resolveNamedProject(config, input.project, execution);
+    const cwd = normalizeAbsolutePath(input.cwd, 'cwd');
     const { command } = input;
 
-    execution.throwIfAborted();
+    await assertExistingFolder(cwd, execution);
 
     // Not a login shell (-l): Debian's /etc/profile would replace the container's PATH.
     const result = await runProcess('bash', [
         '-c',
         command,
     ], {
-        cwd: project.root,
+        cwd,
         signal: execution.signal,
         onOutput: execution.log,
         maxOutputChars: RUN_LIMITS.maxOutputChars,
@@ -32,7 +32,7 @@ export async function runCommand(config: CodeToolsConfig, input: RunCommandInput
     execution.throwIfAborted();
 
     return {
-        project: project.name,
+        cwd,
         exitCode: result.exitCode,
         signal: result.signal,
         timedOut: result.timedOut,

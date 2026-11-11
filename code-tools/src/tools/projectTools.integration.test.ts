@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 
 import { OperationManager } from 'senaev-utils/src/operations/OperationManager';
 import {
@@ -7,7 +7,8 @@ import {
 
 import { runCommand } from './runCommand';
 import { createTestProjects, type TestProjects } from './createTestProjects';
-import { projectsTool } from './projectsTool';
+import { listTool } from './listTool';
+import { readTool } from './readTool';
 import { runTool } from './runTool';
 
 let projects: TestProjects;
@@ -18,7 +19,6 @@ beforeEach(async () => {
             'AGENTS.md': '# Rules\n',
             'src/index.ts': 'export {};\n',
         },
-        other: { 'README.md': 'other\n' },
     });
 });
 
@@ -26,49 +26,32 @@ afterEach(async () => {
     await projects.remove();
 });
 
-describe('projectsTool', () => {
-    it('lists every git repository with its branch, changes and AGENTS.md', async () => {
-        await writeFile(projects.path('demo', 'new.ts'), '');
-        await mkdir(projects.path('not-a-repo'));
-
-        const result = await projectsTool(projects.config, {});
-
-        expect(result.projects).toEqual([
-            {
-                name: 'demo',
-                branch: 'main',
-                changedFiles: 1,
-                origin: null,
-                hasAgentsMd: true,
-            },
-            {
-                name: 'other',
-                branch: 'main',
-                changedFiles: 0,
-                origin: null,
-                hasAgentsMd: false,
-            },
-        ]);
-    });
-
-    it('rejects arguments it does not know', async () => {
-        await expect(projectsTool(projects.config, { all: true })).rejects.toMatchObject({ code: 'invalid_arguments' });
-    });
-});
-
 describe('runTool', () => {
-    it('runs bash in the project folder and returns a failing exit code as a result', async () => {
+    it('runs bash in the given folder and returns a failing exit code as a result', async () => {
         const result = await runTool(projects.config, {
-            project: 'demo',
+            cwd: projects.path('demo'),
             command: 'pwd; ls src; git branch --show-current; exit 2',
         });
 
         expect(result).toMatchObject({
-            project: 'demo',
+            cwd: projects.path('demo'),
             exitCode: 2,
             timedOut: false,
         });
-        expect(result.stdout).toContain('demo\nindex.ts\nmain\n');
+        expect(result.stdout).toBe(`${projects.path('demo')}\nindex.ts\nmain\n`);
+    });
+
+    it('runs in a folder outside any git repository, at a normalized path', async () => {
+        const result = await runTool(projects.config, {
+            cwd: `${projects.path('demo', 'src/../..')}/`,
+            command: 'pwd; ls',
+        });
+
+        expect(result).toMatchObject({
+            cwd: projects.root,
+            exitCode: 0,
+            stdout: `${projects.root}\ndemo\n`,
+        });
     });
 
     it('does not pass the internal token to the command', async () => {
@@ -76,7 +59,7 @@ describe('runTool', () => {
         expect(process.env.INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS).toBeTruthy();
 
         const result = await runTool(projects.config, {
-            project: 'demo',
+            cwd: projects.path('demo'),
             command: 'echo "token:${INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS:-}"',
         });
 
@@ -86,7 +69,7 @@ describe('runTool', () => {
     it('stops a command under the common execution deadline', async () => {
         const manager = new OperationManager('test');
         const args = {
-            project: 'demo',
+            cwd: projects.path('demo'),
             command: 'sleep 30',
             timeoutSeconds: 1,
         };
@@ -96,7 +79,7 @@ describe('runTool', () => {
                 tool: 'run',
                 args,
                 run: (execution) => runCommand(projects.config, {
-                    project: args.project,
+                    cwd: args.cwd,
                     command: args.command,
                 }, execution),
             });
@@ -110,14 +93,59 @@ describe('runTool', () => {
         }
     });
 
-    it('refuses a project that does not exist or a name that climbs out', async () => {
+    it('refuses a folder that does not exist, a file and a relative folder', async () => {
         await expect(runTool(projects.config, {
-            project: 'nope',
+            cwd: projects.path('nope'),
             command: 'true',
         })).rejects.toMatchObject({ code: 'not_found' });
         await expect(runTool(projects.config, {
-            project: '..',
+            cwd: projects.path('demo', 'AGENTS.md'),
+            command: 'true',
+        })).rejects.toMatchObject({ code: 'not_found' });
+        await expect(runTool(projects.config, {
+            cwd: 'demo',
             command: 'true',
         })).rejects.toMatchObject({ code: 'invalid_arguments' });
+    });
+});
+
+describe('code tools in a git worktree', () => {
+    it('lists, reads and runs in a worktree that "git worktree add" created', async () => {
+        const worktree = projects.path('demo-feature');
+
+        projects.git('demo', [
+            'worktree',
+            'add',
+            '--quiet',
+            '-b',
+            'feature',
+            worktree,
+        ]);
+        expect((await stat(projects.path('demo-feature', '.git'))).isFile()).toBe(true);
+
+        const listed = await listTool(projects.config, {
+            folder: worktree,
+            recursive: true,
+        });
+
+        expect(listed.entries.map((entry) => entry.path)).toEqual([
+            projects.path('demo-feature', 'AGENTS.md'),
+            projects.path('demo-feature', 'src/index.ts'),
+        ]);
+
+        const read = await readTool(projects.config, { paths: [projects.path('demo-feature', 'src/index.ts')] });
+
+        expect(read.files[0]?.content).toBe(await readFile(projects.path('demo', 'src/index.ts'), 'utf8'));
+
+        const run = await runTool(projects.config, {
+            cwd: worktree,
+            command: 'git branch --show-current',
+        });
+
+        expect(run).toMatchObject({
+            cwd: worktree,
+            exitCode: 0,
+            stdout: 'feature\n',
+        });
     });
 });

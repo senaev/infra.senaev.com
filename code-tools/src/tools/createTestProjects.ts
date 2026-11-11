@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import {
-    mkdir, mkdtemp, rm, writeFile,
+    mkdir, mkdtemp, realpath, rm, writeFile,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -9,6 +9,8 @@ import { createCodeToolsConfig, type CodeToolsConfig } from './codeToolsConfig';
 
 export type TestProjects = {
     config: CodeToolsConfig;
+    /** The temporary folder that holds the repositories; it is not a repository itself. */
+    root: string;
     /** The absolute path of a file in a test project. */
     path: (project: string, relativePath?: string) => string;
     git: (project: string, args: readonly string[]) => string;
@@ -25,10 +27,10 @@ const TEST_GIT_ENV = {
     GIT_COMMITTER_EMAIL: 'test@example.com',
 };
 
-/** A projects folder on disk with one committed git repository per entry, for tests only. */
+/** A temporary folder with one committed git repository per entry, for tests only. */
 export async function createTestProjects(projects: Record<string, Record<string, string>>): Promise<TestProjects> {
-    const root = await mkdtemp(join(tmpdir(), 'code-tools-test-'));
-    const config = createCodeToolsConfig(root, {
+    const root = await realpath(await mkdtemp(join(tmpdir(), 'code-tools-test-')));
+    const config = createCodeToolsConfig({
         ...process.env,
         ...TEST_GIT_ENV,
     });
@@ -71,6 +73,7 @@ export async function createTestProjects(projects: Record<string, Record<string,
 
     return {
         config,
+        root,
         path: (project, relativePath = '') => join(root, project, relativePath),
         git,
         remove: () => rm(root, {

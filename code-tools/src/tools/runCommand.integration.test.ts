@@ -18,7 +18,7 @@ let config: CodeToolsConfig;
 beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'typed-run-command-'));
     await mkdir(join(root, 'demo'));
-    config = createCodeToolsConfig(root);
+    config = createCodeToolsConfig();
 });
 
 afterEach(async () => {
@@ -32,12 +32,12 @@ describe('standalone typed run command', () => {
     it('returns typed output and exit status without an operation manager', async () => {
         const log = vi.fn();
         const result: RunCommandResult = await runCommand(config, {
-            project: 'demo',
+            cwd: join(root, 'demo'),
             command: 'printf hello; printf problem >&2; exit 7',
         }, createCommandExecution({ log }));
 
         expect(result).toMatchObject({
-            project: 'demo',
+            cwd: join(root, 'demo'),
             exitCode: 7,
             stdout: 'hello',
             stderr: 'problem',
@@ -53,7 +53,7 @@ describe('standalone typed run command', () => {
 
         controller.abort(reason);
         await expect(runCommand(config, {
-            project: 'demo',
+            cwd: join(root, 'demo'),
             command: 'touch should-not-exist',
         }, createCommandExecution({ signal: controller.signal }))).rejects.toBe(reason);
         await expect(stat(join(root, 'demo/should-not-exist'))).rejects.toMatchObject({ code: 'ENOENT' });
@@ -64,7 +64,7 @@ describe('standalone typed run command', () => {
         const log = vi.fn();
         const reason = new Error('standalone cancellation');
         const execution = runCommand(config, {
-            project: 'demo',
+            cwd: join(root, 'demo'),
             command: 'trap \'wait; exit 0\' TERM; sleep 30 & echo $$ > shell.pid; printf ready; wait',
         }, createCommandExecution({
             signal: controller.signal,

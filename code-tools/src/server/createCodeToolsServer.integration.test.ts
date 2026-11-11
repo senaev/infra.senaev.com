@@ -38,7 +38,8 @@ describe('createCodeToolsServer', () => {
     it('rejects a tool call without the internal token', async () => {
         const response = await server.inject({
             method: 'POST',
-            url: '/code/projects',
+            url: '/code/list',
+            payload: { folder: projects.root },
         });
 
         expect(response.statusCode).toBe(401);
@@ -49,10 +50,7 @@ describe('createCodeToolsServer', () => {
             method: 'POST',
             url: '/code/read',
             headers: AUTHORIZED,
-            payload: {
-                project: 'demo',
-                paths: ['README.md'],
-            },
+            payload: { paths: [projects.path('demo', 'README.md')] },
         });
 
         expect(response.statusCode).toBe(200);
@@ -69,20 +67,29 @@ describe('createCodeToolsServer', () => {
             headers: AUTHORIZED,
             payload: {},
         });
-        const missingProject = await server.inject({
+        const missingFile = await server.inject({
             method: 'POST',
             url: '/code/read',
             headers: AUTHORIZED,
-            payload: {
-                project: 'nope',
-                paths: ['README.md'],
-            },
+            payload: { paths: [projects.path('nope', 'README.md')] },
         });
 
         expect(unknown.statusCode).toBe(404);
         expect(unknown.json()).toMatchObject({ code: 'unknown_tool' });
-        expect(missingProject.statusCode).toBe(200);
-        expect(missingProject.json()).toMatchObject({
+        const relativePath = await server.inject({
+            method: 'POST',
+            url: '/code/read',
+            headers: AUTHORIZED,
+            payload: { paths: ['demo/README.md'] },
+        });
+
+        expect(relativePath.statusCode).toBe(200);
+        expect(relativePath.json()).toMatchObject({
+            code: 'invalid_arguments',
+            operation: { state: 'failed' },
+        });
+        expect(missingFile.statusCode).toBe(200);
+        expect(missingFile.json()).toMatchObject({
             code: 'not_found',
             operation: { state: 'failed' },
         });

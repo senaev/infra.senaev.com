@@ -12,13 +12,13 @@ import { createTestProjects, type TestProjects } from '../tools/createTestProjec
 
 import { createCodeToolsServer, type CodeToolsServer } from './createCodeToolsServer';
 
-const TOKEN = 'managed-project-test';
+const TOKEN = 'managed-operations-test';
 const HEADERS = { authorization: createBearerAuthorizationHeader(TOKEN) };
 
 type Reply = {
     status: string;
     code?: string;
-    projects?: unknown[];
+    entries?: unknown[];
     operation: { id: string; state: string; timeoutSeconds: number };
     operations?: { id: string; state: string }[];
     logs?: { text: string }[];
@@ -72,14 +72,21 @@ describe('managed execution HTTP contract', () => {
         ) as unknown as Reply;
     }
 
-    function holdProjects() {
+    function list(args: Record<string, unknown> = {}) {
+        return call('list', {
+            folder: projects.root,
+            ...args,
+        });
+    }
+
+    function holdList() {
         const started = deferred();
-        const run = vi.spyOn(CODE_TOOLS, 'projects').mockImplementation((_config, _input, execution) => new Promise((resolve) => {
+        const run = vi.spyOn(CODE_TOOLS, 'list').mockImplementation((_config, _input, execution) => new Promise((resolve) => {
             const context = execution;
 
             context?.log('stdout', 'started\n');
             context?.log('stderr', 'diagnostic\n');
-            context?.signal.addEventListener('abort', () => resolve({ projects: [] }), { once: true });
+            context?.signal.addEventListener('abort', () => resolve({ entries: [] }), { once: true });
             started.resolve();
         }));
 
@@ -90,16 +97,16 @@ describe('managed execution HTTP contract', () => {
     }
 
     it('returns a fast real result and exposes the same result through authenticated controls', async () => {
-        const response = await call('projects');
+        const response = await list();
         const body = response.json<Reply>();
 
         expect(response.statusCode).toBe(200);
         expect(body).toMatchObject({
             status: 'ok',
-            projects: [
+            entries: [
                 {
-                    name: 'demo',
-                    branch: 'main',
+                    path: projects.path('demo'),
+                    type: 'folder',
                 },
             ],
             operation: {
@@ -110,7 +117,7 @@ describe('managed execution HTTP contract', () => {
         const { id } = body.operation;
 
         expect((await call('operation_result', { id })).json<Reply>()).toMatchObject({
-            result: { projects: body.projects },
+            result: { entries: body.entries },
             operation: {
                 id,
                 state: 'completed',
@@ -118,7 +125,7 @@ describe('managed execution HTTP contract', () => {
         });
         expect((await call('operations')).json<Reply>().operations).toContainEqual(expect.objectContaining({ id }));
         for (const tool of [
-            'projects',
+            'list',
             'operations',
             'operation_status',
             'operation_result',
@@ -139,25 +146,25 @@ describe('managed execution HTTP contract', () => {
         const complete = deferred();
         let signal: AbortSignal | undefined;
 
-        vi.spyOn(CODE_TOOLS, 'projects').mockImplementation(async (_config, _input, execution) => {
+        vi.spyOn(CODE_TOOLS, 'list').mockImplementation(async (_config, _input, execution) => {
             signal = execution?.signal;
             started.resolve();
             await complete.promise;
 
-            return { projects: [] };
+            return { entries: [] };
         });
         const address = await server.listen({
             host: '127.0.0.1',
             port: 0,
         });
         const client = new AbortController();
-        const response = fetch(`${address}/code/projects`, {
+        const response = fetch(`${address}/code/list`, {
             method: 'POST',
             headers: {
                 ...HEADERS,
                 'content-type': 'application/json',
             },
-            body: '{}',
+            body: JSON.stringify({ folder: projects.root }),
             signal: client.signal,
         }).catch((error: unknown) => error);
 
@@ -175,7 +182,7 @@ describe('managed execution HTTP contract', () => {
     });
 
     it('forgets old IDs when the backend server is recreated', async () => {
-        const reply = (await call('projects')).json<Reply>();
+        const reply = (await list()).json<Reply>();
 
         await server.close();
         server = createCodeToolsServer(TOKEN, projects.config);
@@ -184,9 +191,9 @@ describe('managed execution HTTP contract', () => {
     });
 
     it('returns a running handle after five seconds, with replayable logs and cancellation', async () => {
-        const { run } = holdProjects();
+        const { run } = holdList();
         const started = performance.now();
-        const response = await call('projects', {
+        const response = await list({
             timeoutSeconds: 10800,
             requestId: 'slow',
         });
@@ -208,7 +215,7 @@ describe('managed execution HTTP contract', () => {
             expect.objectContaining({ text: 'diagnostic\n' }),
         ]);
         expect((await call('operation_status', { id })).json<Reply>()).toEqual(status);
-        expect((await call('projects', {
+        expect((await list({
             timeoutSeconds: 10800,
             requestId: 'slow',
         })).json<Reply>().operation.id).toBe(id);
@@ -223,50 +230,47 @@ describe('managed execution HTTP contract', () => {
     }, 10000);
 
     it('immediately queues five, rejects overflow and allows parallel file commands', async () => {
-        const { started, run } = holdProjects();
-        const active = call('projects', { requestId: 'active' });
+        const { started, run } = holdList();
+        const active = list({ requestId: 'active' });
 
         await started;
         const before = performance.now();
         const queued: string[] = [];
 
         for (let index = 0; index < 5; index++) {
-            const body = (await call('projects', { requestId: `q${index}` })).json<Reply>();
+            const body = (await list({ requestId: `q${index}` })).json<Reply>();
 
             expect(body.operation.state).toBe('queued');
             queued.push(body.operation.id);
         }
 
         expect(performance.now() - before).toBeLessThan(3000);
-        const overflow = await call('projects');
+        const overflow = await list();
 
         expect(overflow.statusCode).toBe(429);
         expect(overflow.json<Reply>().code).toBe('QUEUE_FULL');
         expect((await call('operations')).json<Reply>().operations).toHaveLength(6);
-        expect((await call('projects', { requestId: 'q0' })).json<Reply>().operation.id).toBe(queued[0]);
+        expect((await list({ requestId: 'q0' })).json<Reply>().operation.id).toBe(queued[0]);
 
         expect((await call('run', {
-            project: 'demo',
+            cwd: projects.path('demo'),
             command: 'printf direct',
         })).statusCode).toBe(429);
         const read = await completed('read', {
-            project: 'demo',
             executionPolicy: 'parallel',
-            paths: ['README.md'],
+            paths: [projects.path('demo', 'README.md')],
         });
         const write = await completed('write', {
-            project: 'demo',
             executionPolicy: 'parallel',
-            path: 'README.md',
+            path: projects.path('demo', 'README.md'),
             expectedHash: read.files?.[0]?.hash,
             content: 'updated\n',
         });
 
         expect(write.operation.state).toBe('completed');
         const patch = await completed('patch', {
-            project: 'demo',
             executionPolicy: 'parallel',
-            path: 'README.md',
+            path: projects.path('demo', 'README.md'),
             expectedHash: write.hash,
             operations: [
                 {
@@ -278,9 +282,8 @@ describe('managed execution HTTP contract', () => {
 
         expect(patch.operation.state).toBe('completed');
         expect((await completed('read', {
-            project: 'demo',
             executionPolicy: 'parallel',
-            paths: ['README.md'],
+            paths: [projects.path('demo', 'README.md')],
         })).files?.[0]?.content).toBe('patched\n');
         for (const id of queued) {
             expect((await call('operation_cancel', { id })).json<Reply>().operation.state).toBe('cancelled');
@@ -303,8 +306,8 @@ describe('managed execution HTTP contract', () => {
                 'performance',
             ],
         });
-        const { started } = holdProjects();
-        const pending = call('projects', { timeoutSeconds: 1 });
+        const { started } = holdList();
+        const pending = list({ timeoutSeconds: 1 });
 
         await started;
         await vi.advanceTimersByTimeAsync(1000);
@@ -324,12 +327,11 @@ describe('managed execution HTTP contract', () => {
         const launch = vi.spyOn(OperationManager.prototype, 'launch').mockRejectedValue(new CommandError('conflict', 'Unavailable'));
 
         expect((await call('read', {
-            project: 'demo',
             executionPolicy: 'parallel',
-            paths: ['README.md'],
+            paths: [projects.path('demo', 'README.md')],
         })).statusCode).toBe(409);
         expect(launch).toHaveBeenCalledTimes(1);
-        expect((await call('projects')).statusCode).toBe(409);
+        expect((await list()).statusCode).toBe(409);
     });
 
     it('rejects invalid launch/control arguments and foreign IDs without admitting work', async () => {
@@ -342,7 +344,7 @@ describe('managed execution HTTP contract', () => {
             { mode: 'async' },
             { waitSeconds: 5 },
         ]) {
-            expect((await call('projects', payload)).statusCode).toBe(400);
+            expect((await list(payload)).statusCode).toBe(400);
         }
 
         expect((await call('operations')).json<Reply>().operations).toEqual([]);
@@ -359,8 +361,8 @@ describe('managed execution HTTP contract', () => {
     });
 
     it('retains a fast execution failure as a terminal failed operation', async () => {
-        vi.spyOn(CODE_TOOLS, 'projects').mockRejectedValue(new CommandError('command_failed', 'Git failed'));
-        const body = (await call('projects')).json<Reply>();
+        vi.spyOn(CODE_TOOLS, 'list').mockRejectedValue(new CommandError('command_failed', 'ripgrep failed'));
+        const body = (await list()).json<Reply>();
 
         expect(body).toMatchObject({
             status: 'error',
