@@ -202,8 +202,8 @@ codingAgentInstances:
     owner:
       name: Andrei Senaev
       email: andrei.senaev@gmail.com
-    agentConfigFile: config/coding-agents.json
-    instructionsPath: config/opencode-telegram
+    agentConfigFile: config/senaev-coding-agents.json
+    instructionsPath: config/senaev-llm-instructions-path
     secrets:
       name: senaev-com-kv-secrets
       storeName: vault-cluster-secret-store
