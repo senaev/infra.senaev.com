@@ -216,12 +216,8 @@ codingAgentInstances:
       telegramToken: TG_TOKEN_OPENCODE_SENAEV_BOT
       telegramAllowedUser: TG_SENAEV_USER_ID
       codeToolsToken: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
-    ingress:
-      className: traefik-hetzner
-      traefikDeployment: hetzner
-      namespace: traefik
-      entrypoints: websecure
-      certResolver: letsencrypt
+    # The vps of the Traefik that serves this instance's domains.
+    traefik: hetzner
     opencode:
       enabled: true
       vps: hetzner

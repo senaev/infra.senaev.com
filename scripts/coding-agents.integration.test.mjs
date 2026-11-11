@@ -73,8 +73,7 @@ function family() {
     instance.opencode.hostname = 'opencode.example.ru';
     instance.opencode.mcpOAuth.hostname = 'opencode.example.ru';
     instance.ompWeb.hostname = 'omp.example.ru';
-    instance.ingress.className = 'traefik-ru';
-    instance.ingress.traefikDeployment = 'ru-node';
+    instance.traefik = 'firstvds';
     instance.secrets.name = 'family-credentials';
     instance.secrets.vaultPath = 'family-kv';
     for (const key of [
@@ -248,7 +247,7 @@ test('two instances isolate nodes, routes, selectors, credentials and data witho
         'family-opencode-mcp-oauth',
         'family-omp-web',
     ]) {
-        assert.equal(get(docs, 'Ingress', name).spec.ingressClassName, 'traefik-ru');
+        assert.equal(get(docs, 'Ingress', name).spec.ingressClassName, 'traefik-firstvds');
     }
 
     for (const name of [
@@ -257,7 +256,7 @@ test('two instances isolate nodes, routes, selectors, credentials and data witho
     ]) {
         const source = get(docs, 'NetworkPolicy', name).spec.ingress[0].from[0];
 
-        assert.equal(source.podSelector.matchLabels['traefik-deployment'], 'ru-node');
+        assert.equal(source.podSelector.matchLabels['traefik-deployment'], 'firstvds');
     }
 
     const { affinity } = get(docs, 'Deployment', 'family-omp-web').spec.template.spec;

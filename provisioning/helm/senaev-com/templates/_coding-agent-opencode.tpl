@@ -302,11 +302,11 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: {{ .Values.ingress.namespace }}
+              kubernetes.io/metadata.name: traefik
           podSelector:
             matchLabels:
               app: traefik
-              traefik-deployment: {{ .Values.ingress.traefikDeployment }}
+              traefik-deployment: {{ .Values.traefik }}
       ports:
         - protocol: TCP
           port: 4096
@@ -378,11 +378,11 @@ metadata:
   name: {{ printf "%sopencode-mcp-oauth" .Values.resourcePrefix }}
   namespace: {{ .Release.Namespace }}
   annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: {{ .Values.ingress.entrypoints }}
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
-    traefik.ingress.kubernetes.io/router.tls.certresolver: {{ .Values.ingress.certResolver }}
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
 spec:
-  ingressClassName: {{ .Values.ingress.className }}
+  ingressClassName: {{ printf "traefik-%s" .Values.traefik }}
   tls:
     - hosts: [{{ $oauth.hostname | quote }}]
   rules:
@@ -405,11 +405,11 @@ metadata:
   name: {{ printf "%sopencode" .Values.resourcePrefix }}
   namespace: {{ .Release.Namespace }}
   annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: {{ .Values.ingress.entrypoints }}
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
-    traefik.ingress.kubernetes.io/router.tls.certresolver: {{ .Values.ingress.certResolver }}
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
 spec:
-  ingressClassName: {{ .Values.ingress.className }}
+  ingressClassName: {{ printf "traefik-%s" .Values.traefik }}
   tls:
     - hosts: [{{ .Values.opencode.hostname | quote }}]
   rules:

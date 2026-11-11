@@ -16,7 +16,7 @@
           "owner",
           "instructionsPath",
           "secrets",
-          "ingress",
+          "traefik",
           "opencode",
           "ompWeb",
           "codeTools"
@@ -164,37 +164,9 @@
               }
             }
           },
-          "ingress": {
-            "type": "object",
-            "required": [
-              "className",
-              "traefikDeployment",
-              "namespace",
-              "entrypoints",
-              "certResolver"
-            ],
-            "properties": {
-              "className": {
-                "type": "string",
-                "minLength": 1
-              },
-              "traefikDeployment": {
-                "type": "string",
-                "minLength": 1
-              },
-              "namespace": {
-                "type": "string",
-                "minLength": 1
-              },
-              "entrypoints": {
-                "type": "string",
-                "minLength": 1
-              },
-              "certResolver": {
-                "type": "string",
-                "minLength": 1
-              }
-            }
+          "traefik": {
+            "type": "string",
+            "minLength": 1
           },
           "opencode": {
             "type": "object",
