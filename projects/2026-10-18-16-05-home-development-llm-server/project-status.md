@@ -1,10 +1,10 @@
-- [ ] Finish the local LLM deployment project and its model-quality/performance acceptance checks.
+- [x] Select and buy a compact home server with at least 32 GB RAM and 1 TB SSD within €1,000 delivered.
 
-## Stage
+Stage: completed and closed on 2026-11-11 at the user’s request.
+Purchased refurbished Dell OptiPlex Micro 7010, advertised i5-13500T / 32 GB / 1 TB NVMe.
+VORPC order 102889, €599.89 including VAT and delivery; €400.11 below budget.
+User confirms the machine is being shipped to their office; delivery is pending.
 
-Partially implemented in production: the `llm-server` service and its Prometheus scrape are deployed and live. Model selection and evaluation remain open in the original README.
-
-## Remaining
-
-- Complete the unresolved model-quality/performance checks and decide the production model configuration.
-- Do not confuse a healthy LLM endpoint with acceptance of all originally planned inference capabilities.
+Hardware inspection, BIOS AC recovery, noise/network stability, Proxmox installation
+and Linux VM Jellyfin GPU passthrough tests are post-delivery follow-up, not completed
+verification and not blockers to closing this purchase project.
