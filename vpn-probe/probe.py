@@ -231,7 +231,7 @@ TRANSFER_TARGETS = (
     ("httpbingo", "https://httpbingo.org/bytes/{}"),
 )
 TRANSFER_SIZES = (4096, 16384, 65536)
-FRESH_TRANSFER_SIZES = (4096, 16384)
+FRESH_TRANSFER_SIZES = (4096, 16384, 8192)
 
 
 def xhttp_exit_control(profile, proxy, experiment_id, timeout=8, check="exit_ip"):
@@ -269,8 +269,8 @@ def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, ht
              "diagnostic_h1_size_exit" if measure_sizes else
              "diagnostic_native_h1_trace" if http1 else
              "diagnostic_native_trace" if native_tls else "diagnostic_fresh_trace")
-    if payload_size == 16384:
-        check += "_16384"
+    if payload_size is not None and payload_size != 4096:
+        check += f"_{payload_size}"
     passed = False
     fresh = None
     try:

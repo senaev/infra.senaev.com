@@ -138,3 +138,43 @@ Reverting the follow-up restores #152's runtime; retain the exporter fix if need
 Local checks:82 unit tests,17 Python files parsed, diff check, pinned Xray/Traefik
 integration with distinct fresh4/16KiB clients, verified exit, exact sizes and
 loopback cleanup. Existing trust/invalid-credential/website checks remain.
+
+## Fresh 8 KiB follow-up (prepared, not deployed)
+
+At 2026-11-11 08:43 UTC, current exported counters showed:
+
+| Source | Fresh 4 KiB | Fresh 16 KiB | Reused 4/16/64 KiB |
+|---|---|---|---|
+| senaev-media | 19/20 passed | 0/19 passed | 19/19, 0/19, 0/19 |
+| Hetzner | 38/38 passed | 38/38 passed | 39/39, 37/39, 38/38 |
+
+All paired direct requests for these checks passed. Home fresh16KiB exit checks
+passed19/20; the failed exit prevented a payload, rather than being counted as
+a failed payload. These are cumulative current-process counters, not independent
+matched rounds or a controlled simultaneous comparison. The source/path difference
+persists on fresh clients; this weakens a process-history-only explanation.
+It does not establish a universal size boundary, DPI or the responsible network hop.
+
+Append one independent8KiB client **after** existing fresh4/16KiB controls, keeping
+their order intact. Wait60–90s before startup, validate the same expected exit,
+then direct8KiB →2–7s jitter →H1-proxied8KiB. Use the existing8s/3s request
+budgets,32KiB/s rate cap, exact-byte check and verified TLS. Always clean up;
+failed earlier sizes do not suppress8KiB. Parent exit/cancellation still stops it.
+Run on both existing home and Hetzner diagnostic paths; acceptance of the original
+failed matrix candidate is unchanged.
+
+Fixed metrics/log names: `diagnostic_h1_fresh_size_exit_8192` and
+`transfer_h1_fresh_cloudflare_8192`. Existing transfer dashboard selectors include
+all `transfer_.*` checks, so no chart change is required for the payload result.
+
+Adds at most20KiB **planned response allowance** per eligible cycle:4KiB exit
+cap plus2×8KiB payloads. Previous236/232KiB planned home/Hetzner totals become
+256/252KiB, excluding read-ahead, headers and transport overhead. Adds one60–90s
+quiet interval, one temporary process and three requests. Longer serial cycles
+can leave dashboard freshness gaps; missing samples are not failed probes.
+
+If8KiB repeatedly fails at home with successful direct/Hetzner controls, the
+observed problematic size range narrows below16KiB. If it passes, focus next on
+the8–16KiB range. Intermittent or failed controls require more observations.
+Because8KiB follows earlier traffic, position/history remain confounders; this
+is not proof of a packet/MTU threshold and does not justify changing subscriptions.
