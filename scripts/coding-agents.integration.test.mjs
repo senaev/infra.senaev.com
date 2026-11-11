@@ -14,6 +14,7 @@ const chart = 'provisioning/helm/senaev-com';
 const defaults = load(readFileSync(`${chart}/values.yaml`, 'utf8'));
 const { personal } = defaults.codingAgentInstances;
 
+/** Render real Helm manifests with temporary instance overrides, cleaning up on failure. */
 function render(instances) {
     const temp = mkdtempSync(join(tmpdir(), 'coding-agents-'));
 
@@ -46,6 +47,7 @@ function render(instances) {
     }
 }
 
+/** Parse a successful render and reject duplicate Kubernetes resource identities. */
 function documents(instances) {
     const result = render(instances);
 
@@ -58,6 +60,7 @@ function documents(instances) {
     return docs;
 }
 
+/** Build an isolated second-instance fixture without personal MCPs or credential references. */
 function family() {
     const instance = structuredClone(personal);
 
@@ -97,6 +100,7 @@ function family() {
     return instance;
 }
 
+/** Find a required rendered resource, reporting its kind and name when absent. */
 const get = (docs, kind, name) => {
     const doc = docs.find((item) => item.kind === kind && item.metadata.name === name);
 
@@ -105,6 +109,7 @@ const get = (docs, kind, name) => {
     return doc;
 };
 
+/** Verify an instance's volume, service, ingress and authentication resource references. */
 function checkReferences(docs, prefix) {
     for (const name of [
         'opencode-telegram',

@@ -39,7 +39,7 @@ The `personal` entry is the reference for the required structure.
 | `owner` | Git author/committer name and email for this instance. |
 | `instructionsPath` | Chart-relative folder containing this instance's `AGENTS.md` and `CLAUDE.md`. Create appropriate instructions instead of giving relatives the personal server rules. |
 | `agentConfigFile` or `agent` | Chart-relative JSON config file, or an inline config object: MCPs, model, connectors and transcription. |
-| `codeTools.enabled` | Set `false` for the future family instance. |
+| `codeTools.enabled` | Set `false` for the future family instance. `cluster-helper` only calls the unprefixed `code-tools` Service with the personal token; enabling Code Tools for a prefixed instance renders a Service with no configured client routing to it. |
 
 `agentConfigFile` currently points to `config/coding-agents.json` for personal.
 For a second instance, use a separate config file or inline `agent` with its own

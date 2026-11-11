@@ -11,13 +11,19 @@ NetworkPolicy, ingress and Traefik Basic Auth middleware. The current personal i
 
 1. Build/publish the image through the `Deploy` workflow. The image is published
    to `ghcr.io/senaev/omp-web:latest`.
-2. Point `omp.senaev.com` at the same ingress as `opencode.senaev.com`.
-3. Add `OMP_WEB_HTPASSWD_HASH_WITH_USERNAME` to Vault's `senaev-com-kv`.
+2. Point the target instance's `ompWeb.hostname` at the Traefik selected by its
+   `ingress` settings.
+3. Add the instance's `secrets.ompHtpasswd` property to its `secrets.vaultPath`
+   in the Vault selected by `secrets.storeName` and `secrets.storeKind`.
+   Personal-instance example: `OMP_WEB_HTPASSWD_HASH_WITH_USERNAME` in `senaev-com-kv`.
    Its value is an htpasswd entry (`username:bcrypt-hash`), generated interactively
    with `htpasswd -nB <username>`. Do not commit it or use a plaintext password.
-4. Set `codingAgentInstances.personal.ompWeb.enabled: true` in the chart values through a reviewed PR.
+4. Set `codingAgentInstances.<instance>.ompWeb.enabled: true` in the chart values
+   through a reviewed PR. Configure that instance's own domains and secrets; do
+   not edit `personal` when adding another instance.
    Normal Helm CI deploys it; no cluster changes are part of this implementation.
-5. Open `https://omp.senaev.com`, select a directory under `/projects/git`,
+5. Open `https://<ompWeb.hostname>` for the target instance (personal example:
+   `https://omp.senaev.com`), select a directory under `/projects/git`,
    and create a session. Select the full tool preset when you need subagents.
 
 Traefik authenticates every route and removes the Authorization header before
