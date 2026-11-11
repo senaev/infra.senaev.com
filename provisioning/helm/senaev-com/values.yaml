@@ -202,6 +202,7 @@ llmWorkspaces:
     vps: hetzner
     traefik: hetzner
     instructionsPath: config/senaev-llm-instructions-path
+    projectsStorageSize: 16Gi
     agent:
       mcp:
         datadog:
@@ -213,11 +214,11 @@ llmWorkspaces:
       connectors:
         openrouter:
           baseUrl: https://openrouter.ai/api/v1
-          apiKeyEnv: OPENROUTER_API_KEY
+          secretKey: OPENROUTER_API_KEY
       speechToText:
         baseUrl: https://api.groq.com/openai/v1
         model: whisper-large-v3-turbo
-        apiKeyEnv: GROQ_API_KEY
+        secretKey: GROQ_API_KEY
     git:
       name: Andrei Senaev
       email: andrei.senaev@gmail.com
@@ -230,7 +231,6 @@ llmWorkspaces:
       enabled: true
       hostname: opencode.senaev.com
       dataPath: /k3s-cluster/volumes/opencode-data
-      projectsStorageSize: 16Gi
       mcpOAuth:
         hostname: opencode.senaev.com
         # All remote MCPs share one callback; authorize one server at a time.
@@ -247,6 +247,31 @@ llmWorkspaces:
       enabled: true
       secrets:
         codeToolsToken: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
+  galkin:
+    vps: galkin
+    # DNS for the hostnames points to hetzner; Traefik reaches the pods over the tailnet.
+    traefik: hetzner
+    instructionsPath: config/galkin-llm-instructions-path
+    projectsStorageSize: 8Gi
+    agent:
+      mcp: {}
+      defaultModel:
+        provider: openrouter
+        id: anthropic/claude-haiku-4.5
+      connectors:
+        openrouter:
+          baseUrl: https://openrouter.ai/api/v1
+          secretKey: OPENROUTER_API_KEY
+      speechToText:
+        baseUrl: https://api.groq.com/openai/v1
+        model: whisper-large-v3-turbo
+        secretKey: GROQ_API_KEY
+    ompWeb:
+      enabled: true
+      hostname: omp.galkin.senaev.com
+      storageSize: 8Gi
+      secrets:
+        ompHtpasswd: GALKIN_OMP_WEB_HTPASSWD_HASH_WITH_USERNAME
 
 # Grafana MCP server, reachable only through cluster-helper at https://<clusterHelper.mcpDomain>/grafana.
 mcpGrafana:

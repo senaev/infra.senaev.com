@@ -24,6 +24,7 @@ spec:
     metadata:
       labels:
         app: log-generator
+        vps: {{ .Values.logGenerator.vps }}
         admission.datadoghq.com/enabled: "true"
         tags.datadoghq.com/service: log-generator
         tags.datadoghq.com/env: prod

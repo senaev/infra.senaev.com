@@ -12,24 +12,45 @@
       },
       "additionalProperties": {
         "type": "object",
+        "additionalProperties": false,
         "required": [
           "agent",
           "instructionsPath",
-          "git",
-          "telegram",
+          "projectsStorageSize",
           "vps",
-          "traefik",
-          "opencode",
-          "ompWeb",
-          "codeTools"
+          "traefik"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "required": ["opencode"],
+              "properties": { "opencode": { "properties": { "enabled": { "const": true } } } }
+            },
+            "then": { "required": ["git", "telegram"] }
+          },
+          {
+            "if": {
+              "required": ["codeTools"],
+              "properties": { "codeTools": { "properties": { "enabled": { "const": true } } } }
+            },
+            "then": {
+              "required": ["opencode"],
+              "properties": { "opencode": { "properties": { "enabled": { "const": true } } } }
+            }
+          }
         ],
         "properties": {
           "instructionsPath": {
             "type": "string",
             "minLength": 1
           },
+          "projectsStorageSize": {
+            "type": "string",
+            "minLength": 1
+          },
           "agent": {
             "type": "object",
+            "additionalProperties": false,
             "required": [
               "mcp",
               "defaultModel",
@@ -38,10 +59,12 @@
             ],
             "properties": {
               "mcp": {
+                "description": "Free-form MCP server settings, passed to OpenCode and OMP",
                 "type": "object"
               },
               "defaultModel": {
                 "type": "object",
+                "additionalProperties": false,
                 "required": [
                   "provider",
                   "id"
@@ -58,14 +81,34 @@
                 }
               },
               "connectors": {
-                "type": "object"
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "baseUrl",
+                    "secretKey"
+                  ],
+                  "properties": {
+                    "baseUrl": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "secretKey": {
+                      "description": "The Vault key name. The pod gets it as an env variable with the same name",
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
               },
               "speechToText": {
                 "type": "object",
+                "additionalProperties": false,
                 "required": [
                   "baseUrl",
                   "model",
-                  "apiKeyEnv"
+                  "secretKey"
                 ],
                 "properties": {
                   "baseUrl": {
@@ -76,7 +119,8 @@
                     "type": "string",
                     "minLength": 1
                   },
-                  "apiKeyEnv": {
+                  "secretKey": {
+                    "description": "The Vault key name",
                     "type": "string",
                     "minLength": 1
                   }
@@ -86,6 +130,7 @@
           },
           "git": {
             "type": "object",
+            "additionalProperties": false,
             "required": [
               "name",
               "email",
@@ -113,6 +158,7 @@
           },
           "telegram": {
             "type": "object",
+            "additionalProperties": false,
             "required": [
               "token",
               "allowedUser"
@@ -138,21 +184,17 @@
           },
           "opencode": {
             "type": "object",
+            "additionalProperties": false,
             "required": [
               "enabled",
               "hostname",
               "dataPath",
-              "projectsStorageSize",
               "mcpOAuth",
               "secrets"
             ],
             "properties": {
               "enabled": {
                 "type": "boolean"
-              },
-              "vps": {
-                "type": "string",
-                "minLength": 1
               },
               "hostname": {
                 "type": "string",
@@ -162,12 +204,9 @@
                 "type": "string",
                 "pattern": "^/[^/]"
               },
-              "projectsStorageSize": {
-                "type": "string",
-                "minLength": 1
-              },
               "mcpOAuth": {
                 "type": "object",
+                "additionalProperties": false,
                 "required": [
                   "hostname",
                   "callbackPort"
@@ -186,6 +225,7 @@
               },
               "secrets": {
                 "type": "object",
+                "additionalProperties": false,
                 "required": [
                   "opencodePassword"
                 ],
@@ -200,6 +240,7 @@
           },
           "ompWeb": {
             "type": "object",
+            "additionalProperties": false,
             "required": [
               "enabled",
               "hostname",
@@ -220,6 +261,7 @@
               },
               "secrets": {
                 "type": "object",
+                "additionalProperties": false,
                 "required": [
                   "ompHtpasswd"
                 ],
@@ -234,6 +276,7 @@
           },
           "codeTools": {
             "type": "object",
+            "additionalProperties": false,
             "required": [
               "enabled",
               "secrets"
@@ -244,6 +287,10 @@
               },
               "secrets": {
                 "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "codeToolsToken"
+                ],
                 "properties": {
                   "codeToolsToken": {
                     "type": "string",

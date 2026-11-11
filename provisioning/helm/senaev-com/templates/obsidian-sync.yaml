@@ -17,6 +17,7 @@ spec:
     metadata:
       labels:
         app: obsidian-sync
+        vps: {{ .Values.obsidianSync.vps }}
         admission.datadoghq.com/enabled: "true"
         tags.datadoghq.com/service: obsidian-sync
         tags.datadoghq.com/env: prod

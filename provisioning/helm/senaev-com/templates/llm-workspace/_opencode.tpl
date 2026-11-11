@@ -2,17 +2,6 @@
 {{- $agent := .Values.agent }}
 {{- if .Values.opencode.enabled }}
 {{- $oauth := .Values.opencode.mcpOAuth }}
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {{ printf "%s-opencode-telegram-config" .Values.name }}
-  namespace: {{ .Release.Namespace }}
-data:
-  AGENTS.md: |
-{{ .Files.Get (printf "%s/AGENTS.md" .Values.instructionsPath) | required "Missing instance AGENTS.md" | indent 4 }}
-  CLAUDE.md: |
-{{ .Files.Get (printf "%s/CLAUDE.md" .Values.instructionsPath) | required "Missing instance CLAUDE.md" | indent 4 }}
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -31,14 +20,14 @@ spec:
     metadata:
       labels:
         app: {{ printf "%s-opencode-telegram" .Values.name }}
+        vps: {{ .Values.vps }}
         admission.datadoghq.com/enabled: "true"
         tags.datadoghq.com/service: opencode-telegram
         tags.datadoghq.com/env: prod
         tags.datadoghq.com/version: latest
       annotations:
-        checksum/mcp-oauth-proxy: {{ include "senaev-com.opencodeMcpOAuthNginx" . | sha256sum }}
         secret.reloader.stakater.com/reload: {{ printf "senaev-com-kv-secrets,%s-opencode-auth" .Values.name | quote }}
-        configmap.reloader.stakater.com/reload: {{ list (printf "%s-opencode-telegram-config" .Values.name) | join "," | quote }}
+        configmap.reloader.stakater.com/reload: {{ printf "%s-instructions,%s-opencode-mcp-oauth" .Values.name .Values.name | quote }}
     spec:
       nodeSelector:
         vps: {{ .Values.vps }}
@@ -48,26 +37,15 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - |
-              git config --global user.name "$GIT_AUTHOR_NAME"
-              git config --global user.email "$GIT_AUTHOR_EMAIL"
-              mkdir -p /root/.ssh
               cp /tmp/ssh/id_rsa /root/.ssh/id_rsa
               chmod 600 /root/.ssh/id_rsa
               ssh-keyscan github.com >> /root/.ssh/known_hosts 2>/dev/null
-              mkdir -p /projects/git
-          env:
-            - name: GIT_AUTHOR_NAME
-              value: {{ .Values.git.name | quote }}
-            - name: GIT_AUTHOR_EMAIL
-              value: {{ .Values.git.email | quote }}
           volumeMounts:
             - name: ssh-key
               mountPath: /tmp/ssh
               readOnly: true
             - name: ssh-dir
               mountPath: /root/.ssh
-            - name: projects-git
-              mountPath: /projects/git
       containers:
         # OpenCode web and API share native authentication; the bot uses localhost.
         - name: opencode-serve
@@ -118,15 +96,14 @@ spec:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
                   key: {{ .Values.git.githubToken }}
-                  optional: false
             - name: OPENCODE_WORKDIR
-              value: /projects/git
+              value: /projects
 {{- range $connector := $agent.connectors }}
-            - name: {{ $connector.apiKeyEnv | quote }}
+            - name: {{ $connector.secretKey | quote }}
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: {{ default $connector.apiKeyEnv $connector.secretKey | quote }}
+                  key: {{ $connector.secretKey | quote }}
 {{- end }}
             - name: OPENCODE_CONFIG_CONTENT
 {{- $servers := dict }}
@@ -137,12 +114,12 @@ spec:
 {{- end }}
 {{- $providers := dict }}
 {{- range $name, $connector := $agent.connectors }}
-{{- $_ := set $providers $name (dict "npm" "@ai-sdk/openai-compatible" "name" $name "options" (dict "baseURL" $connector.baseUrl "apiKey" (printf "{env:%s}" $connector.apiKeyEnv))) }}
+{{- $_ := set $providers $name (dict "npm" "@ai-sdk/openai-compatible" "name" $name "options" (dict "baseURL" $connector.baseUrl "apiKey" (printf "{env:%s}" $connector.secretKey))) }}
 {{- end }}
               value: {{ dict "mcp" (dict "servers" $servers) "model" (printf "%s/%s" $agent.defaultModel.provider $agent.defaultModel.id) "provider" $providers "permissions" (list (dict "action" "external_directory" "resource" "*" "effect" "ask")) | toJson | quote }}
           volumeMounts:
-            - name: projects-git
-              mountPath: /projects/git
+            - name: projects
+              mountPath: /projects
             - name: ssh-dir
               mountPath: /root/.ssh
             - name: opencode-data
@@ -154,13 +131,13 @@ spec:
             - name: opencode-data
               mountPath: /root/.local/state/opencode
               subPath: opencode-state
-            - name: opencode-config
+            - name: instructions
               mountPath: /root/.config/opencode/AGENTS.md
               subPath: AGENTS.md
-            - name: opencode-config
+            - name: instructions
               mountPath: /AGENTS.md
               subPath: AGENTS.md
-            - name: opencode-config
+            - name: instructions
               mountPath: /CLAUDE.md
               subPath: CLAUDE.md
 
@@ -198,15 +175,15 @@ spec:
           image: ghcr.io/senaev/opencode-telegram-bot:latest
           imagePullPolicy: Always
           volumeMounts:
-            - name: projects-git
-              mountPath: /projects/git
+            - name: projects
+              mountPath: /projects
             - name: opencode-data
               mountPath: /root/.config/opencode-telegram-bot
               subPath: telegram-bot
-            - name: opencode-config
+            - name: instructions
               mountPath: /AGENTS.md
               subPath: AGENTS.md
-            - name: opencode-config
+            - name: instructions
               mountPath: /CLAUDE.md
               subPath: CLAUDE.md
           env:
@@ -220,13 +197,11 @@ spec:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
                   key: {{ .Values.telegram.token }}
-                  optional: false
             - name: TELEGRAM_ALLOWED_USER_ID
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
                   key: {{ .Values.telegram.allowedUser }}
-                  optional: false
             - name: OPENCODE_API_URL
               value: "http://localhost:4096"
             - name: OPENCODE_MODEL_PROVIDER
@@ -234,15 +209,14 @@ spec:
             - name: OPENCODE_MODEL_ID
               value: {{ $agent.defaultModel.id | quote }}
             - name: OPEN_BROWSER_ROOTS
-              value: /projects/git
+              value: /projects
             - name: STT_API_URL
               value: {{ $agent.speechToText.baseUrl | quote }}
             - name: STT_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: {{ default $agent.speechToText.apiKeyEnv $agent.speechToText.secretKey | quote }}
-                  optional: false
+                  key: {{ $agent.speechToText.secretKey | quote }}
             - name: STT_MODEL
               value: {{ $agent.speechToText.model | quote }}
 
@@ -265,26 +239,12 @@ spec:
                 mode: 0600
         - name: ssh-dir
           emptyDir: {}
-        - name: projects-git
+        - name: projects
           persistentVolumeClaim:
-            claimName: {{ printf "%s-opencode-telegram-git" .Values.name }}
-        - name: opencode-config
+            claimName: {{ printf "%s-projects" .Values.name }}
+        - name: instructions
           configMap:
-            name: {{ printf "%s-opencode-telegram-config" .Values.name }}
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: {{ printf "%s-opencode-telegram-git" .Values.name }}
-  namespace: {{ .Release.Namespace }}
-  annotations:
-    helm.sh/resource-policy: keep
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: {{ .Values.opencode.projectsStorageSize }}
+            name: {{ printf "%s-instructions" .Values.name }}
 ---
 # Only the existing HTTPS ingress controller can reach the web/API port.
 apiVersion: networking.k8s.io/v1
@@ -396,8 +356,6 @@ spec:
                 name: {{ printf "%s-opencode-mcp-oauth" .Values.name }}
                 port:
                   number: 8081
-{{- end }}
-{{- if .Values.opencode.enabled }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress

@@ -15,6 +15,7 @@ spec:
     metadata:
       labels:
         app: media-server-helper
+        vps: {{ .Values.mediaServerHelper.vps }}
         admission.datadoghq.com/enabled: "true"
         tags.datadoghq.com/service: media-server-helper
         tags.datadoghq.com/env: prod

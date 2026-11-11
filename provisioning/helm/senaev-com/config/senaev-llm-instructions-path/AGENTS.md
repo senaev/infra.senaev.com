@@ -3,9 +3,9 @@
 
 ## Projects
 
-- Every project is a folder in `/projects/git` that holds one git repository. This folder is
+- Every project is a folder in `/projects` that holds one git repository. This folder is
   also the OpenCode working directory and the Telegram file browser root.
-- To add a project: `git clone <url> /projects/git/<name>`. Do not clone into another
+- To add a project: `git clone <url> /projects/<name>`. Do not clone into another
   project, and do not clone a repository that is already there.
 - GitHub works over SSH (`git@github.com:owner/repo.git`) and HTTPS; `gh` is logged in.
 

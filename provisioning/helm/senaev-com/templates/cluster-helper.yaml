@@ -33,6 +33,7 @@ spec:
     metadata:
       labels:
         app: cluster-helper
+        vps: {{ .Values.clusterHelper.vps }}
         admission.datadoghq.com/enabled: "true"
         tags.datadoghq.com/service: cluster-helper
         tags.datadoghq.com/env: prod
