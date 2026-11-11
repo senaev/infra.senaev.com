@@ -1,9 +1,10 @@
 import { readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { stripFrontmatter } from 'senaev-utils/src/obsidianNotes/stripFrontmatter';
+
 import { OBSIDIAN_VAULT_PATH } from '../env';
 import { logger } from '../logger';
-import { stripFrontmatter } from '../markdown/stripFrontmatter';
 
 import { parseTelegramPostLink } from './parseTelegramPostLink';
 import { readFrontmatterList } from './readFrontmatterList';

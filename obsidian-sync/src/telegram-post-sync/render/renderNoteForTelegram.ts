@@ -1,7 +1,7 @@
+import { stripFrontmatter } from 'senaev-utils/src/obsidianNotes/stripFrontmatter';
 import { TelegramRichMessageMedia } from 'senaev-utils/src/utils/TelegramApi/types';
 
 import { readFrontmatterList } from '../readFrontmatterList';
-import { stripFrontmatter } from '../../markdown/stripFrontmatter';
 
 import { appendAliasesToTitle } from './appendAliasesToTitle';
 import { cutHistorySection } from './cutHistorySection';
