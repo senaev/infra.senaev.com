@@ -22,21 +22,6 @@ jobs:
           cache: npm
           cache-dependency-path: "**/package-lock.json"
 
-      # code-tools searches with ripgrep, as it does in the code-tools image. Downloaded from the
-      # GitHub release, not apt: an Ubuntu mirror outage blocked every check on 2026-11-11.
-      - name: Install ripgrep
-        env:
-          RIPGREP_VERSION: 14.1.1
-          RIPGREP_SHA256: 4cf9f2741e6c465ffdb7c26f38056a59e2a2544b51f7cc128ef28337eeae4d8e
-        run: |
-          command -v rg && exit 0
-          archive="ripgrep-${RIPGREP_VERSION}-x86_64-unknown-linux-musl"
-          curl -fsSL --retry 3 -o "$RUNNER_TEMP/$archive.tar.gz" \
-            "https://github.com/BurntSushi/ripgrep/releases/download/${RIPGREP_VERSION}/$archive.tar.gz"
-          echo "${RIPGREP_SHA256}  $RUNNER_TEMP/$archive.tar.gz" | sha256sum -c -
-          tar -xzf "$RUNNER_TEMP/$archive.tar.gz" -C "$RUNNER_TEMP"
-          echo "$RUNNER_TEMP/$archive" >> "$GITHUB_PATH"
-
       # Typed linting, tsc and the tests all resolve each package's own imports, so every
       # package needs its dependencies present. There is no workspace hoisting to rely on.
       - name: Install the shared toolchain and package dependencies

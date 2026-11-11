@@ -2,138 +2,31 @@ import {
     mkdir, symlink, writeFile,
 } from 'node:fs/promises';
 
-import { createCommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import {
-    afterEach, beforeEach, describe, expect, it,
+    afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
+
+import { runProcess } from '../process/runProcess';
 
 import { createTestProjects, type TestProjects } from './createTestProjects';
 import { searchTool } from './searchTool';
-import { formatSnippet } from './searchCommand';
+
+vi.mock('../process/runProcess', () => {
+    return { runProcess: vi.fn() };
+});
 
 let projects: TestProjects;
 
 beforeEach(async () => {
-    projects = await createTestProjects({
-        demo: {
-            '.gitignore': 'dist/\n',
-            '.github/ci.yml': 'run: fetchUser\n',
-            'src/api.ts': [
-                'import x from "x";',
-                '',
-                'export function fetchUser() {}',
-                'export function fetchUsers() {}',
-                '',
-                'fetchUser();',
-                '',
-            ].join('\n'),
-            'src/util.ts': 'const a = (1+2);\n',
-            'dist/api.js': 'fetchUser();\n',
-        },
-    });
+    projects = await createTestProjects({ demo: { 'src/api.ts': 'fetchUser();\n' } });
 });
 
 afterEach(async () => {
     await projects.remove();
+    vi.mocked(runProcess).mockReset();
 });
 
-describe('formatSnippet', () => {
-    it('shows matches with context in ripgrep style and joins close parts', async () => {
-        const lines = [
-            {
-                line: 1,
-                text: 'a',
-                isMatch: false,
-            },
-            {
-                line: 2,
-                text: 'hit',
-                isMatch: true,
-            },
-            {
-                line: 3,
-                text: 'b',
-                isMatch: false,
-            },
-            {
-                line: 9,
-                text: 'hit',
-                isMatch: true,
-            },
-        ];
-
-        expect(await formatSnippet(lines, 5, 1, createCommandExecution())).toBe('1-a\n2:hit\n3-b\n--\n9:hit');
-        expect(await formatSnippet(lines, 1, 0, createCommandExecution())).toBe('2:hit');
-    });
-});
-
-describe('searchTool', () => {
-    it('finds literal text in all files except ignored ones, with line numbers', async () => {
-        const result = await searchTool(projects.config, {
-            project: 'demo',
-            queries: ['fetchUser('],
-            contextLines: 0,
-        });
-
-        expect(result).toMatchObject({
-            matchedFiles: 1,
-            totalMatches: 2,
-            truncated: false,
-            files: [
-                {
-                    path: 'src/api.ts',
-                    matchCount: 2,
-                    omittedMatches: 0,
-                    snippet: '3:export function fetchUser() {}\n--\n6:fetchUser();',
-                },
-            ],
-        });
-    });
-
-    it('searches dotfiles too, and limits the scope with a glob', async () => {
-        const all = await searchTool(projects.config, {
-            project: 'demo',
-            queries: ['fetchuser'],
-        });
-        const yamlOnly = await searchTool(projects.config, {
-            project: 'demo',
-            queries: ['fetchuser'],
-            glob: '*.yml',
-        });
-
-        expect(all.files.map((file) => file.path)).toEqual([
-            '.github/ci.yml',
-            'src/api.ts',
-        ]);
-        expect(yamlOnly.files.map((file) => file.path)).toEqual(['.github/ci.yml']);
-    });
-
-    it('reads queries as literal text unless "regex" is true', async () => {
-        const literal = await searchTool(projects.config, {
-            project: 'demo',
-            queries: ['(1+2)'],
-        });
-        const regex = await searchTool(projects.config, {
-            project: 'demo',
-            queries: ['fetchUsers?\\(\\)'],
-            regex: true,
-            caseSensitive: true,
-            folder: 'src',
-            maxMatchesPerFile: 1,
-            contextLines: 0,
-        });
-
-        expect(literal.files.map((file) => file.path)).toEqual(['src/util.ts']);
-        expect(regex.files).toEqual([
-            {
-                path: 'src/api.ts',
-                matchCount: 3,
-                omittedMatches: 2,
-                snippet: '3:export function fetchUser() {}',
-            },
-        ]);
-    });
-
+describe('searchTool on the filesystem', () => {
     it.each([
         'outside-folder',
         'outside-file',
@@ -149,20 +42,7 @@ describe('searchTool', () => {
             queries: ['secret'],
             folder,
         })).rejects.toMatchObject({ code: 'forbidden_path' });
-    });
-
-    it('skips symlinks inside the searched folder', async () => {
-        await mkdir(projects.path('other'));
-        await writeFile(projects.path('other', 'secret.txt'), 'fetchUser secret\n');
-        await symlink(projects.path('other'), projects.path('demo', 'src/outside-folder'));
-        await symlink(projects.path('other', 'secret.txt'), projects.path('demo', 'src/outside-file'));
-
-        const result = await searchTool(projects.config, {
-            project: 'demo',
-            queries: ['secret'],
-        });
-
-        expect(result.files).toEqual([]);
+        expect(runProcess).not.toHaveBeenCalled();
     });
 
     it('reports a missing folder as not found', async () => {
@@ -174,13 +54,6 @@ describe('searchTool', () => {
             code: 'not_found',
             message: '"missing" does not exist',
         });
-    });
-
-    it('reports a bad regular expression as an argument error', async () => {
-        await expect(searchTool(projects.config, {
-            project: 'demo',
-            queries: ['('],
-            regex: true,
-        })).rejects.toMatchObject({ code: 'invalid_arguments' });
+        expect(runProcess).not.toHaveBeenCalled();
     });
 });

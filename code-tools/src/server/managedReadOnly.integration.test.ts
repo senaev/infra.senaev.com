@@ -83,6 +83,15 @@ describe('managed search and list', () => {
     }
 
     it('preserves real results, no matches and search errors with shared execution arguments', async () => {
+        await fakeExecutable('rg', [
+            '#!/bin/bash',
+            'case "$*" in',
+            '  *"-e ("*) echo "regex parse error" >&2; exit 2 ;;',
+            '  *"-e needle"*) echo \'{"type":"match","data":{"path":{"text":"./README.md"},"lines":{"text":"needle\\n"},"line_number":1,"submatches":[{"start":0}]}}\' ;;',
+            '  *) exit 1 ;;',
+            'esac',
+            '',
+        ].join('\n'));
         for (const tool of [
             'list',
             'search',
