@@ -52,6 +52,10 @@ spec:
             capabilities:
               drop: [ALL]
           env:
+            {{- if eq $index 1 }}
+            - name: WEBSITE_CHECK
+              value: "true"
+            {{- end }}
             {{- if and $.Values.vpnXhttpExperiment.enabled $.Values.vpnProbe.controlledExperiment $.Values.ingress.enabled (eq $index 4) }}
             - name: XHTTP_DIAGNOSTICS
               value: {{ default false $.Values.vpnXhttpExperiment.diagnostics | quote }}

@@ -785,3 +785,23 @@ idle. Its first cycle passed on home and Hetzner; home reused16/64KiB still fail
 #151 baseline (home4KiB7/8,16/64KiB0/8). Fresh checks are logged but missing from
 the deployed metrics allowlist. The next prepared PR fixes that omission and adds
 a separate fresh16KiB control, retaining4KiB and all bounds. No user profile changes.
+
+
+## senaev.ru outage and availability monitoring — 2026-11-10
+
+PR #154 merged, but rollout stopped because Hetzner's Kubernetes API refused
+connections. A Tailscale update at06:26 UTC /07:26 Madrid removed its interface,
+stopped bound K3s, and did not recover K3s afterward. Website failure is reproduced;
+the exact FirstVDS fallback hop remains unverified. No host changes were made.
+[Evidence, recovery proposal and check design](SENAEV-RU-AVAILABILITY.md).
+The prepared availability PR adds direct HEAD metrics and Grafana panels;
+it does not repair node networking.
+
+## Availability monitoring follow-up (#155)
+
+Independent bounded senaev.ru HEAD checks from home and Hetzner are prepared
+in [the availability PR design](SENAEV-RU-AVAILABILITY.md). Conflicts resolved
+with latest main, retaining the deployed fresh8KiB VPN control. Current-status
+panel uses an instant120s-freshness query to avoid stale green timelines.
+Not merged/deployed. Latest VPN rollout #158 succeeded at7900d081; repeated8KiB
+results still need analysis. No host networking changes are part of this PR.

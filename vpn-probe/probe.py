@@ -21,6 +21,7 @@ from metrics import ProbeMetrics, start_server
 
 METRICS = ProbeMetrics()
 STOP = threading.Event()
+EMIT_LOCK = threading.Lock()
 PROXY_ENV = {key: value for key, value in os.environ.items()
              if key.lower() not in {"http_proxy", "https_proxy", "all_proxy", "no_proxy"}}
 
@@ -67,15 +68,18 @@ def client_config(link, base_uuid, public_key, port=1080, invalid=False):
             "streamSettings": stream}]}, seed[1]
 
 
-def request(url, proxy, max_bytes, expected_status=200, expected_bytes=None, timeout=8):
+def request(url, proxy, max_bytes, expected_status=200, expected_bytes=None, timeout=8, head=False):
     """Disable curlrc, redirects, retries and ambient proxy settings."""
     with tempfile.TemporaryDirectory(prefix="vpn-response-") as folder:
         body = Path(folder) / "body"
         command = ["curl", "--disable", "--silent", "--show-error", "--fail",
                    "--proto", "=https", "--ipv4", "--connect-timeout", "3", "--max-time", str(timeout),
-                   "--max-filesize", str(max_bytes), "--limit-rate", "32768",
-                   "--proxy", proxy, "--noproxy", "", "--output", str(body),
-                   "--write-out", "%{json}", url]
+                   "--limit-rate", "32768"]
+        # HEAD transfers no response body. Do not interpret Content-Length as
+        # downloaded bytes or reject a healthy large page via --max-filesize.
+        command += ["--head"] if head else ["--max-filesize", str(max_bytes)]
+        command += ["--proxy", proxy, "--noproxy", "", "--output", os.devnull if head else str(body),
+                    "--write-out", "%{json}", url]
         started = time.monotonic()
         try:
             run = subprocess.run(command, env=PROXY_ENV, capture_output=True,
@@ -111,11 +115,23 @@ def trace_ip(body):
 
 def emit(profile, check, route, result):
     METRICS.record(profile, check, route, result)
-    print(json.dumps({"service": "vpn-probe", "profile": profile, "check": check,
-                      "route": route, "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                      "run_id": str(uuid.uuid4()), "client_version": "26.9.30",
-                      "profile_revision": hashlib.sha256(os.environ.get("PROFILE_LINK", "").encode()).hexdigest()[:12],
-                      **result}), flush=True)
+    with EMIT_LOCK:
+        print(json.dumps({"service": "vpn-probe", "profile": profile, "check": check,
+                          "route": route, "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                          "run_id": str(uuid.uuid4()), "client_version": "26.9.30",
+                          "profile_revision": hashlib.sha256(os.environ.get("PROFILE_LINK", "").encode()).hexdigest()[:12],
+                          **result}), flush=True)
+
+
+def website_loop(profile):
+    """Direct HEAD availability, independent of VPN clients and long matrix waits."""
+    while not STOP.is_set():
+        result, _ = request("https://senaev.ru/", "", 0, head=True)
+        if STOP.is_set():
+            return
+        emit(profile, "website_senaev_ru", "direct", result)
+        if STOP.wait(random.uniform(30, 45)):
+            return
 
 
 def light(profile, proxy):
@@ -573,21 +589,29 @@ def main():
     parser.add_argument("--once", action="store_true", help="Fresh client; one light/heavy round")
     parser.add_argument("--invalid", action="store_true", help="On-demand valid/invalid credential comparison")
     args = parser.parse_args()
+    for sig in [signal.SIGTERM, signal.SIGINT]:
+        signal.signal(sig, lambda *_: STOP.set())
     if args.once or args.invalid:
         with open("/tmp/vpn-manual.lock", "w") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             return run(args)
     server = start_server(METRICS)
+    worker = None
     try:
+        if os.environ.get("WEBSITE_CHECK") == "true":
+            worker = threading.Thread(target=website_loop,
+                                      args=(os.environ["PROFILE_NAME"],), daemon=True)
+            worker.start()
         return run(args)
     finally:
+        STOP.set()
+        if worker is not None:
+            worker.join(timeout=11)
         server.shutdown()
         server.server_close()
 
 
 def run(args):
-    for sig in [signal.SIGTERM, signal.SIGINT]:
-        signal.signal(sig, lambda *_: STOP.set())
     profile = os.environ["PROFILE_NAME"]
     if os.environ.get("XHTTP_SOURCE_CONTROL") == "true":
         if args.invalid:

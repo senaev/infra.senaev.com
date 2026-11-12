@@ -29,3 +29,12 @@ No host networking, credentials, privileges, server configuration or production
 subscriptions changed. Original failed candidate acceptance stays failed.
 The fresh8KiB payload is exported through existing transfer dashboard selectors.
 Website availability work remains separate in PR #155, still unmerged.
+
+## Availability monitoring PR #155
+
+Resolved conflicts against current main, retaining fresh4/16/8KiB controls.
+Website HEAD worker and current-status/duration/age panels are prepared, not
+merged or deployed. Current status uses an instant query with120s freshness;
+there is no range-query timeline that can extend a historical green state.
+PR #158 deployed at7900d081 in successful run43297335789. All three probe targets
+were scraped after rollout; repeated8KiB results remain to be assessed.

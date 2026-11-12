@@ -1,0 +1,149 @@
+Selected diagnostic output, verbatim after removing GitHub log prefixes. Host commands were read-only; credential-related journal lines were omitted by the workflow. Full audit is linked by run IDs. No service changes were made.
+
+GitHub Actions run 42788224267
+NRestarts=0
+ActiveState=inactive
+SubState=dead
+ActiveEnterTimestamp=Tue 2026-10-06 14:44:18 UTC
+Nov 10 06:26:31 hetzner k3s[3263474]: I1110 06:26:31.235187 3263474 vxlan_network.go:143] Interface flannel.1 deleted
+Nov 10 06:26:31 hetzner k3s[3263474]: I1110 06:26:31.238290 3263474 vxlan_network.go:167] external interface tailscale0 not found, retrying in 1s
+Nov 10 06:26:31 hetzner systemd[1]: Stopping k3s.service - Lightweight Kubernetes...
+Nov 10 06:26:34 hetzner systemd[1]: k3s.service: Deactivated successfully.
+Nov 10 06:26:34 hetzner systemd[1]: Stopped k3s.service - Lightweight Kubernetes.
+Nov 10 06:26:30 hetzner systemd[1]: apt-daily-upgrade.service: Deactivated successfully.
+
+GitHub Actions run 42788499576
+Restart=always
+BindsTo=sys-subsystem-net-devices-tailscale0.device
+ActiveState=inactive
+SubState=dead
+NRestarts=0
+ActiveState=active
+SubState=running
+ActiveEnterTimestamp=Tue 2026-11-10 06:26:32 UTC
+Nov 10 06:26:34 hetzner systemd[1]: k3s.service: Deactivated successfully.
+Nov 10 06:26:34 hetzner systemd[1]: Stopped k3s.service - Lightweight Kubernetes.
+Start-Date: 2026-11-10  06:26:24
+Commandline: apt-get install --yes --allow-downgrades tailscale=1.104.5
+Upgrade: tailscale:amd64 (1.102.2, 1.104.5)
+Restart=always
+BindsTo=sys-subsystem-net-devices-tailscale0.device
+
+GitHub Actions run 42788785692
+# BindsTo= stops k3s when tailscale0 disappears but never starts it again.
+SysFSPath=/sys/devices/virtual/net/tailscale0
+Wants=
+ActiveState=active
+SYSTEMD_WANTS=k3s.service
+AutoUpdate: {'Check': True, 'Apply': True}
+Nov 10 06:26:18 hetzner tailscaled[2749091]: c2n: GET /update received
+Nov 10 06:26:18 hetzner tailscaled[2749091]: c2n: POST /update received
+Nov 10 06:26:18 hetzner tailscaled[2749091]: c2n: running "systemd-run --wait --pipe --collect /usr/bin/tailscale update --yes"
+Nov 10 06:26:30 hetzner systemd[1]: Stopping tailscaled.service - Tailscale node agent...
+Nov 10 06:26:32 hetzner systemd[1]: Started tailscaled.service - Tailscale node agent.
+
+Deployment42787487968 failure excerpt:
+deploy (vpn, vpn)	Create or update releases and refresh rebuilt images	2026-11-10T09:05:26.6391101Z err: error: error validating "STDIN": error validating data: failed to download openapi: Get "https://127.0.0.1:6443/openapi/v2?timeout=32s": dial tcp 127.0.0.1:6443: connect: connection refused; if you choose to ignore these errors, turn validation off with --validate=false
+deploy (vpn, vpn)	Create or update releases and refresh rebuilt images	2026-11-10T09:05:26.6502571Z 2026/11/10 09:05:26 Process exited with status 1
+
+
+API scrape timeline
+{
+  "status": "fulfilled",
+  "value": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"data\":[{\"metric\":{\"job\":\"apiserver\"},\"values\":[[1794291000,\"1\"],[1794291030,\"1\"],[1794291060,\"1\"],[1794291090,\"1\"],[1794291120,\"1\"],[1794291150,\"1\"],[1794291180,\"1\"],[1794291210,\"1\"],[1794291240,\"1\"],[1794291270,\"1\"],[1794291300,\"1\"],[1794291330,\"1\"],[1794291360,\"1\"],[1794291390,\"1\"],[1794291420,\"1\"],[1794291450,\"1\"],[1794291480,\"1\"],[1794291510,\"1\"],[1794291540,\"1\"],[1794291570,\"1\"],[1794291600,\"1\"],[1794291630,\"1\"],[1794291660,\"1\"],[1794291690,\"1\"],[1794291720,\"1\"],[1794291750,\"1\"],[1794291780,\"1\"],[1794291810,\"1\"],[1794291840,\"1\"],[1794291870,\"1\"],[1794291900,\"1\"],[1794291930,\"1\"],[1794291960,\"1\"],[1794291990,\"1\"],[1794292020,\"0\"],[1794292050,\"0\"],[1794292080,\"0\"],[1794292110,\"0\"],[1794292140,\"0\"],[1794292170,\"0\"],[1794292200,\"0\"]]}]}"
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  }
+}
+
+Hetzner root filesystem free fraction
+{
+  "status": "fulfilled",
+  "value": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"data\":[{\"metric\":{\"container\":\"node-exporter\",\"device\":\"/dev/sda1\",\"endpoint\":\"metrics\",\"fstype\":\"ext4\",\"instance\":\"100.120.76.115:9100\",\"job\":\"node-exporter\",\"mountpoint\":\"/\",\"namespace\":\"telemetry\",\"pod\":\"vm-stack-prometheus-node-exporter-gp7zv\",\"prometheus\":\"telemetry/vm-stack-victoria-metrics-k8s-stack\",\"service\":\"vm-stack-prometheus-node-exporter\"},\"values\":[[1794285000,\"0.22866640162873897\"],[1794285900,\"0.22866920635283267\"],[1794286800,\"0.22862978723057056\"],[1794287700,\"0.228675988685641\"],[1794288600,\"0.22839689314082795\"],[1794289500,\"0.22824824276386282\"],[1794290400,\"0.22843825007246388\"],[1794291300,\"0.22828694795635562\"],[1794292200,\"0.22763059152345066\"]]}]}"
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  }
+}
+
+OOM counters
+{
+  "status": "fulfilled",
+  "value": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"data\":[{\"metric\":{\"__name__\":\"node_vmstat_oom_kill\",\"container\":\"node-exporter\",\"endpoint\":\"metrics\",\"instance\":\"100.103.254.98:9100\",\"job\":\"node-exporter\",\"namespace\":\"telemetry\",\"pod\":\"vm-stack-prometheus-node-exporter-7grnk\",\"prometheus\":\"telemetry/vm-stack-victoria-metrics-k8s-stack\",\"service\":\"vm-stack-prometheus-node-exporter\"},\"values\":[[1794285000,\"0\"],[1794285900,\"0\"],[1794286800,\"0\"],[1794287700,\"0\"],[1794288600,\"0\"],[1794289500,\"0\"],[1794290400,\"0\"],[1794291300,\"0\"],[1794292200,\"0\"]]},{\"metric\":{\"__name__\":\"node_vmstat_oom_kill\",\"container\":\"node-exporter\",\"endpoint\":\"metrics\",\"instance\":\"100.120.76.115:9100\",\"job\":\"node-exporter\",\"namespace\":\"telemetry\",\"pod\":\"vm-stack-prometheus-node-exporter-gp7zv\",\"prometheus\":\"telemetry/vm-stack-victoria-metrics-k8s-stack\",\"service\":\"vm-stack-prometheus-node-exporter\"},\"values\":[[1794285000,\"100\"],[1794285900,\"100\"],[1794286800,\"100\"],[1794287700,\"100\"],[1794288600,\"100\"],[1794289500,\"100\"],[1794290400,\"100\"],[1794291300,\"100\"],[1794292200,\"100\"]]},{\"metric\":{\"__name__\":\"node_vmstat_oom_kill\",\"container\":\"node-exporter\",\"endpoint\":\"metrics\",\"instance\":\"100.87.199.13:9100\",\"job\":\"node-exporter\",\"namespace\":\"telemetry\",\"pod\":\"vm-stack-prometheus-node-exporter-hs6zw\",\"prometheus\":\"telemetry/vm-stack-victoria-metrics-k8s-stack\",\"service\":\"vm-stack-prometheus-node-exporter\"},\"values\":[[1794285000,\"0\"],[1794285900,\"0\"],[1794286800,\"0\"],[1794287700,\"0\"],[1794288600,\"0\"],[1794289500,\"0\"],[1794290400,\"0\"],[1794291300,\"0\"],[1794292200,\"0\"]]},{\"metric\":{\"__name__\":\"node_vmstat_oom_kill\",\"container\":\"node-exporter\",\"endpoint\":\"metrics\",\"instance\":\"100.90.217.37:9100\",\"job\":\"node-exporter\",\"namespace\":\"telemetry\",\"pod\":\"vm-stack-prometheus-node-exporter-4ngvs\",\"prometheus\":\"telemetry/vm-stack-victoria-metrics-k8s-stack\",\"service\":\"vm-stack-prometheus-node-exporter\"},\"values\":[[1794285000,\"0\"],[1794285900,\"0\"],[1794286800,\"0\"],[1794287700,\"0\"],[1794288600,\"0\"],[1794289500,\"0\"],[1794290400,\"0\"],[1794291300,\"0\"],[1794292200,\"0\"]]}]}"
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  }
+}
+
+CoreDNS location
+{
+  "status": "fulfilled",
+  "value": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"data\":[{\"metric\":{\"__name__\":\"kube_pod_info\",\"container\":\"kube-state-metrics\",\"created_by_kind\":\"ReplicaSet\",\"created_by_name\":\"coredns-7cfb7bc9c7\",\"endpoint\":\"http\",\"host_ip\":\"100.120.76.115\",\"host_network\":\"false\",\"instance\":\"10.42.0.136:8080\",\"job\":\"kube-state-metrics\",\"namespace\":\"kube-system\",\"node\":\"hetzner\",\"pod\":\"coredns-7cfb7bc9c7-wvjxn\",\"pod_ip\":\"10.42.0.2\",\"priority_class\":\"system-cluster-critical\",\"prometheus\":\"telemetry/vm-stack-victoria-metrics-k8s-stack\",\"service\":\"vm-stack-kube-state-metrics\"},\"value\":[1794302298.834,\"1\"]}]}"
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  }
+}
+
+Explicit direct HEAD checks
+{
+  "status": "ok",
+  "project": "infra.senaev.com",
+  "exitCode": 0,
+  "signal": null,
+  "timedOut": false,
+  "durationMs": 3618,
+  "stdout": "senaev.ru {\"ok\": false, \"curl_exit\": 28, \"http_status\": 0, \"bytes\": 0, \"duration_ms\": 3045, \"connect_ms\": 0, \"tls_ms\": 0, \"first_byte_ms\": 0, \"pretransfer_ms\": 0, \"request_bytes\": 0, \"response_header_bytes\": 0}\nsenaev.com {\"ok\": true, \"curl_exit\": 0, \"http_status\": 200, \"bytes\": 0, \"duration_ms\": 136, \"connect_ms\": 5, \"tls_ms\": 89, \"first_byte_ms\": 114, \"pretransfer_ms\": 89, \"request_bytes\": 73, \"response_header_bytes\": 2648}\njellyfin.senaev.ru {\"ok\": false, \"curl_exit\": 0, \"http_status\": 302, \"bytes\": 0, \"duration_ms\": 272, \"connect_ms\": 25, \"tls_ms\": 110, \"first_byte_ms\": 240, \"pretransfer_ms\": 110, \"request_bytes\": 81, \"response_header_bytes\": 85}\n",
+  "stderr": "",
+  "outputTruncated": false,
+  "operation": {
+    "id": "code-86573fcd-2b84-4d44-8d7f-517e88612c86",
+    "backend": "code",
+    "tool": "run",
+    "state": "completed",
+    "queuedAt": 1794302396512,
+    "startedAt": 1794302396512,
+    "updatedAt": 1794302400132,
+    "timeoutSeconds": 30,
+    "executionPolicy": "queued",
+    "changedPaths": [],
+    "pollAfterMs": 0
+  }
+}
+
+Recovery rule and remote-update evidence, run42788785692:
+ACTION=="add|move", SUBSYSTEM=="net", KERNEL=="tailscale0", TAG+="systemd", ENV{SYSTEMD_WANTS}+="k3s.service"
+Wants=
+ActiveState=active
+SYSTEMD_WANTS=k3s.service
+AutoUpdate: {'Check': True, 'Apply': True}
+Nov 10 06:26:18 hetzner tailscaled[2749091]: c2n: GET /update received
+Nov 10 06:26:18 hetzner tailscaled[2749091]: c2n: POST /update received
+Nov 10 06:26:18 hetzner tailscaled[2749091]: c2n: running "systemd-run --wait --pipe --collect /usr/bin/tailscale update --yes"
+Nov 10 06:26:30 hetzner systemd[1]: Stopping tailscaled.service - Tailscale node agent...
+Nov 10 06:26:32 hetzner systemd[1]: Started tailscaled.service - Tailscale node agent.
+
+FirstVDS direct SSH inspection attempt42789398256 (no host commands executed):
+inspect	Run appleboy/ssh-action@v1.0.3	2026-11-10T09:17:10.4707731Z 2026/11/10 09:17:10 ssh: handshake failed: ssh: unable to authenticate, attempted methods [none publickey], no supported methods remain
