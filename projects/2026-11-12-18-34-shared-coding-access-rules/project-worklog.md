@@ -1,3 +1,22 @@
+## 2026-11-12 21:39 UTC — Dedicated secrets deployed; next gate planned
+
+PR #166 merged; deployment run 43311848536 completed successfully.
+
+```
+All 5 website smoke checks passed
+CapEff: 0000000000000000
+CapBnd: 0000000000000000
+NoNewPrivs: 1
+Seccomp: 2
+```
+
+Code Tools authenticated operations and SSH Git remote access worked. Telegram
+logged restoration after startup; scoped post-startup error query returned zero.
+ESO status/key sets and interactive model/STT calls remain unverified directly.
+
+Prepared next-security-checks.md: offline CI checks and negative fixtures to
+prevent future loss of the security baseline. No additional runtime restrictions.
+
 ## 2026-11-12 21:31 UTC — Lower-concurrency test retry passed
 
 Code Tools recovered on retry. Ran the full suite in the deployed restricted

@@ -153,3 +153,20 @@ interrupted with slow failures; the two-worker retry passed all 1,765 tests acro
 Lint, typecheck and shell/Python/Helm checks also passed. This supports a
 concurrency/load explanation for the earlier failures; their exact cause was not
 proven. Interactive OMP speech/model calls and debugger workflows were not exercised.
+
+## Dedicated secrets deployment result and next stage
+
+PR #166 merged and its deployment workflow completed successfully. Code Tools
+authenticated MCP operations, SSH Git remote access, GitHub workflow access and
+all five website smoke checks passed. CapEff/CapBnd remained zero, NoNewPrivs 1
+and Seccomp 2. Telegram restored its followed session. No post-startup errors
+were returned by the scoped Datadog query.
+
+Direct ESO status and live Secret key-set inspection were unavailable through
+the configured monitoring. Rollout/startup and authenticated operations provide
+indirect evidence that the required secrets reconciled. OMP/OpenCode interactive
+model requests and speech transcription were not exercised; no claim of exhaustive
+end-to-end verification is made.
+
+The next stage is [automated security baseline checks](next-security-checks.md).
+This is a prepared implementation plan; validation code is not implemented yet.
