@@ -26,6 +26,7 @@ spec:
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
         configmap.reloader.stakater.com/reload: {{ printf "%s-instructions" .Values.name | quote }}
     spec:
+{{ include "senaev-com.llmWorkspace.podAccess" . | indent 6 }}
       # ReadWriteOnce permits all workspace pods to mount the projects disk on the same node.
       nodeSelector:
         vps: {{ .Values.vps }}
@@ -145,6 +146,8 @@ spec:
       app: {{ printf "%s-code-tools" .Values.name }}
   policyTypes:
     - Ingress
+    - Egress
+{{ include "senaev-com.llmWorkspace.egress" . }}
   ingress:
     - from:
         - podSelector:

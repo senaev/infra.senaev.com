@@ -318,7 +318,13 @@ OpenCode. A new entry inherits nothing from another; the schema is
 OMP runs every command without approval, so it is isolated. It reads its keys only from its
 own `<name>-omp-web-env` secret, not from `senaev-com-kv-secrets`, because a node can read
 every secret that its pods use. Its NetworkPolicy allows egress only to DNS and the public
-internet: no pods, Services, nodes, tailnet or private networks.
+internet destinations, excluding private, tailnet and link-local ranges. The same
+egress baseline and disabled service-account token automount apply to OpenCode and
+Code Tools through `templates/llm-workspace/_access.tpl`. Preserve each component's
+caller-specific ingress. New coding components must include both access helpers.
+Standard NetworkPolicy local-node/NAT exceptions and public endpoints mean this
+is not complete host isolation. Existing users, credentials and shared storage
+are unchanged.
 
 | Workspace | Node | Components | Ingress |
 |---|---|---|---|

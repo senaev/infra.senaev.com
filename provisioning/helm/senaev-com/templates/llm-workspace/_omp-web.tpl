@@ -112,7 +112,7 @@ spec:
         secret.reloader.stakater.com/reload: {{ printf "%s-omp-web-env" .Values.name | quote }}
         configmap.reloader.stakater.com/reload: {{ printf "%s-instructions,%s-omp-web" .Values.name .Values.name | quote }}
     spec:
-      automountServiceAccountToken: false
+{{ include "senaev-com.llmWorkspace.podAccess" . | indent 6 }}
       terminationGracePeriodSeconds: 30
       nodeSelector:
         vps: {{ .Values.vps }}
@@ -309,35 +309,7 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
-  # The agent runs any command without approval, so it gets DNS and the public
-  # internet only: no pods, Services, nodes, tailnet or private networks.
-  egress:
-    - to:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: kube-system
-          podSelector:
-            matchLabels:
-              k8s-app: kube-dns
-      ports:
-        - protocol: UDP
-          port: 53
-        - protocol: TCP
-          port: 53
-    - to:
-        - ipBlock:
-            cidr: 0.0.0.0/0
-            except:
-              - 10.0.0.0/8
-              - 100.64.0.0/10
-              - 169.254.0.0/16
-              - 172.16.0.0/12
-              - 192.168.0.0/16
-        - ipBlock:
-            cidr: ::/0
-            except:
-              - fc00::/7
-              - fe80::/10
+{{ include "senaev-com.llmWorkspace.egress" . }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
