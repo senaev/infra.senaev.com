@@ -7,7 +7,7 @@ automountServiceAccountToken: false
 {{- end -}}
 
 {{- define "senaev-com.llmWorkspace.egress" -}}
-  # DNS and public destinations only. Standard NetworkPolicy node/NAT
+  # DNS, workspace HTTPS ingress and public destinations. NetworkPolicy node/NAT
   # limitations still apply; this is not complete host isolation.
   egress:
     - to:
@@ -22,6 +22,19 @@ automountServiceAccountToken: false
           port: 53
         - protocol: TCP
           port: 53
+    # Public node :443 can be DNATed to the ingress pod before policy checks.
+    # Match only this workspace's ingress controller, never all private IPs.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+          podSelector:
+            matchLabels:
+              app: traefik
+              traefik-deployment: {{ .Values.traefik }}
+      ports:
+        - protocol: TCP
+          port: 443
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0
