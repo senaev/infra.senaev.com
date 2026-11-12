@@ -809,7 +809,8 @@ results still need analysis. No host networking changes are part of this PR.
 ## 2026-11-12 — Availability merged; prepare12KiB control
 
 PR #155 merged at0428b757 after conflict resolution and the instant-status panel
-fix. Deployment verification is tracked in the worklog. First post-#158 fresh
+fix. Deployment43307488174 succeeded; all5 website smoke checks pass. Both website
+workers report fresh200 results and Grafana contains the new availability panels. First post-#158 fresh
 8KiB results passed home2/2 and Hetzner3/3;16KiB still failed home0/2 and passed
 Hetzner3/3. These are preliminary current-process counters. Prepare a bounded
 fresh12KiB control after the retained4/16/8KiB sequence, without deploying it.

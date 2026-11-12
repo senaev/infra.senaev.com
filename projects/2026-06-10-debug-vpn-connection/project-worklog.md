@@ -1,8 +1,7 @@
-## 2026-11-12 21:12 UTC — Merge availability monitoring; prepare12KiB
+## 2026-11-12 21:15 UTC — Merge availability monitoring; prepare12KiB
 
 User approved merge #155 and preparation of the next step. #155 merged
-at0428b7573da897ebd6b77d338d2eb462757a5431; deployment43307488174 is being
-verified. Original CodeRabbit change request concerned the superseded timeline;
+at0428b7573da897ebd6b77d338d2eb462757a5431; deployment43307488174 succeeded. Original CodeRabbit change request concerned the superseded timeline;
 updated code uses an instant status query. CI passed, current bot check neutral.
 
 At21:09 UTC the current-process fresh counters showed home4/8KiB2/2 each,
@@ -27,6 +26,17 @@ loopback listeners and temporary test credentials/certificates. Review confirmed
 only size allowlist and two exporter names change runtime behavior. No chart,
 server, host networking, permissions or production subscription change. Existing
 transfer dashboard selectors cover12KiB. Next PR remains unmerged/undeployed.
+
+Post-deployment verification at21:15 UTC: all5 website smoke checks passed;
+Grafana live dashboard contains panels22/23/24 and panel22 uses instant=true,
+range=false with120s cutoff. Fresh website success metrics are1 for both source
+nodes. Selected Datadog results:
+```
+2026-11-12T21:14:56Z hetzner website_senaev_ru ok=true http_status=200 curl_exit=0 duration_ms=623
+2026-11-12T21:14:46Z senaev-media website_senaev_ru ok=true http_status=200 curl_exit=0 duration_ms=879
+```
+These confirm the website workers, not VPN tunnel success. The prepared12KiB
+control is PR #165; CI/review pending, no approval to merge it.
 
 ## 2026-11-12 20:48 UTC — Resolve #155 conflicts and stale-green review
 
