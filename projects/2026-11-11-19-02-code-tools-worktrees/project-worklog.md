@@ -1,5 +1,22 @@
 # Worklog
 
+## 2026-11-12 09:45 UTC — Merged and deployed; galkin session folders
+
+PR #160 was squash-merged (`0fc10588`) and deployed by Deploy run 43184997736 (all jobs `success`). The PVCs and pods are healthy:
+
+```
+kube_persistentvolumeclaim_status_phase{phase="Bound"}: galkin-code, galkin-projects, senaev-code, senaev-projects = 1
+kube_pod_spec_volumes_persistentvolumeclaims_info{persistentvolumeclaim=~".*-code"}:
+  galkin-omp-web, senaev-code-tools, senaev-omp-web, senaev-opencode-telegram (volume "code")
+restarts in 30m: 0 for all workspace pods and cluster-helper
+code-tools logs: "✅ Code tools server listening", no warn/error
+All 5 website smoke checks passed
+```
+
+Not checked yet: a real call with the new contract. It needs the ChatGPT connector refresh by the user.
+
+The galkin instructions now say: for each session that needs files, create `/code/<YYYY-MM-DD-HH-MM>-<slug>` (UTC) and keep all its files there. `project-status.md` was removed: the project workflow no longer uses it.
+
 ## 2026-11-11 23:30 UTC — Review findings of PR #160 fixed
 
 A seven-agent review found 2 blocking and 8 non-blocking issues. The user chose to fix all of them and to keep both `code-list` and `code-search` (removing them was the proposed simplification).
