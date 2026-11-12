@@ -29,6 +29,7 @@ spec:
         secret.reloader.stakater.com/reload: {{ printf "senaev-com-kv-secrets,%s-opencode-auth" .Values.name | quote }}
         configmap.reloader.stakater.com/reload: {{ printf "%s-instructions,%s-opencode-mcp-oauth" .Values.name .Values.name | quote }}
     spec:
+{{ include "senaev-com.llmWorkspace.podAccess" . | indent 6 }}
       nodeSelector:
         vps: {{ .Values.vps }}
       initContainers:
@@ -265,6 +266,8 @@ spec:
       app: {{ printf "%s-opencode-telegram" .Values.name }}
   policyTypes:
     - Ingress
+    - Egress
+{{ include "senaev-com.llmWorkspace.egress" . }}
   ingress:
     - from:
         - namespaceSelector:
