@@ -1,3 +1,33 @@
+## 2026-11-12 21:12 UTC — Merge availability monitoring; prepare12KiB
+
+User approved merge #155 and preparation of the next step. #155 merged
+at0428b7573da897ebd6b77d338d2eb462757a5431; deployment43307488174 is being
+verified. Original CodeRabbit change request concerned the superseded timeline;
+updated code uses an instant status query. CI passed, current bot check neutral.
+
+At21:09 UTC the current-process fresh counters showed home4/8KiB2/2 each,
+16KiB0/2; Hetzner4/8/16KiB3/3 each. Corresponding exit checks passed. This is a
+small preliminary sample, not proof of a stable size boundary. Prepare one fresh
+12KiB control after retained4/16/8KiB, on both source paths with identical bounds,
+exit gate, jitter and cleanup. All earlier controls remain in order; prior
+failures do not suppress12KiB. Adds28KiB planned response allowance per eligible
+cycle (not wire-byte limit). Website worker traffic means waits are not wholly quiet.
+
+Verification of prepared code:
+```
+Ran 94 tests in 0.278s
+OK
+Python syntax OK: 18 file(s)
+PASS: independent fresh H1 clients validate exit, transfer paired 4/16/8/12 KiB and clean up
+PASS: invalid VLESS credential cannot reach the HTTPS origin
+PASS: ordinary website route preserved
+```
+Local real-process integration passed with pinned Xray26.9.30 / Traefik3.2.0,
+loopback listeners and temporary test credentials/certificates. Review confirmed
+only size allowlist and two exporter names change runtime behavior. No chart,
+server, host networking, permissions or production subscription change. Existing
+transfer dashboard selectors cover12KiB. Next PR remains unmerged/undeployed.
+
 ## 2026-11-12 20:48 UTC — Resolve #155 conflicts and stale-green review
 
 Merged current main into the availability branch, resolving only the two

@@ -71,7 +71,8 @@ class MetricsTests(unittest.TestCase):
         metrics = ProbeMetrics()
         for check in ['diagnostic_h1_fresh_size_exit', 'diagnostic_h1_fresh_size_exit_16384',
                       'transfer_h1_fresh_cloudflare_4096', 'transfer_h1_fresh_cloudflare_16384',
-                      'diagnostic_h1_fresh_size_exit_8192', 'transfer_h1_fresh_cloudflare_8192']:
+                      'diagnostic_h1_fresh_size_exit_8192', 'transfer_h1_fresh_cloudflare_8192',
+                      'diagnostic_h1_fresh_size_exit_12288', 'transfer_h1_fresh_cloudflare_12288']:
             for route in ['direct', 'xhttp']:
                 metrics.record('one', check, route,
                                {'ok': True, 'bytes': 16384, 'experiment_id': 'private-id'}, now=1)

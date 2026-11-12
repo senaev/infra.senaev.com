@@ -38,3 +38,12 @@ merged or deployed. Current status uses an instant query with120s freshness;
 there is no range-query timeline that can extend a historical green state.
 PR #158 deployed at7900d081 in successful run43297335789. All three probe targets
 were scraped after rollout; repeated8KiB results remain to be assessed.
+
+## 2026-11-12 next step
+
+#155 merged at0428b757; deployment43307488174 is being verified. First fresh8KiB
+counters passed home2/2 and Hetzner3/3, versus16KiB home0/2 and Hetzner3/3.
+All associated fresh exit checks passed. Prepare an independently validated
+12KiB pair after existing4/16/8KiB controls. Adds28KiB planned responses per
+eligible cycle. Preliminary evidence; more rounds and paired controls required.
+Next implementation is prepared only, not merged or deployed.
