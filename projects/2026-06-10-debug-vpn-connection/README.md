@@ -815,3 +815,23 @@ workers report fresh200 results and Grafana contains the new availability panels
 Hetzner3/3. These are preliminary current-process counters. Prepare a bounded
 fresh12KiB control after the retained4/16/8KiB sequence, without deploying it.
 [Design, traffic allowance and interpretation](H1-PAYLOAD-VALIDATION.md).
+
+### 2026-11-12 — Routing safety and Happ local proxy authentication
+
+FirstVDS has only SOCKS outbounds and its authenticated user routes explicitly to
+Hetzner. A manual test of the rendered config with pinned Xray 26.9.30 passed:
+healthy selected exit -> exit stopped, origin untouched -> exit recovered.
+A second exit remains available during failure. This isolates routing with fake
+credentials and loopback plain VLESS, not production Reality/WAN transport.
+No routing change or extra blackhole is justified by this result; Hetzner and home
+remain intentional exits. See the manual command in `AGENTS.VPN.md`.
+
+Add only Happ's documented `socks-auth-mode: auto` and `http-auth-mode: auto`
+subscription headers. Official semantics: credentials generated and injected into
+configs/tunnel by the app. No shared password or Vault change. External programs
+using Happ's local proxy need its generated credentials. Actual app refresh and
+connectivity remain a post-deployment check; headers alone do not prove client
+compliance or general DNS/IPv6 leak protection.
+
+Source: https://github.com/HappDev/happ_su/blob/main/dev-docs/app-management.md
+This safety step is independent of the unresolved home-to-Hetzner transfer stall.

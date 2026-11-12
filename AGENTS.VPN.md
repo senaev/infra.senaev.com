@@ -89,3 +89,24 @@ one isolated pod per subscription entry on senaev-media. Results go to Datadog a
 `service:vpn-probe`. VMPodScrape collects metrics every 30s on port 8080, reachable
 only by telemetry vmagent. The provisioned Grafana dashboard UID is `vpn-probes`.
 There is no inbound Service or host network configuration.
+
+### Manual routing safety check
+
+From the repository root, with Helm, curl and pinned Xray 26.9.30 available:
+
+```sh
+XRAY_BINARY=/absolute/path/to/xray python3 vpn-probe/routing.integration.py
+```
+
+This renders the real FirstVDS config and tests user routing with temporary fake
+credentials and loopback plain VLESS (Reality/Vision transport is excluded).
+The selected exit must work, then fail without reaching the origin even with a
+working alternate exit, then recover. It runs manually, outside CI/CD.
+
+Happ subscriptions request `socks-auth-mode: auto` and `http-auth-mode: auto`.
+Happ generates local proxy credentials and injects them into its tunnel; no new
+Vault secret is used. Manually configured applications using Happ's local proxy
+must use its generated credentials. Verify after refreshing a real Happ client;
+server tests cannot establish behavior of every client version. Reverting the
+headers may leave imported client settings in place: restore the previous
+Inbounds authentication mode in Happ if needed.
