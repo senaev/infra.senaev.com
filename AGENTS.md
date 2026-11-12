@@ -319,7 +319,8 @@ OMP runs every command without approval, so it is isolated. It reads its keys on
 own `<name>-omp-web-env` secret, not from `senaev-com-kv-secrets`, because a node can read
 every secret that its pods use. Its NetworkPolicy allows egress only to DNS and the public
 internet destinations, excluding private, tailnet and link-local ranges. The same
-egress baseline and disabled service-account token automount apply to OpenCode and
+egress baseline (including workspace Traefik HTTPS on TCP 443) and disabled
+service-account token automount apply to OpenCode and
 Code Tools through `templates/llm-workspace/_access.tpl`. Preserve each component's
 caller-specific ingress. New coding components must include both access helpers.
 Standard NetworkPolicy local-node/NAT exceptions and public endpoints mean this
