@@ -1,3 +1,38 @@
+## 2026-11-11 08:46 UTC — Prepare independent fresh8KiB control
+
+User requested the next VPN implementation. #154 is now deployed; #156 was
+closed after the user's K3s repair. Current counter query at08:43 UTC:
+`sum by (source_node,check,route,result) (vpn_probe_checks_total{check=~".*fresh.*|transfer_h1_cloudflare_.*"})`.
+Selected returned values (success/failure):
+```
+source_node=senaev-media check=transfer_h1_fresh_cloudflare_4096 route=xhttp 19/1
+source_node=senaev-media check=transfer_h1_fresh_cloudflare_16384 route=xhttp 0/19
+source_node=hetzner check=transfer_h1_fresh_cloudflare_4096 route=xhttp 38/0
+source_node=hetzner check=transfer_h1_fresh_cloudflare_16384 route=xhttp 38/0
+source_node=senaev-media check=diagnostic_h1_fresh_size_exit_16384 route=xhttp 19/1
+```
+All paired direct controls passed. Source/path difference persists with fresh
+processes, so add8KiB after existing4/16KiB to narrow the response-size range
+without changing those controls' order. Size, destination and traffic-history
+confounders remain; do not claim DPI or an MTU diagnosis.
+
+Runtime change reuses the existing bounded fresh-client path and adds two fixed
+exporter check names. Tests cover independent processes, exit gate, exact8KiB
+caps, jitter, cancellation, metrics and earlier-failure isolation. No new
+infrastructure or permissions. Planned response allowance increases20KiB/cycle.
+
+Verbatim validation:
+```
+Ran 84 tests in 0.201s
+OK
+Python syntax OK: 17 file(s)
+PASS: independent fresh H1 clients validate exit, transfer paired 4/16/8 KiB and clean up
+```
+Real local integration uses Xray26.9.30 and Traefik3.2.0, temporary credentials,
+verified test certificates and loopback listeners. Initial invocation omitted
+Xray from PATH, so fresh startup failed; corrected the invocation and clarified
+the existing integration instructions. The complete rerun passed. No live change.
+
 ## 2026-11-09 22:13 UTC — Deploy fresh4KiB; prepare fresh16KiB and metrics fix
 
 User authorized merge #152 and preparation of the next step. PR workflow
