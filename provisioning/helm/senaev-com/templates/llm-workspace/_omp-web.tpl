@@ -1,27 +1,33 @@
-{{- $agent := .Files.Get "config/coding-agents.json" | mustFromJson }}
-{{- if .Values.ompWeb.enabled }}
-{{- if not .Values.opencode.enabled }}
-{{- fail "ompWeb requires opencode for the shared repository PVC and server instructions" }}
+{{- define "senaev-com.llmWorkspace.ompWebSecretKeys" -}}
+{{- $agent := .Values.agent }}
+{{- $keys := list $agent.speechToText.secretKey }}
+{{- range $connector := $agent.connectors }}
+{{- $keys = append $keys $connector.secretKey }}
 {{- end }}
+{{- if .Values.git }}
+{{- $keys = append $keys .Values.git.githubToken }}
+{{- $keys = append $keys .Values.git.sshPrivateKey }}
+{{- end }}
+{{- $keys | uniq | sortAlpha | toJson }}
+{{- end -}}
+
+{{- define "senaev-com.llmWorkspace.ompWeb" -}}
+{{- $agent := .Values.agent }}
+{{- if .Values.ompWeb.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: omp-web
+  name: {{ printf "%s-omp-web" .Values.name }}
   namespace: {{ .Release.Namespace }}
 data:
   nginx.conf: |
 {{ .Files.Get "config/omp-web/nginx.conf" | indent 4 }}
-  config.yml: |
-    modelRoles:
-      default: {{ printf "%s/%s" $agent.defaultModel.provider $agent.defaultModel.id | quote }}
-    tools:
-      approvalMode: yolo
   models.yml: |
     providers:
 {{- range $name, $connector := $agent.connectors }}
       {{ $name | quote }}:
         baseUrl: {{ $connector.baseUrl | quote }}
-        apiKey: {{ $connector.apiKeyEnv | quote }}
+        apiKey: {{ $connector.secretKey | quote }}
 {{- end }}
   mcp.json: |
 {{- $servers := dict }}
@@ -33,7 +39,7 @@ data:
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
-  name: omp-web-basicauth
+  name: {{ printf "%s-omp-web-basicauth" .Values.name }}
   namespace: {{ .Release.Namespace }}
 spec:
   refreshInterval: 30s
@@ -41,28 +47,50 @@ spec:
     name: vault-cluster-secret-store
     kind: ClusterSecretStore
   target:
-    name: omp-web-basicauth
+    name: {{ printf "%s-omp-web-basicauth" .Values.name }}
     creationPolicy: Owner
   data:
     - secretKey: users
       remoteRef:
         key: senaev-com-kv
-        property: OMP_WEB_HTPASSWD_HASH_WITH_USERNAME
+        property: {{ .Values.ompWeb.secrets.ompHtpasswd }}
+---
+# Only the keys that OMP reads: a node can read every secret its pods use, whole.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: {{ printf "%s-omp-web-env" .Values.name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  refreshInterval: 30s
+  secretStoreRef:
+    name: vault-cluster-secret-store
+    kind: ClusterSecretStore
+  target:
+    name: {{ printf "%s-omp-web-env" .Values.name }}
+    creationPolicy: Owner
+  data:
+{{- range $key := include "senaev-com.llmWorkspace.ompWebSecretKeys" . | fromJsonArray }}
+    - secretKey: {{ $key }}
+      remoteRef:
+        key: senaev-com-kv
+        property: {{ $key }}
+{{- end }}
 ---
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
-  name: omp-web-basicauth
+  name: {{ printf "%s-omp-web-basicauth" .Values.name }}
   namespace: {{ .Release.Namespace }}
 spec:
   basicAuth:
-    secret: omp-web-basicauth
+    secret: {{ printf "%s-omp-web-basicauth" .Values.name }}
     removeHeader: true
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: omp-web
+  name: {{ printf "%s-omp-web" .Values.name }}
   namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
@@ -70,31 +98,24 @@ spec:
     type: Recreate
   selector:
     matchLabels:
-      app: omp-web
+      app: {{ printf "%s-omp-web" .Values.name }}
   template:
     metadata:
       labels:
-        app: omp-web
+        app: {{ printf "%s-omp-web" .Values.name }}
+        vps: {{ .Values.vps }}
         admission.datadoghq.com/enabled: "true"
         tags.datadoghq.com/service: omp-web
         tags.datadoghq.com/env: prod
         tags.datadoghq.com/version: latest
       annotations:
-        checksum/config: {{ printf "%s\n%s" (.Files.Get "config/omp-web/nginx.conf") (.Files.Get "config/coding-agents.json") | sha256sum }}
-        secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
-        configmap.reloader.stakater.com/reload: "omp-web,opencode-telegram-config"
+        secret.reloader.stakater.com/reload: {{ printf "%s-omp-web-env" .Values.name | quote }}
+        configmap.reloader.stakater.com/reload: {{ printf "%s-instructions,%s-omp-web" .Values.name .Values.name | quote }}
     spec:
-      automountServiceAccountToken: false
+{{ include "senaev-com.llmWorkspace.podAccess" . | indent 6 }}
       terminationGracePeriodSeconds: 30
       nodeSelector:
-        vps: {{ .Values.opencode.vps }}
-      affinity:
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  app: opencode-telegram
-              topologyKey: kubernetes.io/hostname
+        vps: {{ .Values.vps }}
       containers:
         - name: omp-web
           image: ghcr.io/senaev/omp-web:latest
@@ -116,29 +137,31 @@ spec:
             - name: OMP_WEB_STT_KEY
               valueFrom:
                 secretKeyRef:
-                  name: senaev-com-kv-secrets
-                  key: {{ $agent.speechToText.apiKeyEnv | quote }}
+                  name: {{ printf "%s-omp-web-env" $.Values.name }}
+                  key: {{ $agent.speechToText.secretKey | quote }}
             - name: OMP_DEFAULT_MODEL
               value: {{ printf "%s/%s" $agent.defaultModel.provider $agent.defaultModel.id | quote }}
+{{- if .Values.git }}
             - name: GIT_AUTHOR_NAME
-              value: {{ .Values.owner.name | quote }}
+              value: {{ .Values.git.name | quote }}
             - name: GIT_AUTHOR_EMAIL
-              value: {{ .Values.owner.email | quote }}
+              value: {{ .Values.git.email | quote }}
             - name: GIT_COMMITTER_NAME
-              value: {{ .Values.owner.name | quote }}
+              value: {{ .Values.git.name | quote }}
             - name: GIT_COMMITTER_EMAIL
-              value: {{ .Values.owner.email | quote }}
+              value: {{ .Values.git.email | quote }}
             - name: GH_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: senaev-com-kv-secrets
-                  key: GH_TOKEN
+                  name: {{ printf "%s-omp-web-env" $.Values.name }}
+                  key: {{ .Values.git.githubToken }}
+{{- end }}
 {{- range $connector := $agent.connectors }}
-            - name: {{ $connector.apiKeyEnv | quote }}
+            - name: {{ $connector.secretKey | quote }}
               valueFrom:
                 secretKeyRef:
-                  name: senaev-com-kv-secrets
-                  key: {{ $connector.apiKeyEnv | quote }}
+                  name: {{ printf "%s-omp-web-env" $.Values.name }}
+                  key: {{ $connector.secretKey | quote }}
 {{- end }}
           startupProbe:
             exec:
@@ -158,13 +181,17 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 6
           volumeMounts:
-            - name: projects-git
-              mountPath: /projects/git
+            - name: projects
+              mountPath: /projects
+            - name: code
+              mountPath: /code
             - name: state
               mountPath: /root/.omp
+{{- if .Values.git }}
             - name: ssh
               mountPath: /root/.ssh
               readOnly: true
+{{- end }}
             - name: defaults
               mountPath: /defaults
               readOnly: true
@@ -206,32 +233,37 @@ spec:
             - name: proxy-tmp
               mountPath: /tmp
       volumes:
-        - name: projects-git
+        - name: projects
           persistentVolumeClaim:
-            claimName: opencode-telegram-git
+            claimName: {{ printf "%s-projects" .Values.name }}
+        - name: code
+          persistentVolumeClaim:
+            claimName: {{ printf "%s-code" .Values.name }}
         - name: state
           persistentVolumeClaim:
-            claimName: omp-web-state
+            claimName: {{ printf "%s-omp-web-state" .Values.name }}
+{{- if .Values.git }}
         - name: ssh
           secret:
-            secretName: senaev-com-kv-secrets
+            secretName: {{ printf "%s-omp-web-env" .Values.name }}
             defaultMode: 0600
             items:
-              - key: TELEGRAM_OPENCODE_SSH_PRIVATE_KEY
+              - key: {{ .Values.git.sshPrivateKey }}
                 path: id_rsa
+{{- end }}
         - name: defaults
           configMap:
-            name: omp-web
+            name: {{ printf "%s-omp-web" .Values.name }}
         - name: instructions
           configMap:
-            name: opencode-telegram-config
+            name: {{ printf "%s-instructions" .Values.name }}
         - name: proxy-tmp
           emptyDir: {}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: omp-web-state
+  name: {{ printf "%s-omp-web-state" .Values.name }}
   namespace: {{ .Release.Namespace }}
   annotations:
     helm.sh/resource-policy: keep
@@ -244,12 +276,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: omp-web
+  name: {{ printf "%s-omp-web" .Values.name }}
   namespace: {{ .Release.Namespace }}
 spec:
   type: ClusterIP
   selector:
-    app: omp-web
+    app: {{ printf "%s-omp-web" .Values.name }}
   ports:
     - name: http
       port: 8080
@@ -258,13 +290,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: omp-web
+  name: {{ printf "%s-omp-web" .Values.name }}
   namespace: {{ .Release.Namespace }}
 spec:
   podSelector:
     matchLabels:
-      app: omp-web
-  policyTypes: [Ingress]
+      app: {{ printf "%s-omp-web" .Values.name }}
+  policyTypes: [Ingress, Egress]
   ingress:
     - from:
         - namespaceSelector:
@@ -273,23 +305,24 @@ spec:
           podSelector:
             matchLabels:
               app: traefik
-              traefik-deployment: hetzner
+              traefik-deployment: {{ .Values.traefik }}
       ports:
         - protocol: TCP
           port: 8080
+{{ include "senaev-com.llmWorkspace.egress" . }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: omp-web
+  name: {{ printf "%s-omp-web" .Values.name }}
   namespace: {{ .Release.Namespace }}
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
     traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
-    traefik.ingress.kubernetes.io/router.middlewares: {{ .Release.Namespace }}-omp-web-basicauth@kubernetescrd
+    traefik.ingress.kubernetes.io/router.middlewares: {{ .Release.Namespace }}-{{ .Values.name }}-omp-web-basicauth@kubernetescrd
 spec:
-  ingressClassName: traefik-hetzner
+  ingressClassName: {{ printf "traefik-%s" .Values.traefik }}
   tls:
     - hosts: [{{ .Values.ompWeb.hostname | quote }}]
   rules:
@@ -300,7 +333,8 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: omp-web
+                name: {{ printf "%s-omp-web" .Values.name }}
                 port:
                   number: 8080
 {{- end }}
+{{- end -}}

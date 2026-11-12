@@ -86,8 +86,11 @@ echo "✅ $LOG_PREFIX NODE_LABEL_ARGS=[${NODE_LABEL_ARGS_STR}]"
 # No node IPs are passed: with --flannel-iface, k3s reads them from tailscale0 on every start.
 echo "👉 $LOG_PREFIX Installing k3s=[${K3S_VERSION}] agent ⚠️ might take a while, wait"
 
+# Not started here: on a new node tailscale0 still has the default 1280 MTU, so flannel-v6.1
+# would get 1210 and k3s-agent fails. bootstrap-node-networking.sh sets the MTU first.
 curl -sfL https://get.k3s.io | \
     INSTALL_K3S_VERSION="${K3S_VERSION}" \
+    INSTALL_K3S_SKIP_START=true \
     K3S_URL="$CONTROL_PLANE_SERVER_URL" \
     K3S_TOKEN="$NODE_TOKEN" \
     INSTALL_K3S_EXEC=" \
@@ -101,3 +104,7 @@ echo "✅ $LOG_PREFIX Installed k3s agent"
 echo "👉 $LOG_PREFIX Hardening node networking (k3s-agent <-> tailscale0 binding)"
 bash "$SCRIPT_DIR/../common/bootstrap-node-networking.sh" k3s-agent
 echo "✅ $LOG_PREFIX Node networking hardened"
+
+echo "👉 $LOG_PREFIX Starting k3s agent"
+sudo systemctl start k3s-agent
+echo "✅ $LOG_PREFIX k3s agent started"

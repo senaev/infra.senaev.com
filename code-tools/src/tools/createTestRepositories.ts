@@ -1,17 +1,19 @@
 import { execFileSync } from 'node:child_process';
 import {
-    mkdir, mkdtemp, rm, writeFile,
+    mkdir, mkdtemp, realpath, rm, writeFile,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 import { createCodeToolsConfig, type CodeToolsConfig } from './codeToolsConfig';
 
-export type TestProjects = {
+export type TestRepositories = {
     config: CodeToolsConfig;
-    /** The absolute path of a file in a test project. */
-    path: (project: string, relativePath?: string) => string;
-    git: (project: string, args: readonly string[]) => string;
+    /** The temporary folder that holds the repositories; it is not a repository itself. */
+    root: string;
+    /** The absolute path of a file in a test repository. */
+    path: (repository: string, relativePath?: string) => string;
+    git: (repository: string, args: readonly string[]) => string;
     remove: () => Promise<void>;
 };
 
@@ -25,43 +27,43 @@ const TEST_GIT_ENV = {
     GIT_COMMITTER_EMAIL: 'test@example.com',
 };
 
-/** A projects folder on disk with one committed git repository per entry, for tests only. */
-export async function createTestProjects(projects: Record<string, Record<string, string>>): Promise<TestProjects> {
-    const root = await mkdtemp(join(tmpdir(), 'code-tools-test-'));
-    const config = createCodeToolsConfig(root, {
+/** A temporary folder with one committed git repository per entry, for tests only. */
+export async function createTestRepositories(repos: Record<string, Record<string, string>>): Promise<TestRepositories> {
+    const root = await realpath(await mkdtemp(join(tmpdir(), 'code-tools-test-')));
+    const config = createCodeToolsConfig({
         ...process.env,
         ...TEST_GIT_ENV,
     });
-    const git = (project: string, args: readonly string[]) => execFileSync('git', args, {
-        cwd: join(root, project),
+    const git = (repository: string, args: readonly string[]) => execFileSync('git', args, {
+        cwd: join(root, repository),
         env: config.commandEnv,
         encoding: 'utf8',
     });
 
     for (const [
-        project,
+        repository,
         files,
-    ] of Object.entries(projects)) {
-        await mkdir(join(root, project));
+    ] of Object.entries(repos)) {
+        await mkdir(join(root, repository));
 
         for (const [
             relativePath,
             content,
         ] of Object.entries(files)) {
-            await mkdir(dirname(join(root, project, relativePath)), { recursive: true });
-            await writeFile(join(root, project, relativePath), content, 'utf8');
+            await mkdir(dirname(join(root, repository, relativePath)), { recursive: true });
+            await writeFile(join(root, repository, relativePath), content, 'utf8');
         }
 
-        git(project, [
+        git(repository, [
             'init',
             '--quiet',
             '--initial-branch=main',
         ]);
-        git(project, [
+        git(repository, [
             'add',
             '--all',
         ]);
-        git(project, [
+        git(repository, [
             'commit',
             '--quiet',
             '--allow-empty',
@@ -71,7 +73,8 @@ export async function createTestProjects(projects: Record<string, Record<string,
 
     return {
         config,
-        path: (project, relativePath = '') => join(root, project, relativePath),
+        root,
+        path: (repository, relativePath = '') => join(root, repository, relativePath),
         git,
         remove: () => rm(root, {
             recursive: true,

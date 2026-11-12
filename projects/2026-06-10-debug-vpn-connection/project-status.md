@@ -2,36 +2,39 @@
 
 ## Current stage
 
-PR #154 merged atd17f690; deployment42787487968 failed because Hetzner's Kubernetes
-API is down. Build/publication and provisioning sync passed. Do not claim a
-fresh16KiB result or exporter-fix rollout.
+K3s repair was performed by the user; PR #156 closed without merge. No recovery
+workaround from that PR is deployed. Run42910743093 successfully deployed #154
+with the subsequent main change1f00ca7. All5 website smoke checks passed after
+recovery, including senaev.ru. This records availability then, not continuous uptime.
 
-## Incident
+At2026-11-11 08:43 UTC, fresh H1 payload counters: home4KiB19/20 passed,
+16KiB0/19; Hetzner4/16KiB38/38 each. Home16KiB exit checks19/20; the failed
+exit skipped its payload. All paired direct controls passed. Reused home
+4/16/64KiB19/19,0/19,0/19; Hetzner39/39,37/39,38/38. These are cumulative
+current-process counters, not matched independent rounds or proof of DPI.
 
-Remote Tailscale update at06:26 UTC /07:26 Madrid upgraded Hetzner1.102.2→1.104.5.
-Interface deletion stopped bound K3s; Tailscale recovered, K3s did not. The recovery
-rule exists but did not restart it. AutoUpdate Apply=True. No new OOM/full disk.
-senaev.ru times out; same-IP jellyfin.senaev.ru responds302 and senaev.com200.
-FirstVDS journal remains unavailable because SSH authentication failed; the exact
-failing fallback hop is not proven.
-[Evidence, recovery proposal and check design](SENAEV-RU-AVAILABILITY.md).
+## Prepared next step
 
-## VPN evidence retained
+Append an independently exit-validated fresh8KiB control after existing4/16KiB,
+with unchanged timeout/rate/TLS/cleanup limits,60–90s pre-start quiet time and
+2–7s paired-request jitter. Run on existing home and Hetzner paths. Adds20KiB
+planned response allowance per eligible cycle; not a strict wire limit.
+Prepared only; merge/deployment and repeated observations remain pending.
+[Design, evidence and interpretation](H1-PAYLOAD-VALIDATION.md).
 
-Before #152: home H1 traces/exit8/8; reused4KiB7/8 and16/64KiB0/8.
-First #152 fresh4KiB passed905ms/home and535ms/Hetzner. Home reused4KiB worked,
-16/64KiB failed. This does not identify idle as the cause.
-#154 fresh16KiB and metric allowlist changes are merged, deployment blocked.
+## Isolation and remaining work
 
-## Next PR prepared
+VPN namespace retained; FirstVDS entry-only, Hetzner and senaev-media remain exits.
+No host networking, credentials, privileges, server configuration or production
+subscriptions changed. Original failed candidate acceptance stays failed.
+The fresh8KiB payload is exported through existing transfer dashboard selectors.
+Website availability work remains separate in PR #155, still unmerged.
 
-Direct HEAD availability from home and Hetzner using existing checker pods,
-30–45s jittered waits and bounded verified TLS. Grafana status/latency/age panels
-hide stale green samples after120s.90 tests, syntax, chart lint/render and
-dashboard validation pass. This availability change is not merged or deployed.
+## Availability monitoring PR #155
 
-## Open actions
-
-Confirm Tailscale/device addresses, approve/start K3s on Hetzner, verify overlay/API/
-nodes/websites, retry #154 deployment. No host services changed during diagnosis.
-Review future Tailscale update/recovery policy separately; no home network changes.
+Resolved conflicts against current main, retaining fresh4/16/8KiB controls.
+Website HEAD worker and current-status/duration/age panels are prepared, not
+merged or deployed. Current status uses an instant query with120s freshness;
+there is no range-query timeline that can extend a historical green state.
+PR #158 deployed at7900d081 in successful run43297335789. All three probe targets
+were scraped after rollout; repeated8KiB results remain to be assessed.

@@ -1,7 +1,7 @@
 -include .env
 export
 
-.PHONY: default terraform cluster rsync control-plane workers worker-firstvds worker-proxmox worker-senaev-media services senaev-com vpn secrets telemetry traefik datadog test
+.PHONY: default terraform cluster rsync control-plane workers worker-firstvds worker-galkin worker-proxmox worker-senaev-media services senaev-com vpn secrets telemetry traefik datadog test
 
 CONTROL_PLANE_SERVER_ADDRESS := $(CONTROL_PLANE_SERVER_USERNAME)@$(CONTROL_PLANE_SERVER_IP)
 REMOTE := @ssh "$(CONTROL_PLANE_SERVER_ADDRESS)"
@@ -34,17 +34,21 @@ control-plane:
 	$(REMOTE) "$(CONTROL_PLANE_SCRIPTS)/bootstrap-control-plane.sh"
 	@echo "✅ [Makefile] k8s cluster deployed"
 
-# The non-sensitive node goes first, so a broken bootstrap fails there before it reaches the
+# The non-sensitive nodes go first, so a broken bootstrap fails there before it reaches the
 # home nodes (see "Sensitive nodes" in AGENTS.md). Each target can also be run on its own.
 workers:
 	@echo "👉 [Makefile] Connecting to worker nodes"
 	@$(MAKE) worker-firstvds
+	@$(MAKE) worker-galkin
 	@$(MAKE) worker-proxmox
 	@$(MAKE) worker-senaev-media
 	@echo "✅ [Makefile] Worker nodes connected"
 
 worker-firstvds:
 	@$(CURDIR)/scripts/connect-worker.sh "$(VPS_FIRSTVDS_USERNAME)@$(VPS_FIRSTVDS_HOST)" "$(VPS_FIRSTVDS_LABEL)"
+
+worker-galkin:
+	@$(CURDIR)/scripts/connect-worker.sh "$(VPS_GALKIN_USERNAME)@$(VPS_GALKIN_HOST)" "$(VPS_GALKIN_LABEL)"
 
 worker-proxmox:
 	@$(CURDIR)/scripts/connect-worker.sh "$(VPS_PROXMOX_USERNAME)@$(VPS_PROXMOX_HOST)" "$(VPS_PROXMOX_LABEL)"

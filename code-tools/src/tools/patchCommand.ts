@@ -7,8 +7,8 @@ import { replaceExactlyOnceAsync as replaceText } from 'senaev-utils/src/files/t
 
 import type { CodeToolsConfig } from './codeToolsConfig';
 import {
-    normalizeProjectPath, readTextFile, resolveExistingFile, resolveNamedProject,
-} from './projectAccess';
+    normalizeAbsolutePath, readTextFile, resolveExistingFile,
+} from './fileAccess';
 
 export type Replacement = {
     find: string;
@@ -19,16 +19,16 @@ export type Replacement = {
  * Applies all replacements in memory, in order, and writes the result once. If one fails,
  * nothing is written. The new hash lets the caller edit the same file again at once.
  */
-export type PatchCommandInput = { project: string; path: string; expectedHash: string; operations: readonly Replacement[] };
+export type PatchCommandInput = { path: string; expectedHash: string; operations: readonly Replacement[] };
 
-export async function patchCommand(config: CodeToolsConfig, input: PatchCommandInput, execution: CommandExecution) {
-    const project = await resolveNamedProject(config, input.project, execution);
-    const path = normalizeProjectPath(input.path, 'path');
+export async function patchCommand(_config: CodeToolsConfig, input: PatchCommandInput, execution: CommandExecution) {
+    const path = normalizeAbsolutePath(input.path, 'path');
     const { expectedHash, operations } = input;
 
-    return withFileMutation(`${project.root}/${path}`, async () => {
-        const absolutePath = await resolveExistingFile(project, path, execution);
-        const original = await readTextFile(absolutePath, path, execution);
+    const target = await resolveExistingFile(path, execution);
+
+    return await withFileMutation(target, async () => {
+        const original = await readTextFile(target, execution);
 
         assertExpectedHash(original, expectedHash, 'file');
 
@@ -44,8 +44,8 @@ export async function patchCommand(config: CodeToolsConfig, input: PatchCommandI
         execution.throwIfAborted();
 
         if (updated !== original) {
-            assertExpectedHash(await readTextFile(absolutePath, path, execution), expectedHash, 'file');
-            await replaceFileAtomically(absolutePath, updated, execution.signal, () => execution.changedPath(path));
+            assertExpectedHash(await readTextFile(target, execution), expectedHash, 'file');
+            await replaceFileAtomically(target, updated, execution.signal, () => execution.changedPath(target));
         }
 
         await execution.checkpoint();

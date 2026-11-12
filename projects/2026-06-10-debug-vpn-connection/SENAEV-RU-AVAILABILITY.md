@@ -55,7 +55,9 @@ traffic, so quiet intervals are no longer absolutely silent. Website failures do
 not change VPN acceptance. No host routing, image, secret, RBAC or policy changes.
 
 Grafana adds status, duration and age panels by source_node, deliberately ignoring
-VPN profile/route filters. Samples older than120s cannot remain green. HEAD checks
+VPN profile/route filters. Current availability uses an instant Stat query with120s freshness, so historical
+range-query steps cannot extend a green status. Use dashboard end time now; stale
+results cannot show a fresh PASS. Duration history and sample age remain separate. HEAD checks
 public TLS/HTTP response, not complete page content. No alert or CI public probe.
 
 Validation:90 unit tests,18 Python files parsed, VPN/telemetry chart lint, rendered

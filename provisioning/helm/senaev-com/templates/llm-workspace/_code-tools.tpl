@@ -1,8 +1,9 @@
-{{- if .Values.opencode.enabled }}
+{{- define "senaev-com.llmWorkspace.codeTools" -}}
+{{- if .Values.codeTools.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: code-tools
+  name: {{ printf "%s-code-tools" .Values.name }}
   namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
@@ -11,48 +12,39 @@ spec:
     type: Recreate
   selector:
     matchLabels:
-      app: code-tools
+      app: {{ printf "%s-code-tools" .Values.name }}
   template:
     metadata:
       labels:
-        app: code-tools
+        app: {{ printf "%s-code-tools" .Values.name }}
+        vps: {{ .Values.vps }}
         admission.datadoghq.com/enabled: "true"
         tags.datadoghq.com/service: code-tools
         tags.datadoghq.com/env: prod
         tags.datadoghq.com/version: latest
       annotations:
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
-        configmap.reloader.stakater.com/reload: "opencode-telegram-config"
+        configmap.reloader.stakater.com/reload: {{ printf "%s-instructions" .Values.name | quote }}
     spec:
-      # ReadWriteOnce permits both pods to mount the existing disk on the same node.
+{{ include "senaev-com.llmWorkspace.podAccess" . | indent 6 }}
+      # ReadWriteOnce permits all workspace pods to mount the projects disk on the same node.
       nodeSelector:
-        vps: {{ .Values.opencode.vps }}
-      affinity:
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  app: opencode-telegram
-              topologyKey: kubernetes.io/hostname
+        vps: {{ .Values.vps }}
       initContainers:
         - name: git-init
           image: alpine/git:latest
           command: ["/bin/sh", "-ec"]
           args:
             - |
-              mkdir -p /root/.ssh
               cp /tmp/ssh/id_rsa /root/.ssh/id_rsa
               chmod 600 /root/.ssh/id_rsa
               ssh-keyscan github.com >> /root/.ssh/known_hosts 2>/dev/null
-              mkdir -p /projects/git
           volumeMounts:
             - name: ssh-key
               mountPath: /tmp/ssh
               readOnly: true
             - name: ssh-dir
               mountPath: /root/.ssh
-            - name: projects-git
-              mountPath: /projects/git
       containers:
         - name: code-tools
           image: ghcr.io/senaev/code-tools:latest
@@ -68,26 +60,24 @@ spec:
             limits:
               memory: 2Gi
           env:
-            - name: CODE_TOOLS_PROJECTS_PATH
-              value: /projects/git
             - name: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
+                  key: {{ .Values.codeTools.secrets.codeToolsToken }}
             - name: GIT_AUTHOR_NAME
-              value: {{ .Values.owner.name | quote }}
+              value: {{ .Values.git.name | quote }}
             - name: GIT_AUTHOR_EMAIL
-              value: {{ .Values.owner.email | quote }}
+              value: {{ .Values.git.email | quote }}
             - name: GIT_COMMITTER_NAME
-              value: {{ .Values.owner.name | quote }}
+              value: {{ .Values.git.name | quote }}
             - name: GIT_COMMITTER_EMAIL
-              value: {{ .Values.owner.email | quote }}
+              value: {{ .Values.git.email | quote }}
             - name: GH_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: GH_TOKEN
+                  key: {{ .Values.git.githubToken }}
           startupProbe:
             httpGet:
               path: /health
@@ -100,12 +90,14 @@ spec:
               port: http
             periodSeconds: 5
           volumeMounts:
-            - name: projects-git
-              mountPath: /projects/git
+            - name: projects
+              mountPath: /projects
+            - name: code
+              mountPath: /code
             - name: ssh-dir
               mountPath: /root/.ssh
             # The server rules that every code tool description points to.
-            - name: opencode-config
+            - name: instructions
               mountPath: /AGENTS.md
               subPath: AGENTS.md
       volumes:
@@ -113,26 +105,29 @@ spec:
           secret:
             secretName: senaev-com-kv-secrets
             items:
-              - key: TELEGRAM_OPENCODE_SSH_PRIVATE_KEY
+              - key: {{ .Values.git.sshPrivateKey }}
                 path: id_rsa
                 mode: 0600
         - name: ssh-dir
           emptyDir: {}
-        - name: opencode-config
+        - name: instructions
           configMap:
-            name: opencode-telegram-config
-        - name: projects-git
+            name: {{ printf "%s-instructions" .Values.name }}
+        - name: projects
           persistentVolumeClaim:
-            claimName: opencode-telegram-git
+            claimName: {{ printf "%s-projects" .Values.name }}
+        - name: code
+          persistentVolumeClaim:
+            claimName: {{ printf "%s-code" .Values.name }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: code-tools
+  name: {{ printf "%s-code-tools" .Values.name }}
   namespace: {{ .Release.Namespace }}
 spec:
   selector:
-    app: code-tools
+    app: {{ printf "%s-code-tools" .Values.name }}
   ports:
     - name: http
       port: 8080
@@ -143,14 +138,16 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: code-tools
+  name: {{ printf "%s-code-tools" .Values.name }}
   namespace: {{ .Release.Namespace }}
 spec:
   podSelector:
     matchLabels:
-      app: code-tools
+      app: {{ printf "%s-code-tools" .Values.name }}
   policyTypes:
     - Ingress
+    - Egress
+{{ include "senaev-com.llmWorkspace.egress" . }}
   ingress:
     - from:
         - podSelector:
@@ -160,3 +157,4 @@ spec:
         - protocol: TCP
           port: 8080
 {{- end }}
+{{- end -}}

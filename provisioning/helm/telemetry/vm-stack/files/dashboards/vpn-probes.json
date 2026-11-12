@@ -302,9 +302,9 @@
     },
     {
       "id": 22,
-      "title": "senaev.ru HTTPS availability — direct, by source",
-      "type": "state-timeline",
-      "description": "Direct verified HTTPS HEAD to senaev.ru: HTTP200 required; no VPN, redirects or response body. One worker per source,30–45s wait after each bounded request. Website panels ignore VPN profile/route filters. Samples older than120s are not shown as healthy; inspect age and exporter up.",
+      "title": "senaev.ru current HTTPS availability — by source",
+      "type": "stat",
+      "description": "Direct verified HTTPS HEAD; HTTP200 required. Instant query evaluated at the dashboard end time, with a120s freshness cutoff, independent of range-query step. Use end time now for current status. Missing/stale data is not PASS. Website checks ignore VPN profile/route filters; duration history and sample age remain separate.",
       "datasource": {
         "type": "prometheus",
         "uid": "P4169E866C3094E38"
@@ -324,8 +324,8 @@
             "uid": "P4169E866C3094E38"
           },
           "legendFormat": "{{source_node}}",
-          "instant": false,
-          "range": true
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -364,26 +364,23 @@
                 }
               }
             }
-          ],
-          "custom": {
-            "spanNulls": false,
-            "fillOpacity": 90,
-            "lineWidth": 0
-          }
+          ]
         },
         "overrides": []
       },
       "options": {
-        "mergeValues": true,
-        "showValue": "never",
-        "alignValue": "left",
-        "rowHeight": 0.8,
-        "legend": {
-          "showLegend": false
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
         },
-        "tooltip": {
-          "mode": "single"
-        }
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
       }
     },
     {

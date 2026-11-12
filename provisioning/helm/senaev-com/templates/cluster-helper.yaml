@@ -33,6 +33,7 @@ spec:
     metadata:
       labels:
         app: cluster-helper
+        vps: {{ .Values.clusterHelper.vps }}
         admission.datadoghq.com/enabled: "true"
         tags.datadoghq.com/service: cluster-helper
         tags.datadoghq.com/env: prod
@@ -113,7 +114,7 @@ spec:
             - name: OBSIDIAN_SYNC_URL
               value: "http://obsidian-sync:8080"
             - name: CODE_TOOLS_URL
-              value: "http://code-tools:8080"
+              value: "http://senaev-code-tools:8080"
             - name: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
               valueFrom:
                 secretKeyRef:

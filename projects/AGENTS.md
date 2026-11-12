@@ -16,7 +16,6 @@ For an incident, name the symptom, not the cause (the cause is not known yet).
 ```
 YYYY-MM-DD-HH-mm-<slug>/
 ├── README.md                      # the main document of the project
-├── project-status.md              # where the project is now
 ├── project-worklog.md             # decisions and finished stages, for the agent
 ├── YYYY-MM-DD-HH-mm-<slug>.md     # other documents, if any
 ├── assets/                        # images and diagrams that the documents link to
@@ -40,13 +39,6 @@ update the section — the history is in `project-worklog.md`. Structure:
 
 Skip a section when it does not apply. Keep each one short.
 
-## `project-status.md`
-
-Short, and shows the current state. Start with the status checkbox:
-`- [ ] <one line: what the task must achieve>`. Then the stage, what is done, the open
-questions, the next steps. Rewrite it, do not append to it. Check the box (`- [x]`) when
-the task is done and `## Result` in `README.md` is written.
-
 ## `project-worklog.md`
 
 For the agent, to get context back in a new session. Add a record only when a decision is
@@ -57,14 +49,13 @@ made or a part of the work is finished — highlights, not every step.
 - Put the newest record first.
 - Paste the output that supports the record verbatim (cut long output with `...`), and add
   1–2 sentences on what it shows.
-- Update `project-status.md` in the same step.
 - When the user pastes output that leads to a decision or finishes a step, write the record
   first, then reply in chat.
 
 ## Rules
 
-- **Read `project-status.md` and the top of `project-worklog.md`** before you continue work
-  on a project.
+- **Read `README.md` and the top of `project-worklog.md`** before you continue work on a
+  project.
 - **Read-only first** for cluster work and incidents: diagnose before any write, restart,
   or config change. Give exact, copy-pasteable commands; the user runs commands that
   change cluster state.

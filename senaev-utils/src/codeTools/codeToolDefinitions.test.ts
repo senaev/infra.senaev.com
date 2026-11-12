@@ -10,7 +10,7 @@ import {
     CODE_TOOL_NAMES,
     getCodeToolArgumentKeys,
     isCodeToolName,
-    PROJECT_NAME_PATTERN,
+    ABSOLUTE_PATH_PATTERN,
     SERVER_RULES,
 } from './codeToolDefinitions';
 import { SEARCH_LIMITS } from './codeToolLimits';
@@ -32,7 +32,6 @@ describe('code tool definitions', () => {
 
     test('lists the tools in a fixed order', () => {
         expect(CODE_TOOL_NAMES).toEqual([
-            'projects',
             'list',
             'search',
             'read',
@@ -43,13 +42,8 @@ describe('code tool definitions', () => {
     });
 
     test('accept exactly the keys of the input schema', () => {
-        expect(getCodeToolArgumentKeys('projects')).toEqual([
-            'executionPolicy',
-            'timeoutSeconds',
-            'requestId',
-        ]);
         expect(getCodeToolArgumentKeys('run')).toEqual([
-            'project',
+            'cwd',
             'command',
             'executionPolicy',
             'timeoutSeconds',
@@ -86,20 +80,31 @@ describe('code tool definitions', () => {
         expect(isCodeToolName('code-run')).toBe(false);
     });
 
-    test('require a project in every tool that works inside one', () => {
-        for (const name of CODE_TOOL_NAMES.filter((tool) => tool !== 'projects')) {
-            expect(CODE_TOOL_DEFINITIONS[name].inputSchema.required).toContain('project');
+    test('require an absolute location in every tool', () => {
+        const locations = {
+            list: 'folder',
+            search: 'folder',
+            read: 'paths',
+            write: 'path',
+            patch: 'path',
+            run: 'cwd',
+        } as const;
+
+        for (const name of CODE_TOOL_NAMES) {
+            const { inputSchema } = CODE_TOOL_DEFINITIONS[name];
+            const property: unknown = inputSchema.properties[locations[name]];
+
+            expect(inputSchema.required).toContain(locations[name]);
+            expect(JSON.stringify(property)).toContain(`"pattern":"${ABSOLUTE_PATH_PATTERN}"`);
         }
     });
 
-    test('allow only plain folder names as project names', () => {
-        const pattern = new RegExp(PROJECT_NAME_PATTERN);
+    test('accept only absolute paths', () => {
+        const pattern = new RegExp(ABSOLUTE_PATH_PATTERN);
 
-        expect(pattern.test('infra.senaev.com')).toBe(true);
-        expect(pattern.test('my_repo-2')).toBe(true);
-        expect(pattern.test('.git')).toBe(false);
-        expect(pattern.test('..')).toBe(false);
-        expect(pattern.test('a/b')).toBe(false);
+        expect(pattern.test('/code/projects/infra.senaev.com')).toBe(true);
+        expect(pattern.test('/')).toBe(true);
+        expect(pattern.test('src/index.ts')).toBe(false);
         expect(pattern.test('')).toBe(false);
     });
 

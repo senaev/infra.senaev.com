@@ -1,7 +1,6 @@
+import { stripFrontmatter } from 'senaev-utils/src/obsidianNotes/stripFrontmatter';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { parse } from 'yaml';
-
-import { stripFrontmatter } from './stripFrontmatter';
 
 /** The frontmatter of a note as an object, or `null` when it has none. Throws for bad YAML. */
 export function parseNoteFrontmatter(content: string): Record<string, unknown> | null {

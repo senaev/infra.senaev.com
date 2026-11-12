@@ -2,7 +2,7 @@ FROM debian:bookworm-slim
 
 # Built from the repository root; Code Tools now has its own image.
 #
-# The tools are for the OpenCode agent, which runs commands in /projects/git. python3 and helm are there for the checks of infra.senaev.com.
+# The tools are for the OpenCode agent, which runs commands in /projects. python3 and helm are there for the checks of infra.senaev.com.
 # Pin OpenCode and verify its release archive before extraction. The baseline x64
 # binary supports hosts without AVX2. Keep yq pinned as well.
 RUN apt-get update \

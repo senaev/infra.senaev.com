@@ -32,6 +32,6 @@ ENV OMP_WEB_HOSTNAME=127.0.0.1 \
     NEXT_TELEMETRY_DISABLED=1
 COPY omp-web/start.sh /app/
 
-WORKDIR /projects/git
+WORKDIR /projects
 ENTRYPOINT ["/usr/bin/tini", "-g", "--"]
 CMD ["bash", "/app/start.sh"]

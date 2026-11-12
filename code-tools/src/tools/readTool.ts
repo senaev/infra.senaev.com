@@ -1,8 +1,6 @@
 import { READ_LIMITS } from 'senaev-utils/src/codeTools/codeToolLimits';
 import { createCommandAdapter } from 'senaev-utils/src/toolServer/createCommandAdapter';
-import {
-    optionalInteger, optionalStringArray, requiredNonEmptyString,
-} from 'senaev-utils/src/toolServer/toolArguments';
+import { optionalInteger, optionalStringArray } from 'senaev-utils/src/toolServer/toolArguments';
 import { invalidArguments } from 'senaev-utils/src/commands/CommandError';
 
 import { readCodeToolArguments } from './toolArguments';
@@ -30,7 +28,6 @@ function parseReadInput(input: unknown): ReadCommandInput {
     }
 
     return {
-        project: requiredNonEmptyString(args, 'project'),
         paths,
         startLine: startLine ?? 1,
         lineCount: lineCount ?? Number.MAX_SAFE_INTEGER,

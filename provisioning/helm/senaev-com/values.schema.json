@@ -1,0 +1,312 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "llmWorkspaces"
+  ],
+  "properties": {
+    "llmWorkspaces": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9-]{0,29}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "agent",
+          "instructionsPath",
+          "projectsStorageSize",
+          "codeStorageSize",
+          "vps",
+          "traefik"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "required": ["opencode"],
+              "properties": { "opencode": { "properties": { "enabled": { "const": true } } } }
+            },
+            "then": { "required": ["git", "telegram"] }
+          },
+          {
+            "if": {
+              "required": ["codeTools"],
+              "properties": { "codeTools": { "properties": { "enabled": { "const": true } } } }
+            },
+            "then": {
+              "required": ["opencode"],
+              "properties": { "opencode": { "properties": { "enabled": { "const": true } } } }
+            }
+          }
+        ],
+        "properties": {
+          "instructionsPath": {
+            "type": "string",
+            "minLength": 1
+          },
+          "projectsStorageSize": {
+            "type": "string",
+            "minLength": 1
+          },
+          "codeStorageSize": {
+            "type": "string",
+            "minLength": 1
+          },
+          "agent": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "mcp",
+              "defaultModel",
+              "connectors",
+              "speechToText"
+            ],
+            "properties": {
+              "mcp": {
+                "description": "Free-form MCP server settings, passed to OpenCode and OMP",
+                "type": "object"
+              },
+              "defaultModel": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "provider",
+                  "id"
+                ],
+                "properties": {
+                  "provider": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "connectors": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "baseUrl",
+                    "secretKey"
+                  ],
+                  "properties": {
+                    "baseUrl": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "secretKey": {
+                      "description": "The Vault key name. The pod gets it as an env variable with the same name",
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              },
+              "speechToText": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "baseUrl",
+                  "model",
+                  "secretKey"
+                ],
+                "properties": {
+                  "baseUrl": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "model": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "secretKey": {
+                    "description": "The Vault key name",
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          },
+          "git": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "email",
+              "githubToken",
+              "sshPrivateKey"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "email": {
+                "type": "string",
+                "minLength": 1
+              },
+              "githubToken": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sshPrivateKey": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "telegram": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "token",
+              "allowedUser"
+            ],
+            "properties": {
+              "token": {
+                "type": "string",
+                "minLength": 1
+              },
+              "allowedUser": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "vps": {
+            "type": "string",
+            "minLength": 1
+          },
+          "traefik": {
+            "type": "string",
+            "minLength": 1
+          },
+          "opencode": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "enabled",
+              "hostname",
+              "dataPath",
+              "mcpOAuth",
+              "secrets"
+            ],
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "hostname": {
+                "type": "string",
+                "minLength": 1
+              },
+              "dataPath": {
+                "type": "string",
+                "pattern": "^/[^/]"
+              },
+              "mcpOAuth": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "hostname",
+                  "callbackPort"
+                ],
+                "properties": {
+                  "hostname": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "callbackPort": {
+                    "type": "integer",
+                    "minimum": 1024,
+                    "maximum": 65535
+                  }
+                }
+              },
+              "secrets": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "opencodePassword"
+                ],
+                "properties": {
+                  "opencodePassword": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          },
+          "ompWeb": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "enabled",
+              "hostname",
+              "storageSize",
+              "secrets"
+            ],
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "hostname": {
+                "type": "string",
+                "minLength": 1
+              },
+              "storageSize": {
+                "type": "string",
+                "minLength": 1
+              },
+              "secrets": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "ompHtpasswd"
+                ],
+                "properties": {
+                  "ompHtpasswd": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          },
+          "codeTools": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "enabled",
+              "secrets"
+            ],
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "secrets": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "codeToolsToken"
+                ],
+                "properties": {
+                  "codeToolsToken": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

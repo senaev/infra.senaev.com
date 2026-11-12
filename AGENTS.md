@@ -84,14 +84,19 @@ found, and any checks that the available tools could not perform.
 
 ### Smoke test after a deploy
 
+Run `bash scripts/smoke-test-websites.sh` (no cluster access needed). It checks that each
+URL below returns HTTP 200 at the expected final URL, and exits non-zero on any failure.
 These public URLs go through cluster-helper or nextjs-app to obsidian-sync, so they show
-that the whole path works. Open each one and check the result:
+that the whole path works. The main pages show that the Traefik ingress on hetzner and on
+firstvds reaches nextjs-app. When you change the list, change the script and this table together:
 
 | URL | Path | Expected result |
 |---|---|---|
 | https://s.senaev.com/1bxsl9 | short link: cluster-helper → obsidian-sync | redirect to https://senaev.com/cv/5min |
-| https://static.senaev.com/datadog-dc-by-org-id.html | static file: cluster-helper → obsidian-sync | the HTML page |
+| https://static.senaev.com/hello-world/ | static file: cluster-helper → obsidian-sync | the `hello-world/index.html` page |
 | https://senaev.com/notes/my_blog_post_senaev_speaks_12 | public note: nextjs-app → obsidian-sync | the rendered note |
+| https://senaev.com/ | main page: hetzner Traefik (xray fallback) → nextjs-app | the main page |
+| https://senaev.ru/ | main page: firstvds Traefik (xray fallback) → nextjs-app | the main page |
 
 For the ChatGPT MCP connector, ask ChatGPT to read a note, search the vault and add a diary
 record, then check the `🤖 ChatGPT MCP message` logs of cluster-helper.
@@ -274,16 +279,22 @@ Credentials (`SUPABASE_PROJECT_URL`, `SUPABASE_PUBLISHABLE_KEY`) are stored in V
 
 Code Tools has its own image (`code-tools/Dockerfile`,
 `ghcr.io/senaev/code-tools`), Deployment and Service
-(`provisioning/helm/senaev-com/templates/code-tools.yaml`). OpenCode and its Telegram
-bot stay in the `opencode-telegram` Deployment. Both pods mount the existing
-`opencode-telegram-git` PVC at `/projects/git`; required pod affinity puts Code Tools
-on OpenCode's node. Both use one replica and `Recreate`; a Code Tools update still
-has a short outage and loses in-memory operation IDs.
+(`provisioning/helm/senaev-com/templates/llm-workspace/_code-tools.tpl`). OpenCode and its Telegram
+bot stay in the `senaev-opencode-telegram` Deployment. Both pods, and OMP, mount the
+workspace's `senaev-projects` PVC at `/projects` and its `senaev-code` PVC at `/code`; the
+workspace `vps` node selector puts them on one node. Code Tools and OpenCode use one replica
+and `Recreate`; a Code Tools update still has a short outage and loses in-memory operation IDs.
+
+The code tools take absolute paths and work in any folder. The repository layout under
+`/code` (`projects/<repo>` and `worktrees/<repo>/<branch>`) is described only in the
+workspace instructions, `/AGENTS.md`. The PVCs use `local-path`, which does not enforce their
+size: worktrees with their own `node_modules` use the node's root disk, which on hetzner also
+holds the control plane.
 
 OpenCode 2 serves its built-in web UI at `https://opencode.senaev.com` through the
 existing Traefik ingress. Native authentication uses Vault `OPENCODE_PASSWORD` via
-the separate `opencode-auth` secret; the Telegram client uses the same password over
-localhost. The shared PVC/deployment names remain unchanged. Config and state persist
+the separate `senaev-opencode-auth` secret; the Telegram client uses the same password over
+localhost. Config and state persist
 in the existing node-local data volume; health probes authenticate against `/api/info`.
 See `projects/2026-10-30-11-04-opencode-v2-web-migration/CUTOVER.md` before cutover.
 
@@ -295,3 +306,39 @@ Code Tools is discovered by the coordinated deployment workflow, with its own
 image build and `latest` image. OpenCode and its Telegram bot deploy together after
 all affected images are published. Helm handles both first installation and updates;
 image refreshes run after Helm in the same coordinated job.
+
+LLM workspace values live in `llmWorkspaces`, and the templates in
+`provisioning/helm/senaev-com/templates/llm-workspace/`. The entry name prefixes all
+resource names. Each workspace has its own projects PVC (`<name>-projects`) and
+instructions ConfigMap (`<name>-instructions`, from `instructionsPath`), and enables any of
+OpenCode, OMP and Code Tools. OpenCode requires `git` and `telegram`; Code Tools requires
+OpenCode. A new entry inherits nothing from another; the schema is
+`provisioning/helm/senaev-com/values.schema.json`.
+
+OMP runs every command without approval, so it is isolated. It reads its keys only from its
+own `<name>-omp-web-env` secret, not from `senaev-com-kv-secrets`, because a node can read
+every secret that its pods use. Its NetworkPolicy allows egress only to DNS and the public
+internet destinations, excluding private, tailnet and link-local ranges. The same
+egress baseline (including workspace Traefik HTTPS on TCP 443) and disabled
+service-account token automount apply to OpenCode and
+Code Tools through `templates/llm-workspace/_access.tpl`. Preserve each component's
+caller-specific ingress. New coding components must include both access helpers.
+Standard NetworkPolicy local-node/NAT exceptions and public endpoints mean this
+is not complete host isolation. Existing users, credentials and shared storage
+are unchanged.
+
+| Workspace | Node | Components | Ingress |
+|---|---|---|---|
+| `senaev` | hetzner | OpenCode, OMP (`omp.senaev.com`), Code Tools | traefik-hetzner |
+| `galkin` | galkin | OMP only (`omp.galkin.senaev.com`) | traefik-hetzner (DNS points to hetzner) |
+
+Do not rename the `senaev` entry: that replaces its PVCs, and cluster-helper calls
+`senaev-code-tools`. Preserve its host data directory.
+
+## Datadog APM whitelist
+
+The Datadog node agent runs only on the nodes in the `agents` node affinity of
+`provisioning/helm/datadog/values.yaml`. APM injection uses the same node list as a whitelist
+in `apm.instrumentation.targets`. The admission webhook runs before scheduling and selects
+pods only by labels, so a pod with `admission.datadoghq.com/enabled: "true"` must also have a
+`vps` label equal to its `nodeSelector.vps`. To enable APM on a node, add it to both lists.

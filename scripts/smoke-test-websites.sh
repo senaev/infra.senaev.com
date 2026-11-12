@@ -27,7 +27,7 @@ check_url() {
 check_url https://senaev.ru https://senaev.ru/
 check_url https://senaev.com https://senaev.com/
 check_url https://s.senaev.com/1bxsl9 https://senaev.com/cv/5min
-check_url https://static.senaev.com/datadog-dc-by-org-id.html https://static.senaev.com/datadog-dc-by-org-id.html
+check_url https://static.senaev.com/hello-world/ https://static.senaev.com/hello-world/
 check_url https://senaev.com/notes/my_blog_post_senaev_speaks_12 https://senaev.com/notes/my_blog_post_senaev_speaks_12
 
 if [ "$failures" -ne 0 ]; then

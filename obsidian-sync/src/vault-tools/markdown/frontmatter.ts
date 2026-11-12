@@ -4,9 +4,9 @@ import {
     Document, isMap, isScalar, parseDocument,
 } from 'yaml';
 import { CommandError } from 'senaev-utils/src/commands/CommandError';
+import { stripFrontmatter } from 'senaev-utils/src/obsidianNotes/stripFrontmatter';
 
 import { parseNoteFrontmatter } from '../../markdown/parseNoteFrontmatter';
-import { stripFrontmatter } from '../../markdown/stripFrontmatter';
 
 export type NoteParts = {
     frontmatter: Record<string, unknown> | null;

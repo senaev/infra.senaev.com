@@ -1,3 +1,60 @@
+## 2026-11-12 20:48 UTC — Resolve #155 conflicts and stale-green review
+
+Merged current main into the availability branch, resolving only the two
+conflicted project documents. Preserved incident and later VPN history in date
+order; the fresh4/16/8KiB controls and fixed metrics remain intact. Changed only
+the website status panel from a range timeline to an instant Stat query with
+120s freshness. Duration history and age remain separate; no dashboard range
+step can prolong the current green state. Use end time now for current status.
+
+Validation:
+```
+Ran 92 tests in 0.209s
+OK
+Python syntax OK: 18 file(s)
+1 chart(s) linted, 0 chart(s) failed
+PASS: instant freshness status, unique dashboard IDs, independent filters, two intended website workers and retained 8KiB control
+```
+Both VPN and telemetry lints passed. Helm rendered the VPN chart; validated
+website worker scope and dashboard JSON/queries. The first structural check
+could not import optional PyYAML; reran using the standard library over the
+Helm-validated rendering. No cluster operations, merge to main or deployment.
+
+## 2026-11-11 08:46 UTC — Prepare independent fresh8KiB control
+
+User requested the next VPN implementation. #154 is now deployed; #156 was
+closed after the user's K3s repair. Current counter query at08:43 UTC:
+`sum by (source_node,check,route,result) (vpn_probe_checks_total{check=~".*fresh.*|transfer_h1_cloudflare_.*"})`.
+Selected returned values (success/failure):
+```
+source_node=senaev-media check=transfer_h1_fresh_cloudflare_4096 route=xhttp 19/1
+source_node=senaev-media check=transfer_h1_fresh_cloudflare_16384 route=xhttp 0/19
+source_node=hetzner check=transfer_h1_fresh_cloudflare_4096 route=xhttp 38/0
+source_node=hetzner check=transfer_h1_fresh_cloudflare_16384 route=xhttp 38/0
+source_node=senaev-media check=diagnostic_h1_fresh_size_exit_16384 route=xhttp 19/1
+```
+All paired direct controls passed. Source/path difference persists with fresh
+processes, so add8KiB after existing4/16KiB to narrow the response-size range
+without changing those controls' order. Size, destination and traffic-history
+confounders remain; do not claim DPI or an MTU diagnosis.
+
+Runtime change reuses the existing bounded fresh-client path and adds two fixed
+exporter check names. Tests cover independent processes, exit gate, exact8KiB
+caps, jitter, cancellation, metrics and earlier-failure isolation. No new
+infrastructure or permissions. Planned response allowance increases20KiB/cycle.
+
+Verbatim validation:
+```
+Ran 84 tests in 0.201s
+OK
+Python syntax OK: 17 file(s)
+PASS: independent fresh H1 clients validate exit, transfer paired 4/16/8 KiB and clean up
+```
+Real local integration uses Xray26.9.30 and Traefik3.2.0, temporary credentials,
+verified test certificates and loopback listeners. Initial invocation omitted
+Xray from PATH, so fresh startup failed; corrected the invocation and clarified
+the existing integration instructions. The complete rerun passed. No live change.
+
 ## 2026-11-10 09:19 UTC — Merge #154; diagnose outage; prepare website metrics
 
 User requested merge, senaev.ru investigation near06:00 and checker availability

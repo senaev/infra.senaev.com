@@ -10,7 +10,6 @@ function parseWriteInput(input: unknown): WriteCommandInput {
     const args = readCodeToolArguments(input, 'write');
 
     return {
-        project: requiredNonEmptyString(args, 'project'),
         path: requiredNonEmptyString(args, 'path'),
         content: requiredString(args, 'content', WRITE_LIMITS.maxContentChars),
         expectedHash: args.expectedHash === undefined || args.expectedHash === null ? undefined : readExpectedHash(args, 'expectedHash'),

@@ -796,3 +796,12 @@ the exact FirstVDS fallback hop remains unverified. No host changes were made.
 [Evidence, recovery proposal and check design](SENAEV-RU-AVAILABILITY.md).
 The prepared availability PR adds direct HEAD metrics and Grafana panels;
 it does not repair node networking.
+
+## Availability monitoring follow-up (#155)
+
+Independent bounded senaev.ru HEAD checks from home and Hetzner are prepared
+in [the availability PR design](SENAEV-RU-AVAILABILITY.md). Conflicts resolved
+with latest main, retaining the deployed fresh8KiB VPN control. Current-status
+panel uses an instant120s-freshness query to avoid stale green timelines.
+Not merged/deployed. Latest VPN rollout #158 succeeded at7900d081; repeated8KiB
+results still need analysis. No host networking changes are part of this PR.

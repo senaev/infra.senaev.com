@@ -84,7 +84,6 @@ describe('handleMcpMessage', () => {
             'obsidian-operation_status',
             'obsidian-operation_result',
             'obsidian-operation_cancel',
-            'code-projects',
             'code-list',
             'code-search',
             'code-read',
@@ -242,13 +241,13 @@ describe('code tool proxy', () => {
         for (const tool of CODE_TOOLS) {
             await handleMcpMessage(request('tools/call', {
                 name: tool.name,
-                arguments: { project: 'demo' },
+                arguments: { cwd: '/code' },
             }), handlers({
                 callVaultTool,
                 callCodeTool,
             }));
 
-            expect(callCodeTool).toHaveBeenLastCalledWith(tool.name.slice('code-'.length), { project: 'demo' });
+            expect(callCodeTool).toHaveBeenLastCalledWith(tool.name.slice('code-'.length), { cwd: '/code' });
         }
 
         expect(callCodeTool).toHaveBeenCalledTimes(CODE_TOOLS.length);

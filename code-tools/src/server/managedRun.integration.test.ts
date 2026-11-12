@@ -5,7 +5,7 @@ import {
     afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
 
-import { createTestProjects, type TestProjects } from '../tools/createTestProjects';
+import { createTestRepositories, type TestRepositories } from '../tools/createTestRepositories';
 
 import { createCodeToolsServer, type CodeToolsServer } from './createCodeToolsServer';
 
@@ -21,16 +21,16 @@ type Reply = {
 };
 
 describe('managed shell execution', () => {
-    let projects: TestProjects;
+    let repos: TestRepositories;
     let server: CodeToolsServer;
 
     beforeEach(async () => {
-        projects = await createTestProjects({ demo: { 'README.md': 'repair access' } });
-        server = createCodeToolsServer(TOKEN, projects.config);
+        repos = await createTestRepositories({ demo: { 'README.md': 'repair access' } });
+        server = createCodeToolsServer(TOKEN, repos.config);
     });
     afterEach(async () => {
         await server.close();
-        await projects.remove();
+        await repos.remove();
     });
     function call(tool: string, payload: Record<string, unknown> = {}) {
         return server.inject({
@@ -43,7 +43,7 @@ describe('managed shell execution', () => {
 
     function run(command: string, args: Record<string, unknown> = {}) {
         return call('run', {
-            project: 'demo',
+            cwd: repos.path('demo'),
             command,
             ...args,
         });
@@ -67,7 +67,7 @@ describe('managed shell execution', () => {
             },
         });
         expect(duplicate.operation.id).toBe(first.operation.id);
-        expect(await readFile(projects.path('demo', 'counter'), 'utf8')).toBe('once\n');
+        expect(await readFile(repos.path('demo', 'counter'), 'utf8')).toBe('once\n');
         expect((await call('operation_result', { id: first.operation.id })).json<Reply>().result?.exitCode).toBe(7);
         expect((await run('true', args)).statusCode).toBe(409);
     });
@@ -158,16 +158,13 @@ describe('managed shell execution', () => {
             state: 'cancelled',
             startedAt: null,
         });
-        const read = await call('read', {
-            project: 'demo',
-            paths: ['README.md'],
-        });
+        const read = await call('read', { paths: [repos.path('demo', 'README.md')] });
 
         expect(read.statusCode).toBe(200);
         const before = performance.now();
 
         await call('operation_cancel', { id });
-        const next = (await call('projects')).json<Reply>();
+        const next = (await call('list', { folder: repos.root })).json<Reply>();
 
         expect(next.operation.state).toBe('queued');
         await vi.waitFor(async () => {
@@ -178,7 +175,7 @@ describe('managed shell execution', () => {
         await vi.waitFor(async () => {
             expect((await call('operation_result', { id: next.operation.id })).json<Reply>().operation.state).toBe('completed');
         });
-        await expect(readFile(projects.path('demo', 'forbidden'))).rejects.toMatchObject({ code: 'ENOENT' });
+        await expect(readFile(repos.path('demo', 'forbidden'))).rejects.toMatchObject({ code: 'ENOENT' });
     }, 12000);
 
     it('terminates TERM-resistant subprocesses at the runtime deadline without polling', async () => {

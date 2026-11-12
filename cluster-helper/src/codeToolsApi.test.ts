@@ -30,7 +30,6 @@ describe('code operation proxy', () => {
 
         vi.stubGlobal('fetch', fetchMock);
         for (const name of [
-            'projects',
             'run',
             'list',
             'search',
@@ -46,22 +45,17 @@ describe('code operation proxy', () => {
 
             if (name === 'run') {
                 args = {
-                    project: 'demo',
+                    cwd: '/code/projects/demo',
                     command: 'true',
                     timeoutSeconds: 10800,
                     requestId: 'retry',
                 };
             } else if (name === 'list' || name === 'search') {
                 args = {
-                    project: 'demo',
+                    folder: '/code/projects/demo',
                     timeoutSeconds: 10800,
                     requestId: 'retry',
                     ...name === 'search' ? { queries: ['needle'] } : {},
-                };
-            } else if (name === 'projects') {
-                args = {
-                    timeoutSeconds: 10800,
-                    requestId: 'retry',
                 };
             }
 
@@ -86,7 +80,7 @@ describe('code operation proxy', () => {
         };
 
         vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify(body), { status: 429 }))));
-        expect(await callCodeTool('projects', {})).toEqual({
+        expect(await callCodeTool('list', { folder: '/' })).toEqual({
             isError: true,
             body,
         });
