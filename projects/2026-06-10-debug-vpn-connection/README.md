@@ -805,3 +805,13 @@ with latest main, retaining the deployed fresh8KiB VPN control. Current-status
 panel uses an instant120s-freshness query to avoid stale green timelines.
 Not merged/deployed. Latest VPN rollout #158 succeeded at7900d081; repeated8KiB
 results still need analysis. No host networking changes are part of this PR.
+
+## 2026-11-12 — Availability merged; prepare12KiB control
+
+PR #155 merged at0428b757 after conflict resolution and the instant-status panel
+fix. Deployment43307488174 succeeded; all5 website smoke checks pass. Both website
+workers report fresh200 results and Grafana contains the new availability panels. First post-#158 fresh
+8KiB results passed home2/2 and Hetzner3/3;16KiB still failed home0/2 and passed
+Hetzner3/3. These are preliminary current-process counters. Prepare a bounded
+fresh12KiB control after the retained4/16/8KiB sequence, without deploying it.
+[Design, traffic allowance and interpretation](H1-PAYLOAD-VALIDATION.md).

@@ -2,39 +2,24 @@
 
 ## Current stage
 
-K3s repair was performed by the user; PR #156 closed without merge. No recovery
-workaround from that PR is deployed. Run42910743093 successfully deployed #154
-with the subsequent main change1f00ca7. All5 website smoke checks passed after
-recovery, including senaev.ru. This records availability then, not continuous uptime.
+#155 merged at0428b757; deployment43307488174 succeeded. All5 website smoke
+checks passed. Live Grafana has current-status/duration/age panels; fresh
+website_senaev_ru metrics show success for home and Hetzner. Logs confirm200,
+curl0, home879ms and Hetzner623ms at21:14 UTC. These are website availability
+results, not evidence that the VPN candidate is repaired.
 
-At2026-11-11 08:43 UTC, fresh H1 payload counters: home4KiB19/20 passed,
-16KiB0/19; Hetzner4/16KiB38/38 each. Home16KiB exit checks19/20; the failed
-exit skipped its payload. All paired direct controls passed. Reused home
-4/16/64KiB19/19,0/19,0/19; Hetzner39/39,37/39,38/38. These are cumulative
-current-process counters, not matched independent rounds or proof of DPI.
+#158 fresh8KiB controls deployed. Before the availability rollout reset counters,
+home4/8KiB passed2/2 each and16KiB failed2/2; Hetzner all3 sizes passed3/3.
+Exit checks passed. Preliminary sample only; compare direct controls and more rounds.
 
 ## Prepared next step
 
-Append an independently exit-validated fresh8KiB control after existing4/16KiB,
-with unchanged timeout/rate/TLS/cleanup limits,60–90s pre-start quiet time and
-2–7s paired-request jitter. Run on existing home and Hetzner paths. Adds20KiB
-planned response allowance per eligible cycle; not a strict wire limit.
-Prepared only; merge/deployment and repeated observations remain pending.
-[Design, evidence and interpretation](H1-PAYLOAD-VALIDATION.md).
+PR #165 appends independent fresh12KiB after existing4/16/8KiB. Same exit,
+TLS/time/rate/byte-count and lifecycle guards; earlier failure does not suppress
+it. Adds28KiB planned response allowance per eligible cycle, not wire-byte limit.
+94 tests and local real-process integration pass; CI/review pending. Not merged
+or deployed. [Evidence and interpretation](H1-PAYLOAD-VALIDATION.md).
 
-## Isolation and remaining work
-
-VPN namespace retained; FirstVDS entry-only, Hetzner and senaev-media remain exits.
-No host networking, credentials, privileges, server configuration or production
-subscriptions changed. Original failed candidate acceptance stays failed.
-The fresh8KiB payload is exported through existing transfer dashboard selectors.
-Website availability work remains separate in PR #155, still unmerged.
-
-## Availability monitoring PR #155
-
-Resolved conflicts against current main, retaining fresh4/16/8KiB controls.
-Website HEAD worker and current-status/duration/age panels are prepared, not
-merged or deployed. Current status uses an instant query with120s freshness;
-there is no range-query timeline that can extend a historical green state.
-PR #158 deployed at7900d081 in successful run43297335789. All three probe targets
-were scraped after rollout; repeated8KiB results remain to be assessed.
+No host networking, server/credential/privilege or production subscription changes.
+FirstVDS entry-only; Hetzner and senaev-media remain exits. Original failed
+candidate acceptance stays failed; no Happ profile promotion is justified.

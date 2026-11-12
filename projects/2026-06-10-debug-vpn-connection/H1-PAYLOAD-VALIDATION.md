@@ -178,3 +178,36 @@ observed problematic size range narrows below16KiB. If it passes, focus next on
 the8–16KiB range. Intermittent or failed controls require more observations.
 Because8KiB follows earlier traffic, position/history remain confounders; this
 is not proof of a packet/MTU threshold and does not justify changing subscriptions.
+
+## Fresh12KiB follow-up (prepared, not deployed)
+
+First post-#158 current-process counters at2026-11-12 21:09 UTC:
+
+| Source | Fresh4KiB | Fresh8KiB | Fresh16KiB |
+|---|---|---|---|
+| senaev-media | 2/2 | 2/2 | 0/2 |
+| Hetzner | 3/3 | 3/3 | 3/3 |
+
+Each size's exit check passed in those attempts. These small samples motivate
+preparing12KiB; they do not establish a stable size threshold. Compare paired
+direct checks, both source controls and repeated rounds before interpreting it.
+The earlier larger fresh4/16KiB sample is recorded above;8KiB needs more rounds.
+
+Append one independently exit-validated12KiB process after the existing sequence
+4→16→8KiB, preserving their order. Reuse all timeout/rate/TLS/byte-count,
+parent/cancellation and cleanup guards,60–90s pre-start quiet time and2–7s
+paired direct/proxied jitter. Earlier failed measurements do not suppress it.
+Export only `diagnostic_h1_fresh_size_exit_12288` and
+`transfer_h1_fresh_cloudflare_12288`; existing transfer panels include it.
+
+Adds28KiB planned response allowance:4KiB exit cap plus2×12KiB paired payloads.
+Previous256/252KiB home/Hetzner totals become284/280KiB, excluding headers,
+transport overhead and curl read-ahead. One extra temporary process, three
+requests and one60–90s quiet interval per eligible cycle. Website HEAD checks
+from #155 run independently, so quiet intervals are not absolutely traffic-free.
+
+If12KiB passes repeatedly while16KiB fails, concentrate on12–16KiB next. If it
+fails with successful direct/Hetzner controls, concentrate on8–12KiB. Failed
+direct checks are inconclusive. Timing, destination and earlier traffic still
+confound size; this cannot establish DPI or an MTU/packet boundary. No production
+profile promotion, host networking or server change is part of this step.

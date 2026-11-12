@@ -247,7 +247,7 @@ TRANSFER_TARGETS = (
     ("httpbingo", "https://httpbingo.org/bytes/{}"),
 )
 TRANSFER_SIZES = (4096, 16384, 65536)
-FRESH_TRANSFER_SIZES = (4096, 16384, 8192)
+FRESH_TRANSFER_SIZES = (4096, 16384, 8192, 12288)
 
 
 def xhttp_exit_control(profile, proxy, experiment_id, timeout=8, check="exit_ip"):
