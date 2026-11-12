@@ -2,6 +2,12 @@
 {{- $agent := .Values.agent }}
 {{- if .Values.opencode.enabled }}
 {{- $oauth := .Values.opencode.mcpOAuth }}
+{{- $keys := list .Values.git.githubToken .Values.git.sshPrivateKey .Values.telegram.token .Values.telegram.allowedUser $agent.speechToText.secretKey }}
+{{- range $connector := $agent.connectors }}
+{{- $keys = append $keys $connector.secretKey }}
+{{- end }}
+{{ include "senaev-com.llmWorkspace.componentSecret" (dict "name" (printf "%s-opencode-env" .Values.name) "namespace" .Release.Namespace "keys" $keys) }}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -26,7 +32,7 @@ spec:
         tags.datadoghq.com/env: prod
         tags.datadoghq.com/version: latest
       annotations:
-        secret.reloader.stakater.com/reload: {{ printf "senaev-com-kv-secrets,%s-opencode-auth" .Values.name | quote }}
+        secret.reloader.stakater.com/reload: {{ printf "%s-opencode-env,%s-opencode-auth" .Values.name .Values.name | quote }}
         configmap.reloader.stakater.com/reload: {{ printf "%s-instructions,%s-opencode-mcp-oauth" .Values.name .Values.name | quote }}
     spec:
 {{ include "senaev-com.llmWorkspace.podAccess" . | indent 6 }}
@@ -99,7 +105,7 @@ spec:
             - name: GH_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: senaev-com-kv-secrets
+                  name: {{ printf "%s-opencode-env" $.Values.name }}
                   key: {{ .Values.git.githubToken }}
             - name: OPENCODE_WORKDIR
               value: /projects
@@ -107,7 +113,7 @@ spec:
             - name: {{ $connector.secretKey | quote }}
               valueFrom:
                 secretKeyRef:
-                  name: senaev-com-kv-secrets
+                  name: {{ printf "%s-opencode-env" $.Values.name }}
                   key: {{ $connector.secretKey | quote }}
 {{- end }}
             - name: OPENCODE_CONFIG_CONTENT
@@ -204,12 +210,12 @@ spec:
             - name: TELEGRAM_BOT_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: senaev-com-kv-secrets
+                  name: {{ printf "%s-opencode-env" $.Values.name }}
                   key: {{ .Values.telegram.token }}
             - name: TELEGRAM_ALLOWED_USER_ID
               valueFrom:
                 secretKeyRef:
-                  name: senaev-com-kv-secrets
+                  name: {{ printf "%s-opencode-env" $.Values.name }}
                   key: {{ .Values.telegram.allowedUser }}
             - name: OPENCODE_API_URL
               value: "http://localhost:4096"
@@ -224,7 +230,7 @@ spec:
             - name: STT_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: senaev-com-kv-secrets
+                  name: {{ printf "%s-opencode-env" $.Values.name }}
                   key: {{ $agent.speechToText.secretKey | quote }}
             - name: STT_MODEL
               value: {{ $agent.speechToText.model | quote }}
@@ -241,7 +247,7 @@ spec:
             type: DirectoryOrCreate
         - name: ssh-key
           secret:
-            secretName: senaev-com-kv-secrets
+            secretName: {{ printf "%s-opencode-env" .Values.name }}
             items:
               - key: {{ .Values.git.sshPrivateKey }}
                 path: id_rsa

@@ -127,3 +127,26 @@ PR #163 was merged and deployed successfully: all four deployments available,
 Code Tools seccomp filtering active, Git remote access, Node/Python subprocesses
 and all five website smoke checks passed. Telegram reconnected; no persistent
 errors were observed. Full builds/debuggers remained untested.
+
+## Dedicated component secrets follow-up
+
+Create workspace-prefixed OpenCode/Telegram and Code Tools ExternalSecrets
+containing exactly the Vault properties each component already references.
+Keep OMP's existing dedicated Secret and OpenCode's separate password Secret.
+Update SSH mounts, key references and reloader annotations. Vault values,
+environment variable names, storage and access rules stay unchanged.
+
+Applications already receive individual keys; this reduces whole-Secret exposure
+to compromised nodes. It does not protect against a node also hosting unrelated
+pods that use the shared Secret. Existing mounted credentials retain their authority.
+
+Validation compares exact key sets and all rendered resources. After deployment
+verify ESO reconciliation, init completion, Git SSH, model access, Telegram/STT and
+Code Tools authentication. Reconciliation can delay startup. Preserve the shared
+Secret for unrelated services and rollback through the normal revert workflow.
+
+PR #164 was merged and deployed. Zero effective/bounding capabilities,
+NoNewPrivs 1 and seccomp filtering were confirmed in Code Tools; dependency
+installation, Git access and all five website checks passed. All four deployments
+became available and Telegram reconnected. The concurrent full test run was
+interrupted with slow failures; a two-worker retry is being evaluated.

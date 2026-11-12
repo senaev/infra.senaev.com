@@ -1,3 +1,17 @@
+## 2026-11-12 21:29 UTC — Dedicated secrets prepared
+
+Prepared a reusable ExternalSecret helper and exact component key lists for
+OpenCode/Telegram and Code Tools. No Vault values change. The shared Secret
+remains available to unrelated services and for rollback.
+
+```
+PASS: only two dedicated ExternalSecrets and matching references/reload annotations; exact required key sets preserved.
+Helm charts OK
+```
+
+PR #164 deployment succeeded; dependency installation, Git and website checks
+passed. Full tests require a lower-concurrency retry after MCP interruption.
+
 ## 2026-11-12 21:11 UTC — Shared container privilege restrictions
 
 Added a shared container securityContext helper and used it for all coding
