@@ -1,3 +1,22 @@
+## 2026-11-12 21:11 UTC — Shared container privilege restrictions
+
+Added a shared container securityContext helper and used it for all coding
+containers and init containers, retaining existing proxy settings.
+
+```
+CapEff: 0000000000000000
+CapBnd: 0000000000000000
+NoNewPrivs: 1
+PASS: owned-file chmod, Git and Node/Python subprocess with no capabilities/no-new-privileges
+PASS: 96 resources compared; only intended container security changes, all 10 containers/init containers covered
+Helm charts OK
+```
+
+The subprocess test uses synthetic files and does not prove every workload or
+package script is compatible. Git init and package/build compatibility require
+post-deployment verification. Previous seccomp rollout succeeded; details are
+recorded in README. This change has not been deployed.
+
 ## 2026-11-12 20:46 UTC — Explicit runtime seccomp baseline
 
 User approved a PR for pod-level RuntimeDefault in the shared helper. Existing

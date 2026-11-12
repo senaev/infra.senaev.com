@@ -34,6 +34,8 @@ spec:
         vps: {{ .Values.vps }}
       initContainers:
         - name: git-init
+          securityContext:
+{{ include "senaev-com.llmWorkspace.containerAccess" . | indent 12 }}
           image: alpine/git:latest
           command: ["/bin/sh", "-c"]
           args:
@@ -50,6 +52,8 @@ spec:
       containers:
         # OpenCode web and API share native authentication; the bot uses localhost.
         - name: opencode-serve
+          securityContext:
+{{ include "senaev-com.llmWorkspace.containerAccess" . | indent 12 }}
           image: ghcr.io/senaev/opencode-serve:latest
           imagePullPolicy: Always
           ports:
@@ -151,12 +155,10 @@ spec:
             - name: mcp-oauth
               containerPort: 8081
           securityContext:
+{{ include "senaev-com.llmWorkspace.containerAccess" . | indent 12 }}
             runAsNonRoot: true
             runAsUser: 101
-            allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
-            capabilities:
-              drop: ["ALL"]
           resources:
             requests:
               memory: 16Mi
@@ -175,6 +177,8 @@ spec:
               mountPath: /tmp
 
         - name: opencode-telegram-bot
+          securityContext:
+{{ include "senaev-com.llmWorkspace.containerAccess" . | indent 12 }}
           image: ghcr.io/senaev/opencode-telegram-bot:latest
           imagePullPolicy: Always
           volumeMounts:

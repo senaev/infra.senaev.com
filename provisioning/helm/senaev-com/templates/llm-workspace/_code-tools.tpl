@@ -32,6 +32,8 @@ spec:
         vps: {{ .Values.vps }}
       initContainers:
         - name: git-init
+          securityContext:
+{{ include "senaev-com.llmWorkspace.containerAccess" . | indent 12 }}
           image: alpine/git:latest
           command: ["/bin/sh", "-ec"]
           args:
@@ -47,6 +49,8 @@ spec:
               mountPath: /root/.ssh
       containers:
         - name: code-tools
+          securityContext:
+{{ include "senaev-com.llmWorkspace.containerAccess" . | indent 12 }}
           image: ghcr.io/senaev/code-tools:latest
           imagePullPolicy: Always
           ports:

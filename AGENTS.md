@@ -346,3 +346,12 @@ The Datadog node agent runs only on the nodes in the `agents` node affinity of
 in `apm.instrumentation.targets`. The admission webhook runs before scheduling and selects
 pods only by labels, so a pod with `admission.datadoghq.com/enabled: "true"` must also have a
 `vps` label equal to its `nodeSelector.vps`. To enable APM on a node, add it to both lists.
+
+
+Coding containers and init containers also include
+`senaev-com.llmWorkspace.containerAccess` inside their securityContext:
+`allowPrivilegeEscalation: false` and `capabilities.drop: ["ALL"]`.
+Preserve proxy-specific non-root and read-only settings. New coding containers
+must include this helper; container settings cannot be inherited at pod level.
+Dropping capabilities can break package scripts that change ownership or switch
+users, tracing and privileged operations; validate required workflows.

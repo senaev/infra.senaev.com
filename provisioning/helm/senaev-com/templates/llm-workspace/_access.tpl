@@ -53,3 +53,10 @@ securityContext:
               - fc00::/7
               - fe80::/10
 {{- end -}}
+
+{{/* Container-level settings: include in every coding container and init container. */}}
+{{- define "senaev-com.llmWorkspace.containerAccess" -}}
+allowPrivilegeEscalation: false
+capabilities:
+  drop: ["ALL"]
+{{- end -}}
