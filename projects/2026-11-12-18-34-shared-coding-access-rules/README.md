@@ -100,3 +100,30 @@ pipeline. This restores OpenCode/Code Tools egress and token defaults; OMP's
 effective policy is unchanged.
 
 See [worklog](project-worklog.md).
+
+## Container privilege baseline
+
+A follow-up adds a shared container helper disabling privilege escalation and
+dropping all Linux capabilities. All 10 coding containers/init containers include
+it. Existing OMP/proxy settings are preserved; OpenCode, Telegram, Code Tools and
+both Git init containers gain the restrictions. Users, mounts, seccomp and
+networking are unchanged.
+
+Validation: all Helm checks pass; a structural comparison of 96 resources shows
+only intended container security changes. A restricted subprocess reported
+CapEff/CapBnd zero and NoNewPrivs 1, and passed synthetic owned-file chmod, Git
+startup and Node/Python subprocess checks. This is not a test of every container
+image or mounted volume.
+
+After deployment verify Git init completes, SSH/Git fetch, dependency installation,
+builds/tests and interactive agent sessions. Package-manager scripts may require
+chown, switching users or file capabilities; those can fail even while running
+as root. Arbitrary system package installation is not guaranteed. Check CapEff,
+CapBnd and NoNewPrivs in running coding containers and monitor errors/readiness.
+If required functionality regresses, revert this privilege change through a PR
+and normal deployment rather than adding broad capabilities without review.
+
+PR #163 was merged and deployed successfully: all four deployments available,
+Code Tools seccomp filtering active, Git remote access, Node/Python subprocesses
+and all five website smoke checks passed. Telegram reconnected; no persistent
+errors were observed. Full builds/debuggers remained untested.

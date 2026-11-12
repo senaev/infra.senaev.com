@@ -121,9 +121,7 @@ spec:
           image: ghcr.io/senaev/omp-web:latest
           imagePullPolicy: Always
           securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop: ["ALL"]
+{{ include "senaev-com.llmWorkspace.containerAccess" . | indent 12 }}
           resources:
             requests:
               memory: 512Mi
@@ -205,12 +203,10 @@ spec:
           image: nginxinc/nginx-unprivileged:1.28.0-alpine
           command: ["nginx", "-g", "daemon off;"]
           securityContext:
+{{ include "senaev-com.llmWorkspace.containerAccess" . | indent 12 }}
             runAsNonRoot: true
             runAsUser: 101
-            allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
-            capabilities:
-              drop: ["ALL"]
           resources:
             requests:
               memory: 16Mi
