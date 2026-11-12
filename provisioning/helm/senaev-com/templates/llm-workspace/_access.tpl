@@ -1,9 +1,12 @@
-{{/* Shared pod API access and egress baseline for every coding component.
+{{/* Shared pod security, API access and egress baseline for every coding component.
 Keep caller-specific ingress in each component. NetworkPolicy allows replies to
 accepted incoming connections; no reverse egress exception is needed.
 */}}
 {{- define "senaev-com.llmWorkspace.podAccess" -}}
 automountServiceAccountToken: false
+securityContext:
+  seccompProfile:
+    type: RuntimeDefault
 {{- end -}}
 
 {{- define "senaev-com.llmWorkspace.egress" -}}

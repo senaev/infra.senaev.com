@@ -1,3 +1,21 @@
+## 2026-11-12 20:46 UTC — Explicit runtime seccomp baseline
+
+User approved a PR for pod-level RuntimeDefault in the shared helper. Existing
+container users, credentials, storage and network rules are preserved. Rendering
+will verify that only the four coding Deployment pod security contexts change.
+Live compatibility checks follow deployment; no cluster changes made here.
+
+PR #162 deployment verification completed previously:
+
+```
+All 5 website smoke checks passed
+PASS: no mounted Kubernetes token
+```
+
+Direct connection attempts to cluster-helper:3000, its observed pod IP:3000,
+10.43.0.1:443 and the Hetzner tailnet SSH port failed. This is evidence of
+unreachability, not by itself proof of the mechanism rejecting each connection.
+
 ## 2026-11-12 20:20 UTC — Allow workspace HTTPS ingress
 
 PR #161 was merged and deployment succeeded. Post-deploy Code Tools checks:
