@@ -326,6 +326,10 @@ caller-specific ingress. New coding components must include both access helpers.
 Standard NetworkPolicy local-node/NAT exceptions and public endpoints mean this
 is not complete host isolation. Existing users, credentials and shared storage
 are unchanged.
+The shared pod helper explicitly sets `seccompProfile.type: RuntimeDefault` for
+all coding pods, including their init containers and sidecars. Keep container
+overrides from silently disabling this baseline; test debugging and build tools
+for compatibility after deployment.
 
 | Workspace | Node | Components | Ingress |
 |---|---|---|---|

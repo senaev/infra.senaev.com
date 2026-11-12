@@ -5,7 +5,8 @@ Apply one reusable network and Kubernetes API access baseline without changing c
 ## Goal
 
 Reuse OMP's DNS/public-internet egress policy across all coding workspace components.
-Disable automatic service-account token mounting. Preserve each component's incoming
+Disable automatic service-account token mounting and explicitly apply the runtime
+default seccomp profile to coding pods. Preserve each component's incoming
 callers, users, storage, credentials, filesystem and application configuration.
 
 ## Context
@@ -74,7 +75,25 @@ The baseline was merged in PR #161 and deployed successfully. Code Tools can
 access GitHub and has no mounted service-account token; Telegram reconnected.
 Website smoke tests passed for senaev.ru but failed to connect to the .com
 endpoints from Code Tools. A follow-up adds the narrow Traefik TCP 443 exception;
-its live effectiveness must be verified after deployment.
+PR #162 was merged and deployed: all five website smoke tests now pass.
+Tested internal backend, API and Tailscale SSH connections remained unreachable;
+all four deployments were available and the checked logs contained no errors.
+
+The next change adds pod-level `seccompProfile.type: RuntimeDefault` to the shared
+helper. It covers OMP (both workspaces), OpenCode/Telegram, Code Tools, sidecars and
+init containers unless a container overrides the profile. It filters kernel system
+calls using the installed runtime's profile, which may vary by node/runtime version.
+Users, paths, mounts, credentials and networking remain unchanged. It does not
+provide full sandboxing or Restricted Pod Security compliance.
+
+After deployment, confirm startup and readiness for all four deployments; check
+`Seccomp: 2` in `/proc/self/status` from each coding container (filter presence alone
+does not identify the exact profile), and inspect pod specs when cluster access is
+available. Exercise Git, Node/Python subprocesses, dependency installation, builds,
+tests, Telegram and OMP/OpenCode sessions. Debuggers, tracing and namespace-based
+tools may need additional compatibility checks. Live compatibility is pending;
+if a regression is confirmed, revert this seccomp change through the normal PR
+and deployment workflow.
 
 Rollback: revert the implementation commit through a PR and the normal deployment
 pipeline. This restores OpenCode/Code Tools egress and token defaults; OMP's
