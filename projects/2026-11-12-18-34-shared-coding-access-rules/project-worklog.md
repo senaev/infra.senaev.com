@@ -1,3 +1,32 @@
+## 2026-11-12 21:31 UTC — Lower-concurrency test retry passed
+
+Code Tools recovered on retry. Ran the full suite in the deployed restricted
+container with two workers:
+
+```
+Test Files 211 passed (211)
+Tests 1765 passed (1765)
+Duration 131.26s
+```
+
+Exit code 0. The earlier concurrent failures did not reproduce. Lint, typecheck
+and shell/Python/Helm checks also passed. No security restrictions were relaxed.
+Dedicated secrets follow-up opened as PR #166; not merged or deployed.
+
+## 2026-11-12 21:29 UTC — Dedicated secrets prepared
+
+Prepared a reusable ExternalSecret helper and exact component key lists for
+OpenCode/Telegram and Code Tools. No Vault values change. The shared Secret
+remains available to unrelated services and for rollback.
+
+```
+PASS: only two dedicated ExternalSecrets and matching references/reload annotations; exact required key sets preserved.
+Helm charts OK
+```
+
+PR #164 deployment succeeded; dependency installation, Git and website checks
+passed. Full tests require a lower-concurrency retry after MCP interruption.
+
 ## 2026-11-12 21:11 UTC — Shared container privilege restrictions
 
 Added a shared container securityContext helper and used it for all coding

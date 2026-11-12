@@ -1,5 +1,8 @@
 {{- define "senaev-com.llmWorkspace.codeTools" -}}
 {{- if .Values.codeTools.enabled }}
+{{- $keys := list .Values.git.githubToken .Values.git.sshPrivateKey .Values.codeTools.secrets.codeToolsToken }}
+{{ include "senaev-com.llmWorkspace.componentSecret" (dict "name" (printf "%s-code-tools-env" .Values.name) "namespace" .Release.Namespace "keys" $keys) }}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -23,7 +26,7 @@ spec:
         tags.datadoghq.com/env: prod
         tags.datadoghq.com/version: latest
       annotations:
-        secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
+        secret.reloader.stakater.com/reload: {{ printf "%s-code-tools-env" .Values.name | quote }}
         configmap.reloader.stakater.com/reload: {{ printf "%s-instructions" .Values.name | quote }}
     spec:
 {{ include "senaev-com.llmWorkspace.podAccess" . | indent 6 }}
@@ -67,7 +70,7 @@ spec:
             - name: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
               valueFrom:
                 secretKeyRef:
-                  name: senaev-com-kv-secrets
+                  name: {{ printf "%s-code-tools-env" $.Values.name }}
                   key: {{ .Values.codeTools.secrets.codeToolsToken }}
             - name: GIT_AUTHOR_NAME
               value: {{ .Values.git.name | quote }}
@@ -80,7 +83,7 @@ spec:
             - name: GH_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: senaev-com-kv-secrets
+                  name: {{ printf "%s-code-tools-env" $.Values.name }}
                   key: {{ .Values.git.githubToken }}
           startupProbe:
             httpGet:
@@ -107,7 +110,7 @@ spec:
       volumes:
         - name: ssh-key
           secret:
-            secretName: senaev-com-kv-secrets
+            secretName: {{ printf "%s-code-tools-env" .Values.name }}
             items:
               - key: {{ .Values.git.sshPrivateKey }}
                 path: id_rsa
