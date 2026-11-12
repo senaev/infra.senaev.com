@@ -149,4 +149,7 @@ PR #164 was merged and deployed. Zero effective/bounding capabilities,
 NoNewPrivs 1 and seccomp filtering were confirmed in Code Tools; dependency
 installation, Git access and all five website checks passed. All four deployments
 became available and Telegram reconnected. The concurrent full test run was
-interrupted with slow failures; a two-worker retry is being evaluated.
+interrupted with slow failures; the two-worker retry passed all 1,765 tests across 211 files in 131.26 seconds.
+Lint, typecheck and shell/Python/Helm checks also passed. This supports a
+concurrency/load explanation for the earlier failures; their exact cause was not
+proven. Interactive OMP speech/model calls and debugger workflows were not exercised.

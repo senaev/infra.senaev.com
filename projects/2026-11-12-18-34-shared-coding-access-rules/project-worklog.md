@@ -1,3 +1,18 @@
+## 2026-11-12 21:31 UTC — Lower-concurrency test retry passed
+
+Code Tools recovered on retry. Ran the full suite in the deployed restricted
+container with two workers:
+
+```
+Test Files 211 passed (211)
+Tests 1765 passed (1765)
+Duration 131.26s
+```
+
+Exit code 0. The earlier concurrent failures did not reproduce. Lint, typecheck
+and shell/Python/Helm checks also passed. No security restrictions were relaxed.
+Dedicated secrets follow-up opened as PR #166; not merged or deployed.
+
 ## 2026-11-12 21:29 UTC — Dedicated secrets prepared
 
 Prepared a reusable ExternalSecret helper and exact component key lists for
