@@ -9,7 +9,7 @@ import {
     afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
 
-import { createTestProjects, type TestProjects } from './createTestProjects';
+import { createTestRepositories, type TestRepositories } from './createTestRepositories';
 import { patchTool } from './patchTool';
 import { readTool } from './readTool';
 import { writeTool } from './writeTool';
@@ -55,10 +55,10 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 });
 
 describe('cooperative file cancellation and atomicity', () => {
-    let projects: TestProjects;
+    let repos: TestRepositories;
 
     beforeEach(async () => {
-        projects = await createTestProjects({
+        repos = await createTestRepositories({
             demo: {
                 'README.md': 'old\n',
                 'second.md': 'second',
@@ -70,7 +70,7 @@ describe('cooperative file cancellation and atomicity', () => {
         hooks.afterRename = () => undefined;
         hooks.beforeRead = () => undefined;
         hooks.afterRead = () => undefined;
-        await projects.remove();
+        await repos.remove();
     });
     function context(controller = new AbortController()) {
         return {
@@ -80,24 +80,21 @@ describe('cooperative file cancellation and atomicity', () => {
         };
     }
 
-    it('all four handlers stop before work for an already aborted signal', async () => {
+    it('the file handlers stop before work for an already aborted signal', async () => {
         const controller = new AbortController();
         const reason = new Error('cancelled');
 
         controller.abort(reason);
         const calls = [
-            (execution: CommandExecution) => readTool(projects.config, {
-                project: 'demo',
-                paths: ['README.md'],
+            (execution: CommandExecution) => readTool(repos.config, {
+                paths: [repos.path('demo', 'README.md')],
             }, execution),
-            (execution: CommandExecution) => writeTool(projects.config, {
-                project: 'demo',
-                path: 'README.md',
+            (execution: CommandExecution) => writeTool(repos.config, {
+                path: repos.path('demo', 'README.md'),
                 content: 'new',
             }, execution),
-            (execution: CommandExecution) => patchTool(projects.config, {
-                project: 'demo',
-                path: 'README.md',
+            (execution: CommandExecution) => patchTool(repos.config, {
+                path: repos.path('demo', 'README.md'),
                 expectedHash: hashContent('old\n'),
                 operations: [
                     {
@@ -112,7 +109,7 @@ describe('cooperative file cancellation and atomicity', () => {
             await expect(withCommandExecution<unknown>(context(controller), run)).rejects.toBe(reason);
         }
 
-        expect(await readFile(projects.path('demo', 'README.md'), 'utf8')).toBe('old\n');
+        expect(await readFile(repos.path('demo', 'README.md'), 'utf8')).toBe('old\n');
     });
 
     it('does not swallow mid-read abort or schedule the next file', async () => {
@@ -127,14 +124,13 @@ describe('cooperative file cancellation and atomicity', () => {
             }
         };
 
-        await expect(withCommandExecution(context(controller), (execution: CommandExecution) => readTool(projects.config, {
-            project: 'demo',
+        await expect(withCommandExecution(context(controller), (execution: CommandExecution) => readTool(repos.config, {
             paths: [
-                'README.md',
-                'second.md',
+                repos.path('demo', 'README.md'),
+                repos.path('demo', 'second.md'),
             ],
         }, execution))).rejects.toBe(reason);
-        expect(reads).toEqual([projects.path('demo', 'README.md')]);
+        expect(reads).toEqual([repos.path('demo', 'README.md')]);
     });
 
     it.each([
@@ -153,9 +149,8 @@ describe('cooperative file cancellation and atomicity', () => {
 
         const ctx = context(controller);
         const run = tool === 'patch'
-            ? (execution: CommandExecution) => patchTool(projects.config, {
-                project: 'demo',
-                path: 'README.md',
+            ? (execution: CommandExecution) => patchTool(repos.config, {
+                path: repos.path('demo', 'README.md'),
                 expectedHash: hashContent('old\n'),
                 operations: [
                     {
@@ -164,17 +159,16 @@ describe('cooperative file cancellation and atomicity', () => {
                     },
                 ],
             }, execution)
-            : (execution: CommandExecution) => writeTool(projects.config, {
-                project: 'demo',
-                path: tool === 'create' ? 'new.md' : 'README.md',
+            : (execution: CommandExecution) => writeTool(repos.config, {
+                path: repos.path('demo', tool === 'create' ? 'new.md' : 'README.md'),
                 content: 'new',
                 ...tool === 'create' ? {} : { expectedHash: hashContent('old\n') },
             }, execution);
 
         await expect(withCommandExecution(ctx, run)).rejects.toBe(reason);
         expect(ctx.changedPaths.size).toBe(0);
-        expect(await readFile(projects.path('demo', 'README.md'), 'utf8')).toBe('old\n');
-        expect((await readdir(projects.path('demo'))).filter((path) => path.endsWith('.tmp') || path === 'new.md')).toEqual([]);
+        expect(await readFile(repos.path('demo', 'README.md'), 'utf8')).toBe('old\n');
+        expect((await readdir(repos.path('demo'))).filter((path) => path.endsWith('.tmp') || path === 'new.md')).toEqual([]);
     });
 
     it('publication winning the abort race remains atomic and reports changedPaths', async () => {
@@ -184,15 +178,14 @@ describe('cooperative file cancellation and atomicity', () => {
         hooks.afterRename = () => controller.abort(reason);
         const ctx = context(controller);
 
-        await expect(withCommandExecution(ctx, (execution: CommandExecution) => writeTool(projects.config, {
-            project: 'demo',
-            path: 'README.md',
+        await expect(withCommandExecution(ctx, (execution: CommandExecution) => writeTool(repos.config, {
+            path: repos.path('demo', 'README.md'),
             content: 'new\n',
             expectedHash: hashContent('old\n'),
         }, execution))).rejects.toBe(reason);
-        expect(ctx.changedPaths).toEqual(new Set(['README.md']));
-        expect(await readFile(projects.path('demo', 'README.md'), 'utf8')).toBe('new\n');
-        expect((await readdir(projects.path('demo'))).filter((path) => path.endsWith('.tmp'))).toEqual([]);
+        expect(ctx.changedPaths).toEqual(new Set([repos.path('demo', 'README.md')]));
+        expect(await readFile(repos.path('demo', 'README.md'), 'utf8')).toBe('new\n');
+        expect((await readdir(repos.path('demo'))).filter((path) => path.endsWith('.tmp'))).toEqual([]);
     });
 
     it('rejects competing parallel hash mutations while releasing the reservation after abort', async () => {
@@ -211,17 +204,15 @@ describe('cooperative file cancellation and atomicity', () => {
             await gate;
         };
 
-        const first = withCommandExecution(context(controller), (execution: CommandExecution) => writeTool(projects.config, {
-            project: 'demo',
-            path: 'README.md',
+        const first = withCommandExecution(context(controller), (execution: CommandExecution) => writeTool(repos.config, {
+            path: repos.path('demo', 'README.md'),
             expectedHash: hashContent('old\n'),
             content: 'first',
         }, execution)).catch((error: unknown) => error);
 
         await started;
-        await expect(withCommandExecution(context(), (execution: CommandExecution) => patchTool(projects.config, {
-            project: 'demo',
-            path: 'README.md',
+        await expect(withCommandExecution(context(), (execution: CommandExecution) => patchTool(repos.config, {
+            path: repos.path('demo', 'README.md'),
             expectedHash: hashContent('old\n'),
             operations: [
                 {
@@ -234,9 +225,8 @@ describe('cooperative file cancellation and atomicity', () => {
         release();
         await first;
         hooks.afterWrite = () => Promise.resolve();
-        expect(await writeTool(projects.config, {
-            project: 'demo',
-            path: 'README.md',
+        expect(await writeTool(repos.config, {
+            path: repos.path('demo', 'README.md'),
             expectedHash: hashContent('old\n'),
             content: 'last',
         }))
@@ -244,7 +234,7 @@ describe('cooperative file cancellation and atomicity', () => {
     });
 
     it('cancels a real multi-file read during cooperative line traversal', async () => {
-        await writeFile(projects.path('demo', 'README.md'), 'line\n'.repeat(100000));
+        await writeFile(repos.path('demo', 'README.md'), 'line\n'.repeat(100000));
         const controller = new AbortController();
         const reason = new Error('read traversal cancelled');
         const reads: string[] = [];
@@ -260,13 +250,12 @@ describe('cooperative file cancellation and atomicity', () => {
             }
         };
 
-        await expect(withCommandExecution(context(controller), (execution: CommandExecution) => readTool(projects.config, {
-            project: 'demo',
+        await expect(withCommandExecution(context(controller), (execution: CommandExecution) => readTool(repos.config, {
             paths: [
-                'README.md',
-                'second.md',
+                repos.path('demo', 'README.md'),
+                repos.path('demo', 'second.md'),
             ],
         }, execution))).rejects.toBe(reason);
-        expect(reads).toEqual([projects.path('demo', 'README.md')]);
+        expect(reads).toEqual([repos.path('demo', 'README.md')]);
     });
 });

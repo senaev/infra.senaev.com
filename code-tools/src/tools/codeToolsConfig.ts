@@ -1,6 +1,4 @@
 export type CodeToolsConfig = {
-    /** The folder with one git repository per project. */
-    projectsRoot: string;
     /** The environment of shell commands and of git; without the internal token. */
     commandEnv: NodeJS.ProcessEnv;
 };
@@ -32,7 +30,7 @@ const GIT_REPOSITORY_ENV_NAMES = [
 
 /**
  * Commands must never wait for input: stdin is closed, so git must not ask for a password
- * and no pager may start. Git works on the project in its working folder only.
+ * and no pager may start. Git works on the repository of its working folder only.
  */
 export function createCommandEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
     const commandEnv: NodeJS.ProcessEnv = {
@@ -52,9 +50,8 @@ export function createCommandEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
     return commandEnv;
 }
 
-export function createCodeToolsConfig(projectsRoot: string, env: NodeJS.ProcessEnv = process.env): CodeToolsConfig {
+export function createCodeToolsConfig(env: NodeJS.ProcessEnv = process.env): CodeToolsConfig {
     return {
-        projectsRoot,
         commandEnv: createCommandEnv(env),
     };
 }

@@ -30,13 +30,12 @@ function parseSearchInput(input: unknown): SearchCommandInput {
     const { offset, limit } = readPageArguments(args, SEARCH_LIMITS);
 
     return {
-        project: requiredNonEmptyString(args, 'project'),
+        folder: requiredNonEmptyString(args, 'folder'),
         queries,
         regex: optionalBoolean(args, 'regex') ?? false,
         caseSensitive: optionalBoolean(args, 'caseSensitive') ?? false,
         contextLines,
         glob: optionalString(args, 'glob', MAX_GLOB_LENGTH),
-        folder: optionalString(args, 'folder') ?? '',
         maxMatchesPerFile,
         offset,
         limit,

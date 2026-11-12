@@ -1,3 +1,5 @@
+import { posix } from 'node:path';
+
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { CommandError } from 'senaev-utils/src/commands/CommandError';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
@@ -5,9 +7,8 @@ import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { runProcess } from '../process/runProcess';
 
 import type { CodeToolsConfig } from './codeToolsConfig';
-import {
-    assertExistingPathHasNoSymlink, normalizeProjectPath, resolveNamedProject,
-} from './projectAccess';
+import { assertExistingFolder, normalizeAbsolutePath } from './fileAccess';
+import { RIPGREP_FILE_SELECTION_ARGS } from './listFiles';
 
 const MAX_RG_OUTPUT_CHARS = 10_000_000;
 
@@ -153,15 +154,10 @@ function buildRipgrepArgs(options: {
     caseSensitive: boolean;
     contextLines: number;
     glob: string | undefined;
-    folder: string;
 }): string[] {
     return [
         '--json',
-        '--no-config',
-        // Dotfiles such as .github are code too; .gitignore still applies.
-        '--hidden',
-        '--glob',
-        '!.git',
+        ...RIPGREP_FILE_SELECTION_ARGS,
         ...options.regex ? [] : ['--fixed-strings'],
         options.caseSensitive ? '--case-sensitive' : '--ignore-case',
         '--context',
@@ -180,29 +176,25 @@ function buildRipgrepArgs(options: {
             query,
         ]),
         '--',
-        options.folder === '' ? '.' : options.folder,
+        '.',
     ];
 }
 
 export type SearchCommandInput = {
-    project: string; queries: readonly string[]; regex: boolean; caseSensitive: boolean; contextLines: number;
-    glob: string | undefined; folder: string; maxMatchesPerFile: number; offset: number; limit: number;
+    folder: string; queries: readonly string[]; regex: boolean; caseSensitive: boolean; contextLines: number;
+    glob: string | undefined; maxMatchesPerFile: number; offset: number; limit: number;
 };
 
 export async function searchCommand(config: CodeToolsConfig, input: SearchCommandInput, execution: CommandExecution) {
     execution.throwIfAborted();
-    const project = await resolveNamedProject(config, input.project, execution);
     const {
         contextLines, maxMatchesPerFile, offset, limit,
     } = input;
-    const folder = normalizeProjectPath(input.folder, 'folder');
+    const folder = normalizeAbsolutePath(input.folder, 'folder');
 
-    await assertExistingPathHasNoSymlink(project, folder, execution);
-    const result = await runProcess('rg', buildRipgrepArgs({
-        ...input,
-        folder,
-    }), {
-        cwd: project.root,
+    await assertExistingFolder(folder, execution);
+    const result = await runProcess('rg', buildRipgrepArgs(input), {
+        cwd: folder,
         signal: execution.signal,
         onOutput: execution.log,
         maxOutputChars: MAX_RG_OUTPUT_CHARS,
@@ -246,7 +238,7 @@ export async function searchCommand(config: CodeToolsConfig, input: SearchComman
         const matchCount = counts.get(file) ?? 0;
 
         snippets.push({
-            path: file.path,
+            path: posix.join(folder, file.path),
             matchCount,
             omittedMatches: Math.max(0, matchCount - maxMatchesPerFile),
             snippet: await formatSnippet(file.lines, maxMatchesPerFile, contextLines, execution),
@@ -256,7 +248,7 @@ export async function searchCommand(config: CodeToolsConfig, input: SearchComman
     execution.throwIfAborted();
 
     return {
-        project: project.name,
+        folder,
         matchedFiles: files.length,
         totalMatches,
         files: snippets,

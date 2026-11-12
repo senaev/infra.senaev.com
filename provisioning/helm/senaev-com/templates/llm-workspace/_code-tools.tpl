@@ -59,8 +59,6 @@ spec:
             limits:
               memory: 2Gi
           env:
-            - name: CODE_TOOLS_PROJECTS_PATH
-              value: /projects
             - name: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
               valueFrom:
                 secretKeyRef:
@@ -93,6 +91,8 @@ spec:
           volumeMounts:
             - name: projects
               mountPath: /projects
+            - name: code
+              mountPath: /code
             - name: ssh-dir
               mountPath: /root/.ssh
             # The server rules that every code tool description points to.
@@ -115,6 +115,9 @@ spec:
         - name: projects
           persistentVolumeClaim:
             claimName: {{ printf "%s-projects" .Values.name }}
+        - name: code
+          persistentVolumeClaim:
+            claimName: {{ printf "%s-code" .Values.name }}
 ---
 apiVersion: v1
 kind: Service

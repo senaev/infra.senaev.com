@@ -17,6 +17,7 @@
           "agent",
           "instructionsPath",
           "projectsStorageSize",
+          "codeStorageSize",
           "vps",
           "traefik"
         ],
@@ -45,6 +46,10 @@
             "minLength": 1
           },
           "projectsStorageSize": {
+            "type": "string",
+            "minLength": 1
+          },
+          "codeStorageSize": {
             "type": "string",
             "minLength": 1
           },

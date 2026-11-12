@@ -120,6 +120,8 @@ spec:
           volumeMounts:
             - name: projects
               mountPath: /projects
+            - name: code
+              mountPath: /code
             - name: ssh-dir
               mountPath: /root/.ssh
             - name: opencode-data
@@ -177,6 +179,8 @@ spec:
           volumeMounts:
             - name: projects
               mountPath: /projects
+            - name: code
+              mountPath: /code
             - name: opencode-data
               mountPath: /root/.config/opencode-telegram-bot
               subPath: telegram-bot
@@ -209,7 +213,7 @@ spec:
             - name: OPENCODE_MODEL_ID
               value: {{ $agent.defaultModel.id | quote }}
             - name: OPEN_BROWSER_ROOTS
-              value: /projects
+              value: /projects,/code
             - name: STT_API_URL
               value: {{ $agent.speechToText.baseUrl | quote }}
             - name: STT_API_KEY
@@ -242,6 +246,9 @@ spec:
         - name: projects
           persistentVolumeClaim:
             claimName: {{ printf "%s-projects" .Values.name }}
+        - name: code
+          persistentVolumeClaim:
+            claimName: {{ printf "%s-code" .Values.name }}
         - name: instructions
           configMap:
             name: {{ printf "%s-instructions" .Values.name }}

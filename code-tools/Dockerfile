@@ -2,7 +2,7 @@ FROM debian:bookworm-slim
 
 # Built from the repository root because code-tools links senaev-utils by path.
 #
-# CLI tools used by code-run in /projects. python3 and helm are there for the checks of infra.senaev.com.
+# CLI tools used by code-run. python3 and helm are there for the checks of infra.senaev.com.
 # Keep yq pinned, matching the CLI toolchain available to OpenCode.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl ca-certificates \

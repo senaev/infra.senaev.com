@@ -7,7 +7,7 @@ import {
     it,
 } from 'vitest';
 
-import { createTestProjects, type TestProjects } from '../tools/createTestProjects';
+import { createTestRepositories, type TestRepositories } from '../tools/createTestRepositories';
 
 import { createCodeToolsServer, type CodeToolsServer } from './createCodeToolsServer';
 
@@ -15,17 +15,17 @@ const TOKEN = 'test-token';
 const AUTHORIZED = { authorization: createBearerAuthorizationHeader(TOKEN) };
 
 describe('createCodeToolsServer', () => {
-    let projects: TestProjects;
+    let repos: TestRepositories;
     let server: CodeToolsServer;
 
     beforeEach(async () => {
-        projects = await createTestProjects({ demo: { 'README.md': 'hello\n' } });
-        server = createCodeToolsServer(TOKEN, projects.config);
+        repos = await createTestRepositories({ demo: { 'README.md': 'hello\n' } });
+        server = createCodeToolsServer(TOKEN, repos.config);
     });
 
     afterEach(async () => {
         await server.close();
-        await projects.remove();
+        await repos.remove();
     });
 
     it('answers the health check without a token', async () => {
@@ -38,7 +38,8 @@ describe('createCodeToolsServer', () => {
     it('rejects a tool call without the internal token', async () => {
         const response = await server.inject({
             method: 'POST',
-            url: '/code/projects',
+            url: '/code/list',
+            payload: { folder: repos.root },
         });
 
         expect(response.statusCode).toBe(401);
@@ -49,10 +50,7 @@ describe('createCodeToolsServer', () => {
             method: 'POST',
             url: '/code/read',
             headers: AUTHORIZED,
-            payload: {
-                project: 'demo',
-                paths: ['README.md'],
-            },
+            payload: { paths: [repos.path('demo', 'README.md')] },
         });
 
         expect(response.statusCode).toBe(200);
@@ -69,20 +67,29 @@ describe('createCodeToolsServer', () => {
             headers: AUTHORIZED,
             payload: {},
         });
-        const missingProject = await server.inject({
+        const missingFile = await server.inject({
             method: 'POST',
             url: '/code/read',
             headers: AUTHORIZED,
-            payload: {
-                project: 'nope',
-                paths: ['README.md'],
-            },
+            payload: { paths: [repos.path('nope', 'README.md')] },
         });
 
         expect(unknown.statusCode).toBe(404);
         expect(unknown.json()).toMatchObject({ code: 'unknown_tool' });
-        expect(missingProject.statusCode).toBe(200);
-        expect(missingProject.json()).toMatchObject({
+        const relativePath = await server.inject({
+            method: 'POST',
+            url: '/code/read',
+            headers: AUTHORIZED,
+            payload: { paths: ['demo/README.md'] },
+        });
+
+        expect(relativePath.statusCode).toBe(200);
+        expect(relativePath.json()).toMatchObject({
+            code: 'invalid_arguments',
+            operation: { state: 'failed' },
+        });
+        expect(missingFile.statusCode).toBe(200);
+        expect(missingFile.json()).toMatchObject({
             code: 'not_found',
             operation: { state: 'failed' },
         });

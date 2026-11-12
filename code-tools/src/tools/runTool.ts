@@ -10,7 +10,7 @@ export const runTool = createCommandAdapter((input: unknown): RunCommandInput =>
     const args = readCodeToolArguments(input, 'run');
 
     return {
-        project: requiredNonEmptyString(args, 'project'),
+        cwd: requiredNonEmptyString(args, 'cwd'),
         command: requiredNonEmptyString(args, 'command', RUN_LIMITS.maxCommandLength),
     };
 }, runCommand);

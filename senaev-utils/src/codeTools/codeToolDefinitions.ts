@@ -12,7 +12,7 @@ import {
     type ToolDefinition,
 } from '../toolServer/toolDefinition';
 
-import { PROJECT_NAME_PATTERN, type CodeCommandName } from './codeCommands';
+import type { CodeCommandName } from './codeCommands';
 import {
     LIST_LIMITS,
     MAX_GLOB_LENGTH,
@@ -23,35 +23,32 @@ import {
     WRITE_LIMITS,
 } from './codeToolLimits';
 
-export { PROJECT_NAME_PATTERN } from './codeCommands';
-
-// The code tools as ChatGPT sees them. code-tools runs in the opencode-serve container and
-// serves each one as `POST /code/<name>`, accepting exactly the argument keys of its input
-// schema; cluster-helper lists them over MCP as `code-<name>` and forwards the calls.
+// The code tools as ChatGPT sees them. code-tools runs in its own container and serves each
+// one as `POST /code/<name>`, accepting exactly the argument keys of its input schema;
+// cluster-helper lists them over MCP as `code-<name>` and forwards the calls.
 
 /** Every MCP tool name is this prefix followed by the code tool name. */
 export const CODE_TOOL_PREFIX = 'code-';
 const MANAGED_TOOL_DESCRIPTION = createManagedToolDescription(CODE_TOOL_PREFIX);
 
-export const SERVER_RULES = 'If the server rules from /AGENTS.md are not in your context, read /AGENTS.md first with code-run ("cat /AGENTS.md" in any project).';
+export const SERVER_RULES = 'If the server rules from /AGENTS.md are not in your context, read /AGENTS.md first with code-read; it describes the folder layout.';
 
-const PROJECT_PROPERTY = {
-    project: {
+export const ABSOLUTE_PATH_PATTERN = '^/';
+
+function absolutePathProperty(description: string) {
+    return {
         type: 'string',
-        pattern: PROJECT_NAME_PATTERN,
-        description: 'The project name from code-projects.',
-    },
-};
+        pattern: ABSOLUTE_PATH_PATTERN,
+        description,
+    };
+}
 
 const SCOPE_PROPERTIES = {
-    folder: {
-        type: 'string',
-        description: 'Project-relative folder to limit the scope to, e.g. "src". Default: the whole project.',
-    },
+    folder: absolutePathProperty('Absolute path of the folder to work in, e.g. "/code/projects/my-repo/src".'),
     glob: {
         type: 'string',
         maxLength: MAX_GLOB_LENGTH,
-        description: 'File name pattern, e.g. "*.ts". A pattern with "/" is matched against the project-relative path, e.g. "src/**/*.test.ts".',
+        description: 'File name pattern, e.g. "*.ts". A pattern with "/" is matched against the path relative to "folder", e.g. "src/**/*.test.ts".',
     },
 };
 
@@ -62,28 +59,13 @@ const WRITES_FILES = {
     openWorldHint: false,
 };
 
-const projects: ToolDefinition = {
-    title: 'List code projects',
-    description: [
-        'Lists the code projects on the owner\'s server: one git repository per project, with its current branch,',
-        'the number of changed files, the "origin" remote and whether it has an AGENTS.md.',
-        'Start here to find the project name for the other code tools.',
-        MANAGED_TOOL_DESCRIPTION,
-        SERVER_RULES,
-    ].join(' '),
-    inputSchema: {
-        type: 'object',
-        properties: MANAGED_TOOL_PROPERTIES,
-        additionalProperties: false,
-    },
-    annotations: READ_ONLY_ANNOTATIONS,
-};
-
 const list: ToolDefinition = {
-    title: 'List project files',
+    title: 'List files',
     description: [
-        'Lists the files and folders of a project. Files ignored by .gitignore and the .git folder are not shown.',
-        'Without "recursive" or "glob" it lists one folder level; with them it lists matching files at any depth.',
+        'Lists the files and folders in a folder on the owner\'s server, with absolute paths.',
+        'Without "recursive" or "glob" it lists everything in one folder level except .git, like "ls -A".',
+        'With them it lists matching files at any depth, as code-search sees them: hidden files are shown;',
+        '.git, symbolic links and, in a git repository, the files ignored by .gitignore are not.',
         PAGED_RESULT_DESCRIPTION,
         MANAGED_TOOL_DESCRIPTION,
         SERVER_RULES,
@@ -91,7 +73,6 @@ const list: ToolDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
-            ...PROJECT_PROPERTY,
             ...MANAGED_TOOL_PROPERTIES,
             ...SCOPE_PROPERTIES,
             recursive: {
@@ -100,16 +81,16 @@ const list: ToolDefinition = {
             },
             ...pagingProperties(LIST_LIMITS, { items: 'Entries' }),
         },
-        required: ['project'],
+        required: ['folder'],
         additionalProperties: false,
     },
     annotations: READ_ONLY_ANNOTATIONS,
 };
 
 const search: ToolDefinition = {
-    title: 'Search project files',
+    title: 'Search files',
     description: [
-        'Searches the text of a project\'s files with ripgrep; files ignored by .gitignore are skipped.',
+        'Searches the text of the files in a folder with ripgrep; in a git repository, files ignored by .gitignore are skipped.',
         'Each query is literal text unless "regex" is true. A file matches if it contains at least one query.',
         `Up to ${SEARCH_LIMITS.maxQueries} queries per call. Results are grouped by file, with line numbers and context;`,
         'read a file with code-read to see more.',
@@ -120,7 +101,6 @@ const search: ToolDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
-            ...PROJECT_PROPERTY,
             ...MANAGED_TOOL_PROPERTIES,
             queries: {
                 type: 'array',
@@ -157,7 +137,7 @@ const search: ToolDefinition = {
             ...pagingProperties(SEARCH_LIMITS, { items: 'Files' }),
         },
         required: [
-            'project',
+            'folder',
             'queries',
         ],
         additionalProperties: false,
@@ -166,10 +146,10 @@ const search: ToolDefinition = {
 };
 
 const read: ToolDefinition = {
-    title: 'Read project files',
+    title: 'Read files',
     description: [
         MANAGED_TOOL_DESCRIPTION,
-        'Reads text files of a project. Each file comes with "hash", which code-patch and code-write need to change it.',
+        'Reads text files on the owner\'s server by absolute path. Each file comes with "hash", which code-patch and code-write need to change it.',
         `One response holds at most ${formatNumber(READ_LIMITS.maxCharsPerResponse)} characters and whole lines only; continue with "remainingPaths".`,
         `A file longer than ${formatNumber(READ_LIMITS.maxCharsPerFile)} characters is cut with "truncated": true;`,
         'read the rest with "startLine" set to "nextStartLine". A line longer than a page is rejected; use code-run to inspect it.',
@@ -179,13 +159,15 @@ const read: ToolDefinition = {
         type: 'object',
         properties: {
             ...MANAGED_TOOL_PROPERTIES,
-            ...PROJECT_PROPERTY,
             paths: {
                 type: 'array',
-                items: { type: 'string' },
+                items: {
+                    type: 'string',
+                    pattern: ABSOLUTE_PATH_PATTERN,
+                },
                 minItems: 1,
                 maxItems: READ_LIMITS.maxPaths,
-                description: 'Project-relative file paths, e.g. "src/index.ts".',
+                description: 'Absolute file paths, e.g. "/code/projects/my-repo/src/index.ts".',
             },
             startLine: {
                 type: 'integer',
@@ -198,20 +180,17 @@ const read: ToolDefinition = {
                 description: 'How many lines to read. Only with exactly one path.',
             },
         },
-        required: [
-            'project',
-            'paths',
-        ],
+        required: ['paths'],
         additionalProperties: false,
     },
     annotations: READ_ONLY_ANNOTATIONS,
 };
 
 const write: ToolDefinition = {
-    title: 'Write a project file',
+    title: 'Write a file',
     description: [
         MANAGED_TOOL_DESCRIPTION,
-        'Creates a file in a project, with missing folders, or replaces the whole text of an existing file.',
+        'Creates a file, with missing folders, or replaces the whole text of an existing file.',
         'To replace an existing file, pass the "hash" from the latest code-read as "expectedHash";',
         'without "expectedHash" the call fails if the file exists. For small changes to a big file, use code-patch.',
         'Returns "diff", the unified diff of the file.',
@@ -224,11 +203,7 @@ const write: ToolDefinition = {
         type: 'object',
         properties: {
             ...MANAGED_TOOL_PROPERTIES,
-            ...PROJECT_PROPERTY,
-            path: {
-                type: 'string',
-                description: 'Project-relative file path.',
-            },
+            path: absolutePathProperty('Absolute file path.'),
             content: {
                 type: 'string',
                 maxLength: WRITE_LIMITS.maxContentChars,
@@ -240,7 +215,6 @@ const write: ToolDefinition = {
             },
         },
         required: [
-            'project',
             'path',
             'content',
         ],
@@ -250,10 +224,10 @@ const write: ToolDefinition = {
 };
 
 const patch: ToolDefinition = {
-    title: 'Edit a project file',
+    title: 'Edit a file',
     description: [
         MANAGED_TOOL_DESCRIPTION,
-        'Makes targeted edits to an existing file of a project. Read the file with code-read first and pass its "hash" as "expectedHash";',
+        'Makes targeted edits to an existing file. Read the file with code-read first and pass its "hash" as "expectedHash";',
         'if the file changed since then, the edit is refused with a conflict and you must read it again.',
         'Each operation replaces the exact text "find", which must occur exactly once, with "replace"; include enough lines in "find" to make it unique.',
         'The operations run in order, and if one fails, nothing is written.',
@@ -267,11 +241,7 @@ const patch: ToolDefinition = {
         type: 'object',
         properties: {
             ...MANAGED_TOOL_PROPERTIES,
-            ...PROJECT_PROPERTY,
-            path: {
-                type: 'string',
-                description: 'Project-relative file path.',
-            },
+            path: absolutePathProperty('Absolute file path.'),
             expectedHash: {
                 type: 'string',
                 description: 'The "hash" from the latest code-read or code-patch of this file.',
@@ -302,7 +272,6 @@ const patch: ToolDefinition = {
             },
         },
         required: [
-            'project',
             'path',
             'expectedHash',
             'operations',
@@ -313,9 +282,9 @@ const patch: ToolDefinition = {
 };
 
 const run: ToolDefinition = {
-    title: 'Run a shell command in a project',
+    title: 'Run a shell command',
     description: [
-        'Runs a bash command in the project folder on the owner\'s server and returns the exit code, stdout and stderr.',
+        'Runs a bash command in the folder "cwd" on the owner\'s server and returns the exit code, stdout and stderr.',
         'Use it for tests, builds, linters and git: clone, status, diff, log, checkout, commit, push. "gh" is available for GitHub pull requests.',
         MANAGED_TOOL_DESCRIPTION,
         'A nonzero command exit code is retained as a normal command result with operation.state=failed; inspect exitCode before running dependent commands.',
@@ -325,7 +294,7 @@ const run: ToolDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
-            ...PROJECT_PROPERTY,
+            cwd: absolutePathProperty('Absolute path of the folder to run the command in, e.g. "/code/projects/my-repo".'),
             command: {
                 type: 'string',
                 minLength: 1,
@@ -335,7 +304,7 @@ const run: ToolDefinition = {
             ...MANAGED_TOOL_PROPERTIES,
         },
         required: [
-            'project',
+            'cwd',
             'command',
         ],
         additionalProperties: false,
@@ -350,7 +319,6 @@ const run: ToolDefinition = {
 
 /** In the order that `tools/list` shows them. */
 export const CODE_TOOL_DEFINITIONS = {
-    projects,
     list,
     search,
     read,

@@ -1,6 +1,6 @@
 import { installGracefulShutdown } from 'senaev-utils/src/utils/process/installGracefulShutdown';
 
-import { CODE_TOOLS_PROJECTS_PATH, INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS } from './env';
+import { INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS } from './env';
 import { logger } from './logger';
 import { createCodeToolsServer } from './server/createCodeToolsServer';
 import { createCodeToolsConfig } from './tools/codeToolsConfig';
@@ -18,7 +18,7 @@ const lifecycle = installGracefulShutdown({
 async function main(): Promise<void> {
     server = createCodeToolsServer(
         INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS,
-        createCodeToolsConfig(CODE_TOOLS_PROJECTS_PATH)
+        createCodeToolsConfig()
     );
     lifecycle.signal.throwIfAborted();
     await server.listen({

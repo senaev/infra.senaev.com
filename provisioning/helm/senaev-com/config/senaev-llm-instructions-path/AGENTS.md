@@ -1,20 +1,31 @@
 # Server rules
 
 
-## Projects
+## Folders
 
-- Every project is a folder in `/projects` that holds one git repository. This folder is
-  also the OpenCode working directory and the Telegram file browser root.
-- To add a project: `git clone <url> /projects/<name>`. Do not clone into another
-  project, and do not clone a repository that is already there.
+Tools and commands work in any folder, by absolute path. Repositories have this layout:
+
+```
+/code/
+├── projects/<repo>/            # the main checkout, always on the default branch; do not edit here
+└── worktrees/<repo>/<branch>/  # one git worktree for each task
+```
+
+- `<repo>` is the repository name. `<branch>` is the branch name, a slug without `/`.
+- To add a repository: `git clone <url> /code/projects/<repo>`. Do not clone a repository
+  that is already there.
 - GitHub works over SSH (`git@github.com:owner/repo.git`) and HTTPS; `gh` is logged in.
 
 ## Workflow for a task
 
-1. Read the project's `AGENTS.md` (or `README.md`).
-2. `git fetch`, then create a new branch from the up-to-date default branch.
-3. Make the changes and run the project's checks.
+1. In the main checkout: `git -C /code/projects/<repo> fetch origin`, then
+   `git -C /code/projects/<repo> worktree add /code/worktrees/<repo>/<branch> -b <branch> origin/<default-branch>`.
+2. Work in the worktree. Read the repository's `AGENTS.md` (or `README.md`).
+3. Make the changes and run the repository's checks.
 4. Commit, push the branch and open a pull request with `gh pr create`.
+5. When the pull request is merged, remove the worktree:
+   `git -C /code/projects/<repo> worktree remove /code/worktrees/<repo>/<branch>`. A worktree
+   with installed dependencies takes much disk space.
 
 ## Commit messages and pull request titles
 
