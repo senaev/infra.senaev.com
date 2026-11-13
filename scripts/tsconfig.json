@@ -1,0 +1,13 @@
+{
+  "//": "Root scripts run directly with Bun, which resolves modules like a bundler.",
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "moduleDetection": "force",
+    "lib": ["esnext"],
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["*.ts"]
+}
