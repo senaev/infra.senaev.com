@@ -27,7 +27,9 @@ class ProbeMetrics:
         self.results = {}
 
     def record(self, profile, check, route, result, now=None):
-        if check not in {'website_senaev_ru', 'https', 'exit_ip', 'download_64k', 'download_64k_30s',
+        if check not in {'https_bulk_discovery', 'transfer_https_hetzner_8192',
+                         'transfer_https_hetzner_16384', 'transfer_https_hetzner_65536',
+                         'website_senaev_ru', 'https', 'exit_ip', 'download_64k', 'download_64k_30s',
                          'ipv6_entry', 'ipv6_control', 'experiment_client_alive',
                          'diagnostic_trace', 'diagnostic_https', 'diagnostic_256b',
                          'diagnostic_trace_30s', 'diagnostic_native_trace', 'diagnostic_native_h1_trace', 'diagnostic_h1_size_exit',

@@ -6,6 +6,11 @@ import probe
 
 
 class SourceControlTests(unittest.TestCase):
+    def setUp(self):
+        control = patch("probe.https_bulk_controls", return_value=True)
+        self.bulk = control.start()
+        self.addCleanup(control.stop)
+
     @patch('probe.emit')
     @patch('probe.experiment_wait', return_value=False)
     @patch('probe.xhttp_transport_controls', return_value=True)
@@ -14,6 +19,7 @@ class SourceControlTests(unittest.TestCase):
         self.assertEqual(probe.xhttp_source_control('hetzner', once=True), 0)
         request.assert_called_once_with('https://www.cloudflare.com/cdn-cgi/trace', '', 4096)
         fresh.assert_called_once()
+        self.bulk.assert_called_once_with('hetzner')
         self.assertEqual(fresh.call_args.args[:2], ('hetzner', None))
         self.assertEqual(fresh.call_args.args[2], emit.call_args.args[3]['experiment_id'])
         self.assertTrue(300 <= wait.call_args_list[0].args[0] <= 360)

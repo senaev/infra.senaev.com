@@ -835,3 +835,53 @@ compliance or general DNS/IPv6 leak protection.
 
 Source: https://github.com/HappDev/happ_su/blob/main/dev-docs/app-management.md
 This safety step is independent of the unresolved home-to-Hetzner transfer stall.
+
+### 2026-11-13 — Merge safety headers; prepare ordinary HTTPS bulk control
+
+PR #168 merged at af23212b8715e914ff7b8d06493fb83e43f87ec2. Deployment
+43388530309 succeeded. All three new probe targets scraped up; fresh senaev.ru
+checks passed from home and Hetzner; all five website smoke checks passed. No
+subscription error logs found in the checked ten-minute window. Real Happ
+subscription refresh/authentication remains a user-side check.
+
+Before probe rollout reset the counters (07:49 UTC), fresh XHTTP/H1 payloads:
+
+| Source | 4 KiB | 8 KiB | 12 KiB | 16 KiB |
+|---|---|---|---|---|
+| home | 17/18 | 17/17 | 4/18 | 0/16 |
+| Hetzner | 32/32 | 32/32 | 32/32 | 32/32 |
+
+These are current-process success/attempt counters, not matched rounds. Home
+12 KiB direct controls were 17/18; other listed direct controls all passed.
+Home exit checks also had occasional setup failures (16 KiB exit 16/18, 8 KiB
+17/18), so payload counts omit failed exit gates. 12 KiB failures included HTTP
+200 with 5,521 or 5,513 body bytes, and a separate zero-body timeout after TLS.
+This is not evidence of one exact byte cutoff or a proven DPI/MTU diagnosis.
+
+Next step: after existing matrices, independently download ordinary HTTPS/H1
+8/16/64 KiB ranges from the existing senaev.com static assets, on both home
+profile 4 and Hetzner control. Discover the current asset from bounded homepage
+HTML, inspect at most four same-origin script paths with HEAD, choose one at
+least 64 KiB, require HTTP 206 and exact byte counts. Do not pin a build hash,
+add endpoints, bypass TLS checks, follow redirects or add a worker. Failed
+asset discovery leaves the comparison inconclusive. A failed size does not
+suppress later sizes; original VPN acceptance remains unchanged.
+
+Bounds: existing 3s connect/8s total/32 KiB/s curl settings; 60–90s before the
+control and 2–7s jitter before each HEAD/range. At most 152 KiB planned response
+bodies per eligible round (64 KiB HTML cap + 88 KiB ranges), plus HEAD/response
+headers and transport overhead; this is not a wire-byte limit. Full rounds
+already wait 300–360s plus matrix duration. Existing website worker may overlap.
+Grafana transfer panels include fixed transfer_https_hetzner_* names and explain
+their independent meaning. Discovery is exported separately.
+
+Interpretation: ordinary bulk success alongside XHTTP failure weakens a general
+bulk-path failure hypothesis and favors a VPN/framing/classification-dependent
+problem. Both failing strengthens a broader source/path hypothesis. Neither
+proves DPI or PMTU; curl and Xray TLS differ, and this control lacks the VPN's
+external destination hop. Hetzner remains a same-host control. Next, if needed,
+use FirstVDS as an independent source to Hetzner's public endpoint, not an exit.
+
+Live preflight on Code Tools passed HTTP 206 and exact 8/16/64 KiB bytes using
+current existing website assets. Timing waits were mocked for this preflight;
+it does not establish success from the home ISP or scheduled operation.
