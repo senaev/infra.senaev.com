@@ -20,20 +20,18 @@ function telegramAnswer(status: number, body: unknown) {
 }
 
 function call({
-    method = 'POST',
     path = '/sendMessage',
     secret = SECRET,
     contentType = 'application/json',
     payload = '{}',
 }: {
-    method?: 'GET' | 'POST';
     path?: string;
     secret?: string | null;
     contentType?: string | null;
     payload?: string | null;
 } = {}) {
     return server.inject({
-        method,
+        method: 'POST',
         url: `${TELEGRAM_PUBLIC_API_PATH}${path}`,
         headers: {
             ...(secret !== null && { authorization: `Bearer ${secret}` }),
@@ -53,7 +51,7 @@ function forwardedRequest() {
         url,
         method: init?.method,
         headers: init?.headers,
-        body: init?.body === undefined ? undefined : Buffer.from(init.body as Uint8Array).toString(),
+        body: init?.body,
     };
 }
 
@@ -112,20 +110,31 @@ describe('telegramPublicApi', () => {
         expect(fetchTelegram).not.toHaveBeenCalled();
     });
 
-    it('forwards a JSON POST unchanged with the bot token, and returns the answer of Telegram', async () => {
-        const payload = JSON.stringify({
+    it('answers 415 to a body that is not JSON, and calls nothing', async () => {
+        const response = await call({
+            path: '/sendDocument',
+            contentType: 'multipart/form-data; boundary=XyZ',
+            payload: '--XyZ--\r\n',
+        });
+
+        expect(response.statusCode).toBe(415);
+        expect(fetchTelegram).not.toHaveBeenCalled();
+    });
+
+    it('forwards the JSON body with the bot token, and returns the answer of Telegram', async () => {
+        const body = {
             chat_id: '42',
             text: '*hello*',
             parse_mode: 'MarkdownV2',
-        });
-        const response = await call({ payload });
+        };
+        const response = await call({ payload: JSON.stringify(body) });
 
-        expect(forwardedRequest()).toEqual({
+        expect(forwardedRequest()).toMatchObject({
             url: `${TELEGRAM_API_BASE_URL}/sendMessage`,
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: payload,
         });
+        expect(JSON.parse(String(forwardedRequest().body))).toEqual(body);
         expect(response.statusCode).toBe(200);
         expect(response.json()).toEqual({
             ok: true,
@@ -133,41 +142,21 @@ describe('telegramPublicApi', () => {
         });
     });
 
-    it('forwards a multipart body byte for byte', async () => {
-        const contentType = 'multipart/form-data; boundary=XyZ';
-        const payload = '--XyZ\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n42\r\n--XyZ--\r\n';
-
+    it('forwards an empty object when the request has no body', async () => {
         await call({
-            path: '/sendDocument',
-            contentType,
-            payload,
-        });
-
-        expect(forwardedRequest()).toMatchObject({
-            url: `${TELEGRAM_API_BASE_URL}/sendDocument`,
-            headers: { 'content-type': contentType },
-            body: payload,
-        });
-    });
-
-    it('forwards a GET with its query and no body', async () => {
-        await call({
-            method: 'GET',
-            path: '/getChat?chat_id=42',
+            path: '/getMe',
             contentType: null,
             payload: null,
         });
 
-        expect(forwardedRequest()).toEqual({
-            url: `${TELEGRAM_API_BASE_URL}/getChat?chat_id=42`,
-            method: 'GET',
-            headers: undefined,
-            body: undefined,
+        expect(forwardedRequest()).toMatchObject({
+            url: `${TELEGRAM_API_BASE_URL}/getMe`,
+            body: '{}',
         });
     });
 
     it('answers 413 to a body over the default Fastify limit of 1 MiB, and calls nothing', async () => {
-        const response = await call({ payload: 'a'.repeat(1024 * 1024 + 1) });
+        const response = await call({ payload: JSON.stringify({ text: 'a'.repeat(1024 * 1024) }) });
 
         expect(response.statusCode).toBe(413);
         expect(fetchTelegram).not.toHaveBeenCalled();

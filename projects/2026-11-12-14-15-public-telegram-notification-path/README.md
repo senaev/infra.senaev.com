@@ -28,16 +28,17 @@ Changed on 2026-11-13: the endpoint is a thin proxy to the whole Bot API of the 
 ## Plan
 
 1. ✅ Read the secret `TELEGRAM_PUBLIC_API_SECRET` in `cluster-helper/src/env.ts`; Helm takes it from Vault (`external-secret.yaml`, `cluster-helper.yaml`).
-2. ✅ Thin proxy `GET|POST /telegram-public-bot-api/:method` in `cluster-helper/src/telegramPublicApi.ts`:
+2. ✅ Thin proxy `POST /telegram-public-bot-api/:method` in `cluster-helper/src/telegramPublicApi.ts`:
    - `Authorization: Bearer <TELEGRAM_PUBLIC_API_SECRET>`, compared with plain `!==` in an `onRequest` hook, before the body is read; otherwise 401. No `timingSafeEqual`: network jitter hides the nanosecond difference, and the secret is long and random (decision of 2026-11-13)
-   - forwards to `https://api.telegram.org/bot<TG_TOKEN_SENAEV_COM_BOT>/<method>` with the same query, raw body and content type (JSON, form, multipart), and returns Telegram's status, content type and body unchanged
-   - the body is buffered within Fastify's default limit of 1 MiB, only to protect the memory; a bigger body gives 413. Telegram applies its own limits (decision of 2026-11-13)
+   - forwards the JSON body to `https://api.telegram.org/bot<TG_TOKEN_SENAEV_COM_BOT>/<method>` (no body → `{}`), and returns Telegram's status, content type and body unchanged
+   - JSON only (decision of 2026-11-13): Telegram accepts JSON for every method, and Fastify's own parser is used. Another content type gives 415. Local files cannot be uploaded; send them by URL or `file_id`
+   - Fastify's default body limit of 1 MiB protects the memory; a bigger body gives 413. Telegram applies its own limits (decision of 2026-11-13)
    - all methods and all chats are allowed (decision of 2026-11-13): the secret gives full control of the bot, including `setWebhook`
    - `method` must be letters only, otherwise 404, so the client cannot change the upstream path
    - logs only the method name and the status; the Fastify request log does not include headers
    - 502 when Telegram is unreachable
    - file downloads (`https://api.telegram.org/file/bot<token>/<path>`) are not proxied
-3. ✅ Unit tests in `telegramPublicApi.test.ts`: missing or wrong secret → 401; bad method name → 404; JSON, multipart and GET with query are forwarded unchanged; Telegram errors are returned unchanged; unreachable Telegram → 502; the log has neither the secret, the bot token nor the body.
+3. ✅ Unit tests in `telegramPublicApi.test.ts`: missing or wrong secret → 401; bad method name → 404; not JSON → 415; over 1 MiB → 413; the JSON body is forwarded with the bot token, no body → `{}`; Telegram errors are returned unchanged; unreachable Telegram → 502; the log has neither the secret, the bot token nor the body.
 4. 📌 Add the Vault key `TELEGRAM_PUBLIC_API_SECRET` in `senaev-com-kv` before the merge (the value of the old key `TELEGRAM_PUBLIC_API_PATH` can be reused: it was never deployed), then delete `TELEGRAM_PUBLIC_API_PATH`. The variable is required, so cluster-helper does not start without it.
 5. 📌 Put the same secret into the front matter of the vault file. The client also needs my chat ID (`TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID`) for `chat_id`.
 6. ✅ No rate limit: the secret is enough (decision of 2026-11-13).
@@ -50,9 +51,6 @@ Changed on 2026-11-13: the endpoint is a thin proxy to the whole Bot API of the 
    ```
    curl -sS -X POST https://api.senaev.com/telegram-public-bot-api/sendMessage -H "authorization: Bearer <secret>" -H 'content-type: application/json' -d '{"chat_id":"<my chat ID>","text":"test from laptop"}'
    ```
-   The answer is `{"ok":true,…}` and the message arrives in my bot chat. To send a file:
-   ```
-   curl -sS https://api.senaev.com/telegram-public-bot-api/sendDocument -H "authorization: Bearer <secret>" -F chat_id=<my chat ID> -F document=@note.md
-   ```
+   The answer is `{"ok":true,…}` and the message arrives in my bot chat.
 2. `curl -sS -o /dev/null -w '%{http_code}' -X POST https://api.senaev.com/telegram-public-bot-api/getMe` (no header) gives `401`.
 3. `bash scripts/smoke-test-websites.sh` still passes.

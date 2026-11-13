@@ -143,10 +143,10 @@ See [`projects/2026-11-06-10-23-personal-llm-connector`](projects/2026-11-06-10-
 
 ## Telegram public API
 
-`GET|POST https://api.senaev.com/telegram-public-bot-api/<method>` is a thin proxy to the Bot API of
-the senaev.com bot, for scripts outside the cluster and the tailnet: the request goes to
-`https://api.telegram.org/bot<token>/<method>` unchanged (query, body, content type, also
-multipart), and only the token is added. All methods and chats are allowed. Clients send
+`POST https://api.senaev.com/telegram-public-bot-api/<method>` with a JSON body is a thin proxy
+to the Bot API of the senaev.com bot, for scripts outside the cluster and the tailnet: the body
+goes to `https://api.telegram.org/bot<token>/<method>`, only the token is added, and the answer
+comes back unchanged. JSON only, up to 1 MiB. All methods and chats are allowed. Clients send
 `Authorization: Bearer <secret>`, Vault `TELEGRAM_PUBLIC_API_SECRET`, checked before the body
 is read. Code: `cluster-helper/src/telegramPublicApi.ts`. See
 [`projects/2026-11-12-14-15-public-telegram-notification-path`](projects/2026-11-12-14-15-public-telegram-notification-path/README.md).

@@ -1,5 +1,9 @@
 # Project worklog
 
+## 2026-11-13 13:45 UTC — Simplified: JSON only, default body limit, plain secret check
+
+On review, the user simplified the proxy: `POST` with JSON only (Fastify's own parser; no raw buffer parser, no multipart, no GET with query), Fastify's default 1 MiB body limit instead of a Telegram-specific 50 MB, the global `fetch` stubbed in tests instead of a `fetch` option, and a plain `!==` secret check instead of SHA-256 + `timingSafeEqual`. Route renamed to `/telegram-public-bot-api`.
+
 ## 2026-11-13 13:30 UTC — Secret moved to the Authorization header
 
 The user asked to move the secret out of the path in this PR. The route is now `/telegram-bot-api/:method` with `Authorization: Bearer <TELEGRAM_PUBLIC_API_SECRET>` (user's name), checked in an `onRequest` hook like `/llm`. The `logLevel: 'silent'` workaround is removed: the Fastify request log has no headers. The Vault key must be added under the new name; the old `TELEGRAM_PUBLIC_API_PATH` value can be reused because it was never deployed.
