@@ -1,5 +1,9 @@
 # Project worklog
 
+## 2026-11-13 16:05 UTC — Alisa done
+
+The user deleted the Vault key `ALISA_WEBHOOK_SECRET`. The Alisa part of the project is finished. Still open: vpn-subscription, APM, secret rotation, and the full-body logs in `cluster-helper/src/index.ts`.
+
 ## 2026-11-13 16:01 UTC — Old Alisa route removed and verified
 
 PR #174 (`ded8e9dd`) deployed (run `43457251711`), with two healthy rollouts and no errors. A real Alisa command at 16:00:37 UTC came as `POST /alisa-webhook`, passed the check (200), was planned by OpenRouter as `add_shopping_items`, and ran. Left for Alisa: the user deletes the Vault key `ALISA_WEBHOOK_SECRET`.

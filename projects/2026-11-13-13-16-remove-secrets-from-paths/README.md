@@ -31,7 +31,7 @@ A secret must go in a header (`Authorization: Bearer …`) or in the body, as th
    2. ✅ Add the Vault key `ALISA_ALLOWED_USER_IDS` before the merge: cluster-helper does not start without it.
    3. ✅ After the deploy, set the skill "Webhook URL" to `https://api.senaev.com/alisa-webhook` in the Yandex Dialogs console and check that Alisa answers.
    4. ✅ Remove the old route and the env variable `ALISA_WEBHOOK_SECRET` from the code and Helm (PR #174). No rotation needed: the old secret stops working.
-   5. 📌 Delete the Vault key `ALISA_WEBHOOK_SECRET`.
+   5. ✅ Delete the Vault key `ALISA_WEBHOOK_SECRET`.
 3. ❓ vpn-subscription: can Happ send a header for a subscription? If no, keep the secret path, add `logLevel: 'silent'` (or a request serializer that hides the path), and hide the path in APM (step 4).
 4. ❓ APM: how to hide the paths that stay secret — `DD_TRACE_RESOURCE_RENAMING_ENABLED`, a dd-trace `blocklist`, or no tracing for these routes? Check which of the routes are in the traces now.
 5. 📌 After each route is fixed, rotate its secret: the old value is already in the logs and traces. For Alisa, change the webhook URL in the Yandex Dialogs console at the same time.
