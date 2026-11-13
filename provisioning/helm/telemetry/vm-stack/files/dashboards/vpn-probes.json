@@ -1121,9 +1121,9 @@
     },
     {
       "id": 16,
-      "title": "TCP/Reality vs XHTTP/TLS — size / destination / route",
+      "title": "VPN and ordinary HTTPS controls — size / destination / route",
       "type": "state-timeline",
-      "description": "Fixed size/destination checks, paired direct and VPN. Results older than 40 minutes are hidden. Failed direct controls make paired comparisons inconclusive; see logs. Client exit invalidates the cycle. Route vpn is baseline TCP/Reality; xhttp is the candidate on profile 4. This also changes TLS termination and proxying. Rotating order may leave normal gaps longer than the freshness window; a gap alone is not evidence of failure.",
+      "description": "Fixed size/destination checks, paired direct and VPN. Results older than 40 minutes are hidden. Failed direct controls make paired comparisons inconclusive; see logs. Client exit invalidates the cycle. Route vpn is baseline TCP/Reality; xhttp is the candidate on profile 4. This also changes TLS termination and proxying. Rotating order may leave normal gaps longer than the freshness window; a gap alone is not evidence of failure. transfer_https_hetzner_* is an independent ordinary HTTPS/H1 range download from existing senaev.com assets, on the same public hostname. It is not the paired internet-origin direct control and does not change VPN acceptance. Missing samples after discovery failure are inconclusive; inspect https_bulk_discovery. Curl and Xray use different TLS implementations; this is not an identical-fingerprint comparison.",
       "datasource": {
         "type": "prometheus",
         "uid": "P4169E866C3094E38"
@@ -1207,9 +1207,9 @@
     },
     {
       "id": 17,
-      "title": "TCP/Reality vs XHTTP/TLS — duration",
+      "title": "VPN and ordinary HTTPS controls — duration",
       "type": "timeseries",
-      "description": "Fixed size/destination checks, paired direct and VPN. Results older than 40 minutes are hidden. Failed direct controls make paired comparisons inconclusive; see logs. Client exit invalidates the cycle. Route vpn is baseline TCP/Reality; xhttp is the candidate on profile 4. This also changes TLS termination and proxying. Rotating order may leave normal gaps longer than the freshness window; a gap alone is not evidence of failure.",
+      "description": "Fixed size/destination checks, paired direct and VPN. Results older than 40 minutes are hidden. Failed direct controls make paired comparisons inconclusive; see logs. Client exit invalidates the cycle. Route vpn is baseline TCP/Reality; xhttp is the candidate on profile 4. This also changes TLS termination and proxying. Rotating order may leave normal gaps longer than the freshness window; a gap alone is not evidence of failure. transfer_https_hetzner_* is an independent ordinary HTTPS/H1 range download from existing senaev.com assets, on the same public hostname. It is not the paired internet-origin direct control and does not change VPN acceptance. Missing samples after discovery failure are inconclusive; inspect https_bulk_discovery. Curl and Xray use different TLS implementations; this is not an identical-fingerprint comparison.",
       "datasource": {
         "type": "prometheus",
         "uid": "P4169E866C3094E38"
@@ -1256,9 +1256,9 @@
     },
     {
       "id": 18,
-      "title": "TCP/Reality vs XHTTP/TLS — received bytes",
+      "title": "VPN and ordinary HTTPS controls — received bytes",
       "type": "timeseries",
-      "description": "Fixed size/destination checks, paired direct and VPN. Results older than 40 minutes are hidden. Failed direct controls make paired comparisons inconclusive; see logs. Client exit invalidates the cycle. Route vpn is baseline TCP/Reality; xhttp is the candidate on profile 4. This also changes TLS termination and proxying. Rotating order may leave normal gaps longer than the freshness window; a gap alone is not evidence of failure.",
+      "description": "Fixed size/destination checks, paired direct and VPN. Results older than 40 minutes are hidden. Failed direct controls make paired comparisons inconclusive; see logs. Client exit invalidates the cycle. Route vpn is baseline TCP/Reality; xhttp is the candidate on profile 4. This also changes TLS termination and proxying. Rotating order may leave normal gaps longer than the freshness window; a gap alone is not evidence of failure. transfer_https_hetzner_* is an independent ordinary HTTPS/H1 range download from existing senaev.com assets, on the same public hostname. It is not the paired internet-origin direct control and does not change VPN acceptance. Missing samples after discovery failure are inconclusive; inspect https_bulk_discovery. Curl and Xray use different TLS implementations; this is not an identical-fingerprint comparison.",
       "datasource": {
         "type": "prometheus",
         "uid": "P4169E866C3094E38"

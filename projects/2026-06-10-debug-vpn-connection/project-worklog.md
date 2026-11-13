@@ -1,3 +1,47 @@
+## 2026-11-13 07:58 UTC — Deploy #168; prepare ordinary HTTPS comparison
+
+User approved merge and next-step preparation. Merged #168 at af23212b;
+deployment43388530309 succeeded. All5 website smoke checks passed, all3 new
+probe targets up=1, fresh website success=1 on both sources. Subscription error
+query over ten minutes returned no logs. Real Happ refresh remains unverified.
+CodeRabbit on #168 was neutral/rate-limited, not an approval.
+
+Pre-rollout 07:49 UTC success/attempt snapshot for fresh XHTTP/H1:
+```
+source          4096   8192   12288   16384
+senaev-media   17/18  17/17   4/18    0/16
+hetzner        32/32  32/32  32/32   32/32
+```
+12KiB home direct=17/18; other listed direct payloads all passed. Exit-gate
+failures mean payload totals differ. Selected latest failed 12KiB logs:
+```
+2026-11-13T07:38:54Z bytes=0 http_status=0 curl_exit=28 duration_ms=8012 tls_ms=627
+2026-11-13T05:54:38Z bytes=5521 http_status=200 curl_exit=28 duration_ms=8009 tls_ms=596
+2026-11-13T04:46:13Z bytes=5513 http_status=200 curl_exit=28 duration_ms=8009 tls_ms=593
+```
+Stop size-only expansion. Prepare independent ordinary HTTPS/H1 asset ranges
+8/16/64KiB on the same public hostname, appended after existing matrices on
+home4/Hetzner only. Asset discovery bounded and same-origin; no new endpoint,
+privileges or host changes. Original VPN acceptance retained. Dashboard labels
+clarify new controls and source/TLS caveats. Full plan is appended to README.
+
+Live Code Tools preflight (waits mocked, real curl/TLS):
+```
+PASS: live ordinary HTTPS/H1 ranges 8/16/64 KiB over existing website assets
+```
+Not a home-path result. Post-deploy5m restart increases were0 for all three
+new probes and the subscription container. Prepared code verification:
+```
+Ran 101 tests in 0.257s
+OK
+Python syntax OK: 20 file(s)
+1 chart(s) linted, 0 chart(s) failed
+```
+Both affected charts passed Helm lint. Review preserved existing acceptance,
+bounded same-origin discovery and cancellation; dashboard descriptions distinguish
+ordinary controls from paired direct internet-origin requests. New PR stays
+unmerged/undeployed.
+
 ## 2026-11-12 21:45 UTC — Verify entry routing; request Happ proxy authentication
 
 User approved the next safety step. Rendered FirstVDS configuration has only
