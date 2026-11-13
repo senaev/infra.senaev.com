@@ -8,15 +8,15 @@ No backup, disk erasure or installation has been performed. Purchase project rem
 
 ## Equipment
 
-- A small USB stick for bootable installers (Clonezilla, then Proxmox).
-- A separate external USB disk or accessible NAS for backups, with enough free space
-  for both the full-disk backup and Windows virtual disk. Check actual usage first;
-  encrypted imaging may require space approaching the full source disk capacity.
+- One USB stick for the Proxmox installer; no second USB drive is required.
+- Enough free space on the Windows SSD to create the VHDX locally, and enough private
+  cloud storage to hold it. Check available space and cloud file-size limits first.
 - A monitor, keyboard and wired Ethernet connection for initial setup.
 
-Do not store the only backup on the internal SSD or on the USB being rewritten as an
-installer: Proxmox installation erases its selected target; writing a bootable USB
-normally erases that USB. The Proxmox installer is not a Windows backup tool.
+Disk2vhd can write its image to the same filesystem it is capturing. The local image
+is temporary: installing Proxmox erases the selected internal SSD, including that file.
+A verified cloud copy must exist before proceeding. The Proxmox installer is not a
+Windows backup tool; writing it to USB normally erases the USB stick.
 
 ## Plan
 
@@ -26,19 +26,22 @@ normally erases that USB. The Proxmox installer is not a Windows backup tool.
 2. Check BitLocker/device encryption and securely save its recovery key outside the
    Dell. Keep keys and any licence secrets out of git. For Disk2vhd, turn encryption
    off and wait for full decryption; suspending protection alone is insufficient.
-3. Boot Clonezilla from the small USB and save the entire internal disk to the external
-   disk/NAS, including EFI boot and recovery partitions. Run image integrity checking.
-   Retain this original backup untouched for restoration to the physical Dell.
-4. Boot Windows again and run Microsoft Disk2vhd, selecting Windows and the required
-   system/boot volumes, writing the VM-ready VHDX to the external disk/NAS. Do not
-   capture only C: while omitting its boot partition. This step needs no bootable USB.
-5. Verify both backups are readable and complete, record checksums, and retain a
-   second copy where practical. Ideally test Windows VM boot on another host before
-   wiping the Dell. Integrity checks alone do not prove bootability; if no other host
-   is available, record that limitation and retain the verified full-disk restore path.
-6. Only after backup verification, rewrite the small USB with the Proxmox installer.
-   Disconnect external backup disks before installation to avoid selecting one by
-   mistake. Boot installer; install Proxmox onto the internal SSD, erasing Windows.
+3. Run Microsoft Disk2vhd in Windows with VSS enabled. Capture Windows and all required
+   system/boot volumes, plus recovery volumes where available, into a VHDX on the
+   internal SSD. Do not capture only C: while omitting its boot partition. This step
+   needs no bootable USB. Check completion and record the file size and SHA-256 hash.
+4. Upload the completed image to private cloud storage, together with its checksum
+   and non-secret disk-layout/boot-mode notes. Confirm upload is complete and the file
+   can be retrieved. Download it to another computer or storage location and compare
+   SHA-256 hashes; record a successful match before erasing the Dell. Keep cloud
+   credentials/recovery methods accessible independently of the Windows installation.
+5. Ideally test that a working copy boots in a VM on another host. A checksum match
+   verifies transfer integrity, not Windows bootability. If no other host is available,
+   record that the image has not been boot-tested before proceeding.
+6. Create the Proxmox installer on the single USB stick. Only after the cloud copy is
+   verified, boot the installer and install Proxmox on the internal SSD. This erases
+   Windows and the local VHDX. Download the verified image from cloud storage to
+   Proxmox storage for import, allowing space for both the download and imported VM disk.
 7. Import a working copy of the VHDX into a Proxmox Windows VM. Match the original
    boot mode (normally OVMF/UEFI); configure Windows 11 TPM 2.0/Secure Boot as needed.
    Use a Windows-supported disk controller initially, then install VirtIO drivers
@@ -46,7 +49,7 @@ normally erases that USB. The Proxmox installer is not a Windows backup tool.
 8. Confirm Windows boots, files/apps are present and activation status is understood.
    The virtual hardware change may require reactivation. Supplied OEM/refurbished
    licence rights must be checked; do not assume a VM licence is included or that
-   successful activation proves licence entitlement. Keep the original backups.
+   successful activation proves licence entitlement. Keep the original cloud image unchanged and import a working copy.
 9. Enable BIOS AC Recovery Power On and Proxmox VM autostart. Test headless AC
    restoration, sustained Ethernet traffic, temperatures and living-room noise.
 10. Set up the Linux Jellyfin VM with full iGPU passthrough. Verify real hardware
@@ -54,21 +57,24 @@ normally erases that USB. The Proxmox installer is not a Windows backup tool.
     Do not assign the same full-passthrough GPU to Windows and Jellyfin simultaneously.
     Migrate services only after acceptance checks pass.
 
-## Verification and rollback
+## Verification and recovery
 
-Before erasing: full-disk backup integrity passes, VM image exists outside the Dell,
-recovery key is saved if applicable, and the intended installation disk is confirmed.
+Before erasing: cloud upload is complete, a downloaded copy matches the original
+SHA-256, required partitions were captured, recovery key is saved if applicable,
+cloud access works independently, and the intended installation disk is confirmed.
 After installation: Windows VM boots; Jellyfin transcodes in hardware; power recovery,
 network stability and noise meet requirements. Record actual results, not assumptions.
-If necessary, boot Clonezilla and restore the original disk image to the internal SSD;
-this overwrites the Proxmox installation, so preserve any new VM data separately first.
 
-## References
+The chosen plan uses Disk2vhd plus cloud storage and does not require Clonezilla or
+an external backup disk. It preserves Windows for VM migration; it is not a tested
+one-click restoration of the factory SSD. If physical Windows restoration is needed,
+plan a compatible image-restore process or reinstall Windows and recover data from
+the saved image. Do not promise the previous Clonezilla rollback without its backup.
 
-- Microsoft Disk2vhd (capture and BitLocker restrictions):
+## Reference
+
+- Microsoft Disk2vhd (same-volume destination, VSS and BitLocker restrictions):
   https://learn.microsoft.com/en-us/sysinternals/downloads/disk2vhd
-- Clonezilla disk-image restoration and integrity checking:
-  https://clonezilla.org/show-live-doc-content.php?topic=clonezilla-live/doc/02_Restore_disk_image
 
 Exact import commands and current installer settings will be checked when executing
 this plan against the actual disk layout and installed Proxmox version.

@@ -10,5 +10,5 @@ and Linux VM Jellyfin GPU passthrough tests are post-delivery follow-up, not com
 verification and not blockers to closing this purchase project.
 
 Windows backup and installation plan recorded in [setup plan](windows-backup-proxmox-plan.md).
-Next: hardware inspection, external full-disk backup and Disk2vhd capture before
-erasing the internal SSD. Installation and VM migration have not started.
+Next: hardware inspection, Disk2vhd capture to the internal SSD, then cloud upload
+and checksum verification before erasing the SSD. One installer USB is sufficient. Installation and VM migration have not started.

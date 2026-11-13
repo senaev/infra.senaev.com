@@ -1,3 +1,14 @@
+## 2026-11-13 21:14 UTC — Simplified to one USB and cloud Windows backup
+
+User approved saving Disk2vhd locally and uploading the image to cloud storage:
+> Okay, change the plan in the project
+
+Replaced mandatory Clonezilla/external-disk workflow with local VHDX capture,
+private cloud upload and downloaded-copy SHA-256 verification before wiping SSD.
+One USB is used only for the Proxmox installer. Preserved encryption, VM boot,
+activation and hardware acceptance checks; clarified that no factory-disk restore
+backup is produced by this simplified workflow. No backup or installation executed.
+
 ## 2026-11-13 20:28 UTC — Arrival and Windows preservation plan recorded
 
 User confirmed arrival and asked:

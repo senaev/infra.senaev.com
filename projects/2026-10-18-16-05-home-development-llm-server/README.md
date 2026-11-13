@@ -47,6 +47,7 @@ See [Intel research and retailer checks](research-intel-options.md).
 ## Post-delivery follow-up (outside the completed purchase project)
 
 The server has arrived. Follow the [Windows backup and Proxmox installation plan](windows-backup-proxmox-plan.md)
+using Disk2vhd to the internal SSD, a verified cloud copy and one installer USB
 before erasing the internal SSD. The purchase remains complete; setup is pending.
 
 ## Verification
