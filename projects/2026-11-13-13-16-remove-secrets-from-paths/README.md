@@ -34,7 +34,7 @@ A secret must go in a header (`Authorization: Bearer …`) or in the body, as th
    5. ✅ Delete the Vault key `ALISA_WEBHOOK_SECRET`.
 3. ✅ vpn-subscription (PR #175): Happ cannot send a header, so the secret stays in the path, as with other VPN subscription providers. `vpn-subscription/src/requestLogging.ts` turns off the Fastify request logging (`LogController` with `disableRequestLogging`): all its request lines (incoming, completed, not found, errored) contain the URL. An error handler logs only the error of a failed request (5xx).
 4. ✅ APM (PR #175): after step 2, vpn-subscription is the only service with a secret path. It gets `admission.datadoghq.com/enabled: "false"`: dd-trace writes the full path to `http.url`, and the traces of this small service have almost no value.
-5. 📌 After each route is fixed, rotate its secret: the old value is already in the logs and traces. For Alisa, change the webhook URL in the Yandex Dialogs console at the same time.
+5. ✅ After each route is fixed, rotate its secret: the old value is already in the logs and traces. The Telegram public API and Alisa need no rotation (see steps 1 and 2.4). The user rotated `VPN_SUBSCRIPTION_SECRET` in Vault on 2026-11-13.
 6. 📌 cluster-helper: never log a whole request body (`AGENTS.md` rule). `/telegram/send-message` logs only `chatId` and the text length, `/qbittorrent/torrent-event` only `event` and `name`, and the Telegram webhook only the update ID and types (`describeTelegramUpdate`), after the secret check.
 
 ## Verification

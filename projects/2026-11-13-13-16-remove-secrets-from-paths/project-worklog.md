@@ -2,7 +2,7 @@
 
 ## 2026-11-13 16:40 UTC — cluster-helper: no whole bodies in logs
 
-The user said that `VPN_SUBSCRIPTION_SECRET` is rotated. A new PR removes the last whole-body logs from cluster-helper: `/telegram/send-message` (now `chatId` and the text length: the text can hold the IP and user agent of a VPN error report), `/qbittorrent/torrent-event` (now `event` and `name`, logged after the validation), and the Telegram webhook update (now the update ID and types, logged after the secret check, so unauthenticated requests are not logged). The non-object-body warning and the "unsupported update" error also stop writing the body.
+The user rotated `VPN_SUBSCRIPTION_SECRET` in Vault. A new PR removes the last whole-body logs from cluster-helper: `/telegram/send-message` (now `chatId` and the text length: the text can hold the IP and user agent of a VPN error report), `/qbittorrent/torrent-event` (now `event` and `name`, logged after the validation), and the Telegram webhook update (now the update ID and types, logged after the secret check, so unauthenticated requests are not logged). The non-object-body warning and the "unsupported update" error also stop writing the body.
 
 ## 2026-11-13 16:30 UTC — vpn-subscription deployed and verified
 
