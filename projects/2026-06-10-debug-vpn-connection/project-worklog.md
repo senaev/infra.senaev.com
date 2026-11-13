@@ -1,3 +1,36 @@
+## 2026-11-13 18:50 UTC — Deploy FirstVDS source; prepare packetization proposal
+
+User approved #178 merge. Head6de6f4b9 had successful CI and no inline review
+findings; no approval review was present. Marked ready and merged at65c3d280.
+Deployment43485466491 succeeded. New FirstVDS scrape up=1 alongside all3 prior
+probes, whose pod names stayed unchanged. FirstVDS remains entry-only.
+
+Post-deployment smoke evidence:
+```
+Test Files 1 passed (1)
+Tests 5 passed (5)
+```
+At18:43 UTC ordinary HTTPS process counters had Hetzner discovery=1 success,
+8/16/64KiB each1 success, zero failures. Home control series absent, not failed;
+FirstVDS not yet deployed at that snapshot. Source comparison remains pending.
+
+Prepare a documentation-only next-step proposal: after at least3 completed
+rounds per relevant source, consider a fresh16KiB default-vs-tcpMaxSeg1000 pair,
+alternating order with existing exit/direct gates, bounds and jitter. No new
+runtime arm implemented. Xray26.9.30 source passes XHTTP socket settings to
+DialSystem and sets Linux TCP_MAXSEG. Actual loopback socket preflight:
+```
+PASS: pinned Xray XHTTP/H1 outer TCP socket MSS changes on loopback: {'default': [32768], 1000: [988]}
+This validates the per-socket option only, not VPN transfer recovery or WAN MSS.
+```
+Dummy listener did not complete TLS. No real VPN result, WAN MSS measurement,
+host change, new privilege or production setting follows from this test. Positive
+A/B differences would show packetization sensitivity, not uniquely MTU or DPI;
+negative results need effective-MSS validation before excluding PMTU.
+
+Updated the existing one-time20:20 Madrid analysis to include merged #178 and
+FirstVDS data; it must not deploy another variable without review/approval.
+
 ## 2026-11-13 18:19 UTC — Merge #169; draft independent FirstVDS source
 
 User approved merge, analysis and next-step preparation. #169 had CodeRabbit
