@@ -885,3 +885,49 @@ use FirstVDS as an independent source to Hetzner's public endpoint, not an exit.
 Live preflight on Code Tools passed HTTP 206 and exact 8/16/64 KiB bytes using
 current existing website assets. Timing waits were mocked for this preflight;
 it does not establish success from the home ISP or scheduled operation.
+
+### 2026-11-13 — Add an independent FirstVDS source (draft)
+
+PR #169 merged at 0b38516c5f6a57559377caed3df4db42218a5a33 after CodeRabbit
+approval with no findings. Deployment43480667883 succeeded at18:18 UTC.
+All5 website smoke tests passed through `npm run test:smoke`; all3 current
+probe targets are scraped, with fresh successful website checks on both nodes
+and zero5m probe restart increases. Ordinary HTTPS
+results are not available immediately: these controls run after existing serial
+matrices. Do not treat absent samples as failures or claim the hypothesis tested
+before fresh home and Hetzner results arrive.
+
+Pre-rollout snapshot at18:15 UTC (current-process XHTTP/H1 success/attempt):
+
+| Source | 4 KiB | 8 KiB | 12 KiB | 16 KiB |
+|---|---|---|---|---|
+| home | 17/17 | 15/16 | 5/16 | 0/17 |
+| Hetzner | 32/32 | 32/32 | 32/32 | 32/32 |
+
+Paired direct payload counters in this snapshot all passed. These are not
+matched rounds, and exit gates can omit payloads. Persistent source dependence
+and size sensitivity remain; neither a fixed byte boundary nor DPI is proven.
+Classification/filtering, loss/PMTU behavior and WAN-sensitive streaming remain
+plausible. The ordinary HTTPS comparison is the next evidence to review.
+
+Prepare the subsequent source comparison as a draft, not deployed: reuse the
+existing source-control Deployment template for one extra probe on FirstVDS.
+It uses the same image, dedicated XHTTP test profile, public senaev.com:443
+endpoint, matrix, budgets and cadence as the Hetzner source control. Existing
+resources render unchanged, including Hetzner's local-frontend policy. FirstVDS
+gets no additional internal-network allowance and no website worker. Metrics
+use its distinct profile label and existing node relabeling/dashboard selectors.
+
+The probe is only a client; FirstVDS still has no SOCKS inbound or direct Freedom
+outbound. No production subscription/profile, listener, server route, secret,
+host route, firewall, capability or service-account privilege is added. Its
+ordinary direct diagnostic requests are not forwarding user VPN traffic.
+Resource limits remain200mCPU/128Mi, scratch16Mi. It duplicates one existing
+bounded control workload; it does not run continuously every few seconds.
+
+If FirstVDS passes while home fails, prioritize differences in the home
+source/path (including host/ISP/MTU). If both remote sources fail while Hetzner
+self-connect passes, prioritize behavior needing a real network path; this still
+does not isolate Russia-specific filtering or exclude streaming implementation
+issues. An external European source or bounded TCP evidence may then be useful.
+Keep this PR draft until #169 produces interpretable ordinary HTTPS results.
