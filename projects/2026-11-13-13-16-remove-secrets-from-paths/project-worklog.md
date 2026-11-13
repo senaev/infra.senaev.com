@@ -1,5 +1,9 @@
 # Project worklog
 
+## 2026-11-13 15:25 UTC — Log only used fields, never a whole body
+
+The user decided: never log a whole request body or other external JSON, only the fields that the code uses. The Alisa handler now logs only `{ command }`; the rule is in the repository `AGENTS.md`. Three other full-body logs remain in `cluster-helper/src/index.ts` (`/telegram/send-message`, `/qbittorrent/torrent-event`, the Telegram webhook update); the user has not yet chosen whether to fix them in #171 or in a separate PR.
+
 ## 2026-11-13 15:10 UTC — Alisa PR #171 opened
 
 PR https://github.com/senaev/infra.senaev.com/pull/171 adds `POST /alisa-webhook` with the skill and user check; the old secret path still works. The user added the Vault key `ALISA_ALLOWED_USER_IDS` (`session.user.user_id`, not the legacy `session.user_id`, which is per app instance). All pre-push checks pass. Next: merge, deploy, change the Webhook URL in the Yandex Dialogs console, then remove the old route.
