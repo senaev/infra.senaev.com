@@ -25,17 +25,18 @@ It sends `text` to my direct chat with the senaev.com bot. Anyone who does not k
 
 ## Plan
 
-1. 📌 Add the Vault key `PUBLIC_NOTIFICATION_PATH_SECRET` (a long random string) and read it in `cluster-helper/src/env.ts`.
-2. 📌 Add a public route `POST /${PUBLIC_NOTIFICATION_PATH_SECRET}` to `publicServer`:
-   - body `{ text: string }`, only plain text, at most 2000 characters; otherwise 400
-   - send to `TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID` with no parse mode, so the text cannot inject Markdown
-   - add a fixed prefix (for example `📨`) so that I can see that the message came from this path
-   - log the call without the path and without the text
-   - answer 204
-3. 📌 Unit tests: a wrong path gives 404, a bad body gives 400, a good body calls `sendTelegramMessage` with the owner chat ID.
-4. 📌 Put the same secret into `send-message-path` in the vault file.
-5. ❓ Rate limit: do we need one (for example 30 messages per hour), in case the path leaks or a script loops?
-6. ❓ Do we accept one fixed path for all my scripts, or one path for each client, so that I can revoke one client?
+1. ✅ Read the secret path `TELEGRAM_PUBLIC_API_PATH` in `cluster-helper/src/env.ts`; Helm takes it from Vault (`external-secret.yaml`, `cluster-helper.yaml`).
+2. ✅ Public route `POST /${TELEGRAM_PUBLIC_API_PATH}` in `cluster-helper/src/telegramPublicApi.ts`:
+   - body `{ text: string }`, 1–2000 characters, body limit 16 KB; otherwise 400
+   - sent to `TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID`. `sendTelegramMessage` supports only rich Markdown, so the text is escaped with `escapeTelegramMarkdown` and cannot inject Markdown
+   - prefix `📨 `
+   - the route has `logLevel: 'silent'`, because Fastify logs the URL (the secret) of each request; the route logs only the text length
+   - answer 204; 502 when Telegram fails
+3. ✅ Unit tests in `telegramPublicApi.test.ts`: wrong path → 404, bad body → 400, good body → escaped text with the prefix, Telegram failure → 502, the log has neither the path nor the text.
+4. 📌 Before the deploy: add the Vault key `TELEGRAM_PUBLIC_API_PATH` (`openssl rand -hex 32`) in `senaev-com-kv`. The variable is required, so cluster-helper does not start without it.
+5. 📌 Put the same secret into `send-message-path` in the vault file.
+6. ✅ No rate limit: the secret path is enough (decision of 2026-11-13).
+7. ✅ One fixed path for all scripts. To revoke, rotate the Vault key (decision of 2026-11-13).
 
 ## Verification
 

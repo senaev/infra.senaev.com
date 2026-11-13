@@ -31,6 +31,7 @@ vi.hoisted(() => {
         'OBSIDIAN_TASKS_CHAT_ID',
         'TRICKY_DAD_CHAT_ID',
         'TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID',
+        'TELEGRAM_PUBLIC_API_PATH',
     ]) {
         process.env[name] ??= 'test';
     }

@@ -141,6 +141,14 @@ through unchanged. One API key for all clients, Vault `LLM_ENDPOINT_API_KEY`, ch
 before the body is read. The model list is `cluster-helper/src/llm/llmEndpointModels.ts`.
 See [`projects/2026-11-06-10-23-personal-llm-connector`](projects/2026-11-06-10-23-personal-llm-connector/README.md).
 
+## Telegram public API
+
+`POST https://api.senaev.com/<secret path>` with `{ "text": "..." }` sends the text (escaped,
+with a `📨` prefix) to the owner's chat with the senaev.com bot, for scripts outside the
+cluster and the tailnet. The path is Vault `TELEGRAM_PUBLIC_API_PATH`; any other path gives
+404. The route must not log its URL. Code: `cluster-helper/src/telegramPublicApi.ts`. See
+[`projects/2026-11-12-14-15-public-telegram-notification-path`](projects/2026-11-12-14-15-public-telegram-notification-path/README.md).
+
 ## Shared Toolchain
 
 The root `package.json` is not a workspace root. It is a private manifest that owns the

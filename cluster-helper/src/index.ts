@@ -29,8 +29,10 @@ import {
     LLM_SERVER_URL,
     MCP_DOMAIN,
     MCP_GRAFANA_URL,
+    TELEGRAM_PUBLIC_API_PATH,
     TG_CLUSTER_CHAT_ID,
     TG_MEDIA_SERVER_CHAT_ID,
+    TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID,
     TG_TOKEN_SENAEV_COM_BOT,
 } from './env';
 import { handleAlisaRequest } from './trickyDad/handleAlisaRequest';
@@ -51,6 +53,7 @@ import {
 import { processTelegramWebhookData } from './processTelegramWebhookData';
 import { proxyPublicStaticFile } from './publicStaticProxy';
 import { formatTorrentEvent, isTorrentEvent } from './qbittorrent/formatTorrentEvent';
+import { telegramPublicApi } from './telegramPublicApi';
 import { startTorrentOutboxProcessor, stopTorrentOutboxProcessor } from './torrentOutbox';
 
 const HOST = '0.0.0.0';
@@ -65,7 +68,7 @@ const HOST = '0.0.0.0';
 //
 // PUBLIC_PORT is what the five ingresses target -- api.senaev.com,
 // auth.senaev.com, mcp.senaev.com, s.senaev.com and static.senaev.com. Every route on it is either
-// authenticated (Telegram secret token, Alisa secret path, OAuth bearer tokens for the
+// authenticated (Telegram secret token, Alisa and Telegram public API secret paths, OAuth bearer tokens for the
 // ChatGPT MCP endpoints, the API key of /llm), part of the OAuth flow, or safe to publish, and the catch-all
 // below answers 401 so nothing new leaks by accident.
 //
@@ -390,6 +393,16 @@ async function main(): Promise<void> {
         prefix: LLM_ENDPOINT_PREFIX,
         apiKey: LLM_ENDPOINT_API_KEY,
         models: getLlmEndpointModels(LLM_SERVER_URL),
+    });
+
+    await publicServer.register(telegramPublicApi, {
+        path: TELEGRAM_PUBLIC_API_PATH,
+        sendMessage: (text) => sendTelegramMessage({
+            text,
+            chatId: TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID,
+            token: TG_TOKEN_SENAEV_COM_BOT,
+        }),
+        logger,
     });
 
     await startTorrentOutboxProcessor();
