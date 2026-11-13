@@ -87,7 +87,7 @@ found, and any checks that the available tools could not perform.
 
 Run `npm run test:smoke` from the repository root, always through npm. It checks that the
 public websites answer, and needs no cluster access. The list of URLs is in
-`scripts/smoke-test-websites.ts`.
+`scripts/smoke-test-websites.test.ts`.
 
 For the ChatGPT MCP connector, ask ChatGPT to read a note, search the vault and add a diary
 record, then check the `🤖 ChatGPT MCP message` logs of cluster-helper.
