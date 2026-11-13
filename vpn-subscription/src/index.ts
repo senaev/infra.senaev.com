@@ -243,6 +243,8 @@ server.post<{ Params: { secret: string } }>('/:secret', async (request, reply) =
     });
 
     if (!clusterHelperResponse.ok) {
+        logger.error({ status: clusterHelperResponse.status }, '❌ Cannot send the error report to Telegram');
+
         return reply.code(500).type('application/json; charset=utf-8').send({
             status: 'error',
             message: 'Cannot send Telegram message',
