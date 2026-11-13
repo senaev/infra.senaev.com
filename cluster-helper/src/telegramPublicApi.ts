@@ -4,9 +4,6 @@ import type { FastifyPluginCallback } from 'fastify';
 
 export const TELEGRAM_PUBLIC_API_PATH = '/telegram-public-bot-api';
 
-// The Bot API takes uploads of up to 50 MB.
-const BODY_LIMIT_BYTES = 50 * 1024 * 1024;
-
 // Bot API method names are letters only; anything else could change the upstream path.
 const METHOD_NAME = /^[A-Za-z]+$/;
 
@@ -15,7 +12,6 @@ export type TelegramPublicApiOptions = {
     secret: string;
     /** `https://api.telegram.org/bot<token>`: the proxy adds only the bot token. */
     telegramApiBaseUrl: string;
-    fetch?: typeof fetch;
 };
 
 function sha256(value: string): Buffer {
@@ -29,7 +25,7 @@ function sha256(value: string): Buffer {
  * the cluster and the tailnet. Every method is allowed, so the secret gives full control of the bot.
  */
 export const telegramPublicApi: FastifyPluginCallback<TelegramPublicApiOptions> = (instance, {
-    secret, telegramApiBaseUrl, fetch: fetchTelegram = fetch,
+    secret, telegramApiBaseUrl,
 }, done) => {
     const secretHash = sha256(secret);
 
@@ -51,10 +47,9 @@ export const telegramPublicApi: FastifyPluginCallback<TelegramPublicApiOptions> 
     });
 
     instance.removeAllContentTypeParsers();
-    instance.addContentTypeParser('*', {
-        parseAs: 'buffer',
-        bodyLimit: BODY_LIMIT_BYTES,
-    }, (_request, body, parserDone) => parserDone(null, body));
+    // The body is buffered within Fastify's default bodyLimit, which protects the memory;
+    // Telegram applies its own limits.
+    instance.addContentTypeParser('*', { parseAs: 'buffer' }, (_request, body, parserDone) => parserDone(null, body));
 
     instance.route<{ Params: { method: string } }>({
         method: [
@@ -62,7 +57,6 @@ export const telegramPublicApi: FastifyPluginCallback<TelegramPublicApiOptions> 
             'POST',
         ],
         url: '/:method',
-        bodyLimit: BODY_LIMIT_BYTES,
         handler: async (request, reply) => {
             const { method } = request.params;
 
@@ -79,7 +73,7 @@ export const telegramPublicApi: FastifyPluginCallback<TelegramPublicApiOptions> 
             reply.raw.on('close', () => abortController.abort());
 
             try {
-                const response = await fetchTelegram(`${telegramApiBaseUrl}/${method}${query}`, {
+                const response = await fetch(`${telegramApiBaseUrl}/${method}${query}`, {
                     method: request.method,
                     ...(contentType !== undefined && { headers: { 'content-type': contentType } }),
                     // A Buffer is not a BodyInit: its store may be a SharedArrayBuffer.

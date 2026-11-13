@@ -62,6 +62,7 @@ beforeEach(async () => {
         ok: true,
         result: { message_id: 1 },
     }));
+    vi.stubGlobal('fetch', fetchTelegram);
     logLines = [];
     server = Fastify({
         logger: {
@@ -75,12 +76,12 @@ beforeEach(async () => {
         prefix: TELEGRAM_PUBLIC_API_PATH,
         secret: SECRET,
         telegramApiBaseUrl: TELEGRAM_API_BASE_URL,
-        fetch: fetchTelegram,
     });
 });
 
 afterEach(async () => {
     await server.close();
+    vi.unstubAllGlobals();
 });
 
 describe('telegramPublicApi', () => {
@@ -163,6 +164,13 @@ describe('telegramPublicApi', () => {
             headers: undefined,
             body: undefined,
         });
+    });
+
+    it('answers 413 to a body over the default Fastify limit of 1 MiB, and calls nothing', async () => {
+        const response = await call({ payload: 'a'.repeat(1024 * 1024 + 1) });
+
+        expect(response.statusCode).toBe(413);
+        expect(fetchTelegram).not.toHaveBeenCalled();
     });
 
     it('returns an error of Telegram unchanged', async () => {
