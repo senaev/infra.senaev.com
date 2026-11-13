@@ -32,8 +32,8 @@ A secret must go in a header (`Authorization: Bearer …`) or in the body, as th
    3. ✅ After the deploy, set the skill "Webhook URL" to `https://api.senaev.com/alisa-webhook` in the Yandex Dialogs console and check that Alisa answers.
    4. ✅ Remove the old route and the env variable `ALISA_WEBHOOK_SECRET` from the code and Helm (PR #174). No rotation needed: the old secret stops working.
    5. ✅ Delete the Vault key `ALISA_WEBHOOK_SECRET`.
-3. 📌 vpn-subscription: Happ cannot send a header, so the secret stays in the path, as with other VPN subscription providers. `vpn-subscription/src/requestLogging.ts` turns off the Fastify request logging (`LogController` with `disableRequestLogging`): all its request lines (incoming, completed, not found, errored) contain the URL. An error handler logs only the error of a failed request (5xx).
-4. 📌 APM: after step 2, vpn-subscription is the only service with a secret path. It gets `admission.datadoghq.com/enabled: "false"`: dd-trace writes the full path to `http.url`, and the traces of this small service have almost no value.
+3. ✅ vpn-subscription (PR #175): Happ cannot send a header, so the secret stays in the path, as with other VPN subscription providers. `vpn-subscription/src/requestLogging.ts` turns off the Fastify request logging (`LogController` with `disableRequestLogging`): all its request lines (incoming, completed, not found, errored) contain the URL. An error handler logs only the error of a failed request (5xx).
+4. ✅ APM (PR #175): after step 2, vpn-subscription is the only service with a secret path. It gets `admission.datadoghq.com/enabled: "false"`: dd-trace writes the full path to `http.url`, and the traces of this small service have almost no value.
 5. 📌 After each route is fixed, rotate its secret: the old value is already in the logs and traces. For Alisa, change the webhook URL in the Yandex Dialogs console at the same time.
 
 ## Verification

@@ -1,5 +1,9 @@
 # Project worklog
 
+## 2026-11-13 16:30 UTC — vpn-subscription deployed and verified
+
+PR #175 (`39504cf8`) deployed (run `43462163575`); the new pod `vpn-subscription-56755c4c94-lxk4f` logs only its start lines. Requests to `/wrong-secret-smoke-check` (403) and `/wrong-secret-smoke-check/extra` (404) left no log in Datadog. APM had 74 vpn-subscription spans in the 24 hours before, none after. A CodeRabbit finding was fixed before the merge: a failed error-report delivery to cluster-helper now logs `❌ Cannot send the error report to Telegram` with the status only. Left: rotation (step 5) and the full-body logs in cluster-helper.
+
 ## 2026-11-13 16:20 UTC — vpn-subscription: keep the secret path, hide it from logs and APM
 
 The Happ docs have no header or Basic auth for a subscription: it is one URL, as with other VPN subscription providers. The user chose to keep the secret in the path and stop writing it: the Fastify request logging is off, and APM is turned off for the pod (`admission.datadoghq.com/enabled: "false"`). A `req` serializer was tried first, but the default 404 handler also logs the URL (`Route GET:<url> not found`); the user chose to turn all request logging off, so that no Fastify log line can write the path. An error handler still logs the error of a 5xx request, without the request. The real VPN keys (VLESS UUIDs) are in the response body, not in the URL, so the leak was only to our own Datadog and Loki. Rotation is a separate decision: one shared secret means every user adds the subscription again; per-user tokens or Happ `new-url` (needs a Provider ID) are the options.
