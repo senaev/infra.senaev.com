@@ -1,5 +1,9 @@
 # Project worklog
 
+## 2026-11-13 16:55 UTC — cluster-helper body logs deployed; all plan steps done
+
+PR #176 (`facaee59`) deployed (run `43465773465`): pod `cluster-helper-6668b754c7-62cbn` ready at 16:47:41 UTC, no errors or warnings, `npm run test:smoke` passes. No Telegram update or torrent event arrived yet to see the new log fields. All plan steps are ✅; only the verification section (search for the new secret values in Datadog and Loki) is left.
+
 ## 2026-11-13 16:40 UTC — cluster-helper: no whole bodies in logs
 
 The user rotated `VPN_SUBSCRIPTION_SECRET` in Vault. A new PR removes the last whole-body logs from cluster-helper: `/telegram/send-message` (now `chatId` and the text length: the text can hold the IP and user agent of a VPN error report), `/qbittorrent/torrent-event` (now `event` and `name`, logged after the validation), and the Telegram webhook update (now the update ID and types, logged after the secret check, so unauthenticated requests are not logged). The non-object-body warning and the "unsupported update" error also stop writing the body.
