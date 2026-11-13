@@ -1,5 +1,9 @@
 # Project worklog
 
+## 2026-11-13 15:45 UTC — Project finished
+
+The user sent a real `sendMessage` through the proxy from the laptop, to chat `184352484`, and the message arrived. Together with the deploy checks (401 without a secret, smoke tests, no errors), this finishes the verification. The Result section is written. The user also put the secret and the chat ID into the client front matter and deleted the old Vault key `TELEGRAM_PUBLIC_API_PATH`, so no open points remain.
+
 ## 2026-11-13 13:45 UTC — Simplified: JSON only, default body limit, plain secret check
 
 On review, the user simplified the proxy: `POST` with JSON only (Fastify's own parser; no raw buffer parser, no multipart, no GET with query), Fastify's default 1 MiB body limit instead of a Telegram-specific 50 MB, the global `fetch` stubbed in tests instead of a `fetch` option, and a plain `!==` secret check instead of SHA-256 + `timingSafeEqual`. Route renamed to `/telegram-public-bot-api`.

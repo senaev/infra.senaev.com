@@ -39,8 +39,8 @@ Changed on 2026-11-13: the endpoint is a thin proxy to the whole Bot API of the 
    - 502 when Telegram is unreachable
    - file downloads (`https://api.telegram.org/file/bot<token>/<path>`) are not proxied
 3. ✅ Unit tests in `telegramPublicApi.test.ts`: missing or wrong secret → 401; bad method name → 404; not JSON → 415; over 1 MiB → 413; the JSON body is forwarded with the bot token, no body → `{}`; Telegram errors are returned unchanged; unreachable Telegram → 502; the log has neither the secret, the bot token nor the body.
-4. 📌 Add the Vault key `TELEGRAM_PUBLIC_API_SECRET` in `senaev-com-kv` before the merge (the value of the old key `TELEGRAM_PUBLIC_API_PATH` can be reused: it was never deployed), then delete `TELEGRAM_PUBLIC_API_PATH`. The variable is required, so cluster-helper does not start without it.
-5. 📌 Put the same secret into the front matter of the vault file. The client also needs my chat ID (`TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID`) for `chat_id`.
+4. ✅ Add the Vault key `TELEGRAM_PUBLIC_API_SECRET` in `senaev-com-kv` before the merge (the value of the old key `TELEGRAM_PUBLIC_API_PATH` can be reused: it was never deployed), then delete `TELEGRAM_PUBLIC_API_PATH`. The variable is required, so cluster-helper does not start without it.
+5. ✅ Put the same secret into the front matter of the vault file. The client also needs my chat ID (`TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID`) for `chat_id`.
 6. ✅ No rate limit: the secret is enough (decision of 2026-11-13).
 7. ✅ One secret for all scripts. To revoke, rotate the Vault key (decision of 2026-11-13).
 8. ✅ The secret is in a header, not in the path (decision of 2026-11-13; see [`2026-11-13-13-16-remove-secrets-from-paths`](../2026-11-13-13-16-remove-secrets-from-paths/README.md)).
@@ -54,3 +54,13 @@ Changed on 2026-11-13: the endpoint is a thin proxy to the whole Bot API of the 
    The answer is `{"ok":true,…}` and the message arrives in my bot chat.
 2. `curl -sS -o /dev/null -w '%{http_code}' -X POST https://api.senaev.com/telegram-public-bot-api/getMe` (no header) gives `401`.
 3. `bash scripts/smoke-test-websites.sh` still passes.
+
+## Result
+
+✅ Done on 2026-11-13.
+
+- PR [#170](https://github.com/senaev/infra.senaev.com/pull/170) (`1ee2f5e6`) added the thin proxy `POST https://api.senaev.com/telegram-public-bot-api/<method>` with `Authorization: Bearer <TELEGRAM_PUBLIC_API_SECRET>`. Usage is in [`AGENTS.md`](../../AGENTS.md#telegram-public-api).
+- Verified after the deploy: without a secret and with a wrong secret, `getMe` gives 401; the smoke tests pass; there are no new errors. The user sent a `sendMessage` from the laptop to chat `184352484` (`telegramSenaevComBotDirectMessageWithOwnerChatId` in `provisioning/helm/common-values.yaml`), and the message arrived.
+- Found during the deploy check: the new cluster-helper pod restarted 5 times on start, because the liveness probe killed it while `tsx` compiled the code. Fixed outside this project with a `startupProbe` (`3d928cef`). Startup timing logs (`e089595a`) show that module loading takes 6 of the 8 seconds of a start.
+- ✅ The secret and the chat ID are in the front matter of `@senaev/work_stream/work_stream_workflow.md` for the work-log skill (step 5).
+- ✅ The old Vault key `TELEGRAM_PUBLIC_API_PATH` is deleted.
