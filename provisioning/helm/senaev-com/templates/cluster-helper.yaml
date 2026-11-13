@@ -223,6 +223,16 @@ spec:
                   name: senaev-com-kv-secrets
                   key: SUPABASE_PUBLISHABLE_KEY
                   optional: false
+          # No endpoint answers until tsx has compiled the code and startup is done. On a
+          # busy node, for example during a deploy, that took longer than the liveness
+          # probe allows, and the pod was killed in a loop. The startupProbe gives a start
+          # up to 2 minutes; startup is finished when the pod is ready for the first time.
+          startupProbe:
+            httpGet:
+              path: /health/ready
+              port: internal
+            periodSeconds: 5
+            failureThreshold: 24
           livenessProbe:
             httpGet:
               path: /health/live
