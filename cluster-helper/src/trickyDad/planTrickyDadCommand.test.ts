@@ -34,15 +34,29 @@ type CallLlmJsonArgs = Parameters<typeof callLlmJson>[0];
 function answerWith(answer: unknown): void {
     vi.mocked(callLlmJson).mockImplementation(({ parse }) => Promise.resolve({
         value: parse(answer),
-        provider: 'llm-server',
+        provider: 'openrouter',
         attempts: [
             {
-                provider: 'llm-server',
+                provider: 'openrouter',
                 durationMs: 5,
                 error: null,
             },
         ],
     }) as ReturnType<typeof callLlmJson>);
+}
+
+function answerWithNothing(): void {
+    vi.mocked(callLlmJson).mockResolvedValue({
+        value: null,
+        provider: null,
+        attempts: [
+            {
+                provider: 'openrouter',
+                durationMs: 100,
+                error: 'invalid response',
+            },
+        ],
+    });
 }
 
 function getRequest(): CallLlmJsonArgs {
@@ -61,45 +75,25 @@ beforeEach(() => {
 
 describe('planTrickyDadCommand', () => {
     it('asks only the enabled providers: OpenRouter, not the disabled llm-server', async () => {
-        answerWith({
-            actions: [
-                {
-                    type: 'add_shopping_items',
-                    items: ['Хлеб'],
-                },
-            ],
-            error: null,
-        });
+        answerWith({ items: ['Хлеб'] });
 
         await planTrickyDadCommand('купи хлеб', 'Tricky Dad Telegram chat');
 
         expect(getRequest().providers.map(({ name }) => name)).toEqual(['openrouter']);
     });
 
-    it('lets the model choose several actions for a multi-action source', async () => {
-        answerWith({
-            actions: [
-                {
-                    type: 'add_shopping_items',
-                    items: ['Хлеб'],
-                },
-                {
-                    type: 'add_tasks',
-                    tasks: [
-                        {
-                            title: 'Позвонить в банк',
-                            date: '2026-11-07',
-                        },
-                    ],
-                },
-            ],
-            error: null,
-        });
+    it.each([
+        'Tricky Dad Telegram chat',
+        'Alisa',
+    ] as const)('asks only for shopping items, never for tasks, from %s', async (source) => {
+        answerWith({ items: ['Арбуз'] });
 
-        const plan = await planTrickyDadCommand('купи хлеб, а папа пусть завтра позвонит в банк', 'Tricky Dad Telegram chat');
+        const plan = await planTrickyDadCommand('попроси умного папу купить арбуз', source);
 
+        expect(getRequest().jsonSchema.name).toBe('add_shopping_items');
+        expect(getRequest().messages[0]?.content).not.toContain('add_tasks');
         expect(plan.isCommandFallback).toBe(false);
-        expect(plan.llmProvider).toBe('llm-server');
+        expect(plan.llmProvider).toBe('openrouter');
         expect(plan.actions.map(({
             type, entries, reportChatId,
         }) => [
@@ -109,52 +103,13 @@ describe('planTrickyDadCommand', () => {
         ])).toEqual([
             [
                 'add_shopping_items',
-                ['Хлеб'],
+                ['Арбуз'],
                 'tricky-dad-chat',
             ],
-            [
-                'add_tasks',
-                ['Позвонить в банк'],
-                'tasks-chat',
-            ],
-        ]);
-
-        const { schema } = getRequest().jsonSchema;
-        const variants = (schema as { properties: { actions: { items: { anyOf: Array<{ properties: { type: { enum: string[] } } }> } } } })
-            .properties.actions.items.anyOf;
-
-        expect(variants.map(({ properties }) => properties.type.enum)).toEqual([
-            ['add_tasks'],
-            ['add_shopping_items'],
         ]);
     });
 
-    it('keeps the system prompt stable and puts the date last, for the llm-server prompt cache', async () => {
-        answerWith({
-            actions: [
-                {
-                    type: 'add_shopping_items',
-                    items: ['Хлеб'],
-                },
-            ],
-            error: null,
-        });
-
-        await planTrickyDadCommand('купи хлеб', 'Tricky Dad Telegram chat');
-
-        const [
-            system,
-            user,
-        ] = getRequest().messages;
-
-        expect(system?.content).toMatch(/Today's date is \d{4}-\d{2}-\d{2}\.$/);
-        expect(user).toEqual({
-            role: 'user',
-            content: 'купи хлеб',
-        });
-    });
-
-    it('asks only for task arguments in the task-only Obsidian Tasks chat', async () => {
+    it('asks only for tasks, never for shopping items, from the Tasks chat', async () => {
         answerWith({
             tasks: [
                 {
@@ -171,51 +126,33 @@ describe('planTrickyDadCommand', () => {
         expect(getRequest().messages[0]?.content).not.toContain('add_shopping_items');
     });
 
-    it('rejects whitespace-only shopping items', async () => {
-        answerWith({
-            actions: [
-                {
-                    type: 'add_shopping_items',
-                    items: ['  '],
-                },
-            ],
-            error: null,
+    it('keeps the system prompt stable and puts the date last, for the provider prompt cache', async () => {
+        answerWith({ items: ['Хлеб'] });
+
+        await planTrickyDadCommand('купи хлеб', 'Tricky Dad Telegram chat');
+
+        const [
+            system,
+            user,
+        ] = getRequest().messages;
+
+        expect(system?.content).toMatch(/Today's date is \d{4}-\d{2}-\d{2}\.$/);
+        expect(user).toEqual({
+            role: 'user',
+            content: 'купи хлеб',
         });
+    });
+
+    it('rejects whitespace-only shopping items, so the next provider tries', async () => {
+        answerWith({ items: ['  '] });
 
         await expect(planTrickyDadCommand('купить', 'Tricky Dad Telegram chat')).rejects.toThrow('every item must be a non-empty string');
     });
 
-    it('rejects a partial response with actions and an error so the next provider retries', async () => {
-        answerWith({
-            actions: [
-                {
-                    type: 'add_shopping_items',
-                    items: ['Хлеб'],
-                },
-            ],
-            error: 'Could not create the requested task',
-        });
+    it('rejects an answer that is not an object, so the next provider tries', async () => {
+        answerWith(['Хлеб']);
 
-        await expect(planTrickyDadCommand('купи хлеб и создай задачу', 'Tricky Dad Telegram chat'))
-            .rejects.toThrow('actions is non-empty but error is not null: "Could not create the requested task"');
-    });
-
-    it('rejects an unknown action type, so the next provider tries', async () => {
-        answerWith({
-            actions: [{ type: 'delete_everything' }],
-            error: null,
-        });
-
-        await expect(planTrickyDadCommand('удали всё', 'Tricky Dad Telegram chat')).rejects.toThrow('unknown action type');
-    });
-
-    it('rejects an empty answer without a reason, so the next provider tries', async () => {
-        answerWith({
-            actions: [],
-            error: null,
-        });
-
-        await expect(planTrickyDadCommand('привет', 'Tricky Dad Telegram chat')).rejects.toThrow('actions is empty');
+        await expect(planTrickyDadCommand('купи хлеб', 'Alisa')).rejects.toThrow('add_shopping_items must be an object');
     });
 
     it('rejects invalid arguments, so the next provider tries', async () => {
@@ -264,71 +201,31 @@ describe('planTrickyDadCommand', () => {
         expect(plan.actions).toHaveLength(1);
     });
 
-    it('rejects an empty action list with a reason so the next provider can retry', async () => {
-        answerWith({
-            actions: [],
-            error: 'Это приветствие',
-        });
+    it('saves the raw command to the shopping list from Alisa when no provider answers', async () => {
+        answerWithNothing();
 
-        await expect(planTrickyDadCommand('привет', 'Tricky Dad Telegram chat'))
-            .rejects.toThrow('no actions returned: Это приветствие');
-    });
-
-    it('rejects repeated action types so the next provider can retry', async () => {
-        answerWith({
-            actions: [
-                {
-                    type: 'add_shopping_items',
-                    items: ['Хлеб'],
-                },
-                {
-                    type: 'add_shopping_items',
-                    items: ['Молоко'],
-                },
-            ],
-            error: null,
-        });
-
-        await expect(planTrickyDadCommand('купи хлеб и молоко', 'Tricky Dad Telegram chat'))
-            .rejects.toThrow('repeated action type');
-    });
-
-    it('keeps rejected empty-response reasons in the provider attempts when command fallback runs', async () => {
-        vi.mocked(callLlmJson).mockResolvedValue({
-            value: null,
-            provider: null,
-            attempts: [
-                {
-                    provider: 'llm-server',
-                    durationMs: 100,
-                    error: 'no actions returned: uncertain',
-                },
-                {
-                    provider: 'openrouter',
-                    durationMs: 150,
-                    error: 'invalid response',
-                },
-            ],
-        });
-
-        const plan = await planTrickyDadCommand('привет', 'Tricky Dad Telegram chat');
+        const plan = await planTrickyDadCommand('купи арбуз', 'Alisa');
 
         expect(plan.isCommandFallback).toBe(true);
-        expect(plan.actions[0]?.entries).toEqual(['привет']);
-        expect(plan.llmAttempts[0]?.error).toContain('uncertain');
+        expect(plan.error).toBe('❌ No LLM provider gave a usable answer');
+        expect(plan.llmAttempts[0]?.error).toBe('invalid response');
+        expect(plan.actions.map(({ type, entries }) => [
+            type,
+            entries,
+        ])).toEqual([
+            [
+                'add_shopping_items',
+                ['купи арбуз'],
+            ],
+        ]);
     });
 
     it('saves the raw command as a task in Obsidian Tasks when no provider answers', async () => {
-        vi.mocked(callLlmJson).mockResolvedValue({
-            value: null,
-            provider: null,
-            attempts: [],
-        });
+        answerWithNothing();
 
         const plan = await planTrickyDadCommand('позвонить маме', 'Tasks Telegram chat');
 
         expect(plan.isCommandFallback).toBe(true);
-        expect(plan.error).toBe('❌ No LLM provider gave a usable answer');
         expect(plan.actions.map(({ type, entries }) => [
             type,
             entries,

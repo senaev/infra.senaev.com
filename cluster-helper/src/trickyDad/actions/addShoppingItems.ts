@@ -10,7 +10,6 @@ const TYPE = 'add_shopping_items';
 
 export const ADD_SHOPPING_ITEMS_ACTION: TrickyDadAction = {
     type: TYPE,
-    whenToUse: [`Use ${TYPE} for everything that no other action covers, both things and actions, including requests to do, remember, schedule or add tasks; do not classify by objects versus actions or majority category.`],
     instructions: [
         'Return every requested entry in items, starting with a capital letter. Preserve all details, including amounts, quantities, units, names and deadlines.',
         'For purchases, use standalone product names without purchase verbs or list-management commands, in any language. Preserve other actions as worded; do not turn them into products.',

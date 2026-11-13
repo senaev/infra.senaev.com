@@ -18,13 +18,11 @@ export type PlannedTrickyDadAction = {
 };
 
 /**
- * One thing that Tricky Dad can do. A new action is a new file with this shape, added to
- * the action list of the sources that may use it in `TrickyDadSource.ts`.
+ * One thing that Tricky Dad can do. A new action is a new file with this shape, set as the
+ * action of a source in `TrickyDadSource.ts`.
  */
 export type TrickyDadAction = {
     type: string;
-    /** Prompt lines that tell the model when to choose this action. Used only when a source has several actions. */
-    whenToUse: string[];
     /** Prompt lines that tell the model how to fill the arguments. */
     instructions: string[];
     /** JSON schema properties of the arguments, without `type`. All of them are required. */

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Manual public website checks: ./scripts/smoke-test-websites.sh
+# Manual public website checks: npm run test:smoke
 # Runs from any host; no Kubernetes context or credentials required.
 set -u
 

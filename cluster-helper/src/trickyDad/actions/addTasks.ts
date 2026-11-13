@@ -57,10 +57,6 @@ function parseTask(task: unknown): TaskWithDate {
 
 export const ADD_TASKS_ACTION: TrickyDadAction = {
     type: TYPE,
-    whenToUse: [
-        `Use ${TYPE} only for explicit assignments to Dad/Papa, Andrei or the user's husband, or explicit additions to his task list.`,
-        'Mentioning him or invoking the skill does not assign him an action. Apply this rule in every language; never infer an assignee from the action, date, place or speaker.',
-    ],
     instructions: [
         'Return each distinct action as a separate entry in tasks; never split a single action. Never return an empty tasks array.',
         'Keep task titles as close to the original wording as possible, changing only what is necessary. Never summarize or drop details; every detail must appear in a title.',
