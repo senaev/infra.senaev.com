@@ -1,5 +1,9 @@
 # Project worklog
 
+## 2026-11-13 13:20 UTC — Thin proxy to the Bot API
+
+The user asked for a thin proxy instead of a fixed "send text to me" route: the client builds any Bot API request, the endpoint adds only the bot token. Asked about the risk (a leaked path gives full control of the bot, e.g. `setWebhook`); the user chose all methods and any chat. The raw body is forwarded (the plugin replaces the content type parsers with one buffer parser), so multipart uploads work. The Markdown/32000 limit work below is replaced. Secret-in-path is moved to the project `2026-11-13-13-16-remove-secrets-from-paths`.
+
 ## 2026-11-13 — Rich Markdown, 32000 characters; Vault key added
 
 The user added the Vault key `TELEGRAM_PUBLIC_API_PATH`. The user wants to send whole Markdown files, so `text` is now sent unchanged as Telegram Rich Markdown (no escaping), with a limit of 32000 code points (the rich message limit is 32768). The 2000 limit had no reason except the first plan. The prefix `📨` is now its own paragraph, so a first-line heading still renders.

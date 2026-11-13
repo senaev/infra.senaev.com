@@ -4,6 +4,7 @@ import { ResourceReadGate } from 'senaev-utils/src/toolServer/ResourceReadGate';
 import Fastify, { FastifyReply } from 'fastify';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { callTelegramApi } from 'senaev-utils/src/utils/TelegramApi/callTelegramApi';
+import { createTelegramApiBaseUrl } from 'senaev-utils/src/utils/TelegramApi/createTelegramApiBaseUrl';
 import { escapeTelegramMarkdown } from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
 import { getCurrentTelegramBotInfo } from 'senaev-utils/src/utils/TelegramApi/getCurrentTelegramBotInfo';
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
@@ -32,7 +33,6 @@ import {
     TELEGRAM_PUBLIC_API_PATH,
     TG_CLUSTER_CHAT_ID,
     TG_MEDIA_SERVER_CHAT_ID,
-    TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID,
     TG_TOKEN_SENAEV_COM_BOT,
 } from './env';
 import { handleAlisaRequest } from './trickyDad/handleAlisaRequest';
@@ -397,11 +397,7 @@ async function main(): Promise<void> {
 
     await publicServer.register(telegramPublicApi, {
         path: TELEGRAM_PUBLIC_API_PATH,
-        sendMessage: (text) => sendTelegramMessage({
-            text,
-            chatId: TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID,
-            token: TG_TOKEN_SENAEV_COM_BOT,
-        }),
+        telegramApiBaseUrl: createTelegramApiBaseUrl(TG_TOKEN_SENAEV_COM_BOT),
         logger,
     });
 

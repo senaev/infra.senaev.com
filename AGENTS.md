@@ -143,11 +143,11 @@ See [`projects/2026-11-06-10-23-personal-llm-connector`](projects/2026-11-06-10-
 
 ## Telegram public API
 
-`POST https://api.senaev.com/<secret path>` with `{ "text": "..." }` sends the text (Telegram
-Rich Markdown, up to 32000 characters, unchanged after a `📨` paragraph) to the owner's chat
-with the senaev.com bot, for scripts outside the
-cluster and the tailnet. The path is Vault `TELEGRAM_PUBLIC_API_PATH`; any other path gives
-404. The route must not log its URL. Code: `cluster-helper/src/telegramPublicApi.ts`. See
+`GET|POST https://api.senaev.com/<secret path>/<method>` is a thin proxy to the Bot API of the
+senaev.com bot, for scripts outside the cluster and the tailnet: the request goes to
+`https://api.telegram.org/bot<token>/<method>` unchanged (query, body, content type, also
+multipart), and only the token is added. All methods and chats are allowed. The path is Vault
+`TELEGRAM_PUBLIC_API_PATH`; any other path gives 404. The route must not log its URL. Code: `cluster-helper/src/telegramPublicApi.ts`. See
 [`projects/2026-11-12-14-15-public-telegram-notification-path`](projects/2026-11-12-14-15-public-telegram-notification-path/README.md).
 
 ## Shared Toolchain
