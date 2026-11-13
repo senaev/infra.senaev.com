@@ -21,6 +21,9 @@ class HTTPSBulkTests(unittest.TestCase):
             ({'ok': False}, ''), ({'ok': True}, '')]
         self.assertFalse(probe.https_bulk_controls('test'))
         self.assertEqual(request.call_count, 6)
+        self.assertEqual(request.call_args_list[0].kwargs, {"text_limit": 65536, "http1": True})
+        self.assertTrue(all(c.kwargs == {"head": True, "http1": True}
+                            for c in request.call_args_list[1:3]))
         for call, size in zip(request.call_args_list[3:], [8192, 16384, 65536]):
             self.assertEqual(call.args, ('https://senaev.com/_next/static/chunks/large.js', '', size))
             self.assertEqual(call.kwargs, {'expected_status': 206, 'expected_bytes': size, 'range_bytes': size})
@@ -91,3 +94,19 @@ class HTTPSBulkTests(unittest.TestCase):
     def test_failed_vpn_does_not_suppress_control_or_become_success(self, wait, vpn, bulk, emit):
         self.assertEqual(probe.experiment_loop('home', 'proxy', once=True, diagnostics=True), 1)
         bulk.assert_called_once_with('home', None)
+
+    @patch('probe.subprocess.run')
+    def test_http1_flag_and_negotiated_version_are_explicit_and_other_checks_unchanged(self, run):
+        for force, version in [(False, '2'), (True, '1.1')]:
+            run.return_value = subprocess.CompletedProcess([], 0,
+                json.dumps({'http_code': 200, 'http_version': version}), '')
+            result, _ = probe.request('https://senaev.com/', '', 65536, http1=force)
+            self.assertEqual('--http1.1' in run.call_args.args[0], force)
+            self.assertEqual(result['http_version'], version)
+            for flag in ['--insecure', '--location', '--retry']:
+                self.assertNotIn(flag, run.call_args.args[0])
+        run.return_value = subprocess.CompletedProcess([], 28,
+            json.dumps({'http_code': 0, 'http_version': '0'}), '')
+        result, _ = probe.request('https://senaev.com/', '', 65536, http1=True)
+        self.assertFalse(result['ok'])
+        self.assertNotIn('http_version', result)

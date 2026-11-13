@@ -980,3 +980,27 @@ Primary sources:
 - https://xtls.github.io/en/config/transports/sockopt.html
 - https://github.com/XTLS/Xray-core/blob/v26.9.30/transport/internet/sockopt_linux.go
 - https://github.com/XTLS/Xray-core/blob/v26.9.30/transport/internet/splithttp/dialer.go
+
+### 2026-11-13 18:59 UTC — First control results; align discovery before MSS tests
+
+One initial FirstVDS round passed ordinary HTTPS8/16/64KiB. Its small native
+XHTTP/H2 trace passed (HTTP200,216 bytes,curl0,1.316s), while H1 trace setup
+failed (HTTP0,0 bytes,curl28,3.138s), so no H1 payload ladder ran. This differs
+from home's H2-fail/H1-small-pass pattern. It is one round, not a stable verdict.
+
+Home's first discovery at18:54:30 UTC returned HTTP200 but only9,862 body bytes
+before curl28 at8.011s (TLS488ms, first byte589ms). Discovery failed and no
+ordinary range payloads ran. That is a real ordinary-request stall, not evidence
+that the absent8/16/64KiB controls failed or that all VPN protocols share one cause.
+
+Found an experimental gap: range requests explicitly use HTTP/1.1, whereas the
+homepage GET and asset HEAD discovery previously used curl's automatic protocol
+negotiation. The failed request did not log its negotiated version, so calling
+that historical request H2 would be speculation. Align only bulk-control
+homepage/HEAD discovery with H1, and include a bounded known HTTP-version field
+in result logs. Keep original counters/failures and existing check names; split
+analysis by deployment time. Website availability and legacy probes retain their
+existing protocol selection. No retry, timeout or byte-budget increase.
+
+This protocol alignment is the immediate next PR. MSS A/B remains conditional
+on interpretable source controls, not the next automatic configuration change.

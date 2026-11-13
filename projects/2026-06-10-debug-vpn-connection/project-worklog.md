@@ -1,3 +1,30 @@
+## 2026-11-13 18:59 UTC — Revise immediate next step from first control results
+
+FirstVDS ordinary8/16/64KiB each1/1. Native small H2 trace1/1 (HTTP200,216 bytes,
+1.316s), H1 trace0/1 (HTTP0,0 bytes,curl28,3.138s). One round only; no H1 payloads
+because exit gate failed. Home has a failed discovery, not range-test failures.
+Selected Datadog record:
+```
+2026-11-13T18:54:30Z https_bulk_discovery asset_found=false bytes=9862
+curl_exit=28 duration_ms=8011 first_byte_ms=589 http_status=200 tls_ms=488
+```
+Negotiated HTTP version was not recorded. Do not assume H2. Code shows range
+requests forceH1 but homepage/HEAD discovery negotiate automatically. Immediate
+next step is to align bulk discovery withH1 and log the known negotiated version.
+Retain failures, check names and budgets; compare pre/post deployment separately.
+MSS proposal remains conditional, not activated. No host or server changes.
+Prepared alignment verification:
+```
+Ran 102 tests in 0.262s
+OK
+Python syntax OK: 20 file(s)
+PASS: real H1 discovery, HEAD metadata and exact 8/16/64 KiB ranges
+```
+Preflight ran on Code Tools with waits mocked, not on the home source. Recorded
+http_version=1.1 for discovery and all three exact-size HTTP206 range transfers.
+The helper keeps legacy protocol selection unless explicitly requested; no
+insecure TLS, redirects, retries, byte/timeout or acceptance changes.
+
 ## 2026-11-13 18:50 UTC — Deploy FirstVDS source; prepare packetization proposal
 
 User approved #178 merge. Head6de6f4b9 had successful CI and no inline review
