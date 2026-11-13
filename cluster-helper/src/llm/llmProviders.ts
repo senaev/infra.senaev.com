@@ -4,6 +4,7 @@ import {
 
 export type LlmProvider = {
     name: string;
+    enabled: boolean;
     url: string;
     model: string;
     headers: Record<string, string>;
@@ -20,6 +21,8 @@ const OPENROUTER_TIMEOUT_MS = 60_000;
 
 export const LLM_SERVER_PROVIDER: LlmProvider = {
     name: 'llm-server',
+    // Disabled on 2026-11-13: Tricky Dad uses only OpenRouter. The server itself still runs.
+    enabled: false,
     url: `${LLM_SERVER_URL}/v1/chat/completions`,
     // llama-server serves one model and ignores this field.
     model: 'default',
@@ -30,6 +33,7 @@ export const LLM_SERVER_PROVIDER: LlmProvider = {
 
 export const OPENROUTER_PROVIDER: LlmProvider = {
     name: 'openrouter',
+    enabled: true,
     url: 'https://openrouter.ai/api/v1/chat/completions',
     model: 'google/gemini-3-flash-preview',
     headers: {

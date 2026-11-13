@@ -52,7 +52,7 @@ function requireObject(value: unknown, what: string): Record<string, unknown> {
 }
 
 // The date goes last, so the rest of the system prompt stays the same prefix every day and
-// llm-server can reuse it from its prompt cache.
+// the provider can reuse it from its prompt cache.
 function getTodayLine(): string {
     return `Today's date is ${new Date().toISOString().slice(0, 10)}.`;
 }
@@ -207,7 +207,7 @@ export async function planTrickyDadCommand(
         : buildMultiActionRequest(actions);
 
     const result = await callLlmJson({
-        providers: getLlmProviderFallbackOrder(),
+        providers: getLlmProviderFallbackOrder().filter(({ enabled }) => enabled),
         messages: [
             ...request.messages,
             {

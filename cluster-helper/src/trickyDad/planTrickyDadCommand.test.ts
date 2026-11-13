@@ -60,7 +60,7 @@ beforeEach(() => {
 });
 
 describe('planTrickyDadCommand', () => {
-    it('asks llm-server first and OpenRouter second', async () => {
+    it('asks only the enabled providers: OpenRouter, not the disabled llm-server', async () => {
         answerWith({
             actions: [
                 {
@@ -73,10 +73,7 @@ describe('planTrickyDadCommand', () => {
 
         await planTrickyDadCommand('купи хлеб', 'Tricky Dad Telegram chat');
 
-        expect(getRequest().providers.map(({ name }) => name)).toEqual([
-            'llm-server',
-            'openrouter',
-        ]);
+        expect(getRequest().providers.map(({ name }) => name)).toEqual(['openrouter']);
     });
 
     it('lets the model choose several actions for a multi-action source', async () => {
