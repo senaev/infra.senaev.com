@@ -1,3 +1,31 @@
+## 2026-11-12 21:45 UTC — Verify entry routing; request Happ proxy authentication
+
+User approved the next safety step. Rendered FirstVDS configuration has only
+SOCKS outbounds, no direct Freedom and one user route to Hetzner. Manual real
+Xray 26.9.30 test preserves routing/outbounds while substituting loopback plain
+VLESS and fake credentials. An alternate exit stays alive during selected-exit
+failure. No host/cluster changes or live failure injection.
+
+```
+PASS: rendered FirstVDS routing: healthy exit -> failed exit blocks origin -> recovery
+Ran 94 tests in 0.336s
+OK
+Python syntax OK: 19 file(s)
+1 chart(s) linted, 0 chart(s) failed
+```
+
+A temporary local run of the real subscription server returned both auto-auth
+headers for a Happ request with fake credentials. Code Tools restarted during
+the first broader check run; restarted `npm run simple-checks` passed in
+240.8 seconds (lint, typecheck, full unit/integration suite, Python/shell syntax
+and all Helm charts). Final routing test rerun also passed after cleanup review.
+
+No production routing modification needed. Add two documented Happ auto-auth
+headers; no new secrets. Real Happ version behavior and refresh/connectivity
+must still be verified after deployment, including manually configured local
+proxy consumers. The script is manual only, not added to CI. Python tests passed
+with unrelated injected Datadog instrumentation warnings in this workspace.
+
 ## 2026-11-12 21:15 UTC — Merge availability monitoring; prepare12KiB
 
 User approved merge #155 and preparation of the next step. #155 merged

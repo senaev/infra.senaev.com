@@ -109,6 +109,8 @@ type HeaderValue = string | (() => string);
 // https://www.happ.su/main/dev-docs/app-management
 const HAPP_SUBSCRIPTION_HEADERS: Record<string, HeaderValue> = {
     'profile-title': toBase64HeaderValue(TITLE),
+    'socks-auth-mode': 'auto',
+    'http-auth-mode': 'auto',
     'profile-update-interval': '12',
     'profile-web-page-url': subscriptionUrl,
     'subscription-refill-date': getClosestBirthday,
