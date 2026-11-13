@@ -22,6 +22,7 @@ vi.mock('./requestChatCompletion', () => {
 function buildProvider(name: string): LlmProvider {
     return {
         name,
+        enabled: true,
         url: `http://${name}/v1/chat/completions`,
         model: 'model',
         headers: {},

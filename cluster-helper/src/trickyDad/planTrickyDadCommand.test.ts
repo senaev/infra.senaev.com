@@ -10,6 +10,7 @@ vi.mock('../env', () => {
     return {
         OBSIDIAN_TASKS_CHAT_ID: 'tasks-chat',
         TRICKY_DAD_CHAT_ID: 'tricky-dad-chat',
+        LLM_SERVER_URL: 'http://llm-server:8080',
         OPENROUTER_API_KEY: 'key',
         API_DOMAIN: 'example.com',
     };
@@ -33,10 +34,10 @@ type CallLlmJsonArgs = Parameters<typeof callLlmJson>[0];
 function answerWith(answer: unknown): void {
     vi.mocked(callLlmJson).mockImplementation(({ parse }) => Promise.resolve({
         value: parse(answer),
-        provider: 'openrouter',
+        provider: 'llm-server',
         attempts: [
             {
-                provider: 'openrouter',
+                provider: 'llm-server',
                 durationMs: 5,
                 error: null,
             },
@@ -59,7 +60,7 @@ beforeEach(() => {
 });
 
 describe('planTrickyDadCommand', () => {
-    it('asks only OpenRouter, not the home llm-server', async () => {
+    it('asks only the enabled providers: OpenRouter, not the disabled llm-server', async () => {
         answerWith({
             actions: [
                 {
@@ -98,7 +99,7 @@ describe('planTrickyDadCommand', () => {
         const plan = await planTrickyDadCommand('купи хлеб, а папа пусть завтра позвонит в банк', 'Tricky Dad Telegram chat');
 
         expect(plan.isCommandFallback).toBe(false);
-        expect(plan.llmProvider).toBe('openrouter');
+        expect(plan.llmProvider).toBe('llm-server');
         expect(plan.actions.map(({
             type, entries, reportChatId,
         }) => [
@@ -128,7 +129,7 @@ describe('planTrickyDadCommand', () => {
         ]);
     });
 
-    it('keeps the system prompt stable and puts the date last, for the provider prompt cache', async () => {
+    it('keeps the system prompt stable and puts the date last, for the llm-server prompt cache', async () => {
         answerWith({
             actions: [
                 {
@@ -298,9 +299,14 @@ describe('planTrickyDadCommand', () => {
             provider: null,
             attempts: [
                 {
-                    provider: 'openrouter',
+                    provider: 'llm-server',
                     durationMs: 100,
                     error: 'no actions returned: uncertain',
+                },
+                {
+                    provider: 'openrouter',
+                    durationMs: 150,
+                    error: 'invalid response',
                 },
             ],
         });

@@ -2,7 +2,7 @@ import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { isNonEmptyString } from 'senaev-utils/src/utils/String/NonEmptyString/NonEmptyString';
 
 import { callLlmJson, type LlmAttempt } from '../llm/callLlmJson';
-import { OPENROUTER_PROVIDER } from '../llm/llmProviders';
+import { getLlmProviderFallbackOrder } from '../llm/llmProviders';
 import type { ChatMessage, JsonSchemaFormat } from '../llm/requestChatCompletion';
 
 import type { PlannedTrickyDadAction, TrickyDadAction } from './actions/TrickyDadAction';
@@ -207,8 +207,7 @@ export async function planTrickyDadCommand(
         : buildMultiActionRequest(actions);
 
     const result = await callLlmJson({
-        // Only OpenRouter, not the home llm-server (decision of 2026-11-13).
-        providers: [OPENROUTER_PROVIDER],
+        providers: getLlmProviderFallbackOrder().filter(({ enabled }) => enabled),
         messages: [
             ...request.messages,
             {

@@ -7,6 +7,7 @@ import { requestChatCompletion } from './requestChatCompletion';
 
 const PROVIDER: LlmProvider = {
     name: 'llm-server',
+    enabled: true,
     url: 'http://llm-server:8080/v1/chat/completions',
     model: 'default',
     headers: { 'X-Test': 'yes' },
