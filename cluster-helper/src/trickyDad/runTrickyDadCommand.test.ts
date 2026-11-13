@@ -39,29 +39,9 @@ vi.mock('./actions/addItemsToSupabaseGroceryList', () => {
     return { addItemsToSupabaseGroceryList: vi.fn() };
 });
 
-const SHOPPING_AND_TASK_ANSWER = {
-    actions: [
-        {
-            type: 'add_shopping_items',
-            items: ['Хлеб'],
-        },
-        {
-            type: 'add_tasks',
-            tasks: [
-                {
-                    title: 'Позвонить в банк',
-                    date: null,
-                },
-            ],
-        },
-    ],
-    error: null,
-};
-
-beforeEach(() => {
-    vi.clearAllMocks();
+function answerWith(answer: unknown): void {
     vi.mocked(callLlmJson).mockImplementation(({ parse }) => Promise.resolve({
-        value: parse(SHOPPING_AND_TASK_ANSWER),
+        value: parse(answer),
         provider: 'openrouter',
         attempts: [
             {
@@ -71,61 +51,53 @@ beforeEach(() => {
             },
         ],
     }) as ReturnType<typeof callLlmJson>);
+}
+
+beforeEach(() => {
+    vi.clearAllMocks();
 });
 
 describe('runTrickyDadCommand', () => {
-    it('runs every planned action and marks tasks with their source', async () => {
-        const result = await runTrickyDadCommand('купи хлеб, папа позвонит в банк', 'Alisa');
+    it('adds the shopping items from Alisa to the shopping list, and never a task', async () => {
+        answerWith({ items: ['Арбуз'] });
 
-        expect(addItemsToSupabaseGroceryList).toHaveBeenCalledWith(['Хлеб']);
+        const result = await runTrickyDadCommand('попроси умного папу купить арбуз', 'Alisa');
+
+        expect(addItemsToSupabaseGroceryList).toHaveBeenCalledWith(['Арбуз']);
+        expect(addObsidianTasks).not.toHaveBeenCalled();
+        expect(result.llmProvider).toBe('openrouter');
+        expect(result.actionResults.map(({ error }) => error)).toEqual([null]);
+    });
+
+    it('adds the tasks from the Tasks chat with their source, and never a shopping item', async () => {
+        answerWith({
+            tasks: [
+                {
+                    title: 'Позвонить в банк',
+                    date: null,
+                },
+            ],
+        });
+
+        await runTrickyDadCommand('позвонить в банк', 'Tasks Telegram chat');
+
         expect(addObsidianTasks).toHaveBeenCalledWith([
             {
                 title: 'Позвонить в банк',
                 date: null,
-                source: 'Alisa',
+                source: 'Tasks Telegram chat',
             },
         ]);
-        expect(result.llmProvider).toBe('openrouter');
-        expect(result.actionResults.map(({ error }) => error)).toEqual([
-            null,
-            null,
-        ]);
+        expect(addItemsToSupabaseGroceryList).not.toHaveBeenCalled();
     });
 
-    it('starts independent actions concurrently and keeps their original report order', async () => {
-        let finishShopping: (() => void) | undefined;
-
-        vi.mocked(addItemsToSupabaseGroceryList).mockImplementation(() => new Promise<void>((resolve) => {
-            finishShopping = resolve;
-        }));
-
-        const resultPromise = runTrickyDadCommand('купи хлеб, папа позвонит в банк', 'Tricky Dad Telegram chat');
-
-        await vi.waitFor(() => {
-            expect(addItemsToSupabaseGroceryList).toHaveBeenCalledTimes(1);
-            expect(addObsidianTasks).toHaveBeenCalledTimes(1);
-        });
-
-        expect(finishShopping).toBeTypeOf('function');
-        finishShopping?.();
-
-        const result = await resultPromise;
-
-        expect(result.actionResults.map(({ action }) => action.type)).toEqual([
-            'add_shopping_items',
-            'add_tasks',
-        ]);
-        expect(result.actionResults.every(({ error }) => error === null)).toBe(true);
-    });
-
-    it('reports a failed action and still runs the next one', async () => {
+    it('reports a failed action', async () => {
+        answerWith({ items: ['Хлеб'] });
         vi.mocked(addItemsToSupabaseGroceryList).mockRejectedValue(new Error('Supabase is down'));
 
-        const result = await runTrickyDadCommand('купи хлеб, папа позвонит в банк', 'Tricky Dad Telegram chat');
+        const result = await runTrickyDadCommand('купи хлеб', 'Tricky Dad Telegram chat');
 
         expect(result.actionResults[0]?.error).toContain('❌ Failed to run add_shopping_items: ');
         expect(result.actionResults[0]?.error).toContain('Supabase is down');
-        expect(result.actionResults[1]?.error).toBeNull();
-        expect(addObsidianTasks).toHaveBeenCalledTimes(1);
     });
 });

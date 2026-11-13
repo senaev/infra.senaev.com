@@ -10,35 +10,25 @@ export type TrickyDadSourceConfig = {
     /** The Telegram chat of the source, or null for a source without one (Alisa). */
     chatId: string | null;
     /**
-     * The actions that the model may choose for this source. A source with one action skips
-     * the choice: the model only fills the arguments.
+     * The only action of the source: the model only fills its arguments, and the raw command
+     * goes to it when no LLM provider gives a usable answer.
      */
-    actions: TrickyDadAction[];
-    /** Gets the raw command as a command fallback when neither LLM provider gives a usable answer. */
-    commandFallbackAction: TrickyDadAction;
+    action: TrickyDadAction;
 };
 
+// Tasks and shopping are separate on purpose: a source never chooses between them, so a
+// shopping request cannot become a task, and the Tasks chat never writes to the shopping list.
 export const TRICKY_DAD_SOURCES: Record<TrickyDadSource, TrickyDadSourceConfig> = {
     'Tricky Dad Telegram chat': {
         chatId: TRICKY_DAD_CHAT_ID,
-        actions: [
-            ADD_TASKS_ACTION,
-            ADD_SHOPPING_ITEMS_ACTION,
-        ],
-        commandFallbackAction: ADD_SHOPPING_ITEMS_ACTION,
+        action: ADD_SHOPPING_ITEMS_ACTION,
     },
-    // Task-only on purpose: this chat must never write to the shopping list.
     'Tasks Telegram chat': {
         chatId: OBSIDIAN_TASKS_CHAT_ID,
-        actions: [ADD_TASKS_ACTION],
-        commandFallbackAction: ADD_TASKS_ACTION,
+        action: ADD_TASKS_ACTION,
     },
     Alisa: {
         chatId: null,
-        actions: [
-            ADD_TASKS_ACTION,
-            ADD_SHOPPING_ITEMS_ACTION,
-        ],
-        commandFallbackAction: ADD_SHOPPING_ITEMS_ACTION,
+        action: ADD_SHOPPING_ITEMS_ACTION,
     },
 };

@@ -85,7 +85,8 @@ found, and any checks that the available tools could not perform.
 
 ### Smoke test after a deploy
 
-Run `bash scripts/smoke-test-websites.sh` (no cluster access needed). It checks that each
+Run `npm run test:smoke` from the repository root (no cluster access needed); always call it
+through npm, not the script directly. It runs `scripts/smoke-test-websites.sh`, which checks that each
 URL below returns HTTP 200 at the expected final URL, and exits non-zero on any failure.
 These public URLs go through cluster-helper or nextjs-app to obsidian-sync, so they show
 that the whole path works. The main pages show that the Traefik ingress on hetzner and on
