@@ -16,6 +16,7 @@ import {
     XRAY_USER_UUID,
 } from './env';
 import { renderInstructionsPage } from './renderInstructionsPage';
+import { logController, logServerError } from './requestLogging';
 
 const TITLE = 'Senaev🔐VPN';
 const ANNOUNCEMENTS = [
@@ -26,7 +27,12 @@ const ANNOUNCEMENTS = [
 const announcement = ANNOUNCEMENTS.join(' ');
 const subscriptionUrl = `https://vpn-subscription.senaev.com/${VPN_SUBSCRIPTION_SECRET}`;
 
-const server = Fastify({ loggerInstance: logger });
+const server = Fastify({
+    loggerInstance: logger,
+    logController,
+});
+
+server.setErrorHandler(logServerError);
 
 const macroValues: Record<string, string> = {
     XRAY_REALITY_PUBLIC_KEY,
@@ -237,6 +243,8 @@ server.post<{ Params: { secret: string } }>('/:secret', async (request, reply) =
     });
 
     if (!clusterHelperResponse.ok) {
+        logger.error({ status: clusterHelperResponse.status }, '❌ Cannot send the error report to Telegram');
+
         return reply.code(500).type('application/json; charset=utf-8').send({
             status: 'error',
             message: 'Cannot send Telegram message',

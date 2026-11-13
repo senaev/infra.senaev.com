@@ -18,7 +18,7 @@ A secret must go in a header (`Authorization: Bearer …`) or in the body, as th
 |---|---|---|---|---|
 | `POST /alisa-webhook` (was `POST /${ALISA_WEBHOOK_SECRET}`) | cluster-helper (`cluster-helper/src/index.ts`) | none: body check of the skill ID and Vault `ALISA_ALLOWED_USER_IDS` | Yandex Dialogs webhook | ❌ only a "Webhook URL" field; `Authorization` only with account linking |
 | `GET\|POST /telegram-public-bot-api/:method` | cluster-helper (`cluster-helper/src/telegramPublicApi.ts`) | header `Authorization: Bearer`, Vault `TELEGRAM_PUBLIC_API_SECRET` | my scripts (work-log on the laptop) | ✅ already a header |
-| `GET\|POST /:secret` | vpn-subscription (`vpn-subscription/src/index.ts`) | Vault `VPN_SUBSCRIPTION_SECRET` | Happ and other VPN apps, browser (instructions page) | ❓ probably not: a subscription is one URL |
+| `GET\|POST /:secret` | vpn-subscription (`vpn-subscription/src/index.ts`) | Vault `VPN_SUBSCRIPTION_SECRET` | Happ and other VPN apps, browser (instructions page) | ❌ a subscription is one URL; the [Happ docs](https://www.happ.su/main/dev-docs/app-management) have no header or Basic auth |
 | `POST /telegram-webhook` | cluster-helper | header `x-telegram-bot-api-secret-token` | Telegram | ✅ already a header |
 
 - No Traefik access log is configured in `provisioning/` (no `accessLog`).
@@ -32,8 +32,8 @@ A secret must go in a header (`Authorization: Bearer …`) or in the body, as th
    3. ✅ After the deploy, set the skill "Webhook URL" to `https://api.senaev.com/alisa-webhook` in the Yandex Dialogs console and check that Alisa answers.
    4. ✅ Remove the old route and the env variable `ALISA_WEBHOOK_SECRET` from the code and Helm (PR #174). No rotation needed: the old secret stops working.
    5. ✅ Delete the Vault key `ALISA_WEBHOOK_SECRET`.
-3. ❓ vpn-subscription: can Happ send a header for a subscription? If no, keep the secret path, add `logLevel: 'silent'` (or a request serializer that hides the path), and hide the path in APM (step 4).
-4. ❓ APM: how to hide the paths that stay secret — `DD_TRACE_RESOURCE_RENAMING_ENABLED`, a dd-trace `blocklist`, or no tracing for these routes? Check which of the routes are in the traces now.
+3. 📌 vpn-subscription: Happ cannot send a header, so the secret stays in the path, as with other VPN subscription providers. `vpn-subscription/src/requestLogging.ts` turns off the Fastify request logging (`LogController` with `disableRequestLogging`): all its request lines (incoming, completed, not found, errored) contain the URL. An error handler logs only the error of a failed request (5xx).
+4. 📌 APM: after step 2, vpn-subscription is the only service with a secret path. It gets `admission.datadoghq.com/enabled: "false"`: dd-trace writes the full path to `http.url`, and the traces of this small service have almost no value.
 5. 📌 After each route is fixed, rotate its secret: the old value is already in the logs and traces. For Alisa, change the webhook URL in the Yandex Dialogs console at the same time.
 
 ## Verification
