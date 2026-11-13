@@ -1,4 +1,8 @@
-import type { FastifyBaseLogger, FastifyPluginCallback } from 'fastify';
+import { createHash, timingSafeEqual } from 'node:crypto';
+
+import type { FastifyPluginCallback } from 'fastify';
+
+export const TELEGRAM_PUBLIC_API_PREFIX = '/telegram-bot-api';
 
 // The Bot API takes uploads of up to 50 MB.
 const BODY_LIMIT_BYTES = 50 * 1024 * 1024;
@@ -7,23 +11,45 @@ const BODY_LIMIT_BYTES = 50 * 1024 * 1024;
 const METHOD_NAME = /^[A-Za-z]+$/;
 
 export type TelegramPublicApiOptions = {
-    /** The secret path segment, without a leading slash. Anyone who does not know it gets 404. */
-    path: string;
+    /** Clients send it as `Authorization: Bearer <secret>`. */
+    secret: string;
     /** `https://api.telegram.org/bot<token>`: the proxy adds only the bot token. */
     telegramApiBaseUrl: string;
-    logger: Pick<FastifyBaseLogger, 'info' | 'error'>;
     fetch?: typeof fetch;
 };
 
+function sha256(value: string): Buffer {
+    return createHash('sha256').update(value).digest();
+}
+
 /**
- * A thin proxy to the Bot API of the senaev.com bot: `GET|POST /<secret path>/<method>` goes to
+ * A thin proxy to the Bot API of the senaev.com bot: `GET|POST <prefix>/<method>` goes to
  * `<telegramApiBaseUrl>/<method>` with the same query, body and content type (JSON, form or
  * multipart), and Telegram's answer comes back unchanged. It is for the owner's scripts outside
- * the cluster and the tailnet. Every method is allowed, so the path gives full control of the bot.
+ * the cluster and the tailnet. Every method is allowed, so the secret gives full control of the bot.
  */
 export const telegramPublicApi: FastifyPluginCallback<TelegramPublicApiOptions> = (instance, {
-    path, telegramApiBaseUrl, logger, fetch: fetchTelegram = fetch,
+    secret, telegramApiBaseUrl, fetch: fetchTelegram = fetch,
 }, done) => {
+    const secretHash = sha256(secret);
+
+    // onRequest runs before the body is read, so an unauthenticated upload is not buffered.
+    instance.addHook('onRequest', (request, reply, hookDone) => {
+        const token = /^Bearer (.+)$/.exec(request.headers.authorization ?? '')?.[1];
+
+        if (token === undefined || !timingSafeEqual(sha256(token), secretHash)) {
+            reply.code(401).send({
+                ok: false,
+                error_code: 401,
+                description: 'Unauthorized',
+            });
+
+            return;
+        }
+
+        hookDone();
+    });
+
     instance.removeAllContentTypeParsers();
     instance.addContentTypeParser('*', {
         parseAs: 'buffer',
@@ -35,10 +61,8 @@ export const telegramPublicApi: FastifyPluginCallback<TelegramPublicApiOptions> 
             'GET',
             'POST',
         ],
-        url: `/${path}/:method`,
+        url: '/:method',
         bodyLimit: BODY_LIMIT_BYTES,
-        // Fastify logs the URL of every request, and the URL here holds the secret.
-        logLevel: 'silent',
         handler: async (request, reply) => {
             const { method } = request.params;
 
@@ -63,7 +87,7 @@ export const telegramPublicApi: FastifyPluginCallback<TelegramPublicApiOptions> 
                     signal: abortController.signal,
                 });
 
-                logger.info({
+                request.log.info({
                     method,
                     status: response.status,
                 }, '📨 Telegram public API call');
@@ -73,7 +97,7 @@ export const telegramPublicApi: FastifyPluginCallback<TelegramPublicApiOptions> 
                     .header('content-type', response.headers.get('content-type') ?? 'application/json')
                     .send(Buffer.from(await response.arrayBuffer()));
             } catch (error) {
-                logger.error({
+                request.log.error({
                     method,
                     error: error instanceof Error ? error.message : String(error),
                 }, '❌ Telegram public API: Telegram is unreachable');

@@ -1,5 +1,9 @@
 # Project worklog
 
+## 2026-11-13 13:30 UTC — Secret moved to the Authorization header
+
+The user asked to move the secret out of the path in this PR. The route is now `/telegram-bot-api/:method` with `Authorization: Bearer <TELEGRAM_PUBLIC_API_SECRET>` (user's name), checked in an `onRequest` hook like `/llm`. The `logLevel: 'silent'` workaround is removed: the Fastify request log has no headers. The Vault key must be added under the new name; the old `TELEGRAM_PUBLIC_API_PATH` value can be reused because it was never deployed.
+
 ## 2026-11-13 13:20 UTC — Thin proxy to the Bot API
 
 The user asked for a thin proxy instead of a fixed "send text to me" route: the client builds any Bot API request, the endpoint adds only the bot token. Asked about the risk (a leaked path gives full control of the bot, e.g. `setWebhook`); the user chose all methods and any chat. The raw body is forwarded (the plugin replaces the content type parsers with one buffer parser), so multipart uploads work. The Markdown/32000 limit work below is replaced. Secret-in-path is moved to the project `2026-11-13-13-16-remove-secrets-from-paths`.

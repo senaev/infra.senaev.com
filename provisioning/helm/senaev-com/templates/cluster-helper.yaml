@@ -131,11 +131,11 @@ spec:
                   name: senaev-com-kv-secrets
                   key: LLM_ENDPOINT_API_KEY
                   optional: false
-            - name: TELEGRAM_PUBLIC_API_PATH
+            - name: TELEGRAM_PUBLIC_API_SECRET
               valueFrom:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
-                  key: TELEGRAM_PUBLIC_API_PATH
+                  key: TELEGRAM_PUBLIC_API_SECRET
                   optional: false
             - name: MCP_GRAFANA_URL
               value: "http://mcp-grafana:8000/mcp"

@@ -36,5 +36,5 @@ export const INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS = requireEnv('
 export const MCP_GRAFANA_URL = requireEnv('MCP_GRAFANA_URL');
 export const INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_MCP_GRAFANA = requireEnv('INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_MCP_GRAFANA');
 export const TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID = requireEnv('TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID');
-/** The secret path of the public route that sends a message to the owner's chat. */
-export const TELEGRAM_PUBLIC_API_PATH = requireEnv('TELEGRAM_PUBLIC_API_PATH');
+/** The bearer secret of the public thin proxy to the Bot API of the senaev.com bot. */
+export const TELEGRAM_PUBLIC_API_SECRET = requireEnv('TELEGRAM_PUBLIC_API_SECRET');

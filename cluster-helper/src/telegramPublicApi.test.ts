@@ -3,10 +3,10 @@ import {
     afterEach, beforeEach, describe, expect, it, Mock, vi,
 } from 'vitest';
 
-import { telegramPublicApi } from './telegramPublicApi';
+import { TELEGRAM_PUBLIC_API_PREFIX, telegramPublicApi } from './telegramPublicApi';
 
-const SECRET_PATH = 'secret-path-1234567890';
-const TELEGRAM_API_BASE_URL = 'https://api.telegram.org/botsecret-token';
+const SECRET = 'public-api-secret-1234567890';
+const TELEGRAM_API_BASE_URL = 'https://api.telegram.org/botbot-token-0987654321';
 
 let server: FastifyInstance;
 let fetchTelegram: Mock<typeof fetch>;
@@ -16,6 +16,30 @@ function telegramAnswer(status: number, body: unknown) {
     return new Response(JSON.stringify(body), {
         status,
         headers: { 'content-type': 'application/json' },
+    });
+}
+
+function call({
+    method = 'POST',
+    path = '/sendMessage',
+    secret = SECRET,
+    contentType = 'application/json',
+    payload = '{}',
+}: {
+    method?: 'GET' | 'POST';
+    path?: string;
+    secret?: string | null;
+    contentType?: string | null;
+    payload?: string | null;
+} = {}) {
+    return server.inject({
+        method,
+        url: `${TELEGRAM_PUBLIC_API_PREFIX}${path}`,
+        headers: {
+            ...(secret !== null && { authorization: `Bearer ${secret}` }),
+            ...(contentType !== null && { 'content-type': contentType }),
+        },
+        ...(payload !== null && { payload }),
     });
 }
 
@@ -48,9 +72,9 @@ beforeEach(async () => {
     // Same catch-all as the public server.
     server.get('/*', (_request, reply) => reply.code(401).send('Unauthorized'));
     await server.register(telegramPublicApi, {
-        path: SECRET_PATH,
+        prefix: TELEGRAM_PUBLIC_API_PREFIX,
+        secret: SECRET,
         telegramApiBaseUrl: TELEGRAM_API_BASE_URL,
-        logger: server.log,
         fetch: fetchTelegram,
     });
 });
@@ -60,21 +84,28 @@ afterEach(async () => {
 });
 
 describe('telegramPublicApi', () => {
-    it('answers 404 to a wrong path or a method name that is not letters only, and calls nothing', async () => {
-        for (const url of [
-            '/wrong-path/sendMessage',
-            `/${SECRET_PATH}`,
-            `/${SECRET_PATH}/send-message`,
-            `/${SECRET_PATH}/%2E%2E`,
+    it('answers 401 to a missing or wrong secret, and calls nothing', async () => {
+        for (const secret of [
+            null,
+            'wrong-secret',
         ]) {
-            const response = await server.inject({
-                method: 'POST',
-                url,
-                headers: { 'content-type': 'application/json' },
-                payload: '{}',
-            });
+            const response = await call({ secret });
 
-            expect(response.statusCode, url).toBe(404);
+            expect(response.statusCode).toBe(401);
+            expect(response.json()).toMatchObject({ ok: false });
+        }
+
+        expect(fetchTelegram).not.toHaveBeenCalled();
+    });
+
+    it('answers 404 to a method name that is not letters only, and calls nothing', async () => {
+        for (const path of [
+            '/send-message',
+            '/%2E%2E',
+        ]) {
+            const response = await call({ path });
+
+            expect(response.statusCode, path).toBe(404);
         }
 
         expect(fetchTelegram).not.toHaveBeenCalled();
@@ -86,12 +117,7 @@ describe('telegramPublicApi', () => {
             text: '*hello*',
             parse_mode: 'MarkdownV2',
         });
-        const response = await server.inject({
-            method: 'POST',
-            url: `/${SECRET_PATH}/sendMessage`,
-            headers: { 'content-type': 'application/json' },
-            payload,
-        });
+        const response = await call({ payload });
 
         expect(forwardedRequest()).toEqual({
             url: `${TELEGRAM_API_BASE_URL}/sendMessage`,
@@ -110,10 +136,9 @@ describe('telegramPublicApi', () => {
         const contentType = 'multipart/form-data; boundary=XyZ';
         const payload = '--XyZ\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n42\r\n--XyZ--\r\n';
 
-        await server.inject({
-            method: 'POST',
-            url: `/${SECRET_PATH}/sendDocument`,
-            headers: { 'content-type': contentType },
+        await call({
+            path: '/sendDocument',
+            contentType,
             payload,
         });
 
@@ -125,9 +150,11 @@ describe('telegramPublicApi', () => {
     });
 
     it('forwards a GET with its query and no body', async () => {
-        await server.inject({
+        await call({
             method: 'GET',
-            url: `/${SECRET_PATH}/getChat?chat_id=42`,
+            path: '/getChat?chat_id=42',
+            contentType: null,
+            payload: null,
         });
 
         expect(forwardedRequest()).toEqual({
@@ -147,12 +174,7 @@ describe('telegramPublicApi', () => {
 
         fetchTelegram.mockResolvedValue(telegramAnswer(400, error));
 
-        const response = await server.inject({
-            method: 'POST',
-            url: `/${SECRET_PATH}/sendMessage`,
-            headers: { 'content-type': 'application/json' },
-            payload: '{}',
-        });
+        const response = await call();
 
         expect(response.statusCode).toBe(400);
         expect(response.json()).toEqual(error);
@@ -161,34 +183,29 @@ describe('telegramPublicApi', () => {
     it('answers 502 when Telegram is unreachable', async () => {
         fetchTelegram.mockRejectedValue(new Error('fetch failed'));
 
-        const response = await server.inject({
-            method: 'POST',
-            url: `/${SECRET_PATH}/sendMessage`,
-            headers: { 'content-type': 'application/json' },
-            payload: '{}',
-        });
+        const response = await call();
 
         expect(response.statusCode).toBe(502);
         expect(response.json()).toMatchObject({ ok: false });
     });
 
-    it('logs neither the secret path, the token nor the body', async () => {
-        const send = () => server.inject({
-            method: 'POST',
-            url: `/${SECRET_PATH}/sendMessage`,
-            headers: { 'content-type': 'application/json' },
-            payload: '{"text":"private text"}',
-        });
+    it('logs neither the secret, the bot token nor the body', async () => {
+        const payload = '{"text":"private text"}';
 
-        await send();
+        await call({ payload });
+        await call({
+            payload,
+            secret: 'wrong-secret',
+        });
         fetchTelegram.mockRejectedValue(new Error('fetch failed'));
-        await send();
+        await call({ payload });
 
         const log = logLines.join('');
 
         expect(log).toContain('Telegram public API');
-        expect(log).not.toContain(SECRET_PATH);
-        expect(log).not.toContain('secret-token');
+        expect(log).not.toContain(SECRET);
+        expect(log).not.toContain('wrong-secret');
+        expect(log).not.toContain('bot-token');
         expect(log).not.toContain('private text');
     });
 });
