@@ -5,7 +5,7 @@ import {
     describe, expect, it,
 } from 'vitest';
 
-import { replyNotFound, serializeRequest } from './requestLogging';
+import { logController, logServerError } from './requestLogging';
 
 const SECRET = 'subscription-secret-123';
 
@@ -18,53 +18,37 @@ function createServerWithLogLines() {
         },
     });
     const server = Fastify({
-        logger: {
-            stream,
-            serializers: { req: serializeRequest },
-        },
+        logger: { stream },
+        logController,
     });
 
-    server.setNotFoundHandler(replyNotFound);
+    server.setErrorHandler(logServerError);
     server.get<{ Params: { secret: string } }>('/:secret', () => 'ok');
     server.post('/:secret', () => {
-        throw new Error('failed');
+        throw new Error('Cannot send Telegram message');
     });
 
     return {
         server,
-        lines,
+        getLog: () => lines.join(''),
     };
 }
 
 describe('request logging', () => {
-    it('logs the route pattern, not the secret in the path', async () => {
-        const { server, lines } = createServerWithLogLines();
+    it('logs nothing about a successful request', async () => {
+        const { server, getLog } = createServerWithLogLines();
 
-        await server.inject({
+        const response = await server.inject({
             method: 'GET',
             url: `/${SECRET}`,
         });
 
-        const log = lines.join('');
-
-        expect(log).toContain('"route":"/:secret"');
-        expect(log).not.toContain(SECRET);
+        expect(response.statusCode).toBe(200);
+        expect(getLog()).toBe('');
     });
 
-    it('does not log the secret when a handler fails', async () => {
-        const { server, lines } = createServerWithLogLines();
-
-        const response = await server.inject({
-            method: 'POST',
-            url: `/${SECRET}`,
-        });
-
-        expect(response.statusCode).toBe(500);
-        expect(lines.join('')).not.toContain(SECRET);
-    });
-
-    it('does not log the path of a request that matches no route', async () => {
-        const { server, lines } = createServerWithLogLines();
+    it('logs nothing about a request that matches no route', async () => {
+        const { server, getLog } = createServerWithLogLines();
 
         const response = await server.inject({
             method: 'GET',
@@ -72,6 +56,35 @@ describe('request logging', () => {
         });
 
         expect(response.statusCode).toBe(404);
-        expect(lines.join('')).not.toContain(SECRET);
+        expect(getLog()).toBe('');
+    });
+
+    it('logs the error of a failed request, without its path', async () => {
+        const { server, getLog } = createServerWithLogLines();
+
+        const response = await server.inject({
+            method: 'POST',
+            url: `/${SECRET}`,
+        });
+
+        expect(response.statusCode).toBe(500);
+        expect(response.json()).toMatchObject({ message: 'Cannot send Telegram message' });
+        expect(getLog()).toContain('❌ Request failed');
+        expect(getLog()).toContain('Cannot send Telegram message');
+        expect(getLog()).not.toContain(SECRET);
+    });
+
+    it('does not log a client error as a failure', async () => {
+        const { server, getLog } = createServerWithLogLines();
+
+        const response = await server.inject({
+            method: 'POST',
+            url: `/${SECRET}`,
+            headers: { 'content-type': 'application/json' },
+            payload: '{not json',
+        });
+
+        expect(response.statusCode).toBe(400);
+        expect(getLog()).toBe('');
     });
 });
