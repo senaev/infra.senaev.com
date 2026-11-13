@@ -12,3 +12,8 @@ verification and not blockers to closing this purchase project.
 Windows backup and installation plan recorded in [setup plan](windows-backup-proxmox-plan.md).
 Next: hardware inspection, Disk2vhd capture to the internal SSD, then cloud upload
 and checksum verification before erasing the SSD. One installer USB is sufficient. Installation and VM migration have not started.
+
+Setup progress: user confirms Proxmox VE 9.2-1 Intel/AMD installer USB creation
+completed on Mac using dd after Etcher failed. Boot on Dell has not been confirmed.
+Windows image capture, cloud upload/checksum verification and hardware inspection
+remain unconfirmed. Do not erase the internal SSD until the backup is verified.

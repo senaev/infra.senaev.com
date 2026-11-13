@@ -4,7 +4,10 @@
 
 Dell OptiPlex Micro 7010 has arrived. Preserve the supplied Windows installation,
 install Proxmox on the internal SSD, and attempt to run the existing Windows in a VM.
-No backup, disk erasure or installation has been performed. Purchase project remains closed.
+Installer USB creation is user-confirmed complete: Proxmox VE 9.2-1 Intel/AMD,
+written on Mac with dd after Etcher failed. Dell USB boot is not yet confirmed.
+Windows backup capture/upload/verification and hardware inspection are unconfirmed;
+no disk erasure or Proxmox installation is confirmed. Purchase project remains closed.
 
 ## Equipment
 

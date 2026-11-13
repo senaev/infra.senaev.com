@@ -1,3 +1,14 @@
+## 2026-11-13 21:31 UTC — Proxmox installer USB prepared
+
+After instructions to write the Intel/AMD Proxmox VE 9.2-1 ISO with macOS dd,
+user confirmed:
+> everything is done
+
+Etcher failed to start its flasher process; used macOS Terminal instead. Recorded
+USB preparation complete, not boot-tested on Dell. Windows capture/cloud verification,
+hardware inspection and Proxmox installation remain unconfirmed. Next prerequisite
+before erasing the SSD is a verified cloud Windows image.
+
 ## 2026-11-13 21:14 UTC — Simplified to one USB and cloud Windows backup
 
 User approved saving Disk2vhd locally and uploading the image to cloud storage:
