@@ -1,5 +1,9 @@
 # Project worklog
 
+## 2026-11-13 15:10 UTC — Alisa PR #171 opened
+
+PR https://github.com/senaev/infra.senaev.com/pull/171 adds `POST /alisa-webhook` with the skill and user check; the old secret path still works. The user added the Vault key `ALISA_ALLOWED_USER_IDS` (`session.user.user_id`, not the legacy `session.user_id`, which is per app instance). All pre-push checks pass. Next: merge, deploy, change the Webhook URL in the Yandex Dialogs console, then remove the old route.
+
 ## 2026-11-13 14:30 UTC — Alisa: fixed path with a body check
 
 Yandex Dialogs has only a "Webhook URL" field: no custom headers and no request signature. It sends `Authorization: Bearer` only with account linking (a user OAuth token from our own OAuth server). The user chose a fixed path `/alisa-webhook` that accepts a request only when `session.skill_id` is our skill and `session.user.user_id` is in the Vault allowlist `ALISA_ALLOWED_USER_IDS`. The old secret path stays until the skill URL is changed. Separate PR.
