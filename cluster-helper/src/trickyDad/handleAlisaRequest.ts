@@ -24,9 +24,6 @@ export function handleAlisaRequest(body: unknown): string {
 
         const { request } = body as Record<string, unknown>;
 
-        // Not the whole body: session.user.user_id is what the webhook trusts.
-        logger.info({ request }, '🆕 Received Alisa command');
-
         if (!request) {
             throw new Error('Missing request field in body');
         }
@@ -37,12 +34,14 @@ export function handleAlisaRequest(body: unknown): string {
             throw new Error('Missing command field in request');
         }
 
+        logger.info({ command }, '🆕 Received Alisa command');
+
         if (command.trim() === '') {
             const err = new Error('Empty command received from Alisa');
 
             logger.error({
                 err,
-                request,
+                command,
             }, '❌ Empty Alisa command');
             sendTrickyDadErrorReport({
                 command,

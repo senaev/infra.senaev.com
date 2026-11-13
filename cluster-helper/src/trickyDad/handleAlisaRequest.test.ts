@@ -56,14 +56,18 @@ describe('handleAlisaRequest', () => {
         expect(runTrickyDadCommand).not.toHaveBeenCalled();
     });
 
-    it('does not log the session, which has the user ID that the webhook trusts', () => {
+    it('logs only the command, not the request JSON', () => {
         vi.mocked(runTrickyDadCommand).mockReturnValue(new Promise(() => {}));
 
         handleAlisaRequest({
-            request: { command: 'купи хлеб' },
+            request: {
+                command: 'купи хлеб',
+                original_utterance: 'Купи хлеб',
+            },
             session: { user: { user_id: 'secret-user-id' } },
         });
 
-        expect(JSON.stringify(vi.mocked(logger.info).mock.calls)).not.toContain('secret-user-id');
+        expect(vi.mocked(logger.info)).toHaveBeenCalledWith({ command: 'купи хлеб' }, '🆕 Received Alisa command');
+        expect(JSON.stringify(vi.mocked(logger.info).mock.calls)).not.toMatch(/secret-user-id|original_utterance/);
     });
 });
