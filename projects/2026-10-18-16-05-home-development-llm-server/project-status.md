@@ -9,11 +9,13 @@ Hardware inspection, BIOS AC recovery, noise/network stability, Proxmox installa
 and Linux VM Jellyfin GPU passthrough tests are post-delivery follow-up, not completed
 verification and not blockers to closing this purchase project.
 
-Windows backup and installation plan recorded in [setup plan](windows-backup-proxmox-plan.md).
-Next: hardware inspection, Disk2vhd capture to the internal SSD, then cloud upload
-and checksum verification before erasing the SSD. One installer USB is sufficient. Installation and VM migration have not started.
+Setup: Windows VHDX creation completed; cloud upload in progress (user confirmed).
+File: C:\Users\user\Downloads\dell-windows.vhdx. Internal C: is fully decrypted,
+BitLocker off. Selected internal SSD volumes: EFI (~200 MB, Disk2vhd 196 MB),
+Windows C: and 905 MB recovery; USB volumes excluded. VHDX and VSS enabled.
+Proxmox VE 9.2-1 Intel/AMD installer USB prepared on Mac using dd.
 
-Setup progress: user confirms Proxmox VE 9.2-1 Intel/AMD installer USB creation
-completed on Mac using dd after Etcher failed. Boot on Dell has not been confirmed.
-Windows image capture, cloud upload/checksum verification and hardware inspection
-remain unconfirmed. Do not erase the internal SSD until the backup is verified.
+Next: finish cloud upload, compute local SHA-256 and compare with a downloaded copy
+on Mac before erasing SSD. VM bootability, hardware inspection and Dell USB boot are
+not yet verified. Proxmox installation and Windows VM import have not started.
+See [setup plan](windows-backup-proxmox-plan.md). Purchase remains complete.

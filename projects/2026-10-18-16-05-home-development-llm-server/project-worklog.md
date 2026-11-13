@@ -1,3 +1,13 @@
+## 2026-11-13 22:30 UTC — Windows image ready; cloud upload in progress
+
+User confirmed:
+> The image is ready. Now I am uploading it to the cloud.
+
+Recorded Disk2vhd capture complete and upload ongoing. Screenshots establish C: fully
+decrypted, internal SSD EFI/C:/recovery selection, USB volumes excluded, VHDX and VSS
+selected. Next: finish upload and compare original/downloaded SHA-256 before erasure.
+No checksum, VM boot test or Proxmox installation result is yet confirmed.
+
 ## 2026-11-13 21:31 UTC — Proxmox installer USB prepared
 
 After instructions to write the Intel/AMD Proxmox VE 9.2-1 ISO with macOS dd,

@@ -4,10 +4,12 @@
 
 Dell OptiPlex Micro 7010 has arrived. Preserve the supplied Windows installation,
 install Proxmox on the internal SSD, and attempt to run the existing Windows in a VM.
-Installer USB creation is user-confirmed complete: Proxmox VE 9.2-1 Intel/AMD,
-written on Mac with dd after Etcher failed. Dell USB boot is not yet confirmed.
-Windows backup capture/upload/verification and hardware inspection are unconfirmed;
-no disk erasure or Proxmox installation is confirmed. Purchase project remains closed.
+Installer USB is prepared: Proxmox VE 9.2-1 Intel/AMD, written on Mac with dd.
+Windows image creation is user-confirmed complete; cloud upload is in progress.
+File: `C:\Users\user\Downloads\dell-windows.vhdx`. C: is fully decrypted, BitLocker off.
+Captured EFI (~200 MB; Disk2vhd shows 196 MB), C: and 905 MB recovery with VHDX/VSS;
+USB volumes excluded. Cloud checksum and VM boot tests remain pending. Hardware
+inspection, Dell USB boot and Proxmox installation are not confirmed. Purchase remains closed.
 
 ## Equipment
 
