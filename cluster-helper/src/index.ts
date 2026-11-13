@@ -17,7 +17,6 @@ import {
 import { sendDailyOverview } from './dailyOverview/sendDailyOverview';
 import {
     ALISA_ALLOWED_USER_IDS,
-    ALISA_WEBHOOK_SECRET,
     API_DOMAIN,
     AUTH_DOMAIN,
     AUTH_MY_PASSWORD,
@@ -208,22 +207,6 @@ publicServer.get('/public-static/*', async (request, reply) => {
 
 publicServer.get('/*', (_request, reply) => reply.code(401).send('Unauthorized'));
 
-function replyToAlisa(body: unknown, reply: FastifyReply) {
-    const responseText = handleAlisaRequest(body);
-
-    return reply.send({
-        version: '1.0',
-        response: {
-            text: responseText,
-            end_session: true,
-        },
-    });
-}
-
-// The old route, with the secret in the path. Remove it after the skill Webhook URL in the
-// Yandex Dialogs console points at ALISA_WEBHOOK_PATH.
-publicServer.post(`/${ALISA_WEBHOOK_SECRET}`, ({ body }, reply) => replyToAlisa(body, reply));
-
 const alisaAllowedUserIds = parseAlisaAllowedUserIds(ALISA_ALLOWED_USER_IDS);
 
 publicServer.post(ALISA_WEBHOOK_PATH, ({ body }, reply) => {
@@ -233,7 +216,13 @@ publicServer.post(ALISA_WEBHOOK_PATH, ({ body }, reply) => {
         return reply.code(401).send('Unauthorized');
     }
 
-    return replyToAlisa(body, reply);
+    return reply.send({
+        version: '1.0',
+        response: {
+            text: handleAlisaRequest(body),
+            end_session: true,
+        },
+    });
 });
 
 // MCP server for the ChatGPT connector. The obsidian-* tools are forwarded to obsidian-sync,
