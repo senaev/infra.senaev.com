@@ -1,6 +1,4 @@
-import {
-    LLM_SERVER_URL, OPENROUTER_API_KEY, API_DOMAIN,
-} from '../env';
+import { OPENROUTER_API_KEY, API_DOMAIN } from '../env';
 
 export type LlmProvider = {
     name: string;
@@ -11,22 +9,7 @@ export type LlmProvider = {
     maxTokens: number | null;
 };
 
-// Qwen3-4B on the iGPU of senaev-media: ~17 tokens/s for the prompt, ~4 tokens/s for the
-// answer. A prompt that is not in the cache yet can take ~40 s.
-const LLM_SERVER_TIMEOUT_MS = 90_000;
-const LLM_SERVER_MAX_TOKENS = 1024;
-
 const OPENROUTER_TIMEOUT_MS = 60_000;
-
-export const LLM_SERVER_PROVIDER: LlmProvider = {
-    name: 'llm-server',
-    url: `${LLM_SERVER_URL}/v1/chat/completions`,
-    // llama-server serves one model and ignores this field.
-    model: 'default',
-    headers: {},
-    timeoutMs: LLM_SERVER_TIMEOUT_MS,
-    maxTokens: LLM_SERVER_MAX_TOKENS,
-};
 
 export const OPENROUTER_PROVIDER: LlmProvider = {
     name: 'openrouter',
@@ -40,13 +23,3 @@ export const OPENROUTER_PROVIDER: LlmProvider = {
     timeoutMs: OPENROUTER_TIMEOUT_MS,
     maxTokens: null,
 };
-
-/** LLM provider fallback: try the home llm-server first (if enabled), then OpenRouter. */
-export function getLlmProviderFallbackOrder(): LlmProvider[] {
-    return LLM_SERVER_URL
-        ? [
-            LLM_SERVER_PROVIDER,
-            OPENROUTER_PROVIDER,
-        ]
-        : [OPENROUTER_PROVIDER];
-}

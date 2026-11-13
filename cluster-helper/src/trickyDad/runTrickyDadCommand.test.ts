@@ -12,7 +12,6 @@ vi.mock('../env', () => {
     return {
         OBSIDIAN_TASKS_CHAT_ID: 'tasks-chat',
         TRICKY_DAD_CHAT_ID: 'tricky-dad-chat',
-        LLM_SERVER_URL: null,
         OPENROUTER_API_KEY: 'key',
         API_DOMAIN: 'example.com',
     };

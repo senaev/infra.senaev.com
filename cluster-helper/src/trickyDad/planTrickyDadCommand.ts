@@ -2,7 +2,7 @@ import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { isNonEmptyString } from 'senaev-utils/src/utils/String/NonEmptyString/NonEmptyString';
 
 import { callLlmJson, type LlmAttempt } from '../llm/callLlmJson';
-import { getLlmProviderFallbackOrder } from '../llm/llmProviders';
+import { OPENROUTER_PROVIDER } from '../llm/llmProviders';
 import type { ChatMessage, JsonSchemaFormat } from '../llm/requestChatCompletion';
 
 import type { PlannedTrickyDadAction, TrickyDadAction } from './actions/TrickyDadAction';
@@ -52,7 +52,7 @@ function requireObject(value: unknown, what: string): Record<string, unknown> {
 }
 
 // The date goes last, so the rest of the system prompt stays the same prefix every day and
-// llm-server can reuse it from its prompt cache.
+// the provider can reuse it from its prompt cache.
 function getTodayLine(): string {
     return `Today's date is ${new Date().toISOString().slice(0, 10)}.`;
 }
@@ -207,7 +207,8 @@ export async function planTrickyDadCommand(
         : buildMultiActionRequest(actions);
 
     const result = await callLlmJson({
-        providers: getLlmProviderFallbackOrder(),
+        // Only OpenRouter, not the home llm-server (decision of 2026-11-13).
+        providers: [OPENROUTER_PROVIDER],
         messages: [
             ...request.messages,
             {
