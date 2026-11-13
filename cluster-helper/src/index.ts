@@ -53,6 +53,7 @@ import {
 import { processTelegramWebhookData } from './processTelegramWebhookData';
 import { proxyPublicStaticFile } from './publicStaticProxy';
 import { formatTorrentEvent, isTorrentEvent } from './qbittorrent/formatTorrentEvent';
+import { logStartupStep } from './startupTimer';
 import { TELEGRAM_PUBLIC_API_PATH, telegramPublicApi } from './telegramPublicApi';
 import { startTorrentOutboxProcessor, stopTorrentOutboxProcessor } from './torrentOutbox';
 
@@ -325,9 +326,12 @@ const googleLogin = createGoogleLogin({
 });
 
 async function main(): Promise<void> {
+    logStartupStep('modules loaded');
+
     const botUser: TelegramUser = await getCurrentTelegramBotInfo(TG_TOKEN_SENAEV_COM_BOT);
 
     logger.info({ botUser }, '✅ Bot user');
+    logStartupStep('bot info fetched');
 
     publicServer.post(TELEGRAM_WEBHOOK_PATH, (request, reply) => {
         logger.info({ update: request.body }, '🆕 Received Telegram update');
@@ -401,21 +405,25 @@ async function main(): Promise<void> {
         secret: TELEGRAM_PUBLIC_API_SECRET,
         telegramApiBaseUrl: createTelegramApiBaseUrl(TG_TOKEN_SENAEV_COM_BOT),
     });
+    logStartupStep('public routes registered');
 
     await startTorrentOutboxProcessor();
     logger.info('✅ Torrent outbox processor started');
+    logStartupStep('torrent outbox processor started');
 
     await internalServer.listen({
         port: INTERNAL_PORT,
         host: HOST,
     });
     logger.info({ port: INTERNAL_PORT }, '✅ Internal server listening');
+    logStartupStep('internal server listening');
 
     await publicServer.listen({
         port: PUBLIC_PORT,
         host: HOST,
     });
     logger.info({ port: PUBLIC_PORT }, '✅ Public server listening');
+    logStartupStep('public server listening');
 
     // Ready as soon as both listeners are up, deliberately before setWebhook below.
     // Gating readiness on a Telegram call would let a Telegram outage drop this pod from
@@ -440,6 +448,7 @@ async function main(): Promise<void> {
         },
     });
     logger.info({ webhookUrl }, '✅ Webhook set');
+    logStartupStep('webhook set');
 }
 
 async function shutdown(): Promise<void> {
