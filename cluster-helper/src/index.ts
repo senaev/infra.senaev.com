@@ -16,6 +16,7 @@ import {
 } from './chatGptMcp/handleMcpMessage';
 import { sendDailyOverview } from './dailyOverview/sendDailyOverview';
 import {
+    ALISA_ALLOWED_USER_IDS,
     ALISA_WEBHOOK_SECRET,
     API_DOMAIN,
     AUTH_DOMAIN,
@@ -36,6 +37,7 @@ import {
     TG_TOKEN_SENAEV_COM_BOT,
 } from './env';
 import { handleAlisaRequest } from './trickyDad/handleAlisaRequest';
+import { isAllowedAlisaRequest, parseAlisaAllowedUserIds } from './trickyDad/isAllowedAlisaRequest';
 import { LLM_ENDPOINT_PREFIX, llmEndpoint } from './llm/llmEndpoint';
 import { getLlmEndpointModels } from './llm/llmEndpointModels';
 import { logger } from './logger';
@@ -69,7 +71,7 @@ const HOST = '0.0.0.0';
 //
 // PUBLIC_PORT is what the five ingresses target -- api.senaev.com,
 // auth.senaev.com, mcp.senaev.com, s.senaev.com and static.senaev.com. Every route on it is either
-// authenticated (Telegram secret token, Alisa secret path, OAuth bearer tokens for the
+// authenticated (Telegram secret token, Alisa secret path or skill and user check, OAuth bearer tokens for the
 // ChatGPT MCP endpoints, the API key of /llm, the bearer secret of /telegram-public-bot-api), part of
 // the OAuth flow, or safe to publish, and the catch-all
 // below answers 401 so nothing new leaks by accident.
@@ -80,6 +82,7 @@ export const INTERNAL_PORT = 80;
 export const PUBLIC_PORT = 3000;
 
 export const TELEGRAM_WEBHOOK_PATH = '/telegram-webhook';
+export const ALISA_WEBHOOK_PATH = '/alisa-webhook';
 
 export const webhookSecretToken = randomBytes(32).toString('hex');
 
@@ -205,8 +208,8 @@ publicServer.get('/public-static/*', async (request, reply) => {
 
 publicServer.get('/*', (_request, reply) => reply.code(401).send('Unauthorized'));
 
-publicServer.post(`/${ALISA_WEBHOOK_SECRET}`, ({ body }, reply) => {
-    const responseText = handleAlisaRequest(body as Record<string, unknown>);
+function replyToAlisa(body: unknown, reply: FastifyReply) {
+    const responseText = handleAlisaRequest(body);
 
     return reply.send({
         version: '1.0',
@@ -215,6 +218,22 @@ publicServer.post(`/${ALISA_WEBHOOK_SECRET}`, ({ body }, reply) => {
             end_session: true,
         },
     });
+}
+
+// The old route, with the secret in the path. Remove it after the skill Webhook URL in the
+// Yandex Dialogs console points at ALISA_WEBHOOK_PATH.
+publicServer.post(`/${ALISA_WEBHOOK_SECRET}`, ({ body }, reply) => replyToAlisa(body, reply));
+
+const alisaAllowedUserIds = parseAlisaAllowedUserIds(ALISA_ALLOWED_USER_IDS);
+
+publicServer.post(ALISA_WEBHOOK_PATH, ({ body }, reply) => {
+    if (!isAllowedAlisaRequest(body, alisaAllowedUserIds)) {
+        logger.warn('⛔ Rejected Alisa request from an unknown skill or user');
+
+        return reply.code(401).send('Unauthorized');
+    }
+
+    return replyToAlisa(body, reply);
 });
 
 // MCP server for the ChatGPT connector. The obsidian-* tools are forwarded to obsidian-sync,

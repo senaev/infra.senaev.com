@@ -22,7 +22,6 @@ export function handleAlisaRequest(body: unknown): string {
             throw new Error('Missing request body');
         }
 
-        logger.info({ body }, '🆕 Received Alisa command');
         const { request } = body as Record<string, unknown>;
 
         if (!request) {
@@ -35,12 +34,14 @@ export function handleAlisaRequest(body: unknown): string {
             throw new Error('Missing command field in request');
         }
 
+        logger.info({ command }, '🆕 Received Alisa command');
+
         if (command.trim() === '') {
             const err = new Error('Empty command received from Alisa');
 
             logger.error({
                 err,
-                body,
+                command,
             }, '❌ Empty Alisa command');
             sendTrickyDadErrorReport({
                 command,

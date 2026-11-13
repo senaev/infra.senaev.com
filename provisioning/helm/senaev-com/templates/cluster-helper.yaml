@@ -157,6 +157,12 @@ spec:
                   name: senaev-com-kv-secrets
                   key: ALISA_WEBHOOK_SECRET
                   optional: false
+            - name: ALISA_ALLOWED_USER_IDS
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: ALISA_ALLOWED_USER_IDS
+                  optional: false
             - name: AUTH_MY_USERNAME
               valueFrom:
                 secretKeyRef:
