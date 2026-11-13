@@ -931,3 +931,76 @@ self-connect passes, prioritize behavior needing a real network path; this still
 does not isolate Russia-specific filtering or exclude streaming implementation
 issues. An external European source or bounded TCP evidence may then be useful.
 Keep this PR draft until #169 produces interpretable ordinary HTTPS results.
+
+### 2026-11-13 — #178 deployed; evidence gate before another runtime change
+
+User approved #178 merge. It merged at65c3d280dfe93898d10ab19cfca5a3d807fa6f7c;
+deployment43485466491 succeeded. The FirstVDS probe is scraped (up=1), alongside
+the three existing probes, whose pod identities remain unchanged. All5 tests in
+`npm run test:smoke` passed. No production exit, host network or privilege change.
+#178 had successful CI, no review findings and no approving review before merge.
+
+At18:43 UTC, Hetzner had one successful ordinary HTTPS discovery and one success
+at each8/16/64KiB, with zero failures. Home had no samples for these controls yet;
+its matrix was still running. FirstVDS had not been deployed at that snapshot.
+Do not infer a home HTTPS failure or a completed source comparison from absence.
+
+Next: collect at least three completed, exit-validated rounds per relevant source
+(home, Hetzner and FirstVDS), checking paired direct controls, ordinary discovery,
+body byte counts, timestamps and resets. The scheduled20:20 Madrid /19:20 UTC
+analysis will report whatever is available and explicitly identify insufficient
+samples. Source results are not perfectly synchronized or a proof of geography.
+
+If failures persist, the prepared next experiment is a client-only packetization
+comparison, not a host MTU change:
+
+- Keep existing diagnostic baselines. Add a separate default-vs-small-MSS pair
+  of fresh native-TLS XHTTP/H1 clients, requesting the same16KiB Cloudflare body.
+- Only one arm sets `streamSettings.sockopt.tcpMaxSeg: 1000`. Alternate arm order
+  by round; use independent temporary processes, existing exit gates/direct
+  pairs,8s budget,32KiB/s setting and60–90s quiet /2–7s request jitter.
+- Preserve TLS verification, endpoint, credentials, payload, timeout and original
+  acceptance. Tag diagnostic results separately; do not promote them to a fix.
+- Adds72KiB planned responses per eligible source round (two arms, each4KiB exit
+  allowance plus16KiB direct and16KiB proxy), not a wire-byte cap.
+- Require reproducible paired differences. Improvement shows packetization
+  sensitivity, compatible with PMTU/loss, traffic classification or streaming
+  behavior; it does not uniquely prove any of them. A negative result cannot
+  exclude PMTU unless effective WAN MSS is actually lower than the baseline.
+
+This is only a proposal; no new probe arm or socket setting is deployed here.
+A pinned26.9.30 Xray loopback preflight using the real XHTTP/H1 dial path observed
+peer MSS32768 by default versus988 when tcpMaxSeg=1000. Dummy TLS listener was
+intentionally incomplete: it verifies socket-option application, not successful
+TLS, upload/download behavior, WAN MSS or VPN recovery. No host changes needed.
+A1000-byte MSS is an experimental arm, not a discovered path MTU or recommended
+production setting. First inspect the new source results before implementing it.
+
+Primary sources:
+- https://xtls.github.io/en/config/transports/sockopt.html
+- https://github.com/XTLS/Xray-core/blob/v26.9.30/transport/internet/sockopt_linux.go
+- https://github.com/XTLS/Xray-core/blob/v26.9.30/transport/internet/splithttp/dialer.go
+
+### 2026-11-13 18:59 UTC — First control results; align discovery before MSS tests
+
+One initial FirstVDS round passed ordinary HTTPS8/16/64KiB. Its small native
+XHTTP/H2 trace passed (HTTP200,216 bytes,curl0,1.316s), while H1 trace setup
+failed (HTTP0,0 bytes,curl28,3.138s), so no H1 payload ladder ran. This differs
+from home's H2-fail/H1-small-pass pattern. It is one round, not a stable verdict.
+
+Home's first discovery at18:54:30 UTC returned HTTP200 but only9,862 body bytes
+before curl28 at8.011s (TLS488ms, first byte589ms). Discovery failed and no
+ordinary range payloads ran. That is a real ordinary-request stall, not evidence
+that the absent8/16/64KiB controls failed or that all VPN protocols share one cause.
+
+Found an experimental gap: range requests explicitly use HTTP/1.1, whereas the
+homepage GET and asset HEAD discovery previously used curl's automatic protocol
+negotiation. The failed request did not log its negotiated version, so calling
+that historical request H2 would be speculation. Align only bulk-control
+homepage/HEAD discovery with H1, and include a bounded known HTTP-version field
+in result logs. Keep original counters/failures and existing check names; split
+analysis by deployment time. Website availability and legacy probes retain their
+existing protocol selection. No retry, timeout or byte-budget increase.
+
+This protocol alignment is the immediate next PR. MSS A/B remains conditional
+on interpretable source controls, not the next automatic configuration change.
