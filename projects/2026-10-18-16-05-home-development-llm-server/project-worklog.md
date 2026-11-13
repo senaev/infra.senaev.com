@@ -1,3 +1,14 @@
+## 2026-11-13 20:28 UTC — Arrival and Windows preservation plan recorded
+
+User confirmed arrival and asked:
+> Okay, let's write this plan into our project
+
+Added windows-backup-proxmox-plan.md: hardware inspection, separate external backup
+storage, full-disk Clonezilla backup plus Disk2vhd VM copy, verification before erasing,
+Proxmox on internal SSD and Windows VM import. Recorded encryption/licensing caveats,
+rollback and Jellyfin acceptance checks. Purchase remains complete; setup is pending.
+No disk backup, installation or infrastructure changes executed.
+
 ## 2026-11-11 08:46 UTC — Purchase project completed and closed
 
 User confirmed:
