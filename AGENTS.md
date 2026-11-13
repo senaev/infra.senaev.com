@@ -85,20 +85,9 @@ found, and any checks that the available tools could not perform.
 
 ### Smoke test after a deploy
 
-Run `npm run test:smoke` from the repository root (no cluster access needed); always call it
-through npm, not the script directly. It runs `scripts/smoke-test-websites.sh`, which checks that each
-URL below returns HTTP 200 at the expected final URL, and exits non-zero on any failure.
-These public URLs go through cluster-helper or nextjs-app to obsidian-sync, so they show
-that the whole path works. The main pages show that the Traefik ingress on hetzner and on
-firstvds reaches nextjs-app. When you change the list, change the script and this table together:
-
-| URL | Path | Expected result |
-|---|---|---|
-| https://s.senaev.com/1bxsl9 | short link: cluster-helper → obsidian-sync | redirect to https://senaev.com/cv/5min |
-| https://static.senaev.com/hello-world/ | static file: cluster-helper → obsidian-sync | the `hello-world/index.html` page |
-| https://senaev.com/notes/my_blog_post_senaev_speaks_12 | public note: nextjs-app → obsidian-sync | the rendered note |
-| https://senaev.com/ | main page: hetzner Traefik (xray fallback) → nextjs-app | the main page |
-| https://senaev.ru/ | main page: firstvds Traefik (xray fallback) → nextjs-app | the main page |
+Run `npm run test:smoke` from the repository root, always through npm. It checks that the
+public websites answer, and needs no cluster access. The list of URLs is in
+`scripts/smoke-test-websites.test.ts`.
 
 For the ChatGPT MCP connector, ask ChatGPT to read a note, search the vault and add a diary
 record, then check the `🤖 ChatGPT MCP message` logs of cluster-helper.
