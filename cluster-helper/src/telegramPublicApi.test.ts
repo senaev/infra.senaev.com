@@ -69,15 +69,16 @@ describe('telegramPublicApi', () => {
         expect(sendMessage).not.toHaveBeenCalled();
     });
 
-    it('sends the text with the prefix and escaped Markdown, and answers 204', async () => {
-        const response = await post(SECRET_PATH, { text: 'work-log: *needs* sign-in' });
+    it('sends the Markdown unchanged after the prefix, and answers 204', async () => {
+        const markdown = '# work-log\n\n- **datadog** needs [sign-in](https://example.com)';
+        const response = await post(SECRET_PATH, { text: markdown });
 
         expect(response.statusCode).toBe(204);
-        expect(sendMessage).toHaveBeenCalledExactlyOnceWith(`${TELEGRAM_PUBLIC_API_MESSAGE_PREFIX}work\\-log: \\*needs\\* sign\\-in`);
+        expect(sendMessage).toHaveBeenCalledExactlyOnceWith(`${TELEGRAM_PUBLIC_API_MESSAGE_PREFIX}${markdown}`);
     });
 
-    it('accepts a text of the maximum length', async () => {
-        const response = await post(SECRET_PATH, { text: 'a'.repeat(TELEGRAM_PUBLIC_API_MAX_TEXT_LENGTH) });
+    it('counts the length in code points, so the maximum length of emoji is accepted', async () => {
+        const response = await post(SECRET_PATH, { text: '😀'.repeat(TELEGRAM_PUBLIC_API_MAX_TEXT_LENGTH) });
 
         expect(response.statusCode).toBe(204);
     });

@@ -1,23 +1,26 @@
 import type { FastifyBaseLogger, FastifyPluginCallback } from 'fastify';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
-import { escapeTelegramMarkdown } from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
 
-export const TELEGRAM_PUBLIC_API_MAX_TEXT_LENGTH = 2000;
-export const TELEGRAM_PUBLIC_API_MESSAGE_PREFIX = '📨 ';
+// A rich message takes up to 32768 characters; the rest is left for the prefix.
+export const TELEGRAM_PUBLIC_API_MAX_TEXT_LENGTH = 32_000;
+// On its own paragraph, so that a heading on the first line of the text stays a heading.
+export const TELEGRAM_PUBLIC_API_MESSAGE_PREFIX = '📨\n\n';
 
-const BODY_LIMIT_BYTES = 16 * 1024;
+// JSON can escape one character into up to 12 bytes (a surrogate pair as two \uXXXX).
+const BODY_LIMIT_BYTES = TELEGRAM_PUBLIC_API_MAX_TEXT_LENGTH * 12 + 1024;
 
 export type TelegramPublicApiOptions = {
     /** The secret path segment, without a leading slash. Anyone who does not know it gets 404. */
     path: string;
-    sendMessage: (text: string) => Promise<unknown>;
+    sendMessage: (markdown: string) => Promise<unknown>;
     logger: Pick<FastifyBaseLogger, 'info' | 'warn' | 'error'>;
 };
 
 function parseText(body: unknown): string | null {
     const text = isObject(body) ? body.text : undefined;
 
-    if (typeof text !== 'string' || text.trim() === '' || text.length > TELEGRAM_PUBLIC_API_MAX_TEXT_LENGTH) {
+    // Telegram counts characters as code points, not UTF-16 units.
+    if (typeof text !== 'string' || text.trim() === '' || Array.from(text).length > TELEGRAM_PUBLIC_API_MAX_TEXT_LENGTH) {
         return null;
     }
 
@@ -25,7 +28,8 @@ function parseText(body: unknown): string | null {
 }
 
 /**
- * `POST /<secret path>` with `{ "text": "..." }` sends the text to the owner's chat. It is for
+ * `POST /<secret path>` with `{ "text": "..." }` sends the text, as Telegram Rich Markdown,
+ * to the owner's chat. Only the owner knows the path, so the Markdown is sent unchanged. It is for
  * the owner's scripts outside the cluster and the tailnet, which cannot reach the internal
  * `/telegram/send-message` route.
  */
@@ -46,7 +50,7 @@ export const telegramPublicApi: FastifyPluginCallback<TelegramPublicApiOptions> 
         }
 
         try {
-            await sendMessage(`${TELEGRAM_PUBLIC_API_MESSAGE_PREFIX}${escapeTelegramMarkdown(text)}`);
+            await sendMessage(`${TELEGRAM_PUBLIC_API_MESSAGE_PREFIX}${text}`);
         } catch (error) {
             logger.error({ error: error instanceof Error ? error.message : String(error) }, '❌ Telegram public API: failed to send the message');
 
