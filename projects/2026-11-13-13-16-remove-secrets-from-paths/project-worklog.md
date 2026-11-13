@@ -1,5 +1,9 @@
 # Project worklog
 
+## 2026-11-13 16:01 UTC — Old Alisa route removed and verified
+
+PR #174 (`ded8e9dd`) deployed (run `43457251711`), with two healthy rollouts and no errors. A real Alisa command at 16:00:37 UTC came as `POST /alisa-webhook`, passed the check (200), was planned by OpenRouter as `add_shopping_items`, and ran. Left for Alisa: the user deletes the Vault key `ALISA_WEBHOOK_SECRET`.
+
 ## 2026-11-13 15:55 UTC — Alisa on the new path, old route removed
 
 The user changed the skill Webhook URL to `https://api.senaev.com/alisa-webhook` and checked that Alisa works (commands at 15:47 UTC ran on the new code). A new PR removes the `/${ALISA_WEBHOOK_SECRET}` route, the env variable and its Helm and ExternalSecret mappings. The Vault key is deleted only after that deploy: a key that the ExternalSecret still lists but Vault does not have blocks the whole `senaev-com-kv-secrets` sync.
