@@ -2,6 +2,8 @@ import {
     beforeEach, describe, expect, it, vi,
 } from 'vitest';
 
+import { logger } from '../logger';
+
 import { handleAlisaRequest } from './handleAlisaRequest';
 import { runTrickyDadCommand } from './runTrickyDadCommand';
 import { sendTrickyDadErrorReport } from './sendTrickyDadReport';
@@ -52,5 +54,16 @@ describe('handleAlisaRequest', () => {
             err: expect.objectContaining({ message: 'Empty command received from Alisa' }),
         });
         expect(runTrickyDadCommand).not.toHaveBeenCalled();
+    });
+
+    it('does not log the session, which has the user ID that the webhook trusts', () => {
+        vi.mocked(runTrickyDadCommand).mockReturnValue(new Promise(() => {}));
+
+        handleAlisaRequest({
+            request: { command: 'купи хлеб' },
+            session: { user: { user_id: 'secret-user-id' } },
+        });
+
+        expect(JSON.stringify(vi.mocked(logger.info).mock.calls)).not.toContain('secret-user-id');
     });
 });

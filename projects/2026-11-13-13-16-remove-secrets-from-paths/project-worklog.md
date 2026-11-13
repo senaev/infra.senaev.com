@@ -1,5 +1,19 @@
 # Project worklog
 
+## 2026-11-13 14:30 UTC — Alisa: fixed path with a body check
+
+Yandex Dialogs has only a "Webhook URL" field: no custom headers and no request signature. It sends `Authorization: Bearer` only with account linking (a user OAuth token from our own OAuth server). The user chose a fixed path `/alisa-webhook` that accepts a request only when `session.skill_id` is our skill and `session.user.user_id` is in the Vault allowlist `ALISA_ALLOWED_USER_IDS`. The old secret path stays until the skill URL is changed. Separate PR.
+
+All 28 Alisa requests in the last 30 days have the same skill and the same user, and all of them have `session.user`:
+
+```
+skill_id: e456585c-55dc-435e-9294-5312dc94b497
+user:
+    user_id: <64 hex characters>
+```
+
+`handleAlisaRequest` logs the full body, so the user ID is in the logs since 2026-11-01. It cannot be rotated (it is fixed for the user and skill pair), so the log must stop writing it.
+
 ## 2026-11-13 13:30 UTC — Telegram public API done
 
 The user moved the Telegram public API to a bearer header in its own PR (#170), before its first deploy. Left: Alisa, vpn-subscription, APM.

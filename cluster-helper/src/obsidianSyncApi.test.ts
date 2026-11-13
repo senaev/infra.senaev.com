@@ -13,6 +13,7 @@ vi.hoisted(() => {
         'API_DOMAIN',
         'LLM_ENDPOINT_API_KEY',
         'ALISA_WEBHOOK_SECRET',
+        'ALISA_ALLOWED_USER_IDS',
         'AUTH_DOMAIN',
         'MCP_DOMAIN',
         'AUTH_MY_USERNAME',
