@@ -1,13 +1,16 @@
 {{- if and .Values.vpnXhttpExperiment.enabled .Values.vpnXhttpExperiment.diagnostics .Values.vpnXhttpExperiment.sourceControl .Values.vpnProbe.enabled .Values.vpnProbe.controlledExperiment .Values.ingress.enabled }}
+{{- $root := . }}
+{{- range $source := list (dict "node" "hetzner" "title" "Hetzner") (dict "node" "firstvds" "title" "FirstVDS") }}
+---
 # Distinct profile label avoids overlap with home probe Deployment selectors.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: vpn-source-control-hetzner
-  namespace: {{ .Release.Namespace }}
+  name: vpn-source-control-{{ $source.node }}
+  namespace: {{ $root.Release.Namespace }}
   labels:
     app: vpn-probe
-    vpn-profile: "source-control-hetzner"
+    vpn-profile: "source-control-{{ $source.node }}"
 spec:
   replicas: 1
   strategy:
@@ -15,12 +18,12 @@ spec:
   selector:
     matchLabels:
       app: vpn-probe
-      vpn-profile: "source-control-hetzner"
+      vpn-profile: "source-control-{{ $source.node }}"
   template:
     metadata:
       labels:
         app: vpn-probe
-        vpn-profile: "source-control-hetzner"
+        vpn-profile: "source-control-{{ $source.node }}"
         tags.datadoghq.com/service: vpn-probe
         tags.datadoghq.com/env: prod
       annotations:
@@ -28,7 +31,7 @@ spec:
         ad.datadoghq.com/probe.logs: '[{"source":"python","service":"vpn-probe"}]'
     spec:
       nodeSelector:
-        vps: hetzner
+        vps: {{ $source.node }}
       automountServiceAccountToken: false
       terminationGracePeriodSeconds: 30
       securityContext:
@@ -50,14 +53,16 @@ spec:
             capabilities:
               drop: [ALL]
           env:
+            {{- if eq $source.node "hetzner" }}
             - name: WEBSITE_CHECK
               value: "true"
+            {{- end }}
             - name: XHTTP_SOURCE_CONTROL
               value: "true"
             - name: PROFILE_NAME
-              value: "XHTTP source control — Hetzner"
+              value: {{ printf "XHTTP source control — %s" $source.title | quote }}
             - name: XHTTP_PROFILE_LINK
-              value: {{ printf "vless://{XRAY_USER_UUID:xhttp-probe}@senaev.com:443?type=xhttp&security=tls&fp=chrome&sni=senaev.com&mode=packet-up&path=%s" (.Values.vpnXhttpExperiment.path | urlquery) | quote }}
+              value: {{ printf "vless://{XRAY_USER_UUID:xhttp-probe}@senaev.com:443?type=xhttp&security=tls&fp=chrome&sni=senaev.com&mode=packet-up&path=%s" ($root.Values.vpnXhttpExperiment.path | urlquery) | quote }}
             - name: PROFILE_LINK
               value: "$(XHTTP_PROFILE_LINK)"
             - name: XRAY_USER_UUID
@@ -84,6 +89,7 @@ spec:
         - name: scratch
           emptyDir:
             sizeLimit: 16Mi
+{{- end }}
 ---
 # Public self-connect may be DNATed to the local Traefik pod before policy checks.
 # Permit only its public frontend, never the private XHTTP backend or TLS fallback.

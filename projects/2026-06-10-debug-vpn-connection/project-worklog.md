@@ -1,3 +1,35 @@
+## 2026-11-13 18:19 UTC — Merge #169; draft independent FirstVDS source
+
+User approved merge, analysis and next-step preparation. #169 had CodeRabbit
+approval, no inline findings, successful CI/image build; merged at0b38516c.
+Deployment43480667883 succeeded (VPN completed18:18:12 UTC; telemetry18:17:11).
+`npm run test:smoke` passed all5 tests. All3 new probe targets up=1, both
+website check successes fresh=1; current probes have zero5m restart increases.
+New ordinary HTTPS controls occur at
+the tail of full matrices, so analysis must wait for fresh post-rollout samples.
+
+Pre-rollout18:15 UTC current-process XHTTP/H1 success/attempt snapshot:
+```
+source          4096   8192   12288   16384
+senaev-media   17/17  15/16   5/16    0/17
+hetzner        32/32  32/32  32/32   32/32
+```
+Paired direct payload counters all successful. Not matched rounds; no claim
+of exact cutoff or proven DPI. Prepare FirstVDS as another source to public
+Hetzner endpoint, using the existing client template and budgets. Keep draft
+pending ordinary HTTPS evidence; no permission to merge this next PR.
+
+Structural render comparison against parent chart:
+```
+PASS: only FirstVDS probe added; every existing rendered resource unchanged; gates and entry-only routing preserved
+```
+Validated source node, isolated labels, unchanged security context, no new
+website worker, existing enable gates and no FirstVDS Freedom/SOCKS inbound.
+Helm lint passed. No Python, image, secrets or NetworkPolicy changes required.
+A one-time follow-up analysis is scheduled for19:20 UTC /20:20 Madrid to review
+post-rollout ordinary HTTPS results, exit gates, direct pairs and fresh XHTTP
+results before promoting this draft. No authorization to merge/deploy it.
+
 ## 2026-11-13 07:58 UTC — Deploy #168; prepare ordinary HTTPS comparison
 
 User approved merge and next-step preparation. Merged #168 at af23212b;
