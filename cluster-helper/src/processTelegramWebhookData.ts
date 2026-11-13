@@ -1,6 +1,7 @@
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { TelegramMessage, TelegramUser } from 'senaev-utils/src/utils/TelegramApi/types';
 
+import { describeTelegramUpdate } from './describeTelegramUpdate';
 import {
     OBSIDIAN_TASKS_CHAT_ID,
     TG_CLUSTER_CHAT_ID,
@@ -54,7 +55,7 @@ export async function processTelegramWebhookData({
     }
 
     if (!isObject(message)) {
-        throw new Error(`❌ Unsupported Telegram update type received in Webhook Data topic [${JSON.stringify(update)}]`);
+        throw new Error(`❌ Unsupported Telegram update type received in Webhook Data topic [${JSON.stringify(describeTelegramUpdate(update))}]`);
     }
 
     const { chat, from } = message;

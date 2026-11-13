@@ -1,5 +1,9 @@
 # Project worklog
 
+## 2026-11-13 16:40 UTC — cluster-helper: no whole bodies in logs
+
+The user said that `VPN_SUBSCRIPTION_SECRET` is rotated. A new PR removes the last whole-body logs from cluster-helper: `/telegram/send-message` (now `chatId` and the text length: the text can hold the IP and user agent of a VPN error report), `/qbittorrent/torrent-event` (now `event` and `name`, logged after the validation), and the Telegram webhook update (now the update ID and types, logged after the secret check, so unauthenticated requests are not logged). The non-object-body warning and the "unsupported update" error also stop writing the body.
+
 ## 2026-11-13 16:30 UTC — vpn-subscription deployed and verified
 
 PR #175 (`39504cf8`) deployed (run `43462163575`); the new pod `vpn-subscription-56755c4c94-lxk4f` logs only its start lines. Requests to `/wrong-secret-smoke-check` (403) and `/wrong-secret-smoke-check/extra` (404) left no log in Datadog. APM had 74 vpn-subscription spans in the 24 hours before, none after. A CodeRabbit finding was fixed before the merge: a failed error-report delivery to cluster-helper now logs `❌ Cannot send the error report to Telegram` with the status only. Left: rotation (step 5) and the full-body logs in cluster-helper.

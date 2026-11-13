@@ -15,6 +15,7 @@ import {
     describeMcpExchange, handleMcpMessage, McpServerOptions,
 } from './chatGptMcp/handleMcpMessage';
 import { sendDailyOverview } from './dailyOverview/sendDailyOverview';
+import { describeTelegramUpdate } from './describeTelegramUpdate';
 import {
     ALISA_ALLOWED_USER_IDS,
     API_DOMAIN,
@@ -111,9 +112,14 @@ internalServer.post<{ Body: unknown }>('/alertmanager/webhook', (request, reply)
 });
 
 internalServer.post<{ Body: unknown }>('/telegram/send-message', async (request, reply) => {
-    logger.info({ body: request.body }, '🆕 Received Telegram send message request');
+    const message = request.body as Omit<Parameters<typeof sendTelegramMessage>[0], 'token'>;
+
+    logger.info({
+        chatId: message.chatId,
+        textLength: message.text.length,
+    }, '🆕 Received Telegram send message request');
     await sendTelegramMessage({
-        ...(request.body as Omit<Parameters<typeof sendTelegramMessage>[0], 'token'>),
+        ...message,
         token: TG_TOKEN_SENAEV_COM_BOT,
     });
     reply.code(204).send();
@@ -145,10 +151,14 @@ internalServer.get<{ Querystring: { date?: string } }>('/send-daily-overview', a
 });
 
 internalServer.post<{ Body: unknown }>('/qbittorrent/torrent-event', async (request, reply) => {
-    logger.info({ body: request.body }, '🆕 Received qBittorrent torrent event');
     if (!isTorrentEvent(request.body)) {
         throw new Error('Invalid qBittorrent torrent event payload');
     }
+
+    logger.info({
+        event: request.body.event,
+        name: request.body.name,
+    }, '🆕 Received qBittorrent torrent event');
 
     await sendTelegramMessage({
         text: formatTorrentEvent(request.body),
@@ -342,7 +352,6 @@ async function main(): Promise<void> {
     logStartupStep('bot info fetched');
 
     publicServer.post(TELEGRAM_WEBHOOK_PATH, (request, reply) => {
-        logger.info({ update: request.body }, '🆕 Received Telegram update');
         const secret = request.headers['x-telegram-bot-api-secret-token'];
 
         if (secret !== webhookSecretToken) {
@@ -361,13 +370,14 @@ async function main(): Promise<void> {
                 {
                     path: TELEGRAM_WEBHOOK_PATH,
                     bodyType: typeof update,
-                    body: update,
                 },
                 '⚠️ Invalid request with non-object body'
             );
 
             return reply.code(400).send('Bad Request');
         }
+
+        logger.info(describeTelegramUpdate(update), '🆕 Received Telegram update');
 
         // Telegram waits about a minute for this response and redelivers the same update
         // when it does not arrive. A Prowlarr search can outlast that by minutes, and every
