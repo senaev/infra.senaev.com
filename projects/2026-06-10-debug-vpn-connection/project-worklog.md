@@ -1,3 +1,25 @@
+## 2026-11-13 23:28 UTC — Separate size tests from failed homepage discovery
+
+User approved a small PR for a verified configured asset. Preserve discovery
+failures and existing dynamic discovery; independently select the configured
+same-origin path for ranges. Only home4 and FirstVDS/Hetzner source controls
+receive it. Strict path validation; stale paths fail visibly, no retries or
+fallback. Existing image, metrics names, budgets and routing remain unchanged.
+
+Read-only asset verification and prepared code results:
+```
+/_next/static/chunks/6b932d840e5ca137.js ['223452']
+Ran 105 tests in 0.242s
+OK
+1 chart(s) linted, 0 chart(s) failed
+PASS: forced discovery failure preserved; live HTTP1 ranges return exact 8/16/64 KiB
+```
+Preflight mocks only waits and discovery failure; range requests use real curl,
+verified TLS, HTTP206 and exact byte counts. Not a home ISP result. Tests cover
+failed discovery with successful ranges, stale asset failures without retries,
+continuation across sizes and rejecting foreign/traversal/query paths. No new
+runtime variables beyond selecting the independent control asset; MSS deferred.
+
 ## 2026-11-13 18:59 UTC — Revise immediate next step from first control results
 
 FirstVDS ordinary8/16/64KiB each1/1. Native small H2 trace1/1 (HTTP200,216 bytes,

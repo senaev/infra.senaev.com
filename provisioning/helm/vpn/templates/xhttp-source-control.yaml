@@ -57,6 +57,8 @@ spec:
             - name: WEBSITE_CHECK
               value: "true"
             {{- end }}
+            - name: HTTPS_CONTROL_ASSET_PATH
+              value: {{ default "" $root.Values.vpnProbe.httpsControlAssetPath | quote }}
             - name: XHTTP_SOURCE_CONTROL
               value: "true"
             - name: PROFILE_NAME

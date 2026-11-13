@@ -144,6 +144,9 @@ def emit(profile, check, route, result):
 
 def https_bulk_controls(profile, child=None):
     """Ordinary HTTPS through the same public hostname; no VPN, new endpoint or worker."""
+    configured = os.environ.get("HTTPS_CONTROL_ASSET_PATH", "")
+    if configured and not re.fullmatch(r"/_next/static/chunks/[A-Za-z0-9_.-]+\.js", configured):
+        raise ValueError("Invalid HTTPS control asset path")
     experiment_id = str(uuid.uuid4())
     if experiment_wait(random.uniform(60, 90), child, profile, experiment_id) or STOP.is_set():
         return False
@@ -162,9 +165,11 @@ def https_bulk_controls(profile, child=None):
     emit(profile, "https_bulk_discovery", "direct", {
         **discovery, "ok": ready, "experiment_id": experiment_id,
         "asset_found": asset is not None})
-    if not ready:
+    if configured:
+        asset = "https://senaev.com" + configured
+    if asset is None:
         return False
-    # Discover on each round so a website release cannot leave a pinned stale hash.
+    # A configured asset makes ranges independent; discovery still reports its own failure.
     passed = True
     for size in (8192, 16384, 65536):
         jitter = random.uniform(2, 7)
@@ -174,6 +179,7 @@ def https_bulk_controls(profile, child=None):
                             expected_bytes=size, range_bytes=size)
         emit(profile, f"transfer_https_hetzner_{size}", "direct", {
             **result, "experiment_id": experiment_id, "requested_bytes": size,
+            "asset_source": "configured" if configured else "discovered",
             "request_jitter_seconds": jitter})
         passed = result["ok"] and passed
     return passed

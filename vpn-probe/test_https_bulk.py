@@ -1,3 +1,4 @@
+import os
 import json
 import subprocess
 import unittest
@@ -110,3 +111,37 @@ class HTTPSBulkTests(unittest.TestCase):
         result, _ = probe.request('https://senaev.com/', '', 65536, http1=True)
         self.assertFalse(result['ok'])
         self.assertNotIn('http_version', result)
+
+    @patch.dict(os.environ, {'HTTPS_CONTROL_ASSET_PATH': '/_next/static/chunks/fixed.js'})
+    @patch('probe.emit')
+    @patch('probe.experiment_wait', return_value=False)
+    @patch('probe.request')
+    def test_failed_discovery_still_runs_all_configured_ranges(self, request, wait, emit):
+        request.side_effect = [({'ok': False, 'curl_exit': 28}, '')] + [({'ok': True}, '')] * 3
+        self.assertTrue(probe.https_bulk_controls('home'))
+        self.assertFalse(emit.call_args_list[0].args[3]['ok'])
+        self.assertFalse(emit.call_args_list[0].args[3]['asset_found'])
+        self.assertEqual(request.call_count, 4)
+        self.assertEqual([c.args[2] for c in request.call_args_list[1:]], [8192, 16384, 65536])
+        self.assertTrue(all(c.args[0] == 'https://senaev.com/_next/static/chunks/fixed.js'
+                            for c in request.call_args_list[1:]))
+        self.assertTrue(all(c.args[3]['asset_source'] == 'configured' for c in emit.call_args_list[1:]))
+
+    @patch.dict(os.environ, {'HTTPS_CONTROL_ASSET_PATH': '/_next/static/chunks/stale.js'})
+    @patch('probe.emit')
+    @patch('probe.experiment_wait', return_value=False)
+    @patch('probe.request')
+    def test_stale_asset_records_failures_without_retry_or_fallback(self, request, wait, emit):
+        request.side_effect = [({'ok': False}, '')] + [({'ok': False, 'http_status': 404}, '')] * 3
+        self.assertFalse(probe.https_bulk_controls('home'))
+        self.assertEqual(request.call_count, 4)
+        self.assertEqual([c.args[3]['http_status'] for c in emit.call_args_list[1:]], [404]*3)
+
+    @patch('probe.request')
+    def test_configured_path_cannot_change_origin_or_escape_static_chunks(self, request):
+        for path in ['https://elsewhere.test/a.js', '//elsewhere.test/a.js',
+                     '/_next/static/chunks/../a.js', '/_next/static/chunks/a.js?token=x']:
+            with patch.dict(os.environ, {'HTTPS_CONTROL_ASSET_PATH': path}):
+                with self.assertRaises(ValueError):
+                    probe.https_bulk_controls('home')
+        request.assert_not_called()

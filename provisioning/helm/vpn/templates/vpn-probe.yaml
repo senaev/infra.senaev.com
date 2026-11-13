@@ -57,6 +57,8 @@ spec:
               value: "true"
             {{- end }}
             {{- if and $.Values.vpnXhttpExperiment.enabled $.Values.vpnProbe.controlledExperiment $.Values.ingress.enabled (eq $index 4) }}
+            - name: HTTPS_CONTROL_ASSET_PATH
+              value: {{ default "" $.Values.vpnProbe.httpsControlAssetPath | quote }}
             - name: XHTTP_DIAGNOSTICS
               value: {{ default false $.Values.vpnXhttpExperiment.diagnostics | quote }}
             - name: XHTTP_PROFILE_LINK
