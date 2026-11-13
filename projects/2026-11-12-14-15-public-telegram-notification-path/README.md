@@ -29,7 +29,7 @@ Changed on 2026-11-13: the endpoint is a thin proxy to the whole Bot API of the 
 
 1. ✅ Read the secret `TELEGRAM_PUBLIC_API_SECRET` in `cluster-helper/src/env.ts`; Helm takes it from Vault (`external-secret.yaml`, `cluster-helper.yaml`).
 2. ✅ Thin proxy `GET|POST /telegram-public-bot-api/:method` in `cluster-helper/src/telegramPublicApi.ts`:
-   - `Authorization: Bearer <TELEGRAM_PUBLIC_API_SECRET>`, compared with `timingSafeEqual` in an `onRequest` hook, before the body is read; otherwise 401
+   - `Authorization: Bearer <TELEGRAM_PUBLIC_API_SECRET>`, compared with plain `!==` in an `onRequest` hook, before the body is read; otherwise 401. No `timingSafeEqual`: network jitter hides the nanosecond difference, and the secret is long and random (decision of 2026-11-13)
    - forwards to `https://api.telegram.org/bot<TG_TOKEN_SENAEV_COM_BOT>/<method>` with the same query, raw body and content type (JSON, form, multipart), and returns Telegram's status, content type and body unchanged
    - the body is buffered within Fastify's default limit of 1 MiB, only to protect the memory; a bigger body gives 413. Telegram applies its own limits (decision of 2026-11-13)
    - all methods and all chats are allowed (decision of 2026-11-13): the secret gives full control of the bot, including `setWebhook`

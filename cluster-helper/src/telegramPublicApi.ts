@@ -1,5 +1,3 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
-
 import type { FastifyPluginCallback } from 'fastify';
 
 export const TELEGRAM_PUBLIC_API_PATH = '/telegram-public-bot-api';
@@ -14,10 +12,6 @@ export type TelegramPublicApiOptions = {
     telegramApiBaseUrl: string;
 };
 
-function sha256(value: string): Buffer {
-    return createHash('sha256').update(value).digest();
-}
-
 /**
  * A thin proxy to the Bot API of the senaev.com bot: `GET|POST <prefix>/<method>` goes to
  * `<telegramApiBaseUrl>/<method>` with the same query, body and content type (JSON, form or
@@ -27,13 +21,9 @@ function sha256(value: string): Buffer {
 export const telegramPublicApi: FastifyPluginCallback<TelegramPublicApiOptions> = (instance, {
     secret, telegramApiBaseUrl,
 }, done) => {
-    const secretHash = sha256(secret);
-
     // onRequest runs before the body is read, so an unauthenticated upload is not buffered.
     instance.addHook('onRequest', (request, reply, hookDone) => {
-        const token = /^Bearer (.+)$/.exec(request.headers.authorization ?? '')?.[1];
-
-        if (token === undefined || !timingSafeEqual(sha256(token), secretHash)) {
+        if (request.headers.authorization !== `Bearer ${secret}`) {
             reply.code(401).send({
                 ok: false,
                 error_code: 401,
