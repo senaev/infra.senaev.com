@@ -53,7 +53,7 @@ import {
 import { processTelegramWebhookData } from './processTelegramWebhookData';
 import { proxyPublicStaticFile } from './publicStaticProxy';
 import { formatTorrentEvent, isTorrentEvent } from './qbittorrent/formatTorrentEvent';
-import { TELEGRAM_PUBLIC_API_PREFIX, telegramPublicApi } from './telegramPublicApi';
+import { TELEGRAM_PUBLIC_API_PATH, telegramPublicApi } from './telegramPublicApi';
 import { startTorrentOutboxProcessor, stopTorrentOutboxProcessor } from './torrentOutbox';
 
 const HOST = '0.0.0.0';
@@ -69,7 +69,7 @@ const HOST = '0.0.0.0';
 // PUBLIC_PORT is what the five ingresses target -- api.senaev.com,
 // auth.senaev.com, mcp.senaev.com, s.senaev.com and static.senaev.com. Every route on it is either
 // authenticated (Telegram secret token, Alisa secret path, OAuth bearer tokens for the
-// ChatGPT MCP endpoints, the API key of /llm, the bearer secret of /telegram-bot-api), part of
+// ChatGPT MCP endpoints, the API key of /llm, the bearer secret of /telegram-public-bot-api), part of
 // the OAuth flow, or safe to publish, and the catch-all
 // below answers 401 so nothing new leaks by accident.
 //
@@ -397,7 +397,7 @@ async function main(): Promise<void> {
     });
 
     await publicServer.register(telegramPublicApi, {
-        prefix: TELEGRAM_PUBLIC_API_PREFIX,
+        prefix: TELEGRAM_PUBLIC_API_PATH,
         secret: TELEGRAM_PUBLIC_API_SECRET,
         telegramApiBaseUrl: createTelegramApiBaseUrl(TG_TOKEN_SENAEV_COM_BOT),
     });

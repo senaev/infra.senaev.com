@@ -15,7 +15,7 @@ POST https://api.senaev.com/<secret path>
 
 It sends `text` to my direct chat with the senaev.com bot. Anyone who does not know the secret path gets 404.
 
-Changed on 2026-11-13: the endpoint is a thin proxy to the whole Bot API of the senaev.com bot. The client builds the Telegram request (`POST https://api.senaev.com/telegram-bot-api/sendMessage` with `{ "chat_id": …, "text": … }`) and sends the secret in `Authorization: Bearer <secret>`; the endpoint only adds the bot token. The secret is not in the path, so it does not go to logs and traces.
+Changed on 2026-11-13: the endpoint is a thin proxy to the whole Bot API of the senaev.com bot. The client builds the Telegram request (`POST https://api.senaev.com/telegram-public-bot-api/sendMessage` with `{ "chat_id": …, "text": … }`) and sends the secret in `Authorization: Bearer <secret>`; the endpoint only adds the bot token. The secret is not in the path, so it does not go to logs and traces.
 
 ## Context
 
@@ -28,7 +28,7 @@ Changed on 2026-11-13: the endpoint is a thin proxy to the whole Bot API of the 
 ## Plan
 
 1. ✅ Read the secret `TELEGRAM_PUBLIC_API_SECRET` in `cluster-helper/src/env.ts`; Helm takes it from Vault (`external-secret.yaml`, `cluster-helper.yaml`).
-2. ✅ Thin proxy `GET|POST /telegram-bot-api/:method` in `cluster-helper/src/telegramPublicApi.ts`:
+2. ✅ Thin proxy `GET|POST /telegram-public-bot-api/:method` in `cluster-helper/src/telegramPublicApi.ts`:
    - `Authorization: Bearer <TELEGRAM_PUBLIC_API_SECRET>`, compared with `timingSafeEqual` in an `onRequest` hook, before the body is read; otherwise 401
    - forwards to `https://api.telegram.org/bot<TG_TOKEN_SENAEV_COM_BOT>/<method>` with the same query, raw body and content type (JSON, form, multipart up to 50 MB), and returns Telegram's status, content type and body unchanged
    - all methods and all chats are allowed (decision of 2026-11-13): the secret gives full control of the bot, including `setWebhook`
@@ -47,11 +47,11 @@ Changed on 2026-11-13: the endpoint is a thin proxy to the whole Bot API of the 
 
 1. After the deploy, from the laptop:
    ```
-   curl -sS -X POST https://api.senaev.com/telegram-bot-api/sendMessage -H "authorization: Bearer <secret>" -H 'content-type: application/json' -d '{"chat_id":"<my chat ID>","text":"test from laptop"}'
+   curl -sS -X POST https://api.senaev.com/telegram-public-bot-api/sendMessage -H "authorization: Bearer <secret>" -H 'content-type: application/json' -d '{"chat_id":"<my chat ID>","text":"test from laptop"}'
    ```
    The answer is `{"ok":true,…}` and the message arrives in my bot chat. To send a file:
    ```
-   curl -sS https://api.senaev.com/telegram-bot-api/sendDocument -H "authorization: Bearer <secret>" -F chat_id=<my chat ID> -F document=@note.md
+   curl -sS https://api.senaev.com/telegram-public-bot-api/sendDocument -H "authorization: Bearer <secret>" -F chat_id=<my chat ID> -F document=@note.md
    ```
-2. `curl -sS -o /dev/null -w '%{http_code}' -X POST https://api.senaev.com/telegram-bot-api/getMe` (no header) gives `401`.
+2. `curl -sS -o /dev/null -w '%{http_code}' -X POST https://api.senaev.com/telegram-public-bot-api/getMe` (no header) gives `401`.
 3. `bash scripts/smoke-test-websites.sh` still passes.

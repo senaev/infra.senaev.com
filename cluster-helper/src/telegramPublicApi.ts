@@ -2,7 +2,7 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 
 import type { FastifyPluginCallback } from 'fastify';
 
-export const TELEGRAM_PUBLIC_API_PREFIX = '/telegram-bot-api';
+export const TELEGRAM_PUBLIC_API_PATH = '/telegram-public-bot-api';
 
 // The Bot API takes uploads of up to 50 MB.
 const BODY_LIMIT_BYTES = 50 * 1024 * 1024;

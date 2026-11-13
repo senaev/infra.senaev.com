@@ -143,7 +143,7 @@ See [`projects/2026-11-06-10-23-personal-llm-connector`](projects/2026-11-06-10-
 
 ## Telegram public API
 
-`GET|POST https://api.senaev.com/telegram-bot-api/<method>` is a thin proxy to the Bot API of
+`GET|POST https://api.senaev.com/telegram-public-bot-api/<method>` is a thin proxy to the Bot API of
 the senaev.com bot, for scripts outside the cluster and the tailnet: the request goes to
 `https://api.telegram.org/bot<token>/<method>` unchanged (query, body, content type, also
 multipart), and only the token is added. All methods and chats are allowed. Clients send

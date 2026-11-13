@@ -3,7 +3,7 @@ import {
     afterEach, beforeEach, describe, expect, it, Mock, vi,
 } from 'vitest';
 
-import { TELEGRAM_PUBLIC_API_PREFIX, telegramPublicApi } from './telegramPublicApi';
+import { TELEGRAM_PUBLIC_API_PATH, telegramPublicApi } from './telegramPublicApi';
 
 const SECRET = 'public-api-secret-1234567890';
 const TELEGRAM_API_BASE_URL = 'https://api.telegram.org/botbot-token-0987654321';
@@ -34,7 +34,7 @@ function call({
 } = {}) {
     return server.inject({
         method,
-        url: `${TELEGRAM_PUBLIC_API_PREFIX}${path}`,
+        url: `${TELEGRAM_PUBLIC_API_PATH}${path}`,
         headers: {
             ...(secret !== null && { authorization: `Bearer ${secret}` }),
             ...(contentType !== null && { 'content-type': contentType }),
@@ -72,7 +72,7 @@ beforeEach(async () => {
     // Same catch-all as the public server.
     server.get('/*', (_request, reply) => reply.code(401).send('Unauthorized'));
     await server.register(telegramPublicApi, {
-        prefix: TELEGRAM_PUBLIC_API_PREFIX,
+        prefix: TELEGRAM_PUBLIC_API_PATH,
         secret: SECRET,
         telegramApiBaseUrl: TELEGRAM_API_BASE_URL,
         fetch: fetchTelegram,

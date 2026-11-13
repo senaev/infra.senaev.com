@@ -17,7 +17,7 @@ A secret must go in a header (`Authorization: Bearer …`) or in the body, as th
 | Route | Service | Secret | Client | Can the client send a header? |
 |---|---|---|---|---|
 | `POST /${ALISA_WEBHOOK_SECRET}` | cluster-helper (`cluster-helper/src/index.ts`) | Vault `ALISA_WEBHOOK_SECRET` | Yandex Dialogs webhook | ❓ |
-| `GET\|POST /telegram-bot-api/:method` | cluster-helper (`cluster-helper/src/telegramPublicApi.ts`) | header `Authorization: Bearer`, Vault `TELEGRAM_PUBLIC_API_SECRET` | my scripts (work-log on the laptop) | ✅ already a header |
+| `GET\|POST /telegram-public-bot-api/:method` | cluster-helper (`cluster-helper/src/telegramPublicApi.ts`) | header `Authorization: Bearer`, Vault `TELEGRAM_PUBLIC_API_SECRET` | my scripts (work-log on the laptop) | ✅ already a header |
 | `GET\|POST /:secret` | vpn-subscription (`vpn-subscription/src/index.ts`) | Vault `VPN_SUBSCRIPTION_SECRET` | Happ and other VPN apps, browser (instructions page) | ❓ probably not: a subscription is one URL |
 | `POST /telegram-webhook` | cluster-helper | header `x-telegram-bot-api-secret-token` | Telegram | ✅ already a header |
 
@@ -25,7 +25,7 @@ A secret must go in a header (`Authorization: Bearer …`) or in the body, as th
 
 ## Plan
 
-1. ✅ Telegram public API: done before its first deploy, in PR #170 — `Authorization: Bearer <TELEGRAM_PUBLIC_API_SECRET>` on `/telegram-bot-api/:method`. The secret was never in a deployed path, so it needs no rotation.
+1. ✅ Telegram public API: done before its first deploy, in PR #170 — `Authorization: Bearer <TELEGRAM_PUBLIC_API_SECRET>` on `/telegram-public-bot-api/:method`. The secret was never in a deployed path, so it needs no rotation.
 2. ❓ Alisa: does Yandex Dialogs send a header that we can check, or a field in the body (`session.skill_id`, `session.user.user_id`)? If yes, move the route to a fixed path and check that value. If no, keep the secret path, add `logLevel: 'silent'`, and hide the path in APM (step 4).
 3. ❓ vpn-subscription: can Happ send a header for a subscription? If no, keep the secret path, add `logLevel: 'silent'` (or a request serializer that hides the path), and hide the path in APM (step 4).
 4. ❓ APM: how to hide the paths that stay secret — `DD_TRACE_RESOURCE_RENAMING_ENABLED`, a dd-trace `blocklist`, or no tracing for these routes? Check which of the routes are in the traces now.
