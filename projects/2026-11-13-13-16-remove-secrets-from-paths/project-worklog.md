@@ -1,5 +1,9 @@
 # Project worklog
 
+## 2026-11-13 15:55 UTC — Alisa on the new path, old route removed
+
+The user changed the skill Webhook URL to `https://api.senaev.com/alisa-webhook` and checked that Alisa works (commands at 15:47 UTC ran on the new code). A new PR removes the `/${ALISA_WEBHOOK_SECRET}` route, the env variable and its Helm and ExternalSecret mappings. The Vault key is deleted only after that deploy: a key that the ExternalSecret still lists but Vault does not have blocks the whole `senaev-com-kv-secrets` sync.
+
 ## 2026-11-13 15:25 UTC — Log only used fields, never a whole body
 
 The user decided: never log a whole request body or other external JSON, only the fields that the code uses. The Alisa handler now logs only `{ command }`; the rule is in the repository `AGENTS.md`. Three other full-body logs remain in `cluster-helper/src/index.ts` (`/telegram/send-message`, `/qbittorrent/torrent-event`, the Telegram webhook update); the user has not yet chosen whether to fix them in #171 or in a separate PR.

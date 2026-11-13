@@ -12,7 +12,6 @@ vi.hoisted(() => {
         'TG_CLUSTER_CHAT_ID',
         'API_DOMAIN',
         'LLM_ENDPOINT_API_KEY',
-        'ALISA_WEBHOOK_SECRET',
         'ALISA_ALLOWED_USER_IDS',
         'AUTH_DOMAIN',
         'MCP_DOMAIN',
