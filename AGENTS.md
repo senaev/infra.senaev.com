@@ -141,6 +141,16 @@ through unchanged. One API key for all clients, Vault `LLM_ENDPOINT_API_KEY`, ch
 before the body is read. The model list is `cluster-helper/src/llm/llmEndpointModels.ts`.
 See [`projects/2026-11-06-10-23-personal-llm-connector`](projects/2026-11-06-10-23-personal-llm-connector/README.md).
 
+## Telegram public API
+
+`POST https://api.senaev.com/telegram-public-bot-api/<method>` with a JSON body is a thin proxy
+to the Bot API of the senaev.com bot, for scripts outside the cluster and the tailnet: the body
+goes to `https://api.telegram.org/bot<token>/<method>`, only the token is added, and the answer
+comes back unchanged. JSON only, up to 1 MiB. All methods and chats are allowed. Clients send
+`Authorization: Bearer <secret>`, Vault `TELEGRAM_PUBLIC_API_SECRET`, checked before the body
+is read. Code: `cluster-helper/src/telegramPublicApi.ts`. See
+[`projects/2026-11-12-14-15-public-telegram-notification-path`](projects/2026-11-12-14-15-public-telegram-notification-path/README.md).
+
 ## Shared Toolchain
 
 The root `package.json` is not a workspace root. It is a private manifest that owns the

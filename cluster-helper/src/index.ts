@@ -4,6 +4,7 @@ import { ResourceReadGate } from 'senaev-utils/src/toolServer/ResourceReadGate';
 import Fastify, { FastifyReply } from 'fastify';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { callTelegramApi } from 'senaev-utils/src/utils/TelegramApi/callTelegramApi';
+import { createTelegramApiBaseUrl } from 'senaev-utils/src/utils/TelegramApi/createTelegramApiBaseUrl';
 import { escapeTelegramMarkdown } from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
 import { getCurrentTelegramBotInfo } from 'senaev-utils/src/utils/TelegramApi/getCurrentTelegramBotInfo';
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
@@ -29,6 +30,7 @@ import {
     LLM_SERVER_URL,
     MCP_DOMAIN,
     MCP_GRAFANA_URL,
+    TELEGRAM_PUBLIC_API_SECRET,
     TG_CLUSTER_CHAT_ID,
     TG_MEDIA_SERVER_CHAT_ID,
     TG_TOKEN_SENAEV_COM_BOT,
@@ -51,6 +53,7 @@ import {
 import { processTelegramWebhookData } from './processTelegramWebhookData';
 import { proxyPublicStaticFile } from './publicStaticProxy';
 import { formatTorrentEvent, isTorrentEvent } from './qbittorrent/formatTorrentEvent';
+import { TELEGRAM_PUBLIC_API_PATH, telegramPublicApi } from './telegramPublicApi';
 import { startTorrentOutboxProcessor, stopTorrentOutboxProcessor } from './torrentOutbox';
 
 const HOST = '0.0.0.0';
@@ -66,7 +69,8 @@ const HOST = '0.0.0.0';
 // PUBLIC_PORT is what the five ingresses target -- api.senaev.com,
 // auth.senaev.com, mcp.senaev.com, s.senaev.com and static.senaev.com. Every route on it is either
 // authenticated (Telegram secret token, Alisa secret path, OAuth bearer tokens for the
-// ChatGPT MCP endpoints, the API key of /llm), part of the OAuth flow, or safe to publish, and the catch-all
+// ChatGPT MCP endpoints, the API key of /llm, the bearer secret of /telegram-public-bot-api), part of
+// the OAuth flow, or safe to publish, and the catch-all
 // below answers 401 so nothing new leaks by accident.
 //
 // Serving both from one Fastify instance would publish the internal routes, so do not
@@ -390,6 +394,12 @@ async function main(): Promise<void> {
         prefix: LLM_ENDPOINT_PREFIX,
         apiKey: LLM_ENDPOINT_API_KEY,
         models: getLlmEndpointModels(LLM_SERVER_URL),
+    });
+
+    await publicServer.register(telegramPublicApi, {
+        prefix: TELEGRAM_PUBLIC_API_PATH,
+        secret: TELEGRAM_PUBLIC_API_SECRET,
+        telegramApiBaseUrl: createTelegramApiBaseUrl(TG_TOKEN_SENAEV_COM_BOT),
     });
 
     await startTorrentOutboxProcessor();

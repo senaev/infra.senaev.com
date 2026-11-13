@@ -1,6 +1,6 @@
 # 2026-11-12 — Public Telegram notification path
 
-Give my laptop scripts a public URL with a secret path that sends a Telegram message to me.
+Give my laptop scripts a public, secret-protected way to send Telegram messages with the senaev.com bot.
 
 ## Goal
 
@@ -15,34 +15,42 @@ POST https://api.senaev.com/<secret path>
 
 It sends `text` to my direct chat with the senaev.com bot. Anyone who does not know the secret path gets 404.
 
+Changed on 2026-11-13: the endpoint is a thin proxy to the whole Bot API of the senaev.com bot. The client builds the Telegram request (`POST https://api.senaev.com/telegram-public-bot-api/sendMessage` with `{ "chat_id": …, "text": … }`) and sends the secret in `Authorization: Bearer <secret>`; the endpoint only adds the bot token. The secret is not in the path, so it does not go to logs and traces.
+
 ## Context
 
 - cluster-helper has two Fastify servers: internal (port 80) and public (port 3000, `api.senaev.com`). See the comment above `INTERNAL_PORT` in `cluster-helper/src/index.ts`.
 - The internal route `POST /telegram/send-message` already sends a message with `TG_TOKEN_SENAEV_COM_BOT`.
 - My chat ID is `TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID` (`cluster-helper/src/env.ts`).
 - Secrets live in Vault (`senaev-com-kv`) and reach the pod through the External Secrets Operator.
-- Client side: the secret path is stored in the Obsidian vault, `@senaev/work_stream/work_stream_workflow.md`, front matter key `send-message-path`.
+- Client side: the secret is stored in the Obsidian vault, `@senaev/work_stream/work_stream_workflow.md`, front matter (the first plan used the key `send-message-path`).
 
 ## Plan
 
-1. 📌 Add the Vault key `PUBLIC_NOTIFICATION_PATH_SECRET` (a long random string) and read it in `cluster-helper/src/env.ts`.
-2. 📌 Add a public route `POST /${PUBLIC_NOTIFICATION_PATH_SECRET}` to `publicServer`:
-   - body `{ text: string }`, only plain text, at most 2000 characters; otherwise 400
-   - send to `TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID` with no parse mode, so the text cannot inject Markdown
-   - add a fixed prefix (for example `📨`) so that I can see that the message came from this path
-   - log the call without the path and without the text
-   - answer 204
-3. 📌 Unit tests: a wrong path gives 404, a bad body gives 400, a good body calls `sendTelegramMessage` with the owner chat ID.
-4. 📌 Put the same secret into `send-message-path` in the vault file.
-5. ❓ Rate limit: do we need one (for example 30 messages per hour), in case the path leaks or a script loops?
-6. ❓ Do we accept one fixed path for all my scripts, or one path for each client, so that I can revoke one client?
+1. ✅ Read the secret `TELEGRAM_PUBLIC_API_SECRET` in `cluster-helper/src/env.ts`; Helm takes it from Vault (`external-secret.yaml`, `cluster-helper.yaml`).
+2. ✅ Thin proxy `POST /telegram-public-bot-api/:method` in `cluster-helper/src/telegramPublicApi.ts`:
+   - `Authorization: Bearer <TELEGRAM_PUBLIC_API_SECRET>`, compared with plain `!==` in an `onRequest` hook, before the body is read; otherwise 401. No `timingSafeEqual`: network jitter hides the nanosecond difference, and the secret is long and random (decision of 2026-11-13)
+   - forwards the JSON body to `https://api.telegram.org/bot<TG_TOKEN_SENAEV_COM_BOT>/<method>` (no body → `{}`), and returns Telegram's status, content type and body unchanged
+   - JSON only (decision of 2026-11-13): Telegram accepts JSON for every method, and Fastify's own parser is used. Another content type gives 415. Local files cannot be uploaded; send them by URL or `file_id`
+   - Fastify's default body limit of 1 MiB protects the memory; a bigger body gives 413. Telegram applies its own limits (decision of 2026-11-13)
+   - all methods and all chats are allowed (decision of 2026-11-13): the secret gives full control of the bot, including `setWebhook`
+   - `method` must be letters only, otherwise 404, so the client cannot change the upstream path
+   - logs only the method name and the status; the Fastify request log does not include headers
+   - 502 when Telegram is unreachable
+   - file downloads (`https://api.telegram.org/file/bot<token>/<path>`) are not proxied
+3. ✅ Unit tests in `telegramPublicApi.test.ts`: missing or wrong secret → 401; bad method name → 404; not JSON → 415; over 1 MiB → 413; the JSON body is forwarded with the bot token, no body → `{}`; Telegram errors are returned unchanged; unreachable Telegram → 502; the log has neither the secret, the bot token nor the body.
+4. 📌 Add the Vault key `TELEGRAM_PUBLIC_API_SECRET` in `senaev-com-kv` before the merge (the value of the old key `TELEGRAM_PUBLIC_API_PATH` can be reused: it was never deployed), then delete `TELEGRAM_PUBLIC_API_PATH`. The variable is required, so cluster-helper does not start without it.
+5. 📌 Put the same secret into the front matter of the vault file. The client also needs my chat ID (`TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID`) for `chat_id`.
+6. ✅ No rate limit: the secret is enough (decision of 2026-11-13).
+7. ✅ One secret for all scripts. To revoke, rotate the Vault key (decision of 2026-11-13).
+8. ✅ The secret is in a header, not in the path (decision of 2026-11-13; see [`2026-11-13-13-16-remove-secrets-from-paths`](../2026-11-13-13-16-remove-secrets-from-paths/README.md)).
 
 ## Verification
 
 1. After the deploy, from the laptop:
    ```
-   curl -sS -X POST "https://api.senaev.com/$(yq --front-matter=extract '.send-message-path' ~/projects/obsidian-vault/@senaev/work_stream/work_stream_workflow.md)" -H 'content-type: application/json' -d '{"text":"test from laptop"}'
+   curl -sS -X POST https://api.senaev.com/telegram-public-bot-api/sendMessage -H "authorization: Bearer <secret>" -H 'content-type: application/json' -d '{"chat_id":"<my chat ID>","text":"test from laptop"}'
    ```
-   The message arrives in my bot chat.
-2. `curl -sS -o /dev/null -w '%{http_code}' -X POST https://api.senaev.com/wrong-path` gives `404`.
+   The answer is `{"ok":true,…}` and the message arrives in my bot chat.
+2. `curl -sS -o /dev/null -w '%{http_code}' -X POST https://api.senaev.com/telegram-public-bot-api/getMe` (no header) gives `401`.
 3. `bash scripts/smoke-test-websites.sh` still passes.
