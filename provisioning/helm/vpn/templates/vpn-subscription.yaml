@@ -16,7 +16,8 @@ spec:
       labels:
         app: vpn-subscription
         vps: {{ .Values.vpnSubscription.vps }}
-        admission.datadoghq.com/enabled: "true"
+        # No APM: dd-trace writes the full path, with the subscription secret, to http.url.
+        admission.datadoghq.com/enabled: "false"
         tags.datadoghq.com/service: vpn-subscription
         tags.datadoghq.com/env: prod
         tags.datadoghq.com/version: latest

@@ -16,6 +16,7 @@ import {
     XRAY_USER_UUID,
 } from './env';
 import { renderInstructionsPage } from './renderInstructionsPage';
+import { replyNotFound } from './requestLogging';
 
 const TITLE = 'Senaev🔐VPN';
 const ANNOUNCEMENTS = [
@@ -27,6 +28,8 @@ const announcement = ANNOUNCEMENTS.join(' ');
 const subscriptionUrl = `https://vpn-subscription.senaev.com/${VPN_SUBSCRIPTION_SECRET}`;
 
 const server = Fastify({ loggerInstance: logger });
+
+server.setNotFoundHandler(replyNotFound);
 
 const macroValues: Record<string, string> = {
     XRAY_REALITY_PUBLIC_KEY,

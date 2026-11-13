@@ -1,5 +1,9 @@
 # Project worklog
 
+## 2026-11-13 16:20 UTC — vpn-subscription: keep the secret path, hide it from logs and APM
+
+The Happ docs have no header or Basic auth for a subscription: it is one URL, as with other VPN subscription providers. The user chose to keep the secret in the path and stop writing it: a Fastify `req` serializer logs only the method, the route pattern and the client IP, and APM is turned off for the pod (`admission.datadoghq.com/enabled: "false"`). The real VPN keys (VLESS UUIDs) are in the response body, not in the URL, so the leak was only to our own Datadog and Loki. Rotation is a separate decision: one shared secret means every user adds the subscription again; per-user tokens or Happ `new-url` (needs a Provider ID) are the options.
+
 ## 2026-11-13 16:05 UTC — Alisa done
 
 The user deleted the Vault key `ALISA_WEBHOOK_SECRET`. The Alisa part of the project is finished. Still open: vpn-subscription, APM, secret rotation, and the full-body logs in `cluster-helper/src/index.ts`.
