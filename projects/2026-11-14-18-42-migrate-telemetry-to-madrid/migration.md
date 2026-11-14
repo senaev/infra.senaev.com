@@ -94,4 +94,4 @@ For rollback, disable through Helm first. Preserve new Madrid writes, restore so
 
 User completed and checksum-verified both rsync copies, set source PVs Retain, and recreated original-name claims bound to `telemetry-grafana-madrid` (1Gi) and `telemetry-metrics-madrid` (50Gi). Native VMSingle paused status was acknowledged before claim replacement. Activation uses explicit matching volumeName settings and resumes reconciliation.
 
-The deployment planner now puts application namespace senaev-com last, after infrastructure (including telemetry), to avoid Grafana MCP startup blocking before Grafana is restored. This planner change selects full image/chart deployment under existing CI rules.
+Grafana MCP moves into the telemetry namespace and vm-stack release, deploying together with Grafana. cluster-helper uses `http://mcp-grafana.telemetry.svc.cluster.local:8000/mcp`. The new namespace receives the existing internal token through External Secrets, and MCP ingress requires both the senaev-com namespace and cluster-helper pod label. No deployment-order change or migration-specific pipeline is needed.

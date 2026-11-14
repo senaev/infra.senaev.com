@@ -138,7 +138,7 @@ spec:
                   key: TELEGRAM_PUBLIC_API_SECRET
                   optional: false
             - name: MCP_GRAFANA_URL
-              value: "http://mcp-grafana:8000/mcp"
+              value: "http://mcp-grafana.telemetry.svc.cluster.local:8000/mcp"
             - name: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_MCP_GRAFANA
               valueFrom:
                 secretKeyRef:

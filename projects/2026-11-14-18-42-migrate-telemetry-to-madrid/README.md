@@ -43,7 +43,7 @@ See [manual procedure](migration.md).
 
 Existing Helm lint passed. Rendered activation manifests match the existing claims: Grafana 1Gi on `telemetry-grafana-madrid`, metrics 50Gi on `telemetry-metrics-madrid`; VMSingle is explicitly unpaused with one replica. Ten central workloads target Madrid including log-generator. Distributed agents and Hetzner ingress stay in place. No custom tests added.
 
-Deployment planning puts senaev-com after infrastructure namespaces, allowing Grafana to start before Grafana MCP's blocking init container. Changing the planner selects the full coordinated deployment/build set, so this activation run is broader than chart-only deployment. After deployment verify historical/fresh data, Grafana/MCP, log-generator placement/logs and Telegram alerts; record the collection gap.
+Grafana MCP now belongs to the telemetry namespace and vm-stack Helm release alongside Grafana, so both can start in the same Helm operation. cluster-helper uses its fully qualified telemetry Service address; the NetworkPolicy allows only namespace senaev-com plus app=cluster-helper. The existing Vault-sourced internal token is synchronized into telemetry. Deployment planner ordering is unchanged; this removes the earlier pipeline change and full-build selection. After deployment verify historical/fresh data, Grafana/MCP, log-generator placement/logs and Telegram alerts; record the collection gap.
 
 ## Result
 

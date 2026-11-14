@@ -1,5 +1,11 @@
 # Project worklog
 
+## 2026-11-14 23:10 UTC — Move Grafana MCP into telemetry in the activation PR
+
+User requested colocating MCP with Grafana instead of deployment reordering. Moved Deployment/Service/NetworkPolicy, token initialization/watch script, helper and values into vm-stack. Cluster-helper uses the telemetry FQDN; allowed-hosts matches that FQDN with port 8000. Ingress peer requires namespace senaev-com AND app=cluster-helper. Existing Vault internal token is synchronized to the telemetry secret. Public OAuth/MCP endpoint and Grafana token lifecycle are unchanged.
+
+Restored deployment_plan.py exactly from main: no pipeline/ordering changes or forced full builds remain in the PR. Existing Helm lint passed; rendered manifests verified one telemetry MCP deployment/service/policy, none in senaev-com, matching endpoint/allowed Host, combined namespace+pod selector and script/secret references. No additional migration tests/infrastructure or deployment performed.
+
 ## 2026-11-14 23:04 UTC — Activation implementation prepared
 
 Restore normal replicas/enabled flags, resume VMSingle with paused false, set matching existing PV bindings (Grafana 1Gi, metrics 50Gi), and move ten central workloads including log-generator to Madrid. Keep distributed sources and Hetzner ingress unchanged.
