@@ -11,10 +11,10 @@ from xhttp_server import server_config
 class DiagnosticTests(unittest.TestCase):
     @patch('probe.emit')
     @patch('probe.experiment_wait', return_value=False)
-    @patch('probe.fresh_xhttp_exit_control', side_effect=[False, True, True, True, True, True, True])
+    @patch('probe.fresh_xhttp_exit_control', side_effect=[False, True, True, True, True, True, True, True, True])
     def test_failure_of_first_tls_client_does_not_skip_the_second(self, fresh, wait, emit):
         self.assertFalse(probe.xhttp_transport_controls('test', None, 'round'))
-        self.assertEqual(fresh.call_count, 7)
+        self.assertEqual(fresh.call_count, 9)
 
     @patch('probe.emit')
     @patch('probe.experiment_wait', return_value=False)
@@ -26,10 +26,10 @@ class DiagnosticTests(unittest.TestCase):
         self.assertEqual([x.kwargs['http1'] for x in arms], [False, True, True, False])
         self.assertEqual(sum(x.kwargs.get('measure_sizes', False) for x in fresh.call_args_list), 2)
         self.assertEqual([x.kwargs.get('measure_sizes', False) for x in fresh.call_args_list],
-                         [False, False, True, False, False, False, False, False, False, True, False, False, False, False])
+                         [False, False, True, False, False, False, False, False, False] * 2)
         self.assertTrue(all(x.kwargs['native_tls'] is True for x in fresh.call_args_list))
         self.assertTrue(all(x.args == ('test', None, 'round') for x in fresh.call_args_list))
-        self.assertEqual(wait.call_count, 14)
+        self.assertEqual(wait.call_count, 18)
         self.assertTrue(all(60 <= x.args[0] <= 90 for x in wait.call_args_list))
 
     @patch('probe.emit')
@@ -61,7 +61,7 @@ class DiagnosticTests(unittest.TestCase):
         self.assertFalse(probe.transfer_round('test', 'baseline', xhttp_proxy='candidate', diagnostics=True))
         exit_control.assert_called_once()
         self.assertEqual(request.call_count, 20)
-        self.assertEqual(fresh.call_count, 7)
+        self.assertEqual(fresh.call_count, 9)
         skips = [c for c in emit.call_args_list if c.args[1] == 'transfer_skipped']
         self.assertEqual(len(skips), 6)
         self.assertFalse(any(c.args[2] == 'xhttp' and c.args[1].startswith('transfer_')

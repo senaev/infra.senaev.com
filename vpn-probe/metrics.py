@@ -28,6 +28,8 @@ class ProbeMetrics:
 
     def record(self, profile, check, route, result, now=None):
         if check not in {'https_bulk_discovery', 'transfer_https_hetzner_8192',
+                         'diagnostic_h1_endpoint_exit_16384', 'diagnostic_h1_endpoint_exit_65536',
+                         'transfer_h1_fresh_endpoint_16384', 'transfer_h1_fresh_endpoint_65536',
                          'transfer_https_hetzner_16384', 'transfer_https_hetzner_65536',
                          'website_senaev_ru', 'https', 'exit_ip', 'download_64k', 'download_64k_30s',
                          'ipv6_entry', 'ipv6_control', 'experiment_client_alive',

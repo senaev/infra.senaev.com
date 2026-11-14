@@ -319,7 +319,7 @@ def xhttp_exit_control(profile, proxy, experiment_id, timeout=8, check="exit_ip"
     return result["ok"]
 
 
-def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, http1=False, measure_sizes=False, payload_size=None):
+def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, http1=False, measure_sizes=False, payload_size=None, endpoint=False):
     """Fresh-process trace and optional payloads; never reset the matrix candidate."""
     if STOP.is_set():
         return False
@@ -327,7 +327,9 @@ def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, ht
         raise ValueError("Size diagnostic requires HTTP1")
     if measure_sizes and payload_size is not None:
         raise ValueError("Payload modes are mutually exclusive")
-    if payload_size is not None and payload_size not in FRESH_TRANSFER_SIZES:
+    if endpoint and payload_size not in (16384, 65536):
+        raise ValueError("Unsupported endpoint payload size")
+    if payload_size is not None and payload_size not in FRESH_TRANSFER_SIZES and not endpoint:
         raise ValueError("Unsupported fresh payload size")
     if http1 and not native_tls:
         raise ValueError("HTTP1 diagnostic requires native TLS")
@@ -337,6 +339,8 @@ def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, ht
              "diagnostic_native_trace" if native_tls else "diagnostic_fresh_trace")
     if payload_size is not None and payload_size != 4096:
         check += f"_{payload_size}"
+    if endpoint:
+        check = f"diagnostic_h1_endpoint_exit_{payload_size}"
     passed = False
     fresh = None
     try:
@@ -364,7 +368,7 @@ def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, ht
                 if passed and (measure_sizes or payload_size is not None):
                     passed = h1_transfer_controls(profile, "socks5h://127.0.0.1:1083",
                                                   child, experiment_id, fresh=fresh,
-                                                  immediate_size=payload_size)
+                                                  immediate_size=payload_size, **({"endpoint": True} if endpoint else {}))
             finally:
                 if fresh is not None:
                     stop_client(fresh)
@@ -378,8 +382,10 @@ def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, ht
     return passed
 
 
-def h1_transfer_controls(profile, proxy, child, experiment_id, fresh=None, immediate_size=None):
+def h1_transfer_controls(profile, proxy, child, experiment_id, fresh=None, immediate_size=None, endpoint=False):
     """Exit-validated H1 ladder or one immediate size pair, serial and bounded."""
+    if endpoint and immediate_size not in (16384, 65536):
+        raise ValueError("Unsupported endpoint payload size")
     immediate = immediate_size is not None
     def guard():
         check_experiment_client(child, profile, experiment_id)
@@ -395,7 +401,11 @@ def h1_transfer_controls(profile, proxy, child, experiment_id, fresh=None, immed
         guard()
         url = f"https://speed.cloudflare.com/__down?bytes={size}"
         check = f"transfer_h1_{'fresh_' if immediate else ''}cloudflare_{size}"
-        direct, _ = request(url, "", size, expected_bytes=size)
+        if endpoint:
+            url = f"https://senaev.com/api/vpn-test?bytes={size}"
+            check = f"transfer_h1_fresh_endpoint_{size}"
+        options = {"http1": True} if endpoint else {}
+        direct, _ = request(url, "", size, expected_bytes=size, **options)
         emit(profile, check, "direct", {**direct, "experiment_id": experiment_id,
                                        "requested_bytes": size})
         guard()
@@ -405,7 +415,7 @@ def h1_transfer_controls(profile, proxy, child, experiment_id, fresh=None, immed
         if STOP.is_set():
             return False
         guard()
-        result, _ = request(url, proxy, size, expected_bytes=size)
+        result, _ = request(url, proxy, size, expected_bytes=size, **options)
         guard()
         emit(profile, check, "xhttp", {**result, "experiment_id": experiment_id,
                                        "requested_bytes": size, "request_jitter_seconds": jitter,
@@ -451,6 +461,14 @@ def xhttp_transport_controls(profile, child, experiment_id, http1_first=False):
                 return False
             result = fresh_xhttp_exit_control(profile, child, experiment_id,
                                              native_tls=True, http1=True, payload_size=size)
+            passed = result and passed
+        # Separate clients keep the endpoint pair independent of Cloudflare outcomes.
+        for size in (16384, 65536):
+            if experiment_wait(random.uniform(60, 90), child, profile, experiment_id):
+                return False
+            result = fresh_xhttp_exit_control(profile, child, experiment_id,
+                                             native_tls=True, http1=True,
+                                             payload_size=size, endpoint=True)
             passed = result and passed
     return passed
 
