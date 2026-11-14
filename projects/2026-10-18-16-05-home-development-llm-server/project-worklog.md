@@ -1,3 +1,14 @@
+## 2026-11-14 08:31 UTC — Prepare Windows remote access before final capture
+
+User requested:
+> I this step to the documentation. And after that we need to recreate the image. Am I right?
+
+Added edition-dependent remote access, verified account-password login, private
+connectivity and Proxmox console fallback before final capture. Recapture after
+configuration changes to include them; keep the existing image until the replacement
+is safely uploaded. Setup through the VM console after import remains an alternative
+that does not require recapture. No Windows changes or new image are confirmed.
+
 ## 2026-11-13 22:30 UTC — Windows image ready; cloud upload in progress
 
 User confirmed:

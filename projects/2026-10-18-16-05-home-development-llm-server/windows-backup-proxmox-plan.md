@@ -11,6 +11,9 @@ Captured EFI (~200 MB; Disk2vhd shows 196 MB), C: and 905 MB recovery with VHDX/
 USB volumes excluded. Cloud checksum and VM boot tests remain pending. Hardware
 inspection, Dell USB boot and Proxmox installation are not confirmed. Purchase remains closed.
 
+Remote-access preparation is newly planned and not yet confirmed. The existing image
+predates this preparation; retain it until a replacement capture is safely uploaded.
+
 ## Equipment
 
 - One USB stick for the Proxmox installer; no second USB drive is required.
@@ -31,7 +34,21 @@ Windows backup tool; writing it to USB normally erases the USB stick.
 2. Check BitLocker/device encryption and securely save its recovery key outside the
    Dell. Keep keys and any licence secrets out of git. For Disk2vhd, turn encryption
    off and wait for full decryption; suspending protection alone is insufficient.
-3. Run Microsoft Disk2vhd in Windows with VSS enabled. Capture Windows and all required
+3. Before the final capture, prepare Windows remote access:
+   - Check Settings → System → About → Windows specifications. Pro, Enterprise and
+     Education can host Remote Desktop (RDP); Home needs another remote-access app
+     if access beyond the Proxmox console is wanted. Windows Server is not required.
+   - Verify an account password works and save it in a password manager, not git.
+     A Windows Hello PIN is not the account password and may need resetting in the VM.
+   - Enable the chosen remote-access method and test connecting from another computer.
+     Keep access private through the LAN or Tailscale; do not expose RDP to the internet.
+   - Retain Proxmox web-console access as a fallback. Test remote access again after
+     import because virtual networking and authentication can change.
+   After making these changes, recreate the VHDX so it includes them, using a new
+   filename and retaining the existing image until the replacement is safely uploaded.
+   Recreating is not mandatory if setup is postponed until after import using the
+   Proxmox console. No remote-access configuration or replacement capture is confirmed.
+   Run Microsoft Disk2vhd in Windows with VSS enabled. Capture Windows and all required
    system/boot volumes, plus recovery volumes where available, into a VHDX on the
    internal SSD. Do not capture only C: while omitting its boot partition. This step
    needs no bootable USB. Check completion and record the file size and SHA-256 hash.
