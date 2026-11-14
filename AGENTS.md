@@ -311,6 +311,10 @@ image build and `latest` image. OpenCode and its Telegram bot deploy together af
 all affected images are published. Helm handles both first installation and updates;
 image refreshes run after Helm in the same coordinated job.
 
+A workspace-level `enabled: false` omits all its rendered resources. Omission of
+`enabled` means enabled. The `senaev` workspace is temporarily disabled for a fresh
+Madrid start; kept PVCs must be removed manually before re-enabling.
+
 LLM workspace values live in `llmWorkspaces`, and the templates in
 `provisioning/helm/senaev-com/templates/llm-workspace/`. The entry name prefixes all
 resource names. Each workspace has its own projects PVC (`<name>-projects`) and
