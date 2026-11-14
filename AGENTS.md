@@ -14,14 +14,14 @@ each request or command. Store it in [`projects/`](projects/) as a folder
 Keep existing folders unchanged. Follow [`projects/AGENTS.md`](projects/AGENTS.md)
 for the folder layout, the main document, the status and the worklog.
 
-## Sensitive nodes: `proxmox`, `senaev-media` and `proxmox-madrid`
+## Sensitive nodes: `proxmox`, `senaev-media`, `proxmox-madrid` and `senaev-madrid`
 
 `proxmox` (bare metal) and `senaev-media` (VM 100 on it) are at home, behind the home
-router. `proxmox-madrid` (bare metal, Proxmox VE) is in Madrid, behind its own
-router. There is no remote console and no other way in: they are reachable only
-over the tailnet (and senaev-media also from proxmox over the home LAN). **If we lose
-network access to them, we cannot recover them remotely, and the result is an
-unacceptable loss.**
+router. `proxmox-madrid` (bare metal, Proxmox VE) and `senaev-madrid` (a VM on it) are
+in Madrid, behind their own router. There is no remote console and no other way in: they
+are reachable only over the tailnet (and each VM also from its Proxmox host over the
+LAN). **If we lose network access to them, we cannot recover them remotely, and the
+result is an unacceptable loss.**
 
 Be extremely careful with these nodes and their networks:
 

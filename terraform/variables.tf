@@ -46,6 +46,21 @@ variable "VPS_PROXMOX_MADRID_LABEL" {
   type        = string
 }
 
+variable "VPS_SENAEV_MADRID_HOST" {
+  description = "Senaev Madrid worker host (VM on proxmox-madrid)"
+  type        = string
+}
+
+variable "VPS_SENAEV_MADRID_USERNAME" {
+  description = "Senaev Madrid worker SSH username"
+  type        = string
+}
+
+variable "VPS_SENAEV_MADRID_LABEL" {
+  description = "Senaev Madrid worker VPS label"
+  type        = string
+}
+
 variable "VPS_MEDIA_HOST" {
   description = "Media worker host"
   type        = string

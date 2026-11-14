@@ -1,7 +1,7 @@
 -include .env
 export
 
-.PHONY: default terraform cluster rsync control-plane workers worker-firstvds worker-galkin worker-proxmox-madrid worker-proxmox worker-senaev-media services senaev-com vpn secrets telemetry traefik datadog test
+.PHONY: default terraform cluster rsync control-plane workers worker-firstvds worker-galkin worker-proxmox-madrid worker-senaev-madrid worker-proxmox worker-senaev-media services senaev-com vpn secrets telemetry traefik datadog test
 
 CONTROL_PLANE_SERVER_ADDRESS := $(CONTROL_PLANE_SERVER_USERNAME)@$(CONTROL_PLANE_SERVER_IP)
 REMOTE := @ssh "$(CONTROL_PLANE_SERVER_ADDRESS)"
@@ -41,6 +41,7 @@ workers:
 	@$(MAKE) worker-firstvds
 	@$(MAKE) worker-galkin
 	@$(MAKE) worker-proxmox-madrid
+	@$(MAKE) worker-senaev-madrid
 	@$(MAKE) worker-proxmox
 	@$(MAKE) worker-senaev-media
 	@echo "✅ [Makefile] Worker nodes connected"
@@ -53,6 +54,9 @@ worker-galkin:
 
 worker-proxmox-madrid:
 	@$(CURDIR)/scripts/connect-worker.sh "$(VPS_PROXMOX_MADRID_USERNAME)@$(VPS_PROXMOX_MADRID_HOST)" "$(VPS_PROXMOX_MADRID_LABEL)"
+
+worker-senaev-madrid:
+	@$(CURDIR)/scripts/connect-worker.sh "$(VPS_SENAEV_MADRID_USERNAME)@$(VPS_SENAEV_MADRID_HOST)" "$(VPS_SENAEV_MADRID_LABEL)"
 
 worker-proxmox:
 	@$(CURDIR)/scripts/connect-worker.sh "$(VPS_PROXMOX_USERNAME)@$(VPS_PROXMOX_HOST)" "$(VPS_PROXMOX_LABEL)"
