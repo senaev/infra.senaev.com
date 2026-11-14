@@ -76,6 +76,7 @@ datadog:
                   values:
                     - senaev-media
                     - hetzner
+                    - senaev-madrid
 
     dogstatsd:
       useHostPort: true
@@ -103,7 +104,7 @@ datadog:
       - name: DD_ORCHESTRATOR_EXPLORER_ORCHESTRATOR_ADDITIONAL_ENDPOINTS
         value: '{"https://orchestrator.datad0g.com": ["$(DD_API_KEY_STAGING)"]}'
 
-  # Node Agent DaemonSet: restricted to the media node and the control plane via
+  # Node Agent DaemonSet: restricted to the media nodes and the control plane via
   # node affinity on the `vps` label. Keep the list equal to the APM `targets`
   # whitelist above. No taints exist today, but tolerate
   # everything defensively so future taints don't silently drop these nodes.
@@ -121,6 +122,7 @@ datadog:
                   values:
                     - senaev-media
                     - hetzner
+                    - senaev-madrid
     tolerations:
       - operator: Exists
     containers:

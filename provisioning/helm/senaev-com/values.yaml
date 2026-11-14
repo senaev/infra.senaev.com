@@ -199,7 +199,9 @@ n8n:
 # The entry name is the prefix of its resource names: renaming an entry replaces its PVCs.
 llmWorkspaces:
   senaev:
-    vps: hetzner
+    # Copy and rebind node-local data before merging; see docs/llm-workspace-madrid.md.
+    vps: senaev-madrid
+    removeResourceLimits: true
     traefik: hetzner
     instructionsPath: config/senaev-llm-instructions-path
     projectsStorageSize: 16Gi

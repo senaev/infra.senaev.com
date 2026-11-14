@@ -291,8 +291,9 @@ and `Recreate`; a Code Tools update still has a short outage and loses in-memory
 The code tools take absolute paths and work in any folder. The repository layout under
 `/code` (`projects/<repo>` and `worktrees/<repo>/<branch>`) is described only in the
 workspace instructions, `/AGENTS.md`. The PVCs use `local-path`, which does not enforce their
-size: worktrees with their own `node_modules` use the node's root disk, which on hetzner also
-holds the control plane.
+size: worktrees with their own `node_modules` use the node's root disk. The `senaev` workspace has no container resource limits; scheduler memory
+requests remain. Node-local data must be copied and PVCs rebound before moving nodes;
+see `docs/llm-workspace-madrid.md`.
 
 OpenCode 2 serves its built-in web UI at `https://opencode.senaev.com` through the
 existing Traefik ingress. Native authentication uses Vault `OPENCODE_PASSWORD` via
@@ -336,7 +337,7 @@ for compatibility after deployment.
 
 | Workspace | Node | Components | Ingress |
 |---|---|---|---|
-| `senaev` | hetzner | OpenCode, OMP (`omp.senaev.com`), Code Tools | traefik-hetzner |
+| `senaev` | senaev-madrid | OpenCode, OMP (`omp.senaev.com`), Code Tools | traefik-hetzner |
 | `galkin` | galkin | OMP only (`omp.galkin.senaev.com`) | traefik-hetzner (DNS points to hetzner) |
 
 Do not rename the `senaev` entry: that replaces its PVCs, and cluster-helper calls

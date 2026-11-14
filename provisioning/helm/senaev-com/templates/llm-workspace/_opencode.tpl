@@ -65,12 +65,13 @@ spec:
           ports:
             - name: opencode
               containerPort: 4096
-          # The agent runs heavy commands here too; see the same limit in _code-tools.tpl.
           resources:
             requests:
               memory: 512Mi
+{{- if not .Values.removeResourceLimits }}
             limits:
               memory: 2Gi
+{{- end }}
           startupProbe:
             exec:
               command: ["opencode", "--server", "http://127.0.0.1:4096", "api", "get", "/api/info"]
@@ -168,8 +169,10 @@ spec:
           resources:
             requests:
               memory: 16Mi
+{{- if not .Values.removeResourceLimits }}
             limits:
               memory: 64Mi
+{{- end }}
           readinessProbe:
             httpGet:
               path: /healthz
