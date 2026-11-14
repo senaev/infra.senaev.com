@@ -1,3 +1,16 @@
+## 2026-11-14 13:25 UTC — Windows image SHA-256 recorded
+
+User asked to retain the hash in project history. Successful screenshot output:
+
+```text
+Algorithm: SHA256
+Hash: E05509082E46209F48F71BFB5B55BD74D718A5CD89995C9ACF01E7C2177CC758
+File: C:\Users\user\Downloads\dell-windows.vhdx
+```
+
+Saved reference in setup plan. Later SHA2521 invocation is a typo/error, not a new
+hash. No cloud integrity comparison or VM boot verification claimed.
+
 ## 2026-11-14 09:38 UTC — Defer Windows remote access until after import
 
 User questioned the need to prepare access before imaging when the Proxmox console

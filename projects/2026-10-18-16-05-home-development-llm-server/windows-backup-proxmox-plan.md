@@ -96,3 +96,15 @@ the saved image. Do not promise the previous Clonezilla rollback without its bac
 
 Exact import commands and current installer settings will be checked when executing
 this plan against the actual disk layout and installed Proxmox version.
+
+## Recorded local image SHA-256 — 2026-11-14
+
+File: `C:\Users\user\Downloads\dell-windows.vhdx`
+
+```text
+E05509082E46209F48F71BFB5B55BD74D718A5CD89995C9ACF01E7C2177CC758
+```
+
+Transcribed from the successful SHA256 Get-FileHash output in the user's screenshot.
+The later SHA2521 command failed and produced no additional hash. This is the local
+image reference only; no cloud/downloaded-copy hash comparison is confirmed.

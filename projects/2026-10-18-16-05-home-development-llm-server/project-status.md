@@ -17,7 +17,8 @@ Proxmox VE 9.2-1 Intel/AMD installer USB prepared on Mac using dd.
 
 Windows remote access is deferred until after VM import through Proxmox noVNC.
 No replacement capture is required solely for this configuration.
-Next: finish cloud upload, compute local SHA-256 and compare with a downloaded copy
-on Mac before erasing SSD. VM bootability, hardware inspection and Dell USB boot are
+Local image SHA-256 recorded in the setup plan from user-provided PowerShell output.
+Cloud upload completion and downloaded-copy comparison remain unconfirmed; user
+previously chose to skip checksum comparison. VM bootability, hardware inspection and Dell USB boot are
 not yet verified. Proxmox installation and Windows VM import have not started.
 See [setup plan](windows-backup-proxmox-plan.md). Purchase remains complete.
