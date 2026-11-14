@@ -173,6 +173,19 @@ def https_control_loop(profile):
             return
 
 
+def endpoint_pair_loop(profile):
+    """Prioritized pair owns port1084; older fresh diagnostics retain port1083."""
+    if STOP.wait(random.uniform(0, 30)):
+        return
+    while not STOP.is_set():
+        started = time.monotonic()
+        fresh_xhttp_exit_control(profile, None, str(uuid.uuid4()),
+                                 native_tls=True, http1=True, payload_size=16384,
+                                 endpoint=True, port=1084)
+        if STOP.wait(max(0, started + random.uniform(300, 360) - time.monotonic())):
+            return
+
+
 def website_loop(profile):
     """Direct HEAD availability, independent of VPN clients and long matrix waits."""
     while not STOP.is_set():
@@ -319,7 +332,7 @@ def xhttp_exit_control(profile, proxy, experiment_id, timeout=8, check="exit_ip"
     return result["ok"]
 
 
-def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, http1=False, measure_sizes=False, payload_size=None, endpoint=False):
+def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, http1=False, measure_sizes=False, payload_size=None, endpoint=False, port=1083):
     """Fresh-process trace and optional payloads; never reset the matrix candidate."""
     if STOP.is_set():
         return False
@@ -327,6 +340,8 @@ def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, ht
         raise ValueError("Size diagnostic requires HTTP1")
     if measure_sizes and payload_size is not None:
         raise ValueError("Payload modes are mutually exclusive")
+    if port not in (1083, 1084) or (port == 1084 and not (endpoint and payload_size == 16384)):
+        raise ValueError("Unsupported fresh client port")
     if endpoint and payload_size not in (16384, 65536):
         raise ValueError("Unsupported endpoint payload size")
     if payload_size is not None and payload_size not in FRESH_TRANSFER_SIZES and not endpoint:
@@ -346,7 +361,7 @@ def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, ht
     try:
         config, _ = client_config(os.environ["XHTTP_PROFILE_LINK"],
                                   os.environ["XRAY_USER_UUID"],
-                                  os.environ["XRAY_REALITY_PUBLIC_KEY"], port=1083)
+                                  os.environ["XRAY_REALITY_PUBLIC_KEY"], port=port)
         config["log"]["loglevel"] = "info"
         if native_tls:
             config["outbounds"][0]["streamSettings"]["tlsSettings"]["fingerprint"] = "unsafe"
@@ -360,13 +375,13 @@ def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, ht
                 check_experiment_client(child, profile, experiment_id)
                 if fresh.poll() is not None and not STOP.is_set():
                     raise RuntimeError("fresh_client_exited")
-                passed = xhttp_exit_control(profile, "socks5h://127.0.0.1:1083", experiment_id,
+                passed = xhttp_exit_control(profile, f"socks5h://127.0.0.1:{port}", experiment_id,
                                             check=check)
                 check_experiment_client(child, profile, experiment_id)
                 if fresh.poll() is not None and not STOP.is_set():
                     raise RuntimeError("fresh_client_exited")
                 if passed and (measure_sizes or payload_size is not None):
-                    passed = h1_transfer_controls(profile, "socks5h://127.0.0.1:1083",
+                    passed = h1_transfer_controls(profile, f"socks5h://127.0.0.1:{port}",
                                                   child, experiment_id, fresh=fresh,
                                                   immediate_size=payload_size, **({"endpoint": True} if endpoint else {}))
             finally:
@@ -425,7 +440,7 @@ def h1_transfer_controls(profile, proxy, child, experiment_id, fresh=None, immed
     return passed
 
 
-def xhttp_transport_controls(profile, child, experiment_id, http1_first=False):
+def xhttp_transport_controls(profile, child, experiment_id, http1_first=False, independent=False):
     """Fresh processes for both HTTP versions; original matrix acceptance is untouched."""
     passed = True
     h1_ok = False
@@ -463,7 +478,7 @@ def xhttp_transport_controls(profile, child, experiment_id, http1_first=False):
                                              native_tls=True, http1=True, payload_size=size)
             passed = result and passed
         # Separate clients keep the endpoint pair independent of Cloudflare outcomes.
-        for size in (16384, 65536):
+        for size in ((65536,) if independent else (16384, 65536)):
             if experiment_wait(random.uniform(60, 90), child, profile, experiment_id):
                 return False
             result = fresh_xhttp_exit_control(profile, child, experiment_id,
@@ -648,7 +663,8 @@ def xhttp_source_control(profile, once=False, independent=False):
         experiment_id = str(uuid.uuid4())
         result, _ = request("https://www.cloudflare.com/cdn-cgi/trace", "", 4096)
         emit(profile, "diagnostic_trace", "direct", {**result, "experiment_id": experiment_id})
-        passed = xhttp_transport_controls(profile, None, experiment_id, http1_first=bool(rotation % 2))
+        passed = xhttp_transport_controls(profile, None, experiment_id, http1_first=bool(rotation % 2),
+                                          **({"independent": True} if independent else {}))
         if not independent:
             https_bulk_controls(profile)
         rotation += 1
@@ -692,6 +708,7 @@ def main():
             launch(lambda: website_loop(profile))
         if diagnostics or source:
             launch(lambda: https_control_loop(profile))
+            launch(lambda: endpoint_pair_loop(profile))
         if diagnostics and not source:
             launch(lambda: xhttp_source_control(profile, independent=True))
         result = run(args)
