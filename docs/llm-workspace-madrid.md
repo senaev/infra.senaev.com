@@ -4,9 +4,9 @@ The chart moves OpenCode + Telegram + OAuth proxy, OMP + auth proxy, and Code To
 from `vps=hetzner` to `vps=senaev-madrid`. Public DNS and Traefik stay on Hetzner;
 Services route to Madrid over the cluster network. Workspace names, secrets and
 endpoints stay the same. Datadog gains a Madrid node Agent and APM eligibility.
-All chart-defined container memory limits (including proxies) are omitted only
-for `senaev`. Memory requests remain scheduler reservations, not usage caps.
-Galkin keeps its existing limits. NetworkPolicy and container security remain.
+All chart-defined container resource limits (including proxies) are removed
+from every LLM workspace, including Galkin. Memory requests remain scheduler
+reservations, not usage caps. NetworkPolicy and container security remain.
 Local-path PVC sizes are not enforced disk quotas. Physical node capacity and
 any cluster admission defaults still apply; verify live limits after cutover.
 

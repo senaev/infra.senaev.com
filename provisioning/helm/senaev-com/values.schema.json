@@ -41,11 +41,6 @@
           }
         ],
         "properties": {
-          "removeResourceLimits": {
-            "type": "boolean",
-            "default": false,
-            "description": "Omit container resource limits for this workspace; scheduler requests remain."
-          },
           "instructionsPath": {
             "type": "string",
             "minLength": 1

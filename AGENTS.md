@@ -291,7 +291,7 @@ and `Recreate`; a Code Tools update still has a short outage and loses in-memory
 The code tools take absolute paths and work in any folder. The repository layout under
 `/code` (`projects/<repo>` and `worktrees/<repo>/<branch>`) is described only in the
 workspace instructions, `/AGENTS.md`. The PVCs use `local-path`, which does not enforce their
-size: worktrees with their own `node_modules` use the node's root disk. The `senaev` workspace has no container resource limits; scheduler memory
+size: worktrees with their own `node_modules` use the node's root disk. LLM workspaces have no container resource limits; scheduler memory
 requests remain. Node-local data must be copied and PVCs rebound before moving nodes;
 see `docs/llm-workspace-madrid.md`.
 

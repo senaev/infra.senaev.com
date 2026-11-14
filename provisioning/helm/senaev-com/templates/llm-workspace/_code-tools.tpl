@@ -62,10 +62,6 @@ spec:
           resources:
             requests:
               memory: 256Mi
-{{- if not .Values.removeResourceLimits }}
-            limits:
-              memory: 2Gi
-{{- end }}
           env:
             - name: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
               valueFrom:
