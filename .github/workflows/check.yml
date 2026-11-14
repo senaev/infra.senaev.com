@@ -51,6 +51,3 @@ jobs:
 
       - name: VPN probe unit tests
         run: python3 -m unittest discover -s vpn-probe -p "test_*.py"
-
-      - name: Telemetry volume migration safety tests
-        run: python3 -m unittest discover -s scripts -p "test_telemetry_volume_plan.py"

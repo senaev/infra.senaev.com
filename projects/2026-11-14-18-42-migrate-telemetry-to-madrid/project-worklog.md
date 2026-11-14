@@ -1,5 +1,9 @@
 # Project worklog
 
+## 2026-11-14 21:58 UTC — Simplified to manual stop/copy/start
+
+User requested no special migration tests or infrastructure and accepted temporarily disabling services. Removed the migration helper, its tests and CI addition. Kept normal placement values and replaced the runbook with manual shutdown, whole-directory rsync/checksum, ordinary replacement PV/PVC bindings and restart steps. No cluster writes performed. Same K3s cluster; no additional cluster required. Stored history is preserved; scraping pauses.
+
 ## 2026-11-14 21:46 UTC — Implementation and cutover prepared
 
 User requested implementation in the same PR. Updated from main and changed central stack/operator placement and Grafana MCP to Madrid. Ingress stays on Hetzner; distributed probes/exporters stay on their source nodes. No cluster writes performed.
