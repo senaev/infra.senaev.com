@@ -1,5 +1,18 @@
 # Project worklog
 
+## 2026-11-14 22:59 UTC — Source retention and Madrid PV creation confirmed
+
+User output confirms:
+
+```text
+pvc-8a91d60b-0266-4f82-b161-feec239b5a5a   1Gi   RWO   Retain   Bound
+pvc-c24e572d-2a1d-47ea-9d9b-d997486e9ec8   20Gi  RWO   Retain   Bound
+telemetry-grafana-madrid                   1Gi   RWO   Retain   Available
+telemetry-metrics-madrid                   50Gi  RWO   Retain   Available
+```
+
+Both target PVs are reserved for original claim names and point at previously verified copies. Before metrics claim recreation, pause VMSingle reconciliation with its native `spec.paused: true`; do not stop the whole operator. Checked upstream operator v0.68.0: `internal/controller/operator/controllers.go` returns before reconciliation when Paused; `factory/reconcile/pvc.go` skips deleting PVCs and requires deliberate operator-finalizer removal for manual replacement. Only the operator finalizer should be removed after confirming paused reconciliation, no writer pods, Retain policy and checksum copies; keep Kubernetes PVC protection. Activation PR must explicitly set `spec.paused: false` and metrics request 50Gi. No claim deletions yet.
+
 ## 2026-11-14 22:57 UTC — Exact claim metadata and Madrid node confirmed
 
 User supplied full PVC YAML: Grafana requests 1Gi, metrics 20Gi; both ReadWriteOnce, Filesystem, local-path. Grafana carries Helm ownership for vm-stack/telemetry. Metrics carries VMSingle owner UID `74b96041-ef48-4bed-b77e-7c0f75b4b89d` and finalizer `apps.victoriametrics.com/finalizer`, so operator reconciliation must be handled deliberately during rebinding. Do not strip finalizers blindly.
