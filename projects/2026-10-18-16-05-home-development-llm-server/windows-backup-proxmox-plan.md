@@ -234,18 +234,19 @@ their rolling restart.
 📌 Confirm the first iperf3 results for `senaev-madrid → hetzner` and `→ firstvds`
 (7th and 8th in the scheduler queue, about 35–40 minutes after the deploy).
 
-📌 QEMU Guest Agent acceptance checks below are not confirmed.
+✅ User subsequently reported that the QEMU Guest Agent checks work; raw command output and a separate post-reboot agent check were not supplied.
 
 ### Next stage: Windows VM recovery
 
-1. Inspect Proxmox package versions, service state and storage/free space; confirm
-   update repositories work before updating packages or allocating VM storage.
-2. Locate the cloud VHDX and retrieve a working copy. Keep cloud original unchanged.
-   User chose to skip checksum comparison; do not reintroduce it as a requirement.
-3. Inspect VHDX virtual size and actual allocated space, and storage capacity before
-   importing: original Windows disk was about 1 TB logically even if image file is
-   much smaller. Do not assume the full virtual disk fits the default local-lvm pool;
-   decide on safe resizing/storage placement based on observed sizes.
+1. Host baseline captured: Proxmox 9.2.2, kernel 7.0.2-6-pve; zero failed systemd
+   units. Repository changes/updates are not independently verified here.
+2. Working VHDX copied to `/var/lib/vz/dell-windows.vhdx`. At the user's later request,
+   SHA-256 was checked and matches the original Windows capture (see below).
+   This supersedes the earlier decision to skip comparisons. Cloud-copy verification
+   remains unconfirmed; preserve the source image unchanged.
+3. Image/storage inspection is complete (snapshot below). The thin pool can hold
+   the current allocated data, but cannot hold both virtual disks fully populated.
+   Review capacity and growth limits before import; do not truncate the VHDX.
 4. Create/import the Windows VM with UEFI/OVMF, required Windows 11 TPM configuration
    and initially Windows-supported storage; boot via noVNC, repair boot if needed,
    verify files/apps/login and activation, then install VirtIO drivers/guest agent.
@@ -258,14 +259,20 @@ Jellyfin validation and the different-LAN-address test are not claimed complete.
 
 ## Debian VM plan — QEMU Guest Agent required
 
-Current next task: create a Debian VM before continuing Windows recovery. This does
-not cancel preservation/import of Windows. User requested 16 GiB RAM and more than
-half the physical SSD capacity; proposed configuration is Debian 13 stable amd64
-(netinst 13.7 at planning time), 16384 MiB RAM without ballooning, 500 GiB SCSI disk
-on local-lvm, 4 host-type vCPUs, q35/OVMF, VirtIO SCSI single, discard enabled and
-VirtIO networking on vmbr0 with DHCP. VM name proposed: debian-madrid; actual VMID
-not yet supplied. The VM is created and installed as `senaev-madrid` (Debian 13,
-8 vCPUs) and is a k3s worker — see the section above.
+Debian installation is complete: VM **100**, `senaev-madrid`, Debian 13 Trixie
+(installer media 13.7), **8 vCPUs**, **16384 MiB RAM**, **500 GiB virtual disk**.
+The original proposal below used 4 vCPUs; the actual guest reports 8. Other proposed
+hardware settings require `qm config 100` to confirm.
+
+The VM Options screenshot shows **Start at boot: Yes**, **QEMU Guest Agent: Enabled**,
+ACPI and KVM enabled, boot order `scsi0, ide2, net0`, and Protection: No.
+User reported the guest agent checks work. Root SSH/Tailscale access is recorded in
+its k3s section above. The installer created the regular account `senaev-madrid`;
+`root` is a separate built-in account. Authorized-key setup was discussed; no secret
+keys or passwords are stored here. Protection, installer-media removal, off-host
+backups and a complete host-reboot/autostart test remain unconfirmed.
+
+The following installation and agent procedure is retained for reproducibility.
 
 Host baseline supplied by user: pve-manager/9.2.2/b9984c6d90a4bd80, kernel
 7.0.2-6-pve; local-lvm active and empty, approximately 793.8 GiB; root 96 GiB LV
@@ -312,9 +319,8 @@ import capacity and virtual disk sizing rather than assuming both full disks fit
    Keep SSH enabled for interactive terminals and noVNC as console fallback. Agent
    command execution is not an interactive shell and requires a running guest/agent.
 
-Acceptance: Debian installed, 16 GiB RAM and 500 GiB disk visible in guest; guest
-agent active after reboot; host-root ping and uid=0 command execution pass. All are
-pending. Agent supports IP discovery, managed shutdown and backup filesystem freeze;
+Acceptance: Debian installation and resources are confirmed; user reports the
+agent checks work. A separate post-reboot agent/autostart test is not confirmed. Agent supports IP discovery, managed shutdown and backup filesystem freeze;
 its presence alone does not prove successful backups or passthrough.
 
 Reference: https://github.com/proxmox/pve-docs/blob/master/generated/qm.1-synopsis.adoc
@@ -411,5 +417,51 @@ E05509082E46209F48F71BFB5B55BD74D718A5CD89995C9ACF01E7C2177CC758
 ```
 
 Transcribed from the successful SHA256 Get-FileHash output in the user's screenshot.
-The later SHA2521 command failed and produced no additional hash. This is the local
-image reference only; no cloud/downloaded-copy hash comparison is confirmed.
+The later SHA2521 command failed and produced no additional hash. The Proxmox working copy was subsequently compared successfully below; cloud-copy
+verification remains unconfirmed.
+
+## Windows recovery preflight — 2026-11-14
+
+User confirmed the transfer finished after discussing SSH/rsync instead of the slow
+USB drive. No Windows VM creation, import or first boot is confirmed yet.
+
+| Item | Observed value |
+| --- | --- |
+| Working image | `/var/lib/vz/dell-windows.vhdx` |
+| Format / cluster size | VHDX / 2097152 bytes |
+| Virtual size | 932 GiB (1000204886016 bytes) |
+| File length / allocated size | 36892049920 bytes / approximately 34.4 GiB |
+| local storage | 98497780 KiB total; 44736508 used; 48711724 available (45.42% used) |
+| local-lvm thin pool | 832356352 KiB total; 11569753 used; 820786598 available (1.39% used) |
+| Existing VM | 100 senaev-madrid, running, 16384 MiB RAM, 500.00 GiB boot disk |
+
+Commands supplied by the user:
+
+```bash
+qemu-img info /var/lib/vz/dell-windows.vhdx
+pvesm status
+qm list
+sha256sum /var/lib/vz/dell-windows.vhdx
+```
+
+Checksum output:
+
+```text
+e05509082e46209f48f71bfb5b55bd74d718a5cd89995c9acf01e7c2177cc758  /var/lib/vz/dell-windows.vhdx
+```
+
+**PASS:** identical to the recorded Windows SHA-256 (hexadecimal case is irrelevant).
+This verifies transfer integrity, not Windows bootability.
+
+Proposed next VM: **101 / dell-windows**, initially 8 GiB RAM, 4 host-type vCPUs,
+q35/OVMF, EFI disk and TPM 2.0, with the imported Windows disk initially attached
+as SATA to use its existing storage drivers. These settings are planned, not applied.
+Inspect `qm config 101` after import before choosing the imported volume identifier;
+EFI/TPM allocations affect disk numbering. Then verify Windows boot, files, apps and
+activation before adding VirtIO drivers, guest agent, autostart and backups.
+
+The 932 GiB Windows virtual disk plus the 500 GiB Debian disk exceed the approximately
+793.8 GiB physical thin pool. Sparse import may fit current data, but future growth
+can exhaust it. Monitor thin-pool data/metadata and settle disk sizing or additional
+storage before substantial writes. Retain the original VHDX; do not shrink/truncate
+it without a partition-aware recovery plan.

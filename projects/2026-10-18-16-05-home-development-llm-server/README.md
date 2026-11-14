@@ -58,8 +58,10 @@ with smokeping and iperf3 monitoring in vm-stack. It is a sensitive node in the
 repository `AGENTS.md`. See [cluster worker](windows-backup-proxmox-plan.md#k3s-cluster-worker--14-november-2026).
 The Debian VM exists as `senaev-madrid` (8 vCPUs, 16 GiB RAM, ~500 GiB disk) and is
 also a k3s worker and a sensitive node. See [senaev-madrid](windows-backup-proxmox-plan.md#k3s-worker-senaev-madrid-debian-vm--14-november-2026).
-Current next task: verify QEMU Guest Agent root command execution from the Proxmox host. Windows
-recovery and Jellyfin passthrough remain planned; reassess shared storage capacity.
+VM 100 has autostart enabled; user reports QEMU Guest Agent checks work.
+The Windows VHDX is copied to Proxmox and its SHA-256 matches the original.
+Current next task: Windows VM recovery, with thin-pool capacity/growth reviewed before
+import. Windows boot and Jellyfin passthrough remain unverified.
 See the plan for configuration, evidence and outstanding checks.
 
 ## Verification

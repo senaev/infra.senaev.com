@@ -1,3 +1,25 @@
+## 2026-11-14 17:35 UTC — Windows restore preflight recorded
+
+Before starting Windows recovery, consolidated the installation progress and user
+command evidence in [the setup plan](windows-backup-proxmox-plan.md#windows-recovery-preflight--2026-11-14).
+Debian VM 100 `senaev-madrid` is running with 16384 MiB RAM and a 500 GiB disk;
+the existing cluster record confirms 8 vCPUs. Start at boot and QEMU Guest Agent are
+enabled in its Options screenshot; user reports agent checks work. A separate full
+host-reboot/autostart test remains unconfirmed. Preserved both k3s worker records.
+
+Windows working image is `/var/lib/vz/dell-windows.vhdx`, VHDX, 932 GiB logical,
+36892049920 bytes file length (~34.4 GiB). The user explicitly requested checksum
+validation after previously skipping it. `sha256sum` returned
+`e05509082e46209f48f71bfb5b55bd74d718a5cd89995c9acf01e7c2177cc758`, matching
+the original Windows capture. Transfer integrity passes; cloud-copy integrity and
+Windows bootability are not implied.
+
+Recorded current storage: local 45.42% used (48711724 KiB available), local-lvm
+1.39% used (820786598 KiB available). Planned Windows VM 101 remains uncreated/
+unimported in the evidence. Its 932 GiB logical disk plus Debian's 500 GiB disk
+would exceed the ~793.8 GiB thin pool; review sizing/growth, preserve the VHDX and
+monitor physical allocation. No host or VM configuration was changed in this update.
+
 ## 2026-11-14 17:13 UTC — senaev-madrid (Debian VM) joined the k3s cluster
 
 The Debian VM from the plan was created as `senaev-madrid`, joined the tailnet and got
