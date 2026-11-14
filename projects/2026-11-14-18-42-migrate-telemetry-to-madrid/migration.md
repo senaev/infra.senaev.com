@@ -101,3 +101,25 @@ Grafana MCP moves into the telemetry namespace and vm-stack release, deploying t
 PR #191 is deployed. The first attempt failed because the manual `kubectl-patch` manager owned `spec.paused: true`, conflicting with Helm's `false`. The user atomically tested replicaCount zero and patched only paused false; retrying the failed deployment then succeeded without global force-conflict settings. For future migrations, account for manual field ownership before resuming through server-side apply.
 
 Post-deploy verification: ten central pods ready on Madrid, both expected volume bindings and capacities, 59/59 scrapes up, historical data queryable, Grafana MCP tools through cluster-helper successful, Madrid log-generator delivery and five public smoke checks passed. Retain original Hetzner data; cleanup and restart/reboot checks are separate follow-up actions. See worklog for evidence and the pre-existing optional datasource plugin issue.
+
+## Authorized source cleanup
+
+User authorized cleanup after successful activation. Run only on Hetzner. Before any removal, confirm both old PVs have phase Released and policy Retain, while current claims still bind telemetry-grafana-madrid and telemetry-metrics-madrid. Stop if any check fails. No other data/model directories are in scope.
+
+```bash
+(
+  set -eu
+  for pv in pvc-8a91d60b-0266-4f82-b161-feec239b5a5a pvc-c24e572d-2a1d-47ea-9d9b-d997486e9ec8; do
+    test "$(kubectl get pv "$pv" -o jsonpath='{.status.phase}')" = Released
+    test "$(kubectl get pv "$pv" -o jsonpath='{.spec.persistentVolumeReclaimPolicy}')" = Retain
+  done
+  test "$(kubectl -n telemetry get pvc vm-stack-grafana -o jsonpath='{.spec.volumeName}')" = telemetry-grafana-madrid
+  test "$(kubectl -n telemetry get pvc vmsingle-vm-stack-victoria-metrics-k8s-stack -o jsonpath='{.spec.volumeName}')" = telemetry-metrics-madrid
+  sudo rm -rf -- \
+    /var/lib/rancher/k3s/storage/pvc-8a91d60b-0266-4f82-b161-feec239b5a5a_telemetry_vm-stack-grafana \
+    /var/lib/rancher/k3s/storage/pvc-c24e572d-2a1d-47ea-9d9b-d997486e9ec8_telemetry_vmsingle-vm-stack-victoria-metrics-k8s-stack
+  kubectl delete pv pvc-8a91d60b-0266-4f82-b161-feec239b5a5a pvc-c24e572d-2a1d-47ea-9d9b-d997486e9ec8
+)
+```
+
+Confirm both original paths are absent and both old PVs return NotFound; current Madrid claims must remain Bound. Removing originals ends the source-copy rollback option. Actual cleanup is pending user execution; do not mark it complete from authorization alone.

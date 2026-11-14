@@ -1,5 +1,13 @@
 # Project worklog
 
+## 2026-11-14 23:40 UTC — Cleanup authorized; LLM shutdown prepared
+
+User requested deleting old telemetry data, checking remaining work, and disabling senaev-media LLM plus its restart alert. Source cleanup is authorized but must be executed by the user under repository cluster-work rules. Added exact old paths/PVs with Released/Retain and current-binding checks to the runbook. No data deletion performed by the agent.
+
+Repository inspection shows llama.cpp, not a managed Ollama daemon: llm-server image ghcr.io/ggml-org/llama.cpp:server-vulkan-b12098, models under mediaServerStoragePath/volumes/llm-server/models. Set llmServer.enabled false; removed llm-server-restarted rule permanently. Existing conditional templates also remove other LLM alerts, Deployment/Service/NetworkPolicy/scrape and LLM_SERVER_URL so the API advertises no local model. No model files or network configuration changed.
+
+Remaining required checks: user confirms old data/PV deletion; merge/deploy LLM shutdown and verify absence. Longer observation/restart checks and optional datasource plugin repair are separate follow-ups.
+
 ## 2026-11-14 23:36 UTC — Activation retry succeeded; Madrid telemetry verified
 
 Deploy run 43653074385 attempt 2 completed successfully after user aligned paused false. Post-deploy Grafana MCP tools list original datasource IDs and dashboards, return historical samples and fresh metrics. Cluster-helper logs confirm proxied tools/call query_prometheus with status 200.

@@ -280,7 +280,7 @@ llmWorkspaces:
 # Local LLM with an OpenAI-compatible API, cluster-internal only.
 # See projects/2026-10-18-16-05-home-development-llm-server/README.md
 llmServer:
-  enabled: true
+  enabled: false
   vps: senaev-media
   modelsVolumePath: volumes/llm-server/models
   port: 8080
