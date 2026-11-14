@@ -34,7 +34,7 @@ No log/trace backend is defined in telemetry charts; discover any additional liv
 1. Merge disable PR and follow deployment until central writers terminate.
 2. Inspect actual claims/PVs/directories. Copy complete stopped directories to Madrid, preserving ownership and permissions; checksum.
 3. Manually prepare destination volume bindings while services remain stopped. Inspect reclaim policy before deleting any source claim.
-4. Prepare a second PR restoring normal replicas/enabled flags and moving central placement to Madrid. Merge only after data and bindings are ready.
+4. Prepare a second PR restoring normal replicas/enabled flags and moving central placement to Madrid. Explicitly increase VMSingle metrics storage to `50Gi` in Helm values and matching destination PV/PVC capacity, and move `logGenerator.vps` to `senaev-madrid` as well. Local-volume capacity declarations do not impose a filesystem quota. Merge only after data and bindings are ready.
 5. Check historical data, fresh ingestion, Grafana/MCP and alerts. Keep source data until acceptance; cleanup is separate.
 
 See [manual procedure](migration.md).

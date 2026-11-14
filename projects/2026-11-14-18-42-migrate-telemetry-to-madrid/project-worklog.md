@@ -1,5 +1,31 @@
 # Project worklog
 
+## 2026-11-14 22:53 UTC — Activation scope extended
+
+User requested adding metrics capacity 50GB and log-generator relocation to the second PR plan. Record an explicit `50Gi` VMSingle request plus matching destination PV/PVC capacity, and `logGenerator.vps: senaev-madrid`. Capacity is declarative for local volumes, not a filesystem quota. This update changes the plan only; services remain disabled and no volume operations were performed.
+
+## 2026-11-14 22:48 UTC — Shutdown verified; user supplied actual source volumes
+
+PR #186 merged as 85733b88. Deploy run 43649625095 succeeded; Datadog reported both writer desired replicas zero and both PVCs Bound. VictoriaMetrics logged clean shutdown at 22:46:29 UTC. Five post-deployment public website smoke checks passed. User pod listing subsequently confirms no Grafana/VMSingle pods; only distributed sources and operator remain.
+
+User-provided volume output (empty HostPath lines omitted):
+
+```text
+Claim: vm-stack-grafana
+PV: pvc-8a91d60b-0266-4f82-b161-feec239b5a5a
+Policy: Delete
+LocalPath: /var/lib/rancher/k3s/storage/pvc-8a91d60b-0266-4f82-b161-feec239b5a5a_telemetry_vm-stack-grafana
+Affinity: {"required":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/hostname","operator":"In","values":["hetzner"]}]}]}}
+
+Claim: vmsingle-vm-stack-victoria-metrics-k8s-stack
+PV: pvc-c24e572d-2a1d-47ea-9d9b-d997486e9ec8
+Policy: Delete
+LocalPath: /var/lib/rancher/k3s/storage/pvc-c24e572d-2a1d-47ea-9d9b-d997486e9ec8_telemetry_vmsingle-vm-stack-victoria-metrics-k8s-stack
+Affinity: {"required":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/hostname","operator":"In","values":["hetzner"]}]}]}}
+```
+
+Both are local volumes, not direct hostPath mounts, with Delete reclaim policy. Do not delete claims before preserving copies/setting Retain as needed. Next: source sizes and destination capacity/access, then manual copy. Activation worktree created from deployed main; no cluster writes or data transfers performed.
+
 ## 2026-11-14 22:23 UTC — Converted PR to Helm shutdown stage; checked storage
 
 Checked vendored Grafana PVC template (no keep annotation), configured Grafana 1Gi claim and VMSingle default 20Gi PVC. Applications use PVCs, not direct hostPath mounts. Live backing paths/storage class/reclaim policy remain unknown until personal-cluster inventory. A host directory behind a Delete PV may be erased with its claim.

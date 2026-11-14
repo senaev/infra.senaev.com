@@ -79,6 +79,11 @@ Verify bindings/affinity/files. Never delete original PVs, remove mounted-claim 
 
 ## 4. Enable on Madrid in a second PR
 
+Additional agreed scope:
+
+- Increase metrics capacity from the default 20Gi to `50Gi`: set `victoria-metrics-k8s-stack.vmsingle.spec.storage.resources.requests.storage` explicitly and use matching capacity in the destination metrics PV/PVC prepared in stage 3. This is the Kubernetes GiB quantity for the requested roughly 50GB; it does not create a filesystem quota for a local directory.
+- Move `logGenerator.vps` to `senaev-madrid` alongside the other central workloads. Verify log-generator placement and log delivery through existing Datadog monitoring after deployment.
+
 Restore Grafana/VMSingle replicas to one, re-enable other central components and set central selectors (including VM operator and Grafana MCP) to Madrid. Zero-replica CRs stay in place throughout storage work; no manual premerge CR-placement patch is required. Distributed sources stay distributed; ingress/DNS stays on Hetzner.
 
 Merge only after destination bindings and copied files are verified. Follow deployment; check historical data, fresh metrics, Grafana login/dashboards/datasources, MCP and Telegram alerts with existing monitoring. Record collection gap. Remove source data only in a separate cleanup action after acceptance.
