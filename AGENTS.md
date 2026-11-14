@@ -292,7 +292,7 @@ The code tools take absolute paths and work in any folder. The repository layout
 `/code` (`projects/<repo>` and `worktrees/<repo>/<branch>`) is described only in the
 workspace instructions, `/AGENTS.md`. The PVCs use `local-path`, which does not enforce their
 size: worktrees with their own `node_modules` use the node's root disk. LLM workspaces have no container resource limits; scheduler memory
-requests remain. Node-local data must be copied and PVCs rebound before moving nodes;
+requests remain. To preserve node-local data when moving nodes, copy it and rebind PVCs;
 see `docs/llm-workspace-madrid.md`.
 
 OpenCode 2 serves its built-in web UI at `https://opencode.senaev.com` through the
@@ -311,9 +311,9 @@ image build and `latest` image. OpenCode and its Telegram bot deploy together af
 all affected images are published. Helm handles both first installation and updates;
 image refreshes run after Helm in the same coordinated job.
 
-A workspace-level `enabled: false` omits all its rendered resources. Omission of
-`enabled` means enabled. The `senaev` workspace is temporarily disabled for a fresh
-Madrid start; kept PVCs must be removed manually before re-enabling.
+Every workspace requires an explicit boolean `enabled`. `enabled: false` omits
+all its rendered resources; existing kept PVCs survive. Both current workspaces
+are enabled.
 
 LLM workspace values live in `llmWorkspaces`, and the templates in
 `provisioning/helm/senaev-com/templates/llm-workspace/`. The entry name prefixes all
