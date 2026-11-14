@@ -50,7 +50,10 @@ The server has arrived. Follow the [Windows backup and Proxmox installation plan
 using Disk2vhd to the internal SSD, a verified cloud copy and one installer USB
 before erasing the internal SSD. Configure Windows remote access after import using
 Proxmox's noVNC console; no recapture is required solely for remote-access setup.
-The purchase remains complete; setup is pending.
+The purchase remains complete; setup is in progress. The graphical installer reached
+the final summary after replacing the USB; see the plan for selected disk, storage,
+hostname and initial network settings. User chose DHCP after installation; first boot
+and DHCP conversion are not yet confirmed.
 
 ## Verification
 

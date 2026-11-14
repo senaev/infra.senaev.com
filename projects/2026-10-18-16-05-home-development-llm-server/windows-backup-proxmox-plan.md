@@ -16,6 +16,98 @@ User is proceeding to Proxmox installation; completion is not confirmed. Purchas
 Windows remote access will be configured after import through the Proxmox noVNC
 console. No replacement image is needed solely for this setup.
 
+## Installer decisions and observed progress — 14 November 2026
+
+### USB replacement and successful installer boot
+
+The original approximately 8.1 GB USB booted the Proxmox menu but stalled at
+`searching for block device containing the ISO`, followed by repeated retries.
+User reported the Dell detected it only in the front USB port. This does not prove
+a rear-port hardware fault or identify the original failure's exact cause.
+
+Replaced it with a KINGSTON 123.7 GB USB. macOS identified the replacement as
+`/dev/disk4`; this identifier was checked for this session and must not be reused
+without checking again. No pre-formatting was needed. The image was written to
+the whole raw disk, not copied as an ordinary file:
+
+```bash
+diskutil unmountDisk /dev/disk4
+sudo dd if="$HOME/Downloads/proxmox-ve_9.2-1 (1).iso" of=/dev/rdisk4 bs=4m
+sync
+diskutil eject /dev/disk4
+```
+
+User supplied final dd output:
+
+```text
+406+1 records in
+406+1 records out
+1706178560 bytes transferred in 399.541885 secs (4270337 bytes/sec)
+```
+
+No write error was shown. Booted in EFI mode; selected **Install Proxmox VE
+(Graphical)**. With the replacement USB, the graphical installer reached disk,
+locale, network and final summary screens successfully. This confirms installer
+boot, not completion of installation or integrity of every ISO byte.
+
+### Final installer configuration
+
+| Parameter | Selected value |
+| --- | --- |
+| Installer | Proxmox VE 9.2, ISO release 1; Intel/AMD x86-64 |
+| Installation mode | Graphical, EFI boot |
+| Target disk | /dev/nvme0n1; 931.51 GiB; WDC WDS100T2B0C-00PXH0 |
+| Filesystem | ext4, standard LVM/LVM-thin layout |
+| hdsize | 931.0, as displayed in disk options |
+| swapsize / maxroot / minfree / maxvz | Left blank for installer defaults; actual resulting sizes not yet measured |
+| Country | Spain |
+| Time zone | Europe/Madrid |
+| Keyboard | en-us (U.S. English) |
+| Administrator | root; password entered privately, not recorded |
+| Notification email | andrei.senaev@gmail.com |
+| Management interface | nic0, e1000e; connected (green indicator) |
+| Interface MAC | 20:88:10:66:47:65 |
+| Pin network interface names | Enabled |
+| Full hostname | proxmox-madrid.home.arpa |
+| Short node name shown in summary | proxmox-madrid |
+| Initial IPv4 | 192.168.0.23/24, static installer configuration |
+| Gateway | 192.168.0.1 |
+| DNS | 192.168.0.1 |
+| Automatically reboot after successful installation | Enabled |
+
+The user selected **proxmox-madrid** instead of the suggested pve-dell name.
+`home.arpa` is the private home-network suffix; it requires no domain purchase.
+Using this hostname does not configure DNS on other devices automatically.
+
+### Networking decision: DHCP after installation
+
+User explicitly wants the Proxmox management address assigned by **DHCP**, rather
+than retaining a host-configured static address. The installer screen was left with
+the temporary static settings above. A router reservation was suggested, but was
+not confirmed configured and is not recorded as the user's final choice.
+
+After the first installed-system boot, inspect the actual network configuration
+and available DHCP client support before preparing commands. Configure DHCP on
+management bridge vmbr0 while retaining the physical NIC as a bridge port; maintain
+correct hostname resolution for Proxmox, and verify routes and DNS. Keep the local
+monitor/keyboard available because the management address and web connection may
+change. Do not claim the DHCP conversion has already occurred. Any future cluster
+setup must account for stable node addressing and name resolution.
+
+### Immediate next steps and unconfirmed results
+
+The latest evidence is the **final installer summary before Install**. Installation
+completion, first SSD boot, web login and DHCP conversion are not yet confirmed.
+Before erasing the SSD, finish the Windows cloud upload and confirm independent
+access; upload completion has not been explicitly reported. The user chose to skip
+transfer checksum comparison, while preserving the recorded local image hash.
+
+Proceed with Install after the backup prerequisite. At restart, remove the USB and
+boot the internal SSD. From the same LAN, initially open
+https://192.168.0.23:8006 and sign in as root using Linux PAM authentication.
+Then inspect/configure DHCP and verify access at the assigned address before
+proceeding with Windows VM import and Jellyfin passthrough acceptance tests.
+
 ## Equipment
 
 - One USB stick for the Proxmox installer; no second USB drive is required.

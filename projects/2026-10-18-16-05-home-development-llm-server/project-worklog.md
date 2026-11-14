@@ -1,3 +1,14 @@
+## 2026-11-14 15:03 UTC — Proxmox installer decisions and USB recovery recorded
+
+User requested installation details and decisions be preserved. Recorded original
+USB ISO-discovery failure, replacement KINGSTON 123.7 GB, exact dd command/output
+(1706178560 bytes), successful graphical installer boot and final summary settings.
+Target: /dev/nvme0n1, ext4/default sizing, Spain/Europe-Madrid/en-us; hostname
+proxmox-madrid.home.arpa, nic0 with name pinning, initial static 192.168.0.23/24,
+gateway/DNS 192.168.0.1, automatic reboot enabled. User explicitly chose DHCP after
+installation. No router reservation, completed cloud upload, installation completion,
+first SSD boot, web login or DHCP change is claimed. No server changes executed remotely.
+
 ## 2026-11-14 14:30 UTC — BIOS settings and diagnostic passes recorded
 
 User requested all BIOS settings and passed tests be preserved before installing
