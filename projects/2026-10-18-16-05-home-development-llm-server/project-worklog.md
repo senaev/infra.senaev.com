@@ -1,3 +1,12 @@
+## 2026-11-14 09:38 UTC — Defer Windows remote access until after import
+
+User questioned the need to prepare access before imaging when the Proxmox console
+is available. Confirmed the official Proxmox guide documents a built-in guest console.
+Moved configuration after import via noVNC with a virtual display. Guest networking,
+RDP and guest agent are not required; Proxmox reachability, Windows boot and valid
+Windows login remain prerequisites. Removed recapture solely for remote-access setup.
+No VM boot, authentication or remote access has yet been tested on this Dell.
+
 ## 2026-11-14 08:31 UTC — Prepare Windows remote access before final capture
 
 User requested:

@@ -15,11 +15,9 @@ BitLocker off. Selected internal SSD volumes: EFI (~200 MB, Disk2vhd 196 MB),
 Windows C: and 905 MB recovery; USB volumes excluded. VHDX and VSS enabled.
 Proxmox VE 9.2-1 Intel/AMD installer USB prepared on Mac using dd.
 
-Next: prepare and test Windows remote access (edition, account password and client
-connection), then recreate the VHDX to include those changes and upload the replacement.
-Keep the existing image until the replacement is safely uploaded. Alternatively,
-configure remote access after import using the Proxmox console without recapturing.
-Remote-access setup and replacement capture are not yet confirmed. Then finish cloud upload, compute local SHA-256 and compare with a downloaded copy
+Windows remote access is deferred until after VM import through Proxmox noVNC.
+No replacement capture is required solely for this configuration.
+Next: finish cloud upload, compute local SHA-256 and compare with a downloaded copy
 on Mac before erasing SSD. VM bootability, hardware inspection and Dell USB boot are
 not yet verified. Proxmox installation and Windows VM import have not started.
 See [setup plan](windows-backup-proxmox-plan.md). Purchase remains complete.

@@ -48,9 +48,9 @@ See [Intel research and retailer checks](research-intel-options.md).
 
 The server has arrived. Follow the [Windows backup and Proxmox installation plan](windows-backup-proxmox-plan.md)
 using Disk2vhd to the internal SSD, a verified cloud copy and one installer USB
-before erasing the internal SSD. Prepare and test Windows remote access before the
-final image capture; recapture after configuration changes. Keep the existing image
-until the replacement is safely uploaded. The purchase remains complete; setup is pending.
+before erasing the internal SSD. Configure Windows remote access after import using
+Proxmox's noVNC console; no recapture is required solely for remote-access setup.
+The purchase remains complete; setup is pending.
 
 ## Verification
 

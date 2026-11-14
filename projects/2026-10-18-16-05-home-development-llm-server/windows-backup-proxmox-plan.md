@@ -11,8 +11,8 @@ Captured EFI (~200 MB; Disk2vhd shows 196 MB), C: and 905 MB recovery with VHDX/
 USB volumes excluded. Cloud checksum and VM boot tests remain pending. Hardware
 inspection, Dell USB boot and Proxmox installation are not confirmed. Purchase remains closed.
 
-Remote-access preparation is newly planned and not yet confirmed. The existing image
-predates this preparation; retain it until a replacement capture is safely uploaded.
+Windows remote access will be configured after import through the Proxmox noVNC
+console. No replacement image is needed solely for this setup.
 
 ## Equipment
 
@@ -34,21 +34,7 @@ Windows backup tool; writing it to USB normally erases the USB stick.
 2. Check BitLocker/device encryption and securely save its recovery key outside the
    Dell. Keep keys and any licence secrets out of git. For Disk2vhd, turn encryption
    off and wait for full decryption; suspending protection alone is insufficient.
-3. Before the final capture, prepare Windows remote access:
-   - Check Settings → System → About → Windows specifications. Pro, Enterprise and
-     Education can host Remote Desktop (RDP); Home needs another remote-access app
-     if access beyond the Proxmox console is wanted. Windows Server is not required.
-   - Verify an account password works and save it in a password manager, not git.
-     A Windows Hello PIN is not the account password and may need resetting in the VM.
-   - Enable the chosen remote-access method and test connecting from another computer.
-     Keep access private through the LAN or Tailscale; do not expose RDP to the internet.
-   - Retain Proxmox web-console access as a fallback. Test remote access again after
-     import because virtual networking and authentication can change.
-   After making these changes, recreate the VHDX so it includes them, using a new
-   filename and retaining the existing image until the replacement is safely uploaded.
-   Recreating is not mandatory if setup is postponed until after import using the
-   Proxmox console. No remote-access configuration or replacement capture is confirmed.
-   Run Microsoft Disk2vhd in Windows with VSS enabled. Capture Windows and all required
+3. Run Microsoft Disk2vhd in Windows with VSS enabled. Capture Windows and all required
    system/boot volumes, plus recovery volumes where available, into a VHDX on the
    internal SSD. Do not capture only C: while omitting its boot partition. This step
    needs no bootable USB. Check completion and record the file size and SHA-256 hash.
@@ -72,6 +58,13 @@ Windows backup tool; writing it to USB normally erases the USB stick.
    The virtual hardware change may require reactivation. Supplied OEM/refurbished
    licence rights must be checked; do not assume a VM licence is included or that
    successful activation proves licence entitlement. Keep the original cloud image unchanged and import a working copy.
+   Open the VM's Console (noVNC) in the Proxmox web UI and sign into Windows.
+   Keep a virtual display enabled for this console; guest networking, RDP and the
+   QEMU guest agent are not prerequisites. Proxmox itself must be reachable and
+   Windows must boot; the console does not bypass Windows authentication. Know the
+   account password because a Windows Hello PIN may need reconfiguration after import.
+   Configure and test Windows remote access here if desired: RDP on supported
+   editions, another app for Home. Keep access private through LAN/Tailscale.
 9. Enable BIOS AC Recovery Power On and Proxmox VM autostart. Test headless AC
    restoration, sustained Ethernet traffic, temperatures and living-room noise.
 10. Set up the Linux Jellyfin VM with full iGPU passthrough. Verify real hardware
@@ -94,6 +87,9 @@ plan a compatible image-restore process or reinstall Windows and recover data fr
 the saved image. Do not promise the previous Clonezilla rollback without its backup.
 
 ## Reference
+
+- Proxmox web interface and built-in guest console:
+  https://github.com/proxmox/pve-docs/blob/master/pve-gui.adoc
 
 - Microsoft Disk2vhd (same-volume destination, VSS and BitLocker restrictions):
   https://learn.microsoft.com/en-us/sysinternals/downloads/disk2vhd
