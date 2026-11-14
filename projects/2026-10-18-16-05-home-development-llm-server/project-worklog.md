@@ -1,3 +1,17 @@
+## 2026-11-14 15:38 UTC — Installation, Tailscale access and DHCP stage completed
+
+User closed this stage and requested findings/steps be saved. Recorded installed
+Proxmox web/Shell access, kernel 7.0.2-6-pve, working tailnet DNS access and observed
+Tailscale IP 100.113.139.72. Preserved enterprise apt 401 issue and corrective guidance
+without recording the exposed auth key or claiming revocation/repository verification.
+Recorded final user choice: vmbr0 DHCP only; no reservation, fixed hosts mapping,
+hook or Tailscale startup dependency. Configuration screenshot and post-reboot output
+show 192.168.0.23/24 scope global dynamic with expiring lease. Router port changes
+reused lease; actual changed-address test and hostname behavior remain unverified.
+Next stage: storage/service baseline and cloud VHDX recovery/import as Windows VM;
+check logical disk sizing before import, then Jellyfin passthrough acceptance.
+No server commands or configuration executed remotely; docs only. Purchase remains closed.
+
 ## 2026-11-14 15:03 UTC — Proxmox installer decisions and USB recovery recorded
 
 User requested installation details and decisions be preserved. Recorded original

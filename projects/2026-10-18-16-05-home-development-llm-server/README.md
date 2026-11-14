@@ -39,7 +39,7 @@ machines are preferred when competitively priced.
 User ordered the refurbished Dell OptiPlex Micro 7010 from VORPC, order **102889**.
 Confirmation screenshot: 32 GB RAM, 1 TB M.2 NVMe, **€599.89 total including VAT**,
 free shipping advertised in 48–72 hours, paid using Google Pay (WooPayments).
-User confirmed the server has arrived on 2026-11-13. BIOS hardware inventory and Dell diagnostic passes are recorded; installation is pending.
+User confirmed the server has arrived on 2026-11-13. BIOS hardware inventory and Dell diagnostic passes are recorded; Proxmox is now installed.
 Delivered CPU confirmed in BIOS: i5-13500T.
 The Dell supersedes the earlier SER8 preference and other shortlist candidates.
 See [Intel research and retailer checks](research-intel-options.md).
@@ -50,10 +50,11 @@ The server has arrived. Follow the [Windows backup and Proxmox installation plan
 using Disk2vhd to the internal SSD, a verified cloud copy and one installer USB
 before erasing the internal SSD. Configure Windows remote access after import using
 Proxmox's noVNC console; no recapture is required solely for remote-access setup.
-The purchase remains complete; setup is in progress. The graphical installer reached
-the final summary after replacing the USB; see the plan for selected disk, storage,
-hostname and initial network settings. User chose DHCP after installation; first boot
-and DHCP conversion are not yet confirmed.
+The purchase remains complete. Proxmox installation and initial networking are
+complete: web/Shell and Tailscale DNS access work; vmbr0 uses DHCP after reboot.
+The router reused 192.168.0.23; an actual different-address test is not complete.
+Next: inspect storage and recover the saved Windows installation into a VM, then
+validate Jellyfin passthrough. See the plan for evidence and outstanding checks.
 
 ## Verification
 
@@ -68,15 +69,16 @@ and DHCP conversion are not yet confirmed.
 
 Compact and quiet for the living room; SSD storage only; refurbished accepted. See
 [options and delivered-price comparison](research-options.md) and the
-[118-page source register](research-sources.md). Dell received; backup, installation and acceptance tests are pending.
+[118-page source register](research-sources.md). Dell received; Windows capture and Proxmox installation are complete. Windows VM
+recovery and workload acceptance tests remain pending.
 
 ## Result
 
 Completed and closed on 2026-11-11 at the user’s request. Purchased the refurbished
 Dell OptiPlex Micro 7010, 32 GB RAM / 1 TB NVMe, from VORPC for €599.89 including
 VAT and delivery (order 102889). The server has now arrived (user confirmation, 2026-11-13).
-The purchase is €400.11 below the €1,000 budget. BIOS inventory, diagnostic passes and AC Recovery testing are recorded. Proxmox setup
-and Jellyfin passthrough testing remain post-delivery work.
+The purchase is €400.11 below the €1,000 budget. BIOS inventory, diagnostic passes and AC Recovery testing are recorded. Proxmox installation, Tailscale access and DHCP
+after reboot are complete. Windows VM recovery and Jellyfin testing remain pending.
 
 ## Delivered hardware record
 

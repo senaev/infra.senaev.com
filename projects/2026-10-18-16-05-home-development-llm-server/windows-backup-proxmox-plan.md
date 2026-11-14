@@ -5,13 +5,15 @@
 Dell OptiPlex Micro 7010 has arrived. Preserve the supplied Windows installation,
 install Proxmox on the internal SSD, and attempt to run the existing Windows in a VM.
 Installer USB is prepared: Proxmox VE 9.2-1 Intel/AMD, written on Mac with dd.
-Windows image creation is user-confirmed complete; cloud upload is in progress.
+Windows image creation is user-confirmed complete; cloud upload completion has not
+been explicitly confirmed.
 File: `C:\Users\user\Downloads\dell-windows.vhdx`. C: is fully decrypted, BitLocker off.
 Captured EFI (~200 MB; Disk2vhd shows 196 MB), C: and 905 MB recovery with VHDX/VSS;
 USB volumes excluded. User chose to skip cloud checksum comparison; upload completion
 and VM boot remain unconfirmed. BIOS configuration, diagnostic passes and successful
 AC Recovery test are recorded in [hardware inventory](hardware-inventory.md).
-User is proceeding to Proxmox installation; completion is not confirmed. Purchase remains closed.
+Proxmox installation, web/Shell access, Tailscale access and DHCP after reboot are
+confirmed. User considers this installation/networking stage finished. Purchase remains closed.
 
 Windows remote access will be configured after import through the Proxmox noVNC
 console. No replacement image is needed solely for this setup.
@@ -79,34 +81,110 @@ The user selected **proxmox-madrid** instead of the suggested pve-dell name.
 `home.arpa` is the private home-network suffix; it requires no domain purchase.
 Using this hostname does not configure DNS on other devices automatically.
 
-### Networking decision: DHCP after installation
+### Completed installation and access
 
-User explicitly wants the Proxmox management address assigned by **DHCP**, rather
-than retaining a host-configured static address. The installer screen was left with
-the temporary static settings above. A router reservation was suggested, but was
-not confirmed configured and is not recorded as the user's final choice.
+User confirmed connecting to the installed server. Shell screenshot identifies
+Linux proxmox-madrid 7.0.2-6-pve, x86_64. Web UI/Shell access succeeded first at
+192.168.0.23:8006 and later via https://proxmox-madrid:8006 through Tailscale DNS.
+Installed package versions have not yet been captured with pveversion -v.
 
-After the first installed-system boot, inspect the actual network configuration
-and available DHCP client support before preparing commands. Configure DHCP on
-management bridge vmbr0 while retaining the physical NIC as a bridge port; maintain
-correct hostname resolution for Proxmox, and verify routes and DNS. Keep the local
-monitor/keyboard available because the management address and web connection may
-change. Do not claim the DHCP conversion has already occurred. Any future cluster
-setup must account for stable node addressing and name resolution.
+Tailscale was installed on the host and joined to the user's tailnet. User confirmed
+access through its internal DNS; tailscale ip -4 returned **100.113.139.72**.
+This observed tailnet address is an access detail, not a fixed /etc/hosts mapping.
 
-### Immediate next steps and unconfirmed results
+The first Tailscale installer attempt stopped during apt update because PVE and
+Ceph Enterprise repositories returned 401 Unauthorized. Guidance was to disable
+both enterprise entries in Node > Updates > Repositories, add PVE No-Subscription,
+retain Debian/Tailscale sources, then run apt update and apt install tailscale,
+followed by interactive tailscale up. Subsequent tailnet connection is confirmed;
+exact repository edits and a clean final apt update were not separately shown.
+An auth key was visible in the screenshot: advised revocation and interactive login;
+key is intentionally not transcribed, and revocation is not confirmed.
 
-The latest evidence is the **final installer summary before Install**. Installation
-completion, first SSD boot, web login and DHCP conversion are not yet confirmed.
-Before erasing the SSD, finish the Windows cloud upload and confirm independent
-access; upload completion has not been explicitly reported. The user chose to skip
-transfer checksum comparison, while preserving the recorded local image hash.
+### Final networking decision and executed DHCP steps
 
-Proceed with Install after the backup prerequisite. At restart, remove the USB and
-boot the internal SSD. From the same LAN, initially open
-https://192.168.0.23:8006 and sign in as root using Linux PAM authentication.
-Then inspect/configure DHCP and verify access at the assigned address before
-proceeding with Windows VM import and Jellyfin passthrough acceptance tests.
+User explicitly wants dynamically assigned LAN addresses, including testing an
+actual address change. Rejected router reservations, fixed LAN/Tailscale IP mappings,
+DHCP hostname-update hooks and adding a Proxmox dependency on Tailscale startup.
+Final scope: **DHCP only on vmbr0**, retain nic0 as its physical bridge port, use
+Tailscale DNS for management access. Local hostname repair was explicitly deferred.
+Earlier hook, Tailscale-IP hosts mapping and libnss-myhostname proposals were not
+selected; do not treat them as executed configuration.
+
+Existing configuration was inspected with:
+
+```bash
+cat /etc/network/interfaces
+cat /etc/hosts
+command -v dhclient
+```
+
+Observed dhclient: /usr/sbin/dhclient. Original /etc/hosts mapped
+192.168.0.23 to proxmox-madrid.home.arpa and proxmox-madrid. No later hosts-file
+edit is confirmed. Backup commands were issued before network editing:
+
+```bash
+cp -a /etc/network/interfaces /root/interfaces.before-dhcp
+cp -a /etc/hosts /root/hosts.before-dhcp
+```
+
+User edited with nano; screenshot before saving matches this complete configuration:
+
+```text
+auto lo
+iface lo inet loopback
+
+iface nic0 inet manual
+
+auto vmbr0
+iface vmbr0 inet dhcp
+    bridge-ports nic0
+    bridge-stp off
+    bridge-fd 0
+
+source /etc/network/interfaces.d/*
+```
+
+Only network changes: static -> dhcp and removal of bridge address/gateway lines.
+Saved using Ctrl+O, Enter, Ctrl+X; rebooted. Hook removal was advised only if an
+earlier hook had been created; neither creation nor removal is confirmed.
+
+After reboot, user reconnected via Tailscale DNS and ran ip -4 addr show vmbr0.
+Screenshot shows:
+
+```text
+inet 192.168.0.23/24 brd 192.168.0.255 scope global dynamic vmbr0
+valid_lft 862999sec preferred_lft 862999sec
+```
+
+Repeated checks after changing router LAN ports still showed .23, with decreasing
+lease lifetimes (862777 and 862433 seconds). DHCP is active: dynamic plus an expiring
+lease establishes this. Router ports on the same LAN do not create a different
+DHCP identity; reusing an existing lease is normal and does not imply static setup.
+An actual different-address/network test has **not** been performed. No router
+DHCP pool change or reservation is recorded. Route/DNS outputs, full service-health
+checks and hostname behavior after a changed address remain unverified. Existing
+local hosts mapping may become stale; user explicitly accepted deferring this.
+
+### Next stage: Windows VM recovery
+
+1. Inspect Proxmox package versions, service state and storage/free space; confirm
+   update repositories work before updating packages or allocating VM storage.
+2. Locate the cloud VHDX and retrieve a working copy. Keep cloud original unchanged.
+   User chose to skip checksum comparison; do not reintroduce it as a requirement.
+3. Inspect VHDX virtual size and actual allocated space, and storage capacity before
+   importing: original Windows disk was about 1 TB logically even if image file is
+   much smaller. Do not assume the full virtual disk fits the default local-lvm pool;
+   decide on safe resizing/storage placement based on observed sizes.
+4. Create/import the Windows VM with UEFI/OVMF, required Windows 11 TPM configuration
+   and initially Windows-supported storage; boot via noVNC, repair boot if needed,
+   verify files/apps/login and activation, then install VirtIO drivers/guest agent.
+5. Configure VM autostart and backups; create Linux Jellyfin VM and validate full
+   Intel iGPU passthrough, real hardware transcoding and ten guest restart cycles.
+6. Finish SSD SMART and sustained temperatures/noise/network acceptance checks.
+
+Installation/networking stage is complete at the user's request; Windows recovery,
+Jellyfin validation and the different-LAN-address test are not claimed complete.
 
 ## Equipment
 

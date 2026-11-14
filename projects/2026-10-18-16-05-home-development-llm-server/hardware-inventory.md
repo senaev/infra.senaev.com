@@ -97,7 +97,7 @@ These diagnostic passes do not establish SSD SMART wear figures or sustained-loa
 ### Remaining setup and acceptance checks
 
 Cloud upload completion/access is not yet confirmed. The user chose to skip transfer
-checksum comparison; the local reference hash remains preserved. Proxmox installation
-is the user's next action, not a completed result. Windows VM boot, SSD SMART health,
+checksum comparison; the local reference hash remains preserved. Proxmox installation and DHCP after reboot are now complete; Tailscale DNS access
+works (see installation plan for evidence and exact networking scope). Windows VM boot, SSD SMART health,
 sustained temperatures/noise/network stability, Proxmox VM autostart and Jellyfin iGPU
 passthrough/transcode/repeated guest restart testing remain pending.
