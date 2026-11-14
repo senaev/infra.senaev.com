@@ -1,3 +1,6 @@
+# Before deploying: complete the retained-volume cutover in
+# projects/2026-11-14-18-42-migrate-telemetry-to-madrid/migration.md.
+# nodeSelector does not relocate existing local-path volumes.
 victoria-metrics-k8s-stack:
   # Victoria Metrics Operator is installed separately
   # https://docs.victoriametrics.com/helm/victoria-metrics-k8s-stack/#install-operator-separately
@@ -10,7 +13,7 @@ victoria-metrics-k8s-stack:
   grafana:
     enabled: true
     nodeSelector:
-      vps: hetzner
+      vps: senaev-madrid
     annotations:
       secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
     # Keeps the Grafana database across restarts: the mcp-grafana service account and its
@@ -62,13 +65,13 @@ victoria-metrics-k8s-stack:
     spec:
       retentionPeriod: "3"
       nodeSelector:
-        vps: hetzner
+        vps: senaev-madrid
 
   vmagent:
     spec:
       scrapeInterval: 30s
       nodeSelector:
-        vps: hetzner
+        vps: senaev-madrid
 
   alertmanager:
     ingress:
@@ -87,7 +90,7 @@ victoria-metrics-k8s-stack:
     spec:
       externalURL: https://alertmanager.senaev.com
       nodeSelector:
-        vps: hetzner
+        vps: senaev-madrid
     useManagedConfig: true
     config:
       route:
@@ -123,11 +126,11 @@ victoria-metrics-k8s-stack:
     spec:
       evaluationInterval: 30s
       nodeSelector:
-        vps: hetzner
+        vps: senaev-madrid
 
   kube-state-metrics:
     nodeSelector:
-      vps: hetzner
+      vps: senaev-madrid
 
 smokepingProber:
   enabled: true
@@ -178,7 +181,7 @@ iperf3Monitor:
       target: firstvds
   scheduler:
     enabled: true
-    vps: hetzner
+    vps: senaev-madrid
     port: 9579
     pauseBetweenTests: 300
     scrapeInterval: 30s

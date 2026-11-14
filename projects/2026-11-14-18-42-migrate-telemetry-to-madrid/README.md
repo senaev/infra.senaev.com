@@ -6,11 +6,13 @@ Move Grafana, the VictoriaMetrics stack and associated telemetry data to Madrid,
 
 Relocate central telemetry services and persistent state from Hetzner to `senaev-madrid`, the worker VM on `proxmox-madrid`. Preserve metrics history, Grafana dashboards, users, datasource identities, alerting configuration and other persisted state. Prevent avoidable collection gaps and document remaining outage risks.
 
-Status: planning only. No migration or deployment has started.
+**Status: implementation prepared; no migration or deployment has started.**
+
+**Do not merge until steps 1–6 of the [migration runbook](migration.md) are complete.** Main auto-deploys placement changes; node-local PVCs require a separate stopped-data transfer and replacement binding.
 
 ## Context
 
-Repository configuration at baseline `d269c50f` (desired state, not live inventory):
+Source configuration at baseline `d269c50f` (desired state, not live inventory). This PR changes central placement to Madrid:
 
 | Component | Current configuration | Scope |
 | --- | --- | --- |
@@ -18,7 +20,8 @@ Repository configuration at baseline `d269c50f` (desired state, not live invento
 | VMSingle | `vps: hetzner`, retentionPeriod `3` | Service and full metrics history; discover actual volume/path |
 | vmagent | `vps: hetzner`, 30s scrapes, no explicit persistent queue volume in wrapper values | Collector handover and durable buffering |
 | VMAlert / Alertmanager | `vps: hetzner`, Telegram via cluster-helper | Evaluation, routing and persisted state if present |
-| VM operator | Separate chart, `vps: hetzner` | Move after managed workloads stabilize |
+| VM operator | Separate chart, `vps: hetzner` | Move to Madrid; prepatch CR placement while stopped before merge |
+| Grafana MCP | `senaev-com`, `vps: hetzner` | Move stateless bridge to Madrid |
 | kube-state-metrics / iperf scheduler | `vps: hetzner` | Central helpers; preserve probe coverage and measurement meaning |
 | Node exporters / distributed probes | Distributed by node | Keep node-local collection and probe endpoints on their respective nodes |
 | Logs / traces | No dedicated backend chart found under telemetry | Inventory actual deployment; do not assume VictoriaLogs or Loki exists |
@@ -39,7 +42,7 @@ Public Grafana, VictoriaMetrics and alerting ingress currently uses `traefik-het
 2. **Define outage tolerance.** Measure data size and transfer throughput; choose collection-gap targets. Size queues from ingestion rate × outage duration plus margin. Document Madrid power/internet/disk failures and Hetzner control-plane dependence. Keep node-local collection distributed; explicitly decide whether an independent collector outside Madrid should buffer during Madrid outages.
 3. **Make collection and backups durable.** Inspect vmagent queue settings and persistent mounts; test backend-unavailable buffering, replay and pod replacement before relying on them. For actual log collectors, inspect retry limits, disk queues, source rotation and read-position persistence. Back up Grafana state and encryption-secret dependencies, metrics, and any existing logs/traces. Prove restoration into isolated storage with no production scraping or duplicate alerts.
 4. **Prepare target volumes and manifests.** Provision distinct Madrid volumes with correct ownership, capacity and affinity. Changing a nodeSelector does not move a node-local PV. Preserve source volumes and backups. Prefer stable release/service names, namespace, datasource UIDs, secret references, public URLs and Grafana MCP access. Determine whether Hetzner ingress can route to Madrid before changing DNS or ingress class.
-5. **Transfer in stages.** Keep software versions unchanged during migration. Choose a supported consistent snapshot/restore with explicit handling of all writes after the snapshot, or controlled stop-and-copy while an independent vmagent queues samples. Never use an ordinary copy of an actively written database as the final authoritative copy. Grafana SQLite and auxiliary files require a consistent backup or stopped writer. Never run two writers against one volume. Move storage, Grafana, alerting and helpers in separately verifiable steps; move the operator last. Handle scraper handover separately: scraper downtime creates uncollected samples even when storage migration is safe.
+5. **Transfer in stages.** Keep software versions unchanged during migration. Choose a supported consistent snapshot/restore with explicit handling of all writes after the snapshot, or controlled stop-and-copy while an independent vmagent queues samples. Never use an ordinary copy of an actively written database as the final authoritative copy. Grafana SQLite and auxiliary files require a consistent backup or stopped writer. Never run two writers against one volume. Follow the runbook: stop reconcilers/writers, copy stopped data, replace claims, prepatch CR selectors, then deploy. The operator chart deploys first, so prepatching prevents old placement being reconciled against new bindings. Handle scraper handover separately: scraper downtime creates uncollected samples even when storage migration is safe.
 6. **Verify and observe.** Compare fixed historical queries, current ingestion, queue drain, Grafana state, MCP access, alerts and all-node coverage. Compare known messages and bounded log/trace counts if those systems exist. Observe at least 24 hours and test pod replacement and a planned Madrid VM restart before considering cleanup.
 7. **Close out.** Record actual commands, evidence, gaps, final data paths and backup/restore instructions. Remove obsolete Hetzner workloads and source data only after acceptance and explicit cleanup authorization.
 
@@ -49,7 +52,7 @@ Keep source volumes, configuration and independent backups throughout acceptance
 
 ### Execution boundaries
 
-Use reviewable implementation pull requests. This project changes documentation only. Follow repository safeguards for Madrid connectivity; do not incidentally alter Tailscale, routes or firewall. Provide exact cluster-changing commands and rollback commands for the user to execute under the repository workflow.
+Use reviewable implementation pull requests. This PR changes placement values and provides an offline volume-plan generator and runbook. It performs no automatic data transfer or deletion. Follow repository safeguards for Madrid connectivity; do not incidentally alter Tailscale, routes or firewall. Provide exact cluster-changing commands and rollback commands for the user to execute under the repository workflow.
 
 ## Verification
 
@@ -65,6 +68,6 @@ Use reviewable implementation pull requests. This project changes documentation 
 
 ## Result
 
-Project initialized on `telemetry-madrid-migration`. Repository naming identifies the target as `senaev-madrid`. Live inventory, implementation, transfer and deployment remain pending.
+Prepared Madrid placement for Grafana, VMSingle, vmagent, vmalert, Alertmanager, kube-state-metrics, iperf scheduler, VM operator and Grafana MCP. Added [migration runbook](migration.md) and [offline volume-plan generator](../../scripts/telemetry_volume_plan.py). Distributed collection stays on source nodes. Live inventory, transfer and deployment remain pending. The stopped-collector procedure has a documented scraping interruption.
 
 See [project worklog](project-worklog.md).
