@@ -1,5 +1,16 @@
 # Project worklog
 
+## 2026-11-14 23:01 UTC — VMSingle reconciliation paused and acknowledged
+
+User supplied:
+
+```text
+Paused: true
+Status: {"observedGeneration":3,"updateStatus":"paused"}
+```
+
+The operator has acknowledged paused reconciliation. Next user step: remove only the metrics claim operator finalizer (keep Kubernetes PVC protection), delete the two stopped-writer claim objects and recreate original names bound explicitly to telemetry-grafana-madrid (1Gi) and telemetry-metrics-madrid (50Gi). Both source PVs already Retain and both copies checksum verified. Do not delete PVs or files. Activation remains pending.
+
 ## 2026-11-14 22:59 UTC — Source retention and Madrid PV creation confirmed
 
 User output confirms:
