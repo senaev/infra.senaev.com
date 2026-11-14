@@ -1127,10 +1127,10 @@ handshake. It does not establish why the public self-dial is refused or explain
 home's separate partial-response stalls. No host networking changes attempted.
 
 Prepare an experiment-backend-only exact TCP/domain/port route: full:senaev.com:443
-uses a dedicated freedom redirect to traefik-hetzner.traefik.svc.cluster.local:443.
+uses a dedicated freedom redirect to traefik-hetzner.traefik.svc.cluster.local:8443.
 The default internet outbound remains first and unchanged apart from its tag.
 Client TLS/SNI, verification, HTTP path and payload stay intact. Add one egress rule
-allowing only Hetzner Traefik pods in namespace traefik onTCP443. No broad private
+allowing only Hetzner Traefik pods in namespace traefik onTCP8443. No broad private
 CIDR allowance; DNS and existing public443 policy unchanged. No production Xray,
 subscription, host/Tailscale/K3s/firewall/MTU/MSS change. No new service or secret.
 The redirected destination applies to all paths on that exact hostname/port in the
@@ -1144,3 +1144,9 @@ TLS certificate and payload recovery remain unverified until approved deployment
 After rollout require three completed pairs/source with valid exit/direct gates;
 if VPS endpoint controls still fail, investigate that before home-path variables.
 Official redirect reference: https://xtls.github.io/en/config/outbounds/freedom.html
+
+Review correction: website ingress explicitly selects websecure-xray (8443). The
+self-site outbound alone allows TCP8443 via finalRules then blocks other traffic;
+its immutable redirect fixes the destination to Hetzner Traefik. The internet
+outbound keeps Xray default private-address protection. Verified rule schema
+against Xray v26.9.30 infra/conf/freedom.go. No domain-based finalRules assumed.

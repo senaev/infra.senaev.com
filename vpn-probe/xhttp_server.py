@@ -24,7 +24,9 @@ def server_config(base_uuid, path, diagnostics=False):
         "outbounds": [{"tag": "internet", "protocol": "freedom",
                        "streamSettings": {"sockopt": {"domainStrategy": "UseIPv4v6"}}},
                       {"tag": "self-site", "protocol": "freedom",
-                       "settings": {"redirect": "traefik-hetzner.traefik.svc.cluster.local:443"}}]}
+                       "settings": {"redirect": "traefik-hetzner.traefik.svc.cluster.local:8443",
+                                    "finalRules": [{"action": "allow", "network": "tcp", "port": "8443"},
+                                                   {"action": "block"}]}}]}
 
 
 if __name__ == "__main__":

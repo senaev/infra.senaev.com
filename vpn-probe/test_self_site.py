@@ -12,4 +12,6 @@ class SelfSiteRoute(unittest.TestCase):
         self.assertNotIn('redirect', config['outbounds'][0].get('settings', {}))
         self.assertEqual(config['outbounds'][1], {
             'tag': 'self-site', 'protocol': 'freedom',
-            'settings': {'redirect': 'traefik-hetzner.traefik.svc.cluster.local:443'}})
+            'settings': {'redirect': 'traefik-hetzner.traefik.svc.cluster.local:8443',
+                         'finalRules': [{'action': 'allow', 'network': 'tcp', 'port': '8443'},
+                                        {'action': 'block'}]}})
