@@ -82,12 +82,6 @@ spec:
               value: {{ .Values.mcpGrafana.grafanaUrl | quote }}
             - name: GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE
               value: /grafana-token/token
-            - name: MCP_GRAFANA_SERVER_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: senaev-com-kv-secrets
-                  key: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_MCP_GRAFANA
-                  optional: false
           resources:
             requests:
               memory: 64Mi
@@ -149,7 +143,7 @@ spec:
       targetPort: http
       protocol: TCP
 ---
-# Editor rights in Grafana: only cluster-helper may connect, and it also sends the internal token.
+# Editor rights in Grafana: admit only cluster-helper in senaev-com; no public ingress.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

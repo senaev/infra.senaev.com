@@ -26,7 +26,6 @@ import {
     GOOGLE_OAUTH_ADMIN_EMAILS,
     GOOGLE_OAUTH_CLIENT_ID,
     GOOGLE_OAUTH_CLIENT_SECRET,
-    INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_MCP_GRAFANA,
     LLM_ENDPOINT_API_KEY,
     LLM_SERVER_URL,
     MCP_DOMAIN,
@@ -407,7 +406,6 @@ async function main(): Promise<void> {
         mcpDomain: MCP_DOMAIN,
         replyToChatGptMessage: (message, reply) => replyToMcpMessage(message, reply, MCP_SERVER_OPTIONS),
         grafanaUpstreamUrl: MCP_GRAFANA_URL,
-        grafanaUpstreamToken: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_MCP_GRAFANA,
     });
 
     // No host constraint: the same path serves https://api.senaev.com/llm and, inside the

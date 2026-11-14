@@ -38,7 +38,6 @@ export type GrafanaMcpProxyOptions = {
     resourceMetadataUrl: string;
     checkAccessToken: (authorizationHeader: string | undefined) => Promise<AccessTokenCheck>;
     upstreamUrl: string;
-    upstreamToken: string;
     fetch?: typeof fetch;
 };
 
@@ -78,10 +77,10 @@ function sendMethodNotFound(reply: FastifyReply, message: Record<string, unknown
     });
 }
 
-function forwardedRequestHeaders(request: FastifyRequest, upstreamToken: string): Record<string, string> {
-    // The OAuth token, `origin`, `cookie` and `host` stay here: mcp-grafana checks the
-    // internal token, and its DNS-rebinding check expects its own host and no origin.
-    const headers: Record<string, string> = { authorization: `Bearer ${upstreamToken}` };
+function forwardedRequestHeaders(request: FastifyRequest): Record<string, string> {
+    // OAuth is checked here. NetworkPolicy admits only this proxy to mcp-grafana.
+    // Never forward credentials, origin, cookies or the external host upstream.
+    const headers: Record<string, string> = {};
 
     for (const name of FORWARDED_REQUEST_HEADERS) {
         const value = request.headers[name];
@@ -107,7 +106,7 @@ function sendBadGateway(reply: FastifyReply) {
 
 /**
  * The OAuth-protected MCP endpoint for Grafana. It checks the access token, then streams
- * the request to mcp-grafana with the internal token instead, and streams the answer back
+ * the request to the NetworkPolicy-protected mcp-grafana, and streams the answer back
  * (mcp-grafana can answer with SSE).
  */
 // A plugin, so that the raw body parser applies only to this route.
@@ -117,7 +116,6 @@ export const grafanaMcpProxy: FastifyPluginCallback<GrafanaMcpProxyOptions> = (i
     resourceMetadataUrl,
     checkAccessToken,
     upstreamUrl,
-    upstreamToken,
     fetch: fetchUpstream = fetch,
 }, done) => {
     instance.removeAllContentTypeParsers();
@@ -172,7 +170,7 @@ export const grafanaMcpProxy: FastifyPluginCallback<GrafanaMcpProxyOptions> = (i
             try {
                 response = await fetchUpstream(upstreamUrl, {
                     method: request.method,
-                    headers: forwardedRequestHeaders(request, upstreamToken),
+                    headers: forwardedRequestHeaders(request),
                     ...(Buffer.isBuffer(request.body) && { body: new Uint8Array(request.body) }),
                     signal: abortController.signal,
                 });
@@ -185,13 +183,13 @@ export const grafanaMcpProxy: FastifyPluginCallback<GrafanaMcpProxyOptions> = (i
                 return sendBadGateway(reply);
             }
 
-            // A rejected internal token is our configuration error. Passed through, it
-            // would tell ChatGPT that its own token is bad and start a new sign-in.
+            // Upstream authorization failures must not invalidate the OAuth token
+            // already checked here or trigger another client sign-in.
             if (response.status === 401 || response.status === 403) {
                 request.log.error({
                     ...exchange,
                     status: response.status,
-                }, '❌ Grafana MCP server rejected the internal token');
+                }, '❌ Grafana MCP server rejected the proxied request');
 
                 return sendBadGateway(reply);
             }

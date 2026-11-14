@@ -1,5 +1,11 @@
 # Project worklog
 
+## 2026-11-14 23:19 UTC — Removed shared proxy token; NetworkPolicy is the admission boundary
+
+User explicitly chose NetworkPolicy-only access to Grafana MCP, with cluster-helper as its only application ingress. Removed internal shared-token configuration from proxy types/runtime environment, both chart secret references and MCP server environment. Public OAuth validation is unchanged; proxy strips Authorization, cookies and origin instead of sending another bearer credential. Unexpected upstream 401/403 still maps to 502 without triggering client OAuth sign-in. Grafana service-account token for backend API access remains.
+
+MCP stays ClusterIP-only with no public ingress. Its sole ingress peer combines namespace senaev-com AND app=cluster-helper on TCP 8000. Existing proxy/endpoint tests updated to verify credential stripping, OAuth rejection, streaming and upstream error behavior (26 focused tests passed). Cluster-helper typecheck passed. No Vault secret deletion or cluster changes performed. Activation requires a cluster-helper image rebuild; no deployment-order change.
+
 ## 2026-11-14 23:10 UTC — Move Grafana MCP into telemetry in the activation PR
 
 User requested colocating MCP with Grafana instead of deployment reordering. Moved Deployment/Service/NetworkPolicy, token initialization/watch script, helper and values into vm-stack. Cluster-helper uses the telemetry FQDN; allowed-hosts matches that FQDN with port 8000. Ingress peer requires namespace senaev-com AND app=cluster-helper. Existing Vault internal token is synchronized to the telemetry secret. Public OAuth/MCP endpoint and Grafana token lifecycle are unchanged.

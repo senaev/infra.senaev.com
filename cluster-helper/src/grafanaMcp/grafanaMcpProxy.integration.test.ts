@@ -11,7 +11,6 @@ const MCP_DOMAIN = 'mcp.example.com';
 const RESOURCE_METADATA_URL = `https://${MCP_DOMAIN}/.well-known/oauth-protected-resource/grafana`;
 const VALID_OAUTH_TOKEN = 'grafana-oauth-token';
 const CHAT_GPT_OAUTH_TOKEN = 'chat-gpt-oauth-token';
-const INTERNAL_TOKEN = 'internal-token';
 
 type ReceivedRequest = {
     method: string;
@@ -23,6 +22,7 @@ let upstream: FastifyInstance;
 let upstreamUrl: string;
 let receivedRequests: ReceivedRequest[];
 let server: FastifyInstance;
+let upstreamStatus: number;
 
 function checkAccessToken(authorizationHeader: string | undefined): Promise<AccessTokenCheck> {
     if (authorizationHeader === undefined) {
@@ -37,7 +37,7 @@ function checkAccessToken(authorizationHeader: string | undefined): Promise<Acce
         : { kind: 'invalid' });
 }
 
-async function startProxy(upstreamToken = INTERNAL_TOKEN) {
+async function startProxy() {
     server = Fastify();
     // Same catch-all as the public server: routes bound to another host must fall through to it.
     server.get('/*', (_request, reply) => reply.code(401).send('Unauthorized'));
@@ -47,7 +47,6 @@ async function startProxy(upstreamToken = INTERNAL_TOKEN) {
         resourceMetadataUrl: RESOURCE_METADATA_URL,
         checkAccessToken,
         upstreamUrl,
-        upstreamToken,
     });
 }
 
@@ -75,6 +74,7 @@ function callProxy({
 
 beforeEach(async () => {
     receivedRequests = [];
+    upstreamStatus = 200;
     upstream = Fastify();
     upstream.removeAllContentTypeParsers();
     upstream.addContentTypeParser('*', { parseAs: 'string' }, (_request, body, done) => done(null, body));
@@ -93,8 +93,8 @@ beforeEach(async () => {
                 body: typeof request.body === 'string' ? request.body : '',
             });
 
-            if (request.headers.authorization !== `Bearer ${INTERNAL_TOKEN}`) {
-                return reply.code(401).send('Unauthorized');
+            if (upstreamStatus !== 200) {
+                return reply.code(upstreamStatus).send('Rejected');
             }
 
             if (request.method === 'GET') {
@@ -150,7 +150,7 @@ describe('grafanaMcpProxy', () => {
         expect(receivedRequests).toEqual([]);
     });
 
-    it('sends the body unchanged with the internal token instead of the OAuth token', async () => {
+    it('sends the body unchanged without forwarding OAuth credentials', async () => {
         const body = '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search_dashboards"}}';
         const response = await callProxy({
             body,
@@ -170,11 +170,11 @@ describe('grafanaMcpProxy', () => {
 
         expect(received?.body).toBe(body);
         expect(received?.headers).toMatchObject({
-            authorization: `Bearer ${INTERNAL_TOKEN}`,
             'mcp-session-id': 'session-from-client',
             'mcp-protocol-version': '2025-06-18',
             accept: 'application/json, text/event-stream',
         });
+        expect(received?.headers).not.toHaveProperty('authorization');
         expect(received?.headers).not.toHaveProperty('origin');
         expect(received?.headers).not.toHaveProperty('cookie');
         expect(received?.headers.host).not.toBe(MCP_DOMAIN);
@@ -231,9 +231,11 @@ describe('grafanaMcpProxy', () => {
         expect(receivedRequests[0]).toMatchObject({ method: 'DELETE' });
     });
 
-    it('answers 502 when the upstream rejects the internal token', async () => {
-        await server.close();
-        await startProxy('wrong-internal-token');
+    it.each([
+        401,
+        403,
+    ])('answers 502 when upstream rejects a request with %s without triggering OAuth sign-in', async (status) => {
+        upstreamStatus = status;
 
         const response = await callProxy({
             body: '{}',

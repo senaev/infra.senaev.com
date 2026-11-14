@@ -120,8 +120,7 @@ There is no client registration: the allowed clients are hard-coded in
 and creates the `mcp-grafana` service account and a new token on every pod start, so there is
 no manual step on a new cluster. The `watch-service-account-token` sidecar checks the token every
 minute and makes a new one if Grafana rejects it (for example after Grafana lost its database);
-`mcp-grafana` reads the token file on every call, so it needs no restart. Only cluster-helper can reach it: a NetworkPolicy, and the
-Vault key `INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_MCP_GRAFANA`. See
+`mcp-grafana` reads the token file on every call, so it needs no restart. Only cluster-helper can reach its MCP port through the NetworkPolicy; no public ingress or shared internal bearer token is configured. OAuth is checked by cluster-helper, which strips client credentials before proxying. See
 [`projects/2026-10-18-15-00-grafana-mcp-for-chatgpt`](projects/2026-10-18-15-00-grafana-mcp-for-chatgpt/README.md).
 
 ## LLM endpoint
