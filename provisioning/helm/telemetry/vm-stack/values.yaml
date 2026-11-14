@@ -1,3 +1,6 @@
+# Migration stage 1: stop central telemetry on Hetzner before manually copying data.
+# Keep Grafana/VMSingle objects and PVCs; only scale their writers to zero.
+# Enable and Madrid placement follow in a separate PR after the data copy.
 victoria-metrics-k8s-stack:
   # Victoria Metrics Operator is installed separately
   # https://docs.victoriametrics.com/helm/victoria-metrics-k8s-stack/#install-operator-separately
@@ -9,6 +12,7 @@ victoria-metrics-k8s-stack:
 
   grafana:
     enabled: true
+    replicas: 0 # Stop the writer without deleting the chart-managed PVC.
     nodeSelector:
       vps: hetzner
     annotations:
@@ -46,6 +50,7 @@ victoria-metrics-k8s-stack:
             - grafana.senaev.com
 
   vmsingle:
+    enabled: true
     ingress:
       enabled: true
       ingressClassName: traefik-hetzner
@@ -60,17 +65,20 @@ victoria-metrics-k8s-stack:
         - hosts:
             - victoriametrics.senaev.com
     spec:
+      replicaCount: 0 # Native operator shutdown; keep metrics PVC/data.
       retentionPeriod: "3"
       nodeSelector:
         vps: hetzner
 
   vmagent:
+    enabled: false
     spec:
       scrapeInterval: 30s
       nodeSelector:
         vps: hetzner
 
   alertmanager:
+    enabled: false
     ingress:
       enabled: true
       ingressClassName: traefik-hetzner
@@ -107,6 +115,7 @@ victoria-metrics-k8s-stack:
               send_resolved: true
 
   vmalert:
+    enabled: false
     ingress:
       enabled: true
       ingressClassName: traefik-hetzner
@@ -126,6 +135,7 @@ victoria-metrics-k8s-stack:
         vps: hetzner
 
   kube-state-metrics:
+    enabled: false
     nodeSelector:
       vps: hetzner
 
@@ -177,7 +187,7 @@ iperf3Monitor:
     - source: senaev-madrid
       target: firstvds
   scheduler:
-    enabled: true
+    enabled: false
     vps: hetzner
     port: 9579
     pauseBetweenTests: 300
