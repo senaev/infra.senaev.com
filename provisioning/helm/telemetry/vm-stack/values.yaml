@@ -138,6 +138,7 @@ smokepingProber:
     - hetzner
     - firstvds
     - senaev-media
+    - proxmox-madrid
     - senaev.com
     - senaev.ru
   extraTargets: []
@@ -155,6 +156,7 @@ iperf3Monitor:
     - hetzner
     - firstvds
     - senaev-media
+    - proxmox-madrid
   tests:
     - source: hetzner
       target: firstvds
@@ -163,6 +165,10 @@ iperf3Monitor:
     - source: senaev-media
       target: hetzner
     - source: senaev-media
+      target: firstvds
+    - source: proxmox-madrid
+      target: hetzner
+    - source: proxmox-madrid
       target: firstvds
   scheduler:
     enabled: true

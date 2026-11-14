@@ -31,6 +31,21 @@ variable "VPS_PROXMOX_LABEL" {
   type        = string
 }
 
+variable "VPS_PROXMOX_MADRID_HOST" {
+  description = "Proxmox Madrid worker host"
+  type        = string
+}
+
+variable "VPS_PROXMOX_MADRID_USERNAME" {
+  description = "Proxmox Madrid worker SSH username"
+  type        = string
+}
+
+variable "VPS_PROXMOX_MADRID_LABEL" {
+  description = "Proxmox Madrid worker VPS label"
+  type        = string
+}
+
 variable "VPS_MEDIA_HOST" {
   description = "Media worker host"
   type        = string

@@ -14,19 +14,21 @@ each request or command. Store it in [`projects/`](projects/) as a folder
 Keep existing folders unchanged. Follow [`projects/AGENTS.md`](projects/AGENTS.md)
 for the folder layout, the main document, the status and the worklog.
 
-## Sensitive nodes: `proxmox` and `senaev-media`
+## Sensitive nodes: `proxmox`, `senaev-media` and `proxmox-madrid`
 
 `proxmox` (bare metal) and `senaev-media` (VM 100 on it) are at home, behind the home
-router. There is no remote console and no other way in: they are reachable only over the
-tailnet (and senaev-media also from proxmox over the home LAN). **If we lose network access
-to them, we cannot recover them remotely, and the result is an unacceptable loss.**
+router. `proxmox-madrid` (bare metal, Proxmox VE) is in Madrid, behind its own
+router. There is no remote console and no other way in: they are reachable only
+over the tailnet (and senaev-media also from proxmox over the home LAN). **If we lose
+network access to them, we cannot recover them remotely, and the result is an
+unacceptable loss.**
 
 Be extremely careful with these nodes and their networks:
 
 - Treat any change that can affect their connectivity as high risk: `tailscaled` (restart,
   upgrade, flags, `/etc/default/tailscaled`), firewall, routes, sysctl, network interfaces,
   `k3s-agent` network flags, and anything that touches `tailscale0`.
-- Never change both home nodes at the same time. Change one, then confirm that it is
+- Never change two home nodes at the same time. Change one, then confirm that it is
   reachable (`tailscale status` shows `direct`, SSH works) before the next one.
 - Never restart `tailscaled` on hetzner (the SSH jump host) while a home node is not
   fully connected: after a restart, peers need the new disco key from the Tailscale
