@@ -122,4 +122,4 @@ User authorized cleanup after successful activation. Run only on Hetzner. Before
 )
 ```
 
-Confirm both original paths are absent and both old PVs return NotFound; current Madrid claims must remain Bound. Removing originals ends the source-copy rollback option. Actual cleanup is pending user execution; do not mark it complete from authorization alone.
+Confirm both original paths are absent and both old PVs return NotFound; current Madrid claims must remain Bound. Removing originals ends the source-copy rollback option. User subsequently completed the guarded cleanup block and supplied successful deletion output for both old PVs; the source-copy rollback option is now removed.

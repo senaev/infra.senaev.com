@@ -1,5 +1,16 @@
 # Project worklog
 
+## 2026-11-14 23:44 UTC — User completed retired source cleanup
+
+User ran the guarded cleanup block: both source PVs were Released/Retain before the two exact source directories were removed, followed by:
+
+```text
+persistentvolume "pvc-8a91d60b-0266-4f82-b161-feec239b5a5a" deleted
+persistentvolume "pvc-c24e572d-2a1d-47ea-9d9b-d997486e9ec8" deleted
+```
+
+The block used set -eu and proceeded past rm to successful PV deletion. Source cleanup is recorded as completed from user output; no independent filesystem readback performed. Migration and old-data cleanup are complete. Remaining requested change: PR #192 merge/deployment and verification of LLM shutdown/alert removal. Optional recovery/backup checks and pre-existing datasource plugin issue remain separate.
+
 ## 2026-11-14 23:40 UTC — Cleanup authorized; LLM shutdown prepared
 
 User requested deleting old telemetry data, checking remaining work, and disabling senaev-media LLM plus its restart alert. Source cleanup is authorized but must be executed by the user under repository cluster-work rules. Added exact old paths/PVs with Released/Retain and current-binding checks to the runbook. No data deletion performed by the agent.
