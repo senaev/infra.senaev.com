@@ -1,3 +1,12 @@
+## 2026-11-14 17:37 UTC — End-to-end power recovery and VM autostart passed
+
+User tested an abrupt power cut followed by restoration of power and confirmed
+that the VM started working automatically. Record this as a passed end-to-end test
+of Dell AC Recovery Power On, Proxmox startup and Debian VM 100 `senaev-madrid`
+autostart. This supersedes the earlier pending host-reboot/autostart check.
+No separate post-recovery QEMU agent command output or application-level recovery
+results were supplied. No settings were changed by this documentation update.
+
 ## 2026-11-14 17:35 UTC — Windows restore preflight recorded
 
 Before starting Windows recovery, consolidated the installation progress and user

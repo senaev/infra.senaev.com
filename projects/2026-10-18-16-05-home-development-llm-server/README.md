@@ -59,6 +59,8 @@ repository `AGENTS.md`. See [cluster worker](windows-backup-proxmox-plan.md#k3s-
 The Debian VM exists as `senaev-madrid` (8 vCPUs, 16 GiB RAM, ~500 GiB disk) and is
 also a k3s worker and a sensitive node. See [senaev-madrid](windows-backup-proxmox-plan.md#k3s-worker-senaev-madrid-debian-vm--14-november-2026).
 VM 100 has autostart enabled; user reports QEMU Guest Agent checks work.
+An abrupt power-cut/restoration test passed: the host recovered and VM 100 started
+working automatically.
 The Windows VHDX is copied to Proxmox and its SHA-256 matches the original.
 Current next task: Windows VM recovery, with thin-pool capacity/growth reviewed before
 import. Windows boot and Jellyfin passthrough remain unverified.

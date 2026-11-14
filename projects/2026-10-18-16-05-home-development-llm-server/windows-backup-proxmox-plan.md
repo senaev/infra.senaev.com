@@ -269,8 +269,10 @@ ACPI and KVM enabled, boot order `scsi0, ide2, net0`, and Protection: No.
 User reported the guest agent checks work. Root SSH/Tailscale access is recorded in
 its k3s section above. The installer created the regular account `senaev-madrid`;
 `root` is a separate built-in account. Authorized-key setup was discussed; no secret
-keys or passwords are stored here. Protection, installer-media removal, off-host
-backups and a complete host-reboot/autostart test remain unconfirmed.
+keys or passwords are stored here. User tested an abrupt mains-power cut and restoration: the host recovered and
+VM 100 started working automatically. The end-to-end AC recovery/autostart test
+passes by user report. Protection, installer-media removal and off-host backups
+remain unconfirmed.
 
 The following installation and agent procedure is retained for reproducibility.
 
@@ -320,7 +322,8 @@ import capacity and virtual disk sizing rather than assuming both full disks fit
    command execution is not an interactive shell and requires a running guest/agent.
 
 Acceptance: Debian installation and resources are confirmed; user reports the
-agent checks work. A separate post-reboot agent/autostart test is not confirmed. Agent supports IP discovery, managed shutdown and backup filesystem freeze;
+agent checks work. Power-loss recovery and VM autostart are confirmed by user test. A separate
+post-reboot guest-agent command check is not confirmed. Agent supports IP discovery, managed shutdown and backup filesystem freeze;
 its presence alone does not prove successful backups or passthrough.
 
 Reference: https://github.com/proxmox/pve-docs/blob/master/generated/qm.1-synopsis.adoc
