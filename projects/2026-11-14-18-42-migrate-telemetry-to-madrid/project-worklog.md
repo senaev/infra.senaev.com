@@ -1,5 +1,9 @@
 # Project worklog
 
+## 2026-11-14 22:53 UTC — User completed both directory transfers
+
+User reported: "both rsyncs are finished". Intended targets are `/k3s-cluster/volumes/telemetry/grafana/` and `/k3s-cluster/volumes/telemetry/victoriametrics/` on senaev-madrid, copied from the two recorded Hetzner local-volume directories. Completion is user-reported; checksum verification remains pending. Next: read-only rsync checksum comparison before destination bindings or activation.
+
 ## 2026-11-14 22:53 UTC — Activation scope extended
 
 User requested adding metrics capacity 50GB and log-generator relocation to the second PR plan. Record an explicit `50Gi` VMSingle request plus matching destination PV/PVC capacity, and `logGenerator.vps: senaev-madrid`. Capacity is declarative for local volumes, not a filesystem quota. This update changes the plan only; services remain disabled and no volume operations were performed.
