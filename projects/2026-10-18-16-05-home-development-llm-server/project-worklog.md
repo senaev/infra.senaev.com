@@ -1,3 +1,27 @@
+## 2026-11-14 16:15 UTC — proxmox-madrid joined the k3s cluster as a sensitive worker
+
+User decided to add the Dell to the cluster like the existing `proxmox` host: a k3s agent
+on the Proxmox VE host itself, label `vps=proxmox-madrid`, reached by its Tailscale name.
+Merged to `main` in commit 1ca94635 (`✨ Add proxmox-madrid worker`):
+
+- `VPS_PROXMOX_MADRID_HOST/_USERNAME/_LABEL` in `.env.example`, `terraform/variables.tf`,
+  `terraform/terraform.tfvars.example` and the sync list of `scripts/apply-terraform.sh`.
+  Local (git-ignored) `.env` and `terraform.tfvars`: host `proxmox-madrid`, user `root`.
+- `make worker-proxmox-madrid`; `make workers` runs it after galkin and before the two
+  home nodes in Russia, so a broken bootstrap stops before it reaches them.
+- vm-stack: smokeping target `proxmox-madrid`; iperf3 agent on it, with tests
+  `proxmox-madrid → hetzner` and `proxmox-madrid → firstvds` (the same as senaev-media).
+- `AGENTS.md`: added to "Sensitive nodes" at the user's request — reachable only over the
+  tailnet, so loss of network access is an unacceptable loss.
+
+User ran the bootstrap and reported:
+
+> make worker-proxmox-madrid succeeded
+
+Not added to Datadog (the existing `proxmox` is not there either). Tailscale key expiry
+for proxmox-madrid and revocation of the auth key from the screenshot are not confirmed.
+Not verified yet: node `Ready`, iperf3/smokeping samples in Grafana.
+
 ## 2026-11-14 15:38 UTC — Installation, Tailscale access and DHCP stage completed
 
 User closed this stage and requested findings/steps be saved. Recorded installed

@@ -53,6 +53,9 @@ Proxmox's noVNC console; no recapture is required solely for remote-access setup
 The purchase remains complete. Proxmox installation and initial networking are
 complete: web/Shell and Tailscale DNS access work; vmbr0 uses DHCP after reboot.
 The router reused 192.168.0.23; an actual different-address test is not complete.
+The host joined the k3s cluster as worker `proxmox-madrid` (`make worker-proxmox-madrid`),
+with smokeping and iperf3 monitoring in vm-stack. It is a sensitive node in the
+repository `AGENTS.md`. See [cluster worker](windows-backup-proxmox-plan.md#k3s-cluster-worker--14-november-2026).
 Next: inspect storage and recover the saved Windows installation into a VM, then
 validate Jellyfin passthrough. See the plan for evidence and outstanding checks.
 
@@ -78,7 +81,8 @@ Completed and closed on 2026-11-11 at the user’s request. Purchased the refurb
 Dell OptiPlex Micro 7010, 32 GB RAM / 1 TB NVMe, from VORPC for €599.89 including
 VAT and delivery (order 102889). The server has now arrived (user confirmation, 2026-11-13).
 The purchase is €400.11 below the €1,000 budget. BIOS inventory, diagnostic passes and AC Recovery testing are recorded. Proxmox installation, Tailscale access and DHCP
-after reboot are complete. Windows VM recovery and Jellyfin testing remain pending.
+after reboot are complete. The host is a k3s worker, `proxmox-madrid`. Windows VM
+recovery and Jellyfin testing remain pending.
 
 ## Delivered hardware record
 

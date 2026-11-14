@@ -166,6 +166,30 @@ DHCP pool change or reservation is recorded. Route/DNS outputs, full service-hea
 checks and hostname behavior after a changed address remain unverified. Existing
 local hosts mapping may become stale; user explicitly accepted deferring this.
 
+### k3s cluster worker — 14 November 2026
+
+The Proxmox VE host runs a k3s agent, the same as the existing `proxmox` host. Changes
+in `main`, commit 1ca94635 (`✨ Add proxmox-madrid worker`):
+
+| Item | Value |
+| --- | --- |
+| Node label | `vps=proxmox-madrid` |
+| SSH address | `root@proxmox-madrid` (Tailscale name), through the hetzner jump host |
+| Variables | `VPS_PROXMOX_MADRID_HOST`, `_USERNAME`, `_LABEL` in `.env` and `terraform.tfvars` |
+| Bootstrap | `make worker-proxmox-madrid`; part of `make workers`, before `proxmox` and `senaev-media` |
+| vm-stack | smokeping target; iperf3 agent with tests to `hetzner` and `firstvds` |
+| Datadog | not enabled, the same as `proxmox` |
+| Risk level | sensitive node in `AGENTS.md`: reachable only over the tailnet |
+
+User reported that `make worker-proxmox-madrid` succeeded.
+
+📌 Disable Tailscale key expiry for proxmox-madrid (admin console, Machines), if not done.
+
+📌 Revoke the auth key that was visible in the installation screenshot.
+
+📌 Confirm the node is `Ready` on the control plane and iperf3/smokeping samples for
+proxmox-madrid appear in Grafana after the vm-stack deploy.
+
 ### Next stage: Windows VM recovery
 
 1. Inspect Proxmox package versions, service state and storage/free space; confirm
