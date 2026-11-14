@@ -1004,3 +1004,59 @@ existing protocol selection. No retry, timeout or byte-budget increase.
 
 This protocol alignment is the immediate next PR. MSS A/B remains conditional
 on interpretable source controls, not the next automatic configuration change.
+
+### 2026-11-13 23:28 UTC — Independent configured-asset HTTPS ranges
+
+Home's ordinary H1 discovery has failed three times, preventing all range
+attempts. User approved separating the size checks from that prerequisite.
+Keep the existing discovery request, metadata checks and failed metric intact.
+Supply `vpnProbe.httpsControlAssetPath` to home profile4 and both source controls
+as `HTTPS_CONTROL_ASSET_PATH`. When configured, ranges use that same-origin asset
+regardless of discovery outcome; logs identify configured/discovered selection.
+Empty configuration preserves the previous discovery-based behavior.
+
+Verified current asset: `/_next/static/chunks/6b932d840e5ca137.js`, Content-Length
+223452. Paths are restricted to static chunk JavaScript filenames under the fixed
+https://senaev.com origin; schemes, traversal and query strings are rejected.
+A removed asset yields visible HTTP failures with no retry or automatic fallback.
+After a website build removes it, verify and update the chart value before
+interpreting those failures as transport evidence. Revert to an empty value to
+restore discovery-dependent behavior. No server or host configuration change.
+
+Retain H1/TLS verification, exact HTTP206/byte checks,8s/32KiB/s settings and
+existing jitter/cadence/acceptance. Planned body caps stay152KiB per eligible
+round plus headers/transport overhead; home now attempts its intended88KiB range
+payload total even when discovery fails. No MSS arm enabled.
+
+Validation:105 Python tests; VPN Helm lint; rendered environment present on
+exactly3 diagnostic Deployments. A live Code Tools preflight with mocked waits
+and a forced homepage timeout retained discovery failure and fetched exact
+8/16/64KiB with HTTP206/H1.1. This does not demonstrate home-path recovery.
+
+### 2026-11-14 10:02 UTC — Dedicated bounded HTTPS control endpoint
+
+User replaced the configured website-chunk proposal with a dedicated endpoint in
+senaev/senaev.com. GET /api/vpn-test?bytes=N returns deterministic binary content,
+HTTP200 and exact Content-Length; bytes defaults to16384 and is bounded1..524288
+(512KiB, user-approved cap). HEAD has metadata only. Invalid/duplicate/unknown
+parameters and Range are rejected. No caching/compression, URL fetching, file reads,
+delays, retries or unbounded allocations. The cap is per response, not a rate limiter.
+
+Infra PR181 now requests8/16/64KiB independently of the H1 homepage result and
+requires HTTP200 plus exact bytes. Removed chunk discovery, HEAD asset selection,
+Range helper and the asset setting/templates. Existing metric names remain;
+https_bulk_discovery now reports only homepage completion, not asset selection.
+Logs mark the new cohort control_target=vpn-test-v1. Never combine HTTP206 chunk
+controls with these HTTP200 endpoint controls as identical experiments.
+
+Retain3s connect/8s total/32KiB/s curl, TLS verification, jitter, existing cadence
+and exit/direct gates. Routine payload total stays88KiB; homepage cap64KiB remains
+(the152KiB total excludes headers/wire overhead). The512KiB server cap does not
+increase automated traffic. Endpoint is fixed on https://senaev.com, no new secret,
+service, privilege, route, host/MSS or production subscription change.
+
+Deploy the website endpoint first after approval; verify public exact-size responses
+and identity encoding before merging/deploying infra PR181. Until then a404 is a
+missing endpoint, not transport evidence. After rollout obtain at least3 comparable
+completed rounds per relevant source, account for freshness/resets/skipped gates,
+then reassess. MSS remains deferred. No merge or deployment authorized here.
