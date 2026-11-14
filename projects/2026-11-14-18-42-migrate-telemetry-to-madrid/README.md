@@ -8,7 +8,7 @@ Move central telemetry to the existing Madrid worker. Accept a maintenance windo
 
 ## Context
 
-**Shutdown PR #186 is deployed.** Both datasets were manually copied and checksum-verified. The user recreated both claims bound to Madrid PVs. This activation PR restores central services on Madrid; it has not deployed yet.
+**Shutdown PR #186 is deployed.** Both datasets were manually copied and checksum-verified. The user recreated both claims bound to Madrid PVs. Activation PR #191 is merged and deployed; retry succeeded after resolving manual pause-field ownership.
 
 Source storage and shutdown behavior (recorded before activation):
 
@@ -47,6 +47,13 @@ Grafana MCP now belongs to the telemetry namespace and vm-stack Helm release alo
 
 ## Result
 
-Pre-activation checks complete: source PVs Retain; copied datasets verified; Madrid claims Bound at 1Gi and 50Gi. VMSingle is currently paused with zero replicas. Activation code restores services and resumes reconciliation. Source data is retained; no cleanup is authorized. Activation deployment and post-deploy verification remain pending.
+Migration activated and verified. PR #191 merged as `d6541378`; [deployment attempt 2](https://github.com/senaev/infra.senaev.com/actions/runs/43653074385) succeeded after the user aligned the manually owned paused field with Helm. All ten central workloads are ready on `senaev-madrid`. Grafana/metrics claims use the copied Madrid datasets at 1Gi/50Gi. All 59 scrape targets are up; historical data before shutdown remains queryable. Original datasource IDs and dashboards are accessible through Grafana MCP; cluster-helper logs show successful tool calls. Madrid log-generator logs arrive in Datadog. Five post-deploy public website checks passed.
+
+The optional secondary native VictoriaMetrics datasource plugin remains missing, with identical errors confirmed on Hetzner before migration; the primary datasource works. No synthetic alert or VM-restart test was run. User completed the guarded deletion of both retired Hetzner directories and PV objects; both PV deletion confirmations were received. Source paths and guarded cleanup commands are in the runbook. Only the two old telemetry datasets are in scope.
+
+Remaining work:
+- Merge/deploy the follow-up disabling the Helm-managed llama.cpp `llm-server` on senaev-media and removing `llm-server-restarted`; verify service/scrape/alerts disappear. Model files are retained.
+- Optional follow-up: observe longer, validate restart/reboot recovery and review backup coverage for manually provisioned volumes. These are not new migration test infrastructure.
+- Existing missing optional native datasource plugin is a separate issue; the primary datasource and migration work.
 
 See [worklog](project-worklog.md).

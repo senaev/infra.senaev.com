@@ -95,3 +95,31 @@ For rollback, disable through Helm first. Preserve new Madrid writes, restore so
 User completed and checksum-verified both rsync copies, set source PVs Retain, and recreated original-name claims bound to `telemetry-grafana-madrid` (1Gi) and `telemetry-metrics-madrid` (50Gi). Native VMSingle paused status was acknowledged before claim replacement. Activation uses explicit matching volumeName settings and resumes reconciliation.
 
 Grafana MCP moves into the telemetry namespace and vm-stack release, deploying together with Grafana. cluster-helper uses `http://mcp-grafana.telemetry.svc.cluster.local:8000/mcp`. No internal proxy bearer token is required; NetworkPolicy admission requires both the senaev-com namespace and cluster-helper pod label on TCP 8000. There is no public ingress for this service. Public OAuth stays in cluster-helper, and MCP-to-Grafana service-account authentication stays unchanged. No deployment-order change or migration-specific pipeline is needed.
+
+## Activation outcome and ownership caveat
+
+PR #191 is deployed. The first attempt failed because the manual `kubectl-patch` manager owned `spec.paused: true`, conflicting with Helm's `false`. The user atomically tested replicaCount zero and patched only paused false; retrying the failed deployment then succeeded without global force-conflict settings. For future migrations, account for manual field ownership before resuming through server-side apply.
+
+Post-deploy verification: ten central pods ready on Madrid, both expected volume bindings and capacities, 59/59 scrapes up, historical data queryable, Grafana MCP tools through cluster-helper successful, Madrid log-generator delivery and five public smoke checks passed. Retain original Hetzner data; cleanup and restart/reboot checks are separate follow-up actions. See worklog for evidence and the pre-existing optional datasource plugin issue.
+
+## Authorized source cleanup
+
+User authorized cleanup after successful activation. Run only on Hetzner. Before any removal, confirm both old PVs have phase Released and policy Retain, while current claims still bind telemetry-grafana-madrid and telemetry-metrics-madrid. Stop if any check fails. No other data/model directories are in scope.
+
+```bash
+(
+  set -eu
+  for pv in pvc-8a91d60b-0266-4f82-b161-feec239b5a5a pvc-c24e572d-2a1d-47ea-9d9b-d997486e9ec8; do
+    test "$(kubectl get pv "$pv" -o jsonpath='{.status.phase}')" = Released
+    test "$(kubectl get pv "$pv" -o jsonpath='{.spec.persistentVolumeReclaimPolicy}')" = Retain
+  done
+  test "$(kubectl -n telemetry get pvc vm-stack-grafana -o jsonpath='{.spec.volumeName}')" = telemetry-grafana-madrid
+  test "$(kubectl -n telemetry get pvc vmsingle-vm-stack-victoria-metrics-k8s-stack -o jsonpath='{.spec.volumeName}')" = telemetry-metrics-madrid
+  sudo rm -rf -- \
+    /var/lib/rancher/k3s/storage/pvc-8a91d60b-0266-4f82-b161-feec239b5a5a_telemetry_vm-stack-grafana \
+    /var/lib/rancher/k3s/storage/pvc-c24e572d-2a1d-47ea-9d9b-d997486e9ec8_telemetry_vmsingle-vm-stack-victoria-metrics-k8s-stack
+  kubectl delete pv pvc-8a91d60b-0266-4f82-b161-feec239b5a5a pvc-c24e572d-2a1d-47ea-9d9b-d997486e9ec8
+)
+```
+
+Confirm both original paths are absent and both old PVs return NotFound; current Madrid claims must remain Bound. Removing originals ends the source-copy rollback option. User subsequently completed the guarded cleanup block and supplied successful deletion output for both old PVs; the source-copy rollback option is now removed.
