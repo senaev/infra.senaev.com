@@ -90,12 +90,12 @@ class H1SizeTests(unittest.TestCase):
 
     @patch('probe.emit')
     @patch('probe.experiment_wait', return_value=False)
-    @patch('probe.fresh_xhttp_exit_control', side_effect=[False, True, False, False, False, False, True])
+    @patch('probe.fresh_xhttp_exit_control', side_effect=[False, True, False, False, False, False, True, True, True])
     def test_failed_reused_ladder_still_runs_independent_fresh_control(self, fresh, wait, emit):
         self.assertFalse(probe.xhttp_transport_controls('test', None, 'round'))
         self.assertTrue(fresh.call_args_list[2].kwargs['measure_sizes'])
         self.assertEqual([c.kwargs.get('payload_size') for c in fresh.call_args_list[3:]],
-                         [4096, 16384, 8192, 12288])
+                         [4096, 16384, 8192, 12288, 16384, 65536])
         self.assertTrue(60 <= wait.call_args_list[-1].args[0] <= 90)
 
     @patch('probe.emit')

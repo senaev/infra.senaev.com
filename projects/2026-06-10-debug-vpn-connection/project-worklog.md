@@ -1,3 +1,27 @@
+## 2026-11-14 14:27 UTC — Same-endpoint direct and XHTTP pairs
+
+Add two separate exit-validated fresh XHTTP/H1 clients, for16/64KiB, after the
+existing Cloudflare controls. Each compares identical https://senaev.com/api/vpn-test
+responses directly and through XHTTP, with HTTP1.1, verified TLS, HTTP200 and exact
+bytes. Direct failure marks the comparison inconclusive. Fixed new metric names
+transfer_h1_fresh_endpoint_16384/65536 and diagnostic_h1_endpoint_exit_16384/65536
+separate results from existing Cloudflare checks; bounded exporter allowlist updated.
+
+Retain quiet intervals, request jitter,3s connect/8s total/32KiB/s limits and cleanup.
+Each size has its own process and exit gate; no additional port or worker. Original
+H1 trace gate still applies; failed gates skip payloads, not count as payload errors.
+Adds168KiB planned successful response bodies per eligible fresh group/source:
+2*(4KiB exit)+2*(16+64KiB paired payloads). This excludes headers/transport overhead.
+Fresh group duration increases by at least two60–90s waits. Independent ordinary
+HTTPS five-minute schedule is unchanged. No MSS, production routing/subscriptions,
+host networking, services, privileges or secrets changed. FirstVDS stays entry-only.
+
+108 Python tests passed. PR only, not deployed. After rollout compare at least three
+completed pairs per size/source, including gates, exact bytes/status, timestamps,
+resets and simultaneous group activity. Same-host endpoint traverses Hetzner egress
+back to its public website; it is not an independent origin. Results cannot uniquely
+identify DPI or PMTU. Retain Cloudflare controls to distinguish destination effects.
+
 ## 2026-11-14 12:04 UTC — Independent diagnostic schedules
 
 User approved independent schedules and allowed overlap between groups. Ordinary
