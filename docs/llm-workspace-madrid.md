@@ -53,9 +53,9 @@ No network, Tailscale or k3s configuration changes are needed.
    stops the Telegram client. Keep them stopped until copying and rebinding finish.
 
    ```bash
-   kubectl -n senaev-com scale deploy senaev-code-tools senaev-opencode-telegram senaev-omp-web --replicas=0
+   kubectl -n senaev-com scale deploy senaev-code-tools senaev-opencode-telegram senaev-omp-web --replicas=0 || exit 1
    for app in senaev-code-tools senaev-opencode-telegram senaev-omp-web; do
-     kubectl -n senaev-com wait --for=delete pod -l "app=$app" --timeout=180s
+     kubectl -n senaev-com wait --for=delete pod -l "app=$app" --timeout=180s || exit 1
    done
    ```
 
