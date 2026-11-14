@@ -1,5 +1,46 @@
 # Project worklog
 
+## 2026-11-14 23:36 UTC — Activation retry succeeded; Madrid telemetry verified
+
+Deploy run 43653074385 attempt 2 completed successfully after user aligned paused false. Post-deploy Grafana MCP tools list original datasource IDs and dashboards, return historical samples and fresh metrics. Cluster-helper logs confirm proxied tools/call query_prometheus with status 200.
+
+Supporting query results:
+
+```text
+count(up) at 2026-11-14T22:00:00Z = 59
+count(up) after activation = 59
+min(up) after activation = 1
+sum(kube_pod_status_ready{central workloads,condition="true"}) = 10
+Grafana claim volumename = telemetry-grafana-madrid, requested bytes = 1073741824
+Metrics claim volumename = telemetry-metrics-madrid, requested bytes = 53687091200
+```
+
+`kube_pod_info` shows all ten central pods on node senaev-madrid, including mcp-grafana and log-generator. Datadog confirms fresh logs from log-generator-5cc565f544-mvnzh. Five public website smoke tests passed after deployment. Existing source data/PVs were not deleted.
+
+Scoped startup-log review found the optional secondary `victoriametrics-metrics-datasource` plugin missing; Datadog confirms identical error on Hetzner at 21:40 UTC before migration. Primary Prometheus-compatible VictoriaMetrics datasource works. MCP default-org warnings are nonfatal. No forced synthetic Telegram alert, negative NetworkPolicy probe, pod restart or VM reboot was performed. Source cleanup remains a separate explicitly authorized action.
+
+## 2026-11-14 23:32 UTC — User aligned pause field; failed deployment retried
+
+User successfully applied the guarded patch (test replicaCount zero, replace paused false):
+
+```text
+vmsingle.operator.victoriametrics.com/vm-stack-victoria-metrics-k8s-stack patched
+```
+
+Requested `gh run rerun 43653074385 --failed`; attempt 2 queued. No direct cluster operations by agent. Awaiting telemetry rollout before historical/current data and MCP validation.
+
+## 2026-11-14 23:30 UTC — Activation merged; telemetry blocked by paused-field ownership
+
+PR #191 merged as d6541378. Deploy run 43653074385: checks/build/sync and senaev-com deployment succeeded; telemetry vm-stack upgrade failed. Application readiness briefly waited on n8n provisioning, which completed. Log-generator produced logs on Madrid and cluster-helper served requests.
+
+Exact deployment error:
+
+```text
+Error: UPGRADE FAILED: conflict occurred while applying object telemetry/vm-stack-victoria-metrics-k8s-stack operator.victoriametrics.com/v1beta1, Kind=VMSingle: Apply failed with 1 conflict: conflict with "kubectl-patch" using operator.victoriametrics.com/v1beta1: .spec.paused
+```
+
+The prior manual pause owns that field; Helm cannot change true to false through server-side apply. Recovery: user JSON-patches paused false only after an atomic test that replicaCount remains zero. Then rerun failed deployment so Helm applies the same paused value and activates Madrid replicas. No force-conflict global changes, data deletion or network changes. Post-deployment validation remains pending.
+
 ## 2026-11-14 23:19 UTC — Removed shared proxy token; NetworkPolicy is the admission boundary
 
 User explicitly chose NetworkPolicy-only access to Grafana MCP, with cluster-helper as its only application ingress. Removed internal shared-token configuration from proxy types/runtime environment, both chart secret references and MCP server environment. Public OAuth validation is unchanged; proxy strips Authorization, cookies and origin instead of sending another bearer credential. Unexpected upstream 401/403 still maps to 502 without triggering client OAuth sign-in. Grafana service-account token for backend API access remains.

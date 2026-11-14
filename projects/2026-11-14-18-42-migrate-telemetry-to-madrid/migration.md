@@ -95,3 +95,9 @@ For rollback, disable through Helm first. Preserve new Madrid writes, restore so
 User completed and checksum-verified both rsync copies, set source PVs Retain, and recreated original-name claims bound to `telemetry-grafana-madrid` (1Gi) and `telemetry-metrics-madrid` (50Gi). Native VMSingle paused status was acknowledged before claim replacement. Activation uses explicit matching volumeName settings and resumes reconciliation.
 
 Grafana MCP moves into the telemetry namespace and vm-stack release, deploying together with Grafana. cluster-helper uses `http://mcp-grafana.telemetry.svc.cluster.local:8000/mcp`. No internal proxy bearer token is required; NetworkPolicy admission requires both the senaev-com namespace and cluster-helper pod label on TCP 8000. There is no public ingress for this service. Public OAuth stays in cluster-helper, and MCP-to-Grafana service-account authentication stays unchanged. No deployment-order change or migration-specific pipeline is needed.
+
+## Activation outcome and ownership caveat
+
+PR #191 is deployed. The first attempt failed because the manual `kubectl-patch` manager owned `spec.paused: true`, conflicting with Helm's `false`. The user atomically tested replicaCount zero and patched only paused false; retrying the failed deployment then succeeded without global force-conflict settings. For future migrations, account for manual field ownership before resuming through server-side apply.
+
+Post-deploy verification: ten central pods ready on Madrid, both expected volume bindings and capacities, 59/59 scrapes up, historical data queryable, Grafana MCP tools through cluster-helper successful, Madrid log-generator delivery and five public smoke checks passed. Retain original Hetzner data; cleanup and restart/reboot checks are separate follow-up actions. See worklog for evidence and the pre-existing optional datasource plugin issue.
