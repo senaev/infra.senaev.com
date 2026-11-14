@@ -22,7 +22,8 @@ Cloud upload completion and downloaded-copy comparison remain unconfirmed; user
 previously chose to skip checksum comparison. VM bootability and Dell USB boot are not yet verified. BIOS inventory confirms
 i5-13500T, 32 GB DDR4 (2 x 16 GB, dual channel), BIOS 1.3.1 and no Wi-Fi/Bluetooth.
 Extended hardware diagnostics and SSD health remain pending. Proxmox is installed, and
-the host is k3s worker `proxmox-madrid` (sensitive node). Windows VM import has not started.
+the host is k3s worker `proxmox-madrid` (sensitive node). Its Debian VM is k3s worker
+`senaev-madrid` (sensitive node). Windows VM import has not started.
 See [setup plan](windows-backup-proxmox-plan.md). Purchase remains complete.
 
 Observed hardware details: [inventory](hardware-inventory.md).

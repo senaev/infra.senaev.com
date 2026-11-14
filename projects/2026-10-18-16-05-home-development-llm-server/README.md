@@ -56,8 +56,9 @@ The router reused 192.168.0.23; an actual different-address test is not complete
 The host joined the k3s cluster as worker `proxmox-madrid` (`make worker-proxmox-madrid`),
 with smokeping and iperf3 monitoring in vm-stack. It is a sensitive node in the
 repository `AGENTS.md`. See [cluster worker](windows-backup-proxmox-plan.md#k3s-cluster-worker--14-november-2026).
-Current next task: create the Debian VM (16 GiB RAM, proposed 500 GiB disk) with
-QEMU Guest Agent and verify root command execution from the Proxmox host. Windows
+The Debian VM exists as `senaev-madrid` (8 vCPUs, 16 GiB RAM, ~500 GiB disk) and is
+also a k3s worker and a sensitive node. See [senaev-madrid](windows-backup-proxmox-plan.md#k3s-worker-senaev-madrid-debian-vm--14-november-2026).
+Current next task: verify QEMU Guest Agent root command execution from the Proxmox host. Windows
 recovery and Jellyfin passthrough remain planned; reassess shared storage capacity.
 See the plan for configuration, evidence and outstanding checks.
 
@@ -83,7 +84,8 @@ Completed and closed on 2026-11-11 at the user’s request. Purchased the refurb
 Dell OptiPlex Micro 7010, 32 GB RAM / 1 TB NVMe, from VORPC for €599.89 including
 VAT and delivery (order 102889). The server has now arrived (user confirmation, 2026-11-13).
 The purchase is €400.11 below the €1,000 budget. BIOS inventory, diagnostic passes and AC Recovery testing are recorded. Proxmox installation, Tailscale access and DHCP
-after reboot are complete. The host is a k3s worker, `proxmox-madrid`. Windows VM
+after reboot are complete. The host is a k3s worker, `proxmox-madrid`, and its Debian VM is k3s worker
+`senaev-madrid`. Windows VM
 recovery and Jellyfin testing remain pending.
 
 ## Delivered hardware record

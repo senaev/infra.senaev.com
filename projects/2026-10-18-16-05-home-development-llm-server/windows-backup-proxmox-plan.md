@@ -187,8 +187,54 @@ User reported that `make worker-proxmox-madrid` succeeded.
 
 📌 Revoke the auth key that was visible in the installation screenshot.
 
-📌 Confirm the node is `Ready` on the control plane and iperf3/smokeping samples for
-proxmox-madrid appear in Grafana after the vm-stack deploy.
+✅ Node `Ready` (kubelet v1.36.5+k3s1); after the vm-stack deploy the iperf3 tests
+`proxmox-madrid → hetzner` and `→ firstvds` succeeded at about 20 Mbit/s, and all five
+other nodes get smokeping replies from proxmox-madrid.
+
+### k3s worker senaev-madrid (Debian VM) — 14 November 2026
+
+The Debian VM from the plan below is named `senaev-madrid`, not debian-madrid. It runs a
+k3s agent, the same as `senaev-media` on `proxmox`. Changes in `main`, commit 1b713dde
+(`✨ Add senaev-madrid worker`):
+
+| Item | Value |
+| --- | --- |
+| Node label | `vps=senaev-madrid` |
+| SSH address | `root@senaev-madrid` (Tailscale name), through the hetzner jump host |
+| Variables | `VPS_SENAEV_MADRID_HOST`, `_USERNAME`, `_LABEL` in `.env` and `terraform.tfvars` |
+| Bootstrap | `make worker-senaev-madrid`; in `make workers` right after `proxmox-madrid` |
+| vm-stack | smokeping target; iperf3 agent with tests to `hetzner` and `firstvds` |
+| Datadog | not enabled |
+| Risk level | sensitive node in `AGENTS.md`: tailnet, and LAN from proxmox-madrid |
+
+Observed over SSH before the bootstrap:
+
+```text
+senaev-madrid
+Debian GNU/Linux 13 (trixie)
+6.12.117+deb13-amd64
+8
+Mem:            15Gi       488Mi        14Gi       744Ki       726Mi        15Gi
+/dev/sda2       475G  3.5G  447G   1% /
+...
+100.102.168.102
+```
+
+The VM has 8 vCPUs (the plan proposed 4), about 16 GiB RAM and a 475 GiB root
+filesystem on the planned 500 GiB disk. User reported that `make worker-senaev-madrid`
+succeeded; kube-state-metrics shows the node `Ready` with kubelet v1.36.5+k3s1.
+
+📌 Disable Tailscale key expiry for senaev-madrid (admin console, Machines), if not done.
+
+The vm-stack deploy of 1b713dde succeeded. Right after it, senaev-madrid ran its
+iperf3 agent, smokeping prober and node-exporter; it pinged all six targets, and
+hetzner and galkin already got its replies, while the other probers were still in
+their rolling restart.
+
+📌 Confirm the first iperf3 results for `senaev-madrid → hetzner` and `→ firstvds`
+(7th and 8th in the scheduler queue, about 35–40 minutes after the deploy).
+
+📌 QEMU Guest Agent acceptance checks below are not confirmed.
 
 ### Next stage: Windows VM recovery
 
@@ -218,7 +264,8 @@ half the physical SSD capacity; proposed configuration is Debian 13 stable amd64
 (netinst 13.7 at planning time), 16384 MiB RAM without ballooning, 500 GiB SCSI disk
 on local-lvm, 4 host-type vCPUs, q35/OVMF, VirtIO SCSI single, discard enabled and
 VirtIO networking on vmbr0 with DHCP. VM name proposed: debian-madrid; actual VMID
-not yet supplied. VM creation and installation are not yet confirmed.
+not yet supplied. The VM is created and installed as `senaev-madrid` (Debian 13,
+8 vCPUs) and is a k3s worker — see the section above.
 
 Host baseline supplied by user: pve-manager/9.2.2/b9984c6d90a4bd80, kernel
 7.0.2-6-pve; local-lvm active and empty, approximately 793.8 GiB; root 96 GiB LV

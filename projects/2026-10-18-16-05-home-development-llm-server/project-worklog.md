@@ -1,3 +1,33 @@
+## 2026-11-14 17:13 UTC — senaev-madrid (Debian VM) joined the k3s cluster
+
+The Debian VM from the plan was created as `senaev-madrid`, joined the tailnet and got
+SSH keys (user report). Added it like `senaev-media`: label `vps=senaev-madrid`,
+host `senaev-madrid`, user `root`. Merged to `main` in commit 1b713dde
+(`✨ Add senaev-madrid worker`): `VPS_SENAEV_MADRID_*` variables, `make
+worker-senaev-madrid` (in `make workers` after proxmox-madrid), vm-stack smokeping
+target and iperf3 tests to hetzner and firstvds, and a sensitive node in `AGENTS.md`.
+
+Read-only SSH check through the jump host before the bootstrap:
+
+```text
+Debian GNU/Linux 13 (trixie)
+8
+Mem:            15Gi       488Mi        14Gi       744Ki       726Mi        15Gi
+/dev/sda2       475G  3.5G  447G   1% /
+```
+
+It shows 8 vCPUs (plan proposed 4), 16 GiB RAM and the ~500 GiB disk. User reported:
+
+> make worker-senaev-madrid succeeded
+
+kube-state-metrics shows `senaev-madrid` `Ready`, kubelet v1.36.5+k3s1. For
+proxmox-madrid, the first iperf3 tests to hetzner and firstvds succeeded at ~20 Mbit/s.
+The Deploy run for 1b713dde succeeded (`deploy (telemetry, telemetry/vm-stack)`).
+After it, senaev-madrid ran iperf3-agent, smokeping-prober and node-exporter, and
+hetzner and galkin already got its smokeping replies during the rolling restart.
+Not confirmed: senaev-madrid iperf3 results (last in the 8-test queue), Tailscale key
+expiry disabled, QEMU Guest Agent checks.
+
 ## 2026-11-14 16:32 UTC — Debian VM plan requires QEMU Guest Agent host access
 
 User requested adding QEMU agent for access from the Proxmox host as root. Saved
