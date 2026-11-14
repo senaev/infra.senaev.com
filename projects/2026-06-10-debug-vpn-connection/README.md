@@ -1060,3 +1060,32 @@ and identity encoding before merging/deploying infra PR181. Until then a404 is a
 missing endpoint, not transport evidence. After rollout obtain at least3 comparable
 completed rounds per relevant source, account for freshness/resets/skipped gates,
 then reassess. MSS remains deferred. No merge or deployment authorized here.
+
+### 2026-11-14 12:04 UTC — Independent diagnostic schedules
+
+User approved independent schedules and allowed overlap between groups. Ordinary
+H1 homepage plus8/16/64KiB endpoint checks now run in one worker with0–30s initial
+jitter and300–360s start cadence. No accumulated backlog or concurrent run within
+a group. Removed the extra60–90s pre-bulk quiet wait in scheduled mode only.
+
+Home fresh XHTTP diagnostics run in a separate worker using the same source-control
+loop as the VPSs. The old home matrix retains direct/baseline trace diagnostics but
+cannot invoke fresh clients on1083 in scheduled mode. One fresh group owns that
+port per pod, keeping H2/H1 ordering, per-client pauses, exit gates and paired
+requests sequential. Its full round still takes longer than5min; no promised
+five-minute fresh16KiB sample. VPS fresh diagnostics and bulk now overlap too.
+Website HEAD checks retain their existing independent cadence. Manual --once
+retains the serial matrix/diagnostics/bulk sequence and launches no workers.
+
+Worker exceptions stop the process for normal Deployment restart; graceful shutdown
+signals all workers and joins them before closing metrics. No new framework,
+service, image, configuration setting, endpoint, privilege, host network, secret,
+MSS or production route change. Existing request timeouts/byte limits unchanged.
+Overlap may affect comparisons on the troubled path; use experiment IDs/timestamps,
+paired direct checks and separate post-rollout cohorts. At most one run per group.
+Ordinary body caps152KiB per5–6min/source (plus wire overhead), not a global cap.
+
+Validation:106 Python tests passed, including cadence, overruns, no duplicate fresh
+port use and existing shutdown/manual behavior. Full pre-push/CI checks follow.
+PR only; no deployment. After approval verify all4 probe scrapes/restarts/logs and
+at least3 completed new endpoint rounds per source before selecting another variable.

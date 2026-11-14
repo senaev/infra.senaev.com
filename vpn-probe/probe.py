@@ -137,10 +137,10 @@ def emit(profile, check, route, result):
                           **result}), flush=True)
 
 
-def https_bulk_controls(profile, child=None):
+def https_bulk_controls(profile, child=None, quiet=True):
     """Ordinary H1 homepage and independent exact-size responses; no VPN or worker."""
     experiment_id = str(uuid.uuid4())
-    if experiment_wait(random.uniform(60, 90), child, profile, experiment_id) or STOP.is_set():
+    if (quiet and experiment_wait(random.uniform(60, 90), child, profile, experiment_id)) or STOP.is_set():
         return False
     discovery, _ = request("https://senaev.com/", "", 65536, text_limit=65536, http1=True)
     emit(profile, "https_bulk_discovery", "direct", {
@@ -159,6 +159,18 @@ def https_bulk_controls(profile, child=None):
             "request_jitter_seconds": jitter})
         passed = result["ok"] and passed
     return passed
+
+
+def https_control_loop(profile):
+    """One serial group, five-minute start cadence with jitter; never catch up."""
+    if STOP.wait(random.uniform(0, 30)):
+        return
+    while not STOP.is_set():
+        started = time.monotonic()
+        https_bulk_controls(profile, quiet=False)
+        delay = max(0, started + random.uniform(300, 360) - time.monotonic())
+        if STOP.wait(delay):
+            return
 
 
 def website_loop(profile):
@@ -443,7 +455,7 @@ def xhttp_transport_controls(profile, child, experiment_id, http1_first=False):
     return passed
 
 
-def xhttp_response_diagnostics(profile, baseline, child, experiment_id, http1_first=False):
+def xhttp_response_diagnostics(profile, baseline, child, experiment_id, http1_first=False, independent=False):
     """Same trace/budgets through fresh native TLS H2/H1 clients; never promote either."""
     trace = "https://www.cloudflare.com/cdn-cgi/trace"
     for route, address in [("direct", ""), ("vpn", baseline)]:
@@ -457,10 +469,11 @@ def xhttp_response_diagnostics(profile, baseline, child, experiment_id, http1_fi
         check_experiment_client(child, profile, experiment_id)
         emit(profile, "diagnostic_trace", route, {**result, "experiment_id": experiment_id,
                                                    "request_jitter_seconds": jitter})
-    xhttp_transport_controls(profile, child, experiment_id, http1_first=http1_first)
+    if not independent:
+        xhttp_transport_controls(profile, child, experiment_id, http1_first=http1_first)
 
 
-def transfer_round(profile, proxy, child=None, rotation=0, xhttp_proxy=None, diagnostics=False):
+def transfer_round(profile, proxy, child=None, rotation=0, xhttp_proxy=None, diagnostics=False, independent=False):
     """Fixed size/destination matrix, paired direct/VPN, no overlapping transfers."""
     experiment_id = str(uuid.uuid4())
     check_experiment_client(child, profile, experiment_id)
@@ -506,7 +519,7 @@ def transfer_round(profile, proxy, child=None, rotation=0, xhttp_proxy=None, dia
                     check_experiment_client(child, profile, experiment_id)
                     if not candidate_exit_ok and diagnostics:
                         xhttp_response_diagnostics(profile, proxy, child, experiment_id,
-                                                   http1_first=bool(rotation % 2))
+                                                   http1_first=bool(rotation % 2), independent=independent)
                 if not candidate_exit_ok:
                     emit(profile, "transfer_skipped", route, {
                         "ok": False, "failure": "exit_control_failed", **variant_context})
@@ -538,7 +551,7 @@ def transfer_round(profile, proxy, child=None, rotation=0, xhttp_proxy=None, dia
     return passed
 
 
-def experiment_loop(profile, proxy, once=False, child=None, xhttp_proxy=None, diagnostics=False):
+def experiment_loop(profile, proxy, once=False, child=None, xhttp_proxy=None, diagnostics=False, independent=False):
     # Five quiet minutes before each full matrix; one minute between conditions.
     rotation = 0
     while not STOP.is_set():
@@ -546,8 +559,8 @@ def experiment_loop(profile, proxy, once=False, child=None, xhttp_proxy=None, di
         if experiment_wait(quiet, child, profile):
             break
         passed = transfer_round(profile, proxy, child=child, rotation=rotation,
-                                xhttp_proxy=xhttp_proxy, diagnostics=diagnostics)
-        if diagnostics:
+                                xhttp_proxy=xhttp_proxy, diagnostics=diagnostics, independent=independent)
+        if diagnostics and not independent:
             https_bulk_controls(profile, child)
         if once:
             return 0 if passed else 1
@@ -608,7 +621,7 @@ def negative(profile, link, base, key, folder):
     return 1
 
 
-def xhttp_source_control(profile, once=False):
+def xhttp_source_control(profile, once=False, independent=False):
     """Low-volume public-endpoint control from a separate source node."""
     rotation = 0
     while not STOP.is_set():
@@ -618,7 +631,8 @@ def xhttp_source_control(profile, once=False):
         result, _ = request("https://www.cloudflare.com/cdn-cgi/trace", "", 4096)
         emit(profile, "diagnostic_trace", "direct", {**result, "experiment_id": experiment_id})
         passed = xhttp_transport_controls(profile, None, experiment_id, http1_first=bool(rotation % 2))
-        https_bulk_controls(profile)
+        if not independent:
+            https_bulk_controls(profile)
         rotation += 1
         if once:
             return 0 if passed and result["ok"] else 1
@@ -637,17 +651,39 @@ def main():
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             return run(args)
     server = start_server(METRICS)
-    worker = None
+    workers = []
+    failures = []
+
+    def background(check):
+        try:
+            check()
+        except Exception as error:
+            failures.append(type(error).__name__)
+            STOP.set()
+
+    def launch(check):
+        worker = threading.Thread(target=background, args=(check,), daemon=True)
+        workers.append(worker)
+        worker.start()
+
+    profile = os.environ["PROFILE_NAME"]
+    diagnostics = os.environ.get("XHTTP_DIAGNOSTICS") == "true"
+    source = os.environ.get("XHTTP_SOURCE_CONTROL") == "true"
     try:
         if os.environ.get("WEBSITE_CHECK") == "true":
-            worker = threading.Thread(target=website_loop,
-                                      args=(os.environ["PROFILE_NAME"],), daemon=True)
-            worker.start()
-        return run(args)
+            launch(lambda: website_loop(profile))
+        if diagnostics or source:
+            launch(lambda: https_control_loop(profile))
+        if diagnostics and not source:
+            launch(lambda: xhttp_source_control(profile, independent=True))
+        result = run(args)
+        if failures:
+            raise RuntimeError("background_check_failed")
+        return result
     finally:
         STOP.set()
-        if worker is not None:
-            worker.join(timeout=11)
+        for worker in workers:
+            worker.join(timeout=15)
         server.shutdown()
         server.server_close()
 
@@ -657,7 +693,7 @@ def run(args):
     if os.environ.get("XHTTP_SOURCE_CONTROL") == "true":
         if args.invalid:
             raise ValueError("Source control does not run credential rejection tests")
-        return xhttp_source_control(profile, once=args.once)
+        return xhttp_source_control(profile, once=args.once, independent=not args.once)
     link, base, key = (os.environ[k] for k in ["PROFILE_LINK", "XRAY_USER_UUID", "XRAY_REALITY_PUBLIC_KEY"])
     config, seed = client_config(link, base, key, port=1081 if args.once else 1080)
     expected = json.loads(os.environ["EXPECTED_EXITS"])[seed]
@@ -687,7 +723,8 @@ def run(args):
                 return experiment_loop(profile, proxy, once=args.once,
                                        child=(child, xhttp_child),
                                        xhttp_proxy=xhttp_proxy,
-                                       diagnostics=os.environ.get("XHTTP_DIAGNOSTICS") == "true")
+                                       diagnostics=os.environ.get("XHTTP_DIAGNOSTICS") == "true",
+                                       independent=not args.once)
             # Stagger profiles; serial rounds skip missed slots instead of catching up.
             STOP.wait(random.uniform(0, 20) if not args.once else 0)
             due_light = due_heavy = time.monotonic()

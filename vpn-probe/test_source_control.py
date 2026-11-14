@@ -55,5 +55,5 @@ class SourceControlTests(unittest.TestCase):
     def test_source_mode_needs_no_baseline_profile_or_exit_map(self, control, start, signal):
         with patch.dict(os.environ, {'PROFILE_NAME': 'hetzner', 'XHTTP_SOURCE_CONTROL': 'true'}, clear=True):
             self.assertEqual(probe.run(Mock(once=True, invalid=False)), 0)
-        control.assert_called_once_with('hetzner', once=True)
+        control.assert_called_once_with('hetzner', once=True, independent=False)
         start.assert_not_called()

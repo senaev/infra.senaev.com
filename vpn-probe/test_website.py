@@ -101,10 +101,11 @@ class WebsiteLifecycleTests(unittest.TestCase):
     def test_vpn_failure_stops_and_joins_worker_before_closing_metrics(self, run, stopping, thread, server, signal, args):
         with self.assertRaisesRegex(RuntimeError, 'vpn startup failed'):
             probe.main()
-        thread.assert_called_once_with(target=probe.website_loop, args=('home',), daemon=True)
+        self.assertEqual(thread.call_count, 1)
+        self.assertTrue(thread.call_args.kwargs['daemon'])
         thread.return_value.start.assert_called_once()
         stopping.set.assert_called_once()
-        thread.return_value.join.assert_called_once_with(timeout=11)
+        thread.return_value.join.assert_called_once_with(timeout=15)
         server.return_value.shutdown.assert_called_once()
         server.return_value.server_close.assert_called_once()
 
