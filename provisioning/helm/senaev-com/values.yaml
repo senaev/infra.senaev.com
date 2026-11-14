@@ -199,7 +199,8 @@ n8n:
 # The entry name is the prefix of its resource names: renaming an entry replaces its PVCs.
 llmWorkspaces:
   senaev:
-    vps: hetzner
+    enabled: true
+    vps: senaev-madrid
     traefik: hetzner
     instructionsPath: config/senaev-llm-instructions-path
     projectsStorageSize: 16Gi
@@ -249,6 +250,7 @@ llmWorkspaces:
       secrets:
         codeToolsToken: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
   galkin:
+    enabled: true
     vps: galkin
     # DNS for the hostnames points to hetzner; Traefik reaches the pods over the tailnet.
     traefik: hetzner

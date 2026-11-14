@@ -1,3 +1,27 @@
+## 2026-11-14 19:38 UTC — Prioritized five-minute endpoint pair
+
+Prioritize the16KiB same-endpoint direct/XHTTP pair in a dedicated serial worker
+on each diagnostic source. Initial jitter0–30s,300–360s start cadence, no queued
+backlog. It owns loopback1084; the older fresh worker remains on1083 and omits its
+scheduled endpoint16KiB arm. Older64KiB endpoint and Cloudflare/H1/H2 controls stay.
+Manual --once preserves both endpoint sizes on1083 and launches no new worker.
+
+Each priority attempt starts a fresh native TLS XHTTP/H1 client, validates expected
+exit, then transfers identical HTTPS endpoint16KiB directly and viaXHTTP with the
+existing2–7s request jitter, exact200/byte checks, verification and timeouts.
+It does not wait for the older group's H1 trace gate; its own exit gate still applies.
+At most one run per group; different groups may overlap. No new metrics/config,
+service, image, privileges, host network, secret, production route or MSS setting.
+Port1084 is accepted only for this fixed endpoint16KiB arm; no listener exposed.
+
+Planned successful body budget36KiB per priority attempt/source (4KiBexit plus
+16KiBdirect+16KiBproxy), plus headers/wire overhead, replacing the old infrequent
+16KiB arm. Three attempts should arrive in about15min; three valid pairs are not
+promised because gates/direct controls may fail. Cadence/overruns and cleanup retain
+existing behavior.112 Python tests pass. PR only, not deployed. After rollout verify
+all4 scrapes/restarts, new pair cadence and separate counter cohort. Require three
+comparable completed pairs with valid direct/exit controls before another variable.
+
 ## 2026-11-14 16:21 UTC — Experimental backend refuses public self-dial
 
 Backend Datadog logs identify a concrete self-target connection failure, independent

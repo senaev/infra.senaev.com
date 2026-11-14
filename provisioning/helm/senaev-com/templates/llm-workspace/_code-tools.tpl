@@ -59,13 +59,9 @@ spec:
           ports:
             - name: http
               containerPort: 8080
-          # The commands that the agents run here (npm ci, eslint, tsc, vitest) once took 3.2 GB
-          # and froze the node; with a limit, the kernel kills them in this container only.
           resources:
             requests:
               memory: 256Mi
-            limits:
-              memory: 2Gi
           env:
             - name: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
               valueFrom:

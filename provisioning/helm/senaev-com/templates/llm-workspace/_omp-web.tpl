@@ -125,8 +125,6 @@ spec:
           resources:
             requests:
               memory: 512Mi
-            limits:
-              memory: 2Gi
           env:
             - name: OMP_WEB_STT_ENDPOINT
               value: {{ printf "%s/audio/transcriptions" (trimSuffix "/" $agent.speechToText.baseUrl) | quote }}
@@ -210,8 +208,6 @@ spec:
           resources:
             requests:
               memory: 16Mi
-            limits:
-              memory: 64Mi
           ports:
             - name: http
               containerPort: 8080

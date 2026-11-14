@@ -14,6 +14,7 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
+          "enabled",
           "agent",
           "instructionsPath",
           "projectsStorageSize",
@@ -41,6 +42,10 @@
           }
         ],
         "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Explicitly enable or disable this workspace; disabling retains existing PVCs."
+          },
           "instructionsPath": {
             "type": "string",
             "minLength": 1
