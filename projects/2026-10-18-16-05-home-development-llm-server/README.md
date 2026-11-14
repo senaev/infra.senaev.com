@@ -39,20 +39,32 @@ machines are preferred when competitively priced.
 User ordered the refurbished Dell OptiPlex Micro 7010 from VORPC, order **102889**.
 Confirmation screenshot: 32 GB RAM, 1 TB M.2 NVMe, **€599.89 total including VAT**,
 free shipping advertised in 48–72 hours, paid using Google Pay (WooPayments).
-As confirmed by the user on 2026-11-11, the order is being shipped to their office. Delivery is not yet confirmed.
-Advertised CPU is i5-13500T; verify the actual unit on arrival.
+User confirmed the server has arrived on 2026-11-13. BIOS hardware inventory and Dell diagnostic passes are recorded; Proxmox is now installed.
+Delivered CPU confirmed in BIOS: i5-13500T.
 The Dell supersedes the earlier SER8 preference and other shortlist candidates.
 See [Intel research and retailer checks](research-intel-options.md).
 
 ## Post-delivery follow-up (outside the completed purchase project)
 
-1. Await dispatch/delivery; retain invoice and confirm return/testing conditions.
-2. Check actual CPU, unlocked BIOS, RAM layout, SSD health and included power supply.
-3. Enable BIOS AC Recovery Power On; install Proxmox and configure VM autostart.
-4. Test headless AC restoration, wired networking, temperatures and living-room noise.
-5. Pass the iGPU to the Linux Jellyfin VM; prove hardware transcoding and repeat
-   guest reboot and VM shutdown/start cycles without rebooting the host.
-6. Migrate workloads only after acceptance checks pass.
+The server has arrived. Follow the [Windows backup and Proxmox installation plan](windows-backup-proxmox-plan.md)
+using Disk2vhd to the internal SSD, a verified cloud copy and one installer USB
+before erasing the internal SSD. Configure Windows remote access after import using
+Proxmox's noVNC console; no recapture is required solely for remote-access setup.
+The purchase remains complete. Proxmox installation and initial networking are
+complete: web/Shell and Tailscale DNS access work; vmbr0 uses DHCP after reboot.
+The router reused 192.168.0.23; an actual different-address test is not complete.
+The host joined the k3s cluster as worker `proxmox-madrid` (`make worker-proxmox-madrid`),
+with smokeping and iperf3 monitoring in vm-stack. It is a sensitive node in the
+repository `AGENTS.md`. See [cluster worker](windows-backup-proxmox-plan.md#k3s-cluster-worker--14-november-2026).
+The Debian VM exists as `senaev-madrid` (8 vCPUs, 16 GiB RAM, ~500 GiB disk) and is
+also a k3s worker and a sensitive node. See [senaev-madrid](windows-backup-proxmox-plan.md#k3s-worker-senaev-madrid-debian-vm--14-november-2026).
+VM 100 has autostart enabled; user reports QEMU Guest Agent checks work.
+An abrupt power-cut/restoration test passed: the host recovered and VM 100 started
+working automatically.
+The Windows VHDX is copied to Proxmox and its SHA-256 matches the original.
+Current next task: Windows VM recovery, with thin-pool capacity/growth reviewed before
+import. Windows boot and Jellyfin passthrough remain unverified.
+See the plan for configuration, evidence and outstanding checks.
 
 ## Verification
 
@@ -67,12 +79,21 @@ See [Intel research and retailer checks](research-intel-options.md).
 
 Compact and quiet for the living room; SSD storage only; refurbished accepted. See
 [options and delivered-price comparison](research-options.md) and the
-[118-page source register](research-sources.md). Dell ordered; delivery and acceptance tests are pending.
+[118-page source register](research-sources.md). Dell received; Windows capture and Proxmox installation are complete. Windows VM
+recovery and workload acceptance tests remain pending.
 
 ## Result
 
 Completed and closed on 2026-11-11 at the user’s request. Purchased the refurbished
 Dell OptiPlex Micro 7010, 32 GB RAM / 1 TB NVMe, from VORPC for €599.89 including
-VAT and delivery (order 102889). The machine is being shipped to the user’s office.
-The purchase is €400.11 below the €1,000 budget. Hardware inspection, Proxmox setup
-and Jellyfin passthrough testing remain post-delivery work; they are not claimed complete.
+VAT and delivery (order 102889). The server has now arrived (user confirmation, 2026-11-13).
+The purchase is €400.11 below the €1,000 budget. BIOS inventory, diagnostic passes and AC Recovery testing are recorded. Proxmox installation, Tailscale access and DHCP
+after reboot are complete. The host is a k3s worker, `proxmox-madrid`, and its Debian VM is k3s worker
+`senaev-madrid`. Windows VM
+recovery and Jellyfin testing remain pending.
+
+## Delivered hardware record
+
+See [BIOS hardware inventory](hardware-inventory.md) for the observed CPU, RAM layout,
+firmware, identifiers, BIOS settings, diagnostic results and successful AC Recovery test
+recorded on 2026-11-14.

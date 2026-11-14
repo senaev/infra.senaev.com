@@ -1,3 +1,220 @@
+## 2026-11-14 17:37 UTC — End-to-end power recovery and VM autostart passed
+
+User tested an abrupt power cut followed by restoration of power and confirmed
+that the VM started working automatically. Record this as a passed end-to-end test
+of Dell AC Recovery Power On, Proxmox startup and Debian VM 100 `senaev-madrid`
+autostart. This supersedes the earlier pending host-reboot/autostart check.
+No separate post-recovery QEMU agent command output or application-level recovery
+results were supplied. No settings were changed by this documentation update.
+
+## 2026-11-14 17:35 UTC — Windows restore preflight recorded
+
+Before starting Windows recovery, consolidated the installation progress and user
+command evidence in [the setup plan](windows-backup-proxmox-plan.md#windows-recovery-preflight--2026-11-14).
+Debian VM 100 `senaev-madrid` is running with 16384 MiB RAM and a 500 GiB disk;
+the existing cluster record confirms 8 vCPUs. Start at boot and QEMU Guest Agent are
+enabled in its Options screenshot; user reports agent checks work. A separate full
+host-reboot/autostart test remains unconfirmed. Preserved both k3s worker records.
+
+Windows working image is `/var/lib/vz/dell-windows.vhdx`, VHDX, 932 GiB logical,
+36892049920 bytes file length (~34.4 GiB). The user explicitly requested checksum
+validation after previously skipping it. `sha256sum` returned
+`e05509082e46209f48f71bfb5b55bd74d718a5cd89995c9acf01e7c2177cc758`, matching
+the original Windows capture. Transfer integrity passes; cloud-copy integrity and
+Windows bootability are not implied.
+
+Recorded current storage: local 45.42% used (48711724 KiB available), local-lvm
+1.39% used (820786598 KiB available). Planned Windows VM 101 remains uncreated/
+unimported in the evidence. Its 932 GiB logical disk plus Debian's 500 GiB disk
+would exceed the ~793.8 GiB thin pool; review sizing/growth, preserve the VHDX and
+monitor physical allocation. No host or VM configuration was changed in this update.
+
+## 2026-11-14 17:13 UTC — senaev-madrid (Debian VM) joined the k3s cluster
+
+The Debian VM from the plan was created as `senaev-madrid`, joined the tailnet and got
+SSH keys (user report). Added it like `senaev-media`: label `vps=senaev-madrid`,
+host `senaev-madrid`, user `root`. Merged to `main` in commit 1b713dde
+(`✨ Add senaev-madrid worker`): `VPS_SENAEV_MADRID_*` variables, `make
+worker-senaev-madrid` (in `make workers` after proxmox-madrid), vm-stack smokeping
+target and iperf3 tests to hetzner and firstvds, and a sensitive node in `AGENTS.md`.
+
+Read-only SSH check through the jump host before the bootstrap:
+
+```text
+Debian GNU/Linux 13 (trixie)
+8
+Mem:            15Gi       488Mi        14Gi       744Ki       726Mi        15Gi
+/dev/sda2       475G  3.5G  447G   1% /
+```
+
+It shows 8 vCPUs (plan proposed 4), 16 GiB RAM and the ~500 GiB disk. User reported:
+
+> make worker-senaev-madrid succeeded
+
+kube-state-metrics shows `senaev-madrid` `Ready`, kubelet v1.36.5+k3s1. For
+proxmox-madrid, the first iperf3 tests to hetzner and firstvds succeeded at ~20 Mbit/s.
+The Deploy run for 1b713dde succeeded (`deploy (telemetry, telemetry/vm-stack)`).
+After it, senaev-madrid ran iperf3-agent, smokeping-prober and node-exporter, and
+hetzner and galkin already got its smokeping replies during the rolling restart.
+Not confirmed: senaev-madrid iperf3 results (last in the 8-test queue), Tailscale key
+expiry disabled, QEMU Guest Agent checks.
+
+## 2026-11-14 16:32 UTC — Debian VM plan requires QEMU Guest Agent host access
+
+User requested adding QEMU agent for access from the Proxmox host as root. Saved
+Debian VM plan (16 GiB RAM, proposed 500 GiB disk, 4 vCPUs) and supplied healthy host
+storage/service baseline. Added agent channel enablement before guest start, package
+installation inside Debian, host ping/exec id/network checks and reboot verification.
+Distinguished root command execution from interactive SSH. VMID, VM creation,
+installation and agent checks are unconfirmed. Windows recovery remains planned;
+capacity must be reassessed alongside the large Debian virtual disk. Docs only.
+
+## 2026-11-14 16:15 UTC — proxmox-madrid joined the k3s cluster as a sensitive worker
+
+User decided to add the Dell to the cluster like the existing `proxmox` host: a k3s agent
+on the Proxmox VE host itself, label `vps=proxmox-madrid`, reached by its Tailscale name.
+Merged to `main` in commit 1ca94635 (`✨ Add proxmox-madrid worker`):
+
+- `VPS_PROXMOX_MADRID_HOST/_USERNAME/_LABEL` in `.env.example`, `terraform/variables.tf`,
+  `terraform/terraform.tfvars.example` and the sync list of `scripts/apply-terraform.sh`.
+  Local (git-ignored) `.env` and `terraform.tfvars`: host `proxmox-madrid`, user `root`.
+- `make worker-proxmox-madrid`; `make workers` runs it after galkin and before the two
+  home nodes in Russia, so a broken bootstrap stops before it reaches them.
+- vm-stack: smokeping target `proxmox-madrid`; iperf3 agent on it, with tests
+  `proxmox-madrid → hetzner` and `proxmox-madrid → firstvds` (the same as senaev-media).
+- `AGENTS.md`: added to "Sensitive nodes" at the user's request — reachable only over the
+  tailnet, so loss of network access is an unacceptable loss.
+
+User ran the bootstrap and reported:
+
+> make worker-proxmox-madrid succeeded
+
+Not added to Datadog (the existing `proxmox` is not there either). Tailscale key expiry
+for proxmox-madrid and revocation of the auth key from the screenshot are not confirmed.
+Not verified yet: node `Ready`, iperf3/smokeping samples in Grafana.
+
+## 2026-11-14 15:38 UTC — Installation, Tailscale access and DHCP stage completed
+
+User closed this stage and requested findings/steps be saved. Recorded installed
+Proxmox web/Shell access, kernel 7.0.2-6-pve, working tailnet DNS access and observed
+Tailscale IP 100.113.139.72. Preserved enterprise apt 401 issue and corrective guidance
+without recording the exposed auth key or claiming revocation/repository verification.
+Recorded final user choice: vmbr0 DHCP only; no reservation, fixed hosts mapping,
+hook or Tailscale startup dependency. Configuration screenshot and post-reboot output
+show 192.168.0.23/24 scope global dynamic with expiring lease. Router port changes
+reused lease; actual changed-address test and hostname behavior remain unverified.
+Next stage: storage/service baseline and cloud VHDX recovery/import as Windows VM;
+check logical disk sizing before import, then Jellyfin passthrough acceptance.
+No server commands or configuration executed remotely; docs only. Purchase remains closed.
+
+## 2026-11-14 15:03 UTC — Proxmox installer decisions and USB recovery recorded
+
+User requested installation details and decisions be preserved. Recorded original
+USB ISO-discovery failure, replacement KINGSTON 123.7 GB, exact dd command/output
+(1706178560 bytes), successful graphical installer boot and final summary settings.
+Target: /dev/nvme0n1, ext4/default sizing, Spain/Europe-Madrid/en-us; hostname
+proxmox-madrid.home.arpa, nic0 with name pinning, initial static 192.168.0.23/24,
+gateway/DNS 192.168.0.1, automatic reboot enabled. User explicitly chose DHCP after
+installation. No router reservation, completed cloud upload, installation completion,
+first SSD boot, web login or DHCP change is claimed. No server changes executed remotely.
+
+## 2026-11-14 14:30 UTC — BIOS settings and diagnostic passes recorded
+
+User requested all BIOS settings and passed tests be preserved before installing
+Proxmox. Added setting/evidence tables to hardware-inventory.md, including internal
+speaker disabled, microphone enabled, VT/VT-d enabled, keyboard detection off and
+AC Recovery Power On. Recorded user-tested successful AC restoration and Dell quick
+and follow-up diagnostic pass screens (2000-0000 / 90116). Follow-up selection and
+Thorough mode are not visible on its result screen, so exact coverage is qualified.
+Updated setup state and recorded user's choice to skip cloud checksum comparison.
+Cloud upload completion, Proxmox installation and VM/passthrough tests remain unconfirmed.
+Purchase remains closed. No server configuration or installation executed remotely.
+
+## 2026-11-14 13:27 UTC — Delivered Dell BIOS hardware inventory recorded
+
+User asked to preserve hardware parameters from BIOS photos. Recorded observed
+model/identifiers, i5-13500T (6+8 cores), BIOS 1.3.1/microcode 2C, 32768 MB DDR4,
+2 x 16384 MB SO-DIMM dual-channel at BIOS-reported 3200 MHz, Intel UHD Graphics,
+no Wi-Fi/Bluetooth, audio and LAN MAC in hardware-inventory.md. Linked from README.
+Kept transient clock/display values separate from hardware limits, retained ambiguous
+numeric manufacture date verbatim, and did not claim diagnostics or BIOS input fixed.
+
+## 2026-11-14 13:25 UTC — Windows image SHA-256 recorded
+
+User asked to retain the hash in project history. Successful screenshot output:
+
+```text
+Algorithm: SHA256
+Hash: E05509082E46209F48F71BFB5B55BD74D718A5CD89995C9ACF01E7C2177CC758
+File: C:\Users\user\Downloads\dell-windows.vhdx
+```
+
+Saved reference in setup plan. Later SHA2521 invocation is a typo/error, not a new
+hash. No cloud integrity comparison or VM boot verification claimed.
+
+## 2026-11-14 09:38 UTC — Defer Windows remote access until after import
+
+User questioned the need to prepare access before imaging when the Proxmox console
+is available. Confirmed the official Proxmox guide documents a built-in guest console.
+Moved configuration after import via noVNC with a virtual display. Guest networking,
+RDP and guest agent are not required; Proxmox reachability, Windows boot and valid
+Windows login remain prerequisites. Removed recapture solely for remote-access setup.
+No VM boot, authentication or remote access has yet been tested on this Dell.
+
+## 2026-11-14 08:31 UTC — Prepare Windows remote access before final capture
+
+User requested:
+> I this step to the documentation. And after that we need to recreate the image. Am I right?
+
+Added edition-dependent remote access, verified account-password login, private
+connectivity and Proxmox console fallback before final capture. Recapture after
+configuration changes to include them; keep the existing image until the replacement
+is safely uploaded. Setup through the VM console after import remains an alternative
+that does not require recapture. No Windows changes or new image are confirmed.
+
+## 2026-11-13 22:30 UTC — Windows image ready; cloud upload in progress
+
+User confirmed:
+> The image is ready. Now I am uploading it to the cloud.
+
+Recorded Disk2vhd capture complete and upload ongoing. Screenshots establish C: fully
+decrypted, internal SSD EFI/C:/recovery selection, USB volumes excluded, VHDX and VSS
+selected. Next: finish upload and compare original/downloaded SHA-256 before erasure.
+No checksum, VM boot test or Proxmox installation result is yet confirmed.
+
+## 2026-11-13 21:31 UTC — Proxmox installer USB prepared
+
+After instructions to write the Intel/AMD Proxmox VE 9.2-1 ISO with macOS dd,
+user confirmed:
+> everything is done
+
+Etcher failed to start its flasher process; used macOS Terminal instead. Recorded
+USB preparation complete, not boot-tested on Dell. Windows capture/cloud verification,
+hardware inspection and Proxmox installation remain unconfirmed. Next prerequisite
+before erasing the SSD is a verified cloud Windows image.
+
+## 2026-11-13 21:14 UTC — Simplified to one USB and cloud Windows backup
+
+User approved saving Disk2vhd locally and uploading the image to cloud storage:
+> Okay, change the plan in the project
+
+Replaced mandatory Clonezilla/external-disk workflow with local VHDX capture,
+private cloud upload and downloaded-copy SHA-256 verification before wiping SSD.
+One USB is used only for the Proxmox installer. Preserved encryption, VM boot,
+activation and hardware acceptance checks; clarified that no factory-disk restore
+backup is produced by this simplified workflow. No backup or installation executed.
+
+## 2026-11-13 20:28 UTC — Arrival and Windows preservation plan recorded
+
+User confirmed arrival and asked:
+> Okay, let's write this plan into our project
+
+Added windows-backup-proxmox-plan.md: hardware inspection, separate external backup
+storage, full-disk Clonezilla backup plus Disk2vhd VM copy, verification before erasing,
+Proxmox on internal SSD and Windows VM import. Recorded encryption/licensing caveats,
+rollback and Jellyfin acceptance checks. Purchase remains complete; setup is pending.
+No disk backup, installation or infrastructure changes executed.
+
 ## 2026-11-11 08:46 UTC — Purchase project completed and closed
 
 User confirmed:
