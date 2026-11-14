@@ -62,8 +62,11 @@ VM 100 has autostart enabled; user reports QEMU Guest Agent checks work.
 An abrupt power-cut/restoration test passed: the host recovered and VM 100 started
 working automatically.
 The Windows VHDX is copied to Proxmox and its SHA-256 matches the original.
-Current next task: Windows VM recovery, with thin-pool capacity/growth reviewed before
-import. Windows boot and Jellyfin passthrough remain unverified.
+Windows VM 101 `dell-windows` now boots successfully; internet, files and applications
+are confirmed present. Remaining Windows recovery task: activate Windows 11 Pro.
+The VORPC support email is drafted in Gmail but has not been sent.
+Guest drivers/agent, Windows autostart/backups and Jellyfin passthrough remain separate
+follow-up items; thin-pool growth still needs monitoring.
 See the plan for configuration, evidence and outstanding checks.
 
 ## Verification

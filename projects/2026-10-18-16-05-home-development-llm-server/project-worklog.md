@@ -1,3 +1,18 @@
+## 2026-11-14 20:56 UTC — Windows restored; activation remains open
+
+Recorded VM 101 `dell-windows` creation (4 shared vCPUs, 8 GiB maximum/4 GiB balloon
+minimum), EFI/TPM setup, successful VHDX import and SATA boot. User confirmed Windows
+boots, internet works, and files/applications are present. Post-import thin pool is
+5.38% used; Windows allocation ~31.6 GiB despite its ~932 GiB logical disk.
+
+Remaining recovery task: activate Windows 11 Pro. Error 0xC004F211; troubleshooter
+found no eligible account-linked device. License reports RETAIL / Notification.
+Prepared an unsent Spanish Gmail draft to the invoice-verified VORPC address,
+requesting license details/key or reactivation instructions for order 102889.
+User reviewed the English translation. No message has been sent and activation is
+not claimed complete. Detailed evidence and separate driver/agent/autostart/backup
+follow-ups are in [the setup plan](windows-backup-proxmox-plan.md#windows-recovery-result--2026-11-14).
+
 ## 2026-11-14 17:37 UTC — End-to-end power recovery and VM autostart passed
 
 User tested an abrupt power cut followed by restoration of power and confirmed

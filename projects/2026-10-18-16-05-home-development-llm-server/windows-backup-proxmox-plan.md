@@ -426,7 +426,8 @@ verification remains unconfirmed.
 ## Windows recovery preflight — 2026-11-14
 
 User confirmed the transfer finished after discussing SSH/rsync instead of the slow
-USB drive. No Windows VM creation, import or first boot is confirmed yet.
+USB drive. This is the pre-import snapshot; successful import and boot are recorded
+in the recovery result below.
 
 | Item | Observed value |
 | --- | --- |
@@ -458,7 +459,8 @@ This verifies transfer integrity, not Windows bootability.
 
 Proposed next VM: **101 / dell-windows**, initially 8 GiB RAM, 4 host-type vCPUs,
 q35/OVMF, EFI disk and TPM 2.0, with the imported Windows disk initially attached
-as SATA to use its existing storage drivers. These settings are planned, not applied.
+as SATA to use its existing storage drivers. These were the initial planned settings; the actual creation and recovery result
+below supersede this plan.
 Inspect `qm config 101` after import before choosing the imported volume identifier;
 EFI/TPM allocations affect disk numbering. Then verify Windows boot, files, apps and
 activation before adding VirtIO drivers, guest agent, autostart and backups.
@@ -468,3 +470,62 @@ The 932 GiB Windows virtual disk plus the 500 GiB Debian disk exceed the approxi
 can exhaust it. Monitor thin-pool data/metadata and settle disk sizing or additional
 storage before substantial writes. Retain the original VHDX; do not shrink/truncate
 it without a partition-aware recovery plan.
+
+## Windows recovery result — 2026-11-14
+
+**Restore successful; activation pending.** User supplied successful import/start
+output and a Windows desktop screenshot, then confirmed internet access and that
+files and applications are present. Application-by-application testing is not implied.
+
+| Setting | Applied / observed |
+| --- | --- |
+| VM | 101, `dell-windows` |
+| CPU | host type, 1 socket, 4 shared vCPUs; no dedicated core pinning |
+| Memory | 8192 MiB maximum, balloon target/minimum 4096 MiB; driver operation not yet verified |
+| Machine / firmware | q35 pinned automatically to `pc-q35-11.1`, OVMF |
+| EFI / TPM | 4 MiB EFI disk with pre-enrolled keys; TPM 2.0, initialization successful |
+| Network | e1000 on vmbr0; Windows internet access confirmed |
+| Windows disk | `local-lvm:vm-101-disk-2`, SATA0; boot order sata0 |
+| Disk logical / physical size | <931.52 GiB logical; Data% 3.39 (~31.6 GiB allocated) |
+| Thin pool after import | Data% 5.38, Meta% 0.37; 787575580 KiB available (~751 GiB) |
+| local after import | 45.37% used; 48756256 KiB available |
+
+Commands executed by the user:
+
+```bash
+qm create 101 --name dell-windows --ostype win11 --machine q35 --bios ovmf \
+  --cpu host --sockets 1 --cores 4 --memory 8192 --balloon 4096 \
+  --net0 e1000,bridge=vmbr0
+qm set 101 --efidisk0 local-lvm:1,efitype=4m,pre-enrolled-keys=1
+qm set 101 --tpmstate0 local-lvm:1,version=v2.0
+qm disk import 101 /var/lib/vz/dell-windows.vhdx local-lvm --format raw
+qm set 101 --sata0 local-lvm:vm-101-disk-2
+qm set 101 --boot order=sata0
+qm start 101
+```
+
+Import completed as `unused0: successfully imported disk 'local-lvm:vm-101-disk-2'`.
+The 931.5 GiB progress counter represented logical processing, not physical allocation.
+Thin-pool oversubscription warnings remain applicable: Windows and Debian cannot
+both fill their advertised disks. Preserve the original VHDX and monitor growth.
+
+### Remaining task: activate Windows 11 Pro
+
+- Activation fails with **0xC004F211**, reporting changed hardware.
+- Activation troubleshooter could not find an eligible device linked to the Microsoft
+  account. `slmgr /dlv` shows **RETAIL channel**, **Notification** status. This alone
+  does not establish the license's transfer rights or availability of a usable key.
+- Seller: **VORPC España**, order **102889**, Dell Service Tag **DSYPLY3**.
+- Verified contact: `vorpc@vorpc.es`, matching the order invoice sender;
+  official contact page: https://vorpc.es/contacto/.
+- Spanish Gmail draft prepared, **not sent**, subject
+  “Pedido #102889 — Ayuda para reactivar Windows 11 Pro”. It requests the included
+  product key or reactivation instructions and license type, describing a hardware
+  configuration change. User reviewed an English translation and approved the wording.
+- Next: send the draft when requested, obtain VORPC's response, follow the supported
+  activation procedure, then verify Activation reports active. No new license purchased.
+
+Separate configuration follow-ups remain unconfirmed: Windows VirtIO/balloon drivers,
+QEMU Guest Agent, remote access, autostart and backups. The successful Debian
+power-recovery test does not prove Windows VM autostart. Jellyfin/hardware acceptance
+items elsewhere in this plan remain open.
