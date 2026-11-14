@@ -8,9 +8,9 @@ Move central telemetry to the existing Madrid worker. Accept a maintenance windo
 
 ## Context
 
-**PR #186 is now the disable stage only; it deploys before copying.** All source selectors remain Hetzner. Madrid activation belongs to a second PR.
+**Shutdown PR #186 is deployed.** Both datasets were manually copied and checksum-verified. The user recreated both claims bound to Madrid PVs. This activation PR restores central services on Madrid; it has not deployed yet.
 
-Repository/vendored-chart storage findings (not a live volume inspection):
+Source storage and shutdown behavior (recorded before activation):
 
 | Service | Storage | Disable stage |
 | --- | --- | --- |
@@ -34,17 +34,19 @@ No log/trace backend is defined in telemetry charts; discover any additional liv
 1. Merge disable PR and follow deployment until central writers terminate.
 2. Inspect actual claims/PVs/directories. Copy complete stopped directories to Madrid, preserving ownership and permissions; checksum.
 3. Manually prepare destination volume bindings while services remain stopped. Inspect reclaim policy before deleting any source claim.
-4. Prepare a second PR restoring normal replicas/enabled flags and moving central placement to Madrid. Merge only after data and bindings are ready.
+4. Prepare a second PR restoring normal replicas/enabled flags and moving central placement to Madrid. Explicitly increase VMSingle metrics storage to `50Gi` in Helm values and matching destination PV/PVC capacity, and move `logGenerator.vps` to `senaev-madrid` as well. Local-volume capacity declarations do not impose a filesystem quota. Merge only after data and bindings are ready.
 5. Check historical data, fresh ingestion, Grafana/MCP and alerts. Keep source data until acceptance; cleanup is separate.
 
 See [manual procedure](migration.md).
 
 ## Verification
 
-Existing Helm lint/render checks: Grafana/VMSingle render at zero with storage intact; other central workloads absent. No custom tests added. After disable deployment, inspect stopped pods and remaining claims. After activation, check data and existing monitoring; record the collection gap.
+Existing Helm lint passed. Rendered activation manifests match the existing claims: Grafana 1Gi on `telemetry-grafana-madrid`, metrics 50Gi on `telemetry-metrics-madrid`; VMSingle is explicitly unpaused with one replica. Ten central workloads target Madrid including log-generator. Distributed agents and Hetzner ingress stay in place. No custom tests added.
+
+Grafana MCP now belongs to the telemetry namespace and vm-stack Helm release alongside Grafana, so both can start in the same Helm operation. cluster-helper uses its fully qualified telemetry Service address; the NetworkPolicy allows only namespace senaev-com plus app=cluster-helper. Cluster-helper authenticates public requests through OAuth and strips their credentials before proxying. MCP admission relies on the restricted NetworkPolicy; no internal shared token or public MCP ingress is configured. The Grafana service-account token remains for MCP-to-Grafana API access. Deployment planner ordering is unchanged; this removes the earlier pipeline change and full-build selection. Only cluster-helper needs an image rebuild for removing the proxy-token configuration. After deployment verify historical/fresh data, Grafana/MCP, log-generator placement/logs and Telegram alerts; record the collection gap.
 
 ## Result
 
-Disable-stage code prepared; no cluster writes, claim deletions or data transfers performed. Live PV paths/policies still need inventory in the user's personal-cluster terminal.
+Pre-activation checks complete: source PVs Retain; copied datasets verified; Madrid claims Bound at 1Gi and 50Gi. VMSingle is currently paused with zero replicas. Activation code restores services and resumes reconciliation. Source data is retained; no cleanup is authorized. Activation deployment and post-deploy verification remain pending.
 
 See [worklog](project-worklog.md).

@@ -20,7 +20,7 @@ import { createGoogleLogin } from './oauth/googleLogin';
 
 const AUTH_DOMAIN = 'auth.example.com';
 const MCP_DOMAIN = 'mcp.example.com';
-const GRAFANA_UPSTREAM_URL = 'http://mcp-grafana:8000/mcp';
+const GRAFANA_UPSTREAM_URL = 'http://mcp-grafana.telemetry.svc.cluster.local:8000/mcp';
 const CLIENT_ID = 'https://chatgpt.com/oauth/client.json';
 const REDIRECT_URI = 'https://chatgpt.com/connector_platform_oauth_redirect';
 const CODE_VERIFIER = 'v'.repeat(43);
@@ -72,7 +72,6 @@ describe('mcpEndpoints HTTP wiring', () => {
             mcpDomain: MCP_DOMAIN,
             replyToChatGptMessage,
             grafanaUpstreamUrl: GRAFANA_UPSTREAM_URL,
-            grafanaUpstreamToken: 'internal-token',
             fetch: fetchGrafana,
         });
     });

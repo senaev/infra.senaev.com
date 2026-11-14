@@ -45,7 +45,6 @@ export type McpEndpointsOptions = {
     mcpDomain: string;
     replyToChatGptMessage: (message: unknown, reply: FastifyReply) => Promise<unknown>;
     grafanaUpstreamUrl: string;
-    grafanaUpstreamToken: string;
     fetch?: typeof fetch;
 };
 
@@ -60,7 +59,6 @@ export const mcpEndpoints: FastifyPluginAsync<McpEndpointsOptions> = async (inst
     mcpDomain,
     replyToChatGptMessage,
     grafanaUpstreamUrl,
-    grafanaUpstreamToken,
     fetch,
 }) => {
     await instance.register(oauthRoutes, {
@@ -96,7 +94,6 @@ export const mcpEndpoints: FastifyPluginAsync<McpEndpointsOptions> = async (inst
         resourceMetadataUrl: mcpResourceMetadataUrl(mcpDomain, GRAFANA_MCP_PATH),
         checkAccessToken: (authorizationHeader) => authorizationServer.checkAccessToken(authorizationHeader, mcpResource(mcpDomain, GRAFANA_MCP_PATH)),
         upstreamUrl: grafanaUpstreamUrl,
-        upstreamToken: grafanaUpstreamToken,
         ...(fetch !== undefined && { fetch }),
     });
 };

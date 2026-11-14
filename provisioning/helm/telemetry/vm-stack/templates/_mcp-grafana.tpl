@@ -1,5 +1,5 @@
 {{/* Env of both containers that run config/mcp-grafana/create-service-account-token.mjs. */}}
-{{- define "senaev-com.mcpGrafanaTokenEnv" -}}
+{{- define "vm-stack.mcpGrafanaTokenEnv" -}}
 - name: GRAFANA_URL
   value: {{ .Values.mcpGrafana.grafanaUrl | quote }}
 - name: GRAFANA_ADMIN_USER

@@ -1,6 +1,5 @@
-# Migration stage 1: stop central telemetry on Hetzner before manually copying data.
-# Keep Grafana/VMSingle objects and PVCs; only scale their writers to zero.
-# Enable and Madrid placement follow in a separate PR after the data copy.
+# Central telemetry runs on Madrid using manually migrated existing data.
+# See projects/2026-11-14-18-42-migrate-telemetry-to-madrid/migration.md.
 victoria-metrics-k8s-stack:
   # Victoria Metrics Operator is installed separately
   # https://docs.victoriametrics.com/helm/victoria-metrics-k8s-stack/#install-operator-separately
@@ -12,9 +11,9 @@ victoria-metrics-k8s-stack:
 
   grafana:
     enabled: true
-    replicas: 0 # Stop the writer without deleting the chart-managed PVC.
+    replicas: 1
     nodeSelector:
-      vps: hetzner
+      vps: senaev-madrid
     annotations:
       secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
     # Keeps the Grafana database across restarts: the mcp-grafana service account and its
@@ -22,6 +21,7 @@ victoria-metrics-k8s-stack:
     persistence:
       enabled: true
       size: 1Gi
+      volumeName: telemetry-grafana-madrid
     # The disk is ReadWriteOnce and holds one SQLite file, so two pods must not overlap: the old
     # pod stops before the new one starts. Not `Recreate`: Helm's server-side apply cannot remove
     # the live rollingUpdate field, and Kubernetes rejects that field together with Recreate.
@@ -65,20 +65,26 @@ victoria-metrics-k8s-stack:
         - hosts:
             - victoriametrics.senaev.com
     spec:
-      replicaCount: 0 # Native operator shutdown; keep metrics PVC/data.
+      paused: false
+      replicaCount: 1
+      storage:
+        volumeName: telemetry-metrics-madrid
+        resources:
+          requests:
+            storage: 50Gi
       retentionPeriod: "3"
       nodeSelector:
-        vps: hetzner
+        vps: senaev-madrid
 
   vmagent:
-    enabled: false
+    enabled: true
     spec:
       scrapeInterval: 30s
       nodeSelector:
-        vps: hetzner
+        vps: senaev-madrid
 
   alertmanager:
-    enabled: false
+    enabled: true
     ingress:
       enabled: true
       ingressClassName: traefik-hetzner
@@ -95,7 +101,7 @@ victoria-metrics-k8s-stack:
     spec:
       externalURL: https://alertmanager.senaev.com
       nodeSelector:
-        vps: hetzner
+        vps: senaev-madrid
     useManagedConfig: true
     config:
       route:
@@ -115,7 +121,7 @@ victoria-metrics-k8s-stack:
               send_resolved: true
 
   vmalert:
-    enabled: false
+    enabled: true
     ingress:
       enabled: true
       ingressClassName: traefik-hetzner
@@ -132,12 +138,12 @@ victoria-metrics-k8s-stack:
     spec:
       evaluationInterval: 30s
       nodeSelector:
-        vps: hetzner
+        vps: senaev-madrid
 
   kube-state-metrics:
-    enabled: false
+    enabled: true
     nodeSelector:
-      vps: hetzner
+      vps: senaev-madrid
 
 smokepingProber:
   enabled: true
@@ -187,8 +193,8 @@ iperf3Monitor:
     - source: senaev-madrid
       target: firstvds
   scheduler:
-    enabled: false
-    vps: hetzner
+    enabled: true
+    vps: senaev-madrid
     port: 9579
     pauseBetweenTests: 300
     scrapeInterval: 30s
@@ -212,3 +218,10 @@ iperf3Monitor:
         memory: 128Mi
   server:
     port: 5201
+
+# Grafana MCP server, reachable only through cluster-helper at https://<clusterHelper.mcpDomain>/grafana.
+mcpGrafana:
+  enabled: true
+  vps: senaev-madrid
+  image: grafana/mcp-grafana:2.0.2
+  grafanaUrl: http://vm-stack-grafana.telemetry.svc.cluster.local

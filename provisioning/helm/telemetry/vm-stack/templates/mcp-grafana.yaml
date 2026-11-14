@@ -42,7 +42,7 @@ spec:
           image: node:24-alpine
           command: ["node", "/scripts/create-service-account-token.mjs"]
           env:
-            {{- include "senaev-com.mcpGrafanaTokenEnv" . | nindent 12 }}
+            {{- include "vm-stack.mcpGrafanaTokenEnv" . | nindent 12 }}
           resources:
             requests:
               memory: 32Mi
@@ -66,7 +66,7 @@ spec:
             - 0.0.0.0:8000
             # The Host that cluster-helper sends; the default allows loopback only.
             - --allowed-hosts
-            - mcp-grafana:8000
+            - mcp-grafana.{{ .Release.Namespace }}.svc.cluster.local:8000
             # Probes have no allowed Host, so health is on a side listener without that check.
             - --healthz-address
             - :8081
@@ -82,12 +82,6 @@ spec:
               value: {{ .Values.mcpGrafana.grafanaUrl | quote }}
             - name: GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE
               value: /grafana-token/token
-            - name: MCP_GRAFANA_SERVER_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: senaev-com-kv-secrets
-                  key: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_MCP_GRAFANA
-                  optional: false
           resources:
             requests:
               memory: 64Mi
@@ -112,7 +106,7 @@ spec:
           image: node:24-alpine
           command: ["node", "/scripts/create-service-account-token.mjs"]
           env:
-            {{- include "senaev-com.mcpGrafanaTokenEnv" . | nindent 12 }}
+            {{- include "vm-stack.mcpGrafanaTokenEnv" . | nindent 12 }}
             - name: TOKEN_CHECK_INTERVAL_SECONDS
               value: "60"
           resources:
@@ -149,7 +143,7 @@ spec:
       targetPort: http
       protocol: TCP
 ---
-# Editor rights in Grafana: only cluster-helper may connect, and it also sends the internal token.
+# Editor rights in Grafana: admit only cluster-helper in senaev-com; no public ingress.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -163,7 +157,10 @@ spec:
     - Ingress
   ingress:
     - from:
-        - podSelector:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: senaev-com
+          podSelector:
             matchLabels:
               app: cluster-helper
       ports:

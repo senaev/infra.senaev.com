@@ -106,7 +106,7 @@ and their wiring are in `cluster-helper/src/mcpEndpoints.ts`, tested by `mcpEndp
 | Path | Server |
 |---|---|
 | `/chat-gpt` | cluster-helper itself: the obsidian-* and code-* tools |
-| `/grafana` | proxied to `mcp-grafana` (`provisioning/helm/senaev-com/templates/mcp-grafana.yaml`) |
+| `/grafana` | proxied to `mcp-grafana` (`provisioning/helm/telemetry/vm-stack/templates/mcp-grafana.yaml`) |
 
 Each endpoint is its own OAuth resource (RFC 8707): the token `aud` is the resource that the
 client asked for, and a token for one endpoint is rejected by the other. ChatGPT needs one
@@ -116,12 +116,11 @@ There is no client registration: the allowed clients are hard-coded in
 `authorizationServer.ts` by their Client ID Metadata Document URL — ChatGPT, and OpenCode
 (`https://opencode.ai/oauth/opencode/client.json`, loopback redirect on any port).
 
-`mcp-grafana` has Editor rights in Grafana. Its init container logs in with the Grafana admin
+`mcp-grafana` runs in the telemetry namespace as part of the vm-stack release, alongside Grafana. cluster-helper calls `http://mcp-grafana.telemetry.svc.cluster.local:8000/mcp`; its cross-namespace NetworkPolicy requires both namespace senaev-com and pod label app=cluster-helper. `mcp-grafana` has Editor rights in Grafana. Its init container logs in with the Grafana admin
 and creates the `mcp-grafana` service account and a new token on every pod start, so there is
 no manual step on a new cluster. The `watch-service-account-token` sidecar checks the token every
 minute and makes a new one if Grafana rejects it (for example after Grafana lost its database);
-`mcp-grafana` reads the token file on every call, so it needs no restart. Only cluster-helper can reach it: a NetworkPolicy, and the
-Vault key `INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_MCP_GRAFANA`. See
+`mcp-grafana` reads the token file on every call, so it needs no restart. Only cluster-helper can reach its MCP port through the NetworkPolicy; no public ingress or shared internal bearer token is configured. OAuth is checked by cluster-helper, which strips client credentials before proxying. See
 [`projects/2026-10-18-15-00-grafana-mcp-for-chatgpt`](projects/2026-10-18-15-00-grafana-mcp-for-chatgpt/README.md).
 
 ## LLM endpoint
