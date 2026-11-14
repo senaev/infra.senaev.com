@@ -1,5 +1,17 @@
 # Project worklog
 
+## 2026-11-14 23:30 UTC — Activation merged; telemetry blocked by paused-field ownership
+
+PR #191 merged as d6541378. Deploy run 43653074385: checks/build/sync and senaev-com deployment succeeded; telemetry vm-stack upgrade failed. Application readiness briefly waited on n8n provisioning, which completed. Log-generator produced logs on Madrid and cluster-helper served requests.
+
+Exact deployment error:
+
+```text
+Error: UPGRADE FAILED: conflict occurred while applying object telemetry/vm-stack-victoria-metrics-k8s-stack operator.victoriametrics.com/v1beta1, Kind=VMSingle: Apply failed with 1 conflict: conflict with "kubectl-patch" using operator.victoriametrics.com/v1beta1: .spec.paused
+```
+
+The prior manual pause owns that field; Helm cannot change true to false through server-side apply. Recovery: user JSON-patches paused false only after an atomic test that replicaCount remains zero. Then rerun failed deployment so Helm applies the same paused value and activates Madrid replicas. No force-conflict global changes, data deletion or network changes. Post-deployment validation remains pending.
+
 ## 2026-11-14 23:19 UTC — Removed shared proxy token; NetworkPolicy is the admission boundary
 
 User explicitly chose NetworkPolicy-only access to Grafana MCP, with cluster-helper as its only application ingress. Removed internal shared-token configuration from proxy types/runtime environment, both chart secret references and MCP server environment. Public OAuth validation is unchanged; proxy strips Authorization, cookies and origin instead of sending another bearer credential. Unexpected upstream 401/403 still maps to 502 without triggering client OAuth sign-in. Grafana service-account token for backend API access remains.
