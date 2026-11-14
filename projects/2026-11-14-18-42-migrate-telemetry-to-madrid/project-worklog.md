@@ -1,5 +1,9 @@
 # Project worklog
 
+## 2026-11-14 22:55 UTC — Both checksum comparisons passed
+
+User reported "no output for both" after the supplied `rsync -aHAXnc --numeric-ids --itemize-changes` comparisons. No source-to-destination checksum/metadata differences were reported for Grafana or metrics. Copies remain on Madrid; original PVCs/PVs remain untouched. Next: inspect exact PVC specs/metadata and Madrid hostname to prepare 1Gi Grafana and requested 50Gi metrics destination bindings.
+
 ## 2026-11-14 22:53 UTC — User completed both directory transfers
 
 User reported: "both rsyncs are finished". Intended targets are `/k3s-cluster/volumes/telemetry/grafana/` and `/k3s-cluster/volumes/telemetry/victoriametrics/` on senaev-madrid, copied from the two recorded Hetzner local-volume directories. Completion is user-reported; checksum verification remains pending. Next: read-only rsync checksum comparison before destination bindings or activation.
