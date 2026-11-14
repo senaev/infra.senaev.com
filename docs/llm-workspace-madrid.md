@@ -3,7 +3,7 @@
 The user chose an empty workspace on Madrid. This PR is the disable stage:
 `llmWorkspaces.senaev.enabled: false` omits all senaev workspace resources,
 including OpenCode/Telegram, OMP, Code Tools, ingress, policies and secrets.
-Galkin remains enabled. Omitted `enabled` defaults to enabled for compatibility.
+Galkin remains enabled. Every workspace now requires an explicit boolean `enabled`.
 Existing PVCs have `helm.sh/resource-policy: keep` and survive this deployment.
 
 All LLM workspace container resource limits are removed, including Galkin's.
