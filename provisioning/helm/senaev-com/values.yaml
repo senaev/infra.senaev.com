@@ -171,7 +171,7 @@ clusterHelper:
 
 logGenerator:
   enabled: true
-  vps: hetzner
+  vps: senaev-madrid
 
 mediaServerHelper:
   enabled: true
@@ -279,8 +279,8 @@ llmWorkspaces:
 
 # Grafana MCP server, reachable only through cluster-helper at https://<clusterHelper.mcpDomain>/grafana.
 mcpGrafana:
-  enabled: false
-  vps: hetzner
+  enabled: true
+  vps: senaev-madrid
   image: grafana/mcp-grafana:2.0.2
   grafanaUrl: http://vm-stack-grafana.telemetry.svc.cluster.local
 

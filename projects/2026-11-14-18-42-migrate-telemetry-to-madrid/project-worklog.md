@@ -1,5 +1,26 @@
 # Project worklog
 
+## 2026-11-14 23:04 UTC — Activation implementation prepared
+
+Restore normal replicas/enabled flags, resume VMSingle with paused false, set matching existing PV bindings (Grafana 1Gi, metrics 50Gi), and move ten central workloads including log-generator to Madrid. Keep distributed sources and Hetzner ingress unchanged.
+
+Detected blocking dependency: senaev-com formerly deployed before telemetry; Grafana MCP init waits for Grafana while Helm waits for MCP. Adjusted existing planner to put senaev-com last after infrastructure namespaces. This pipeline-file change intentionally selects full builds/charts under existing rules; no migration infrastructure/tests were added.
+
+Existing Helm lint passed; manual rendered-manifest assertions verified placements, data bindings/capacity, unpaused VMSingle and unchanged distributed agents/ingress. No activation or cleanup performed yet.
+
+## 2026-11-14 23:03 UTC — Madrid claim rebinding completed by user
+
+User removed only the operator finalizer, deleted old claims and recreated original names while VMSingle reconciliation was paused. User output:
+
+```text
+vm-stack-grafana   Bound   telemetry-grafana-madrid   1Gi   RWO   local-path
+vmsingle-vm-stack-victoria-metrics-k8s-stack   Bound   telemetry-metrics-madrid   50Gi   RWO   local-path
+telemetry-grafana-madrid   1Gi   RWO   Retain   Bound
+telemetry-metrics-madrid   50Gi   RWO   Retain   Bound
+```
+
+This completes pre-activation binding checkpoint. Prepare activation with paused false, replicas one, explicit matching volumeName/capacity, all central placements plus log-generator on Madrid. Original source PVs/files retained; cleanup not authorized.
+
 ## 2026-11-14 23:01 UTC — VMSingle reconciliation paused and acknowledged
 
 User supplied:

@@ -1,5 +1,3 @@
-# Keep the operator available to reconcile VMSingle's zero replicas.
-# Move the operator in the separate enable-on-Madrid PR.
 victoria-metrics-operator:
   nodeSelector:
-    vps: hetzner
+    vps: senaev-madrid

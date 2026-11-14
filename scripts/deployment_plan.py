@@ -66,9 +66,12 @@ def plan(root, changed, repository):
     namespaces = {}
     for path in sorted(selected_charts):
         namespaces.setdefault(charts[path], []).append(path)
+    # Application startup (notably Grafana MCP) depends on infrastructure releases.
+    # Keep infrastructure namespaces alphabetical, then deploy senaev-com last.
+    ordered_namespaces = sorted(namespaces.items(), key=lambda item: (item[0] == "senaev-com", item[0]))
     return {
         "builds": builds,
-        "charts": [{"namespace": namespace, "charts": paths} for namespace, paths in sorted(namespaces.items())],
+        "charts": [{"namespace": namespace, "charts": paths} for namespace, paths in ordered_namespaces],
     }
 
 

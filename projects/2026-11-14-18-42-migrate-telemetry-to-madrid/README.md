@@ -8,9 +8,9 @@ Move central telemetry to the existing Madrid worker. Accept a maintenance windo
 
 ## Context
 
-**PR #186 is now the disable stage only; it deploys before copying.** All source selectors remain Hetzner. Madrid activation belongs to a second PR.
+**Shutdown PR #186 is deployed.** Both datasets were manually copied and checksum-verified. The user recreated both claims bound to Madrid PVs. This activation PR restores central services on Madrid; it has not deployed yet.
 
-Repository/vendored-chart storage findings (not a live volume inspection):
+Source storage and shutdown behavior (recorded before activation):
 
 | Service | Storage | Disable stage |
 | --- | --- | --- |
@@ -41,10 +41,12 @@ See [manual procedure](migration.md).
 
 ## Verification
 
-Existing Helm lint/render checks: Grafana/VMSingle render at zero with storage intact; other central workloads absent. No custom tests added. After disable deployment, inspect stopped pods and remaining claims. After activation, check data and existing monitoring; record the collection gap.
+Existing Helm lint passed. Rendered activation manifests match the existing claims: Grafana 1Gi on `telemetry-grafana-madrid`, metrics 50Gi on `telemetry-metrics-madrid`; VMSingle is explicitly unpaused with one replica. Ten central workloads target Madrid including log-generator. Distributed agents and Hetzner ingress stay in place. No custom tests added.
+
+Deployment planning puts senaev-com after infrastructure namespaces, allowing Grafana to start before Grafana MCP's blocking init container. Changing the planner selects the full coordinated deployment/build set, so this activation run is broader than chart-only deployment. After deployment verify historical/fresh data, Grafana/MCP, log-generator placement/logs and Telegram alerts; record the collection gap.
 
 ## Result
 
-Disable-stage code prepared; no cluster writes, claim deletions or data transfers performed. Live PV paths/policies still need inventory in the user's personal-cluster terminal.
+Pre-activation checks complete: source PVs Retain; copied datasets verified; Madrid claims Bound at 1Gi and 50Gi. VMSingle is currently paused with zero replicas. Activation code restores services and resumes reconciliation. Source data is retained; no cleanup is authorized. Activation deployment and post-deploy verification remain pending.
 
 See [worklog](project-worklog.md).

@@ -84,8 +84,14 @@ Additional agreed scope:
 - Increase metrics capacity from the default 20Gi to `50Gi`: set `victoria-metrics-k8s-stack.vmsingle.spec.storage.resources.requests.storage` explicitly and use matching capacity in the destination metrics PV/PVC prepared in stage 3. This is the Kubernetes GiB quantity for the requested roughly 50GB; it does not create a filesystem quota for a local directory.
 - Move `logGenerator.vps` to `senaev-madrid` alongside the other central workloads. Verify log-generator placement and log delivery through existing Datadog monitoring after deployment.
 
-Restore Grafana/VMSingle replicas to one, re-enable other central components and set central selectors (including VM operator and Grafana MCP) to Madrid. Zero-replica CRs stay in place throughout storage work; no manual premerge CR-placement patch is required. Distributed sources stay distributed; ingress/DNS stays on Hetzner.
+Restore Grafana/VMSingle replicas to one, re-enable other central components and set central selectors (including VM operator and Grafana MCP) to Madrid. Zero-replica CRs stay in place throughout storage work. The user paused VMSingle reconciliation for claim replacement; activation must explicitly set `spec.paused: false`. No manual premerge CR-placement patch is required. Distributed sources stay distributed; ingress/DNS stays on Hetzner.
 
 Merge only after destination bindings and copied files are verified. Follow deployment; check historical data, fresh metrics, Grafana login/dashboards/datasources, MCP and Telegram alerts with existing monitoring. Record collection gap. Remove source data only in a separate cleanup action after acceptance.
 
 For rollback, disable through Helm first. Preserve new Madrid writes, restore source bindings and Hetzner placement, then re-enable. A configuration revert cannot reverse bindings, and a stale source copy omits post-cutover data.
+
+## Confirmed pre-activation checkpoint
+
+User completed and checksum-verified both rsync copies, set source PVs Retain, and recreated original-name claims bound to `telemetry-grafana-madrid` (1Gi) and `telemetry-metrics-madrid` (50Gi). Native VMSingle paused status was acknowledged before claim replacement. Activation uses explicit matching volumeName settings and resumes reconciliation.
+
+The deployment planner now puts application namespace senaev-com last, after infrastructure (including telemetry), to avoid Grafana MCP startup blocking before Grafana is restored. This planner change selects full image/chart deployment under existing CI rules.
