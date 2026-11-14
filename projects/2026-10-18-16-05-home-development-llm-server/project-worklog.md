@@ -1,3 +1,12 @@
+## 2026-11-14 13:27 UTC — Delivered Dell BIOS hardware inventory recorded
+
+User asked to preserve hardware parameters from BIOS photos. Recorded observed
+model/identifiers, i5-13500T (6+8 cores), BIOS 1.3.1/microcode 2C, 32768 MB DDR4,
+2 x 16384 MB SO-DIMM dual-channel at BIOS-reported 3200 MHz, Intel UHD Graphics,
+no Wi-Fi/Bluetooth, audio and LAN MAC in hardware-inventory.md. Linked from README.
+Kept transient clock/display values separate from hardware limits, retained ambiguous
+numeric manufacture date verbatim, and did not claim diagnostics or BIOS input fixed.
+
 ## 2026-11-14 13:25 UTC — Windows image SHA-256 recorded
 
 User asked to retain the hash in project history. Successful screenshot output:

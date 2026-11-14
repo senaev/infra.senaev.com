@@ -74,3 +74,8 @@ Dell OptiPlex Micro 7010, 32 GB RAM / 1 TB NVMe, from VORPC for €599.89 includ
 VAT and delivery (order 102889). The server has now arrived (user confirmation, 2026-11-13).
 The purchase is €400.11 below the €1,000 budget. Hardware inspection, Proxmox setup
 and Jellyfin passthrough testing remain post-delivery work; they are not claimed complete.
+
+## Delivered hardware record
+
+See [BIOS hardware inventory](hardware-inventory.md) for the observed CPU, RAM layout,
+firmware, identifiers and device details captured on 2026-11-14.

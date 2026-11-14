@@ -19,6 +19,9 @@ Windows remote access is deferred until after VM import through Proxmox noVNC.
 No replacement capture is required solely for this configuration.
 Local image SHA-256 recorded in the setup plan from user-provided PowerShell output.
 Cloud upload completion and downloaded-copy comparison remain unconfirmed; user
-previously chose to skip checksum comparison. VM bootability, hardware inspection and Dell USB boot are
-not yet verified. Proxmox installation and Windows VM import have not started.
+previously chose to skip checksum comparison. VM bootability and Dell USB boot are not yet verified. BIOS inventory confirms
+i5-13500T, 32 GB DDR4 (2 x 16 GB, dual channel), BIOS 1.3.1 and no Wi-Fi/Bluetooth.
+Extended hardware diagnostics and SSD health remain pending. Proxmox installation and Windows VM import have not started.
 See [setup plan](windows-backup-proxmox-plan.md). Purchase remains complete.
+
+Observed hardware details: [inventory](hardware-inventory.md).
