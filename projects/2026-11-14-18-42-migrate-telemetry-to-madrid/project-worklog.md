@@ -1,5 +1,33 @@
 # Project worklog
 
+## 2026-11-14 22:57 UTC — Exact claim metadata and Madrid node confirmed
+
+User supplied full PVC YAML: Grafana requests 1Gi, metrics 20Gi; both ReadWriteOnce, Filesystem, local-path. Grafana carries Helm ownership for vm-stack/telemetry. Metrics carries VMSingle owner UID `74b96041-ef48-4bed-b77e-7c0f75b4b89d` and finalizer `apps.victoriametrics.com/finalizer`, so operator reconciliation must be handled deliberately during rebinding. Do not strip finalizers blindly.
+
+Supporting user output excerpts:
+
+```yaml
+name: vm-stack-grafana
+resources:
+  requests:
+    storage: 1Gi
+---
+name: vmsingle-vm-stack-victoria-metrics-k8s-stack
+finalizers:
+- apps.victoriametrics.com/finalizer
+- kubernetes.io/pvc-protection
+resources:
+  requests:
+    storage: 20Gi
+```
+
+```text
+NAME            STATUS   ROLES    AGE     VERSION        HOSTNAME
+senaev-madrid   Ready    <none>   5h44m   v1.36.5+k3s1   senaev-madrid
+```
+
+Next user step: set source PVs Retain, create ordinary Madrid local PVs (Grafana 1Gi, metrics 50Gi) pointing at checksum-verified directories and reserved for original claim names. No claim deletion or activation yet.
+
 ## 2026-11-14 22:55 UTC — Both checksum comparisons passed
 
 User reported "no output for both" after the supplied `rsync -aHAXnc --numeric-ids --itemize-changes` comparisons. No source-to-destination checksum/metadata differences were reported for Grafana or metrics. Copies remain on Madrid; original PVCs/PVs remain untouched. Next: inspect exact PVC specs/metadata and Madrid hostname to prepare 1Gi Grafana and requested 50Gi metrics destination bindings.
