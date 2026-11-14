@@ -210,6 +210,68 @@ proxmox-madrid appear in Grafana after the vm-stack deploy.
 Installation/networking stage is complete at the user's request; Windows recovery,
 Jellyfin validation and the different-LAN-address test are not claimed complete.
 
+## Debian VM plan — QEMU Guest Agent required
+
+Current next task: create a Debian VM before continuing Windows recovery. This does
+not cancel preservation/import of Windows. User requested 16 GiB RAM and more than
+half the physical SSD capacity; proposed configuration is Debian 13 stable amd64
+(netinst 13.7 at planning time), 16384 MiB RAM without ballooning, 500 GiB SCSI disk
+on local-lvm, 4 host-type vCPUs, q35/OVMF, VirtIO SCSI single, discard enabled and
+VirtIO networking on vmbr0 with DHCP. VM name proposed: debian-madrid; actual VMID
+not yet supplied. VM creation and installation are not yet confirmed.
+
+Host baseline supplied by user: pve-manager/9.2.2/b9984c6d90a4bd80, kernel
+7.0.2-6-pve; local-lvm active and empty, approximately 793.8 GiB; root 96 GiB LV
+with df reporting 85 GiB available; swap 8 GiB; systemctl --failed lists zero units.
+A 500 GiB Debian virtual disk leaves approximately 293.8 GiB of nominal pool capacity
+for other disks; actual thin-pool consumption must be monitored. Reassess Windows
+import capacity and virtual disk sizing rather than assuming both full disks fit.
+
+1. Download the official amd64 netinst ISO directly through local > ISO Images >
+   Download from URL; attach it during Create VM. No USB or Mac upload is necessary.
+   Source: https://www.debian.org/download
+2. During VM creation, enable **QEMU Guest Agent** on the System tab (Advanced if
+   necessary). Alternatively, with the VM fully shut down, enable it under
+   VM > Options > QEMU Guest Agent, then start the VM. This provides the virtual
+   communication channel; it does not install the Debian package.
+3. Install Debian using its virtual console, guided partitioning of the VM disk,
+   SSH server and standard system utilities; omit desktop for server use. Preserve
+   the guest login/password. Detach installer media after installation.
+4. Inside the Debian guest, as root (use su - if logged in as a regular user):
+
+   ```bash
+   apt update
+   apt install -y qemu-guest-agent
+   systemctl start qemu-guest-agent
+   systemctl is-active qemu-guest-agent
+   ```
+
+   Expect active. If it fails due to the virtio port being absent, ensure the host
+   agent option is enabled and fully shut down/start the VM. The Debian service
+   may be static/device-activated; do not require systemctl enable to succeed.
+5. On the Proxmox host as root, substitute the actual numeric VMID below:
+
+   ```bash
+   qm agent <VMID> ping
+   qm guest exec <VMID> -- /usr/bin/id
+   qm guest cmd <VMID> network-get-interfaces
+   ```
+
+   Ping must succeed; exec must return exitcode 0 and uid=0(root). This explicitly
+   tests the requested host-root access to commands inside the guest, without
+   requiring guest SSH/network access. Never type the angle-bracket placeholder
+   literally; replace it with the selected VM ID.
+6. Reboot Debian and repeat agent ping/exec to confirm the agent returns automatically.
+   Keep SSH enabled for interactive terminals and noVNC as console fallback. Agent
+   command execution is not an interactive shell and requires a running guest/agent.
+
+Acceptance: Debian installed, 16 GiB RAM and 500 GiB disk visible in guest; guest
+agent active after reboot; host-root ping and uid=0 command execution pass. All are
+pending. Agent supports IP discovery, managed shutdown and backup filesystem freeze;
+its presence alone does not prove successful backups or passthrough.
+
+Reference: https://github.com/proxmox/pve-docs/blob/master/generated/qm.1-synopsis.adoc
+
 ## Equipment
 
 - One USB stick for the Proxmox installer; no second USB drive is required.

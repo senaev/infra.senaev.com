@@ -56,8 +56,10 @@ The router reused 192.168.0.23; an actual different-address test is not complete
 The host joined the k3s cluster as worker `proxmox-madrid` (`make worker-proxmox-madrid`),
 with smokeping and iperf3 monitoring in vm-stack. It is a sensitive node in the
 repository `AGENTS.md`. See [cluster worker](windows-backup-proxmox-plan.md#k3s-cluster-worker--14-november-2026).
-Next: inspect storage and recover the saved Windows installation into a VM, then
-validate Jellyfin passthrough. See the plan for evidence and outstanding checks.
+Current next task: create the Debian VM (16 GiB RAM, proposed 500 GiB disk) with
+QEMU Guest Agent and verify root command execution from the Proxmox host. Windows
+recovery and Jellyfin passthrough remain planned; reassess shared storage capacity.
+See the plan for configuration, evidence and outstanding checks.
 
 ## Verification
 

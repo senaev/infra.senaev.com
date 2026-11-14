@@ -1,3 +1,13 @@
+## 2026-11-14 16:32 UTC — Debian VM plan requires QEMU Guest Agent host access
+
+User requested adding QEMU agent for access from the Proxmox host as root. Saved
+Debian VM plan (16 GiB RAM, proposed 500 GiB disk, 4 vCPUs) and supplied healthy host
+storage/service baseline. Added agent channel enablement before guest start, package
+installation inside Debian, host ping/exec id/network checks and reboot verification.
+Distinguished root command execution from interactive SSH. VMID, VM creation,
+installation and agent checks are unconfirmed. Windows recovery remains planned;
+capacity must be reassessed alongside the large Debian virtual disk. Docs only.
+
 ## 2026-11-14 16:15 UTC — proxmox-madrid joined the k3s cluster as a sensitive worker
 
 User decided to add the Dell to the cluster like the existing `proxmox` host: a k3s agent
