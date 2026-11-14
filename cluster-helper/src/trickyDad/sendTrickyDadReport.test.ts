@@ -142,6 +142,30 @@ describe('isTrickyDadCommandFailed', () => {
 });
 
 describe('formatTrickyDadReport', () => {
+    it('renders purchases as Markdown list items, separated from the details block', () => {
+        const text = formatTrickyDadReport({
+            command: 'купи хлеб, яйца, молоко',
+            source: 'Tricky Dad Telegram chat',
+            durationSeconds: '1.00',
+            result: buildResult({
+                actionResults: [
+                    {
+                        action: buildAction('add_shopping_items', '🛒', 'tricky-dad-chat', [
+                            'Хлеб',
+                            'Яйца',
+                            'Молоко',
+                        ]),
+                        output: [],
+                        durationMs: 1,
+                        error: null,
+                    },
+                ],
+            }),
+        });
+
+        expect(text).toMatch(/^- 🛒 \*\*Хлеб\*\*\n- 🛒 \*\*Яйца\*\*\n- 🛒 \*\*Молоко\*\*\n\n<details>/);
+    });
+
     it('lists the entries of every action and the LLM attempts', () => {
         const text = formatTrickyDadReport({
             command: 'купи хлеб, папа позвонит в банк',
@@ -179,7 +203,7 @@ describe('formatTrickyDadReport', () => {
         });
 
         expect(text).toContain('🛒 **Хлеб**');
-        expect(text).toContain('👉 **Позвонить в банк**\n\\<found\\> 1');
+        expect(text).toContain('- 👉 **Позвонить в банк**\n\n\\<found\\> 1');
         expect(text).toContain('📍 Куда: 🛒 add\\_shopping\\_items, 👉 add\\_tasks');
         expect(text).toContain('🤖 LLM: llm\\-server 90000ms ❌ → openrouter 900ms ✅');
         expect(text).toContain('❌ llm\\-server: llm\\-server request timed out after 90000ms');

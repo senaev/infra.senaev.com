@@ -51,9 +51,11 @@ export function formatTrickyDadReport({
         const entryEmoji = result.isCommandFallback ? '❌' : action.emoji;
 
         return [
-            ...action.entries.map((entry) => `${entryEmoji} ${telegramBold(entry)}`),
-            ...output.map((line) => escapeTelegramMarkdown(line)),
-        ].join('\n');
+            // Rich-message Markdown folds soft newlines inside a paragraph. Use list
+            // items so every entry remains a separate row in Telegram.
+            action.entries.map((entry) => `- ${entryEmoji} ${telegramBold(entry)}`).join('\n'),
+            output.map((line) => escapeTelegramMarkdown(line)).join('\n\n'),
+        ].filter(Boolean).join('\n\n');
     });
 
     const destination = result.actionResults
@@ -82,7 +84,7 @@ export function formatTrickyDadReport({
     return [
         ...parts,
         telegramExpandableBlockquote(detailLines),
-    ].join('\n');
+    ].join('\n\n');
 }
 
 export async function sendTrickyDadReport({
