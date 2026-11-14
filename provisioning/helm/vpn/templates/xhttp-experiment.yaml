@@ -134,6 +134,18 @@ spec:
         - protocol: TCP
           port: 8081
   egress:
+    # Exact internal TLS ingress for the self-hosted diagnostic target only.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+          podSelector:
+            matchLabels:
+              app: traefik
+              traefik-deployment: hetzner
+      ports:
+        - protocol: TCP
+          port: 443
     - to:
         - namespaceSelector:
             matchLabels:

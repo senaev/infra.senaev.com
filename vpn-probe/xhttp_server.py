@@ -17,8 +17,14 @@ def server_config(base_uuid, path, diagnostics=False):
                       "settings": {"clients": [{"id": user}], "decryption": "none"},
                       "streamSettings": {"network": "xhttp", "security": "none",
                                          "xhttpSettings": {"path": path, "mode": "packet-up"}}}],
-        "outbounds": [{"protocol": "freedom",
-                       "streamSettings": {"sockopt": {"domainStrategy": "UseIPv4v6"}}}]}
+        # Only this exact diagnostic destination bypasses the public self-dial.
+        # TLS bytes/SNI are untouched; the client still verifies senaev.com.
+        "routing": {"rules": [{"type": "field", "domain": ["full:senaev.com"],
+                               "port": "443", "network": "tcp", "outboundTag": "self-site"}]},
+        "outbounds": [{"tag": "internet", "protocol": "freedom",
+                       "streamSettings": {"sockopt": {"domainStrategy": "UseIPv4v6"}}},
+                      {"tag": "self-site", "protocol": "freedom",
+                       "settings": {"redirect": "traefik-hetzner.traefik.svc.cluster.local:443"}}]}
 
 
 if __name__ == "__main__":

@@ -1113,3 +1113,34 @@ completed pairs per size/source, including gates, exact bytes/status, timestamps
 resets and simultaneous group activity. Same-host endpoint traverses Hetzner egress
 back to its public website; it is not an independent origin. Results cannot uniquely
 identify DPI or PMTU. Retain Cloudflare controls to distinguish destination effects.
+
+### 2026-11-14 16:21 UTC — Repair experimental self-target control path
+
+Backend Datadog logs identify a concrete self-target connection failure, independent
+of the home ISP. Example2026-11-14T16:17:54Z:
+```
+proxy/freedom: failed to open connection to tcp:senaev.com:443
+ dial tcp 77.42.120.71:443: connect: connection refused
+```
+This localizes the new all-source endpoint comparison failure before the origin TLS
+handshake. It does not establish why the public self-dial is refused or explain
+home's separate partial-response stalls. No host networking changes attempted.
+
+Prepare an experiment-backend-only exact TCP/domain/port route: full:senaev.com:443
+uses a dedicated freedom redirect to traefik-hetzner.traefik.svc.cluster.local:443.
+The default internet outbound remains first and unchanged apart from its tag.
+Client TLS/SNI, verification, HTTP path and payload stay intact. Add one egress rule
+allowing only Hetzner Traefik pods in namespace traefik onTCP443. No broad private
+CIDR allowance; DNS and existing public443 policy unchanged. No production Xray,
+subscription, host/Tailscale/K3s/firewall/MTU/MSS change. No new service or secret.
+The redirected destination applies to all paths on that exact hostname/port in the
+experimental backend, not only /api/vpn-test; Xray TCP routing cannot filter URLs.
+
+This changes the experimental exit-to-origin path; keep direct public requests and
+Cloudflare controls and treat post-rollout pairs as a new cohort. The control no
+longer tests the exit's public self-dial. Revert these two configuration changes to
+restore it.109 Python tests and VPN Helm lint passed. Live internal reachability,
+TLS certificate and payload recovery remain unverified until approved deployment.
+After rollout require three completed pairs/source with valid exit/direct gates;
+if VPS endpoint controls still fail, investigate that before home-path variables.
+Official redirect reference: https://xtls.github.io/en/config/outbounds/freedom.html
