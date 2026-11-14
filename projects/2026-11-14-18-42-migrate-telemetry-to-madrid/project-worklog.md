@@ -1,5 +1,24 @@
 # Project worklog
 
+## 2026-11-14 23:54 UTC — Initial Proxmox backup inventory received
+
+User inspected proxmox-madrid. Output excerpts:
+
+```text
+VMID NAME             STATUS   MEM(MB) BOOTDISK(GB)
+100  senaev-madrid    running  16384   500.00
+101  dell-windows     running  8192    931.52
+
+Name       Type     Status Total(KiB) Used(KiB) Available(KiB)
+local      dir      active 98497780   44693440  48754792
+local-lvm  lvmthin  active 832356352  103878072 728478279
+
+pvesh get /cluster/backup --output-format yaml
+--- []
+```
+
+VM100 is the Madrid K3s worker and no scheduled Proxmox backup jobs are configured. Existing manual backup archives, VM disk inclusion/exclusions, mounts and storage paths remain unverified. local has about 46.5GiB free; no new full backup should be started without checking used data/destination. Next read-only steps: qm config 100, storage.cfg and existing local backup archive list. LC_ALL=C prefixes avoid distracting client locale warnings without changing system locale. No backup jobs, snapshots or storage changes created.
+
 ## 2026-11-14 23:44 UTC — User completed retired source cleanup
 
 User ran the guarded cleanup block: both source PVs were Released/Retain before the two exact source directories were removed, followed by:
