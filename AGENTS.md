@@ -293,7 +293,7 @@ The code tools take absolute paths and work in any folder. The repository layout
 workspace instructions, `/AGENTS.md`. The PVCs use `local-path`, which does not enforce their
 size: worktrees with their own `node_modules` use the node's root disk. LLM workspaces have no container resource limits; scheduler memory
 requests remain. To preserve node-local data when moving nodes, copy it and rebind PVCs;
-see `docs/llm-workspace-madrid.md`.
+see `projects/2026-11-14-21-40-llm-workspace-madrid/README.md`.
 
 OpenCode 2 serves its built-in web UI at `https://opencode.senaev.com` through the
 existing Traefik ingress. Native authentication uses Vault `OPENCODE_PASSWORD` via
