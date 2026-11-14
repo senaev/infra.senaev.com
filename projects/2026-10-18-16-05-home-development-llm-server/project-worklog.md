@@ -1,3 +1,15 @@
+## 2026-11-14 14:30 UTC — BIOS settings and diagnostic passes recorded
+
+User requested all BIOS settings and passed tests be preserved before installing
+Proxmox. Added setting/evidence tables to hardware-inventory.md, including internal
+speaker disabled, microphone enabled, VT/VT-d enabled, keyboard detection off and
+AC Recovery Power On. Recorded user-tested successful AC restoration and Dell quick
+and follow-up diagnostic pass screens (2000-0000 / 90116). Follow-up selection and
+Thorough mode are not visible on its result screen, so exact coverage is qualified.
+Updated setup state and recorded user's choice to skip cloud checksum comparison.
+Cloud upload completion, Proxmox installation and VM/passthrough tests remain unconfirmed.
+Purchase remains closed. No server configuration or installation executed remotely.
+
 ## 2026-11-14 13:27 UTC — Delivered Dell BIOS hardware inventory recorded
 
 User asked to preserve hardware parameters from BIOS photos. Recorded observed

@@ -8,8 +8,10 @@ Installer USB is prepared: Proxmox VE 9.2-1 Intel/AMD, written on Mac with dd.
 Windows image creation is user-confirmed complete; cloud upload is in progress.
 File: `C:\Users\user\Downloads\dell-windows.vhdx`. C: is fully decrypted, BitLocker off.
 Captured EFI (~200 MB; Disk2vhd shows 196 MB), C: and 905 MB recovery with VHDX/VSS;
-USB volumes excluded. Cloud checksum and VM boot tests remain pending. Hardware
-inspection, Dell USB boot and Proxmox installation are not confirmed. Purchase remains closed.
+USB volumes excluded. User chose to skip cloud checksum comparison; upload completion
+and VM boot remain unconfirmed. BIOS configuration, diagnostic passes and successful
+AC Recovery test are recorded in [hardware inventory](hardware-inventory.md).
+User is proceeding to Proxmox installation; completion is not confirmed. Purchase remains closed.
 
 Windows remote access will be configured after import through the Proxmox noVNC
 console. No replacement image is needed solely for this setup.
@@ -23,7 +25,7 @@ console. No replacement image is needed solely for this setup.
 
 Disk2vhd can write its image to the same filesystem it is capturing. The local image
 is temporary: installing Proxmox erases the selected internal SSD, including that file.
-A verified cloud copy must exist before proceeding. The Proxmox installer is not a
+A completed, accessible cloud copy must exist before proceeding. The Proxmox installer is not a
 Windows backup tool; writing it to USB normally erases the USB stick.
 
 ## Plan
@@ -40,14 +42,14 @@ Windows backup tool; writing it to USB normally erases the USB stick.
    needs no bootable USB. Check completion and record the file size and SHA-256 hash.
 4. Upload the completed image to private cloud storage, together with its checksum
    and non-secret disk-layout/boot-mode notes. Confirm upload is complete and the file
-   can be retrieved. Download it to another computer or storage location and compare
-   SHA-256 hashes; record a successful match before erasing the Dell. Keep cloud
+   can be retrieved. User chose to skip downloaded-copy checksum comparison; do not
+   record a transfer-integrity pass. Keep cloud
    credentials/recovery methods accessible independently of the Windows installation.
 5. Ideally test that a working copy boots in a VM on another host. A checksum match
    verifies transfer integrity, not Windows bootability. If no other host is available,
    record that the image has not been boot-tested before proceeding.
 6. Create the Proxmox installer on the single USB stick. Only after the cloud copy is
-   verified, boot the installer and install Proxmox on the internal SSD. This erases
+   confirmed complete and accessible, boot the installer and install Proxmox on the internal SSD. This erases
    Windows and the local VHDX. Download the verified image from cloud storage to
    Proxmox storage for import, allowing space for both the download and imported VM disk.
 7. Import a working copy of the VHDX into a Proxmox Windows VM. Match the original
@@ -74,8 +76,8 @@ Windows backup tool; writing it to USB normally erases the USB stick.
 
 ## Verification and recovery
 
-Before erasing: cloud upload is complete, a downloaded copy matches the original
-SHA-256, required partitions were captured, recovery key is saved if applicable,
+Before erasing: cloud upload is complete and accessible, required partitions were
+captured, recovery key is saved if applicable,
 cloud access works independently, and the intended installation disk is confirmed.
 After installation: Windows VM boots; Jellyfin transcodes in hardware; power recovery,
 network stability and noise meet requirements. Record actual results, not assumptions.

@@ -39,8 +39,8 @@ machines are preferred when competitively priced.
 User ordered the refurbished Dell OptiPlex Micro 7010 from VORPC, order **102889**.
 Confirmation screenshot: 32 GB RAM, 1 TB M.2 NVMe, **€599.89 total including VAT**,
 free shipping advertised in 48–72 hours, paid using Google Pay (WooPayments).
-User confirmed the server has arrived on 2026-11-13. Hardware inspection and installation have not yet been performed.
-Advertised CPU is i5-13500T; verify the actual unit on arrival.
+User confirmed the server has arrived on 2026-11-13. BIOS hardware inventory and Dell diagnostic passes are recorded; installation is pending.
+Delivered CPU confirmed in BIOS: i5-13500T.
 The Dell supersedes the earlier SER8 preference and other shortlist candidates.
 See [Intel research and retailer checks](research-intel-options.md).
 
@@ -72,10 +72,11 @@ Compact and quiet for the living room; SSD storage only; refurbished accepted. S
 Completed and closed on 2026-11-11 at the user’s request. Purchased the refurbished
 Dell OptiPlex Micro 7010, 32 GB RAM / 1 TB NVMe, from VORPC for €599.89 including
 VAT and delivery (order 102889). The server has now arrived (user confirmation, 2026-11-13).
-The purchase is €400.11 below the €1,000 budget. Hardware inspection, Proxmox setup
-and Jellyfin passthrough testing remain post-delivery work; they are not claimed complete.
+The purchase is €400.11 below the €1,000 budget. BIOS inventory, diagnostic passes and AC Recovery testing are recorded. Proxmox setup
+and Jellyfin passthrough testing remain post-delivery work.
 
 ## Delivered hardware record
 
 See [BIOS hardware inventory](hardware-inventory.md) for the observed CPU, RAM layout,
-firmware, identifiers and device details captured on 2026-11-14.
+firmware, identifiers, BIOS settings, diagnostic results and successful AC Recovery test
+recorded on 2026-11-14.
