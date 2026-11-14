@@ -4,7 +4,7 @@ set -euo pipefail
 echo "👉 [bootstrap-server] Installing necessary packages"
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
-DEBIAN_FRONTEND=noninteractive apt-get install -y cloud-init ca-certificates jq zsh git curl rsync sudo
+DEBIAN_FRONTEND=noninteractive apt-get install -y cloud-init ca-certificates jq git curl rsync sudo
 echo "✅ [bootstrap-server] Necessary packages installed"
 
 echo "👉 [bootstrap-server] Setting up qemu-guest-agent"
@@ -13,26 +13,6 @@ DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
 DEBIAN_FRONTEND=noninteractive  apt-get install -y qemu-guest-agent
 systemctl start qemu-guest-agent
 echo "✅ [bootstrap-server] qemu-guest-agent set up"
-
-echo "👉 [bootstrap-server] Setting up shell and tools"
-chsh -s /usr/bin/zsh root
-sh -c "RUNZSH=no CHSH=no $(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-# ❗️ TODO: use "~" instead of "/root"
-git clone https://github.com/zsh-users/zsh-autosuggestions /root/.oh-my-zsh/custom/plugins/zsh-autosuggestions
-git clone https://github.com/zsh-users/zsh-syntax-highlighting /root/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting
-sed -i 's/^plugins=.*/plugins=(git docker kubectl sudo history zsh-autosuggestions zsh-syntax-highlighting)/' /root/.zshrc
-echo "✅ [bootstrap-server] Shell and tools set up"
-
-echo "👉 [bootstrap-server] Setting up Powerlevel10k theme"
-git clone --depth=1 https://github.com/romkatv/powerlevel10k.git /root/.oh-my-zsh/custom/themes/powerlevel10k
-sed -i 's/^ZSH_THEME=.*/ZSH_THEME="powerlevel10k\/powerlevel10k"/' /root/.zshrc
-cp /root/.oh-my-zsh/custom/themes/powerlevel10k/config/p10k-lean.zsh /root/.p10k.zsh
-sed -i "s/POWERLEVEL9K_MODE=nerdfont-complete/POWERLEVEL9K_MODE=powerline/" /root/.p10k.zsh
-sed -i "s/POWERLEVEL9K_PROMPT_ADD_NEWLINE=true/POWERLEVEL9K_PROMPT_ADD_NEWLINE=false/" /root/.p10k.zsh
-sed -i "s/POWERLEVEL9K_TRANSIENT_PROMPT=off/POWERLEVEL9K_TRANSIENT_PROMPT=always/" /root/.p10k.zsh
-sed -i "/newline/d" /root/.p10k.zsh
-echo '[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh' >> /root/.zshrc
-echo "✅ [bootstrap-server] Powerlevel10k theme set up"
 
 if [[ $# -lt 2 ]]; then
   echo "Usage: $0 <tailscale_auth_key> <server_name>" >&2
