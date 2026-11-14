@@ -291,8 +291,9 @@ and `Recreate`; a Code Tools update still has a short outage and loses in-memory
 The code tools take absolute paths and work in any folder. The repository layout under
 `/code` (`projects/<repo>` and `worktrees/<repo>/<branch>`) is described only in the
 workspace instructions, `/AGENTS.md`. The PVCs use `local-path`, which does not enforce their
-size: worktrees with their own `node_modules` use the node's root disk, which on hetzner also
-holds the control plane.
+size: worktrees with their own `node_modules` use the node's root disk. LLM workspaces have no container resource limits; scheduler memory
+requests remain. Node-local data must be copied and PVCs rebound before moving nodes;
+see `docs/llm-workspace-madrid.md`.
 
 OpenCode 2 serves its built-in web UI at `https://opencode.senaev.com` through the
 existing Traefik ingress. Native authentication uses Vault `OPENCODE_PASSWORD` via
@@ -309,6 +310,10 @@ Code Tools is discovered by the coordinated deployment workflow, with its own
 image build and `latest` image. OpenCode and its Telegram bot deploy together after
 all affected images are published. Helm handles both first installation and updates;
 image refreshes run after Helm in the same coordinated job.
+
+A workspace-level `enabled: false` omits all its rendered resources. Omission of
+`enabled` means enabled. The `senaev` workspace is temporarily disabled for a fresh
+Madrid start; kept PVCs must be removed manually before re-enabling.
 
 LLM workspace values live in `llmWorkspaces`, and the templates in
 `provisioning/helm/senaev-com/templates/llm-workspace/`. The entry name prefixes all
@@ -336,7 +341,7 @@ for compatibility after deployment.
 
 | Workspace | Node | Components | Ingress |
 |---|---|---|---|
-| `senaev` | hetzner | OpenCode, OMP (`omp.senaev.com`), Code Tools | traefik-hetzner |
+| `senaev` | senaev-madrid | OpenCode, OMP (`omp.senaev.com`), Code Tools | traefik-hetzner |
 | `galkin` | galkin | OMP only (`omp.galkin.senaev.com`) | traefik-hetzner (DNS points to hetzner) |
 
 Do not rename the `senaev` entry: that replaces its PVCs, and cluster-helper calls

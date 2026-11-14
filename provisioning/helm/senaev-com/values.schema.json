@@ -41,6 +41,11 @@
           }
         ],
         "properties": {
+          "enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Render this workspace. Omission preserves enabled behavior; disabling retains existing PVCs."
+          },
           "instructionsPath": {
             "type": "string",
             "minLength": 1

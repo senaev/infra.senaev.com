@@ -199,7 +199,8 @@ n8n:
 # The entry name is the prefix of its resource names: renaming an entry replaces its PVCs.
 llmWorkspaces:
   senaev:
-    vps: hetzner
+    enabled: false
+    vps: senaev-madrid
     traefik: hetzner
     instructionsPath: config/senaev-llm-instructions-path
     projectsStorageSize: 16Gi
