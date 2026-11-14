@@ -1,52 +1,64 @@
-# Fresh LLM workspace on Madrid
+# LLM workspace on Madrid
 
-The user chose an empty workspace on Madrid. This PR is the disable stage:
-`llmWorkspaces.senaev.enabled: false` omits all senaev workspace resources,
-including OpenCode/Telegram, OMP, Code Tools, ingress, policies and secrets.
-Galkin remains enabled. Every workspace now requires an explicit boolean `enabled`.
-Existing PVCs have `helm.sh/resource-policy: keep` and survive this deployment.
+Status: completed on 2026-11-14. The senaev workspace runs on `senaev-madrid`
+after an intentional fresh start. The user confirmed that everything works.
+No migration tasks remain.
 
-All LLM workspace container resource limits are removed, including Galkin's.
-Scheduler memory requests and security settings remain. Madrid placement and
-Datadog collection are prepared for the subsequent re-enable deployment.
+## Current configuration
 
-## Disable and clear claims
+| Workspace | Enabled | Node | Components |
+|---|---|---|---|
+| senaev | true | senaev-madrid | OpenCode, Telegram bot, OAuth proxy, OMP, auth proxy, Code Tools |
+| galkin | true | galkin | OMP and auth proxy |
 
-1. Merge this PR and wait for deployment using GitHub and an independent terminal:
-   disabling Code Tools makes this MCP's code operations unavailable.
-2. Verify the senaev-code-tools, senaev-opencode-telegram and senaev-omp-web pods
-   have all terminated. Do not delete their claims while writers remain.
-3. Confirm the PVs behind senaev-projects, senaev-code and senaev-omp-web-state
-   use `Retain` (already set manually by the user). Delete only these three PVCs:
+Every `llmWorkspaces` entry requires an explicit boolean `enabled`. Missing or
+non-boolean values fail Helm schema validation. `enabled: false` omits that
+workspace's resources; existing PVCs with `helm.sh/resource-policy: keep` survive.
 
-   ```bash
-   kubectl -n senaev-com delete pvc senaev-projects senaev-code senaev-omp-web-state
-   ```
+All chart-defined container resource limits are removed from LLM workspaces,
+including Galkin. Scheduler memory requests and existing security settings remain.
+Physical node capacity and cluster admission defaults still apply.
 
-   The retained PVs and their Hetzner files remain for recovery. Do not delete
-   other workspace, legacy, Vault or telemetry volumes.
+Public DNS and Traefik remain on Hetzner. Kubernetes Services reach the Madrid
+workspace through the cluster network. Datadog's node Agent and APM eligibility
+include Madrid.
 
-## Re-enable on Madrid in a separate PR
+## Completed work
 
-1. Confirm senaev-madrid is Ready with `vps=senaev-madrid`. Confirm its
-   `/k3s-cluster/volumes/opencode-data` is absent or empty; OpenCode uses this
-   separate host directory. Leave the old Hetzner directory intact.
-2. Set `llmWorkspaces.senaev.enabled: true`, keeping `vps: senaev-madrid`, and
-   deploy. The deleted claims are recreated; local-path provisions fresh volumes
-   on Madrid. The original retained PVs keep their old claim UIDs and must not
-   be cleared/rebound for this fresh start.
-3. Verify all three deployments are Ready on Madrid, claims are Bound to Madrid
-   PVs, and OpenCode/OMP login, Telegram and Code Tools work. Reclone repositories
-   and recreate logins/sessions as needed. Verify Datadog logs/traces, Grafana
-   node/pod health and absence of OOMs; run `npm run test:smoke`.
+- [PR #188](https://github.com/senaev/infra.senaev.com/pull/188) added the workspace
+  enable flag, disabled senaev for cutover, prepared Madrid placement and Datadog,
+  and removed workspace resource limits.
+- The user changed the three old Hetzner PVs to `Retain`, stopped the workspace,
+  and deleted `senaev-projects`, `senaev-code` and `senaev-omp-web-state` claims.
+- Commit `4f1a144e8c46cde43354e2fe3ffd154445590962` re-enabled senaev on Madrid.
+  The re-enable deployment succeeded, and the workspace started with fresh storage.
+- The user reported deleting the three old Hetzner storage directories,
+  `/k3s-cluster/volumes/opencode-data` on Hetzner, and all three old PV records.
+- [PR #189](https://github.com/senaev/infra.senaev.com/pull/189) made `enabled`
+  required and explicit for both workspaces. Its deployment also succeeded.
 
-Public DNS and Traefik stay on Hetzner; Services reach Madrid through the cluster.
-Physical capacity and admission defaults still apply; inspect live resource limits.
+## Verification
 
-## Recovery
+- Grafana confirmed all three senaev workspace pods on `senaev-madrid`, with
+  available replicas and zero container restarts at verification time. Galkin
+  also had an available replica.
+- Code Tools passed directory listing, file reading, command execution, repository
+  cloning, worktree creation, editing, committing and pushing checks through MCP.
+- `npm run check:helm` passed. Render checks covered enabled/disabled workspaces;
+  schema checks rejected missing and non-boolean enable flags.
+- `npm run test:smoke` passed all five public website checks.
+- The user subsequently confirmed that everything works, closing the remaining
+  functional checks for OpenCode, OMP and Telegram.
 
-Keep original PVs, files and OpenCode host state until the fresh workspace is
-accepted. To recover them, stop all workspace writers first, preserve any new
-Madrid work, and explicitly rebind the original retained volumes before deploying
-back to Hetzner. Simply reverting the node selector is insufficient once claims
-have been recreated on Madrid. Physical storage cleanup is a separate action.
+## Storage and future moves
+
+The Madrid workspace uses `senaev-projects`, `senaev-code` and
+`senaev-omp-web-state` PVCs, plus OpenCode's node-local directory
+`/k3s-cluster/volumes/opencode-data`. Local-path requested sizes are not enforced
+filesystem quotas.
+
+The old Hetzner data was intentionally deleted. It is no longer a rollback copy;
+reverting only the node selector cannot restore the previous workspace.
+For a future move that preserves data, stop all writers, back up both PVC data
+and OpenCode's host directory, copy and verify the files, then rebind volumes to
+the destination before starting the services. Keep recovery copies until verified.
