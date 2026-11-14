@@ -1,10 +1,17 @@
-# LLM workspace on Madrid
+# 2026-11-14 — LLM workspace on Madrid
+
+Move the senaev coding workspace from Hetzner to Madrid with a fresh start.
 
 Status: completed on 2026-11-14. The senaev workspace runs on `senaev-madrid`
 after an intentional fresh start. The user confirmed that everything works.
 No migration tasks remain.
 
-## Current configuration
+## Goal
+
+Run OpenCode, OMP and Code Tools on Madrid without workspace container resource
+limits, and remove the old Hetzner workspace storage.
+
+## Context
 
 | Workspace | Enabled | Node | Components |
 |---|---|---|---|
@@ -23,7 +30,7 @@ Public DNS and Traefik remain on Hetzner. Kubernetes Services reach the Madrid
 workspace through the cluster network. Datadog's node Agent and APM eligibility
 include Madrid.
 
-## Completed work
+## Plan — completed
 
 - [PR #188](https://github.com/senaev/infra.senaev.com/pull/188) added the workspace
   enable flag, disabled senaev for cutover, prepared Madrid placement and Datadog,
@@ -62,3 +69,9 @@ reverting only the node selector cannot restore the previous workspace.
 For a future move that preserves data, stop all writers, back up both PVC data
 and OpenCode's host directory, copy and verify the files, then rebind volumes to
 the destination before starting the services. Keep recovery copies until verified.
+
+## Result
+
+Completed and confirmed working by the user. No migration tasks remain.
+The old Hetzner data has been deleted; it is not available for rollback.
+See [project-worklog.md](project-worklog.md) for the completion record.
