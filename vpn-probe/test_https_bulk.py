@@ -1,4 +1,3 @@
-import os
 import json
 import subprocess
 import unittest
@@ -9,63 +8,53 @@ from metrics import ProbeMetrics
 import probe
 
 
-PAGE = '<script src="/_next/static/chunks/small.js"></script><script src="/_next/static/chunks/large.js"></script>'
-
-
 class HTTPSBulkTests(unittest.TestCase):
     @patch('probe.emit')
     @patch('probe.experiment_wait', return_value=False)
     @patch('probe.request')
-    def test_selects_large_asset_and_keeps_testing_after_failure(self, request, wait, emit):
-        request.side_effect = [({'ok': True}, PAGE), ({'ok': True, 'content_length': 1000}, ''),
-            ({'ok': True, 'content_length': 100000}, ''), ({'ok': True}, ''),
-            ({'ok': False}, ''), ({'ok': True}, '')]
-        self.assertFalse(probe.https_bulk_controls('test'))
-        self.assertEqual(request.call_count, 6)
-        self.assertEqual(request.call_args_list[0].kwargs, {"text_limit": 65536, "http1": True})
-        self.assertTrue(all(c.kwargs == {"head": True, "http1": True}
-                            for c in request.call_args_list[1:3]))
-        for call, size in zip(request.call_args_list[3:], [8192, 16384, 65536]):
-            self.assertEqual(call.args, ('https://senaev.com/_next/static/chunks/large.js', '', size))
-            self.assertEqual(call.kwargs, {'expected_status': 206, 'expected_bytes': size, 'range_bytes': size})
-        self.assertEqual([x.args[1] for x in emit.call_args_list], ['https_bulk_discovery',
-            'transfer_https_hetzner_8192', 'transfer_https_hetzner_16384', 'transfer_https_hetzner_65536'])
+    def test_fixed_endpoint_runs_all_sizes_after_failed_homepage(self, request, wait, emit):
+        request.side_effect = [({'ok': False, 'curl_exit': 28}, '')] + [({'ok': True}, '')] * 3
+        self.assertTrue(probe.https_bulk_controls('home'))
+        self.assertEqual(request.call_count, 4)
+        self.assertFalse(emit.call_args_list[0].args[3]['ok'])
+        self.assertEqual(request.call_args_list[0].kwargs, {'text_limit': 65536, 'http1': True})
+        for call, size in zip(request.call_args_list[1:], [8192, 16384, 65536]):
+            self.assertEqual(call.args, (f'https://senaev.com/api/vpn-test?bytes={size}', '', size))
+            self.assertEqual(call.kwargs, {'expected_bytes': size, 'http1': True})
+        self.assertTrue(all(c.args[3]['control_target'] == 'vpn-test-v1' for c in emit.call_args_list))
         self.assertTrue(60 <= wait.call_args_list[0].args[0] <= 90)
-        self.assertTrue(all(2 <= x.args[0] <= 7 for x in wait.call_args_list[1:]))
+        self.assertTrue(all(2 <= c.args[0] <= 7 for c in wait.call_args_list[1:]))
 
     @patch('probe.emit')
     @patch('probe.experiment_wait', return_value=False)
     @patch('probe.request')
-    def test_discovery_failure_and_foreign_asset_send_no_ranges(self, request, wait, emit):
-        for result, page in [({'ok': False}, PAGE), ({'ok': True}, '<script src="https://other.test/a.js"></script>')]:
-            request.reset_mock()
-            request.return_value = result, page
-            self.assertFalse(probe.https_bulk_controls('test'))
-            request.assert_called_once()
-            self.assertFalse(emit.call_args.args[3]['ok'])
+    def test_endpoint_failure_is_visible_without_retry_or_fallback(self, request, wait, emit):
+        request.side_effect = [({'ok': True}, '')] + [({'ok': False, 'http_status': 404}, '')] * 3
+        self.assertFalse(probe.https_bulk_controls('home'))
+        self.assertEqual(request.call_count, 4)
+        self.assertEqual([c.args[3]['http_status'] for c in emit.call_args_list[1:]], [404]*3)
 
     @patch('probe.emit')
-    @patch('probe.experiment_wait', side_effect=[False, False, True])
-    @patch('probe.request', side_effect=[({'ok': True}, PAGE),
-        ({'ok': True, 'content_length': 100000}, '')])
-    def test_stop_after_discovery_sends_no_payload(self, request, wait, emit):
-        self.assertFalse(probe.https_bulk_controls('test'))
-        self.assertEqual(request.call_count, 2)
+    @patch('probe.experiment_wait', side_effect=[False, True])
+    @patch('probe.request', return_value=({'ok': True}, ''))
+    def test_stop_after_homepage_sends_no_payload(self, request, wait, emit):
+        self.assertFalse(probe.https_bulk_controls('home'))
+        self.assertEqual(request.call_count, 1)
         self.assertEqual(emit.call_count, 1)
 
     @patch('probe.subprocess.run')
-    def test_real_request_options_reject_ignored_range_and_short_body(self, run):
-        for status, size, expected in [(206, 8192, True), (200, 8192, False), (206, 4096, False)]:
+    def test_real_request_options_require_200_and_exact_body(self, run):
+        for status, size, expected in [(200, 8192, True), (206, 8192, False), (200, 4096, False)]:
             def curl(command, **kwargs):
                 Path(command[command.index('--output') + 1]).write_bytes(b'x' * size)
                 return subprocess.CompletedProcess(command, 0, json.dumps({'http_code': status}), '')
             run.side_effect = curl
-            result, _ = probe.request('https://senaev.com/asset', '', 8192,
-                expected_status=206, expected_bytes=8192, range_bytes=8192)
+            result, _ = probe.request('https://senaev.com/api/vpn-test?bytes=8192', '', 8192,
+                expected_bytes=8192, http1=True)
             self.assertEqual(result['ok'], expected)
             command = run.call_args.args[0]
             self.assertIn('--http1.1', command)
-            self.assertEqual(command[command.index('--range') + 1], '0-8191')
+            self.assertNotIn('--range', command)
             self.assertEqual(command[command.index('--max-filesize') + 1], '8192')
             for flag in ['--location', '--retry', '--insecure', '--compressed']:
                 self.assertNotIn(flag, command)
@@ -111,37 +100,3 @@ class HTTPSBulkTests(unittest.TestCase):
         result, _ = probe.request('https://senaev.com/', '', 65536, http1=True)
         self.assertFalse(result['ok'])
         self.assertNotIn('http_version', result)
-
-    @patch.dict(os.environ, {'HTTPS_CONTROL_ASSET_PATH': '/_next/static/chunks/fixed.js'})
-    @patch('probe.emit')
-    @patch('probe.experiment_wait', return_value=False)
-    @patch('probe.request')
-    def test_failed_discovery_still_runs_all_configured_ranges(self, request, wait, emit):
-        request.side_effect = [({'ok': False, 'curl_exit': 28}, '')] + [({'ok': True}, '')] * 3
-        self.assertTrue(probe.https_bulk_controls('home'))
-        self.assertFalse(emit.call_args_list[0].args[3]['ok'])
-        self.assertFalse(emit.call_args_list[0].args[3]['asset_found'])
-        self.assertEqual(request.call_count, 4)
-        self.assertEqual([c.args[2] for c in request.call_args_list[1:]], [8192, 16384, 65536])
-        self.assertTrue(all(c.args[0] == 'https://senaev.com/_next/static/chunks/fixed.js'
-                            for c in request.call_args_list[1:]))
-        self.assertTrue(all(c.args[3]['asset_source'] == 'configured' for c in emit.call_args_list[1:]))
-
-    @patch.dict(os.environ, {'HTTPS_CONTROL_ASSET_PATH': '/_next/static/chunks/stale.js'})
-    @patch('probe.emit')
-    @patch('probe.experiment_wait', return_value=False)
-    @patch('probe.request')
-    def test_stale_asset_records_failures_without_retry_or_fallback(self, request, wait, emit):
-        request.side_effect = [({'ok': False}, '')] + [({'ok': False, 'http_status': 404}, '')] * 3
-        self.assertFalse(probe.https_bulk_controls('home'))
-        self.assertEqual(request.call_count, 4)
-        self.assertEqual([c.args[3]['http_status'] for c in emit.call_args_list[1:]], [404]*3)
-
-    @patch('probe.request')
-    def test_configured_path_cannot_change_origin_or_escape_static_chunks(self, request):
-        for path in ['https://elsewhere.test/a.js', '//elsewhere.test/a.js',
-                     '/_next/static/chunks/../a.js', '/_next/static/chunks/a.js?token=x']:
-            with patch.dict(os.environ, {'HTTPS_CONTROL_ASSET_PATH': path}):
-                with self.assertRaises(ValueError):
-                    probe.https_bulk_controls('home')
-        request.assert_not_called()

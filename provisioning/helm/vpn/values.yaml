@@ -52,8 +52,6 @@ vpnProbe:
   # Temporary controlled experiment; false restores all four routine profiles.
   controlledExperiment: true
   vps: senaev-media
-  # Verified >=64 KiB; update after website builds remove this asset. No retries/fallback.
-  httpsControlAssetPath: /_next/static/chunks/6b932d840e5ca137.js
   # UUID seeds identify subscription routes, including the IPv6 entry using seed 5.
   # "direct" compares the home exit to the probe's own public home IP.
   expectedExits:

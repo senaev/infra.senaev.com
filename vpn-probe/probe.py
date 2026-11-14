@@ -68,11 +68,8 @@ def client_config(link, base_uuid, public_key, port=1080, invalid=False):
             "streamSettings": stream}]}, seed[1]
 
 
-def request(url, proxy, max_bytes, expected_status=200, expected_bytes=None, timeout=8, head=False, range_bytes=None, text_limit=4096, http1=False):
+def request(url, proxy, max_bytes, expected_status=200, expected_bytes=None, timeout=8, head=False, text_limit=4096, http1=False):
     """Disable curlrc, redirects, retries and ambient proxy settings."""
-    if range_bytes is not None and (head or range_bytes not in (8192, 16384, 65536) or max_bytes != range_bytes
-                                    or expected_bytes != range_bytes or expected_status != 206):
-        raise ValueError("Unsupported HTTPS control range")
     if text_limit not in (4096, 65536):
         raise ValueError("Unsupported response text limit")
     with tempfile.TemporaryDirectory(prefix="vpn-response-") as folder:
@@ -81,10 +78,8 @@ def request(url, proxy, max_bytes, expected_status=200, expected_bytes=None, tim
         command = ["curl", "--disable", "--silent", "--show-error", "--fail",
                    "--proto", "=https", "--ipv4", "--connect-timeout", "3", "--max-time", str(timeout),
                    "--limit-rate", "32768"]
-        if http1 or range_bytes is not None:
+        if http1:
             command += ["--http1.1"]
-        if range_bytes is not None:
-            command += ["--range", f"0-{range_bytes - 1}"]
         # HEAD transfers no response body. Do not interpret Content-Length as
         # downloaded bytes or reject a healthy large page via --max-filesize.
         command += ["--head"] if head else ["--max-filesize", str(max_bytes)]
@@ -143,43 +138,24 @@ def emit(profile, check, route, result):
 
 
 def https_bulk_controls(profile, child=None):
-    """Ordinary HTTPS through the same public hostname; no VPN, new endpoint or worker."""
-    configured = os.environ.get("HTTPS_CONTROL_ASSET_PATH", "")
-    if configured and not re.fullmatch(r"/_next/static/chunks/[A-Za-z0-9_.-]+\.js", configured):
-        raise ValueError("Invalid HTTPS control asset path")
+    """Ordinary H1 homepage and independent exact-size responses; no VPN or worker."""
     experiment_id = str(uuid.uuid4())
     if experiment_wait(random.uniform(60, 90), child, profile, experiment_id) or STOP.is_set():
         return False
-    discovery, page = request("https://senaev.com/", "", 65536, text_limit=65536, http1=True)
-    asset = None
-    if discovery["ok"]:
-        candidates = re.findall(r'src="(/_next/static/chunks/[A-Za-z0-9_.-]+\.js)"', page)[:4]
-        for path in dict.fromkeys(candidates):
-            if experiment_wait(random.uniform(2, 7), child, profile, experiment_id) or STOP.is_set():
-                return False
-            metadata, _ = request("https://senaev.com" + path, "", 0, head=True, http1=True)
-            if metadata["ok"] and metadata.get("content_length", 0) >= 65536:
-                asset = "https://senaev.com" + path
-                break
-    ready = discovery["ok"] and asset is not None
+    discovery, _ = request("https://senaev.com/", "", 65536, text_limit=65536, http1=True)
     emit(profile, "https_bulk_discovery", "direct", {
-        **discovery, "ok": ready, "experiment_id": experiment_id,
-        "asset_found": asset is not None})
-    if configured:
-        asset = "https://senaev.com" + configured
-    if asset is None:
-        return False
-    # A configured asset makes ranges independent; discovery still reports its own failure.
+        **discovery, "experiment_id": experiment_id, "control_target": "vpn-test-v1"})
+    # A homepage failure must not prevent the independent endpoint controls.
     passed = True
     for size in (8192, 16384, 65536):
         jitter = random.uniform(2, 7)
         if experiment_wait(jitter, child, profile, experiment_id) or STOP.is_set():
             return False
-        result, _ = request(asset, "", size, expected_status=206,
-                            expected_bytes=size, range_bytes=size)
+        result, _ = request(f"https://senaev.com/api/vpn-test?bytes={size}", "", size,
+                            expected_bytes=size, http1=True)
         emit(profile, f"transfer_https_hetzner_{size}", "direct", {
             **result, "experiment_id": experiment_id, "requested_bytes": size,
-            "asset_source": "configured" if configured else "discovered",
+            "control_target": "vpn-test-v1",
             "request_jitter_seconds": jitter})
         passed = result["ok"] and passed
     return passed
