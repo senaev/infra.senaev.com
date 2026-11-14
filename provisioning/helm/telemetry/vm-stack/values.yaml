@@ -1,6 +1,6 @@
-# Before deploying: complete the retained-volume cutover in
-# projects/2026-11-14-18-42-migrate-telemetry-to-madrid/migration.md.
-# nodeSelector does not relocate existing local-path volumes.
+# Migration stage 1: stop central telemetry on Hetzner before manually copying data.
+# Keep Grafana/VMSingle objects and PVCs; only scale their writers to zero.
+# Enable and Madrid placement follow in a separate PR after the data copy.
 victoria-metrics-k8s-stack:
   # Victoria Metrics Operator is installed separately
   # https://docs.victoriametrics.com/helm/victoria-metrics-k8s-stack/#install-operator-separately
@@ -12,8 +12,9 @@ victoria-metrics-k8s-stack:
 
   grafana:
     enabled: true
+    replicas: 0 # Stop the writer without deleting the chart-managed PVC.
     nodeSelector:
-      vps: senaev-madrid
+      vps: hetzner
     annotations:
       secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
     # Keeps the Grafana database across restarts: the mcp-grafana service account and its
@@ -49,6 +50,7 @@ victoria-metrics-k8s-stack:
             - grafana.senaev.com
 
   vmsingle:
+    enabled: true
     ingress:
       enabled: true
       ingressClassName: traefik-hetzner
@@ -63,17 +65,20 @@ victoria-metrics-k8s-stack:
         - hosts:
             - victoriametrics.senaev.com
     spec:
+      replicaCount: 0 # Native operator shutdown; keep metrics PVC/data.
       retentionPeriod: "3"
       nodeSelector:
-        vps: senaev-madrid
+        vps: hetzner
 
   vmagent:
+    enabled: false
     spec:
       scrapeInterval: 30s
       nodeSelector:
-        vps: senaev-madrid
+        vps: hetzner
 
   alertmanager:
+    enabled: false
     ingress:
       enabled: true
       ingressClassName: traefik-hetzner
@@ -90,7 +95,7 @@ victoria-metrics-k8s-stack:
     spec:
       externalURL: https://alertmanager.senaev.com
       nodeSelector:
-        vps: senaev-madrid
+        vps: hetzner
     useManagedConfig: true
     config:
       route:
@@ -110,6 +115,7 @@ victoria-metrics-k8s-stack:
               send_resolved: true
 
   vmalert:
+    enabled: false
     ingress:
       enabled: true
       ingressClassName: traefik-hetzner
@@ -126,11 +132,12 @@ victoria-metrics-k8s-stack:
     spec:
       evaluationInterval: 30s
       nodeSelector:
-        vps: senaev-madrid
+        vps: hetzner
 
   kube-state-metrics:
+    enabled: false
     nodeSelector:
-      vps: senaev-madrid
+      vps: hetzner
 
 smokepingProber:
   enabled: true
@@ -180,8 +187,8 @@ iperf3Monitor:
     - source: senaev-madrid
       target: firstvds
   scheduler:
-    enabled: true
-    vps: senaev-madrid
+    enabled: false
+    vps: hetzner
     port: 9579
     pauseBetweenTests: 300
     scrapeInterval: 30s

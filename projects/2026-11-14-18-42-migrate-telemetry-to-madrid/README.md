@@ -1,70 +1,50 @@
 # 2026-11-14 — Migrate telemetry from Hetzner to senaev-madrid
 
-Move Grafana, the VictoriaMetrics stack and associated telemetry data to Madrid, preserving history and documenting rollback.
+Stop through Helm, copy stored data manually, enable on Madrid in a second PR.
 
 ## Goal
 
-Relocate central telemetry services and persistent state from Hetzner to `senaev-madrid`, the worker VM on `proxmox-madrid`. Preserve metrics history, Grafana dashboards, users, datasource identities, alerting configuration and other persisted state. Prevent avoidable collection gaps and document remaining outage risks.
-
-**Status: implementation prepared; no migration or deployment has started.**
-
-**Do not merge until steps 1–4 of the [migration runbook](migration.md) are complete.** Main auto-deploys placement changes; node-local PVCs require a separate stopped-data transfer and replacement binding.
+Move central telemetry to the existing Madrid worker. Accept a maintenance window and loss of disposable runtime state. No migration helpers, special tests or additional monitoring infrastructure.
 
 ## Context
 
-Source configuration at baseline `d269c50f` (desired state, not live inventory). This PR changes central placement to Madrid:
+**PR #186 is now the disable stage only; it deploys before copying.** All source selectors remain Hetzner. Madrid activation belongs to a second PR.
 
-| Component | Current configuration | Scope |
+Repository/vendored-chart storage findings (not a live volume inspection):
+
+| Service | Storage | Disable stage |
 | --- | --- | --- |
-| Grafana | `vps: hetzner`, 1Gi persistent volume, SQLite | Application, complete data volume, configuration and secret dependencies |
-| VMSingle | `vps: hetzner`, retentionPeriod `3` | Service and full metrics history; discover actual volume/path |
-| vmagent | `vps: hetzner`, 30s scrapes, no explicit persistent queue volume in wrapper values | Move collector; accept a scraping interruption |
-| VMAlert / Alertmanager | `vps: hetzner`, Telegram via cluster-helper | Evaluation, routing and persisted state if present |
-| VM operator | Separate chart, `vps: hetzner` | Move to Madrid; prepatch CR placement while stopped before merge |
-| Grafana MCP | `senaev-com`, `vps: hetzner` | Move stateless bridge to Madrid |
-| kube-state-metrics / iperf scheduler | `vps: hetzner` | Central helpers; preserve probe coverage and measurement meaning |
-| Node exporters / distributed probes | Distributed by node | Keep node-local collection and probe endpoints on their respective nodes |
-| Logs / traces | No dedicated backend chart found under telemetry | Inventory actual deployment; do not assume VictoriaLogs or Loki exists |
+| Grafana | Chart-managed 1Gi PVC, no Helm keep annotation | enabled true, replicas zero; retain claim |
+| VMSingle | Operator-managed PVC, default 20Gi | enabled true, replicaCount zero; retain CR/claim |
+| vmagent | No persistent queue configured | enabled false; unsent ephemeral data disposable |
+| Alertmanager | No persistent storage configured | enabled false; runtime state disposable |
+| vmalert | No local persistent storage configured | enabled false |
+| kube-state-metrics / iperf scheduler / Grafana MCP | No application database | disabled |
+| VM operator | Controller, no telemetry database | stays on Hetzner to reconcile shutdown |
+| Distributed probes/exporters | Measurement sources on each node | stay distributed |
 
-Sources:
-- [VM stack values](../../provisioning/helm/telemetry/vm-stack/values.yaml)
-- [VM operator values](../../provisioning/helm/telemetry/vm-operator/values.yaml)
-- [Telemetry templates](../../provisioning/helm/telemetry/vm-stack/templates/)
-- [Grafana MCP configuration](../../provisioning/helm/senaev-com/values.yaml)
-- [Madrid host variables](../../terraform/variables.tf)
-- [Earlier ClickHouse logging proposal](../2026-10-18-15-06-clickhouse-logs-stack/README.md), which is not evidence of deployed storage.
+The important datasets are PVC-backed, not directly mounted hostPath in application values. A PVC may use a local host directory, but its deletion can also delete that directory under a Delete reclaim policy. Inspect live PV paths/policies before deleting claims. This PR adds no retention annotations or backup components.
 
-Public Grafana, VictoriaMetrics and alerting ingress currently uses `traefik-hetzner`. Datadog is external: preserve its coverage; its backend data does not need copying between hosts. Moving telemetry does not move the K3s control plane off Hetzner or remove that dependency.
+Sources: [stack values](../../provisioning/helm/telemetry/vm-stack/values.yaml), [vendored charts](../../provisioning/helm/telemetry/vm-stack/charts/), [operator](../../provisioning/helm/telemetry/vm-operator/values.yaml), [Grafana MCP](../../provisioning/helm/senaev-com/values.yaml).
+
+No log/trace backend is defined in telemetry charts; discover any additional live data before transferring it. Datadog storage is external. Public ingress/DNS and control plane stay on Hetzner.
 
 ## Plan
 
-1. **Inventory.** Identify data directories, PVC/PV bindings, versions and central workloads. Save configuration and confirm Madrid disk space.
-2. **Disable temporarily.** Pause deployments and the VM operator, stop vmagent gracefully while storage is available, then stop remaining central services. Keep original volumes/data.
-3. **Copy manually.** Copy complete stopped directories to Madrid with numeric ownership preserved; checksum copies. Keep software versions and Grafana secrets unchanged.
-4. **Attach copies.** Manually create replacement Madrid PVs and recreate original claim names against them. Prepare Madrid CR selectors with operator stopped, before merge.
-5. **Enable and check.** Merge placement changes, follow deployment, check history, fresh metrics, Grafana and alerts. Keep Hetzner data until accepted.
+1. Merge disable PR and follow deployment until central writers terminate.
+2. Inspect actual claims/PVs/directories. Copy complete stopped directories to Madrid, preserving ownership and permissions; checksum.
+3. Manually prepare destination volume bindings while services remain stopped. Inspect reclaim policy before deleting any source claim.
+4. Prepare a second PR restoring normal replicas/enabled flags and moving central placement to Madrid. Merge only after data and bindings are ready.
+5. Check historical data, fresh ingestion, Grafana/MCP and alerts. Keep source data until acceptance; cleanup is separate.
 
-### Rollback
-
-Keep source volumes, configuration and independent backups throughout acceptance. Define service/ingress switch-back and collector routing before cutover. After Madrid accepts samples or Grafana edits, the old copy is stale: preserve/reconcile new writes before rollback or explicitly record the resulting loss. Avoid duplicate alert evaluators and Grafana writers. Do not delete or rebind production PVCs as an improvised recovery step.
-
-### Execution boundaries
-
-Use reviewable implementation pull requests. This PR changes placement values and documents manual stop/copy/start commands. No migration helpers, special tests or additional monitoring components are added. It performs no automatic data transfer or deletion. Follow repository safeguards for Madrid connectivity; do not incidentally alter Tailscale, routes or firewall. Provide exact cluster-changing commands and rollback commands for the user to execute under the repository workflow.
+See [manual procedure](migration.md).
 
 ## Verification
 
-- Existing Grafana URL works; dashboards, users, datasource UIDs, alerts and service-account access survive.
-- Grafana MCP lists dashboards and queries historical and current metrics.
-- Fixed historical queries match baseline results; fresh samples arrive from all previous targets. Explain unexpected `up == 0` series.
-- A controlled Telegram alert fires and resolves without duplicate notifications.
-- Existing logs/traces, if discovered, remain queryable; measure gaps and delivery delay.
-- Services mount Madrid volumes; pod replacement and a planned VM restart retain state and restore ingestion.
-- Run `npm run test:smoke` after deployment and inspect Grafana/Datadog health and scoped errors.
-- Record a tested restore/rollback procedure; retain backups until acceptance.
+Existing Helm lint/render checks: Grafana/VMSingle render at zero with storage intact; other central workloads absent. No custom tests added. After disable deployment, inspect stopped pods and remaining claims. After activation, check data and existing monitoring; record the collection gap.
 
 ## Result
 
-Prepared Madrid placement for Grafana, VMSingle, vmagent, vmalert, Alertmanager, kube-state-metrics, iperf scheduler, VM operator and Grafana MCP. Added [migration runbook](migration.md). Distributed collection stays on source nodes. Live inventory, transfer and deployment remain pending. The stopped-collector procedure has a documented scraping interruption.
+Disable-stage code prepared; no cluster writes, claim deletions or data transfers performed. Live PV paths/policies still need inventory in the user's personal-cluster terminal.
 
-See [project worklog](project-worklog.md).
+See [worklog](project-worklog.md).
