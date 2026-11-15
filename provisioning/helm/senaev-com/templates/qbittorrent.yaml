@@ -186,7 +186,7 @@ spec:
       volumes:
         - name: config
           hostPath:
-            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}/config
+            path: {{ .Values.global.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}/config
             type: DirectoryOrCreate
         - name: default-config
           configMap:
@@ -207,11 +207,11 @@ spec:
                 mode: 0644
         - name: downloads
           hostPath:
-            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}/downloads
+            path: {{ .Values.global.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}/downloads
             type: DirectoryOrCreate
         - name: never-remove
           hostPath:
-            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.neverRemove }}
+            path: {{ .Values.global.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.neverRemove }}
             type: DirectoryOrCreate
 ---
 apiVersion: v1

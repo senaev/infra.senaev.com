@@ -23,7 +23,7 @@ def port():
 
 def main():
     rendered = subprocess.check_output(['helm', 'template', 'vpn', 'provisioning/helm/vpn',
-        '-f', 'provisioning/helm/common-values.yaml', '-f', 'provisioning/helm/vpn/values.yaml'], text=True)
+        '-f', 'provisioning/helm/global-values.yaml', '-f', 'provisioning/helm/vpn/values.yaml'], text=True)
     document = next(d for d in rendered.split('---') if 'name: xray-vpn-firstvds-config-template\n' in d)
     config = json.JSONDecoder().raw_decode(document.split('full-config.json: |', 1)[1].lstrip())[0]
     assert all(o['protocol'] == 'socks' for o in config['outbounds']), 'Entry has a non-proxy outbound'

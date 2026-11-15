@@ -141,7 +141,7 @@ spec:
       volumes:
         - name: models
           hostPath:
-            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.llmServer.modelsVolumePath }}
+            path: {{ .Values.global.mediaServerStoragePath }}/{{ .Values.llmServer.modelsVolumePath }}
             type: DirectoryOrCreate
         {{- if .Values.llmServer.gpu }}
         - name: dri

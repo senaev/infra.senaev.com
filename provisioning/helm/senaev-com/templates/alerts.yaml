@@ -64,9 +64,9 @@ spec:
       rules:
         - alert: node-connectivity-failed-to-node-media
           expr: |
-            kube_node_status_condition{node="{{ .Values.mediaServerNodeName }}", condition="Ready", status="true"} != 1
+            kube_node_status_condition{node="{{ .Values.global.mediaServerNodeName }}", condition="Ready", status="true"} != 1
             or
-            absent(kube_node_status_condition{node="{{ .Values.mediaServerNodeName }}"})
+            absent(kube_node_status_condition{node="{{ .Values.global.mediaServerNodeName }}"})
           for: 60s
           labels:
             severity: critical

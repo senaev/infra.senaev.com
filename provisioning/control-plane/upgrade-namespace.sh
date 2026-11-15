@@ -18,7 +18,7 @@ RELEASE_NAME="${1##*/}"
 NS="$2"
 shift 2
 
-COMMON_VALUES="$HELM_PATH/common-values.yaml"
+GLOBAL_VALUES="$HELM_PATH/global-values.yaml"
 
 LOG_PREFIX="[upgrade-namespace $RELEASE_NAME $NS]"
 
@@ -39,7 +39,7 @@ fi
 echo "👉 $LOG_PREFIX Helm upgrade release=[$RELEASE_NAME] namespace=[$NS]"
 helm upgrade --install "$RELEASE_NAME" "$CHART_PATH" \
 -n "$NS" \
--f "$COMMON_VALUES" \
+-f "$GLOBAL_VALUES" \
 -f "$CHART_PATH/values.yaml" \
 --take-ownership "$@"
 echo "✅ $LOG_PREFIX Helm upgrade release=[$RELEASE_NAME] namespace=[$NS]"

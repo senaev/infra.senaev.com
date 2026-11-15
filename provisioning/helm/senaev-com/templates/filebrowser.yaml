@@ -69,11 +69,11 @@ spec:
       volumes:
         - name: config
           hostPath:
-            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.filebrowser.volumePath }}
+            path: {{ .Values.global.mediaServerStoragePath }}/{{ .Values.filebrowser.volumePath }}
             type: DirectoryOrCreate
         - name: data
           hostPath:
-            path: {{ .Values.mediaServerStoragePath }}
+            path: {{ .Values.global.mediaServerStoragePath }}
             type: DirectoryOrCreate
 ---
 apiVersion: v1

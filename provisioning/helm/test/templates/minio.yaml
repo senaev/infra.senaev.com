@@ -55,7 +55,7 @@ spec:
       volumes:
         - name: data
           hostPath:
-            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.minio.volumePath }}
+            path: {{ .Values.global.mediaServerStoragePath }}/{{ .Values.minio.volumePath }}
             type: DirectoryOrCreate
 ---
 apiVersion: v1
