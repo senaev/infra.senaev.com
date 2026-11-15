@@ -25,7 +25,8 @@ RUN npm install --global --no-audit --no-fund @anthropic-ai/claude-code@2.1.325 
 
 ENV HOME=/home/claude \
     DISABLE_UPDATES=1
-COPY claude-code/start.sh /app/
+COPY claude-code/package.json claude-code/start.sh /app/
+COPY claude-code/telegram-login /app/telegram-login
 
 WORKDIR /code
 ENTRYPOINT ["/usr/bin/tini", "-g", "--"]

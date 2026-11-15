@@ -1,6 +1,6 @@
 {{- define "senaev-com.llmWorkspace.claudeCode" -}}
 {{- if .Values.claudeCode.enabled }}
-{{- $keys := list .Values.git.githubToken .Values.git.sshPrivateKey }}
+{{- $keys := list .Values.git.githubToken .Values.git.sshPrivateKey .Values.claudeCode.telegram.token .Values.claudeCode.telegram.allowedUser }}
 {{ include "senaev-com.llmWorkspace.componentSecret" (dict "name" (printf "%s-claude-code-env" .Values.name) "namespace" .Release.Namespace "keys" $keys) }}
 ---
 apiVersion: apps/v1
@@ -80,6 +80,31 @@ spec:
               mountPath: /CLAUDE.md
               subPath: CLAUDE.md
               readOnly: true
+        # Logs in from Telegram and warns before the login expires. It has the bot token, so it
+        # runs apart from Claude Code, which has no approvals; both share the login in HOME.
+        - name: telegram-login
+          image: ghcr.io/senaev/claude-code:latest
+          imagePullPolicy: Always
+          args: ["node", "/app/telegram-login/main.ts"]
+          securityContext:
+{{ include "senaev-com.llmWorkspace.containerAccess" . | indent 12 }}
+          resources:
+            requests:
+              memory: 128Mi
+          env:
+            - name: TELEGRAM_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ printf "%s-claude-code-env" $.Values.name }}
+                  key: {{ .Values.claudeCode.telegram.token }}
+            - name: TELEGRAM_USER_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ printf "%s-claude-code-env" $.Values.name }}
+                  key: {{ .Values.claudeCode.telegram.allowedUser }}
+          volumeMounts:
+            - name: data
+              mountPath: /home/claude
       volumes:
         # The login, the trust answers and the session history.
         - name: data

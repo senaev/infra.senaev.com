@@ -1,5 +1,13 @@
 # Worklog
 
+## 2026-11-15 20:55 UTC — Telegram login written, checked locally
+
+Decisions made with the user: bot @senaev_claude_helper_bot, token in Vault `TG_TOKEN_CLAUDE_HELPER_BOT`, passed in `claudeCode.telegram.token` of `values.yaml`; `/auth` is the command for a login at any time; a warning 5 days before the expiry; direct messages to the user. The chat id is not a separate value: in a private chat it equals the user id, so `claudeCode.telegram.allowedUser` (`TG_SENAEV_USER_ID`) is both the allowed user and the chat.
+
+Design: a second container `telegram-login` in the same pod, so the bot token stays out of the container where Claude Code runs without approvals. Code is in `claude-code/telegram-login/`; Node 24 runs the TypeScript directly, so there are no dependencies and no lockfile. A package without a lockfile is still in `npm run typecheck` and in the vitest projects.
+
+Checked locally: 36 unit tests (all under 100 ms), eslint and `tsc` pass. The tests found a real bug: the link was taken from the first output chunk, before it was complete; it now waits for the white space after it. In the built image, with the real `claude` CLI and no terminal: `claude auth status` is parsed, `claude auth login` prints a link of 497 characters with `state=`, and a wrong code gives `exit code 1` with "That code wasn't accepted". The Telegram part was checked only with a fake `fetch`: a fake token gives `HTTP 401` without the token in the message. Not checked: the real bot in the deploy.
+
 ## 2026-11-15 19:30 UTC — PR #205 deployed, login done, service works
 
 PR [#205](https://github.com/senaev/infra.senaev.com/pull/205) (merge commit `ff53aee`) was merged. Deploy run `43751913273` succeeded, including the image build and the public-pull check. The login of the test pod was not reused (the data folder was not moved), so the user logged in with `kubectl exec -it ... claude auth login`. The pod noticed within 30 seconds and started the server:

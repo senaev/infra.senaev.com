@@ -291,7 +291,8 @@
             "additionalProperties": false,
             "required": [
               "enabled",
-              "model"
+              "model",
+              "telegram"
             ],
             "properties": {
               "enabled": {
@@ -301,6 +302,27 @@
                 "description": "The model of new sessions: an alias such as sonnet, or a full model name",
                 "type": "string",
                 "minLength": 1
+              },
+              "telegram": {
+                "description": "The bot that sends the login link and the expiry warning, and takes the login code",
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "token",
+                  "allowedUser"
+                ],
+                "properties": {
+                  "token": {
+                    "description": "The Vault key of the bot token",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "allowedUser": {
+                    "description": "The Vault key of the Telegram user id. It is also the id of the private chat, the only chat the bot answers in",
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
               }
             }
           },

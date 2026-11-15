@@ -1,0 +1,7 @@
+{
+  "name": "claude-code",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Telegram login helper next to Claude Code Remote Control. Node runs the TypeScript directly, so there are no dependencies.",
+  "type": "module"
+}

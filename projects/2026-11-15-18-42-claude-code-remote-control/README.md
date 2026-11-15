@@ -52,7 +52,11 @@ Run Claude Code (Pro subscription) in a container of the `senaev` LLM workspace,
    - `podAccess`, `containerAccess` and `egress` helpers. A NetworkPolicy with no ingress.
 4. ✅ `AGENTS.md`: a section about the component.
 5. ✅ Deploy: PR [#205](https://github.com/senaev/infra.senaev.com/pull/205). The login of the test pod was not reused, so the first login was `kubectl -n senaev-com exec -it deploy/senaev-claude-code -- claude auth login`. The pod then started the server by itself. The ghcr package was already public.
-6. 📌 At the end: Telegram login flow with a new bot. The start script runs `claude auth login` with a FIFO, sends the URL to Telegram, reads the code from the reply, and warns a few days before `loginExpiresAt`.
+6. 📌 Telegram login: a second container `telegram-login` in the pod (same image, `claude-code/telegram-login/`, Node runs the TypeScript). The bot is @senaev_claude_helper_bot, token in Vault `TG_TOKEN_CLAUDE_HELPER_BOT`, values `claudeCode.telegram`.
+   - The bot answers only in the private chat with the user `TG_SENAEV_USER_ID`. In a private chat the chat id is the user id, so there is no separate chat id value.
+   - `/auth` starts `claude auth login`, sends the link, takes the code from the next message, deletes that message, and says until when the login is valid.
+   - Every 10 minutes it checks `claude auth status`. Not logged in: it sends the link, again every 6 hours. From 5 days before `loginExpiresAt`: a warning once a day.
+   - The bot token is only in this container, not in the container where Claude Code runs without approvals. A renewal writes the login file in the shared `HOME`; if the running server does not take it, the server stops at the expiry, the container restarts and reads it.
 
 ## Open points
 
