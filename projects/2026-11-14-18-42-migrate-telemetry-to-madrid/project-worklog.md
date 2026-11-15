@@ -1,5 +1,13 @@
 # Project worklog
 
+## 2026-11-15 00:03 UTC — Close migration; repair secondary datasource separately
+
+User requested a separate maintenance PR, no new project, and closure of this project in that PR. PR #192 merged as 07fcf0cb; deployment run 43654869486 succeeded. Post-deployment monitoring verified no LLM Deployment/pod/Service, no LLM alert evaluation series, 58 scrape targets with min(up)=1, and five public smoke checks passed. Old telemetry datasets/PVs were already deleted by the user.
+
+User declined Proxmox backups after inspection showed no scheduled jobs; no backup configuration was changed. Restart/reboot recovery remains untested optional follow-up. Migration is completed.
+
+Secondary datasource diagnosis: primary VictoriaMetrics datasource health OK; VictoriaMetrics (DS) returns `Plugin not registered`, and its victoriametrics-metrics-datasource plugin is absent. The vendored chart provisions both datasources but leaves plugin installation optional. Add grafana.plugins in Helm values, preserving datasource IDs and data. Helm lint and offline template rendering passed; the rendered Grafana configuration includes the plugin. Deployment and live secondary health verification remain pending merge of this maintenance PR.
+
 ## 2026-11-14 23:44 UTC — User completed retired source cleanup
 
 User ran the guarded cleanup block: both source PVs were Released/Retain before the two exact source directories were removed, followed by:

@@ -100,7 +100,7 @@ Grafana MCP moves into the telemetry namespace and vm-stack release, deploying t
 
 PR #191 is deployed. The first attempt failed because the manual `kubectl-patch` manager owned `spec.paused: true`, conflicting with Helm's `false`. The user atomically tested replicaCount zero and patched only paused false; retrying the failed deployment then succeeded without global force-conflict settings. For future migrations, account for manual field ownership before resuming through server-side apply.
 
-Post-deploy verification: ten central pods ready on Madrid, both expected volume bindings and capacities, 59/59 scrapes up, historical data queryable, Grafana MCP tools through cluster-helper successful, Madrid log-generator delivery and five public smoke checks passed. Retain original Hetzner data; cleanup and restart/reboot checks are separate follow-up actions. See worklog for evidence and the pre-existing optional datasource plugin issue.
+Post-deploy verification: ten central pods ready on Madrid, both expected volume bindings and capacities, 59/59 scrapes up, historical data queryable, Grafana MCP tools through cluster-helper successful, Madrid log-generator delivery and five public smoke checks passed. The user subsequently deleted the two retired Hetzner datasets and PV objects after guarded Released/Retain checks. Migration is complete; restart/reboot checks remain optional. See worklog for evidence and the pre-existing optional datasource plugin issue.
 
 ## Authorized source cleanup
 

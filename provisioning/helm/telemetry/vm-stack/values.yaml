@@ -11,6 +11,9 @@ victoria-metrics-k8s-stack:
 
   grafana:
     enabled: true
+    # Required by the chart-provisioned VictoriaMetrics (DS) datasource.
+    plugins:
+      - victoriametrics-metrics-datasource
     replicas: 1
     nodeSelector:
       vps: senaev-madrid

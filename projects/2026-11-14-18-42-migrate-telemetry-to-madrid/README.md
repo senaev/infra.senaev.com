@@ -1,6 +1,6 @@
 # 2026-11-14 — Migrate telemetry from Hetzner to senaev-madrid
 
-Stop through Helm, copy stored data manually, enable on Madrid in a second PR.
+**Status: completed.** Central telemetry and its existing data now run on Madrid.
 
 ## Goal
 
@@ -51,9 +51,8 @@ Migration activated and verified. PR #191 merged as `d6541378`; [deployment atte
 
 The optional secondary native VictoriaMetrics datasource plugin remains missing, with identical errors confirmed on Hetzner before migration; the primary datasource works. No synthetic alert or VM-restart test was run. User completed the guarded deletion of both retired Hetzner directories and PV objects; both PV deletion confirmations were received. Source paths and guarded cleanup commands are in the runbook. Only the two old telemetry datasets are in scope.
 
-Remaining work:
-- Merge/deploy the follow-up disabling the Helm-managed llama.cpp `llm-server` on senaev-media and removing `llm-server-restarted`; verify service/scrape/alerts disappear. Model files are retained.
-- Optional follow-up: observe longer, validate restart/reboot recovery and review backup coverage for manually provisioned volumes. These are not new migration test infrastructure.
-- Existing missing optional native datasource plugin is a separate issue; the primary datasource and migration work.
+Project closed: PR #192 merged as `07fcf0cb` and [deployment](https://github.com/senaev/infra.senaev.com/actions/runs/43654869486) succeeded. The Helm-managed llama.cpp server on senaev-media is disabled, its restart alert removed, and deployment/pod/service/scrape/alert absence verified. All 58 remaining scrape targets were up and five public smoke checks passed. Model files are retained.
+
+The user explicitly declined Proxmox backups. Restart/reboot recovery checks were not performed and are optional future work, not migration blockers. The pre-existing secondary datasource issue is handled by a separate maintenance PR enabling its missing Grafana plugin; post-deployment plugin health must still be checked. No new project or migration infrastructure was created.
 
 See [worklog](project-worklog.md).
