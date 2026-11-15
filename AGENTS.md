@@ -359,8 +359,10 @@ makes outbound connections only, and the NetworkPolicy has no ingress. It is ena
   (`claude auth status` shows `loginExpiresAt`, about 30 days):
   `kubectl -n senaev-com exec -it deploy/senaev-claude-code -- claude auth login`. Until then
   the pod waits and checks every 30 seconds. Do not set `ANTHROPIC_API_KEY` or `ANTHROPIC_BASE_URL`.
-- `dataPath` is a node folder mounted as `HOME`: the login, the trust answers and the session
-  history. It keeps the sessions across restarts. Do not delete it.
+- `<clusterRootPath>/volumes/claude-code` (`/k3s-cluster/volumes/claude-code`) is a node folder
+  mounted as `HOME`: the login, the trust answers and the session history. It keeps the sessions
+  across restarts. Do not delete it. The folder name is fixed in the template, as for OpenCode
+  (`volumes/opencode-data`); two workspaces on one node would share it.
 - Sessions run without approvals (`bypassPermissions`) as root; `IS_SANDBOX=1` allows this in the
   container. The git token and SSH key of the workspace are in the pod. The model of new sessions
   is `claudeCode.model`; the phone can change it with `/model`.

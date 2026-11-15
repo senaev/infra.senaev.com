@@ -84,7 +84,7 @@ spec:
         # The login, the trust answers and the session history.
         - name: data
           hostPath:
-            path: {{ .Values.claudeCode.dataPath }}
+            path: {{ .Values.global.clusterRootPath }}/volumes/claude-code
             type: DirectoryOrCreate
         - name: ssh
           secret:

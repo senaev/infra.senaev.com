@@ -232,7 +232,6 @@ llmWorkspaces:
     opencode:
       enabled: true
       hostname: opencode.senaev.com
-      dataPath: /k3s-cluster/volumes/opencode-data
       mcpOAuth:
         hostname: opencode.senaev.com
         # All remote MCPs share one callback; authorize one server at a time.
@@ -254,7 +253,6 @@ llmWorkspaces:
     # See projects/2026-11-15-18-42-claude-code-remote-control/README.md
     claudeCode:
       enabled: true
-      dataPath: /k3s-cluster/volumes/claude-code
       model: sonnet
   galkin:
     enabled: true

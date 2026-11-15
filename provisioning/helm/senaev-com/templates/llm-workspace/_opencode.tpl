@@ -234,7 +234,7 @@ spec:
           emptyDir: {}
         - name: opencode-data
           hostPath:
-            path: {{ .Values.opencode.dataPath }}
+            path: {{ .Values.global.clusterRootPath }}/volumes/opencode-data
             type: DirectoryOrCreate
         - name: ssh-key
           secret:

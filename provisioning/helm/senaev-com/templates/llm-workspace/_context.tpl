@@ -2,6 +2,7 @@
 {{- define "senaev-com.llmWorkspace.component" -}}
 {{- $values := deepCopy .workspace -}}
 {{- $_ := set $values "name" .name -}}
+{{- $_ := set $values "global" .root.Values.global -}}
 {{- range $component := list "opencode" "ompWeb" "codeTools" "claudeCode" -}}
   {{- if not (hasKey $values $component) -}}{{ $_ := set $values $component (dict "enabled" false) }}{{- end -}}
 {{- end -}}
