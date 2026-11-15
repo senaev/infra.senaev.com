@@ -1,5 +1,25 @@
 # Project worklog
 
+## 2026-11-15 10:25 UTC — hostPath cutover done, verified, old data removed
+
+Order of events: PR #198 (`global-values.yaml`) merged and its full deploy finished green. The user did the bulk copy to `.grafana.tmp` and `.victoriametrics.tmp` (311M and 5.8G; owner `472:472` for Grafana, same as the old directory). PR #197 merged as `9793cb3d`. Its deploy run 43701323162 stopped the old Grafana and VMSingle pods; the new pods stayed in `ContainerCreating` with `FailedMount ... hostPath type check failed: /k3s-cluster/volumes/grafana is not a directory`, as designed. The user then ran the final `rsync --delete` (checksum dry run empty, owner check passed) and renamed both directories into place. The pods started within about two minutes.
+
+The first attempt of the deploy job failed after the 300 s Helm wait (`Deployment/vm-stack-grafana not ready, Available: 0/1`), as expected, because the pods waited for the copy. Rerunning only the failed job (`gh run rerun 43701323162 --failed`) succeeded once the pods were ready. For a next cutover like this one, expect that red first attempt.
+
+Verified after the cutover:
+- Grafana and VMSingle pods ready on `senaev-madrid`, 0 restarts; 58 of 58 scrape targets up.
+- The user's `kubectl` output shows the pods mount `/k3s-cluster/volumes/grafana` and `/k3s-cluster/volumes/victoriametrics`.
+- No collection gap: a strict 30 s window series (`count(last_over_time(up[30s]))`) over the last hour has no missing step. vmagent kept running during the cutover and sent its buffered samples when VMSingle returned. Data from one day earlier is queryable.
+- Grafana: the user logged in; 3 datasources (including the plugin one) and 22 dashboards (including the 5 custom ones) are intact; the MCP service account works through Grafana MCP.
+- Alertmanager up; vmalert evaluates 178 rules; no PVC left for Grafana, the VMSingle claim is unused.
+- Five public smoke tests passed.
+
+Not verified: Telegram alert delivery (no synthetic alert) and error logs of the new pods (Datadog has no logs for these pods).
+
+Cleanup (step 5 in [migration.md](migration.md#5-cleanup-after-acceptance-separate-action)) was authorized by the user right after verification, instead of waiting a day, and done by the user. Their guarded block deleted the claims, but `kubectl delete pvc` hung: the VMSingle claim was made by the VictoriaMetrics operator (owner `VMSingle`) and had its finalizer `apps.victoriametrics.com/finalizer`, which the operator no longer removes once `spec.storage` is unset. The user removed that finalizer with a guarded `kubectl patch` (three checks: `deletionTimestamp` set, that finalizer is the only one, no pod uses a claim); the claim then disappeared and the PV was `Released`. The user closed the stuck first block, so the PVs were deleted by a second guarded block (phase `Released` and policy `Retain` checked first); both PVs now return `NotFound` and `telemetry` has no claims. On `senaev-madrid`, the guarded block checked `grafana.db` and a non-empty VictoriaMetrics directory in the new paths, listed the old folder (only `grafana` and `victoriametrics`), removed both old directories and `/k3s-cluster/volumes/telemetry`; both new directories remain. The rollback option is gone. The finalizer step is now in the runbook.
+
+After the cleanup the agent checked from outside: Grafana and VMSingle ready with 0 restarts, 58 of 58 targets up, about 1.8M samples ingested in 5 minutes, VMSingle data 154 MB, node disk 89% free.
+
 ## 2026-11-15 09:10 UTC — Follow-up: move Grafana and VMSingle data from PVCs to hostPath
 
 The user asked to replace the two hand-made static PVs with plain host directories, and to copy the data to new standard paths under `/k3s-cluster/volumes` instead of reusing the old directories, then delete the old data after acceptance. Scope: only Grafana and VMSingle; the LLM workspace PVCs are out of scope. The live PVs show the old directories `/k3s-cluster/volumes/telemetry/grafana` and `.../victoriametrics` (local, `Retain`, node affinity `senaev-madrid`).
@@ -11,7 +31,7 @@ Decisions:
 - `type: Directory` on both volumes. The deploy stops the old pods, and the new pods wait for the directory, so the final copy happens with both databases stopped and without any manual patch of Helm-owned fields (the cause of the `spec.paused` conflict on 2026-11-14).
 - Old directories and PVs stay until the user accepts the result, then a guarded cleanup.
 
-Helm lint of all charts (`npm run check:helm`) and `helm template` with `-f global-values.yaml -f values.yaml` pass: both paths render as `/k3s-cluster/volumes/...`, no PVC is rendered, the VMSingle CR has only the hostPath volume. Not deployed. The runbook is in [migration.md](migration.md#follow-up-hostpath-instead-of-pvcs-2026-11-15).
+Helm lint of all charts (`npm run check:helm`) and `helm template` with `-f global-values.yaml -f values.yaml` pass: both paths render as `/k3s-cluster/volumes/...`, no PVC is rendered, the VMSingle CR has only the hostPath volume. Deployed later the same day (see the entry above). The runbook is in [migration.md](migration.md#follow-up-hostpath-instead-of-pvcs-2026-11-15).
 
 ## 2026-11-15 00:03 UTC — Close migration; repair secondary datasource separately
 

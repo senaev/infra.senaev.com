@@ -162,7 +162,7 @@ Helm stops the old Grafana and VMSingle pods and starts new ones. The new pods w
 kubectl -n telemetry get pods -o wide -w
 ```
 
-Wait until the old Grafana and VMSingle pods are gone. The deploy waits at most 300 s for readiness. If it fails while you copy, run the failed job again after step 4.
+Wait until the old Grafana and VMSingle pods are gone. The deploy waits at most 300 s for readiness. If it fails while you copy, run the failed job again once the pods are ready (`gh run rerun <run-id> --failed`). This happened on 2026-11-15: the first attempt failed with `Available: 0/1` and the rerun passed.
 
 ### 3. Final copy and switch (on senaev-madrid), only after the old pods are gone
 
@@ -217,11 +217,27 @@ First on Hetzner. It checks that no pod uses a claim and that the PVs keep their
 )
 ```
 
+The `delete pvc` line can hang. The VMSingle claim was made by the VictoriaMetrics operator (owner `VMSingle`) and carries its finalizer `apps.victoriametrics.com/finalizer`. With `spec.storage` unset, the operator no longer manages the claim and never removes that finalizer, so the claim stays `Terminating` and `kubectl` waits (this happened on 2026-11-15). The Grafana claim has no such problem: Helm deletes it. In a second terminal, remove the finalizer only if all three checks pass; then the first block continues and deletes the PVs:
+
+```bash
+(
+  set -eu
+  pvc=vmsingle-vm-stack-victoria-metrics-k8s-stack
+  test -n "$(kubectl -n telemetry get pvc $pvc -o jsonpath='{.metadata.deletionTimestamp}')"
+  test "$(kubectl -n telemetry get pvc $pvc -o jsonpath='{.metadata.finalizers[*]}')" = apps.victoriametrics.com/finalizer
+  test -z "$(kubectl -n telemetry get pods -o jsonpath='{.items[*].spec.volumes[*].persistentVolumeClaim.claimName}')"
+  kubectl -n telemetry patch pvc $pvc --type=merge -p '{"metadata":{"finalizers":null}}'
+)
+```
+
 Then on `senaev-madrid`:
 
 ```bash
 (
   set -eu
+  sudo test -f /k3s-cluster/volumes/grafana/grafana.db
+  sudo test -n "$(sudo ls -A /k3s-cluster/volumes/victoriametrics)"
+  sudo ls -A /k3s-cluster/volumes/telemetry
   sudo test -d /k3s-cluster/volumes/grafana
   sudo test -d /k3s-cluster/volumes/victoriametrics
   sudo rm -rf -- /k3s-cluster/volumes/telemetry/grafana /k3s-cluster/volumes/telemetry/victoriametrics
