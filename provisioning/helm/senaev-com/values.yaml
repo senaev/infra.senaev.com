@@ -254,7 +254,7 @@ llmWorkspaces:
       # @senaev_claude_helper_bot. The chat is the private chat of the user with the bot: its id is the user id.
       telegram:
         token: TG_TOKEN_CLAUDE_HELPER_BOT
-        allowedUser: TG_SENAEV_USER_ID
+        user: TG_SENAEV_USER_ID
   galkin:
     enabled: true
     vps: galkin

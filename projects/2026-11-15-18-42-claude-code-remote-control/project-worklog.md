@@ -1,5 +1,9 @@
 # Worklog
 
+## 2026-11-15 21:30 UTC — `claudeCode.telegram.allowedUser` renamed to `user`
+
+The user asked for the shorter name. Only the new `claudeCode.telegram` block changed; the `telegram.allowedUser` of OpenCode is untouched. The Vault key is the same, `TG_SENAEV_USER_ID`. The older records below use the old name.
+
 ## 2026-11-15 21:20 UTC — Telegram helper reuses senaev-utils
 
 The user asked to reuse code that other containers already have. The first version had its own Telegram client, `requireEnv`, logger and shutdown. `claude-code` is now a service like `vpn-subscription` and `code-tools`: `senaev-utils` as a `file:` dependency, `tsx`, a lockfile, and the Dockerfile pattern with the repository root as context. Reused: `callTelegramApi` (`getUpdates`, `deleteMessage`), `sendTelegramMessage` (the Rich Markdown entry point of the repo, with `escapeTelegramMarkdown` and `telegramLink`), `getTelegramCommandFromMessage`, the Telegram types, `requireEnv`, `createLogger` (pino), `installGracefulShutdown`, `promiseTimeout`, `stringifyUnknownError`. Not reused, because nothing fits: the `getUpdates` polling loop (the other bots use a webhook), the runner of `claude auth login` (it needs stdin and the output as it comes; `runProcess` is private to `code-tools`) and the expiry logic. This removed about 100 lines. The messages are now Rich Markdown, and the login link is a clickable link.

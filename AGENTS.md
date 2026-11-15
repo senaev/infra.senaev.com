@@ -362,7 +362,7 @@ makes outbound connections only, and the NetworkPolicy has no ingress. It is ena
   `senaev-utils` for the Telegram calls, the message formatting, the logger and the shutdown)
   renews the login from Telegram. The bot is @senaev_claude_helper_bot, with the
   token in Vault `TG_TOKEN_CLAUDE_HELPER_BOT`. It answers only in the private chat with the user
-  `claudeCode.telegram.allowedUser` (`TG_SENAEV_USER_ID`; the chat id is the user id). `/auth`
+  `claudeCode.telegram.user` (`TG_SENAEV_USER_ID`; the chat id is the user id). `/auth`
   sends a login link; the user opens it and sends the code from the page back; the bot deletes
   that message. When nobody is logged in it says so once, with no link. From 5 days before
   `loginExpiresAt` it warns once a day. It runs apart from

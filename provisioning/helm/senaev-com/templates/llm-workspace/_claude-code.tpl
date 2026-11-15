@@ -1,6 +1,6 @@
 {{- define "senaev-com.llmWorkspace.claudeCode" -}}
 {{- if .Values.claudeCode.enabled }}
-{{- $keys := list .Values.git.githubToken .Values.git.sshPrivateKey .Values.claudeCode.telegram.token .Values.claudeCode.telegram.allowedUser }}
+{{- $keys := list .Values.git.githubToken .Values.git.sshPrivateKey .Values.claudeCode.telegram.token .Values.claudeCode.telegram.user }}
 {{ include "senaev-com.llmWorkspace.componentSecret" (dict "name" (printf "%s-claude-code-env" .Values.name) "namespace" .Release.Namespace "keys" $keys) }}
 ---
 apiVersion: apps/v1
@@ -101,7 +101,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ printf "%s-claude-code-env" $.Values.name }}
-                  key: {{ .Values.claudeCode.telegram.allowedUser }}
+                  key: {{ .Values.claudeCode.telegram.user }}
           volumeMounts:
             - name: data
               mountPath: /home/claude
