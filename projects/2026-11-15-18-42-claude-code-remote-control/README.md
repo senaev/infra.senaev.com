@@ -42,16 +42,19 @@ Run Claude Code (Pro subscription) in a container of the `senaev` LLM workspace,
 ## Plan
 
 1. ✅ PR [#204](https://github.com/senaev/infra.senaev.com/pull/204): remove `/projects` from OpenCode and Code Tools. Merged and deployed.
-2. 📌 Image `claude-code/`: `Dockerfile` (Node, Claude Code at a pinned version, git, gh, openssh-client) and `start.sh`.
+2. ✅ Image `claude-code/`: `Dockerfile` (Node, Claude Code at a pinned version, git, gh, openssh-client) and `start.sh`.
    - `start.sh` merges the two trust keys into `~/.claude.json`.
    - It checks `claude auth status`. When not logged in, it logs a message and checks again every 30 seconds, so a login through `kubectl exec` needs no restart.
-   - It runs `claude remote-control --spawn same-dir --permission-mode bypassPermissions --model sonnet --remote-control-session-name-prefix <workspace>` in `/code`, with `IS_SANDBOX=1`.
-3. 📌 Chart `_claude-code.tpl`, added to `llm-workspaces.yaml`, `_context.tpl`, `_workspace.tpl` and `values.schema.json`; `claudeCode` entry in `values.yaml` for `senaev` only.
+   - It runs `claude remote-control --spawn same-dir --permission-mode bypassPermissions --settings <file with the model>` in `/code`. The session name prefix is the env variable `CLAUDE_REMOTE_CONTROL_SESSION_NAME_PREFIX`. The `--model` flag is not carried over to the sessions of the server, so the model goes in the settings file.
+3. ✅ Chart `_claude-code.tpl`, added to `llm-workspaces.yaml`, `_context.tpl`, `_workspace.tpl` and `values.schema.json`; `claudeCode` entry in `values.yaml` for `senaev` only.
    - Deployment: one replica, `Recreate`, node selector `vps`. Mounts: hostPath as `HOME`, `<name>-code` at `/code`, the instructions ConfigMap as `/AGENTS.md` and `/CLAUDE.md` (Claude Code reads `CLAUDE.md` of a parent folder).
    - Git credentials as in `_code-tools.tpl`; `IS_SANDBOX=1`.
    - `podAccess`, `containerAccess` and `egress` helpers. A NetworkPolicy with no ingress.
-4. 📌 `AGENTS.md`: a section about the component.
-5. 📌 Deploy. Log in with `kubectl exec -it`. The login of the test pod is reused: on the node, `mv /k3s-cluster/volumes/claude-code-spike /k3s-cluster/volumes/claude-code` before the first start, so no new login is needed.
+4. ✅ `AGENTS.md`: a section about the component.
+5. 📌 Deploy (pull request of this branch).
+   - Before the merge: delete the test pod, and on the node `senaev-madrid` run `mv /k3s-cluster/volumes/claude-code-spike /k3s-cluster/volumes/claude-code`. The pod creates an empty folder if this one is missing, and then the login of the test pod is not reused.
+   - The first image build fails the check "published image is publicly pullable": a new ghcr package is private. Make the package `claude-code` public, then re-run the failed jobs.
+   - Log in if needed: `kubectl -n senaev-com exec -it deploy/senaev-claude-code -- claude auth login`.
 6. 📌 At the end: Telegram login flow with a new bot. The start script runs `claude auth login` with a FIFO, sends the URL to Telegram, reads the code from the reply, and warns a few days before `loginExpiresAt`.
 
 ## Open points

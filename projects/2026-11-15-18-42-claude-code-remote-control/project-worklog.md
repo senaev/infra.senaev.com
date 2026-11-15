@@ -1,5 +1,17 @@
 # Worklog
 
+## 2026-11-15 19:05 UTC — Image and chart written, checked locally
+
+Branch `claude-code-container`: image `claude-code/` (Node 24, Claude Code 2.1.325 pinned, the OMP tool set), `start.sh`, the template `_claude-code.tpl`, schema, `values.yaml` entry for `senaev`, `AGENTS.md` section.
+
+Decisions made while writing:
+- The model goes through `--settings <file>`: the docs say `--model` before `remote-control` is not carried over to the sessions of the server.
+- The session name prefix is the env variable `CLAUDE_REMOTE_CONTROL_SESSION_NAME_PREFIX`, and the pod `hostname` is fixed, so the device keeps its name when the pod name changes.
+- No readiness probe: a probe on the login would fail the first deploy.
+- `DISABLE_UPDATES=1`: the version is pinned in the image.
+
+Checked locally: `helm template` diff against `origin/main` has only additions (185 lines); the schema rejects `claudeCode` without `git` and an empty `model`; `npm run check:helm` and `npm run check:shell` pass; `start.sh` merges the trust keys into an existing and a new `~/.claude.json`; the image builds for `linux/amd64`, has `claude`, `gh`, `helm`, `yq`, `rg`; without a login the container prints "Claude Code is not logged in. Waiting for: claude auth login" and stops on SIGTERM. Not checked: the live pod (needs the deploy).
+
 ## 2026-11-15 18:50 UTC — PR #204 merged and deployed
 
 PR [#204](https://github.com/senaev/infra.senaev.com/pull/204) (merge commit `2b1e748`) removed `/projects` from OpenCode, its Telegram bot and Code Tools. Deploy run `43748337383` succeeded: check, builds of `opencode-serve` and `opencode-telegram-bot`, sync, Helm deploy.
