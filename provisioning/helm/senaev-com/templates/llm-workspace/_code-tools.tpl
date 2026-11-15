@@ -30,7 +30,7 @@ spec:
         configmap.reloader.stakater.com/reload: {{ printf "%s-instructions" .Values.name | quote }}
     spec:
 {{ include "senaev-com.llmWorkspace.podAccess" . | indent 6 }}
-      # ReadWriteOnce permits all workspace pods to mount the projects disk on the same node.
+      # ReadWriteOnce permits all workspace pods to mount the code disk on the same node.
       nodeSelector:
         vps: {{ .Values.vps }}
       initContainers:
@@ -93,8 +93,6 @@ spec:
               port: http
             periodSeconds: 5
           volumeMounts:
-            - name: projects
-              mountPath: /projects
             - name: code
               mountPath: /code
             - name: ssh-dir
@@ -116,9 +114,6 @@ spec:
         - name: instructions
           configMap:
             name: {{ printf "%s-instructions" .Values.name }}
-        - name: projects
-          persistentVolumeClaim:
-            claimName: {{ printf "%s-projects" .Values.name }}
         - name: code
           persistentVolumeClaim:
             claimName: {{ printf "%s-code" .Values.name }}

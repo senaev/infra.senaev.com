@@ -283,8 +283,8 @@ Code Tools has its own image (`code-tools/Dockerfile`,
 `ghcr.io/senaev/code-tools`), Deployment and Service
 (`provisioning/helm/senaev-com/templates/llm-workspace/_code-tools.tpl`). OpenCode and its Telegram
 bot stay in the `senaev-opencode-telegram` Deployment. Both pods, and OMP, mount the
-workspace's `senaev-projects` PVC at `/projects` and its `senaev-code` PVC at `/code`; the
-workspace `vps` node selector puts them on one node. Code Tools and OpenCode use one replica
+workspace's `senaev-code` PVC at `/code`; only OMP also mounts its `senaev-projects` PVC at
+`/projects`. The workspace `vps` node selector puts them on one node. Code Tools and OpenCode use one replica
 and `Recreate`; a Code Tools update still has a short outage and loses in-memory operation IDs.
 
 The code tools take absolute paths and work in any folder. The repository layout under
@@ -316,8 +316,8 @@ are enabled.
 
 LLM workspace values live in `llmWorkspaces`, and the templates in
 `provisioning/helm/senaev-com/templates/llm-workspace/`. The entry name prefixes all
-resource names. Each workspace has its own projects PVC (`<name>-projects`) and
-instructions ConfigMap (`<name>-instructions`, from `instructionsPath`), and enables any of
+resource names. Each workspace has its own code PVC (`<name>-code`), a projects PVC
+(`<name>-projects`, rendered only when OMP is enabled) and instructions ConfigMap (`<name>-instructions`, from `instructionsPath`), and enables any of
 OpenCode, OMP and Code Tools. OpenCode requires `git` and `telegram`; Code Tools requires
 OpenCode. A new entry inherits nothing from another; the schema is
 `provisioning/helm/senaev-com/values.schema.json`.
