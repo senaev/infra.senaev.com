@@ -1,9 +1,3 @@
 {
-  "extends": "../tsconfig.base.json",
-  "compilerOptions": {
-    "allowImportingTsExtensions": true,
-    "erasableSyntaxOnly": true,
-    "noEmit": true
-  },
-  "include": ["telegram-login"]
+  "extends": "../tsconfig.base.json"
 }

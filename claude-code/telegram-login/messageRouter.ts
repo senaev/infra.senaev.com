@@ -1,5 +1,7 @@
-import type { LoginAssistant } from './loginAssistant.ts';
-import type { TelegramMessage } from './telegram.ts';
+import { getTelegramCommandFromMessage } from 'senaev-utils/src/utils/TelegramApi/getTelegramCommandFromMessage/getTelegramCommandFromMessage';
+import type { TelegramMessage } from 'senaev-utils/src/utils/TelegramApi/types';
+
+import type { LoginAssistant } from './loginAssistant';
 
 export type MessageRouterDependencies = {
     // The user id and the chat id are the same in a private chat, so one number is the only allowed chat.
@@ -8,24 +10,26 @@ export type MessageRouterDependencies = {
     deleteMessage(chatId: number, messageId: number): Promise<void>;
 };
 
-const AUTH_COMMAND = /^\/auth(@\w+)?$/;
-
 export function createMessageRouter(dependencies: MessageRouterDependencies): (message: TelegramMessage) => Promise<void> {
     return async (message) => {
         // Strangers get no answer at all, so the bot does not show that it exists.
-        if (message.userId !== dependencies.allowedUserId || message.chatId !== dependencies.allowedUserId) {
+        if (message.from?.id !== dependencies.allowedUserId || message.chat.id !== dependencies.allowedUserId) {
             return;
         }
 
-        const text = message.text.trim();
+        const text = message.text?.trim();
 
-        if (AUTH_COMMAND.test(text)) {
-            await dependencies.assistant.handleAuthCommand();
-
+        if (text === undefined || text === '') {
             return;
         }
 
-        if (text.startsWith('/')) {
+        const command = getTelegramCommandFromMessage(text);
+
+        if (command !== undefined) {
+            if (command.commandName === 'auth') {
+                await dependencies.assistant.handleAuthCommand();
+            }
+
             return;
         }
 
@@ -33,7 +37,7 @@ export function createMessageRouter(dependencies: MessageRouterDependencies): (m
 
         if (wasCode) {
             // The code works once and is already used, but it does not need to stay in the chat.
-            await dependencies.deleteMessage(message.chatId, message.messageId).catch(() => undefined);
+            await dependencies.deleteMessage(message.chat.id, message.message_id).catch(() => undefined);
         }
     };
 }

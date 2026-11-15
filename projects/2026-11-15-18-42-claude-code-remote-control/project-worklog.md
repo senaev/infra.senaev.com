@@ -1,5 +1,11 @@
 # Worklog
 
+## 2026-11-15 21:20 UTC — Telegram helper reuses senaev-utils
+
+The user asked to reuse code that other containers already have. The first version had its own Telegram client, `requireEnv`, logger and shutdown. `claude-code` is now a service like `vpn-subscription` and `code-tools`: `senaev-utils` as a `file:` dependency, `tsx`, a lockfile, and the Dockerfile pattern with the repository root as context. Reused: `callTelegramApi` (`getUpdates`, `deleteMessage`), `sendTelegramMessage` (the Rich Markdown entry point of the repo, with `escapeTelegramMarkdown` and `telegramLink`), `getTelegramCommandFromMessage`, the Telegram types, `requireEnv`, `createLogger` (pino), `installGracefulShutdown`, `promiseTimeout`, `stringifyUnknownError`. Not reused, because nothing fits: the `getUpdates` polling loop (the other bots use a webhook), the runner of `claude auth login` (it needs stdin and the output as it comes; `runProcess` is private to `code-tools`) and the expiry logic. This removed about 100 lines. The messages are now Rich Markdown, and the login link is a clickable link.
+
+Checked: 36 tests, eslint and `tsc` pass; the image builds with the new layout, `tsx` starts the helper, and with a fake token the error is `HTTP 401` and has no token in it.
+
 ## 2026-11-15 21:00 UTC — Logged-out notice without a link
 
 The user asked that the bot does not send the login link by itself when Claude Code is logged out: it tells the user once, and the user sends `/auth` for the link. The logged-out notice is sent once for each loss of the login. While making this change I removed a bug: a check that found the user logged in cancelled a login that waited for a code, so a renewal with `/auth` before the expiry could fail within 10 minutes. A waiting login now stays until a code, or a new `/auth`. The tests cover both (38 tests).

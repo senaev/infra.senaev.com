@@ -25,9 +25,19 @@ RUN npm install --global --no-audit --no-fund @anthropic-ai/claude-code@2.1.325 
 
 ENV HOME=/home/claude \
     DISABLE_UPDATES=1
-COPY claude-code/package.json claude-code/start.sh /app/
-COPY claude-code/telegram-login /app/telegram-login
+
+# Built from the repository root: the Telegram helper links senaev-utils with a file:
+# dependency, as the other services do. Its own dependencies are installed next to it,
+# because Node resolves a linked module's imports from its real path.
+COPY senaev-utils/package*.json /app/senaev-utils/
+COPY claude-code/package*.json /app/claude-code/
+WORKDIR /app/senaev-utils
+RUN npm ci --omit=dev
+WORKDIR /app/claude-code
+RUN npm ci --omit=dev
+COPY senaev-utils/src /app/senaev-utils/src
+COPY claude-code /app/claude-code
 
 WORKDIR /code
 ENTRYPOINT ["/usr/bin/tini", "-g", "--"]
-CMD ["bash", "/app/start.sh"]
+CMD ["bash", "/app/claude-code/start.sh"]

@@ -85,7 +85,7 @@ spec:
         - name: telegram-login
           image: ghcr.io/senaev/claude-code:latest
           imagePullPolicy: Always
-          args: ["node", "/app/telegram-login/main.ts"]
+          args: ["/app/claude-code/node_modules/.bin/tsx", "/app/claude-code/telegram-login/main.ts"]
           securityContext:
 {{ include "senaev-com.llmWorkspace.containerAccess" . | indent 12 }}
           resources:

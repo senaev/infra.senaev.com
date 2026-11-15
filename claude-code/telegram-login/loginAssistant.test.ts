@@ -1,17 +1,22 @@
+import { escapeTelegramMarkdown, telegramLink } from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
 import {
     describe, expect, it, vi,
 } from 'vitest';
 
-import type { AuthStatus } from './claude.ts';
-import type { LoginResult, LoginSession } from './login.ts';
+import type { AuthStatus } from './claude';
+import type { LoginResult, LoginSession } from './login';
 import {
     createLoginAssistant, EXPIRY_NOTICE_REPEAT_MS,
-} from './loginAssistant.ts';
+} from './loginAssistant';
 
 const NOW = new Date('2026-12-10T12:00:00.000Z');
 const DAY_MS = 24 * 60 * 60 * 1000;
 const LINK = 'https://claude.com/cai/oauth/authorize?state=abc';
-const LINK_MESSAGE = `Open this link, log in to your Claude account, and send me the code from the page:\n${LINK}`;
+const plain = escapeTelegramMarkdown;
+const LINK_MESSAGE = `${plain('Open the link, log in to your Claude account, and send me the code from the page.')}\n\n${telegramLink({
+    text: 'Log in to Claude',
+    url: LINK,
+})}`;
 
 const LOGGED_OUT: AuthStatus = {
     loggedIn: false,
@@ -42,8 +47,8 @@ function setup(initialStatus: AuthStatus, sessions: LoginSession[] = []) {
     const assistant = createLoginAssistant({
         getAuthStatus: () => Promise.resolve(status),
         startLogin: () => sessions.shift() ?? createSession(),
-        send: (text) => {
-            sent.push(text);
+        sendMarkdown: (markdown) => {
+            sent.push(markdown);
 
             return Promise.resolve();
         },
@@ -90,7 +95,7 @@ describe('the /auth command', () => {
 
         await assistant.handleAuthCommand();
 
-        expect(sent).toEqual(['Could not start the login: no link']);
+        expect(sent).toEqual([plain('Could not start the login: no link')]);
         expect(failing.cancel).toHaveBeenCalledOnce();
     });
 });
@@ -101,7 +106,7 @@ describe('a login code', () => {
 
         await expect(assistant.handleText('code')).resolves.toBe(false);
 
-        expect(sent).toEqual(['No login is waiting for a code. Send /auth to start one.']);
+        expect(sent).toEqual([plain('No login is waiting for a code. Send /auth to start one.')]);
     });
 
     it('goes to the login command without the spaces around it, and the user hears until when the login is valid', async () => {
@@ -113,7 +118,7 @@ describe('a login code', () => {
 
         expect(wasCode).toBe(true);
         expect(session.submitCode).toHaveBeenCalledWith('the-code#state');
-        expect(sent.at(-1)).toBe('Logged in. The login is valid until 2027-01-09.');
+        expect(sent.at(-1)).toBe(plain('Logged in. The login is valid until 2027-01-09.'));
     });
 
     it('is reported when the login fails, and the next text starts nothing', async () => {
@@ -129,8 +134,8 @@ describe('a login code', () => {
         await expect(assistant.handleText('bad')).resolves.toBe(true);
         await assistant.handleText('bad again');
 
-        expect(sent.at(-2)).toBe('The login failed: exit code 1: invalid code\nSend /auth to try again.');
-        expect(sent.at(-1)).toBe('No login is waiting for a code. Send /auth to start one.');
+        expect(sent.at(-2)).toBe(plain('The login failed: exit code 1: invalid code\nSend /auth to try again.'));
+        expect(sent.at(-1)).toBe(plain('No login is waiting for a code. Send /auth to start one.'));
     });
 
     it('is reported as a failure when the command succeeded but Claude Code is still logged out', async () => {
@@ -140,6 +145,7 @@ describe('a login code', () => {
         await assistant.handleText('code');
 
         expect(sent.at(-1)).toContain('still not logged in');
+        expect(sent.at(-1)).toContain('failed');
     });
 });
 
@@ -164,8 +170,8 @@ describe('the login check', () => {
         await assistant.checkLogin();
 
         expect(sent).toEqual([
-            'The Claude login expires on 2026-12-15 (in 5 days). Send /auth to renew it.',
-            'The Claude login expires on 2026-12-15 (in 4 days). Send /auth to renew it.',
+            plain('The Claude login expires on 2026-12-15 (in 5 days). Send /auth to renew it.'),
+            plain('The Claude login expires on 2026-12-15 (in 4 days). Send /auth to renew it.'),
         ]);
     });
 
@@ -192,7 +198,7 @@ describe('the login check', () => {
         advance(7 * DAY_MS);
         await assistant.checkLogin();
 
-        expect(sent).toEqual(['Claude Code is logged out. Send /auth to log in.']);
+        expect(sent).toEqual([plain('Claude Code is logged out. Send /auth to log in.')]);
     });
 
     it('says it again when the login is lost a second time', async () => {
@@ -216,7 +222,7 @@ describe('the login check', () => {
         const assistant = createLoginAssistant({
             getAuthStatus: () => Promise.resolve(LOGGED_OUT),
             startLogin: () => createSession(),
-            send,
+            sendMarkdown: send,
             now: () => NOW,
         });
 
@@ -238,6 +244,6 @@ describe('the login check', () => {
 
         expect(session.cancel).not.toHaveBeenCalled();
         expect(session.submitCode).toHaveBeenCalledWith('the-code#state');
-        expect(sent.at(-1)).toContain('Logged in.');
+        expect(sent.at(-1)).toBe(plain('Logged in. The login is valid until 2026-12-13.'));
     });
 });

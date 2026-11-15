@@ -2,7 +2,7 @@ import {
     afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
 
-import { startLogin, type LoginProcess } from './login.ts';
+import { startLogin, type LoginProcess } from './login';
 
 const LINK = 'https://claude.com/cai/oauth/authorize?code=true&state=abc';
 const TIMEOUTS = {

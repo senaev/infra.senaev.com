@@ -1,10 +1,14 @@
-import type { AuthStatus } from './claude.ts';
-import type { LoginSession } from './login.ts';
+import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
+import { escapeTelegramMarkdown, telegramLink } from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
+
+import type { AuthStatus } from './claude';
+import type { LoginSession } from './login';
 
 export type AssistantDependencies = {
     getAuthStatus(): Promise<AuthStatus>;
     startLogin(): LoginSession;
-    send(text: string): Promise<void>;
+    // Telegram Rich Markdown.
+    sendMarkdown(markdown: string): Promise<void>;
     now(): Date;
 };
 
@@ -13,6 +17,7 @@ export type LoginAssistant = {
     // Returns true when the text was taken as a login code, so the caller can delete the message.
     handleText(text: string): Promise<boolean>;
     checkLogin(): Promise<void>;
+    stop(): void;
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -29,6 +34,10 @@ export function createLoginAssistant(dependencies: AssistantDependencies): Login
     let loggedOutNoticeSent = false;
     let lastExpiryNoticeAt: number | null = null;
 
+    function sendText(text: string): Promise<void> {
+        return dependencies.sendMarkdown(escapeTelegramMarkdown(text));
+    }
+
     function cancelSession(): void {
         session?.cancel();
         session = null;
@@ -42,11 +51,15 @@ export function createLoginAssistant(dependencies: AssistantDependencies): Login
 
         try {
             const url = await newSession.authorizationUrl;
+            const intro = escapeTelegramMarkdown('Open the link, log in to your Claude account, and send me the code from the page.');
 
-            await dependencies.send(`Open this link, log in to your Claude account, and send me the code from the page:\n${url}`);
+            await dependencies.sendMarkdown(`${intro}\n\n${telegramLink({
+                text: 'Log in to Claude',
+                url,
+            })}`);
         } catch (error) {
             cancelSession();
-            await dependencies.send(`Could not start the login: ${error instanceof Error ? error.message : String(error)}`);
+            await sendText(`Could not start the login: ${stringifyUnknownError(error)}`);
         }
     }
 
@@ -59,7 +72,7 @@ export function createLoginAssistant(dependencies: AssistantDependencies): Login
             const waitingSession = session;
 
             if (waitingSession === null) {
-                await dependencies.send('No login is waiting for a code. Send /auth to start one.');
+                await sendText('No login is waiting for a code. Send /auth to start one.');
 
                 return false;
             }
@@ -71,13 +84,13 @@ export function createLoginAssistant(dependencies: AssistantDependencies): Login
             if (status?.loggedIn === true) {
                 lastExpiryNoticeAt = null;
                 loggedOutNoticeSent = false;
-                await dependencies.send(status.loginExpiresAt === null
+                await sendText(status.loginExpiresAt === null
                     ? 'Logged in.'
                     : `Logged in. The login is valid until ${formatDate(status.loginExpiresAt)}.`);
             } else {
                 const reason = result.ok ? 'the login command finished, but Claude Code is still not logged in' : result.reason;
 
-                await dependencies.send(`The login failed: ${reason}\nSend /auth to try again.`);
+                await sendText(`The login failed: ${reason}\nSend /auth to try again.`);
             }
 
             return true;
@@ -90,7 +103,7 @@ export function createLoginAssistant(dependencies: AssistantDependencies): Login
             if (!status.loggedIn) {
                 // Once for each time the login is lost. The user asks for a link with /auth.
                 if (!loggedOutNoticeSent) {
-                    await dependencies.send('Claude Code is logged out. Send /auth to log in.');
+                    await sendText('Claude Code is logged out. Send /auth to log in.');
                     loggedOutNoticeSent = true;
                 }
 
@@ -115,8 +128,12 @@ export function createLoginAssistant(dependencies: AssistantDependencies): Login
                 lastExpiryNoticeAt = now;
                 const daysLeft = Math.max(0, Math.ceil(msLeft / DAY_MS));
 
-                await dependencies.send(`The Claude login expires on ${formatDate(status.loginExpiresAt)} (in ${daysLeft} days). Send /auth to renew it.`);
+                await sendText(`The Claude login expires on ${formatDate(status.loginExpiresAt)} (in ${daysLeft} days). Send /auth to renew it.`);
             }
+        },
+
+        stop() {
+            cancelSession();
         },
     };
 }

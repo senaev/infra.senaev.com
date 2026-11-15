@@ -2,7 +2,7 @@ import {
     describe, expect, it,
 } from 'vitest';
 
-import { getAuthStatus, parseAuthStatus } from './claude.ts';
+import { getAuthStatus, parseAuthStatus } from './claude';
 
 describe('parseAuthStatus', () => {
     it('reads the login state and the expiry date', () => {

@@ -358,8 +358,9 @@ makes outbound connections only, and the NetworkPolicy has no ingress. It is ena
   not `claude setup-token`, so no Vault secret holds it. It expires after about 30 days
   (`claude auth status` shows `loginExpiresAt`). Until a login exists the main container waits
   and checks every 30 seconds. Do not set `ANTHROPIC_API_KEY` or `ANTHROPIC_BASE_URL`.
-- The `telegram-login` container (`claude-code/telegram-login/`, Node runs the TypeScript, no
-  dependencies) renews the login from Telegram. The bot is @senaev_claude_helper_bot, with the
+- The `telegram-login` container (`claude-code/telegram-login/`, run by `tsx`, using
+  `senaev-utils` for the Telegram calls, the message formatting, the logger and the shutdown)
+  renews the login from Telegram. The bot is @senaev_claude_helper_bot, with the
   token in Vault `TG_TOKEN_CLAUDE_HELPER_BOT`. It answers only in the private chat with the user
   `claudeCode.telegram.allowedUser` (`TG_SENAEV_USER_ID`; the chat id is the user id). `/auth`
   sends a login link; the user opens it and sends the code from the page back; the bot deletes

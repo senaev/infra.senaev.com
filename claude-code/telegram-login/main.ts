@@ -1,70 +1,82 @@
-import { getAuthStatus, runCommand } from './claude.ts';
-import { spawnClaudeLogin, startLogin } from './login.ts';
-import { createLoginAssistant } from './loginAssistant.ts';
-import { createMessageRouter } from './messageRouter.ts';
-import { createTelegramClient } from './telegram.ts';
+import { requireEnv } from 'senaev-utils/src/utils/env/requireEnv/requireEnv';
+import { installGracefulShutdown } from 'senaev-utils/src/utils/process/installGracefulShutdown';
+import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
+import { promiseTimeout } from 'senaev-utils/src/utils/timers/promiseTimeout/promiseTimeout';
+
+import { getAuthStatus, runCommand } from './claude';
+import { logger } from './logger';
+import { spawnClaudeLogin, startLogin } from './login';
+import { createLoginAssistant } from './loginAssistant';
+import { createMessageRouter } from './messageRouter';
+import { deleteTelegramMessage, getTelegramMessages } from './telegram';
 
 const POLL_TIMEOUT_SECONDS = 50;
 const POLL_RETRY_DELAY_MS = 5_000;
 const LOGIN_CHECK_INTERVAL_MS = 10 * 60 * 1000;
 
-function requireEnv(name: string): string {
-    const value = process.env[name];
-
-    if (value === undefined || value === '') {
-        throw new Error(`${name} is required`);
-    }
-
-    return value;
-}
-
-function log(message: string): void {
-    process.stdout.write(`[${new Date().toISOString()}] ${message}\n`);
-}
-
-function errorMessage(error: unknown): string {
-    return error instanceof Error ? error.message : String(error);
-}
-
+const token = requireEnv('TELEGRAM_BOT_TOKEN');
 const allowedUserId = Number(requireEnv('TELEGRAM_USER_ID'));
 
 if (!Number.isSafeInteger(allowedUserId)) {
     throw new Error('TELEGRAM_USER_ID must be a number');
 }
 
-const telegram = createTelegramClient(requireEnv('TELEGRAM_BOT_TOKEN'));
 const assistant = createLoginAssistant({
     getAuthStatus: () => getAuthStatus(runCommand),
     startLogin: () => startLogin(spawnClaudeLogin),
-    send: (text) => telegram.sendMessage(allowedUserId, text),
+    sendMarkdown: async (markdown) => {
+        await sendTelegramMessage({
+            text: markdown,
+            chatId: String(allowedUserId),
+            token,
+            disableLinkPreview: true,
+        });
+    },
     now: () => new Date(),
 });
 const routeMessage = createMessageRouter({
     allowedUserId,
     assistant,
-    deleteMessage: (chatId, messageId) => telegram.deleteMessage(chatId, messageId),
+    deleteMessage: (chatId, messageId) => deleteTelegramMessage({
+        token,
+        chatId,
+        messageId,
+    }),
+});
+
+const lifecycle = installGracefulShutdown({
+    stop: () => {
+        assistant.stop();
+
+        return Promise.resolve();
+    },
+    reportError: (error) => logger.error(error, '❌ Telegram login helper shutdown failed'),
 });
 
 // One step at a time: a login code must not be handled while a check still waits for its answer.
 let queue: Promise<void> = Promise.resolve();
 
-function enqueue(name: string, step: () => Promise<void>): void {
+function enqueue(description: string, step: () => Promise<void>): void {
     queue = queue.then(step).catch((error: unknown) => {
-        log(`${name} failed: ${errorMessage(error)}`);
+        logger.error(error, `❌ ${description} failed`);
     });
 }
 
-function sleep(milliseconds: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, milliseconds));
-}
-
-async function pollMessages(): Promise<never> {
+async function pollMessages(): Promise<void> {
     // Messages from before the start are old: skip them, and begin with the new ones.
-    let offset = (await telegram.getMessages(-1, 0)).nextOffset;
+    let offset = (await getTelegramMessages({
+        token,
+        offset: -1,
+        timeoutSeconds: 0,
+    })).nextOffset;
 
-    for (;;) {
+    while (!lifecycle.signal.aborted) {
         try {
-            const batch = await telegram.getMessages(offset, POLL_TIMEOUT_SECONDS);
+            const batch = await getTelegramMessages({
+                token,
+                offset,
+                timeoutSeconds: POLL_TIMEOUT_SECONDS,
+            });
 
             offset = batch.nextOffset ?? offset;
 
@@ -72,18 +84,23 @@ async function pollMessages(): Promise<never> {
                 enqueue('Handling a message', () => routeMessage(message));
             }
         } catch (error) {
-            log(`Polling Telegram failed: ${errorMessage(error)}`);
-            await sleep(POLL_RETRY_DELAY_MS);
+            logger.error(error, '❌ Polling Telegram failed');
+            await promiseTimeout(POLL_RETRY_DELAY_MS);
         }
     }
 }
 
-process.on('SIGTERM', () => {
-    log('Received SIGTERM, shutting down');
-    process.exit(0);
-});
+function main(): Promise<void> {
+    logger.info('🚀 Telegram login helper started');
+    enqueue('Checking the login', () => assistant.checkLogin());
+    setInterval(() => enqueue('Checking the login', () => assistant.checkLogin()), LOGIN_CHECK_INTERVAL_MS).unref();
 
-log('Telegram login helper started');
-enqueue('Checking the login', () => assistant.checkLogin());
-setInterval(() => enqueue('Checking the login', () => assistant.checkLogin()), LOGIN_CHECK_INTERVAL_MS);
-await pollMessages();
+    return pollMessages();
+}
+
+main().catch(async (error) => {
+    if (!lifecycle.signal.aborted) {
+        logger.error(error, '❌ Telegram login helper exited');
+        await lifecycle.shutdown(1);
+    }
+});
