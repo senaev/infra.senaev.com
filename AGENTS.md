@@ -57,7 +57,7 @@ Be extremely careful with these nodes and their networks:
 
 Charts live under `provisioning/helm/<chart>/` or grouped as
 `provisioning/helm/<namespace>/<chart>/`; the leaf directory is the release name.
-Releases in the same namespace deploy sequentially in path order. All charts share `provisioning/helm/common-values.yaml` merged at deploy time alongside the chart's own `values.yaml`.
+Releases in the same namespace deploy sequentially in path order. All charts share `provisioning/helm/global-values.yaml` merged at deploy time alongside the chart's own `values.yaml`. Its values all sit under `global` and are read as `.Values.global.<name>`, because Helm passes only `global` to subcharts.
 
 CI is coordinated by `.github/workflows/deploy.yml`: check → discover affected
 images/charts → build and publish images → sync provisioning once → Helm upgrade
@@ -161,7 +161,7 @@ npm run test:integration # real filesystem/process/worker and dependency integra
 npm run test:all         # both suites; this is the CI/pre-push test gate
 npm run check:python    # syntax of every *.py file (ast.parse, writes no __pycache__)
 npm run check:shell     # syntax of every *.sh file (sh -n for #!/bin/sh scripts, else bash -n)
-npm run check:helm      # helm lint of every chart, with common-values.yaml + its values.yaml
+npm run check:helm      # helm lint of every chart, with global-values.yaml + its values.yaml
 ```
 
 The three `check:*` scripts are in `scripts/check-syntax.sh`. They find files with `git ls-files`,

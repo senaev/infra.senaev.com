@@ -5,13 +5,13 @@
 The user asked to replace the two hand-made static PVs with plain host directories, and to copy the data to new standard paths under `/k3s-cluster/volumes` instead of reusing the old directories, then delete the old data after acceptance. Scope: only Grafana and VMSingle; the LLM workspace PVCs are out of scope. The live PVs show the old directories `/k3s-cluster/volumes/telemetry/grafana` and `.../victoriametrics` (local, `Retain`, node affinity `senaev-madrid`).
 
 Decisions:
-- New paths `<clusterRootPath>/volumes/grafana` and `<clusterRootPath>/volumes/victoriametrics`, built from the cluster variable `clusterRootPath` of `common-values.yaml` (`/k3s-cluster`). Subcharts see only `global`, so `common-values.yaml` now also has `global.clusterRootPath`, tied to the top-level key by a YAML anchor: one value, no copy. The VMSingle spec is templated with `.helm.Values.global.clusterRootPath`; Grafana uses `extraContainerVolumes`, because the chart does not template `extraVolumes`.
+- New paths `<clusterRootPath>/volumes/grafana` and `<clusterRootPath>/volumes/victoriametrics`, built from `global.clusterRootPath` of `global-values.yaml` (`/k3s-cluster`). Subcharts see only `global`, so PR #198 moved all shared cluster values under `global` (and renamed `common-values.yaml`); this PR was merged with `main` after it. The VMSingle spec is templated with `.helm.Values.global.clusterRootPath`; Grafana uses `extraContainerVolumes`, because the chart does not template `extraVolumes`.
 - VMSingle: `spec.storage: null` and a `data` hostPath volume. Checked in operator v0.68.0 (`StorageVolumeMountsTo`): a volume named `data` replaces the default data volume, and the operator rejects it together with `storage`. `null` removes the chart default only with `-f values.yaml`, which `upgrade-namespace.sh` does.
 - Grafana: the chart cannot make `storage` a hostPath, so persistence is off and a separate hostPath is mounted at `/var/lib/grafana-data` with `paths.data` set to it. Plugins and provisioned dashboards go to the emptyDir.
 - `type: Directory` on both volumes. The deploy stops the old pods, and the new pods wait for the directory, so the final copy happens with both databases stopped and without any manual patch of Helm-owned fields (the cause of the `spec.paused` conflict on 2026-11-14).
 - Old directories and PVs stay until the user accepts the result, then a guarded cleanup.
 
-Helm lint of all charts (`npm run check:helm`) and `helm template` with `-f common-values.yaml -f values.yaml` pass: both paths render as `/k3s-cluster/volumes/...`, no PVC is rendered, the VMSingle CR has only the hostPath volume. Not deployed. The runbook is in [migration.md](migration.md#follow-up-hostpath-instead-of-pvcs-2026-11-15).
+Helm lint of all charts (`npm run check:helm`) and `helm template` with `-f global-values.yaml -f values.yaml` pass: both paths render as `/k3s-cluster/volumes/...`, no PVC is rendered, the VMSingle CR has only the hostPath volume. Not deployed. The runbook is in [migration.md](migration.md#follow-up-hostpath-instead-of-pvcs-2026-11-15).
 
 ## 2026-11-15 00:03 UTC — Close migration; repair secondary datasource separately
 

@@ -171,9 +171,9 @@ spec:
             # Expose Telegram chat ids to workflows (token stays in the
             # provisioned credential; only chat ids are plain env here).
             - name: TG_CLUSTER_CHAT_ID
-              value: {{ .Values.telegramClusterChatId | quote }}
+              value: {{ .Values.global.telegramClusterChatId | quote }}
             - name: TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID
-              value: {{ .Values.telegramSenaevComBotDirectMessageWithOwnerChatId | quote }}
+              value: {{ .Values.global.telegramSenaevComBotDirectMessageWithOwnerChatId | quote }}
             # Allow workflow expressions to read env vars (e.g.
             # {{`{{ $env.TG_CLUSTER_CHAT_ID }}`}}). n8n blocks this by default.
             - name: N8N_BLOCK_ENV_ACCESS_IN_NODE
@@ -214,7 +214,7 @@ spec:
       volumes:
         - name: data
           hostPath:
-            path: {{ .Values.clusterRootPath }}/{{ .Values.n8n.volumePath }}
+            path: {{ .Values.global.clusterRootPath }}/{{ .Values.n8n.volumePath }}
             type: DirectoryOrCreate
         - name: provisioning
           configMap:

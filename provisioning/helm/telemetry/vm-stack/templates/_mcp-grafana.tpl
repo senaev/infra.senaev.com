@@ -3,7 +3,7 @@
 - name: GRAFANA_URL
   value: {{ .Values.mcpGrafana.grafanaUrl | quote }}
 - name: GRAFANA_ADMIN_USER
-  value: {{ .Values.grafanaAdminUser | quote }}
+  value: {{ .Values.global.grafanaAdminUser | quote }}
 - name: GRAFANA_ADMIN_PASSWORD
   valueFrom:
     secretKeyRef:

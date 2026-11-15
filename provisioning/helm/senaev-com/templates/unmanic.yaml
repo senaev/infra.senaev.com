@@ -141,18 +141,18 @@ spec:
       volumes:
         - name: config
           hostPath:
-            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.unmanic.volumePath }}/config
+            path: {{ .Values.global.mediaServerStoragePath }}/{{ .Values.unmanic.volumePath }}/config
             type: DirectoryOrCreate
         - name: cache
           hostPath:
-            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.unmanic.volumePath }}/cache
+            path: {{ .Values.global.mediaServerStoragePath }}/{{ .Values.unmanic.volumePath }}/cache
             type: DirectoryOrCreate
         - name: default-config
           configMap:
             name: unmanic-default-config
         - name: downloads
           hostPath:
-            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}/downloads
+            path: {{ .Values.global.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}/downloads
             type: DirectoryOrCreate
         - name: dri
           hostPath:

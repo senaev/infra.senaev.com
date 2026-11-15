@@ -133,7 +133,7 @@ Grafana and VMSingle keep their data in plain host directories, like n8n and Tra
 | Grafana | `/k3s-cluster/volumes/telemetry/grafana` | `/k3s-cluster/volumes/grafana` | `extraVolumes` hostPath at `/var/lib/grafana-data`, `grafana.ini` `paths.data` points there |
 | VMSingle | `/k3s-cluster/volumes/telemetry/victoriametrics` | `/k3s-cluster/volumes/victoriametrics` | `spec.volumes` entry named `data`, `spec.storage` unset (operator v0.68.0 rejects both together) |
 
-The new paths are `clusterRootPath` (from `common-values.yaml`) plus `/volumes/<name>`. Both volumes use `type: Directory`. While the new directory does not exist, the new pod waits in `ContainerCreating` and cannot start on an empty database. That is what makes the cutover safe: the deploy stops the old pods, and the new pods wait for the copy.
+The new paths are `global.clusterRootPath` (from `global-values.yaml`) plus `/volumes/<name>`. Both volumes use `type: Directory`. While the new directory does not exist, the new pod waits in `ContainerCreating` and cannot start on an empty database. That is what makes the cutover safe: the deploy stops the old pods, and the new pods wait for the copy.
 
 Plugins and provisioned dashboards of Grafana move from the PVC to the chart's emptyDir. Grafana installs and provisions them again at every start. The Grafana pod runs as UID 472, so its directory must be owned by `472:472`; `rsync -a --numeric-ids` keeps the owner of the old directory.
 

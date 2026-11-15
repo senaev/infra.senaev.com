@@ -18,6 +18,7 @@ from urllib.parse import parse_qs, urlsplit
 import uuid
 
 from metrics import ProbeMetrics, start_server
+from socket_stats import SocketStats
 
 METRICS = ProbeMetrics()
 STOP = threading.Event()
@@ -370,6 +371,7 @@ def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, ht
         check += "_mss1000"
     passed = False
     fresh = None
+    observer = None
     try:
         config, _ = client_config(os.environ["XHTTP_PROFILE_LINK"],
                                   os.environ["XRAY_USER_UUID"],
@@ -384,6 +386,9 @@ def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, ht
         with tempfile.TemporaryDirectory(prefix="vpn-fresh-client-") as folder:
             try:
                 fresh = start_client(config, folder)
+                if port == 1084:
+                    observer = SocketStats(fresh.pid)
+                    observer.start()
                 if STOP.is_set():
                     return False
                 check_experiment_client(child, profile, experiment_id)
@@ -400,6 +405,11 @@ def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, ht
                                                   immediate_size=payload_size, **({"endpoint": True} if endpoint else {}),
                                                   **({"mss1000": True} if tcp_max_seg is not None else {}))
             finally:
+                if observer is not None:
+                    emit(profile, "diagnostic_socket_stats", "xhttp", {
+                        "ok": True, "experiment_id": experiment_id,
+                        "arm": "mss1000" if tcp_max_seg is not None else "default",
+                        **observer.finish()})
                 if fresh is not None:
                     stop_client(fresh)
     except (KeyError, ValueError, RuntimeError, OSError) as error:

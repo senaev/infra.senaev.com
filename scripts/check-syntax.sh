@@ -54,12 +54,12 @@ check_shell() {
 # Same values as upgrade-namespace.sh passes to helm upgrade.
 check_helm() {
   local failed=0 chart_dir
-  local common_values="provisioning/helm/common-values.yaml"
+  local global_values="provisioning/helm/global-values.yaml"
   for chart_dir in provisioning/helm/*/ provisioning/helm/*/*/; do
     chart_dir="${chart_dir%/}"
     [[ -f "$chart_dir/Chart.yaml" ]] || continue
 
-    local values_args=(-f "$common_values")
+    local values_args=(-f "$global_values")
     [[ -f "$chart_dir/values.yaml" ]] && values_args+=(-f "$chart_dir/values.yaml")
 
     helm lint "$chart_dir" --quiet "${values_args[@]}" || failed=1

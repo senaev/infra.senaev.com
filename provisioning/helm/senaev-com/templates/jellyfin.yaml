@@ -49,15 +49,15 @@ spec:
       volumes:
         - name: config
           hostPath:
-            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.jellyfin.volumePath }}/config
+            path: {{ .Values.global.mediaServerStoragePath }}/{{ .Values.jellyfin.volumePath }}/config
             type: DirectoryOrCreate
         - name: completed
           hostPath:
-            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.completed }}
+            path: {{ .Values.global.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.completed }}
             type: DirectoryOrCreate
         - name: never-remove
           hostPath:
-            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.neverRemove }}
+            path: {{ .Values.global.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.neverRemove }}
             type: DirectoryOrCreate
         - name: dri
           hostPath:

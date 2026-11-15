@@ -65,7 +65,7 @@ spec:
             - name: OBSIDIAN_VAULT_PATH
               value: {{ .Values.obsidianSync.containerVaultPath }}
             - name: TG_CLUSTER_CHAT_ID
-              value: {{ .Values.telegramClusterChatId | quote }}
+              value: {{ .Values.global.telegramClusterChatId | quote }}
             - name: TG_TOKEN_SENAEV_COM_BOT
               valueFrom:
                 secretKeyRef:
@@ -84,7 +84,7 @@ spec:
       volumes:
         - name: vault
           hostPath:
-            path: {{ .Values.clusterRootPath }}/{{ .Values.obsidianSync.volumePath }}
+            path: {{ .Values.global.clusterRootPath }}/{{ .Values.obsidianSync.volumePath }}
             type: DirectoryOrCreate
 ---
 apiVersion: v1
