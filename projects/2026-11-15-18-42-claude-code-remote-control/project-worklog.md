@@ -1,5 +1,19 @@
 # Worklog
 
+## 2026-11-15 18:50 UTC — PR #204 merged and deployed
+
+PR [#204](https://github.com/senaev/infra.senaev.com/pull/204) (merge commit `2b1e748`) removed `/projects` from OpenCode, its Telegram bot and Code Tools. Deploy run `43748337383` succeeded: check, builds of `opencode-serve` and `opencode-telegram-bot`, sync, Helm deploy.
+
+Verified: `npm run test:smoke` passed (5 of 5). Datadog logs of namespace `senaev-com` since 18:40 UTC have no `error`, `critical` or `alert` entries, and no `/projects`, `ENOENT` or `permission denied` matches. The Telegram bot restarted and started cleanly:
+
+```
+18:45:31 [INFO] [App] Received SIGTERM, shutting down...
+18:45:45 [INFO] Starting OpenCode Telegram Bot v0.26.4...
+18:45:45 [INFO] [OpenCodeReady] OpenCode server is ready: reason=startup
+```
+
+Not verified: the live mounts of the pods (no `kubectl` here), and the Telegram bot's folder list (`/code` only). The first message in the bot may need a new project selection.
+
 ## 2026-11-15 18:42 UTC — Project created, decisions confirmed
 
 The user confirmed these decisions: the container and the component are named `claude-code`; the hostPath is `/k3s-cluster/volumes/claude-code`; only `/code` is mounted (the `/projects` folder stays only for OMP, PR [#204](https://github.com/senaev/infra.senaev.com/pull/204) is open); yolo mode with `IS_SANDBOX=1`; the Telegram login flow comes at the end, first an interactive login. The user asked why the component is a template and not a plain YAML file. Answer: the chart renders each component once for every `llmWorkspaces` entry, so names, node, ingress and git keys come from the workspace; a plain file would hardcode `senaev`.

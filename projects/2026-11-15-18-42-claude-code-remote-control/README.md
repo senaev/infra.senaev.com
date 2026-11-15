@@ -32,7 +32,7 @@ Run Claude Code (Pro subscription) in a container of the `senaev` LLM workspace,
 ## Decisions
 
 - Container and component name: `claude-code`. HostPath: `/k3s-cluster/volumes/claude-code`, mounted as `HOME` (`/home/claude`). It holds `.claude/`, `.claude.json` and `.ssh/`.
-- The pod mounts only the `<name>-code` PVC at `/code`. Not `/projects`. See PR [#204](https://github.com/senaev/infra.senaev.com/pull/204) that removes `/projects` from OpenCode and Code Tools.
+- The pod mounts only the `<name>-code` PVC at `/code`. Not `/projects`. PR [#204](https://github.com/senaev/infra.senaev.com/pull/204) removed `/projects` from OpenCode and Code Tools.
 - Yolo mode: `--permission-mode bypassPermissions` with `IS_SANDBOX=1`.
 - Default model `sonnet`. You can change it from the phone with `/model`.
 - One server in `/code`, `--spawn same-dir`. You tell Claude which repository to use.
@@ -41,7 +41,7 @@ Run Claude Code (Pro subscription) in a container of the `senaev` LLM workspace,
 
 ## Plan
 
-1. 📌 PR [#204](https://github.com/senaev/infra.senaev.com/pull/204): remove `/projects` from OpenCode and Code Tools. Merge and check.
+1. ✅ PR [#204](https://github.com/senaev/infra.senaev.com/pull/204): remove `/projects` from OpenCode and Code Tools. Merged and deployed.
 2. 📌 Image `claude-code/`: `Dockerfile` (Node, Claude Code at a pinned version, git, gh, openssh-client) and `start.sh`.
    - `start.sh` merges the two trust keys into `~/.claude.json`.
    - It checks `claude auth status`. When not logged in, it logs a message and checks again every 30 seconds, so a login through `kubectl exec` needs no restart.
