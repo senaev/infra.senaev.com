@@ -52,7 +52,7 @@ Run Claude Code (Pro subscription) in a container of the `senaev` LLM workspace,
    - `podAccess`, `containerAccess` and `egress` helpers. A NetworkPolicy with no ingress.
 4. ✅ `AGENTS.md`: a section about the component.
 5. ✅ Deploy: PR [#205](https://github.com/senaev/infra.senaev.com/pull/205). The login of the test pod was not reused, so the first login was `kubectl -n senaev-com exec -it deploy/senaev-claude-code -- claude auth login`. The pod then started the server by itself. The ghcr package was already public.
-6. 📌 Telegram login: a second container `telegram-login` in the pod (same image, `claude-code/telegram-login/`, run by `tsx`; it uses `senaev-utils` for the Telegram calls, the Rich Markdown helpers, the command parser, the logger, `requireEnv` and the graceful shutdown). The bot is @senaev_claude_helper_bot, token in Vault `TG_TOKEN_CLAUDE_HELPER_BOT`, values `claudeCode.telegram`.
+6. ✅ Telegram login (PR [#207](https://github.com/senaev/infra.senaev.com/pull/207), deployed and tested on 2026-11-15): a second container `telegram-login` in the pod (same image, `claude-code/telegram-login/`, run by `tsx`; it uses `senaev-utils` for the Telegram calls, the Rich Markdown helpers, the command parser, the logger, `requireEnv` and the graceful shutdown). The bot is @senaev_claude_helper_bot, token in Vault `TG_TOKEN_CLAUDE_HELPER_BOT`, values `claudeCode.telegram`.
    - The bot answers only in the private chat with the user `TG_SENAEV_USER_ID`. In a private chat the chat id is the user id, so there is no separate chat id value.
    - `/auth` starts `claude auth login`, sends the link, takes the code from the next message, deletes that message, and says until when the login is valid.
    - Every 10 minutes it checks `claude auth status`. Not logged in: it says so once, with no link, until the login is back and lost again. From 5 days before `loginExpiresAt`: a warning once a day. Both messages tell the user to send `/auth`.
@@ -62,7 +62,8 @@ Run Claude Code (Pro subscription) in a container of the `senaev` LLM workspace,
 
 - ❓ The Remote Control server may stop after about 10 minutes without a network. Test it, and check that the container restart brings the sessions back.
 - ❓ Does the running Remote Control server stop when the login expires? `start.sh` checks the login only before it starts the server, so if the server keeps running with an expired login, nothing restarts it. Test it, or make `start.sh` or a probe check the login while the server runs.
-- ❓ Does a background refresh move `loginExpiresAt`? Check `claude auth status` after a few days. If not, the login needs a renewal every month.
+- ❓ Does a background refresh move `loginExpiresAt`? Check `claude auth status` after a few days. If not, the login needs a renewal every month. The login of 2026-11-15 was valid until 2026-12-12, which is 27 days, not 30.
+- ❓ Does the running server use a login that the Telegram flow renewed, with no restart? The first real renewal was made while the server ran. Check that the sessions stay connected, and whether the main container restarted.
 - ❓ Yolo mode plus the git credentials in the pod: a prompt injection could push to GitHub. Use a fine-grained token for this pod.
 - ❓ The server logs its status line again on each change, and Datadog keeps every redraw as a log line (360 lines in the busiest minute of the first test). Watch the volume; add an exclusion filter if it stays high.
 
@@ -72,4 +73,5 @@ Run Claude Code (Pro subscription) in a container of the `senaev` LLM workspace,
 - The Claude app (tab **Code**) shows the device with a green dot and the `senaev-...` session.
 - From the phone: "run `id; pwd; ls /code`" runs without a question, in `/code`, and sees the repositories of the other containers. A file made from the phone is visible in OpenCode or Code Tools.
 - A pod restart and a pod recreate keep the login and the session.
+- Telegram: `/auth` to @senaev_claude_helper_bot gives a link; the code from the page, sent back, is deleted from the chat, and the bot answers "Logged in. The login is valid until …". The helper logs show each step (`/auth`, text message, login code, message deleted). While the user is logged in with more than 5 days left, the bot sends nothing by itself.
 - `npm run check:helm`, a `helm template` diff, and `npm run test:smoke` after the deploy. Datadog logs of the pod show no restart loop.
