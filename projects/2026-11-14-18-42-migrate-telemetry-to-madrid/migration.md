@@ -162,7 +162,7 @@ Helm stops the old Grafana and VMSingle pods and starts new ones. The new pods w
 kubectl -n telemetry get pods -o wide -w
 ```
 
-Wait until the old Grafana and VMSingle pods are gone. The deploy waits at most 300 s for readiness. If it fails while you copy, run the failed job again after step 4.
+Wait until the old Grafana and VMSingle pods are gone. The deploy waits at most 300 s for readiness. If it fails while you copy, run the failed job again once the pods are ready (`gh run rerun <run-id> --failed`). This happened on 2026-11-15: the first attempt failed with `Available: 0/1` and the rerun passed.
 
 ### 3. Final copy and switch (on senaev-madrid), only after the old pods are gone
 
@@ -197,7 +197,17 @@ Check:
 - Grafana: login works, the datasources and the dashboards are there, the MCP service account still works (ask ChatGPT to list dashboards).
 - Metrics from before the stop are queryable, fresh samples arrive, `min(up)` is 1.
 - `kubectl -n telemetry get pvc` shows no Grafana claim. Helm deleted it. The VMSingle claim stays, unused, until step 5.
-- Record the collection gap (from the old VMSingle stop to the new one ready).
+- Record the collection gap (from the old VMSingle stop to the new one ready). Check it with a strict window, for example `count(last_over_time(up[30s]))`; a plain `count(up)` hides short gaps through the lookback. vmagent buffers samples while VMSingle is down, so the gap can be zero.
+- Alert path. Grafana's Alertmanager datasource proxy refuses `POST` (400), so send a test alert from the cluster, with the labels that the cluster-helper webhook requires and the route label. It resolves after 5 minutes, and Telegram shows a firing and a resolved message:
+
+  ```bash
+  kubectl -n telemetry exec vmalertmanager-vm-stack-victoria-metrics-k8s-stack-0 -c alertmanager -- \
+    amtool alert add ManualTest alertgroup=manual-test instance=manual-test job=manual-test pod=manual-test \
+    severity=info route=senaev-com-alerts --annotation=summary="Manual test. Ignore it." \
+    --generator-url=https://grafana.senaev.com/ --alertmanager.url=http://localhost:9093
+  ```
+
+  Compare `alertmanager_notifications_total{integration="webhook"}` and `alertmanager_notifications_failed_total` before and after: sent +2, failed unchanged.
 
 The old directories and PVs stay untouched until you accept the result. That is the rollback source.
 
@@ -217,11 +227,27 @@ First on Hetzner. It checks that no pod uses a claim and that the PVs keep their
 )
 ```
 
+The `delete pvc` line can hang. The VMSingle claim was made by the VictoriaMetrics operator (owner `VMSingle`) and carries its finalizer `apps.victoriametrics.com/finalizer`. With `spec.storage` unset, the operator no longer manages the claim and never removes that finalizer, so the claim stays `Terminating` and `kubectl` waits (this happened on 2026-11-15). The Grafana claim has no such problem: Helm deletes it. In a second terminal, remove the finalizer only if all three checks pass; then the first block continues and deletes the PVs:
+
+```bash
+(
+  set -eu
+  pvc=vmsingle-vm-stack-victoria-metrics-k8s-stack
+  test -n "$(kubectl -n telemetry get pvc $pvc -o jsonpath='{.metadata.deletionTimestamp}')"
+  test "$(kubectl -n telemetry get pvc $pvc -o jsonpath='{.metadata.finalizers[*]}')" = apps.victoriametrics.com/finalizer
+  test -z "$(kubectl -n telemetry get pods -o jsonpath='{.items[*].spec.volumes[*].persistentVolumeClaim.claimName}')"
+  kubectl -n telemetry patch pvc $pvc --type=merge -p '{"metadata":{"finalizers":null}}'
+)
+```
+
 Then on `senaev-madrid`:
 
 ```bash
 (
   set -eu
+  sudo test -f /k3s-cluster/volumes/grafana/grafana.db
+  sudo test -n "$(sudo ls -A /k3s-cluster/volumes/victoriametrics)"
+  sudo ls -A /k3s-cluster/volumes/telemetry
   sudo test -d /k3s-cluster/volumes/grafana
   sudo test -d /k3s-cluster/volumes/victoriametrics
   sudo rm -rf -- /k3s-cluster/volumes/telemetry/grafana /k3s-cluster/volumes/telemetry/victoriametrics
