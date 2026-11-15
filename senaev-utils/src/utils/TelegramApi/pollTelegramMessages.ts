@@ -60,14 +60,21 @@ export async function pollTelegramMessages({
     skipMessagesSentBeforeStart?: boolean;
 }): Promise<void> {
     let offset: number | undefined;
+    let isOffsetReady = !skipMessagesSentBeforeStart;
 
-    if (skipMessagesSentBeforeStart) {
-        // Offset -1 returns only the last waiting update; confirming it drops all the older ones.
-        offset = (await getTelegramMessages({
-            token,
-            offset: -1,
-            timeoutSeconds: 0,
-        })).nextOffset;
+    while (!isOffsetReady && !signal.aborted) {
+        try {
+            // Offset -1 returns only the last waiting update; confirming it drops all the older ones.
+            offset = (await getTelegramMessages({
+                token,
+                offset: -1,
+                timeoutSeconds: 0,
+            })).nextOffset;
+            isOffsetReady = true;
+        } catch (error) {
+            onError(error);
+            await promiseTimeout(RETRY_DELAY_MS);
+        }
     }
 
     while (!signal.aborted) {

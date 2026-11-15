@@ -2,7 +2,8 @@ import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnk
 import { escapeTelegramMarkdown, telegramLink } from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
 
 import type { AuthStatus } from './claude';
-import type { LoginSession } from './login';
+import { logger } from './logger';
+import type { LoginResult, LoginSession } from './login';
 
 export type AssistantDependencies = {
     getAuthStatus(): Promise<AuthStatus>;
@@ -43,6 +44,24 @@ export function createLoginAssistant(dependencies: AssistantDependencies): Login
         session = null;
     }
 
+    async function reportLoginResult(result: LoginResult): Promise<void> {
+        const status = result.ok ? await dependencies.getAuthStatus() : null;
+
+        if (status?.loggedIn === true) {
+            lastExpiryNoticeAt = null;
+            loggedOutNoticeSent = false;
+            await sendText(status.loginExpiresAt === null
+                ? 'Logged in.'
+                : `Logged in. The login is valid until ${formatDate(status.loginExpiresAt)}.`);
+
+            return;
+        }
+
+        const reason = result.ok ? 'the login command finished, but Claude Code is still not logged in' : result.reason;
+
+        await sendText(`The login failed: ${reason}\nSend /auth to try again.`);
+    }
+
     async function beginLogin(): Promise<void> {
         cancelSession();
         const newSession = dependencies.startLogin();
@@ -79,18 +98,13 @@ export function createLoginAssistant(dependencies: AssistantDependencies): Login
 
             session = null;
             const result = await waitingSession.submitCode(text.trim());
-            const status = result.ok ? await dependencies.getAuthStatus() : null;
 
-            if (status?.loggedIn === true) {
-                lastExpiryNoticeAt = null;
-                loggedOutNoticeSent = false;
-                await sendText(status.loginExpiresAt === null
-                    ? 'Logged in.'
-                    : `Logged in. The login is valid until ${formatDate(status.loginExpiresAt)}.`);
-            } else {
-                const reason = result.ok ? 'the login command finished, but Claude Code is still not logged in' : result.reason;
-
-                await sendText(`The login failed: ${reason}\nSend /auth to try again.`);
+            // The text was taken as a code, so the caller must get `true` and delete the message,
+            // also when the status or the answer to the user fails.
+            try {
+                await reportLoginResult(result);
+            } catch (error) {
+                logger.error(error, '❌ Could not report the result of the login');
             }
 
             return true;
@@ -125,10 +139,10 @@ export function createLoginAssistant(dependencies: AssistantDependencies): Login
             }
 
             if (lastExpiryNoticeAt === null || now - lastExpiryNoticeAt >= EXPIRY_NOTICE_REPEAT_MS) {
-                lastExpiryNoticeAt = now;
                 const daysLeft = Math.max(0, Math.ceil(msLeft / DAY_MS));
 
                 await sendText(`The Claude login expires on ${formatDate(status.loginExpiresAt)} (in ${daysLeft} days). Send /auth to renew it.`);
+                lastExpiryNoticeAt = now;
             }
         },
 

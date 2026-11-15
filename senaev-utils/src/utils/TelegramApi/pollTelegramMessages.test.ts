@@ -166,6 +166,46 @@ describe('pollTelegramMessages', () => {
         expect(handled).toEqual([2]);
     });
 
+    it('tries the first request again after a failure, before it starts to skip', async () => {
+        vi.useFakeTimers();
+        const {
+            controller, errors, handled, run,
+        } = setup();
+        const failure = new Error('network down');
+
+        callTelegramApiMock
+            .mockRejectedValueOnce(failure)
+            .mockResolvedValueOnce([
+                {
+                    update_id: 99,
+                    message: message(1),
+                },
+            ])
+            .mockImplementationOnce(() => {
+                controller.abort();
+
+                return Promise.resolve([
+                    {
+                        update_id: 100,
+                        message: message(2),
+                    },
+                ]);
+            });
+
+        const running = run({ skipMessagesSentBeforeStart: true });
+
+        await vi.advanceTimersByTimeAsync(5000);
+        await running;
+
+        expect(errors).toEqual([failure]);
+        expect(polledOffsets()).toEqual([
+            -1,
+            -1,
+            100,
+        ]);
+        expect(handled).toEqual([2]);
+    });
+
     it('reports a failed poll and tries again after the delay', async () => {
         vi.useFakeTimers();
         const {

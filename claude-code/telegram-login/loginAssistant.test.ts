@@ -9,6 +9,10 @@ import {
     createLoginAssistant, EXPIRY_NOTICE_REPEAT_MS,
 } from './loginAssistant';
 
+vi.mock('./logger', () => {
+    return { logger: { error: vi.fn() } };
+});
+
 const NOW = new Date('2026-12-10T12:00:00.000Z');
 const DAY_MS = 24 * 60 * 60 * 1000;
 const LINK = 'https://claude.com/cai/oauth/authorize?state=abc';
@@ -121,6 +125,29 @@ describe('a login code', () => {
         expect(sent.at(-1)).toBe(plain('Logged in. The login is valid until 2027-01-09.'));
     });
 
+    it('still counts as a code when the status cannot be read or the answer cannot be sent', async () => {
+        const failingStatus = createLoginAssistant({
+            getAuthStatus: () => Promise.reject(new Error('status failed')),
+            startLogin: () => createSession(),
+            sendMarkdown: () => Promise.resolve(),
+            now: () => NOW,
+        });
+        const failingSend = createLoginAssistant({
+            getAuthStatus: () => Promise.resolve(loggedInUntil(30)),
+            startLogin: () => createSession(),
+            sendMarkdown: vi.fn()
+                .mockResolvedValueOnce(undefined)
+                .mockRejectedValue(new Error('Telegram is down')),
+            now: () => NOW,
+        });
+
+        await failingStatus.handleAuthCommand();
+        await failingSend.handleAuthCommand();
+
+        await expect(failingStatus.handleText('code')).resolves.toBe(true);
+        await expect(failingSend.handleText('code')).resolves.toBe(true);
+    });
+
     it('is reported when the login fails, and the next text starts nothing', async () => {
         const session = createSession({
             submitCode: () => Promise.resolve({
@@ -221,6 +248,23 @@ describe('the login check', () => {
             .mockResolvedValue(undefined);
         const assistant = createLoginAssistant({
             getAuthStatus: () => Promise.resolve(LOGGED_OUT),
+            startLogin: () => createSession(),
+            sendMarkdown: send,
+            now: () => NOW,
+        });
+
+        await expect(assistant.checkLogin()).rejects.toThrow('Telegram is down');
+        await assistant.checkLogin();
+
+        expect(send).toHaveBeenCalledTimes(2);
+    });
+
+    it('sends an expiry warning again on the next check when it could not be sent', async () => {
+        const send = vi.fn()
+            .mockRejectedValueOnce(new Error('Telegram is down'))
+            .mockResolvedValue(undefined);
+        const assistant = createLoginAssistant({
+            getAuthStatus: () => Promise.resolve(loggedInUntil(3)),
             startLogin: () => createSession(),
             sendMarkdown: send,
             now: () => NOW,
