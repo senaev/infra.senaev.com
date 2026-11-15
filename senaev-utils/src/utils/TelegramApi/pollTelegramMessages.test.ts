@@ -43,7 +43,6 @@ function setup() {
             return Promise.resolve();
         }),
         onError: (error) => errors.push(error),
-        retryDelayMs: 1000,
         ...options.skipMessagesSentBeforeStart === undefined ? {} : { skipMessagesSentBeforeStart: options.skipMessagesSentBeforeStart },
     });
 
@@ -189,7 +188,7 @@ describe('pollTelegramMessages', () => {
 
         const running = run();
 
-        await vi.advanceTimersByTimeAsync(999);
+        await vi.advanceTimersByTimeAsync(4999);
         expect(callTelegramApiMock).toHaveBeenCalledTimes(1);
 
         await vi.advanceTimersByTimeAsync(1);
