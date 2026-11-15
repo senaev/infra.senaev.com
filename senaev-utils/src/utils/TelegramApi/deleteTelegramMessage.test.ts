@@ -17,7 +17,7 @@ describe('deleteTelegramMessage', () => {
     it('calls deleteMessage for the chat and the message', async () => {
         await deleteTelegramMessage({
             token: 'token',
-            chatId: 42,
+            chatId: '42',
             messageId: 5,
         });
 
@@ -25,7 +25,7 @@ describe('deleteTelegramMessage', () => {
             method: 'deleteMessage',
             token: 'token',
             body: {
-                chat_id: 42,
+                chat_id: '42',
                 message_id: 5,
             },
         });

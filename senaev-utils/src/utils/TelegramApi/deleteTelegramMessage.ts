@@ -6,7 +6,7 @@ export async function deleteTelegramMessage({
     messageId,
 }: {
     token: string;
-    chatId: number | string;
+    chatId: string;
     messageId: number;
 }): Promise<void> {
     await callTelegramApi({

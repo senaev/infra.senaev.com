@@ -37,7 +37,7 @@ const routeMessage = createMessageRouter({
     assistant,
     deleteMessage: (chatId, messageId) => deleteTelegramMessage({
         token,
-        chatId,
+        chatId: String(chatId),
         messageId,
     }),
 });
