@@ -18,3 +18,16 @@ class SocketStatsTests(unittest.TestCase):
         observer = socket_stats.SocketStats(42)
         observer.collect()
         self.assertEqual(observer.unavailable, 'ss_unavailable')
+
+    def test_socket_ids_follow_inode_without_exposing_it(self):
+        ids = {}
+        first = ('ESTAB 0 0 local:1 remote:443 users:(("xray",pid=42,fd=3)) ino:12345\n'
+                 '   mss:988 bytes_received:10\n')
+        row = socket_stats.parse_stats(first, 42, ids)[0]
+        self.assertEqual(row["socket_id"], 1)
+        self.assertEqual(row["state"], "ESTAB")
+        self.assertNotIn("12345", str(row))
+        again = socket_stats.parse_stats(first.replace("bytes_received:10", "bytes_received:20"), 42, ids)[0]
+        self.assertEqual(again["socket_id"], 1)
+        other = socket_stats.parse_stats(first.replace("ino:12345", "ino:67890"), 42, ids)[0]
+        self.assertEqual(other["socket_id"], 2)
