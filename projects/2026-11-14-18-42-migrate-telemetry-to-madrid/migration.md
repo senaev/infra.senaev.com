@@ -197,7 +197,17 @@ Check:
 - Grafana: login works, the datasources and the dashboards are there, the MCP service account still works (ask ChatGPT to list dashboards).
 - Metrics from before the stop are queryable, fresh samples arrive, `min(up)` is 1.
 - `kubectl -n telemetry get pvc` shows no Grafana claim. Helm deleted it. The VMSingle claim stays, unused, until step 5.
-- Record the collection gap (from the old VMSingle stop to the new one ready).
+- Record the collection gap (from the old VMSingle stop to the new one ready). Check it with a strict window, for example `count(last_over_time(up[30s]))`; a plain `count(up)` hides short gaps through the lookback. vmagent buffers samples while VMSingle is down, so the gap can be zero.
+- Alert path. Grafana's Alertmanager datasource proxy refuses `POST` (400), so send a test alert from the cluster, with the labels that the cluster-helper webhook requires and the route label. It resolves after 5 minutes, and Telegram shows a firing and a resolved message:
+
+  ```bash
+  kubectl -n telemetry exec vmalertmanager-vm-stack-victoria-metrics-k8s-stack-0 -c alertmanager -- \
+    amtool alert add ManualTest alertgroup=manual-test instance=manual-test job=manual-test pod=manual-test \
+    severity=info route=senaev-com-alerts --annotation=summary="Manual test. Ignore it." \
+    --generator-url=https://grafana.senaev.com/ --alertmanager.url=http://localhost:9093
+  ```
+
+  Compare `alertmanager_notifications_total{integration="webhook"}` and `alertmanager_notifications_failed_total` before and after: sent +2, failed unchanged.
 
 The old directories and PVs stay untouched until you accept the result. That is the rollback source.
 
