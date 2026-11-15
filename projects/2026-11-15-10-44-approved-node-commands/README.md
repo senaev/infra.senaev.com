@@ -45,11 +45,9 @@ Bind the approval to an immutable request, including its node and explanatory fi
 
 ## Plan
 
-1. Finalize authentication and certificate lifecycle. Proposed: mutual TLS with a
-   dedicated private CA, managed by cert-manager; certificate issuance/renewal,
-   trust distribution, exact helper identity authorization, per-node server identity,
-   certificate reload and CA rotation need explicit implementation design.
-   This is a proposal, not an approved dependency or deployed configuration.
+1. Reuse the [inter-service certificate authentication project](../2026-11-15-11-00-inter-service-certificate-authentication/README.md)
+   for mutual TLS and certificate lifecycle. Require exact helper authorization and
+   node-specific executor server identity. Implement the shared foundation first.
 2. Implement persistent request/approval state. Only the authorized Telegram user
    can approve; rejection returns `USER_REJECTED`, expiry `APPROVAL_EXPIRED`.
 3. Implement authenticated executor dispatch and host command execution with bounded
@@ -72,4 +70,18 @@ Bind the approval to an immutable request, including its node and explanatory fi
 ## Result
 
 Design recorded only. No executor, certificate infrastructure or cluster configuration deployed.
-Authentication lifecycle remains to be agreed.
+Authentication lifecycle is tracked in the linked certificate project.
+
+## Remaining design decisions
+
+- Execution privilege: unrestricted root after approval, or a restricted host account?
+  Recommendation: root only if arbitrary administrative commands are the intended scope.
+- Initial node scope: every Kubernetes node, or an explicit opt-in set?
+  Recommendation: explicit opt-in, including the control plane only when selected.
+- Approval lifetime: how long can an approval remain pending, and may an approved
+  command wait for an offline node? Recommendation: short expiry and no offline queue.
+- Audit retention: how long to retain requests and results, and whether full output
+  is stored. Recommendation: durable request/decision metadata and short-lived output.
+
+These recommendations are not approved decisions. One request, one command, one result;
+Telegram approval; no interactive sessions; and hostNetwork: false are already decided.

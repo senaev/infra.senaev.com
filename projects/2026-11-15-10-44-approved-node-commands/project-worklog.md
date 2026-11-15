@@ -1,3 +1,10 @@
+## 2026-11-15 11:00 UTC — Link certificate foundation and open decisions
+
+Separate certificate project now owns the reusable mTLS lifecycle, with the first
+migration from cluster-helper to obsidian-sync. Node execution will reuse it.
+Recorded remaining user-facing choices about host privilege, node scope, approval
+lifetime/offline behavior and audit retention, with recommendations kept unapproved.
+
 ## 2026-11-15 10:44 UTC — Record command approval design
 
 User chose a lightweight executor per node with Telegram approval in cluster-helper:
