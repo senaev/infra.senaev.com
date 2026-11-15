@@ -1,0 +1,108 @@
+Raw excerpts from proxmox-madrid, 2026-11-15. Times are CET. Repeated blocks are cut with "...".
+
+### journalctl --no-pager --list-boots (host)
+IDX BOOT ID                          FIRST ENTRY                 LAST ENTRY
+ -4 ab47795a340a4def9b92922d8aec6f3b Sat 2026-11-14 16:04:24 CET Sat 2026-11-14 16:32:25 CET
+ -3 36b1b89ca85d4aeead6b7aa2d846fd2d Sat 2026-11-14 16:32:47 CET Sat 2026-11-14 18:31:03 CET
+ -2 ce959e2c62d943ddacfb5af8cab74662 Sat 2026-11-14 18:33:40 CET Sat 2026-11-14 18:33:40 CET
+ -1 803dff75eb0e4dcfad34cc12f88436f8 Sat 2026-11-14 18:34:09 CET Sun 2026-11-15 09:38:00 CET
+  0 5c63ba3b179a4f049155d98e72d6fe12 Sun 2026-11-15 09:38:36 CET Sun 2026-11-15 09:43:44 CET
+
+Boot -1 is the boot that hung. Its last entry is 09:38:00, when the power cable was replugged.
+
+### First hang and count (boot -1, kernel log)
+$ journalctl --no-pager -b -1 -k | grep -m1 "Hardware Unit Hang"
+Nov 15 02:42:27 proxmox-madrid kernel: e1000e 0000:00:1f.6 nic0: Detected Hardware Unit Hang:
+$ journalctl --no-pager -b -1 -k | grep -c "Hardware Unit Hang"
+12467
+$ journalctl --no-pager -b 0 -k | grep -c "Hardware Unit Hang"
+0
+
+### One hang message (identical every 2 seconds; TDH, TDT and time_stamp never change, only jiffies grows)
+Nov 15 09:37:23 proxmox-madrid kernel: e1000e 0000:00:1f.6 nic0: Detected Hardware Unit Hang:
+                                         TDH                  <11>
+                                         TDT                  <63>
+                                         next_to_use          <63>
+                                         next_to_clean        <11>
+                                       buffer_info[next_to_clean]:
+                                         time_stamp           <101ba7d1c>
+                                         next_to_watch        <12>
+                                         jiffies              <103366600>
+                                         next_to_watch.status <0>
+                                         MAC Status           <40080083>
+                                         PHY Status           <796d>
+                                         PHY 1000BASE-T Status <3c00>
+                                         PHY Extended Status  <3000>
+                                         PCI Status           <10>
+
+### What the rest of the system logged while the card was stuck (boot -1, 09:37)
+tailscaled: netcheck: UDP is blocked, trying HTTPS
+tailscaled: all connection attempts failed (HTTP: TLS forced: no port 80 dialed, HTTPS: dial tcp 192.200.0.114:443: connect: no route to host)
+tailscaled: open-conn-track: timeout opening (TCP 100.113.139.72:59688 => 100.120.76.115:6443) to node [wLx3R]; online=yes, lastRecv=6h55m5s
+k3s: "Failed to ensure lease exists, will retry" ... context deadline exceeded
+...
+
+### Card, offloads and EEE before the fix
+$ ethtool -i nic0
+driver: e1000e
+version: 7.0.2-6-pve
+firmware-version: 2.3-4
+bus-info: 0000:00:1f.6
+$ ethtool -k nic0 | grep -E "tcp-segmentation-offload|generic-segmentation-offload|generic-receive-offload"
+tcp-segmentation-offload: on
+generic-segmentation-offload: on
+generic-receive-offload: on
+$ ethtool --show-eee nic0
+EEE settings for nic0:
+	EEE status: enabled - inactive
+	Tx LPI: 17 (us)
+
+### NVMe (smartctl -a /dev/nvme0n1, short)
+SMART overall-health self-assessment test result: PASSED
+Critical Warning:                   0x00
+Temperature:                        43 Celsius
+Available Spare:                    100%
+Percentage Used:                    1%
+Media and Data Integrity Errors:    0
+Error Information Log Entries:      1  (log shows: No Errors Logged)
+Unsafe Shutdowns:                   100
+
+### VM 100 senaev-madrid: journalctl --no-pager --list-boots
+IDX BOOT ID                          FIRST ENTRY                 LAST ENTRY
+ -3 a0af216f9a5b459caad9ab4dddded789 Sat 2026-11-14 17:52:22 CET Sat 2026-11-14 18:28:58 CET
+ -2 135484e73a0f4cf9a7ad3264620c31af Sat 2026-11-14 18:34:34 CET Sun 2026-11-15 09:38:10 CET
+ -1 0e92fe0286be42ee9228b72854f71ce4 Sun 2026-11-15 09:39:00 CET Sun 2026-11-15 09:56:42 CET
+  0 7e0462ea6a3b4799aa6b48d1e78533c8 Sun 2026-11-15 09:57:47 CET Sun 2026-11-15 09:59:13 CET
+
+Boot -2 runs from 18:34 to 09:38:10 without a gap: the VM was running all night.
+
+### Fix: /etc/network/interfaces on the host (only the post-up line is new)
+auto lo
+iface lo inet loopback
+
+iface nic0 inet manual
+	post-up /usr/sbin/ethtool -K nic0 tso off gso off gro off
+
+auto vmbr0
+iface vmbr0 inet dhcp
+	bridge-ports nic0
+	bridge-stp off
+	bridge-fd 0
+
+source /etc/network/interfaces.d/*
+
+$ ifup --syntax-check -a
+warning: vmbr0: bridge-fd: value of out range "0": valid attribute range: 2-255
+(The warning is old: the Proxmox installer writes bridge-fd 0. It is not about the new line.)
+
+### After the reboot of 08:56 UTC
+$ ethtool -k nic0 | grep -E "tcp-segmentation-offload|generic-segmentation-offload|generic-receive-offload"
+tcp-segmentation-offload: off
+generic-segmentation-offload: off
+generic-receive-offload: off
+$ journalctl --no-pager -b 0 -k | grep -c "Hardware Unit Hang"
+0
+$ qm list
+      VMID NAME                 STATUS     MEM(MB)    BOOTDISK(GB) PID
+       100 senaev-madrid        running    16384            500.00 1513
+       101 dell-windows         stopped    8192             931.52 0
