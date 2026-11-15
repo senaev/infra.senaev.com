@@ -1,5 +1,25 @@
 # Worklog
 
+## 2026-11-15 22:15 UTC — SSH part covers all four agent containers; other secrets are future tasks
+
+The user chose to move the SSH key into the sidecar for all four containers in this PR, and to
+keep the other secrets as future tasks. `opencode-serve`, `code-tools` and `omp-web` now use
+`_ssh-agent.tpl` like `claude-code`. The `git-init` key copy is removed. `opencode-serve` and
+`code-tools` get GitHub's published host keys in their images instead of `ssh-keyscan`, which
+trusts whatever answers first. The `omp-web` and `claude-code` images already had them.
+galkin's OMP has no `git` and gets no sidecar. Rendered:
+
+```
+galkin-omp-web: init= ssh-mounts=omp-web: proxy: sock-env= vols=
+senaev-opencode-telegram: init=ssh-agent ssh-mounts=opencode-serve:/ssh-agent(ro) ... sock-env=opencode-serve vols=ssh-key,ssh-agent
+senaev-omp-web: init=ssh-agent ssh-mounts=omp-web:/ssh-agent(ro) proxy: sock-env=omp-web vols=ssh-key,ssh-agent
+senaev-code-tools: init=ssh-agent ssh-mounts=code-tools:/ssh-agent(ro) sock-env=code-tools vols=ssh-key,ssh-agent
+senaev-claude-code: init=ssh-agent ssh-mounts=claude-code:/ssh-agent(ro) telegram-login: sock-env=claude-code vols=ssh-key,ssh-agent
+```
+
+Each agent container mounts only the read-only socket folder and has `SSH_AUTH_SOCK`. Only the
+`ssh-agent` sidecar mounts the key. The rendered chart has no `/root/.ssh` mount.
+
 ## 2026-11-15 22:00 UTC — Stage 1 written: ssh-agent sidecar for Claude Code
 
 Decisions:

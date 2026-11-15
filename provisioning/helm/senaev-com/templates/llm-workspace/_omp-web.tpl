@@ -116,6 +116,11 @@ spec:
       terminationGracePeriodSeconds: 30
       nodeSelector:
         vps: {{ .Values.vps }}
+{{- if .Values.git }}
+      # The SSH key is only in the ssh-agent container: OMP signs through its socket.
+      initContainers:
+{{ include "senaev-com.llmWorkspace.sshAgent.container" . | indent 8 }}
+{{- end }}
       containers:
         - name: omp-web
           image: ghcr.io/senaev/omp-web:latest
@@ -151,6 +156,7 @@ spec:
                 secretKeyRef:
                   name: {{ printf "%s-omp-web-env" $.Values.name }}
                   key: {{ .Values.git.githubToken }}
+{{ include "senaev-com.llmWorkspace.sshAgent.env" . | indent 12 }}
 {{- end }}
 {{- range $connector := $agent.connectors }}
             - name: {{ $connector.secretKey | quote }}
@@ -184,9 +190,7 @@ spec:
             - name: state
               mountPath: /root/.omp
 {{- if .Values.git }}
-            - name: ssh
-              mountPath: /root/.ssh
-              readOnly: true
+{{ include "senaev-com.llmWorkspace.sshAgent.volumeMount" . | indent 12 }}
 {{- end }}
             - name: defaults
               mountPath: /defaults
@@ -235,13 +239,7 @@ spec:
           persistentVolumeClaim:
             claimName: {{ printf "%s-omp-web-state" .Values.name }}
 {{- if .Values.git }}
-        - name: ssh
-          secret:
-            secretName: {{ printf "%s-omp-web-env" .Values.name }}
-            defaultMode: 0600
-            items:
-              - key: {{ .Values.git.sshPrivateKey }}
-                path: id_rsa
+{{ include "senaev-com.llmWorkspace.sshAgent.volumes" (dict "context" . "secretName" (printf "%s-omp-web-env" .Values.name)) | indent 8 }}
 {{- end }}
         - name: defaults
           configMap:

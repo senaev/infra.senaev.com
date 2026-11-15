@@ -384,7 +384,10 @@ See [`projects/2026-11-15-18-42-claude-code-remote-control`](projects/2026-11-15
 
 Secrets in LLM workspaces: an agent can read everything in the container where it runs. Keep
 credentials in a sidecar or proxy and give the agent container only a socket or a local
-endpoint, as `_ssh-agent.tpl` does for the SSH key. The inventory and the stages are in
+endpoint, as `_ssh-agent.tpl` does for the SSH key in Claude Code, OpenCode, Code Tools and
+OMP: only their `ssh-agent` sidecar mounts the key, and the agent container gets
+`SSH_AUTH_SOCK`. A new coding component that needs git over SSH uses the same helper. The
+inventory and the future tasks are in
 [`projects/2026-11-15-21-54-isolate-secrets-from-llm-workspaces`](projects/2026-11-15-21-54-isolate-secrets-from-llm-workspaces/README.md).
 
 ## Datadog APM whitelist

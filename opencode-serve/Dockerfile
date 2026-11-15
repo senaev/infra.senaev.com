@@ -13,6 +13,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         git openssh-client python3 \
         jq vim ripgrep fzf tree make unzip wget gh \
+    && curl -fsSL https://api.github.com/meta | jq -r '.ssh_keys[] | "github.com \(.)"' > /etc/ssh/ssh_known_hosts \
     && curl -fsSL --retry 3 --retry-all-errors "https://github.com/anomalyco/opencode/releases/download/v2.2.3/opencode-linux-x64-baseline.tar.gz" -o /tmp/opencode.tar.gz \
     && echo "ef3aeeaf5522b10d69a3da7bbd6e6d8d259f845833d96b8310767d3407b18a35  /tmp/opencode.tar.gz" | sha256sum -c - \
     && tar -xzf /tmp/opencode.tar.gz -C /usr/local/bin opencode \
