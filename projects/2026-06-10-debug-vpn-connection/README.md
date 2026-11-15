@@ -1174,3 +1174,32 @@ promised because gates/direct controls may fail. Cadence/overruns and cleanup re
 existing behavior.112 Python tests pass. PR only, not deployed. After rollout verify
 all4 scrapes/restarts, new pair cadence and separate counter cohort. Require three
 comparable completed pairs with valid direct/exit controls before another variable.
+
+### 2026-11-15 — Prepare bounded MSS comparison
+
+Post187 counters: home16KiB direct13/13, XHTTP0/13; VPS sources12/12 each
+for both routes, exit gates all passed. Logs match repeated home and Hetzner
+pairs by experiment_id; FirstVDS logs unavailable, so counts are not matched
+rounds there. Home Cloudflare16KiB direct3/3 versus XHTTP0/3; home64KiB
+both routes0/3 is inconclusive. Zero restarts/resets observed.
+
+Priority worker now runs two fresh16KiB arms serially per300–360s round:
+default and tcpMaxSeg1000, alternating order. Each arm retains its own exit
+gate, paired public direct control, verified TLS/H1, exact200/bytes,
+timeouts and jitter. Shared experiment_id identifies the round; fixed
+_mss1000 check suffix distinguishes the changed arm, including its exit gate.
+Both use1084 sequentially and cleanup before the next arm. Older controls
+remain unchanged. Planned successful bodies double from36 to72KiB/source/round,
+excluding wire overhead. No production or host networking change.
+
+Only experimental Xray client streamSettings.sockopt.tcpMaxSeg changes.
+Pinned26.9.30 loopback preflight previously observed peer MSS32768 versus988;
+that did not test TLS, VPN recovery or effective WAN MSS. Positive results
+show MSS/socket sensitivity, not uniquely PMTU/DPI. Negative results cannot
+exclude PMTU without effective WAN MSS evidence. Require three completed,
+exit/direct-valid rounds per arm/source and inspect order/overlap effects.
+PR only; never merge/deploy without user approval.
+
+Workflow: after an approved deployment, analyze collected evidence and carry
+the justified next change through implementation, tests and a reviewable PR.
+Present that PR for user OK; do not stop at recommending an unimplemented change.

@@ -177,11 +177,17 @@ def endpoint_pair_loop(profile):
     """Prioritized pair owns port1084; older fresh diagnostics retain port1083."""
     if STOP.wait(random.uniform(0, 30)):
         return
+    mss_first = False
     while not STOP.is_set():
         started = time.monotonic()
-        fresh_xhttp_exit_control(profile, None, str(uuid.uuid4()),
-                                 native_tls=True, http1=True, payload_size=16384,
-                                 endpoint=True, port=1084)
+        experiment_id = str(uuid.uuid4())
+        for tcp_max_seg in ((1000, None) if mss_first else (None, 1000)):
+            if STOP.is_set():
+                return
+            fresh_xhttp_exit_control(profile, None, experiment_id,
+                                     native_tls=True, http1=True, payload_size=16384,
+                                     endpoint=True, port=1084, tcp_max_seg=tcp_max_seg)
+        mss_first = not mss_first
         if STOP.wait(max(0, started + random.uniform(300, 360) - time.monotonic())):
             return
 
@@ -332,7 +338,7 @@ def xhttp_exit_control(profile, proxy, experiment_id, timeout=8, check="exit_ip"
     return result["ok"]
 
 
-def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, http1=False, measure_sizes=False, payload_size=None, endpoint=False, port=1083):
+def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, http1=False, measure_sizes=False, payload_size=None, endpoint=False, port=1083, tcp_max_seg=None):
     """Fresh-process trace and optional payloads; never reset the matrix candidate."""
     if STOP.is_set():
         return False
@@ -356,6 +362,12 @@ def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, ht
         check += f"_{payload_size}"
     if endpoint:
         check = f"diagnostic_h1_endpoint_exit_{payload_size}"
+    if tcp_max_seg is not None and not (
+            tcp_max_seg == 1000 and port == 1084 and endpoint and payload_size == 16384
+            and native_tls and http1):
+        raise ValueError("MSS diagnostic is limited to the priority endpoint pair")
+    if tcp_max_seg is not None:
+        check += "_mss1000"
     passed = False
     fresh = None
     try:
@@ -367,6 +379,8 @@ def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, ht
             config["outbounds"][0]["streamSettings"]["tlsSettings"]["fingerprint"] = "unsafe"
         if http1:
             config["outbounds"][0]["streamSettings"]["tlsSettings"]["alpn"] = ["http/1.1"]
+        if tcp_max_seg is not None:
+            config["outbounds"][0]["streamSettings"]["sockopt"] = {"tcpMaxSeg": tcp_max_seg}
         with tempfile.TemporaryDirectory(prefix="vpn-fresh-client-") as folder:
             try:
                 fresh = start_client(config, folder)
@@ -383,7 +397,8 @@ def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, ht
                 if passed and (measure_sizes or payload_size is not None):
                     passed = h1_transfer_controls(profile, f"socks5h://127.0.0.1:{port}",
                                                   child, experiment_id, fresh=fresh,
-                                                  immediate_size=payload_size, **({"endpoint": True} if endpoint else {}))
+                                                  immediate_size=payload_size, **({"endpoint": True} if endpoint else {}),
+                                                  **({"mss1000": True} if tcp_max_seg is not None else {}))
             finally:
                 if fresh is not None:
                     stop_client(fresh)
@@ -397,7 +412,7 @@ def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, ht
     return passed
 
 
-def h1_transfer_controls(profile, proxy, child, experiment_id, fresh=None, immediate_size=None, endpoint=False):
+def h1_transfer_controls(profile, proxy, child, experiment_id, fresh=None, immediate_size=None, endpoint=False, mss1000=False):
     """Exit-validated H1 ladder or one immediate size pair, serial and bounded."""
     if endpoint and immediate_size not in (16384, 65536):
         raise ValueError("Unsupported endpoint payload size")
@@ -419,6 +434,8 @@ def h1_transfer_controls(profile, proxy, child, experiment_id, fresh=None, immed
         if endpoint:
             url = f"https://senaev.com/api/vpn-test?bytes={size}"
             check = f"transfer_h1_fresh_endpoint_{size}"
+        if mss1000:
+            check += "_mss1000"
         options = {"http1": True} if endpoint else {}
         direct, _ = request(url, "", size, expected_bytes=size, **options)
         emit(profile, check, "direct", {**direct, "experiment_id": experiment_id,
