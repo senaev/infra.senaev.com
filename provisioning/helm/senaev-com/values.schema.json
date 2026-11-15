@@ -32,6 +32,13 @@
           },
           {
             "if": {
+              "required": ["claudeCode"],
+              "properties": { "claudeCode": { "properties": { "enabled": { "const": true } } } }
+            },
+            "then": { "required": ["git"] }
+          },
+          {
+            "if": {
               "required": ["codeTools"],
               "properties": { "codeTools": { "properties": { "enabled": { "const": true } } } }
             },
@@ -281,6 +288,30 @@
                     "minLength": 1
                   }
                 }
+              }
+            }
+          },
+          "claudeCode": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "enabled",
+              "dataPath",
+              "model"
+            ],
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "dataPath": {
+                "description": "Node folder with the login, trust answers and session history; mounted as the home folder",
+                "type": "string",
+                "pattern": "^/[^/]"
+              },
+              "model": {
+                "description": "The model of new sessions: an alias such as sonnet, or a full model name",
+                "type": "string",
+                "minLength": 1
               }
             }
           },

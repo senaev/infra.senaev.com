@@ -18,9 +18,9 @@ Not verified: the live mounts of the pods (no `kubectl` here), and the Telegram 
 
 The user confirmed these decisions: the container and the component are named `claude-code`; the hostPath is `/k3s-cluster/volumes/claude-code`; only `/code` is mounted (the `/projects` folder stays only for OMP, PR [#204](https://github.com/senaev/infra.senaev.com/pull/204) is open); yolo mode with `IS_SANDBOX=1`; the Telegram login flow comes at the end, first an interactive login. The user asked why the component is a template and not a plain YAML file. Answer: the chart renders each component once for every `llmWorkspaces` entry, so names, node, ingress and git keys come from the workspace; a plain file would hardcode `senaev`.
 
-## 2026-11-15 18:25 UTC — Spike on a plain Node pod passed
+## 2026-11-15 18:25 UTC — Test on a plain Node pod passed
 
-Pod `claude-code-spike` (`node:22-bookworm`, `HOME=/home/claude` on hostPath `/k3s-cluster/volumes/claude-code-spike`, `/code` as `emptyDir`) in namespace `senaev-com` on node `senaev-madrid`. Claude Code 2.1.325. See [the manifest](sources/claude-code-spike.yaml).
+Test pod `claude-code-spike` (`node:22-bookworm`, `HOME=/home/claude` on hostPath `/k3s-cluster/volumes/claude-code-spike`, `/code` as `emptyDir`) in namespace `senaev-com` on node `senaev-madrid`. Claude Code 2.1.325. See [the manifest](sources/test-pod.yaml). The names inside are as they ran; the data folder is renamed to `claude-code` for the final service.
 
 What worked:
 

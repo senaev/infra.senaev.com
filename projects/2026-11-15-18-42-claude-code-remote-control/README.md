@@ -16,9 +16,9 @@ Run Claude Code (Pro subscription) in a container of the `senaev` LLM workspace,
 - Claude Code refuses `bypassPermissions` as root, except inside a recognized sandbox. `IS_SANDBOX=1` makes it work.
 - Workspace templates: `provisioning/helm/senaev-com/templates/llm-workspace/`. Each component is a named template, rendered once for each entry of `llmWorkspaces` by `llm-workspaces.yaml`. Shared helpers are in `_access.tpl`.
 - Server mode stops by itself after about 10 minutes without a network. Kubernetes starts the container again. `claude remote-control` in the same folder brings back the sessions within about 4 hours.
-- A spike on 2026-11-15 proved the flow on a plain Node pod. See [project-worklog.md](project-worklog.md) and [the spike pod](sources/claude-code-spike.yaml).
+- A test on a plain Node pod on 2026-11-15 proved the flow. See [project-worklog.md](project-worklog.md) and [the test pod](sources/test-pod.yaml).
 
-### Findings of the spike
+### Findings of the test
 
 | Question | Result |
 |---|---|
@@ -51,7 +51,7 @@ Run Claude Code (Pro subscription) in a container of the `senaev` LLM workspace,
    - Git credentials as in `_code-tools.tpl`; `IS_SANDBOX=1`.
    - `podAccess`, `containerAccess` and `egress` helpers. A NetworkPolicy with no ingress.
 4. 📌 `AGENTS.md`: a section about the component.
-5. 📌 Deploy. Log in with `kubectl exec -it`. Option: move the spike's login with `mv /k3s-cluster/volumes/claude-code-spike /k3s-cluster/volumes/claude-code` on the node before the first start.
+5. 📌 Deploy. Log in with `kubectl exec -it`. The login of the test pod is reused: on the node, `mv /k3s-cluster/volumes/claude-code-spike /k3s-cluster/volumes/claude-code` before the first start, so no new login is needed.
 6. 📌 At the end: Telegram login flow with a new bot. The start script runs `claude auth login` with a FIFO, sends the URL to Telegram, reads the code from the reply, and warns a few days before `loginExpiresAt`.
 
 ## Open points

@@ -1,5 +1,5 @@
 {{- define "senaev-com.llmWorkspace.workspace" -}}
-{{- if or .Values.opencode.enabled .Values.ompWeb.enabled }}
+{{- if or .Values.opencode.enabled .Values.ompWeb.enabled .Values.claudeCode.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
