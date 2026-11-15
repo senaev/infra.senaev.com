@@ -1,5 +1,13 @@
 # Worklog
 
+## 2026-11-15 21:16 UTC — Telegram login is deployed and works
+
+PR #207 (squash `873545df`) is merged, and the deploy passed; the smoke test passes and the logs of the pod have no errors. The user sent `/auth` to the bot while the old login was still active, took the link, logged in, and sent the code from the page. The helper logs show `/auth` handled, the text taken as a login code, and the message with the code deleted. The bot answered "Logged in. The login is valid until 2026-12-12" (27 days). A login that is still active does not need a logout first: `/auth` starts a new login next to it.
+
+Two things to remember. The deploy restarts the pod twice (Helm, then the step that refreshes rebuilt images), and the helper skips messages that came before its last start, so a message sent in the first minutes after a deploy is lost: send `/auth` again. Datadog files the helper logs under `service:claude-code`, the same as the main container; use `container_name:telegram-login` to read only them.
+
+Open: whether the running server uses the renewed login without a restart, and what happens at the expiry (see the README).
+
 ## 2026-11-15 21:45 UTC — Polling loop moved to senaev-utils
 
 The user asked to move the loop that receives messages into `senaev-utils`. New: `pollTelegramMessages` (long polling with `getUpdates`: handles the messages one by one, reports a failed poll or handler through `onError`, retries after a delay, stops on an `AbortSignal`, and can skip the messages that came before the start) and `deleteTelegramMessage`, both in `senaev-utils/src/utils/TelegramApi/` with tests. The helper's own `telegram.ts` is gone; `main.ts` only gives `pollTelegramMessages` its handler. The helper still serializes message handling and the login checks in one queue. The record of 21:20 says the polling loop is not reused; this is now changed.
