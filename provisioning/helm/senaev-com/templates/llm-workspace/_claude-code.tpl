@@ -66,8 +66,9 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /home/claude
+            # ssh finds keys in the home folder of root in /etc/passwd, /root, not in HOME.
             - name: ssh
-              mountPath: /home/claude/.ssh
+              mountPath: /root/.ssh
               readOnly: true
             - name: code
               mountPath: /code

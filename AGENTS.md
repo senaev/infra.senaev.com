@@ -373,8 +373,9 @@ makes outbound connections only, and the NetworkPolicy has no ingress. It is ena
   across restarts. Do not delete it. The folder name is fixed in the template, as for OpenCode
   (`volumes/opencode-data`); two workspaces on one node would share it.
 - Sessions run without approvals (`bypassPermissions`) as root; `IS_SANDBOX=1` allows this in the
-  container. The git token and SSH key of the workspace are in the pod. The model of new sessions
-  is `claudeCode.model`; the phone can change it with `/model`.
+  container. The git token and SSH key of the workspace are in the pod. The key is mounted in
+  `/root/.ssh`, not in `HOME`: ssh takes the home folder of root from `/etc/passwd` and ignores
+  `HOME`. The model of new sessions is `claudeCode.model`; the phone can change it with `/model`.
 - The Claude Code version is pinned in `claude-code/Dockerfile`. Raise it in a pull request.
 - There is no readiness probe, so a deploy does not wait for the login.
 
