@@ -32,6 +32,13 @@
           },
           {
             "if": {
+              "required": ["claudeCode"],
+              "properties": { "claudeCode": { "properties": { "enabled": { "const": true } } } }
+            },
+            "then": { "required": ["git"] }
+          },
+          {
+            "if": {
               "required": ["codeTools"],
               "properties": { "codeTools": { "properties": { "enabled": { "const": true } } } }
             },
@@ -198,7 +205,6 @@
             "required": [
               "enabled",
               "hostname",
-              "dataPath",
               "mcpOAuth",
               "secrets"
             ],
@@ -209,10 +215,6 @@
               "hostname": {
                 "type": "string",
                 "minLength": 1
-              },
-              "dataPath": {
-                "type": "string",
-                "pattern": "^/[^/]"
               },
               "mcpOAuth": {
                 "type": "object",
@@ -281,6 +283,24 @@
                     "minLength": 1
                   }
                 }
+              }
+            }
+          },
+          "claudeCode": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "enabled",
+              "model"
+            ],
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "model": {
+                "description": "The model of new sessions: an alias such as sonnet, or a full model name",
+                "type": "string",
+                "minLength": 1
               }
             }
           },

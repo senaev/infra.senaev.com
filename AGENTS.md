@@ -282,7 +282,7 @@ Credentials (`SUPABASE_PROJECT_URL`, `SUPABASE_PUBLISHABLE_KEY`) are stored in V
 Code Tools has its own image (`code-tools/Dockerfile`,
 `ghcr.io/senaev/code-tools`), Deployment and Service
 (`provisioning/helm/senaev-com/templates/llm-workspace/_code-tools.tpl`). OpenCode and its Telegram
-bot stay in the `senaev-opencode-telegram` Deployment. Both pods, and OMP, mount the
+bot stay in the `senaev-opencode-telegram` Deployment. Both pods, OMP and Claude Code mount the
 workspace's `senaev-code` PVC at `/code`; only OMP also mounts its `senaev-projects` PVC at
 `/projects`. The workspace `vps` node selector puts them on one node. Code Tools and OpenCode use one replica
 and `Recreate`; a Code Tools update still has a short outage and loses in-memory operation IDs.
@@ -318,8 +318,8 @@ LLM workspace values live in `llmWorkspaces`, and the templates in
 `provisioning/helm/senaev-com/templates/llm-workspace/`. The entry name prefixes all
 resource names. Each workspace has its own code PVC (`<name>-code`), a projects PVC
 (`<name>-projects`, rendered only when OMP is enabled) and instructions ConfigMap (`<name>-instructions`, from `instructionsPath`), and enables any of
-OpenCode, OMP and Code Tools. OpenCode requires `git` and `telegram`; Code Tools requires
-OpenCode. A new entry inherits nothing from another; the schema is
+OpenCode, OMP, Code Tools and Claude Code. OpenCode requires `git` and `telegram`; Code Tools
+requires OpenCode; Claude Code requires `git`. A new entry inherits nothing from another; the schema is
 `provisioning/helm/senaev-com/values.schema.json`.
 
 OMP runs every command without approval, so it is isolated. It reads its keys only from its
@@ -340,11 +340,36 @@ for compatibility after deployment.
 
 | Workspace | Node | Components | Ingress |
 |---|---|---|---|
-| `senaev` | senaev-madrid | OpenCode, OMP (`omp.senaev.com`), Code Tools | traefik-hetzner |
+| `senaev` | senaev-madrid | OpenCode, OMP (`omp.senaev.com`), Code Tools, Claude Code | traefik-hetzner |
 | `galkin` | galkin | OMP only (`omp.galkin.senaev.com`) | traefik-hetzner (DNS points to hetzner) |
 
 Do not rename the `senaev` entry: that replaces its PVCs, and cluster-helper calls
 `senaev-code-tools`. Preserve its host data directory.
+
+## Claude Code
+
+The `claudeCode` component (`templates/llm-workspace/_claude-code.tpl`, image `claude-code/`)
+runs `claude remote-control` in `/code`, so the Claude mobile app (tab Code) and claude.ai/code
+drive Claude Code on the shared `/code` volume. It has no Ingress and no Service: Remote Control
+makes outbound connections only, and the NetworkPolicy has no ingress. It is enabled only in
+`senaev`.
+
+- The login is the Claude Pro subscription. Remote Control accepts only a full claude.ai login,
+  not `claude setup-token`, so no Vault secret holds it. Log in once and again when it expires
+  (`claude auth status` shows `loginExpiresAt`, about 30 days):
+  `kubectl -n senaev-com exec -it deploy/senaev-claude-code -- claude auth login`. Until then
+  the pod waits and checks every 30 seconds. Do not set `ANTHROPIC_API_KEY` or `ANTHROPIC_BASE_URL`.
+- `<clusterRootPath>/volumes/claude-code` (`/k3s-cluster/volumes/claude-code`) is a node folder
+  mounted as `HOME`: the login, the trust answers and the session history. It keeps the sessions
+  across restarts. Do not delete it. The folder name is fixed in the template, as for OpenCode
+  (`volumes/opencode-data`); two workspaces on one node would share it.
+- Sessions run without approvals (`bypassPermissions`) as root; `IS_SANDBOX=1` allows this in the
+  container. The git token and SSH key of the workspace are in the pod. The model of new sessions
+  is `claudeCode.model`; the phone can change it with `/model`.
+- The Claude Code version is pinned in `claude-code/Dockerfile`. Raise it in a pull request.
+- There is no readiness probe, so a deploy does not wait for the login.
+
+See [`projects/2026-11-15-18-42-claude-code-remote-control`](projects/2026-11-15-18-42-claude-code-remote-control/README.md).
 
 ## Datadog APM whitelist
 

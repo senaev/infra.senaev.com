@@ -1,5 +1,4 @@
 {{- define "senaev-com.llmWorkspace.workspace" -}}
-{{- if or .Values.opencode.enabled .Values.ompWeb.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -40,5 +39,4 @@ spec:
   resources:
     requests:
       storage: {{ .Values.codeStorageSize }}
-{{- end }}
 {{- end -}}

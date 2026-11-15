@@ -232,7 +232,6 @@ llmWorkspaces:
     opencode:
       enabled: true
       hostname: opencode.senaev.com
-      dataPath: /k3s-cluster/volumes/opencode-data
       mcpOAuth:
         hostname: opencode.senaev.com
         # All remote MCPs share one callback; authorize one server at a time.
@@ -249,6 +248,9 @@ llmWorkspaces:
       enabled: true
       secrets:
         codeToolsToken: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
+    claudeCode:
+      enabled: true
+      model: sonnet
   galkin:
     enabled: true
     vps: galkin
