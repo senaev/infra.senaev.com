@@ -1203,3 +1203,29 @@ PR only; never merge/deploy without user approval.
 Workflow: after an approved deployment, analyze collected evidence and carry
 the justified next change through implementation, tests and a reviewable PR.
 Present that PR for user OK; do not stop at recommending an unimplemented change.
+
+### 2026-11-15 — Prepare unprivileged TCP observations
+
+PR194 did not recover home16KiB: default0/13 and MSS1000 0/13, paired
+direct13/13 each; VPS completed controls passed. Home logs match both
+orders. Actual WAN MSS remains unknown, so this does not exclude PMTU.
+
+Add iproute2-ss to the existing image and sample only fresh priority Xray
+PID-owned outbound TCP443 sockets once/second, at most60 polls and8 sockets
+per poll. Emit numeric MSS/receive-MSS/advertised-MSS/PMTU, retransmission,
+unacked/lost, segment and byte observations, correlated by experiment_id
+and default/mss1000 arm. No raw ss output, IPs, ports, process details,
+credentials or payloads logged. Log-only diagnostic; no new metric labels.
+Unavailable ss/process visibility or no observed socket is explicit.
+Existing gates, traffic, cadence and socket settings remain unchanged.
+No extra permissions, host network, packet capture, backend or production
+change. Polling adds small local process overhead and may miss short-lived
+connections. Samples span exit gate and payload checks; they cannot alone
+identify TLS stage, prove packet loss location or prove DPI/PMTU. Client
+receive MSS is an observation, not a packet capture of every inbound segment.
+Server Traefik sockets are outside the client PID and remain unobserved.
+
+After deployment require3valid matched rounds per arm/source, correlate
+socket samples with gates/payload logs, compare effective sizing and counters.
+Prepare the next evidence-based diagnostic/fix PR rather than stop at an
+unimplemented recommendation.116 Python tests passed; PR only, not deployed.
