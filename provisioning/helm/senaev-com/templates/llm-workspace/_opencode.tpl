@@ -105,7 +105,7 @@ spec:
                   name: {{ printf "%s-opencode-env" $.Values.name }}
                   key: {{ .Values.git.githubToken }}
             - name: OPENCODE_WORKDIR
-              value: /projects
+              value: /code
 {{- range $connector := $agent.connectors }}
             - name: {{ $connector.secretKey | quote }}
               valueFrom:
@@ -126,8 +126,6 @@ spec:
 {{- end }}
               value: {{ dict "mcp" (dict "servers" $servers) "model" (printf "%s/%s" $agent.defaultModel.provider $agent.defaultModel.id) "provider" $providers "permissions" (list (dict "action" "external_directory" "resource" "*" "effect" "ask")) | toJson | quote }}
           volumeMounts:
-            - name: projects
-              mountPath: /projects
             - name: code
               mountPath: /code
             - name: ssh-dir
@@ -183,8 +181,6 @@ spec:
           image: ghcr.io/senaev/opencode-telegram-bot:latest
           imagePullPolicy: Always
           volumeMounts:
-            - name: projects
-              mountPath: /projects
             - name: code
               mountPath: /code
             - name: opencode-data
@@ -219,7 +215,7 @@ spec:
             - name: OPENCODE_MODEL_ID
               value: {{ $agent.defaultModel.id | quote }}
             - name: OPEN_BROWSER_ROOTS
-              value: /projects,/code
+              value: /code
             - name: STT_API_URL
               value: {{ $agent.speechToText.baseUrl | quote }}
             - name: STT_API_KEY
@@ -249,9 +245,6 @@ spec:
                 mode: 0600
         - name: ssh-dir
           emptyDir: {}
-        - name: projects
-          persistentVolumeClaim:
-            claimName: {{ printf "%s-projects" .Values.name }}
         - name: code
           persistentVolumeClaim:
             claimName: {{ printf "%s-code" .Values.name }}
