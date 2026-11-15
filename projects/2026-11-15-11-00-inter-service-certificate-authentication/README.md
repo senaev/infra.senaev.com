@@ -17,9 +17,14 @@ Build a reusable foundation for other services, including
   in [env.ts](../../cluster-helper/src/env.ts).
 - Current service wiring: [cluster-helper Helm template](../../provisioning/helm/senaev-com/templates/cluster-helper.yaml)
   and [obsidian-sync template](../../provisioning/helm/senaev-com/templates/obsidian-sync.yaml).
-- Certificate lifecycle is managed through the Kubernetes ecosystem; cert-manager
-  with a dedicated private issuer is the proposed approach. The issuer backend
-  (Kubernetes-held CA versus Vault PKI) remains a design choice.
+- Decision: manage the dedicated private CA inside Kubernetes, not Vault PKI.
+  Use cert-manager for the planned issuance and renewal integration.
+- Decision: enforce mTLS at application level in both Node.js services. Reuse
+  established Node.js TLS/HTTPS APIs and compatible existing HTTP-client packages.
+  Put common certificate loading/reload, secure client/server configuration and
+  identity-verification utilities in senaev-utils; keep caller permissions explicit
+  in each service. Select exact adapters after inspecting current client/server stacks.
+  Do not implement custom cryptography or introduce a service mesh for this project.
 - Do not reuse the Kubernetes control-plane CA. Applications receive only their own
   private keys and the required public trust bundle; no CA signing key.
 - Keep NetworkPolicy as an additional layer. A trusted certificate alone does not
@@ -52,8 +57,6 @@ These are proposals, not user-approved choices:
 
 | Decision | Recommended starting point |
 |---|---|
-| Where mTLS is enforced | Applications with shared client/server utilities; defer a service mesh. |
-| Who issues identities | cert-manager with a dedicated Kubernetes-managed private CA initially; decide whether Vault PKI should own signing instead. |
 | Identity and authorization | One identity per service, explicit allowed callers per API; node executors additionally need node-specific identity. |
 | Migration and failure behavior | Staged cutover, then mTLS only; authentication failures block requests, with explicit operator rollback. |
 | Compromised identity response | A documented way to block a caller immediately and replace its credentials; select certificate lifetime to bound residual exposure. |
@@ -75,4 +78,5 @@ These are proposals, not user-approved choices:
 ## Result
 
 Project planned only. No certificate infrastructure deployed or token authentication removed.
-Implementation architecture and issuer ownership remain to be agreed.
+Application-level mTLS and a Kubernetes-managed private CA are decided.
+Remaining proposals concern identity/authorization, migration and compromised-identity response.
