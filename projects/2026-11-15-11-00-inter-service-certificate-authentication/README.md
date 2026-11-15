@@ -51,15 +51,22 @@ Build a reusable foundation for other services, including
 7. Add certificate-expiry/renewal-failure monitoring and Telegram alerts, operational
    runbooks and end-to-end tests before marking the foundation reusable.
 
-## Remaining design decisions
+## Technical vision and readiness
 
-These are proposals, not user-approved choices:
+See the [technical plan](2026-11-15-11-44-technical-plan.md) for inspected traffic,
+CA/identity architecture, shared Node.js integration, renewal and staged delivery.
+The main architecture decisions suffice to prepare implementation. Proposed defaults:
+24-hour leaves renewed 8 hours before expiry, exact service identities, explicit
+caller authorization and fail-closed mTLS after migration.
 
-| Decision | Recommended starting point |
-|---|---|
-| Identity and authorization | One identity per service, explicit allowed callers per API; node executors additionally need node-specific identity. |
-| Migration and failure behavior | Staged cutover, then mTLS only; authentication failures block requests, with explicit operator rollback. |
-| Compromised identity response | A documented way to block a caller immediately and replace its credentials; select certificate lifetime to bound residual exposure. |
+Next.js public-file traffic and vmagent metrics currently share port 8080. Keep them
+on a public-only HTTP listener while the protected vault API moves to mTLS on 8443.
+Protected routes must never remain reachable through that public HTTP listener.
+This migration does not claim to encrypt all internal cluster traffic.
+
+Before production activation verify live certificate/RBAC prerequisites, choose an
+encrypted CA backup destination or explicitly accept CA recreation after disaster,
+and exercise staged rollout/rollback. Exact versions/adapters are implementation work.
 
 ## Verification
 
@@ -79,4 +86,4 @@ These are proposals, not user-approved choices:
 
 Project planned only. No certificate infrastructure deployed or token authentication removed.
 Application-level mTLS and a Kubernetes-managed private CA are decided.
-Remaining proposals concern identity/authorization, migration and compromised-identity response.
+Technical plan prepared with proposed defaults and explicit production activation gates.
