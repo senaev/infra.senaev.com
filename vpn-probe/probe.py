@@ -403,7 +403,8 @@ def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, ht
                     passed = h1_transfer_controls(profile, f"socks5h://127.0.0.1:{port}",
                                                   child, experiment_id, fresh=fresh,
                                                   immediate_size=payload_size, **({"endpoint": True} if endpoint else {}),
-                                                  **({"mss1000": True} if tcp_max_seg is not None else {}))
+                                                  **({"mss1000": True} if tcp_max_seg is not None else {}),
+                                                  **({"observer": observer} if observer is not None else {}))
             finally:
                 if observer is not None:
                     emit(profile, "diagnostic_socket_stats", "xhttp", {
@@ -422,7 +423,7 @@ def fresh_xhttp_exit_control(profile, child, experiment_id, native_tls=False, ht
     return passed
 
 
-def h1_transfer_controls(profile, proxy, child, experiment_id, fresh=None, immediate_size=None, endpoint=False, mss1000=False):
+def h1_transfer_controls(profile, proxy, child, experiment_id, fresh=None, immediate_size=None, endpoint=False, mss1000=False, observer=None):
     """Exit-validated H1 ladder or one immediate size pair, serial and bounded."""
     if endpoint and immediate_size not in (16384, 65536):
         raise ValueError("Unsupported endpoint payload size")
@@ -447,16 +448,22 @@ def h1_transfer_controls(profile, proxy, child, experiment_id, fresh=None, immed
         if mss1000:
             check += "_mss1000"
         options = {"http1": True} if endpoint else {}
+        if observer is not None:
+            observer.phase = "direct_control"
         direct, _ = request(url, "", size, expected_bytes=size, **options)
         emit(profile, check, "direct", {**direct, "experiment_id": experiment_id,
                                        "requested_bytes": size})
         guard()
+        if observer is not None:
+            observer.phase = "request_jitter"
         jitter = random.uniform(2, 7)
         if experiment_wait(jitter, child, profile, experiment_id):
             return False
         if STOP.is_set():
             return False
         guard()
+        if observer is not None:
+            observer.phase = "xhttp_payload"
         result, _ = request(url, proxy, size, expected_bytes=size, **options)
         guard()
         emit(profile, check, "xhttp", {**result, "experiment_id": experiment_id,

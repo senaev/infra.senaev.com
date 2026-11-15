@@ -9,13 +9,20 @@ FIELDS = ("mss", "rcvmss", "advmss", "pmtu", "unacked", "lost",
           "retrans", "bytes_acked", "bytes_received", "segs_out", "segs_in")
 
 
-def parse_stats(output, pid):
+def parse_stats(output, pid, identities=None):
     """Associate ss detail lines only with sockets owned by this Xray child."""
     rows = []
     owned = False
+    identity = None
+    state = None
     for line in output.splitlines():
         if line and not line[0].isspace():
             owned = f"pid={pid}," in line
+            inode = re.search(r"\bino:(\d+)", line)
+            identity = None
+            state = line.split()[0] if line.split() else None
+            if owned and identities is not None and inode:
+                identity = identities.setdefault(inode[1], len(identities) + 1)
         elif owned:
             row = {}
             for field in FIELDS:
@@ -25,6 +32,9 @@ def parse_stats(output, pid):
                     if field == "retrans" and match[2]:
                         row["total_retrans"] = int(match[2])
             if row:
+                if identities is not None:
+                    row["socket_id"] = identity
+                    row["state"] = state
                 rows.append(row)
     return rows
 
@@ -35,6 +45,8 @@ class SocketStats:
         self.done = threading.Event()
         self.samples = []
         self.unavailable = None
+        self.identities = {}
+        self.phase = "exit_gate"
         self.thread = threading.Thread(target=self.collect, daemon=True)
 
     def collect(self):
@@ -42,17 +54,18 @@ class SocketStats:
         for _ in range(60):
             if self.done.is_set():
                 return
+            phase = self.phase
             try:
                 result = subprocess.run(
-                    ["ss", "-H", "-t", "-i", "-n", "-p", "dport", "=", ":443"],
+                    ["ss", "-H", "-t", "-i", "-n", "-p", "-e", "dport", "=", ":443"],
                     capture_output=True, text=True, timeout=1, check=False)
                 if result.returncode:
                     self.unavailable = "ss_failed"
                     return
-                rows = parse_stats(result.stdout, self.pid)
+                rows = parse_stats(result.stdout, self.pid, self.identities)
                 if rows:
                     self.samples.append({"elapsed_seconds": round(time.monotonic() - started, 3),
-                                         "sockets": rows[:8]})
+                                         "phase": phase, "sockets": rows[:8]})
             except (OSError, subprocess.SubprocessError):
                 self.unavailable = "ss_unavailable"
                 return

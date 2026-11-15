@@ -1229,3 +1229,36 @@ After deployment require3valid matched rounds per arm/source, correlate
 socket samples with gates/payload logs, compare effective sizing and counters.
 Prepare the next evidence-based diagnostic/fix PR rather than stop at an
 unimplemented recommendation.116 Python tests passed; PR only, not deployed.
+
+### 2026-11-15 10:20 UTC — Associate TCP samples with sockets and phases
+
+Post196 visibility now works on home: default samples include mss/rcvmss1248,
+pmtu1300; no initial absence-based permission conclusion retained. Current
+pods differ from initial196 rollout following subsequent cluster deployments.
+Current-process counters home default/MSS payload0/8 each,direct8/8 each,
+exit8/8 each; Hetzner8/8 each. FirstVDS default7/8,MSS7/7 with one
+MSS gate skip. Counts are not matched rounds; home logs confirm at least
+three shared experiment_ids covering both arm orders, direct_control_ok true.
+Ordinary home8/16KiB8/8 and64KiB0/8; Cloudflare direct2/2 versusXHTTP0/2;
+oldendpoint64both0/2 inconclusive. No observed counter resets; four scrapes up.
+
+The observer lacks stable socket identity and request phase, so repeated
+numbers cannot safely establish progress/retransmission deltas or locate
+a stall. Add ss -e inode lookup internally, replace inode with observer-local
+integer socket_id, and log TCP state. Never log raw inode/address/process
+metadata. Missing inode gives null ID, not a fabricated association; identities
+are valid only within an arm's observer and inode reuse remains a limitation.
+Record phase at poll start: exit_gate,direct_control,request_jitter,xhttp_payload.
+A poll can straddle phase boundaries; these labels do not identify TLS stages.
+
+No traffic, socket settings, cadence, permissions or host/production changes.
+Leading hypotheses remain home path impairment or path/transport interaction;
+shared backend failure less supported. No PMTU/DPI proof; client ss values
+are not packet captures and cannot localize inbound loss. Next round correlate
+at least three valid arms/source using stable IDs and phases before tuning.
+117Python tests passed; PR only, no merge/deploy.
+
+Additional live home MSS-arm observation experiment
+b7d87e4f-76a6-47ae-9eb6-f13d09cd6078: mss988,advmss988/1000,
+rcvmss988,pmtu1300. This confirms an effective socket sizing difference
+versus observed default1248; it is not complete WAN packet-size evidence.
