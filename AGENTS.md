@@ -355,10 +355,19 @@ makes outbound connections only, and the NetworkPolicy has no ingress. It is ena
 `senaev`.
 
 - The login is the Claude Pro subscription. Remote Control accepts only a full claude.ai login,
-  not `claude setup-token`, so no Vault secret holds it. Log in once and again when it expires
-  (`claude auth status` shows `loginExpiresAt`, about 30 days):
-  `kubectl -n senaev-com exec -it deploy/senaev-claude-code -- claude auth login`. Until then
-  the pod waits and checks every 30 seconds. Do not set `ANTHROPIC_API_KEY` or `ANTHROPIC_BASE_URL`.
+  not `claude setup-token`, so no Vault secret holds it. It expires after about 30 days
+  (`claude auth status` shows `loginExpiresAt`). Until a login exists the main container waits
+  and checks every 30 seconds. Do not set `ANTHROPIC_API_KEY` or `ANTHROPIC_BASE_URL`.
+- The `telegram-login` container (`claude-code/telegram-login/`, run by `tsx`, using
+  `senaev-utils` for the Telegram calls, the message formatting, the logger and the shutdown)
+  renews the login from Telegram. The bot is @senaev_claude_helper_bot, with the
+  token in Vault `TG_TOKEN_CLAUDE_HELPER_BOT`. It answers only in the private chat with the user
+  `claudeCode.telegram.user` (`TG_SENAEV_USER_ID`; the chat id is the user id). `/auth`
+  sends a login link; the user opens it and sends the code from the page back; the bot deletes
+  that message. When nobody is logged in it says so once, with no link. From 5 days before
+  `loginExpiresAt` it warns once a day. It runs apart from
+  Claude Code, which has no approvals, so the bot token is not in that container. Manual login:
+  `kubectl -n senaev-com exec -it deploy/senaev-claude-code -c claude-code -- claude auth login`.
 - `<clusterRootPath>/volumes/claude-code` (`/k3s-cluster/volumes/claude-code`) is a node folder
   mounted as `HOME`: the login, the trust answers and the session history. It keeps the sessions
   across restarts. Do not delete it. The folder name is fixed in the template, as for OpenCode

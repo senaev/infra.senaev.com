@@ -16,7 +16,7 @@ export function editTelegramMarkdownMessage({
     replyMarkup,
     text,
 }: {
-    chatId: number | string;
+    chatId: string;
     messageId: number;
     replyMarkup?: InlineKeyboardMarkup | undefined;
     text: string;

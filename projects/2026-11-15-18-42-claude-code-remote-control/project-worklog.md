@@ -1,5 +1,31 @@
 # Worklog
 
+## 2026-11-15 21:45 UTC — Polling loop moved to senaev-utils
+
+The user asked to move the loop that receives messages into `senaev-utils`. New: `pollTelegramMessages` (long polling with `getUpdates`: handles the messages one by one, reports a failed poll or handler through `onError`, retries after a delay, stops on an `AbortSignal`, and can skip the messages that came before the start) and `deleteTelegramMessage`, both in `senaev-utils/src/utils/TelegramApi/` with tests. The helper's own `telegram.ts` is gone; `main.ts` only gives `pollTelegramMessages` its handler. The helper still serializes message handling and the login checks in one queue. The record of 21:20 says the polling loop is not reused; this is now changed.
+
+## 2026-11-15 21:30 UTC — `claudeCode.telegram.allowedUser` renamed to `user`
+
+The user asked for the shorter name. Only the new `claudeCode.telegram` block changed; the `telegram.allowedUser` of OpenCode is untouched. The Vault key is the same, `TG_SENAEV_USER_ID`. The older records below use the old name.
+
+## 2026-11-15 21:20 UTC — Telegram helper reuses senaev-utils
+
+The user asked to reuse code that other containers already have. The first version had its own Telegram client, `requireEnv`, logger and shutdown. `claude-code` is now a service like `vpn-subscription` and `code-tools`: `senaev-utils` as a `file:` dependency, `tsx`, a lockfile, and the Dockerfile pattern with the repository root as context. Reused: `callTelegramApi` (`getUpdates`, `deleteMessage`), `sendTelegramMessage` (the Rich Markdown entry point of the repo, with `escapeTelegramMarkdown` and `telegramLink`), `getTelegramCommandFromMessage`, the Telegram types, `requireEnv`, `createLogger` (pino), `installGracefulShutdown`, `promiseTimeout`, `stringifyUnknownError`. Not reused, because nothing fits: the `getUpdates` polling loop (the other bots use a webhook), the runner of `claude auth login` (it needs stdin and the output as it comes; `runProcess` is private to `code-tools`) and the expiry logic. This removed about 100 lines. The messages are now Rich Markdown, and the login link is a clickable link.
+
+Checked: 36 tests, eslint and `tsc` pass; the image builds with the new layout, `tsx` starts the helper, and with a fake token the error is `HTTP 401` and has no token in it.
+
+## 2026-11-15 21:00 UTC — Logged-out notice without a link
+
+The user asked that the bot does not send the login link by itself when Claude Code is logged out: it tells the user once, and the user sends `/auth` for the link. The logged-out notice is sent once for each loss of the login. While making this change I removed a bug: a check that found the user logged in cancelled a login that waited for a code, so a renewal with `/auth` before the expiry could fail within 10 minutes. A waiting login now stays until a code, or a new `/auth`. The tests cover both (38 tests).
+
+## 2026-11-15 20:55 UTC — Telegram login written, checked locally
+
+Decisions made with the user: bot @senaev_claude_helper_bot, token in Vault `TG_TOKEN_CLAUDE_HELPER_BOT`, passed in `claudeCode.telegram.token` of `values.yaml`; `/auth` is the command for a login at any time; a warning 5 days before the expiry; direct messages to the user. The chat id is not a separate value: in a private chat it equals the user id, so `claudeCode.telegram.allowedUser` (`TG_SENAEV_USER_ID`) is both the allowed user and the chat.
+
+Design: a second container `telegram-login` in the same pod, so the bot token stays out of the container where Claude Code runs without approvals. Code is in `claude-code/telegram-login/`; Node 24 runs the TypeScript directly, so there are no dependencies and no lockfile. A package without a lockfile is still in `npm run typecheck` and in the vitest projects.
+
+Checked locally: 36 unit tests (all under 100 ms), eslint and `tsc` pass. The tests found a real bug: the link was taken from the first output chunk, before it was complete; it now waits for the white space after it. In the built image, with the real `claude` CLI and no terminal: `claude auth status` is parsed, `claude auth login` prints a link of 497 characters with `state=`, and a wrong code gives `exit code 1` with "That code wasn't accepted". The Telegram part was checked only with a fake `fetch`: a fake token gives `HTTP 401` without the token in the message. Not checked: the real bot in the deploy.
+
 ## 2026-11-15 19:30 UTC — PR #205 deployed, login done, service works
 
 PR [#205](https://github.com/senaev/infra.senaev.com/pull/205) (merge commit `ff53aee`) was merged. Deploy run `43751913273` succeeded, including the image build and the public-pull check. The login of the test pod was not reused (the data folder was not moved), so the user logged in with `kubectl exec -it ... claude auth login`. The pod noticed within 30 seconds and started the server:
