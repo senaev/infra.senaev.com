@@ -1,5 +1,9 @@
 # Worklog
 
+## 2026-11-15 21:00 UTC — Logged-out notice without a link
+
+The user asked that the bot does not send the login link by itself when Claude Code is logged out: it tells the user once, and the user sends `/auth` for the link. The logged-out notice is sent once for each loss of the login. While making this change I removed a bug: a check that found the user logged in cancelled a login that waited for a code, so a renewal with `/auth` before the expiry could fail within 10 minutes. A waiting login now stays until a code, or a new `/auth`. The tests cover both (38 tests).
+
 ## 2026-11-15 20:55 UTC — Telegram login written, checked locally
 
 Decisions made with the user: bot @senaev_claude_helper_bot, token in Vault `TG_TOKEN_CLAUDE_HELPER_BOT`, passed in `claudeCode.telegram.token` of `values.yaml`; `/auth` is the command for a login at any time; a warning 5 days before the expiry; direct messages to the user. The chat id is not a separate value: in a private chat it equals the user id, so `claudeCode.telegram.allowedUser` (`TG_SENAEV_USER_ID`) is both the allowed user and the chat.

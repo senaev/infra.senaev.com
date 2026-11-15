@@ -55,7 +55,7 @@ Run Claude Code (Pro subscription) in a container of the `senaev` LLM workspace,
 6. 📌 Telegram login: a second container `telegram-login` in the pod (same image, `claude-code/telegram-login/`, Node runs the TypeScript). The bot is @senaev_claude_helper_bot, token in Vault `TG_TOKEN_CLAUDE_HELPER_BOT`, values `claudeCode.telegram`.
    - The bot answers only in the private chat with the user `TG_SENAEV_USER_ID`. In a private chat the chat id is the user id, so there is no separate chat id value.
    - `/auth` starts `claude auth login`, sends the link, takes the code from the next message, deletes that message, and says until when the login is valid.
-   - Every 10 minutes it checks `claude auth status`. Not logged in: it sends the link, again every 6 hours. From 5 days before `loginExpiresAt`: a warning once a day.
+   - Every 10 minutes it checks `claude auth status`. Not logged in: it says so once, with no link, until the login is back and lost again. From 5 days before `loginExpiresAt`: a warning once a day. Both messages tell the user to send `/auth`.
    - The bot token is only in this container, not in the container where Claude Code runs without approvals. A renewal writes the login file in the shared `HOME`; if the running server does not take it, the server stops at the expiry, the container restarts and reads it.
 
 ## Open points

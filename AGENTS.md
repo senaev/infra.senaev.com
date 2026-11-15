@@ -363,8 +363,8 @@ makes outbound connections only, and the NetworkPolicy has no ingress. It is ena
   token in Vault `TG_TOKEN_CLAUDE_HELPER_BOT`. It answers only in the private chat with the user
   `claudeCode.telegram.allowedUser` (`TG_SENAEV_USER_ID`; the chat id is the user id). `/auth`
   sends a login link; the user opens it and sends the code from the page back; the bot deletes
-  that message. When nobody is logged in it sends the link by itself, every 6 hours until the
-  login is done. From 5 days before `loginExpiresAt` it warns once a day. It runs apart from
+  that message. When nobody is logged in it says so once, with no link. From 5 days before
+  `loginExpiresAt` it warns once a day. It runs apart from
   Claude Code, which has no approvals, so the bot token is not in that container. Manual login:
   `kubectl -n senaev-com exec -it deploy/senaev-claude-code -c claude-code -- claude auth login`.
 - `<clusterRootPath>/volumes/claude-code` (`/k3s-cluster/volumes/claude-code`) is a node folder

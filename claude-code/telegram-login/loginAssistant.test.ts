@@ -5,7 +5,7 @@ import {
 import type { AuthStatus } from './claude.ts';
 import type { LoginResult, LoginSession } from './login.ts';
 import {
-    createLoginAssistant, EXPIRY_NOTICE_REPEAT_MS, LOGIN_REMINDER_REPEAT_MS,
+    createLoginAssistant, EXPIRY_NOTICE_REPEAT_MS,
 } from './loginAssistant.ts';
 
 const NOW = new Date('2026-12-10T12:00:00.000Z');
@@ -183,32 +183,61 @@ describe('the login check', () => {
         expect(sent).toHaveLength(2);
     });
 
-    it('offers the login link when nobody is logged in, and repeats it every 6 hours', async () => {
+    it('says once that Claude Code is logged out, and sends no link', async () => {
         const {
             assistant, sent, advance,
         } = setup(LOGGED_OUT);
 
         await assistant.checkLogin();
-        advance(LOGIN_REMINDER_REPEAT_MS - 1);
-        await assistant.checkLogin();
-        advance(1);
+        advance(7 * DAY_MS);
         await assistant.checkLogin();
 
-        expect(sent).toHaveLength(2);
-        expect(sent[0]).toBe(`Claude Code is not logged in.\n\n${LINK_MESSAGE}`);
+        expect(sent).toEqual(['Claude Code is logged out. Send /auth to log in.']);
     });
 
-    it('stops a waiting login when someone logged in another way', async () => {
-        const session = createSession();
+    it('says it again when the login is lost a second time', async () => {
         const {
-            assistant, setStatus,
-        } = setup(LOGGED_OUT, [session]);
+            assistant, sent, setStatus,
+        } = setup(LOGGED_OUT);
 
         await assistant.checkLogin();
         setStatus(loggedInUntil(30));
         await assistant.checkLogin();
+        setStatus(LOGGED_OUT);
+        await assistant.checkLogin();
 
-        expect(session.cancel).toHaveBeenCalledOnce();
-        await expect(assistant.handleText('code')).resolves.toBe(false);
+        expect(sent).toHaveLength(2);
+    });
+
+    it('tries again on the next check when the notice could not be sent', async () => {
+        const send = vi.fn()
+            .mockRejectedValueOnce(new Error('Telegram is down'))
+            .mockResolvedValue(undefined);
+        const assistant = createLoginAssistant({
+            getAuthStatus: () => Promise.resolve(LOGGED_OUT),
+            startLogin: () => createSession(),
+            send,
+            now: () => NOW,
+        });
+
+        await expect(assistant.checkLogin()).rejects.toThrow('Telegram is down');
+        await assistant.checkLogin();
+
+        expect(send).toHaveBeenCalledTimes(2);
+    });
+
+    it('keeps a login that waits for a code while the user is still logged in, for a renewal', async () => {
+        const session = createSession();
+        const {
+            assistant, sent,
+        } = setup(loggedInUntil(3), [session]);
+
+        await assistant.handleAuthCommand();
+        await assistant.checkLogin();
+        await assistant.handleText('the-code#state');
+
+        expect(session.cancel).not.toHaveBeenCalled();
+        expect(session.submitCode).toHaveBeenCalledWith('the-code#state');
+        expect(sent.at(-1)).toContain('Logged in.');
     });
 });

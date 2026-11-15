@@ -15,12 +15,10 @@ export type LoginAssistant = {
     checkLogin(): Promise<void>;
 };
 
-const HOUR_MS = 60 * 60 * 1000;
-const DAY_MS = 24 * HOUR_MS;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const EXPIRY_WARNING_MS = 5 * DAY_MS;
 export const EXPIRY_NOTICE_REPEAT_MS = DAY_MS;
-export const LOGIN_REMINDER_REPEAT_MS = 6 * HOUR_MS;
 
 function formatDate(date: Date): string {
     return date.toISOString().slice(0, 10);
@@ -28,7 +26,7 @@ function formatDate(date: Date): string {
 
 export function createLoginAssistant(dependencies: AssistantDependencies): LoginAssistant {
     let session: LoginSession | null = null;
-    let lastLoginReminderAt: number | null = null;
+    let loggedOutNoticeSent = false;
     let lastExpiryNoticeAt: number | null = null;
 
     function cancelSession(): void {
@@ -36,7 +34,7 @@ export function createLoginAssistant(dependencies: AssistantDependencies): Login
         session = null;
     }
 
-    async function beginLogin(intro: string): Promise<void> {
+    async function beginLogin(): Promise<void> {
         cancelSession();
         const newSession = dependencies.startLogin();
 
@@ -45,7 +43,7 @@ export function createLoginAssistant(dependencies: AssistantDependencies): Login
         try {
             const url = await newSession.authorizationUrl;
 
-            await dependencies.send(`${intro}Open this link, log in to your Claude account, and send me the code from the page:\n${url}`);
+            await dependencies.send(`Open this link, log in to your Claude account, and send me the code from the page:\n${url}`);
         } catch (error) {
             cancelSession();
             await dependencies.send(`Could not start the login: ${error instanceof Error ? error.message : String(error)}`);
@@ -54,7 +52,7 @@ export function createLoginAssistant(dependencies: AssistantDependencies): Login
 
     return {
         async handleAuthCommand() {
-            await beginLogin('');
+            await beginLogin();
         },
 
         async handleText(text) {
@@ -72,6 +70,7 @@ export function createLoginAssistant(dependencies: AssistantDependencies): Login
 
             if (status?.loggedIn === true) {
                 lastExpiryNoticeAt = null;
+                loggedOutNoticeSent = false;
                 await dependencies.send(status.loginExpiresAt === null
                     ? 'Logged in.'
                     : `Logged in. The login is valid until ${formatDate(status.loginExpiresAt)}.`);
@@ -89,17 +88,16 @@ export function createLoginAssistant(dependencies: AssistantDependencies): Login
             const now = dependencies.now().getTime();
 
             if (!status.loggedIn) {
-                if (lastLoginReminderAt === null || now - lastLoginReminderAt >= LOGIN_REMINDER_REPEAT_MS) {
-                    lastLoginReminderAt = now;
-                    await beginLogin('Claude Code is not logged in.\n\n');
+                // Once for each time the login is lost. The user asks for a link with /auth.
+                if (!loggedOutNoticeSent) {
+                    await dependencies.send('Claude Code is logged out. Send /auth to log in.');
+                    loggedOutNoticeSent = true;
                 }
 
                 return;
             }
 
-            // Someone logged in another way, for example with kubectl exec.
-            lastLoginReminderAt = null;
-            cancelSession();
+            loggedOutNoticeSent = false;
 
             if (status.loginExpiresAt === null) {
                 return;
