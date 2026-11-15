@@ -1262,3 +1262,31 @@ Additional live home MSS-arm observation experiment
 b7d87e4f-76a6-47ae-9eb6-f13d09cd6078: mss988,advmss988/1000,
 rcvmss988,pmtu1300. This confirms an effective socket sizing difference
 versus observed default1248; it is not complete WAN packet-size evidence.
+
+### 2026-11-15 11:40 UTC — Observe TCP queues during stalled payloads
+
+Post200 current-pod snapshot: home XHTTP default0/10,MSS0/10 with
+direct10/10 each; each gate had one failure/skip. Hetzner11/11 botharms,
+FirstVDSdefault10/10,MSS11/11 with one default gate skip. Counts are not
+matched rounds; home logs confirm both arms for three experiment_ids:
+a1ab2211,899b65a9,d952bfef (prefixes), valid direct controls.
+Latest default a1ab2211 socket3 remained ESTAB in payloadphase:
+bytes_received22380 at8.289s,23628 at9.302s,then23628 through14.369s.
+This is encrypted transport bytes, not the exact endpoint payload; curl
+received3748/16384 and timed out. MSS arm same round gotHTTP0/0bytes.
+No inference about TLS stage, inbound loss location or DPI/PMTU.
+Allfour currentprobesup,zero restarts and no observed55mincounterresets.
+Last priority samples approximately3.6–5.6minold,consistent withcadence.
+
+Ordinaryhome8/16KiB11/11,64KiB0/11; Cloudflaredirect3/3,XHTTP0/3;
+oldendpoint64direct/XHTTP0/2 isinconclusive. VPS ordinary sizespassed.
+Backend pod changed sinceinitialrollout; retainpod/timecohorts.
+
+Next diagnostic adds numeric Recv-Q/Send-Q from PID-owned socket headers
+and bytes_sent/bytes_retrans/notsent/rcv_space/snd_wnd when ss supplies them.
+Keep socketID,state,phase and sampling unchanged. Missing values stay absent.
+This distinguishes persistent unread local bytes from an empty receivequeue,
+without assuming the cause of either. Send queues/retransmissions describe
+client outbound behavior and do not establish server-side loss.
+No traffic, timers, tuning, permissions, host/production changes.
+Review/test/openPR; nevermergeordeploywithoutuserOK.
