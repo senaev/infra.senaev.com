@@ -96,17 +96,17 @@ spec:
             - name: MCP_DOMAIN
               value: {{ .Values.clusterHelper.mcpDomain }}
             - name: TG_CLUSTER_CHAT_ID
-              value: {{ .Values.telegramClusterChatId | quote }}
+              value: {{ .Values.global.telegramClusterChatId | quote }}
             - name: TG_MEDIA_SERVER_CHAT_ID
-              value: {{ .Values.telegramMediaServerChatId | quote }}
+              value: {{ .Values.global.telegramMediaServerChatId | quote }}
             - name: TG_VPN_SUBSCRIPTION_CHAT_ID
-              value: {{ .Values.telegramVpnSubscriptionChatId | quote }}
+              value: {{ .Values.global.telegramVpnSubscriptionChatId | quote }}
             - name: OBSIDIAN_TASKS_CHAT_ID
-              value: {{ .Values.obsidianTasksChatId | quote }}
+              value: {{ .Values.global.obsidianTasksChatId | quote }}
             - name: TRICKY_DAD_CHAT_ID
-              value: {{ .Values.trickyDadChatId | quote }}
+              value: {{ .Values.global.trickyDadChatId | quote }}
             - name: TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID
-              value: {{ .Values.telegramSenaevComBotDirectMessageWithOwnerChatId | quote }}
+              value: {{ .Values.global.telegramSenaevComBotDirectMessageWithOwnerChatId | quote }}
             - name: PROWLARR_URL
               value: http://prowlarr:{{ .Values.prowlarr.webuiPort }}
             - name: PROWLARR_CONFIG_FILE
@@ -252,11 +252,11 @@ spec:
           hostPath:
             # Path deliberately still says webhook-endpoint: it holds the live outbox
             # queue on the node, and renaming it would orphan queued torrents.
-            path: {{ .Values.clusterRootPath }}/{{ .Values.clusterHelper.torrentOutboxVolumePath }}
+            path: {{ .Values.global.clusterRootPath }}/{{ .Values.clusterHelper.torrentOutboxVolumePath }}
             type: DirectoryOrCreate
         - name: prowlarr-config
           hostPath:
-            path: {{ .Values.clusterRootPath }}/{{ .Values.prowlarr.volumePath }}/config
+            path: {{ .Values.global.clusterRootPath }}/{{ .Values.prowlarr.volumePath }}/config
             type: DirectoryOrCreate
 ---
 apiVersion: v1

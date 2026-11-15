@@ -167,7 +167,7 @@ spec:
       volumes:
         - name: config
           hostPath:
-            path: {{ .Values.clusterRootPath }}/{{ .Values.prowlarr.volumePath }}/config
+            path: {{ .Values.global.clusterRootPath }}/{{ .Values.prowlarr.volumePath }}/config
             type: DirectoryOrCreate
         - name: configure-qbittorrent-download-client
           configMap:

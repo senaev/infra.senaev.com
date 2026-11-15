@@ -68,7 +68,7 @@ spec:
                   key: TG_TOKEN_SENAEV_COM_BOT
                   optional: false
             - name: TG_MEDIA_SERVER_CHAT_ID
-              value: {{ .Values.telegramMediaServerChatId | quote }}
+              value: {{ .Values.global.telegramMediaServerChatId | quote }}
           volumeMounts:
             - name: watch-torrent-files
               mountPath: /watch-torrent-files
@@ -79,15 +79,15 @@ spec:
       volumes:
         - name: watch-torrent-files
           hostPath:
-            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.watch }}
+            path: {{ .Values.global.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.watch }}
             type: DirectoryOrCreate
         - name: downloads-completed
           hostPath:
-            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.completed }}
+            path: {{ .Values.global.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.completed }}
             type: DirectoryOrCreate
         - name: downloads-converted-for-mobile
           hostPath:
-            path: {{ .Values.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.convertedForMobile }}
+            path: {{ .Values.global.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.convertedForMobile }}
             type: DirectoryOrCreate
 ---
 apiVersion: v1

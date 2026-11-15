@@ -10,7 +10,7 @@ PIPELINE_FILES = {
     ".github/deploy-config.json", "scripts/deployment_plan.py",
 }
 SHARED_CHART_FILES = {
-    "provisioning/helm/common-values.yaml",
+    "provisioning/helm/global-values.yaml",
     "provisioning/control-plane/upgrade-namespace.sh",
 }
 
