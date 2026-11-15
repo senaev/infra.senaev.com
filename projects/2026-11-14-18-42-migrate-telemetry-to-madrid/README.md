@@ -55,4 +55,6 @@ Project closed: PR #192 merged as `07fcf0cb` and [deployment](https://github.com
 
 The user explicitly declined Proxmox backups. Restart/reboot recovery checks were not performed and are optional future work, not migration blockers. The pre-existing secondary datasource issue is handled by a separate maintenance PR enabling its missing Grafana plugin; post-deployment plugin health must still be checked. No new project or migration infrastructure was created.
 
+Follow-up, 2026-11-15: Grafana and VMSingle move from the hand-made PVCs to hostPath directories under `clusterRootPath/volumes`. The runbook (copy, switch, verify, cleanup, rollback) is in [migration.md](migration.md#follow-up-hostpath-instead-of-pvcs-2026-11-15).
+
 See [worklog](project-worklog.md).
