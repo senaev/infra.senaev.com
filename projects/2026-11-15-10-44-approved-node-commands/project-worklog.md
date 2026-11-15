@@ -1,3 +1,12 @@
+## 2026-11-15 11:09 UTC — Confirm execution scope and lifecycle
+
+User chose root execution, all Kubernetes nodes without exceptions, a maximum
+10-minute approval TTL using the existing request expiry, and immediate failure
+for offline nodes. Existing cluster logs supply history; no extra history archive.
+Keep only operational state needed for approvals, result delivery and preventing
+duplicate execution across restarts. Approval expiry and execution timeout remain
+separate. Removed superseded open design choices from the main document.
+
 ## 2026-11-15 11:00 UTC — Link certificate foundation and open decisions
 
 Separate certificate project now owns the reusable mTLS lifecycle, with the first

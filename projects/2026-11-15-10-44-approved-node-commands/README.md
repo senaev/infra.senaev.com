@@ -11,8 +11,8 @@ Approve / Reject buttons before dispatching a command to the chosen node.
 
 - Reuse cluster-helper for approval and orchestration; expose a client through a skill
   in the LLM workspace / code-tools environment.
-- Run a lightweight node executor as a DaemonSet on every intended cluster node,
-  including the control plane with appropriate tolerations.
+- Run a lightweight node executor as a DaemonSet on every cluster node without exceptions,
+  including the control plane with appropriate tolerations. Approved commands run as host root.
 - Executors need host access to execute in the node operating system, rather than
   just inside their containers. Determine the exact namespace/mount setup during implementation.
 - Decision: `hostNetwork: false`. The executor API stays in the pod network, even
@@ -59,6 +59,9 @@ Bind the approval to an immutable request, including its node and explanatory fi
 ## Verification
 
 - No command starts before approval; rejection, expiry and wrong-user callbacks do not execute.
+- Approval validity never exceeds 10 minutes; shorter TTLs are honored and late approvals fail.
+- Unavailable nodes fail without queuing; commands execute as host root on every cluster node.
+- Existing cluster logs expose execution events; no separate history store is introduced.
 - Telegram displays node, exact command, context, action description and expected outcome.
 - Long explanatory text is not rejected or truncated by a new 128-character code limit.
 - Approved diagnostic commands report the intended node host environment and return output/exit code.
@@ -72,16 +75,20 @@ Bind the approval to an immutable request, including its node and explanatory fi
 Design recorded only. No executor, certificate infrastructure or cluster configuration deployed.
 Authentication lifecycle is tracked in the linked certificate project.
 
-## Remaining design decisions
+## Confirmed execution decisions
 
-- Execution privilege: unrestricted root after approval, or a restricted host account?
-  Recommendation: root only if arbitrary administrative commands are the intended scope.
-- Initial node scope: every Kubernetes node, or an explicit opt-in set?
-  Recommendation: explicit opt-in, including the control plane only when selected.
-- Approval lifetime: how long can an approval remain pending, and may an approved
-  command wait for an offline node? Recommendation: short expiry and no offline queue.
-- Audit retention: how long to retain requests and results, and whether full output
-  is stored. Recommendation: durable request/decision metadata and short-lived output.
-
-These recommendations are not approved decisions. One request, one command, one result;
-Telegram approval; no interactive sessions; and hostNetwork: false are already decided.
+- Run approved commands as root on all Kubernetes nodes without exceptions.
+- Reuse the request expiry/TTL field; cap approval validity at 10 minutes from request
+  creation, honoring shorter requested TTLs. Check expiry again before execution;
+  approval must not extend validity. Execution timeout remains a separate field.
+- Fail immediately when the selected node/executor is unavailable; no offline queue
+  or automatic execution when the node returns. Connection failure detection is bounded.
+- Use existing cluster logging and its retention for operational/audit history.
+  Do not build a separate history database, history UI or long-term output archive.
+- Persist only operational state required for pending approvals, execution status,
+  result delivery and duplicate prevention across restarts. This is execution safety
+  state, not a separate historical record. Retain deduplication state through the
+  request's replay-validity window and reject expired requests even after cleanup.
+- Log structured request IDs, node, approval decision, execution status and exit code
+  under existing logging conventions. Do not log full request bodies or indiscriminately
+  copy commands/output that may contain secrets into logs.
