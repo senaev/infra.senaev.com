@@ -1,10 +1,29 @@
 import type { TelegramMessage } from 'senaev-utils/src/utils/TelegramApi/types';
 import {
-    describe, expect, it, vi,
+    beforeEach, describe, expect, it, vi,
 } from 'vitest';
 
+import { logger } from './logger';
 import type { LoginAssistant } from './loginAssistant';
 import { createMessageRouter } from './messageRouter';
+
+vi.mock('./logger', () => {
+    return {
+        logger: {
+            info: vi.fn(),
+            warn: vi.fn(),
+        },
+    };
+});
+
+function loggedMessages(): string[] {
+    return [
+        ...vi.mocked(logger.info).mock.calls,
+        ...vi.mocked(logger.warn).mock.calls,
+    ].map(([
+        , text,
+    ]) => String(text));
+}
 
 const ALLOWED_USER_ID = 42;
 
@@ -59,6 +78,11 @@ function message({
 }
 
 describe('the message router', () => {
+    beforeEach(() => {
+        vi.mocked(logger.info).mockClear();
+        vi.mocked(logger.warn).mockClear();
+    });
+
     it('starts a login on /auth, also when the command names the bot', async () => {
         const { assistant, route } = setup();
 
@@ -66,6 +90,12 @@ describe('the message router', () => {
         await route(message({ text: '/auth@senaev_claude_helper_bot' }));
 
         expect(assistant.handleAuthCommand).toHaveBeenCalledTimes(2);
+        expect(loggedMessages()).toEqual([
+            '👉 Handling the /auth command',
+            '✅ Handled the /auth command',
+            '👉 Handling the /auth command',
+            '✅ Handled the /auth command',
+        ]);
     });
 
     it('gives other text to the assistant and deletes the message when it was a code', async () => {
@@ -80,6 +110,25 @@ describe('the message router', () => {
 
         expect(assistant.handleText).toHaveBeenCalledWith('the-code#state');
         expect(deleteMessage).toHaveBeenCalledWith(ALLOWED_USER_ID, 9);
+        expect(loggedMessages()).toEqual([
+            '👉 Handling a text message',
+            '✅ Handled a login code',
+            '👉 Deleting the message with the login code',
+            '✅ Deleted the message with the login code',
+        ]);
+    });
+
+    it('never logs the text of a message', async () => {
+        const { route } = setup(true);
+
+        await route(message({ text: 'the-code#state' }));
+
+        const logged = JSON.stringify([
+            ...vi.mocked(logger.info).mock.calls,
+            ...vi.mocked(logger.warn).mock.calls,
+        ]);
+
+        expect(logged).not.toContain('the-code');
     });
 
     it('keeps the message when it was not a code', async () => {
@@ -88,6 +137,10 @@ describe('the message router', () => {
         await route(message({ text: 'hello' }));
 
         expect(deleteMessage).not.toHaveBeenCalled();
+        expect(loggedMessages()).toEqual([
+            '👉 Handling a text message',
+            '✅ Handled a text message that is not a login code',
+        ]);
     });
 
     it('does not fail when the message cannot be deleted', async () => {
@@ -96,6 +149,10 @@ describe('the message router', () => {
         deleteMessage.mockRejectedValueOnce(new Error('too old'));
 
         await expect(route(message({ text: 'code' }))).resolves.toBeUndefined();
+        expect(logger.warn).toHaveBeenCalledWith(
+            expect.objectContaining({ messageId: 7 }),
+            '⚠️ Could not delete the message with the login code'
+        );
     });
 
     it('ignores other commands and messages without text', async () => {
@@ -106,6 +163,10 @@ describe('the message router', () => {
 
         expect(assistant.handleAuthCommand).not.toHaveBeenCalled();
         expect(assistant.handleText).not.toHaveBeenCalled();
+        expect(loggedMessages()).toEqual([
+            '👉 Ignored an unknown command',
+            '👉 Ignored a message without text',
+        ]);
     });
 
     it('ignores every message of another user or another chat', async () => {
@@ -126,5 +187,11 @@ describe('the message router', () => {
 
         expect(assistant.handleAuthCommand).not.toHaveBeenCalled();
         expect(assistant.handleText).not.toHaveBeenCalled();
+        expect(logger.warn).toHaveBeenCalledTimes(3);
+        expect(logger.warn).toHaveBeenCalledWith({
+            messageId: 7,
+            userId: 1,
+            chatId: ALLOWED_USER_ID,
+        }, '⛔ Ignored a message from a user or chat that is not allowed');
     });
 });
