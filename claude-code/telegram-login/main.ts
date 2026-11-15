@@ -1,17 +1,15 @@
 import { requireEnv } from 'senaev-utils/src/utils/env/requireEnv/requireEnv';
 import { installGracefulShutdown } from 'senaev-utils/src/utils/process/installGracefulShutdown';
+import { deleteTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/deleteTelegramMessage';
+import { pollTelegramMessages } from 'senaev-utils/src/utils/TelegramApi/pollTelegramMessages';
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
-import { promiseTimeout } from 'senaev-utils/src/utils/timers/promiseTimeout/promiseTimeout';
 
 import { getAuthStatus, runCommand } from './claude';
 import { logger } from './logger';
 import { spawnClaudeLogin, startLogin } from './login';
 import { createLoginAssistant } from './loginAssistant';
 import { createMessageRouter } from './messageRouter';
-import { deleteTelegramMessage, getTelegramMessages } from './telegram';
 
-const POLL_TIMEOUT_SECONDS = 50;
-const POLL_RETRY_DELAY_MS = 5_000;
 const LOGIN_CHECK_INTERVAL_MS = 10 * 60 * 1000;
 
 const token = requireEnv('TELEGRAM_BOT_TOKEN');
@@ -56,46 +54,28 @@ const lifecycle = installGracefulShutdown({
 // One step at a time: a login code must not be handled while a check still waits for its answer.
 let queue: Promise<void> = Promise.resolve();
 
-function enqueue(description: string, step: () => Promise<void>): void {
+function enqueue(description: string, step: () => Promise<void>): Promise<void> {
     queue = queue.then(step).catch((error: unknown) => {
         logger.error(error, `❌ ${description} failed`);
     });
-}
 
-async function pollMessages(): Promise<void> {
-    // Messages from before the start are old: skip them, and begin with the new ones.
-    let offset = (await getTelegramMessages({
-        token,
-        offset: -1,
-        timeoutSeconds: 0,
-    })).nextOffset;
-
-    while (!lifecycle.signal.aborted) {
-        try {
-            const batch = await getTelegramMessages({
-                token,
-                offset,
-                timeoutSeconds: POLL_TIMEOUT_SECONDS,
-            });
-
-            offset = batch.nextOffset ?? offset;
-
-            for (const message of batch.messages) {
-                enqueue('Handling a message', () => routeMessage(message));
-            }
-        } catch (error) {
-            logger.error(error, '❌ Polling Telegram failed');
-            await promiseTimeout(POLL_RETRY_DELAY_MS);
-        }
-    }
+    return queue;
 }
 
 function main(): Promise<void> {
     logger.info('🚀 Telegram login helper started');
-    enqueue('Checking the login', () => assistant.checkLogin());
-    setInterval(() => enqueue('Checking the login', () => assistant.checkLogin()), LOGIN_CHECK_INTERVAL_MS).unref();
+    void enqueue('Checking the login', () => assistant.checkLogin());
+    setInterval(() => {
+        void enqueue('Checking the login', () => assistant.checkLogin());
+    }, LOGIN_CHECK_INTERVAL_MS).unref();
 
-    return pollMessages();
+    return pollTelegramMessages({
+        token,
+        signal: lifecycle.signal,
+        skipMessagesSentBeforeStart: true,
+        onMessage: (message) => enqueue('Handling a message', () => routeMessage(message)),
+        onError: (error) => logger.error(error, '❌ Polling Telegram failed'),
+    });
 }
 
 main().catch(async (error) => {

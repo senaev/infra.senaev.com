@@ -1,5 +1,9 @@
 # Worklog
 
+## 2026-11-15 21:45 UTC — Polling loop moved to senaev-utils
+
+The user asked to move the loop that receives messages into `senaev-utils`. New: `pollTelegramMessages` (long polling with `getUpdates`: handles the messages one by one, reports a failed poll or handler through `onError`, retries after a delay, stops on an `AbortSignal`, and can skip the messages that came before the start) and `deleteTelegramMessage`, both in `senaev-utils/src/utils/TelegramApi/` with tests. The helper's own `telegram.ts` is gone; `main.ts` only gives `pollTelegramMessages` its handler. The helper still serializes message handling and the login checks in one queue. The record of 21:20 says the polling loop is not reused; this is now changed.
+
 ## 2026-11-15 21:30 UTC — `claudeCode.telegram.allowedUser` renamed to `user`
 
 The user asked for the shorter name. Only the new `claudeCode.telegram` block changed; the `telegram.allowedUser` of OpenCode is untouched. The Vault key is the same, `TG_SENAEV_USER_ID`. The older records below use the old name.
