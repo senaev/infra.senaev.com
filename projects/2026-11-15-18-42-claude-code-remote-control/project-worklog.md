@@ -32,7 +32,7 @@ The user confirmed these decisions: the container and the component are named `c
 
 ## 2026-11-15 18:25 UTC — Test on a plain Node pod passed
 
-Test pod `claude-code-spike` (`node:22-bookworm`, `HOME=/home/claude` on hostPath `/k3s-cluster/volumes/claude-code-spike`, `/code` as `emptyDir`) in namespace `senaev-com` on node `senaev-madrid`. Claude Code 2.1.325. See [the manifest](sources/test-pod.yaml). The names inside are as they ran; the data folder is renamed to `claude-code` for the final service.
+Test pod `claude-code-spike` (`node:22-bookworm`, `HOME=/home/claude` on hostPath `/k3s-cluster/volumes/claude-code-spike`, `/code` as `emptyDir`) in namespace `senaev-com` on node `senaev-madrid`. Claude Code 2.1.325. The data folder is renamed to `claude-code` for the final service.
 
 What worked:
 

@@ -16,7 +16,7 @@ Run Claude Code (Pro subscription) in a container of the `senaev` LLM workspace,
 - Claude Code refuses `bypassPermissions` as root, except inside a recognized sandbox. `IS_SANDBOX=1` makes it work.
 - Workspace templates: `provisioning/helm/senaev-com/templates/llm-workspace/`. Each component is a named template, rendered once for each entry of `llmWorkspaces` by `llm-workspaces.yaml`. Shared helpers are in `_access.tpl`.
 - Server mode stops by itself after about 10 minutes without a network. Kubernetes starts the container again. `claude remote-control` in the same folder brings back the sessions within about 4 hours.
-- A test on a plain Node pod on 2026-11-15 proved the flow. See [project-worklog.md](project-worklog.md) and [the test pod](sources/test-pod.yaml).
+- A test on a plain Node pod on 2026-11-15 proved the flow. See [project-worklog.md](project-worklog.md).
 
 ### Findings of the test
 
