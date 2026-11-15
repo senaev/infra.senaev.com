@@ -1,5 +1,20 @@
 # Worklog
 
+## 2026-11-15 19:30 UTC — PR #205 deployed, login done, service works
+
+PR [#205](https://github.com/senaev/infra.senaev.com/pull/205) (merge commit `ff53aee`) was merged. Deploy run `43751913273` succeeded, including the image build and the public-pull check. The login of the test pod was not reused (the data folder was not moved), so the user logged in with `kubectl exec -it ... claude auth login`. The pod noticed within 30 seconds and started the server:
+
+```
+19:24:36 Claude Code is not logged in. Waiting for: claude auth login
+19:26:39 Claude Code is logged in.
+19:26:40 ·✔︎· Connected · code
+19:26:56 Capacity: 1/32 · New sessions will be created in the current directory
+```
+
+The user checked from the phone and confirmed that everything works. `npm run test:smoke` passed (5 of 5). The errors in `senaev-com` logs come from `log-generator` and `chromium`, not from this service.
+
+Resolved by this: `/CLAUDE.md` is read, the model is Sonnet, the version is pinned in the image. New open point: the status line redraws make many log lines (48, 360 and 126 lines in the first three minutes). Still open: the exit after about 10 minutes without a network, the movement of `loginExpiresAt`, the git token scope, and the Telegram login flow.
+
 ## 2026-11-15 19:05 UTC — Image and chart written, checked locally
 
 Branch `claude-code-container`: image `claude-code/` (Node 24, Claude Code 2.1.325 pinned, the OMP tool set), `start.sh`, the template `_claude-code.tpl`, schema, `values.yaml` entry for `senaev`, `AGENTS.md` section.

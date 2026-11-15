@@ -51,10 +51,7 @@ Run Claude Code (Pro subscription) in a container of the `senaev` LLM workspace,
    - Git credentials as in `_code-tools.tpl`; `IS_SANDBOX=1`.
    - `podAccess`, `containerAccess` and `egress` helpers. A NetworkPolicy with no ingress.
 4. ✅ `AGENTS.md`: a section about the component.
-5. 📌 Deploy (pull request of this branch).
-   - Before the merge: delete the test pod, and on the node `senaev-madrid` run `mv /k3s-cluster/volumes/claude-code-spike /k3s-cluster/volumes/claude-code`. The pod creates an empty folder if this one is missing, and then the login of the test pod is not reused.
-   - The first image build fails the check "published image is publicly pullable": a new ghcr package is private. Make the package `claude-code` public, then re-run the failed jobs.
-   - Log in if needed: `kubectl -n senaev-com exec -it deploy/senaev-claude-code -- claude auth login`.
+5. ✅ Deploy: PR [#205](https://github.com/senaev/infra.senaev.com/pull/205). The login of the test pod was not reused, so the first login was `kubectl -n senaev-com exec -it deploy/senaev-claude-code -- claude auth login`. The pod then started the server by itself. The ghcr package was already public.
 6. 📌 At the end: Telegram login flow with a new bot. The start script runs `claude auth login` with a FIFO, sends the URL to Telegram, reads the code from the reply, and warns a few days before `loginExpiresAt`.
 
 ## Open points
@@ -62,8 +59,7 @@ Run Claude Code (Pro subscription) in a container of the `senaev` LLM workspace,
 - ❓ The Remote Control server may stop after about 10 minutes without a network. Test it, and check that the container restart brings the sessions back.
 - ❓ Does a background refresh move `loginExpiresAt`? Check `claude auth status` after a few days. If not, the login needs a renewal every month.
 - ❓ Yolo mode plus the git credentials in the pod: a prompt injection could push to GitHub. Use a fine-grained token for this pod.
-- ❓ Is `/CLAUDE.md` read from a parent folder in server mode? Check in the first session. If not, add `--append-system-prompt-file /AGENTS.md`.
-- ❓ Pin the Claude Code version, or use the latest at each image build? Remote Control needs recent versions.
+- ❓ The server logs its status line again on each change, and Datadog keeps every redraw as a log line (360 lines in the busiest minute of the first test). Watch the volume; add an exclusion filter if it stays high.
 
 ## Verification
 
