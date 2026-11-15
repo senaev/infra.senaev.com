@@ -5,7 +5,7 @@ import { InlineKeyboardMarkup } from './types';
 export async function editTelegramMessage({
     chatId, messageId, replyMarkup, text, token, disableLinkPreview,
 }: {
-    chatId: number | string;
+    chatId: string;
     messageId: number;
     replyMarkup?: InlineKeyboardMarkup | undefined;
     text: string;
@@ -13,7 +13,7 @@ export async function editTelegramMessage({
     disableLinkPreview?: boolean;
 }): Promise<void> {
     await editTelegramRichMessage({
-        chatId: String(chatId),
+        chatId,
         messageId,
         markdown: text,
         token,

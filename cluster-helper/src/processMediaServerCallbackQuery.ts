@@ -168,7 +168,7 @@ async function processMediaServerCallbackQueryInternal({
             sessionId,
         }, '👉 Opening torrent search page');
         await editTelegramMessageWithTorrentSearchView({
-            chatId: message.chat.id,
+            chatId: String(message.chat.id),
             messageId: message.message_id,
             page,
             sessionId,

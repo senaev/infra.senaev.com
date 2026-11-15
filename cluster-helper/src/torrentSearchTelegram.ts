@@ -206,7 +206,7 @@ export async function editTelegramMessageWithTorrentSearchView({
     page,
     sessionId,
 }: {
-    chatId: number | string;
+    chatId: string;
     messageId: number;
     page: number;
     sessionId: string;
