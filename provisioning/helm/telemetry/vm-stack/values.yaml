@@ -19,12 +19,26 @@ victoria-metrics-k8s-stack:
       vps: senaev-madrid
     annotations:
       secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
-    # Keeps the Grafana database across restarts: the mcp-grafana service account and its
-    # token, and the dashboards and alerts made in the UI or over MCP.
+    # The data directory is a hostPath on the node, not a PVC. It keeps the Grafana database
+    # across restarts: the mcp-grafana service account and its token, and the dashboards and
+    # alerts made in the UI or over MCP. `type: Directory` makes the pod wait if the directory
+    # is missing, instead of silently starting with an empty database. The pod runs as 472, so
+    # the directory must be owned by 472:472. Plugins and provisioned dashboards stay in the
+    # chart's emptyDir at /var/lib/grafana and are rebuilt at every start.
     persistence:
-      enabled: true
-      size: 1Gi
-      volumeName: telemetry-grafana-madrid
+      enabled: false
+    grafana.ini:
+      paths:
+        data: /var/lib/grafana-data
+    # Not `extraVolumes`: the chart does not template that list, so it cannot use the global path.
+    extraContainerVolumes:
+      - name: grafana-data
+        hostPath:
+          path: "{{ .Values.global.clusterRootPath }}/volumes/grafana"
+          type: Directory
+    extraVolumeMounts:
+      - name: grafana-data
+        mountPath: /var/lib/grafana-data
     # The disk is ReadWriteOnce and holds one SQLite file, so two pods must not overlap: the old
     # pod stops before the new one starts. Not `Recreate`: Helm's server-side apply cannot remove
     # the live rollingUpdate field, and Kubernetes rejects that field together with Recreate.
@@ -70,11 +84,18 @@ victoria-metrics-k8s-stack:
     spec:
       paused: false
       replicaCount: 1
-      storage:
-        volumeName: telemetry-metrics-madrid
-        resources:
-          requests:
-            storage: 50Gi
+      # No PVC: the operator uses a volume named `data` for /victoria-metrics-data, and it
+      # allows that only when `storage` is unset. The disk has no size limit; the old 50Gi
+      # claim size was only a declaration. `type: Directory` makes the pod wait if the
+      # directory is missing, instead of silently starting with an empty database.
+      # `null` removes the chart default only when this file is passed with `-f`, as
+      # upgrade-namespace.sh does.
+      storage: null
+      volumes:
+        - name: data
+          hostPath:
+            path: "{{ .helm.Values.global.clusterRootPath }}/volumes/victoriametrics"
+            type: Directory
       retentionPeriod: "3"
       nodeSelector:
         vps: senaev-madrid

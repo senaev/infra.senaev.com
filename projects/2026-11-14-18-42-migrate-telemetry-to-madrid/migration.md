@@ -123,3 +123,114 @@ User authorized cleanup after successful activation. Run only on Hetzner. Before
 ```
 
 Confirm both original paths are absent and both old PVs return NotFound; current Madrid claims must remain Bound. Removing originals ends the source-copy rollback option. User subsequently completed the guarded cleanup block and supplied successful deletion output for both old PVs; the source-copy rollback option is now removed.
+
+## Follow-up: hostPath instead of PVCs (2026-11-15)
+
+Grafana and VMSingle keep their data in plain host directories, like n8n and Traefik, not in PVCs. The Madrid claims were hand-made static PVs; they add manual steps and nothing else on a single node. Only these two datasets are in scope. The LLM workspace PVCs are not.
+
+| Service | Old directory (static local PV, `Retain`) | New directory | How it is mounted |
+| --- | --- | --- | --- |
+| Grafana | `/k3s-cluster/volumes/telemetry/grafana` | `/k3s-cluster/volumes/grafana` | `extraVolumes` hostPath at `/var/lib/grafana-data`, `grafana.ini` `paths.data` points there |
+| VMSingle | `/k3s-cluster/volumes/telemetry/victoriametrics` | `/k3s-cluster/volumes/victoriametrics` | `spec.volumes` entry named `data`, `spec.storage` unset (operator v0.68.0 rejects both together) |
+
+The new paths are `clusterRootPath` (from `common-values.yaml`) plus `/volumes/<name>`. Both volumes use `type: Directory`. While the new directory does not exist, the new pod waits in `ContainerCreating` and cannot start on an empty database. That is what makes the cutover safe: the deploy stops the old pods, and the new pods wait for the copy.
+
+Plugins and provisioned dashboards of Grafana move from the PVC to the chart's emptyDir. Grafana installs and provisions them again at every start. The Grafana pod runs as UID 472, so its directory must be owned by `472:472`; `rsync -a --numeric-ids` keeps the owner of the old directory.
+
+Run the `kubectl` commands where you run them for this cluster (Hetzner), and the file commands on `senaev-madrid`. Never run `kubectl` from the coding container.
+
+### 1. Before merging: bulk copy while the services run (on senaev-madrid)
+
+The temporary names start with a dot, so no pod mounts them. The copy of a running database is not consistent. Step 3 repairs it.
+
+```bash
+df -h /k3s-cluster
+sudo du -sh /k3s-cluster/volumes/telemetry/grafana /k3s-cluster/volumes/telemetry/victoriametrics
+sudo ls -ld /k3s-cluster/volumes/grafana /k3s-cluster/volumes/victoriametrics   # both must NOT exist
+
+sudo rsync -aHAX --numeric-ids /k3s-cluster/volumes/telemetry/grafana/ /k3s-cluster/volumes/.grafana.tmp/
+sudo rsync -aHAX --numeric-ids /k3s-cluster/volumes/telemetry/victoriametrics/ /k3s-cluster/volumes/.victoriametrics.tmp/
+```
+
+Stop here if the disk has less free space than the two directories need.
+
+### 2. Merge the PR and watch the deploy
+
+Helm stops the old Grafana and VMSingle pods and starts new ones. The new pods wait because the directories do not exist. Do not make them yet.
+
+```bash
+kubectl -n telemetry get pods -o wide -w
+```
+
+Wait until the old Grafana and VMSingle pods are gone. The deploy waits at most 300 s for readiness. If it fails while you copy, run the failed job again after step 4.
+
+### 3. Final copy and switch (on senaev-madrid), only after the old pods are gone
+
+```bash
+(
+  set -eu
+  for pair in "grafana:.grafana.tmp" "victoriametrics:.victoriametrics.tmp"; do
+    new="${pair%%:*}"; tmp="${pair##*:}"
+    old="/k3s-cluster/volumes/telemetry/$new"
+    sudo rsync -aHAX --numeric-ids --delete "$old/" "/k3s-cluster/volumes/$tmp/"
+    test -z "$(sudo rsync -aHAXnc --numeric-ids --delete --itemize-changes "$old/" "/k3s-cluster/volumes/$tmp/")"
+  done
+  sudo ls -ldn /k3s-cluster/volumes/.grafana.tmp /k3s-cluster/volumes/.victoriametrics.tmp
+  test "$(sudo stat -c %u:%g /k3s-cluster/volumes/.grafana.tmp)" = 472:472
+  sudo mv /k3s-cluster/volumes/.grafana.tmp /k3s-cluster/volumes/grafana
+  sudo mv /k3s-cluster/volumes/.victoriametrics.tmp /k3s-cluster/volumes/victoriametrics
+)
+```
+
+`set -eu` stops the block at the first failure. The checksum dry run must print nothing. If the owner check fails, stop and tell me; do not `chown` blindly. `mv` inside one filesystem is atomic, so the pod never sees a half-copied directory. The kubelet retries the mount within about a minute.
+
+### 4. Verify
+
+```bash
+kubectl -n telemetry get pods -o wide
+kubectl -n telemetry get pvc
+```
+
+Check:
+
+- Grafana and VMSingle pods are `Running` on `senaev-madrid`, with no `FailedMount` events.
+- Grafana: login works, the datasources and the dashboards are there, the MCP service account still works (ask ChatGPT to list dashboards).
+- Metrics from before the stop are queryable, fresh samples arrive, `min(up)` is 1.
+- `kubectl -n telemetry get pvc` shows no Grafana claim. Helm deleted it. The VMSingle claim stays, unused, until step 5.
+- Record the collection gap (from the old VMSingle stop to the new one ready).
+
+The old directories and PVs stay untouched until you accept the result. That is the rollback source.
+
+### 5. Cleanup after acceptance (separate action)
+
+First on Hetzner. It checks that no pod uses a claim and that the PVs keep their data (`Retain`), then removes the leftover objects:
+
+```bash
+(
+  set -eu
+  test -z "$(kubectl -n telemetry get pods -o jsonpath='{.items[*].spec.volumes[*].persistentVolumeClaim.claimName}')"
+  for pv in telemetry-grafana-madrid telemetry-metrics-madrid; do
+    test "$(kubectl get pv "$pv" -o jsonpath='{.spec.persistentVolumeReclaimPolicy}')" = Retain
+  done
+  kubectl -n telemetry delete pvc vm-stack-grafana vmsingle-vm-stack-victoria-metrics-k8s-stack --ignore-not-found
+  kubectl delete pv telemetry-grafana-madrid telemetry-metrics-madrid
+)
+```
+
+Then on `senaev-madrid`:
+
+```bash
+(
+  set -eu
+  sudo test -d /k3s-cluster/volumes/grafana
+  sudo test -d /k3s-cluster/volumes/victoriametrics
+  sudo rm -rf -- /k3s-cluster/volumes/telemetry/grafana /k3s-cluster/volumes/telemetry/victoriametrics
+  sudo rmdir /k3s-cluster/volumes/telemetry
+)
+```
+
+`rmdir` fails if anything else is in the folder; then stop and look. This ends the rollback option.
+
+### Rollback before step 5
+
+Revert the PR. Helm makes the claims again, but a `Released` PV keeps the old `claimRef` UID and will not bind to a new claim with the same name. Clear it first for each PV: `kubectl patch pv telemetry-grafana-madrid --type=merge -p '{"spec":{"claimRef":null}}'` (same for `telemetry-metrics-madrid`). Data written after the cutover exists only in the new directories; copy it back into the old ones with `rsync` while the pods are stopped, or accept the gap.

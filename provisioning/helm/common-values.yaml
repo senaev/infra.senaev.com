@@ -1,4 +1,7 @@
-clusterRootPath: /k3s-cluster
+clusterRootPath: &clusterRootPath /k3s-cluster
+# Subcharts (vm-stack) see only `global`, not the top-level values.
+global:
+  clusterRootPath: *clusterRootPath
 
 telegramClusterChatId: "-1003971743999"
 telegramMediaServerChatId: "-1003923897462"
