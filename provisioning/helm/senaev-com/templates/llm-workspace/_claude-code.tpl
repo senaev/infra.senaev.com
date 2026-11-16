@@ -26,16 +26,18 @@ spec:
         tags.datadoghq.com/version: latest
       annotations:
         secret.reloader.stakater.com/reload: {{ printf "%s-claude-code-env" .Values.name | quote }}
-        configmap.reloader.stakater.com/reload: {{ printf "%s-instructions" .Values.name | quote }}
+        configmap.reloader.stakater.com/reload: {{ printf "%s-instructions,%s-mitm-proxy" .Values.name .Values.name | quote }}
     spec:
 {{ include "senaev-com.llmWorkspace.podAccess" . | indent 6 }}
       # The pod name changes on each start; Remote Control shows the hostname as the device name.
       hostname: {{ printf "%s-claude-code" .Values.name }}
       nodeSelector:
         vps: {{ .Values.vps }}
-      # The SSH key is only in the ssh-agent container: Claude Code signs through its socket.
+      # The SSH key and the GitHub token are only in sidecars: Claude Code signs through the ssh-agent socket
+      # and sends gh through mitm-proxy.
       initContainers:
 {{ include "senaev-com.llmWorkspace.sshAgent.container" . | indent 8 }}
+{{ include "senaev-com.llmWorkspace.mitmProxy.container" (dict "context" . "secretName" (printf "%s-claude-code-env" .Values.name)) | indent 8 }}
       containers:
         - name: claude-code
           image: ghcr.io/senaev/claude-code:latest
@@ -61,16 +63,13 @@ spec:
               value: {{ .Values.git.name | quote }}
             - name: GIT_COMMITTER_EMAIL
               value: {{ .Values.git.email | quote }}
-            - name: GH_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: {{ printf "%s-claude-code-env" $.Values.name }}
-                  key: {{ .Values.git.githubToken }}
+{{ include "senaev-com.llmWorkspace.mitmProxy.env" . | indent 12 }}
 {{ include "senaev-com.llmWorkspace.sshAgent.env" . | indent 12 }}
           volumeMounts:
             - name: data
               mountPath: /home/claude
 {{ include "senaev-com.llmWorkspace.sshAgent.volumeMount" . | indent 12 }}
+{{ include "senaev-com.llmWorkspace.mitmProxy.volumeMounts" . | indent 12 }}
             - name: code
               mountPath: /code
             # Claude Code reads the CLAUDE.md of a parent folder of /code.
@@ -114,6 +113,7 @@ spec:
             path: {{ .Values.global.clusterRootPath }}/volumes/claude-code
             type: DirectoryOrCreate
 {{ include "senaev-com.llmWorkspace.sshAgent.volumes" (dict "context" . "secretName" (printf "%s-claude-code-env" .Values.name)) | indent 8 }}
+{{ include "senaev-com.llmWorkspace.mitmProxy.volumes" . | indent 8 }}
         - name: code
           persistentVolumeClaim:
             claimName: {{ printf "%s-code" .Values.name }}

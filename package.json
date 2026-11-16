@@ -12,7 +12,7 @@
     "ci:all": "bash scripts/ci-all.sh",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "typecheck": "tsc -p senaev-utils --noEmit && tsc -p claude-code --noEmit && tsc -p cluster-helper --noEmit && tsc -p code-tools --noEmit && tsc -p media-server-helper --noEmit && tsc -p obsidian-sync --noEmit && tsc -p vpn-subscription --noEmit && tsc -p scripts --noEmit",
+    "typecheck": "tsc -p senaev-utils --noEmit && tsc -p claude-code --noEmit && tsc -p cluster-helper --noEmit && tsc -p code-tools --noEmit && tsc -p media-server-helper --noEmit && tsc -p mitm-proxy --noEmit && tsc -p obsidian-sync --noEmit && tsc -p vpn-subscription --noEmit && tsc -p scripts --noEmit",
     "test": "vitest --run --project=\"*-unit\" --project=senaev-utils-pure",
     "test:watch": "vitest --project=\"*-unit\" --project=senaev-utils-pure",
     "check:python": "bash scripts/check-syntax.sh python",

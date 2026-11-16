@@ -9,6 +9,10 @@ data:
 {{ .Files.Get (printf "%s/AGENTS.md" .Values.instructionsPath) | required "Missing workspace AGENTS.md" | indent 4 }}
   CLAUDE.md: |
 {{ .Files.Get (printf "%s/CLAUDE.md" .Values.instructionsPath) | required "Missing workspace CLAUDE.md" | indent 4 }}
+{{- if .Values.git }}
+---
+{{ include "senaev-com.llmWorkspace.mitmProxy.configMap" . }}
+{{- end }}
 {{- if .Values.ompWeb.enabled }}
 ---
 apiVersion: v1

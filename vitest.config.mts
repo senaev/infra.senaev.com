@@ -11,6 +11,7 @@ const PACKAGES = [
     'cluster-helper',
     'code-tools',
     'media-server-helper',
+    'mitm-proxy',
     'obsidian-sync',
     'senaev-utils',
     'vpn-subscription',
