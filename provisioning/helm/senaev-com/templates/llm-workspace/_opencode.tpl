@@ -38,23 +38,9 @@ spec:
 {{ include "senaev-com.llmWorkspace.podAccess" . | indent 6 }}
       nodeSelector:
         vps: {{ .Values.vps }}
+      # The SSH key is only in the ssh-agent container: OpenCode signs through its socket.
       initContainers:
-        - name: git-init
-          securityContext:
-{{ include "senaev-com.llmWorkspace.containerAccess" . | indent 12 }}
-          image: alpine/git:latest
-          command: ["/bin/sh", "-c"]
-          args:
-            - |
-              cp /tmp/ssh/id_rsa /root/.ssh/id_rsa
-              chmod 600 /root/.ssh/id_rsa
-              ssh-keyscan github.com >> /root/.ssh/known_hosts 2>/dev/null
-          volumeMounts:
-            - name: ssh-key
-              mountPath: /tmp/ssh
-              readOnly: true
-            - name: ssh-dir
-              mountPath: /root/.ssh
+{{ include "senaev-com.llmWorkspace.sshAgent.container" . | indent 8 }}
       containers:
         # OpenCode web and API share native authentication; the bot uses localhost.
         - name: opencode-serve
@@ -104,6 +90,7 @@ spec:
                 secretKeyRef:
                   name: {{ printf "%s-opencode-env" $.Values.name }}
                   key: {{ .Values.git.githubToken }}
+{{ include "senaev-com.llmWorkspace.sshAgent.env" . | indent 12 }}
             - name: OPENCODE_WORKDIR
               value: /code
 {{- range $connector := $agent.connectors }}
@@ -128,8 +115,7 @@ spec:
           volumeMounts:
             - name: code
               mountPath: /code
-            - name: ssh-dir
-              mountPath: /root/.ssh
+{{ include "senaev-com.llmWorkspace.sshAgent.volumeMount" . | indent 12 }}
             - name: opencode-data
               mountPath: /root/.local/share/opencode
               subPath: opencode-sessions
@@ -236,15 +222,7 @@ spec:
           hostPath:
             path: {{ .Values.global.clusterRootPath }}/volumes/opencode-data
             type: DirectoryOrCreate
-        - name: ssh-key
-          secret:
-            secretName: {{ printf "%s-opencode-env" .Values.name }}
-            items:
-              - key: {{ .Values.git.sshPrivateKey }}
-                path: id_rsa
-                mode: 0600
-        - name: ssh-dir
-          emptyDir: {}
+{{ include "senaev-com.llmWorkspace.sshAgent.volumes" (dict "context" . "secretName" (printf "%s-opencode-env" .Values.name)) | indent 8 }}
         - name: code
           persistentVolumeClaim:
             claimName: {{ printf "%s-code" .Values.name }}

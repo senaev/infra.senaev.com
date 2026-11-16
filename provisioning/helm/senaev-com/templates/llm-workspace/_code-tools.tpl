@@ -33,23 +33,9 @@ spec:
       # ReadWriteOnce permits all workspace pods to mount the code disk on the same node.
       nodeSelector:
         vps: {{ .Values.vps }}
+      # The SSH key is only in the ssh-agent container: Code Tools signs through its socket.
       initContainers:
-        - name: git-init
-          securityContext:
-{{ include "senaev-com.llmWorkspace.containerAccess" . | indent 12 }}
-          image: alpine/git:latest
-          command: ["/bin/sh", "-ec"]
-          args:
-            - |
-              cp /tmp/ssh/id_rsa /root/.ssh/id_rsa
-              chmod 600 /root/.ssh/id_rsa
-              ssh-keyscan github.com >> /root/.ssh/known_hosts 2>/dev/null
-          volumeMounts:
-            - name: ssh-key
-              mountPath: /tmp/ssh
-              readOnly: true
-            - name: ssh-dir
-              mountPath: /root/.ssh
+{{ include "senaev-com.llmWorkspace.sshAgent.container" . | indent 8 }}
       containers:
         - name: code-tools
           securityContext:
@@ -81,6 +67,7 @@ spec:
                 secretKeyRef:
                   name: {{ printf "%s-code-tools-env" $.Values.name }}
                   key: {{ .Values.git.githubToken }}
+{{ include "senaev-com.llmWorkspace.sshAgent.env" . | indent 12 }}
           startupProbe:
             httpGet:
               path: /health
@@ -95,22 +82,13 @@ spec:
           volumeMounts:
             - name: code
               mountPath: /code
-            - name: ssh-dir
-              mountPath: /root/.ssh
+{{ include "senaev-com.llmWorkspace.sshAgent.volumeMount" . | indent 12 }}
             # The server rules that every code tool description points to.
             - name: instructions
               mountPath: /AGENTS.md
               subPath: AGENTS.md
       volumes:
-        - name: ssh-key
-          secret:
-            secretName: {{ printf "%s-code-tools-env" .Values.name }}
-            items:
-              - key: {{ .Values.git.sshPrivateKey }}
-                path: id_rsa
-                mode: 0600
-        - name: ssh-dir
-          emptyDir: {}
+{{ include "senaev-com.llmWorkspace.sshAgent.volumes" (dict "context" . "secretName" (printf "%s-code-tools-env" .Values.name)) | indent 8 }}
         - name: instructions
           configMap:
             name: {{ printf "%s-instructions" .Values.name }}

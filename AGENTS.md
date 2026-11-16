@@ -373,13 +373,22 @@ makes outbound connections only, and the NetworkPolicy has no ingress. It is ena
   across restarts. Do not delete it. The folder name is fixed in the template, as for OpenCode
   (`volumes/opencode-data`); two workspaces on one node would share it.
 - Sessions run without approvals (`bypassPermissions`) as root; `IS_SANDBOX=1` allows this in the
-  container. The git token and SSH key of the workspace are in the pod. The key is mounted in
-  `/root/.ssh`, not in `HOME`: ssh takes the home folder of root from `/etc/passwd` and ignores
-  `HOME`. The model of new sessions is `claudeCode.model`; the phone can change it with `/model`.
+  container. The git token of the workspace is in its env. The SSH key is not in the container:
+  the `ssh-agent` sidecar (`templates/llm-workspace/_ssh-agent.tpl`) holds it, and Claude Code
+  signs through `SSH_AUTH_SOCK=/ssh-agent/agent.sock`, a read-only mount. The model of new
+  sessions is `claudeCode.model`; the phone can change it with `/model`.
 - The Claude Code version is pinned in `claude-code/Dockerfile`. Raise it in a pull request.
 - There is no readiness probe, so a deploy does not wait for the login.
 
 See [`projects/2026-11-15-18-42-claude-code-remote-control`](projects/2026-11-15-18-42-claude-code-remote-control/README.md).
+
+Secrets in LLM workspaces: an agent can read everything in the container where it runs. Keep
+credentials in a sidecar or proxy and give the agent container only a socket or a local
+endpoint, as `_ssh-agent.tpl` does for the SSH key in Claude Code, OpenCode, Code Tools and
+OMP: only their `ssh-agent` sidecar mounts the key, and the agent container gets
+`SSH_AUTH_SOCK`. A new coding component that needs git over SSH uses the same helper. The
+inventory and the future tasks are in
+[`projects/2026-11-15-21-54-isolate-secrets-from-llm-workspaces`](projects/2026-11-15-21-54-isolate-secrets-from-llm-workspaces/README.md).
 
 ## Datadog APM whitelist
 
