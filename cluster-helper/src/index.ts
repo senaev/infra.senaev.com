@@ -46,7 +46,9 @@ import {
 } from './oauth/authorizationServer';
 import { createGoogleLogin, parseGoogleAdminEmails } from './oauth/googleLogin';
 import { GOOGLE_CALLBACK_PATH } from './oauth/registerOAuthRoutes';
-import { createToolFamilies } from './chatGptMcp/toolFamilies';
+import {
+    createCodeToolFamily, createObsidianToolFamily, type ToolFamily,
+} from './chatGptMcp/toolFamilies';
 import { callCodeTool } from './codeToolsApi';
 import {
     callVaultTool, getShortLink, readVaultResource,
@@ -71,7 +73,7 @@ const HOST = '0.0.0.0';
 // PUBLIC_PORT is what the five ingresses target -- api.senaev.com,
 // auth.senaev.com, mcp.senaev.com, s.senaev.com and static.senaev.com. Every route on it is either
 // authenticated (Telegram secret token, Alisa secret path or skill and user check, OAuth bearer tokens for the
-// ChatGPT MCP endpoints, the API key of /llm, the bearer secret of /telegram-public-bot-api), part of
+// MCP endpoints, the API key of /llm, the bearer secret of /telegram-public-bot-api), part of
 // the OAuth flow, or safe to publish, and the catch-all
 // below answers 401 so nothing new leaks by accident.
 //
@@ -234,17 +236,50 @@ publicServer.post(ALISA_WEBHOOK_PATH, ({ body }, reply) => {
     });
 });
 
-// MCP server for the ChatGPT connector. The obsidian-* tools are forwarded to obsidian-sync,
+// Two MCP servers, each on its own endpoint. The obsidian-* tools are forwarded to obsidian-sync,
 // which does all vault work, and the code-* tools to code-tools in the opencode-serve pod.
-const MCP_TOOL_FAMILIES = createToolFamilies({
-    readVaultResource,
-    callVaultTool,
-    callCodeTool,
-});
+type LocalMcpServer = {
+    families: readonly ToolFamily[];
+    options: McpServerOptions;
+    /** The message of the log line of every exchange. */
+    logMessage: string;
+};
+
+const MCP_SECURITY_SCHEMES = [
+    {
+        type: 'oauth2',
+        scopes: [MCP_SCOPE],
+    },
+];
+
+const OBSIDIAN_MCP_SERVER: LocalMcpServer = {
+    families: [
+        createObsidianToolFamily({
+            readVaultResource,
+            callVaultTool,
+        }),
+    ],
+    options: {
+        serverName: 'senaev-obsidian',
+        securitySchemes: MCP_SECURITY_SCHEMES,
+    },
+    logMessage: '📓 Obsidian MCP message',
+};
+
+const CODE_MCP_SERVER: LocalMcpServer = {
+    families: [createCodeToolFamily({ callCodeTool })],
+    options: {
+        serverName: 'senaev-code',
+        securitySchemes: MCP_SECURITY_SCHEMES,
+    },
+    logMessage: '🧑‍💻 Code MCP message',
+};
 
 const resourceReads = new ResourceReadGate();
 
-async function replyToMcpMessage(message: unknown, reply: FastifyReply, options: McpServerOptions) {
+async function replyToMcpMessage(message: unknown, reply: FastifyReply, {
+    families, options, logMessage,
+}: LocalMcpServer) {
     const isResourceRead = isObject(message) && message.method === 'resources/read';
     const transfer = isResourceRead ? resourceReads.begin(reply.raw, 65_000) : null;
 
@@ -260,12 +295,12 @@ async function replyToMcpMessage(message: unknown, reply: FastifyReply, options:
     }
 
     try {
-        const response = await handleMcpMessage(message, MCP_TOOL_FAMILIES, {
+        const response = await handleMcpMessage(message, families, {
             ...options,
             ...transfer !== null && { signal: transfer.signal },
         });
 
-        logger.info(describeMcpExchange(message, response), '🤖 ChatGPT MCP message');
+        logger.info(describeMcpExchange(message, response), logMessage);
 
         if (response === null) {
             return reply.code(202).send();
@@ -273,7 +308,10 @@ async function replyToMcpMessage(message: unknown, reply: FastifyReply, options:
 
         return reply.code(200).send(response);
     } catch (error) {
-        logger.error(error, '❌ Failed to handle ChatGPT MCP message');
+        logger.error({
+            err: error,
+            server: options.serverName,
+        }, '❌ Failed to handle an MCP message');
 
         return reply.code(500).send({
             jsonrpc: '2.0',
@@ -287,15 +325,6 @@ async function replyToMcpMessage(message: unknown, reply: FastifyReply, options:
         transfer?.finish();
     }
 }
-
-const MCP_SERVER_OPTIONS: McpServerOptions = {
-    securitySchemes: [
-        {
-            type: 'oauth2',
-            scopes: [MCP_SCOPE],
-        },
-    ],
-};
 
 const MAX_NOTIFIED_ACCOUNT_LENGTH = 100;
 
@@ -404,7 +433,8 @@ async function main(): Promise<void> {
         onLoginAttempt: notifyLoginAttempt,
         authDomain: AUTH_DOMAIN,
         mcpDomain: MCP_DOMAIN,
-        replyToChatGptMessage: (message, reply) => replyToMcpMessage(message, reply, MCP_SERVER_OPTIONS),
+        replyToObsidianMessage: (message, reply) => replyToMcpMessage(message, reply, OBSIDIAN_MCP_SERVER),
+        replyToCodeMessage: (message, reply) => replyToMcpMessage(message, reply, CODE_MCP_SERVER),
         grafanaUpstreamUrl: MCP_GRAFANA_URL,
     });
 

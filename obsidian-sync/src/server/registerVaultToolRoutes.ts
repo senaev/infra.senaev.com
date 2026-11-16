@@ -11,7 +11,7 @@ import type { VaultToolsConfig } from '../vault-tools/vaultToolsConfig';
 
 import type { VaultServer } from './createVaultServer';
 
-/** The vault tools behind cluster-helper's ChatGPT MCP endpoint. */
+/** The vault tools behind cluster-helper's Obsidian MCP endpoint (/obsidian). */
 export function registerVaultToolRoutes(server: VaultServer, config: VaultToolsConfig): void {
     const service = createManagedToolService({
         backend: 'obsidian',

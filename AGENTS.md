@@ -91,26 +91,32 @@ Run `npm run test:smoke` from the repository root, always through npm. It checks
 public websites answer, and needs no cluster access. The list of URLs is in
 `scripts/smoke-test-websites.test.ts`.
 
-For the ChatGPT MCP connector, ask ChatGPT to read a note, search the vault and add a diary
-record, then check the `🤖 ChatGPT MCP message` logs of cluster-helper.
+For the Obsidian MCP connector, ask ChatGPT to read a note, search the vault and add a diary
+record, then check the `📓 Obsidian MCP message` logs of cluster-helper.
+
+For the code MCP connector, ask ChatGPT to list a folder under `/code`, then check the
+`🧑‍💻 Code MCP message` logs of cluster-helper.
 
 For the Grafana MCP connector, ask ChatGPT to list the Grafana dashboards and to query `up`
 for the last hour, then check the `📈 Grafana MCP message` logs of cluster-helper.
 
 ## MCP endpoints
 
-cluster-helper serves two OAuth-protected MCP endpoints on `mcp.senaev.com`, with one
+cluster-helper serves three OAuth-protected MCP endpoints on `mcp.senaev.com`, with one
 authorization server on `auth.senaev.com` (`cluster-helper/src/oauth/`). The list of endpoints
 and their wiring are in `cluster-helper/src/mcpEndpoints.ts`, tested by `mcpEndpoints.test.ts`:
 
 | Path | Server |
 |---|---|
-| `/chat-gpt` | cluster-helper itself: the obsidian-* and code-* tools |
+| `/obsidian` | cluster-helper itself: the obsidian-* tools, forwarded to obsidian-sync |
+| `/code-tools` | cluster-helper itself: the code-* tools, forwarded to code-tools |
 | `/grafana` | proxied to `mcp-grafana` (`provisioning/helm/telemetry/vm-stack/templates/mcp-grafana.yaml`) |
 
 Each endpoint is its own OAuth resource (RFC 8707): the token `aud` is the resource that the
-client asked for, and a token for one endpoint is rejected by the other. ChatGPT needs one
-connector for each endpoint.
+client asked for, and a token for one endpoint is rejected by the others. All of them share the
+same login and authorization server. `/obsidian` is the default resource for a client that sends
+none. ChatGPT needs one connector for each endpoint. The combined `/chat-gpt` endpoint was
+replaced by `/obsidian` and `/code-tools` on 2026-11-16.
 
 There is no client registration: the allowed clients are hard-coded in
 `authorizationServer.ts` by their Client ID Metadata Document URL — ChatGPT, OpenCode
