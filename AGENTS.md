@@ -385,11 +385,15 @@ makes outbound connections only, and the NetworkPolicy has no ingress. It is ena
   a server added by hand is removed. Every server uses OAuth. The CLI login
   (`claude mcp login --no-browser <name>`) redirects to `http://localhost:<port>/callback`, and
   Claude Code has no setting for another redirect URI, so there is no public callback. In
-  Telegram, `/mcp` lists the servers and their status (`claude mcp list`), and `/mcp <name>` runs
-  the login under `script` (the CLI needs a terminal) and sends the link. After the login, the
-  browser opens the localhost page that does not load; the user sends its address to the bot,
-  which passes it to the CLI and deletes the message. The tokens are in `~/.claude/.credentials.json`
-  in `HOME`; new sessions use them. Every 10 minutes the bot says once which servers need a login.
+  Telegram, `/mcp` sends a panel: the servers with their status (`claude mcp list`) and, for
+  each, a login and a logout button (callback data `mcp:login:<name>`, `mcp:logout:<name>`).
+  Login runs `claude mcp login --no-browser <name>` under `script` (the CLI needs a terminal)
+  and sends the link; `/mcp <name>` does the same. After the login, the browser opens the
+  localhost page that does not load; the user sends its address to the bot, which passes it to
+  the CLI and deletes the message. Logout runs `claude mcp logout <name>`. Every answer ends with
+  the panel. The tokens are in `~/.claude/.credentials.json` in `HOME`; new sessions use them.
+  Every 10 minutes the bot sends the panel once when a server needs a login; the servers it told
+  about are in `~/.claude/telegram-login/mcp-notices.json`, so a restart does not repeat it.
 - The Claude Code version is pinned in `claude-code/Dockerfile`. Raise it in a pull request.
 - There is no readiness probe, so a deploy does not wait for the login.
 

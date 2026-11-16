@@ -1,14 +1,16 @@
 import { getTelegramCommandFromMessage } from 'senaev-utils/src/utils/TelegramApi/getTelegramCommandFromMessage/getTelegramCommandFromMessage';
-import type { TelegramMessage } from 'senaev-utils/src/utils/TelegramApi/types';
+import type { TelegramCallbackQuery, TelegramMessage } from 'senaev-utils/src/utils/TelegramApi/types';
 
 import { logger } from './logger';
 import type { LoginAssistant } from './loginAssistant';
+import { parseMcpButtonData } from './mcp';
 
 export type MessageRouterDependencies = {
     // The user id and the chat id are the same in a private chat, so one number is the only allowed chat.
     allowedUserId: number;
     assistant: LoginAssistant;
     deleteMessage(chatId: number, messageId: number): Promise<void>;
+    answerCallbackQuery(callbackQueryId: string): Promise<void>;
 };
 
 // The text of a message is never logged: it can be a login code or a redirect URL with a code.
@@ -84,5 +86,53 @@ export function createMessageRouter(dependencies: MessageRouterDependencies): (m
                 messageId,
             }, '⚠️ Could not delete the message with the login code');
         }
+    };
+}
+
+// The buttons of the MCP panel. Telegram shows a loading indicator until the press is answered,
+// so it is answered first: a login link can take a while.
+export function createCallbackQueryRouter(dependencies: MessageRouterDependencies): (callbackQuery: TelegramCallbackQuery) => Promise<void> {
+    return async (callbackQuery) => {
+        const callbackQueryId = callbackQuery.id;
+        const chatId = callbackQuery.message?.chat.id;
+
+        if (callbackQuery.from.id !== dependencies.allowedUserId || (chatId !== undefined && chatId !== dependencies.allowedUserId)) {
+            logger.warn({
+                callbackQueryId,
+                userId: callbackQuery.from.id,
+                chatId,
+            }, '⛔ Ignored a button press from a user or chat that is not allowed');
+
+            return;
+        }
+
+        try {
+            await dependencies.answerCallbackQuery(callbackQueryId);
+        } catch (error) {
+            logger.warn({
+                err: error,
+                callbackQueryId,
+            }, '⚠️ Could not answer a button press');
+        }
+
+        const button = parseMcpButtonData(callbackQuery.data ?? '');
+
+        if (button === undefined) {
+            logger.info({ callbackQueryId }, '👉 Ignored an unknown button');
+
+            return;
+        }
+
+        logger.info({
+            callbackQueryId,
+            action: button.action,
+            server: button.serverName,
+        }, '👉 Handling an MCP button');
+        await dependencies.assistant.handleMcpButton(button.action, button.serverName);
+        logger.info({
+            callbackQueryId,
+            action: button.action,
+            server: button.serverName,
+        }, '✅ Handled an MCP button');
     };
 }

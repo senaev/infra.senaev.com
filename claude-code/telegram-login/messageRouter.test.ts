@@ -1,11 +1,11 @@
-import type { TelegramMessage } from 'senaev-utils/src/utils/TelegramApi/types';
+import type { TelegramCallbackQuery, TelegramMessage } from 'senaev-utils/src/utils/TelegramApi/types';
 import {
     beforeEach, describe, expect, it, vi,
 } from 'vitest';
 
 import { logger } from './logger';
 import type { LoginAssistant } from './loginAssistant';
-import { createMessageRouter } from './messageRouter';
+import { createCallbackQueryRouter, createMessageRouter } from './messageRouter';
 
 vi.mock('./logger', () => {
     return {
@@ -31,22 +31,27 @@ function setup(handleTextResult = true) {
     const assistant: LoginAssistant = {
         handleAuthCommand: vi.fn(() => Promise.resolve()),
         handleMcpCommand: vi.fn(() => Promise.resolve()),
+        handleMcpButton: vi.fn(() => Promise.resolve()),
         handleText: vi.fn(() => Promise.resolve(handleTextResult)),
         checkLogin: vi.fn(() => Promise.resolve()),
         checkMcpServers: vi.fn(() => Promise.resolve()),
         stop: vi.fn(),
     };
     const deleteMessage = vi.fn((): Promise<void> => Promise.resolve());
-    const route = createMessageRouter({
+    const answerCallbackQuery = vi.fn((): Promise<void> => Promise.resolve());
+    const dependencies = {
         allowedUserId: ALLOWED_USER_ID,
         assistant,
         deleteMessage,
-    });
+        answerCallbackQuery,
+    };
 
     return {
         assistant,
         deleteMessage,
-        route,
+        answerCallbackQuery,
+        route: createMessageRouter(dependencies),
+        routeCallbackQuery: createCallbackQueryRouter(dependencies),
     };
 }
 
@@ -206,5 +211,86 @@ describe('the message router', () => {
             userId: 1,
             chatId: ALLOWED_USER_ID,
         }, '⛔ Ignored a message from a user or chat that is not allowed');
+    });
+});
+
+function buttonPress({
+    data = 'mcp:login:datadog',
+    userId = ALLOWED_USER_ID,
+    chatId = ALLOWED_USER_ID,
+}: {
+    data?: string;
+    userId?: number;
+    chatId?: number;
+}): TelegramCallbackQuery {
+    return {
+        id: 'query-1',
+        from: {
+            id: userId,
+            is_bot: false,
+            first_name: 'Andrei',
+            username: 'senaev',
+        },
+        message: {
+            message_id: 3,
+            chat: {
+                id: chatId,
+                type: 'private',
+            },
+            date: 0,
+        },
+        data,
+    };
+}
+
+describe('the button router', () => {
+    beforeEach(() => {
+        vi.mocked(logger.info).mockClear();
+        vi.mocked(logger.warn).mockClear();
+    });
+
+    it('answers the press and passes an MCP button to the assistant', async () => {
+        const {
+            assistant, answerCallbackQuery, routeCallbackQuery,
+        } = setup();
+
+        await routeCallbackQuery(buttonPress({ data: 'mcp:logout:my-server' }));
+
+        expect(answerCallbackQuery).toHaveBeenCalledWith('query-1');
+        expect(assistant.handleMcpButton).toHaveBeenCalledWith('logout', 'my-server');
+    });
+
+    it('ignores presses of other users and chats without an answer', async () => {
+        const {
+            assistant, answerCallbackQuery, routeCallbackQuery,
+        } = setup();
+
+        await routeCallbackQuery(buttonPress({ userId: 7 }));
+        await routeCallbackQuery(buttonPress({ chatId: 7 }));
+
+        expect(answerCallbackQuery).not.toHaveBeenCalled();
+        expect(assistant.handleMcpButton).not.toHaveBeenCalled();
+    });
+
+    it('answers an unknown button and does nothing else', async () => {
+        const {
+            assistant, answerCallbackQuery, routeCallbackQuery,
+        } = setup();
+
+        await routeCallbackQuery(buttonPress({ data: 'mcp:login:bad name' }));
+
+        expect(answerCallbackQuery).toHaveBeenCalledOnce();
+        expect(assistant.handleMcpButton).not.toHaveBeenCalled();
+    });
+
+    it('still handles the button when the answer fails', async () => {
+        const {
+            assistant, answerCallbackQuery, routeCallbackQuery,
+        } = setup();
+
+        answerCallbackQuery.mockRejectedValueOnce(new Error('query is too old'));
+        await routeCallbackQuery(buttonPress({}));
+
+        expect(assistant.handleMcpButton).toHaveBeenCalledWith('login', 'datadog');
     });
 });

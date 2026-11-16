@@ -107,6 +107,62 @@ describe('pollTelegramMessages', () => {
         });
     });
 
+    it('passes button presses to onCallbackQuery in order with the messages, and asks for them', async () => {
+        const controller = new AbortController();
+        const handled: string[] = [];
+
+        callTelegramApiMock
+            .mockResolvedValueOnce([
+                {
+                    update_id: 10,
+                    message: message(1),
+                },
+                {
+                    update_id: 11,
+                    callback_query: {
+                        id: 'query-1',
+                        from: {
+                            id: 42,
+                            is_bot: false,
+                            first_name: 'A',
+                            username: 'a',
+                        },
+                        data: 'press',
+                    },
+                },
+            ])
+            .mockImplementationOnce(() => {
+                controller.abort();
+
+                return Promise.resolve([]);
+            });
+
+        await pollTelegramMessages({
+            token: TOKEN,
+            signal: controller.signal,
+            onMessage: (received) => {
+                handled.push(`message ${received.message_id}`);
+
+                return Promise.resolve();
+            },
+            onCallbackQuery: (query) => {
+                handled.push(`query ${query.data ?? ''}`);
+
+                return Promise.resolve();
+            },
+            onError: () => undefined,
+        });
+
+        expect(handled).toEqual([
+            'message 1',
+            'query press',
+        ]);
+        expect(callTelegramApiMock.mock.calls[0]?.[0].body?.['allowed_updates']).toEqual([
+            'message',
+            'callback_query',
+        ]);
+    });
+
     it('keeps the offset when a poll brings no update', async () => {
         const { controller, run } = setup();
 

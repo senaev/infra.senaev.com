@@ -1,5 +1,12 @@
+import {
+    mkdir, readFile, writeFile,
+} from 'node:fs/promises';
+import { homedir } from 'node:os';
+import { dirname, join } from 'node:path';
+
 import { requireEnv } from 'senaev-utils/src/utils/env/requireEnv/requireEnv';
 import { installGracefulShutdown } from 'senaev-utils/src/utils/process/installGracefulShutdown';
+import { answerTelegramCallbackQuery } from 'senaev-utils/src/utils/TelegramApi/answerTelegramCallbackQuery';
 import { deleteTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/deleteTelegramMessage';
 import { pollTelegramMessages } from 'senaev-utils/src/utils/TelegramApi/pollTelegramMessages';
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
@@ -10,10 +17,34 @@ import {
     spawnClaudeLogin, spawnMcpLogin, startLogin,
 } from './login';
 import { createLoginAssistant } from './loginAssistant';
-import { listMcpServers, MCP_LOGIN_REJECTION_PATTERN } from './mcp';
-import { createMessageRouter } from './messageRouter';
+import {
+    listMcpServers, logoutMcpServer, MCP_LOGIN_REJECTION_PATTERN,
+} from './mcp';
+import { createCallbackQueryRouter, createMessageRouter } from './messageRouter';
 
 const LOGIN_CHECK_INTERVAL_MS = 10 * 60 * 1000;
+// In the HOME that both containers share, next to the Claude Code state.
+const MCP_NOTICES_PATH = join(homedir(), '.claude', 'telegram-login', 'mcp-notices.json');
+
+async function readMcpNotices(): Promise<string[]> {
+    try {
+        const parsed: unknown = JSON.parse(await readFile(MCP_NOTICES_PATH, 'utf8'));
+
+        return Array.isArray(parsed) ? parsed.filter((name) => typeof name === 'string') : [];
+    } catch (error) {
+        // No file yet, or a broken one: at worst the notice comes once more.
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+            logger.warn({ err: error }, '⚠️ Could not read the MCP notices, starting without them');
+        }
+
+        return [];
+    }
+}
+
+async function writeMcpNotices(serverNames: string[]): Promise<void> {
+    await mkdir(dirname(MCP_NOTICES_PATH), { recursive: true });
+    await writeFile(MCP_NOTICES_PATH, JSON.stringify(serverNames));
+}
 
 const token = requireEnv('TELEGRAM_BOT_TOKEN');
 const allowedUserId = Number(requireEnv('TELEGRAM_USER_ID'));
@@ -31,25 +62,35 @@ const assistant = createLoginAssistant({
         urlMs: 30_000,
         codeMs: 60_000,
     }, MCP_LOGIN_REJECTION_PATTERN),
-    sendMarkdown: async (markdown) => {
+    logoutMcpServer: (serverName) => logoutMcpServer(runCommand, serverName),
+    readMcpNotices,
+    writeMcpNotices,
+    sendMarkdown: async (markdown, replyMarkup) => {
         await sendTelegramMessage({
             text: markdown,
             chatId: String(allowedUserId),
             token,
             disableLinkPreview: true,
+            ...(replyMarkup !== undefined && { replyMarkup }),
         });
     },
     now: () => new Date(),
 });
-const routeMessage = createMessageRouter({
+const routerDependencies = {
     allowedUserId,
     assistant,
-    deleteMessage: (chatId, messageId) => deleteTelegramMessage({
+    deleteMessage: (chatId: number, messageId: number) => deleteTelegramMessage({
         token,
         chatId: String(chatId),
         messageId,
     }),
-});
+    answerCallbackQuery: (callbackQueryId: string) => answerTelegramCallbackQuery({
+        token,
+        callbackQueryId,
+    }),
+};
+const routeMessage = createMessageRouter(routerDependencies);
+const routeCallbackQuery = createCallbackQueryRouter(routerDependencies);
 
 const lifecycle = installGracefulShutdown({
     stop: () => {
@@ -86,6 +127,7 @@ function main(): Promise<void> {
         signal: lifecycle.signal,
         skipMessagesSentBeforeStart: true,
         onMessage: (message) => enqueue('Handling a message', () => routeMessage(message)),
+        onCallbackQuery: (callbackQuery) => enqueue('Handling a button press', () => routeCallbackQuery(callbackQuery)),
         onError: (error) => logger.error(error, '❌ Polling Telegram failed'),
     });
 }

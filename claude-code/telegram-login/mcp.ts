@@ -49,3 +49,53 @@ export async function listMcpServers(run: CommandRunner): Promise<McpServer[]> {
 
     return parseMcpList(stdout);
 }
+
+export type McpButtonAction = 'login' | 'logout';
+
+const BUTTON_DATA = /^mcp:(login|logout):([\w-]+)$/;
+const MAX_CALLBACK_DATA_BYTES = 64;
+
+// undefined when the data would be longer than Telegram allows.
+export function mcpButtonData(action: McpButtonAction, serverName: string): string | undefined {
+    const data = `mcp:${action}:${serverName}`;
+
+    return Buffer.byteLength(data) <= MAX_CALLBACK_DATA_BYTES ? data : undefined;
+}
+
+export function parseMcpButtonData(data: string): {
+    action: McpButtonAction;
+    serverName: string;
+} | undefined {
+    const match = BUTTON_DATA.exec(data);
+
+    if (match === null) {
+        return undefined;
+    }
+
+    const [
+        , action,
+        serverName,
+    ] = match;
+
+    return action === undefined || serverName === undefined
+        ? undefined
+        : {
+            action: action as McpButtonAction,
+            serverName,
+        };
+}
+
+// Removes the stored OAuth tokens of the server; the server stays in the config.
+export async function logoutMcpServer(run: CommandRunner, serverName: string): Promise<void> {
+    const { stdout, exitCode } = await run('claude', [
+        'mcp',
+        'logout',
+        serverName,
+    ]);
+
+    if (exitCode !== 0) {
+        const lastLine = stdout.trim().split('\n').at(-1) ?? '';
+
+        throw new Error(`claude mcp logout failed with exit code ${exitCode}${lastLine === '' ? '' : `: ${lastLine.slice(0, 200)}`}`);
+    }
+}

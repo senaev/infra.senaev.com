@@ -2,38 +2,42 @@ import type { Milliseconds } from '../../types/Time/Milliseconds';
 import { promiseTimeout } from '../timers/promiseTimeout/promiseTimeout';
 
 import { callTelegramApi } from './callTelegramApi';
-import type { TelegramMessage, TelegramUpdate } from './types';
+import type {
+    TelegramCallbackQuery, TelegramMessage, TelegramUpdate,
+} from './types';
 
 const POLL_TIMEOUT_SECONDS = 50;
 const RETRY_DELAY_MS: Milliseconds = 5_000;
 
-type MessageBatch = {
-    messages: TelegramMessage[];
+type UpdateBatch = {
+    updates: TelegramUpdate[];
     nextOffset: number | undefined;
 };
 
-async function getTelegramMessages({
+async function getTelegramUpdates({
     token,
     offset,
     timeoutSeconds,
+    allowedUpdates,
 }: {
     token: string;
     offset: number | undefined;
     timeoutSeconds: number;
-}): Promise<MessageBatch> {
+    allowedUpdates: string[];
+}): Promise<UpdateBatch> {
     const updates = await callTelegramApi<TelegramUpdate[]>({
         method: 'getUpdates',
         token,
         body: {
             offset,
             timeout: timeoutSeconds,
-            allowed_updates: ['message'],
+            allowed_updates: allowedUpdates,
         },
     });
     const lastUpdate = updates.at(-1);
 
     return {
-        messages: updates.flatMap(({ message }) => message === undefined ? [] : [message]),
+        updates,
         nextOffset: lastUpdate === undefined ? undefined : lastUpdate.update_id + 1,
     };
 }
@@ -45,30 +49,42 @@ async function getTelegramMessages({
  *
  * The messages are handled one by one, in order. The offset moves on before a message is handled,
  * so a message that makes `onMessage` fail is reported and not repeated.
+ *
+ * With `onCallbackQuery`, the presses of inline keyboard buttons come too, in the same order and
+ * the same way. The handler must answer them with `answerTelegramCallbackQuery`.
  */
 export async function pollTelegramMessages({
     token,
     signal,
     onMessage,
+    onCallbackQuery,
     onError,
     skipMessagesSentBeforeStart = false,
 }: {
     token: string;
     signal: AbortSignal;
     onMessage: (message: TelegramMessage) => Promise<void>;
+    onCallbackQuery?: (callbackQuery: TelegramCallbackQuery) => Promise<void>;
     onError: (error: unknown) => void;
     skipMessagesSentBeforeStart?: boolean;
 }): Promise<void> {
+    const allowedUpdates = onCallbackQuery === undefined
+        ? ['message']
+        : [
+            'message',
+            'callback_query',
+        ];
     let offset: number | undefined;
     let isOffsetReady = !skipMessagesSentBeforeStart;
 
     while (!isOffsetReady && !signal.aborted) {
         try {
             // Offset -1 returns only the last waiting update; confirming it drops all the older ones.
-            offset = (await getTelegramMessages({
+            offset = (await getTelegramUpdates({
                 token,
                 offset: -1,
                 timeoutSeconds: 0,
+                allowedUpdates,
             })).nextOffset;
             isOffsetReady = true;
         } catch (error) {
@@ -78,13 +94,14 @@ export async function pollTelegramMessages({
     }
 
     while (!signal.aborted) {
-        let batch: MessageBatch;
+        let batch: UpdateBatch;
 
         try {
-            batch = await getTelegramMessages({
+            batch = await getTelegramUpdates({
                 token,
                 offset,
                 timeoutSeconds: POLL_TIMEOUT_SECONDS,
+                allowedUpdates,
             });
         } catch (error) {
             onError(error);
@@ -95,9 +112,13 @@ export async function pollTelegramMessages({
 
         offset = batch.nextOffset ?? offset;
 
-        for (const message of batch.messages) {
+        for (const { message, callback_query: callbackQuery } of batch.updates) {
             try {
-                await onMessage(message);
+                if (message !== undefined) {
+                    await onMessage(message);
+                } else if (callbackQuery !== undefined) {
+                    await onCallbackQuery?.(callbackQuery);
+                }
             } catch (error) {
                 onError(error);
             }
