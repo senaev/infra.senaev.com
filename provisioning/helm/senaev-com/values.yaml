@@ -217,6 +217,10 @@ llmWorkspaces:
           url: https://mcp.senaev.com/grafana
           oauth:
             client_id: opencode.senaev.com
+        obsidian:
+          url: https://mcp.senaev.com/obsidian
+          oauth:
+            client_id: opencode.senaev.com
       defaultModel:
         provider: openrouter
         id: anthropic/claude-haiku-4.5
