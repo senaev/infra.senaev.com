@@ -76,7 +76,7 @@
             ],
             "properties": {
               "mcp": {
-                "description": "MCP servers of the workspace agents, by name. Each agent takes the settings it supports; every server needs a url",
+                "description": "MCP servers of the workspace agents, by name. Each agent takes the settings it supports; every server needs a url. opencodeClientId is the OAuth client id that only OpenCode sends",
                 "type": "object"
               },
               "defaultModel": {

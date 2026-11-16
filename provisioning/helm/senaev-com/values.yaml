@@ -161,10 +161,10 @@ clusterHelper:
   # Public API host: the Telegram webhook and Alisa. The app registers this URL with
   # Telegram at startup, so it must keep matching the ingress.
   apiDomain: api.senaev.com
-  # OAuth authorization server for the MCP endpoints at https://<mcpDomain>/chat-gpt and
-  # https://<mcpDomain>/grafana. It is the token issuer, so changing it makes every issued token invalid.
+  # OAuth authorization server for the MCP endpoints at https://<mcpDomain>/obsidian,
+  # https://<mcpDomain>/code-tools and https://<mcpDomain>/grafana. It is the token issuer, so changing it makes every issued token invalid.
   authDomain: auth.senaev.com
-  # Host of the OAuth-protected MCP endpoint. The tokens are issued for it, so changing it
+  # Host of the OAuth-protected MCP endpoints. The tokens are issued for it, so changing it
   # makes every issued token invalid too.
   mcpDomain: mcp.senaev.com
   torrentOutboxVolumePath: volumes/webhook-endpoint/torrent-outbox
@@ -210,13 +210,16 @@ llmWorkspaces:
         datadog:
           url: https://mcp.datadoghq.eu/v1/mcp?toolsets=core,software-delivery
           oauth: {}
-        # cluster-helper, OAuth with the auth.senaev.com login. Claude Code uses its own CIMD
-        # client id and takes only the url. OpenCode, with its public callback, needs the static
-        # client id that cluster-helper allows only with https://opencode.senaev.com/auth/mcp/callback.
+        # cluster-helper, OAuth with the auth.senaev.com login. Claude Code and OMP use their own
+        # client ids. OpenCode, with its public callback, sends its own client id no more and needs
+        # opencodeClientId: the static client id that cluster-helper allows only with
+        # https://opencode.senaev.com/auth/mcp/callback. Only OpenCode gets it.
         grafana:
           url: https://mcp.senaev.com/grafana
-          oauth:
-            client_id: opencode.senaev.com
+          opencodeClientId: opencode.senaev.com
+        obsidian:
+          url: https://mcp.senaev.com/obsidian
+          opencodeClientId: opencode.senaev.com
       defaultModel:
         provider: openrouter
         id: anthropic/claude-haiku-4.5

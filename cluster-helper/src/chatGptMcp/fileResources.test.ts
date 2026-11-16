@@ -4,7 +4,7 @@ import {
 import { vaultFileResourceUri } from 'senaev-utils/src/obsidianVaultTools/vaultFileResource';
 
 import { handleMcpMessage, describeMcpExchange } from './handleMcpMessage';
-import { createToolFamilies } from './toolFamilies';
+import { createObsidianToolFamily } from './toolFamilies';
 
 const uri = vaultFileResourceUri('payslips/a.pdf', 'a'.repeat(64));
 const resource = {
@@ -31,10 +31,11 @@ it('preserves download resource links on direct and deferred completion', async 
             resource,
         },
     });
-    const families = createToolFamilies({
-        callVaultTool,
-        callCodeTool: vi.fn(),
-    });
+    const families = [
+        createObsidianToolFamily({
+            callVaultTool,
+        }),
+    ];
 
     expect(await handleMcpMessage(request('tools/call', {
         name: 'obsidian-download',
@@ -74,11 +75,12 @@ it('reads binary resources without copying base64 into text or structured result
             contents,
         },
     });
-    const families = createToolFamilies({
-        callVaultTool: vi.fn(),
-        callCodeTool: vi.fn(),
-        readVaultResource,
-    });
+    const families = [
+        createObsidianToolFamily({
+            callVaultTool: vi.fn(),
+            readVaultResource,
+        }),
+    ];
     const { signal } = new AbortController();
     const response = await handleMcpMessage(request('resources/read', { uri }), families, { signal });
 
@@ -95,11 +97,12 @@ it('reads binary resources without copying base64 into text or structured result
 
 it('rejects foreign URIs before backend access and sanitizes transport errors', async () => {
     const readVaultResource = vi.fn().mockRejectedValue(new Error('internal-secret-address'));
-    const families = createToolFamilies({
-        callVaultTool: vi.fn(),
-        callCodeTool: vi.fn(),
-        readVaultResource,
-    });
+    const families = [
+        createObsidianToolFamily({
+            callVaultTool: vi.fn(),
+            readVaultResource,
+        }),
+    ];
 
     expect(await handleMcpMessage(request('resources/read', { uri: 'https://evil.test/a' }), families)).toHaveProperty('error');
     expect(readVaultResource).not.toHaveBeenCalled();
@@ -124,10 +127,11 @@ it('forwards chunk arguments and bytes, including deferred results, without logg
             ...chunk,
         },
     });
-    const families = createToolFamilies({
-        callVaultTool,
-        callCodeTool: vi.fn(),
-    });
+    const families = [
+        createObsidianToolFamily({
+            callVaultTool,
+        }),
+    ];
     const args = {
         path: chunk.path,
         expectedHash: chunk.hash,
