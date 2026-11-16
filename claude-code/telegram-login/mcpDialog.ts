@@ -56,14 +56,19 @@ export function createMcpDialog(dependencies: McpDialogDependencies, slot: Pendi
         return notices;
     }
 
+    // The change goes to a copy, which replaces the cache only once it is saved: a failed write
+    // is then tried again at the next change.
     async function updateNotices(change: (current: Set<string>) => void): Promise<void> {
         const current = await getNotices();
-        const before = [...current].sort().join(',');
+        const next = new Set(current);
 
-        change(current);
+        change(next);
 
-        if ([...current].sort().join(',') !== before) {
-            await dependencies.writeMcpNotices([...current].sort());
+        const sorted = [...next].sort();
+
+        if (sorted.join(',') !== [...current].sort().join(',')) {
+            await dependencies.writeMcpNotices(sorted);
+            notices = next;
         }
     }
 

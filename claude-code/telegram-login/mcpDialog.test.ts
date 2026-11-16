@@ -188,6 +188,28 @@ describe('a redirect URL for an MCP login', () => {
     });
 });
 
+describe('the saved notices', () => {
+    it('are written again at the next check when a write failed', async () => {
+        const writes: string[][] = [];
+        const assistant = createLoginAssistant(dependenciesWith({
+            listMcpServers: () => Promise.resolve([DATADOG_NEEDS_LOGIN]),
+            writeMcpNotices: (serverNames) => {
+                writes.push(serverNames);
+
+                return writes.length === 1 ? Promise.reject(new Error('disk full')) : Promise.resolve();
+            },
+        }));
+
+        await expect(assistant.checkMcpServers()).rejects.toThrow('disk full');
+        await assistant.checkMcpServers();
+
+        expect(writes).toEqual([
+            ['datadog'],
+            ['datadog'],
+        ]);
+    });
+});
+
 describe('the logout button', () => {
     it('logs out, stops a login of that server, rewrites the panel, and adds no notice', async () => {
         const mcpLogin = createSession();

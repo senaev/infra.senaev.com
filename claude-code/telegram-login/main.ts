@@ -77,20 +77,32 @@ const assistant = createLoginAssistant({
         });
     },
     sendEditableMarkdown: (markdown, replyToMessageId) => {
+        let sendFailed = false;
         const message = sendTelegramEditableMessage({
             text: markdown,
             chatId: String(allowedUserId),
             token,
             disableLinkPreview: true,
             replyToMessageId,
-            onSendError: (error) => logger.error(error, '❌ Could not send a Telegram message'),
+            onSendError: (error) => {
+                sendFailed = true;
+                logger.error(error, '❌ Could not send a Telegram message');
+            },
         });
 
         return {
-            edit: (editedMarkdown, replyMarkup) => message.edit({
-                text: editedMarkdown,
-                replyMarkup,
-            }),
+            // An edit waits for the first send; when that failed, there is nothing to edit, and
+            // the caller must know that the user saw nothing.
+            edit: async (editedMarkdown, replyMarkup) => {
+                await message.edit({
+                    text: editedMarkdown,
+                    replyMarkup,
+                });
+
+                if (sendFailed) {
+                    throw new Error('The Telegram message could not be sent');
+                }
+            },
         };
     },
     editMarkdown: (messageId, markdown, replyMarkup) => editTelegramMessage({
