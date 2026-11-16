@@ -4,18 +4,28 @@ import { createBearerAuthorizationHeader } from 'senaev-utils/src/utils/auth/bea
 import type { ToolReply } from './toolFamilies';
 
 /**
- * Runs a tool on a tool server (obsidian-sync, code-tools) with `POST <url>` and the
- * internal token. A reply with `status: "error"` is a normal tool error for ChatGPT; only a
- * transport failure, a timeout or a reply that is not a JSON object throws.
+ * Runs a tool on a tool server (obsidian-sync, code-tools) with `POST <url>`. The server is
+ * authenticated by the caller's transport: either the `token` (code-tools) or the client
+ * certificate of a custom `fetch` (obsidian-sync). A reply with `status: "error"` is a normal
+ * tool error for ChatGPT; only a transport failure, a timeout or a reply that is not a JSON
+ * object throws.
  */
 export async function callToolServer({
-    url, token, args, timeoutMs, serverName, signal,
-}: { url: string; token: string; args: unknown; timeoutMs: number; serverName: string; signal?: AbortSignal }): Promise<ToolReply> {
-    const response = await fetch(url, {
+    url, token, fetch: fetchFn = fetch, args, timeoutMs, serverName, signal,
+}: {
+    url: string;
+    token?: string;
+    fetch?: (url: string, init: RequestInit) => Promise<Response>;
+    args: unknown;
+    timeoutMs: number;
+    serverName: string;
+    signal?: AbortSignal;
+}): Promise<ToolReply> {
+    const response = await fetchFn(url, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            authorization: createBearerAuthorizationHeader(token),
+            ...token !== undefined && { authorization: createBearerAuthorizationHeader(token) },
         },
         body: JSON.stringify(args),
         signal: signal

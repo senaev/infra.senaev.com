@@ -46,16 +46,20 @@ export function registerVaultMetricsRoutes(server: VaultServer, root: string): v
         return running;
     };
 
-    // Accessible to vmagent through Kubernetes NetworkPolicy only. Other vault
-    // routes still require the internal token; do not add a public ingress.
-    server.get('/metrics', { config: { isPublicWithoutInternalToken: true } }, (_request, reply) => {
+    // Accessible to vmagent through Kubernetes NetworkPolicy only, on the public HTTP
+    // instance: do not add a public ingress.
+    server.get('/metrics', (_request, reply) => {
         reply.type('text/plain; version=0.0.4; charset=utf-8');
 
         return metrics();
     });
+}
 
-    // Detailed filenames stay on the authenticated internal API (not Prometheus).
-    // ?path= is an exact-match lookup in the scanned, allowed vault file inventory.
+/**
+ * Detailed filenames stay on the protected mTLS instance (not Prometheus).
+ * ?path= is an exact-match lookup in the scanned, allowed vault file inventory.
+ */
+export function registerVaultFileStatsRoute(server: VaultServer, root: string): void {
     server.get<{ Querystring: { path?: string } }>('/vault/file-stats', async (request, reply) => {
         if (request.query.path === undefined) {
             return scanVaultInventory(root);

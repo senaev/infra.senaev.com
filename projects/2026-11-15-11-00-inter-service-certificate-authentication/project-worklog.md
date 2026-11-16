@@ -1,3 +1,31 @@
+## 2026-11-16 UTC — Renew the CA automatically with the same key
+
+User did not want a manual CA replacement or a risk of downtime. The CA Certificate now uses
+`rotationPolicy: Never` and the default `renewBefore`: cert-manager renews it by itself and
+keeps the key, so every leaf of the old certificate is valid for the renewed one. A real TLS
+test (`keeps trusting leaves across a CA renewal that keeps the CA key`) checks both
+directions. Leaves take the new `ca.crt` when they renew, every 4 days. Only a lost or
+compromised CA key needs the manual replacement. Added a 📌 to move nextjs-app and vmagent
+to mTLS and close port 8080.
+
+## 2026-11-16 UTC — Remove alerts from the first implementation
+
+User chose to drop the alerts and the cert-manager scrape for now: they were untested. Removed
+`monitoring.yaml` from the issuers chart and the alert text from the plan and README. Added two
+📌 follow-ups to the README: delete the unused Vault property, and add the alerts later.
+
+## 2026-11-16 UTC — Implement the plan in PR #203
+
+User asked to implement the feature in the same branch. Added the pki charts, the leaf
+Certificates, the mTLS helpers in senaev-utils (with real TLS integration tests), two Fastify
+instances in obsidian-sync and the mTLS client in cluster-helper. Removed the token check and
+its secret wiring. `npm run simple-checks`: lint, typecheck, 1836 tests and helm lint pass.
+Decisions made while coding: TLS 1.3 only with no session tickets (replaces the planned maximum
+connection age); the CA Certificate renews 1 hour before its end so cert-manager does not rotate
+the CA unnoticed; trust comes from `ca.crt` of each leaf Secret; monitoring uses cert-manager
+metrics (three alerts) and the services log reload failures. Not tested here: cert-manager and
+the Helm releases on the real cluster (no cluster access from this machine).
+
 ## 2026-11-16 UTC — Simplify the first implementation
 
 Review of PR #203 found that cluster-helper and obsidian-sync run on the same node

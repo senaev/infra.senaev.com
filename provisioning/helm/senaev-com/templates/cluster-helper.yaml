@@ -112,7 +112,9 @@ spec:
             - name: PROWLARR_CONFIG_FILE
               value: /prowlarr-config/config.xml
             - name: OBSIDIAN_SYNC_URL
-              value: "http://obsidian-sync:8080"
+              value: "https://obsidian-sync.{{ .Release.Namespace }}.svc.cluster.local:8443"
+            - name: MTLS_DIR
+              value: /etc/mtls
             - name: CODE_TOOLS_URL
               value: "http://senaev-code-tools:8080"
             - name: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
@@ -187,12 +189,6 @@ spec:
                   name: senaev-com-kv-secrets
                   key: GOOGLE_OAUTH_ADMIN_EMAILS
                   optional: false
-            - name: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN
-              valueFrom:
-                secretKeyRef:
-                  name: senaev-com-kv-secrets
-                  key: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN
-                  optional: false
             - name: OPENROUTER_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -247,6 +243,10 @@ spec:
             - name: prowlarr-config
               mountPath: /prowlarr-config
               readOnly: true
+            # The whole directory, never subPath or env: only a directory mount follows renewals.
+            - name: obsidian-sync-mtls
+              mountPath: /etc/mtls
+              readOnly: true
       volumes:
         - name: torrent-outbox
           hostPath:
@@ -258,6 +258,9 @@ spec:
           hostPath:
             path: {{ .Values.global.clusterRootPath }}/{{ .Values.prowlarr.volumePath }}/config
             type: DirectoryOrCreate
+        - name: obsidian-sync-mtls
+          secret:
+            secretName: cluster-helper-client-tls
 ---
 apiVersion: v1
 kind: Service

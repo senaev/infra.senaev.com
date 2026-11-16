@@ -1,34 +1,27 @@
 import { TRANSPORT_TIMEOUT_MS } from 'senaev-utils/src/operations/operationLimits';
-import { createBearerAuthorizationHeader } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 import { readStatusResponse } from 'senaev-utils/src/utils/http/readStatusResponse/readStatusResponse';
 
 import { callToolServer } from './chatGptMcp/callToolServer';
 import type { ToolReply } from './chatGptMcp/toolFamilies';
-import { INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN, OBSIDIAN_SYNC_URL } from './env';
+import { OBSIDIAN_SYNC_URL } from './env';
+import { obsidianSyncFetch } from './obsidianSyncClient';
 
 /**
- * Every call to obsidian-sync goes through here, because obsidian-sync rejects any request
- * without the internal token.
+ * Every call to obsidian-sync goes through here, because obsidian-sync rejects any caller
+ * without the client certificate that this fetch presents.
  */
 export function fetchObsidianSync(pathOrUrl: string | URL, init: RequestInit = {}): Promise<Response> {
-    const headers = new Headers(init.headers);
-
-    headers.set('authorization', createBearerAuthorizationHeader(INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN));
-
     const url = typeof pathOrUrl === 'string' ? `${OBSIDIAN_SYNC_URL}${pathOrUrl}` : pathOrUrl;
 
-    return fetch(url, {
-        ...init,
-        headers,
-    });
+    return obsidianSyncFetch(url, init);
 }
 
 /** Runs a vault tool in obsidian-sync with `POST /vault/<name>`. */
 export function callVaultTool(vaultToolName: string, args: unknown): Promise<ToolReply> {
     return callToolServer({
         url: `${OBSIDIAN_SYNC_URL}/vault/${encodeURIComponent(vaultToolName)}`,
-        token: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN,
+        fetch: obsidianSyncFetch,
         args,
         timeoutMs: TRANSPORT_TIMEOUT_MS,
         serverName: 'obsidian-sync',
@@ -158,7 +151,7 @@ export async function addObsidianTasks(tasks: ObsidianTaskInput[]): Promise<void
 export function readVaultResource(uri: string, signal?: AbortSignal): Promise<ToolReply> {
     return callToolServer({
         url: `${OBSIDIAN_SYNC_URL}/vault-file-resource`,
-        token: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN,
+        fetch: obsidianSyncFetch,
         args: { uri },
         timeoutMs: 65_000,
         ...signal !== undefined && { signal },

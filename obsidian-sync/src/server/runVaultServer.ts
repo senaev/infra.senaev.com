@@ -1,44 +1,68 @@
-import { INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN, OBSIDIAN_VAULT_PATH } from '../env';
+import { watchTlsMaterial } from 'senaev-utils/src/utils/mtls/watchTlsMaterial';
+
+import { MTLS_ALLOWED_CLIENT_NAME, MTLS_DIR } from '../env';
 import { logger } from '../logger';
-import { createVaultToolsConfig } from '../vault-tools/vaultToolsConfig';
 import { PUBLIC_DIR } from '../vaultPaths';
 
-import { createVaultServer } from './createVaultServer';
-import { registerInternalTokenCheck } from './registerInternalTokenCheck';
-import { registerMilestoneRoutes } from './registerMilestoneRoutes';
-import { registerPublicFileRoutes } from './registerPublicFileRoutes';
-import { registerPublicStaticRoutes } from './registerPublicStaticRoutes';
-import { registerShortLinkRoutes } from './registerShortLinkRoutes';
-import { registerTaskRoutes } from './registerTaskRoutes';
-import { registerVaultToolRoutes } from './registerVaultToolRoutes';
-import { registerVaultMetricsRoutes } from './registerVaultMetricsRoutes';
+import { createProtectedVaultServer, createVaultServer } from './createVaultServer';
+import { registerProtectedVaultRoutes, registerPublicVaultRoutes } from './registerVaultRoutes';
 
 const HOST = '0.0.0.0';
-const PORT = 8080;
+const PROTECTED_PORT = 8443;
+const PUBLIC_PORT = 8080;
 
-/** Starts the vault HTTP API and resolves once it is accepting connections. */
+/**
+ * Starts the two vault HTTP servers and resolves once both accept connections.
+ *
+ * The protected API (everything that reads or edits the vault) is on 8443 behind mTLS. The
+ * public instance on 8080 has only the published-file and metrics routes. They are separate
+ * Fastify instances, so no protected route can ever be reached over plain HTTP.
+ */
 export async function runVaultServer() {
-    const server = createVaultServer();
-
-    // First, so the check covers every route registered below.
-    registerInternalTokenCheck(server, INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN);
-    registerVaultMetricsRoutes(server, OBSIDIAN_VAULT_PATH);
-    registerVaultToolRoutes(server, createVaultToolsConfig(OBSIDIAN_VAULT_PATH));
-    registerTaskRoutes(server);
-    registerShortLinkRoutes(server);
-    registerMilestoneRoutes(server);
-    registerPublicStaticRoutes(server);
-    // Registered last because it installs a catch-all GET route.
-    registerPublicFileRoutes(server);
-
-    await server.listen({
-        port: PORT,
-        host: HOST,
+    // The watcher needs the server for reloads, and the server needs the first material from the watcher.
+    const reloadTarget: { server?: ReturnType<typeof createProtectedVaultServer> } = {};
+    const certificates = await watchTlsMaterial({
+        directory: MTLS_DIR,
+        onChange: (material) => {
+            reloadTarget.server?.updateMaterial(material);
+            logger.info({ notAfter: material.notAfter.toISOString() }, '🔐 Loaded the renewed mTLS certificate');
+        },
+        onError: (error) => logger.error({ err: error }, '❌ mTLS certificate files cannot be used, keeping the last valid ones'),
     });
-    logger.info({
-        port: PORT,
-        publicDir: PUBLIC_DIR,
-    }, '✅ Vault server listening');
 
-    return server;
+    const protectedInstance = createProtectedVaultServer(certificates.material);
+
+    reloadTarget.server = protectedInstance;
+
+    const { server: protectedServer } = protectedInstance;
+    const publicServer = createVaultServer();
+
+    registerProtectedVaultRoutes(protectedServer, MTLS_ALLOWED_CLIENT_NAME);
+    registerPublicVaultRoutes(publicServer);
+
+    await Promise.all([
+        protectedServer.listen({
+            port: PROTECTED_PORT,
+            host: HOST,
+        }),
+        publicServer.listen({
+            port: PUBLIC_PORT,
+            host: HOST,
+        }),
+    ]);
+    logger.info({
+        protectedPort: PROTECTED_PORT,
+        publicPort: PUBLIC_PORT,
+        publicDir: PUBLIC_DIR,
+    }, '✅ Vault servers listening');
+
+    return {
+        close: async () => {
+            certificates.stop();
+            await Promise.all([
+                protectedServer.close(),
+                publicServer.close(),
+            ]);
+        },
+    };
 }

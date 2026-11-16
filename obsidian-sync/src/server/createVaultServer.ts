@@ -1,9 +1,15 @@
 import Fastify from 'fastify';
+import { createMtlsServerOptions } from 'senaev-utils/src/utils/mtls/mtlsServer';
+import { createSecureContextOptions, type TlsMaterial } from 'senaev-utils/src/utils/mtls/tlsMaterial';
 
 import { logger } from '../logger';
 
 const BODY_LIMIT_BYTES = 1024 * 1024;
 
+/**
+ * Plain HTTP, for the routes that serve only the already-published `<vault>/public` folder and
+ * the metrics. It must never get a route that reads or edits anything else: see runVaultServer.
+ */
 export function createVaultServer() {
     return Fastify({
         loggerInstance: logger,
@@ -17,3 +23,25 @@ export function createVaultServer() {
  * logger type and the default `FastifyInstance` no longer matches it.
  */
 export type VaultServer = ReturnType<typeof createVaultServer>;
+
+/**
+ * HTTPS that accepts only clients with a certificate of the internal CA. A Fastify instance has
+ * one listener, and its HTTPS options are fixed when it is created, so the protected routes
+ * need an instance of their own.
+ */
+export function createProtectedVaultServer(material: TlsMaterial) {
+    const server = Fastify({
+        loggerInstance: logger,
+        bodyLimit: BODY_LIMIT_BYTES,
+        https: createMtlsServerOptions(material),
+    });
+
+    return {
+        // Only the raw server type differs from the plain instance; the routes do not use it.
+        server: server as unknown as VaultServer,
+        /** New connections use the renewed certificate; open ones keep the old one. */
+        updateMaterial: (renewed: TlsMaterial) => {
+            server.server.setSecureContext(createSecureContextOptions(renewed));
+        },
+    };
+}

@@ -57,11 +57,15 @@ This migration does not encrypt all internal traffic; Next.js/telemetry TLS is l
 
 - Pin a compatible cert-manager release in a dedicated PKI namespace, scheduled on
   hetzner; wait for CRDs/webhook. Bootstrap via SelfSigned issuer, CA Certificate and CA
-  issuer. Never reuse control-plane or public Ingress CAs. Proposed root lifetime: 5 years,
-  with an expiry alert one year before.
+  issuer. Never reuse control-plane or public Ingress CAs. Proposed root lifetime: 5 years.
+  cert-manager renews the CA certificate by itself, a third of the lifetime before its end,
+  and `rotationPolicy: Never` keeps the CA key. A leaf of the old certificate is then valid for
+  the renewed one, so the renewal needs no overlap procedure and causes no downtime (a real TLS
+  test checks it). Leaves get the new `ca.crt` when they renew, every 4 days. Only a lost or
+  compromised key needs a replacement by hand, see the project README.
 - Keep the signing key only in the PKI namespace. Issue separate cluster-helper clientAuth
   and obsidian-sync serverAuth certificates.
-  Proposed leaves: 7 days, renewBefore 3 days, rotationPolicy Always; TLS minimum 1.2.
+  Proposed leaves: 7 days, renewBefore 3 days, rotationPolicy Always; TLS 1.3 only.
   A failed renewal then leaves days to react.
 - Identity is a DNS SAN (a name listed in the certificate). It is only a label and does
   not need to exist in DNS:
@@ -105,28 +109,30 @@ chain) and applies it without a restart:
 - Server: `server.setSecureContext()` on the HTTPS server.
 - Client: create a new Undici `Agent`, then close the old one when its requests end.
 
-A malformed snapshot is ignored: keep the last valid material and alert. At expiry, fail
-closed, with no fallback to HTTP or token. A service never requests certificates: only
-cert-manager does. A service that starts, or wakes up, with expired files stays up, alerts
-and uses the renewed files on the next poll. The alert for a leaf that is not renewed
-fires well before expiry, for example when less than 2 days remain.
+A malformed snapshot is ignored: keep the last valid material and log an error. At expiry,
+fail closed, with no fallback to HTTP or token. A service never requests certificates: only
+cert-manager does. A service that starts, or wakes up, with expired files stays up, logs an
+error and uses the renewed files on the next poll.
 
-Disable TLS session resumption on the protected listener and close connections at a
-maximum age shorter than the leaf lifetime, so an old credential cannot live on in a
-reused connection. Obsidian's independent sync process must survive PKI outages.
+The protected listener accepts TLS 1.3 only, without session tickets, so every connection
+does a full handshake and an old credential cannot live on in a resumed session. The client
+closes idle connections within seconds, and the server checks the expiry of the peer
+certificate on every request. Obsidian's independent sync process must survive PKI outages.
 
-Recovery: after a lost or compromised CA, delete the CA Certificate and its Secret, let
-cert-manager create a new CA and leaves, and restart both services. Short downtime is
-accepted. No CA backup. After a compromised leaf, delete its Secret: a new key is issued,
-and the old leaf stays valid for at most its 7-day lifetime.
+Recovery: after a lost or compromised CA, delete the Secret `internal-ca` in the pki
+namespace and the two leaf Secrets in senaev-com; cert-manager issues a new CA and new
+leaves. Then restart both services. Short downtime is accepted. No CA backup. After a
+compromised leaf, delete its Secret: a new key is issued, and the old leaf stays valid for at
+most its 7-day lifetime.
 
-Never put keys in Git/logs. Monitor Certificate readiness, loaded expiry, CA expiry and
-renewal/reload failures; route alerts through existing monitoring to Telegram.
+Never put keys in Git/logs. There are no alerts in the first implementation: a renewal
+failure shows only in `kubectl get certificate` and in the service logs. Alerts on the
+cert-manager metrics are a follow-up, see the README.
 
 ## Delivery and deployment gates
 
-1. Foundation PR: cert-manager, CA, the two leaf Certificates and monitoring. Existing
-   token traffic unchanged.
+1. Foundation PR: cert-manager, CA and the two leaf Certificates. Existing token traffic
+   unchanged.
 2. Transport and cutover PR: shared helpers and real TLS integration tests, the two
    Fastify instances, mounts and port-specific NetworkPolicies. Switch every helper vault
    path to HTTPS and remove the token check and INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN
@@ -135,9 +141,11 @@ renewal/reload failures; route alerts through existing monitoring to Telegram.
 There is no dual mode, no runtime fallback and no rollback procedure. If the cutover
 breaks, revert the PR; the vault tools stay unavailable until the pipeline finishes.
 
-CI serializes releases only within a namespace and deploys namespaces in parallel.
-CRDs/webhook, issuer readiness, leaves and application mounts need separate stages or
-explicit dependency gates; alphabetical release naming is insufficient. Keep image and
+Both stages are implemented in one PR, in this order. CI deploys the namespaces one at a time
+in sorted order, each release with `--wait`: `pki/cert-manager` (CRDs and webhook), then
+`pki/issuers` (the CA), both before `senaev-com` (the leaves and the mounts). The ordering
+depends on the namespace name `pki` sorting before `senaev-com`. A pod that mounts a leaf
+Secret waits in ContainerCreating until cert-manager has issued it. Keep image and
 mount/config versions compatible with workflow refresh ordering. Single-replica
 obsidian-sync uses Recreate: rollouts can briefly interrupt requests, renewal must not.
 
