@@ -184,6 +184,33 @@ describe('authorize', () => {
         }
     });
 
+    it('accepts the static OpenCode client only with the public callback of opencode.senaev.com', () => {
+        const authorize = (redirectUri: string) => server.authorize({
+            ...authorizeParams,
+            client_id: 'opencode.senaev.com',
+            redirect_uri: redirectUri,
+        }).kind;
+
+        expect(authorize('https://opencode.senaev.com/auth/mcp/callback')).toBe('show-login');
+
+        for (const redirectUri of [
+            'http://127.0.0.1:4100/auth/mcp/callback',
+            'https://opencode.senaev.com/auth/mcp/callback/',
+            'https://opencode.senaev.com.evil.example.com/auth/mcp/callback',
+            'https://omp.senaev.com/auth/mcp/callback',
+        ]) {
+            expect(authorize(redirectUri)).toBe('reject');
+        }
+    });
+
+    it('does not accept the public OpenCode callback with the CIMD client id of OpenCode', () => {
+        expect(server.authorize({
+            ...authorizeParams,
+            client_id: 'https://opencode.ai/oauth/opencode/client.json',
+            redirect_uri: 'https://opencode.senaev.com/auth/mcp/callback',
+        }).kind).toBe('reject');
+    });
+
     it('accepts the Claude Code client with a loopback /callback redirect URI on any port', () => {
         for (const redirectUri of [
             'http://localhost:64564/callback',
