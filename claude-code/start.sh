@@ -10,9 +10,14 @@ workdir=/code
 mkdir -p "$HOME/.claude"
 
 # Remote Control refuses to start without a terminal until these two questions are answered.
+# The MCP servers come from the Helm values and replace the user scope list on each start, so a
+# server added by hand with `claude mcp add -s user` is removed. Their OAuth tokens stay in
+# .credentials.json; the Telegram helper logs in with /mcp.
 config="$HOME/.claude.json"
 [ -f "$config" ] || echo '{}' > "$config"
-jq --arg dir "$workdir" '.remoteDialogSeen = true | .projects[$dir].hasTrustDialogAccepted = true' "$config" > "$config.tmp"
+jq --arg dir "$workdir" --argjson servers "${WORKSPACE_MCP_SERVERS:-"{}"}" \
+    '.remoteDialogSeen = true | .projects[$dir].hasTrustDialogAccepted = true | .mcpServers = $servers' \
+    "$config" > "$config.tmp"
 mv "$config.tmp" "$config"
 
 # Remote Control accepts only a full claude.ai login, so it cannot come from a secret.

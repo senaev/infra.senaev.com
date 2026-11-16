@@ -131,6 +131,44 @@ describe('startLogin', () => {
         expect(fake.written).toEqual([]);
     });
 
+    it('gives the link from a terminal hyperlink of claude mcp login', async () => {
+        const fake = createFakeProcess();
+        const session = startLogin(() => fake.loginProcess, TIMEOUTS);
+        const url = 'https://app.datadoghq.eu/oauth2/v1/authorize?client_id=abc&state=xyz';
+
+        fake.output(`Visit this URL to authorize:\n  \u001b]8;;${url}\u001b\\${url}\u001b]8;;\u001b\\\nWaiting for authorization…`);
+
+        await expect(session.authorizationUrl).resolves.toBe(url);
+    });
+
+    it('stops the command and reports the line when it refuses the code and asks again', async () => {
+        const fake = createFakeProcess();
+        const session = startLogin(() => fake.loginProcess, TIMEOUTS, /^.*doesn't look like.*$/m);
+
+        fake.output(`${LINK}\nOr paste the redirect URL here: `);
+        const result = session.submitCode('http://localhost:1/callback?code=secret');
+
+        fake.output('http://localhost:1/callback?code=secret\r\nThat doesn\'t look like a redirect URL for this sign-in.\r\nOr paste the redirect URL here: ');
+
+        await expect(result).resolves.toEqual({
+            ok: false,
+            reason: 'That doesn\'t look like a redirect URL for this sign-in.',
+        });
+        expect(fake.wasKilled()).toBe(true);
+    });
+
+    it('does not take output from before the code as a refusal', async () => {
+        const fake = createFakeProcess();
+        const session = startLogin(() => fake.loginProcess, TIMEOUTS, /^.*doesn't look like.*$/m);
+
+        fake.output(`${LINK}\nThat doesn't look like a redirect URL\n`);
+        const result = session.submitCode('code');
+
+        fake.exit(0);
+
+        await expect(result).resolves.toEqual({ ok: true });
+    });
+
     it('stops a running command when it is cancelled, and no other one', () => {
         const running = createFakeProcess();
 

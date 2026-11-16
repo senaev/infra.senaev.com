@@ -6,8 +6,11 @@ import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTele
 
 import { getAuthStatus, runCommand } from './claude';
 import { logger } from './logger';
-import { spawnClaudeLogin, startLogin } from './login';
+import {
+    spawnClaudeLogin, spawnMcpLogin, startLogin,
+} from './login';
 import { createLoginAssistant } from './loginAssistant';
+import { listMcpServers, MCP_LOGIN_REJECTION_PATTERN } from './mcp';
 import { createMessageRouter } from './messageRouter';
 
 const LOGIN_CHECK_INTERVAL_MS = 10 * 60 * 1000;
@@ -22,6 +25,12 @@ if (!Number.isSafeInteger(allowedUserId)) {
 const assistant = createLoginAssistant({
     getAuthStatus: () => getAuthStatus(runCommand),
     startLogin: () => startLogin(spawnClaudeLogin),
+    listMcpServers: () => listMcpServers(runCommand),
+    // The CLI discovers the authorization server and may register a client before it prints the link.
+    startMcpLogin: (serverName) => startLogin(() => spawnMcpLogin(serverName), {
+        urlMs: 30_000,
+        codeMs: 60_000,
+    }, MCP_LOGIN_REJECTION_PATTERN),
     sendMarkdown: async (markdown) => {
         await sendTelegramMessage({
             text: markdown,
@@ -64,10 +73,13 @@ function enqueue(description: string, step: () => Promise<void>): Promise<void> 
 
 function main(): Promise<void> {
     logger.info('🚀 Telegram login helper started');
-    void enqueue('Checking the login', () => assistant.checkLogin());
-    setInterval(() => {
+    const checkAll = () => {
         void enqueue('Checking the login', () => assistant.checkLogin());
-    }, LOGIN_CHECK_INTERVAL_MS).unref();
+        void enqueue('Checking the MCP servers', () => assistant.checkMcpServers());
+    };
+
+    checkAll();
+    setInterval(checkAll, LOGIN_CHECK_INTERVAL_MS).unref();
 
     return pollTelegramMessages({
         token,

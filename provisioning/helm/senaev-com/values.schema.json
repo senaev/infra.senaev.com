@@ -76,7 +76,7 @@
             ],
             "properties": {
               "mcp": {
-                "description": "Free-form MCP server settings, passed to OpenCode and OMP",
+                "description": "MCP servers of the workspace agents, by name. Each agent takes the settings it supports; every server needs a url",
                 "type": "object"
               },
               "defaultModel": {

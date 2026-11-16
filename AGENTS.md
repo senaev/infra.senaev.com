@@ -113,8 +113,10 @@ client asked for, and a token for one endpoint is rejected by the other. ChatGPT
 connector for each endpoint.
 
 There is no client registration: the allowed clients are hard-coded in
-`authorizationServer.ts` by their Client ID Metadata Document URL — ChatGPT, and OpenCode
-(`https://opencode.ai/oauth/opencode/client.json`, loopback redirect on any port).
+`authorizationServer.ts` by their Client ID Metadata Document URL — ChatGPT, OpenCode
+(`https://opencode.ai/oauth/opencode/client.json`, loopback redirect on any port) and Claude Code
+(`https://claude.ai/oauth/claude-code-client-metadata`, `http://localhost:<port>/callback` or
+`127.0.0.1`; Claude Code sends this client id only with that loopback redirect).
 
 `mcp-grafana` runs in the telemetry namespace as part of the vm-stack release, alongside Grafana. cluster-helper calls `http://mcp-grafana.telemetry.svc.cluster.local:8000/mcp`; its cross-namespace NetworkPolicy requires both namespace senaev-com and pod label app=cluster-helper. `mcp-grafana` has Editor rights in Grafana. Its init container logs in with the Grafana admin
 and creates the `mcp-grafana` service account and a new token on every pod start, so there is
@@ -377,6 +379,17 @@ makes outbound connections only, and the NetworkPolicy has no ingress. It is ena
   the `ssh-agent` sidecar (`templates/llm-workspace/_ssh-agent.tpl`) holds it, and Claude Code
   signs through `SSH_AUTH_SOCK=/ssh-agent/agent.sock`, a read-only mount. The model of new
   sessions is `claudeCode.model`; the phone can change it with `/model`.
+- MCP servers: the same `agent.mcp` list of the workspace as OpenCode and OMP; Claude Code takes
+  only the `url` of each entry. The template passes them as `WORKSPACE_MCP_SERVERS`, and `start.sh`
+  writes them as `mcpServers` in `~/.claude.json` (user scope) on each start, replacing that list:
+  a server added by hand is removed. Every server uses OAuth. The CLI login
+  (`claude mcp login --no-browser <name>`) redirects to `http://localhost:<port>/callback`, and
+  Claude Code has no setting for another redirect URI, so there is no public callback. In
+  Telegram, `/mcp` lists the servers and their status (`claude mcp list`), and `/mcp <name>` runs
+  the login under `script` (the CLI needs a terminal) and sends the link. After the login, the
+  browser opens the localhost page that does not load; the user sends its address to the bot,
+  which passes it to the CLI and deletes the message. The tokens are in `~/.claude/.credentials.json`
+  in `HOME`; new sessions use them. Every 10 minutes the bot says once which servers need a login.
 - The Claude Code version is pinned in `claude-code/Dockerfile`. Raise it in a pull request.
 - There is no readiness probe, so a deploy does not wait for the login.
 
