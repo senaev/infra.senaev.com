@@ -1,17 +1,8 @@
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { createBearerAuthorizationHeader } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
+import { createSignalWithTimeout } from 'senaev-utils/src/utils/timers/createSignalWithTimeout/createSignalWithTimeout';
 
 import type { ToolReply } from './toolFamilies';
-
-/** Aborts the request when the caller aborts it or when `timeoutMs` passes. */
-export function createToolRequestSignal(timeoutMs: number, signal?: AbortSignal): AbortSignal {
-    return signal
-        ? AbortSignal.any([
-            signal,
-            AbortSignal.timeout(timeoutMs),
-        ])
-        : AbortSignal.timeout(timeoutMs);
-}
 
 /**
  * A reply with `status: "error"` is a normal tool error for ChatGPT; only a reply that is
@@ -45,7 +36,7 @@ export async function callToolServer({
             authorization: createBearerAuthorizationHeader(token),
         },
         body: JSON.stringify(args),
-        signal: createToolRequestSignal(timeoutMs, signal),
+        signal: createSignalWithTimeout(timeoutMs, signal),
     });
 
     return readToolReply(response, serverName);
