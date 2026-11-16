@@ -7,6 +7,16 @@ integration in senaev-utils. First migration: cluster-helper → obsidian-sync.
 Host commands remain a separate project. These decisions suffice to prepare code.
 Defaults below are engineering proposals for review in implementation PRs.
 
+Purpose: cluster-helper and obsidian-sync both run on hetzner, so this migration fixes
+little security risk by itself. It is a low-risk pilot of the certificate foundation for the
+[node executor](../2026-11-15-10-44-approved-node-commands/README.md). A failure here
+costs the vault tools, not the recovery path.
+
+Keep the first implementation small. Out of scope: trust-manager, revoked-certificate list,
+certificate-request approver policy, CA backup, CA replacement with trust overlap, runtime
+fallback and rollback procedures. A bad deploy is fixed with a git revert. A lost or
+compromised CA is fixed with a new CA and a redeploy of both services.
+
 No cert-manager installation was found in repository provisioning. Live installation
 is unverified: inventory it read-only before deploying controllers, following cluster
 access rules. Do not use local kubectl against the unrelated work-cluster context.
@@ -26,37 +36,45 @@ Sources: [server](../../obsidian-sync/src/server/runVaultServer.ts),
 [tool transport](../../cluster-helper/src/chatGptMcp/callToolServer.ts),
 [Helm](../../provisioning/helm/senaev-com/templates/obsidian-sync.yaml).
 
-Create two Fastify listeners: protected mTLS API on 8443 and narrowly registered
-published-file/metrics routes on 8080. No protected routes on HTTP, including catch-all
-behavior. Preserve published-directory/query restrictions. NetworkPolicy limits
-ports and sources, not URL paths: listener route isolation prevents API bypass.
+Run two Fastify instances, created by two `createVaultServer()` calls. One instance has
+one listener, and its HTTPS options are set when it is created, so one instance cannot
+serve both ports.
+
+| Instance | Port | Routes |
+|---|---|---|
+| Protected | HTTPS mTLS 8443 | vault tools, tasks, short links, milestones, static routes |
+| Public | HTTP 8080 | only `registerPublicFileRoutes` and `registerVaultMetricsRoutes` |
+
+Each instance has its own 404 handler and catch-all GET. The public instance never
+registers a protected route, so no path reaches the protected API over HTTP. The protected
+instance checks the client certificate identity in an `onRequest` hook. The token check and
+the `isPublicWithoutInternalToken` flag are removed. Preserve published-directory/query
+restrictions. NetworkPolicy limits ports and sources, not URL paths: the separate instances
+prevent the API bypass.
 This migration does not encrypt all internal traffic; Next.js/telemetry TLS is later scope.
 
 ## Certificate infrastructure
 
-- Pin compatible cert-manager and trust-manager releases in a dedicated PKI namespace;
-  wait for CRDs/webhooks. Bootstrap via SelfSigned issuer, CA Certificate and CA issuer.
-  Never reuse control-plane or public Ingress CAs. Proposed root lifetime: 5 years,
-  with expiry alerts and explicit replacement well before expiry.
-- Keep signing key only in PKI namespace, restricted to controllers/operators. Issue
-  separate cluster-helper clientAuth and obsidian-sync serverAuth certificates.
-  Proposed leaves: 24 hours, renewBefore 8 hours, rotationPolicy Always; TLS minimum 1.2.
-- Use exact URI SAN identities, for example
-  spiffe://senaev.com/ns/senaev-com/sa/cluster-helper and
-  spiffe://senaev.com/ns/senaev-com/sa/obsidian-sync.
-  This naming does not imply SPIRE or automatic workload attestation. Bind issuance
-  to reviewed manifests and permissions. Include server DNS SAN
-  obsidian-sync.senaev-com.svc.cluster.local and use it in requests.
+- Pin a compatible cert-manager release in a dedicated PKI namespace, scheduled on
+  hetzner; wait for CRDs/webhook. Bootstrap via SelfSigned issuer, CA Certificate and CA
+  issuer. Never reuse control-plane or public Ingress CAs. Proposed root lifetime: 5 years,
+  with an expiry alert one year before.
+- Keep the signing key only in the PKI namespace. Issue separate cluster-helper clientAuth
+  and obsidian-sync serverAuth certificates.
+  Proposed leaves: 7 days, renewBefore 3 days, rotationPolicy Always; TLS minimum 1.2.
+  A failed renewal then leaves days to react.
+- Identity is a DNS SAN (a name listed in the certificate). It is only a label and does
+  not need to exist in DNS:
+  - cluster-helper: `cluster-helper.senaev-com.svc.cluster.local`
+  - obsidian-sync: `obsidian-sync.senaev-com.svc.cluster.local`, also the host in requests.
+  Node checks it with `X509Certificate.checkHost()`: no URI parsing, no `spiffe://` names.
+  Issuance is bound to reviewed manifests.
 - Separate read-only per-service Secret mounts, no broad shared secret, env vars or
-  subPath for rotating PEMs. Applications receive own keys and public trust only.
-- trust-manager distributes public CA bundle ConfigMaps to selected namespaces.
-  Keep explicit old/new root sources; do not make leaf Secret ca.crt the sole trust source.
-- Inventory RBAC: workloads cannot read other keys, deploy pods mounting them, create
-  Certificates/Requests/Issuers, or approve signing. Default cert-manager approval is
-  not identity authorization. If non-operators can request certificates, enforce exact
-  issuer/SAN/usages through approver/admission policy and disable conflicting default
-  approval. Arbitrary deploy privileges in the shared namespace defeat key isolation;
-  node administrators can read credentials used on their nodes.
+  subPath for rotating PEMs. Each service receives its own key, its own certificate and the
+  public CA certificate (`ca.crt` of its leaf Secret). No trust-manager.
+- Access: only the CI deploy and cluster administrators create Certificates and Issuers.
+  Application and LLM workspace ServiceAccounts get no RBAC for Secrets or Certificates.
+  Node administrators can read credentials used on their nodes.
 
 ## Shared Node.js transport
 
@@ -66,86 +84,86 @@ explicit Undici dependency in senaev-utils for an origin-scoped pool/fetch adapt
 built-in fetch has no portable https.Agent option. Verify native Response/Request
 compatibility, streaming types and production dependency resolution.
 
-Shared helpers validate PEM/key pairing, configure TLS, extract SAN identities with
-Node X509Certificate and handle reload. Keep caller permissions in each service.
-Require valid certificate chain AND exact authorized URI identity before request bodies.
-Check peer validity/policy per request. Client retains standard DNS/chain checks and
-checks expected service URI. No custom crypto, CN substring matching, identity headers,
-global dispatcher mutation or disabled TLS verification.
+Shared helpers validate PEM/key pairing, configure TLS, match identities with Node
+`X509Certificate.checkHost()` and handle reload. Keep caller permissions in each service.
+Require a valid certificate chain AND an authorized DNS SAN identity before request bodies.
+Check peer expiry on every request. The client keeps standard hostname and chain checks
+against the obsidian-sync name. No custom crypto, CN matching, SAN string parsing, identity
+headers, global dispatcher mutation or disabled TLS verification.
 
 Inject transport/auth into callToolServer: code-tools keeps its token; all vault tools,
 resources and helper proxy paths use the scoped mTLS client. Reject off-origin URLs
 and redirects to avoid forwarding client credentials to arbitrary servers. Preserve
 aborts, body timeouts and streaming. Do not automatically retry mutations.
 
-## Renewal and trust lifecycle
+## Renewal and recovery
 
-cert-manager renews leaves/keys into Secrets; kubelet eventually updates mounted files.
-Poll volume generation/content, validate complete material, atomically replace outbound
-pool and server secure context. Avoid reliance on inode-specific watchers. Retain last
-valid material on transient projection errors and alert; fail closed at expiry.
+cert-manager renews leaves/keys into Secrets; kubelet updates the mounted files after a
+delay. Each service polls the files, validates the complete material (PEM, key pair,
+chain) and applies it without a restart:
 
-Drain old pools, bound connection lifetime, check peer expiry and authorization on
-reused connections. Clear cached TLS sessions and rotate ticket keys on trust changes.
-Test session resumption against expired/revoked credentials. Obsidian's independent
-sync process must survive PKI outages; valid credentials work until expiry without fallback.
+- Server: `server.setSecureContext()` on the HTTPS server.
+- Client: create a new Undici `Agent`, then close the old one when its requests end.
 
-CA replacement: distribute old+new trust, wait for reload, issue new leaves, verify
-migration, remove old trust, retire old signer. CA issuer alone does not orchestrate this.
+A malformed snapshot is ignored: keep the last valid material and alert. At expiry, fail
+closed, with no fallback to HTTP or token. A service never requests certificates: only
+cert-manager does. A service that starts, or wakes up, with expired files stays up, alerts
+and uses the renewed files on the next poll. The alert for a leaf that is not renewed
+fires well before expiry, for example when less than 2 days remain.
 
-Propose a reloadable revoked-leaf serial/fingerprint list checked per request: replace
-compromised key, deny old leaf, close affected sessions and stop compromised workloads.
-Short lifetime alone is not immediate revocation; no CRL/OCSP service is assumed.
-CA compromise requires CA replacement and old-trust removal as an incident action.
+Disable TLS session resumption on the protected listener and close connections at a
+maximum age shorter than the leaf lifetime, so an old credential cannot live on in a
+reused connection. Obsidian's independent sync process must survive PKI outages.
 
-Before activation, choose encrypted signing-key backup outside the cluster and test
-restore, or explicitly accept new-CA/full-trust rollout after disaster. Never put keys
-in Git/logs. Monitor Certificate readiness, loaded expiry and renewal/reload failures;
-route alerts through existing monitoring to Telegram. Existing logs supply history.
+Recovery: after a lost or compromised CA, delete the CA Certificate and its Secret, let
+cert-manager create a new CA and leaves, and restart both services. Short downtime is
+accepted. No CA backup. After a compromised leaf, delete its Secret: a new key is issued,
+and the old leaf stays valid for at most its 7-day lifetime.
+
+Never put keys in Git/logs. Monitor Certificate readiness, loaded expiry, CA expiry and
+renewal/reload failures; route alerts through existing monitoring to Telegram.
 
 ## Delivery and deployment gates
 
-1. Foundation PR: controllers, CA/leaves/trust declarations, issuance permissions,
-   monitoring and rotation/recovery runbooks. Existing token traffic unchanged.
-2. Transport PR: shared helpers and real TLS integration tests, separate listeners,
-   mounts and port-specific NetworkPolicies. Temporary migration mode is explicit.
-3. Cutover PR: switch every helper vault path to HTTPS; remove protected HTTP routes,
-   old token acceptance and INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN wiring.
-   Preserve OBSIDIAN_AUTH_TOKEN: it authenticates Obsidian Sync, not this API.
-4. Remove temporary migration settings; final state has no automatic downgrade.
+1. Foundation PR: cert-manager, CA, the two leaf Certificates and monitoring. Existing
+   token traffic unchanged.
+2. Transport and cutover PR: shared helpers and real TLS integration tests, the two
+   Fastify instances, mounts and port-specific NetworkPolicies. Switch every helper vault
+   path to HTTPS and remove the token check and INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN
+   wiring. Preserve OBSIDIAN_AUTH_TOKEN: it authenticates Obsidian Sync, not this API.
+
+There is no dual mode, no runtime fallback and no rollback procedure. If the cutover
+breaks, revert the PR; the vault tools stay unavailable until the pipeline finishes.
 
 CI serializes releases only within a namespace and deploys namespaces in parallel.
-CRDs/webhooks, issuer readiness, leaves and application mounts require separate stages
-or explicit dependency gates; alphabetical release naming is insufficient. Keep image
-and mount/config versions compatible with workflow refresh ordering. Single-replica
+CRDs/webhook, issuer readiness, leaves and application mounts need separate stages or
+explicit dependency gates; alphabetical release naming is insufficient. Keep image and
+mount/config versions compatible with workflow refresh ordering. Single-replica
 obsidian-sync uses Recreate: rollouts can briefly interrupt requests, renewal must not.
-Rollback is an explicit compatible image/config deployment, not runtime fallback.
 
 ## Verification and activation readiness
 
 - Unit tests: identity matching, destination scoping, reload decisions/failures.
-- Real TLS tests: correct peer succeeds; missing/expired/wrong CA, caller identity,
-  server hostname or service identity fails. Unrelated trusted service is denied.
+- Real TLS tests: correct peer succeeds; missing/expired/wrong CA, caller identity or
+  server hostname fails. Unrelated trusted service is denied.
 - Renewal changes keys without restart; malformed snapshots retain valid material;
-  expiry/revocation/replaced trust also fail on reused/resumed connections.
+  expired credentials also fail on reused connections.
 - Protected operations cannot use HTTP. Public notes/files, metrics, vault read/search/
   write, static proxy streaming and code-tools token transport retain intended behavior.
 - Helm lint/render, key isolation, deploy ordering, production imports and required
-  repository checks pass. Exercise CA overlap/removal and recovery procedures.
+  repository checks pass.
 - After deploy, inspect scoped Grafana/Datadog signals, perform vault read/search and
   an explicitly requested reversible write, website smoke tests and authorized live
   allowed/blocked connectivity tests.
 
 No further high-level architecture choice blocks preparing the foundation PR. Actual
-cluster prerequisites, RBAC, CA recovery choice and rollout tests are activation gates.
+cluster prerequisites and RBAC are activation gates.
 Exact compatible package/chart versions are implementation choices to verify.
 
 ## Primary references
 
 - https://cert-manager.io/docs/configuration/ca/
 - https://cert-manager.io/docs/usage/certificate/
-- https://cert-manager.io/docs/trust/trust-manager/
-- https://cert-manager.io/docs/policy/approval/
 - https://nodejs.org/api/tls.html
 - https://github.com/nodejs/undici/blob/main/docs/docs/best-practices/client-certificate.md
 - https://fastify.dev/docs/latest/Reference/Server/

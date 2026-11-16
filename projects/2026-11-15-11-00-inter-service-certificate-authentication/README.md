@@ -41,13 +41,14 @@ Build a reusable foundation for other services, including
    mounting its private key; isolate credentials from LLM workspaces.
 3. Automate issuance, renewal and private-key rotation, Kubernetes Secret delivery,
    and application reload so renewed credentials are used without manual copying.
-4. Distribute trust bundles; implement and document CA replacement with overlapping
-   trust, CA expiry monitoring, backup/recovery and compromised-identity response.
+4. Mount the CA certificate from the leaf Secrets and monitor CA expiry. A lost or
+   compromised CA is replaced by a new CA and a redeploy. No trust-manager, CA backup or
+   trust-overlap rotation in the first implementation.
 5. Integrate reusable HTTPS/mTLS client/server support and explicit caller authorization.
    Authenticate cluster-helper to obsidian-sync and verify obsidian-sync on the client.
-6. Stage migration with a bounded rollback plan. Remove legacy token acceptance and
-   obsolete secret wiring after verification; no automatic downgrade to plaintext
-   or token authentication after completion.
+6. Cut over in one PR and remove legacy token acceptance and obsolete secret wiring.
+   There is no fallback to plaintext or token authentication. A bad deploy is fixed
+   with a git revert.
 7. Add certificate-expiry/renewal-failure monitoring and Telegram alerts, operational
    runbooks and end-to-end tests before marking the foundation reusable.
 
@@ -56,7 +57,7 @@ Build a reusable foundation for other services, including
 See the [technical plan](2026-11-15-11-44-technical-plan.md) for inspected traffic,
 CA/identity architecture, shared Node.js integration, renewal and staged delivery.
 The main architecture decisions suffice to prepare implementation. Proposed defaults:
-24-hour leaves renewed 8 hours before expiry, exact service identities, explicit
+7-day leaves renewed 3 days before expiry, exact service identities, explicit
 caller authorization and fail-closed mTLS after migration.
 
 Next.js public-file traffic and vmagent metrics currently share port 8080. Keep them
@@ -64,9 +65,9 @@ on a public-only HTTP listener while the protected vault API moves to mTLS on 84
 Protected routes must never remain reachable through that public HTTP listener.
 This migration does not claim to encrypt all internal cluster traffic.
 
-Before production activation verify live certificate/RBAC prerequisites, choose an
-encrypted CA backup destination or explicitly accept CA recreation after disaster,
-and exercise staged rollout/rollback. Exact versions/adapters are implementation work.
+Before production activation verify live certificate/RBAC prerequisites. CA recreation
+after a disaster is accepted instead of a CA backup. Exact versions/adapters are
+implementation work.
 
 ## Verification
 
@@ -75,12 +76,11 @@ and exercise staged rollout/rollback. Exact versions/adapters are implementation
   certificate cannot impersonate cluster-helper. Client rejects the wrong server identity.
 - Certificate renewal and key rotation are consumed by running services; simulate renewal
   failure and verify alerts before expiry. Existing valid credentials work until expiry.
-- CA replacement succeeds through trust overlap; removal of old trust rejects old chains.
 - Workloads cannot obtain another service's identity or read its private keys through
   the intended deployment/issuance permissions.
 - Legacy bearer token and plaintext access cannot bypass the migrated protected API.
 - Other legitimate vault clients, public proxy paths and callbacks retain intended behavior.
-- Recovery and compromised-identity response are exercised and documented.
+- CA recreation after a lost or compromised CA is exercised and documented.
 
 ## Result
 
