@@ -4,7 +4,7 @@ import {
 
 import type { CommandRunner } from './claude';
 import {
-    listMcpServers, MCP_LOGIN_REJECTION_PATTERN, parseMcpList,
+    listMcpServers, logoutMcpServer, MCP_LOGIN_REJECTION_PATTERN, mcpButtonData, parseMcpButtonData, parseMcpList,
 } from './mcp';
 
 // The output of `claude mcp list` of Claude Code 2.1.325.
@@ -59,5 +59,55 @@ describe('MCP_LOGIN_REJECTION_PATTERN', () => {
         const output = 'Or paste the redirect URL here: http://localhost:1234/callback?code=bad&state=wrong\r\n' + 'That doesn\'t look like a redirect URL for this sign-in — paste the full address from the browser page this sign-in opened.\r\n';
 
         expect(MCP_LOGIN_REJECTION_PATTERN.exec(output)?.[0].trim()).toBe('That doesn\'t look like a redirect URL for this sign-in — paste the full address from the browser page this sign-in opened.');
+    });
+});
+
+describe('the MCP button data', () => {
+    it('goes there and back', () => {
+        expect(parseMcpButtonData(mcpButtonData('logout', 'my_server-1') ?? '')).toEqual({
+            action: 'logout',
+            serverName: 'my_server-1',
+        });
+    });
+
+    it('is not made for a name longer than Telegram allows', () => {
+        expect(mcpButtonData('logout', 'x'.repeat(60))).toBeUndefined();
+    });
+
+    it('takes no other data', () => {
+        for (const data of [
+            'mcp:remove:datadog',
+            'mcp:login:',
+            'mcp:login:a b',
+            'other',
+        ]) {
+            expect(parseMcpButtonData(data)).toBeUndefined();
+        }
+    });
+});
+
+describe('logoutMcpServer', () => {
+    it('runs claude mcp logout and fails when the command fails', async () => {
+        const calls: string[][] = [];
+        const run: CommandRunner = (file, args) => {
+            calls.push([
+                file,
+                ...args,
+            ]);
+
+            return Promise.resolve({
+                stdout: '',
+                exitCode: calls.length === 1 ? 0 : 1,
+            });
+        };
+
+        await logoutMcpServer(run, 'datadog');
+        await expect(logoutMcpServer(run, 'nosuch')).rejects.toThrow('exit code 1');
+        expect(calls[0]).toEqual([
+            'claude',
+            'mcp',
+            'logout',
+            'datadog',
+        ]);
     });
 });

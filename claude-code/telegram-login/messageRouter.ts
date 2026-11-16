@@ -1,14 +1,16 @@
 import { getTelegramCommandFromMessage } from 'senaev-utils/src/utils/TelegramApi/getTelegramCommandFromMessage/getTelegramCommandFromMessage';
-import type { TelegramMessage } from 'senaev-utils/src/utils/TelegramApi/types';
+import type { TelegramCallbackQuery, TelegramMessage } from 'senaev-utils/src/utils/TelegramApi/types';
 
 import { logger } from './logger';
 import type { LoginAssistant } from './loginAssistant';
+import { parseMcpButtonData } from './mcp';
 
 export type MessageRouterDependencies = {
     // The user id and the chat id are the same in a private chat, so one number is the only allowed chat.
     allowedUserId: number;
     assistant: LoginAssistant;
     deleteMessage(chatId: number, messageId: number): Promise<void>;
+    answerCallbackQuery(callbackQueryId: string, text: string): Promise<void>;
 };
 
 // The text of a message is never logged: it can be a login code or a redirect URL with a code.
@@ -39,7 +41,7 @@ export function createMessageRouter(dependencies: MessageRouterDependencies): (m
 
         if (command?.commandName === 'mcp') {
             logger.info({ messageId }, '👉 Handling the /mcp command');
-            await dependencies.assistant.handleMcpCommand(command.commandArgument);
+            await dependencies.assistant.handleMcpCommand();
             logger.info({ messageId }, '✅ Handled the /mcp command');
 
             return;
@@ -83,6 +85,67 @@ export function createMessageRouter(dependencies: MessageRouterDependencies): (m
                 err: error,
                 messageId,
             }, '⚠️ Could not delete the message with the login code');
+        }
+    };
+}
+
+// The buttons of the MCP panel. As in the torrent search, the press is answered with a short
+// notice once its action is done, and the panel message is rewritten in place.
+export function createCallbackQueryRouter(dependencies: MessageRouterDependencies): (callbackQuery: TelegramCallbackQuery) => Promise<void> {
+    async function answer(callbackQueryId: string, text: string): Promise<void> {
+        try {
+            await dependencies.answerCallbackQuery(callbackQueryId, text);
+        } catch (error) {
+            // A press older than a few minutes cannot be answered any more; its action is done.
+            logger.warn({
+                err: error,
+                callbackQueryId,
+            }, '⚠️ Could not answer a button press');
+        }
+    }
+
+    return async (callbackQuery) => {
+        const callbackQueryId = callbackQuery.id;
+        const chatId = callbackQuery.message?.chat.id;
+
+        if (callbackQuery.from.id !== dependencies.allowedUserId || (chatId !== undefined && chatId !== dependencies.allowedUserId)) {
+            logger.warn({
+                callbackQueryId,
+                userId: callbackQuery.from.id,
+                chatId,
+            }, '⛔ Ignored a button press from a user or chat that is not allowed');
+
+            return;
+        }
+
+        const button = parseMcpButtonData(callbackQuery.data ?? '');
+
+        if (button === undefined) {
+            logger.info({ callbackQueryId }, '👉 Ignored an unknown button');
+            await answer(callbackQueryId, '❓ Unknown button');
+
+            return;
+        }
+
+        const context = {
+            callbackQueryId,
+            action: button.action,
+            server: button.serverName,
+        };
+
+        logger.info(context, '👉 Handling an MCP button');
+
+        try {
+            const notice = await dependencies.assistant.handleMcpButton(button.action, button.serverName, callbackQuery.message?.message_id);
+
+            logger.info(context, '✅ Handled an MCP button');
+            await answer(callbackQueryId, notice);
+        } catch (error) {
+            logger.error({
+                ...context,
+                err: error,
+            }, '❌ Could not handle an MCP button');
+            await answer(callbackQueryId, '❌ Something went wrong, see the logs');
         }
     };
 }
