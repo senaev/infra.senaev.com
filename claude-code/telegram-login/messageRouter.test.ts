@@ -12,6 +12,7 @@ vi.mock('./logger', () => {
         logger: {
             info: vi.fn(),
             warn: vi.fn(),
+            error: vi.fn(),
         },
     };
 });
@@ -31,7 +32,7 @@ function setup(handleTextResult = true) {
     const assistant: LoginAssistant = {
         handleAuthCommand: vi.fn(() => Promise.resolve()),
         handleMcpCommand: vi.fn(() => Promise.resolve()),
-        handleMcpButton: vi.fn(() => Promise.resolve()),
+        handleMcpButton: vi.fn(() => Promise.resolve('🚪 Logged out')),
         handleText: vi.fn(() => Promise.resolve(handleTextResult)),
         checkLogin: vi.fn(() => Promise.resolve()),
         checkMcpServers: vi.fn(() => Promise.resolve()),
@@ -105,14 +106,13 @@ describe('the message router', () => {
         ]);
     });
 
-    it('passes the server name of /mcp to the assistant', async () => {
+    it('posts the MCP panel on /mcp, with or without more words', async () => {
         const { assistant, route } = setup();
 
         await route(message({ text: '/mcp' }));
         await route(message({ text: '/mcp@senaev_claude_helper_bot datadog' }));
 
-        expect(assistant.handleMcpCommand).toHaveBeenNthCalledWith(1, '');
-        expect(assistant.handleMcpCommand).toHaveBeenNthCalledWith(2, 'datadog');
+        expect(assistant.handleMcpCommand).toHaveBeenCalledTimes(2);
         expect(assistant.handleText).not.toHaveBeenCalled();
     });
 
@@ -249,15 +249,15 @@ describe('the button router', () => {
         vi.mocked(logger.warn).mockClear();
     });
 
-    it('answers the press and passes an MCP button to the assistant', async () => {
+    it('passes an MCP button with its message to the assistant, then answers with its notice', async () => {
         const {
             assistant, answerCallbackQuery, routeCallbackQuery,
         } = setup();
 
         await routeCallbackQuery(buttonPress({ data: 'mcp:logout:my-server' }));
 
-        expect(answerCallbackQuery).toHaveBeenCalledWith('query-1');
-        expect(assistant.handleMcpButton).toHaveBeenCalledWith('logout', 'my-server');
+        expect(assistant.handleMcpButton).toHaveBeenCalledWith('logout', 'my-server', 3);
+        expect(answerCallbackQuery).toHaveBeenCalledWith('query-1', '🚪 Logged out');
     });
 
     it('ignores presses of other users and chats without an answer', async () => {
@@ -279,18 +279,19 @@ describe('the button router', () => {
 
         await routeCallbackQuery(buttonPress({ data: 'mcp:login:bad name' }));
 
-        expect(answerCallbackQuery).toHaveBeenCalledOnce();
+        expect(answerCallbackQuery).toHaveBeenCalledWith('query-1', '❓ Unknown button');
         expect(assistant.handleMcpButton).not.toHaveBeenCalled();
     });
 
-    it('still handles the button when the answer fails', async () => {
+    it('answers with an error when the button fails, and survives a failed answer', async () => {
         const {
             assistant, answerCallbackQuery, routeCallbackQuery,
         } = setup();
 
+        vi.mocked(assistant.handleMcpButton).mockRejectedValueOnce(new Error('boom'));
         answerCallbackQuery.mockRejectedValueOnce(new Error('query is too old'));
-        await routeCallbackQuery(buttonPress({}));
 
-        expect(assistant.handleMcpButton).toHaveBeenCalledWith('login', 'datadog');
+        await expect(routeCallbackQuery(buttonPress({}))).resolves.toBeUndefined();
+        expect(answerCallbackQuery).toHaveBeenCalledWith('query-1', '❌ Something went wrong, see the logs');
     });
 });

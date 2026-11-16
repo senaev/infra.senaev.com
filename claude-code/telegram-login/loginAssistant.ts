@@ -11,6 +11,11 @@ import {
     mcpButtonData, type McpButtonAction, type McpServer,
 } from './mcp';
 
+// A message that the bot posted and can rewrite. Its writes are serialized.
+export type EditableMessage = {
+    edit(markdown: string, replyMarkup?: InlineKeyboardMarkup): Promise<void>;
+};
+
 export type AssistantDependencies = {
     getAuthStatus(): Promise<AuthStatus>;
     startLogin(): LoginSession;
@@ -21,21 +26,26 @@ export type AssistantDependencies = {
     // does not repeat the notice.
     readMcpNotices(): Promise<string[]>;
     writeMcpNotices(serverNames: string[]): Promise<void>;
-    // Telegram Rich Markdown.
+    // All text is Telegram Rich Markdown.
     sendMarkdown(markdown: string, replyMarkup?: InlineKeyboardMarkup): Promise<void>;
+    // Returns at once, while the message is still being posted.
+    sendEditableMarkdown(markdown: string, replyToMessageId?: number): EditableMessage;
+    editMarkdown(messageId: number, markdown: string, replyMarkup?: InlineKeyboardMarkup): Promise<void>;
     now(): Date;
 };
 
 export type LoginAssistant = {
     handleAuthCommand(): Promise<void>;
-    // Without a name: the MCP servers with their status and buttons. With a name: a login link.
-    handleMcpCommand(serverName: string): Promise<void>;
-    handleMcpButton(action: McpButtonAction, serverName: string): Promise<void>;
+    // Posts the MCP panel: the servers with their status, and a login and a logout button each.
+    handleMcpCommand(): Promise<void>;
+    // A button of the panel with `panelMessageId`; undefined when Telegram no longer gives the
+    // message. Returns the short notice that answers the button press.
+    handleMcpButton(action: McpButtonAction, serverName: string, panelMessageId: number | undefined): Promise<string>;
     // Returns true when the text was taken as a login code or a redirect URL, so the caller can
     // delete the message.
     handleText(text: string): Promise<boolean>;
     checkLogin(): Promise<void>;
-    // Says once when an MCP server needs a login, until it is logged in and loses it again.
+    // Posts the panel once when an MCP server needs a login, until it is logged in and loses it again.
     checkMcpServers(): Promise<void>;
     stop(): void;
 };
@@ -52,9 +62,12 @@ function formatDate(date: Date): string {
 // One login waits for an answer at a time: a new one cancels the previous one.
 type PendingLogin = {
     session: LoginSession;
-    // null is the Claude login; a name is the login of that MCP server.
-    mcpServerName: string | null;
-};
+} & ({ mcpServerName: null } | {
+    mcpServerName: string;
+    // The reply to the panel with the link; it ends with the result.
+    linkMessage: EditableMessage;
+    panelMessageId: number | undefined;
+});
 
 const NO_MCP_SERVERS = 'Claude Code has no MCP servers. They come from agent.mcp of the workspace in the Helm values.';
 
@@ -66,12 +79,14 @@ function statusIcon({ status, needsLogin }: McpServer): string {
     return status === 'Connected' ? '✅' : '❌';
 }
 
-// Rich Markdown joins lines that a single line break separates, so the parts are paragraphs
-// and the servers a list. Each server has a row with a login and a logout button.
-export function renderMcpPanel(servers: McpServer[], intro?: string): {
+export type McpPanel = {
     markdown: string;
     replyMarkup: InlineKeyboardMarkup | undefined;
-} {
+};
+
+// Rich Markdown joins lines that a single line break separates, so the parts are paragraphs
+// and the servers a list. Each server has a row with a login and a logout button.
+export function renderMcpPanel(servers: McpServer[], intro?: string): McpPanel {
     const parts = intro === undefined ? [] : [escapeTelegramMarkdown(intro)];
 
     if (servers.length === 0) {
@@ -90,7 +105,7 @@ export function renderMcpPanel(servers: McpServer[], intro?: string): {
         const login = mcpButtonData('login', name);
         const logout = mcpButtonData('logout', name);
 
-        // Telegram takes up to 64 bytes of callback data; such a name can still use /mcp <name>.
+        // Telegram takes up to 64 bytes of callback data.
         return login === undefined || logout === undefined
             ? []
             : [
@@ -124,9 +139,22 @@ export function createLoginAssistant(dependencies: AssistantDependencies): Login
         return dependencies.sendMarkdown(escapeTelegramMarkdown(text));
     }
 
+    function editLinkMessage(message: EditableMessage, text: string): Promise<void> {
+        return message.edit(escapeTelegramMarkdown(text)).catch((error: unknown) => {
+            logger.warn({ err: error }, '⚠️ Could not edit the message with the MCP login link');
+        });
+    }
+
     function cancelSession(): void {
-        pending?.session.cancel();
+        const cancelled = pending;
+
         pending = null;
+        cancelled?.session.cancel();
+
+        // The link of a cancelled login does not work any more, so it does not stay in the chat.
+        if (cancelled !== null && cancelled.mcpServerName !== null) {
+            void editLinkMessage(cancelled.linkMessage, `⏹ The login to ${cancelled.mcpServerName} was stopped.`);
+        }
     }
 
     async function getMcpNotices(): Promise<Set<string>> {
@@ -146,27 +174,29 @@ export function createLoginAssistant(dependencies: AssistantDependencies): Login
         }
     }
 
-    function sendMcpPanel(servers: McpServer[], intro?: string): Promise<void> {
-        const { markdown, replyMarkup } = renderMcpPanel(servers, intro);
-
-        return dependencies.sendMarkdown(markdown, replyMarkup);
-    }
-
-    // Lists the servers again, so the panel shows their status after the change.
-    async function listAndSendMcpPanel(intro?: string): Promise<void> {
-        let servers: McpServer[];
-
+    // The panel with the current status of the servers. When they cannot be listed, a text that
+    // says so, without buttons.
+    async function buildMcpPanel(intro?: string): Promise<McpPanel> {
         try {
-            servers = await dependencies.listMcpServers();
+            return renderMcpPanel(await dependencies.listMcpServers(), intro);
         } catch (error) {
             const failure = `Could not list the MCP servers: ${stringifyUnknownError(error)}. Send /mcp to try again.`;
 
-            await sendText(intro === undefined ? failure : `${intro}\n\n${failure}`);
-
-            return;
+            return {
+                markdown: escapeTelegramMarkdown(intro === undefined ? failure : `${intro}\n\n${failure}`),
+                replyMarkup: undefined,
+            };
         }
+    }
 
-        await sendMcpPanel(servers, intro);
+    // Rewrites the panel in place, as a torrent search does; posts a new one when there is no
+    // message to rewrite.
+    async function refreshMcpPanel(panelMessageId: number | undefined, intro?: string): Promise<void> {
+        const { markdown, replyMarkup } = await buildMcpPanel(intro);
+
+        await (panelMessageId === undefined
+            ? dependencies.sendMarkdown(markdown, replyMarkup)
+            : dependencies.editMarkdown(panelMessageId, markdown, replyMarkup));
     }
 
     async function reportLoginResult(result: LoginResult): Promise<void> {
@@ -187,59 +217,75 @@ export function createLoginAssistant(dependencies: AssistantDependencies): Login
         await sendText(`The login failed: ${reason}\n\nSend /auth to try again.`);
     }
 
-    async function reportMcpLoginResult(serverName: string, result: LoginResult): Promise<void> {
+    async function reportMcpLoginResult(
+        login: Extract<PendingLogin, { linkMessage: EditableMessage }>,
+        result: LoginResult
+    ): Promise<void> {
+        const serverName = login.mcpServerName;
+
         if (!result.ok) {
-            await listAndSendMcpPanel(`The login to ${serverName} failed: ${result.reason}`);
+            await editLinkMessage(login.linkMessage, `❌ The login to ${serverName} failed: ${result.reason}`);
+            await refreshMcpPanel(login.panelMessageId);
 
             return;
         }
 
-        let servers: McpServer[];
+        let server: McpServer | undefined;
 
         try {
-            servers = await dependencies.listMcpServers();
+            server = (await dependencies.listMcpServers()).find(({ name }) => name === serverName);
         } catch (error) {
-            await sendText(`The login command for ${serverName} finished, but the MCP servers could not be listed: ${stringifyUnknownError(error)}. Send /mcp to see them.`);
+            await editLinkMessage(login.linkMessage, `The login command for ${serverName} finished, but the MCP servers could not be listed: ${stringifyUnknownError(error)}. Send /mcp to see them.`);
 
             return;
         }
-
-        const server = servers.find(({ name }) => name === serverName);
 
         if (server === undefined || server.needsLogin) {
-            await sendMcpPanel(servers, `The login command finished, but ${serverName} still needs a login.`);
-
-            return;
+            await editLinkMessage(login.linkMessage, `❌ The login command finished, but ${serverName} still needs a login.`);
+        } else {
+            await updateMcpNotices((notices) => notices.delete(serverName));
+            await editLinkMessage(login.linkMessage, `✅ Logged in to ${serverName}. New Claude Code sessions can use it.`);
         }
 
-        await updateMcpNotices((notices) => notices.delete(serverName));
-        await sendMcpPanel(servers, `Logged in to ${serverName}. New Claude Code sessions can use it.`);
+        await refreshMcpPanel(login.panelMessageId);
     }
 
-    async function beginMcpLogin(serverName: string): Promise<void> {
+    // The link goes into its own message, a reply to the panel, so the panel keeps its buttons.
+    async function beginMcpLogin(serverName: string, panelMessageId: number | undefined): Promise<string> {
         cancelSession();
         const newSession = dependencies.startMcpLogin(serverName);
+        const linkMessage = dependencies.sendEditableMarkdown(escapeTelegramMarkdown(`⏳ Starting the login to ${serverName}…`), panelMessageId);
 
         pending = {
             session: newSession,
             mcpServerName: serverName,
+            linkMessage,
+            panelMessageId,
         };
 
         try {
             const url = await newSession.authorizationUrl;
             const intro = escapeTelegramMarkdown(`Open the link and log in to ${serverName}. The browser then opens a localhost page that does not load: copy its full address (it starts with http://localhost) and send it to me.`);
 
-            await dependencies.sendMarkdown(`${intro}\n\n${telegramLink({
+            await linkMessage.edit(`${intro}\n\n${telegramLink({
                 text: `Log in to ${serverName}`,
                 url,
             })}`);
+
+            return '🔑 The login link is in the chat';
         } catch (error) {
-            cancelSession();
-            await sendText(`Could not start the login to ${serverName}: ${stringifyUnknownError(error)}`);
+            if (pending?.session === newSession) {
+                pending = null;
+            }
+
+            newSession.cancel();
+            await editLinkMessage(linkMessage, `❌ Could not start the login to ${serverName}: ${stringifyUnknownError(error)}`);
+
+            return '❌ The login did not start';
         }
     }
 
-    async function logoutMcpServer(serverName: string): Promise<void> {
+    async function logoutMcpServer(serverName: string, panelMessageId: number | undefined): Promise<string> {
         // A login of this server that waits for its redirect URL would sign it in again.
         if (pending?.mcpServerName === serverName) {
             cancelSession();
@@ -248,36 +294,16 @@ export function createLoginAssistant(dependencies: AssistantDependencies): Login
         try {
             await dependencies.logoutMcpServer(serverName);
         } catch (error) {
-            await listAndSendMcpPanel(`Could not log out of ${serverName}: ${stringifyUnknownError(error)}`);
+            await refreshMcpPanel(panelMessageId, `❌ Could not log out of ${serverName}: ${stringifyUnknownError(error)}`);
 
-            return;
+            return '❌ The logout failed';
         }
 
         // The user logged out on purpose: no notice that it needs a login.
         await updateMcpNotices((notices) => notices.add(serverName));
-        await listAndSendMcpPanel(`Logged out of ${serverName}.`);
-    }
+        await refreshMcpPanel(panelMessageId, `🚪 Logged out of ${serverName}.`);
 
-    // A login that waits for an answer stays when the servers cannot be listed: it is cancelled
-    // only when a new one starts.
-    async function startMcpAction(action: McpButtonAction, serverName: string): Promise<void> {
-        let servers: McpServer[];
-
-        try {
-            servers = await dependencies.listMcpServers();
-        } catch (error) {
-            await sendText(`Could not list the MCP servers: ${stringifyUnknownError(error)}. Send /mcp to try again.`);
-
-            return;
-        }
-
-        if (!servers.some(({ name }) => name === serverName)) {
-            await sendMcpPanel(servers, `There is no MCP server ${serverName}.`);
-
-            return;
-        }
-
-        await (action === 'login' ? beginMcpLogin(serverName) : logoutMcpServer(serverName));
+        return '🚪 Logged out';
     }
 
     async function beginLogin(): Promise<void> {
@@ -308,12 +334,18 @@ export function createLoginAssistant(dependencies: AssistantDependencies): Login
             await beginLogin();
         },
 
-        async handleMcpCommand(serverName) {
-            await (serverName === '' ? listAndSendMcpPanel() : startMcpAction('login', serverName));
+        async handleMcpCommand() {
+            // The servers take a few seconds to check, so the message is there at once.
+            const message = dependencies.sendEditableMarkdown(escapeTelegramMarkdown('⏳ Checking the MCP servers…'));
+            const { markdown, replyMarkup } = await buildMcpPanel();
+
+            await message.edit(markdown, replyMarkup);
         },
 
-        async handleMcpButton(action, serverName) {
-            await startMcpAction(action, serverName);
+        handleMcpButton(action, serverName, panelMessageId) {
+            return action === 'login'
+                ? beginMcpLogin(serverName, panelMessageId)
+                : logoutMcpServer(serverName, panelMessageId);
         },
 
         async handleText(text) {
@@ -333,7 +365,7 @@ export function createLoginAssistant(dependencies: AssistantDependencies): Login
             try {
                 await (waiting.mcpServerName === null
                     ? reportLoginResult(result)
-                    : reportMcpLoginResult(waiting.mcpServerName, result));
+                    : reportMcpLoginResult(waiting, result));
             } catch (error) {
                 logger.error(error, '❌ Could not report the result of the login');
             }
@@ -383,7 +415,9 @@ export function createLoginAssistant(dependencies: AssistantDependencies): Login
             const newlyNeedLogin = servers.filter(({ name, needsLogin }) => needsLogin && !notices.has(name)).map(({ name }) => name);
 
             if (newlyNeedLogin.length > 0) {
-                await sendMcpPanel(servers, `Some MCP servers of Claude Code need a login: ${newlyNeedLogin.join(', ')}.`);
+                const { markdown, replyMarkup } = renderMcpPanel(servers, `⚠️ Some MCP servers of Claude Code need a login: ${newlyNeedLogin.join(', ')}.`);
+
+                await dependencies.sendMarkdown(markdown, replyMarkup);
             }
 
             // Exactly the servers that need a login now: one that is logged in and loses it again

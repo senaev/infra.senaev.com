@@ -8,11 +8,16 @@ import type { AuthStatus } from './claude';
 import type { LoginResult, LoginSession } from './login';
 import type { McpServer } from './mcp';
 import {
-    createLoginAssistant, EXPIRY_NOTICE_REPEAT_MS, renderMcpPanel,
+    type AssistantDependencies, createLoginAssistant, EXPIRY_NOTICE_REPEAT_MS, renderMcpPanel,
 } from './loginAssistant';
 
 vi.mock('./logger', () => {
-    return { logger: { error: vi.fn() } };
+    return {
+        logger: {
+            error: vi.fn(),
+            warn: vi.fn(),
+        },
+    };
 });
 
 const NOW = new Date('2026-12-10T12:00:00.000Z');
@@ -54,6 +59,9 @@ function setup(initialStatus: AuthStatus, sessions: LoginSession[] = [], initial
     const mcpLogouts: string[] = [];
     let storedNotices: string[] = [];
     const keyboards: (InlineKeyboardMarkup | undefined)[] = [];
+    // Each editable message: the message it replies to, and its text after each write.
+    const editable: { replyTo: number | undefined; texts: string[]; keyboard?: InlineKeyboardMarkup | undefined }[] = [];
+    const panelEdits: { messageId: number; markdown: string; replyMarkup: InlineKeyboardMarkup | undefined }[] = [];
     let now = NOW.getTime();
     const sent: string[] = [];
     const assistant = createLoginAssistant({
@@ -82,6 +90,32 @@ function setup(initialStatus: AuthStatus, sessions: LoginSession[] = [], initial
 
             return Promise.resolve();
         },
+        sendEditableMarkdown: (markdown, replyToMessageId) => {
+            const message: (typeof editable)[number] = {
+                replyTo: replyToMessageId,
+                texts: [markdown],
+            };
+
+            editable.push(message);
+
+            return {
+                edit: (edited, replyMarkup) => {
+                    message.texts.push(edited);
+                    message.keyboard = replyMarkup;
+
+                    return Promise.resolve();
+                },
+            };
+        },
+        editMarkdown: (messageId, markdown, replyMarkup) => {
+            panelEdits.push({
+                messageId,
+                markdown,
+                replyMarkup,
+            });
+
+            return Promise.resolve();
+        },
         now: () => new Date(now),
     });
 
@@ -91,6 +125,8 @@ function setup(initialStatus: AuthStatus, sessions: LoginSession[] = [], initial
         mcpLogins,
         mcpLogouts,
         keyboards,
+        editable,
+        panelEdits,
         storedNotices: () => storedNotices,
         setStoredNotices: (value: string[]) => {
             storedNotices = value;
@@ -170,6 +206,10 @@ describe('a login code', () => {
             logoutMcpServer: () => Promise.resolve(),
             readMcpNotices: () => Promise.resolve([]),
             writeMcpNotices: () => Promise.resolve(),
+            sendEditableMarkdown: () => {
+                return { edit: () => Promise.resolve() };
+            },
+            editMarkdown: () => Promise.resolve(),
             sendMarkdown: () => Promise.resolve(),
             now: () => NOW,
         });
@@ -181,6 +221,10 @@ describe('a login code', () => {
             logoutMcpServer: () => Promise.resolve(),
             readMcpNotices: () => Promise.resolve([]),
             writeMcpNotices: () => Promise.resolve(),
+            sendEditableMarkdown: () => {
+                return { edit: () => Promise.resolve() };
+            },
+            editMarkdown: () => Promise.resolve(),
             sendMarkdown: vi.fn()
                 .mockResolvedValueOnce(undefined)
                 .mockRejectedValue(new Error('Telegram is down')),
@@ -300,6 +344,10 @@ describe('the login check', () => {
             logoutMcpServer: () => Promise.resolve(),
             readMcpNotices: () => Promise.resolve([]),
             writeMcpNotices: () => Promise.resolve(),
+            sendEditableMarkdown: () => {
+                return { edit: () => Promise.resolve() };
+            },
+            editMarkdown: () => Promise.resolve(),
             sendMarkdown: send,
             now: () => NOW,
         });
@@ -322,6 +370,10 @@ describe('the login check', () => {
             logoutMcpServer: () => Promise.resolve(),
             readMcpNotices: () => Promise.resolve([]),
             writeMcpNotices: () => Promise.resolve(),
+            sendEditableMarkdown: () => {
+                return { edit: () => Promise.resolve() };
+            },
+            editMarkdown: () => Promise.resolve(),
             sendMarkdown: send,
             now: () => NOW,
         });
@@ -434,175 +486,163 @@ describe('renderMcpPanel', () => {
     });
 });
 
+const PANEL_ID = 77;
+
+function dependenciesWith(overrides: Partial<AssistantDependencies>): AssistantDependencies {
+    return {
+        getAuthStatus: () => Promise.resolve(loggedInUntil(30)),
+        startLogin: () => createSession(),
+        listMcpServers: () => Promise.resolve([DATADOG_CONNECTED]),
+        startMcpLogin: () => createSession(),
+        logoutMcpServer: () => Promise.resolve(),
+        readMcpNotices: () => Promise.resolve([]),
+        writeMcpNotices: () => Promise.resolve(),
+        sendMarkdown: () => Promise.resolve(),
+        sendEditableMarkdown: () => {
+            return { edit: () => Promise.resolve() };
+        },
+        editMarkdown: () => Promise.resolve(),
+        now: () => NOW,
+        ...overrides,
+    };
+}
+
 describe('the /mcp command', () => {
-    it('sends the panel without a name', async () => {
+    it('posts a message at once and turns it into the panel', async () => {
         const servers = [
             DATADOG_CONNECTED,
             GRAFANA_NEEDS_LOGIN,
         ];
         const {
-            assistant, sent, keyboards,
+            assistant, editable, sent,
         } = setup(loggedInUntil(30), [], servers);
 
-        await assistant.handleMcpCommand('');
+        await assistant.handleMcpCommand();
 
-        expect(sent).toEqual([panel(servers).markdown]);
-        expect(keyboards).toEqual([panel(servers).replyMarkup]);
+        expect(sent).toEqual([]);
+        expect(editable).toEqual([
+            {
+                replyTo: undefined,
+                texts: [
+                    plain('⏳ Checking the MCP servers…'),
+                    panel(servers).markdown,
+                ],
+                keyboard: panel(servers).replyMarkup,
+            },
+        ]);
     });
 
-    it('sends the login link of a named server', async () => {
-        const {
-            assistant, sent, mcpLogins,
-        } = setup(loggedInUntil(30), [], [DATADOG_NEEDS_LOGIN]);
-
-        await assistant.handleMcpCommand('datadog');
-
-        expect(mcpLogins).toEqual(['datadog']);
-        expect(sent).toEqual([MCP_LINK_MESSAGE]);
-    });
-
-    it('starts no login for a server that is not in the list', async () => {
-        const {
-            assistant, sent, mcpLogins,
-        } = setup(loggedInUntil(30), [], [DATADOG_CONNECTED]);
-
-        await assistant.handleMcpCommand('evil;rm');
-
-        expect(mcpLogins).toEqual([]);
-        expect(sent).toEqual([panel([DATADOG_CONNECTED], 'There is no MCP server evil;rm.').markdown]);
-    });
-
-    it('tells the user when the servers cannot be listed, and keeps the login that waits for a code', async () => {
+    it('says so when the servers cannot be listed, and keeps the login that waits for a code', async () => {
         const claudeLogin = createSession();
-        const sent: string[] = [];
-        const failing = createLoginAssistant({
-            getAuthStatus: () => Promise.resolve(loggedInUntil(30)),
+        const texts: string[] = [];
+        const assistant = createLoginAssistant(dependenciesWith({
             startLogin: () => claudeLogin,
             listMcpServers: () => Promise.reject(new Error('claude mcp list failed with exit code 1')),
-            startMcpLogin: () => createSession(),
-            logoutMcpServer: () => Promise.resolve(),
-            readMcpNotices: () => Promise.resolve([]),
-            writeMcpNotices: () => Promise.resolve(),
-            sendMarkdown: (markdown) => {
-                sent.push(markdown);
+            sendEditableMarkdown: (markdown) => {
+                texts.push(markdown);
 
-                return Promise.resolve();
+                return {
+                    edit: (edited) => {
+                        texts.push(edited);
+
+                        return Promise.resolve();
+                    },
+                };
             },
-            now: () => NOW,
-        });
+        }));
 
-        await failing.handleAuthCommand();
-        await failing.handleMcpCommand('');
-        await failing.handleMcpButton('login', 'datadog');
+        await assistant.handleAuthCommand();
+        await assistant.handleMcpCommand();
 
-        expect(sent.slice(-2)).toEqual([
-            plain('Could not list the MCP servers: claude mcp list failed with exit code 1. Send /mcp to try again.'),
-            plain('Could not list the MCP servers: claude mcp list failed with exit code 1. Send /mcp to try again.'),
-        ]);
+        expect(texts.at(-1)).toBe(plain('Could not list the MCP servers: claude mcp list failed with exit code 1. Send /mcp to try again.'));
         expect(claudeLogin.cancel).not.toHaveBeenCalled();
-        await expect(failing.handleText('the-code#state')).resolves.toBe(true);
+        await expect(assistant.handleText('the-code#state')).resolves.toBe(true);
         expect(claudeLogin.submitCode).toHaveBeenCalledWith('the-code#state');
     });
 });
 
-describe('the MCP buttons', () => {
-    it('log in: sends the link and cancels a Claude login that waits for a code', async () => {
+describe('the login button', () => {
+    it('replies to the panel with the link, and cancels a Claude login that waits for a code', async () => {
         const claudeLogin = createSession();
         const {
-            assistant, sent, mcpLogins,
+            assistant, editable, mcpLogins,
         } = setup(loggedInUntil(30), [
             claudeLogin,
             createSession(),
         ], [DATADOG_NEEDS_LOGIN]);
 
         await assistant.handleAuthCommand();
-        await assistant.handleMcpButton('login', 'datadog');
+        const notice = await assistant.handleMcpButton('login', 'datadog', PANEL_ID);
 
+        expect(notice).toBe('🔑 The login link is in the chat');
         expect(claudeLogin.cancel).toHaveBeenCalledOnce();
         expect(mcpLogins).toEqual(['datadog']);
-        expect(sent.at(-1)).toBe(MCP_LINK_MESSAGE);
-    });
-
-    it('log in: tells the user when the link does not come', async () => {
-        const failing = createSession({ authorizationUrl: Promise.reject(new Error('no link')) });
-        const { assistant, sent } = setup(loggedInUntil(30), [failing], [DATADOG_NEEDS_LOGIN]);
-
-        await assistant.handleMcpButton('login', 'datadog');
-
-        expect(sent).toEqual([plain('Could not start the login to datadog: no link')]);
-        expect(failing.cancel).toHaveBeenCalledOnce();
-    });
-
-    it('log out: logs out, stops a login of that server, sends the new panel, and adds no notice', async () => {
-        const mcpLogin = createSession();
-        const {
-            assistant, sent, mcpLogouts, setMcpServers, storedNotices,
-        } = setup(loggedInUntil(30), [mcpLogin], [DATADOG_CONNECTED]);
-
-        await assistant.handleMcpButton('login', 'datadog');
-        setMcpServers([DATADOG_NEEDS_LOGIN]);
-        await assistant.handleMcpButton('logout', 'datadog');
-
-        expect(mcpLogin.cancel).toHaveBeenCalledOnce();
-        expect(mcpLogouts).toEqual(['datadog']);
-        expect(sent.at(-1)).toBe(panel([DATADOG_NEEDS_LOGIN], 'Logged out of datadog.').markdown);
-        expect(storedNotices()).toEqual(['datadog']);
-
-        await assistant.checkMcpServers();
-
-        expect(sent).toHaveLength(2);
-    });
-
-    it('log out: reports a failure with the panel', async () => {
-        const sent: string[] = [];
-        const assistant = createLoginAssistant({
-            getAuthStatus: () => Promise.resolve(loggedInUntil(30)),
-            startLogin: () => createSession(),
-            listMcpServers: () => Promise.resolve([DATADOG_CONNECTED]),
-            startMcpLogin: () => createSession(),
-            logoutMcpServer: () => Promise.reject(new Error('claude mcp logout failed with exit code 1')),
-            readMcpNotices: () => Promise.resolve([]),
-            writeMcpNotices: () => Promise.resolve(),
-            sendMarkdown: (markdown) => {
-                sent.push(markdown);
-
-                return Promise.resolve();
+        expect(editable).toEqual([
+            {
+                replyTo: PANEL_ID,
+                texts: [
+                    plain('⏳ Starting the login to datadog…'),
+                    MCP_LINK_MESSAGE,
+                ],
+                keyboard: undefined,
             },
-            now: () => NOW,
-        });
+        ]);
+    });
 
-        await assistant.handleMcpButton('logout', 'datadog');
+    it('says in the same message when the link does not come', async () => {
+        const failing = createSession({ authorizationUrl: Promise.reject(new Error('no link')) });
+        const { assistant, editable } = setup(loggedInUntil(30), [failing], [DATADOG_NEEDS_LOGIN]);
 
-        expect(sent).toEqual([panel([DATADOG_CONNECTED], 'Could not log out of datadog: claude mcp logout failed with exit code 1').markdown]);
+        await expect(assistant.handleMcpButton('login', 'datadog', PANEL_ID)).resolves.toBe('❌ The login did not start');
+
+        expect(editable[0]?.texts.at(-1)).toBe(plain('❌ Could not start the login to datadog: no link'));
+        expect(failing.cancel).toHaveBeenCalledOnce();
+        await expect(assistant.handleText('anything')).resolves.toBe(false);
+    });
+
+    it('marks the link of an earlier login as stopped when a new one starts', async () => {
+        const { assistant, editable } = setup(loggedInUntil(30), [], [DATADOG_NEEDS_LOGIN]);
+
+        await assistant.handleMcpButton('login', 'datadog', PANEL_ID);
+        await assistant.handleMcpButton('login', 'datadog', PANEL_ID);
+
+        expect(editable[0]?.texts.at(-1)).toBe(plain('⏹ The login to datadog was stopped.'));
+        expect(editable[1]?.texts.at(-1)).toBe(MCP_LINK_MESSAGE);
     });
 });
 
 describe('a redirect URL for an MCP login', () => {
-    it('goes to the MCP login, and the user gets the panel with the new status', async () => {
+    it('ends the link message with the result and rewrites the panel in place', async () => {
         const session = createSession();
         const {
-            assistant, sent, keyboards, setMcpServers,
+            assistant, editable, panelEdits, setMcpServers,
         } = setup(loggedInUntil(30), [session], [DATADOG_NEEDS_LOGIN]);
 
-        await assistant.handleMcpButton('login', 'datadog');
+        await assistant.handleMcpButton('login', 'datadog', PANEL_ID);
         setMcpServers([DATADOG_CONNECTED]);
 
         await expect(assistant.handleText(` ${REDIRECT_URL} `)).resolves.toBe(true);
 
-        const expected = panel([DATADOG_CONNECTED], 'Logged in to datadog. New Claude Code sessions can use it.');
-
         expect(session.submitCode).toHaveBeenCalledWith(REDIRECT_URL);
-        expect(sent.at(-1)).toBe(expected.markdown);
-        expect(keyboards.at(-1)).toEqual(expected.replyMarkup);
+        expect(editable[0]?.texts.at(-1)).toBe(plain('✅ Logged in to datadog. New Claude Code sessions can use it.'));
+        expect(panelEdits).toEqual([
+            {
+                messageId: PANEL_ID,
+                ...panel([DATADOG_CONNECTED]),
+            },
+        ]);
     });
 
     it('is reported when the login command finished, but the server still needs a login', async () => {
-        const { assistant, sent } = setup(loggedInUntil(30), [], [DATADOG_NEEDS_LOGIN]);
+        const {
+            assistant, editable, panelEdits,
+        } = setup(loggedInUntil(30), [], [DATADOG_NEEDS_LOGIN]);
 
-        await assistant.handleMcpButton('login', 'datadog');
+        await assistant.handleMcpButton('login', 'datadog', PANEL_ID);
         await assistant.handleText(REDIRECT_URL);
 
-        expect(sent.at(-1)).toBe(panel([DATADOG_NEEDS_LOGIN], 'The login command finished, but datadog still needs a login.').markdown);
+        expect(editable[0]?.texts.at(-1)).toBe(plain('❌ The login command finished, but datadog still needs a login.'));
+        expect(panelEdits).toHaveLength(1);
     });
 
     it('is reported when the login fails, and the next text starts nothing', async () => {
@@ -612,35 +652,95 @@ describe('a redirect URL for an MCP login', () => {
                 reason: 'That doesn\'t look like a redirect URL for this sign-in',
             }),
         });
-        const { assistant, sent } = setup(loggedInUntil(30), [session], [DATADOG_NEEDS_LOGIN]);
+        const {
+            assistant, editable, sent,
+        } = setup(loggedInUntil(30), [session], [DATADOG_NEEDS_LOGIN]);
 
-        await assistant.handleMcpButton('login', 'datadog');
+        await assistant.handleMcpButton('login', 'datadog', PANEL_ID);
         await expect(assistant.handleText('wrong')).resolves.toBe(true);
         await assistant.handleText('again');
 
-        expect(sent.at(-2)).toBe(panel([DATADOG_NEEDS_LOGIN], 'The login to datadog failed: That doesn\'t look like a redirect URL for this sign-in').markdown);
+        expect(editable[0]?.texts.at(-1)).toBe(plain('❌ The login to datadog failed: That doesn\'t look like a redirect URL for this sign-in'));
         expect(sent.at(-1)).toBe(plain('No login is waiting for a code. Send /auth or /mcp to start one.'));
+    });
+
+    it('posts a new panel when the panel message is not known', async () => {
+        const {
+            assistant, panelEdits, sent, setMcpServers,
+        } = setup(loggedInUntil(30), [], [DATADOG_NEEDS_LOGIN]);
+
+        await assistant.handleMcpButton('login', 'datadog', undefined);
+        setMcpServers([DATADOG_CONNECTED]);
+        await assistant.handleText(REDIRECT_URL);
+
+        expect(panelEdits).toEqual([]);
+        expect(sent).toEqual([panel([DATADOG_CONNECTED]).markdown]);
+    });
+});
+
+describe('the logout button', () => {
+    it('logs out, stops a login of that server, rewrites the panel, and adds no notice', async () => {
+        const mcpLogin = createSession();
+        const {
+            assistant, editable, sent, panelEdits, mcpLogouts, setMcpServers, storedNotices,
+        } = setup(loggedInUntil(30), [mcpLogin], [DATADOG_CONNECTED]);
+
+        await assistant.handleMcpButton('login', 'datadog', PANEL_ID);
+        setMcpServers([DATADOG_NEEDS_LOGIN]);
+
+        await expect(assistant.handleMcpButton('logout', 'datadog', PANEL_ID)).resolves.toBe('🚪 Logged out');
+
+        expect(mcpLogin.cancel).toHaveBeenCalledOnce();
+        expect(editable[0]?.texts.at(-1)).toBe(plain('⏹ The login to datadog was stopped.'));
+        expect(mcpLogouts).toEqual(['datadog']);
+        expect(panelEdits).toEqual([
+            {
+                messageId: PANEL_ID,
+                ...panel([DATADOG_NEEDS_LOGIN], '🚪 Logged out of datadog.'),
+            },
+        ]);
+        expect(storedNotices()).toEqual(['datadog']);
+
+        await assistant.checkMcpServers();
+
+        expect(sent).toEqual([]);
+    });
+
+    it('shows a failure in the panel', async () => {
+        const panelEdits: string[] = [];
+        const assistant = createLoginAssistant(dependenciesWith({
+            logoutMcpServer: () => Promise.reject(new Error('claude mcp logout failed with exit code 1')),
+            editMarkdown: (_, markdown) => {
+                panelEdits.push(markdown);
+
+                return Promise.resolve();
+            },
+        }));
+
+        await expect(assistant.handleMcpButton('logout', 'datadog', PANEL_ID)).resolves.toBe('❌ The logout failed');
+
+        expect(panelEdits).toEqual([panel([DATADOG_CONNECTED], '❌ Could not log out of datadog: claude mcp logout failed with exit code 1').markdown]);
     });
 });
 
 describe('the MCP server check', () => {
-    it('sends the panel once for the servers that need a login, and again after one was logged in and lost it', async () => {
+    it('posts the panel once for the servers that need a login, and again after one was logged in and lost it', async () => {
         const {
-            assistant, sent, setMcpServers, storedNotices,
+            assistant, sent, keyboards, setMcpServers, storedNotices,
         } = setup(loggedInUntil(30), [], [
             DATADOG_NEEDS_LOGIN,
             GRAFANA_NEEDS_LOGIN,
         ]);
+        const bothNeedLogin = [
+            DATADOG_NEEDS_LOGIN,
+            GRAFANA_NEEDS_LOGIN,
+        ];
 
         await assistant.checkMcpServers();
         await assistant.checkMcpServers();
 
-        expect(sent).toEqual([
-            panel([
-                DATADOG_NEEDS_LOGIN,
-                GRAFANA_NEEDS_LOGIN,
-            ], 'Some MCP servers of Claude Code need a login: datadog, grafana.').markdown,
-        ]);
+        expect(sent).toEqual([panel(bothNeedLogin, '⚠️ Some MCP servers of Claude Code need a login: datadog, grafana.').markdown]);
+        expect(keyboards).toEqual([panel(bothNeedLogin).replyMarkup]);
         expect(storedNotices()).toEqual([
             'datadog',
             'grafana',
@@ -651,16 +751,10 @@ describe('the MCP server check', () => {
             GRAFANA_NEEDS_LOGIN,
         ]);
         await assistant.checkMcpServers();
-        setMcpServers([
-            DATADOG_NEEDS_LOGIN,
-            GRAFANA_NEEDS_LOGIN,
-        ]);
+        setMcpServers(bothNeedLogin);
         await assistant.checkMcpServers();
 
-        expect(sent.at(-1)).toBe(panel([
-            DATADOG_NEEDS_LOGIN,
-            GRAFANA_NEEDS_LOGIN,
-        ], 'Some MCP servers of Claude Code need a login: datadog.').markdown);
+        expect(sent.at(-1)).toBe(panel(bothNeedLogin, '⚠️ Some MCP servers of Claude Code need a login: datadog.').markdown);
         expect(sent).toHaveLength(2);
     });
 

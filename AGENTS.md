@@ -385,15 +385,19 @@ makes outbound connections only, and the NetworkPolicy has no ingress. It is ena
   a server added by hand is removed. Every server uses OAuth. The CLI login
   (`claude mcp login --no-browser <name>`) redirects to `http://localhost:<port>/callback`, and
   Claude Code has no setting for another redirect URI, so there is no public callback. In
-  Telegram, `/mcp` sends a panel: the servers with their status (`claude mcp list`) and, for
-  each, a login and a logout button (callback data `mcp:login:<name>`, `mcp:logout:<name>`).
-  Login runs `claude mcp login --no-browser <name>` under `script` (the CLI needs a terminal)
-  and sends the link; `/mcp <name>` does the same. After the login, the browser opens the
-  localhost page that does not load; the user sends its address to the bot, which passes it to
-  the CLI and deletes the message. Logout runs `claude mcp logout <name>`. Every answer ends with
-  the panel. The tokens are in `~/.claude/.credentials.json` in `HOME`; new sessions use them.
-  Every 10 minutes the bot sends the panel once when a server needs a login; the servers it told
-  about are in `~/.claude/telegram-login/mcp-notices.json`, so a restart does not repeat it.
+  Telegram, `/mcp` posts a message at once and turns it into the panel: the servers with their
+  status (`claude mcp list`) and a login and a logout button for each (callback data
+  `mcp:login:<name>`, `mcp:logout:<name>`). The dialog works like the torrent search in
+  cluster-helper (`sendTelegramEditableMessage`, `editTelegramMessage`): a button press is answered
+  with a short notice, and the panel is rewritten in place. Login replies to the panel with its
+  own editable message: it runs `claude mcp login --no-browser <name>` under `script` (the CLI
+  needs a terminal) and puts the link there. After the login, the browser opens the localhost
+  page that does not load; the user sends its address to the bot, which passes it to the CLI and
+  deletes the message. The link message then ends with the result, and the panel shows the new
+  status. Logout runs `claude mcp logout <name>`. The tokens are in `~/.claude/.credentials.json`
+  in `HOME`; new sessions use them. Every 10 minutes the bot posts the panel once when a server
+  needs a login; the servers it told about are in `~/.claude/telegram-login/mcp-notices.json`, so a
+  restart does not repeat it.
 - The Claude Code version is pinned in `claude-code/Dockerfile`. Raise it in a pull request.
 - There is no readiness probe, so a deploy does not wait for the login.
 

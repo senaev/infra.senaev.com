@@ -10,7 +10,7 @@ export type MessageRouterDependencies = {
     allowedUserId: number;
     assistant: LoginAssistant;
     deleteMessage(chatId: number, messageId: number): Promise<void>;
-    answerCallbackQuery(callbackQueryId: string): Promise<void>;
+    answerCallbackQuery(callbackQueryId: string, text: string): Promise<void>;
 };
 
 // The text of a message is never logged: it can be a login code or a redirect URL with a code.
@@ -41,7 +41,7 @@ export function createMessageRouter(dependencies: MessageRouterDependencies): (m
 
         if (command?.commandName === 'mcp') {
             logger.info({ messageId }, '👉 Handling the /mcp command');
-            await dependencies.assistant.handleMcpCommand(command.commandArgument);
+            await dependencies.assistant.handleMcpCommand();
             logger.info({ messageId }, '✅ Handled the /mcp command');
 
             return;
@@ -89,9 +89,21 @@ export function createMessageRouter(dependencies: MessageRouterDependencies): (m
     };
 }
 
-// The buttons of the MCP panel. Telegram shows a loading indicator until the press is answered,
-// so it is answered first: a login link can take a while.
+// The buttons of the MCP panel. As in the torrent search, the press is answered with a short
+// notice once its action is done, and the panel message is rewritten in place.
 export function createCallbackQueryRouter(dependencies: MessageRouterDependencies): (callbackQuery: TelegramCallbackQuery) => Promise<void> {
+    async function answer(callbackQueryId: string, text: string): Promise<void> {
+        try {
+            await dependencies.answerCallbackQuery(callbackQueryId, text);
+        } catch (error) {
+            // A press older than a few minutes cannot be answered any more; its action is done.
+            logger.warn({
+                err: error,
+                callbackQueryId,
+            }, '⚠️ Could not answer a button press');
+        }
+    }
+
     return async (callbackQuery) => {
         const callbackQueryId = callbackQuery.id;
         const chatId = callbackQuery.message?.chat.id;
@@ -106,33 +118,34 @@ export function createCallbackQueryRouter(dependencies: MessageRouterDependencie
             return;
         }
 
-        try {
-            await dependencies.answerCallbackQuery(callbackQueryId);
-        } catch (error) {
-            logger.warn({
-                err: error,
-                callbackQueryId,
-            }, '⚠️ Could not answer a button press');
-        }
-
         const button = parseMcpButtonData(callbackQuery.data ?? '');
 
         if (button === undefined) {
             logger.info({ callbackQueryId }, '👉 Ignored an unknown button');
+            await answer(callbackQueryId, '❓ Unknown button');
 
             return;
         }
 
-        logger.info({
+        const context = {
             callbackQueryId,
             action: button.action,
             server: button.serverName,
-        }, '👉 Handling an MCP button');
-        await dependencies.assistant.handleMcpButton(button.action, button.serverName);
-        logger.info({
-            callbackQueryId,
-            action: button.action,
-            server: button.serverName,
-        }, '✅ Handled an MCP button');
+        };
+
+        logger.info(context, '👉 Handling an MCP button');
+
+        try {
+            const notice = await dependencies.assistant.handleMcpButton(button.action, button.serverName, callbackQuery.message?.message_id);
+
+            logger.info(context, '✅ Handled an MCP button');
+            await answer(callbackQueryId, notice);
+        } catch (error) {
+            logger.error({
+                ...context,
+                err: error,
+            }, '❌ Could not handle an MCP button');
+            await answer(callbackQueryId, '❌ Something went wrong, see the logs');
+        }
     };
 }

@@ -8,7 +8,9 @@ import { requireEnv } from 'senaev-utils/src/utils/env/requireEnv/requireEnv';
 import { installGracefulShutdown } from 'senaev-utils/src/utils/process/installGracefulShutdown';
 import { answerTelegramCallbackQuery } from 'senaev-utils/src/utils/TelegramApi/answerTelegramCallbackQuery';
 import { deleteTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/deleteTelegramMessage';
+import { editTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/editTelegramMessage';
 import { pollTelegramMessages } from 'senaev-utils/src/utils/TelegramApi/pollTelegramMessages';
+import { sendTelegramEditableMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramEditableMessage';
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
 
 import { getAuthStatus, runCommand } from './claude';
@@ -74,6 +76,31 @@ const assistant = createLoginAssistant({
             ...(replyMarkup !== undefined && { replyMarkup }),
         });
     },
+    sendEditableMarkdown: (markdown, replyToMessageId) => {
+        const message = sendTelegramEditableMessage({
+            text: markdown,
+            chatId: String(allowedUserId),
+            token,
+            disableLinkPreview: true,
+            replyToMessageId,
+            onSendError: (error) => logger.error(error, '❌ Could not send a Telegram message'),
+        });
+
+        return {
+            edit: (editedMarkdown, replyMarkup) => message.edit({
+                text: editedMarkdown,
+                replyMarkup,
+            }),
+        };
+    },
+    editMarkdown: (messageId, markdown, replyMarkup) => editTelegramMessage({
+        chatId: String(allowedUserId),
+        messageId,
+        text: markdown,
+        token,
+        disableLinkPreview: true,
+        replyMarkup,
+    }),
     now: () => new Date(),
 });
 const routerDependencies = {
@@ -84,9 +111,10 @@ const routerDependencies = {
         chatId: String(chatId),
         messageId,
     }),
-    answerCallbackQuery: (callbackQueryId: string) => answerTelegramCallbackQuery({
+    answerCallbackQuery: (callbackQueryId: string, text: string) => answerTelegramCallbackQuery({
         token,
         callbackQueryId,
+        text,
     }),
 };
 const routeMessage = createMessageRouter(routerDependencies);
