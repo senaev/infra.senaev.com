@@ -210,6 +210,11 @@ llmWorkspaces:
         datadog:
           url: https://mcp.datadoghq.eu/v1/mcp?toolsets=core,software-delivery
           oauth: {}
+        # cluster-helper, OAuth with the auth.senaev.com login. Its authorization server allows
+        # only loopback redirects for OpenCode, so the OpenCode login does not work yet.
+        grafana:
+          url: https://mcp.senaev.com/grafana
+          oauth: {}
       defaultModel:
         provider: openrouter
         id: anthropic/claude-haiku-4.5
