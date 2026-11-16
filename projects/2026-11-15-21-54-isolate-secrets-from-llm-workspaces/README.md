@@ -53,7 +53,10 @@ fine-grained tokens and repository rules.
 Not in Vault, readable by the agent, and needed by the harness itself. Accepted for now:
 
 - The claude.ai login of Claude Code in `HOME` (`/k3s-cluster/volumes/claude-code`).
-- OpenCode state and MCP OAuth tokens in `/k3s-cluster/volumes/opencode-data`. The bot folder
+- MCP OAuth tokens: Claude Code in `~/.claude/.credentials.json` in `HOME`, OpenCode in
+  `/k3s-cluster/volumes/opencode-data`. Their own project:
+  [`2026-11-16-20-55-isolate-mcp-credentials`](../2026-11-16-20-55-isolate-mcp-credentials/README.md).
+- OpenCode state in `/k3s-cluster/volumes/opencode-data`. The bot folder
   `/root/.config/opencode-telegram-bot` is on the same node folder, so check what the bot
   stores there.
 - OMP state in its `state` PVC.

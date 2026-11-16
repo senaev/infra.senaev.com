@@ -210,11 +210,13 @@ llmWorkspaces:
         datadog:
           url: https://mcp.datadoghq.eu/v1/mcp?toolsets=core,software-delivery
           oauth: {}
-        # cluster-helper, OAuth with the auth.senaev.com login. Its authorization server allows
-        # only loopback redirects for OpenCode, so the OpenCode login does not work yet.
+        # cluster-helper, OAuth with the auth.senaev.com login. Claude Code uses its own CIMD
+        # client id and takes only the url. OpenCode, with its public callback, needs the static
+        # client id that cluster-helper allows only with https://opencode.senaev.com/auth/mcp/callback.
         grafana:
           url: https://mcp.senaev.com/grafana
-          oauth: {}
+          oauth:
+            client_id: opencode.senaev.com
       defaultModel:
         provider: openrouter
         id: anthropic/claude-haiku-4.5

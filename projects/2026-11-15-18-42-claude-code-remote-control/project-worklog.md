@@ -1,5 +1,19 @@
 # Worklog
 
+## 2026-11-16 20:55 UTC — MCP servers with a Telegram login, Grafana for OpenCode
+
+Done and deployed: PR #211 (MCP list for Claude Code, `/mcp` login through `script`, cluster-helper allows the Claude Code CIMD client), #213 (MCP panel with login and logout buttons, edited in place like the torrent search; notice state in a file; the assistant split into `claudeLogin`, `mcpDialog`, `mcpPanel` and `pendingLogin`), #214 (Grafana in `agent.mcp`). The user logged in to Datadog and Grafana from the panel; in a new session `claude mcp list` shows both `✔ Connected`, the Grafana tools list the dashboards, and `count(up == 1) / count(up)` is `1`.
+
+Decisions: no public callback, because Claude Code 2.1.325 always redirects to localhost and has no setting for it; the user pastes the redirect URL. The Obsidian/code endpoint stays out of the list (user decision). MCP tokens in `HOME` are readable by the sessions: a new project, `2026-11-16-20-55-isolate-mcp-credentials`.
+
+OpenCode fix: OpenCode v2.2.3 chooses its MCP client as `static` when `oauth.client_id` is set, else `cimd` only when no `redirect_uri` is set, else `dcr`. Our OpenCode always has the public `redirect_uri`, so it tried DCR, which cluster-helper does not offer. The Grafana entry now has `oauth.client_id: opencode.senaev.com`, and cluster-helper allows that id only with `https://opencode.senaev.com/auth/mcp/callback`. Checked with the pinned v2.2.3 binary and the rendered config: `opencode mcp auth grafana` builds
+
+```
+https://auth.senaev.com/authorize?response_type=code&client_id=opencode.senaev.com&...&redirect_uri=https%3A%2F%2Fopencode.senaev.com%2Fauth%2Fmcp%2Fcallback&...&scope=mcp&resource=https%3A%2F%2Fmcp.senaev.com%2Fgrafana
+```
+
+which the deployed cluster-helper answers with `400` before this change.
+
 ## 2026-11-15 21:45 UTC — Polling loop moved to senaev-utils
 
 The user asked to move the loop that receives messages into `senaev-utils`. New: `pollTelegramMessages` (long polling with `getUpdates`: handles the messages one by one, reports a failed poll or handler through `onError`, retries after a delay, stops on an `AbortSignal`, and can skip the messages that came before the start) and `deleteTelegramMessage`, both in `senaev-utils/src/utils/TelegramApi/` with tests. The helper's own `telegram.ts` is gone; `main.ts` only gives `pollTelegramMessages` its handler. The helper still serializes message handling and the login checks in one queue. The record of 21:20 says the polling loop is not reused; this is now changed.
