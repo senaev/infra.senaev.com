@@ -20,7 +20,6 @@ import { proxyPublicStaticFile } from './publicStaticProxy';
 
 const env = vi.hoisted(() => {
     return {
-        MTLS_DIR: '',
         OBSIDIAN_SYNC_URL: '',
     };
 });
@@ -80,7 +79,6 @@ beforeAll(async () => {
     await new Promise<void>((resolve) => {
         server.listen(0, '127.0.0.1', resolve);
     });
-    env.MTLS_DIR = directory;
     env.OBSIDIAN_SYNC_URL = `https://localhost:${(server.address() as AddressInfo).port}`;
 });
 
@@ -100,7 +98,7 @@ describe('the obsidian-sync client over real mTLS', () => {
     });
 
     it('reaches the vault service with the client certificate and no token, and streams a static file', async () => {
-        await startObsidianSyncClient();
+        await startObsidianSyncClient(directory);
 
         const result = await proxyPublicStaticFile({
             path: 'folder/file.txt',

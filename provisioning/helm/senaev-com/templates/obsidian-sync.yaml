@@ -75,14 +75,13 @@ spec:
                   name: senaev-com-kv-secrets
                   key: TG_TOKEN_SENAEV_COM_BOT
                   optional: false
-            - name: MTLS_DIR
-              value: /etc/mtls
             - name: MTLS_ALLOWED_CLIENT_NAME
               value: cluster-helper.{{ .Release.Namespace }}.svc.cluster.local
           volumeMounts:
             - name: vault
               mountPath: {{ .Values.obsidianSync.containerVaultPath }}
             # The whole directory, never subPath or env: only a directory mount follows renewals.
+            # The path is MTLS_DIRECTORY in senaev-utils, which the service reads.
             - name: mtls
               mountPath: /etc/mtls
               readOnly: true

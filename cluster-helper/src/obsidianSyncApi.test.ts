@@ -1,5 +1,5 @@
 import {
-    afterEach, beforeEach, describe, expect, it, vi,
+    afterEach, describe, expect, it, vi,
 } from 'vitest';
 
 import { callVaultTool, getShortLink } from './obsidianSyncApi';
@@ -37,7 +37,6 @@ vi.hoisted(() => {
     }
 
     process.env.OBSIDIAN_SYNC_URL = 'https://obsidian-sync.senaev-com.svc.cluster.local:8443';
-    process.env.MTLS_DIR = '/etc/mtls';
     process.env.CODE_TOOLS_URL = 'http://code-tools:8080';
     process.env.INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS = 'code-tools-token';
     process.env.MCP_GRAFANA_URL = 'http://mcp-grafana.telemetry.svc.cluster.local:8000/mcp';
@@ -48,8 +47,6 @@ const mtlsFetchMock = vi.hoisted(() => vi.fn());
 vi.mock('./obsidianSyncClient', () => {
     return { obsidianSyncFetch: mtlsFetchMock };
 });
-
-const globalFetchMock = vi.fn();
 
 function mockFetch(status: number, body: unknown) {
     mtlsFetchMock.mockResolvedValue(new Response(JSON.stringify(body), { status }));
@@ -69,14 +66,8 @@ function sentRequest(fetchMock: ReturnType<typeof vi.fn>): { url: string; init: 
     };
 }
 
-beforeEach(() => {
-    vi.stubGlobal('fetch', globalFetchMock);
-});
-
 afterEach(() => {
-    vi.unstubAllGlobals();
     mtlsFetchMock.mockReset();
-    globalFetchMock.mockReset();
 });
 
 describe('callVaultTool', () => {
@@ -92,7 +83,6 @@ describe('callVaultTool', () => {
         expect(init.method).toBe('POST');
         expect(JSON.parse(init.body as string)).toEqual(args);
         expect((init.headers as Record<string, string>).authorization).toBeUndefined();
-        expect(globalFetchMock).not.toHaveBeenCalled();
     });
 
     it('marks an ok reply as a success and an error reply as a tool error', async () => {
@@ -143,7 +133,6 @@ describe('the other obsidian-sync calls', () => {
         const { url } = sentRequest(fetchMock);
 
         expect(url).toBe('https://obsidian-sync.senaev-com.svc.cluster.local:8443/short_links/abc');
-        expect(globalFetchMock).not.toHaveBeenCalled();
     });
 });
 

@@ -3,16 +3,19 @@ import {
 } from 'senaev-utils/src/utils/mtls/mtlsClient';
 import { watchTlsMaterial, type TlsMaterialWatcher } from 'senaev-utils/src/utils/mtls/watchTlsMaterial';
 
-import { MTLS_DIR, OBSIDIAN_SYNC_URL } from './env';
+import { OBSIDIAN_SYNC_URL } from './env';
 import { logger } from './logger';
 
 let client: MtlsClient | undefined;
 let certificates: TlsMaterialWatcher | undefined;
 
-/** Loads the client certificate and keeps it renewed. Must finish before the first call. */
-export async function startObsidianSyncClient(): Promise<void> {
+/**
+ * Loads the client certificate and keeps it renewed. Must finish before the first call.
+ * `directory` is for tests: the mounted Secret is always in the default place.
+ */
+export async function startObsidianSyncClient(directory?: string): Promise<void> {
     certificates = await watchTlsMaterial({
-        directory: MTLS_DIR,
+        ...directory !== undefined && { directory },
         onChange: (material) => {
             client?.updateMaterial(material);
             logger.info({ notAfter: material.notAfter.toISOString() }, '🔐 Loaded the renewed mTLS certificate');

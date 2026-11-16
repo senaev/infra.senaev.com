@@ -5,6 +5,9 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { SecureContextOptions } from 'node:tls';
 
+/** Where the Helm templates mount the Certificate Secret of a service. */
+export const MTLS_DIRECTORY = '/etc/mtls';
+
 /** The file names that cert-manager writes into a Certificate Secret. */
 export const TLS_KEY_FILE = 'tls.key';
 export const TLS_CERT_FILE = 'tls.crt';

@@ -1,6 +1,6 @@
 import { watchTlsMaterial } from 'senaev-utils/src/utils/mtls/watchTlsMaterial';
 
-import { MTLS_ALLOWED_CLIENT_NAME, MTLS_DIR } from '../env';
+import { MTLS_ALLOWED_CLIENT_NAME } from '../env';
 import { logger } from '../logger';
 import { PUBLIC_DIR } from '../vaultPaths';
 
@@ -22,7 +22,6 @@ export async function runVaultServer() {
     // The watcher needs the server for reloads, and the server needs the first material from the watcher.
     const reloadTarget: { server?: ReturnType<typeof createProtectedVaultServer> } = {};
     const certificates = await watchTlsMaterial({
-        directory: MTLS_DIR,
         onChange: (material) => {
             reloadTarget.server?.updateMaterial(material);
             logger.info({ notAfter: material.notAfter.toISOString() }, '🔐 Loaded the renewed mTLS certificate');

@@ -1,6 +1,7 @@
 import {
     isSameTlsFiles,
     isTlsMaterialValidAt,
+    MTLS_DIRECTORY,
     parseTlsMaterial,
     readTlsFiles,
     type TlsFiles,
@@ -16,7 +17,8 @@ export type TlsMaterialWatcher = {
 };
 
 type WatchOptions = {
-    directory: string;
+    /** Defaults to where the Helm templates mount the Secret. A test may use another one. */
+    directory?: string;
     /** Called with each renewed material that is complete and not expired. */
     onChange: (material: TlsMaterial) => void;
     /** Called for a snapshot that cannot be used, or an expired certificate. The services log it. */
@@ -41,7 +43,7 @@ function toError(error: unknown): Error {
  * on a later poll.
  */
 export async function watchTlsMaterial({
-    directory,
+    directory = MTLS_DIRECTORY,
     onChange,
     onError,
     pollIntervalMs = DEFAULT_POLL_INTERVAL_MS,

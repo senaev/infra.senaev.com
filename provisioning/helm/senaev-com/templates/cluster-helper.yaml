@@ -113,8 +113,6 @@ spec:
               value: /prowlarr-config/config.xml
             - name: OBSIDIAN_SYNC_URL
               value: "https://obsidian-sync.{{ .Release.Namespace }}.svc.cluster.local:8443"
-            - name: MTLS_DIR
-              value: /etc/mtls
             - name: CODE_TOOLS_URL
               value: "http://senaev-code-tools:8080"
             - name: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
@@ -244,6 +242,7 @@ spec:
               mountPath: /prowlarr-config
               readOnly: true
             # The whole directory, never subPath or env: only a directory mount follows renewals.
+            # The path is MTLS_DIRECTORY in senaev-utils, which the service reads.
             - name: obsidian-sync-mtls
               mountPath: /etc/mtls
               readOnly: true
