@@ -11,7 +11,7 @@ export type MessageRouterDependencies = {
     deleteMessage(chatId: number, messageId: number): Promise<void>;
 };
 
-// The text of a message is never logged: it can be a login code.
+// The text of a message is never logged: it can be a login code or a redirect URL with a code.
 export function createMessageRouter(dependencies: MessageRouterDependencies): (message: TelegramMessage) => Promise<void> {
     return async (message) => {
         const messageId = message.message_id;
@@ -36,6 +36,14 @@ export function createMessageRouter(dependencies: MessageRouterDependencies): (m
         }
 
         const command = getTelegramCommandFromMessage(text);
+
+        if (command?.commandName === 'mcp') {
+            logger.info({ messageId }, '👉 Handling the /mcp command');
+            await dependencies.assistant.handleMcpCommand(command.commandArgument);
+            logger.info({ messageId }, '✅ Handled the /mcp command');
+
+            return;
+        }
 
         if (command !== undefined) {
             if (command.commandName !== 'auth') {

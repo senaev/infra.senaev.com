@@ -30,8 +30,10 @@ const ALLOWED_USER_ID = 42;
 function setup(handleTextResult = true) {
     const assistant: LoginAssistant = {
         handleAuthCommand: vi.fn(() => Promise.resolve()),
+        handleMcpCommand: vi.fn(() => Promise.resolve()),
         handleText: vi.fn(() => Promise.resolve(handleTextResult)),
         checkLogin: vi.fn(() => Promise.resolve()),
+        checkMcpServers: vi.fn(() => Promise.resolve()),
         stop: vi.fn(),
     };
     const deleteMessage = vi.fn((): Promise<void> => Promise.resolve());
@@ -96,6 +98,17 @@ describe('the message router', () => {
             '👉 Handling the /auth command',
             '✅ Handled the /auth command',
         ]);
+    });
+
+    it('passes the server name of /mcp to the assistant', async () => {
+        const { assistant, route } = setup();
+
+        await route(message({ text: '/mcp' }));
+        await route(message({ text: '/mcp@senaev_claude_helper_bot datadog' }));
+
+        expect(assistant.handleMcpCommand).toHaveBeenNthCalledWith(1, '');
+        expect(assistant.handleMcpCommand).toHaveBeenNthCalledWith(2, 'datadog');
+        expect(assistant.handleText).not.toHaveBeenCalled();
     });
 
     it('gives other text to the assistant and deletes the message when it was a code', async () => {

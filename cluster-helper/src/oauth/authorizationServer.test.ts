@@ -184,6 +184,36 @@ describe('authorize', () => {
         }
     });
 
+    it('accepts the Claude Code client with a loopback /callback redirect URI on any port', () => {
+        for (const redirectUri of [
+            'http://localhost:64564/callback',
+            'http://127.0.0.1:64564/callback',
+            'http://localhost/callback',
+        ]) {
+            expect(server.authorize({
+                ...authorizeParams,
+                client_id: 'https://claude.ai/oauth/claude-code-client-metadata',
+                redirect_uri: redirectUri,
+            }).kind).toBe('show-login');
+        }
+    });
+
+    it('rejects the Claude Code client with a redirect URI that is not its loopback callback', () => {
+        for (const redirectUri of [
+            'https://evil.example.com/callback',
+            'http://localhost.evil.example.com/callback',
+            'http://localhost:64564/mcp/oauth/callback',
+            'https://localhost:64564/callback',
+            'http://localhost:64564/callback?x=1',
+        ]) {
+            expect(server.authorize({
+                ...authorizeParams,
+                client_id: 'https://claude.ai/oauth/claude-code-client-metadata',
+                redirect_uri: redirectUri,
+            }).kind).toBe('reject');
+        }
+    });
+
     it('rejects other clients and redirect URIs without redirecting', () => {
         expect(server.authorize({
             ...authorizeParams,

@@ -1,5 +1,10 @@
 {{- define "senaev-com.llmWorkspace.claudeCode" -}}
 {{- if .Values.claudeCode.enabled }}
+{{- /* Only the URL: the other keys of agent.mcp are OpenCode settings. */}}
+{{- $mcpServers := dict }}
+{{- range $name, $server := .Values.agent.mcp }}
+{{- $_ := set $mcpServers $name (dict "type" "http" "url" $server.url) }}
+{{- end }}
 {{- $keys := list .Values.git.githubToken .Values.git.sshPrivateKey .Values.claudeCode.telegram.token .Values.claudeCode.telegram.user }}
 {{ include "senaev-com.llmWorkspace.componentSecret" (dict "name" (printf "%s-claude-code-env" .Values.name) "namespace" .Release.Namespace "keys" $keys) }}
 ---
@@ -53,6 +58,9 @@ spec:
               value: {{ .Values.claudeCode.model | quote }}
             - name: CLAUDE_REMOTE_CONTROL_SESSION_NAME_PREFIX
               value: {{ .Values.name | quote }}
+            # start.sh writes them into the user config; the telegram-login container logs in to them.
+            - name: WORKSPACE_MCP_SERVERS
+              value: {{ $mcpServers | toJson | quote }}
             - name: GIT_AUTHOR_NAME
               value: {{ .Values.git.name | quote }}
             - name: GIT_AUTHOR_EMAIL
@@ -82,7 +90,7 @@ spec:
               mountPath: /CLAUDE.md
               subPath: CLAUDE.md
               readOnly: true
-        # Logs in from Telegram and warns before the login expires. It has the bot token, so it
+        # Logs in to Claude and to the MCP servers from Telegram, and warns before the login expires. It has the bot token, so it
         # runs apart from Claude Code, which has no approvals; both share the login in HOME.
         - name: telegram-login
           image: ghcr.io/senaev/claude-code:latest

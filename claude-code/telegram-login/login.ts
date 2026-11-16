@@ -31,15 +31,14 @@ const DEFAULT_TIMEOUTS: LoginTimeouts = {
 };
 
 // The link is complete only when a white space follows it: the output can arrive in pieces.
-const URL_PATTERN = /https:\/\/\S+(?=\s)/;
+// In a terminal, the CLI wraps the link in an OSC 8 hyperlink, so the escape and bell
+// characters end it too.
+// eslint-disable-next-line no-control-regex
+const URL_PATTERN = /https:\/\/[^\s\u0007\u001b]+(?=[\s\u0007\u001b])/;
 const MAX_REASON_LENGTH = 200;
 
-export const spawnClaudeLogin: SpawnLoginProcess = () => {
-    // The CLI needs no terminal: it prints the link, then reads the code from stdin.
-    const child = spawn('claude', [
-        'auth',
-        'login',
-    ], {
+function wrapChildProcess(file: string, args: string[]): LoginProcess {
+    const child = spawn(file, args, {
         stdio: [
             'pipe',
             'pipe',
@@ -67,7 +66,33 @@ export const spawnClaudeLogin: SpawnLoginProcess = () => {
             child.kill();
         },
     };
-};
+}
+
+// The CLI needs no terminal: it prints the link, then reads the code from stdin.
+export const spawnClaudeLogin: SpawnLoginProcess = () => wrapChildProcess('claude', [
+    'auth',
+    'login',
+]);
+
+// Only names of this form are passed to the shell of `script`.
+export const MCP_SERVER_NAME_PATTERN = /^[\w-]+$/;
+
+// `claude mcp login` refuses to run without a terminal, so `script` gives it one. The terminal
+// echoes the pasted redirect URL back into the output, and `-e` returns the exit code of the CLI.
+export function spawnMcpLogin(serverName: string): LoginProcess {
+    if (!MCP_SERVER_NAME_PATTERN.test(serverName)) {
+        throw new Error(`Not a valid MCP server name: ${serverName}`);
+    }
+
+    return wrapChildProcess('script', [
+        '--quiet',
+        '--flush',
+        '--return',
+        '--command',
+        `claude mcp login --no-browser ${serverName}`,
+        '/dev/null',
+    ]);
+}
 
 function describeFailure(output: string, code: string, exitCode: number | null): string {
     const lastLine = output.split('\n').map((line) => line.trim()).filter((line) => line.length > 0).at(-1) ?? '';
@@ -76,11 +101,19 @@ function describeFailure(output: string, code: string, exitCode: number | null):
     return `exit code ${exitCode ?? 'none'}${withoutCode.length > 0 ? `: ${withoutCode}` : ''}`;
 }
 
-export function startLogin(spawnProcess: SpawnLoginProcess, timeouts: LoginTimeouts = DEFAULT_TIMEOUTS): LoginSession {
+// `rejectionPattern` matches what the command prints when it refuses a code and asks for it
+// again instead of exiting: the session then ends with that line as the reason.
+export function startLogin(
+    spawnProcess: SpawnLoginProcess,
+    timeouts: LoginTimeouts = DEFAULT_TIMEOUTS,
+    rejectionPattern?: RegExp
+): LoginSession {
     const loginProcess = spawnProcess();
     let output = '';
     let running = true;
     let urlFound = false;
+    let outputAfterCode: string | null = null;
+    let resolveRejected: (line: string) => void = () => undefined;
 
     let resolveUrl: (url: string) => void = () => undefined;
     let rejectUrl: (error: Error) => void = () => undefined;
@@ -93,7 +126,7 @@ export function startLogin(spawnProcess: SpawnLoginProcess, timeouts: LoginTimeo
     authorizationUrl.catch(() => undefined);
 
     const urlTimer = setTimeout(() => {
-        rejectUrl(new Error('claude auth login did not print a link in time'));
+        rejectUrl(new Error('the login command did not print a link in time'));
     }, timeouts.urlMs);
 
     const exited = new Promise<number | null>((resolve) => {
@@ -102,7 +135,7 @@ export function startLogin(spawnProcess: SpawnLoginProcess, timeouts: LoginTimeo
             clearTimeout(urlTimer);
 
             if (!urlFound) {
-                rejectUrl(new Error(`claude auth login stopped before it printed a link (exit code ${exitCode ?? 'none'})`));
+                rejectUrl(new Error(`the login command stopped before it printed a link (exit code ${exitCode ?? 'none'})`));
             }
 
             resolve(exitCode);
@@ -118,6 +151,15 @@ export function startLogin(spawnProcess: SpawnLoginProcess, timeouts: LoginTimeo
             clearTimeout(urlTimer);
             resolveUrl(match[0]);
         }
+
+        if (outputAfterCode !== null && rejectionPattern !== undefined) {
+            outputAfterCode += text;
+            const rejection = rejectionPattern.exec(outputAfterCode);
+
+            if (rejection !== null) {
+                resolveRejected(rejection[0].trim());
+            }
+        }
     });
 
     return {
@@ -130,6 +172,11 @@ export function startLogin(spawnProcess: SpawnLoginProcess, timeouts: LoginTimeo
                 };
             }
 
+            const rejected = new Promise<{ rejectedWith: string }>((resolve) => {
+                resolveRejected = (line) => resolve({ rejectedWith: line });
+            });
+
+            outputAfterCode = '';
             loginProcess.writeLine(code);
 
             let codeTimer: NodeJS.Timeout | undefined;
@@ -139,9 +186,19 @@ export function startLogin(spawnProcess: SpawnLoginProcess, timeouts: LoginTimeo
             const result = await Promise.race([
                 exited,
                 timedOut,
+                rejected,
             ]);
 
             clearTimeout(codeTimer);
+
+            if (typeof result === 'object' && result !== null) {
+                loginProcess.kill();
+
+                return {
+                    ok: false,
+                    reason: result.rejectedWith.replaceAll(code, '***').slice(0, MAX_REASON_LENGTH),
+                };
+            }
 
             if (result === 'timeout') {
                 loginProcess.kill();

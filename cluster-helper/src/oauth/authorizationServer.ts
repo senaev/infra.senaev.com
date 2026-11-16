@@ -46,6 +46,11 @@ const CHATGPT_CALLBACK_CLIENT_ID = /^https:\/\/chatgpt\.com\/oauth\/([\w-]+)\/cl
 const OPENCODE_CLIENT_ID = 'https://opencode.ai/oauth/opencode/client.json';
 const OPENCODE_REDIRECT_URI = /^http:\/\/(?:127\.0\.0\.1(?::\d+)?\/(?:callback|mcp\/oauth\/callback)|localhost(?::\d+)?\/callback)$/;
 
+// Claude Code (`claude mcp login`) uses its Client ID Metadata Document only with a loopback
+// `/callback` redirect on an ephemeral port. The hosts are the redirect_uris of the document.
+const CLAUDE_CODE_CLIENT_ID = 'https://claude.ai/oauth/claude-code-client-metadata';
+const CLAUDE_CODE_REDIRECT_URI = /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?\/callback$/;
+
 const PKCE_CODE_VERIFIER = /^[\w.~-]{43,128}$/;
 
 export type LoginIdentity =
@@ -130,6 +135,10 @@ function isAllowedClient(clientId: string, redirectUri: string): boolean {
 
     if (clientId === OPENCODE_CLIENT_ID) {
         return OPENCODE_REDIRECT_URI.test(redirectUri);
+    }
+
+    if (clientId === CLAUDE_CODE_CLIENT_ID) {
+        return CLAUDE_CODE_REDIRECT_URI.test(redirectUri);
     }
 
     const callbackId = CHATGPT_CALLBACK_CLIENT_ID.exec(clientId)?.[1];

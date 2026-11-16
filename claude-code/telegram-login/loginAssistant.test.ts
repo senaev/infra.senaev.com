@@ -5,6 +5,7 @@ import {
 
 import type { AuthStatus } from './claude';
 import type { LoginResult, LoginSession } from './login';
+import type { McpServer } from './mcp';
 import {
     createLoginAssistant, EXPIRY_NOTICE_REPEAT_MS,
 } from './loginAssistant';
@@ -43,14 +44,23 @@ function createSession(overrides: Partial<LoginSession> = {}): LoginSession {
     };
 }
 
-// The sessions are handed out in order. When they run out, a plain session is made.
-function setup(initialStatus: AuthStatus, sessions: LoginSession[] = []) {
+// The sessions are handed out in order, to the Claude and the MCP logins alike. When they run
+// out, a plain session is made.
+function setup(initialStatus: AuthStatus, sessions: LoginSession[] = [], initialMcpServers: McpServer[] = []) {
     let status = initialStatus;
+    let mcpServers = initialMcpServers;
+    const mcpLogins: string[] = [];
     let now = NOW.getTime();
     const sent: string[] = [];
     const assistant = createLoginAssistant({
         getAuthStatus: () => Promise.resolve(status),
         startLogin: () => sessions.shift() ?? createSession(),
+        listMcpServers: () => Promise.resolve(mcpServers),
+        startMcpLogin: (serverName) => {
+            mcpLogins.push(serverName);
+
+            return sessions.shift() ?? createSession();
+        },
         sendMarkdown: (markdown) => {
             sent.push(markdown);
 
@@ -62,8 +72,12 @@ function setup(initialStatus: AuthStatus, sessions: LoginSession[] = []) {
     return {
         assistant,
         sent,
+        mcpLogins,
         setStatus: (value: AuthStatus) => {
             status = value;
+        },
+        setMcpServers: (value: McpServer[]) => {
+            mcpServers = value;
         },
         advance: (milliseconds: number) => {
             now += milliseconds;
@@ -110,7 +124,7 @@ describe('a login code', () => {
 
         await expect(assistant.handleText('code')).resolves.toBe(false);
 
-        expect(sent).toEqual([plain('No login is waiting for a code. Send /auth to start one.')]);
+        expect(sent).toEqual([plain('No login is waiting for a code. Send /auth or /mcp to start one.')]);
     });
 
     it('goes to the login command without the spaces around it, and the user hears until when the login is valid', async () => {
@@ -129,12 +143,16 @@ describe('a login code', () => {
         const failingStatus = createLoginAssistant({
             getAuthStatus: () => Promise.reject(new Error('status failed')),
             startLogin: () => createSession(),
+            listMcpServers: () => Promise.resolve([]),
+            startMcpLogin: () => createSession(),
             sendMarkdown: () => Promise.resolve(),
             now: () => NOW,
         });
         const failingSend = createLoginAssistant({
             getAuthStatus: () => Promise.resolve(loggedInUntil(30)),
             startLogin: () => createSession(),
+            listMcpServers: () => Promise.resolve([]),
+            startMcpLogin: () => createSession(),
             sendMarkdown: vi.fn()
                 .mockResolvedValueOnce(undefined)
                 .mockRejectedValue(new Error('Telegram is down')),
@@ -162,7 +180,7 @@ describe('a login code', () => {
         await assistant.handleText('bad again');
 
         expect(sent.at(-2)).toBe(plain('The login failed: exit code 1: invalid code\nSend /auth to try again.'));
-        expect(sent.at(-1)).toBe(plain('No login is waiting for a code. Send /auth to start one.'));
+        expect(sent.at(-1)).toBe(plain('No login is waiting for a code. Send /auth or /mcp to start one.'));
     });
 
     it('is reported as a failure when the command succeeded but Claude Code is still logged out', async () => {
@@ -249,6 +267,8 @@ describe('the login check', () => {
         const assistant = createLoginAssistant({
             getAuthStatus: () => Promise.resolve(LOGGED_OUT),
             startLogin: () => createSession(),
+            listMcpServers: () => Promise.resolve([]),
+            startMcpLogin: () => createSession(),
             sendMarkdown: send,
             now: () => NOW,
         });
@@ -266,6 +286,8 @@ describe('the login check', () => {
         const assistant = createLoginAssistant({
             getAuthStatus: () => Promise.resolve(loggedInUntil(3)),
             startLogin: () => createSession(),
+            listMcpServers: () => Promise.resolve([]),
+            startMcpLogin: () => createSession(),
             sendMarkdown: send,
             now: () => NOW,
         });
@@ -289,5 +311,176 @@ describe('the login check', () => {
         expect(session.cancel).not.toHaveBeenCalled();
         expect(session.submitCode).toHaveBeenCalledWith('the-code#state');
         expect(sent.at(-1)).toBe(plain('Logged in. The login is valid until 2026-12-13.'));
+    });
+});
+
+const DATADOG_NEEDS_LOGIN: McpServer = {
+    name: 'datadog',
+    status: 'Needs authentication',
+    needsLogin: true,
+};
+const DATADOG_CONNECTED: McpServer = {
+    name: 'datadog',
+    status: 'Connected',
+    needsLogin: false,
+};
+const GRAFANA_NEEDS_LOGIN: McpServer = {
+    name: 'grafana',
+    status: 'Needs authentication',
+    needsLogin: true,
+};
+const MCP_LINK_MESSAGE = `${plain('Open the link and log in to datadog. The browser then opens a localhost page that does not load: copy its full address (it starts with http://localhost) and send it to me.')}\n\n${telegramLink({
+    text: 'Log in to datadog',
+    url: LINK,
+})}`;
+const REDIRECT_URL = 'http://localhost:64564/callback?code=abc&state=xyz';
+
+describe('the /mcp command', () => {
+    it('lists the servers and their status without a name', async () => {
+        const { assistant, sent } = setup(loggedInUntil(30), [], [
+            DATADOG_CONNECTED,
+            GRAFANA_NEEDS_LOGIN,
+        ]);
+
+        await assistant.handleMcpCommand('');
+
+        expect(sent).toEqual([plain('MCP servers of Claude Code:\n• datadog: Connected\n• grafana: Needs authentication\n\nSend /mcp <name> to log in to one.')]);
+    });
+
+    it('says where the servers come from when there are none', async () => {
+        const { assistant, sent } = setup(loggedInUntil(30));
+
+        await assistant.handleMcpCommand('datadog');
+
+        expect(sent).toEqual([plain('Claude Code has no MCP servers. They come from agent.mcp of the workspace in the Helm values.')]);
+    });
+
+    it('starts no login for a server that is not in the list', async () => {
+        const {
+            assistant, sent, mcpLogins,
+        } = setup(loggedInUntil(30), [], [DATADOG_CONNECTED]);
+
+        await assistant.handleMcpCommand('evil;rm');
+
+        expect(mcpLogins).toEqual([]);
+        expect(sent).toEqual([plain('There is no MCP server evil;rm. The servers are:\n• datadog: Connected')]);
+    });
+
+    it('sends the login link of the server', async () => {
+        const {
+            assistant, sent, mcpLogins,
+        } = setup(loggedInUntil(30), [], [DATADOG_NEEDS_LOGIN]);
+
+        await assistant.handleMcpCommand('datadog');
+
+        expect(mcpLogins).toEqual(['datadog']);
+        expect(sent).toEqual([MCP_LINK_MESSAGE]);
+    });
+
+    it('cancels a Claude login that waits for a code', async () => {
+        const claudeLogin = createSession();
+        const { assistant } = setup(loggedInUntil(30), [
+            claudeLogin,
+            createSession(),
+        ], [DATADOG_NEEDS_LOGIN]);
+
+        await assistant.handleAuthCommand();
+        await assistant.handleMcpCommand('datadog');
+
+        expect(claudeLogin.cancel).toHaveBeenCalledOnce();
+    });
+
+    it('tells the user when the link does not come', async () => {
+        const failing = createSession({ authorizationUrl: Promise.reject(new Error('no link')) });
+        const { assistant, sent } = setup(loggedInUntil(30), [failing], [DATADOG_NEEDS_LOGIN]);
+
+        await assistant.handleMcpCommand('datadog');
+
+        expect(sent).toEqual([plain('Could not start the login to datadog: no link')]);
+        expect(failing.cancel).toHaveBeenCalledOnce();
+    });
+});
+
+describe('a redirect URL for an MCP login', () => {
+    it('goes to the MCP login, and the user hears the new status of the server', async () => {
+        const session = createSession();
+        const {
+            assistant, sent, setMcpServers,
+        } = setup(loggedInUntil(30), [session], [DATADOG_NEEDS_LOGIN]);
+
+        await assistant.handleMcpCommand('datadog');
+        setMcpServers([DATADOG_CONNECTED]);
+
+        await expect(assistant.handleText(` ${REDIRECT_URL} `)).resolves.toBe(true);
+
+        expect(session.submitCode).toHaveBeenCalledWith(REDIRECT_URL);
+        expect(sent.at(-1)).toBe(plain('Logged in to datadog: Connected. New Claude Code sessions can use it.'));
+    });
+
+    it('is reported when the login command finished, but the server still needs a login', async () => {
+        const { assistant, sent } = setup(loggedInUntil(30), [], [DATADOG_NEEDS_LOGIN]);
+
+        await assistant.handleMcpCommand('datadog');
+        await assistant.handleText(REDIRECT_URL);
+
+        expect(sent.at(-1)).toBe(plain('The login command finished, but datadog still needs a login (Needs authentication).\nSend /mcp datadog to try again.'));
+    });
+
+    it('is reported when the login fails, and the next text starts nothing', async () => {
+        const session = createSession({
+            submitCode: () => Promise.resolve({
+                ok: false,
+                reason: 'That doesn\'t look like a redirect URL for this sign-in',
+            }),
+        });
+        const { assistant, sent } = setup(loggedInUntil(30), [session], [DATADOG_NEEDS_LOGIN]);
+
+        await assistant.handleMcpCommand('datadog');
+        await expect(assistant.handleText('wrong')).resolves.toBe(true);
+        await assistant.handleText('again');
+
+        expect(sent.at(-2)).toBe(plain('The login to datadog failed: That doesn\'t look like a redirect URL for this sign-in\nSend /mcp datadog to try again.'));
+        expect(sent.at(-1)).toBe(plain('No login is waiting for a code. Send /auth or /mcp to start one.'));
+    });
+});
+
+describe('the MCP server check', () => {
+    it('says once which servers need a login, and again after one was logged in and lost it', async () => {
+        const {
+            assistant, sent, setMcpServers,
+        } = setup(loggedInUntil(30), [], [
+            DATADOG_NEEDS_LOGIN,
+            GRAFANA_NEEDS_LOGIN,
+        ]);
+        const notice = (names: string) => plain(`These MCP servers of Claude Code need a login: ${names}. Send /mcp <name> to log in.`);
+
+        await assistant.checkMcpServers();
+        await assistant.checkMcpServers();
+
+        expect(sent).toEqual([notice('datadog, grafana')]);
+
+        setMcpServers([
+            DATADOG_CONNECTED,
+            GRAFANA_NEEDS_LOGIN,
+        ]);
+        await assistant.checkMcpServers();
+        setMcpServers([
+            DATADOG_NEEDS_LOGIN,
+            GRAFANA_NEEDS_LOGIN,
+        ]);
+        await assistant.checkMcpServers();
+
+        expect(sent).toEqual([
+            notice('datadog, grafana'),
+            notice('datadog'),
+        ]);
+    });
+
+    it('says nothing when every server is connected', async () => {
+        const { assistant, sent } = setup(loggedInUntil(30), [], [DATADOG_CONNECTED]);
+
+        await assistant.checkMcpServers();
+
+        expect(sent).toEqual([]);
     });
 });

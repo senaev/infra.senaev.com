@@ -76,7 +76,7 @@
             ],
             "properties": {
               "mcp": {
-                "description": "Free-form MCP server settings, passed to OpenCode and OMP",
+                "description": "Free-form MCP server settings, passed to OpenCode and OMP. Claude Code takes only the url of each server",
                 "type": "object"
               },
               "defaultModel": {
