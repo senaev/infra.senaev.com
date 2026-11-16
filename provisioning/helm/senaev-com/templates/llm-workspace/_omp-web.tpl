@@ -32,7 +32,7 @@ data:
   mcp.json: |
 {{- $servers := dict }}
 {{- range $name, $server := $agent.mcp }}
-{{- $_ := set $servers $name (merge (dict "type" "http") $server) }}
+{{- $_ := set $servers $name (merge (dict "type" "http") (omit $server "opencodeClientId")) }}
 {{- end }}
 {{ dict "mcpServers" $servers | toPrettyJson | indent 4 }}
 ---

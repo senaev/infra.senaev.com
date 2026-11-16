@@ -125,7 +125,7 @@ There is no client registration: the allowed clients are hard-coded in
 `127.0.0.1`; Claude Code sends this client id only with that loopback redirect). One more client
 is static: OpenCode of the senaev workspace uses its public callback, and OpenCode sends its CIMD
 client id only when no `redirect_uri` is configured, so each cluster-helper server in `agent.mcp`
-sets `oauth.client_id: opencode.senaev.com`, allowed only with
+sets `opencodeClientId: opencode.senaev.com` (only OpenCode gets it, as `oauth.client_id`), allowed only with
 `https://opencode.senaev.com/auth/mcp/callback`.
 
 `mcp-grafana` runs in the telemetry namespace as part of the vm-stack release, alongside Grafana. cluster-helper calls `http://mcp-grafana.telemetry.svc.cluster.local:8000/mcp`; its cross-namespace NetworkPolicy requires both namespace senaev-com and pod label app=cluster-helper. `mcp-grafana` has Editor rights in Grafana. Its init container logs in with the Grafana admin
