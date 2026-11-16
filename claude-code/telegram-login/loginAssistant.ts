@@ -154,7 +154,16 @@ export function createLoginAssistant(dependencies: AssistantDependencies): Login
         },
 
         async handleMcpCommand(serverName) {
-            const servers = await dependencies.listMcpServers();
+            let servers: McpServer[];
+
+            // A login that waits for an answer stays: it is cancelled only when a new one starts.
+            try {
+                servers = await dependencies.listMcpServers();
+            } catch (error) {
+                await sendText(`Could not list the MCP servers: ${stringifyUnknownError(error)}\nSend /mcp to try again.`);
+
+                return;
+            }
 
             if (servers.length === 0) {
                 await sendText('Claude Code has no MCP servers. They come from agent.mcp of the workspace in the Helm values.');

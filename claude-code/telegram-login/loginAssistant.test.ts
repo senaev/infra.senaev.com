@@ -390,6 +390,31 @@ describe('the /mcp command', () => {
         expect(claudeLogin.cancel).toHaveBeenCalledOnce();
     });
 
+    it('tells the user when the servers cannot be listed, and keeps the login that waits for a code', async () => {
+        const claudeLogin = createSession();
+        const sent: string[] = [];
+        const assistant = createLoginAssistant({
+            getAuthStatus: () => Promise.resolve(loggedInUntil(30)),
+            startLogin: () => claudeLogin,
+            listMcpServers: () => Promise.reject(new Error('claude mcp list failed with exit code 1')),
+            startMcpLogin: () => createSession(),
+            sendMarkdown: (markdown) => {
+                sent.push(markdown);
+
+                return Promise.resolve();
+            },
+            now: () => NOW,
+        });
+
+        await assistant.handleAuthCommand();
+        await assistant.handleMcpCommand('datadog');
+
+        expect(sent.at(-1)).toBe(plain('Could not list the MCP servers: claude mcp list failed with exit code 1\nSend /mcp to try again.'));
+        expect(claudeLogin.cancel).not.toHaveBeenCalled();
+        await expect(assistant.handleText('the-code#state')).resolves.toBe(true);
+        expect(claudeLogin.submitCode).toHaveBeenCalledWith('the-code#state');
+    });
+
     it('tells the user when the link does not come', async () => {
         const failing = createSession({ authorizationUrl: Promise.reject(new Error('no link')) });
         const { assistant, sent } = setup(loggedInUntil(30), [failing], [DATADOG_NEEDS_LOGIN]);
