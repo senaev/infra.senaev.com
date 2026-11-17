@@ -395,9 +395,10 @@ makes outbound connections only, and the NetworkPolicy has no ingress. It is ena
   a server added by hand is removed. Every server uses OAuth. The CLI login
   (`claude mcp login --no-browser <name>`) redirects to `http://localhost:<port>/callback`, and
   Claude Code has no setting for another redirect URI, so there is no public callback. In
-  Telegram, `/mcp` posts a message at once and turns it into the panel: the servers with their
-  status (`claude mcp list`) and a login and a logout button for each (callback data
-  `mcp:login:<name>`, `mcp:logout:<name>`). The dialog works like the torrent search in
+  Telegram, `/mcp` posts a message at once and turns it into the panel: a title and one button for
+  each server, by its status in `claude mcp list` — `✅ <name>: log out` when connected,
+  `🔑 <name>: log in` when it needs a login, `❌ <name>: log in` when it fails to connect
+  (callback data `mcp:logout:<name>`, `mcp:login:<name>`). The dialog works like the torrent search in
   cluster-helper (`sendTelegramEditableMessage`, `editTelegramMessage`): a button press is answered
   with a short notice, and the panel is rewritten in place. Login replies to the panel with its
   own editable message: it runs `claude mcp login --no-browser <name>` under `script` (the CLI

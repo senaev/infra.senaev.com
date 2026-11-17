@@ -12,16 +12,32 @@ export type McpPanel = {
 
 const NO_MCP_SERVERS = 'Claude Code has no MCP servers. They come from agent.mcp of the workspace in the Helm values.';
 
-function statusIcon({ status, needsLogin }: McpServer): string {
-    if (needsLogin) {
-        return '🔑';
+// One button for each server, for the action that its status needs: a connected server can be
+// logged out, any other can be logged in (a failed connection may need a new login).
+function serverButton(server: McpServer): InlineKeyboardButton | undefined {
+    const connected = !server.needsLogin && server.status === 'Connected';
+    const data = mcpButtonData(connected ? 'logout' : 'login', server.name);
+
+    // Telegram takes up to 64 bytes of callback data.
+    if (data === undefined) {
+        return undefined;
     }
 
-    return status === 'Connected' ? '✅' : '❌';
+    if (connected) {
+        return {
+            text: `✅ ${server.name}: log out`,
+            callback_data: data,
+        };
+    }
+
+    return {
+        text: `${server.needsLogin ? '🔑' : '❌'} ${server.name}: log in`,
+        callback_data: data,
+    };
 }
 
-// Rich Markdown joins lines that a single line break separates, so the parts are paragraphs
-// and the servers a list. Each server has a row with a login and a logout button.
+// The message is only the title, after the result of the last action if there is one. The status
+// of each server is on its button.
 export function renderMcpPanel(servers: McpServer[], intro?: string): McpPanel {
     const parts = intro === undefined ? [] : [escapeTelegramMarkdown(intro)];
 
@@ -35,27 +51,11 @@ export function renderMcpPanel(servers: McpServer[], intro?: string): McpPanel {
     }
 
     parts.push(telegramBold('MCP servers of Claude Code'));
-    parts.push(servers.map((server) => `- ${statusIcon(server)} ${escapeTelegramMarkdown(`${server.name}: ${server.status}`)}`).join('\n'));
 
-    const rows = servers.flatMap(({ name }): InlineKeyboardButton[][] => {
-        const login = mcpButtonData('login', name);
-        const logout = mcpButtonData('logout', name);
+    const rows = servers.flatMap((server) => {
+        const button = serverButton(server);
 
-        // Telegram takes up to 64 bytes of callback data.
-        return login === undefined || logout === undefined
-            ? []
-            : [
-                [
-                    {
-                        text: `🔑 Log in: ${name}`,
-                        callback_data: login,
-                    },
-                    {
-                        text: `🚪 Log out: ${name}`,
-                        callback_data: logout,
-                    },
-                ],
-            ];
+        return button === undefined ? [] : [[button]];
     });
 
     return {
