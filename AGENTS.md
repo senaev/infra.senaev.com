@@ -117,7 +117,8 @@ client asked for, and a token for one endpoint is rejected by the others. All of
 same login and authorization server. `/obsidian` is the default resource for a client that sends
 none. The only login is Google: a verified Gmail address listed in Vault `GOOGLE_OAUTH_ADMIN_EMAILS`.
 The username and password login was removed on 2026-11-17; that changed the token signing key
-(now derived from `AUTH_TOKEN_SIGNING_SECRET` alone), so every client logged in again. Google
+(now derived from `AUTH_TOKEN_SIGNING_SECRET` alone), so every earlier token stopped working and
+each client (ChatGPT connectors, Claude Code, OpenCode) must log in again with Google. Google
 blocks its sign-in in embedded webviews (`disallowed_useragent`): open the login link in the
 system browser. ChatGPT needs one connector for each endpoint. The combined `/chat-gpt` endpoint was
 replaced by `/obsidian` and `/code-tools` on 2026-11-16.
