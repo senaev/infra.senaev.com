@@ -8,36 +8,35 @@ import {
 } from './testing/assistantFixtures';
 
 describe('renderMcpPanel', () => {
-    it('lists the servers with their status, and gives each a login and a logout button', () => {
+    it('shows only the title, and one button for each server with the action that its status needs', () => {
         expect(renderMcpPanel([
             DATADOG_CONNECTED,
             GRAFANA_NEEDS_LOGIN,
-        ], 'Logged in to datadog.')).toEqual({
-            markdown: [
-                plain('Logged in to datadog.'),
-                '**MCP servers of Claude Code**',
-                `- ✅ ${plain('datadog: Connected')}\n- 🔑 ${plain('grafana: Needs authentication')}`,
-            ].join('\n\n'),
+            {
+                name: 'obsidian',
+                status: 'Failed to connect',
+                needsLogin: false,
+            },
+        ])).toEqual({
+            markdown: '**MCP servers of Claude Code**',
             replyMarkup: {
                 inline_keyboard: [
                     [
                         {
-                            text: '🔑 Log in: datadog',
-                            callback_data: 'mcp:login:datadog',
-                        },
-                        {
-                            text: '🚪 Log out: datadog',
+                            text: '✅ datadog: log out',
                             callback_data: 'mcp:logout:datadog',
                         },
                     ],
                     [
                         {
-                            text: '🔑 Log in: grafana',
+                            text: '🔑 grafana: log in',
                             callback_data: 'mcp:login:grafana',
                         },
+                    ],
+                    [
                         {
-                            text: '🚪 Log out: grafana',
-                            callback_data: 'mcp:logout:grafana',
+                            text: '❌ obsidian: log in',
+                            callback_data: 'mcp:login:obsidian',
                         },
                     ],
                 ],
@@ -45,19 +44,18 @@ describe('renderMcpPanel', () => {
         });
     });
 
-    it('marks a server that failed to connect, and gives no button to a name too long for Telegram', () => {
-        const longName = 'x'.repeat(60);
+    it('puts the result of the last action above the title', () => {
+        expect(renderMcpPanel([DATADOG_CONNECTED], 'Logged in to datadog.').markdown).toBe(`${plain('Logged in to datadog.')}\n\n**MCP servers of Claude Code**`);
+    });
 
+    it('gives no button to a name too long for Telegram', () => {
         expect(renderMcpPanel([
             {
-                name: longName,
-                status: 'Failed to connect',
+                name: 'x'.repeat(60),
+                status: 'Connected',
                 needsLogin: false,
             },
-        ])).toEqual({
-            markdown: `**MCP servers of Claude Code**\n\n- ❌ ${plain(`${longName}: Failed to connect`)}`,
-            replyMarkup: undefined,
-        });
+        ]).replyMarkup).toBeUndefined();
     });
 
     it('says where the servers come from when there are none', () => {
