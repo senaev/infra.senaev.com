@@ -15,8 +15,6 @@ vi.hoisted(() => {
         'ALISA_ALLOWED_USER_IDS',
         'AUTH_DOMAIN',
         'MCP_DOMAIN',
-        'AUTH_MY_USERNAME',
-        'AUTH_MY_PASSWORD',
         'AUTH_TOKEN_SIGNING_SECRET',
         'GOOGLE_OAUTH_CLIENT_ID',
         'GOOGLE_OAUTH_CLIENT_SECRET',

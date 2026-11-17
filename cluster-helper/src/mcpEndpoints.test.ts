@@ -33,6 +33,8 @@ let replyToObsidianMessage: Mock<McpEndpointsOptions['replyToObsidianMessage']>;
 let replyToCodeMessage: Mock<McpEndpointsOptions['replyToCodeMessage']>;
 let fetchGrafana: Mock<typeof fetch>;
 
+const GOOGLE_EMAIL = 'admin@gmail.com';
+
 describe('MCP resources', () => {
     it('serves the Obsidian, the code and the Grafana endpoints, Obsidian first as the default resource', () => {
         expect(MCP_PATHS).toEqual([
@@ -48,10 +50,8 @@ describe('mcpEndpoints HTTP wiring', () => {
         authorizationServer = createAuthorizationServer({
             issuer: `https://${AUTH_DOMAIN}`,
             resources: mcpResources(MCP_DOMAIN),
-            username: 'andrei',
-            password: 'secret-password',
             signingSecret: 'signing-secret',
-            googleAdminEmails: new Set(),
+            googleAdminEmails: new Set([GOOGLE_EMAIL]),
         });
         replyToObsidianMessage = vi.fn<McpEndpointsOptions['replyToObsidianMessage']>((_message, reply) => Promise.resolve(reply.code(200).send({ from: 'obsidian' })));
         replyToCodeMessage = vi.fn<McpEndpointsOptions['replyToCodeMessage']>((_message, reply) => Promise.resolve(reply.code(200).send({ from: 'code' })));
@@ -87,7 +87,7 @@ describe('mcpEndpoints HTTP wiring', () => {
 
     async function getAccessToken(path: string): Promise<string> {
         const resource = mcpResource(MCP_DOMAIN, path);
-        const outcome = authorizationServer.login({
+        const checked = authorizationServer.authorize({
             response_type: 'code',
             client_id: CLIENT_ID,
             redirect_uri: REDIRECT_URI,
@@ -95,8 +95,16 @@ describe('mcpEndpoints HTTP wiring', () => {
             code_challenge: CODE_CHALLENGE,
             code_challenge_method: 'S256',
             resource,
-            username: 'andrei',
-            password: 'secret-password',
+        });
+
+        if (checked.kind !== 'show-login') {
+            throw new Error(`Expected show-login, got ${checked.kind}`);
+        }
+
+        // What the Google callback does after Google confirmed an allowed email.
+        const outcome = authorizationServer.completeAuthorization(checked.request, {
+            method: 'google',
+            email: GOOGLE_EMAIL,
         });
 
         if (outcome.kind !== 'redirect') {

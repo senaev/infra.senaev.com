@@ -115,7 +115,11 @@ and their wiring are in `cluster-helper/src/mcpEndpoints.ts`, tested by `mcpEndp
 Each endpoint is its own OAuth resource (RFC 8707): the token `aud` is the resource that the
 client asked for, and a token for one endpoint is rejected by the others. All of them share the
 same login and authorization server. `/obsidian` is the default resource for a client that sends
-none. ChatGPT needs one connector for each endpoint. The combined `/chat-gpt` endpoint was
+none. The only login is Google: a verified Gmail address listed in Vault `GOOGLE_OAUTH_ADMIN_EMAILS`.
+The username and password login was removed on 2026-11-17; that changed the token signing key
+(now derived from `AUTH_TOKEN_SIGNING_SECRET` alone), so every client logged in again. Google
+blocks its sign-in in embedded webviews (`disallowed_useragent`): open the login link in the
+system browser. ChatGPT needs one connector for each endpoint. The combined `/chat-gpt` endpoint was
 replaced by `/obsidian` and `/code-tools` on 2026-11-16.
 
 There is no client registration: the allowed clients are hard-coded in

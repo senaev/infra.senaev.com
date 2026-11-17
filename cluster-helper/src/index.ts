@@ -20,8 +20,6 @@ import {
     ALISA_ALLOWED_USER_IDS,
     API_DOMAIN,
     AUTH_DOMAIN,
-    AUTH_MY_PASSWORD,
-    AUTH_MY_USERNAME,
     AUTH_TOKEN_SIGNING_SECRET,
     GOOGLE_OAUTH_ADMIN_EMAILS,
     GOOGLE_OAUTH_CLIENT_ID,
@@ -356,11 +354,8 @@ const googleAdminEmails = parseGoogleAdminEmails(GOOGLE_OAUTH_ADMIN_EMAILS);
 const authorizationServer = createAuthorizationServer({
     issuer: `https://${AUTH_DOMAIN}`,
     resources: mcpResources(MCP_DOMAIN),
-    username: AUTH_MY_USERNAME,
-    password: AUTH_MY_PASSWORD,
     signingSecret: AUTH_TOKEN_SIGNING_SECRET,
     googleAdminEmails,
-    onLoginAttempt: notifyLoginAttempt,
 });
 
 const googleLogin = createGoogleLogin({

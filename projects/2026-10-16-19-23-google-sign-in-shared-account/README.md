@@ -275,6 +275,16 @@ Checked by the owner in production through ChatGPT: password login, Google login
 allowed account, and a denied Google account ("This Google account is not allowed.") all
 work.
 
+### 2026-11-17 — Password login removed
+
+The owner asked to remove the username and password login. Google is the only login method:
+`POST /authorize`, the password form, `AUTH_MY_USERNAME` and `AUTH_MY_PASSWORD` are gone. The
+signing key was `HMAC-SHA256(AUTH_TOKEN_SIGNING_SECRET, AUTH_MY_PASSWORD)`; it is now derived from
+`AUTH_TOKEN_SIGNING_SECRET` alone, so every token issued before, by either method, stopped working
+and every client logged in again with Google. Tokens without the Google provenance are rejected.
+The webview open point below now matters more: without the password, a login in an embedded
+webview cannot work at all.
+
 ## Result
 
 Google sign-in works next to password login for the same shared account (`ceb0266`,

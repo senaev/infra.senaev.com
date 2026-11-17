@@ -1,6 +1,4 @@
-import {
-    createHmac, randomBytes, timingSafeEqual,
-} from 'node:crypto';
+import { createHmac, randomBytes } from 'node:crypto';
 
 import { jwtVerify, SignJWT } from 'jose';
 import { parseBearerToken } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
@@ -58,16 +56,19 @@ const OPENCODE_SENAEV_REDIRECT_URI = 'https://opencode.senaev.com/auth/mcp/callb
 const CLAUDE_CODE_CLIENT_ID = 'https://claude.ai/oauth/claude-code-client-metadata';
 const CLAUDE_CODE_REDIRECT_URI = /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?\/callback$/;
 
+// Every token is for the one owner of the server; the Google email is in `email_hash`.
+const TOKEN_SUBJECT = 'owner';
+const TOKEN_SIGNING_KEY_LABEL = 'oauth-token-signing-key:google-only';
+
 const PKCE_CODE_VERIFIER = /^[\w.~-]{43,128}$/;
 
-export type LoginIdentity =
-    | { method: 'password' }
-    | { method: 'google'; email: string };
+// Google is the only login method. A password login existed until 2026-11-17.
+export type LoginIdentity = { method: 'google'; email: string };
 
 export type LoginAttempt = {
     method: LoginIdentity['method'];
     result: 'success' | 'denied';
-    /** The Google email, or the username given in the password form. */
+    /** The Google email. */
     account: string;
 };
 
@@ -75,12 +76,9 @@ export type AuthorizationServerConfig = {
     issuer: string;
     /** The protected resources. The first one is the default when a client sends no `resource`. */
     resources: readonly [string, ...string[]];
-    username: string;
-    password: string;
     signingSecret: string;
     /** Normalized Gmail addresses; a Google-origin refresh token renews only while its email is here. */
     googleAdminEmails: ReadonlySet<string>;
-    onLoginAttempt?: (attempt: LoginAttempt) => void;
     now?: () => number;
 };
 
@@ -115,12 +113,9 @@ type IssuedCode = {
     expiresAt: number;
 };
 
-// Signed into Google-origin tokens so that refresh can check the allowlist. The email is
-// kept as a keyed hash: ChatGPT stores the tokens and can read their payload. Tokens
-// without `idp` come from password login, or were issued before Google login existed.
-type TokenProvenance =
-    | { idp: 'password' }
-    | { idp: 'google'; emailHash: string };
+// Signed into every token so that refresh can check the allowlist. The email is kept as a
+// keyed hash: the clients store the tokens and can read their payload.
+type TokenProvenance = { idp: 'google'; emailHash: string };
 
 // What a token is issued for. A refresh keeps all of it, so it cannot switch resources.
 type TokenGrant = {
@@ -159,7 +154,7 @@ function isAllowedClient(clientId: string, redirectUri: string): boolean {
 
 export function createAuthorizationServer(config: AuthorizationServerConfig) {
     const {
-        issuer, resources, username, password,
+        issuer, resources,
     } = config;
     const [defaultResource] = resources;
     const now = config.now ?? Date.now;
@@ -168,9 +163,11 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
         return typeof value === 'string' && resources.includes(value);
     }
 
-    // The key also depends on the password, so changing the password in Vault revokes
-    // every token at once. That is the only revocation there is: tokens are not stored.
-    const signingKey = createHmac('sha256', config.signingSecret).update(password).digest();
+    // Changing AUTH_TOKEN_SIGNING_SECRET in Vault revokes every token at once. That is the only
+    // revocation there is: tokens are not stored. Until 2026-11-17 the key also depended on
+    // the login password; the label made a new key, which revoked the tokens of that time,
+    // also those that a password login had issued.
+    const signingKey = createHmac('sha256', config.signingSecret).update(TOKEN_SIGNING_KEY_LABEL).digest();
 
     function hashEmail(email: string): string {
         return createHmac('sha256', signingKey).update(`google-email:${email}`).digest('base64url');
@@ -250,15 +247,6 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
         };
     }
 
-    function areCredentialsValid(givenUsername: string, givenPassword: string): boolean {
-        // Compare digests so that both comparisons take constant time whatever the lengths,
-        // and evaluate both so the time does not show which one was wrong.
-        const isUsernameValid = timingSafeEqual(sha256(givenUsername), sha256(username));
-        const isPasswordValid = timingSafeEqual(sha256(givenPassword), sha256(password));
-
-        return isUsernameValid && isPasswordValid;
-    }
-
     function issueAuthorizationCode(request: AuthorizeRequest, identity: LoginIdentity): string {
         const currentTime = now();
 
@@ -287,19 +275,13 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
     }
 
     function provenanceOf(identity: LoginIdentity): TokenProvenance {
-        return identity.method === 'google'
-            ? {
-                idp: 'google',
-                emailHash: hashEmail(identity.email),
-            }
-            : { idp: 'password' };
+        return {
+            idp: 'google',
+            emailHash: hashEmail(identity.email),
+        };
     }
 
     function readProvenance(payload: Record<string, unknown>): TokenProvenance | null {
-        if (payload.idp === undefined) {
-            return { idp: 'password' };
-        }
-
         return payload.idp === 'google' && typeof payload.email_hash === 'string'
             ? {
                 idp: 'google',
@@ -326,10 +308,8 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
         return new SignJWT({
             client_id: clientId,
             scope: MCP_SCOPE,
-            ...(provenance.idp === 'google' && {
-                idp: provenance.idp,
-                email_hash: provenance.emailHash,
-            }),
+            idp: provenance.idp,
+            email_hash: provenance.emailHash,
         })
             .setProtectedHeader({
                 alg: SIGNING_ALGORITHM,
@@ -337,7 +317,7 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
             })
             .setIssuer(issuer)
             .setAudience(resource)
-            .setSubject(username)
+            .setSubject(TOKEN_SUBJECT)
             .setIssuedAt(issuedAt)
             .setExpirationTime(issuedAt + ttlSeconds)
             .setJti(randomBytes(16).toString('base64url'))
@@ -365,7 +345,7 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
                 algorithms: [SIGNING_ALGORITHM],
                 typ: type,
                 issuer,
-                subject: username,
+                subject: TOKEN_SUBJECT,
                 requiredClaims: ['exp'],
                 currentDate: new Date(now()),
             });
@@ -431,7 +411,7 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
 
         const { provenance } = verified;
 
-        if (provenance.idp === 'google' && !googleAdminEmailHashes.has(provenance.emailHash)) {
+        if (!googleAdminEmailHashes.has(provenance.emailHash)) {
             return tokenError('invalid_grant', 'The Google account of this refresh token is no longer allowed');
         }
 
@@ -468,41 +448,14 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
             };
         },
 
-        /** GET /authorize: checks the request and asks for the login form. */
+        /** GET /authorize: checks the request and asks for the login page. */
         authorize(params: Params): AuthorizeOutcome {
             return parseAuthorizeRequest(params);
         },
 
-        /** POST /authorize: the login form, which carries the request as hidden fields. */
-        login(params: Params): AuthorizeOutcome {
-            const outcome = parseAuthorizeRequest(params);
-
-            if (outcome.kind !== 'show-login') {
-                return outcome;
-            }
-
-            const givenUsername = readString(params, 'username') ?? '';
-            const isValid = areCredentialsValid(givenUsername, readString(params, 'password') ?? '');
-
-            config.onLoginAttempt?.({
-                method: 'password',
-                result: isValid ? 'success' : 'denied',
-                account: givenUsername,
-            });
-
-            if (!isValid) {
-                return {
-                    ...outcome,
-                    error: 'Incorrect username or password.',
-                };
-            }
-
-            return completeAuthorization(outcome.request, { method: 'password' });
-        },
-
         /**
-         * Issues the authorization code for a request that a login method other than the
-         * password form has already checked with `authorize` and authenticated.
+         * Issues the authorization code for a request that the Google login has checked
+         * again with `authorize` and authenticated.
          */
         completeAuthorization,
 
@@ -532,7 +485,7 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
                 ? { kind: 'invalid' }
                 : {
                     kind: 'valid',
-                    subject: username,
+                    subject: TOKEN_SUBJECT,
                 };
         },
     };

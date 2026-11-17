@@ -151,18 +151,6 @@ spec:
                   name: senaev-com-kv-secrets
                   key: ALISA_ALLOWED_USER_IDS
                   optional: false
-            - name: AUTH_MY_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: senaev-com-kv-secrets
-                  key: AUTH_MY_USERNAME
-                  optional: false
-            - name: AUTH_MY_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: senaev-com-kv-secrets
-                  key: AUTH_MY_PASSWORD
-                  optional: false
             - name: AUTH_TOKEN_SIGNING_SECRET
               valueFrom:
                 secretKeyRef:
