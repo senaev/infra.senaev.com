@@ -23,8 +23,6 @@ it('enforces the production OAuth threshold and independent windows with the rea
             authorizationServer: createAuthorizationServer({
                 issuer: `https://${authDomain}`,
                 resources: ['https://mcp.example.com/mcp'],
-                username: 'test',
-                password: 'test-password',
                 signingSecret: 'test-only-secret',
                 googleAdminEmails: new Set(),
             }),
@@ -36,18 +34,24 @@ it('enforces the production OAuth threshold and independent windows with the rea
                 transactionSecret: 'test-only-secret',
             }),
         });
-        const post = (url: string) => server.inject({
-            method: 'POST',
-            url,
-            payload: '',
-            headers: {
-                host: authDomain,
-                'content-type': 'application/x-www-form-urlencoded',
-            },
-        });
+        // The Google start is a GET, the token request a form POST. Both answer 400 to an empty request.
+        const post = (url: string) => (url === '/token'
+            ? server.inject({
+                method: 'POST',
+                url,
+                payload: '',
+                headers: {
+                    host: authDomain,
+                    'content-type': 'application/x-www-form-urlencoded',
+                },
+            })
+            : server.inject({
+                url,
+                headers: { host: authDomain },
+            }));
 
         for (const url of [
-            '/authorize',
+            '/google/start',
             '/token',
         ]) {
             // Invalid requests must consume the same budget as valid requests.
@@ -70,9 +74,9 @@ it('enforces the production OAuth threshold and independent windows with the rea
             headers: { host: authDomain },
         })).statusCode).toBe(200);
         vi.advanceTimersByTime(59_999);
-        expect((await post('/authorize')).statusCode).toBe(429);
+        expect((await post('/google/start')).statusCode).toBe(429);
         vi.advanceTimersByTime(1);
-        expect((await post('/authorize')).statusCode).toBe(400);
+        expect((await post('/google/start')).statusCode).toBe(400);
         expect((await post('/token')).statusCode).toBe(400);
     } finally {
         try {

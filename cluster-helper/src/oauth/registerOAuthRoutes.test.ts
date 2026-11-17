@@ -65,8 +65,6 @@ beforeEach(async () => {
             `https://${MCP_DOMAIN}/mcp`,
             `https://${MCP_DOMAIN}/grafana`,
         ],
-        username: 'andrei',
-        password: 'secret-password',
         signingSecret: 'signing-secret',
         googleAdminEmails: new Set([GOOGLE_EMAIL]),
     });
@@ -113,6 +111,24 @@ function callGoogleCallback(query: Record<string, string>, cookie: { name: strin
         headers: { host: AUTH_DOMAIN },
         ...(cookie !== undefined && { cookies: { [cookie.name]: cookie.value } }),
     });
+}
+
+// The whole Google sign-in of an allowed account, up to the success page.
+async function signInWithGoogle() {
+    const {
+        transactionCookie, state, nonce,
+    } = await startGoogleLogin();
+
+    fakeGoogle.setIdTokenClaims({
+        nonce,
+        email: GOOGLE_EMAIL,
+        email_verified: true,
+    });
+
+    return callGoogleCallback({
+        state,
+        code: 'google-code',
+    }, transactionCookie);
 }
 
 function continueUrlOf(body: string): URL {
@@ -182,15 +198,13 @@ describe('registerOAuthRoutes', () => {
         expect(rejected.body).not.toContain('<script>');
 
         const invalid = await server.inject({
-            method: 'POST',
-            url: '/authorize',
-            headers: FORM_HEADERS,
-            payload: new URLSearchParams({
+            url: `/authorize?${new URLSearchParams({
                 client_id: 'https://chatgpt.com/oauth/client.json',
                 redirect_uri: 'https://chatgpt.com/connector_platform_oauth_redirect',
                 response_type: 'unsupported',
                 state: 'original-state',
-            }).toString(),
+            }).toString()}`,
+            headers: { host: AUTH_DOMAIN },
         });
 
         expect(invalid.statusCode).toBe(400);
@@ -204,23 +218,15 @@ describe('registerOAuthRoutes', () => {
         vi.useFakeTimers({ toFake: ['Date'] });
         requestPolicy.max = 1;
         expect(vi.mocked(httpRateLimit).mock.calls).toEqual([
-            ['login'],
             ['google-start'],
             ['google-callback'],
             ['token'],
         ]);
-        await server.inject({
-            method: 'POST',
-            url: '/authorize',
-            headers: FORM_HEADERS,
-            payload: '',
-        });
+        await startGoogleLogin();
 
         const response = await server.inject({
-            method: 'POST',
-            url: '/authorize',
-            headers: FORM_HEADERS,
-            payload: '',
+            url: `/google/start?${new URLSearchParams(AUTHORIZE_QUERY).toString()}`,
+            headers: { host: AUTH_DOMAIN },
         });
 
         expect(response.statusCode).toBe(429);
@@ -229,9 +235,6 @@ describe('registerOAuthRoutes', () => {
         expect(response.headers['content-security-policy']).toContain('frame-ancestors \'none\'');
         expect(response.body).toContain('Wait a minute');
         expect(response.body).toContain('Reference:');
-
-        // A flood of password attempts does not lock Google sign-in.
-        expect((await startGoogleLogin()).response.statusCode).toBe(302);
 
         await server.inject({
             method: 'POST',
@@ -252,14 +255,12 @@ describe('registerOAuthRoutes', () => {
     });
 
     it('shows a safe internal error without disclosing exception details', async () => {
-        vi.spyOn(authorizationServer, 'login').mockImplementation(() => {
+        vi.spyOn(authorizationServer, 'authorize').mockImplementation(() => {
             throw new Error('private-secret');
         });
         const response = await server.inject({
-            method: 'POST',
-            url: '/authorize',
-            headers: FORM_HEADERS,
-            payload: '',
+            url: `/authorize?${new URLSearchParams(AUTHORIZE_QUERY).toString()}`,
+            headers: { host: AUTH_DOMAIN },
         });
 
         expect(response.statusCode).toBe(500);
@@ -268,23 +269,7 @@ describe('registerOAuthRoutes', () => {
     });
 
     it('shows a successful login with a usable validated callback link', async () => {
-        const verifier = 'v'.repeat(43);
-        const challenge = createHash('sha256').update(verifier).digest('base64url');
-        const response = await server.inject({
-            method: 'POST',
-            url: '/authorize',
-            headers: FORM_HEADERS,
-            payload: new URLSearchParams({
-                response_type: 'code',
-                client_id: 'https://chatgpt.com/oauth/client.json',
-                redirect_uri: 'https://chatgpt.com/connector_platform_oauth_redirect',
-                code_challenge: challenge,
-                code_challenge_method: 'S256',
-                username: 'andrei',
-                password: 'secret-password',
-                state: 'original-state',
-            }).toString(),
-        });
+        const response = await signInWithGoogle();
 
         expect(response.statusCode).toBe(200);
         expect(response.headers.location).toBeUndefined();
@@ -299,71 +284,47 @@ describe('registerOAuthRoutes', () => {
         expect(response.body).toContain(`<script nonce="${nonce}">`);
         expect(response.body).toContain('window.location.assign(link.href)');
         expect(String(response.headers['content-security-policy'])).not.toContain('script-src \'unsafe-inline\'');
-        expect(response.body).not.toContain('secret-password');
         expect(response.body).not.toContain('<form');
         expect(response.body).not.toContain('http-equiv="refresh"');
-        const href = /<a href="([^" ]+)" rel="noreferrer">Return to the app<\/a>/.exec(response.body)?.[1];
 
-        expect(href).toBeDefined();
-        const location = new URL(String(href).replaceAll('&amp;', '&'));
+        const location = continueUrlOf(response.body);
 
         expect(location.origin).toBe('https://chatgpt.com');
         expect(location.searchParams.get('code')).toBeTruthy();
         expect(location.searchParams.get('state')).toBe('original-state');
-        const anotherLogin = await server.inject({
+
+        const anotherLogin = await signInWithGoogle();
+
+        expect(anotherLogin.headers['content-security-policy']).not.toBe(response.headers['content-security-policy']);
+    });
+
+    it('has no password login: no POST /authorize and no password field', async () => {
+        const post = await server.inject({
             method: 'POST',
             url: '/authorize',
             headers: FORM_HEADERS,
             payload: new URLSearchParams({
-                response_type: 'code',
-                client_id: 'https://chatgpt.com/oauth/client.json',
-                redirect_uri: 'https://chatgpt.com/connector_platform_oauth_redirect',
-                code_challenge: challenge,
-                code_challenge_method: 'S256',
+                ...AUTHORIZE_QUERY,
                 username: 'andrei',
                 password: 'secret-password',
             }).toString(),
         });
 
-        expect(anotherLogin.headers['content-security-policy']).not.toBe(response.headers['content-security-policy']);
-        const token = await server.inject({
-            method: 'POST',
-            url: '/token',
-            headers: FORM_HEADERS,
-            payload: new URLSearchParams({
-                grant_type: 'authorization_code',
-                code: String(location.searchParams.get('code')),
-                client_id: 'https://chatgpt.com/oauth/client.json',
-                redirect_uri: 'https://chatgpt.com/connector_platform_oauth_redirect',
-                code_verifier: verifier,
-            }).toString(),
+        expect(post.statusCode).toBe(404);
+        expect(post.headers.location).toBeUndefined();
+
+        const page = await server.inject({
+            url: `/authorize?${new URLSearchParams(AUTHORIZE_QUERY).toString()}`,
+            headers: { host: AUTH_DOMAIN },
         });
 
-        expect(token.statusCode).toBe(200);
-        expect(token.json()).toMatchObject({ token_type: 'Bearer' });
+        expect(page.statusCode).toBe(200);
+        expect(page.body).toContain('Sign in with Google');
+        expect(page.body).not.toContain('name="password"');
+        expect(page.body).not.toContain('method="post"');
     });
 
-    it('parses the form-encoded login and token requests', async () => {
-        const login = await server.inject({
-            method: 'POST',
-            url: '/authorize',
-            headers: FORM_HEADERS,
-            payload: new URLSearchParams({
-                response_type: 'code',
-                client_id: 'https://chatgpt.com/oauth/client.json',
-                redirect_uri: 'https://chatgpt.com/connector_platform_oauth_redirect',
-                code_challenge: 'x'.repeat(43),
-                code_challenge_method: 'S256',
-                username: 'andrei',
-                password: 'wrong',
-            }).toString(),
-        });
-
-        expect(login.statusCode).toBe(401);
-        expect(login.headers['content-type']).toContain('text/html');
-        expect(login.headers['content-security-policy']).toContain('frame-ancestors \'none\'');
-        expect(login.body).toContain('Incorrect username or password.');
-
+    it('parses a form-encoded token request', async () => {
         const token = await server.inject({
             method: 'POST',
             url: '/token',
@@ -385,7 +346,7 @@ describe('Google sign-in routes', () => {
 
         expect(response.body).toContain('<form method="get" action="/google/start">');
         expect(response.body).toContain('Sign in with Google');
-        expect(response.headers['content-security-policy']).toContain('form-action \'self\' https://chatgpt.com https://accounts.google.com');
+        expect(response.headers['content-security-policy']).toContain('form-action \'self\' https://accounts.google.com;');
     });
 
     it('checks the ChatGPT request again before it starts the Google flow', async () => {
@@ -489,7 +450,7 @@ describe('Google sign-in routes', () => {
 
         expect(deniedCallback.statusCode).toBe(401);
         expect(deniedCallback.body).toContain('This Google account is not allowed.');
-        expect(deniedCallback.body).toContain('name="password"');
+        expect(deniedCallback.body).toContain('Sign in with Google');
         expect(loginAttempts).toEqual([
             {
                 method: 'google',
