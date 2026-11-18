@@ -150,6 +150,18 @@ through unchanged. One API key for all clients, Vault `LLM_ENDPOINT_API_KEY`, ch
 before the body is read. The model list is `cluster-helper/src/llm/llmEndpointModels.ts`.
 See [`projects/2026-11-06-10-23-personal-llm-connector`](projects/2026-11-06-10-23-personal-llm-connector/README.md).
 
+## Alerting heartbeat
+
+vmagent, VMSingle, vmalert and Alertmanager all run on senaev-madrid, so when that node or the
+stack is down no alert can fire. A dead man's switch covers this: the always-firing
+`alerting-heartbeat` rule (`provisioning/helm/senaev-com/templates/alerts.yaml`) is true only
+while node-exporter samples are fresh, and Alertmanager sends it every minute to
+`POST /alertmanager/heartbeat` on the internal port of cluster-helper, which runs on hetzner.
+When no heartbeat arrives for 5 minutes, cluster-helper posts `🚨 Alerting is down` to the
+cluster Telegram chat once, and `✅ Alerting recovered` when heartbeats return
+(`cluster-helper/src/alerts/alertingHeartbeatMonitor.ts`). After a cluster-helper restart it
+waits 5 minutes before judging. It does not cover an outage of hetzner itself.
+
 ## Telegram public API
 
 `POST https://api.senaev.com/telegram-public-bot-api/<method>` with a JSON body is a thin proxy
