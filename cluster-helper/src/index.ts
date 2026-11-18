@@ -126,7 +126,8 @@ let alertingHeartbeatCheckTimer: NodeJS.Timeout | undefined;
 
 // Alertmanager posts the always-firing `alerting-heartbeat` alert here about once a minute. The
 // body is not read: any call proves that vmagent, VMSingle, vmalert and Alertmanager work.
-internalServer.post('/alertmanager/heartbeat', async (_request, reply) => {
+// `logLevel: 'warn'` drops the two request log lines that a call every minute would add.
+internalServer.post('/alertmanager/heartbeat', { logLevel: 'warn' }, async (_request, reply) => {
     await alertingHeartbeatMonitor.recordHeartbeat();
 
     reply.code(204).send();
