@@ -451,7 +451,8 @@ only in `senaev`.
   container: `start.sh` starts it in the background before the login check, then starts Remote
   Control; when either process exits, the container exits and restarts. `POST
   http://<name>-claude-code:8080/run` with `{ "prompt": "..." }` runs `claude -p` without approvals
-  in `HOME/prompt-api` and answers when the run ends with `{ status, result, isError, durationMs,
+  in `/prompt-api`, a folder in the container, so that its sessions and scratch files stay apart
+  from `/code`; it answers when the run ends with `{ status, result, isError, durationMs,
   numTurns, costUsd }` (`result` is the last message of Claude, in Markdown), 502 when the run
   fails, 409 while another prompt runs. One run at a time, at most 30 minutes. The runs have
   everything the container has: the login, the MCP logins, the git token, the SSH agent and
