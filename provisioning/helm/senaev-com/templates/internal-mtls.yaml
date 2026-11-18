@@ -1,0 +1,54 @@
+# Leaf certificates for the mTLS between cluster-helper and obsidian-sync, issued by the private
+# CA of the pki namespace (provisioning/helm/pki). The DNS name is the identity: obsidian-sync
+# allows only the cluster-helper name, and cluster-helper checks the obsidian-sync name against
+# the host of its URL. The names are labels and need not exist in DNS.
+# A new key is made on every renewal, 3 days before the end; the services load it by polling.
+{{- if .Values.obsidianSync.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: obsidian-sync-tls
+  namespace: {{ .Release.Namespace }}
+spec:
+  secretName: obsidian-sync-tls
+  dnsNames:
+    - obsidian-sync.{{ .Release.Namespace }}.svc.cluster.local
+  usages:
+    - digital signature
+    - server auth
+  duration: 168h
+  renewBefore: 72h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  issuerRef:
+    name: internal-ca
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+{{- end }}
+{{- if .Values.clusterHelper.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cluster-helper-client-tls
+  namespace: {{ .Release.Namespace }}
+spec:
+  secretName: cluster-helper-client-tls
+  dnsNames:
+    - cluster-helper.{{ .Release.Namespace }}.svc.cluster.local
+  usages:
+    - digital signature
+    - client auth
+  duration: 168h
+  renewBefore: 72h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  issuerRef:
+    name: internal-ca
+    kind: ClusterIssuer
+    group: cert-manager.io
+{{- end }}

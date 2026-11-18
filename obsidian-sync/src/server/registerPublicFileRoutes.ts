@@ -105,8 +105,6 @@ export function registerPublicFileRoutes(server: VaultServer): void {
         reply: FastifyReply
     ): Promise<FastifyReply> => servePublicFile(request.query, reply);
 
-    const options = { config: { isPublicWithoutInternalToken: true } };
-
-    server.get<{ Querystring: PublicFileQuery }>('/', options, handler);
-    server.get<{ Querystring: PublicFileQuery }>('/*', options, handler);
+    server.get<{ Querystring: PublicFileQuery }>('/', handler);
+    server.get<{ Querystring: PublicFileQuery }>('/*', handler);
 }

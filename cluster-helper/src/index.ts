@@ -48,6 +48,7 @@ import {
     createCodeToolFamily, createObsidianToolFamily, type ToolFamily,
 } from './chatGptMcp/toolFamilies';
 import { callCodeTool } from './codeToolsApi';
+import { startObsidianSyncClient, stopObsidianSyncClient } from './obsidianSyncClient';
 import {
     callVaultTool, getShortLink, readVaultResource,
 } from './obsidianSyncApi';
@@ -369,6 +370,9 @@ const googleLogin = createGoogleLogin({
 async function main(): Promise<void> {
     logStartupStep('modules loaded');
 
+    await startObsidianSyncClient();
+    logStartupStep('obsidian-sync client started');
+
     const botUser: TelegramUser = await getCurrentTelegramBotInfo(TG_TOKEN_SENAEV_COM_BOT);
 
     logger.info({ botUser }, '✅ Bot user');
@@ -499,6 +503,7 @@ async function shutdown(): Promise<void> {
         internalServer.close(),
         publicServer.close(),
     ]);
+    await stopObsidianSyncClient();
     stopTorrentOutboxProcessor();
     process.exit(0);
 }

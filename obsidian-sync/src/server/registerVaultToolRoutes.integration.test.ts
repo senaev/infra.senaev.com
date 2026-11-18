@@ -9,12 +9,7 @@ import { downloadTool } from '../vault-tools/tools/downloadTool';
 import { createTestVault, type TestVault } from '../vault-tools/createTestVault';
 
 import { createVaultServer, type VaultServer } from './createVaultServer';
-import { registerInternalTokenCheck } from './registerInternalTokenCheck';
-import { registerPublicFileRoutes } from './registerPublicFileRoutes';
 import { registerVaultToolRoutes } from './registerVaultToolRoutes';
-
-const TOKEN = 'internal-token';
-const AUTHORIZED = { authorization: `Bearer ${TOKEN}` };
 
 let vault: TestVault;
 let server: VaultServer;
@@ -22,12 +17,7 @@ let server: VaultServer;
 beforeAll(async () => {
     vault = await createTestVault({ 'Note.md': '# Note\n' });
     server = createVaultServer();
-    registerInternalTokenCheck(server, TOKEN);
     registerVaultToolRoutes(server, vault.config);
-    server.get('/milestones', () => {
-        return { status: 'ok' };
-    });
-    registerPublicFileRoutes(server);
     await server.ready();
 });
 
@@ -36,43 +26,13 @@ afterAll(async () => {
     await vault.remove();
 });
 
-function callTool(tool: string, body: unknown, headers: Record<string, string> = AUTHORIZED) {
+function callTool(tool: string, body: unknown) {
     return server.inject({
         method: 'POST',
         url: `/vault/${tool}`,
-        headers,
         payload: body as Record<string, unknown>,
     });
 }
-
-describe('internal token check', () => {
-    it('rejects vault tool calls without the token or with a wrong one', async () => {
-        expect((await callTool('list', {}, {})).statusCode).toBe(401);
-        expect((await callTool('list', {}, { authorization: 'Bearer wrong' })).statusCode).toBe(401);
-    });
-
-    it('protects the existing routes too', async () => {
-        expect((await server.inject({
-            method: 'GET',
-            url: '/milestones',
-        })).statusCode).toBe(401);
-        expect((await server.inject({
-            method: 'GET',
-            url: '/milestones',
-            headers: AUTHORIZED,
-        })).statusCode).toBe(200);
-    });
-
-    it('leaves the ?note= / ?file= routes open for nextjs-app', async () => {
-        const response = await server.inject({
-            method: 'GET',
-            url: '/',
-        });
-
-        expect(response.statusCode).toBe(400);
-        expect(response.body).toContain('Missing required query parameter');
-    });
-});
 
 describe('vault tool routes', () => {
     it('returns the tool result with status ok', async () => {
@@ -110,19 +70,12 @@ describe('vault tool routes', () => {
     });
 });
 
-it('serves private resource bytes only with internal authentication', async () => {
+it('serves private resource bytes', async () => {
     const result = await downloadTool(vault.config, { path: 'Note.md' });
     const payload = { uri: result.resource.uri };
-
-    expect((await server.inject({
-        method: 'POST',
-        url: '/vault-file-resource',
-        payload,
-    })).statusCode).toBe(401);
     const response = await server.inject({
         method: 'POST',
         url: '/vault-file-resource',
-        headers: AUTHORIZED,
         payload,
     });
 
@@ -140,7 +93,6 @@ it('transfers a resource larger than the managed result quota without pagination
     const response = await server.inject({
         method: 'POST',
         url: '/vault-file-resource',
-        headers: AUTHORIZED,
         payload: { uri: download.resource.uri },
     });
 
@@ -170,7 +122,6 @@ it('refuses concurrent resource transfers and admits the next one after completi
     const options = {
         method: 'POST' as const,
         url: '/vault-file-resource',
-        headers: AUTHORIZED,
         payload: { uri: download.resource.uri },
     };
     const first = server.inject(options).then((response) => response);
@@ -204,7 +155,6 @@ it('delivers managed chunks with exact bytes and rejects stale versions', async 
     };
 
     expect(metadata.chunkCount).toBe(1);
-    expect((await callTool('download_chunk', args, {})).statusCode).toBe(401);
     const response = await callTool('download_chunk', args);
     const chunk = response.json<{ data: string }>();
 

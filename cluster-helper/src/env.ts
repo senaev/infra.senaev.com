@@ -26,8 +26,8 @@ export const PROWLARR_CONFIG_FILE = requireEnv('PROWLARR_CONFIG_FILE');
 export const TG_VPN_SUBSCRIPTION_CHAT_ID = requireEnv('TG_VPN_SUBSCRIPTION_CHAT_ID');
 export const OBSIDIAN_TASKS_CHAT_ID = requireEnv('OBSIDIAN_TASKS_CHAT_ID');
 export const TRICKY_DAD_CHAT_ID = requireEnv('TRICKY_DAD_CHAT_ID');
+/** The mTLS origin of obsidian-sync. Its host must be the DNS name in its certificate. */
 export const OBSIDIAN_SYNC_URL = requireEnv('OBSIDIAN_SYNC_URL');
-export const INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN = requireEnv('INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN');
 /** code-tools runs in the opencode-serve container and serves the code-* MCP tools. */
 export const CODE_TOOLS_URL = requireEnv('CODE_TOOLS_URL');
 export const INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS = requireEnv('INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS');

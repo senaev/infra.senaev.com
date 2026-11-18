@@ -6,4 +6,4 @@ process.env.OBSIDIAN_VAULT_NAME ??= 'test-vault';
 process.env.OBSIDIAN_VAULT_PATH ??= '/tmp/obsidian-sync-test-vault';
 process.env.TG_TOKEN_SENAEV_COM_BOT ??= 'test-bot-token';
 process.env.TG_CLUSTER_CHAT_ID ??= '-1000000000000';
-process.env.INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN ??= 'test-internal-token';
+process.env.MTLS_ALLOWED_CLIENT_NAME ??= 'cluster-helper.test.svc.cluster.local';

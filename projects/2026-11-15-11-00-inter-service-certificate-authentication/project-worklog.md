@@ -1,3 +1,56 @@
+## 2026-11-16 UTC — Renew the CA automatically with the same key
+
+User did not want a manual CA replacement or a risk of downtime. The CA Certificate now uses
+`rotationPolicy: Never` and the default `renewBefore`: cert-manager renews it by itself and
+keeps the key, so every leaf of the old certificate is valid for the renewed one. A real TLS
+test (`keeps trusting leaves across a CA renewal that keeps the CA key`) checks both
+directions. Leaves take the new `ca.crt` when they renew, every 4 days. Only a lost or
+compromised CA key needs the manual replacement. Added a 📌 to move nextjs-app and vmagent
+to mTLS and close port 8080.
+
+## 2026-11-16 UTC — Remove alerts from the first implementation
+
+User chose to drop the alerts and the cert-manager scrape for now: they were untested. Removed
+`monitoring.yaml` from the issuers chart and the alert text from the plan and README. Added two
+📌 follow-ups to the README: delete the unused Vault property, and add the alerts later.
+
+## 2026-11-16 UTC — Implement the plan in PR #203
+
+User asked to implement the feature in the same branch. Added the pki charts, the leaf
+Certificates, the mTLS helpers in senaev-utils (with real TLS integration tests), two Fastify
+instances in obsidian-sync and the mTLS client in cluster-helper. Removed the token check and
+its secret wiring. `npm run simple-checks`: lint, typecheck, 1836 tests and helm lint pass.
+Decisions made while coding: TLS 1.3 only with no session tickets (replaces the planned maximum
+connection age); the CA Certificate renews 1 hour before its end so cert-manager does not rotate
+the CA unnoticed; trust comes from `ca.crt` of each leaf Secret; monitoring uses cert-manager
+metrics (three alerts) and the services log reload failures. Not tested here: cert-manager and
+the Helm releases on the real cluster (no cluster access from this machine).
+
+## 2026-11-16 UTC — Simplify the first implementation
+
+Review of PR #203 found that cluster-helper and obsidian-sync run on the same node
+(hetzner), so this migration fixes little security risk alone: it is a pilot of the
+foundation for the node executor. User chose a small first implementation. Removed
+trust-manager, revoked-leaf list, approver policy, CA backup, trust-overlap CA rotation,
+dual mode and rollback procedures (a bad deploy is a git revert; a lost CA is replaced by a
+new CA and a redeploy). Delivery is now two PRs: foundation, then transport and cutover.
+Identity uses DNS SAN with `X509Certificate.checkHost()` instead of URI SAN. Listener split
+is two Fastify instances. Reload uses `setSecureContext()` and a new Undici `Agent`.
+Leaf lifetime: user chose days over hours, so 7 days with renewBefore 3 days (a failed
+renewal leaves days to react, not hours).
+User kept mTLS over projected ServiceAccount tokens, because it wants channel encryption;
+SA tokens may be added on top later. Expired-material behavior: services never request
+certificates, cert-manager renews, services pick up the files by polling.
+
+## 2026-11-15 11:44 UTC — Merge design and prepare technical plan
+
+PR #201 merged as 75b664ec13b415196a746fd7f0900d88d32e8753 after successful PR
+checks. Inspected Fastify servers, fetch/tool clients, Helm and deploy ordering.
+Found Next.js public routes and vmagent metrics sharing the token API listener;
+planned separate protected mTLS and public-only HTTP listeners. Documented identity,
+renewal/reload, trust rotation, compromise/recovery and staged implementation PRs.
+This PR changes documentation only. Live prerequisites remain unverified.
+
 ## 2026-11-15 11:06 UTC — Choose Kubernetes CA and application-level mTLS
 
 User chose a private CA managed inside Kubernetes and application-level mTLS.
