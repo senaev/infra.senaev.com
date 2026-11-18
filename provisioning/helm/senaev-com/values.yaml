@@ -206,20 +206,6 @@ llmWorkspaces:
     projectsStorageSize: 16Gi
     codeStorageSize: 16Gi
     agent:
-      mcp:
-        datadog:
-          url: https://mcp.datadoghq.eu/v1/mcp?toolsets=core,software-delivery
-          oauth: {}
-        # cluster-helper, OAuth with the auth.senaev.com login. Claude Code and OMP use their own
-        # client ids. OpenCode, with its public callback, sends its own client id no more and needs
-        # opencodeClientId: the static client id that cluster-helper allows only with
-        # https://opencode.senaev.com/auth/mcp/callback. Only OpenCode gets it.
-        grafana:
-          url: https://mcp.senaev.com/grafana
-          opencodeClientId: opencode.senaev.com
-        obsidian:
-          url: https://mcp.senaev.com/obsidian
-          opencodeClientId: opencode.senaev.com
       defaultModel:
         provider: openrouter
         id: anthropic/claude-haiku-4.5
@@ -242,6 +228,17 @@ llmWorkspaces:
     opencode:
       enabled: true
       hostname: opencode.senaev.com
+      # OpenCode remote MCP servers, passed as they are; the template adds type and the OAuth callback.
+      mcp:
+        datadog:
+          url: https://mcp.datadoghq.eu/v1/mcp?toolsets=core,software-delivery
+        # cluster-helper, OAuth with the auth.senaev.com login. With its public callback OpenCode
+        # sends its own client id no more, so it needs the static client id that cluster-helper
+        # allows only with https://opencode.senaev.com/auth/mcp/callback.
+        grafana:
+          url: https://mcp.senaev.com/grafana
+          oauth:
+            client_id: opencode.senaev.com
       mcpOAuth:
         hostname: opencode.senaev.com
         # All remote MCPs share one callback; authorize one server at a time.
@@ -261,6 +258,14 @@ llmWorkspaces:
     claudeCode:
       enabled: true
       model: sonnet
+      # HTTP MCP servers with OAuth; Claude Code logs in with its own client id.
+      mcp:
+        datadog:
+          url: https://mcp.datadoghq.eu/v1/mcp?toolsets=core,software-delivery
+        grafana:
+          url: https://mcp.senaev.com/grafana
+        obsidian:
+          url: https://mcp.senaev.com/obsidian
       # @senaev_claude_helper_bot. The chat is the private chat of the user with the bot: its id is the user id.
       telegram:
         token: TG_TOKEN_CLAUDE_HELPER_BOT
@@ -274,7 +279,6 @@ llmWorkspaces:
     projectsStorageSize: 8Gi
     codeStorageSize: 8Gi
     agent:
-      mcp: {}
       defaultModel:
         provider: openrouter
         id: anthropic/claude-haiku-4.5

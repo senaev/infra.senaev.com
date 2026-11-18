@@ -102,12 +102,9 @@ spec:
 {{- end }}
             - name: OPENCODE_CONFIG_CONTENT
 {{- $servers := dict }}
-{{- range $name, $server := $agent.mcp }}
-{{- $remote := merge (dict "type" "remote") (omit $server "opencodeClientId") }}
+{{- range $name, $server := .Values.opencode.mcp }}
+{{- $remote := merge (dict "type" "remote") (deepCopy $server) }}
 {{- $remoteOAuth := merge (dict "redirect_uri" (printf "https://%s/auth/mcp/callback" $.Values.opencode.mcpOAuth.hostname) "callback_port" $.Values.opencode.mcpOAuth.callbackPort) (deepCopy ($remote.oauth | default dict)) }}
-{{- with $server.opencodeClientId }}
-{{- $_ := set $remoteOAuth "client_id" . }}
-{{- end }}
 {{- $_ := set $remote "oauth" $remoteOAuth }}
 {{- $_ := set $servers $name $remote }}
 {{- end }}

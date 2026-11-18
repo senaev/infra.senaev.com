@@ -29,12 +29,9 @@ data:
         baseUrl: {{ $connector.baseUrl | quote }}
         apiKey: {{ $connector.secretKey | quote }}
 {{- end }}
+  # OMP has no MCP servers; start.sh still installs this file and replaces any older list.
   mcp.json: |
-{{- $servers := dict }}
-{{- range $name, $server := $agent.mcp }}
-{{- $_ := set $servers $name (merge (dict "type" "http") (omit $server "opencodeClientId")) }}
-{{- end }}
-{{ dict "mcpServers" $servers | toPrettyJson | indent 4 }}
+{{ dict "mcpServers" dict | toPrettyJson | indent 4 }}
 ---
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret

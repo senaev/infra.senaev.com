@@ -1,8 +1,7 @@
 {{- define "senaev-com.llmWorkspace.claudeCode" -}}
 {{- if .Values.claudeCode.enabled }}
-{{- /* Only the URL: the other keys of agent.mcp are OpenCode settings. */}}
 {{- $mcpServers := dict }}
-{{- range $name, $server := .Values.agent.mcp }}
+{{- range $name, $server := .Values.claudeCode.mcp }}
 {{- $_ := set $mcpServers $name (dict "type" "http" "url" $server.url) }}
 {{- end }}
 {{- $keys := list .Values.git.githubToken .Values.git.sshPrivateKey .Values.claudeCode.telegram.token .Values.claudeCode.telegram.user }}
