@@ -20,7 +20,7 @@ export type TelegramMcpChannel = {
     chatId: string;
 };
 
-/** Headings, inline styles, highlights, spoilers, quotes, code blocks, line breaks and callouts were checked in Telegram on 2026-11-18. */
+/** Headings, inline styles, highlights, spoilers, quotes, code blocks, and line breaks were checked in Telegram on 2026-11-18. */
 export const TELEGRAM_RICH_MARKDOWN_SYNTAX = [
     'The text is Telegram Rich Markdown, sent unchanged:',
     '- headings: `## Title`',
@@ -29,7 +29,7 @@ export const TELEGRAM_RICH_MARKDOWN_SYNTAX = [
     '- ||spoiler||: hidden until tapped, e.g. `The code is ||1234||`',
     '- quotes with a vertical bar on the left: lines that start with `> `; `>> ` nests one quote in another',
     '- lists (`- item`, `1. item`), tables and fenced code blocks with a language for syntax highlighting (```typescript)',
-    'A single newline is joined into the line before it, as in Markdown: put a blank line between paragraphs. ' + 'Obsidian callouts (`> [!note]`) are not supported: their marker shows as plain text, use a quote with a bold first line.',
+    'A single newline is joined into the line before it, as in Markdown: put a blank line between paragraphs.',
 ].join('\n');
 
 export type SendTelegramMarkdown = (options: { chatId: string; text: string }) => Promise<{ message_id: number }>;

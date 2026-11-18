@@ -125,8 +125,7 @@ chat id that cluster-helper already has in its env. The client never sees a chat
 list shows only the names, and a Telegram error has the chat id replaced with the name. To add
 a chat, add an entry there; the bot must be in the chat (an admin in a channel).
 The tool description (`TELEGRAM_RICH_MARKDOWN_SYNTAX`) lists the syntax checked in Telegram:
-`==highlight==`, `||spoiler||` and `>` quotes work; Obsidian callouts (`> [!note]`) do not, and a
-single newline is joined into the line before it.
+`==highlight==`, `||spoiler||` and `>` quotes; a single newline is joined into the line before it.
 
 Each endpoint is its own OAuth resource (RFC 8707): the token `aud` is the resource that the
 client asked for, and a token for one endpoint is rejected by the others. All of them share the
