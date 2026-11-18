@@ -253,6 +253,10 @@ standalone Vitest duration reports before considering the work complete.
   explicit boundaries; use controlled promises for synchronization instead of sleeps.
 - Use the smallest representative fixtures that cover the relevant boundaries.
   Reuse immutable expensive fixtures, but keep mutable test state independent.
+- A test that checks file permissions must not expect a fixed mode: the umask of the
+  runner trims the mode given at creation (the Claude Code and OMP containers use
+  `umask 077`). Compare with the file's own mode before the action, or set the mode with
+  `chmod`, which ignores the umask.
 - Never mock the function or behavior under test, remove assertions, skip coverage,
   or increase timeouts merely to meet the budget.
 - When real cryptography, filesystem safety, process behavior or large stress inputs

@@ -396,7 +396,11 @@ describe('writeTool', () => {
     });
 
     it('replaces a file with the right hash, keeps its mode, and refuses a stale hash', async () => {
+        // The umask of the runner trims the requested mode, so compare with the actual one.
         await writeFile(demo('run.sh'), 'echo 1\n', { mode: 0o755 });
+        const modeBefore = (await stat(demo('run.sh'))).mode & 0o777;
+
+        expect(modeBefore & 0o100).toBe(0o100);
 
         const hash = await readHash('run.sh');
         const replaced = await writeTool(repos.config, {
@@ -409,7 +413,7 @@ describe('writeTool', () => {
             created: false,
             changed: true,
         });
-        expect((await stat(demo('run.sh'))).mode & 0o777).toBe(0o755);
+        expect((await stat(demo('run.sh'))).mode & 0o777).toBe(modeBefore);
         await expect(writeTool(repos.config, {
             path: demo('run.sh'),
             content: 'echo 3\n',
