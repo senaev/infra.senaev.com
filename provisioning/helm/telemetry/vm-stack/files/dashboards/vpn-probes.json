@@ -1519,6 +1519,54 @@
           "mode": "multi"
         }
       }
+    },
+    {
+      "id": 25,
+      "type": "timeseries",
+      "title": "Production parity — VPN vs direct success rate, same target and size (1h)",
+      "description": "Done criterion: every profile's vpn line matches its direct line for every size. httpbingo.org, 16/64/256 KiB, 10 s setup budget.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P4169E866C3094E38"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 100,
+        "w": 24,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "mean"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "expr": "sum by (profile, check, route) (increase(vpn_probe_checks_total{job=\"vpn-probe\",profile=~\"$profile\",check=~\"parity_httpbingo_.*\",result=\"success\"}[1h])) / sum by (profile, check, route) (increase(vpn_probe_checks_total{job=\"vpn-probe\",profile=~\"$profile\",check=~\"parity_httpbingo_.*\"}[1h]))",
+          "legendFormat": "{{profile}} {{check}} {{route}}"
+        }
+      ]
     }
   ],
   "templating": {

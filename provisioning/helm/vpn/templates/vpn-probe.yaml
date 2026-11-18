@@ -11,7 +11,7 @@ metadata:
     app: vpn-probe
     vpn-profile: {{ $index | quote }}
 spec:
-  replicas: {{ if and $.Values.vpnProbe.controlledExperiment (not (has $index (list 1 4))) }}0{{ else }}1{{ end }}
+  replicas: {{ if and $.Values.vpnProbe.controlledExperiment (not (has $index (list 1 3 4))) }}0{{ else }}1{{ end }}
   strategy:
     type: Recreate
   selector:

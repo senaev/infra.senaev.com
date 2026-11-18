@@ -1,6 +1,54 @@
 # 2026-06-10 — Debug VPN connection (firstvds entry point)
 
-- [ ] Make the firstvds VPN entry point work from Russian ISPs
+- [ ] Restore reliable VPN access from the affected Russian ISPs: through every production
+  profile, the same public target and size succeed as often as directly from home.
+
+## Current status (updated every round)
+
+**Round 1 — 2026-11-18, PR "Measure production VPN parity with direct traffic".**
+
+At about 13:30 UTC on 2026-11-18 the home ISP changed its behaviour, with no deploy of ours
+(the last VPN deploy was #202 on 2026-11-15; nothing VPN-related merged since):
+
+| home source, before → after 13:30 UTC | before (6 h) | after (6 h) |
+|---|---|---|
+| direct `senaev.com` endpoint 64 KiB | 0/66 | 65/66 |
+| XHTTP endpoint 16 KiB (default / MSS 1000) | ~0 % | 31/32, 31/34 |
+| XHTTP endpoint 64 KiB | 0/34 | 8/8 |
+| direct Cloudflare 4–64 KiB | ~100 % | 0–3 % (TLS setup timeout) |
+| TCP/Reality profile 4 → httpbingo 64 KiB, VPN vs direct | ~0/17 vs ~17/17 | 8/14 vs 17/17 |
+
+- The ~20 KB freeze on connections to Hetzner is gone for now. VPN failures now stop
+  **before any response**: outer TCP and the entry TLS complete (≈6 KB received), the
+  inner request gets no answer within the 3 s setup budget. No socket stays in SYN-SENT.
+- Direct Cloudflare from home now fails at TLS setup, so every Cloudflare comparison is
+  inconclusive (no valid direct control). httpbingo and the Hetzner endpoint stay valid.
+- Separate: `senaev.ru` HEAD checks fail ~10 % since ~16:00 UTC from home **and** from the
+  Hetzner source, so FirstVDS itself is degraded; it also hurts profile 1 (FirstVDS entry).
+- Sources: Datadog `service:vpn-probe`, VictoriaMetrics `vpn_probe_checks_total`.
+
+Hypotheses, ranked:
+
+1. The block is time-varying ISP policy (it changed without our change); the remaining
+   gap is a setup-phase stall on part of the tunnel connections. Signal: production
+   profiles fail parity mostly with `failure_stage=setup`/`response` while direct passes.
+2. The 3 s setup budget is too tight for a two-hop tunnel on the degraded path, so some
+   "failures" are only slow. Signal: with a 10 s budget, VPN setup succeeds at 3–10 s.
+3. A size threshold still exists above 64 KiB. Signal: 256 KiB VPN fails as `transfer`
+   while 16/64 KiB pass.
+
+Round 1 adds the parity measurement that defines "repaired" (see the 2026-11-18 entry in
+[the worklog](project-worklog.md)). Next round: read the parity panel and `failure_stage`,
+then change the production path (budget, transport, or entry) where it falls short.
+
+## Round workflow
+
+Each round: user OK → merge the round PR → follow the deploy → collect 30 min–2 h of data →
+analyze → open the next PR. Status lives in this section and in
+[`project-worklog.md`](project-worklog.md); `project-status.md` was retired on 2026-11-18.
+
+## Earlier history
+
 
 > **This file is the working log for the investigation.** All findings, command outputs, screenshots, hypotheses confirmed/refuted, and the eventual fix must be appended to this file as we go — so the whole debug session lives in one place and is searchable later.
 >
@@ -742,7 +790,7 @@ No debugging client or automated experiments are included in this step.
 
 Prepare six isolated clients on senaev-media, with lightweight checks every ~30s and
 bounded exit/download checks every ~300s.
-Deployed through PRs #135 and #137. Several rounds show repeatable transfer stalls on direct Hetzner entry, while FirstVDS → Hetzner downloads succeed. See [deployed baseline](BASELINE-EXPERIMENT.md) and [project status](project-status.md).
+Deployed through PRs #135 and #137. Several rounds show repeatable transfer stalls on direct Hetzner entry, while FirstVDS → Hetzner downloads succeed. See [deployed baseline](BASELINE-EXPERIMENT.md).
 
 
 ## Controlled recovery investigation
@@ -779,7 +827,7 @@ both passed on Hetzner. PR #151 then deployed [payload validation](H1-PAYLOAD-VA
 Its first ladder passed4/16/64KiB on Hetzner but failed all three from home; paired
 direct controls passed. H1 is not a working payload workaround yet.
 [Raw results](sources/2026-11-09-h1-payload-results.txt) and
-[current stage](project-status.md) record the limits. PR #152 deployed the fresh, exit-validated4KiB comparison without long post-exit
+the [worklog](project-worklog.md) record the limits. PR #152 deployed the fresh, exit-validated4KiB comparison without long post-exit
 idle. Its first cycle passed on home and Hetzner; home reused16/64KiB still failed.
 [Current evidence](sources/2026-11-09-h1-fresh-control.txt) also records the longer
 #151 baseline (home4KiB7/8,16/64KiB0/8). Fresh checks are logged but missing from
