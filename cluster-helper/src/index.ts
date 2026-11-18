@@ -6,6 +6,7 @@ import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { callTelegramApi } from 'senaev-utils/src/utils/TelegramApi/callTelegramApi';
 import { createTelegramApiBaseUrl } from 'senaev-utils/src/utils/TelegramApi/createTelegramApiBaseUrl';
 import { escapeTelegramMarkdown } from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
+import { createNoisyRouteChildLoggerFactory } from 'senaev-utils/src/utils/http/noisyRouteLogging';
 import { getCurrentTelegramBotInfo } from 'senaev-utils/src/utils/TelegramApi/getCurrentTelegramBotInfo';
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
 import { TelegramUpdate, TelegramUser } from 'senaev-utils/src/utils/TelegramApi/types';
@@ -88,8 +89,19 @@ export const ALISA_WEBHOOK_PATH = '/alisa-webhook';
 
 export const webhookSecretToken = randomBytes(32).toString('hex');
 
-const internalServer = Fastify({ loggerInstance: logger });
-const publicServer = Fastify({ loggerInstance: logger });
+// Probes and the heartbeat call these every few seconds: their request logs start with `[noise] `.
+const internalServer = Fastify({
+    loggerInstance: logger,
+    childLoggerFactory: createNoisyRouteChildLoggerFactory([
+        '/health/live',
+        '/health/ready',
+        '/alertmanager/heartbeat',
+    ]),
+});
+const publicServer = Fastify({
+    loggerInstance: logger,
+    childLoggerFactory: createNoisyRouteChildLoggerFactory(['/healthz']),
+});
 
 let isReady = false;
 
@@ -126,8 +138,7 @@ let alertingHeartbeatCheckTimer: NodeJS.Timeout | undefined;
 
 // Alertmanager posts the always-firing `alerting-heartbeat` alert here about once a minute. The
 // body is not read: any call proves that vmagent, VMSingle, vmalert and Alertmanager work.
-// `logLevel: 'warn'` drops the two request log lines that a call every minute would add.
-internalServer.post('/alertmanager/heartbeat', { logLevel: 'warn' }, async (_request, reply) => {
+internalServer.post('/alertmanager/heartbeat', async (_request, reply) => {
     await alertingHeartbeatMonitor.recordHeartbeat();
 
     reply.code(204).send();
