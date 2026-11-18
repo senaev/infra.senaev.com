@@ -39,10 +39,15 @@ describe('replaceFileAtomically', () => {
     test('keeps the permission bits, so a script stays executable', async () => {
         const path = join(folder, 'run.sh');
 
+        // The umask of the runner trims the requested mode, so compare with the actual one.
         await writeFile(path, 'old', { mode: 0o755 });
+        const before = (await stat(path)).mode & 0o777;
+
+        expect(before & 0o100).toBe(0o100);
+
         await replaceFileAtomically(path, 'new');
 
-        expect((await stat(path)).mode & 0o777).toBe(0o755);
+        expect((await stat(path)).mode & 0o777).toBe(before);
     });
 });
 
