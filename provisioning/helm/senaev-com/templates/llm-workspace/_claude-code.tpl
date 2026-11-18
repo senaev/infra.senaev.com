@@ -46,6 +46,16 @@ spec:
           imagePullPolicy: Always
           securityContext:
 {{ include "senaev-com.llmWorkspace.containerAccess" . | indent 12 }}
+          # The prompt API of start.sh: POST /run with { "prompt": "..." } runs `claude -p` without
+          # approvals and answers with the result when the run ends. Only n8n can reach it.
+          ports:
+            - name: prompt-api
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: prompt-api
+            periodSeconds: 10
           resources:
             requests:
               memory: 512Mi
@@ -114,34 +124,6 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /home/claude
-        # Runs prompts from n8n with `claude -p`, without approvals: POST /run with
-        # { "prompt": "..." } answers with the result when the run ends. It shares the login and the
-        # MCP logins in HOME, and has no git credentials and no /code.
-        - name: prompt-api
-          image: ghcr.io/senaev/claude-code:latest
-          imagePullPolicy: Always
-          args: ["/app/claude-code/node_modules/.bin/tsx", "/app/claude-code/prompt-api/main.ts"]
-          securityContext:
-{{ include "senaev-com.llmWorkspace.containerAccess" . | indent 12 }}
-          ports:
-            - name: prompt-api
-              containerPort: 8080
-          resources:
-            requests:
-              memory: 256Mi
-          env:
-            - name: IS_SANDBOX
-              value: "1"
-            - name: CLAUDE_CODE_MODEL
-              value: {{ .Values.claudeCode.model | quote }}
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: prompt-api
-            periodSeconds: 10
-          volumeMounts:
-            - name: data
-              mountPath: /home/claude
       volumes:
         # The login, the trust answers and the session history.
         - name: data
@@ -171,7 +153,7 @@ spec:
       protocol: TCP
 ---
 # Remote Control makes outbound connections only. The prompt API has no token and runs
-# prompts without approvals, so only n8n can reach it.
+# prompts without approvals: the only ingress is n8n of this namespace, on the API port.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

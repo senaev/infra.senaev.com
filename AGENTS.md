@@ -447,17 +447,20 @@ only in `senaev`.
   in `HOME`; new sessions use them. Every 10 minutes the bot posts the panel once when a server
   needs a login; the servers it told about are in `~/.claude/telegram-login/mcp-notices.json`, so a
   restart does not repeat it.
-- The `prompt-api` container (`claude-code/prompt-api/`, run by `tsx`) runs prompts for n8n:
-  `POST http://<name>-claude-code:8080/run` with `{ "prompt": "..." }` runs `claude -p` without
-  approvals in `HOME/prompt-api` and answers when the run ends with `{ status, result, isError,
-  durationMs, numTurns, costUsd }` (`result` is the last message of Claude, in Markdown), 502 when
-  the run fails, 409 while another prompt runs. One run at a time, at most 30 minutes. It shares
-  `HOME` (the login and the MCP logins) and has no git credentials and no `/code`. It has no token:
-  the NetworkPolicy lets only n8n reach port 8080. The n8n `madrid-weather` workflow uses it every
-  morning and sends the answer to the cluster chat through `http://cluster-helper/telegram/send-message`
-  (Telegram Rich Markdown).
+- The prompt API (`claude-code/prompt-api/`, run by `tsx`) runs prompts for n8n in the same
+  container: `start.sh` starts it in the background before the login check, then starts Remote
+  Control; when either process exits, the container exits and restarts. `POST
+  http://<name>-claude-code:8080/run` with `{ "prompt": "..." }` runs `claude -p` without approvals
+  in `HOME/prompt-api` and answers when the run ends with `{ status, result, isError, durationMs,
+  numTurns, costUsd }` (`result` is the last message of Claude, in Markdown), 502 when the run
+  fails, 409 while another prompt runs. One run at a time, at most 30 minutes. The runs have
+  everything the container has: the login, the MCP logins, the git token, the SSH agent and
+  `/code`. There is no token: the NetworkPolicy lets only the n8n pod of the namespace reach
+  port 8080, and nothing else reaches the pod. The n8n `madrid-weather` workflow uses it every
+  morning and sends the answer to the cluster chat through
+  `http://cluster-helper/telegram/send-message` (Telegram Rich Markdown).
 - The Claude Code version is pinned in `claude-code/Dockerfile`. Raise it in a pull request.
-- Only the prompt API has a readiness probe, and it does not check the login, so a deploy does not wait for the login.
+- The readiness probe checks only the prompt API, which starts before the login check, so a deploy does not wait for the login.
 
 See [`projects/2026-11-15-18-42-claude-code-remote-control`](projects/2026-11-15-18-42-claude-code-remote-control/README.md).
 

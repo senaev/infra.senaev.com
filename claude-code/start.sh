@@ -1,6 +1,7 @@
 #!/bin/bash
-# exec forwards signals directly to Claude Code. It stops its sessions and keeps them, so the
-# next start brings them back.
+# Two processes: the prompt API for n8n and Claude Code Remote Control. When either exits, the
+# script exits and Kubernetes restarts the container. tini (-g) sends a stop signal to both;
+# Remote Control stops its sessions and keeps them, so the next start brings them back.
 set -euo pipefail
 umask 077
 
@@ -20,11 +21,20 @@ jq --arg dir "$workdir" --argjson servers "${WORKSPACE_MCP_SERVERS:-"{}"}" \
     "$config" > "$config.tmp"
 mv "$config.tmp" "$config"
 
+# Starts before the login check, so that the readiness probe does not wait for a login: until
+# then a prompt fails with the error of the CLI.
+/app/claude-code/node_modules/.bin/tsx /app/claude-code/prompt-api/main.ts &
+prompt_api_pid=$!
+
 # Remote Control accepts only a full claude.ai login, so it cannot come from a secret.
 # Log in once with: kubectl exec -it deploy/<name>-claude-code -- claude auth login
 if ! claude auth status > /dev/null 2>&1; then
     echo "Claude Code is not logged in. Waiting for: claude auth login"
     until claude auth status > /dev/null 2>&1; do
+        if ! kill -0 "$prompt_api_pid" 2> /dev/null; then
+            echo "The prompt API exited."
+            exit 1
+        fi
         sleep 30
     done
     echo "Claude Code is logged in."
@@ -34,8 +44,11 @@ settings=/tmp/server-settings.json
 jq -n --arg model "$CLAUDE_CODE_MODEL" '{model: $model}' > "$settings"
 
 cd "$workdir"
-exec claude remote-control \
+claude remote-control \
     --spawn same-dir \
     --permission-mode bypassPermissions \
     --settings "$settings" \
-    < /dev/null
+    < /dev/null &
+
+# Exits with the status of the first process that stops.
+wait -n
