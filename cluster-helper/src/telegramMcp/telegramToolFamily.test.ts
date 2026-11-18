@@ -82,6 +82,9 @@ describe('telegram MCP tools', () => {
             },
         });
         expect(serialized).toContain('cluster alerts');
+        expect(serialized).toContain('==highlight==');
+        expect(serialized).toContain('||spoiler||');
+        expect(serialized).toContain('> [!note]');
         expect(serialized).not.toContain('-100111');
         expect(serialized).not.toContain('222');
     });
