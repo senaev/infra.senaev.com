@@ -1,5 +1,4 @@
-import Fastify, { LogController } from 'fastify';
-import { createProbeLogController } from 'senaev-utils/src/utils/http/probeRouteLogging';
+import Fastify from 'fastify';
 
 import { logger } from '../logger';
 
@@ -9,8 +8,6 @@ export function createVaultServer() {
     return Fastify({
         loggerInstance: logger,
         bodyLimit: BODY_LIMIT_BYTES,
-        // vmagent scrapes it every 30 seconds: its request logs start with `[probe] `.
-        logController: createProbeLogController(LogController, ['/metrics']),
     });
 }
 

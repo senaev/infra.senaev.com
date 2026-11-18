@@ -52,7 +52,6 @@ Be extremely careful with these nodes and their networks:
 - The cluster is dual-stack (IPv4 primary, IPv6 secondary). k3s takes node IPs from `tailscale0` (`--flannel-iface`), so no node IP is hard-coded. Pod/Service CIDRs live in `provisioning/common/.env` and are fixed at cluster creation — changing them needs a full rebuild. See [`projects/2026-10-04-k3s-dual-stack-ipv6`](projects/2026-10-04-k3s-dual-stack-ipv6/README.md)
 - All alerting and operational notifications go to Telegram
 - Never log a whole request body or other external JSON (webhooks, API payloads). Log only the fields that the code uses, by name: a payload can hold IDs, tokens and personal data that the logs (Datadog, Loki) must not keep
-- Routes that are called every few seconds (probes, metric scrapes, heartbeats) are noise in the logs. List them in the server's `logController: createProbeLogController(LogController, [...])` (`senaev-utils/src/utils/http/probeRouteLogging.ts`, a Fastify `LogController`; pass the service's own `LogController`, because Fastify accepts only an instance of its own copy): Fastify's `incoming request` and `request completed` lines for them then start with `[probe] ` and carry `probe: true` (errors and 5xx answers keep the default lines), so Datadog can filter them out with `-@probe:true`. Do not mute them
 
 ## Service Deployment
 
