@@ -55,60 +55,85 @@ export function createAlertingHeartbeatMonitor({
     // The start counts as a heartbeat: after a restart, wait a full timeout before judging.
     const startedAt = now();
     let lastHeartbeatAt: number | null = null;
-    let isDownReported = false;
-    let isReportingDown = false;
+    // What the Telegram chat was last told: an outage that began at `silentSince`, or nothing.
+    let reportedOutage: { silentSince: number } | null = null;
+    let isSending = false;
     let checkTimer: NodeJS.Timeout | undefined;
 
-    async function check(): Promise<void> {
-        const silentSince = lastHeartbeatAt ?? startedAt;
-
-        if (isDownReported || isReportingDown || now() - silentSince < timeoutMs) {
-            return;
-        }
-
-        isReportingDown = true;
-
+    function formatDownMessage(silentSince: number): string {
         const since = lastHeartbeatAt === null
             ? `no heartbeat since cluster-helper started at ${formatTime(startedAt)}`
             : `the last heartbeat was at ${formatTime(lastHeartbeatAt)}`;
 
+        return [
+            `🚨 ${telegramBold('Alerting is down')}`,
+            escapeTelegramMarkdown(`No heartbeat from Alertmanager for ${formatDurationMinutes(now() - silentSince)}: ${since}.`),
+            escapeTelegramMarkdown('Alerts are not evaluated or delivered. Check senaev-madrid and the telemetry pods: vmagent, VMSingle, vmalert, Alertmanager.'),
+        ].join(LINE_BREAK);
+    }
+
+    function formatRecoveredMessage(silentSince: number, recoveredAt: number): string {
+        return [
+            `✅ ${telegramBold('Alerting recovered')}`,
+            escapeTelegramMarkdown(`Heartbeats are back after ${formatDurationMinutes(recoveredAt - silentSince)} without them.`),
+        ].join(LINE_BREAK);
+    }
+
+    async function trySend(markdown: string): Promise<boolean> {
         try {
-            await notify([
-                `🚨 ${telegramBold('Alerting is down')}`,
-                escapeTelegramMarkdown(`No heartbeat from Alertmanager for ${formatDurationMinutes(now() - silentSince)}: ${since}.`),
-                escapeTelegramMarkdown('Alerts are not evaluated or delivered. Check senaev-madrid and the telemetry pods: vmagent, VMSingle, vmalert, Alertmanager.'),
-            ].join(LINE_BREAK));
-            // Only after a successful send: if Telegram failed, the next check tries again.
-            isDownReported = true;
-            logger.warn({ lastHeartbeatAt }, '🚨 Alerting heartbeat lost, reported to Telegram');
+            await notify(markdown);
+
+            return true;
         } catch (error) {
-            logger.error(error, '❌ Failed to report the lost alerting heartbeat');
+            logger.error(error, '❌ Failed to send the alerting heartbeat status to Telegram, will retry');
+
+            return false;
+        }
+    }
+
+    /**
+     * Brings the chat in line with the heartbeat state. One send at a time; after each send the
+     * state is read again, because a heartbeat can arrive or stop meanwhile. A failed send is
+     * retried by the next check or heartbeat.
+     */
+    async function reconcile(): Promise<void> {
+        if (isSending) {
+            return;
+        }
+
+        isSending = true;
+
+        try {
+            for (;;) {
+                const silentSince = lastHeartbeatAt ?? startedAt;
+                const isDown = now() - silentSince >= timeoutMs;
+
+                if (isDown && reportedOutage === null) {
+                    if (!await trySend(formatDownMessage(silentSince))) {
+                        return;
+                    }
+
+                    reportedOutage = { silentSince };
+                    logger.warn({ lastHeartbeatAt }, '🚨 Alerting heartbeat lost, reported to Telegram');
+                } else if (!isDown && reportedOutage !== null) {
+                    if (!await trySend(formatRecoveredMessage(reportedOutage.silentSince, lastHeartbeatAt ?? now()))) {
+                        return;
+                    }
+
+                    reportedOutage = null;
+                    logger.info('✅ Alerting heartbeat is back, reported to Telegram');
+                } else {
+                    return;
+                }
+            }
         } finally {
-            isReportingDown = false;
+            isSending = false;
         }
     }
 
     async function recordHeartbeat(): Promise<void> {
-        const silentSince = lastHeartbeatAt ?? startedAt;
-        const wasDownReported = isDownReported;
-
         lastHeartbeatAt = now();
-        isDownReported = false;
-
-        if (!wasDownReported) {
-            return;
-        }
-
-        logger.info('✅ Alerting heartbeat is back');
-
-        try {
-            await notify([
-                `✅ ${telegramBold('Alerting recovered')}`,
-                escapeTelegramMarkdown(`Heartbeats are back after ${formatDurationMinutes(lastHeartbeatAt - silentSince)} without them.`),
-            ].join(LINE_BREAK));
-        } catch (error) {
-            logger.error(error, '❌ Failed to report the recovered alerting heartbeat');
-        }
+        await reconcile();
     }
 
     function start(): void {
@@ -117,7 +142,7 @@ export function createAlertingHeartbeatMonitor({
         }
 
         checkTimer = setInterval(() => {
-            void check();
+            void reconcile();
         }, checkIntervalMs);
         logger.info({ checkIntervalMs }, '✅ Alerting heartbeat monitor started');
     }
@@ -129,7 +154,7 @@ export function createAlertingHeartbeatMonitor({
 
     return {
         recordHeartbeat,
-        check,
+        check: reconcile,
         start,
         stop,
     };

@@ -129,6 +129,49 @@ describe('createAlertingHeartbeatMonitor', () => {
     });
 });
 
+describe('state changes during a send', () => {
+    it('reports the recovery when a heartbeat arrives while the outage report is being sent', async () => {
+        const {
+            monitor, notify, advance,
+        } = setup();
+        let finishSend = () => {};
+
+        notify.mockImplementationOnce(() => new Promise<void>((resolve) => {
+            finishSend = resolve;
+        }));
+        advance(ALERTING_HEARTBEAT_TIMEOUT_MS);
+
+        const pendingCheck = monitor.check();
+
+        advance(MINUTE);
+        await monitor.recordHeartbeat();
+        finishSend();
+        await pendingCheck;
+
+        expect(notify).toHaveBeenCalledTimes(2);
+        expect(notify.mock.calls[1]?.[0]).toContain('**Alerting recovered**');
+    });
+
+    it('retries a failed recovery report until it is sent, then only once', async () => {
+        const {
+            monitor, notify, advance,
+        } = setup();
+
+        advance(ALERTING_HEARTBEAT_TIMEOUT_MS);
+        await monitor.check();
+        notify.mockRejectedValueOnce(new Error('Telegram is down'));
+        await monitor.recordHeartbeat();
+        expect(notify).toHaveBeenCalledTimes(2);
+
+        await monitor.check();
+        await monitor.check();
+        await monitor.recordHeartbeat();
+
+        expect(notify).toHaveBeenCalledTimes(3);
+        expect(notify.mock.calls[2]?.[0]).toContain('**Alerting recovered**');
+    });
+});
+
 describe('start and stop', () => {
     afterEach(() => {
         vi.useRealTimers();
