@@ -132,9 +132,10 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): AlertIt
             throw new Error(`❌ Received Alertmanager webhook with invalid alertname label=[${alertname}]`);
         }
 
+        // Not `status`: Datadog reads that attribute as the log level, and maps `firing` to emergency.
         logger.info({
             alertname,
-            status,
+            alertStatus: status,
         }, '👉 Processing alert');
 
         const severityEmoji = ALERT_SEVERITIES[severity as keyof typeof ALERT_SEVERITIES] ?? '';
