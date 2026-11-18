@@ -264,6 +264,15 @@ git config --local --unset core.hooksPath
 Never leave `core.hooksPath` overridden: that silently disables the managed secret scanner
 for this repository.
 
+Lefthook also installs a `post-checkout` hook, `scripts/post-checkout.sh`: `git worktree add`
+runs `npm run ci:all` in the new worktree, so it is ready for the checks. Git runs this hook on
+every checkout, so the script acts only when the previous HEAD is the all-zeros commit, which
+happens only in a new worktree. Skip it with `SKIP_WORKTREE_INSTALL=1` or
+`git worktree add --no-checkout`. Hooks are shared by all worktrees, but a worktree created from
+a commit before this hook has no `post-checkout` entry in its `lefthook.yml`, so nothing runs
+there. If the managed global hooks do not chain `post-checkout` into the repo-level hook, it
+does not run on that machine; then run `npm run ci:all` by hand.
+
 ## Shared Package: senaev-utils
 
 `senaev-utils/` holds the shared TypeScript library, moved here from its own repo with its full history. It ships raw source (`files: ["src"]`, no build step), so consumers import the TypeScript directly.
