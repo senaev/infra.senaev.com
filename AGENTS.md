@@ -16,10 +16,10 @@ for the folder layout, the main document, the status and the worklog.
 
 ## Main checkout and worktrees
 
-Never change anything in the main checkout of this repository (in LLM workspaces
-`/code/projects/infra.senaev.com`): no edits, commits, branch switches or stashes. It stays on
-`main`, and several agents use it at the same time. Use it only to pull `main` and to add or
-remove worktrees. Do every task in its own worktree, made from the latest `main`:
+Never change anything in the main checkout of this repository: no edits, commits, branch
+switches or stashes. It stays on `main`, and several agents use it at the same time. Use it only
+to pull `main` and to add or remove worktrees. Do every task in its own worktree, made from the
+latest `main`:
 
 ```
 git -C /code/projects/infra.senaev.com pull --ff-only
