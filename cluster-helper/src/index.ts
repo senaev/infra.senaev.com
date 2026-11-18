@@ -11,9 +11,7 @@ import { getCurrentTelegramBotInfo } from 'senaev-utils/src/utils/TelegramApi/ge
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
 import { TelegramUpdate, TelegramUser } from 'senaev-utils/src/utils/TelegramApi/types';
 
-import {
-    ALERTING_HEARTBEAT_CHECK_INTERVAL_MS, createAlertingHeartbeatMonitor,
-} from './alerts/alertingHeartbeatMonitor';
+import { createAlertingHeartbeatMonitor } from './alerts/alertingHeartbeatMonitor';
 import { handleAlertmanagerWebhook } from './alerts/handleAlertmanagerWebhook';
 import {
     describeMcpExchange, handleMcpMessage, McpServerOptions,
@@ -134,7 +132,6 @@ const alertingHeartbeatMonitor = createAlertingHeartbeatMonitor({
         });
     },
 });
-let alertingHeartbeatCheckTimer: NodeJS.Timeout | undefined;
 
 // Alertmanager posts the always-firing `alerting-heartbeat` alert here about once a minute. The
 // body is not read: any call proves that vmagent, VMSingle, vmalert and Alertmanager work.
@@ -486,10 +483,7 @@ async function main(): Promise<void> {
     logger.info('✅ Torrent outbox processor started');
     logStartupStep('torrent outbox processor started');
 
-    alertingHeartbeatCheckTimer = setInterval(() => {
-        void alertingHeartbeatMonitor.check();
-    }, ALERTING_HEARTBEAT_CHECK_INTERVAL_MS);
-    logger.info('✅ Alerting heartbeat monitor started');
+    alertingHeartbeatMonitor.start();
 
     await internalServer.listen({
         port: INTERNAL_PORT,
@@ -539,7 +533,7 @@ async function shutdown(): Promise<void> {
         publicServer.close(),
     ]);
     stopTorrentOutboxProcessor();
-    clearInterval(alertingHeartbeatCheckTimer);
+    alertingHeartbeatMonitor.stop();
     process.exit(0);
 }
 

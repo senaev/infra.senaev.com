@@ -1,9 +1,12 @@
 import {
-    describe, expect, it, vi,
+    afterEach, describe, expect, it, vi,
 } from 'vitest';
 
 import {
-    ALERTING_HEARTBEAT_TIMEOUT_MS, createAlertingHeartbeatMonitor, formatDurationMinutes,
+    ALERTING_HEARTBEAT_CHECK_INTERVAL_MS,
+    ALERTING_HEARTBEAT_TIMEOUT_MS,
+    createAlertingHeartbeatMonitor,
+    formatDurationMinutes,
 } from './alertingHeartbeatMonitor';
 
 vi.mock('../logger', () => {
@@ -123,6 +126,30 @@ describe('createAlertingHeartbeatMonitor', () => {
         await monitor.check();
 
         expect(notify).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('start and stop', () => {
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('checks on its own interval until stopped', async () => {
+        vi.useFakeTimers({ now: START });
+        const notify = vi.fn<(markdown: string) => Promise<void>>(async () => {});
+        const monitor = createAlertingHeartbeatMonitor({ notify });
+
+        monitor.start();
+        monitor.start();
+        await vi.advanceTimersByTimeAsync(ALERTING_HEARTBEAT_TIMEOUT_MS + ALERTING_HEARTBEAT_CHECK_INTERVAL_MS);
+        expect(notify).toHaveBeenCalledTimes(1);
+
+        monitor.stop();
+        await monitor.recordHeartbeat();
+        notify.mockClear();
+        await vi.advanceTimersByTimeAsync(2 * ALERTING_HEARTBEAT_TIMEOUT_MS);
+        expect(notify).not.toHaveBeenCalled();
+        expect(vi.getTimerCount()).toBe(0);
     });
 });
 

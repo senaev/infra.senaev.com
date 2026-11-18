@@ -19,11 +19,15 @@ type AlertingHeartbeatMonitorOptions = {
     notify: (markdown: string) => Promise<void>;
     now?: () => number;
     timeoutMs?: number;
+    checkIntervalMs?: number;
 };
 
 export type AlertingHeartbeatMonitor = {
     recordHeartbeat: () => Promise<void>;
+    /** One check; {@link AlertingHeartbeatMonitor.start} runs it every `checkIntervalMs`. */
     check: () => Promise<void>;
+    start: () => void;
+    stop: () => void;
 };
 
 function formatTime(timeMs: number): string {
@@ -46,12 +50,14 @@ export function createAlertingHeartbeatMonitor({
     notify,
     now = Date.now,
     timeoutMs = ALERTING_HEARTBEAT_TIMEOUT_MS,
+    checkIntervalMs = ALERTING_HEARTBEAT_CHECK_INTERVAL_MS,
 }: AlertingHeartbeatMonitorOptions): AlertingHeartbeatMonitor {
     // The start counts as a heartbeat: after a restart, wait a full timeout before judging.
     const startedAt = now();
     let lastHeartbeatAt: number | null = null;
     let isDownReported = false;
     let isReportingDown = false;
+    let checkTimer: NodeJS.Timeout | undefined;
 
     async function check(): Promise<void> {
         const silentSince = lastHeartbeatAt ?? startedAt;
@@ -105,8 +111,26 @@ export function createAlertingHeartbeatMonitor({
         }
     }
 
+    function start(): void {
+        if (checkTimer !== undefined) {
+            return;
+        }
+
+        checkTimer = setInterval(() => {
+            void check();
+        }, checkIntervalMs);
+        logger.info({ checkIntervalMs }, '✅ Alerting heartbeat monitor started');
+    }
+
+    function stop(): void {
+        clearInterval(checkTimer);
+        checkTimer = undefined;
+    }
+
     return {
         recordHeartbeat,
         check,
+        start,
+        stop,
     };
 }
