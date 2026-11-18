@@ -129,8 +129,8 @@ There is no client registration: the allowed clients are hard-coded in
 (`https://claude.ai/oauth/claude-code-client-metadata`, `http://localhost:<port>/callback` or
 `127.0.0.1`; Claude Code sends this client id only with that loopback redirect). One more client
 is static: OpenCode of the senaev workspace uses its public callback, and OpenCode sends its CIMD
-client id only when no `redirect_uri` is configured, so each cluster-helper server in `agent.mcp`
-sets `opencodeClientId: opencode.senaev.com` (only OpenCode gets it, as `oauth.client_id`), allowed only with
+client id only when no `redirect_uri` is configured, so each cluster-helper server in `opencode.mcp`
+sets `oauth.client_id: opencode.senaev.com`, allowed only with
 `https://opencode.senaev.com/auth/mcp/callback`.
 
 `mcp-grafana` runs in the telemetry namespace as part of the vm-stack release, alongside Grafana. cluster-helper calls `http://mcp-grafana.telemetry.svc.cluster.local:8000/mcp`; its cross-namespace NetworkPolicy requires both namespace senaev-com and pod label app=cluster-helper. `mcp-grafana` has Editor rights in Grafana. Its init container logs in with the Grafana admin
@@ -264,6 +264,21 @@ git config --local --unset core.hooksPath
 Never leave `core.hooksPath` overridden: that silently disables the managed secret scanner
 for this repository.
 
+Lefthook also installs a `post-checkout` hook, `scripts/post-checkout.sh`: `git worktree add`
+runs `npm run ci:all` in the new worktree, so it is ready for the checks. Git runs this hook on
+every checkout, so the script acts only when the previous HEAD is the all-zeros commit, which
+happens only in a new worktree. Skip it with `SKIP_WORKTREE_INSTALL=1` or
+`git worktree add --no-checkout`. A new worktree has no `node_modules` yet, so the `lefthook`
+setting in `lefthook.yml` makes the hooks call the lefthook of the main checkout when the worktree
+has none: the main checkout needs its `node_modules`. Lefthook rewrites the shared hooks from the
+`lefthook.yml` of the worktree that runs them when its checksum differs, so a hook run in a
+worktree without this setting drops it, and the next new worktree prints "Can't find lefthook"
+and installs nothing; a hook can also fail once while it rewrites itself. Both stop once every
+worktree has the same `lefthook.yml`; until then run `npx lefthook install` in an up-to-date one. Hooks are shared by all worktrees, but a worktree created from
+a commit before this hook has no `post-checkout` entry in its `lefthook.yml`, so nothing runs
+there. If the managed global hooks do not chain `post-checkout` into the repo-level hook, it
+does not run on that machine; then run `npm run ci:all` by hand.
+
 ## Shared Package: senaev-utils
 
 `senaev-utils/` holds the shared TypeScript library, moved here from its own repo with its full history. It ships raw source (`files: ["src"]`, no build step), so consumers import the TypeScript directly.
@@ -339,6 +354,11 @@ OpenCode, OMP, Code Tools and Claude Code. OpenCode requires `git` and `telegram
 requires OpenCode; Claude Code requires `git`. A new entry inherits nothing from another; the schema is
 `provisioning/helm/senaev-com/values.schema.json`.
 
+MCP servers are set per tool, not per workspace: `opencode.mcp` (OpenCode remote servers; the
+template adds `type` and the OAuth callback) and `claudeCode.mcp` (a `url` per server). In
+`senaev` both have Datadog and Grafana, and only Claude Code also has Obsidian. OMP has no MCP servers: its `mcp.json` is written with an
+empty list. Code Tools is itself an MCP server and takes none.
+
 OMP runs every command without approval, so it is isolated. It reads its keys only from its
 own `<name>-omp-web-env` secret, not from `senaev-com-kv-secrets`, because a node can read
 every secret that its pods use. Its NetworkPolicy allows egress only to DNS and the public
@@ -394,8 +414,8 @@ makes outbound connections only, and the NetworkPolicy has no ingress. It is ena
   the `ssh-agent` sidecar (`templates/llm-workspace/_ssh-agent.tpl`) holds it, and Claude Code
   signs through `SSH_AUTH_SOCK=/ssh-agent/agent.sock`, a read-only mount. The model of new
   sessions is `claudeCode.model`; the phone can change it with `/model`.
-- MCP servers: the same `agent.mcp` list of the workspace as OpenCode and OMP; Claude Code takes
-  only the `url` of each entry. The template passes them as `WORKSPACE_MCP_SERVERS`, and `start.sh`
+- MCP servers: `claudeCode.mcp` of the workspace, a `url` for each server (now Datadog,
+  Grafana and Obsidian). The template passes them as `WORKSPACE_MCP_SERVERS`, and `start.sh`
   writes them as `mcpServers` in `~/.claude.json` (user scope) on each start, replacing that list:
   a server added by hand is removed. Every server uses OAuth. The CLI login
   (`claude mcp login --no-browser <name>`) redirects to `http://localhost:<port>/callback`, and

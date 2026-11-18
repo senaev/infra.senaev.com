@@ -69,16 +69,11 @@
             "type": "object",
             "additionalProperties": false,
             "required": [
-              "mcp",
               "defaultModel",
               "connectors",
               "speechToText"
             ],
             "properties": {
-              "mcp": {
-                "description": "MCP servers of the workspace agents, by name. Each agent takes the settings it supports; every server needs a url. opencodeClientId is the OAuth client id that only OpenCode sends",
-                "type": "object"
-              },
               "defaultModel": {
                 "type": "object",
                 "additionalProperties": false,
@@ -205,7 +200,7 @@
             "required": [
               "enabled",
               "hostname",
-              "mcpOAuth",
+              "mcp",
               "secrets"
             ],
             "properties": {
@@ -216,22 +211,15 @@
                 "type": "string",
                 "minLength": 1
               },
-              "mcpOAuth": {
+              "mcp": {
+                "description": "OpenCode remote MCP servers, by name, in the OpenCode config format. The template adds type remote and the OAuth redirect_uri and callback_port; set oauth.client_id for a server that needs a static client id",
                 "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "hostname",
-                  "callbackPort"
-                ],
-                "properties": {
-                  "hostname": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "callbackPort": {
-                    "type": "integer",
-                    "minimum": 1024,
-                    "maximum": 65535
+                "additionalProperties": {
+                  "type": "object",
+                  "required": ["url"],
+                  "properties": {
+                    "url": { "type": "string", "minLength": 1 },
+                    "oauth": { "type": "object" }
                   }
                 }
               },
@@ -292,6 +280,7 @@
             "required": [
               "enabled",
               "model",
+              "mcp",
               "telegram"
             ],
             "properties": {
@@ -302,6 +291,18 @@
                 "description": "The model of new sessions: an alias such as sonnet, or a full model name",
                 "type": "string",
                 "minLength": 1
+              },
+              "mcp": {
+                "description": "Claude Code HTTP MCP servers, by name. start.sh writes them into the user config; the telegram-login container logs in to them",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["url"],
+                  "properties": {
+                    "url": { "type": "string", "minLength": 1 }
+                  }
+                }
               },
               "telegram": {
                 "description": "The bot that sends the login link and the expiry warning, and takes the login code",

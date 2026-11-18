@@ -60,7 +60,7 @@ describe('renderMcpPanel', () => {
 
     it('says where the servers come from when there are none', () => {
         expect(renderMcpPanel([])).toEqual({
-            markdown: plain('Claude Code has no MCP servers. They come from agent.mcp of the workspace in the Helm values.'),
+            markdown: plain('Claude Code has no MCP servers. They come from claudeCode.mcp of the workspace in the Helm values.'),
             replyMarkup: undefined,
         });
     });

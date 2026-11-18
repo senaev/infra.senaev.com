@@ -2,7 +2,7 @@
 set -euo pipefail
 umask 077
 
-# MCP servers and model providers are managed by the shared chart config.
+# MCP servers (none for now) and model providers are managed by the chart config.
 mkdir -p "$HOME/.omp/agent"
 chmod 700 "$HOME/.omp" "$HOME/.omp/agent"
 

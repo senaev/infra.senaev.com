@@ -47,7 +47,7 @@ const OPENCODE_REDIRECT_URI = /^http:\/\/(?:127\.0\.0\.1(?::\d+)?\/(?:callback|m
 // OpenCode of the senaev workspace logs in through its public callback, an nginx proxy to its
 // loopback listener. OpenCode sends its CIMD client id only without a configured redirect_uri,
 // so the MCP servers of this workspace give it this static client id (`oauth.client_id` in
-// `agent.mcp`), and only this exact redirect is allowed with it.
+// `opencode.mcp`), and only this exact redirect is allowed with it.
 const OPENCODE_SENAEV_CLIENT_ID = 'opencode.senaev.com';
 const OPENCODE_SENAEV_REDIRECT_URI = 'https://opencode.senaev.com/auth/mcp/callback';
 

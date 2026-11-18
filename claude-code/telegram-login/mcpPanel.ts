@@ -10,7 +10,7 @@ export type McpPanel = {
     replyMarkup: InlineKeyboardMarkup | undefined;
 };
 
-const NO_MCP_SERVERS = 'Claude Code has no MCP servers. They come from agent.mcp of the workspace in the Helm values.';
+const NO_MCP_SERVERS = 'Claude Code has no MCP servers. They come from claudeCode.mcp of the workspace in the Helm values.';
 
 // One button for each server, for the action that its status needs: a connected server can be
 // logged out, any other can be logged in (a failed connection may need a new login).

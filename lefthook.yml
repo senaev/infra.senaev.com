@@ -8,3 +8,14 @@ pre-push:
   commands:
     simple-checks:
       run: npm run simple-checks
+
+# The hooks are shared by all worktrees, and a new worktree has no node_modules until the
+# post-checkout hook below installs them: use the lefthook of the worktree when it has one, else
+# the one of the main checkout. Pasted into the hook inside double quotes, so it uses none.
+lefthook: $(l=$(git rev-parse --show-toplevel)/node_modules/.bin/lefthook; [ -x $l ] || l=$(git rev-parse --path-format=absolute --git-common-dir)/../node_modules/.bin/lefthook; echo $l)
+
+# Installs the dependencies of a new worktree; scripts/post-checkout.sh skips other checkouts.
+post-checkout:
+  commands:
+    install-dependencies:
+      run: bash scripts/post-checkout.sh {1}
