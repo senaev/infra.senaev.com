@@ -24,20 +24,21 @@ spec:
     - name: node-disk
       rules:
         - alert: node-disk-space-low
+          # The same threshold as the k3s kubelet: it evicts pods below 5% free on the disk of
+          # /var/lib/kubelet and containerd, which is `/` on every node (k3s default
+          # evictionHard nodefs.available and imagefs.available, not overridden here). Other
+          # disks are not watched: media-server-helper keeps senaev-media /mnt/sdb1 at 95-98%
+          # used on purpose.
           expr: |
-            (
-              node_filesystem_avail_bytes{fstype!="", job="node-exporter"} < 2 * 1024 * 1024 * 1024
-            )
-            and
-            (
-              node_filesystem_size_bytes{fstype!="", job="node-exporter"} > 10 * 1024 * 1024 * 1024
-            )
+            node_filesystem_avail_bytes{job="node-exporter", mountpoint="/"}
+            / node_filesystem_size_bytes{job="node-exporter", mountpoint="/"}
+            < 0.05
           for: 10s
           labels:
             severity: warning
             route: senaev-com-alerts
           annotations:
-            summary: "{{`{{ $value | humanize1024 }}`}}B free on {{`{{ $labels.mountpoint }}`}} ({{`{{ $labels.device }}`}})"
+            summary: "{{`{{ $value | humanizePercentage }}`}} free on {{`{{ $labels.mountpoint }}`}} ({{`{{ $labels.device }}`}}); k3s evicts pods below 5%"
     - name: obsidian-vault
       rules:
         - alert: obsidian-vault-file-too-large
