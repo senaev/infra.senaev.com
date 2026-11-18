@@ -14,6 +14,13 @@ each request or command. Store it in [`projects/`](projects/) as a folder
 Keep existing folders unchanged. Follow [`projects/AGENTS.md`](projects/AGENTS.md)
 for the folder layout, the main document, the status and the worklog.
 
+## Main checkout and worktrees
+
+Never change anything in the main checkout of this repository: no edits, commits, branch
+switches or stashes. It stays on `main`, and several agents use it at the same time. Use it only
+to pull `main` and to add or remove worktrees. Do every task in its own worktree, made from the
+latest `main`.
+
 ## Sensitive nodes: `proxmox`, `senaev-media`, `proxmox-madrid` and `senaev-madrid`
 
 `proxmox` (bare metal) and `senaev-media` (VM 100 on it) are at home, behind the home
