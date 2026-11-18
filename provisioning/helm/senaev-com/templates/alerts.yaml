@@ -21,6 +21,19 @@ spec:
           labels:
             severity: critical
             route: senaev-com-alerts
+    # Dead man's switch: always firing while metrics are fresh. Alertmanager sends it to
+    # cluster-helper (on another node) about once a minute; cluster-helper reports to Telegram
+    # when the heartbeats stop. See cluster-helper/src/alerts/alertingHeartbeatMonitor.ts.
+    - name: alerting-heartbeat
+      rules:
+        - alert: alerting-heartbeat
+          # True only if vmagent wrote a node-exporter `up` sample in the last 2 minutes, so a
+          # heartbeat proves the whole path: vmagent, VMSingle, vmalert and Alertmanager.
+          expr: |
+            count(time() - tlast_over_time(up{job="node-exporter"}[5m]) < 120) > 0
+          labels:
+            severity: info
+            route: alerting-heartbeat
     - name: node-disk
       rules:
         - alert: node-disk-space-low

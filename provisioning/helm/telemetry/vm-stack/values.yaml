@@ -131,6 +131,13 @@ victoria-metrics-k8s-stack:
       route:
         receiver: blackhole
         routes:
+          # The always-firing heartbeat, resent every minute; see the alerting-heartbeat rule.
+          - matchers:
+              - route="alerting-heartbeat"
+            receiver: alerting-heartbeat-receiver
+            group_wait: 0s
+            group_interval: 30s
+            repeat_interval: 1m
           - matchers:
               - route="senaev-com-alerts"
             receiver: telegram-alerts-receiver
@@ -139,6 +146,10 @@ victoria-metrics-k8s-stack:
             repeat_interval: 24h
       receivers:
         - name: blackhole
+        - name: alerting-heartbeat-receiver
+          webhook_configs:
+            - url: http://cluster-helper.senaev-com.svc.cluster.local/alertmanager/heartbeat
+              send_resolved: false
         - name: telegram-alerts-receiver
           webhook_configs:
             - url: http://cluster-helper.senaev-com.svc.cluster.local/alertmanager/webhook
