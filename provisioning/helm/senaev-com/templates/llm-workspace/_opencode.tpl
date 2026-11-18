@@ -103,7 +103,7 @@ spec:
 {{- $servers := dict }}
 {{- range $name, $server := .Values.opencode.mcp }}
 {{- $remote := merge (dict "type" "remote") (deepCopy $server) }}
-{{- $remoteOAuth := merge (dict "redirect_uri" (printf "https://%s/auth/mcp/callback" $.Values.opencode.hostname) "callback_port" $.Values.opencode.mcpOAuth.callbackPort) (deepCopy ($remote.oauth | default dict)) }}
+{{- $remoteOAuth := merge (dict "redirect_uri" (printf "https://%s/auth/mcp/callback" $.Values.opencode.hostname) "callback_port" (include "senaev-com.opencodeMcpOAuthCallbackPort" $ | int)) (deepCopy ($remote.oauth | default dict)) }}
 {{- $_ := set $remote "oauth" $remoteOAuth }}
 {{- $_ := set $servers $name $remote }}
 {{- end }}
@@ -369,6 +369,11 @@ spec:
                   number: 4096
 {{- end }}
 {{- end -}}
+{{- /* OpenCode's loopback listener for the OAuth callback of all remote MCP servers: they share
+it, so log in to one server at a time. nginx proxies https://<hostname>/auth/mcp/callback to it. */}}
+{{- define "senaev-com.opencodeMcpOAuthCallbackPort" -}}
+4100
+{{- end -}}
 {{- define "senaev-com.opencodeMcpOAuthNginx" -}}
 worker_processes 1;
 pid /tmp/nginx.pid;
@@ -388,7 +393,7 @@ http {
     location = /healthz { return 200 'ok'; }
     location = /auth/mcp/callback {
       limit_except GET { deny all; }
-      proxy_pass http://127.0.0.1:{{ .Values.opencode.mcpOAuth.callbackPort }};
+      proxy_pass http://127.0.0.1:{{ include "senaev-com.opencodeMcpOAuthCallbackPort" . }};
       proxy_set_header Host 127.0.0.1;
       proxy_set_header Authorization "";
       proxy_set_header Cookie "";

@@ -228,7 +228,8 @@ llmWorkspaces:
     opencode:
       enabled: true
       hostname: opencode.senaev.com
-      # OpenCode remote MCP servers, passed as they are; the template adds type and the OAuth callback.
+      # OpenCode remote MCP servers, passed as they are; the template adds type and the OAuth
+      # callback https://<hostname>/auth/mcp/callback, shared by all: log in to one at a time.
       mcp:
         datadog:
           url: https://mcp.datadoghq.eu/v1/mcp?toolsets=core,software-delivery
@@ -239,10 +240,6 @@ llmWorkspaces:
           url: https://mcp.senaev.com/grafana
           oauth:
             client_id: opencode.senaev.com
-      # The OAuth callback is https://<hostname>/auth/mcp/callback.
-      mcpOAuth:
-        # All remote MCPs share one callback; authorize one server at a time.
-        callbackPort: 4100
       secrets:
         opencodePassword: OPENCODE_PASSWORD
     ompWeb:

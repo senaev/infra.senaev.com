@@ -201,7 +201,6 @@
               "enabled",
               "hostname",
               "mcp",
-              "mcpOAuth",
               "secrets"
             ],
             "properties": {
@@ -221,21 +220,6 @@
                   "properties": {
                     "url": { "type": "string", "minLength": 1 },
                     "oauth": { "type": "object" }
-                  }
-                }
-              },
-              "mcpOAuth": {
-                "type": "object",
-                "additionalProperties": false,
-                "description": "The shared OAuth callback of the remote MCP servers, https://<hostname>/auth/mcp/callback, proxied to OpenCode's loopback listener on callbackPort",
-                "required": [
-                  "callbackPort"
-                ],
-                "properties": {
-                  "callbackPort": {
-                    "type": "integer",
-                    "minimum": 1024,
-                    "maximum": 65535
                   }
                 }
               },
