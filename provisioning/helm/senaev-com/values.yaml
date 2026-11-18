@@ -239,8 +239,8 @@ llmWorkspaces:
           url: https://mcp.senaev.com/grafana
           oauth:
             client_id: opencode.senaev.com
+      # The OAuth callback is https://<hostname>/auth/mcp/callback.
       mcpOAuth:
-        hostname: opencode.senaev.com
         # All remote MCPs share one callback; authorize one server at a time.
         callbackPort: 4100
       secrets:

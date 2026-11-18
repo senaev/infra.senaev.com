@@ -1,7 +1,6 @@
 {{- define "senaev-com.llmWorkspace.opencode" -}}
 {{- $agent := .Values.agent }}
 {{- if .Values.opencode.enabled }}
-{{- $oauth := .Values.opencode.mcpOAuth }}
 {{- $keys := list .Values.git.githubToken .Values.git.sshPrivateKey .Values.telegram.token .Values.telegram.allowedUser $agent.speechToText.secretKey }}
 {{- range $connector := $agent.connectors }}
 {{- $keys = append $keys $connector.secretKey }}
@@ -104,7 +103,7 @@ spec:
 {{- $servers := dict }}
 {{- range $name, $server := .Values.opencode.mcp }}
 {{- $remote := merge (dict "type" "remote") (deepCopy $server) }}
-{{- $remoteOAuth := merge (dict "redirect_uri" (printf "https://%s/auth/mcp/callback" $.Values.opencode.mcpOAuth.hostname) "callback_port" $.Values.opencode.mcpOAuth.callbackPort) (deepCopy ($remote.oauth | default dict)) }}
+{{- $remoteOAuth := merge (dict "redirect_uri" (printf "https://%s/auth/mcp/callback" $.Values.opencode.hostname) "callback_port" $.Values.opencode.mcpOAuth.callbackPort) (deepCopy ($remote.oauth | default dict)) }}
 {{- $_ := set $remote "oauth" $remoteOAuth }}
 {{- $_ := set $servers $name $remote }}
 {{- end }}
@@ -331,9 +330,9 @@ metadata:
 spec:
   ingressClassName: {{ printf "traefik-%s" .Values.traefik }}
   tls:
-    - hosts: [{{ $oauth.hostname | quote }}]
+    - hosts: [{{ .Values.opencode.hostname | quote }}]
   rules:
-    - host: {{ $oauth.hostname | quote }}
+    - host: {{ .Values.opencode.hostname | quote }}
       http:
         paths:
           - path: /auth/mcp/callback
