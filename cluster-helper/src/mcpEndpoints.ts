@@ -9,6 +9,7 @@ import { sendBearerChallenge } from './oauth/sendBearerChallenge';
 export const OBSIDIAN_MCP_PATH = '/obsidian';
 export const CODE_MCP_PATH = '/code-tools';
 export const GRAFANA_MCP_PATH = '/grafana';
+export const TELEGRAM_MCP_PATH = '/telegram';
 
 // Each endpoint is its own OAuth resource, and a token is valid only for the one it was issued
 // for. /obsidian is first: it is the default for clients that send no `resource`.
@@ -16,6 +17,7 @@ export const MCP_PATHS = [
     OBSIDIAN_MCP_PATH,
     CODE_MCP_PATH,
     GRAFANA_MCP_PATH,
+    TELEGRAM_MCP_PATH,
 ] as const;
 
 /** Answers one JSON-RPC message of an MCP server that cluster-helper serves itself. */
@@ -50,6 +52,7 @@ export type McpEndpointsOptions = {
     mcpDomain: string;
     replyToObsidianMessage: ReplyToMcpMessage;
     replyToCodeMessage: ReplyToMcpMessage;
+    replyToTelegramMessage: ReplyToMcpMessage;
     grafanaUpstreamUrl: string;
     fetch?: typeof fetch;
 };
@@ -65,6 +68,7 @@ export const mcpEndpoints: FastifyPluginAsync<McpEndpointsOptions> = async (inst
     mcpDomain,
     replyToObsidianMessage,
     replyToCodeMessage,
+    replyToTelegramMessage,
     grafanaUpstreamUrl,
     fetch,
 }) => {
@@ -87,6 +91,10 @@ export const mcpEndpoints: FastifyPluginAsync<McpEndpointsOptions> = async (inst
         [
             CODE_MCP_PATH,
             replyToCodeMessage,
+        ],
+        [
+            TELEGRAM_MCP_PATH,
+            replyToTelegramMessage,
         ],
     ];
 

@@ -101,9 +101,12 @@ For the code MCP connector, ask ChatGPT to list a folder under `/code`, then che
 For the Grafana MCP connector, ask ChatGPT to list the Grafana dashboards and to query `up`
 for the last hour, then check the `📈 Grafana MCP message` logs of cluster-helper.
 
+For the Telegram MCP connector, ask Claude Code to send a short Markdown message to the
+`owner` channel, then check that it arrived and the `✉️ Telegram MCP message` logs of cluster-helper.
+
 ## MCP endpoints
 
-cluster-helper serves three OAuth-protected MCP endpoints on `mcp.senaev.com`, with one
+cluster-helper serves four OAuth-protected MCP endpoints on `mcp.senaev.com`, with one
 authorization server on `auth.senaev.com` (`cluster-helper/src/oauth/`). The list of endpoints
 and their wiring are in `cluster-helper/src/mcpEndpoints.ts`, tested by `mcpEndpoints.test.ts`:
 
@@ -112,6 +115,15 @@ and their wiring are in `cluster-helper/src/mcpEndpoints.ts`, tested by `mcpEndp
 | `/obsidian` | cluster-helper itself: the obsidian-* tools, forwarded to obsidian-sync |
 | `/code-tools` | cluster-helper itself: the code-* tools, forwarded to code-tools |
 | `/grafana` | proxied to `mcp-grafana` (`provisioning/helm/telemetry/vm-stack/templates/mcp-grafana.yaml`) |
+| `/telegram` | cluster-helper itself: `telegram-send_message`, posted by the senaev.com bot |
+
+The Telegram MCP has one tool, `telegram-send_message(channel, text)`: `text` is Telegram Rich
+Markdown (`sendRichMessage`, up to 32000 characters), sent unchanged. `channel` is a name from
+the allowlist `cluster-helper/src/telegramMcp/telegramMcpChannels.ts` (`owner`, `cluster`,
+`media-server`, `vpn-subscription`, `obsidian-tasks`, `tricky-dad`), which maps each name to the
+chat id that cluster-helper already has in its env. The client never sees a chat id: the tool
+list shows only the names, and a Telegram error has the chat id replaced with the name. To add
+a chat, add an entry there; the bot must be in the chat (an admin in a channel).
 
 Each endpoint is its own OAuth resource (RFC 8707): the token `aud` is the resource that the
 client asked for, and a token for one endpoint is rejected by the others. All of them share the
@@ -369,7 +381,7 @@ requires OpenCode; Claude Code requires `git`. A new entry inherits nothing from
 
 MCP servers are set per tool, not per workspace: `opencode.mcp` (OpenCode remote servers; the
 template adds `type` and the OAuth callback) and `claudeCode.mcp` (a `url` per server). In
-`senaev` both have Datadog and Grafana, and only Claude Code also has Obsidian. OMP has no MCP servers: its `mcp.json` is written with an
+`senaev` both have Datadog and Grafana, and only Claude Code also has Obsidian and Telegram. OMP has no MCP servers: its `mcp.json` is written with an
 empty list. Code Tools is itself an MCP server and takes none.
 
 OMP runs every command without approval, so it is isolated. It reads its keys only from its
@@ -428,7 +440,7 @@ makes outbound connections only, and the NetworkPolicy has no ingress. It is ena
   signs through `SSH_AUTH_SOCK=/ssh-agent/agent.sock`, a read-only mount. The model of new
   sessions is `claudeCode.model`; the phone can change it with `/model`.
 - MCP servers: `claudeCode.mcp` of the workspace, a `url` for each server (now Datadog,
-  Grafana and Obsidian). The template passes them as `WORKSPACE_MCP_SERVERS`, and `start.sh`
+  Grafana, Obsidian and Telegram). The template passes them as `WORKSPACE_MCP_SERVERS`, and `start.sh`
   writes them as `mcpServers` in `~/.claude.json` (user scope) on each start, replacing that list:
   a server added by hand is removed. Every server uses OAuth. The CLI login
   (`claude mcp login --no-browser <name>`) redirects to `http://localhost:<port>/callback`, and

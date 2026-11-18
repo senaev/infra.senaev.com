@@ -56,6 +56,8 @@ import { processTelegramWebhookData } from './processTelegramWebhookData';
 import { proxyPublicStaticFile } from './publicStaticProxy';
 import { formatTorrentEvent, isTorrentEvent } from './qbittorrent/formatTorrentEvent';
 import { logStartupStep } from './startupTimer';
+import { TELEGRAM_MCP_CHANNELS } from './telegramMcp/telegramMcpChannels';
+import { createTelegramToolFamily } from './telegramMcp/telegramToolFamily';
 import { TELEGRAM_PUBLIC_API_PATH, telegramPublicApi } from './telegramPublicApi';
 import { startTorrentOutboxProcessor, stopTorrentOutboxProcessor } from './torrentOutbox';
 
@@ -253,8 +255,9 @@ publicServer.post(ALISA_WEBHOOK_PATH, ({ body }, reply) => {
     });
 });
 
-// Two MCP servers, each on its own endpoint. The obsidian-* tools are forwarded to obsidian-sync,
-// which does all vault work, and the code-* tools to code-tools in the opencode-serve pod.
+// Three MCP servers, each on its own endpoint. The obsidian-* tools are forwarded to obsidian-sync,
+// which does all vault work, the code-* tools to code-tools in the opencode-serve pod, and the
+// telegram-* tools post with the senaev.com bot to the chats of TELEGRAM_MCP_CHANNELS.
 type LocalMcpServer = {
     families: readonly ToolFamily[];
     options: McpServerOptions;
@@ -290,6 +293,24 @@ const CODE_MCP_SERVER: LocalMcpServer = {
         securitySchemes: MCP_SECURITY_SCHEMES,
     },
     logMessage: '🧑‍💻 Code MCP message',
+};
+
+const TELEGRAM_MCP_SERVER: LocalMcpServer = {
+    families: [
+        createTelegramToolFamily({
+            channels: TELEGRAM_MCP_CHANNELS,
+            sendMarkdown: ({ chatId, text }) => sendTelegramMessage({
+                chatId,
+                text,
+                token: TG_TOKEN_SENAEV_COM_BOT,
+            }),
+        }),
+    ],
+    options: {
+        serverName: 'senaev-telegram',
+        securitySchemes: MCP_SECURITY_SCHEMES,
+    },
+    logMessage: '✉️ Telegram MCP message',
 };
 
 const resourceReads = new ResourceReadGate();
@@ -449,6 +470,7 @@ async function main(): Promise<void> {
         mcpDomain: MCP_DOMAIN,
         replyToObsidianMessage: (message, reply) => replyToMcpMessage(message, reply, OBSIDIAN_MCP_SERVER),
         replyToCodeMessage: (message, reply) => replyToMcpMessage(message, reply, CODE_MCP_SERVER),
+        replyToTelegramMessage: (message, reply) => replyToMcpMessage(message, reply, TELEGRAM_MCP_SERVER),
         grafanaUpstreamUrl: MCP_GRAFANA_URL,
     });
 

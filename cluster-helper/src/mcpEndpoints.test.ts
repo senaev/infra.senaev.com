@@ -15,6 +15,7 @@ import {
     mcpResourceMetadataUrl,
     mcpResources,
     OBSIDIAN_MCP_PATH,
+    TELEGRAM_MCP_PATH,
 } from './mcpEndpoints';
 import { AuthorizationServer, createAuthorizationServer } from './oauth/authorizationServer';
 import { createGoogleLogin } from './oauth/googleLogin';
@@ -31,16 +32,18 @@ let server: FastifyInstance;
 let authorizationServer: AuthorizationServer;
 let replyToObsidianMessage: Mock<McpEndpointsOptions['replyToObsidianMessage']>;
 let replyToCodeMessage: Mock<McpEndpointsOptions['replyToCodeMessage']>;
+let replyToTelegramMessage: Mock<McpEndpointsOptions['replyToTelegramMessage']>;
 let fetchGrafana: Mock<typeof fetch>;
 
 const GOOGLE_EMAIL = 'admin@gmail.com';
 
 describe('MCP resources', () => {
-    it('serves the Obsidian, the code and the Grafana endpoints, Obsidian first as the default resource', () => {
+    it('serves the Obsidian, the code, the Grafana and the Telegram endpoints, Obsidian first as the default resource', () => {
         expect(MCP_PATHS).toEqual([
             OBSIDIAN_MCP_PATH,
             CODE_MCP_PATH,
             GRAFANA_MCP_PATH,
+            TELEGRAM_MCP_PATH,
         ]);
     });
 });
@@ -55,6 +58,7 @@ describe('mcpEndpoints HTTP wiring', () => {
         });
         replyToObsidianMessage = vi.fn<McpEndpointsOptions['replyToObsidianMessage']>((_message, reply) => Promise.resolve(reply.code(200).send({ from: 'obsidian' })));
         replyToCodeMessage = vi.fn<McpEndpointsOptions['replyToCodeMessage']>((_message, reply) => Promise.resolve(reply.code(200).send({ from: 'code' })));
+        replyToTelegramMessage = vi.fn<McpEndpointsOptions['replyToTelegramMessage']>((_message, reply) => Promise.resolve(reply.code(200).send({ from: 'telegram' })));
         fetchGrafana = vi.fn<typeof fetch>(() => Promise.resolve(new Response('{"from":"grafana"}', {
             status: 200,
             headers: { 'content-type': 'application/json' },
@@ -76,6 +80,7 @@ describe('mcpEndpoints HTTP wiring', () => {
             mcpDomain: MCP_DOMAIN,
             replyToObsidianMessage,
             replyToCodeMessage,
+            replyToTelegramMessage,
             grafanaUpstreamUrl: GRAFANA_UPSTREAM_URL,
             fetch: fetchGrafana,
         });
@@ -179,6 +184,7 @@ describe('mcpEndpoints HTTP wiring', () => {
             expect(response.json()).toEqual({ from: 'obsidian' });
             expect(replyToObsidianMessage).toHaveBeenCalledTimes(1);
             expect(replyToCodeMessage).not.toHaveBeenCalled();
+            expect(replyToTelegramMessage).not.toHaveBeenCalled();
             expect(fetchGrafana).not.toHaveBeenCalled();
         });
 
@@ -188,6 +194,17 @@ describe('mcpEndpoints HTTP wiring', () => {
             expect(response.json()).toEqual({ from: 'code' });
             expect(replyToCodeMessage).toHaveBeenCalledTimes(1);
             expect(replyToObsidianMessage).not.toHaveBeenCalled();
+            expect(replyToTelegramMessage).not.toHaveBeenCalled();
+            expect(fetchGrafana).not.toHaveBeenCalled();
+        });
+
+        it('sends a valid /telegram request to the Telegram MCP server only', async () => {
+            const response = await postMcp(TELEGRAM_MCP_PATH, await getAccessToken(TELEGRAM_MCP_PATH));
+
+            expect(response.json()).toEqual({ from: 'telegram' });
+            expect(replyToTelegramMessage).toHaveBeenCalledTimes(1);
+            expect(replyToObsidianMessage).not.toHaveBeenCalled();
+            expect(replyToCodeMessage).not.toHaveBeenCalled();
             expect(fetchGrafana).not.toHaveBeenCalled();
         });
 
@@ -198,6 +215,7 @@ describe('mcpEndpoints HTTP wiring', () => {
             expect(fetchGrafana).toHaveBeenCalledWith(GRAFANA_UPSTREAM_URL, expect.anything());
             expect(replyToObsidianMessage).not.toHaveBeenCalled();
             expect(replyToCodeMessage).not.toHaveBeenCalled();
+            expect(replyToTelegramMessage).not.toHaveBeenCalled();
         });
 
         it('no longer serves the combined /chat-gpt endpoint', async () => {
@@ -209,6 +227,7 @@ describe('mcpEndpoints HTTP wiring', () => {
         it.each([
             OBSIDIAN_MCP_PATH,
             CODE_MCP_PATH,
+            TELEGRAM_MCP_PATH,
         ])('answers GET %s with 405, as it has no SSE stream', async (path) => {
             const response = await server.inject({
                 url: path,
