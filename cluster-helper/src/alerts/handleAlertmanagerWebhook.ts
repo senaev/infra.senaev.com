@@ -59,12 +59,29 @@ const ALERT_SEVERITIES = {
     critical: '🚨',
 } as const;
 
+const TELEGRAM_LINE_BREAK = '  \n';
+
+function getStringField(record: object, key: string): string | null {
+    const value = (record as Record<string, unknown>)[key];
+
+    return typeof value === 'string' && value !== '' ? value : null;
+}
+
+/** One `Name: value` line, or null when the alert has no such value. */
+function formatField(name: string, value: string | null, { code = false }: { code?: boolean } = {}): string | null {
+    if (value === null) {
+        return null;
+    }
+
+    return `${telegramBold(`${name}:`)} ${code ? telegramCode(value) : escapeTelegramMarkdown(value)}`;
+}
+
 type AlertItem = {
     message: string;
 };
 
 export function handleAlertmanagerWebhookInternal(requestBody: unknown): AlertItem[] {
-    logger.info({ requestBody }, '👉 Processing Alertmanager webhook');
+    logger.info('👉 Processing Alertmanager webhook');
 
     if (typeof requestBody !== 'object' || requestBody === null) {
         throw new Error(`❌ Received Alertmanager webhook with invalid body=[${requestBody}]`);
@@ -83,8 +100,6 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): AlertIt
     const items: AlertItem[] = [];
 
     for (const alert of alerts) {
-        logger.info({ alert }, '👉 Processing alert');
-
         const {
             status, startsAt, endsAt, labels, annotations, generatorURL,
         } = alert;
@@ -111,45 +126,42 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): AlertIt
             throw new Error(`❌ Received Alertmanager webhook with invalid alert labels=[${labels}]`);
         }
 
-        const {
-            severity, alertname, alertgroup, instance, job, pod,
-        } = labels;
+        const { severity, alertname } = labels as Record<string, unknown>;
 
         if (typeof alertname !== 'string') {
             throw new Error(`❌ Received Alertmanager webhook with invalid alertname label=[${alertname}]`);
         }
 
-        if (typeof alertgroup !== 'string') {
-            throw new Error(`❌ Received Alertmanager webhook with invalid alertgroup label=[${alertgroup}]`);
-        }
+        logger.info({
+            alertname,
+            status,
+        }, '👉 Processing alert');
 
-        if (typeof instance !== 'string') {
-            throw new Error(`❌ Received Alertmanager webhook with invalid instance label=[${instance}]`);
-        }
-
-        if (typeof job !== 'string') {
-            throw new Error(`❌ Received Alertmanager webhook with invalid job label=[${job}]`);
-        }
-
-        if (typeof pod !== 'string') {
-            throw new Error(`❌ Received Alertmanager webhook with invalid pod label=[${pod}]`);
-        }
-
-        const severityEmoji = ALERT_SEVERITIES[severity as keyof typeof ALERT_SEVERITIES];
+        const severityEmoji = ALERT_SEVERITIES[severity as keyof typeof ALERT_SEVERITIES] ?? '';
 
         const normalizedGeneratorUrl = normalizeGrafanaUrl(generatorURL);
+        const fieldLines = [
+            formatField('VPS', getStringField(labels, 'node'), { code: true }),
+            formatField('Summary', getStringField(annotations, 'summary')),
+            formatField('Description', getStringField(annotations, 'description')),
+            formatField('Time', formatAlertTimeRange(startsAt, endsAt)),
+            formatField('Job', getStringField(labels, 'job'), { code: true }),
+            formatField('Pod', getStringField(labels, 'pod'), { code: true }),
+        ].filter((line) => line !== null);
         const lines = [
             `${statusEmoji}${severityEmoji} ${telegramBold(alertname)} ${telegramLink({
                 text: '🔗',
                 url: normalizedGeneratorUrl,
             })}`,
-            `${telegramBold('Time:')} ${escapeTelegramMarkdown(formatAlertTimeRange(startsAt, endsAt))}`,
-            `${telegramBold('Job:')} ${telegramCode(job)}`,
-            `${telegramBold('Pod:')} ${telegramCode(pod)}`,
-            telegramExpandableBlockquote(JSON.stringify(alert, null, 2).split('\n')),
+            ...fieldLines,
         ];
+        const message = [
+            // Telegram Markdown joins lines that end with a plain newline; two spaces make a line break.
+            lines.join(TELEGRAM_LINE_BREAK),
+            telegramExpandableBlockquote(JSON.stringify(alert, null, 2).split('\n')),
+        ].join('\n\n');
 
-        items.push({ message: lines.join('\n') });
+        items.push({ message });
     }
 
     return items;

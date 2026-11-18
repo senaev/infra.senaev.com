@@ -36,6 +36,8 @@ spec:
           labels:
             severity: warning
             route: senaev-com-alerts
+          annotations:
+            summary: "{{`{{ $value | humanize1024 }}`}}B free on {{`{{ $labels.mountpoint }}`}} ({{`{{ $labels.device }}`}})"
     - name: obsidian-vault
       rules:
         - alert: obsidian-vault-file-too-large

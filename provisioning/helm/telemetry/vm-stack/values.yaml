@@ -169,6 +169,22 @@ victoria-metrics-k8s-stack:
     nodeSelector:
       vps: senaev-madrid
 
+  prometheus-node-exporter:
+    vmScrape:
+      spec:
+        # Helm replaces lists, so this repeats the chart's endpoint (version 0.72.2) and adds
+        # relabelConfigs: a `node` label with the Kubernetes node name, so that node alerts
+        # name the VPS instead of only its tailnet IP and the exporter pod.
+        endpoints:
+          - port: metrics
+            relabelConfigs:
+              - source_labels: [__meta_kubernetes_pod_node_name]
+                target_label: node
+            metricRelabelConfigs:
+              - action: drop
+                source_labels: [mountpoint]
+                regex: "/var/lib/kubelet/pods.+"
+
 smokepingProber:
   enabled: true
   namespace: telemetry
