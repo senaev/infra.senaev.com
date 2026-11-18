@@ -17,15 +17,11 @@ const LINE_BREAK = '  \n';
 type AlertingHeartbeatMonitorOptions = {
     /** Sends a Telegram Markdown message. A rejected promise means the message was not sent. */
     notify: (markdown: string) => Promise<void>;
-    now?: () => number;
-    timeoutMs?: number;
-    checkIntervalMs?: number;
 };
 
 export type AlertingHeartbeatMonitor = {
     recordHeartbeat: () => Promise<void>;
-    /** One check; {@link AlertingHeartbeatMonitor.start} runs it every `checkIntervalMs`. */
-    check: () => Promise<void>;
+    /** Checks the heartbeat every {@link ALERTING_HEARTBEAT_CHECK_INTERVAL_MS}. */
     start: () => void;
     stop: () => void;
 };
@@ -46,14 +42,9 @@ export function formatDurationMinutes(durationMs: number): string {
     return minutes === 0 ? `${hours} h` : `${hours} h ${minutes} min`;
 }
 
-export function createAlertingHeartbeatMonitor({
-    notify,
-    now = Date.now,
-    timeoutMs = ALERTING_HEARTBEAT_TIMEOUT_MS,
-    checkIntervalMs = ALERTING_HEARTBEAT_CHECK_INTERVAL_MS,
-}: AlertingHeartbeatMonitorOptions): AlertingHeartbeatMonitor {
+export function createAlertingHeartbeatMonitor({ notify }: AlertingHeartbeatMonitorOptions): AlertingHeartbeatMonitor {
     // The start counts as a heartbeat: after a restart, wait a full timeout before judging.
-    const startedAt = now();
+    const startedAt = Date.now();
     let lastHeartbeatAt: number | null = null;
     // What the Telegram chat was last told: an outage that began at `silentSince`, or nothing.
     let reportedOutage: { silentSince: number } | null = null;
@@ -67,7 +58,7 @@ export function createAlertingHeartbeatMonitor({
 
         return [
             `🚨 ${telegramBold('Alerting is down')}`,
-            escapeTelegramMarkdown(`No heartbeat from Alertmanager for ${formatDurationMinutes(now() - silentSince)}: ${since}.`),
+            escapeTelegramMarkdown(`No heartbeat from Alertmanager for ${formatDurationMinutes(Date.now() - silentSince)}: ${since}.`),
             escapeTelegramMarkdown('Alerts are not evaluated or delivered. Check senaev-madrid and the telemetry pods: vmagent, VMSingle, vmalert, Alertmanager.'),
         ].join(LINE_BREAK);
     }
@@ -106,7 +97,7 @@ export function createAlertingHeartbeatMonitor({
         try {
             for (;;) {
                 const silentSince = lastHeartbeatAt ?? startedAt;
-                const isDown = now() - silentSince >= timeoutMs;
+                const isDown = Date.now() - silentSince >= ALERTING_HEARTBEAT_TIMEOUT_MS;
 
                 if (isDown && reportedOutage === null) {
                     if (!await trySend(formatDownMessage(silentSince))) {
@@ -116,7 +107,7 @@ export function createAlertingHeartbeatMonitor({
                     reportedOutage = { silentSince };
                     logger.warn({ lastHeartbeatAt }, '🚨 Alerting heartbeat lost, reported to Telegram');
                 } else if (!isDown && reportedOutage !== null) {
-                    if (!await trySend(formatRecoveredMessage(reportedOutage.silentSince, lastHeartbeatAt ?? now()))) {
+                    if (!await trySend(formatRecoveredMessage(reportedOutage.silentSince, lastHeartbeatAt ?? Date.now()))) {
                         return;
                     }
 
@@ -132,7 +123,7 @@ export function createAlertingHeartbeatMonitor({
     }
 
     async function recordHeartbeat(): Promise<void> {
-        lastHeartbeatAt = now();
+        lastHeartbeatAt = Date.now();
         await reconcile();
     }
 
@@ -143,8 +134,8 @@ export function createAlertingHeartbeatMonitor({
 
         checkTimer = setInterval(() => {
             void reconcile();
-        }, checkIntervalMs);
-        logger.info({ checkIntervalMs }, '✅ Alerting heartbeat monitor started');
+        }, ALERTING_HEARTBEAT_CHECK_INTERVAL_MS);
+        logger.info('✅ Alerting heartbeat monitor started');
     }
 
     function stop(): void {
@@ -154,7 +145,6 @@ export function createAlertingHeartbeatMonitor({
 
     return {
         recordHeartbeat,
-        check: reconcile,
         start,
         stop,
     };
