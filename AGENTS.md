@@ -400,9 +400,9 @@ Do not rename the `senaev` entry: that replaces its PVCs, and cluster-helper cal
 
 The `claudeCode` component (`templates/llm-workspace/_claude-code.tpl`, image `claude-code/`)
 runs `claude remote-control` in `/code`, so the Claude mobile app (tab Code) and claude.ai/code
-drive Claude Code on the shared `/code` volume. It has no Ingress and no Service: Remote Control
-makes outbound connections only, and the NetworkPolicy has no ingress. It is enabled only in
-`senaev`.
+drive Claude Code on the shared `/code` volume. It has no Ingress: Remote Control
+makes outbound connections only. The only ingress is the prompt API, from n8n. It is enabled
+only in `senaev`.
 
 - The login is the Claude Pro subscription. Remote Control accepts only a full claude.ai login,
   not `claude setup-token`, so no Vault secret holds it. It expires after about 30 days
@@ -447,8 +447,17 @@ makes outbound connections only, and the NetworkPolicy has no ingress. It is ena
   in `HOME`; new sessions use them. Every 10 minutes the bot posts the panel once when a server
   needs a login; the servers it told about are in `~/.claude/telegram-login/mcp-notices.json`, so a
   restart does not repeat it.
+- The `prompt-api` container (`claude-code/prompt-api/`, run by `tsx`) runs prompts for n8n:
+  `POST http://<name>-claude-code:8080/run` with `{ "prompt": "..." }` runs `claude -p` without
+  approvals in `HOME/prompt-api` and answers when the run ends with `{ status, result, isError,
+  durationMs, numTurns, costUsd }` (`result` is the last message of Claude, in Markdown), 502 when
+  the run fails, 409 while another prompt runs. One run at a time, at most 30 minutes. It shares
+  `HOME` (the login and the MCP logins) and has no git credentials and no `/code`. It has no token:
+  the NetworkPolicy lets only n8n reach port 8080. The n8n `madrid-weather` workflow uses it every
+  morning and sends the answer to the cluster chat through `http://cluster-helper/telegram/send-message`
+  (Telegram Rich Markdown).
 - The Claude Code version is pinned in `claude-code/Dockerfile`. Raise it in a pull request.
-- There is no readiness probe, so a deploy does not wait for the login.
+- Only the prompt API has a readiness probe, and it does not check the login, so a deploy does not wait for the login.
 
 See [`projects/2026-11-15-18-42-claude-code-remote-control`](projects/2026-11-15-18-42-claude-code-remote-control/README.md).
 
