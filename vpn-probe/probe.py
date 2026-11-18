@@ -69,7 +69,7 @@ def client_config(link, base_uuid, public_key, port=1080, invalid=False):
             "streamSettings": stream}]}, seed[1]
 
 
-def request(url, proxy, max_bytes, expected_status=200, expected_bytes=None, timeout=8, head=False, text_limit=4096, http1=False):
+def request(url, proxy, max_bytes, expected_status=200, expected_bytes=None, timeout=8, head=False, text_limit=4096, http1=False, connect_timeout=3):
     """Disable curlrc, redirects, retries and ambient proxy settings."""
     if text_limit not in (4096, 65536):
         raise ValueError("Unsupported response text limit")
@@ -77,7 +77,7 @@ def request(url, proxy, max_bytes, expected_status=200, expected_bytes=None, tim
         body = Path(folder) / "body"
         headers = Path(folder) / "headers"
         command = ["curl", "--disable", "--silent", "--show-error", "--fail",
-                   "--proto", "=https", "--ipv4", "--connect-timeout", "3", "--max-time", str(timeout),
+                   "--proto", "=https", "--ipv4", "--connect-timeout", str(connect_timeout), "--max-time", str(timeout),
                    "--limit-rate", "32768"]
         if http1:
             command += ["--http1.1"]
@@ -190,6 +190,61 @@ def endpoint_pair_loop(profile):
                                      endpoint=True, port=1084, tcp_max_seg=tcp_max_seg)
         mss_first = not mss_first
         if STOP.wait(max(0, started + random.uniform(300, 360) - time.monotonic())):
+            return
+
+
+PARITY_URL = "https://httpbingo.org/bytes/{}"
+PARITY_SIZES = (16384, 65536, 262144)
+PARITY_CONNECT_SECONDS = 10
+
+
+def failure_stage(result):
+    """Where a failed transfer stopped; curl reports 0 for phases it never reached."""
+    if result.get("ok"):
+        return None
+    if result.get("failure"):
+        return "probe"
+    if not result.get("tls_ms"):
+        return "setup"
+    if not result.get("bytes"):
+        return "response"
+    return "transfer"
+
+
+def parity_round(profile, proxy, experiment_id, vpn_first):
+    """Same public target and size directly and through the production profile."""
+    passed = True
+    for size in PARITY_SIZES:
+        # 32KiB/s rate limit: allow twice the nominal transfer time plus setup.
+        timeout = PARITY_CONNECT_SECONDS + max(2, -(-size // 32768) * 2)
+        routes = [("vpn", proxy), ("direct", "")]
+        for route, address in routes if vpn_first else reversed(routes):
+            jitter = random.uniform(2, 7)
+            if STOP.wait(jitter):
+                return False
+            result, _ = request(PARITY_URL.format(size), address, size, expected_bytes=size,
+                                timeout=timeout, connect_timeout=PARITY_CONNECT_SECONDS)
+            stage = failure_stage(result)
+            emit(profile, f"parity_httpbingo_{size}", route, {
+                **result, "experiment_id": experiment_id, "requested_bytes": size,
+                "vpn_first": vpn_first, "budget_seconds": timeout,
+                "connect_budget_seconds": PARITY_CONNECT_SECONDS,
+                "request_jitter_seconds": jitter,
+                **({"failure_stage": stage} if stage else {})})
+            passed = result["ok"] and passed
+    return passed
+
+
+def parity_loop(profile, proxy):
+    """Production-profile parity on a ten-minute start cadence; never catch up."""
+    if STOP.wait(random.uniform(0, 60)):
+        return
+    vpn_first = random.random() < 0.5
+    while not STOP.is_set():
+        started = time.monotonic()
+        parity_round(profile, proxy, str(uuid.uuid4()), vpn_first)
+        vpn_first = not vpn_first
+        if STOP.wait(max(0, started + random.uniform(600, 660) - time.monotonic())):
             return
 
 
@@ -636,6 +691,15 @@ def experiment_loop(profile, proxy, once=False, child=None, xhttp_proxy=None, di
 
 
 
+def parity_guard(profile, proxy):
+    # A parity worker failure stops the pod for a normal Deployment restart.
+    try:
+        parity_loop(profile, proxy)
+    except Exception:
+        emit(profile, "parity_worker", "vpn", {"ok": False, "failure": "parity_worker_failed"})
+        STOP.set()
+
+
 def stop_client(child):
     if child.poll() is None:
         child.terminate()
@@ -774,6 +838,10 @@ def run(args):
         proxy = f'socks5h://127.0.0.1:{config["inbounds"][0]["port"]}'
         try:
             if os.environ.get("CONTROLLED_EXPERIMENT") == "true":
+                if not args.once:
+                    parity = threading.Thread(target=parity_guard, args=(profile, proxy),
+                                              daemon=True)
+                    parity.start()
                 xhttp_proxy = None
                 if os.environ.get("XHTTP_PROFILE_LINK"):
                     try:

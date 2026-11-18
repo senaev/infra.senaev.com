@@ -1,3 +1,70 @@
+## 2026-11-18 20:30 UTC — Round 1: ISP behaviour changed; measure production parity
+
+Agreed round workflow with the user (see README "Round workflow"). Retired
+`project-status.md`; its last content (stale since #165) is kept below.
+
+Analysis of the 3 days after #202 (Datadog logs, VictoriaMetrics). At ~13:30 UTC on
+2026-11-18, with no deploy, the home source changed. 15-minute timeline of direct
+`transfer_https_hetzner_65536` on vpn-probe-4:
+```
+13:15 false x3
+13:30 false x1, true x2
+13:45 true x2 ... 19:45 true x3   (one failure at 16:15)
+```
+6-hour counts before → after, home (vpn-probe-4) vs Hetzner source:
+```
+transfer_h1_fresh_endpoint_65536   home 0/34 -> 8/8      hetzner 34/34
+transfer_https_hetzner_65536       home 0/66 -> 65/66    hetzner 65/65
+transfer_cloudflare_16384 direct   home ok   -> 0/18 (curl 28, tls_ms 0)
+website_senaev_ru (all sources)    ~100% until 15:30, then 81-90% from home and hetzner
+```
+Every VPN-route failure after 14:00 on home is `curl_exit=28` with `tls_ms=0` (no
+partial transfers). Socket samples of a failed exit gate:
+```
+1.098: #1 ESTAB rx5993 tx2733/2732 rq0 sq0
+2.111: #1 ESTAB rx5993 tx2733/2732 rq0 sq0
+```
+So entry TLS completes and the inner request gets nothing back; no SYN-SENT sockets
+in any failed arm. The old ~20 KB freeze is gone; direct Cloudflare from home is now
+blocked, which invalidates every Cloudflare comparison.
+
+Decision: measure what "repaired" means directly. New `parity_loop` per production probe:
+every 600-660 s, httpbingo 16/64/256 KiB directly and through the profile, alternating
+order, 10 s setup budget, `failure_stage` (setup/response/transfer). Profile 3
+(hetzner → senaev-media) joins profiles 1 and 4; profile 5 (IPv6) stays off because home
+has no IPv6. New Grafana panel "Production parity". Planned bodies: 672 KiB per
+probe per round, ~3 probes x ~140 rounds/day ≈ 270 MiB/day. Existing diagnostics unchanged.
+126 Python tests pass; Helm renders replicas 1/3/4 = 1, 5 = 0.
+
+Previous `project-status.md`, verbatim:
+```
+- [ ] Restore reliable VPN access from the affected Russian ISPs.
+
+## Current stage
+
+#155 merged at0428b757; deployment43307488174 succeeded. All5 website smoke
+checks passed. Live Grafana has current-status/duration/age panels; fresh
+website_senaev_ru metrics show success for home and Hetzner. Logs confirm200,
+curl0, home879ms and Hetzner623ms at21:14 UTC. These are website availability
+results, not evidence that the VPN candidate is repaired.
+
+#158 fresh8KiB controls deployed. Before the availability rollout reset counters,
+home4/8KiB passed2/2 each and16KiB failed2/2; Hetzner all3 sizes passed3/3.
+Exit checks passed. Preliminary sample only; compare direct controls and more rounds.
+
+## Prepared next step
+
+PR #165 appends independent fresh12KiB after existing4/16/8KiB. Same exit,
+TLS/time/rate/byte-count and lifecycle guards; earlier failure does not suppress
+it. Adds28KiB planned response allowance per eligible cycle, not wire-byte limit.
+94 tests and local real-process integration pass; CI/review pending. Not merged
+or deployed. [Evidence and interpretation](H1-PAYLOAD-VALIDATION.md).
+
+No host networking, server/credential/privilege or production subscription changes.
+FirstVDS entry-only; Hetzner and senaev-media remain exits. Original failed
+candidate acceptance stays failed; no Happ profile promotion is justified.
+```
+
 ## 2026-11-14 19:38 UTC — Prioritized five-minute endpoint pair
 
 Prioritize the16KiB same-endpoint direct/XHTTP pair in a dedicated serial worker
