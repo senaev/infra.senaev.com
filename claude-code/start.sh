@@ -1,7 +1,9 @@
 #!/bin/bash
 # Two processes: the prompt API for n8n and Claude Code Remote Control. When either exits, the
-# script exits and Kubernetes restarts the container. tini (-g) sends a stop signal to both;
-# Remote Control stops its sessions and keeps them, so the next start brings them back.
+# script exits and Kubernetes restarts the container. On a stop, tini (-g) sends SIGTERM to the
+# whole group and the script waits for both, because tini exits with this script and the rest is
+# killed; Kubernetes bounds the wait (terminationGracePeriodSeconds). Remote Control stops its
+# sessions and keeps them, so the next start brings them back.
 set -euo pipefail
 umask 077
 
@@ -25,6 +27,7 @@ mv "$config.tmp" "$config"
 # then a prompt fails with the error of the CLI.
 /app/claude-code/node_modules/.bin/tsx /app/claude-code/prompt-api/main.ts &
 prompt_api_pid=$!
+trap 'wait; exit 143' TERM INT
 
 # Remote Control accepts only a full claude.ai login, so it cannot come from a secret.
 # Log in once with: kubectl exec -it deploy/<name>-claude-code -- claude auth login
@@ -35,7 +38,9 @@ if ! claude auth status > /dev/null 2>&1; then
             echo "The prompt API exited."
             exit 1
         fi
-        sleep 30
+        # In the background, so that the trap runs at once on a stop.
+        sleep 30 &
+        wait $! || true
     done
     echo "Claude Code is logged in."
 fi
@@ -49,6 +54,14 @@ claude remote-control \
     --permission-mode bypassPermissions \
     --settings "$settings" \
     < /dev/null &
+remote_control_pid=$!
 
-# Exits with the status of the first process that stops.
-wait -n
+# `wait -n` misses a process that exited before it is called, so check both every few seconds.
+while kill -0 "$prompt_api_pid" 2> /dev/null && kill -0 "$remote_control_pid" 2> /dev/null; do
+    sleep 5 &
+    wait $! || true
+done
+echo "The prompt API or Remote Control exited. Stopping the other one."
+kill -TERM "$prompt_api_pid" "$remote_control_pid" 2> /dev/null || true
+wait || true
+exit 1

@@ -48,6 +48,9 @@ export type SpawnedClaude = {
 
 export type ClaudeSpawner = (args: string[]) => SpawnedClaude;
 
+// After SIGTERM, the time the CLI has to stop before SIGKILL.
+const KILL_GRACE_MS = 10_000;
+
 export const spawnClaude: ClaudeSpawner = (args) => {
     const child = spawn('claude', args, {
         stdio: [
@@ -66,11 +69,22 @@ export const spawnClaude: ClaudeSpawner = (args) => {
         stderr += chunk;
     });
 
+    // The CLI may exit before it reads the whole prompt; writing then fails with EPIPE. The close
+    // event reports that run, so this error only must not crash the server.
+    child.stdin.on('error', () => {});
+
     return {
         writeStdin: (text) => child.stdin.end(text),
         onClose: (listener) => child.on('close', () => listener(stdout, stderr)),
         onError: (listener) => child.on('error', listener),
-        kill: () => child.kill('SIGTERM'),
+        kill: () => {
+            child.kill('SIGTERM');
+            setTimeout(() => {
+                if (child.exitCode === null && child.signalCode === null) {
+                    child.kill('SIGKILL');
+                }
+            }, KILL_GRACE_MS).unref();
+        },
     };
 };
 
@@ -98,32 +112,29 @@ export function createPromptRunner({
             '--model',
             model,
         ]);
-        let timedOut = false;
+        let settled = false;
+        // Settles the request once: the timeout does not wait for the process to close.
+        const settle = (finish: () => void) => {
+            if (!settled) {
+                settled = true;
+                clearTimeout(timer);
+                finish();
+            }
+        };
         const timer = setTimeout(() => {
-            timedOut = true;
+            settle(() => reject(new Error(`claude -p did not finish in ${timeoutMs} ms`)));
             child.kill();
         }, timeoutMs);
 
-        child.onError((error) => {
-            clearTimeout(timer);
-            reject(error);
-        });
-        child.onClose((stdout, stderr) => {
-            clearTimeout(timer);
-
-            if (timedOut) {
-                reject(new Error(`claude -p did not finish in ${timeoutMs} ms`));
-
-                return;
-            }
-
+        child.onError((error) => settle(() => reject(error)));
+        child.onClose((stdout, stderr) => settle(() => {
             try {
                 resolve(parsePromptResult(stdout));
             } catch {
                 // Only the end of stderr: it says why the CLI stopped, and it holds no prompt text.
                 reject(new Error(`claude -p printed no result: ${stderr.trim().slice(-500)}`));
             }
-        });
+        }));
         child.writeStdin(prompt);
     });
 }

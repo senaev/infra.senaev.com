@@ -56,7 +56,6 @@ function createFakeClaude() {
             },
             kill: () => {
                 fake.killed = true;
-                fake.close('', 'Terminated');
             },
         };
     };
@@ -121,10 +120,12 @@ describe('createPromptRunner', () => {
         })('x');
         const assertion = expect(run).rejects.toThrow('did not finish in 1000 ms');
 
+        // The process does not close after the kill: the request fails anyway.
         await vi.advanceTimersByTimeAsync(1000);
 
         await assertion;
         expect(fake.killed).toBe(true);
+        fake.close('{"is_error":false,"result":"late"}', '');
     });
 
     it('fails when the CLI cannot start', async () => {
