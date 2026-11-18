@@ -1,0 +1,166 @@
+{
+  "id": "madrid-weather",
+  "name": "Madrid weather: Claude Code writes today's forecast to the cluster chat",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Every day at 08:00 Madrid time",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -460,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://senaev-claude-code:8080/run",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ prompt: \"Find today's weather forecast for Madrid, Spain. Today is \" + $now.setZone('Europe/Madrid').toFormat('cccc, d LLLL yyyy') + \".\\n\\nAnswer with the message only, in Markdown for a Telegram chat, no introduction and no sources:\\n- a bold first line with the date and an emoji for the weather of the day;\\n- the temperature range, the chance of rain, the wind and the sky in the morning, afternoon and evening;\\n- one short tip for the day (an umbrella, sunscreen, a warm coat).\\n\\nKeep it short, clear and easy to read. Use emojis that match the weather (☀️ 🌤️ ☁️ 🌧️ ⛈️ 🌬️ 🥶 🥵).\" }) }}",
+        "options": {
+          "timeout": 1860000
+        }
+      },
+      "id": "run-prompt",
+      "name": "Ask Claude Code for the forecast",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "onError": "continueErrorOutput",
+      "position": [
+        -240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://cluster-helper/telegram/send-message",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chatId: $env.TG_CLUSTER_CHAT_ID, text: $json.result }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "send-forecast",
+      "name": "Send the forecast to the cluster chat",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput",
+      "position": [
+        -20,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// The prompt API answers 502 with { status: 'error', message } when Claude Code fails,\n// 409 when another prompt runs, and the request fails when the pod is down.\n// The Telegram request fails when cluster-helper or Telegram is down.\nconst item = $input.first().json;\nconst err = item.error ?? item;\nconst message = (err && err.message) ? err.message : JSON.stringify(err).slice(0, 300);\n\nreturn [{\n  json: {\n    text: `⚠️ Failed to send the Madrid weather forecast: ${message}`,\n  },\n}];"
+      },
+      "id": "format-error",
+      "name": "Format error message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TG_CLUSTER_CHAT_ID }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "telegram-notify-error",
+      "name": "Notify cluster chat",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        420,
+        120
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "senaev-com-bot",
+          "name": "senaev.com bot (provisioned)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every day at 08:00 Madrid time": {
+      "main": [
+        [
+          {
+            "node": "Ask Claude Code for the forecast",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask Claude Code for the forecast": {
+      "main": [
+        [
+          {
+            "node": "Send the forecast to the cluster chat",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format error message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send the forecast to the cluster chat": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Format error message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format error message": {
+      "main": [
+        [
+          {
+            "node": "Notify cluster chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Madrid"
+  },
+  "active": true
+}

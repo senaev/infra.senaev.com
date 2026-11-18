@@ -46,6 +46,16 @@ spec:
           imagePullPolicy: Always
           securityContext:
 {{ include "senaev-com.llmWorkspace.containerAccess" . | indent 12 }}
+          # The prompt API of start.sh: POST /run with { "prompt": "..." } runs `claude -p` without
+          # approvals and answers with the result when the run ends. Only n8n can reach it.
+          ports:
+            - name: prompt-api
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: prompt-api
+            periodSeconds: 10
           resources:
             requests:
               memory: 512Mi
@@ -128,7 +138,22 @@ spec:
           configMap:
             name: {{ printf "%s-instructions" .Values.name }}
 ---
-# Remote Control makes outbound connections only: no ingress, no Service.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ printf "%s-claude-code" .Values.name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: {{ printf "%s-claude-code" .Values.name }}
+  ports:
+    - name: prompt-api
+      port: 8080
+      targetPort: prompt-api
+      protocol: TCP
+---
+# Remote Control makes outbound connections only. The prompt API has no token and runs
+# prompts without approvals: the only ingress is n8n of this namespace, on the API port.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -140,5 +165,13 @@ spec:
       app: {{ printf "%s-claude-code" .Values.name }}
   policyTypes: [Ingress, Egress]
 {{ include "senaev-com.llmWorkspace.egress" . }}
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: n8n
+      ports:
+        - protocol: TCP
+          port: 8080
 {{- end }}
 {{- end -}}
