@@ -30,15 +30,16 @@ Production parity since #226 (20:20–22:30 UTC), success VPN vs direct, same ta
   at 21:16. XHTTP diagnostic `exit_validation_failed` entries are the Hetzner exit gate
   (HTTP 200), not path failures.
 - Latency cost of the VPN for 256 KiB: +150 ms on profiles 1 and 4, +1 s on profile 3
-  (exit back in Russia). Speed is **not measured yet**: every probe request runs with
-  curl `--limit-rate 32768` (bandwidth guard from #135), so direct 256 KiB always takes
-  ~8.7 s.
+  (exit back in Russia). Speed was **not measured** before round 2: every check up to
+  #226 ran with curl `--limit-rate 32768` (bandwidth guard from #135), so direct 256 KiB
+  always takes ~8.7 s. Only the new round 2 Cloudflare downloads run uncapped.
 
 Round 1 hypotheses:
 
-1. Time-varying ISP policy — **confirmed**. The path broke and recovered twice in one day
-   without our changes (13:30 Hetzner freeze gone; 19:00–20:20 setup stalls and the
-   Cloudflare block gone).
+1. Time-varying ISP policy — **likely, not confirmed**. Evidence is timing only: the path
+   broke and recovered twice in one day without our changes (13:30 Hetzner freeze gone;
+   19:00–20:20 setup stalls and the Cloudflare block gone), so the cause is external. A
+   repeat at the same time of day, or a provider notice, would confirm the ISP.
 2. 3 s setup budget too tight — **untested, now moot**: the 10 s parity checks started
    after the recovery, and successful VPN setups take ~1.3 s. The two 20:32 setup stalls
    were on the 3 s transfer checks.
@@ -48,7 +49,8 @@ Round 2 hypotheses:
 
 1. The VPN now matches direct for success, but may still be slower for bulk downloads
    (video, updates). Signal: uncapped 1/4 MiB download time VPN ≫ direct.
-2. The recovery is temporary (the policy changes by time of day). Signal: parity drops
+2. The recovery is temporary (the external change, likely ISP policy, depends on time of
+   day). Signal: parity drops
    again during the next 24 h, especially 13:00–20:00 UTC.
 
 Round 2 adds uncapped 1 MiB and 4 MiB Cloudflare downloads (VPN vs direct, every third

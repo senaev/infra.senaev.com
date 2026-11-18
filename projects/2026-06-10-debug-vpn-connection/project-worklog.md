@@ -28,7 +28,8 @@ dashboard panel compares it VPN vs direct. Traffic: ~30 MiB per run, ~1.4 GB/day
 
 Prediction: uncapped downloads succeed on both routes; VPN time within ~1.5× direct on
 profiles 1 and 4 and slower on profile 3 (exit in Russia). If parity success drops again
-in the next 24 h, the ISP policy is time-of-day dependent.
+at a similar time in the next 24 h, the external change (likely ISP policy) is time-of-day
+dependent.
 
 ## 2026-11-18 20:30 UTC — Round 1: ISP behaviour changed; measure production parity
 
