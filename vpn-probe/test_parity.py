@@ -35,7 +35,7 @@ class ParityRoundTests(unittest.TestCase):
             ('https://httpbingo.org/bytes/262144', '')])
         budgets = [(c.kwargs['timeout'], c.kwargs['connect_timeout'], c.kwargs['expected_bytes'])
                    for c in request.call_args_list[::2]]
-        self.assertEqual(budgets, [(10, 10, 16384), (14, 10, 65536), (26, 10, 262144)])
+        self.assertEqual(budgets, [(12, 10, 16384), (14, 10, 65536), (26, 10, 262144)])
         checks = [(c.args[1], c.args[2]) for c in emit.call_args_list]
         self.assertEqual(checks[:2], [('parity_httpbingo_16384', 'vpn'),
                                       ('parity_httpbingo_16384', 'direct')])

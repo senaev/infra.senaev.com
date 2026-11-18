@@ -14,7 +14,7 @@ Analysis of the 3 days after #202 (Datadog logs, VictoriaMetrics). At ~13:30 UTC
 6-hour counts before → after, home (vpn-probe-4) vs Hetzner source:
 ```
 transfer_h1_fresh_endpoint_65536   home 0/34 -> 8/8      hetzner 34/34
-transfer_https_hetzner_65536       home 0/66 -> 22/22    hetzner 65/65
+transfer_https_hetzner_65536       home 0/66 -> 65/66    hetzner 65/65
 transfer_cloudflare_16384 direct   home ok   -> 0/18 (curl 28, tls_ms 0)
 website_senaev_ru (all sources)    ~100% until 15:30, then 81-90% from home and hetzner
 ```

@@ -216,7 +216,7 @@ def parity_round(profile, proxy, experiment_id, vpn_first):
     passed = True
     for size in PARITY_SIZES:
         # 32KiB/s rate limit: allow twice the nominal transfer time plus setup.
-        timeout = max(8, size // 32768 * 2 + PARITY_CONNECT_SECONDS)
+        timeout = PARITY_CONNECT_SECONDS + max(2, -(-size // 32768) * 2)
         routes = [("vpn", proxy), ("direct", "")]
         for route, address in routes if vpn_first else reversed(routes):
             jitter = random.uniform(2, 7)
