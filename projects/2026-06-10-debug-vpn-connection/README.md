@@ -5,41 +5,57 @@
 
 ## Current status (updated every round)
 
-**Round 1 — 2026-11-18, PR "Measure production VPN parity with direct traffic".**
+**Round 2 — 2026-11-18 22:30 UTC, PR "Compare VPN and direct download speed".**
 
-At about 13:30 UTC on 2026-11-18 the home ISP changed its behaviour, with no deploy of ours
-(the last VPN deploy was #202 on 2026-11-15; nothing VPN-related merged since):
+The VPN works again from home, for the first time in this project. Between ~19:00 and
+~20:20 UTC the home ISP changed its behaviour again, with no deploy of ours (#226 only added
+measurements and landed at ~20:20, after the recovery had started):
 
-| home source, before → after 13:30 UTC | before (6 h) | after (6 h) |
+| home source, VPN + httpbingo/Cloudflare transfers | 17:00–19:00 UTC | 21:00–22:30 UTC |
 |---|---|---|
-| direct `senaev.com` endpoint 64 KiB | 0/66 | 65/66 |
-| XHTTP endpoint 16 KiB (default / MSS 1000) | ~0 % | 31/32, 31/34 |
-| XHTTP endpoint 64 KiB | 0/34 | 8/8 |
-| direct Cloudflare 4–64 KiB | ~100 % | 0–3 % (TLS setup timeout) |
-| TCP/Reality profile 4 → httpbingo 64 KiB, VPN vs direct | ~0/17 vs ~17/17 | 8/14 vs 17/17 |
+| VPN route failure rate (profiles 1, 3, 4) | 45–65 % | 0–1 % |
+| direct Cloudflare failure rate | ~50 % (TLS setup) | 0 % |
+| `senaev.ru` HEAD from home / Hetzner (FirstVDS) | ~10 % | 0.5 % / 1 % |
 
-- The ~20 KB freeze on connections to Hetzner is gone for now. VPN failures now stop
-  **before any response**: outer TCP and the entry TLS complete (≈6 KB received), the
-  inner request gets no answer within the 3 s setup budget. No socket stays in SYN-SENT.
-- Direct Cloudflare from home now fails at TLS setup, so every Cloudflare comparison is
-  inconclusive (no valid direct control). httpbingo and the Hetzner endpoint stay valid.
-- Separate: `senaev.ru` HEAD checks fail ~10 % since ~16:00 UTC from home **and** from the
-  Hetzner source, so FirstVDS itself is degraded; it also hurts profile 1 (FirstVDS entry).
-- Sources: Datadog `service:vpn-probe`, VictoriaMetrics `vpn_probe_checks_total`.
+Production parity since #226 (20:20–22:30 UTC), success VPN vs direct, same target and size:
 
-Hypotheses, ranked:
+| profile | 16 KiB | 64 KiB | 256 KiB |
+|---|---|---|---|
+| 1. firstvds → hetzner | 12/12 vs 12/12 | 12/12 vs 12/12 | 12/12 vs 11/11 |
+| 3. hetzner → senaev-media | 11/11 vs 11/11 | 11/11 vs 11/11 | 11/11 vs 11/11 |
+| 4. hetzner → freedom | 12/12 vs 12/12 | 12/12 vs 12/12 | 10/11 vs 11/11 |
 
-1. The block is time-varying ISP policy (it changed without our change); the remaining
-   gap is a setup-phase stall on part of the tunnel connections. Signal: production
-   profiles fail parity mostly with `failure_stage=setup`/`response` while direct passes.
-2. The 3 s setup budget is too tight for a two-hop tunnel on the degraded path, so some
-   "failures" are only slow. Signal: with a 10 s budget, VPN setup succeeds at 3–10 s.
-3. A size threshold still exists above 64 KiB. Signal: 256 KiB VPN fails as `transfer`
-   while 16/64 KiB pass.
+- 3 VPN failures since the deploy, none after 21:17 UTC: two `setup` stalls on profile 1
+  at 20:32 (end of the recovery) and one `transfer` stall at 61 KB of 256 KiB on profile 4
+  at 21:16. XHTTP diagnostic `exit_validation_failed` entries are the Hetzner exit gate
+  (HTTP 200), not path failures.
+- Latency cost of the VPN for 256 KiB: +150 ms on profiles 1 and 4, +1 s on profile 3
+  (exit back in Russia). Speed was **not measured** before round 2: every check up to
+  #226 ran with curl `--limit-rate 32768` (bandwidth guard from #135), so direct 256 KiB
+  always takes ~8.7 s. Only the new round 2 Cloudflare downloads run uncapped.
 
-Round 1 adds the parity measurement that defines "repaired" (see the 2026-11-18 entry in
-[the worklog](project-worklog.md)). Next round: read the parity panel and `failure_stage`,
-then change the production path (budget, transport, or entry) where it falls short.
+Round 1 hypotheses:
+
+1. Time-varying ISP policy — **likely, not confirmed**. Evidence is timing only: the path
+   broke and recovered twice in one day without our changes (13:30 Hetzner freeze gone;
+   19:00–20:20 setup stalls and the Cloudflare block gone), so the cause is external. A
+   repeat at the same time of day, or a provider notice, would confirm the ISP.
+2. 3 s setup budget too tight — **untested, now moot**: the 10 s parity checks started
+   after the recovery, and successful VPN setups take ~1.3 s. The two 20:32 setup stalls
+   were on the 3 s transfer checks.
+3. Size threshold above 64 KiB — **rejected for now**: 256 KiB passes 33/34 through VPN.
+
+Round 2 hypotheses:
+
+1. The VPN now matches direct for success, but may still be slower for bulk downloads
+   (video, updates). Signal: uncapped 1/4 MiB download time VPN ≫ direct.
+2. The recovery is temporary (the external change, likely ISP policy, depends on time of
+   day). Signal: parity drops
+   again during the next 24 h, especially 13:00–20:00 UTC.
+
+Round 2 adds uncapped 1 MiB and 4 MiB Cloudflare downloads (VPN vs direct, every third
+parity round, ~1.4 GB/day) and a mean-download-time panel. Next round: 24 h of parity and
+speed data. **User test wanted:** open a few sites and a video through Happ from home.
 
 ## Round workflow
 

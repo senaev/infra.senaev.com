@@ -7,6 +7,7 @@ import time
 METRIC_TYPES = {
     'vpn_probe_checks_total': 'counter',
     'vpn_probe_received_bytes_total': 'counter',
+    'vpn_probe_success_duration_seconds_total': 'counter',
     'vpn_probe_success': 'gauge',
     'vpn_probe_last_check_timestamp_seconds': 'gauge',
     'vpn_probe_last_success_timestamp_seconds': 'gauge',
@@ -46,17 +47,21 @@ class ProbeMetrics:
                          'transfer_cloudflare_16384', 'transfer_cloudflare_65536',
                          'transfer_httpbingo_4096', 'transfer_httpbingo_16384',
                          'transfer_httpbingo_65536', 'parity_httpbingo_16384',
-                         'parity_httpbingo_65536', 'parity_httpbingo_262144'} or route not in {'direct', 'vpn', 'xhttp'}:
+                         'parity_httpbingo_65536', 'parity_httpbingo_262144',
+                         'parity_cloudflare_1048576', 'parity_cloudflare_4194304'} or route not in {'direct', 'vpn', 'xhttp'}:
             return
         now = time.time() if now is None else now
         with self.lock:
             key = (profile, check, route)
-            state = self.results.setdefault(key, {'successes': 0, 'failures': 0, 'last_success': 0, 'bytes_total': 0})
+            state = self.results.setdefault(key, {'successes': 0, 'failures': 0, 'last_success': 0, 'bytes_total': 0,
+                                                     'success_seconds': 0})
             state['successes' if result['ok'] else 'failures'] += 1
             state['bytes_total'] += result.get('bytes', 0)
             state['last_check'] = now
             if result['ok']:
                 state['last_success'] = now
+                # Mean successful duration over a window = this increase / success increase.
+                state['success_seconds'] += result.get('duration_ms', 0) / 1000
             # Only known numeric fields are exported; never IPs, URLs, UUIDs or run IDs.
             state['result'] = {k: result[k] for k in
                                ['ok', 'duration_ms', 'bytes', 'http_status', 'curl_exit'] if k in result}
@@ -71,6 +76,7 @@ class ProbeMetrics:
                 result = state['result']
                 values = {
                     'vpn_probe_received_bytes_total': state['bytes_total'],
+                    'vpn_probe_success_duration_seconds_total': state['success_seconds'],
                     'vpn_probe_success': int(result['ok']),
                     'vpn_probe_last_check_timestamp_seconds': state['last_check'],
                     'vpn_probe_last_success_timestamp_seconds': state['last_success'],

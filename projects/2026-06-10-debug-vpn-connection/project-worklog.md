@@ -1,3 +1,36 @@
+## 2026-11-18 22:30 UTC — Round 2: VPN recovered; measure speed
+
+Analysis of 2 h after #226 (deployed ~20:20 UTC) plus the day's trend (VictoriaMetrics
+`vpn_probe_checks_total`, Datadog `service:vpn-probe`).
+
+VPN-route failure rate, httpbingo and Cloudflare transfers, profiles 1/3/4, 20-minute
+windows ending at: 19:20 23 %, 19:40 17 %, 20:00 7 %, 20:20 8 %, 20:40 9 %, 21:00 0 %,
+21:20 0 %. Direct Cloudflare failure rate: ~50 % until 20:00, 6 % at 20:20, then 0 %. The
+recovery started before #226, which changed no path. Hourly VPN failure rate earlier in
+the day: 22–28 % 08:00–14:00, 7–20 % 14:00–17:00, 35–50 % 17:00–19:00.
+
+Parity since #226: 103/104 VPN vs 103/103 direct across profiles 1/3/4 and 16/64/256 KiB.
+VPN failures since 20:20: profile 1 `transfer_httpbingo_16384` and
+`transfer_cloudflare_65536` at 20:32 (curl 28, no TLS = setup stall); profile 4
+`parity_httpbingo_262144` at 21:16 (curl 28 after 61140 bytes = transfer stall). None
+after 21:17. `senaev.ru` failures fell to 0.5–1 %.
+
+Mean 256 KiB parity duration (ms): direct ~8700 on every profile (the probe's own 32 KiB/s
+cap); VPN 8850 (profile 1), 9740 (profile 3), 8900 (profile 4). Successful VPN setups take
+~1.3 s to TLS and ~1.6 s to first byte, far below the 10 s budget.
+
+Change: `request()` takes `limit_rate` (default 32768, unchanged for every existing
+check). New `parity_cloudflare_{1048576,4194304}` downloads run uncapped right after
+every third parity round in the same worker (no overlap with parity pairs), budget 10 s
+connect + size at 128 KiB/s (18 s / 42 s). New counter
+`vpn_probe_success_duration_seconds_total` gives mean successful download time; new
+dashboard panel compares it VPN vs direct. Traffic: ~30 MiB per run, ~1.4 GB/day.
+
+Prediction: uncapped downloads succeed on both routes; VPN time within ~1.5× direct on
+profiles 1 and 4 and slower on profile 3 (exit in Russia). If parity success drops again
+at a similar time in the next 24 h, the external change (likely ISP policy) is time-of-day
+dependent.
+
 ## 2026-11-18 20:30 UTC — Round 1: ISP behaviour changed; measure production parity
 
 Agreed round workflow with the user (see README "Round workflow"). Retired
