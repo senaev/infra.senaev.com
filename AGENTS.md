@@ -19,12 +19,7 @@ for the folder layout, the main document, the status and the worklog.
 Never change anything in the main checkout of this repository: no edits, commits, branch
 switches or stashes. It stays on `main`, and several agents use it at the same time. Use it only
 to pull `main` and to add or remove worktrees. Do every task in its own worktree, made from the
-latest `main`:
-
-```
-git -C /code/projects/infra.senaev.com pull --ff-only
-git -C /code/projects/infra.senaev.com worktree add /code/worktrees/infra.senaev.com/<branch> -b <branch> origin/main
-```
+latest `main`.
 
 ## Sensitive nodes: `proxmox`, `senaev-media`, `proxmox-madrid` and `senaev-madrid`
 
