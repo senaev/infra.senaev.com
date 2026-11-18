@@ -6,7 +6,7 @@ import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { callTelegramApi } from 'senaev-utils/src/utils/TelegramApi/callTelegramApi';
 import { createTelegramApiBaseUrl } from 'senaev-utils/src/utils/TelegramApi/createTelegramApiBaseUrl';
 import { escapeTelegramMarkdown } from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
-import { createNoisyRouteChildLoggerFactory } from 'senaev-utils/src/utils/http/noisyRouteLogging';
+import { createProbeRouteChildLoggerFactory } from 'senaev-utils/src/utils/http/probeRouteLogging';
 import { getCurrentTelegramBotInfo } from 'senaev-utils/src/utils/TelegramApi/getCurrentTelegramBotInfo';
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
 import { TelegramUpdate, TelegramUser } from 'senaev-utils/src/utils/TelegramApi/types';
@@ -89,10 +89,10 @@ export const ALISA_WEBHOOK_PATH = '/alisa-webhook';
 
 export const webhookSecretToken = randomBytes(32).toString('hex');
 
-// Probes and the heartbeat call these every few seconds: their request logs start with `[noise] `.
+// Probes and the heartbeat call these every few seconds: their request logs start with `[probe] `.
 const internalServer = Fastify({
     loggerInstance: logger,
-    childLoggerFactory: createNoisyRouteChildLoggerFactory([
+    childLoggerFactory: createProbeRouteChildLoggerFactory([
         '/health/live',
         '/health/ready',
         '/alertmanager/heartbeat',
@@ -100,7 +100,7 @@ const internalServer = Fastify({
 });
 const publicServer = Fastify({
     loggerInstance: logger,
-    childLoggerFactory: createNoisyRouteChildLoggerFactory(['/healthz']),
+    childLoggerFactory: createProbeRouteChildLoggerFactory(['/healthz']),
 });
 
 let isReady = false;

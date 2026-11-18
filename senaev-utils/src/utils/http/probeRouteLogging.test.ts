@@ -4,9 +4,9 @@ import {
     describe, expect, it,
 } from 'vitest';
 
-import { createNoisyRouteChildLoggerFactory } from './noisyRouteLogging';
+import { createProbeRouteChildLoggerFactory } from './probeRouteLogging';
 
-async function getRequestLogs(url: string): Promise<Array<{ msg: string; noise?: boolean }>> {
+async function getRequestLogs(url: string): Promise<Array<{ msg: string; probe?: boolean }>> {
     const lines: string[] = [];
     const logger = pino({}, {
         write: (line: string) => {
@@ -15,7 +15,7 @@ async function getRequestLogs(url: string): Promise<Array<{ msg: string; noise?:
     });
     const server = Fastify({
         loggerInstance: logger,
-        childLoggerFactory: createNoisyRouteChildLoggerFactory(['/health']),
+        childLoggerFactory: createProbeRouteChildLoggerFactory(['/health']),
     });
 
     server.get('/health', (request, reply) => {
@@ -28,20 +28,20 @@ async function getRequestLogs(url: string): Promise<Array<{ msg: string; noise?:
     await server.close();
 
     return lines
-        .map((line) => JSON.parse(line) as { msg: string; noise?: boolean; reqId?: string })
+        .map((line) => JSON.parse(line) as { msg: string; probe?: boolean; reqId?: string })
         .filter(({ reqId }) => reqId !== undefined);
 }
 
-describe('createNoisyRouteChildLoggerFactory', () => {
-    it('prefixes and marks every request log line of a noisy path, also with a query', async () => {
+describe('createProbeRouteChildLoggerFactory', () => {
+    it('prefixes and marks every request log line of a probe path, also with a query', async () => {
         const logs = await getRequestLogs('/health?probe=1');
 
         expect(logs.map(({ msg }) => msg)).toEqual([
-            '[noise] incoming request',
-            '[noise] checked',
-            '[noise] request completed',
+            '[probe] incoming request',
+            '[probe] checked',
+            '[probe] request completed',
         ]);
-        expect(logs.every(({ noise }) => noise === true)).toBe(true);
+        expect(logs.every(({ probe }) => probe === true)).toBe(true);
     });
 
     it('leaves other paths unchanged', async () => {
@@ -51,6 +51,6 @@ describe('createNoisyRouteChildLoggerFactory', () => {
             'incoming request',
             'request completed',
         ]);
-        expect(logs.some(({ noise }) => noise !== undefined)).toBe(false);
+        expect(logs.some(({ probe }) => probe !== undefined)).toBe(false);
     });
 });
