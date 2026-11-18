@@ -20,6 +20,18 @@ export type TelegramMcpChannel = {
     chatId: string;
 };
 
+/** Headings, inline styles, highlights, spoilers, quotes, code blocks, and line breaks were checked in Telegram on 2026-11-18. */
+export const TELEGRAM_RICH_MARKDOWN_SYNTAX = [
+    'The text is Telegram Rich Markdown, sent unchanged:',
+    '- headings: `## Title`',
+    '- **bold**, *italic*, ~~strikethrough~~, `inline code`, [links](https://example.com)',
+    '- ==highlight== (Obsidian syntax): a marked word, e.g. `Status: ==all green==`',
+    '- ||spoiler||: hidden until tapped, e.g. `The code is ||1234||`',
+    '- quotes with a vertical bar on the left: lines that start with `> `; `>> ` nests one quote in another',
+    '- lists (`- item`, `1. item`), tables and fenced code blocks with a language for syntax highlighting (```typescript)',
+    'A single newline is joined into the line before it, as in Markdown: put a blank line between paragraphs.',
+].join('\n');
+
 export type SendTelegramMarkdown = (options: { chatId: string; text: string }) => Promise<{ message_id: number }>;
 
 const ARGUMENT_KEYS = new Set([
@@ -33,7 +45,11 @@ export function createTelegramToolDefinitions(channels: readonly TelegramMcpChan
     return {
         send_message: {
             title: 'Send a Telegram message',
-            description: 'Sends a message to a Telegram chat by the senaev.com bot. The text is Telegram Rich Markdown: ' + 'headings, **bold**, *italic*, ~~strikethrough~~, `code`, fenced code blocks, [links](https://example.com), ' + 'lists, quotes and tables. Every call posts a new message, so do not repeat a call that succeeded. ' + `The chats: ${channelList}.`,
+            description: [
+                'Sends a message to a Telegram chat by the senaev.com bot. Every call posts a new message, so do not repeat a call that succeeded.',
+                `The chats: ${channelList}.`,
+                TELEGRAM_RICH_MARKDOWN_SYNTAX,
+            ].join('\n\n'),
             inputSchema: {
                 type: 'object',
                 properties: {
@@ -46,7 +62,7 @@ export function createTelegramToolDefinitions(channels: readonly TelegramMcpChan
                         type: 'string',
                         minLength: 1,
                         maxLength: TELEGRAM_MCP_MAX_TEXT_LENGTH,
-                        description: 'The message in Telegram Rich Markdown.',
+                        description: 'The message in Telegram Rich Markdown, with ==highlight==, ||spoiler|| and > quotes.',
                     },
                 },
                 required: [
