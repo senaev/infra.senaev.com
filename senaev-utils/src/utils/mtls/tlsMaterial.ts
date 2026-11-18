@@ -9,9 +9,9 @@ import type { SecureContextOptions } from 'node:tls';
 export const MTLS_DIRECTORY = '/etc/mtls';
 
 /** The file names that cert-manager writes into a Certificate Secret. */
-export const TLS_KEY_FILE = 'tls.key';
-export const TLS_CERT_FILE = 'tls.crt';
-export const TLS_CA_FILE = 'ca.crt';
+const TLS_KEY_FILE = 'tls.key';
+const TLS_CERT_FILE = 'tls.crt';
+const TLS_CA_FILE = 'ca.crt';
 
 /** PEM text of the own key, the own certificate (first in the file) and the CA certificate. */
 export type TlsFiles = {
