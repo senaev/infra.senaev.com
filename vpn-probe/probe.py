@@ -69,7 +69,8 @@ def client_config(link, base_uuid, public_key, port=1080, invalid=False):
             "streamSettings": stream}]}, seed[1]
 
 
-def request(url, proxy, max_bytes, expected_status=200, expected_bytes=None, timeout=8, head=False, text_limit=4096, http1=False, connect_timeout=3):
+def request(url, proxy, max_bytes, expected_status=200, expected_bytes=None, timeout=8, head=False, text_limit=4096, http1=False, connect_timeout=3,
+            limit_rate=32768):
     """Disable curlrc, redirects, retries and ambient proxy settings."""
     if text_limit not in (4096, 65536):
         raise ValueError("Unsupported response text limit")
@@ -77,8 +78,10 @@ def request(url, proxy, max_bytes, expected_status=200, expected_bytes=None, tim
         body = Path(folder) / "body"
         headers = Path(folder) / "headers"
         command = ["curl", "--disable", "--silent", "--show-error", "--fail",
-                   "--proto", "=https", "--ipv4", "--connect-timeout", str(connect_timeout), "--max-time", str(timeout),
-                   "--limit-rate", "32768"]
+                   "--proto", "=https", "--ipv4", "--connect-timeout", str(connect_timeout), "--max-time", str(timeout)]
+        # The bandwidth guard stays on unless a check measures throughput on purpose.
+        if limit_rate:
+            command += ["--limit-rate", str(limit_rate)]
         if http1:
             command += ["--http1.1"]
         # HEAD transfers no response body. Do not interpret Content-Length as
@@ -211,28 +214,57 @@ def failure_stage(result):
     return "transfer"
 
 
-def parity_round(profile, proxy, experiment_id, vpn_first):
-    """Same public target and size directly and through the production profile."""
+THROUGHPUT_URL = "https://speed.cloudflare.com/__down?bytes={}"
+THROUGHPUT_SIZES = (1048576, 4194304)
+# Slowest speed still counted as working: 128 KiB/s (1 Mbit/s).
+THROUGHPUT_FLOOR_BYTES_PER_SECOND = 131072
+THROUGHPUT_EVERY_ROUNDS = 3
+
+
+def parity_conditions():
+    """Small-object parity under the usual 32 KiB/s guard; 32 KiB/s needs 2 s per 64 KiB."""
+    return [(f"parity_httpbingo_{size}", PARITY_URL.format(size), size,
+             PARITY_CONNECT_SECONDS + max(2, -(-size // 32768) * 2), 32768)
+            for size in PARITY_SIZES]
+
+
+def throughput_conditions():
+    """Bulk download without the rate cap, so VPN and direct speed can be compared."""
+    return [(f"parity_cloudflare_{size}", THROUGHPUT_URL.format(size), size,
+             PARITY_CONNECT_SECONDS + max(5, -(-size // THROUGHPUT_FLOOR_BYTES_PER_SECOND)), None)
+            for size in THROUGHPUT_SIZES]
+
+
+def paired_round(profile, proxy, experiment_id, vpn_first, conditions):
+    """Each condition directly and through the production profile, back to back."""
     passed = True
-    for size in PARITY_SIZES:
-        # 32KiB/s rate limit: allow twice the nominal transfer time plus setup.
-        timeout = PARITY_CONNECT_SECONDS + max(2, -(-size // 32768) * 2)
+    for check, url, size, timeout, limit_rate in conditions:
         routes = [("vpn", proxy), ("direct", "")]
         for route, address in routes if vpn_first else reversed(routes):
             jitter = random.uniform(2, 7)
             if STOP.wait(jitter):
                 return False
-            result, _ = request(PARITY_URL.format(size), address, size, expected_bytes=size,
-                                timeout=timeout, connect_timeout=PARITY_CONNECT_SECONDS)
+            result, _ = request(url, address, size, expected_bytes=size, timeout=timeout,
+                                connect_timeout=PARITY_CONNECT_SECONDS, limit_rate=limit_rate)
             stage = failure_stage(result)
-            emit(profile, f"parity_httpbingo_{size}", route, {
+            emit(profile, check, route, {
                 **result, "experiment_id": experiment_id, "requested_bytes": size,
                 "vpn_first": vpn_first, "budget_seconds": timeout,
                 "connect_budget_seconds": PARITY_CONNECT_SECONDS,
+                "rate_limit_bytes_per_second": limit_rate or 0,
                 "request_jitter_seconds": jitter,
                 **({"failure_stage": stage} if stage else {})})
             passed = result["ok"] and passed
     return passed
+
+
+def parity_round(profile, proxy, experiment_id, vpn_first):
+    """Same public target and size directly and through the production profile."""
+    return paired_round(profile, proxy, experiment_id, vpn_first, parity_conditions())
+
+
+def throughput_round(profile, proxy, experiment_id, vpn_first):
+    return paired_round(profile, proxy, experiment_id, vpn_first, throughput_conditions())
 
 
 def parity_loop(profile, proxy):
@@ -240,9 +272,15 @@ def parity_loop(profile, proxy):
     if STOP.wait(random.uniform(0, 60)):
         return
     vpn_first = random.random() < 0.5
+    rounds = 0
     while not STOP.is_set():
         started = time.monotonic()
-        parity_round(profile, proxy, str(uuid.uuid4()), vpn_first)
+        experiment_id = str(uuid.uuid4())
+        parity_round(profile, proxy, experiment_id, vpn_first)
+        # Throughput runs in the same worker, so it never overlaps a parity pair.
+        if rounds % THROUGHPUT_EVERY_ROUNDS == 0 and not STOP.is_set():
+            throughput_round(profile, proxy, experiment_id, vpn_first)
+        rounds += 1
         vpn_first = not vpn_first
         if STOP.wait(max(0, started + random.uniform(600, 660) - time.monotonic())):
             return

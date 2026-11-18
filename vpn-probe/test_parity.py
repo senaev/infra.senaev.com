@@ -36,6 +36,7 @@ class ParityRoundTests(unittest.TestCase):
         budgets = [(c.kwargs['timeout'], c.kwargs['connect_timeout'], c.kwargs['expected_bytes'])
                    for c in request.call_args_list[::2]]
         self.assertEqual(budgets, [(12, 10, 16384), (14, 10, 65536), (26, 10, 262144)])
+        self.assertTrue(all(c.kwargs['limit_rate'] == 32768 for c in request.call_args_list))
         checks = [(c.args[1], c.args[2]) for c in emit.call_args_list]
         self.assertEqual(checks[:2], [('parity_httpbingo_16384', 'vpn'),
                                       ('parity_httpbingo_16384', 'direct')])
@@ -63,19 +64,63 @@ class ParityRoundTests(unittest.TestCase):
         request.assert_not_called()
 
 
+class ThroughputRoundTests(unittest.TestCase):
+    @patch('probe.emit')
+    @patch('probe.request', return_value=(OK, ''))
+    @patch('probe.random.uniform', return_value=3)
+    @patch('probe.STOP')
+    def test_uncapped_bulk_download_on_both_routes(self, stop, jitter, request, emit):
+        stop.wait.return_value = False
+        self.assertTrue(probe.throughput_round('home', 'proxy', 'round', False))
+        calls = [(c.args[0], c.args[1], c.kwargs['timeout'], c.kwargs['limit_rate'])
+                 for c in request.call_args_list]
+        self.assertEqual(calls, [
+            ('https://speed.cloudflare.com/__down?bytes=1048576', '', 18, None),
+            ('https://speed.cloudflare.com/__down?bytes=1048576', 'proxy', 18, None),
+            ('https://speed.cloudflare.com/__down?bytes=4194304', '', 42, None),
+            ('https://speed.cloudflare.com/__down?bytes=4194304', 'proxy', 42, None)])
+        self.assertEqual([c.args[1] for c in emit.call_args_list[::2]],
+                         ['parity_cloudflare_1048576', 'parity_cloudflare_4194304'])
+        self.assertEqual(emit.call_args_list[0].args[3]['rate_limit_bytes_per_second'], 0)
+
+    @patch('probe.subprocess.run')
+    def test_rate_cap_flag_only_when_requested(self, run):
+        run.return_value.stdout = ''
+        run.return_value.returncode = 0
+        probe.request('https://example.test/', '', 10)
+        self.assertIn('--limit-rate', run.call_args.args[0])
+        probe.request('https://example.test/', '', 10, limit_rate=None)
+        self.assertNotIn('--limit-rate', run.call_args.args[0])
+
+
 class ParityLoopTests(unittest.TestCase):
     @patch('probe.time.monotonic', side_effect=[100, 400])
     @patch('probe.random.random', return_value=0.2)
     @patch('probe.random.uniform', side_effect=[30, 620])
+    @patch('probe.throughput_round')
     @patch('probe.parity_round')
     @patch('probe.STOP')
-    def test_ten_minute_start_cadence(self, stop, round_, uniform, rnd, clock):
+    def test_ten_minute_start_cadence(self, stop, round_, throughput, uniform, rnd, clock):
         stop.wait.side_effect = [False, True]
         stop.is_set.return_value = False
         probe.parity_loop('home', 'proxy')
         self.assertEqual(round_.call_count, 1)
         self.assertTrue(round_.call_args.args[3])
+        self.assertEqual(throughput.call_args.args[2], round_.call_args.args[2])
         self.assertEqual([c.args[0] for c in stop.wait.call_args_list], [30, 320])
+
+    @patch('probe.time.monotonic', return_value=0)
+    @patch('probe.random.random', return_value=0.2)
+    @patch('probe.random.uniform', return_value=600)
+    @patch('probe.throughput_round')
+    @patch('probe.parity_round')
+    @patch('probe.STOP')
+    def test_throughput_every_third_round(self, stop, round_, throughput, uniform, rnd, clock):
+        stop.wait.side_effect = [False] * 7 + [True]
+        stop.is_set.return_value = False
+        probe.parity_loop('home', 'proxy')
+        self.assertEqual(round_.call_count, 7)
+        self.assertEqual(throughput.call_count, 3)
 
     @patch('probe.emit')
     @patch('probe.parity_loop', side_effect=RuntimeError('boom'))
@@ -94,6 +139,16 @@ class ParityMetricsTests(unittest.TestCase):
         rendered = exporter.render()
         for size in probe.PARITY_SIZES:
             self.assertIn(f'check="parity_httpbingo_{size}",route="vpn",result="success"}} 1', rendered)
+
+    def test_success_duration_is_summed_for_mean_download_time(self):
+        exporter = metrics.ProbeMetrics()
+        check = 'parity_cloudflare_4194304'
+        exporter.record('home', check, 'direct', {'ok': True, 'bytes': 1, 'duration_ms': 1500}, now=1)
+        exporter.record('home', check, 'direct', {'ok': True, 'bytes': 1, 'duration_ms': 2500}, now=2)
+        exporter.record('home', check, 'direct', {'ok': False, 'bytes': 0, 'duration_ms': 42000}, now=3)
+        rendered = exporter.render()
+        self.assertIn(f'vpn_probe_success_duration_seconds_total{{profile="home",check="{check}",'
+                      'route="direct"} 4.0', rendered)
 
 
 if __name__ == '__main__':
