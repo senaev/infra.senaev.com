@@ -1,12 +1,12 @@
 import { randomBytes } from 'node:crypto';
 
 import { ResourceReadGate } from 'senaev-utils/src/toolServer/ResourceReadGate';
-import Fastify, { FastifyReply } from 'fastify';
+import Fastify, { FastifyReply, LogController } from 'fastify';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { callTelegramApi } from 'senaev-utils/src/utils/TelegramApi/callTelegramApi';
 import { createTelegramApiBaseUrl } from 'senaev-utils/src/utils/TelegramApi/createTelegramApiBaseUrl';
 import { escapeTelegramMarkdown } from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
-import { createProbeRouteChildLoggerFactory } from 'senaev-utils/src/utils/http/probeRouteLogging';
+import { createProbeLogController } from 'senaev-utils/src/utils/http/probeRouteLogging';
 import { getCurrentTelegramBotInfo } from 'senaev-utils/src/utils/TelegramApi/getCurrentTelegramBotInfo';
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
 import { TelegramUpdate, TelegramUser } from 'senaev-utils/src/utils/TelegramApi/types';
@@ -90,7 +90,7 @@ export const webhookSecretToken = randomBytes(32).toString('hex');
 // Probes and the heartbeat call these every few seconds: their request logs start with `[probe] `.
 const internalServer = Fastify({
     loggerInstance: logger,
-    childLoggerFactory: createProbeRouteChildLoggerFactory([
+    logController: createProbeLogController(LogController, [
         '/health/live',
         '/health/ready',
         '/alertmanager/heartbeat',
@@ -98,7 +98,7 @@ const internalServer = Fastify({
 });
 const publicServer = Fastify({
     loggerInstance: logger,
-    childLoggerFactory: createProbeRouteChildLoggerFactory(['/healthz']),
+    logController: createProbeLogController(LogController, ['/healthz']),
 });
 
 let isReady = false;

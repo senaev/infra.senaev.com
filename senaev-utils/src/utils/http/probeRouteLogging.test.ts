@@ -1,12 +1,14 @@
-import Fastify from 'fastify';
+import Fastify, { LogController } from 'fastify';
 import pino from 'pino';
 import {
     describe, expect, it,
 } from 'vitest';
 
-import { createProbeRouteChildLoggerFactory } from './probeRouteLogging';
+import { createProbeLogController } from './probeRouteLogging';
 
-async function getRequestLogs(url: string): Promise<Array<{ msg: string; probe?: boolean }>> {
+type LogLine = { msg: string; probe?: boolean; reqId?: string; level: number };
+
+async function getRequestLogs(url: string): Promise<LogLine[]> {
     const lines: string[] = [];
     const logger = pino({}, {
         write: (line: string) => {
@@ -15,12 +17,15 @@ async function getRequestLogs(url: string): Promise<Array<{ msg: string; probe?:
     });
     const server = Fastify({
         loggerInstance: logger,
-        childLoggerFactory: createProbeRouteChildLoggerFactory(['/health']),
+        logController: createProbeLogController(LogController, [
+            '/health',
+            '/broken',
+        ]),
     });
 
-    server.get('/health', (request, reply) => {
-        request.log.info('checked');
-        reply.send('ok');
+    server.get('/health', (_request, reply) => reply.send('ok'));
+    server.get('/broken', () => {
+        throw new Error('probe failed');
     });
     server.get('/work', (_request, reply) => reply.send('ok'));
 
@@ -28,17 +33,16 @@ async function getRequestLogs(url: string): Promise<Array<{ msg: string; probe?:
     await server.close();
 
     return lines
-        .map((line) => JSON.parse(line) as { msg: string; probe?: boolean; reqId?: string })
+        .map((line) => JSON.parse(line) as LogLine)
         .filter(({ reqId }) => reqId !== undefined);
 }
 
-describe('createProbeRouteChildLoggerFactory', () => {
-    it('prefixes and marks every request log line of a probe path, also with a query', async () => {
+describe('createProbeLogController', () => {
+    it('prefixes and marks the request lines of a probe path, also with a query', async () => {
         const logs = await getRequestLogs('/health?probe=1');
 
         expect(logs.map(({ msg }) => msg)).toEqual([
             '[probe] incoming request',
-            '[probe] checked',
             '[probe] request completed',
         ]);
         expect(logs.every(({ probe }) => probe === true)).toBe(true);
@@ -52,5 +56,15 @@ describe('createProbeRouteChildLoggerFactory', () => {
             'request completed',
         ]);
         expect(logs.some(({ probe }) => probe !== undefined)).toBe(false);
+    });
+
+    it('keeps the default error lines of a failing probe', async () => {
+        const logs = await getRequestLogs('/broken');
+
+        expect(logs.map(({ msg }) => msg)).toEqual([
+            '[probe] incoming request',
+            'probe failed',
+            'request completed',
+        ]);
     });
 });

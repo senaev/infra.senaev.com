@@ -1,8 +1,8 @@
 import { CODE_COMMAND_ARGUMENTS } from 'senaev-utils/src/codeTools/codeCommands';
-import Fastify from 'fastify';
+import Fastify, { LogController } from 'fastify';
 import { createManagedToolService } from 'senaev-utils/src/toolServer/createManagedToolService';
 import { isValidBearerAuthorizationHeader } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
-import { createProbeRouteChildLoggerFactory } from 'senaev-utils/src/utils/http/probeRouteLogging';
+import { createProbeLogController } from 'senaev-utils/src/utils/http/probeRouteLogging';
 import { runToolCall } from 'senaev-utils/src/toolServer/runToolCall';
 
 import { logger } from '../logger';
@@ -18,7 +18,7 @@ export function createCodeToolsServer(internalToken: string, config: CodeToolsCo
         loggerInstance: logger,
         bodyLimit: BODY_LIMIT_BYTES,
         // The liveness probe calls it every few seconds: its request logs start with `[probe] `.
-        childLoggerFactory: createProbeRouteChildLoggerFactory([HEALTH_PATH]),
+        logController: createProbeLogController(LogController, [HEALTH_PATH]),
     });
 
     const service = createManagedToolService({
