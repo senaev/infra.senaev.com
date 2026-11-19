@@ -1,5 +1,36 @@
 # Worklog
 
+## 2026-11-19 22:42 UTC — Step 2 done: deployed and verified through the Obsidian MCP
+
+PR #237 was squash-merged (`ffd75d7`); the Deploy run succeeded, and cluster-helper and
+obsidian-sync restarted at 22:33 UTC with no errors (only the npm update notice). The live tool
+schema has `records: [{ date, text }]`.
+
+Test through the Obsidian MCP from Claude Code, with daily notes in 2027 (none existed before):
+
+1. One record for 2027-01-04: the note was created from the full template (Monday: Leetcode,
+   `2027q1`), the record right above `![[daily_note_stream]]`.
+2. One call: A and C for 2027-01-05, B for 2027-01-09 (Saturday), D for 2027-02-01 (first of the
+   month), interleaved: three notes created with the right template, Jan 5 has A then C.
+3. Existing notes: a new record went under the earlier ones on Jan 4 and Jan 5. On Jan 9 a
+   `⬆️ Daily Note ⬆️` line was added above the first `---`; records F and G went above it in
+   order, not above the embed.
+4. Errors, each with no change to any note (the hash of Jan 4 stayed the same):
+   - a note without an anchor in a call with a valid day → `conflict`, naming the note;
+   - a record containing the marker line → `invalid_arguments`;
+   - date `2027-02-30` → `invalid_arguments`.
+
+```
+[[2027-01-09|🎙️ 2026-11-19 23:38]]: TEST marker F, should go above the marker. ✍️
+
+[[2027-01-09|🎙️ 2026-11-19 23:38]]: TEST marker G, should go under F. ✍️
+
+⬆️ Daily Note ⬆️
+```
+
+The five test notes were removed with obsidian-delete, which moves them to `.trash/mcp/`; each
+delete took about 20 s, because it scans all ~3,750 vault files for backlinks.
+
 ## 2026-11-19 21:50 UTC — Tool description without Obsidian internals
 
 The owner decided the MCP client must not know how records are placed. The `diary_append`
