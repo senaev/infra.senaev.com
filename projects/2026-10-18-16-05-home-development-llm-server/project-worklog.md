@@ -1,3 +1,18 @@
+## 2026-11-19 23:50 UTC — Dell firmware has an OEM Windows key (MSDM)
+
+User ran the read-only check on proxmox-madrid; the key was masked before pasting:
+
+```
+-r-------- 1 root root 85 Nov 19 23:44 /sys/firmware/acpi/tables/MSDM
+*****-*****-*****-*****-*****
+```
+
+The Dell firmware holds an OEM product key, so activation no longer depends on VORPC.
+Decided: pass the MSDM table and the Dell SMBIOS identity to VM 101, check in Windows
+that the key is for the Professional edition, then install it and activate online.
+Snapshot VM 101 first. Never record the key itself. Steps are in
+[the setup plan](windows-backup-proxmox-plan.md#activate-with-the-dell-firmware-key).
+
 ## 2026-11-19 22:45 UTC — VORPC licence email sent; no reply yet
 
 User reports the Spanish email “Pedido #102889 — Ayuda para reactivar Windows 11 Pro”

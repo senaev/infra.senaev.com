@@ -549,6 +549,22 @@ both fill their advertised disks. Preserve the original VHDX and monitor growth.
    VORPC, or run without activation (Windows works with personalisation limits and a
    watermark).
 
+#### Activate with the Dell firmware key
+
+Found on 2026-11-19: `/sys/firmware/acpi/tables/MSDM` exists and holds an OEM key.
+The key stays out of git and chat.
+
+1. Host: `cp /sys/firmware/acpi/tables/MSDM /root/dell-msdm.bin`; `qm config 101 | grep smbios1`.
+2. Shut down VM 101 and run `qm snapshot 101 before-oem-key`.
+3. `qm set 101 --args '-acpitable file=/root/dell-msdm.bin'` and set `smbios1` to the
+   Dell manufacturer, product and serial (base64-encoded, `base64=1`), keeping the VM's
+   existing `uuid`.
+4. Start VM 101. In admin PowerShell, `OA3xOriginalProductKeyDescription` must report
+   Professional; if it reports Core (Home), stop: that key would not fit Windows 11 Pro.
+5. `slmgr /ipk` with the firmware key, `slmgr /ato`, then `slmgr /dlv` should show
+   an OEM_DM channel and Licensed status.
+6. Rollback: `qm rollback 101 before-oem-key`.
+
 Separate configuration follow-ups remain unconfirmed: Windows VirtIO/balloon drivers,
 QEMU Guest Agent, remote access, autostart and backups. The successful Debian
 power-recovery test does not prove Windows VM autostart. Jellyfin/hardware acceptance
