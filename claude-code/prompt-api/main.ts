@@ -9,8 +9,8 @@ import { createPromptApiServer } from './server';
 
 const HOST = '0.0.0.0';
 const PORT = 8080;
-// A run that searches the web and writes notes can take a while; n8n waits as long.
-const RUN_TIMEOUT_MS = 30 * 60 * 1000;
+// A job search round searches the web and writes notes, which can take a while; n8n waits as long.
+const RUN_TIMEOUT_MS = 60 * 60 * 1000;
 // The working folder of the runs, next to /code but apart from it: their session history
 // (~/.claude/projects/-prompt-api, kept in HOME) stays apart from the Remote Control sessions, and
 // files a run writes without a full path do not land in the repositories. The folder is in the

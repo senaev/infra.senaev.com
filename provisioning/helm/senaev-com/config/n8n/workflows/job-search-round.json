@@ -1,6 +1,6 @@
 {
-  "id": "madrid-weather",
-  "name": "Madrid weather: Claude Code writes today's forecast to the cluster chat",
+  "id": "job-search-round",
+  "name": "Job search round: Claude Code follows LLM Job Search Round and sends its recommendations to Telegram",
   "nodes": [
     {
       "parameters": {
@@ -8,13 +8,13 @@
           "interval": [
             {
               "field": "cronExpression",
-              "expression": "0 8 * * *"
+              "expression": "30 2 * * *"
             }
           ]
         }
       },
       "id": "schedule-trigger",
-      "name": "Every day at 08:00 Madrid time",
+      "name": "Every day at 02:30 UTC",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
@@ -28,13 +28,13 @@
         "url": "http://senaev-claude-code:8080/run",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ prompt: \"Find today's weather forecast for Madrid, Spain. Today is \" + $now.setZone('Europe/Madrid').toFormat('cccc, d LLLL yyyy') + \".\\n\\nAnswer with the message only, in Markdown for a Telegram chat, no introduction and no sources:\\n- a bold first line with the date and an emoji for the weather of the day;\\n- the temperature range, the chance of rain, the wind and the sky in the morning, afternoon and evening;\\n- one short tip for the day (an umbrella, sunscreen, a warm coat).\\n\\nKeep it short, clear and easy to read. Use emojis that match the weather (☀️ 🌤️ ☁️ 🌧️ ⛈️ 🌬️ 🥶 🥵).\" }) }}",
+        "jsonBody": "={{ JSON.stringify({ prompt: \"Read the note \\\"@senaev/My Career/Job Search Framework/LLM Job Search Round.md\\\" in the Obsidian vault with the obsidian MCP tools, and do one round exactly as it says. It is now \" + $now.setZone('UTC').toFormat('yyyy-MM-dd HH:mm') + \" UTC.\\n\\nYour final answer is posted to Telegram unchanged: answer with the Telegram message of its step 5 only.\" }) }}",
         "options": {
-          "timeout": 1860000
+          "timeout": 3660000
         }
       },
       "id": "run-prompt",
-      "name": "Ask Claude Code for the forecast",
+      "name": "Run a job search round in Claude Code",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "onError": "continueErrorOutput",
@@ -49,13 +49,13 @@
         "url": "http://cluster-helper/telegram/send-message",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ chatId: $env.TG_CLUSTER_CHAT_ID, text: $json.result }) }}",
+        "jsonBody": "={{ JSON.stringify({ chatId: $env.TG_JOB_SEARCH_FRAMEWORK_CHAT_ID, text: $json.result }) }}",
         "options": {
           "timeout": 60000
         }
       },
-      "id": "send-forecast",
-      "name": "Send the forecast to the cluster chat",
+      "id": "send-recommendations",
+      "name": "Send the recommendations to the Job Search Framework chat",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "retryOnFail": true,
@@ -69,7 +69,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// The prompt API answers 502 with { status: 'error', message } when Claude Code fails,\n// 409 when another prompt runs, and the request fails when the pod is down.\n// The Telegram request fails when cluster-helper or Telegram is down.\nconst item = $input.first().json;\nconst err = item.error ?? item;\nconst message = (err && err.message) ? err.message : JSON.stringify(err).slice(0, 300);\n\nreturn [{\n  json: {\n    text: `⚠️ Failed to send the Madrid weather forecast: ${message}`,\n  },\n}];"
+        "jsCode": "// The prompt API answers 502 with { status: 'error', message } when Claude Code fails,\n// 409 when another prompt runs, and the request fails when the pod is down.\n// The Telegram request fails when cluster-helper or Telegram is down.\nconst item = $input.first().json;\nconst err = item.error ?? item;\nconst message = (err && err.message) ? err.message : JSON.stringify(err).slice(0, 300);\n\nreturn [{\n  json: {\n    text: `⚠️ Failed to run the job search round: ${message}`,\n  },\n}];"
       },
       "id": "format-error",
       "name": "Format error message",
@@ -105,22 +105,22 @@
     }
   ],
   "connections": {
-    "Every day at 08:00 Madrid time": {
+    "Every day at 02:30 UTC": {
       "main": [
         [
           {
-            "node": "Ask Claude Code for the forecast",
+            "node": "Run a job search round in Claude Code",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Ask Claude Code for the forecast": {
+    "Run a job search round in Claude Code": {
       "main": [
         [
           {
-            "node": "Send the forecast to the cluster chat",
+            "node": "Send the recommendations to the Job Search Framework chat",
             "type": "main",
             "index": 0
           }
@@ -134,7 +134,7 @@
         ]
       ]
     },
-    "Send the forecast to the cluster chat": {
+    "Send the recommendations to the Job Search Framework chat": {
       "main": [
         [],
         [
@@ -160,7 +160,7 @@
   },
   "settings": {
     "executionOrder": "v1",
-    "timezone": "Europe/Madrid"
+    "timezone": "UTC"
   },
   "active": true
 }

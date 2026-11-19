@@ -479,12 +479,14 @@ only in `senaev`.
   in `/prompt-api`, a folder in the container, so that its sessions and scratch files stay apart
   from `/code`; it answers when the run ends with `{ status, result, isError, durationMs,
   numTurns, costUsd }` (`result` is the last message of Claude, in Markdown), 502 when the run
-  fails, 409 while another prompt runs. One run at a time, at most 30 minutes. The runs have
+  fails, 409 while another prompt runs. One run at a time, at most 60 minutes. The runs have
   everything the container has: the login, the MCP logins, the git token, the SSH agent and
   `/code`. There is no token: the NetworkPolicy lets only the n8n pod of the namespace reach
-  port 8080, and nothing else reaches the pod. The n8n `madrid-weather` workflow uses it every
-  morning and sends the answer to the cluster chat through
-  `http://cluster-helper/telegram/send-message` (Telegram Rich Markdown).
+  port 8080, and nothing else reaches the pod. The n8n `job-search-round` workflow uses it every
+  day at 02:30 UTC: the prompt tells Claude to follow the note `LLM Job Search Round` of the
+  Obsidian vault, and n8n sends the answer to the Job Search Framework chat through
+  `http://cluster-helper/telegram/send-message` (Telegram Rich Markdown); errors go to the
+  cluster chat.
 - The Claude Code version is pinned in `claude-code/Dockerfile`. Raise it in a pull request.
 - The readiness probe checks only the prompt API, which starts before the login check, so a deploy does not wait for the login.
 
