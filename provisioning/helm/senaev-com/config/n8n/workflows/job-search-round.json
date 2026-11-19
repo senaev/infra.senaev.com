@@ -28,7 +28,7 @@
         "url": "http://senaev-claude-code:8080/run",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ prompt: \"Read the note \\\"LLM Job Search Round\\\" in the Obsidian vault with the obsidian MCP tools, and do one round exactly as it says. It is now \" + $now.setZone('UTC').toFormat('yyyy-MM-dd HH:mm') + \" UTC.\\n\\nYour final answer is posted to Telegram unchanged: answer with the Telegram message of its step 5 only.\" }) }}",
+        "jsonBody": "={{ JSON.stringify({ prompt: \"Read the note \\\"LLM Job Search Round\\\" in the Obsidian vault with the obsidian MCP tools, and do one round exactly as it says. It is now \" + $now.setZone('UTC').toFormat('yyyy-MM-dd HH:mm') + \" UTC.\\n\\nAnswer only with the summary of its step 5.\" }) }}",
         "options": {
           "timeout": 3660000
         }
