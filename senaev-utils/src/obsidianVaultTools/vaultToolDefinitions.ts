@@ -409,6 +409,7 @@ const diary_append: ToolDefinition = {
         'Appends the text the user has just written to the owner\'s diary draft as one new record; the server adds the timestamp.',
         'Returns "diff", the record as it was added.',
         'Use this to record a diary entry, not obsidian-patch. Fix only typos and grammar; never reword, summarise or translate.',
+        'Linking is an important part of a record: take extra time before saving to search the vault for every mention in the text and link each one that has a note.',
         'Follow the Diary section of the vault\'s AGENTS.md for the full rules.',
         VAULT_RULES,
     ].join(' '),
