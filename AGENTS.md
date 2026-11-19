@@ -93,6 +93,24 @@ deployment readiness, service health, restarts and errors in logs. Combine these
 run alone does not establish service health. Report what was verified, any problems
 found, and any checks that the available tools could not perform.
 
+### Network speed between nodes (iperf3 monitor)
+
+The iperf3 monitor measures throughput between node pairs; use it before adding a new speed
+check. Config: `iperf3Monitor` in `provisioning/helm/telemetry/vm-stack/values.yaml`, code in
+`files/iperf3-agent/` and `files/iperf3-scheduler/`, Grafana dashboard `iperf3.json`.
+
+- An agent with an iperf3 server (port 5201) runs on each node of `sourceVpsList`. The
+  scheduler on senaev-madrid runs the `tests` pairs one by one, 300 s apart; each test is
+  `iperf3 -c <target> -t 10 -b 20M`, so the source sends to the target, capped at 20 Mbit/s.
+- Targets are node names that resolve to Tailscale addresses (100.x), so the traffic is
+  WireGuard over UDP on the tailnet, not a public TCP connection. It can differ from what a
+  public TCP/TLS connection (for example the VPN) gets on the same path.
+- Metrics in VictoriaMetrics, by `source` and `target`: `iperf3_received_bits_per_second`,
+  `iperf3_sent_bits_per_second`, `iperf3_retransmits`, `iperf3_test_failures_total`,
+  `iperf3_tests_total`. Agent logs `🔎 Target resolution` show the address that was tested.
+- To measure a new direction, add a `source`/`target` pair to `tests`; both nodes must be
+  in `sourceVpsList`.
+
 ### Smoke test after a deploy
 
 Run `npm run test:smoke` from the repository root, always through npm. It checks that the
