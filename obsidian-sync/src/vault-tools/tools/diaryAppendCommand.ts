@@ -80,58 +80,43 @@ async function planNote(
     };
 }
 
-/** Rebuilds an existing note this many times when it keeps changing under the call. */
-const MAX_WRITE_ATTEMPTS = 3;
-
 /**
  * Writes the planned note. An existing note is read again right before it is replaced: when
- * Obsidian or anything else changed it since the plan, the records are inserted into the
- * current content instead, so that change is kept. Nothing yields to other work of this
- * process between that read and the replacement; only the file system time of the write
- * itself (a few milliseconds) stays unprotected against another process, as for every
- * other vault write.
+ * Obsidian or anything else changed it since the plan, the call fails with `conflict` and
+ * the note keeps that change. Nothing yields to other work of this process between that read
+ * and the replacement; only the file system time of the write itself (a few milliseconds)
+ * stays unprotected against another process, as for every other vault write.
  */
 async function writeNote(config: VaultToolsConfig, note: PlannedNote, execution: CommandExecution) {
     const published = () => execution.changedPath(note.path);
-    const result = async (written: PlannedNote) => {
+    const result = async () => {
         return {
-            path: written.path,
-            created: written.absolutePath === undefined,
-            records: written.records.length,
-            ...await createFileDiffAsync(written.path, written.before, written.after, execution),
+            path: note.path,
+            created: note.absolutePath === undefined,
+            records: note.records.length,
+            ...await createFileDiffAsync(note.path, note.before, note.after, execution),
         };
     };
 
     if (note.absolutePath !== undefined) {
-        const { absolutePath } = note;
-        let written = note;
+        const diff = await result();
 
-        for (let attempt = 0; attempt < MAX_WRITE_ATTEMPTS; attempt++) {
-            const diff = await result(written);
+        await execution.checkpoint();
+        const current = await readFile(note.absolutePath, {
+            encoding: 'utf8',
+            signal: execution.signal,
+        });
 
-            await execution.checkpoint();
-            const current = await readFile(absolutePath, {
-                encoding: 'utf8',
-                signal: execution.signal,
-            });
-
-            if (current === written.before) {
-                await replaceFileAtomically(absolutePath, written.after, execution.signal, published);
-
-                return diff;
-            }
-
-            written = {
-                ...written,
-                before: current,
-                after: buildNote(note.path, current, note.records),
-            };
+        if (current !== note.before) {
+            throw new CommandError('conflict', `The daily note "${note.path}" changed while the diary records were written; nothing was written to it, retry`);
         }
 
-        throw new CommandError('conflict', `The daily note "${note.path}" kept changing while the diary records were written; nothing was written to it, retry`);
+        await replaceFileAtomically(note.absolutePath, note.after, execution.signal, published);
+
+        return diff;
     }
 
-    const diff = await result(note);
+    const diff = await result();
     // The folders of a new note are created only now, after every note of the call is ready.
     const absolutePath = await prepareNewNote(config, note.path, execution);
 
@@ -155,7 +140,8 @@ async function writeNote(config: VaultToolsConfig, note: PlannedNote, execution:
  * Every note is prepared in memory first, so a note without a place for the records, or any
  * other expected error, fails the whole call before anything is written. A blind insert on
  * purpose, unlike obsidian-patch: a record never changes existing text, so it needs no hash.
- * Cancelled while writing, it can leave the records in only some of the notes.
+ * When a note changed after it was read, or the call is cancelled while writing, the
+ * records can be left in only some of the notes.
  */
 export async function diaryAppendCommand(config: VaultToolsConfig, input: DiaryAppendCommandInput, execution: CommandExecution) {
     execution.throwIfAborted();

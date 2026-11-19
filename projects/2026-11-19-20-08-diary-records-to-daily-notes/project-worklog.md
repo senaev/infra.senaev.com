@@ -1,5 +1,16 @@
 # Worklog
 
+## 2026-11-19 21:35 UTC — No retry when a note changed during the call
+
+The owner decided: when a daily note changed between the plan and the write, return the
+`conflict` error at once instead of rebuilding up to 3 times (`MAX_WRITE_ATTEMPTS` removed).
+The test with an edit at each of the first 8 checkpoints now accepts either outcome: the record
+written with the edit kept, or `conflict` with the note exactly as edited. Both occur.
+
+```
+ Tests  8 passed (8)   (diaryAppendTool.integration.test.ts)
+```
+
 ## 2026-11-19 21:20 UTC — Template marker dropped: nothing writes it any more
 
 The owner asked whether `<!-- senaev:daily-note-template -->` is still needed. Nothing in the

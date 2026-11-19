@@ -200,11 +200,16 @@ describe('diaryAppendTool', () => {
         expect(await readFile(path(DAY), 'utf8')).toBe('keep');
     });
 
-    it('keeps an edit that another writer saves while the call runs', async () => {
+    it('never loses an edit that another writer saves while the call runs', async () => {
         // The other writer appends a line at the k-th checkpoint of the call, so every gap
-        // between the read of the plan and the write is covered.
+        // between the read of the plan and the write is covered. An edit before the plan is
+        // read is kept with the record; a later one fails the call and keeps the note as edited.
+        const original = `Morning\n${MARKER}\n`;
+        const edit = 'Edited in Obsidian\n';
+        const outcomes: string[] = [];
+
         for (let k = 1; k <= 8; k++) {
-            const { config, path } = await vaultWith({ [DAY]: `Morning\n${MARKER}\n` });
+            const { config, path } = await vaultWith({ [DAY]: original });
             const execution = createCommandExecution();
             const { checkpoint } = execution;
             let calls = 0;
@@ -212,29 +217,38 @@ describe('diaryAppendTool', () => {
             execution.checkpoint = async () => {
                 calls++;
                 if (calls === k) {
-                    await appendFile(path(DAY), 'Edited in Obsidian\n');
+                    await appendFile(path(DAY), edit);
                 }
 
                 await checkpoint();
             };
 
-            const result = await diaryAppendTool(config, {
+            const error = await diaryAppendTool(config, {
                 records: [
                     {
                         date: '2026-11-18',
                         text: 'Record.',
                     },
                 ],
-            }, execution);
+            }, execution).then(() => undefined, (reason: unknown) => reason);
             const content = await readFile(path(DAY), 'utf8');
+            const edited = calls >= k;
 
-            expect(content, `edit at checkpoint ${k}`).toMatch(new RegExp(`^Morning\\n\\n${record('2026-11-18', 'Record\\.').source}\\n\\n${MARKER}\\n`));
-            expect(content.match(/Edited in Obsidian/g)?.length ?? 0, `edit at checkpoint ${k}`).toBe(calls >= k ? 1 : 0);
-            expect(result.notes[0]?.diff).not.toMatch(/^-(?!-- a\/)/m);
+            if (error === undefined) {
+                outcomes.push('written');
+                expect(content, `edit at checkpoint ${k}`).toMatch(new RegExp(`^Morning\\n\\n${record('2026-11-18', 'Record\\.').source}\\n\\n${MARKER}\\n${edited ? edit : ''}$`));
+            } else {
+                outcomes.push('conflict');
+                expect(error, `edit at checkpoint ${k}`).toMatchObject({ code: 'conflict' });
+                expect(content, `edit at checkpoint ${k}`).toBe(original + edit);
+            }
 
             await vault?.remove();
             vault = undefined;
         }
+
+        expect(outcomes).toContain('written');
+        expect(outcomes).toContain('conflict');
     });
 
     it('rejects a record that contains an anchor line without writing', async () => {

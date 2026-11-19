@@ -413,7 +413,7 @@ const diary_append: ToolDefinition = {
         'Send the text the user has just written as one record for the day it is about; split it into several records only when it is about several days.',
         'The server adds the time and the ✍️ mark. Each record goes right above the "⬆️ Daily Note ⬆️" line of its daily note, else right above the "![[daily_note_stream]]" line,',
         'so the records of a day stay in the order they were written. A missing daily note is created from the daily note template first.',
-        'If a daily note has neither line, or a record contains one of these lines, the call fails and writes nothing. Cancelled while writing, it can leave the records in only some of the notes.',
+        'If a daily note has neither line, or a record contains one of these lines, the call fails and writes nothing. If a daily note is edited while the call runs, the call fails with "conflict"; send the records that were not written again. Cancelled or failed while writing, it can leave the records in only some of the notes.',
         'Returns "notes": for each daily note its path, whether it was created, and "diff".',
         'Use this to record a diary entry, not obsidian-patch. Fix only typos and grammar; never reword, summarise or translate.',
         'Follow the Diary section of the vault\'s AGENTS.md for the full rules.',

@@ -48,8 +48,9 @@ Decisions in step 1:
   record would be inserted in the middle of it. The records of one day in a call are inserted
   together, at one anchor.
 - An existing note is read again right before it is replaced; if Obsidian changed it since the
-  plan, the records are inserted into the current content (up to 3 attempts, then `conflict`).
-  Only the file system time of the write itself is unprotected against another process.
+  plan, the call fails with `conflict` and that note is not written (no retry). Notes written
+  earlier in the same call keep their records. Only the file system time of the write itself
+  is unprotected against another process.
 - All notes of a call are read and changed in memory first; if any of them has no anchor,
   nothing is written (`conflict` error naming the note). A blank existing daily note, or one
   with only frontmatter, is filled from the template, as the plugin does.
