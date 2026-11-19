@@ -59,9 +59,6 @@ Be extremely careful with these nodes and their networks:
 - The cluster is dual-stack (IPv4 primary, IPv6 secondary). k3s takes node IPs from `tailscale0` (`--flannel-iface`), so no node IP is hard-coded. Pod/Service CIDRs live in `provisioning/common/.env` and are fixed at cluster creation — changing them needs a full rebuild. See [`projects/2026-10-04-k3s-dual-stack-ipv6`](projects/2026-10-04-k3s-dual-stack-ipv6/README.md)
 - All alerting and operational notifications go to Telegram
 - When you show a pull request link to the user, link to its changes page, `https://github.com/<owner>/<repo>/pull/<number>/changes`, not to the main page of the pull request
-- Node services log with `createLogger` of senaev-utils (pino). It writes the level as a name
-  (`"level":"error"`), because Datadog reads a numeric pino level (50) as `info`. The Python
-  scripts that copy pino's numeric levels (`_PINO_LEVELS`) still show as `info` in Datadog
 - Never log a whole request body or other external JSON (webhooks, API payloads). Log only the fields that the code uses, by name: a payload can hold IDs, tokens and personal data that the logs (Datadog, Loki) must not keep
 
 ## Service Deployment

@@ -455,7 +455,11 @@ async function main(): Promise<void> {
                 logger.info('✅ Successfully processed Telegram update');
             },
             (err: unknown) => {
-                logger.error(err, '❌ Error processing Telegram webhook data');
+                // Datadog ignores the numeric pino level and shows every line as info; it reads `status` first.
+                logger.error({
+                    err,
+                    status: 'error',
+                }, '❌ Error processing Telegram webhook data');
             }
         );
 
