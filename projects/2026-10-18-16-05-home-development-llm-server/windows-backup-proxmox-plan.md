@@ -518,12 +518,36 @@ both fill their advertised disks. Preserve the original VHDX and monitor growth.
 - Seller: **VORPC España**, order **102889**, Dell Service Tag **DSYPLY3**.
 - Verified contact: `vorpc@vorpc.es`, matching the order invoice sender;
   official contact page: https://vorpc.es/contacto/.
-- Spanish Gmail draft prepared, **not sent**, subject
-  “Pedido #102889 — Ayuda para reactivar Windows 11 Pro”. It requests the included
-  product key or reactivation instructions and license type, describing a hardware
-  configuration change. User reviewed an English translation and approved the wording.
-- Next: send the draft when requested, obtain VORPC's response, follow the supported
-  activation procedure, then verify Activation reports active. No new license purchased.
+- Email sent to VORPC (user report on 2026-11-19; exact send date not recorded), subject
+  “Pedido #102889 — Ayuda para reactivar Windows 11 Pro”. It asks for the included
+  product key or reactivation instructions and the license type, describing a hardware
+  configuration change. No reply as of 2026-11-19.
+- Next: obtain VORPC's response, follow the supported activation procedure, then
+  verify Activation reports active. No new license purchased.
+
+#### If VORPC does not reply
+
+1. **Read-only checks, no seller needed.** On the Proxmox host, check whether the Dell
+   firmware has an embedded OEM key (MSDM ACPI table):
+   `ls -l /sys/firmware/acpi/tables/MSDM && strings /sys/firmware/acpi/tables/MSDM | tail -1`.
+   In Windows, `slmgr /dlv` shows the last 5 characters of the installed key; compare
+   with any key found. Also look for a key/COA on the case, box, invoice or the
+   original Windows image. Keep any key out of git.
+2. **If an OEM key exists:** the licence belongs to this Dell, and the VM runs on the
+   same machine. Options: enter the key in Windows (Settings → Activation → Change
+   product key), or give the VM the Dell's SMBIOS identity and MSDM table so Windows
+   sees its original hardware. Check the licence terms before relying on this.
+3. **Chase VORPC on other channels** after 3–4 working days of silence: reply to the
+   same thread, use the form at https://vorpc.es/contacto/, phone or WhatsApp if listed
+   there, and the order-page message on the shop account.
+4. **Escalate in writing.** The listing sells the unit with Windows 11 Pro, so a
+   non-activatable licence is a lack of conformity under the 2-year warranty. Send a
+   formal claim with a deadline, before the advertised 30-day return window closes
+   (delivered 2026-11-13, so around 2026-12-13). Next levels: hoja de reclamaciones /
+   Madrid consumer office (OMIC), then a payment dispute through Google Pay's card.
+5. **Last resort:** buy a legitimate Windows 11 Pro licence and claim the cost from
+   VORPC, or run without activation (Windows works with personalisation limits and a
+   watermark).
 
 Separate configuration follow-ups remain unconfirmed: Windows VirtIO/balloon drivers,
 QEMU Guest Agent, remote access, autostart and backups. The successful Debian

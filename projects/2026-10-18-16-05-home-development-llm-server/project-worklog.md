@@ -1,3 +1,15 @@
+## 2026-11-19 22:45 UTC — VORPC licence email sent; no reply yet
+
+User reports the Spanish email “Pedido #102889 — Ayuda para reactivar Windows 11 Pro”
+was sent to `vorpc@vorpc.es`. The exact send date was not recorded. As of 2026-11-19
+there is no reply, and Windows 11 Pro in VM 101 is still not activated.
+
+Decided the fallback order if VORPC stays silent (details in
+[the setup plan](windows-backup-proxmox-plan.md#if-vorpc-does-not-reply)): first try
+local, read-only checks for a firmware OEM key on the Proxmox host, then chase VORPC
+by other channels, then escalate as a warranty claim before the 30-day return window
+closes (delivered 2026-11-13, so around 2026-12-13). No new licence was bought.
+
 ## 2026-11-14 20:56 UTC — Windows restored; activation remains open
 
 Recorded VM 101 `dell-windows` creation (4 shared vCPUs, 8 GiB maximum/4 GiB balloon

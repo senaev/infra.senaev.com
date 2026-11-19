@@ -64,7 +64,8 @@ working automatically.
 The Windows VHDX is copied to Proxmox and its SHA-256 matches the original.
 Windows VM 101 `dell-windows` now boots successfully; internet, files and applications
 are confirmed present. Remaining Windows recovery task: activate Windows 11 Pro.
-The VORPC support email is drafted in Gmail but has not been sent.
+The VORPC support email was sent (reported 2026-11-19); no reply yet. Fallback steps are
+in [the plan](windows-backup-proxmox-plan.md#if-vorpc-does-not-reply).
 Guest drivers/agent, Windows autostart/backups and Jellyfin passthrough remain separate
 follow-up items; thin-pool growth still needs monitoring.
 See the plan for configuration, evidence and outstanding checks.
