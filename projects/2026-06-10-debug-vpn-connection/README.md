@@ -5,57 +5,62 @@
 
 ## Current status (updated every round)
 
-**Round 2 — 2026-11-18 22:30 UTC, PR "Compare VPN and direct download speed".**
+**Round 3 — 2026-11-19 22:10 UTC, PR "Measure the speed of each VPN leg from the servers".**
 
-The VPN works again from home, for the first time in this project. Between ~19:00 and
-~20:20 UTC the home ISP changed its behaviour again, with no deploy of ours (#226 only added
-measurements and landed at ~20:20, after the recovery had started):
+**Use profile 1 (`🇫🇮 1. firstvds → hetzner`), the first entry of the subscription.** It is the
+only profile that works from home all day. Profiles 3 and 4 (home → Hetzner directly) fail
+every evening.
 
-| home source, VPN + httpbingo/Cloudflare transfers | 17:00–19:00 UTC | 21:00–22:30 UTC |
-|---|---|---|
-| VPN route failure rate (profiles 1, 3, 4) | 45–65 % | 0–1 % |
-| direct Cloudflare failure rate | ~50 % (TLS setup) | 0 % |
-| `senaev.ru` HEAD from home / Hetzner (FirstVDS) | ~10 % | 0.5 % / 1 % |
+24 h after #233 (deployed 2026-11-18 22:58 UTC). VPN failure rate of the httpbingo parity
+checks (10 s setup budget), hourly:
 
-Production parity since #226 (20:20–22:30 UTC), success VPN vs direct, same target and size:
-
-| profile | 16 KiB | 64 KiB | 256 KiB |
+| profile | 23:00–14:00 UTC | 14:00–15:00 | 15:00–22:00 UTC |
 |---|---|---|---|
-| 1. firstvds → hetzner | 12/12 vs 12/12 | 12/12 vs 12/12 | 12/12 vs 11/11 |
-| 3. hetzner → senaev-media | 11/11 vs 11/11 | 11/11 vs 11/11 | 11/11 vs 11/11 |
-| 4. hetzner → freedom | 12/12 vs 12/12 | 12/12 vs 12/12 | 10/11 vs 11/11 |
+| 1. firstvds → hetzner | 0 % | 6 % | 0–17 % (3 % overall) |
+| 3. hetzner → senaev-media | 0 % | 33 % | 94–100 % |
+| 4. hetzner → freedom | 0 % | 33 % | 94–100 % |
+| direct (all) | 0 % | 0 % | 0–2 % |
 
-- 3 VPN failures since the deploy, none after 21:17 UTC: two `setup` stalls on profile 1
-  at 20:32 (end of the recovery) and one `transfer` stall at 61 KB of 256 KiB on profile 4
-  at 21:16. XHTTP diagnostic `exit_validation_failed` entries are the Hetzner exit gate
-  (HTTP 200), not path failures.
-- Latency cost of the VPN for 256 KiB: +150 ms on profiles 1 and 4, +1 s on profile 3
-  (exit back in Russia). Speed was **not measured** before round 2: every check up to
-  #226 ran with curl `--limit-rate 32768` (bandwidth guard from #135), so direct 256 KiB
-  always takes ~8.7 s. Only the new round 2 Cloudflare downloads run uncapped.
+- Profiles 3/4 since ~14:30 UTC: 289 of 307 failures are `transfer` — TLS completes,
+  3.5–6 KB arrive, then the connection freezes until the timeout. This is the per-connection
+  freeze to Hetzner seen before 2026-11-18 13:30. The XHTTP route of profile 4 fails the same
+  way, while XHTTP from the FirstVDS and Hetzner source nodes keeps working. So the filter
+  sits between home and Hetzner and returns in the evening (two days: 17:00–20:00, then
+  14:30–22:00+ UTC).
+- Profile 1 enters at FirstVDS, a Russian address, and avoids that filter. In the evening
+  it still works but slower: TLS setup mean 1.6 s, p95 5.7 s; its 3 s transfer checks fail
+  14–38 %, its 10 s parity checks 3 %.
+- `senaev.ru` (FirstVDS) HEAD fails 8–10 % in the evening from home **and** from Hetzner:
+  FirstVDS itself is degraded at the same time.
 
-Round 1 hypotheses:
+Uncapped download time, median (p90), seconds:
 
-1. Time-varying ISP policy — **likely, not confirmed**. Evidence is timing only: the path
-   broke and recovered twice in one day without our changes (13:30 Hetzner freeze gone;
-   19:00–20:20 setup stalls and the Cloudflare block gone), so the cause is external. A
-   repeat at the same time of day, or a provider notice, would confirm the ISP.
-2. 3 s setup budget too tight — **untested, now moot**: the 10 s parity checks started
-   after the recovery, and successful VPN setups take ~1.3 s. The two 20:32 setup stalls
-   were on the 3 s transfer checks.
-3. Size threshold above 64 KiB — **rejected for now**: 256 KiB passes 33/34 through VPN.
+| route | 23:00–14:00: 1 MiB | 4 MiB | 15:00–22:00: 1 MiB | 4 MiB |
+|---|---|---|---|---|
+| direct (all profiles) | 0.67–0.70 | 0.94–0.96 | 0.77–0.87 | 1.04–1.09 |
+| profile 1 VPN | 0.98 (1.15) | 1.44 (1.59) | 1.90 (5.9) | 5.49 (8.2) |
+| profile 3 VPN | 1.94 (2.6) | 6.07 (7.9) | no successes | no successes |
+| profile 4 VPN | 1.15 (1.27) | 1.50 (2.8) | no successes | no successes |
 
-Round 2 hypotheses:
+Round 2 predictions: profiles 1 and 4 within ~1.5× direct at night — **confirmed**
+(1.5×, 1.55× for 4 MiB); profile 3 slower — **confirmed** (6.4×, exit through the home
+uplink). Time-of-day repeat — **confirmed**: it broke again, earlier (~14:30 UTC).
 
-1. The VPN now matches direct for success, but may still be slower for bulk downloads
-   (video, updates). Signal: uncapped 1/4 MiB download time VPN ≫ direct.
-2. The recovery is temporary (the external change, likely ISP policy, depends on time of
-   day). Signal: parity drops
-   again during the next 24 h, especially 13:00–20:00 UTC.
+Hypotheses, ranked:
 
-Round 2 adds uncapped 1 MiB and 4 MiB Cloudflare downloads (VPN vs direct, every third
-parity round, ~1.4 GB/day) and a mean-download-time panel. Next round: 24 h of parity and
-speed data. **User test wanted:** open a few sites and a video through Happ from home.
+1. In the evening a filter between home and Hetzner freezes every connection after a few
+   KB; a Russian entry avoids it. Strong: profile 1 vs 3/4, same exit. Fix: profile 1 as
+   the production route (already first in the subscription).
+2. Profile 1's evening slowness comes from FirstVDS itself (its website fails 8–10 % from
+   Hetzner too). Signal: FirstVDS → Cloudflare and FirstVDS → senaev.com slow in the
+   evening while Hetzner → Cloudflare stays fast. Fix: another Russian entry server.
+3. Or the FirstVDS → Hetzner leg is throttled in the evening. Signal: FirstVDS →
+   senaev.com slow but FirstVDS → Cloudflare fast. Fix: another transport or exit for the
+   middle leg.
+
+Round 3 adds uncapped downloads from the FirstVDS and Hetzner source-control nodes
+(Cloudflare 4 MiB, senaev.com endpoint 512 KiB, every ~30 min, ~0.4 GB/day) and a panel.
+**User test wanted:** Happ from home on profile 1, in the evening, a few sites and a video.
 
 ## Round workflow
 

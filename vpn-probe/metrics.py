@@ -48,7 +48,8 @@ class ProbeMetrics:
                          'transfer_httpbingo_4096', 'transfer_httpbingo_16384',
                          'transfer_httpbingo_65536', 'parity_httpbingo_16384',
                          'parity_httpbingo_65536', 'parity_httpbingo_262144',
-                         'parity_cloudflare_1048576', 'parity_cloudflare_4194304'} or route not in {'direct', 'vpn', 'xhttp'}:
+                         'parity_cloudflare_1048576', 'parity_cloudflare_4194304',
+                         'leg_cloudflare_4194304', 'leg_hetzner_524288'} or route not in {'direct', 'vpn', 'xhttp'}:
             return
         now = time.time() if now is None else now
         with self.lock:
