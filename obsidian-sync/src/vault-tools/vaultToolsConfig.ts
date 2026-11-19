@@ -1,3 +1,5 @@
+import { DAILY_NOTE_FOLDER } from 'senaev-utils/src/obsidianDailyNotes/dailyNoteTemplate';
+
 /**
  * What the vault tools can see. Everything excluded here is invisible to every tool, for
  * reads and writes alike. Per-tool response limits live next to each tool.
@@ -12,8 +14,6 @@ export type VaultToolsConfig = {
     excludedFileSuffixes: readonly string[];
     /** Holds the diary entries, one `YYYY-MM-DD.md` file per day. */
     diaryFolder: string;
-    /** Receives the records of `diary_append`; the owner moves them into daily notes by hand. */
-    diaryDraftPath: string;
 };
 
 /** A factory rather than a constant, so tests can apply the same rules to a temporary vault. */
@@ -26,7 +26,7 @@ export function createVaultToolsConfig(root: string): VaultToolsConfig {
         excludedFolderNames: ['node_modules'],
         // Excalidraw drawings are JSON scene data saved as markdown, not text.
         excludedFileSuffixes: ['.excalidraw.md'],
-        diaryFolder: 'periodic/day',
-        diaryDraftPath: '@senaev/daily_note_stream.md',
+        // The same folder that `diary_append` writes the daily notes to.
+        diaryFolder: DAILY_NOTE_FOLDER.replace(/\/$/, ''),
     };
 }
