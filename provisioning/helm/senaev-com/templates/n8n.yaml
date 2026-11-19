@@ -124,10 +124,14 @@ spec:
               echo "Publishing scheduled workflows..."
               n8n publish:workflow --id=torrenteros-application-watcher || true
               n8n publish:workflow --id=daily-overview || true
-              n8n publish:workflow --id=madrid-weather || true
+              n8n publish:workflow --id=job-search-round || true
 
               echo "Unpublishing manual-only workflows..."
               n8n unpublish:workflow --id=example-scrape-to-telegram || true
+
+              # Removed workflows stay in the db after their file is gone: keep them off.
+              echo "Unpublishing removed workflows..."
+              n8n unpublish:workflow --id=madrid-weather || true
 
               echo "Provisioning complete."
           volumeMounts:
@@ -175,6 +179,8 @@ spec:
               value: {{ .Values.global.telegramClusterChatId | quote }}
             - name: TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID
               value: {{ .Values.global.telegramSenaevComBotDirectMessageWithOwnerChatId | quote }}
+            - name: TG_JOB_SEARCH_FRAMEWORK_CHAT_ID
+              value: {{ .Values.global.jobSearchFrameworkChatId | quote }}
             # Allow workflow expressions to read env vars (e.g.
             # {{`{{ $env.TG_CLUSTER_CHAT_ID }}`}}). n8n blocks this by default.
             - name: N8N_BLOCK_ENV_ACCESS_IN_NODE
