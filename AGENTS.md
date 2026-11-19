@@ -390,8 +390,8 @@ LLM workspace values live in `llmWorkspaces`, and the templates in
 `provisioning/helm/senaev-com/templates/llm-workspace/`. The entry name prefixes all
 resource names. Each workspace has its own code PVC (`<name>-code`), a projects PVC
 (`<name>-projects`, rendered only when OMP is enabled) and instructions ConfigMap (`<name>-instructions`, from `instructionsPath`), and enables any of
-OpenCode, OMP, Code Tools and Claude Code. OpenCode requires `git` and `telegram`; Code Tools
-requires OpenCode; Claude Code requires `git`. A new entry inherits nothing from another; the schema is
+OpenCode, OMP, Code Tools, Claude Code and Codex. OpenCode requires `git` and `telegram`; Code Tools
+requires OpenCode; Claude Code and Codex require `git`. A new entry inherits nothing from another; the schema is
 `provisioning/helm/senaev-com/values.schema.json`.
 
 MCP servers are set per tool, not per workspace: `opencode.mcp` (OpenCode remote servers; the
@@ -417,7 +417,7 @@ for compatibility after deployment.
 
 | Workspace | Node | Components | Ingress |
 |---|---|---|---|
-| `senaev` | senaev-madrid | OpenCode, OMP (`omp.senaev.com`), Code Tools, Claude Code | traefik-hetzner |
+| `senaev` | senaev-madrid | OpenCode, OMP (`omp.senaev.com`), Code Tools, Claude Code, Codex | traefik-hetzner |
 | `galkin` | galkin | OMP only (`omp.galkin.senaev.com`) | traefik-hetzner (DNS points to hetzner) |
 
 Do not rename the `senaev` entry: that replaces its PVCs, and cluster-helper calls
@@ -493,6 +493,28 @@ only in `senaev`.
 - The readiness probe checks only the prompt API, which starts before the login check, so a deploy does not wait for the login.
 
 See [`projects/2026-11-15-18-42-claude-code-remote-control`](projects/2026-11-15-18-42-claude-code-remote-control/README.md).
+
+## Codex
+
+The `codex` component (`templates/llm-workspace/_codex.tpl`, image `codex/`) runs
+`codex remote-control --no-daemon` in `/code`, so the ChatGPT app (Codex) drives Codex on the
+shared `/code` volume. Remote control is experimental in Codex. It makes outbound connections
+only (`wss://chatgpt.com/backend-api/wham/remote/control/server`): no Ingress, no Service, and the
+NetworkPolicy has no ingress. Enabled only in `senaev`; the device name is the hostname `senaev-codex`.
+
+- The login is the ChatGPT subscription; remote control rejects an API key. Until a login exists
+  the container waits and checks every 30 seconds. Manual login:
+  `kubectl -n senaev-com exec -it deploy/senaev-codex -c codex -- codex login --device-auth`.
+- `<clusterRootPath>/volumes/codex` is mounted as `HOME`; `~/.codex` holds the login, the remote
+  control enrollment and the sessions. Do not delete it.
+- `start.sh` writes `~/.codex/config.toml` on each start (no approvals, `danger-full-access`, no
+  update check, `/code` trusted), replacing changes made by hand, and links `/AGENTS.md` as
+  `~/.codex/AGENTS.md`: Codex does not read the `AGENTS.md` of a parent folder outside a repository.
+- Git as in Claude Code: `GH_TOKEN` in env, the SSH key only in the `ssh-agent` sidecar.
+- The Codex version is pinned in `codex/Dockerfile`. Raise it in a pull request, after a test:
+  the remote control protocol still changes.
+
+See [`projects/2026-11-19-21-17-codex-remote-control`](projects/2026-11-19-21-17-codex-remote-control/README.md).
 
 Secrets in LLM workspaces: an agent can read everything in the container where it runs. Keep
 credentials in a sidecar or proxy and give the agent container only a socket or a local

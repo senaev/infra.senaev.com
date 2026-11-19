@@ -39,6 +39,13 @@
           },
           {
             "if": {
+              "required": ["codex"],
+              "properties": { "codex": { "properties": { "enabled": { "const": true } } } }
+            },
+            "then": { "required": ["git"] }
+          },
+          {
+            "if": {
               "required": ["codeTools"],
               "properties": { "codeTools": { "properties": { "enabled": { "const": true } } } }
             },
@@ -324,6 +331,16 @@
                     "minLength": 1
                   }
                 }
+              }
+            }
+          },
+          "codex": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["enabled"],
+            "properties": {
+              "enabled": {
+                "type": "boolean"
               }
             }
           },
