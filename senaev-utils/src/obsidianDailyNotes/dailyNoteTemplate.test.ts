@@ -3,7 +3,6 @@ import {
 } from 'vitest';
 
 import {
-    DAILY_NOTE_TEMPLATE_MARKER as marker,
     dailyDateFromPath,
     dailyNotePath,
     dailyNotePathForRootNote,
@@ -139,7 +138,7 @@ describe('daily note paths', () => {
             'periodic/day/2026-10-29.txt',
         ]) {
             expect(dailyDateFromPath(path), path).toBeNull();
-            expect(initializeDailyNote(path, marker)).toBe(marker);
+            expect(initializeDailyNote(path, '')).toBe('');
         }
     });
 
@@ -163,12 +162,10 @@ describe('initializeDailyNote', () => {
     const path = 'periodic/day/2026-10-29.md';
     const generated = renderDailyNote('2026-10-29');
 
-    it('fills blank notes and standalone markers', () => {
+    it('fills blank notes', () => {
         for (const input of [
             '',
             '\n  ',
-            marker,
-            `${marker}\n`,
         ]) {
             expect(initializeDailyNote(path, input)).toBe(generated);
         }
@@ -179,8 +176,7 @@ describe('initializeDailyNote', () => {
             generated,
             generated.replace('- [ ]', '- [x]'),
             'My diary text',
-            `Example: ${marker}`,
-            `\`\`\`\n${marker}\n\`\`\``,
+            '<!-- senaev:daily-note-template -->',
         ]) {
             expect(initializeDailyNote(path, input)).toBe(input);
         }
@@ -191,7 +187,6 @@ describe('initializeDailyNote', () => {
 
         expect(initializeDailyNote(path, '---\n---\n')).toBe(`---\n---\n\n${generated}`);
         expect(initializeDailyNote(path, yaml)).toBe(`${yaml}\n${generated}`);
-        expect(initializeDailyNote(path, yaml + marker)).toBe(`${yaml}\n${generated}`);
         expect(initializeDailyNote(path, `${yaml}Existing entry`)).toBe(`${yaml}Existing entry`);
     });
 });

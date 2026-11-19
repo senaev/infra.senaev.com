@@ -52,7 +52,9 @@ Decisions in step 1:
   Only the file system time of the write itself is unprotected against another process.
 - All notes of a call are read and changed in memory first; if any of them has no anchor,
   nothing is written (`conflict` error naming the note). A blank existing daily note, or one
-  with only the template marker or frontmatter, is filled from the template, as the plugin does.
+  with only frontmatter, is filled from the template, as the plugin does.
+- The template marker `<!-- senaev:daily-note-template -->` was dropped from the shared code:
+  nothing writes it any more (see the worklog of 2026-11-19 21:20 UTC).
 - The template was ported unchanged; the fixtures captured from the old Templater template
   (`dailyNoteTemplate.fixtures.ts`) prove the output is identical. It uses calendar fields of
   the date in UTC, so the server time zone does not matter.
@@ -70,7 +72,8 @@ Decisions in step 1:
 4. **Plugin**: after the senaev-utils `ci` release, raise its version in
    `plugins/senaev-personal-tools/package.json`, import the template from
    `senaev-utils/src/obsidianDailyNotes/dailyNoteTemplate`, delete the local copy and its
-   fixtures, build, and commit `main.js` (only when the owner asks, per the plugin AGENTS.md).
+   fixtures, remove the marker from its README, build, and commit `main.js` (only when the owner
+   asks, per the plugin AGENTS.md).
 5. **Clean-up**: decide on the open points below.
 
 ## Verification
@@ -82,6 +85,10 @@ Decisions in step 1:
 - A daily note created by the plugin and by obsidian-sync for the same date is identical.
 
 ## Open points
+
+- Periodic Notes is still enabled, and its daily template points at the deleted
+  `_templates/Daily note template.md`. Clear that setting, or disable Periodic Notes if only the
+  calendar needs it; the vault `AGENTS.md` still says new notes come from that file.
 
 - Add the `⬆️ Daily Note ⬆️` line to the template, so new notes have the marker?
 - Retire `@senaev/daily_note_stream.md` and its embed once the records are no longer written

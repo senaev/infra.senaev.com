@@ -1,5 +1,25 @@
 # Worklog
 
+## 2026-11-19 21:20 UTC — Template marker dropped: nothing writes it any more
+
+The owner asked whether `<!-- senaev:daily-note-template -->` is still needed. Nothing in the
+vault writes it: the core Daily notes and Templates plugins are off, Templater is not installed,
+and the template file that held the marker is in `.trash`. Periodic Notes is still enabled
+and still names that file, so it can only create an empty note, which the plugin fills as a
+blank note anyway. No daily note contains the marker.
+
+```
+.obsidian/core-plugins.json:  "daily-notes": false, "templates": false
+.obsidian/plugins/periodic-notes/data.json:  "daily": { "folder": "periodic/day", "template": "_templates/Daily note template.md", "enabled": true }
+$ ls _templates
+Final Interview template.md  Job Presentation template.md  Yandex AAA Frontend Interview templete.md
+$ grep -rl "senaev:daily-note-template" periodic | wc -l
+0
+```
+
+`DAILY_NOTE_TEMPLATE_MARKER` and its handling were removed from senaev-utils; a note with only
+the marker is now left unchanged.
+
 ## 2026-11-19 21:00 UTC — CodeRabbit review on PR #237 fixed
 
 All four findings were valid and are fixed:

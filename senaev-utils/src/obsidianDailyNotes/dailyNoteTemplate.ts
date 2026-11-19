@@ -9,9 +9,6 @@ import { isIsoDay, isoDayToUtcDate } from '../obsidianTasks/isoDay';
 /** Vault-root folder that the daily notes live in, one `YYYY-MM-DD.md` file per day. */
 export const DAILY_NOTE_FOLDER = 'periodic/day/';
 
-/** Marker used by Periodic Notes, core Templates and manual insertion. */
-export const DAILY_NOTE_TEMPLATE_MARKER = '<!-- senaev:daily-note-template -->';
-
 /** The embed of the old diary stream file; every daily note has it. */
 export const DAILY_NOTE_STREAM_EMBED = '![[daily_note_stream]]';
 
@@ -121,9 +118,8 @@ ${DAILY_NOTE_STREAM_EMBED}
 const FRONTMATTER = /^(---\r?\n(?:[\s\S]*?\r?\n)?---(?:\r?\n|$))([\s\S]*)$/;
 
 /**
- * Pure, idempotent transformation of a daily note at `path`: a blank note, a note with only
- * the template marker, and a note with only frontmatter (optionally followed by the marker)
- * get the template. Any other content, and any path that is not a daily note, is returned
+ * Pure, idempotent transformation of a daily note at `path`: a blank note and a note with only
+ * frontmatter get the template. Any other content, and any path that is not a daily note, is returned
  * unchanged, so existing user text is never replaced.
  */
 export function initializeDailyNote(path: string, content: string): string {
@@ -133,16 +129,13 @@ export function initializeDailyNote(path: string, content: string): string {
         return content;
     }
 
-    // A standalone marker is an explicit request to insert the template. Fenced examples
-    // and marker substrings inside prose must not be interpreted as that request.
-    if (content.trim() === '' || content.trim() === DAILY_NOTE_TEMPLATE_MARKER) {
+    if (content.trim() === '') {
         return renderDailyNote(day);
     }
 
     const frontmatter = FRONTMATTER.exec(content);
-    const body = frontmatter?.[2]?.trim();
 
-    if (frontmatter?.[1] !== undefined && (body === '' || body === DAILY_NOTE_TEMPLATE_MARKER)) {
+    if (frontmatter?.[1] !== undefined && frontmatter[2]?.trim() === '') {
         return `${frontmatter[1]}\n${renderDailyNote(day)}`;
     }
 
