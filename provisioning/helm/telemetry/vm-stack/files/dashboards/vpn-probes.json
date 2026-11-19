@@ -1614,6 +1614,53 @@
           "legendFormat": "{{profile}} {{check}} {{route}}"
         }
       ]
+    },
+    {
+      "id": 27,
+      "type": "timeseries",
+      "title": "VPN legs — mean successful uncapped download time from the servers (1h)",
+      "description": "Source-control pods on FirstVDS and Hetzner download Cloudflare 4 MiB and the senaev.com endpoint 512 KiB directly, about every 30 minutes. FirstVDS → senaev.com is the middle leg of profile 1; compare with the profile 1 throughput panel.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P4169E866C3094E38"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 118,
+        "w": 24,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "mean"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "expr": "sum by (profile, check) (increase(vpn_probe_success_duration_seconds_total{job=\"vpn-probe\",check=~\"leg_.*\"}[1h])) / sum by (profile, check) (increase(vpn_probe_checks_total{job=\"vpn-probe\",check=~\"leg_.*\",result=\"success\"}[1h]))",
+          "legendFormat": "{{profile}} {{check}}"
+        }
+      ]
     }
   ],
   "templating": {

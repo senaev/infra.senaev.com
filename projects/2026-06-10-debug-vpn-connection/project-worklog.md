@@ -1,3 +1,38 @@
+## 2026-11-19 22:10 UTC — Round 3: evening Hetzner freeze is back; profile 1 survives
+
+24 h after #233 (deployed 2026-11-18 22:58 UTC). Parity counts 22:58–21:58 UTC (VPN
+success/total, direct always 130–131/131 or 44/44):
+
+```
+profile 1: httpbingo 16K 130/131, 64K 130/131, 256K 128/131; cloudflare 1M 44/44, 4M 43/44
+profile 3: httpbingo 16K 89/131, 64K 91/131, 256K 87/131;     cloudflare 1M 29/44, 4M 29/44
+profile 4: httpbingo 16K 90/131, 64K 89/131, 256K 89/131;     cloudflare 1M 28/44, 4M 29/44
+```
+
+Hourly VPN failure (httpbingo parity) on profiles 3/4: 0 until 14:00 UTC, 33 % in
+14:00–15:00, 94–100 % from 15:00 to now (22:00). Profile 1: 0–17 %, 3 % overall. Failure
+stages 14:00–22:00: profile 3 transfer 140, setup 12, response 2; profile 4 transfer 149,
+response 5, setup 1 (avg 3.5–6 KB received); profile 1 setup 6. Datadog
+`service:vpn-probe @check:parity_* @route:vpn @ok:false`.
+
+Uncapped Cloudflare download, median ms night (23:00–14:00) vs evening (15:00–22:00):
+direct 4 MiB ~950 vs ~1060; profile 1 VPN 4 MiB 1437 vs 5488 (p90 8187); profile 3 6065 vs
+none; profile 4 1495 vs none. Profile 1 successful parity TLS setup in the evening: mean
+1627 ms, p95 5712 ms. 7 h failure rates: `senaev.ru` HEAD from home 10.6 %, from Hetzner
+8.5 %; profile 1 `transfer_cloudflare_4096` (3 s budget) 38 %.
+
+Unrelated deploys at 21:48–21:58 UTC (#239 Codex, diary) restarted the VPN pods; all are
+Running with no restarts.
+
+Decision: profile 1 is the production route (already first in the subscription). Round 3
+measures where profile 1 loses speed in the evening: new `leg_cloudflare_4194304` and
+`leg_hetzner_524288` (uncapped, direct) on the FirstVDS and Hetzner source-control pods,
+every 30–31 min, plus a dashboard panel. The endpoint caps responses at 512 KiB.
+
+Prediction: in the evening FirstVDS downloads slow down (both targets) while Hetzner
+stays fast — FirstVDS itself is the bottleneck. If only FirstVDS → senaev.com slows, the
+middle leg is throttled.
+
 ## 2026-11-18 22:30 UTC — Round 2: VPN recovered; measure speed
 
 Analysis of 2 h after #226 (deployed ~20:20 UTC) plus the day's trend (VictoriaMetrics

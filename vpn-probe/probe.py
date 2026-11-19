@@ -267,6 +267,45 @@ def throughput_round(profile, proxy, experiment_id, vpn_first):
     return paired_round(profile, proxy, experiment_id, vpn_first, throughput_conditions())
 
 
+# Server-to-internet legs of the profiles, measured from the source-control nodes.
+# The endpoint caps responses at 512 KiB; Cloudflare has no practical cap.
+LEG_CONDITIONS = (
+    ("leg_cloudflare_4194304", THROUGHPUT_URL.format(4194304), 4194304, False),
+    ("leg_hetzner_524288", "https://senaev.com/api/vpn-test?bytes=524288", 524288, True),
+)
+
+
+def leg_throughput_round(profile, experiment_id):
+    """Uncapped direct downloads from a server, so each VPN leg's speed can be compared."""
+    passed = True
+    for check, url, size, http1 in LEG_CONDITIONS:
+        jitter = random.uniform(2, 7)
+        if STOP.wait(jitter):
+            return False
+        timeout = PARITY_CONNECT_SECONDS + max(5, -(-size // THROUGHPUT_FLOOR_BYTES_PER_SECOND))
+        result, _ = request(url, "", size, expected_bytes=size, timeout=timeout,
+                            connect_timeout=PARITY_CONNECT_SECONDS, limit_rate=None, http1=http1)
+        stage = failure_stage(result)
+        emit(profile, check, "direct", {
+            **result, "experiment_id": experiment_id, "requested_bytes": size,
+            "budget_seconds": timeout, "connect_budget_seconds": PARITY_CONNECT_SECONDS,
+            "rate_limit_bytes_per_second": 0, "request_jitter_seconds": jitter,
+            **({"failure_stage": stage} if stage else {})})
+        passed = result["ok"] and passed
+    return passed
+
+
+def leg_throughput_loop(profile):
+    """Thirty-minute start cadence with jitter, like the production throughput round."""
+    if STOP.wait(random.uniform(0, 300)):
+        return
+    while not STOP.is_set():
+        started = time.monotonic()
+        leg_throughput_round(profile, str(uuid.uuid4()))
+        if STOP.wait(max(0, started + random.uniform(1800, 1860) - time.monotonic())):
+            return
+
+
 def parity_loop(profile, proxy):
     """Production-profile parity on a ten-minute start cadence; never catch up."""
     if STOP.wait(random.uniform(0, 60)):
@@ -842,6 +881,8 @@ def main():
     try:
         if os.environ.get("WEBSITE_CHECK") == "true":
             launch(lambda: website_loop(profile))
+        if source:
+            launch(lambda: leg_throughput_loop(profile))
         if diagnostics or source:
             launch(lambda: https_control_loop(profile))
             launch(lambda: endpoint_pair_loop(profile))
