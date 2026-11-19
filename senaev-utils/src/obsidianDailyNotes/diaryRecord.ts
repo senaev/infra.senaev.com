@@ -1,4 +1,4 @@
-import { CommandError } from '../commands/CommandError';
+import { CommandError, invalidArguments } from '../commands/CommandError';
 
 import { DAILY_NOTE_STREAM_EMBED } from './dailyNoteTemplate';
 
@@ -37,33 +37,44 @@ export function formatDiaryRecord(day: string, text: string, now: Date): string 
 
 // Emoji are written with or without the variation selector; both mean the same marker.
 function normalizeLine(line: string): string {
-    return line.replace(/️/g, '').trim();
+    return line.replace(/\uFE0F/g, '').trim();
 }
 
-const FENCE = /^\s*(`{3,}|~{3,})/;
+// CommonMark: a fence is indented by at most 3 spaces; a closing fence has the same
+// character, at least the same length, and nothing but spaces or tabs after it.
+const OPENING_FENCE = /^ {0,3}(`{3,}|~{3,})/;
+const CLOSING_FENCE = /^ {0,3}(`{3,}|~{3,})[ \t]*$/;
+
+// A line indented by 4 spaces or a tab can be an indented code block, so it is never an anchor.
+const AT_MOST_THREE_SPACES = /^ {0,3}\S/;
+
+function isAnchorLine(line: string, anchor: string): boolean {
+    return AT_MOST_THREE_SPACES.test(line) && normalizeLine(line) === normalizeLine(anchor);
+}
 
 /**
- * The offset of the start of the first line, outside code blocks, that is exactly
+ * The offset of the start of the first line, outside fenced code blocks, that is exactly
  * `anchor`, or `undefined`.
  */
 function findAnchorLine(content: string, anchor: string): number | undefined {
-    const wanted = normalizeLine(anchor);
     let fence: string | undefined;
     let offset = 0;
 
     for (const line of content.split('\n')) {
-        const fenceMatch = FENCE.exec(line);
+        if (fence === undefined) {
+            const opening = OPENING_FENCE.exec(line)?.[1];
 
-        if (fenceMatch?.[1] !== undefined) {
-            const marker = fenceMatch[1];
+            if (opening !== undefined) {
+                fence = opening;
+            } else if (isAnchorLine(line, anchor)) {
+                return offset;
+            }
+        } else {
+            const closing = CLOSING_FENCE.exec(line)?.[1];
 
-            if (fence === undefined) {
-                fence = marker;
-            } else if (marker[0] === fence[0] && marker.length >= fence.length) {
+            if (closing !== undefined && closing[0] === fence[0] && closing.length >= fence.length) {
                 fence = undefined;
             }
-        } else if (fence === undefined && normalizeLine(line) === wanted) {
-            return offset;
         }
 
         offset += line.length + 1;
@@ -81,12 +92,31 @@ export function findDiaryRecordAnchor(content: string): number | undefined {
 }
 
 /**
- * Inserts `record` as its own paragraph right above the anchor line (see
- * `findDiaryRecordAnchor`), separated by blank lines. Each next record of the note lands
- * under the previous one. Throws a `conflict` CommandError when the note has no anchor:
- * there is no safe place to put the record.
+ * The anchor line that `text` contains, or `undefined`. A record must not contain one: the
+ * next record would be inserted in the middle of it.
  */
-export function insertDiaryRecord(content: string, record: string, notePath: string): string {
+export function findAnchorLineInText(text: string): string | undefined {
+    return [
+        DIARY_RECORD_MARKER,
+        DAILY_NOTE_STREAM_EMBED,
+    ].find((anchor) => text.split('\n').some((line) => normalizeLine(line) === normalizeLine(anchor)));
+}
+
+/**
+ * Inserts `records`, in order, each as its own paragraph separated by blank lines, right
+ * above the anchor line (see `findDiaryRecordAnchor`) of the note as it was before this call.
+ * Later records land under earlier ones. Throws a `conflict` CommandError when the note has no
+ * anchor, and `invalid_arguments` when a record contains an anchor line.
+ */
+export function insertDiaryRecords(content: string, records: readonly string[], notePath: string): string {
+    for (const record of records) {
+        const anchorInRecord = findAnchorLineInText(record);
+
+        if (anchorInRecord !== undefined) {
+            throw invalidArguments(`A diary record must not contain the line "${anchorInRecord}"`);
+        }
+    }
+
     const anchor = findDiaryRecordAnchor(content);
 
     if (anchor === undefined) {
@@ -105,5 +135,7 @@ export function insertDiaryRecord(content: string, record: string, notePath: str
         separator = '\n';
     }
 
-    return `${before}${separator}${record.replace(/^\n+|\n+$/g, '')}\n\n${content.slice(anchor)}`;
+    const paragraphs = records.map((record) => `${record.replace(/^\n+|\n+$/g, '')}\n\n`).join('');
+
+    return `${before}${separator}${paragraphs}${content.slice(anchor)}`;
 }

@@ -1,11 +1,12 @@
 import {
-    mkdir, readFile, symlink,
+    appendFile, mkdir, readFile, symlink,
 } from 'node:fs/promises';
 
 import {
     afterEach, describe, expect, it,
 } from 'vitest';
 import { renderDailyNote } from 'senaev-utils/src/obsidianDailyNotes/dailyNoteTemplate';
+import { createCommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 
 import { createTestVault, type TestVault } from '../createTestVault';
 
@@ -197,6 +198,57 @@ describe('diaryAppendTool', () => {
         }
 
         expect(await readFile(path(DAY), 'utf8')).toBe('keep');
+    });
+
+    it('keeps an edit that another writer saves while the call runs', async () => {
+        // The other writer appends a line at the k-th checkpoint of the call, so every gap
+        // between the read of the plan and the write is covered.
+        for (let k = 1; k <= 8; k++) {
+            const { config, path } = await vaultWith({ [DAY]: `Morning\n${MARKER}\n` });
+            const execution = createCommandExecution();
+            const { checkpoint } = execution;
+            let calls = 0;
+
+            execution.checkpoint = async () => {
+                calls++;
+                if (calls === k) {
+                    await appendFile(path(DAY), 'Edited in Obsidian\n');
+                }
+
+                await checkpoint();
+            };
+
+            const result = await diaryAppendTool(config, {
+                records: [
+                    {
+                        date: '2026-11-18',
+                        text: 'Record.',
+                    },
+                ],
+            }, execution);
+            const content = await readFile(path(DAY), 'utf8');
+
+            expect(content, `edit at checkpoint ${k}`).toMatch(new RegExp(`^Morning\\n\\n${record('2026-11-18', 'Record\\.').source}\\n\\n${MARKER}\\n`));
+            expect(content.match(/Edited in Obsidian/g)?.length ?? 0, `edit at checkpoint ${k}`).toBe(calls >= k ? 1 : 0);
+            expect(result.notes[0]?.diff).not.toMatch(/^-(?!-- a\/)/m);
+
+            await vault?.remove();
+            vault = undefined;
+        }
+    });
+
+    it('rejects a record that contains an anchor line without writing', async () => {
+        const { config, path } = await vaultWith({ [DAY]: `Text\n${MARKER}\n` });
+
+        await expect(diaryAppendTool(config, {
+            records: [
+                {
+                    date: '2026-11-18',
+                    text: `First\n${MARKER}\nSecond`,
+                },
+            ],
+        })).rejects.toMatchObject({ code: 'invalid_arguments' });
+        expect(await readFile(path(DAY), 'utf8')).toBe(`Text\n${MARKER}\n`);
     });
 
     it('refuses to write through a symlinked folder', async () => {
