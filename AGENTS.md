@@ -59,6 +59,9 @@ Be extremely careful with these nodes and their networks:
 - The cluster is dual-stack (IPv4 primary, IPv6 secondary). k3s takes node IPs from `tailscale0` (`--flannel-iface`), so no node IP is hard-coded. Pod/Service CIDRs live in `provisioning/common/.env` and are fixed at cluster creation — changing them needs a full rebuild. See [`projects/2026-10-04-k3s-dual-stack-ipv6`](projects/2026-10-04-k3s-dual-stack-ipv6/README.md)
 - All alerting and operational notifications go to Telegram
 - When you show a pull request link to the user, link to its changes page, `https://github.com/<owner>/<repo>/pull/<number>/changes`, not to the main page of the pull request
+- Node services log with `createLogger` of senaev-utils (pino). It writes the level as a name
+  (`"level":"error"`), because Datadog reads a numeric pino level (50) as `info`. The Python
+  scripts that copy pino's numeric levels (`_PINO_LEVELS`) still show as `info` in Datadog
 - Never log a whole request body or other external JSON (webhooks, API payloads). Log only the fields that the code uses, by name: a payload can hold IDs, tokens and personal data that the logs (Datadog, Loki) must not keep
 
 ## Service Deployment
@@ -127,10 +130,12 @@ and their wiring are in `cluster-helper/src/mcpEndpoints.ts`, tested by `mcpEndp
 The Telegram MCP has one tool, `telegram-send_message(channel, text)`: `text` is Telegram Rich
 Markdown (`sendRichMessage`, up to 32000 characters), sent unchanged. `channel` is a name from
 the allowlist `cluster-helper/src/telegramMcp/telegramMcpChannels.ts` (`owner`, `cluster`,
-`media-server`, `vpn-subscription`, `obsidian-tasks`, `tricky-dad`), which maps each name to the
+`media-server`, `vpn-subscription`, `obsidian-tasks`, `tricky-dad`, `job-search-framework`), which maps each name to the
 chat id that cluster-helper already has in its env. The client never sees a chat id: the tool
 list shows only the names, and a Telegram error has the chat id replaced with the name. To add
-a chat, add an entry there; the bot must be in the chat (an admin in a channel).
+a chat, add an entry there; the bot must be in the chat (an admin in a channel). A chat that only
+receives posts also goes into `cluster-helper/src/ignoredChatsWhitelist.ts`, or each message in it
+logs `Received Telegram message from unexpected chat`.
 The tool description (`TELEGRAM_RICH_MARKDOWN_SYNTAX`) lists the syntax checked in Telegram:
 `==highlight==`, `||spoiler||` and `>` quotes; a single newline is joined into the line before it.
 

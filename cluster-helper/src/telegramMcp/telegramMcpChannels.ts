@@ -1,4 +1,5 @@
 import {
+    JOB_SEARCH_FRAMEWORK_CHAT_ID,
     OBSIDIAN_TASKS_CHAT_ID,
     TG_CLUSTER_CHAT_ID,
     TG_MEDIA_SERVER_CHAT_ID,
@@ -43,5 +44,10 @@ export const TELEGRAM_MCP_CHANNELS: readonly TelegramMcpChannel[] = [
         name: 'tricky-dad',
         description: 'the Tricky Dad chat, where messages to the bot become shopping items and tasks',
         chatId: TRICKY_DAD_CHAT_ID,
+    },
+    {
+        name: 'job-search-framework',
+        description: 'the Job Search Framework chat: job search recommendations of the LLM job search rounds',
+        chatId: JOB_SEARCH_FRAMEWORK_CHAT_ID,
     },
 ];

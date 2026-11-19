@@ -62,7 +62,7 @@ export function createTelegramToolDefinitions(channels: readonly TelegramMcpChan
                         type: 'string',
                         minLength: 1,
                         maxLength: TELEGRAM_MCP_MAX_TEXT_LENGTH,
-                        description: 'The message in Telegram Rich Markdown, with ==highlight==, ||spoiler|| and > quotes.',
+                        description: 'The message in Telegram Rich Markdown, with ==highlight==, ||spoiler|| and > quotes. Put a blank line between paragraphs.',
                     },
                 },
                 required: [
