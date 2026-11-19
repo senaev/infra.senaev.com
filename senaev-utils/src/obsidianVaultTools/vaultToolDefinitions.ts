@@ -16,6 +16,7 @@ import { TASK_PRIORITIES, TASK_STATUSES } from '../obsidianTasks/taskLine';
 import { PATCH_OPERATION_FIELDS, type VaultCommandName } from './vaultCommands';
 import {
     DEFAULT_TASKS_NOTE_PATH,
+    DIARY_APPEND_LIMITS,
     LINKS_LIMITS,
     LIST_LIMITS,
     MAX_GLOB_LENGTH,
@@ -403,11 +404,17 @@ const move: ToolDefinition = {
     },
 };
 
+const ISO_DAY_PATTERN = '^\\d{4}-\\d{2}-\\d{2}$';
+
 const diary_append: ToolDefinition = {
-    title: 'Add a diary record',
+    title: 'Add diary records',
     description: [
-        'Appends the text the user has just written to the owner\'s diary draft as one new record; the server adds the timestamp.',
-        'Returns "diff", the record as it was added.',
+        'Writes diary records straight into the owner\'s daily notes, periodic/day/YYYY-MM-DD.md; one call can write records for several days.',
+        'Send the text the user has just written as one record for the day it is about; split it into several records only when it is about several days.',
+        'The server adds the time and the ✍️ mark. Each record goes right above the "⬆️ Daily Note ⬆️" line of its daily note, else right above the "![[daily_note_stream]]" line,',
+        'so the records of a day stay in the order they were written. A missing daily note is created from the daily note template first.',
+        'If a daily note has neither line, the call fails and writes nothing.',
+        'Returns "notes": for each daily note its path, whether it was created, and "diff".',
         'Use this to record a diary entry, not obsidian-patch. Fix only typos and grammar; never reword, summarise or translate.',
         'Follow the Diary section of the vault\'s AGENTS.md for the full rules.',
         VAULT_RULES,
@@ -416,12 +423,34 @@ const diary_append: ToolDefinition = {
         type: 'object',
         properties: {
             ...MANAGED_TOOL_PROPERTIES,
-            text: {
-                type: 'string',
-                description: 'The text of the record.',
+            records: {
+                type: 'array',
+                minItems: 1,
+                maxItems: DIARY_APPEND_LIMITS.maxRecords,
+                description: 'The records, in the order they were told. Records of one day are written in this order.',
+                items: {
+                    type: 'object',
+                    properties: {
+                        date: {
+                            type: 'string',
+                            pattern: ISO_DAY_PATTERN,
+                            description: 'The day the record is about, YYYY-MM-DD, in the owner\'s local time (Europe/Madrid).',
+                        },
+                        text: {
+                            type: 'string',
+                            minLength: 1,
+                            description: 'The text of the record.',
+                        },
+                    },
+                    required: [
+                        'date',
+                        'text',
+                    ],
+                    additionalProperties: false,
+                },
             },
         },
-        required: ['text'],
+        required: ['records'],
         additionalProperties: false,
     },
     annotations: {
@@ -431,8 +460,6 @@ const diary_append: ToolDefinition = {
         openWorldHint: false,
     },
 };
-
-const ISO_DAY_PATTERN = '^\\d{4}-\\d{2}-\\d{2}$';
 
 const TASK_FORMAT_DESCRIPTION = [
     'Tasks are "- [ ]" lines in the emoji format of the Obsidian Tasks plugin.',

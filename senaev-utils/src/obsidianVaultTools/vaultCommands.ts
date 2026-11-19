@@ -72,7 +72,7 @@ export const VAULT_COMMAND_ARGUMENTS = {
         'path',
         'newPath',
     ],
-    diary_append: ['text'],
+    diary_append: ['records'],
     tasks_list: [
         'dailyNote',
         'status',

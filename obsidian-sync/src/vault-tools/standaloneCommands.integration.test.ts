@@ -54,7 +54,7 @@ describe('standalone typed Obsidian commands', { timeout: 30000 }, () => {
         vault = await createTestVault({
             'Source.md': original,
             'Backlink.md': '[[Source]]',
-            '@senaev/daily_note_stream.md': '',
+            'periodic/day/2026-11-18.md': '![[daily_note_stream]]\n',
         });
         const ownChanges: string[] = [];
 
@@ -168,8 +168,15 @@ describe('standalone typed Obsidian commands', { timeout: 30000 }, () => {
             expect(await readFile(vault.path('Backlink.md'), 'utf8')).toBe('[[Moved]]');
             expect(await readFile(vault.path('Moved.md'), 'utf8')).toBe(original);
             await expect(readFile(vault.path('Source.md'))).rejects.toMatchObject({ code: 'ENOENT' });
-            await diaryAppendCommand(vault.config, { text: 'standalone diary record' }, execution);
-            expect(await readFile(vault.path(vault.config.diaryDraftPath), 'utf8')).toContain('standalone diary record');
+            await diaryAppendCommand(vault.config, {
+                records: [
+                    {
+                        date: '2026-11-18',
+                        text: 'standalone diary record',
+                    },
+                ],
+            }, execution);
+            expect(await readFile(vault.path('periodic/day/2026-11-18.md'), 'utf8')).toContain('standalone diary record');
             expect(ownChanges).toEqual([
                 'Created.md',
                 'Created.md',
@@ -177,7 +184,7 @@ describe('standalone typed Obsidian commands', { timeout: 30000 }, () => {
                 'Backlink.md',
                 'Created.md',
                 'Source.md',
-                '@senaev/daily_note_stream.md',
+                'periodic/day/2026-11-18.md',
             ]);
         };
 
@@ -230,7 +237,14 @@ describe('standalone typed Obsidian commands', { timeout: 30000 }, () => {
                 path: 'Source.md',
                 newPath: 'new/moved',
             }, execution),
-            () => diaryAppendCommand(vault.config, { text: 'bad' }, execution),
+            () => diaryAppendCommand(vault.config, {
+                records: [
+                    {
+                        date: '2026-11-18',
+                        text: 'bad',
+                    },
+                ],
+            }, execution),
         ];
 
         for (const run of commands) {
