@@ -1,5 +1,14 @@
 # Worklog
 
+## 2026-11-19 21:50 UTC — Tool description without Obsidian internals
+
+The owner decided the MCP client must not know how records are placed. The `diary_append`
+description no longer names the anchor lines, the ✍️ mark, the order rule, the daily note
+template or the `periodic/day/` path. It keeps what the client must do: one record per day the
+text is about, send only the user's text, and read the entries before resending after a failed
+call with several days. Error messages still name the anchor lines, because the owner has to
+fix the note.
+
 ## 2026-11-19 21:35 UTC — No retry when a note changed during the call
 
 The owner decided: when a daily note changed between the plan and the write, return the
