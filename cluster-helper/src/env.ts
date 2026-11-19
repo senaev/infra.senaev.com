@@ -26,6 +26,7 @@ export const PROWLARR_CONFIG_FILE = requireEnv('PROWLARR_CONFIG_FILE');
 export const TG_VPN_SUBSCRIPTION_CHAT_ID = requireEnv('TG_VPN_SUBSCRIPTION_CHAT_ID');
 export const OBSIDIAN_TASKS_CHAT_ID = requireEnv('OBSIDIAN_TASKS_CHAT_ID');
 export const TRICKY_DAD_CHAT_ID = requireEnv('TRICKY_DAD_CHAT_ID');
+export const JOB_SEARCH_FRAMEWORK_CHAT_ID = requireEnv('JOB_SEARCH_FRAMEWORK_CHAT_ID');
 export const OBSIDIAN_SYNC_URL = requireEnv('OBSIDIAN_SYNC_URL');
 export const INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN = requireEnv('INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN');
 /** code-tools runs in the opencode-serve container and serves the code-* MCP tools. */

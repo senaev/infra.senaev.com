@@ -127,10 +127,12 @@ and their wiring are in `cluster-helper/src/mcpEndpoints.ts`, tested by `mcpEndp
 The Telegram MCP has one tool, `telegram-send_message(channel, text)`: `text` is Telegram Rich
 Markdown (`sendRichMessage`, up to 32000 characters), sent unchanged. `channel` is a name from
 the allowlist `cluster-helper/src/telegramMcp/telegramMcpChannels.ts` (`owner`, `cluster`,
-`media-server`, `vpn-subscription`, `obsidian-tasks`, `tricky-dad`), which maps each name to the
+`media-server`, `vpn-subscription`, `obsidian-tasks`, `tricky-dad`, `job-search-framework`), which maps each name to the
 chat id that cluster-helper already has in its env. The client never sees a chat id: the tool
 list shows only the names, and a Telegram error has the chat id replaced with the name. To add
-a chat, add an entry there; the bot must be in the chat (an admin in a channel).
+a chat, add an entry there; the bot must be in the chat (an admin in a channel). A chat that only
+receives posts also goes into `cluster-helper/src/ignoredChatsWhitelist.ts`, or each message in it
+logs `Received Telegram message from unexpected chat`.
 The tool description (`TELEGRAM_RICH_MARKDOWN_SYNTAX`) lists the syntax checked in Telegram:
 `==highlight==`, `||spoiler||` and `>` quotes; a single newline is joined into the line before it.
 
