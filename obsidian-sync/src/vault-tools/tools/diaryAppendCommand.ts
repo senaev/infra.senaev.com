@@ -133,8 +133,8 @@ async function writeNote(config: VaultToolsConfig, note: PlannedNote, execution:
 }
 
 /**
- * Writes each diary record straight into the daily note of its day: right above the
- * `⬆️ Daily Note ⬆️` line, else right above the `![[daily_note_stream]]` line. A missing
+ * Writes each diary record straight into the daily note of its day, right above the
+ * `⬆️ Daily Note ⬆️` line. A missing
  * daily note is created from the same template as the Obsidian plugin uses.
  *
  * Every note is prepared in memory first, so a note without a place for the records, or any

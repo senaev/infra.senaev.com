@@ -81,7 +81,8 @@ describe('renderDailyNote', () => {
             expect(text.includes('[[@mom]]'), day).toBe(saturday);
             expect(text.includes('[[🥞 Sunday Breakfast]]'), day).toBe(sunday);
             expect(text).toContain(`[[${quarter}#${day}]]`);
-            expect(text).toContain('\n---\n![[daily_note_stream]]\n\n⬆️ Daily Note ⬆️\n\n---\n');
+            expect(text).toContain('\n---\n\n⬆️ Daily Note ⬆️\n\n---\n');
+            expect(text).not.toContain('daily_note_stream');
             expect(text).toContain('window.senaevPersonalTools.filterTasksForDaily({task, query})');
             expect(text).toContain('window.senaevPersonalTools.sortKeyForDaily({task})');
         }

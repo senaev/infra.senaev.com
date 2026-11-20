@@ -54,7 +54,7 @@ describe('standalone typed Obsidian commands', { timeout: 30000 }, () => {
         vault = await createTestVault({
             'Source.md': original,
             'Backlink.md': '[[Source]]',
-            'periodic/day/2026-11-18.md': '![[daily_note_stream]]\n',
+            'periodic/day/2026-11-18.md': '⬆️ Daily Note ⬆️\n',
         });
         const ownChanges: string[] = [];
 
