@@ -14,6 +14,10 @@ import { sendTelegramEditableMessage } from 'senaev-utils/src/utils/TelegramApi/
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
 
 import { getAuthStatus, runCommand } from './claude';
+import {
+    isCodexLoggedIn, spawnCodexDeviceLogin, startCodexDeviceLogin,
+} from './codex';
+import { type CodexLogin, createCodexLogin } from './codexLogin';
 import { logger } from './logger';
 import {
     spawnClaudeLogin, spawnMcpLogin, startLogin,
@@ -115,9 +119,25 @@ const assistant = createLoginAssistant({
     }),
     now: () => new Date(),
 });
+// The Codex login folder is mounted, and CODEX_HOME set, only when the workspace enables Codex.
+const codexLogin: CodexLogin | undefined = process.env.CODEX_HOME === undefined
+    ? undefined
+    : createCodexLogin({
+        isLoggedIn: () => isCodexLoggedIn(runCommand),
+        startLogin: () => startCodexDeviceLogin(spawnCodexDeviceLogin),
+        sendMarkdown: async (markdown) => {
+            await sendTelegramMessage({
+                text: markdown,
+                chatId: String(allowedUserId),
+                token,
+                disableLinkPreview: true,
+            });
+        },
+    });
 const routerDependencies = {
     allowedUserId,
     assistant,
+    ...(codexLogin !== undefined && { codexLogin }),
     deleteMessage: (chatId: number, messageId: number) => deleteTelegramMessage({
         token,
         chatId: String(chatId),
@@ -135,6 +155,7 @@ const routeCallbackQuery = createCallbackQueryRouter(routerDependencies);
 const lifecycle = installGracefulShutdown({
     stop: () => {
         assistant.stop();
+        codexLogin?.stop();
 
         return Promise.resolve();
     },
@@ -153,10 +174,14 @@ function enqueue(description: string, step: () => Promise<void>): Promise<void> 
 }
 
 function main(): Promise<void> {
-    logger.info('🚀 Telegram login helper started');
+    logger.info({ codex: codexLogin !== undefined }, '🚀 Telegram login helper started');
     const checkAll = () => {
         void enqueue('Checking the login', () => assistant.checkLogin());
         void enqueue('Checking the MCP servers', () => assistant.checkMcpServers());
+
+        if (codexLogin !== undefined) {
+            void enqueue('Checking the Codex login', () => codexLogin.checkLogin());
+        }
     };
 
     checkAll();

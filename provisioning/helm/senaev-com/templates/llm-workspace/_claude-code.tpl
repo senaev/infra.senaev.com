@@ -99,7 +99,7 @@ spec:
               mountPath: /CLAUDE.md
               subPath: CLAUDE.md
               readOnly: true
-        # Logs in to Claude and to the MCP servers from Telegram, and warns before the login expires. It has the bot token, so it
+        # Logs in to Claude, to the MCP servers and to Codex from Telegram, and warns before the login expires. It has the bot token, so it
         # runs apart from Claude Code, which has no approvals; both share the login in HOME.
         - name: telegram-login
           image: ghcr.io/senaev/claude-code:latest
@@ -121,15 +121,32 @@ spec:
                 secretKeyRef:
                   name: {{ printf "%s-claude-code-env" $.Values.name }}
                   key: {{ .Values.claudeCode.telegram.user }}
+{{- if .Values.codex.enabled }}
+            # The same bot logs Codex in (/codex_auth): `codex login` writes to the login folder
+            # of the codex container. Both pods run on the node of the workspace.
+            - name: CODEX_HOME
+              value: /home/codex/.codex
+{{- end }}
           volumeMounts:
             - name: data
               mountPath: /home/claude
+{{- if .Values.codex.enabled }}
+            - name: codex-data
+              mountPath: /home/codex
+{{- end }}
       volumes:
         # The login, the trust answers and the session history.
         - name: data
           hostPath:
             path: {{ .Values.global.clusterRootPath }}/volumes/claude-code
             type: DirectoryOrCreate
+{{- if .Values.codex.enabled }}
+        # The HOME of the codex container (_codex.tpl), for the Codex login only.
+        - name: codex-data
+          hostPath:
+            path: {{ .Values.global.clusterRootPath }}/volumes/codex
+            type: DirectoryOrCreate
+{{- end }}
 {{ include "senaev-com.llmWorkspace.sshAgent.volumes" (dict "context" . "secretName" (printf "%s-claude-code-env" .Values.name)) | indent 8 }}
         - name: code
           persistentVolumeClaim:

@@ -1,5 +1,36 @@
 # Worklog
 
+## 2026-11-20 15:00 UTC — Telegram login for Codex in the shared helper
+
+Decisions of the user: the same bot and chat as Claude Code (one helper serves both), Codex
+running again with remote control off (`codex.remoteControl: false`), and code review as a separate
+project.
+
+`codex login --device-auth` through a pipe (0.170.0), the input of the parser:
+
+```
+1. Open this link in your browser and sign in to your account
+   ^[[94mhttps://auth.openai.com/codex/device^[[0m
+
+2. Enter this one-time code ^[[90m(expires in 15 minutes)^[[0m
+   ^[[94mXXXX-XXXXX^[[0m
+```
+
+`codex-rs/login/src/device_code_auth.rs`: the CLI polls for at most 15 minutes
+(`device auth timed out after 15 minutes`), so the helper needs no answer from the chat, only the
+exit of the CLI. `claude-code/telegram-login/codex.ts` run against the real CLI (not logged in):
+
+```
+logged in: false
+url: https://auth.openai.com/codex/device code shape: XXXX-XXXXX
+result after cancel: {"ok":false,"reason":"exit code none: Continue only if you started this login in Codex. ..."}
+```
+
+The helper tests pass (93 in `claude-code/telegram-login`). `start.sh` with remote control off and
+a logged-in fake `codex` prints `Remote control is off (codex.remoteControl). Nothing else runs.`
+and stays up.
+
+
 ## 2026-11-20 13:45 UTC — Codex disabled until remote control is available
 
 The user could not log in again: the container restarts in a loop and takes no `kubectl exec`:

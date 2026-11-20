@@ -46,6 +46,8 @@ spec:
             requests:
               memory: 512Mi
           env:
+            - name: CODEX_REMOTE_CONTROL
+              value: {{ .Values.codex.remoteControl | quote }}
             # Without it the server prints only "the connection is errored", not why. The remote
             # control module logs each connection attempt and its error at info.
             - name: RUST_LOG
