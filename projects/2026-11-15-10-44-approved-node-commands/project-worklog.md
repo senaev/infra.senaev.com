@@ -1,3 +1,13 @@
+## 2026-11-20 15:20 UTC — Run commands through the hetzner host and its SSH key
+
+User confirmed that every node accepts the SSH key of hetzner's root, and chose to use it.
+The executor is a privileged pod on hetzner with `hostPID: true`; it enters the host with
+`nsenter -t 1 -a`, runs commands there directly, and reaches other nodes with `ssh` from
+the host. No SSH key goes into Vault, a Secret or an `ssh-agent` sidecar, and no node needs
+a change. SSH starts in the host network namespace, so the pod-to-tailnet question and the
+`hostNetwork` fallback are gone; the pod keeps `hostNetwork: false`. Still open:
+cluster-helper → executor authentication (mTLS recommended).
+
 ## 2026-11-20 14:50 UTC — Address PR #247 review: timeouts and hostNetwork
 
 CodeRabbit found two gaps. Closing an SSH session does not kill what it started, so
