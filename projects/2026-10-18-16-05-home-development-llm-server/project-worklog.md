@@ -1,3 +1,27 @@
+## 2026-11-20 UTC — Windows VM switched to English after repairing Windows files
+
+Windows in VM 101 was installed in Spanish (`es-ES` LpCab). The English pack was only a
+Store add-on (`en-US` LXP), so Settings stayed Spanish even with English as the display
+language. `Install-Language en-US -CopyToSettings` failed twice:
+
+```
+Install-Language : Language pack or features could only be partially installed. ErrorCode: -2146498159.
+```
+
+(0x800F0991, Windows component store.) Fixed by `DISM /Online /Cleanup-Image /RestoreHealth`
+(completed successfully), `sfc /scannow` ("found corrupt files and successfully repaired
+them") and Windows Update (2026-11 Preview Update KB5132057, build 26300.10075). The next
+attempt succeeded:
+
+```
+Language Language Packs  Language Features
+-------- --------------  -----------------
+en-US    LpCab, LXP      BasicTyping, Handwriting, Speech, TextToSpeech, OCR
+```
+
+After a restart the user confirmed Windows is in English everywhere. Settings → Activation
+also shows Windows 11 Pro as active. The Windows user account is local `user`.
+
 ## 2026-11-20 12:54 UTC — Windows 11 Pro activated with the Dell firmware key
 
 `slmgr /dlv` in VM 101 (user screenshot; VM clock confirmed correct):
