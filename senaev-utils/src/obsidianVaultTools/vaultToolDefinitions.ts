@@ -416,7 +416,9 @@ const diary_append: ToolDefinition = {
         'Returns "notes": for each diary entry its path, whether it was created, and "diff".',
         'Use this to record a diary entry, not obsidian-patch. Fix only typos and grammar; never reword, summarise or translate.',
         'Linking is an important part of a record: take extra time before saving to search the vault for every mention in the text and link each one that has a note.',
-        'Follow the Diary section of the vault\'s AGENTS.md for the full rules.',
+        'Do not combine the text with earlier messages or earlier records.',
+        'First write the edited text in your reply to the user, and only then save exactly that text.',
+        'After saving, do not repeat the text: reply only with a short confirmation that contains the paths of the diary entries.',
         VAULT_RULES,
     ].join(' '),
     inputSchema: {

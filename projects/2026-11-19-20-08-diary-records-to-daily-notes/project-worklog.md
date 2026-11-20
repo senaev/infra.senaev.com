@@ -1,5 +1,16 @@
 # Worklog
 
+## 2026-11-20 — Step 3 done: diary rules live only in the tool description
+
+The owner decided that the vault `AGENTS.md` must not describe the MCP or how daily notes are
+created. Removed from its Diary section (live, through obsidian-patch): the sentence about
+`_templates/Daily note template.md`, and the whole "Diary staging approach" subsection with its
+7 rules for a record; also the deleted template in the plugin section. The three rules that the
+`diary_append` description did not have yet moved there, replacing "Follow the Diary section of
+the vault's AGENTS.md": do not combine with earlier messages or records; write the edited text in
+the reply first, then save exactly that; after saving, reply only with a short confirmation and
+the paths.
+
 ## 2026-11-19 22:42 UTC — Step 2 done: deployed and verified through the Obsidian MCP
 
 PR #237 was squash-merged (`ffd75d7`); the Deploy run succeeded, and cluster-helper and

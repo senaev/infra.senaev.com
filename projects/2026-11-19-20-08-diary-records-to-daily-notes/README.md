@@ -67,8 +67,9 @@ Decisions in step 1:
    shared template and record insertion in senaev-utils, new tool schema, new command, tests.
 2. **Deploy and verify** — done on 2026-11-19: PR #237 merged and deployed; tested through the
    Obsidian MCP with test notes in 2027, then removed (see the worklog).
-3. **Vault rules**: rewrite the "Diary staging approach" of the vault `AGENTS.md`: records go
-   to daily notes, one record per day the text is about, with the date of that day.
+3. **Vault rules** — done on 2026-11-20: the owner removed the diary-recording rules and the
+   note-creation text from the vault `AGENTS.md`; the `diary_append` tool description now holds
+   all the rules for a record.
 4. **Plugin**: after the senaev-utils `ci` release, raise its version in
    `plugins/senaev-personal-tools/package.json`, import the template from
    `senaev-utils/src/obsidianDailyNotes/dailyNoteTemplate`, delete the local copy and its
