@@ -8,13 +8,13 @@
           "interval": [
             {
               "field": "cronExpression",
-              "expression": "30 2 * * *"
+              "expression": "0 4 * * *"
             }
           ]
         }
       },
       "id": "schedule-trigger",
-      "name": "Every day at 02:30 UTC",
+      "name": "Every day at 04:00 UTC",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
@@ -105,7 +105,7 @@
     }
   ],
   "connections": {
-    "Every day at 02:30 UTC": {
+    "Every day at 04:00 UTC": {
       "main": [
         [
           {
