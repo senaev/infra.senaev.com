@@ -266,6 +266,8 @@ llmWorkspaces:
           url: https://mcp.senaev.com/obsidian
         telegram:
           url: https://mcp.senaev.com/telegram
+        vas3k:
+          url: https://vas3k-mcp.rmbk.me/mcp
       # @senaev_claude_helper_bot. The chat is the private chat of the user with the bot: its id is the user id.
       telegram:
         token: TG_TOKEN_CLAUDE_HELPER_BOT
