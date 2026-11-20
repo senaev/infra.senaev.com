@@ -1,3 +1,26 @@
+## 2026-11-21 UTC — Stage 2 done: iGPU visible in senaev-madrid; GuC/DMC firmware missing
+
+senaev-madrid was back after the host reboot (`up 3 min`, on the tailnet). Then:
+
+```
+# qm set 100 --hostpci0 0000:00:02.0,pcie=1
+kvm: -device vfio-pci,host=0000:00:02.0,id=hostpci0,bus=ich9-pcie-port-1,addr=0x0: info: OpRegion detected on Intel display 4680.
+status: running
+AGENT-OK
+--- senaev-madrid ---
+ens18            UP             bc:24:11:5e:6e:a4
+01:00.0 VGA compatible controller [0300]: Intel Corporation AlderLake-S GT1 [8086:4680] (rev 0c)
+	Kernel driver in use: i915
+crw-rw---- 1 root render 226, 128 Nov 20 23:42 renderD128
+i915 0000:01:00.0: [drm] Failed to load DMC firmware i915/adls_dmc_ver2_01.bin (-ENOENT).
+i915 0000:01:00.0: [drm] *ERROR* GT0: GuC firmware i915/tgl_guc_70.bin: fetch failed -ENOENT
+[drm] Initialized i915 1.6.0 for 0000:01:00.0 on minor 1
+```
+
+The VM starts with the iGPU (no BAR/vfio errors), keeps `ens18`, and the guest i915 driver
+creates `card1` and `renderD128`. Debian lacks the Intel GPU firmware (GuC, HuC, DMC), so
+GuC is uninitialized. Next: stage 3, firmware and VA-API driver, then `vainfo`.
+
 ## 2026-11-21 UTC — Stage 1 done: iGPU bound to vfio-pci on proxmox-madrid
 
 Someone was at the Dell for the reboot. Added `/etc/modprobe.d/vfio-igpu.conf`
