@@ -1,3 +1,10 @@
+## 2026-11-20 14:50 UTC — Address PR #247 review: timeouts and hostNetwork
+
+CodeRabbit found two gaps. Closing an SSH session does not kill what it started, so
+each command now runs in a transient systemd unit with `RuntimeMaxSec`: systemd stops
+the whole cgroup, even detached children. The `hostNetwork: true` fallback now requires
+proof that the CNI still enforces the executor NetworkPolicy, else another control.
+
 ## 2026-11-20 14:25 UTC — Replace the DaemonSet with one SSH executor
 
 User decided that a per-node DaemonSet is unnecessary: the control plane can reach every
