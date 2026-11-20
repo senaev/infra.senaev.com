@@ -1,5 +1,37 @@
 # Worklog
 
+## 2026-11-16 18:25 UTC — GitHub token moved into a general mitm-proxy sidecar
+
+PR #210 (SSH) was merged and deployed: Deploy run 43828138069 succeeded. In `claude-code`:
+`ssh-add -l` lists `SHA256:utim4eLj…`, `ssh -T git@github.com` answers `Hi senaev!`, `git fetch`
+works, `/root/.ssh` does not exist and `/ssh-agent` is read-only. The other three containers
+were not checked from here (no cluster access).
+
+`GH_TOKEN` is a classic token (`x-oauth-scopes: repo, workflow`, no expiry) used only by `gh`.
+The user chose a proxy over running `gh` in a sidecar (see README for why), and asked for a
+general, light and readable "man in the middle" sidecar: `mitm-proxy/`, TypeScript run by Node 24
+without dependencies or a build, `node:24-alpine` + openssl. Tests: 25 (unit rules/authority;
+integration with real TLS: header replaced, other hosts only tunneled, untrusted upstream gets
+nothing, absolute URL refused, plain HTTP refused, logs without secrets).
+
+End to end against real GitHub, `node src/main.ts` locally and real `gh` with a placeholder:
+
+```
+--- gh api user (placeholder token, via proxy):
+senaev
+--- gh pr list:
+#210 🔒️ Keep the SSH key in an ssh-agent sidecar in all LLM workspaces
+#209 🐛 Mount the Claude Code SSH key where ssh looks for it
+--- same placeholder without proxy:
+{   (GitHub's 401 "Bad credentials" body)
+--- tunnel to another host through proxy:
+404 (objects.githubusercontent.com answered over the plain tunnel)
+{"time":"...","event":"request","host":"api.github.com","method":"GET","path":"/user","status":200,"ms":570}
+```
+
+The rendered `gh` wrapper also worked, with `NO_PROXY=github.com` set on purpose (it unsets it).
+In the rendered chart only the `mitm-proxy` containers reference the `GH_TOKEN` secret key.
+
 ## 2026-11-15 22:15 UTC — SSH part covers all four agent containers; other secrets are future tasks
 
 The user chose to move the SSH key into the sidecar for all four containers in this PR, and to

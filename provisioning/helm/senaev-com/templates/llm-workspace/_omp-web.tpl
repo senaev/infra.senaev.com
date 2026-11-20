@@ -107,16 +107,18 @@ spec:
         tags.datadoghq.com/version: latest
       annotations:
         secret.reloader.stakater.com/reload: {{ printf "%s-omp-web-env" .Values.name | quote }}
-        configmap.reloader.stakater.com/reload: {{ printf "%s-instructions,%s-omp-web" .Values.name .Values.name | quote }}
+        configmap.reloader.stakater.com/reload: {{ printf "%s-instructions,%s-omp-web,%s-mitm-proxy" .Values.name .Values.name .Values.name | quote }}
     spec:
 {{ include "senaev-com.llmWorkspace.podAccess" . | indent 6 }}
       terminationGracePeriodSeconds: 30
       nodeSelector:
         vps: {{ .Values.vps }}
 {{- if .Values.git }}
-      # The SSH key is only in the ssh-agent container: OMP signs through its socket.
+      # The SSH key and the GitHub token are only in sidecars: OMP signs through the ssh-agent socket
+      # and sends gh through mitm-proxy.
       initContainers:
 {{ include "senaev-com.llmWorkspace.sshAgent.container" . | indent 8 }}
+{{ include "senaev-com.llmWorkspace.mitmProxy.container" (dict "context" . "secretName" (printf "%s-omp-web-env" .Values.name)) | indent 8 }}
 {{- end }}
       containers:
         - name: omp-web
@@ -148,11 +150,7 @@ spec:
               value: {{ .Values.git.name | quote }}
             - name: GIT_COMMITTER_EMAIL
               value: {{ .Values.git.email | quote }}
-            - name: GH_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: {{ printf "%s-omp-web-env" $.Values.name }}
-                  key: {{ .Values.git.githubToken }}
+{{ include "senaev-com.llmWorkspace.mitmProxy.env" . | indent 12 }}
 {{ include "senaev-com.llmWorkspace.sshAgent.env" . | indent 12 }}
 {{- end }}
 {{- range $connector := $agent.connectors }}
@@ -188,6 +186,7 @@ spec:
               mountPath: /root/.omp
 {{- if .Values.git }}
 {{ include "senaev-com.llmWorkspace.sshAgent.volumeMount" . | indent 12 }}
+{{ include "senaev-com.llmWorkspace.mitmProxy.volumeMounts" . | indent 12 }}
 {{- end }}
             - name: defaults
               mountPath: /defaults
@@ -237,6 +236,7 @@ spec:
             claimName: {{ printf "%s-omp-web-state" .Values.name }}
 {{- if .Values.git }}
 {{ include "senaev-com.llmWorkspace.sshAgent.volumes" (dict "context" . "secretName" (printf "%s-omp-web-env" .Values.name)) | indent 8 }}
+{{ include "senaev-com.llmWorkspace.mitmProxy.volumes" . | indent 8 }}
 {{- end }}
         - name: defaults
           configMap:

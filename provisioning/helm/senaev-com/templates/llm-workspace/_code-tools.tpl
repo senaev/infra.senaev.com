@@ -27,15 +27,17 @@ spec:
         tags.datadoghq.com/version: latest
       annotations:
         secret.reloader.stakater.com/reload: {{ printf "%s-code-tools-env" .Values.name | quote }}
-        configmap.reloader.stakater.com/reload: {{ printf "%s-instructions" .Values.name | quote }}
+        configmap.reloader.stakater.com/reload: {{ printf "%s-instructions,%s-mitm-proxy" .Values.name .Values.name | quote }}
     spec:
 {{ include "senaev-com.llmWorkspace.podAccess" . | indent 6 }}
       # ReadWriteOnce permits all workspace pods to mount the code disk on the same node.
       nodeSelector:
         vps: {{ .Values.vps }}
-      # The SSH key is only in the ssh-agent container: Code Tools signs through its socket.
+      # The SSH key and the GitHub token are only in sidecars: Code Tools signs through the ssh-agent socket
+      # and sends gh through mitm-proxy.
       initContainers:
 {{ include "senaev-com.llmWorkspace.sshAgent.container" . | indent 8 }}
+{{ include "senaev-com.llmWorkspace.mitmProxy.container" (dict "context" . "secretName" (printf "%s-code-tools-env" .Values.name)) | indent 8 }}
       containers:
         - name: code-tools
           securityContext:
@@ -62,11 +64,7 @@ spec:
               value: {{ .Values.git.name | quote }}
             - name: GIT_COMMITTER_EMAIL
               value: {{ .Values.git.email | quote }}
-            - name: GH_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: {{ printf "%s-code-tools-env" $.Values.name }}
-                  key: {{ .Values.git.githubToken }}
+{{ include "senaev-com.llmWorkspace.mitmProxy.env" . | indent 12 }}
 {{ include "senaev-com.llmWorkspace.sshAgent.env" . | indent 12 }}
           startupProbe:
             httpGet:
@@ -83,12 +81,14 @@ spec:
             - name: code
               mountPath: /code
 {{ include "senaev-com.llmWorkspace.sshAgent.volumeMount" . | indent 12 }}
+{{ include "senaev-com.llmWorkspace.mitmProxy.volumeMounts" . | indent 12 }}
             # The server rules that every code tool description points to.
             - name: instructions
               mountPath: /AGENTS.md
               subPath: AGENTS.md
       volumes:
 {{ include "senaev-com.llmWorkspace.sshAgent.volumes" (dict "context" . "secretName" (printf "%s-code-tools-env" .Values.name)) | indent 8 }}
+{{ include "senaev-com.llmWorkspace.mitmProxy.volumes" . | indent 8 }}
         - name: instructions
           configMap:
             name: {{ printf "%s-instructions" .Values.name }}

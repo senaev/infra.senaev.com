@@ -1,0 +1,10 @@
+{
+  "//": "Node runs the TypeScript files directly (type stripping), so imports name the .ts files and only erasable syntax is allowed. No dependencies, no build.",
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true
+  }
+}

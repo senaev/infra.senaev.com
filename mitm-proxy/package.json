@@ -1,0 +1,10 @@
+{
+  "name": "mitm-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sidecar HTTPS proxy that adds secret headers for some hosts, so the agent containers never hold the secrets",
+  "type": "module",
+  "scripts": {
+    "start": "node src/main.ts"
+  }
+}

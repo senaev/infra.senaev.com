@@ -483,9 +483,9 @@ only in `senaev`.
   across restarts. Do not delete it. The folder name is fixed in the template, as for OpenCode
   (`volumes/opencode-data`); two workspaces on one node would share it.
 - Sessions run without approvals (`bypassPermissions`) as root; `IS_SANDBOX=1` allows this in the
-  container. The git token of the workspace is in its env. The SSH key is not in the container:
-  the `ssh-agent` sidecar (`templates/llm-workspace/_ssh-agent.tpl`) holds it, and Claude Code
-  signs through `SSH_AUTH_SOCK=/ssh-agent/agent.sock`, a read-only mount. The model of new
+  container. The SSH key and the GitHub token are not in the container: the `ssh-agent`
+  sidecar holds the key (Claude Code signs through `SSH_AUTH_SOCK`), and the `mitm-proxy`
+  sidecar holds the token (see below). The model of new
   sessions is `claudeCode.model`; the phone can change it with `/model`.
 - MCP servers: `claudeCode.mcp` of the workspace, a `url` for each server (now Datadog,
   Grafana, Obsidian and Telegram). The template passes them as `WORKSPACE_MCP_SERVERS`, and `start.sh`
@@ -593,10 +593,20 @@ See [`projects/2026-11-19-21-17-codex-remote-control`](projects/2026-11-19-21-17
 
 Secrets in LLM workspaces: an agent can read everything in the container where it runs. Keep
 credentials in a sidecar or proxy and give the agent container only a socket or a local
-endpoint, as `_ssh-agent.tpl` does for the SSH key in Claude Code, OpenCode, Code Tools and
-OMP: only their `ssh-agent` sidecar mounts the key, and the agent container gets
-`SSH_AUTH_SOCK`. A new coding component that needs git over SSH uses the same helper. The
-inventory and the future tasks are in
+endpoint. Claude Code, OpenCode, Code Tools and OMP (with `git`) use two sidecars:
+
+- `ssh-agent` (`templates/llm-workspace/_ssh-agent.tpl`) holds the SSH key; the agent container
+  gets `SSH_AUTH_SOCK=/ssh-agent/agent.sock`, a read-only mount.
+- `mitm-proxy` (`mitm-proxy/`, `templates/llm-workspace/_mitm-proxy.tpl`) holds `GH_TOKEN`. The
+  agent container has a placeholder `GH_TOKEN` and a `gh` wrapper at `/usr/local/bin/gh` that
+  sends `gh` through `HTTPS_PROXY=127.0.0.1:3128` and trusts `/mitm-proxy/ca-bundle.crt`. The
+  proxy sets the real `authorization` only for `api.github.com` and `uploads.github.com`, over
+  verified TLS, and only tunnels other hosts. Rules are `MITM_RULES` (host → headers, `${VAR}`
+  from its env), so another secret is another rule. Its CA is new at each start, limited to the
+  rule hosts, and its key is deleted after use.
+
+A new coding component that needs git or `gh` uses both helpers. The inventory and the future
+tasks are in
 [`projects/2026-11-15-21-54-isolate-secrets-from-llm-workspaces`](projects/2026-11-15-21-54-isolate-secrets-from-llm-workspaces/README.md).
 
 ## Datadog APM whitelist
