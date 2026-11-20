@@ -65,8 +65,11 @@ The Windows VHDX is copied to Proxmox and its SHA-256 matches the original.
 Windows VM 101 `dell-windows` now boots successfully; internet, files and applications
 are confirmed present. Windows 11 Pro is activated (2026-11-20) with the Dell's own
 OEM key from its firmware; see [the plan](windows-backup-proxmox-plan.md#activate-with-the-dell-firmware-key).
-Guest drivers/agent, Windows autostart/backups and Jellyfin passthrough remain separate
-follow-up items; thin-pool growth still needs monitoring.
+Windows is in English, has VirtIO drivers, the guest agent, a VirtIO NIC (192.168.0.28),
+`discard`/SSD on its disk, BitLocker off and no autostart. A verified backup from
+2026-11-20 (30.73 GB `vzdump`, plus `dell-msdm.bin`) is in the user's private cloud.
+Open: delete VM 101 snapshots `before-oem-key`/`before-virtio`, an optional restore test,
+RDP access (not decided), Jellyfin passthrough; thin-pool growth still needs monitoring.
 See the plan for configuration, evidence and outstanding checks.
 
 ## Verification

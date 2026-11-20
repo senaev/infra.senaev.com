@@ -1,3 +1,18 @@
+## 2026-11-20 UTC — Backup downloaded, verified and stored in the cloud
+
+User downloaded the backup with `rsync -avP -e 'ssh -J root@senaev.com'` (~4.2 MB/s,
+2 h 03 min for the archive) and checked it on the laptop:
+
+```
+77b2e4dcca8685d21b8f3dba2841982664d60ea9bc4f6898975955344b14224f  vzdump-qemu-101-2026_11_20-17_38_01.vma.zst
+ce3f3860e028ee7fc0efe2d8e42ccc33171befedb494b991746dac648a020911  dell-msdm.bin
+```
+
+Both match the host. The archive, `.log`, `.notes` and `dell-msdm.bin` are uploaded to the
+user's private cloud storage, and the user removed the backup files from
+`/var/lib/vz/dump/` on proxmox-madrid (`/root/dell-msdm.bin` stays: VM 101 needs it).
+Remaining cleanup: snapshots `before-oem-key` and `before-virtio`. Restore test not done.
+
 ## 2026-11-20 17:44 UTC — VM 101 backup succeeded (30.73 GB)
 
 Before the backup, Windows: BitLocker Fully Decrypted (0.0%), `powercfg /h off`,
