@@ -9,12 +9,9 @@ import { isIsoDay, isoDayToUtcDate } from '../obsidianTasks/isoDay';
 /** Vault-root folder that the daily notes live in, one `YYYY-MM-DD.md` file per day. */
 export const DAILY_NOTE_FOLDER = 'periodic/day/';
 
-/** The embed of the old diary stream file; every daily note has it. */
-export const DAILY_NOTE_STREAM_EMBED = '![[daily_note_stream]]';
-
 /**
  * A line of its own in a daily note: new diary records go right above it, so the records
- * of a day stay in the order they were written. The template puts it under the stream embed.
+ * of a day stay in the order they were written. The template puts it at the end of the diary block.
  */
 export const DIARY_RECORD_MARKER = '⬆️ Daily Note ⬆️';
 
@@ -106,7 +103,6 @@ sort by function window.senaevPersonalTools.sortKeyForDaily({task})
 ${renderDailyBody(day)}
 
 ---
-${DAILY_NOTE_STREAM_EMBED}
 
 ${DIARY_RECORD_MARKER}
 

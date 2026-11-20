@@ -1,5 +1,20 @@
 # Worklog
 
+## 2026-11-20 — Step 7: remove the stream file and every mention of it
+
+The owner decided to remove `![[daily_note_stream]]` from the template, the stream file itself
+and the embed from all past daily notes. The live `@senaev/daily_note_stream.md` is empty
+(read through the MCP, size 0). 152 daily notes embed it, all with the same layout: the embed,
+the diary text, then the `---` above "Plan the next day":
+
+```
+{'hr-after+plan': 152}
+```
+
+So the vault PR replaces each embed with a `⬆️ Daily Note ⬆️` line placed before that `---`,
+and `diary_append` keeps only the marker as anchor. The vault PR must be merged before this one
+is deployed.
+
 ## 2026-11-20 18:55 UTC — The template gets the marker under the stream embed
 
 The first real two-day call from ChatGPT landed in the right notes, but on 2026-11-19 the

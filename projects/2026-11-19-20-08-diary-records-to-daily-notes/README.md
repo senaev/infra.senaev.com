@@ -62,6 +62,8 @@ Decisions in step 1:
 - Since 2026-11-20 the template has a `⬆️ Daily Note ⬆️` line under the stream embed, in place of
   the blank lines there, so the records of a new note go below the embed, where the owner keeps
   the diary text.
+- Since step 7 the stream file and its embed are gone: the template ends the diary block with the
+  marker alone, and the marker is the only anchor. A daily note without it fails with `conflict`.
 
 ## Plan
 
@@ -75,16 +77,22 @@ Decisions in step 1:
 4. **Plugin** — PR senaev/obsidian-vault#6: the plugin imports the template from senaev-utils
    `1.0.0-ci.44629167422.1`; its own copy, fixtures and the template marker are removed, and
    `main.js` is rebuilt. After the merge, check a new daily note in Obsidian.
-5. **Marker in the template** — the template gets the marker line under the embed (this PR).
-   After the senaev-utils `ci` release, raise its version in the plugin and rebuild `main.js`.
+5. **Marker in the template** — done on 2026-11-20: #254 and senaev/obsidian-vault#7.
 6. **Clean-up**: decide on the open points below.
+7. **Remove the stream file** — the template loses `![[daily_note_stream]]`, and
+   `diary_append` drops the embed fallback (this PR). In the vault, a PR deletes
+   `@senaev/daily_note_stream.md` (empty) and, in the 152 daily notes that embed it, removes the
+   embed line and puts `⬆️ Daily Note ⬆️` before the `---` that ends the diary block, so their
+   records stay in place and new ones go after them. **Merge the vault PR first**: without the
+   marker, those notes would reject new records once this PR is deployed. Then merge this PR,
+   then raise senaev-utils in the plugin and rebuild `main.js`.
 
 ## Verification
 
 - Ask an MCP client to record a diary entry about today and one about yesterday in one call.
-  Both daily notes get the record above `⬆️ Daily Note ⬆️` (or above `![[daily_note_stream]]`),
-  in order; a missing note is created with the full template.
-- A daily note without either line returns an error and nothing is written.
+  Both daily notes get the record above `⬆️ Daily Note ⬆️`, in order; a missing note is created
+  with the full template.
+- A daily note without the marker returns an error and nothing is written.
 - A daily note created by the plugin and by obsidian-sync for the same date is identical.
 
 ## Open points
@@ -92,7 +100,5 @@ Decisions in step 1:
 - Periodic Notes is still enabled, and its daily template points at the deleted
   `_templates/Daily note template.md`. Clear that setting, or disable Periodic Notes if only the
   calendar needs it.
-- Retire `@senaev/daily_note_stream.md` and its embed once the records are no longer written
-  there (the embed is still the fallback anchor).
 - A record links to its own daily note (`[[<date>|🎙️ …]]`); drop the link and keep only the
   time if that looks redundant in the note.
