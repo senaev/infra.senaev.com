@@ -1,5 +1,14 @@
 # Worklog
 
+## 2026-11-20 — Step 4: plugin uses the shared template (PR senaev/obsidian-vault#6)
+
+The plugin now imports `dailyDateFromPath`, `dailyNotePathForRootNote`, `initializeDailyNote`,
+`renderDailyNote` and `DAILY_NOTE_FOLDER` from senaev-utils `1.0.0-ci.44629167422.1`, the
+release of #237. `dailyNoteTemplate.ts`, its test and its fixtures were deleted from the plugin;
+the initializer tests use blank notes instead of the removed marker. Plugin checks: lint,
+typecheck, 89 tests, build; the vault CI, which also checks that the committed `main.js` matches
+the build, passed.
+
 ## 2026-11-20 — Step 3 done: diary rules live only in the tool description
 
 The owner decided that the vault `AGENTS.md` must not describe the MCP or how daily notes are

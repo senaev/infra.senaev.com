@@ -70,11 +70,9 @@ Decisions in step 1:
 3. **Vault rules** — done on 2026-11-20: the owner removed the diary-recording rules and the
    note-creation text from the vault `AGENTS.md`; the `diary_append` tool description now holds
    all the rules for a record.
-4. **Plugin**: after the senaev-utils `ci` release, raise its version in
-   `plugins/senaev-personal-tools/package.json`, import the template from
-   `senaev-utils/src/obsidianDailyNotes/dailyNoteTemplate`, delete the local copy and its
-   fixtures, remove the marker from its README, build, and commit `main.js` (only when the owner
-   asks, per the plugin AGENTS.md).
+4. **Plugin** — PR senaev/obsidian-vault#6: the plugin imports the template from senaev-utils
+   `1.0.0-ci.44629167422.1`; its own copy, fixtures and the template marker are removed, and
+   `main.js` is rebuilt. After the merge, check a new daily note in Obsidian.
 5. **Clean-up**: decide on the open points below.
 
 ## Verification
