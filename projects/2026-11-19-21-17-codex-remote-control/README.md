@@ -36,7 +36,7 @@ Run Codex (ChatGPT subscription) in a container of the `senaev` LLM workspace, w
 
 ## Status
 
-⏸️ Paused on 2026-11-20: `codex.enabled: false`. Remote control is not available for the ChatGPT account yet: the server enrollment needs MFA (`HTTP 403 ... Multi-factor authentication required`), and the ChatGPT app on Android shows no Codex entry. Resume when the app shows Codex: turn on MFA, set `codex.enabled: true`, and log in again if the enrollment still fails.
+🔄 Resumed on 2026-11-20 without remote control: `codex.enabled: true`, `codex.remoteControl: false`. The container keeps the ChatGPT login; the Telegram helper of claude-code logs it in (step 4). Remote control waits until it is available for the account: the server enrollment needs MFA (`HTTP 403 ... Multi-factor authentication required`), and the ChatGPT app on Android shows no Codex entry.
 
 ## Plan
 
@@ -49,7 +49,10 @@ Run Codex (ChatGPT subscription) in a container of the `senaev` LLM workspace, w
      `kubectl -n senaev-com exec -it deploy/senaev-codex -c codex -- codex login --device-auth`
 2. ⏸️ Make the server connect. After the login, each start ends with `Remote control is enabled on senaev-codex but the connection is errored.` and the container restarts. With the remote control log (`RUST_LOG`, PR [#244](https://github.com/senaev/infra.senaev.com/pull/244)) the cause is `HTTP 403 ... {"detail":"Multi-factor authentication required"}` at `/wham/remote/control/server/enroll`. Fix: turn on MFA in the ChatGPT account, then log in again.
 3. Connect the phone. Check whether `senaev-codex` appears in ChatGPT → Codex by itself. If not, find where the app takes the manual code, and pair once: `codex remote-control start`, `codex remote-control pair`, then go back to `--no-daemon`. Check that the pairing survives a pod restart.
-4. Telegram login in the same chat: `/auth` for Codex, a notice when the login is gone. The bot token cannot be polled by two processes at once (Telegram answers `409 Conflict` to the second `getUpdates`), so one helper must serve both Claude Code and Codex, or Codex gets its own bot. Decide at this step.
+4. ⏳ Telegram login in the same chat, with the same bot (decision of the user, 2026-11-20). One process reads the updates of a bot, so the `telegram-login` container of claude-code also logs Codex in: the template mounts `/k3s-cluster/volumes/codex` there with `CODEX_HOME`, and the claude-code image gets the same pinned `codex` CLI.
+   - `/codex_auth` runs `codex login --device-auth` and sends the link and the one-time code. The CLI needs no answer: it waits until the code is entered on the page, then exits. The bot checks exit code 0, the text `Successfully logged in` and `codex login status`, then sends `✅ Codex is logged in.`; otherwise the reason (the code expires after 15 minutes).
+   - Every 10 minutes: when `codex login status` says logged out, the bot starts a login by itself, once for each time the login is lost.
+   - The Codex container runs again with `codex.remoteControl: false`: it waits for the login, then only sleeps.
 5. MCP servers (Datadog, Grafana, Obsidian, Telegram) in `config.toml`, with their OAuth login.
 6. `AGENTS.md`: keep the Codex section current with each step (added in step 1).
 

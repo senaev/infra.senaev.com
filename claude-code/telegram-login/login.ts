@@ -37,7 +37,7 @@ const DEFAULT_TIMEOUTS: LoginTimeouts = {
 const URL_PATTERN = /https:\/\/[^\s\u0007\u001b]+(?=[\s\u0007\u001b])/;
 const MAX_REASON_LENGTH = 200;
 
-function wrapChildProcess(file: string, args: string[]): LoginProcess {
+export function wrapChildProcess(file: string, args: string[]): LoginProcess {
     const child = spawn(file, args, {
         stdio: [
             'pipe',

@@ -23,14 +23,22 @@ TOML
 # repository, so the workspace instructions go in as the global ones.
 ln -sfn /AGENTS.md "$codex_home/AGENTS.md"
 
-# Remote control accepts only a ChatGPT login, so it cannot come from a secret.
-# Log in once with: kubectl exec -it deploy/<name>-codex -c codex -- codex login --device-auth
+# The login is a ChatGPT login, so it cannot come from a secret. The Telegram helper of the
+# claude-code pod logs in (/codex_auth), or by hand:
+# kubectl exec -it deploy/<name>-codex -c codex -- codex login --device-auth
 if ! codex login status > /dev/null 2>&1; then
-    echo "Codex is not logged in. Waiting for: codex login --device-auth"
+    echo "Codex is not logged in. Waiting for a login: /codex_auth in Telegram, or codex login --device-auth"
     until codex login status > /dev/null 2>&1; do
         sleep 30
     done
     echo "Codex is logged in."
+fi
+
+# Off until remote control is available for the ChatGPT account (its enrollment needs MFA): the
+# container then only keeps the login. tini stops the sleep on SIGTERM.
+if [ "${CODEX_REMOTE_CONTROL:-false}" != "true" ]; then
+    echo "Remote control is off (codex.remoteControl). Nothing else runs."
+    exec sleep infinity
 fi
 
 # --no-daemon: one foreground app-server, the main process of the container. The managed daemon

@@ -337,9 +337,13 @@
           "codex": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["enabled"],
+            "required": ["enabled", "remoteControl"],
             "properties": {
               "enabled": {
+                "type": "boolean"
+              },
+              "remoteControl": {
+                "description": "Run codex remote-control for the ChatGPT app; when false, the container only keeps the login",
                 "type": "boolean"
               }
             }

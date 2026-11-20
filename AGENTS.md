@@ -442,7 +442,7 @@ for compatibility after deployment.
 
 | Workspace | Node | Components | Ingress |
 |---|---|---|---|
-| `senaev` | senaev-madrid | OpenCode, OMP (`omp.senaev.com`), Code Tools, Claude Code (Codex disabled) | traefik-hetzner |
+| `senaev` | senaev-madrid | OpenCode, OMP (`omp.senaev.com`), Code Tools, Claude Code, Codex (no remote control) | traefik-hetzner |
 | `galkin` | galkin | OMP only (`omp.galkin.senaev.com`) | traefik-hetzner (DNS points to hetzner) |
 
 Do not rename the `senaev` entry: that replaces its PVCs, and cluster-helper calls
@@ -467,7 +467,8 @@ only in `senaev`.
   `claudeCode.telegram.user` (`TG_SENAEV_USER_ID`; the chat id is the user id). `/auth`
   sends a login link; the user opens it and sends the code from the page back; the bot deletes
   that message. When nobody is logged in it says so once, with no link. From 5 days before
-  `loginExpiresAt` it warns once a day. It runs apart from
+  `loginExpiresAt` it warns once a day. When the workspace enables Codex, the same helper logs
+  Codex in (see Codex below). It runs apart from
   Claude Code, which has no approvals, so the bot token is not in that container. Manual login:
   `kubectl -n senaev-com exec -it deploy/senaev-claude-code -c claude-code -- claude auth login`.
 - `<clusterRootPath>/volumes/claude-code` (`/k3s-cluster/volumes/claude-code`) is a node folder
@@ -521,30 +522,38 @@ See [`projects/2026-11-15-18-42-claude-code-remote-control`](projects/2026-11-15
 
 ## Codex
 
-The `codex` component (`templates/llm-workspace/_codex.tpl`, image `codex/`) runs
-`codex remote-control --no-daemon` in `/code`, so the ChatGPT app (Codex) drives Codex on the
-shared `/code` volume. Remote control is experimental in Codex. It makes outbound connections
-only (`wss://chatgpt.com/backend-api/wham/remote/control/server`): no Ingress, no Service, and the
-NetworkPolicy has no ingress. The device name is the hostname `senaev-codex`.
+The `codex` component (`templates/llm-workspace/_codex.tpl`, image `codex/`) keeps a Codex CLI
+with the ChatGPT login of the user on the shared `/code` volume. It has no Ingress and no Service,
+and the NetworkPolicy has no ingress. Enabled only in `senaev`.
 
-**Disabled since 2026-11-20** (`codex.enabled: false` in `senaev`): the ChatGPT account cannot use
-remote control yet. The server enrollment fails with `HTTP 403 ... {"detail":"Multi-factor
-authentication required"}`, the ChatGPT app on Android shows no Codex entry, and the foreground
-server exits when its first connection fails, so the container restarted in a loop. Enable it again
-when remote control is available for the account; the login stays in the host folder.
-
-- The login is the ChatGPT subscription; remote control rejects an API key. Until a login exists
-  the container waits and checks every 30 seconds. The ChatGPT account needs multi-factor
-  authentication. The remote control module is logged at info (`RUST_LOG`). Manual login:
+- Remote control (`codex.remoteControl`) is **off since 2026-11-20**: the account cannot use it
+  yet. The server enrollment fails with `HTTP 403 ... {"detail":"Multi-factor authentication
+  required"}`, and the ChatGPT app on Android shows no Codex entry. When it is on, `start.sh` runs
+  `codex remote-control --no-daemon` in `/code` (outbound only,
+  `wss://chatgpt.com/backend-api/wham/remote/control/server`; device name: the hostname
+  `senaev-codex`); that server exits when its first connection fails, and the container restarts.
+  When it is off, `start.sh` waits for the login and then only sleeps.
+- The login is the ChatGPT subscription; remote control rejects an API key. The `telegram-login`
+  container of the claude-code pod logs Codex in, with the same bot and chat as Claude Code: the
+  template mounts `<clusterRootPath>/volumes/codex` there and sets `CODEX_HOME`, and the
+  claude-code image has the same pinned `codex` CLI (`claude-code/telegram-login/codex.ts`,
+  `codexLogin.ts`). `/codex_auth` runs `codex login --device-auth` and sends the link
+  (`https://auth.openai.com/codex/device`) and the one-time code. Nothing goes back through the
+  chat: the CLI waits until the user enters the code on the page, then exits; the bot checks the
+  exit code, the text `Successfully logged in` and `codex login status`, and sends
+  `✅ Codex is logged in.` or the reason of the failure. The code expires after 15 minutes. Every 10
+  minutes the bot checks `codex login status`; when Codex is logged out it starts a login by itself,
+  once for each time the login is lost. Manual login:
   `kubectl -n senaev-com exec -it deploy/senaev-codex -c codex -- codex login --device-auth`.
 - `<clusterRootPath>/volumes/codex` is mounted as `HOME`; `~/.codex` holds the login, the remote
   control enrollment and the sessions. Do not delete it.
 - `start.sh` writes `~/.codex/config.toml` on each start (no approvals, `danger-full-access`, no
   update check, `/code` trusted), replacing changes made by hand, and links `/AGENTS.md` as
   `~/.codex/AGENTS.md`: Codex does not read the `AGENTS.md` of a parent folder outside a repository.
+  The remote control module is logged at info (`RUST_LOG`).
 - Git as in Claude Code: `GH_TOKEN` in env, the SSH key only in the `ssh-agent` sidecar.
-- The Codex version is pinned in `codex/Dockerfile`. Raise it in a pull request, after a test:
-  the remote control protocol still changes.
+- The Codex version is pinned in `codex/Dockerfile` and `claude-code/Dockerfile`. Raise both in
+  one pull request, after a test: the remote control protocol still changes.
 
 See [`projects/2026-11-19-21-17-codex-remote-control`](projects/2026-11-19-21-17-codex-remote-control/README.md).
 

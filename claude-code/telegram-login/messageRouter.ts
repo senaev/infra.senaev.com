@@ -1,6 +1,7 @@
 import { getTelegramCommandFromMessage } from 'senaev-utils/src/utils/TelegramApi/getTelegramCommandFromMessage/getTelegramCommandFromMessage';
 import type { TelegramCallbackQuery, TelegramMessage } from 'senaev-utils/src/utils/TelegramApi/types';
 
+import type { CodexLogin } from './codexLogin';
 import { logger } from './logger';
 import type { LoginAssistant } from './loginAssistant';
 import { parseMcpButtonData } from './mcp';
@@ -9,6 +10,8 @@ export type MessageRouterDependencies = {
     // The user id and the chat id are the same in a private chat, so one number is the only allowed chat.
     allowedUserId: number;
     assistant: LoginAssistant;
+    // Only when the Codex login folder is mounted in this container.
+    codexLogin?: CodexLogin;
     deleteMessage(chatId: number, messageId: number): Promise<void>;
     answerCallbackQuery(callbackQueryId: string, text: string): Promise<void>;
 };
@@ -43,6 +46,14 @@ export function createMessageRouter(dependencies: MessageRouterDependencies): (m
             logger.info({ messageId }, '👉 Handling the /mcp command');
             await dependencies.assistant.handleMcpCommand();
             logger.info({ messageId }, '✅ Handled the /mcp command');
+
+            return;
+        }
+
+        if (command?.commandName === 'codex_auth' && dependencies.codexLogin !== undefined) {
+            logger.info({ messageId }, '👉 Handling the /codex_auth command');
+            await dependencies.codexLogin.handleAuthCommand();
+            logger.info({ messageId }, '✅ Handled the /codex_auth command');
 
             return;
         }

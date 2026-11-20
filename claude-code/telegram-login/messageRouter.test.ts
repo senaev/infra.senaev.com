@@ -3,6 +3,7 @@ import {
     beforeEach, describe, expect, it, vi,
 } from 'vitest';
 
+import type { CodexLogin } from './codexLogin';
 import { logger } from './logger';
 import type { LoginAssistant } from './loginAssistant';
 import { createCallbackQueryRouter, createMessageRouter } from './messageRouter';
@@ -28,7 +29,7 @@ function loggedMessages(): string[] {
 
 const ALLOWED_USER_ID = 42;
 
-function setup(handleTextResult = true) {
+function setup(handleTextResult = true, withCodex = false) {
     const assistant: LoginAssistant = {
         handleAuthCommand: vi.fn(() => Promise.resolve()),
         handleMcpCommand: vi.fn(() => Promise.resolve()),
@@ -40,15 +41,22 @@ function setup(handleTextResult = true) {
     };
     const deleteMessage = vi.fn((): Promise<void> => Promise.resolve());
     const answerCallbackQuery = vi.fn((): Promise<void> => Promise.resolve());
+    const codexLogin: CodexLogin = {
+        handleAuthCommand: vi.fn(() => Promise.resolve()),
+        checkLogin: vi.fn(() => Promise.resolve()),
+        stop: vi.fn(),
+    };
     const dependencies = {
         allowedUserId: ALLOWED_USER_ID,
         assistant,
+        ...(withCodex && { codexLogin }),
         deleteMessage,
         answerCallbackQuery,
     };
 
     return {
         assistant,
+        codexLogin,
         deleteMessage,
         answerCallbackQuery,
         route: createMessageRouter(dependencies),
@@ -104,6 +112,30 @@ describe('the message router', () => {
             '👉 Handling the /auth command',
             '✅ Handled the /auth command',
         ]);
+    });
+
+    it('starts a Codex login on /codex_auth when Codex is enabled', async () => {
+        const {
+            assistant, codexLogin, route,
+        } = setup(true, true);
+
+        await route(message({ text: '/codex_auth' }));
+
+        expect(codexLogin.handleAuthCommand).toHaveBeenCalledTimes(1);
+        expect(assistant.handleAuthCommand).not.toHaveBeenCalled();
+        expect(loggedMessages()).toEqual([
+            '👉 Handling the /codex_auth command',
+            '✅ Handled the /codex_auth command',
+        ]);
+    });
+
+    it('ignores /codex_auth as an unknown command when Codex is not enabled', async () => {
+        const { codexLogin, route } = setup();
+
+        await route(message({ text: '/codex_auth' }));
+
+        expect(codexLogin.handleAuthCommand).not.toHaveBeenCalled();
+        expect(loggedMessages()).toEqual(['👉 Ignored an unknown command']);
     });
 
     it('posts the MCP panel on /mcp, with or without more words', async () => {

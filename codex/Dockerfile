@@ -20,7 +20,8 @@ RUN apt-get update \
     && rm /tmp/helm.tar.gz \
     && rm -rf /var/lib/apt/lists/*
 
-# Remote control is experimental and changes from release to release. Raise the pin in a pull request.
+# Remote control is experimental and changes from release to release. Raise the pin in a pull request,
+# together with the one in claude-code/Dockerfile (the Telegram login helper).
 RUN npm install --global --no-audit --no-fund @openai/codex@0.170.0 \
     && codex --version
 
