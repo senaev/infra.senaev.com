@@ -1,5 +1,29 @@
 # Worklog
 
+## 2026-11-20 13:35 UTC — Restart the server in the container, not the container
+
+The user could not log in again: the container is in a restart loop and takes no `kubectl exec`:
+
+```
+error: unable to upgrade connection: container not found ("codex")
+```
+
+`start.sh` now starts `codex remote-control --no-daemon` in a loop, 60 seconds apart
+(`CODEX_REMOTE_CONTROL_RETRY_SECONDS`), instead of `exec`. A trap stops the server on SIGTERM
+(tini forwards it to the process group). Tested locally with a fake `codex` that fails three
+times, then runs, then gets SIGTERM:
+
+```
+fake server start pid 28151
+Error: connection is errored
+Codex remote control stopped (exit code 1). Starting it again in 1 seconds.
+...
+fake server start pid 28164
+fake server got TERM
+--- alive?
+exited
+```
+
 ## 2026-11-20 13:25 UTC — The cause: the account has no multi-factor authentication
 
 With `RUST_LOG` (PR #244) the server logs why the connection fails. The enrollment of the new

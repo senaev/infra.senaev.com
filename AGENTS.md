@@ -528,7 +528,10 @@ only (`wss://chatgpt.com/backend-api/wham/remote/control/server`): no Ingress, n
 NetworkPolicy has no ingress. Enabled only in `senaev`; the device name is the hostname `senaev-codex`.
 
 - The login is the ChatGPT subscription; remote control rejects an API key. Until a login exists
-  the container waits and checks every 30 seconds. Manual login:
+  the container waits and checks every 30 seconds. The server exits when its first connection
+  fails; `start.sh` starts it again every 60 seconds, so the container keeps running and a new
+  login is read at the next start. The ChatGPT account needs multi-factor authentication: without
+  it the server enrollment fails with `HTTP 403 ... Multi-factor authentication required`. Manual login:
   `kubectl -n senaev-com exec -it deploy/senaev-codex -c codex -- codex login --device-auth`.
 - `<clusterRootPath>/volumes/codex` is mounted as `HOME`; `~/.codex` holds the login, the remote
   control enrollment and the sessions. Do not delete it.
