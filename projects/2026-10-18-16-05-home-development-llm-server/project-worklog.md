@@ -1,3 +1,19 @@
+## 2026-11-21 UTC — Hardware transcode test passed in senaev-madrid
+
+Installed `ffmpeg`, made a 20 s 1080p30 H.264 test clip with libx264 on the CPU
+(`speed=3.82x`), then transcoded it to HEVC fully on the iGPU (VA-API decode + `hevc_vaapi`):
+
+```
+        encoder         : Lavc61.19.101 hevc_vaapi
+frame=  600 fps=145 q=-0.0 Lsize=    9781KiB time=00:00:19.96 bitrate=4012.8kbits/s speed=4.84x
+```
+
+The passed-through UHD 770 decodes H.264 and encodes HEVC at 145 fps (4.8× real time for
+one 1080p30 stream), with no errors. `intel_gpu_top` was not checked. Still pending: the
+ten-restart test and moving Jellyfin. Also proposed: VM 100 memory 16 → 24 GiB and Windows
+capped at 6 GiB (balloon 4 GiB), so that both fit in the host's 32 GB with VM 100's memory
+pinned by passthrough; not yet applied.
+
 ## 2026-11-21 UTC — Stage 3 done: Intel firmware and VA-API work in senaev-madrid
 
 Added `non-free` to the three Debian lines in `/etc/apt/sources.list` (backup
