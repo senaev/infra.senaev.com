@@ -1,5 +1,25 @@
 # Worklog
 
+## 2026-11-20 18:55 UTC — The template gets the marker under the stream embed
+
+The first real two-day call from ChatGPT landed in the right notes, but on 2026-11-19 the
+record went above `![[daily_note_stream]]`, while that day's earlier records were below it
+(moved there by hand from the stream file), so the latest event came first. The owner decided
+that new daily notes get the `⬆️ Daily Note ⬆️` line. It goes right under the embed, in place
+of the blank lines there:
+
+```
+---
+![[daily_note_stream]]
+
+⬆️ Daily Note ⬆️
+
+---
+```
+
+`DIARY_RECORD_MARKER` moved to `dailyNoteTemplate.ts`, so the plugin bundle does not pull in the
+server-side error helpers; `diaryRecord.ts` re-exports it. The fixtures were updated in the same way.
+
 ## 2026-11-20 — Step 4: plugin uses the shared template (PR senaev/obsidian-vault#6)
 
 The plugin now imports `dailyDateFromPath`, `dailyNotePathForRootNote`, `initializeDailyNote`,

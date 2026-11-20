@@ -12,6 +12,12 @@ export const DAILY_NOTE_FOLDER = 'periodic/day/';
 /** The embed of the old diary stream file; every daily note has it. */
 export const DAILY_NOTE_STREAM_EMBED = '![[daily_note_stream]]';
 
+/**
+ * A line of its own in a daily note: new diary records go right above it, so the records
+ * of a day stay in the order they were written. The template puts it under the stream embed.
+ */
+export const DIARY_RECORD_MARKER = '⬆️ Daily Note ⬆️';
+
 /** A strict `YYYY-MM-DD` of a day that exists, e.g. `2026-08-01` but not `2026-02-30`. */
 export function isDailyNoteDate(value: string): boolean {
     return isIsoDay(value);
@@ -102,7 +108,7 @@ ${renderDailyBody(day)}
 ---
 ${DAILY_NOTE_STREAM_EMBED}
 
-
+${DIARY_RECORD_MARKER}
 
 ---
 

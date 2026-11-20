@@ -42,12 +42,18 @@ describe('insertDiaryRecords', () => {
         expect(insertDiaryRecords(note, ['A ✍️'], PATH)).toBe('Text\n\nA ✍️\n\n  ⬆ Daily Note ⬆ \n');
     });
 
-    it('falls back to the line of the stream embed', () => {
+    it('puts the records of a new daily note under the stream embed, above the marker', () => {
         const note = renderDailyNote('2026-11-18');
         const result = insertDiaryRecords(insertDiaryRecords(note, ['A ✍️'], PATH), ['B ✍️'], PATH);
 
-        expect(result).toContain('\n---\n\nA ✍️\n\nB ✍️\n\n![[daily_note_stream]]\n');
-        expect(result.replace('\nA ✍️\n\nB ✍️\n', '')).toBe(note.replace('\n---\n![[daily_note_stream]]', '\n---\n\n![[daily_note_stream]]'));
+        expect(result).toContain(`\n---\n![[daily_note_stream]]\n\nA ✍️\n\nB ✍️\n\n${DIARY_RECORD_MARKER}\n\n---\n`);
+        expect(result.replace('\nA ✍️\n\nB ✍️\n', '')).toBe(note);
+    });
+
+    it('falls back to the line of the stream embed when the note has no marker', () => {
+        const note = 'Before\n---\n![[daily_note_stream]]\nAfter\n';
+
+        expect(insertDiaryRecords(note, ['A ✍️'], PATH)).toBe('Before\n---\n\nA ✍️\n\n![[daily_note_stream]]\nAfter\n');
     });
 
     it('works at the start of a note and when the line before has no newline gap', () => {

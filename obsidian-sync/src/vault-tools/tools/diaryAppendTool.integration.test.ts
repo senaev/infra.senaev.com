@@ -92,8 +92,8 @@ describe('diaryAppendTool', () => {
             path: DAY,
             created: true,
         });
-        expect(content.replace(/\n\[\[2026-11-18\|.*✍️\n/, '')).toBe(renderDailyNote('2026-11-18').replace('---\n![[daily_note_stream]]', '---\n\n![[daily_note_stream]]'));
-        expect(content).toMatch(new RegExp(`---\\n\\n${record('2026-11-18', 'Мы гуляли\\.').source}\\n\\n!\\[\\[daily_note_stream\\]\\]`));
+        expect(content.replace(/\n\[\[2026-11-18\|.*✍️\n/, '')).toBe(renderDailyNote('2026-11-18'));
+        expect(content).toMatch(new RegExp(`!\\[\\[daily_note_stream\\]\\]\\n\\n${record('2026-11-18', 'Мы гуляли\\.').source}\\n\\n${MARKER}\\n\\n---`));
     });
 
     it('fills a blank existing daily note from the template', async () => {

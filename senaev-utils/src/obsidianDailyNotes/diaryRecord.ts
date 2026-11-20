@@ -1,12 +1,8 @@
 import { CommandError, invalidArguments } from '../commands/CommandError';
 
-import { DAILY_NOTE_STREAM_EMBED } from './dailyNoteTemplate';
+import { DAILY_NOTE_STREAM_EMBED, DIARY_RECORD_MARKER } from './dailyNoteTemplate';
 
-/**
- * A line of its own in a daily note: new diary records go right above it, so the records
- * of a day stay in the order they were written.
- */
-export const DIARY_RECORD_MARKER = '⬆️ Daily Note ⬆️';
+export { DIARY_RECORD_MARKER };
 
 const RECORD_TIME_ZONE = 'Europe/Madrid';
 
