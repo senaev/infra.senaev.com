@@ -1,3 +1,25 @@
+## 2026-11-20 17:44 UTC — VM 101 backup succeeded (30.73 GB)
+
+Before the backup, Windows: BitLocker Fully Decrypted (0.0%), `powercfg /h off`,
+`DISM /Online /Cleanup-Image /StartComponentCleanup` (completed successfully), ReTrim.
+
+```
+INFO: backup mode: stop
+INFO: backup is sparse: 868.55 GiB (93%) total zero data
+INFO: transferred 931.52 GiB in 358 seconds (2.6 GiB/s)
+INFO: archive file size: 30.73GB
+INFO: Backup job finished successfully
+vzdump-qemu-101-2026_11_20-17_38_01.vma.zst: 67752246272 bytes      # zstd -t OK
+77b2e4dcca8685d21b8f3dba2841982664d60ea9bc4f6898975955344b14224f  vzdump-qemu-101-2026_11_20-17_38_01.vma.zst
+ce3f3860e028ee7fc0efe2d8e42ccc33171befedb494b991746dac648a020911  dell-msdm.bin
+```
+
+About 63 GiB of real data compressed to 30.73 GB; the archive passes `zstd -t`. Files in
+`/var/lib/vz/dump/` on proxmox-madrid: the archive, its `.log` and `.notes`, and
+`dell-msdm.bin` (contains the OEM key, private storage only). Next: user downloads them,
+checks SHA-256 and uploads to private cloud storage; then delete snapshots
+`before-oem-key` and `before-virtio`. A restore test has not been done.
+
 ## 2026-11-20 UTC — VM 101 disk: discard and SSD emulation on, TRIM run
 
 After BitLocker decryption (`manage-bde -status C:` had shown Protection Off, Key
