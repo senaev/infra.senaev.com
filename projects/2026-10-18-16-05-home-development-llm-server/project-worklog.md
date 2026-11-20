@@ -1,3 +1,20 @@
+## 2026-11-20 UTC — BitLocker was on in VM 101; decryption started
+
+`lvs` after the failed backup: `vm-101-disk-2` 9.28% of 931.52g (~86 GiB), pool `data`
+19.98% (unchanged), `vm-100-disk-1` 10.85% of 500g. So only used space was encrypted and
+the pool is not filling; the backup had read almost all allocated data when the disk ran
+out. In Windows the user ran:
+
+```
+PS> manage-bde -off C:
+Decryption is now in progress.
+```
+
+This confirms BitLocker/device encryption was on (enabled by Windows itself; the import
+plan required it off). Decision: run the Windows VM without BitLocker so backups compress
+and thin provisioning works; the backup file must then be stored privately. Next: wait for
+"Fully Decrypted", enable `discard` on `sata0`, run TRIM, then back up again.
+
 ## 2026-11-20 17:11 UTC — First VM 101 backup failed: local disk full, data incompressible
 
 User confirmed they deleted `/var/lib/vz/dell-windows.vhdx` earlier. Before the backup:
