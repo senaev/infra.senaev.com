@@ -9,29 +9,26 @@ Approve / Reject buttons before running a command on the chosen node.
 
 ## Context
 
-- Decision (2026-11-20): one executor on the control plane reaches every node over SSH.
-  No DaemonSet and no per-node executor. Every approved command runs as root anyway, so a
-  privileged pod on every node adds no safety; it only adds a host-root entry point per node.
+- Decision (2026-11-20): one executor on the control plane reaches every node. No DaemonSet
+  and no per-node executor. Every approved command runs as root anyway, so a privileged pod
+  on every node adds no safety; it only adds a host-root entry point per node.
 - The executor is a small pod pinned to hetzner, separate from cluster-helper, which faces
-  Telegram. It runs `ssh root@<node> -- <command>` over the tailnet, by Tailscale hostname.
-- The SSH private key is the sensitive part: it is root on every node. Only an `ssh-agent`
-  sidecar mounts it, as in
-  [`_ssh-agent.tpl`](../../provisioning/helm/senaev-com/templates/llm-workspace/_ssh-agent.tpl);
-  the executor container gets only the agent socket.
-- Each node gets the public key in root's `authorized_keys`, restricted with
-  `from="<hetzner tailnet addresses>"` and `no-agent-forwarding,no-port-forwarding,no-X11-forwarding,no-pty`.
-  Today nodes accept only the user's own key (`terraform/server.tf`); nothing provisions
-  node-to-node SSH. Adding the key touches every node, including the home nodes: one node
-  at a time, with user approval, per [AGENTS.md](../../AGENTS.md).
-- Pin the host keys of the nodes in a `known_hosts` the executor mounts; no
-  `StrictHostKeyChecking=no` and no trust on first use.
-- Open: reaching tailnet addresses from the pod network on hetzner is not verified.
-  If it does not work, fall back to `hostNetwork: true` for this one pod (the earlier
-  `hostNetwork: false` decision was for executors on every node) or a jump through the
-  hetzner host. Use `hostNetwork: true` only after the workspace-denial check (Verification)
-  shows that the CNI still enforces the executor NetworkPolicy for it: some network plugins
-  treat a host-network pod as node traffic that a `podSelector` does not match. If it does
-  not, the pod needs another isolation control before it gets the key (to be chosen).
+  Telegram. It is `privileged: true` with `hostPID: true`, and enters the hetzner host with
+  `nsenter -t 1 -a`. From there it acts as hetzner's root:
+  - on hetzner itself, it runs the command directly in the host;
+  - on any other node, it runs `ssh root@<node> -- <command>` from the host, over the
+    tailnet by Tailscale hostname, with the SSH key of hetzner's root, which every node
+    already accepts (confirmed by the user, 2026-11-20).
+- No SSH key in Kubernetes: not in Vault, a Secret or an `ssh-agent` sidecar. The key
+  stays on hetzner's disk, and no node needs a change. SSH starts in the host network
+  namespace, where the tailnet already works, so the pod keeps `hostNetwork: false`
+  and its API stays in the pod network.
+- The executor is root on the control plane, which holds the k3s cluster keys and every
+  Secret, and through the key root on every node. Treat it as the most privileged
+  workload: one container, no other process in the pod, a minimal image, and only the
+  authenticated API as input.
+- SSH uses the host's own `known_hosts`, with `BatchMode=yes` and
+  `StrictHostKeyChecking=yes`: no prompt, and a changed host key fails the command.
 - Timeouts end the command on the node, not only the SSH session: closing a session does
   not kill what it started. The executor wraps each command in a transient systemd unit,
   `systemd-run --wait --pipe --collect -p RuntimeMaxSec=<timeout> -- /bin/sh -c <shell-quoted command>`.
@@ -46,7 +43,8 @@ Approve / Reject buttons before running a command on the chosen node.
   [inter-service certificate authentication project](../2026-11-15-11-00-inter-service-certificate-authentication/README.md)
   (PR #203), now for one connection only, with no per-node identities. Simpler alternative:
   a shared token plus NetworkPolicy. The executor holds root on every node, so mTLS is preferred.
-- LLM workspaces must not hold executor credentials, the SSH key or direct access to the executor.
+- LLM workspaces must not hold executor credentials or direct access to the executor.
+  No other workload on hetzner may be privileged or mount host paths, so none can read the key.
 - Approve the exact command string and selected node. Inspecting or pinning scripts
   and transitive commands is outside scope. No interactive shell sessions.
 
@@ -71,14 +69,15 @@ Bind the approval to an immutable request, including its node and explanatory fi
 
 ## Plan
 
-1. Verify from a test pod on hetzner that the pod network reaches the tailnet addresses
-   of the nodes over SSH (read-only check, run by the user).
+1. Check on hetzner, as root, that SSH reaches every node non-interactively and that
+   `known_hosts` has their keys (read-only, run by the user):
+   `ssh -o BatchMode=yes -o StrictHostKeyChecking=yes root@<node> hostname`.
 2. Decide the cluster-helper → executor authentication (see Context).
-3. Generate the executor SSH key; store it as a Kubernetes secret. Collect the host keys.
-   Add the restricted public key to root on each node, one node at a time.
+3. Check from a test pod with `privileged: true` and `hostPID: true` on hetzner that
+   `nsenter -t 1 -a -- hostname` and `nsenter -t 1 -a -- ssh ... root@<node> hostname` work.
 4. Implement persistent request/approval state in cluster-helper. Only the authorized
    Telegram user can approve; rejection returns `USER_REJECTED`, expiry `APPROVAL_EXPIRED`.
-5. Implement the executor: authenticated API, SSH through the agent socket, bounded
+5. Implement the executor: authenticated API, `nsenter` into the hetzner host, then SSH; bounded
    connect time and output, runtime bounded on the node by the systemd unit (see Context);
    returns stdout, stderr and exit code.
 6. Persist execution IDs before starting a command so duplicate dispatch cannot rerun
@@ -98,18 +97,19 @@ Bind the approval to an immutable request, including its node and explanatory fi
   (`sh -c 'setsid sleep 600 & sleep 600'` with a 5-second timeout), leaves no process on the node.
 - Approved diagnostic commands (`hostname`, `id`) report the intended node and root.
 - Direct executor requests from a workspace fail; a caller without the right identity fails even if reachable.
-- The SSH key is readable only in the `ssh-agent` container; the key is refused from any
-  address other than hetzner; a changed host key fails the command.
+- The SSH key is not in any Kubernetes Secret or container image; a changed host key fails the command.
+- The executor pod runs with `hostNetwork: false`; only cluster-helper reaches its API port.
 - Duplicate requests, service restarts and interrupted connections never cause automatic reexecution.
 
 ## Result
 
-Design recorded only. No executor, SSH key or cluster configuration deployed.
+Design recorded only. No executor or cluster configuration deployed.
 
 ## Confirmed execution decisions
 
 - Run approved commands as root on all Kubernetes nodes without exceptions.
-- One executor on hetzner reaches the nodes over SSH; no DaemonSet (2026-11-20).
+- One privileged executor on hetzner (`hostPID: true`, `nsenter` into the host) reaches the
+  other nodes over SSH with the existing key of hetzner's root; no DaemonSet (2026-11-20).
 - Reuse the request expiry/TTL field; cap approval validity at 10 minutes from request
   creation, honoring shorter requested TTLs. Check expiry again before execution;
   approval must not extend validity. Execution timeout remains a separate field.
