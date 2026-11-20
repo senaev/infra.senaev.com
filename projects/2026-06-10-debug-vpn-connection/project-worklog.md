@@ -1,3 +1,40 @@
+## 2026-11-20 20:45 UTC — Round 4: freeze is not daily; add a Hysteria2 (UDP) profile
+
+24 h after #240 (deployed 2026-11-19 22:25 UTC). Hourly VPN failure of httpbingo parity:
+profiles 3/4 94–100 % until 08:00, 33–50 % in 08:00–09:00, 0 % from 09:00 to
+20:30 UTC (profile 4: 11 % in two hours). Profile 1: 0 % every hour. Failure stages today
+(Datadog `@check:parity_* @route:vpn @ok:false`):
+
+```
+profile 3: transfer 169 (avg 22365 bytes), setup 7, response 1
+profile 4: transfer 170 (avg 19920 bytes), setup 6, response 4
+profile 1: setup 1
+```
+
+Cloudflare 4 MiB median ms, night 23:00–14:00 / evening 15:00–20:30: direct 925–983 /
+1176–1200; profile 1 VPN 1408 / 1686; profile 3 5066 / 4771; profile 4 1466 / 1526.
+Leg checks (VictoriaMetrics mean success duration, 3 h windows): FirstVDS Cloudflare 4 MiB
+0.64–0.71 s at night, 0.86–1.13 s 14:00–20:00; FirstVDS senaev.com 512 KiB 0.33–0.52 s;
+Hetzner 0.26–0.33 s and 0.16–0.25 s. FirstVDS pod logs are not in Datadog (no agent on that
+node); its leg results are only in VictoriaMetrics.
+
+iperf3 (2 h means): senaev-media → hetzner 19.80–19.86 Mbit/s all day, including 00:00–08:30
+while VLESS/TCP to Hetzner froze; hetzner → firstvds 20, dips to 13.0 in the windows ending
+10:00 and 20:00; firstvds → hetzner and senaev-media → firstvds 20.
+
+Decision (user approved the UDP idea on 2026-11-19): add Hysteria2 in Xray 26.9.30 (the
+release has `proxy/hysteria` and the `hysteria` transport, version 2, inbound and outbound;
+checked in the source at tag v26.9.30). Separate Deployment `xray-hysteria` on hetzner, UDP
+443 hostPort (Traefik binds only TCP 80/443), TLS from Traefik's Let's Encrypt `acme.json`
+(copied by an init container and an hourly sidecar; Xray reloads files hourly), auth = UUID
+seed 6, exit freedom. Subscription profile 6 and `vpn-probe-6` (parity, throughput, matrix).
+iperf3 pairs hetzner → senaev-media and firstvds → senaev-media added. The three xray-vpn
+Deployments render byte-identical to main (helm template diff), so the Reality profiles do
+not restart.
+
+Prediction: profile 6 passes parity during the next TCP freeze of profiles 3/4, and its 4 MiB
+time is within ~1.5× direct. iperf3 hetzner → senaev-media stays near 20 Mbit/s.
+
 ## 2026-11-19 22:10 UTC — Round 3: evening Hetzner freeze is back; profile 1 survives
 
 24 h after #233 (deployed 2026-11-18 22:58 UTC). Parity counts 22:58–21:58 UTC (VPN

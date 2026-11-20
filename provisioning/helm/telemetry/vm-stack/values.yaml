@@ -235,6 +235,11 @@ iperf3Monitor:
       target: hetzner
     - source: senaev-media
       target: firstvds
+    # Download direction to home (2026-11-20, VPN repair project).
+    - source: hetzner
+      target: senaev-media
+    - source: firstvds
+      target: senaev-media
     - source: proxmox-madrid
       target: hetzner
     - source: proxmox-madrid
