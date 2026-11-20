@@ -1,3 +1,35 @@
+## 2026-11-20 22:50 UTC — Profile 6 fails on UDP 443; add salamander and a high port
+
+#260 deployed 22:21 UTC (deploy run 44827767189 succeeded). `xray-hysteria` started cleanly
+(Datadog `kube_deployment:xray-hysteria`):
+
+```
+22:21:23 certificate-init  Updated tls.crt for senaev.com
+22:21:23 certificate-init  Updated tls.key for senaev.com
+22:21:24 xray              [Warning] core: Xray 26.9.30 started
+```
+
+`vpn-probe-6`, every VPN check failed at once while direct passed:
+
+```
+22:21:50 parity_httpbingo_16384 vpn    ok=false curl_exit=35 bytes=0 tls_ms=0 stage=setup
+22:22:20 parity_httpbingo_16384 vpn    ok=false curl_exit=35 bytes=0 tls_ms=0 stage=setup
+22:22:41 parity_httpbingo_65536 vpn    ok=false curl_exit=35 bytes=0 tls_ms=0 stage=setup
+22:22:30 parity_httpbingo_16384 direct ok=true  bytes=16384
+```
+
+The client logged nothing at `warning`: in Xray 26.9.30 Hysteria errors are logged at `info`
+(`proxy/hysteria/client.go`). The three xray-vpn pods kept their names (not restarted).
+
+Decision (user approved "prepare fix"): salamander obfuscation (Xray `finalmask.udp`
+`salamander`, checked in the source at tag v26.9.30) with the password derived from seed
+`6-obfs`, port UDP 47443 instead of 443, `info` logs on the server and the probe client. The
+probe now derives every `{XRAY_USER_UUID:<seed>}` macro in a link; `--invalid` still changes
+only the first (the user credential).
+
+Prediction: profile 6 passes parity; if not, the `info` logs show whether the QUIC handshake
+times out (packets dropped) or is rejected.
+
 ## 2026-11-20 20:45 UTC — Round 4: freeze is not daily; add a Hysteria2 (UDP) profile
 
 24 h after #240 (deployed 2026-11-19 22:25 UTC). Hourly VPN failure of httpbingo parity:

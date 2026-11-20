@@ -58,6 +58,8 @@ class HysteriaConfigTests(unittest.TestCase):
         self.assertEqual(stream['hysteriaSettings'], {'version': 2, 'auth': expected})
         self.assertEqual(stream['tlsSettings'], {'serverName': 'senaev.com', 'alpn': ['h3'],
                                                  'allowInsecure': False})
+        self.assertNotIn('finalmask', stream)
+        self.assertEqual(config['log']['loglevel'], 'info')
         self.assertEqual(config['inbounds'][0], {'listen': '127.0.0.1', 'port': 1081, 'protocol': 'socks',
                                                  'settings': {'auth': 'noauth', 'udp': False}})
 
@@ -70,9 +72,22 @@ class HysteriaConfigTests(unittest.TestCase):
         bad_auth['auth'] = good_auth['auth']
         self.assertEqual(good, bad)
 
+    def test_salamander_password_is_derived_and_not_randomized(self):
+        link = (HYSTERIA_LINK.replace(':443', ':47443')
+                + '&obfs=salamander&obfs-password={XRAY_USER_UUID:6-obfs}')
+        good, seed = probe.client_config(link, 'base', 'public')
+        bad, _ = probe.client_config(link, 'base', 'public', invalid=True)
+        expected = str(uuid.UUID(hashlib.sha256(b'base:6-obfs').hexdigest()[:32]))
+        self.assertEqual(seed, '6')
+        self.assertEqual(good['outbounds'][0]['settings']['port'], 47443)
+        for config in (good, bad):
+            self.assertEqual(config['outbounds'][0]['streamSettings']['finalmask'], {
+                'udp': [{'type': 'salamander', 'settings': {'password': expected}}]})
+
     def test_rejects_insecure_or_incomplete_links(self):
         for link in [HYSTERIA_LINK + '&insecure=1', HYSTERIA_LINK.replace('?sni=senaev.com', ''),
-                     HYSTERIA_LINK.replace(':443', '')]:
+                     HYSTERIA_LINK.replace(':443', ''), HYSTERIA_LINK + '&obfs=other&obfs-password=x',
+                     HYSTERIA_LINK + '&obfs=salamander', HYSTERIA_LINK.replace('sni=senaev.com', 'obfs=salamander&obfs-password=x')]:
             with self.assertRaises(ValueError):
                 probe.client_config(link, 'b', 'p')
 

@@ -156,7 +156,7 @@ node /tmp/render-config.mjs
   {{- $clients = append $clients (dict "auth" $profile.authMacro "email" $profile.user) -}}
 {{- end -}}
 {{- $config := dict
-  "log" (dict "access" "none" "error" "/dev/stderr" "loglevel" "warning")
+  "log" (dict "access" "none" "error" "/dev/stderr" "loglevel" (default "warning" $hysteria.logLevel))
   "inbounds" (list (dict
     "tag" "inbound-hysteria"
     "port" (int $hysteria.port)
@@ -168,6 +168,10 @@ node /tmp/render-config.mjs
         "version" 2
         "masquerade" (dict "type" "proxy" "url" (printf "https://%s/" $hysteria.serverName))
       )
+      "finalmask" (dict "udp" (list (dict
+        "type" "salamander"
+        "settings" (dict "password" $hysteria.obfsPasswordMacro)
+      )))
       "security" "tls"
       "tlsSettings" (dict
         "serverName" $hysteria.serverName

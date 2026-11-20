@@ -29,7 +29,13 @@ xrayVpn:
 xrayHysteria:
   enabled: true
   vps: hetzner
-  port: 443
+  # Not 443: QUIC on UDP 443 to a foreign server got no answer from home (2026-11-20).
+  port: 47443
+  # Salamander obfuscation: packets look like random bytes, so the QUIC handshake and its SNI
+  # are not visible. Shared by the server, the subscription link and the probe.
+  obfsPasswordMacro: "{XRAY_USER_UUID:6-obfs}"
+  # Temporary while profile 6 is being debugged: Hysteria errors are logged only at info.
+  logLevel: info
   # Traefik on hetzner holds its Let's Encrypt certificate (senaev.com ingress).
   serverName: senaev.com
   # Same as acmeStoragePath of the traefik chart; mounted read-only.
@@ -54,7 +60,7 @@ vpnSubscription:
       link: "vless://{XRAY_USER_UUID:5}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
     - probeIndex: 6
       name: "⚡ 6. hetzner UDP → freedom"
-      link: "hysteria2://{XRAY_USER_UUID:6}@senaev.com:443?sni=senaev.com"
+      link: "hysteria2://{XRAY_USER_UUID:6}@senaev.com:47443?sni=senaev.com&obfs=salamander&obfs-password={XRAY_USER_UUID:6-obfs}"
     # IPv6 literal of hetzner (there are no AAAA records). It changes only if the server is
     # recreated. See projects/2026-10-04-k3s-dual-stack-ipv6/README.md
     - probeIndex: 5

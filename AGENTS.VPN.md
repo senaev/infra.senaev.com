@@ -15,9 +15,13 @@ Inter-instance routing uses internal Socks proxies (port 1080). Instances chain 
 ### Hysteria2 server (UDP)
 
 `xray-hysteria` (`templates/xray-hysteria.yaml`, values `xrayHysteria`) is a separate Deployment on
-hetzner: Hysteria2 (QUIC) on UDP 443 through a `hostPort`, exit straight to the internet there
-(freedom). Subscription profile 6, `hysteria2://{XRAY_USER_UUID:6}@senaev.com:443?sni=senaev.com`;
-the password is the UUID derived from seed 6, like the VLESS users. Added on 2026-11-20 because
+hetzner: Hysteria2 (QUIC) on UDP 47443 through a `hostPort`, exit straight to the internet there
+(freedom). Subscription profile 6, `hysteria2://{XRAY_USER_UUID:6}@senaev.com:47443?sni=senaev.com&obfs=salamander&obfs-password={XRAY_USER_UUID:6-obfs}`;
+the password is the UUID derived from seed 6, like the VLESS users, and the salamander
+obfuscation password (`finalmask.udp` in Xray) the UUID derived from seed `6-obfs`. Salamander
+makes every packet look like random bytes, so the QUIC handshake and its SNI are not visible.
+On UDP 443 without obfuscation no connection from home came up (2026-11-20). Server and probe
+log at `info` while profile 6 is being debugged: Xray logs Hysteria errors only at that level. Added on 2026-11-20 because
 the home ISP freezes TCP/TLS connections to hetzner for hours while UDP (Tailscale) keeps working.
 
 - TLS uses the real Let's Encrypt certificate of `senaev.com`: the `certificate-init` init
@@ -25,9 +29,9 @@ the home ISP freezes TCP/TLS connections to hetzner for hours while UDP (Tailsca
   `/k3s-cluster/volumes/traefik/acme`, read-only) into an `emptyDir`; Xray reloads certificate
   files every hour. If the certificate is missing, only this pod fails; the Reality instances
   are separate.
-- Unauthenticated QUIC clients get `https://senaev.com/` through the masquerade proxy.
-- Traefik binds only TCP 80/443 on hetzner, so UDP 443 is free. Do not enable HTTP/3 in Traefik
-  without moving this port.
+- Without the salamander password the server does not answer at all. A client with it but
+  without the user password gets `https://senaev.com/` through the masquerade proxy.
+- Traefik binds only TCP 80/443 on hetzner; UDP 47443 is used only by this pod.
 
 ### vpn-subscription service
 
