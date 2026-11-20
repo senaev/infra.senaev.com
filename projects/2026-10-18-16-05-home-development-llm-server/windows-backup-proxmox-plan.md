@@ -509,7 +509,7 @@ The 931.5 GiB progress counter represented logical processing, not physical allo
 Thin-pool oversubscription warnings remain applicable: Windows and Debian cannot
 both fill their advertised disks. Preserve the original VHDX and monitor growth.
 
-### Remaining task: activate Windows 11 Pro
+### Windows 11 Pro activation (done 2026-11-20)
 
 - Activation fails with **0xC004F211**, reporting changed hardware.
 - Activation troubleshooter could not find an eligible device linked to the Microsoft
@@ -564,6 +564,12 @@ The key stays out of git and chat.
 5. `slmgr /ipk` with the firmware key, `slmgr /ato`, then `slmgr /dlv` should show
    an OEM_DM channel and Licensed status.
 6. Rollback: `qm rollback 101 before-oem-key`.
+
+**Result, 2026-11-20:** `slmgr /dlv` reports Professional edition, OEM_DM channel,
+License Status: Licensed. The first `slmgr /ato` returned 0xC004F014, but activation
+completed without further steps. Keep `/root/dell-msdm.bin` on the host: VM 101's
+`args` points to it, and VM backups do not include it. Delete the snapshot once Windows
+is stable: `qm delsnapshot 101 before-oem-key`.
 
 Separate configuration follow-ups remain unconfirmed: Windows VirtIO/balloon drivers,
 QEMU Guest Agent, remote access, autostart and backups. The successful Debian

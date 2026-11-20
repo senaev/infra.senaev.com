@@ -1,3 +1,21 @@
+## 2026-11-20 12:54 UTC — Windows 11 Pro activated with the Dell firmware key
+
+`slmgr /dlv` in VM 101 (user screenshot; VM clock confirmed correct):
+
+```
+Name: Windows(R), Professional edition
+Description: Windows(R) Operating System, OEM_DM channel
+Product Key Channel: OEM:DM
+License Status: Licensed
+Trusted time: 11/20/2026 12:54:06 PM
+```
+
+Activation is complete: the Dell's own OEM key from its MSDM table, passed to the VM
+with its SMBIOS identity. The earlier 0xC004F014 was transient; no restart, `/rilc` or
+phone activation was needed. VORPC's reply is no longer needed and no licence was bought.
+VM 101 now depends on `/root/dell-msdm.bin` on proxmox-madrid; a VM backup does not
+contain it. Snapshot `before-oem-key` can be deleted once Windows is stable.
+
 ## 2026-11-20 UTC — Firmware key is Pro and installed; online activation failed
 
 Inside VM 101 (admin PowerShell, key masked in the user's screenshot):
