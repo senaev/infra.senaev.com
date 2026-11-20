@@ -5,8 +5,8 @@
 The daily-note template lives in the `senaev-utils` npm package
 (`src/obsidianDailyNotes/dailyNoteTemplate.ts` in infra.senaev.com), shared with obsidian-sync,
 which creates a missing daily note the same way before it writes a diary record into it. It
-generates the habits, Tasks query, date-dependent tasks, quarterly achievements link, daily
-stream embed and the `⬆️ Daily Note ⬆️` line under it, above which diary records are inserted. The note filename supplies the calendar date; the current clock, time zone and
+generates the habits, Tasks query, date-dependent tasks, quarterly achievements link and the
+`⬆️ Daily Note ⬆️` line that ends the diary block, above which diary records are inserted. The note filename supplies the calendar date; the current clock, time zone and
 Moment locale do not affect scheduling. Header/footer widgets remain separate. To change the
 template, change senaev-utils, wait for the `ci` release, and update the exact version in
 `package.json`, as for the Tasks rules below.
