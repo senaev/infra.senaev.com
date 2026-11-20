@@ -67,6 +67,29 @@ and expected outcome concise as description guidance as well.
 The explanations assist the user; execution always uses the exact displayed command.
 Bind the approval to an immutable request, including its node and explanatory fields.
 
+## Asynchronous API
+
+Approval can take up to 10 minutes plus the command runtime, longer than the timeouts of
+MCP clients (ChatGPT connectors), proxies and some harnesses. So no call waits for the
+approval or the command:
+
+- `submit` saves the request, posts it to Telegram and returns `requestId` at once,
+  with status `pending_approval`.
+- `status(requestId, wait?)` reads the saved state: `pending_approval`, `running`,
+  `completed` (stdout, stderr, exit code), `USER_REJECTED`, `APPROVAL_EXPIRED` or
+  `failed` (for example, node unreachable). With `wait` (at most 25 seconds), it holds
+  the call until the status changes or `wait` ends, so the agent polls rarely.
+- `status` only reads; it never starts, retries or approves anything. Calling it any
+  number of times, from any reconnect, is safe.
+- Only the cluster-helper client that submitted a request can read its status.
+- Keep a final result for 1 hour after it is reached, then delete it; `status` then
+  returns `not_found`. This is result delivery state, not history.
+- The skill tells agents to submit once, then poll `status` with `wait` until a final
+  status. Same pattern as the code tools operations
+  ([`OperationManager.ts`](../../senaev-utils/src/operations/OperationManager.ts),
+  [async code operations](../2026-10-11-09-13-async-code-operations/README.md)), but
+  with persistent state, so a restart of cluster-helper keeps the result.
+
 ## Plan
 
 1. Check on hetzner, as root, that SSH reaches every node non-interactively and that
@@ -75,14 +98,16 @@ Bind the approval to an immutable request, including its node and explanatory fi
 2. Decide the cluster-helper → executor authentication (see Context).
 3. Check from a test pod with `privileged: true` and `hostPID: true` on hetzner that
    `nsenter -t 1 -a -- hostname` and `nsenter -t 1 -a -- ssh ... root@<node> hostname` work.
-4. Implement persistent request/approval state in cluster-helper. Only the authorized
+4. Implement persistent request/approval state in cluster-helper, with the asynchronous
+   `submit` / `status` API (see Asynchronous API). Only the authorized
    Telegram user can approve; rejection returns `USER_REJECTED`, expiry `APPROVAL_EXPIRED`.
 5. Implement the executor: authenticated API, `nsenter` into the hetzner host, then SSH; bounded
    connect time and output, runtime bounded on the node by the systemd unit (see Context);
    returns stdout, stderr and exit code.
 6. Persist execution IDs before starting a command so duplicate dispatch cannot rerun
    it after restart. Unknown execution outcomes must not trigger automatic retries.
-7. Add the workspace client/skill and narrowly scoped network access to cluster-helper.
+7. Add the workspace client/skill (submit, then poll `status` with `wait`) and narrowly
+   scoped network access to cluster-helper.
 
 ## Verification
 
@@ -100,6 +125,11 @@ Bind the approval to an immutable request, including its node and explanatory fi
 - The SSH key is not in any Kubernetes Secret or container image; a changed host key fails the command.
 - The executor pod runs with `hostNetwork: false`; only cluster-helper reaches its API port.
 - Duplicate requests, service restarts and interrupted connections never cause automatic reexecution.
+- `submit` returns `requestId` in under a second while approval is pending; no call stays
+  open longer than the `wait` limit.
+- After a 5-minute wait for approval, polling `status` returns the result; a cluster-helper
+  restart between approval and the poll does not lose it.
+- Another client cannot read a request's status; after 1 hour a final result returns `not_found`.
 
 ## Result
 
@@ -108,6 +138,7 @@ Design recorded only. No executor or cluster configuration deployed.
 ## Confirmed execution decisions
 
 - Run approved commands as root on all Kubernetes nodes without exceptions.
+- Asynchronous API: `submit` returns `requestId` at once; agents poll `status` (2026-11-20).
 - One privileged executor on hetzner (`hostPID: true`, `nsenter` into the host) reaches the
   other nodes over SSH with the existing key of hetzner's root; no DaemonSet (2026-11-20).
 - Reuse the request expiry/TTL field; cap approval validity at 10 minutes from request
