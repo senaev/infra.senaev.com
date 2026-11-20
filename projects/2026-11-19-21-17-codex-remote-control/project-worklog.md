@@ -1,5 +1,41 @@
 # Worklog
 
+## 2026-11-20 17:15 UTC — Codex runs tasks and reaches the MCP servers of the ChatGPT account
+
+PR #248 deployed: the helper starts with Codex, and the codex container idles.
+
+```
+2026-11-20T15:11:46Z  🚀 Telegram login helper started  (codex: true)
+2026-11-20T15:11:46Z  Remote control is off (codex.remoteControl). Nothing else runs.
+```
+
+`codex exec` works with the current login, without MFA (the MFA requirement is only for the
+remote control enrollment). Asked for its tools, Codex lists the apps of the ChatGPT account in the
+`mcp__codex_apps__` namespace:
+
+```
+| Code Tools on senaev.com | `code_tools_senaev_com` |
+| Datadog EU               | `datadog_eu` |
+| Gmail                    | `gmail` |
+| Grafana on senaev.com    | `grafana_senaev_com` |
+| Obsidian on senaev.com   | `obsidian_senaev_com` |
+...
+```
+
+A real call:
+
+```
+mcp: codex_apps/obsidian_senaev_com.obsidian-search (completed)
+mcp: codex_apps/obsidian_senaev_com.obsidian-read (completed)
+`@senaev/My Career/Job Search Framework/LLM Job Search Round.md`
+```
+
+cluster-helper logged it (`📓 Obsidian MCP message`, `tools/call`, `obsidian-read`, 17:11:26), and
+answered `server/discover` with `Method not found` without harm. So the ChatGPT connectors reach
+Codex through OpenAI's host-owned apps server: no `mcp_servers` in `config.toml`, and no new OAuth
+client in cluster-helper. Telegram is not in the list (no ChatGPT connector for it).
+
+
 ## 2026-11-20 15:00 UTC — Telegram login for Codex in the shared helper
 
 Decisions of the user: the same bot and chat as Claude Code (one helper serves both), Codex

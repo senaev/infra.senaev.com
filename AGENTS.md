@@ -554,6 +554,10 @@ and the NetworkPolicy has no ingress. Enabled only in `senaev`.
   update check, `/code` trusted), replacing changes made by hand, and links `/AGENTS.md` as
   `~/.codex/AGENTS.md`: Codex does not read the `AGENTS.md` of a parent folder outside a repository.
   The remote control module is logged at info (`RUST_LOG`).
+- MCP servers: none in `config.toml`. With the ChatGPT login, Codex gets the apps (connectors) of
+  the ChatGPT account through OpenAI's host-owned `codex_apps` server: Obsidian, Code Tools and
+  Grafana on senaev.com, Datadog EU, Gmail. Their calls reach cluster-helper as ChatGPT calls. To
+  give Codex another server, add it as a connector in ChatGPT.
 - Git as in Claude Code: `GH_TOKEN` in env, the SSH key only in the `ssh-agent` sidecar.
 - The Codex version is pinned in `codex/Dockerfile` and `claude-code/Dockerfile`. Raise both in
   one pull request, after a test: the remote control protocol still changes.
