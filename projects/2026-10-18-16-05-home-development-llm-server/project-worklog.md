@@ -1,3 +1,15 @@
+## 2026-11-21 UTC — Host cleanup done; project closed
+
+```
+# qm set 100 --ide2 none,media=cdrom
+update VM 100: -ide2 none,media=cdrom
+# rm /var/lib/vz/template/iso/virtio-win.iso
+# rm /var/lib/vz/template/iso/debian-13.7.0-amd64-netinst.iso
+```
+
+VM 100's CD drive is empty and both ISOs are deleted from the host. The user marked the
+server setup as done and approved merging PR #180. `README.md` has the final state.
+
 ## 2026-11-20 23:10 UTC — Remaining setup items closed or skipped; iperf3 checked
 
 User confirmed: Tailscale key expiry is disabled for proxmox-madrid and senaev-madrid, the

@@ -1,6 +1,7 @@
 # 2026-10-18 — Buy a new home server within €1,000
 
 - [x] Select and buy a powerful home server with a capable GPU, at least 32 GB RAM and at least 1 TB SSD, for no more than €1,000 total.
+- [x] Set up the server: Proxmox, k3s workers, Windows VM recovery and backup, iGPU passthrough (done 2026-11-21).
 
 ## Goal
 
@@ -68,10 +69,10 @@ OEM key from its firmware; see [the plan](windows-backup-proxmox-plan.md#activat
 Windows is in English, has VirtIO drivers, the guest agent, a VirtIO NIC (192.168.0.28),
 `discard`/SSD on its disk, BitLocker off and no autostart. A verified backup from
 2026-11-20 (30.73 GB `vzdump`, plus `dell-msdm.bin`) is in the user's private cloud.
-VM 101 has no snapshots; the restore test was skipped by decision. RDP access
-(not needed) and Jellyfin. The iGPU is passed through to senaev-madrid (VM 100) with
-working VA-API (2026-11-21); a real transcode and restart testing are pending.
-Thin-pool growth still needs monitoring.
+VM 101 has no snapshots; the restore test was skipped and RDP is not needed (decisions).
+The iGPU is passed through to senaev-madrid (VM 100): VA-API works and a hardware HEVC
+transcode ran at 4.8x real time (2026-11-21). The ten-restart test, thin-pool alerting and
+moving Jellyfin were skipped or postponed by decision.
 See the plan for configuration, evidence and outstanding checks.
 
 ## Verification
@@ -87,8 +88,8 @@ See the plan for configuration, evidence and outstanding checks.
 
 Compact and quiet for the living room; SSD storage only; refurbished accepted. See
 [options and delivered-price comparison](research-options.md) and the
-[118-page source register](research-sources.md). Dell received; Windows capture and Proxmox installation are complete. Windows VM
-recovery and workload acceptance tests remain pending.
+[118-page source register](research-sources.md). Dell received; Windows capture, Proxmox installation, Windows VM recovery and iGPU
+passthrough are complete.
 
 ## Result
 
@@ -97,8 +98,21 @@ Dell OptiPlex Micro 7010, 32 GB RAM / 1 TB NVMe, from VORPC for €599.89 includ
 VAT and delivery (order 102889). The server has now arrived (user confirmation, 2026-11-13).
 The purchase is €400.11 below the €1,000 budget. BIOS inventory, diagnostic passes and AC Recovery testing are recorded. Proxmox installation, Tailscale access and DHCP
 after reboot are complete. The host is a k3s worker, `proxmox-madrid`, and its Debian VM is k3s worker
-`senaev-madrid`. Windows VM
-recovery and Jellyfin testing remain pending.
+`senaev-madrid`.
+
+### Server setup — done 2026-11-21
+
+Proxmox VE runs on the Dell (`proxmox-madrid`, k3s worker) with two VMs:
+
+- VM 100 `senaev-madrid`: Debian 13, 8 vCPUs, 24 GiB RAM, k3s worker, autostart, with the
+  Intel UHD 770 passed through (VA-API H.264/HEVC encode and decode work).
+- VM 101 `dell-windows`: Windows 11 Pro activated with the Dell's firmware OEM key, in
+  English, VirtIO drivers and guest agent, BitLocker off, no autostart. Backup of
+  2026-11-20 (`vzdump`, 30.73 GB, plus `dell-msdm.bin`) is in the user's private cloud.
+
+iperf3 from both Madrid nodes passes at the test's ~20 Mbit/s cap. Skipped or postponed by
+decision: moving Jellyfin, the ten-restart GPU test, the Windows restore test, RDP,
+thin-pool alerting, the different-LAN-address test and temperature/noise testing.
 
 ## Delivered hardware record
 
