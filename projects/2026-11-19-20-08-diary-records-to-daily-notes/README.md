@@ -80,12 +80,11 @@ Decisions in step 1:
 5. **Marker in the template** — done on 2026-11-20: #254 and senaev/obsidian-vault#7.
 6. **Clean-up**: decide on the open points below.
 7. **Remove the stream file** — the template loses `![[daily_note_stream]]`, and
-   `diary_append` drops the embed fallback (this PR). In the vault, a PR deletes
-   `@senaev/daily_note_stream.md` (empty) and, in the 152 daily notes that embed it, removes the
-   embed line and puts `⬆️ Daily Note ⬆️` before the `---` that ends the diary block, so their
-   records stay in place and new ones go after them. **Merge the vault PR first**: without the
-   marker, those notes would reject new records once this PR is deployed. Then merge this PR,
-   then raise senaev-utils in the plugin and rebuild `main.js`.
+   `diary_append` drops the embed fallback (this PR). senaev/obsidian-vault#8 deletes
+   `@senaev/daily_note_stream.md` (empty) and removes the embed line from the 152 daily notes
+   that have it. The owner decided not to add `⬆️ Daily Note ⬆️` to past notes, so a record for
+   a past day fails with `conflict` until the line is added to that note by hand. Then raise
+   senaev-utils in the plugin and rebuild `main.js`.
 
 ## Verification
 

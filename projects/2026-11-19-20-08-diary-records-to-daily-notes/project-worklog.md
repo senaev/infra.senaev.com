@@ -11,9 +11,9 @@ the diary text, then the `---` above "Plan the next day":
 {'hr-after+plan': 152}
 ```
 
-So the vault PR replaces each embed with a `⬆️ Daily Note ⬆️` line placed before that `---`,
-and `diary_append` keeps only the marker as anchor. The vault PR must be merged before this one
-is deployed.
+The vault PR removes the embed line only: the owner decided not to add `⬆️ Daily Note ⬆️` to
+past notes. `diary_append` keeps only the marker as anchor, so a record for a past day (today's
+2026-11-20 included) fails with `conflict` until the line is added to that note by hand.
 
 ## 2026-11-20 18:55 UTC — The template gets the marker under the stream embed
 
