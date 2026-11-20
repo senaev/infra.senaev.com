@@ -1,28 +1,18 @@
 # Worklog
 
-## 2026-11-20 13:35 UTC — Restart the server in the container, not the container
+## 2026-11-20 13:45 UTC — Codex disabled until remote control is available
 
-The user could not log in again: the container is in a restart loop and takes no `kubectl exec`:
+The user could not log in again: the container restarts in a loop and takes no `kubectl exec`:
 
 ```
 error: unable to upgrade connection: container not found ("codex")
 ```
 
-`start.sh` now starts `codex remote-control --no-daemon` in a loop, 60 seconds apart
-(`CODEX_REMOTE_CONTROL_RETRY_SECONDS`), instead of `exec`. A trap stops the server on SIGTERM
-(tini forwards it to the process group). Tested locally with a fake `codex` that fails three
-times, then runs, then gets SIGTERM:
-
-```
-fake server start pid 28151
-Error: connection is errored
-Codex remote control stopped (exit code 1). Starting it again in 1 seconds.
-...
-fake server start pid 28164
-fake server got TERM
---- alive?
-exited
-```
+The ChatGPT app on the user's Android phone (latest version, Plus plan) shows no Codex entry, and
+the server enrollment needs MFA on the account. Decision of the user: disable the component
+(`codex.enabled: false`) and wait until remote control is rolled out to the account, instead of
+changing `start.sh` to keep the container running. The image, the template and the login in
+`/k3s-cluster/volumes/codex` stay; enabling it again is a one-line change.
 
 ## 2026-11-20 13:25 UTC — The cause: the account has no multi-factor authentication
 

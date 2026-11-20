@@ -1,10 +1,9 @@
 #!/bin/bash
-# tini forwards SIGTERM to the whole process group: the trap below stops the server and exits.
+# exec forwards signals directly to Codex.
 set -euo pipefail
 umask 077
 
 workdir=/code
-retry_seconds="${CODEX_REMOTE_CONTROL_RETRY_SECONDS:-60}"
 codex_home="${CODEX_HOME:-$HOME/.codex}"
 mkdir -p "$codex_home"
 
@@ -34,23 +33,7 @@ if ! codex login status > /dev/null 2>&1; then
     echo "Codex is logged in."
 fi
 
-# --no-daemon: one foreground app-server. The managed daemon would detach from the container and
-# update itself past the pinned version.
-# The server exits when its first connection fails (for example, the account needs multi-factor
-# authentication), so it is started again here instead of restarting the container: a container in
-# a restart loop takes no `kubectl exec`, and a new login is read at the next start.
+# --no-daemon: one foreground app-server, the main process of the container. The managed daemon
+# would detach from it and update itself past the pinned version.
 cd "$workdir"
-child=
-trap 'if [ -n "$child" ]; then kill -TERM "$child" 2> /dev/null; wait "$child"; fi; exit 0' TERM INT
-while true; do
-    codex remote-control --no-daemon < /dev/null &
-    child=$!
-    status=0
-    wait "$child" || status=$?
-    child=
-    echo "Codex remote control stopped (exit code $status). Starting it again in $retry_seconds seconds."
-    sleep "$retry_seconds" &
-    child=$!
-    wait "$child" || true
-    child=
-done
+exec codex remote-control --no-daemon < /dev/null

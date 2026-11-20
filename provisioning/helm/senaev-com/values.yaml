@@ -270,10 +270,12 @@ llmWorkspaces:
       telegram:
         token: TG_TOKEN_CLAUDE_HELPER_BOT
         user: TG_SENAEV_USER_ID
-    # Codex remote control for the ChatGPT app. Log in once by hand:
+    # Codex remote control for the ChatGPT app. Disabled until remote control is available for the
+    # ChatGPT account (enrollment: 403 "Multi-factor authentication required"; no Codex in the Android
+    # app). The login stays in /k3s-cluster/volumes/codex. Log in by hand:
     # kubectl -n senaev-com exec -it deploy/senaev-codex -c codex -- codex login --device-auth
     codex:
-      enabled: true
+      enabled: false
   galkin:
     enabled: true
     vps: galkin
