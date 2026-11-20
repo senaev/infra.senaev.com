@@ -1,3 +1,20 @@
+## 2026-11-20 UTC — Firmware key is Pro and installed; online activation failed
+
+Inside VM 101 (admin PowerShell, key masked in the user's screenshot):
+
+```
+PS> (Get-CimInstance SoftwareLicensingService).OA3xOriginalProductKeyDescription
+[4.0] Professional OEM:DM
+slmgr /ipk  -> Installed product key ... successfully.
+slmgr /ato  -> Activating Windows(R), Professional edition ...
+               Error: 0xC004F014 The Software Licensing Service reported that the product key is not available
+```
+
+The VM sees the Dell MSDM table and the key matches the installed edition, so the
+VM-side setup works. The first online activation right after installing the key failed.
+`slmgr /dlv` was not run (typed as `/dlt`). Next: confirm the OEM:DM channel, restart
+and retry, then `slmgr /rilc`, then phone activation (`slui 4`).
+
 ## 2026-11-20 UTC — VM 101 gets the Dell MSDM table and SMBIOS identity
 
 User shut VM 101 down (the first `qm shutdown` timed out; the second with
