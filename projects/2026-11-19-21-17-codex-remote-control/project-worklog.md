@@ -1,5 +1,26 @@
 # Worklog
 
+## 2026-11-20 13:25 UTC — The cause: the account has no multi-factor authentication
+
+With `RUST_LOG` (PR #244) the server logs why the connection fails. The enrollment of the new
+server is refused:
+
+```
+no persisted remote control enrollment found: ... account_id=406b4044-...
+creating new remote control enrollment: ... enroll_url=https://chatgpt.com/backend-api/wham/remote/control/server/enroll
+failed to connect to app-server remote control websocket ... error=remote control server enrollment failed at
+`https://chatgpt.com/backend-api/wham/remote/control/server/enroll`: HTTP 403 Forbidden, ...
+body: {"detail":"Multi-factor authentication required"}; retrying after auth recovery error_kind=Other
+Error: Remote control is enabled on senaev-codex but the connection is errored.
+```
+
+ChatGPT requires MFA on the account before a server can enroll for remote control. The Codex
+source has no MFA handling (no match for `multi-factor`/`mfa` besides a login timeout comment), so
+the check is on the server side. The fix is on the account: turn on MFA in ChatGPT (Settings →
+Security), then log in again with `codex login --device-auth`, so that the token is issued after
+MFA. The ChatGPT app on the user's phone shows no Codex entry (Plus plan); that is a separate
+question for step 3.
+
 ## 2026-11-20 13:15 UTC — Logged in; remote control fails to connect
 
 Step 1 deployed (PR #239). The first image build of the deploy failed with
