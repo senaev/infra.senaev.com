@@ -1,3 +1,33 @@
+## 2026-11-21 UTC — iGPU passthrough to senaev-madrid: read-only checks and staged plan
+
+User wants the Intel iGPU passed to VM 100 `senaev-madrid`. No RDP for Windows (decided).
+Read-only checks on proxmox-madrid (pve-manager 9.2.26, kernel 7.0.2-6-pve, cmdline
+without IOMMU flags):
+
+```
+00:02.0 VGA compatible controller [0300]: Intel Corporation AlderLake-S GT1 [8086:4680] (rev 0c)
+	Kernel driver in use: i915
+	Kernel modules: i915, xe
+group 0: 00:02.0 VGA compatible controller [0300]: Intel Corporation AlderLake-S GT1 [8086:4680]
+group 8: 00:1f.6 Ethernet controller [0200]: Intel Corporation Ethernet Connection (17) I219-LM [8086:1a1c]
+```
+
+IOMMU is active (DMAR table, populated IOMMU groups) with no cmdline change. The iGPU is
+alone in group 0; the host NIC is in group 8, so passthrough does not touch it. VM 100 is
+already `machine: q35`, `bios: ovmf`, `balloon: 0`, NIC `net0: virtio` → `ens18` in
+Debian 13.7 (kernel 6.12.117), so no machine-type change is needed. The guest has only the
+virtual display (`/dev/dri/card0`).
+
+Staged plan, each stage verified before the next (both nodes are sensitive):
+1. Host: bind 8086:4680 to vfio-pci at boot (modprobe options + softdeps for i915/xe,
+   vfio modules in initramfs), reboot the host; VM 100 starts unchanged. Rollback: remove
+   the files, `update-initramfs -u -k all`, reboot.
+2. VM 100: `hostpci0: 0000:00:02.0,pcie=1`, restart only VM 100. Rollback:
+   `qm set 100 --delete hostpci0`.
+3. Debian: Intel media driver and firmware, check `vainfo` on `/dev/dri/renderD128`.
+Moving Jellyfin to senaev-madrid is a separate later decision. The host loses its local
+display output after stage 1.
+
 ## 2026-11-20 21:55 UTC — VM 101 snapshots deleted; restore test skipped
 
 ```
