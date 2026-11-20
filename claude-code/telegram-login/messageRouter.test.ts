@@ -3,7 +3,7 @@ import {
     beforeEach, describe, expect, it, vi,
 } from 'vitest';
 
-import type { CodexLogin } from './codexLogin';
+import { CODEX_LOGOUT_BUTTON_DATA, type CodexLogin } from './codexLogin';
 import { logger } from './logger';
 import type { LoginAssistant } from './loginAssistant';
 import { createCallbackQueryRouter, createMessageRouter } from './messageRouter';
@@ -43,6 +43,7 @@ function setup(handleTextResult = true, withCodex = false) {
     const answerCallbackQuery = vi.fn((): Promise<void> => Promise.resolve());
     const codexLogin: CodexLogin = {
         handleAuthCommand: vi.fn(() => Promise.resolve()),
+        handleLogoutButton: vi.fn(() => Promise.resolve('🚪 Logged out')),
         checkLogin: vi.fn(() => Promise.resolve()),
         stop: vi.fn(),
     };
@@ -290,6 +291,29 @@ describe('the button router', () => {
 
         expect(assistant.handleMcpButton).toHaveBeenCalledWith('logout', 'my-server', 3);
         expect(answerCallbackQuery).toHaveBeenCalledWith('query-1', '🚪 Logged out');
+    });
+
+    it('passes the Codex logout button with its message to the Codex login, then answers with its notice', async () => {
+        const {
+            assistant, codexLogin, answerCallbackQuery, routeCallbackQuery,
+        } = setup(true, true);
+
+        await routeCallbackQuery(buttonPress({ data: CODEX_LOGOUT_BUTTON_DATA }));
+
+        expect(codexLogin.handleLogoutButton).toHaveBeenCalledWith(3);
+        expect(assistant.handleMcpButton).not.toHaveBeenCalled();
+        expect(answerCallbackQuery).toHaveBeenCalledWith('query-1', '🚪 Logged out');
+    });
+
+    it('treats the Codex logout button as unknown when Codex is not enabled', async () => {
+        const {
+            codexLogin, answerCallbackQuery, routeCallbackQuery,
+        } = setup();
+
+        await routeCallbackQuery(buttonPress({ data: CODEX_LOGOUT_BUTTON_DATA }));
+
+        expect(codexLogin.handleLogoutButton).not.toHaveBeenCalled();
+        expect(answerCallbackQuery).toHaveBeenCalledWith('query-1', '❓ Unknown button');
     });
 
     it('ignores presses of other users and chats without an answer', async () => {

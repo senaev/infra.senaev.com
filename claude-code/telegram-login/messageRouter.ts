@@ -1,7 +1,7 @@
 import { getTelegramCommandFromMessage } from 'senaev-utils/src/utils/TelegramApi/getTelegramCommandFromMessage/getTelegramCommandFromMessage';
 import type { TelegramCallbackQuery, TelegramMessage } from 'senaev-utils/src/utils/TelegramApi/types';
 
-import type { CodexLogin } from './codexLogin';
+import { CODEX_LOGOUT_BUTTON_DATA, type CodexLogin } from './codexLogin';
 import { logger } from './logger';
 import type { LoginAssistant } from './loginAssistant';
 import { parseMcpButtonData } from './mcp';
@@ -125,6 +125,25 @@ export function createCallbackQueryRouter(dependencies: MessageRouterDependencie
                 userId: callbackQuery.from.id,
                 chatId,
             }, '⛔ Ignored a button press from a user or chat that is not allowed');
+
+            return;
+        }
+
+        if (callbackQuery.data === CODEX_LOGOUT_BUTTON_DATA && dependencies.codexLogin !== undefined) {
+            logger.info({ callbackQueryId }, '👉 Handling the Codex logout button');
+
+            try {
+                const notice = await dependencies.codexLogin.handleLogoutButton(callbackQuery.message?.message_id);
+
+                logger.info({ callbackQueryId }, '✅ Handled the Codex logout button');
+                await answer(callbackQueryId, notice);
+            } catch (error) {
+                logger.error({
+                    callbackQueryId,
+                    err: error,
+                }, '❌ Could not handle the Codex logout button');
+                await answer(callbackQueryId, '❌ Something went wrong, see the logs');
+            }
 
             return;
         }

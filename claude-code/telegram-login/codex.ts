@@ -55,6 +55,15 @@ export async function isCodexLoggedIn(run: CommandRunner): Promise<boolean> {
     return exitCode === 0;
 }
 
+// Exits with 0 also when nobody was logged in, so the caller checks the status afterwards.
+export async function logoutCodex(run: CommandRunner): Promise<void> {
+    const { exitCode, stdout } = await run('codex', ['logout']);
+
+    if (exitCode !== 0) {
+        throw new Error(`codex logout failed with exit code ${exitCode}: ${stdout.trim().slice(0, MAX_REASON_LENGTH)}`);
+    }
+}
+
 function describeFailure(output: string, code: string | undefined, exitCode: number | null): string {
     const lastLine = output.split('\n').map((line) => line.trim()).filter((line) => line.length > 0).at(-1) ?? '';
     const masked = (code === undefined ? lastLine : lastLine.replaceAll(code, '***')).slice(0, MAX_REASON_LENGTH);

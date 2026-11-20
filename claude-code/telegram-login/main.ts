@@ -15,7 +15,7 @@ import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTele
 
 import { getAuthStatus, runCommand } from './claude';
 import {
-    isCodexLoggedIn, spawnCodexDeviceLogin, startCodexDeviceLogin,
+    isCodexLoggedIn, logoutCodex, spawnCodexDeviceLogin, startCodexDeviceLogin,
 } from './codex';
 import { type CodexLogin, createCodexLogin } from './codexLogin';
 import { logger } from './logger';
@@ -125,12 +125,24 @@ const codexLogin: CodexLogin | undefined = process.env.CODEX_HOME === undefined
     : createCodexLogin({
         isLoggedIn: () => isCodexLoggedIn(runCommand),
         startLogin: () => startCodexDeviceLogin(spawnCodexDeviceLogin),
-        sendMarkdown: async (markdown) => {
+        logout: () => logoutCodex(runCommand),
+        sendMarkdown: async (markdown, replyMarkup) => {
             await sendTelegramMessage({
                 text: markdown,
                 chatId: String(allowedUserId),
                 token,
                 disableLinkPreview: true,
+                ...(replyMarkup !== undefined && { replyMarkup }),
+            });
+        },
+        editMarkdown: async (messageId, markdown, replyMarkup) => {
+            await editTelegramMessage({
+                chatId: String(allowedUserId),
+                messageId,
+                text: markdown,
+                token,
+                disableLinkPreview: true,
+                replyMarkup,
             });
         },
     });
