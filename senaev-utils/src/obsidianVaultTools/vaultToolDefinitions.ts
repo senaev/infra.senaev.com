@@ -101,7 +101,7 @@ const search: ToolDefinition = {
         'Full-text search in all notes of the owner\'s Obsidian vault, including frontmatter and note titles.',
         'Each query is literal text, case-insensitive, matched as a substring; there are no regular expressions.',
         'The notes are written in English, Spanish and Russian, so send several queries in one call: each language, synonyms and word forms (e.g. "climbing", "escalada", "скалолаз").',
-        `Up to ${SEARCH_LIMITS.maxQueries} queries per call. Before you write a note or a diary record, collect the people, places and concepts it mentions and look them all up in one call`,
+        `Up to ${SEARCH_LIMITS.maxQueries} queries per call. Before you write a note or a diary record, collect the people, places, restaurants and concepts it mentions and look them all up in one call`,
         '(several spellings and languages each), so that you link only to notes that exist.',
         'Results are grouped by file with line numbers and context; read a note with obsidian-read to see the full text.',
         'The whole scope is always scanned: "matchedFiles" and "totalHits" are exact even when the results are paged ("nextOffset") or "truncated".',
