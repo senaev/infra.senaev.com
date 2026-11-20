@@ -196,6 +196,18 @@ export function parseCodexPairing(stdout: string): CodexPairing {
     };
 }
 
+// The CLI prints an anyhow error: the message, then "Caused by:" and the causes, one per line
+// (numbered when there are several). All of them, on one line: the cause says why, such as
+// "No such file or directory (os error 2)".
+export function describeCliError(stderr: string, exitCode: number): string {
+    const parts = stderr.replace(ANSI_PATTERN, '')
+        .split('\n')
+        .map((line) => line.trim().replace(/^Error: /, '').replace(/^\d+: /, ''))
+        .filter((line) => line !== '' && line !== 'Caused by:');
+
+    return parts.length === 0 ? `exit code ${exitCode}` : parts.join(': ').slice(0, 2 * MAX_REASON_LENGTH);
+}
+
 // Talks to the daemon of the codex container through the control socket in CODEX_HOME; it never
 // starts a daemon.
 export async function startCodexPairing(run: CommandRunner): Promise<CodexPairing> {
@@ -208,9 +220,7 @@ export async function startCodexPairing(run: CommandRunner): Promise<CodexPairin
     ]);
 
     if (exitCode !== 0) {
-        const message = (stderr ?? '').replace(ANSI_PATTERN, '').trim().split('\n')[0] ?? '';
-
-        throw new Error(message === '' ? `exit code ${exitCode}` : message.replace(/^Error: /, '').slice(0, MAX_REASON_LENGTH));
+        throw new Error(describeCliError(stderr ?? '', exitCode));
     }
 
     return parseCodexPairing(stdout);
@@ -218,14 +228,22 @@ export async function startCodexPairing(run: CommandRunner): Promise<CodexPairin
 
 const LOG_TAIL_BYTES = 256 * 1024;
 const CONNECTION_ERROR_PATTERN = /failed to connect to app-server remote control websocket .*? error=(.+?) error_kind=/;
+const CONNECTED_PATTERN = /\bconnected to app-server remote control websocket\b/;
 
-// The reason of the last failed connection of remote control, from the log of the daemon. It is
-// there only with RUST_LOG at info for the remote control module, as the codex container sets it.
+// The reason of the last failed connection of remote control, from the log of the daemon; nothing
+// when a later connection succeeded. It is there only with RUST_LOG at info for the remote control
+// module, as the codex container sets it.
 export function findLastConnectionError(log: string): string | undefined {
     const lines = log.replace(ANSI_PATTERN, '').split('\n');
 
     for (let index = lines.length - 1; index >= 0; index--) {
-        const match = CONNECTION_ERROR_PATTERN.exec(lines[index] ?? '');
+        const line = lines[index] ?? '';
+
+        if (CONNECTED_PATTERN.test(line)) {
+            return undefined;
+        }
+
+        const match = CONNECTION_ERROR_PATTERN.exec(line);
 
         if (match?.[1] !== undefined) {
             return match[1].slice(0, 2 * MAX_REASON_LENGTH);

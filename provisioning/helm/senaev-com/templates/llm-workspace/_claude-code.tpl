@@ -133,6 +133,11 @@ spec:
 {{- if .Values.codex.enabled }}
             - name: codex-data
               mountPath: /home/codex
+{{- if .Values.codex.remoteControl }}
+            # The control socket of the Codex daemon, for /codex_pair (see _codex.tpl).
+            - name: codex-daemon-socket
+              mountPath: /tmp/codex-daemon-0
+{{- end }}
 {{- end }}
       volumes:
         # The login, the trust answers and the session history.
@@ -146,6 +151,12 @@ spec:
           hostPath:
             path: {{ .Values.global.clusterRootPath }}/volumes/codex
             type: DirectoryOrCreate
+{{- if .Values.codex.remoteControl }}
+        - name: codex-daemon-socket
+          hostPath:
+            path: {{ .Values.global.clusterRootPath }}/volumes/codex-daemon-socket
+            type: DirectoryOrCreate
+{{- end }}
 {{- end }}
 {{ include "senaev-com.llmWorkspace.sshAgent.volumes" (dict "context" . "secretName" (printf "%s-claude-code-env" .Values.name)) | indent 8 }}
         - name: code

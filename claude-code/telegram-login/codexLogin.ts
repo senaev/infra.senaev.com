@@ -173,7 +173,7 @@ export function createCodexLogin(dependencies: CodexLoginDependencies): CodexLog
                 const lines = [`❌ Could not create a pairing code: ${reason}`];
 
                 if (reason.includes('app-server-control.sock')) {
-                    lines.push('Remote control does not run in the codex container (codex.remoteControl), or it is still starting.');
+                    lines.push('The helper cannot reach the Codex daemon: remote control does not run in the codex container (codex.remoteControl), it is still starting, or the shared socket folder is missing.');
                 }
 
                 const connectionError = await dependencies.readLastConnectionError().catch(() => undefined);

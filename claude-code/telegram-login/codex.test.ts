@@ -197,6 +197,16 @@ describe('startCodexPairing', () => {
         ]);
     });
 
+    it('fails with the error and its causes on one line', async () => {
+        const run = vi.fn().mockResolvedValue({
+            stdout: '',
+            stderr: 'Error: failed to connect to /home/codex/.codex/app-server-control/app-server-control.sock\n\nCaused by:\n    No such file or directory (os error 2)\n',
+            exitCode: 1,
+        });
+
+        await expect(startCodexPairing(run)).rejects.toThrow(/^failed to connect to \/home\/codex\/\.codex\/app-server-control\/app-server-control\.sock: No such file or directory \(os error 2\)$/);
+    });
+
     it('fails with the first line of the error of the command', async () => {
         const run = vi.fn().mockResolvedValue({
             stdout: '',
@@ -230,6 +240,16 @@ describe('findLastConnectionError', () => {
         ].join('\n');
 
         expect(findLastConnectionError(log)).toBe('remote control server enrollment failed: HTTP 403 Forbidden, body: {"detail":"Multi-factor authentication required"}; retrying after auth recovery');
+    });
+
+    it('gives nothing when a later connection succeeded', () => {
+        const log = [
+            failed('remote control server enrollment failed: HTTP 403 Forbidden'),
+            '2026-11-20T19:44:30.600962Z \u001b[32m INFO\u001b[0m codex_app_server_transport::transport::remote_control::websocket: connected to app-server remote control websocket server_name=senaev-codex',
+            '',
+        ].join('\n');
+
+        expect(findLastConnectionError(log)).toBeUndefined();
     });
 
     it('gives nothing when no connection failed', () => {

@@ -57,6 +57,15 @@ rm -f "$daemon_dir/daemon.pid" "$daemon_dir/daemon.stderr.log" "$daemon_dir/daem
 # -F waits for the file, which the daemon makes.
 tail -n 0 -F "$daemon_dir/daemon.stderr.log" 2> /dev/null &
 
+# The daemon binds its control socket in /tmp/codex-daemon-<uid> and puts only a symlink in
+# CODEX_HOME. That folder is a host folder, shared with the Telegram helper of the claude-code pod
+# for /codex_pair. Both the daemon and the client accept it only with mode 0700, and the host folder
+# is created 0755.
+socket_dir="/tmp/codex-daemon-$(id -u)"
+if [ -d "$socket_dir" ]; then
+    chmod 700 "$socket_dir"
+fi
+
 cd "$workdir"
 child=
 trap 'codex remote-control stop > /dev/null 2>&1 || true; [ -n "$child" ] && kill "$child" 2> /dev/null; exit 0' TERM INT
