@@ -28,7 +28,16 @@ Approve / Reject buttons before running a command on the chosen node.
 - Open: reaching tailnet addresses from the pod network on hetzner is not verified.
   If it does not work, fall back to `hostNetwork: true` for this one pod (the earlier
   `hostNetwork: false` decision was for executors on every node) or a jump through the
-  hetzner host.
+  hetzner host. Use `hostNetwork: true` only after the workspace-denial check (Verification)
+  shows that the CNI still enforces the executor NetworkPolicy for it: some network plugins
+  treat a host-network pod as node traffic that a `podSelector` does not match. If it does
+  not, the pod needs another isolation control before it gets the key (to be chosen).
+- Timeouts end the command on the node, not only the SSH session: closing a session does
+  not kill what it started. The executor wraps each command in a transient systemd unit,
+  `systemd-run --wait --pipe --collect -p RuntimeMaxSec=<timeout> -- /bin/sh -c <shell-quoted command>`.
+  systemd stops the unit's whole cgroup at the limit (SIGTERM, then SIGKILL after the stop
+  timeout), including children that left the process group. Every node runs systemd (k3s).
+  Cancelling the request runs `systemctl stop` on the unit by its name, derived from the execution ID.
 - SSH can also reach machines outside Kubernetes, such as the `proxmox-madrid` host.
   Which hosts the executor accepts is an explicit list in its configuration.
 - Restrict executor API ingress with NetworkPolicy to cluster-helper's pod and the API port.
@@ -70,7 +79,8 @@ Bind the approval to an immutable request, including its node and explanatory fi
 4. Implement persistent request/approval state in cluster-helper. Only the authorized
    Telegram user can approve; rejection returns `USER_REJECTED`, expiry `APPROVAL_EXPIRED`.
 5. Implement the executor: authenticated API, SSH through the agent socket, bounded
-   connect time, runtime and output; returns stdout, stderr and exit code.
+   connect time and output, runtime bounded on the node by the systemd unit (see Context);
+   returns stdout, stderr and exit code.
 6. Persist execution IDs before starting a command so duplicate dispatch cannot rerun
    it after restart. Unknown execution outcomes must not trigger automatic retries.
 7. Add the workspace client/skill and narrowly scoped network access to cluster-helper.
@@ -84,6 +94,8 @@ Bind the approval to an immutable request, including its node and explanatory fi
 - Existing cluster logs expose execution events; no separate history store is introduced.
 - Telegram displays node, exact command, context, action description and expected outcome.
 - Long explanatory text is not rejected or truncated by a new 128-character code limit.
+- A command that outlives its timeout, including a child that detaches
+  (`sh -c 'setsid sleep 600 & sleep 600'` with a 5-second timeout), leaves no process on the node.
 - Approved diagnostic commands (`hostname`, `id`) report the intended node and root.
 - Direct executor requests from a workspace fail; a caller without the right identity fails even if reachable.
 - The SSH key is readable only in the `ssh-agent` container; the key is refused from any
