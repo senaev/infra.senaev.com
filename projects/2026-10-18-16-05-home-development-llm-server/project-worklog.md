@@ -1,3 +1,22 @@
+## 2026-11-20 UTC — VM 101 gets the Dell MSDM table and SMBIOS identity
+
+User shut VM 101 down (the first `qm shutdown` timed out; the second with
+`--timeout 300` succeeded), took snapshot `before-oem-key` (disk, EFI and TPM volumes),
+set the Dell identity and started the VM:
+
+```
+args: -acpitable file=/root/dell-msdm.bin
+smbios1: uuid=d734033c-fe5f-458c-923d-a379faee0499,manufacturer=RGVsbCBJbmMu,product=T3B0aVBsZXggTWljcm8gNzAxMA==,serial=RFNZUExZMw==,base64=1
+swtpm_setup: Not overwriting existing state file.
+```
+
+The base64 values decode to `Dell Inc.`, `OptiPlex Micro 7010` and `DSYPLY3`; the VM
+UUID is unchanged and the TPM state was kept. LVM printed the known thin-pool
+oversubscription warnings (sum of thin volumes ~2.31 TiB vs ~930 GiB pool). Next: in
+Windows, check the firmware key edition, then install it and activate. Rollback:
+`qm rollback 101 before-oem-key`, plus `qm set 101 --delete args` and
+`qm set 101 --smbios1 uuid=d734033c-fe5f-458c-923d-a379faee0499`.
+
 ## 2026-11-19 23:50 UTC — Dell firmware has an OEM Windows key (MSDM)
 
 User ran the read-only check on proxmox-madrid; the key was masked before pasting:
