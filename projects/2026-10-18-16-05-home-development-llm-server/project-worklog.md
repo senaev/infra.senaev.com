@@ -1,3 +1,20 @@
+## 2026-11-21 UTC — Stage 1 done: iGPU bound to vfio-pci on proxmox-madrid
+
+Someone was at the Dell for the reboot. Added `/etc/modprobe.d/vfio-igpu.conf`
+(`options vfio-pci ids=8086:4680`, `softdep i915 pre: vfio-pci`, `softdep xe pre: vfio-pci`),
+appended `vfio`, `vfio_iommu_type1`, `vfio_pci` to `/etc/initramfs-tools/modules`, ran
+`update-initramfs -u -k all` (generated initrd for 7.0.2-6-pve; "No
+/etc/kernel/proxmox-boot-uuids found, skipping ESP sync" — GRUB boot, expected), rebooted:
+
+```
+00:02.0 VGA compatible controller [0300]: Intel Corporation AlderLake-S GT1 [8086:4680] (rev 0c)
+	Kernel driver in use: vfio-pci
+status: running        # qm status 100
+```
+
+The host came back over the tailnet with the iGPU reserved for VMs, and VM 100 autostarted.
+Next: stage 2, `hostpci0` on VM 100.
+
 ## 2026-11-21 UTC — iGPU passthrough to senaev-madrid: read-only checks and staged plan
 
 User wants the Intel iGPU passed to VM 100 `senaev-madrid`. No RDP for Windows (decided).
