@@ -1,3 +1,22 @@
+## 2026-11-20 17:11 UTC — First VM 101 backup failed: local disk full, data incompressible
+
+User confirmed they deleted `/var/lib/vz/dell-windows.vhdx` earlier. Before the backup:
+`/` (pve-root) 94G, 80G free; thin pool `pve/data` 19.97% of 793.80g.
+
+```
+INFO: backup mode: stop
+INFO:   9% (86.3 GiB of 931.5 GiB) in 2m 16s, read: 719.3 MiB/s, write: 586.9 MiB/s
+zstd: error 70 : Write error : cannot write block : No space left on device
+ERROR: Backup of VM 101 failed - vma_queue_write: write error - Broken pipe
+```
+
+vzdump removed the partial archive; the VM was resumed. Write ≈ read from the start means
+the Windows disk is almost all non-zero, incompressible data, although the imported
+Windows used ~31.6 GiB. Main hypothesis: BitLocker/device encryption encrypting the whole
+disk inside the VM (TPM + Secure Boot + Microsoft account). Risk: if VM 101's thin volume
+grows to its 932 GiB size, it overfills the 794 GiB thin pool shared with VM 100.
+Next: check `lvs` for vm-101-disk-2 and `manage-bde -status C:` in Windows.
+
 ## 2026-11-20 UTC — No Windows autostart; CD ejected; backup to a local file
 
 User decided Windows VM 101 must **not** start automatically (no `onboot`; started
