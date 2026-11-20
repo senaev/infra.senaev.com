@@ -1,3 +1,26 @@
+## 2026-11-20 16:5x UTC — VM 101: VirtIO drivers, guest agent and VirtIO network
+
+On proxmox-madrid: downloaded `virtio-win.iso` (0.1.302) to
+`/var/lib/vz/template/iso/`, set `agent: enabled=1`, attached the ISO as `ide2` CD-ROM.
+Snapshot `before-virtio` was taken at 16:53:51 just after a fresh start (Windows was
+booting, no filesystem freeze); kept as near-clean. In Windows the user ran
+`virtio-win-gt-x64` (drivers) and the guest agent is running. Then:
+
+```
+# qm agent 101 ping && echo OK
+OK
+# qm shutdown 101 --timeout 120 && qm status 101
+status: stopped
+# qm set 101 --net0 virtio=BC:24:11:23:58:97,bridge=vmbr0
+# qm guest cmd 101 network-get-interfaces | grep '"ip-address"'
+            "ip-address" : "192.168.0.28",
+```
+
+The agent answers and Proxmox can now shut Windows down cleanly (the earlier
+`qm shutdown` without the agent timed out). The NIC moved from `e1000` to `virtio`
+with the same MAC; Windows got 192.168.0.28 by DHCP. The disk stays on SATA.
+Snapshots now: `before-oem-key` → `before-virtio`.
+
 ## 2026-11-20 UTC — Windows VM switched to English after repairing Windows files
 
 Windows in VM 101 was installed in Spanish (`es-ES` LpCab). The English pack was only a
