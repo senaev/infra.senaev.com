@@ -442,7 +442,7 @@ for compatibility after deployment.
 
 | Workspace | Node | Components | Ingress |
 |---|---|---|---|
-| `senaev` | senaev-madrid | OpenCode, OMP (`omp.senaev.com`), Code Tools, Claude Code, Codex | traefik-hetzner |
+| `senaev` | senaev-madrid | OpenCode, OMP (`omp.senaev.com`), Code Tools, Claude Code (Codex disabled) | traefik-hetzner |
 | `galkin` | galkin | OMP only (`omp.galkin.senaev.com`) | traefik-hetzner (DNS points to hetzner) |
 
 Do not rename the `senaev` entry: that replaces its PVCs, and cluster-helper calls
@@ -525,10 +525,17 @@ The `codex` component (`templates/llm-workspace/_codex.tpl`, image `codex/`) run
 `codex remote-control --no-daemon` in `/code`, so the ChatGPT app (Codex) drives Codex on the
 shared `/code` volume. Remote control is experimental in Codex. It makes outbound connections
 only (`wss://chatgpt.com/backend-api/wham/remote/control/server`): no Ingress, no Service, and the
-NetworkPolicy has no ingress. Enabled only in `senaev`; the device name is the hostname `senaev-codex`.
+NetworkPolicy has no ingress. The device name is the hostname `senaev-codex`.
+
+**Disabled since 2026-11-20** (`codex.enabled: false` in `senaev`): the ChatGPT account cannot use
+remote control yet. The server enrollment fails with `HTTP 403 ... {"detail":"Multi-factor
+authentication required"}`, the ChatGPT app on Android shows no Codex entry, and the foreground
+server exits when its first connection fails, so the container restarted in a loop. Enable it again
+when remote control is available for the account; the login stays in the host folder.
 
 - The login is the ChatGPT subscription; remote control rejects an API key. Until a login exists
-  the container waits and checks every 30 seconds. Manual login:
+  the container waits and checks every 30 seconds. The ChatGPT account needs multi-factor
+  authentication. The remote control module is logged at info (`RUST_LOG`). Manual login:
   `kubectl -n senaev-com exec -it deploy/senaev-codex -c codex -- codex login --device-auth`.
 - `<clusterRootPath>/volumes/codex` is mounted as `HOME`; `~/.codex` holds the login, the remote
   control enrollment and the sessions. Do not delete it.
