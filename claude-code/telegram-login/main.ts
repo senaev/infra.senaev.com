@@ -17,7 +17,7 @@ import {
     getAuthStatus, logoutClaude, runCommand,
 } from './claude';
 import {
-    isCodexLoggedIn, logoutCodex, spawnCodexDeviceLogin, startCodexDeviceLogin,
+    isCodexLoggedIn, logoutCodex, readLastConnectionError, spawnCodexDeviceLogin, startCodexDeviceLogin, startCodexPairing,
 } from './codex';
 import { type CodexLogin, createCodexLogin } from './codexLogin';
 import { logger } from './logger';
@@ -123,12 +123,15 @@ const assistant = createLoginAssistant({
     now: () => new Date(),
 });
 // The Codex login folder is mounted, and CODEX_HOME set, only when the workspace enables Codex.
-const codexLogin: CodexLogin | undefined = process.env.CODEX_HOME === undefined
+const codexHome = process.env.CODEX_HOME;
+const codexLogin: CodexLogin | undefined = codexHome === undefined
     ? undefined
     : createCodexLogin({
         isLoggedIn: () => isCodexLoggedIn(runCommand),
         startLogin: () => startCodexDeviceLogin(spawnCodexDeviceLogin),
         logout: () => logoutCodex(runCommand),
+        startPairing: () => startCodexPairing(runCommand),
+        readLastConnectionError: () => readLastConnectionError(codexHome),
         sendMarkdown: async (markdown, replyMarkup) => {
             await sendTelegramMessage({
                 text: markdown,

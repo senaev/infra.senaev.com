@@ -4,7 +4,7 @@ import {
 } from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
 import type { InlineKeyboardMarkup } from 'senaev-utils/src/utils/TelegramApi/types';
 
-import type { CodexDeviceLogin } from './codex';
+import type { CodexDeviceLogin, CodexPairing } from './codex';
 import { logger } from './logger';
 import type { LoginResult } from './login';
 
@@ -12,6 +12,10 @@ export type CodexLoginDependencies = {
     isLoggedIn(): Promise<boolean>;
     startLogin(): CodexDeviceLogin;
     logout(): Promise<void>;
+    // `codex remote-control pair` against the daemon of the codex container.
+    startPairing(): Promise<CodexPairing>;
+    // The reason of the last failed remote control connection, from the daemon log, if any.
+    readLastConnectionError(): Promise<string | undefined>;
     sendMarkdown(markdown: string, replyMarkup?: InlineKeyboardMarkup): Promise<void>;
     editMarkdown(messageId: number, markdown: string, replyMarkup?: InlineKeyboardMarkup): Promise<void>;
 };
@@ -22,6 +26,8 @@ export type CodexLogin = {
     handleAuthCommand(): Promise<void>;
     // The logout button of the status message. Returns the short notice for the button press.
     handleLogoutButton(messageId: number | undefined): Promise<string>;
+    // Sends a short-lived code for Pair manually in the ChatGPT app, or why there is none.
+    handlePairCommand(): Promise<void>;
     // When Codex is logged out, starts a login by itself, once for each time the login is lost.
     checkLogin(): Promise<void>;
     stop(): void;
@@ -149,6 +155,48 @@ export function createCodexLogin(dependencies: CodexLoginDependencies): CodexLog
             }
 
             return '🚪 Logged out';
+        },
+
+        async handlePairCommand() {
+            if (!await dependencies.isLoggedIn()) {
+                await sendText('Codex is logged out. Send /codex_auth first, then /codex_pair.');
+
+                return;
+            }
+
+            let pairing: CodexPairing;
+
+            try {
+                pairing = await dependencies.startPairing();
+            } catch (error) {
+                const reason = stringifyUnknownError(error);
+                const lines = [`❌ Could not create a pairing code: ${reason}`];
+
+                if (reason.includes('app-server-control.sock')) {
+                    lines.push('Remote control does not run in the codex container (codex.remoteControl), or it is still starting.');
+                }
+
+                const connectionError = await dependencies.readLastConnectionError().catch(() => undefined);
+
+                if (connectionError !== undefined) {
+                    lines.push(`The last error of the remote control connection: ${connectionError}`);
+                }
+
+                logger.warn({
+                    reason,
+                    connectionError,
+                }, '⚠️ Could not create a Codex pairing code');
+                await sendText(lines.join('\n\n'));
+
+                return;
+            }
+
+            logger.info({ expiresAt: pairing.expiresAt.toISOString() }, '👉 Sending a Codex pairing code');
+            await dependencies.sendMarkdown([
+                escapeTelegramMarkdown('🔗 Pairing code for Codex on the server:'),
+                telegramCode(pairing.code),
+                escapeTelegramMarkdown(`In the ChatGPT app: Codex → Connect computer → Start pairing → Pair manually. The code is valid until ${pairing.expiresAt.toISOString().slice(11, 16)} UTC.`),
+            ].join('\n\n'));
         },
 
         async checkLogin() {

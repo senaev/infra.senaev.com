@@ -46,6 +46,7 @@ function setup(handleTextResult = true, withCodex = false) {
     const codexLogin: CodexLogin = {
         handleAuthCommand: vi.fn(() => Promise.resolve()),
         handleLogoutButton: vi.fn(() => Promise.resolve('🚪 Logged out')),
+        handlePairCommand: vi.fn(() => Promise.resolve()),
         checkLogin: vi.fn(() => Promise.resolve()),
         stop: vi.fn(),
     };
@@ -143,6 +144,18 @@ describe('the message router', () => {
         expect(loggedMessages()).toEqual([
             '👉 Handling the /codex_auth command',
             '✅ Handled the /codex_auth command',
+        ]);
+    });
+
+    it('sends a pairing code on /codex_pair when Codex is enabled', async () => {
+        const { codexLogin, route } = setup(true, true);
+
+        await route(message({ text: '/codex_pair' }));
+
+        expect(codexLogin.handlePairCommand).toHaveBeenCalledTimes(1);
+        expect(loggedMessages()).toEqual([
+            '👉 Handling the /codex_pair command',
+            '✅ Handled the /codex_pair command',
         ]);
     });
 

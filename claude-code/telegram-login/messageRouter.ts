@@ -51,6 +51,14 @@ export function createMessageRouter(dependencies: MessageRouterDependencies): (m
             return;
         }
 
+        if (command?.commandName === 'codex_pair' && dependencies.codexLogin !== undefined) {
+            logger.info({ messageId }, '👉 Handling the /codex_pair command');
+            await dependencies.codexLogin.handlePairCommand();
+            logger.info({ messageId }, '✅ Handled the /codex_pair command');
+
+            return;
+        }
+
         if (command?.commandName === 'codex_auth' && dependencies.codexLogin !== undefined) {
             logger.info({ messageId }, '👉 Handling the /codex_auth command');
             await dependencies.codexLogin.handleAuthCommand();

@@ -442,7 +442,7 @@ for compatibility after deployment.
 
 | Workspace | Node | Components | Ingress |
 |---|---|---|---|
-| `senaev` | senaev-madrid | OpenCode, OMP (`omp.senaev.com`), Code Tools, Claude Code, Codex (no remote control) | traefik-hetzner |
+| `senaev` | senaev-madrid | OpenCode, OMP (`omp.senaev.com`), Code Tools, Claude Code, Codex | traefik-hetzner |
 | `galkin` | galkin | OMP only (`omp.galkin.senaev.com`) | traefik-hetzner (DNS points to hetzner) |
 
 Do not rename the `senaev` entry: that replaces its PVCs, and cluster-helper calls
@@ -465,7 +465,7 @@ only in `senaev`.
   renews the login from Telegram. The bot is @senaev_claude_helper_bot, with the
   token in Vault `TG_TOKEN_CLAUDE_HELPER_BOT`. It answers only in the private chat with the user
   `claudeCode.telegram.user` (`TG_SENAEV_USER_ID`; the chat id is the user id). The commands
-  are `/claude_auth`, `/claude_mcp` and `/codex_auth` (renamed from `/auth` and `/mcp` on
+  are `/claude_auth`, `/claude_mcp`, `/codex_auth` and `/codex_pair` (renamed from `/auth` and `/mcp` on
   2026-11-20; the old names are ignored). `/claude_auth` first reads `claude auth status`: when
   Claude Code is logged in, it answers `✅ Claude Code is logged in.` with the expiry date and two
   buttons, `🔑 Renew login` (callback data `claude:login`: a new login while the old one still
@@ -533,13 +533,26 @@ The `codex` component (`templates/llm-workspace/_codex.tpl`, image `codex/`) kee
 with the ChatGPT login of the user on the shared `/code` volume. It has no Ingress and no Service,
 and the NetworkPolicy has no ingress. Enabled only in `senaev`.
 
-- Remote control (`codex.remoteControl`) is **off since 2026-11-20**: the account cannot use it
-  yet. The server enrollment fails with `HTTP 403 ... {"detail":"Multi-factor authentication
-  required"}`, and the ChatGPT app on Android shows no Codex entry. When it is on, `start.sh` runs
-  `codex remote-control --no-daemon` in `/code` (outbound only,
-  `wss://chatgpt.com/backend-api/wham/remote/control/server`; device name: the hostname
-  `senaev-codex`); that server exits when its first connection fails, and the container restarts.
-  When it is off, `start.sh` waits for the login and then only sleeps.
+- Remote control (`codex.remoteControl: true`) runs in the Codex app-server daemon, not in the
+  foreground: `codex remote-control pair` talks only to the daemon, through its control socket
+  `CODEX_HOME/app-server-control/app-server-control.sock`. After the login, `start.sh` writes
+  `app-server-daemon/settings.json` (remote control on, no automatic updates), deletes the daemon
+  package copy and its pid and log files (only then does the daemon copy the pinned CLI of the image
+  again; `prepare_install.rs`), and checks every 60 seconds with `codex app-server daemon version`,
+  starting it again with `codex remote-control start` when it is gone. The daemon retries a failed
+  connection by itself, so the container does not restart for it. SIGTERM runs
+  `codex remote-control stop`. The daemon log `app-server-daemon/daemon.stderr.log` is copied to
+  the container output. The connection is outbound only
+  (`wss://chatgpt.com/backend-api/wham/remote/control/server`); the device name is the hostname
+  `senaev-codex`. The image has `procps`: the daemon checks its process with `ps`. With
+  `codex.remoteControl: false` the container only keeps the login.
+- Pairing: the ChatGPT app (Codex → Connect computer → Start pairing → Pair manually) takes an
+  8-character code. `/codex_pair` in the bot runs `codex remote-control pair --json` against the
+  daemon socket (in the login folder that the helper mounts), and sends `manualPairingCode` with its
+  expiry (`expiresAt`, Unix seconds). When there is no code, it sends the error and the last
+  `error=` of `failed to connect to app-server remote control websocket` from the daemon log. On
+  2026-11-20 the enrollment of the server answered `HTTP 403 ... {"detail":"Multi-factor
+  authentication required"}` (no MFA on the account), and the Android app got the Codex tab.
 - The login is the ChatGPT subscription; remote control rejects an API key. The `telegram-login`
   container of the claude-code pod logs Codex in, with the same bot and chat as Claude Code: the
   template mounts `<clusterRootPath>/volumes/codex` there and sets `CODEX_HOME`, and the
