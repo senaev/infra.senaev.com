@@ -1,5 +1,22 @@
 # Worklog
 
+## 2026-11-20 17:40 UTC — Telegram login verified: status, logout and login
+
+PR #251 (status and logout button on `/codex_auth`) deployed with the run of #250: the run of #251
+stopped its build because `main` had moved on, and the next run built the latest `main`. The user
+tested the whole flow in the bot chat:
+
+```
+2026-11-20T17:25:16Z  🚀 Telegram login helper started  (codex: true)
+2026-11-20T17:37:28Z  👉 Handling the Codex logout button
+2026-11-20T17:37:29Z  🚪 Codex is logged out
+2026-11-20T17:37:35Z  👉 Sending the Codex login link
+2026-11-20T17:38:48Z  ✅ Codex is logged in
+```
+
+The first `/codex_auth` (17:13:33 link, 17:14:36 logged in, before #251) also worked. Step 4 is done.
+
+
 ## 2026-11-20 17:15 UTC — Codex runs tasks and reaches the MCP servers of the ChatGPT account
 
 PR #248 deployed: the helper starts with Codex, and the codex container idles.
