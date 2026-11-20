@@ -1,5 +1,38 @@
 # Worklog
 
+## 2026-11-20 19:55 UTC — MFA on: the server enrolled; /codex_pair could not reach the daemon socket
+
+PR #256 deployed: the daemon runs, retries, and logs to Datadog. Without MFA every enrollment
+answered 403. The user turned on MFA at about 19:43; the next retry enrolled and connected, with the
+same login:
+
+```
+19:44:08  failed to connect ... HTTP 403 Forbidden ... {"detail":"Multi-factor authentication required"}  reconnect_attempt=93
+19:44:29  created new remote control enrollment: ... server_id=srv_e_6b00..., environment_id=env_e_6b00...
+19:44:30  connected to app-server remote control websocket ... server_name=senaev-codex
+```
+
+`/codex_pair` from the helper then failed:
+
+```
+❌ Could not create a pairing code: failed to connect to /home/codex/.codex/app-server-control/app-server-control.sock
+```
+
+The control socket in CODEX_HOME is only a symlink to `/tmp/codex-daemon-<uid>/<sha256 of the path>`
+(`app-server-transport/src/transport/unix_socket.rs`, `bind_private_daemon_socket`;
+`uds/src/daemon_directory.rs`), which is inside the codex container. Local check:
+
+```
+app-server-control.sock -> /tmp/codex-daemon-0/0094c215ef63ecbf354c3bb483057770185e5212a5ecc5b8b3aa8c5997ac6712
+```
+
+Both the daemon and the client require that folder to be owned by their uid with mode 0700; with
+0755 the daemon does not start. Fix: a host folder mounted at `/tmp/codex-daemon-0` in both
+containers, `chmod 700` in `start.sh`. The hash is of the same path in both pods, so the symlink
+resolves in the helper too. The bot message also showed the old 403 although a later connection had
+succeeded, and dropped the `Caused by` line of the CLI error; both fixed.
+
+
 ## 2026-11-20 19:00 UTC — Pairing from the bot: /codex_pair and the Codex daemon
 
 The ChatGPT app on the user's Android phone now has a Codex tab: Connect computer → Start pairing

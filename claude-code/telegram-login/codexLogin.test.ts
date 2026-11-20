@@ -379,7 +379,7 @@ describe('the /codex_pair command', () => {
 
         await codexLogin.handlePairCommand();
 
-        expect(sent[0]).toContain(escapeTelegramMarkdown('Remote control does not run in the codex container'));
+        expect(sent[0]).toContain(escapeTelegramMarkdown('The helper cannot reach the Codex daemon'));
     });
 
     it('asks for a login first when Codex is logged out', async () => {

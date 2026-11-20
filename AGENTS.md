@@ -535,7 +535,12 @@ and the NetworkPolicy has no ingress. Enabled only in `senaev`.
 
 - Remote control (`codex.remoteControl: true`) runs in the Codex app-server daemon, not in the
   foreground: `codex remote-control pair` talks only to the daemon, through its control socket
-  `CODEX_HOME/app-server-control/app-server-control.sock`. After the login, `start.sh` writes
+  `CODEX_HOME/app-server-control/app-server-control.sock`. That path is only a symlink to the real
+  socket `/tmp/codex-daemon-0/<sha256 of the path>` (`bind_private_daemon_socket`), so
+  `/tmp/codex-daemon-0` is a host folder, `<clusterRootPath>/volumes/codex-daemon-socket`, mounted
+  in the codex container and in the `telegram-login` container. The daemon and the client accept it
+  only when it belongs to their user (root in both) with mode 0700: `start.sh` runs `chmod 700`,
+  because Kubernetes creates the host folder 0755. After the login, `start.sh` writes
   `app-server-daemon/settings.json` (remote control on, no automatic updates), deletes the daemon
   package copy and its pid and log files (only then does the daemon copy the pinned CLI of the image
   again; `prepare_install.rs`), and checks every 60 seconds with `codex app-server daemon version`,
@@ -549,10 +554,12 @@ and the NetworkPolicy has no ingress. Enabled only in `senaev`.
 - Pairing: the ChatGPT app (Codex → Connect computer → Start pairing → Pair manually) takes an
   8-character code. `/codex_pair` in the bot runs `codex remote-control pair --json` against the
   daemon socket (in the login folder that the helper mounts), and sends `manualPairingCode` with its
-  expiry (`expiresAt`, Unix seconds). When there is no code, it sends the error and the last
-  `error=` of `failed to connect to app-server remote control websocket` from the daemon log. On
+  expiry (`expiresAt`, Unix seconds). When there is no code, it sends the error with its causes,
+  and the last `error=` of `failed to connect to app-server remote control websocket` from the
+  daemon log, unless a later line says `connected to app-server remote control websocket`. On
   2026-11-20 the enrollment of the server answered `HTTP 403 ... {"detail":"Multi-factor
-  authentication required"}` (no MFA on the account), and the Android app got the Codex tab.
+  authentication required"}` until the user turned on MFA; the next retry of the daemon enrolled
+  the server and connected, with the same login (no new login needed).
 - The login is the ChatGPT subscription; remote control rejects an API key. The `telegram-login`
   container of the claude-code pod logs Codex in, with the same bot and chat as Claude Code: the
   template mounts `<clusterRootPath>/volumes/codex` there and sets `CODEX_HOME`, and the
