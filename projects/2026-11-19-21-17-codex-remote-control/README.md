@@ -36,17 +36,18 @@ Run Codex (ChatGPT subscription) in a container of the `senaev` LLM workspace, w
 
 ## Plan
 
-1. ⏳ Project, image and chart; first manual login. One PR.
+1. ✅ Project, image and chart; first manual login. PR [#239](https://github.com/senaev/infra.senaev.com/pull/239). Logged in on 2026-11-20.
    - `codex/Dockerfile`: the tools of the Claude Code image plus `procps`, `@openai/codex@0.170.0`.
    - `codex/start.sh`: config, instructions link, wait for the login (`codex login status`, every 30 seconds), then `exec codex remote-control --no-daemon`.
    - `AGENTS.md`: a Codex section.
    - `_codex.tpl`: Deployment (one replica, `Recreate`), ExternalSecret with the git keys, `ssh-agent` sidecar, NetworkPolicy with no ingress; `codex.enabled` in the schema and in `senaev`.
    - After the deploy, log in:
      `kubectl -n senaev-com exec -it deploy/senaev-codex -c codex -- codex login --device-auth`
-2. Connect the phone. Check whether `senaev-codex` appears in ChatGPT → Codex by itself. If not, find where the app takes the manual code, and pair once: `codex remote-control start`, `codex remote-control pair`, then go back to `--no-daemon`. Check that the pairing survives a pod restart.
-3. Telegram login in the same chat: `/auth` for Codex, a notice when the login is gone. The bot token cannot be polled by two processes at once (Telegram answers `409 Conflict` to the second `getUpdates`), so one helper must serve both Claude Code and Codex, or Codex gets its own bot. Decide at this step.
-4. MCP servers (Datadog, Grafana, Obsidian, Telegram) in `config.toml`, with their OAuth login.
-5. `AGENTS.md`: keep the Codex section current with each step (added in step 1).
+2. ⏳ Make the server connect. After the login, each start ends with `Remote control is enabled on senaev-codex but the connection is errored.` and the container restarts. Log the remote control module (`RUST_LOG`) to see the error; then fix it.
+3. Connect the phone. Check whether `senaev-codex` appears in ChatGPT → Codex by itself. If not, find where the app takes the manual code, and pair once: `codex remote-control start`, `codex remote-control pair`, then go back to `--no-daemon`. Check that the pairing survives a pod restart.
+4. Telegram login in the same chat: `/auth` for Codex, a notice when the login is gone. The bot token cannot be polled by two processes at once (Telegram answers `409 Conflict` to the second `getUpdates`), so one helper must serve both Claude Code and Codex, or Codex gets its own bot. Decide at this step.
+5. MCP servers (Datadog, Grafana, Obsidian, Telegram) in `config.toml`, with their OAuth login.
+6. `AGENTS.md`: keep the Codex section current with each step (added in step 1).
 
 ## Open points
 

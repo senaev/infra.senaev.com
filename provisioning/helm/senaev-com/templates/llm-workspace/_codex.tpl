@@ -46,6 +46,10 @@ spec:
             requests:
               memory: 512Mi
           env:
+            # Without it the server prints only "the connection is errored", not why. The remote
+            # control module logs each connection attempt and its error at info.
+            - name: RUST_LOG
+              value: "warn,codex_app_server_transport::transport::remote_control=info"
             - name: GIT_AUTHOR_NAME
               value: {{ .Values.git.name | quote }}
             - name: GIT_AUTHOR_EMAIL

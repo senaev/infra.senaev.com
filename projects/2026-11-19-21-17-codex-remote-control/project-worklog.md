@@ -1,5 +1,38 @@
 # Worklog
 
+## 2026-11-20 13:15 UTC — Logged in; remote control fails to connect
+
+Step 1 deployed (PR #239). The first image build of the deploy failed with
+`curl: (22) The requested URL returned error: 403` on `https://api.github.com/meta` (anonymous rate
+limit of the runner); a rerun of the job passed. The pod then waited for the login:
+
+```
+2026-11-19T21:57:06Z  Codex is not logged in. Waiting for: codex login --device-auth
+```
+
+The user logged in with `codex login --device-auth` (device code in the browser):
+
+```
+Successfully logged in
+```
+
+The server takes the login, then fails at each start, and the container restarts (3 restarts in 2 minutes):
+
+```
+2026-11-20T13:09:16Z  Codex is logged in.
+2026-11-20T13:09:16Z  Starting app-server with remote control enabled...
+2026-11-20T13:09:18Z  Error: Remote control is enabled on senaev-codex but the connection is errored.
+2026-11-20T13:09:21Z  Starting app-server with remote control enabled...
+2026-11-20T13:09:21Z  Error: Remote control is enabled on senaev-codex but the connection is errored.
+```
+
+Without `RUST_LOG` the server does not print the reason. In the source
+(`app-server-transport/src/transport/remote_control/websocket.rs`), every failed connection
+logs `warn!` with `error` and `error_kind`, and marks the status `Errored`; the foreground
+`codex remote-control --no-daemon` exits when the first status is `Errored`, so even a
+transient error ends the process. Next: `RUST_LOG=warn,codex_app_server_transport::transport::remote_control=info`
+in the container, to see the error.
+
 ## 2026-11-19 21:30 UTC — Step 1 written: image, start script, chart
 
 `codex/Dockerfile`, `codex/start.sh`, `templates/llm-workspace/_codex.tpl`, the schema and `codex.enabled` in `senaev`. `start.sh` was run locally with Codex 0.170.0, up to the login wait:
