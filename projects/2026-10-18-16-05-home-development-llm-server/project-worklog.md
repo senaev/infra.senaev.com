@@ -1,3 +1,27 @@
+## 2026-11-20 23:10 UTC — Remaining setup items closed or skipped; iperf3 checked
+
+User confirmed: Tailscale key expiry is disabled for proxmox-madrid and senaev-madrid, the
+auth key from the installation screenshot is handled, and the lost Claude remote-control
+sessions are reattached. Decided to skip everything else: thin-pool alerting, the Windows
+memory cap, the different-LAN-address test, temperature/noise testing, Jellyfin, the
+ten-restart test, the restore test and RDP. Host cleanup (eject the Debian ISO from VM 100,
+delete `virtio-win.iso`) is left to the user.
+
+iperf3 (VictoriaMetrics, last 7 days):
+
+```
+iperf3_up{source=~"senaev-madrid|proxmox-madrid"}            1 for →hetzner and →firstvds
+iperf3_received_bits_per_second (latest, Mbit/s)             19.90–19.94 for all four pairs
+dips < 15 Mbit/s (6 h windows)                               2026-11-19 17–23 UTC: proxmox-madrid→firstvds 1.46,
+                                                             senaev-madrid→firstvds 0.83; 2026-11-18: senaev-madrid→hetzner 14.8
+max iperf3_retransmits to firstvds                           proxmox-madrid 457, senaev-madrid 292 (senaev-media 435)
+```
+
+Every source, including senaev-media, tops out at ~19.9 Mbit/s, so that is the test's rate
+cap, not a Madrid limit. Both Madrid nodes pass. The Nov 19 evening dip hit both Madrid nodes
+only towards firstvds; retransmits to firstvds are similar from the old home node, so the
+firstvds path is the lossy one rather than the new server.
+
 ## 2026-11-20 23:00 UTC — Impact of the senaev-madrid restarts on claude-code (Datadog)
 
 User decided to skip the ten-restart test and not to move Jellyfin for now.
