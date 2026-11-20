@@ -13,7 +13,9 @@ import { pollTelegramMessages } from 'senaev-utils/src/utils/TelegramApi/pollTel
 import { sendTelegramEditableMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramEditableMessage';
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
 
-import { getAuthStatus, runCommand } from './claude';
+import {
+    getAuthStatus, logoutClaude, runCommand,
+} from './claude';
 import {
     isCodexLoggedIn, logoutCodex, spawnCodexDeviceLogin, startCodexDeviceLogin,
 } from './codex';
@@ -62,6 +64,7 @@ if (!Number.isSafeInteger(allowedUserId)) {
 const assistant = createLoginAssistant({
     getAuthStatus: () => getAuthStatus(runCommand),
     startLogin: () => startLogin(spawnClaudeLogin),
+    logout: () => logoutClaude(runCommand),
     listMcpServers: () => listMcpServers(runCommand),
     // The CLI discovers the authorization server and may register a client before it prints the link.
     startMcpLogin: (serverName) => startLogin(() => spawnMcpLogin(serverName), {

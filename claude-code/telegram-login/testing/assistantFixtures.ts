@@ -54,9 +54,16 @@ export function setup(initialStatus: AuthStatus, sessions: LoginSession[] = [], 
     const panelEdits: { messageId: number; markdown: string; replyMarkup: InlineKeyboardMarkup | undefined }[] = [];
     let now = NOW.getTime();
     const sent: string[] = [];
+    let logouts = 0;
     const assistant = createLoginAssistant({
         getAuthStatus: () => Promise.resolve(status),
         startLogin: () => sessions.shift() ?? createSession(),
+        logout: () => {
+            logouts++;
+            status = LOGGED_OUT;
+
+            return Promise.resolve();
+        },
         listMcpServers: () => Promise.resolve(mcpServers),
         startMcpLogin: (serverName) => {
             mcpLogins.push(serverName);
@@ -112,6 +119,7 @@ export function setup(initialStatus: AuthStatus, sessions: LoginSession[] = [], 
     return {
         assistant,
         sent,
+        logouts: () => logouts,
         mcpLogins,
         mcpLogouts,
         keyboards,
@@ -164,6 +172,7 @@ export function dependenciesWith(overrides: Partial<AssistantDependencies>): Ass
     return {
         getAuthStatus: () => Promise.resolve(loggedInUntil(30)),
         startLogin: () => createSession(),
+        logout: () => Promise.resolve(),
         listMcpServers: () => Promise.resolve([DATADOG_CONNECTED]),
         startMcpLogin: () => createSession(),
         logoutMcpServer: () => Promise.resolve(),

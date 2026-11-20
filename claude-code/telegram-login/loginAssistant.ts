@@ -30,7 +30,7 @@ export function createLoginAssistant(dependencies: AssistantDependencies): Login
             const waiting = slot.take();
 
             if (waiting === null) {
-                await dependencies.sendMarkdown(escapeTelegramMarkdown('No login is waiting for a code. Send /auth or /mcp to start one.'));
+                await dependencies.sendMarkdown(escapeTelegramMarkdown('No login is waiting for a code. Send /claude_auth or /claude_mcp to start one.'));
 
                 return false;
             }

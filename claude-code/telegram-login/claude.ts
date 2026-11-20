@@ -60,3 +60,15 @@ export async function getAuthStatus(run: CommandRunner): Promise<AuthStatus> {
 
     return parseAuthStatus(stdout);
 }
+
+// Exits with 0 also when nobody was logged in, so the caller checks the status afterwards.
+export async function logoutClaude(run: CommandRunner): Promise<void> {
+    const { exitCode, stdout } = await run('claude', [
+        'auth',
+        'logout',
+    ]);
+
+    if (exitCode !== 0) {
+        throw new Error(`claude auth logout failed with exit code ${exitCode}: ${stdout.trim().slice(0, 200)}`);
+    }
+}
