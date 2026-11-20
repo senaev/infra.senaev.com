@@ -537,7 +537,10 @@ and the NetworkPolicy has no ingress. Enabled only in `senaev`.
   container of the claude-code pod logs Codex in, with the same bot and chat as Claude Code: the
   template mounts `<clusterRootPath>/volumes/codex` there and sets `CODEX_HOME`, and the
   claude-code image has the same pinned `codex` CLI (`claude-code/telegram-login/codex.ts`,
-  `codexLogin.ts`). `/codex_auth` runs `codex login --device-auth` and sends the link
+  `codexLogin.ts`). `/codex_auth` first checks `codex login status`: when Codex is logged in, it
+  answers `✅ Codex is logged in.` with a `🚪 Log out` button (callback data `codex:logout`), which
+  runs `codex logout` and rewrites the message; after such a logout the bot starts no login by
+  itself until the next `/codex_auth`. When Codex is logged out, it runs `codex login --device-auth` and sends the link
   (`https://auth.openai.com/codex/device`) and the one-time code. Nothing goes back through the
   chat: the CLI waits until the user enters the code on the page, then exits; the bot checks the
   exit code, the text `Successfully logged in` and `codex login status`, and sends

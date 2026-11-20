@@ -2,6 +2,7 @@ import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnk
 import {
     escapeTelegramMarkdown, telegramCode, telegramLink,
 } from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
+import type { InlineKeyboardMarkup } from 'senaev-utils/src/utils/TelegramApi/types';
 
 import type { CodexDeviceLogin } from './codex';
 import { logger } from './logger';
@@ -10,15 +11,33 @@ import type { LoginResult } from './login';
 export type CodexLoginDependencies = {
     isLoggedIn(): Promise<boolean>;
     startLogin(): CodexDeviceLogin;
-    sendMarkdown(markdown: string): Promise<void>;
+    logout(): Promise<void>;
+    sendMarkdown(markdown: string, replyMarkup?: InlineKeyboardMarkup): Promise<void>;
+    editMarkdown(messageId: number, markdown: string, replyMarkup?: InlineKeyboardMarkup): Promise<void>;
 };
 
 export type CodexLogin = {
-    // Starts a device login and sends the link and the code; a running one is stopped first.
+    // Logged in: the status with a logout button. Logged out: starts a device login and sends the
+    // link and the code; a running one is stopped first.
     handleAuthCommand(): Promise<void>;
+    // The logout button of the status message. Returns the short notice for the button press.
+    handleLogoutButton(messageId: number | undefined): Promise<string>;
     // When Codex is logged out, starts a login by itself, once for each time the login is lost.
     checkLogin(): Promise<void>;
     stop(): void;
+};
+
+export const CODEX_LOGOUT_BUTTON_DATA = 'codex:logout';
+
+const LOGGED_IN_KEYBOARD: InlineKeyboardMarkup = {
+    inline_keyboard: [
+        [
+            {
+                text: '🚪 Log out',
+                callback_data: CODEX_LOGOUT_BUTTON_DATA,
+            },
+        ],
+    ],
 };
 
 // The device login needs no answer in the chat: the CLI waits until the user enters the code on
@@ -95,8 +114,41 @@ export function createCodexLogin(dependencies: CodexLoginDependencies): CodexLog
     }
 
     return {
-        handleAuthCommand() {
-            return startLogin('🔑 Codex login');
+        async handleAuthCommand() {
+            if (running === null && await dependencies.isLoggedIn()) {
+                await dependencies.sendMarkdown(escapeTelegramMarkdown('✅ Codex is logged in.'), LOGGED_IN_KEYBOARD);
+
+                return;
+            }
+
+            await startLogin('🔑 Codex login');
+        },
+
+        async handleLogoutButton(messageId) {
+            const login = running;
+
+            running = null;
+            login?.cancel();
+            await dependencies.logout();
+            // A logout that the user asked for: no login by itself until the user sends /codex_auth.
+            autoLoginStarted = true;
+
+            if (await dependencies.isLoggedIn()) {
+                logger.warn('⚠️ Codex is still logged in after codex logout');
+
+                return '❌ Still logged in, see the logs';
+            }
+
+            logger.info('🚪 Codex is logged out');
+            const text = escapeTelegramMarkdown('🚪 Codex is logged out. Send /codex_auth to log in.');
+
+            if (messageId === undefined) {
+                await dependencies.sendMarkdown(text);
+            } else {
+                await dependencies.editMarkdown(messageId, text);
+            }
+
+            return '🚪 Logged out';
         },
 
         async checkLogin() {

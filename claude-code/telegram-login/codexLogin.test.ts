@@ -4,9 +4,10 @@ import {
 import {
     describe, expect, it, vi,
 } from 'vitest';
+import type { InlineKeyboardMarkup } from 'senaev-utils/src/utils/TelegramApi/types';
 
 import type { CodexDeviceLogin, CodexDevicePrompt } from './codex';
-import { createCodexLogin } from './codexLogin';
+import { CODEX_LOGOUT_BUTTON_DATA, createCodexLogin } from './codexLogin';
 import type { LoginResult } from './login';
 
 vi.mock('./logger', () => {
@@ -54,10 +55,19 @@ function createDeviceLogin(prompt: Promise<CodexDevicePrompt> = Promise.resolve(
     };
 }
 
-function setup(initiallyLoggedIn: boolean) {
+function setup(initiallyLoggedIn: boolean, logoutWorks = true) {
     let loggedIn = initiallyLoggedIn;
     const logins: ReturnType<typeof createDeviceLogin>[] = [];
     const sent: string[] = [];
+    const keyboards: (InlineKeyboardMarkup | undefined)[] = [];
+    const edits: { messageId: number; markdown: string }[] = [];
+    const logout = vi.fn(() => {
+        if (logoutWorks) {
+            loggedIn = false;
+        }
+
+        return Promise.resolve();
+    });
     const codexLogin = createCodexLogin({
         isLoggedIn: () => Promise.resolve(loggedIn),
         startLogin: () => {
@@ -67,8 +77,18 @@ function setup(initiallyLoggedIn: boolean) {
 
             return deviceLogin.login;
         },
-        sendMarkdown: (markdown) => {
+        logout,
+        sendMarkdown: (markdown, replyMarkup) => {
             sent.push(markdown);
+            keyboards.push(replyMarkup);
+
+            return Promise.resolve();
+        },
+        editMarkdown: (messageId, markdown) => {
+            edits.push({
+                messageId,
+                markdown,
+            });
 
             return Promise.resolve();
         },
@@ -78,6 +98,9 @@ function setup(initiallyLoggedIn: boolean) {
         codexLogin,
         logins,
         sent,
+        keyboards,
+        edits,
+        logout,
         setLoggedIn: (value: boolean) => {
             loggedIn = value;
         },
@@ -165,11 +188,13 @@ describe('createCodexLogin', () => {
         const codexLogin = createCodexLogin({
             isLoggedIn: () => Promise.resolve(false),
             startLogin: () => createDeviceLogin(Promise.reject(new Error('the login command did not print a link and a code in time'))).login,
+            logout: () => Promise.resolve(),
             sendMarkdown: (markdown) => {
                 sent.push(markdown);
 
                 return Promise.resolve();
             },
+            editMarkdown: () => Promise.resolve(),
         });
 
         await codexLogin.handleAuthCommand();
@@ -239,5 +264,59 @@ describe('createCodexLogin', () => {
 
         expect(logins[0]?.login.cancel).toHaveBeenCalled();
         expect(sent).toHaveLength(1);
+    });
+
+    it('shows the status with a logout button on /codex_auth when Codex is logged in, and starts no login', async () => {
+        const {
+            codexLogin, logins, sent, keyboards,
+        } = setup(true);
+
+        await codexLogin.handleAuthCommand();
+
+        expect(logins).toHaveLength(0);
+        expect(sent).toEqual([escapeTelegramMarkdown('✅ Codex is logged in.')]);
+        expect(keyboards).toEqual([
+            {
+                inline_keyboard: [
+                    [
+                        {
+                            text: '🚪 Log out',
+                            callback_data: CODEX_LOGOUT_BUTTON_DATA,
+                        },
+                    ],
+                ],
+            },
+        ]);
+    });
+
+    it('logs out on the button, rewrites the status message, and starts no login by itself after it', async () => {
+        const {
+            codexLogin, logins, edits, logout,
+        } = setup(true);
+
+        await expect(codexLogin.handleLogoutButton(7)).resolves.toBe('🚪 Logged out');
+
+        expect(logout).toHaveBeenCalledTimes(1);
+        expect(edits).toEqual([
+            {
+                messageId: 7,
+                markdown: escapeTelegramMarkdown('🚪 Codex is logged out. Send /codex_auth to log in.'),
+            },
+        ]);
+
+        await codexLogin.checkLogin();
+
+        expect(logins).toHaveLength(0);
+
+        await codexLogin.handleAuthCommand();
+
+        expect(logins).toHaveLength(1);
+    });
+
+    it('says so when Codex is still logged in after the logout', async () => {
+        const { codexLogin, edits } = setup(true, false);
+
+        await expect(codexLogin.handleLogoutButton(7)).resolves.toBe('❌ Still logged in, see the logs');
+        expect(edits).toEqual([]);
     });
 });
