@@ -1,3 +1,11 @@
+## 2026-11-20 15:45 UTC — Make the request API asynchronous
+
+User was concerned that harnesses would not wait through approval. Decided: `submit`
+returns `requestId` at once; `status(requestId, wait?)` reads the saved state, with a
+long-poll of at most 25 seconds. `status` never starts or retries anything. Final results
+are kept 1 hour for delivery, readable only by the submitting client. Reuses the
+persistent state already planned for duplicate prevention.
+
 ## 2026-11-20 15:20 UTC — Run commands through the hetzner host and its SSH key
 
 User confirmed that every node accepts the SSH key of hetzner's root, and chose to use it.
