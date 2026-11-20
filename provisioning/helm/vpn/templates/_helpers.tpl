@@ -99,3 +99,120 @@
 {{- $config | toPrettyJson -}}
 {{- end -}}
 
+
+
+{{- /*
+  Renders /template/full-config.json into /out/config.json: {XRAY_USER_UUID:<seed>} becomes the
+  derived UUID (the same derivation as vpn-subscription and vpn-probe), other macros their env value.
+*/ -}}
+{{- define "vpn.renderXrayConfigScript" -}}
+cat <<'EOF' >/tmp/render-config.mjs
+import { createHash } from "node:crypto";
+import { readFileSync, writeFileSync } from "node:fs";
+
+const macroValues = {
+  XRAY_REALITY_PRIVATE_KEY: process.env.XRAY_REALITY_PRIVATE_KEY,
+  XRAY_USER_UUID: process.env.XRAY_USER_UUID,
+};
+
+function deriveUuid(baseValue, seed) {
+  const derivedSeed = createHash("sha256")
+    .update(`${baseValue}:${seed}`)
+    .digest("hex")
+    .substring(0, 32);
+
+  return `${derivedSeed.substr(0, 8)}-${derivedSeed.substr(8, 4)}-${derivedSeed.substr(12, 4)}-${derivedSeed.substr(16, 4)}-${derivedSeed.substr(20)}`;
+}
+
+const template = readFileSync("/template/full-config.json", "utf8");
+
+const rendered = template.replace(/\{([A-Z0-9_]+)(?::([^}]*))?\}/g, (match, macroName, seed) => {
+  if (macroName === "XRAY_USER_UUID" && seed !== undefined) {
+    return deriveUuid(macroValues.XRAY_USER_UUID, seed);
+  }
+
+  const replacement = macroValues[macroName];
+  if (replacement === undefined) {
+    throw new Error(`Unsupported macro: ${match}`);
+  }
+
+  return replacement;
+});
+
+writeFileSync("/out/config.json", rendered);
+EOF
+node /tmp/render-config.mjs
+{{- end -}}
+
+{{- /*
+  Hysteria2 (QUIC over UDP) server with a direct exit at its node. It reuses the Let's Encrypt
+  certificate that Traefik keeps for serverName; clients verify it as usual. Unauthenticated
+  QUIC requests get senaev.com through the masquerade proxy, like a normal HTTP/3 site.
+*/ -}}
+{{- define "vpn.xrayHysteriaConfig" -}}
+{{- $hysteria := .Values.xrayHysteria -}}
+{{- $clients := list -}}
+{{- range $profile := $hysteria.profiles }}
+  {{- $clients = append $clients (dict "auth" $profile.authMacro "email" $profile.user) -}}
+{{- end -}}
+{{- $config := dict
+  "log" (dict "access" "none" "error" "/dev/stderr" "loglevel" "warning")
+  "inbounds" (list (dict
+    "tag" "inbound-hysteria"
+    "port" (int $hysteria.port)
+    "protocol" "hysteria"
+    "settings" (dict "version" 2 "clients" $clients)
+    "streamSettings" (dict
+      "network" "hysteria"
+      "hysteriaSettings" (dict
+        "version" 2
+        "masquerade" (dict "type" "proxy" "url" (printf "https://%s/" $hysteria.serverName))
+      )
+      "security" "tls"
+      "tlsSettings" (dict
+        "serverName" $hysteria.serverName
+        "alpn" (list "h3")
+        "certificates" (list (dict
+          "certificateFile" "/tls/tls.crt"
+          "keyFile" "/tls/tls.key"
+        ))
+      )
+    )
+  ))
+  "outbounds" (list (dict
+    "tag" "outbound-freedom"
+    "protocol" "freedom"
+    "streamSettings" (dict "sockopt" (dict "domainStrategy" "UseIPv4v6"))
+  ))
+-}}
+{{- $config | toPrettyJson -}}
+{{- end -}}
+
+{{- /*
+  Copies the certificate for serverName from Traefik's acme.json (read-only) into /tls.
+  Writes only when the content changed, through a temporary file and rename.
+*/ -}}
+{{- define "vpn.acmeCertificateScript" -}}
+cat <<'EOF' >/tmp/acme-certificate.mjs
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+
+const name = process.env.SERVER_NAME;
+const acme = JSON.parse(readFileSync("/acme/acme.json", "utf8"));
+const certificates = Object.values(acme).flatMap((resolver) => resolver?.Certificates ?? []);
+const match = certificates.find(({ domain }) =>
+  domain?.main === name || (domain?.sans ?? []).includes(name));
+if (!match) {
+  throw new Error(`No certificate for ${name} in acme.json`);
+}
+for (const [file, value] of [["tls.crt", match.certificate], ["tls.key", match.key]]) {
+  const content = Buffer.from(value, "base64").toString("utf8");
+  const path = `/tls/${file}`;
+  if (existsSync(path) && readFileSync(path, "utf8") === content) {
+    continue;
+  }
+  writeFileSync(`${path}.tmp`, content, { mode: 0o600 });
+  renameSync(`${path}.tmp`, path);
+  console.log(`Updated ${file} for ${name}`);
+}
+EOF
+{{- end -}}

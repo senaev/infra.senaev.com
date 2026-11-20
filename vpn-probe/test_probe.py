@@ -43,6 +43,40 @@ class ConfigTests(unittest.TestCase):
                 probe.client_config(link, 'b', 'p')
 
 
+HYSTERIA_LINK = 'hysteria2://{XRAY_USER_UUID:6}@senaev.com:443?sni=senaev.com'
+
+
+class HysteriaConfigTests(unittest.TestCase):
+    def test_derived_auth_verified_tls_and_no_direct_outbound(self):
+        config, seed = probe.client_config(HYSTERIA_LINK, 'base', 'public', port=1081)
+        expected = str(uuid.UUID(hashlib.sha256(b'base:6').hexdigest()[:32]))
+        outbound = config['outbounds'][0]
+        self.assertEqual(seed, '6')
+        self.assertEqual([x['protocol'] for x in config['outbounds']], ['hysteria'])
+        self.assertEqual(outbound['settings'], {'version': 2, 'address': 'senaev.com', 'port': 443})
+        stream = outbound['streamSettings']
+        self.assertEqual(stream['hysteriaSettings'], {'version': 2, 'auth': expected})
+        self.assertEqual(stream['tlsSettings'], {'serverName': 'senaev.com', 'alpn': ['h3'],
+                                                 'allowInsecure': False})
+        self.assertEqual(config['inbounds'][0], {'listen': '127.0.0.1', 'port': 1081, 'protocol': 'socks',
+                                                 'settings': {'auth': 'noauth', 'udp': False}})
+
+    def test_invalid_credentials_only_change_auth(self):
+        good, _ = probe.client_config(HYSTERIA_LINK, 'base', 'public')
+        bad, _ = probe.client_config(HYSTERIA_LINK, 'base', 'public', invalid=True)
+        good_auth = good['outbounds'][0]['streamSettings']['hysteriaSettings']
+        bad_auth = bad['outbounds'][0]['streamSettings']['hysteriaSettings']
+        self.assertNotEqual(good_auth['auth'], bad_auth['auth'])
+        bad_auth['auth'] = good_auth['auth']
+        self.assertEqual(good, bad)
+
+    def test_rejects_insecure_or_incomplete_links(self):
+        for link in [HYSTERIA_LINK + '&insecure=1', HYSTERIA_LINK.replace('?sni=senaev.com', ''),
+                     HYSTERIA_LINK.replace(':443', '')]:
+            with self.assertRaises(ValueError):
+                probe.client_config(link, 'b', 'p')
+
+
 class RequestTests(unittest.TestCase):
     @patch('probe.subprocess.run')
     def test_explicit_proxy_no_bypass_and_partial_body_rejected(self, run):

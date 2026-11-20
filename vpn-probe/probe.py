@@ -37,6 +37,8 @@ def client_config(link, base_uuid, public_key, port=1080, invalid=False):
     link = link.replace(seed[0], str(uuid.uuid4()) if invalid else derived)
     url = urlsplit(link.replace("{XRAY_REALITY_PUBLIC_KEY}", public_key))
     params = parse_qs(url.query, keep_blank_values=True)
+    if url.scheme == "hysteria2":
+        return hysteria_client_config(url, params, port), seed[1]
     if url.scheme != "vless" or not url.hostname or not url.port:
         raise ValueError("Invalid VLESS endpoint")
     transport, security = params.get("type"), params.get("security")
@@ -67,6 +69,24 @@ def client_config(link, base_uuid, public_key, port=1080, invalid=False):
         "outbounds": [{"protocol": "vless", "settings": {"vnext": [{
             "address": url.hostname, "port": url.port, "users": [user]}]},
             "streamSettings": stream}]}, seed[1]
+
+
+def hysteria_client_config(url, params, port):
+    """Hysteria2 over QUIC with a verified certificate; the password is the derived UUID."""
+    if not url.hostname or not url.port or not url.username or set(params) != {"sni"}:
+        raise ValueError("Hysteria2 requires host, port, auth and only an sni parameter")
+    return {
+        "log": {"access": "none", "error": "/dev/stderr", "loglevel": "warning"},
+        "inbounds": [{"listen": "127.0.0.1", "port": port, "protocol": "socks",
+                      "settings": {"auth": "noauth", "udp": False}}],
+        # Deliberately no freedom/direct fallback outbound.
+        "outbounds": [{"protocol": "hysteria", "settings": {
+            "version": 2, "address": url.hostname, "port": url.port},
+            "streamSettings": {"network": "hysteria",
+                               "hysteriaSettings": {"version": 2, "auth": url.username},
+                               "security": "tls",
+                               "tlsSettings": {"serverName": params["sni"][0], "alpn": ["h3"],
+                                               "allowInsecure": False}}}]}
 
 
 def request(url, proxy, max_bytes, expected_status=200, expected_bytes=None, timeout=8, head=False, text_limit=4096, http1=False, connect_timeout=3,
