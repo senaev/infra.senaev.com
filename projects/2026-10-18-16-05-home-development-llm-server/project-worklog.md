@@ -1,3 +1,18 @@
+## 2026-11-20 UTC — No Windows autostart; CD ejected; backup to a local file
+
+User decided Windows VM 101 must **not** start automatically (no `onboot`; started
+manually with `qm start 101` or the web UI). The driver CD was ejected live:
+
+```
+# qm set 101 --ide2 none,media=cdrom
+update VM 101: -ide2 none,media=cdrom
+```
+
+Backup decision: `vzdump` of VM 101 to the host's `local` storage
+(`/var/lib/vz/dump`), together with a copy of `/root/dell-msdm.bin` (not part of the VM
+backup). The user downloads both and stores them in their cloud. Old snapshots and the
+imported `/var/lib/vz/dell-windows.vhdx` are removed only after the new backup is verified.
+
 ## 2026-11-20 16:5x UTC — VM 101: VirtIO drivers, guest agent and VirtIO network
 
 On proxmox-madrid: downloaded `virtio-win.iso` (0.1.302) to
