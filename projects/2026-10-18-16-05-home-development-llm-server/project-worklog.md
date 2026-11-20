@@ -1,3 +1,18 @@
+## 2026-11-20 21:55 UTC — VM 101 snapshots deleted; restore test skipped
+
+```
+# qm delsnapshot 101 before-virtio; qm delsnapshot 101 before-oem-key
+# qm listsnapshot 101
+`-> current                                             You are here!
+# ls -la /var/lib/vz/dump/      # empty
+# lvs pve/data
+  data pve twi-aotz-- <793.80g             16.58  0.76
+```
+
+The thin pool dropped from 19.98% to 16.58% after the snapshots were removed. User
+decided to skip the restore test. Jellyfin GPU passthrough stays in the plan. RDP to the
+Windows VM is not decided yet.
+
 ## 2026-11-20 UTC — Backup downloaded, verified and stored in the cloud
 
 User downloaded the backup with `rsync -avP -e 'ssh -J root@senaev.com'` (~4.2 MB/s,
