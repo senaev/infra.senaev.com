@@ -1,3 +1,23 @@
+## 2026-11-20 UTC — VM 101 disk: discard and SSD emulation on, TRIM run
+
+After BitLocker decryption (`manage-bde -status C:` had shown Protection Off, Key
+Protectors: None Found):
+
+```
+# qm set 101 --sata0 local-lvm:vm-101-disk-2,size=953872M,discard=on,ssd=1
+sata0: local-lvm:vm-101-disk-2,discard=on,size=953872M,ssd=1
+PS> Optimize-Volume -DriveLetter C -ReTrim -Verbose
+    Used space                 = 71.35 GB
+    Free space                 = 859.06 GB
+    Total space trimmed        = 857.13 GB
+# lvs pve/vm-101-disk-2
+  vm-101-disk-2 pve Vwi-aotz-- <931.52g data        8.22
+```
+
+Windows really uses ~71 GB (up from ~31.6 GiB at import: updates, language packs, DISM
+repair). The thin volume now matches that (8.22% ≈ 76.6 GiB). Windows will keep freeing
+space through its weekly Optimize Drives task. Snapshots still hold older blocks.
+
 ## 2026-11-20 UTC — BitLocker was on in VM 101; decryption started
 
 `lvs` after the failed backup: `vm-101-disk-2` 9.28% of 931.52g (~86 GiB), pool `data`
