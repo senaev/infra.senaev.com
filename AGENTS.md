@@ -464,7 +464,14 @@ only in `senaev`.
   `senaev-utils` for the Telegram calls, the message formatting, the logger and the shutdown)
   renews the login from Telegram. The bot is @senaev_claude_helper_bot, with the
   token in Vault `TG_TOKEN_CLAUDE_HELPER_BOT`. It answers only in the private chat with the user
-  `claudeCode.telegram.user` (`TG_SENAEV_USER_ID`; the chat id is the user id). `/auth`
+  `claudeCode.telegram.user` (`TG_SENAEV_USER_ID`; the chat id is the user id). The commands
+  are `/claude_auth`, `/claude_mcp` and `/codex_auth` (renamed from `/auth` and `/mcp` on
+  2026-11-20; the old names are ignored). `/claude_auth` first reads `claude auth status`: when
+  Claude Code is logged in, it answers `✅ Claude Code is logged in.` with the expiry date and two
+  buttons, `🔑 Renew login` (callback data `claude:login`: a new login while the old one still
+  works) and `🚪 Log out` (`claude:logout`: runs `claude auth logout`, checks the status, rewrites
+  the message; Remote Control and the prompt API then wait for the next login, and the bot sends no
+  logged-out notice for it). When Claude Code is logged out, or the status cannot be read, it
   sends a login link; the user opens it and sends the code from the page back; the bot deletes
   that message. When nobody is logged in it says so once, with no link. From 5 days before
   `loginExpiresAt` it warns once a day. When the workspace enables Codex, the same helper logs
@@ -486,7 +493,7 @@ only in `senaev`.
   a server added by hand is removed. Every server uses OAuth. The CLI login
   (`claude mcp login --no-browser <name>`) redirects to `http://localhost:<port>/callback`, and
   Claude Code has no setting for another redirect URI, so there is no public callback. In
-  Telegram, `/mcp` posts a message at once and turns it into the panel: a title and one button for
+  Telegram, `/claude_mcp` posts a message at once and turns it into the panel: a title and one button for
   each server, by its status in `claude mcp list` — `✅ <name>: log out` when connected,
   `🔑 <name>: log in` when it needs a login, `❌ <name>: log in` when it fails to connect
   (callback data `mcp:logout:<name>`, `mcp:login:<name>`). The dialog works like the torrent search in
