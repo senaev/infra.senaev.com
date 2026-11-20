@@ -1,5 +1,47 @@
 # Worklog
 
+## 2026-11-20 19:00 UTC — Pairing from the bot: /codex_pair and the Codex daemon
+
+The ChatGPT app on the user's Android phone now has a Codex tab: Connect computer → Start pairing
+→ Pair manually takes an 8-character code (`XXXX-XXXX`), the format of `manualPairingCode` of
+`codex remote-control pair`. The user wants to try without MFA first.
+
+`codex remote-control pair` talks only to the managed daemon, through
+`CODEX_HOME/app-server-control/app-server-control.sock`
+(`app_server_control_socket_path`), and never starts one (`start_remote_control_pairing`), so the
+helper in the claude-code pod can call it through the mounted login folder. Local test with a
+`ps` stand-in on `/proc` (no procps in the sandbox), without a login:
+
+```
+start: Error: Remote control is enabled on senaev-claude-code but the connection is errored.
+version: {"status":"running","backend":"pid",...,"socketPath":"/root/cxd/app-server-control/app-server-control.sock",...}
+pair: Error: remoteControl/pairing/start failed: remote control pairing is unavailable until enrollment completes
+```
+
+The daemon keeps running after a failed connection. With `RUST_LOG` (inherited by the daemon) its
+log has the reason, which the bot reads:
+
+```
+WARN ... failed to connect to app-server remote control websocket ... error=remote control requires ChatGPT authentication error_kind=PermissionDenied
+```
+
+A deleted package copy is not installed again while any of `daemon.pid`, `daemon.stderr.log`,
+`daemon-updater.pid`, `daemon-updater.stderr.log` exists (`prepare_install.rs`):
+
+```
+Error: daemon executable not found at .../packages/app-server-daemon/current/bin/codex; repair the existing installation, ...
+```
+
+So `start.sh` deletes all of them on each start. The whole `start.sh` against the real daemon:
+starts and installs it, starts it again when it is gone, stops it on SIGTERM, and starts it again
+in a second run with the files of the first. The helper code against a real daemon:
+
+```
+pair error: remoteControl/pairing/start failed: remote control pairing is unavailable until enrollment completes
+last connection error: remote control requires ChatGPT authentication
+```
+
+
 ## 2026-11-20 17:15 UTC — Codex runs tasks and reaches the MCP servers of the ChatGPT account
 
 PR #248 deployed: the helper starts with Codex, and the codex container idles.
