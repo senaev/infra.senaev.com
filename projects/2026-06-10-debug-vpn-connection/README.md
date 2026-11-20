@@ -7,6 +7,14 @@
 
 **Round 4 — 2026-11-20 20:45 UTC, PR "Add a Hysteria2 (UDP) profile from home straight to Hetzner".**
 
+**Round 4 fix — 2026-11-20 22:50 UTC, PR "Hide Hysteria2 with salamander on UDP 47443".**
+Profile 6 as deployed by #260 (Hysteria2 on UDP 443, no obfuscation) failed every VPN check
+from home at once (curl exit 35, no TLS), while the server started cleanly with the
+certificate. Likely cause: the ISP drops QUIC on UDP 443 to foreign servers (QUIC shows the
+SNI in its first packet); Tailscale uses WireGuard on another port. The fix moves profile 6 to
+UDP 47443 with salamander obfuscation and turns on `info` logs on both ends, so the next
+failure, if any, shows where it stops. **Do not use profile 6 until its probe passes.**
+
 **Use profile 1 (`🇫🇮 1. firstvds → hetzner`).** It had no failures in the last 24 h. Profile 6
 (`⚡ 6. hetzner UDP → freedom`, new in round 4) is a test candidate.
 
