@@ -36,7 +36,7 @@ Run Codex (ChatGPT subscription) in a container of the `senaev` LLM workspace, w
 
 ## Status
 
-🔄 Resumed on 2026-11-20 without remote control: `codex.enabled: true`, `codex.remoteControl: false`. The container keeps the ChatGPT login; the Telegram helper of claude-code logs it in (step 4). Remote control waits until it is available for the account: the server enrollment needs MFA (`HTTP 403 ... Multi-factor authentication required`), and the ChatGPT app on Android shows no Codex entry.
+✅ Done on 2026-11-20: the ChatGPT app (Android) drives Codex on the server through remote control; the bot logs Codex in (`/codex_auth`) and pairs devices (`/codex_pair`); Codex gets the MCP connectors of the ChatGPT account.
 
 ## Plan
 
@@ -47,8 +47,8 @@ Run Codex (ChatGPT subscription) in a container of the `senaev` LLM workspace, w
    - `_codex.tpl`: Deployment (one replica, `Recreate`), ExternalSecret with the git keys, `ssh-agent` sidecar, NetworkPolicy with no ingress; `codex.enabled` in the schema and in `senaev`.
    - After the deploy, log in:
      `kubectl -n senaev-com exec -it deploy/senaev-codex -c codex -- codex login --device-auth`
-2. ⏸️ Make the server connect. After the login, each start ends with `Remote control is enabled on senaev-codex but the connection is errored.` and the container restarts. With the remote control log (`RUST_LOG`, PR [#244](https://github.com/senaev/infra.senaev.com/pull/244)) the cause is `HTTP 403 ... {"detail":"Multi-factor authentication required"}` at `/wham/remote/control/server/enroll`. Fix: turn on MFA in the ChatGPT account, then log in again.
-3. ⏳ Connect the phone: `/codex_pair` in the bot sends a code for Pair manually (Codex → Connect computer → Start pairing); remote control runs in the Codex daemon (`codex.remoteControl: true`). First without MFA, as the user asked. Was: Check whether `senaev-codex` appears in ChatGPT → Codex by itself. If not, find where the app takes the manual code, and pair once: `codex remote-control start`, `codex remote-control pair`, then go back to `--no-daemon`. Check that the pairing survives a pod restart.
+2. ✅ Make the server connect. After the login, each start ends with `Remote control is enabled on senaev-codex but the connection is errored.` and the container restarts. With the remote control log (`RUST_LOG`, PR [#244](https://github.com/senaev/infra.senaev.com/pull/244)) the cause is `HTTP 403 ... {"detail":"Multi-factor authentication required"}` at `/wham/remote/control/server/enroll`. Fix: turn on MFA in the ChatGPT account, then log in again.
+3. ✅ Connect the phone (PRs [#256](https://github.com/senaev/infra.senaev.com/pull/256), [#257](https://github.com/senaev/infra.senaev.com/pull/257)): remote control runs in the Codex daemon; `/codex_pair` in the bot sends a code for Pair manually (Codex → Connect computer → Start pairing). It needed MFA on the ChatGPT account (2026-11-20); the user paired the Android app on 2026-11-20, and the enrollment survives restarts.
 4. ✅ Telegram login in the same chat (PR [#248](https://github.com/senaev/infra.senaev.com/pull/248), with the same bot, decision of the user on 2026-11-20). One process reads the updates of a bot, so the `telegram-login` container of claude-code also logs Codex in: the template mounts `/k3s-cluster/volumes/codex` there with `CODEX_HOME`, and the claude-code image gets the same pinned `codex` CLI.
    - `/codex_auth` runs `codex login --device-auth` and sends the link and the one-time code. The CLI needs no answer: it waits until the code is entered on the page, then exits. The bot checks exit code 0, the text `Successfully logged in` and `codex login status`, then sends `✅ Codex is logged in.`; otherwise the reason (the code expires after 15 minutes).
    - Every 10 minutes: when `codex login status` says logged out, the bot starts a login by itself, once for each time the login is lost.
@@ -58,7 +58,7 @@ Run Codex (ChatGPT subscription) in a container of the `senaev` LLM workspace, w
 
 ## Open points
 
-- ❓ Does the phone need the manual pairing code?
+- ✅ The phone needs the manual pairing code: `/codex_pair`, then Pair manually in the app.
 - ❓ How long does the ChatGPT login last, and does it refresh by itself?
 - ❓ Remote control is experimental: the protocol can change between versions. Raise the pin only after a test.
 - ❓ Yolo mode plus the git token in the pod: the same risk as in Claude Code.
@@ -71,3 +71,26 @@ Run Codex (ChatGPT subscription) in a container of the `senaev` LLM workspace, w
 - Codex knows the workspace instructions (ask it about the layout of `/code`).
 - A pod restart keeps the login and the connection.
 - `npm run check:helm`, and `npm run test:smoke` after the deploy. The Datadog logs of the pod show no restart loop.
+
+## Result
+
+Done on 2026-11-20. The ChatGPT app on Android drives Codex on the server through remote control, like Claude Code with the Claude app.
+
+- The `codex` component of the `senaev` workspace runs the Codex app-server daemon with remote control (`codex.remoteControl: true`), with the ChatGPT login of the user in `/k3s-cluster/volumes/codex`.
+- The Telegram helper of claude-code (same bot and chat) logs Codex in with `/codex_auth` (status, logout and renewal) and pairs devices with `/codex_pair`. Its commands for Claude Code became `/claude_auth` (status, renew, logout) and `/claude_mcp`.
+- Codex gets the MCP connectors of the ChatGPT account (Obsidian, Code Tools, Grafana, Datadog, Gmail) through OpenAI's host-owned apps server; nothing to configure in the container.
+- PRs: #239, #244, #246, #248, #250, #251, #252, #253, #256, #257 and this one.
+
+Causes found on the way:
+
+- The enrollment of the server needs MFA on the ChatGPT account (`HTTP 403 ... "Multi-factor authentication required"`); `codex exec` and the login work without it.
+- The foreground server exits on its first failed connection, so the container restarted in a loop; the daemon retries by itself.
+- `codex remote-control pair` talks only to the daemon, whose real control socket is in `/tmp/codex-daemon-0` with a symlink in CODEX_HOME: that folder is shared with the helper and must be 0700.
+- The daemon copies the CLI once and keeps it; `start.sh` deletes the copy and the files that block a new one on each start, so the pinned version of the image takes effect.
+
+Open points:
+
+- How long the ChatGPT login lasts, and whether it refreshes by itself: the helper starts a login by itself when it is lost.
+- Remote control is experimental: raise the pinned Codex version (both Dockerfiles) only after a test.
+- No approvals in the container, with the git token in its env: the same risk as in Claude Code.
+- Not done, possible next steps: a prompt API for n8n in the codex container; a ChatGPT connector for the Telegram MCP; a quieter daemon check (one `dropping message for disconnected connection` warning a minute).
