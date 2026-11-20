@@ -1,5 +1,30 @@
 # Worklog
 
+## 2026-11-20 23:15 UTC — The phone is paired: remote control works end to end
+
+PR #257 deployed (the socket folder shared with the helper). The user sent `/codex_pair`, entered
+the code in the ChatGPT app (Codex → Connect computer → Start pairing → Pair manually), and the
+server works from the phone.
+
+The user restarted the VM a few times between 22:35 and 22:56 (4 container restarts). After each,
+`start.sh` installed the daemon again and it connected with the same enrollment, with no new
+pairing:
+
+```
+22:43:28  Starting the Codex app-server daemon with remote control.
+22:43:28  Installing daemon from CLI version 0.170.0 into /home/codex/.codex/packages/app-server-daemon...
+22:43:28  This machine is available for remote control as senaev-codex.
+22:43:22  connected to app-server remote control websocket ... server_id=Some("srv_e_6b00...")
+```
+
+Earlier, at 20:12-20:15, the ChatGPT side answered `503 Service Unavailable` for a few minutes; the
+daemon retried by itself and reconnected.
+
+Noise, harmless: `WARN codex_app_server::transport: dropping message for disconnected connection`
+once a minute, from the `codex app-server daemon version` check of `start.sh`, which connects and
+leaves.
+
+
 ## 2026-11-20 19:55 UTC — MFA on: the server enrolled; /codex_pair could not reach the daemon socket
 
 PR #256 deployed: the daemon runs, retries, and logs to Datadog. Without MFA every enrollment
