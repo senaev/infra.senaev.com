@@ -1,3 +1,21 @@
+## 2026-11-21 UTC — senaev-madrid memory raised to 24 GiB; Windows stopped
+
+User stopped Windows (VM 101) and raised VM 100 to `memory: 24576` (ballooning stays off:
+with iGPU passthrough the whole guest memory is pinned at start, so a balloon could not
+return memory to the host). Suggested cap for Windows at its next start: `--memory 6144
+--balloon 4096` (application not confirmed). After the VM 100 restart:
+
+```
+# ssh root@senaev-madrid 'free -h; ls /dev/dri'
+Mem:            23Gi       3.7Gi        16Gi        16Mi       3.7Gi        19Gi
+Swap:           17Gi       268Ki        17Gi
+card0  card1  renderD128
+```
+
+The guest has 24 GiB and the iGPU came back after the restart. With 24 GiB pinned out of
+32 GB, Windows at its old 8 GiB maximum would not fit alongside VM 100; start it only
+with the 6 GiB cap.
+
 ## 2026-11-21 UTC — Hardware transcode test passed in senaev-madrid
 
 Installed `ffmpeg`, made a 20 s 1080p30 H.264 test clip with libx264 on the CPU
