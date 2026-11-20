@@ -59,7 +59,9 @@ Decisions in step 1:
 - The template was ported unchanged; the fixtures captured from the old Templater template
   (`dailyNoteTemplate.fixtures.ts`) prove the output is identical. It uses calendar fields of
   the date in UTC, so the server time zone does not matter.
-- The template does not get the `⬆️ Daily Note ⬆️` line yet (see open points).
+- Since 2026-11-20 the template has a `⬆️ Daily Note ⬆️` line under the stream embed, in place of
+  the blank lines there, so the records of a new note go below the embed, where the owner keeps
+  the diary text.
 
 ## Plan
 
@@ -73,7 +75,9 @@ Decisions in step 1:
 4. **Plugin** — PR senaev/obsidian-vault#6: the plugin imports the template from senaev-utils
    `1.0.0-ci.44629167422.1`; its own copy, fixtures and the template marker are removed, and
    `main.js` is rebuilt. After the merge, check a new daily note in Obsidian.
-5. **Clean-up**: decide on the open points below.
+5. **Marker in the template** — the template gets the marker line under the embed (this PR).
+   After the senaev-utils `ci` release, raise its version in the plugin and rebuild `main.js`.
+6. **Clean-up**: decide on the open points below.
 
 ## Verification
 
@@ -89,7 +93,6 @@ Decisions in step 1:
   `_templates/Daily note template.md`. Clear that setting, or disable Periodic Notes if only the
   calendar needs it; the vault `AGENTS.md` still says new notes come from that file.
 
-- Add the `⬆️ Daily Note ⬆️` line to the template, so new notes have the marker?
 - Retire `@senaev/daily_note_stream.md` and its embed once the records are no longer written
   there (the embed is still the fallback anchor).
 - A record links to its own daily note (`[[<date>|🎙️ …]]`); drop the link and keep only the
