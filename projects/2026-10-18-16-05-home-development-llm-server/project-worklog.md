@@ -1,3 +1,29 @@
+## 2026-11-20 23:00 UTC — Impact of the senaev-madrid restarts on claude-code (Datadog)
+
+User decided to skip the ten-restart test and not to move Jellyfin for now.
+
+Datadog (logs and Kubernetes events, UTC) for the four VM 100 restarts of the GPU work:
+
+| Restart | Node NotReady | Node Ready | remote-control `Connected` again |
+| --- | --- | --- | --- |
+| host reboot (stage 1) | 22:35:05 | 22:37:08 | 22:37 (stable 22:39) |
+| `hostpci0` (stage 2) | 22:41:46 | 22:43:08 | 22:43 (stable 22:44) |
+| firmware (stage 3) | 22:47:47 | 22:49:04 | 22:49 |
+| memory 24 GiB | 22:54:03 | 22:55:28 | 22:55:47 Ready, stable 22:57:42 |
+
+Each restart took claude-code down for about 2.5–4.5 minutes; four of them in 23 minutes.
+The pod itself came back fine every time (`Available` 15–30 s after the node). After every
+restart `claude remote-control` logged `Session failed: Process exited with error
+cse_01NTuiStCoX8FJxCxJqZMbHk`, and most remote-control sessions did not reattach:
+
+```
+before (22:30): Attach Diary Records, Codex Workspace, Job Search Framework (work), VPN, Windows on Proxmox, Attached
+after  (22:58): Windows on Proxmox, Attach Diary Records
+```
+
+Separately, 21:13–21:35 had two Helm rollouts of `senaev-claude-code` (new ReplicaSets
+7f75b8d4c5 at 21:13:47 and 7bcc5f4fb5 at 21:24:27); that gap is unrelated to the VM.
+
 ## 2026-11-21 UTC — senaev-madrid memory raised to 24 GiB; Windows stopped
 
 User stopped Windows (VM 101) and raised VM 100 to `memory: 24576` (ballooning stays off:
