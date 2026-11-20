@@ -2,14 +2,17 @@
 
 ## Daily-note creation
 
-The personal plugin owns the editable daily-note template. `src/dailyNote/dailyNoteTemplate.ts`
-generates the existing habits, Tasks query, date-dependent tasks, quarterly achievements link
-and daily stream embed. The note filename supplies the calendar date; the current clock and
-Moment locale do not affect scheduling. Header/footer widgets remain separate.
+The daily-note template lives in the `senaev-utils` npm package
+(`src/obsidianDailyNotes/dailyNoteTemplate.ts` in infra.senaev.com), shared with obsidian-sync,
+which creates a missing daily note the same way before it writes a diary record into it. It
+generates the habits, Tasks query, date-dependent tasks, quarterly achievements link and daily
+stream embed. The note filename supplies the calendar date; the current clock, time zone and
+Moment locale do not affect scheduling. Header/footer widgets remain separate. To change the
+template, change senaev-utils, wait for the `ci` release, and update the exact version in
+`package.json`, as for the Tasks rules below.
 
-`_templates/Daily note template.md` now contains only `<!-- senaev:daily-note-template -->`.
-Periodic Notes, core Daily Notes (if enabled), and manual template insertion can still use that
-path. `registerDailyNoteCreation.ts` handles vault create/modify/rename and workspace file-open
+There is no template file: `_templates/Daily note template.md` was deleted.
+`registerDailyNoteCreation.ts` handles vault create/modify/rename and workspace file-open
 events after layout readiness, so direct file creation, calendar/Periodic Notes actions, full-path
 links, untitled-note renaming and opening notes synced from another device all work.
 Only direct `periodic/day/YYYY-MM-DD.md` files with real calendar dates qualify. Clicking an
@@ -19,9 +22,8 @@ initializes it. A root note with content, or one whose target already exists, is
 A date-named note created in any other folder must be moved by hand. No whole-vault startup scan occurs.
 The active note is checked once at layout readiness.
 
-Initialization fills whitespace-only files, marker-only files and frontmatter-only files
-(optionally followed by the marker), preserving frontmatter. Existing body text, checked tasks,
-and notes with a marker embedded in prose or a fenced example are left unchanged. Opening an
+Initialization fills whitespace-only files and frontmatter-only files, preserving frontmatter.
+Any other content, including existing body text and checked tasks, is left unchanged. Opening an
 old empty daily note intentionally initializes it. A nonempty note is never regenerated on rename.
 `Vault.process` atomically rechecks content before writing; a preliminary read avoids no-op modify
 loops. Per-file jobs serialize overlapping events and recheck changes received during a write.
@@ -33,11 +35,11 @@ The old Templater daily folder rule and `dailyBody.js` are removed. Templater st
 manual insertion of the three static interview templates; their migration is a separate change.
 The manifest requires Obsidian 1.4.0 for the atomic processing and folder APIs.
 
-Validation: run lint, typecheck, tests and build. Fixtures capture complete output from the retired
-template/script for representative weekdays, weekends and month boundaries. For manual desktop
+Validation: run lint, typecheck, tests and build. The template itself is tested in senaev-utils,
+against fixtures captured from the retired template/script. For manual desktop
 and mobile QA, create a daily note via Periodic Notes/calendar, a full-path link, file explorer,
 rename/move, and the personal command; reopen it and check that task completion persists.
-Also open a marker-only synced note and verify that existing diary content is untouched.
+Also open a synced note with diary content and verify that it is untouched.
 
 
 ## Features
@@ -134,7 +136,7 @@ The rules themselves live in the `senaev-utils` npm package (`src/obsidianTasks/
 
 Tasks inside `periodic/` are always excluded so daily notes never echo each other.
 
-`isActiveDailyDate` (senaev-utils) picks the active note: today and any future date (`noteDate >= today`). A past note never becomes active, even when today's note does not exist yet. Until 2026-10-27 the latest existing note took over in that case. `isActiveDailyDateFromToday` calls it with today's local date. `YYYY-MM-DD` compares chronologically as a plain string, so no date parsing is needed. A note whose name is not a date — only `_templates/Daily note template.md` — counts as active, so the template still shows open tasks.
+`isActiveDailyDate` (senaev-utils) picks the active note: today and any future date (`noteDate >= today`). A past note never becomes active, even when today's note does not exist yet. Until 2026-10-27 the latest existing note took over in that case. `isActiveDailyDateFromToday` calls it with today's local date. `YYYY-MM-DD` compares chronologically as a plain string, so no date parsing is needed. A note whose name is not a date counts as active.
 
 Without this scoping every past note repeats the whole open backlog, which is what made 600+ notes render the same list.
 
@@ -146,7 +148,7 @@ The check needs no vault scan and no cache. Today's date is read fresh on each c
 - `|` is the separator because Obsidian forbids it in file names, keeping the path tier unambiguous, and because it is ordinary punctuation. A control character would be wrong here: the comparator calls `localeCompare` without `ignorePunctuation`, and control characters are collated away entirely.
 - The comparator uses `numeric: true`, so digit runs sort naturally (line `2` before line `10`) rather than lexicographically. This is not configurable from a note. senaev-utils' `compareTaskSortKeys` does the same comparison.
 
-Renaming this global is a breaking change: ~649 notes and `_templates/Daily note template.md` reference it by name.
+Renaming this global is a breaking change: ~649 notes and the daily-note template in senaev-utils reference it by name.
 
 ## Build
 

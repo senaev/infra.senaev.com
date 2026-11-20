@@ -1,7 +1,7 @@
 import { Notice, TFile } from 'obsidian';
 import type { App, Plugin } from 'obsidian';
 import { createDailyNoteInitializer } from './dailyNoteInitializer';
-import { dailyDateFromPath, dailyNotePathForRootNote } from './dailyNoteTemplate';
+import { dailyDateFromPath, dailyNotePathForRootNote } from 'senaev-utils/src/obsidianDailyNotes/dailyNoteTemplate';
 import { DAILY_NOTE_FOLDER, getDailyNotePath } from './dailyNotePath';
 
 async function ensureDailyFolder(app: App): Promise<void> {
@@ -40,7 +40,7 @@ export function registerDailyNoteCreation(plugin: Plugin): void {
 			new Notice('Could not initialize daily note. Reopen it to retry.');
 		});
 	};
-	// Ignore the initial vault enumeration. Opening a blank/marker note explicitly
+	// Ignore the initial vault enumeration. Opening a blank note explicitly
 	// still initializes it, including a note synced while the plugin was unloaded.
 	const moveToDailyFolder = (file: unknown): void => {
 		if (!(file instanceof TFile)) return;

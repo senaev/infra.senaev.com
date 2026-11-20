@@ -1,4 +1,4 @@
-import { initializeDailyNote } from './dailyNoteTemplate';
+import { initializeDailyNote } from 'senaev-utils/src/obsidianDailyNotes/dailyNoteTemplate';
 
 export interface DailyFile { path: string }
 export interface DailyVault<F extends DailyFile> {

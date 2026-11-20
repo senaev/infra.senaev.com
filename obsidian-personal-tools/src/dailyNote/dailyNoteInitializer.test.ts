@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createDailyNoteInitializer, DailyFile } from './dailyNoteInitializer';
-import { DAILY_NOTE_TEMPLATE_MARKER as marker, renderDailyNote } from './dailyNoteTemplate';
+import { renderDailyNote } from 'senaev-utils/src/obsidianDailyNotes/dailyNoteTemplate';
 
 function fixture(initial: string, path = 'periodic/day/2026-10-29.md') {
 	const file: DailyFile = { path };
@@ -22,7 +22,7 @@ function fixture(initial: string, path = 'periodic/day/2026-10-29.md') {
 }
 
 void test('concurrent creation, open and modify events produce one body without a write loop', async () => {
-	const f = fixture(marker);
+	const f = fixture('');
 	await Promise.all(Array.from({ length: 10 }, () => f.initializer.initialize(f.file)));
 	assert.equal(f.content, renderDailyNote('2026-10-29'));
 	assert.equal(f.writes, 1);
@@ -30,8 +30,8 @@ void test('concurrent creation, open and modify events produce one body without 
 	assert.equal(f.writes, 1);
 });
 
-void test('empty direct/link creation, later marker insertion, rename and synced-file open', async () => {
-	for (const input of ['', marker]) {
+void test('empty direct/link creation, later clearing, rename and synced-file open', async () => {
+	for (const input of ['', '\n  ']) {
 		const f = fixture(input);
 		await f.initializer.initialize(f.file);
 		assert.equal(f.content, renderDailyNote('2026-10-29'));
@@ -45,7 +45,7 @@ void test('empty direct/link creation, later marker insertion, rename and synced
 	const inserted = fixture('Existing text');
 	await inserted.initializer.initialize(inserted.file);
 	assert.equal(inserted.writes, 0);
-	inserted.setContent(marker);
+	inserted.setContent('');
 	await inserted.initializer.initialize(inserted.file);
 	assert.equal(inserted.content, renderDailyNote('2026-10-29'));
 });
@@ -86,7 +86,7 @@ void test('rechecks a template write delivered while initialization is still in 
 		process: (_file, transform) => {
 			content = transform(content);
 			if (++writes === 1) {
-				content = marker;
+				content = '';
 				event = initializer.initialize(file);
 			}
 			return Promise.resolve(content);

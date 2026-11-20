@@ -1,7 +1,8 @@
 import type { TFile } from 'obsidian';
+import { DAILY_NOTE_FOLDER } from 'senaev-utils/src/obsidianDailyNotes/dailyNoteTemplate';
 
-/** Vault-root folder that periodic daily notes live in. */
-export const DAILY_NOTE_FOLDER = 'periodic/day/';
+/** Vault-root folder that periodic daily notes live in; shared with obsidian-sync. */
+export { DAILY_NOTE_FOLDER };
 
 /** Matches daily note basenames such as `2026-08-01`. */
 const DAILY_NOTE_BASENAME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
