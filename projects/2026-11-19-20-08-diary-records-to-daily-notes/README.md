@@ -91,8 +91,7 @@ Decisions in step 1:
 
 - Periodic Notes is still enabled, and its daily template points at the deleted
   `_templates/Daily note template.md`. Clear that setting, or disable Periodic Notes if only the
-  calendar needs it; the vault `AGENTS.md` still says new notes come from that file.
-
+  calendar needs it.
 - Retire `@senaev/daily_note_stream.md` and its embed once the records are no longer written
   there (the embed is still the fallback anchor).
 - A record links to its own daily note (`[[<date>|🎙️ …]]`); drop the link and keep only the
