@@ -5,22 +5,39 @@
 ## Goal
 
 One request, one command, one result. Cluster helper asks the user in Telegram with
-Approve / Reject buttons before dispatching a command to the chosen node.
+Approve / Reject buttons before running a command on the chosen node.
 
 ## Context
 
-- Reuse cluster-helper for approval and orchestration; expose a client through a skill
-  in the LLM workspace / code-tools environment.
-- Run a lightweight node executor as a DaemonSet on every cluster node without exceptions,
-  including the control plane with appropriate tolerations. Approved commands run as host root.
-- Executors need host access to execute in the node operating system, rather than
-  just inside their containers. Determine the exact namespace/mount setup during implementation.
-- Decision: `hostNetwork: false`. The executor API stays in the pod network, even
-  when its command subprocess enters host namespaces. No public Ingress or host port.
-- Restrict executor API ingress with NetworkPolicy to cluster-helper's namespace,
-  pod identity selectors and API port. Verify actual network-plugin enforcement;
-  NetworkPolicy has local-node exceptions and is not authentication.
-- LLM workspaces must not hold executor credentials or direct host-execution access.
+- Decision (2026-11-20): one executor on the control plane reaches every node over SSH.
+  No DaemonSet and no per-node executor. Every approved command runs as root anyway, so a
+  privileged pod on every node adds no safety; it only adds a host-root entry point per node.
+- The executor is a small pod pinned to hetzner, separate from cluster-helper, which faces
+  Telegram. It runs `ssh root@<node> -- <command>` over the tailnet, by Tailscale hostname.
+- The SSH private key is the sensitive part: it is root on every node. Only an `ssh-agent`
+  sidecar mounts it, as in
+  [`_ssh-agent.tpl`](../../provisioning/helm/senaev-com/templates/llm-workspace/_ssh-agent.tpl);
+  the executor container gets only the agent socket.
+- Each node gets the public key in root's `authorized_keys`, restricted with
+  `from="<hetzner tailnet addresses>"` and `no-agent-forwarding,no-port-forwarding,no-X11-forwarding,no-pty`.
+  Today nodes accept only the user's own key (`terraform/server.tf`); nothing provisions
+  node-to-node SSH. Adding the key touches every node, including the home nodes: one node
+  at a time, with user approval, per [AGENTS.md](../../AGENTS.md).
+- Pin the host keys of the nodes in a `known_hosts` the executor mounts; no
+  `StrictHostKeyChecking=no` and no trust on first use.
+- Open: reaching tailnet addresses from the pod network on hetzner is not verified.
+  If it does not work, fall back to `hostNetwork: true` for this one pod (the earlier
+  `hostNetwork: false` decision was for executors on every node) or a jump through the
+  hetzner host.
+- SSH can also reach machines outside Kubernetes, such as the `proxmox-madrid` host.
+  Which hosts the executor accepts is an explicit list in its configuration.
+- Restrict executor API ingress with NetworkPolicy to cluster-helper's pod and the API port.
+  No public Ingress or host port. NetworkPolicy is not authentication.
+- Open: authentication of cluster-helper → executor. Recommended: the mTLS from the
+  [inter-service certificate authentication project](../2026-11-15-11-00-inter-service-certificate-authentication/README.md)
+  (PR #203), now for one connection only, with no per-node identities. Simpler alternative:
+  a shared token plus NetworkPolicy. The executor holds root on every node, so mTLS is preferred.
+- LLM workspaces must not hold executor credentials, the SSH key or direct access to the executor.
 - Approve the exact command string and selected node. Inspecting or pinning scripts
   and transitive commands is outside scope. No interactive shell sessions.
 
@@ -45,43 +62,46 @@ Bind the approval to an immutable request, including its node and explanatory fi
 
 ## Plan
 
-1. Reuse the [inter-service certificate authentication project](../2026-11-15-11-00-inter-service-certificate-authentication/README.md)
-   for mutual TLS and certificate lifecycle. Require exact helper authorization and
-   node-specific executor server identity. Implement the shared foundation first.
-2. Implement persistent request/approval state. Only the authorized Telegram user
-   can approve; rejection returns `USER_REJECTED`, expiry `APPROVAL_EXPIRED`.
-3. Implement authenticated executor dispatch and host command execution with bounded
-   runtime/output and stdout, stderr and exit code results.
-4. Persist execution IDs before starting a command so duplicate dispatch cannot rerun
+1. Verify from a test pod on hetzner that the pod network reaches the tailnet addresses
+   of the nodes over SSH (read-only check, run by the user).
+2. Decide the cluster-helper → executor authentication (see Context).
+3. Generate the executor SSH key; store it as a Kubernetes secret. Collect the host keys.
+   Add the restricted public key to root on each node, one node at a time.
+4. Implement persistent request/approval state in cluster-helper. Only the authorized
+   Telegram user can approve; rejection returns `USER_REJECTED`, expiry `APPROVAL_EXPIRED`.
+5. Implement the executor: authenticated API, SSH through the agent socket, bounded
+   connect time, runtime and output; returns stdout, stderr and exit code.
+6. Persist execution IDs before starting a command so duplicate dispatch cannot rerun
    it after restart. Unknown execution outcomes must not trigger automatic retries.
-5. Add the workspace client/skill and narrowly scoped network access to cluster-helper.
+7. Add the workspace client/skill and narrowly scoped network access to cluster-helper.
 
 ## Verification
 
 - No command starts before approval; rejection, expiry and wrong-user callbacks do not execute.
 - Approval validity never exceeds 10 minutes; shorter TTLs are honored and late approvals fail.
-- Unavailable nodes fail without queuing; commands execute as host root on every cluster node.
+- An unreachable node fails within the SSH connect timeout, without queuing.
+- Commands execute as root on every cluster node, including hetzner itself.
 - Existing cluster logs expose execution events; no separate history store is introduced.
 - Telegram displays node, exact command, context, action description and expected outcome.
 - Long explanatory text is not rejected or truncated by a new 128-character code limit.
-- Approved diagnostic commands report the intended node host environment and return output/exit code.
-- Direct executor requests from a workspace fail; missing/wrong mTLS identity fails even if reachable.
-- Executors use `hostNetwork: false`; control-plane and worker routing select the intended node.
+- Approved diagnostic commands (`hostname`, `id`) report the intended node and root.
+- Direct executor requests from a workspace fail; a caller without the right identity fails even if reachable.
+- The SSH key is readable only in the `ssh-agent` container; the key is refused from any
+  address other than hetzner; a changed host key fails the command.
 - Duplicate requests, service restarts and interrupted connections never cause automatic reexecution.
-- Certificate renewal is consumed by running services; CA rotation has a tested trust-overlap procedure.
 
 ## Result
 
-Design recorded only. No executor, certificate infrastructure or cluster configuration deployed.
-Authentication lifecycle is tracked in the linked certificate project.
+Design recorded only. No executor, SSH key or cluster configuration deployed.
 
 ## Confirmed execution decisions
 
 - Run approved commands as root on all Kubernetes nodes without exceptions.
+- One executor on hetzner reaches the nodes over SSH; no DaemonSet (2026-11-20).
 - Reuse the request expiry/TTL field; cap approval validity at 10 minutes from request
   creation, honoring shorter requested TTLs. Check expiry again before execution;
   approval must not extend validity. Execution timeout remains a separate field.
-- Fail immediately when the selected node/executor is unavailable; no offline queue
+- Fail immediately when the selected node is unreachable; no offline queue
   or automatic execution when the node returns. Connection failure detection is bounded.
 - Use existing cluster logging and its retention for operational/audit history.
   Do not build a separate history database, history UI or long-term output archive.

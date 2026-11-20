@@ -1,3 +1,14 @@
+## 2026-11-20 14:25 UTC — Replace the DaemonSet with one SSH executor
+
+User decided that a per-node DaemonSet is unnecessary: the control plane can reach every
+node over SSH, and commands run as root anyway, so one executor on hetzner gives the same
+result with far less to build. Dropped the DaemonSet, host-namespace setup, per-node
+executor identities and per-node routing. The root SSH key is the new sensitive asset:
+held in an `ssh-agent` sidecar, restricted by `from=` on each node, host keys pinned.
+Nothing provisions node-to-node SSH today, so each node needs the key (one at a time).
+Open: pod-network reach to tailnet addresses, and mTLS (PR #203) vs a shared token for
+cluster-helper → executor; mTLS recommended.
+
 ## 2026-11-15 11:09 UTC — Confirm execution scope and lifecycle
 
 User chose root execution, all Kubernetes nodes without exceptions, a maximum
