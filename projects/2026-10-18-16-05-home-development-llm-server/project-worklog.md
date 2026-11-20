@@ -1,3 +1,26 @@
+## 2026-11-21 UTC — Stage 3 done: Intel firmware and VA-API work in senaev-madrid
+
+Added `non-free` to the three Debian lines in `/etc/apt/sources.list` (backup
+`/root/sources.list.bak`), installed `firmware-intel-graphics`,
+`intel-media-va-driver-non-free`, `vainfo`, `intel-gpu-tools`, then `qm reboot 100`:
+
+```
+i915 0000:01:00.0: [drm] Finished loading DMC firmware i915/adls_dmc_ver2_01.bin (v2.1)
+i915 0000:01:00.0: [drm] GT0: GuC firmware i915/tgl_guc_70.bin version 70.36.0
+i915 0000:01:00.0: [drm] GT0: HuC firmware i915/tgl_huc.bin version 7.9.3
+i915 0000:01:00.0: [drm] GT0: HuC: authenticated for all workloads
+i915 0000:01:00.0: [drm] GT0: GUC: submission disabled
+vainfo: Driver version: Intel iHD driver for Intel(R) Gen Graphics - 25.2.3 ()
+      VAProfileH264High               :	VAEntrypointEncSliceLP
+      VAProfileHEVCMain               :	VAEntrypointEncSliceLP
+      VAProfileHEVCMain10             :	VAEntrypointEncSliceLP
+```
+
+The firmware loads and HuC is authenticated, which low-power encoding needs. GuC
+submission stays disabled (the i915 default on Alder Lake-S). The iHD driver offers
+hardware decode and encode for H.264, HEVC and HEVC 10-bit through `/dev/dri/renderD128`.
+Not yet done: a real transcode, the ten-restart reliability test, and moving Jellyfin.
+
 ## 2026-11-21 UTC — Stage 2 done: iGPU visible in senaev-madrid; GuC/DMC firmware missing
 
 senaev-madrid was back after the host reboot (`up 3 min`, on the tailnet). Then:

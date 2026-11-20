@@ -68,8 +68,10 @@ OEM key from its firmware; see [the plan](windows-backup-proxmox-plan.md#activat
 Windows is in English, has VirtIO drivers, the guest agent, a VirtIO NIC (192.168.0.28),
 `discard`/SSD on its disk, BitLocker off and no autostart. A verified backup from
 2026-11-20 (30.73 GB `vzdump`, plus `dell-msdm.bin`) is in the user's private cloud.
-VM 101 has no snapshots; the restore test was skipped by decision. Open: RDP access
-(not decided) and Jellyfin passthrough; thin-pool growth still needs monitoring.
+VM 101 has no snapshots; the restore test was skipped by decision. RDP access
+(not needed) and Jellyfin. The iGPU is passed through to senaev-madrid (VM 100) with
+working VA-API (2026-11-21); a real transcode and restart testing are pending.
+Thin-pool growth still needs monitoring.
 See the plan for configuration, evidence and outstanding checks.
 
 ## Verification
