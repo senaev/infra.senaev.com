@@ -7,7 +7,7 @@ import {
 } from 'vitest';
 
 import { createMtlsClient, type MtlsClient } from './mtlsClient';
-import { authenticateMtlsPeer, createMtlsServerOptions } from './mtlsServer';
+import { authenticateMtlsCaller, createMtlsServerOptions } from './mtlsServer';
 import {
     createTestCa, issueTestCertificate, renewTestCa,
 } from './testPki';
@@ -31,7 +31,7 @@ afterEach(async () => {
 
 async function startServer(files: TlsFiles, now: () => Date = () => new Date()): Promise<{ server: Server; origin: string }> {
     const server = createServer(createMtlsServerOptions(parseTlsCredentials(files)), (request, response) => {
-        const authentication = authenticateMtlsPeer(request.socket, now());
+        const authentication = authenticateMtlsCaller(request.socket, now());
 
         if (!authentication.ok) {
             response.statusCode = 401;
@@ -40,7 +40,7 @@ async function startServer(files: TlsFiles, now: () => Date = () => new Date()):
             return;
         }
 
-        response.statusCode = authentication.peer.hasDnsName(CALLER_NAME) ? 200 : 403;
+        response.statusCode = authentication.caller.hasDnsName(CALLER_NAME) ? 200 : 403;
         response.end(response.statusCode === 200 ? 'ok' : 'forbidden');
     });
 

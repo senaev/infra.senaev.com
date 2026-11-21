@@ -1,3 +1,9 @@
+## 2026-11-21 UTC — "Caller" replaces "peer" in the names of the mTLS caller
+
+The verified client is a caller in the product code and in the utils: `request.mtlsCaller`,
+`MtlsCaller`, `MtlsCallerAuthentication` (`{ ok: true; caller }`) and `authenticateMtlsCaller`. Node's
+own `getPeerX509Certificate()` and the plan's text about TLS in general keep "peer".
+
 ## 2026-11-21 UTC — One list of allowed callers for the whole protected instance
 
 The per-route `callers` (an `onRoute` hook that wrote the list into the route `config`, and
@@ -9,9 +15,9 @@ when a second service needs only some routes, add the per-route rule again.
 
 ## 2026-11-21 UTC — Authentication and authorization are separate hooks
 
-`registerMtlsAuthentication` (401) checks the certificate with `authenticateMtlsPeer` and keeps
-the peer on the request (`request.mtlsCaller`). `registerMtlsAuthorization` (403) checks the peer
-against the allowed callers, and answers 401 when there is no peer, so it fails closed if
+`registerMtlsAuthentication` (401) checks the certificate with `authenticateMtlsCaller` and keeps
+the caller on the request (`request.mtlsCaller`). `registerMtlsAuthorization` (403) checks the caller
+against the allowed callers, and answers 401 when there is no caller, so it fails closed if
 the authentication hook is missing. Both are `onRequest` hooks, registered in this order in
 `registerProtectedVaultRoutes`. Both take only Fastify types (`Pick<FastifyInstance, …>`), after
 the pino logger was typed as `FastifyBaseLogger` in the server factories.
@@ -26,8 +32,8 @@ only this route used.
 
 ## 2026-11-21 UTC — Authorization per route in obsidian-sync, not in the utils
 
-`checkMtlsPeer` is now `authenticateMtlsPeer` in senaev-utils: it checks the verified connection
-and the expiry, and returns a peer with `hasDnsName(name)`. obsidian-sync decides who may do what:
+`checkMtlsPeer` is now `authenticateMtlsCaller` in senaev-utils: it checks the verified connection
+and the expiry, and returns a caller with `hasDnsName(name)`. obsidian-sync decides who may do what:
 `registerMtlsAuthorization` answers 401 without a valid certificate and 403 when the route does
 not name the caller; a route that names no caller is denied (default deny, also the 404
 handler). A route group is declared with `registerRoutesForCallers(server, [CLUSTER_HELPER], ...)`;

@@ -1,12 +1,12 @@
 import type { FastifyInstance } from 'fastify';
-import { authenticateMtlsPeer, type MtlsPeer } from 'senaev-utils/src/utils/mtls/mtlsServer';
+import { authenticateMtlsCaller, type MtlsCaller } from 'senaev-utils/src/utils/mtls/mtlsServer';
 
 import { logger } from '../logger';
 
 declare module 'fastify' {
     interface FastifyRequest {
         /** The caller of the request, set by `registerMtlsAuthentication`. */
-        mtlsCaller: MtlsPeer | undefined;
+        mtlsCaller: MtlsCaller | undefined;
     }
 }
 
@@ -19,7 +19,7 @@ declare module 'fastify' {
 export function registerMtlsAuthentication(server: Pick<FastifyInstance, 'addHook' | 'decorateRequest'>): void {
     server.decorateRequest('mtlsCaller', undefined);
     server.addHook('onRequest', (request, reply, done) => {
-        const authentication = authenticateMtlsPeer(request.raw.socket, new Date());
+        const authentication = authenticateMtlsCaller(request.raw.socket, new Date());
 
         if (!authentication.ok) {
             logger.warn({
@@ -36,7 +36,7 @@ export function registerMtlsAuthentication(server: Pick<FastifyInstance, 'addHoo
             return;
         }
 
-        request.mtlsCaller = authentication.peer;
+        request.mtlsCaller = authentication.caller;
         done();
     });
 }

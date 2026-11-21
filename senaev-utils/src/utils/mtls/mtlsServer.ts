@@ -12,12 +12,12 @@ export function createMtlsServerOptions(credentials: TlsCredentials) {
     };
 }
 
-export type MtlsPeer = {
+export type MtlsCaller = {
     /** True when the client certificate carries exactly this DNS name. */
     hasDnsName: (name: string) => boolean;
 };
 
-export type MtlsPeerAuthentication = { ok: true; peer: MtlsPeer } | { ok: false; reason: string };
+export type MtlsCallerAuthentication = { ok: true; caller: MtlsCaller } | { ok: false; reason: string };
 
 const EXACT_NAME_MATCH = {
     subject: 'never',
@@ -30,10 +30,10 @@ const EXACT_NAME_MATCH = {
  * Identifies the caller of a request on a connection that the TLS server already verified
  * against the CA. It checks again on every request, because a connection can outlive the
  * certificate: the certificate must not be expired. It does not decide who may do what: the
- * service asks the peer for the names it allows, and Node does the matching. The names are plain
+ * service asks the caller for the names it allows, and Node does the matching. The names are plain
  * labels that cert-manager puts in the certificate.
  */
-export function authenticateMtlsPeer(socket: Socket, now: Date): MtlsPeerAuthentication {
+export function authenticateMtlsCaller(socket: Socket, now: Date): MtlsCallerAuthentication {
     if (!(socket instanceof TLSSocket) || !socket.authorized) {
         return {
             ok: false,
@@ -59,6 +59,6 @@ export function authenticateMtlsPeer(socket: Socket, now: Date): MtlsPeerAuthent
 
     return {
         ok: true,
-        peer: { hasDnsName: (name) => certificate.checkHost(name, EXACT_NAME_MATCH) !== undefined },
+        caller: { hasDnsName: (name) => certificate.checkHost(name, EXACT_NAME_MATCH) !== undefined },
     };
 }
