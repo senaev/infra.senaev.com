@@ -3,7 +3,9 @@ import { watchTlsCredentials } from 'senaev-utils/src/utils/mtls/watchTlsCredent
 import { logger } from '../logger';
 import { PUBLIC_DIR } from '../vaultPaths';
 
-import { createProtectedVaultServer, createVaultServer } from './createVaultServer';
+import {
+    createProtectedVaultServer, createVaultServer, type VaultServer,
+} from './createVaultServer';
 import { registerProtectedVaultRoutes, registerPublicVaultRoutes } from './registerVaultRoutes';
 
 const HOST = '0.0.0.0';
@@ -30,14 +32,15 @@ export async function runVaultServer(): Promise<{ close: () => Promise<void> }> 
         onError: (error) => logger.error({ err: error }, '❌ mTLS certificate files cannot be used, keeping the last valid ones'),
     });
 
-    const protectedInstance = createProtectedVaultServer(certificates.credentials);
+    const protectedInstance = createProtectedVaultServer(certificates.credentials, logger);
 
     reloadTarget.server = protectedInstance;
 
     const { server: protectedServer } = protectedInstance;
     const publicServer = createVaultServer();
 
-    registerProtectedVaultRoutes(protectedServer);
+    // Only the raw server type (HTTPS) differs from the plain instance; the routes do not use it.
+    registerProtectedVaultRoutes(protectedServer as unknown as VaultServer);
     registerPublicVaultRoutes(publicServer);
 
     await Promise.all([

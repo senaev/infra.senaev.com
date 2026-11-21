@@ -7,6 +7,8 @@ import {
     afterAll, beforeAll, describe, expect, it,
 } from 'vitest';
 
+import { logger } from '../logger';
+
 import { createProtectedVaultServer, type VaultServer } from './createVaultServer';
 import { registerMtlsAuthentication } from './registerMtlsAuthentication';
 import { registerMtlsAuthorization } from './registerMtlsAuthorization';
@@ -21,7 +23,8 @@ let serverFiles: TlsFiles;
 let ca: Awaited<ReturnType<typeof createTestCa>>;
 
 async function startServer(allowedCallers: readonly string[]): Promise<string> {
-    const { server } = createProtectedVaultServer(parseTlsCredentials(serverFiles));
+    // Only the raw server type (HTTPS) differs from the plain instance; the hooks do not use it.
+    const server = createProtectedVaultServer(parseTlsCredentials(serverFiles), logger).server as unknown as VaultServer;
 
     registerMtlsAuthentication(server);
     registerMtlsAuthorization(server, allowedCallers);

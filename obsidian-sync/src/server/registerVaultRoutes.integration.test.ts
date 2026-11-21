@@ -7,6 +7,8 @@ import {
     afterAll, beforeAll, describe, expect, it,
 } from 'vitest';
 
+import { logger } from '../logger';
+
 import { CLUSTER_HELPER } from './callers';
 import {
     createProtectedVaultServer, createVaultServer, type VaultServer,
@@ -69,9 +71,10 @@ beforeAll(async () => {
         dnsName: 'localhost',
         usage: 'server',
     });
-    const instance = createProtectedVaultServer(parseTlsCredentials(serverFiles));
+    const instance = createProtectedVaultServer(parseTlsCredentials(serverFiles), logger);
 
-    protectedServer = instance.server;
+    // Only the raw server type (HTTPS) differs from the plain instance; the routes do not use it.
+    protectedServer = instance.server as unknown as VaultServer;
     registerProtectedVaultRoutes(protectedServer);
     publicServer = createVaultServer();
     registerPublicVaultRoutes(publicServer);

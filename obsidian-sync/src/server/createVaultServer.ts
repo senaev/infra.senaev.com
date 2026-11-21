@@ -32,16 +32,15 @@ export type VaultRouter = Pick<VaultServer, 'get' | 'post' | 'addHook' | 'regist
  * one listener, and its HTTPS options are fixed when it is created, so the protected routes
  * need an instance of their own.
  */
-export function createProtectedVaultServer(credentials: TlsCredentials) {
+export function createProtectedVaultServer(credentials: TlsCredentials, serverLogger: FastifyBaseLogger) {
     const server = Fastify({
-        loggerInstance: logger as FastifyBaseLogger,
+        loggerInstance: serverLogger,
         bodyLimit: BODY_LIMIT_BYTES,
         https: createMtlsServerOptions(credentials),
     });
 
     return {
-        // Only the raw server type differs from the plain instance; the routes do not use it.
-        server: server as unknown as VaultServer,
+        server,
         /** New connections use the renewed certificate; open ones keep the old one. */
         updateCredentials: (renewed: TlsCredentials) => {
             server.server.setSecureContext(createSecureContextOptions(renewed));
