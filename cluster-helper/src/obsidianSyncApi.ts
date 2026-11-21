@@ -1,7 +1,7 @@
 import { TRANSPORT_TIMEOUT_MS } from 'senaev-utils/src/operations/operationLimits';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 import { readStatusResponse } from 'senaev-utils/src/utils/http/readStatusResponse/readStatusResponse';
-import { createSignalWithTimeout } from 'senaev-utils/src/utils/timers/createSignalWithTimeout/createSignalWithTimeout';
+import { createSignalWithTimeout } from 'senaev-utils/src/utils/Abort/createSignalWithTimeout/createSignalWithTimeout';
 
 import { readToolReply } from './chatGptMcp/callToolServer';
 import type { ToolReply } from './chatGptMcp/toolFamilies';

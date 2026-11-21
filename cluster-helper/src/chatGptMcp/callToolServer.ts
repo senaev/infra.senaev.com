@@ -1,6 +1,6 @@
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { createBearerAuthorizationHeader } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
-import { createSignalWithTimeout } from 'senaev-utils/src/utils/timers/createSignalWithTimeout/createSignalWithTimeout';
+import { createSignalWithTimeout } from 'senaev-utils/src/utils/Abort/createSignalWithTimeout/createSignalWithTimeout';
 
 import type { ToolReply } from './toolFamilies';
 
