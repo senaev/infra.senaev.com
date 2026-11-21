@@ -1,7 +1,6 @@
 import type { AddressInfo } from 'node:net';
 
 import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
-import { createFastifyServer } from 'senaev-utils/src/utils/http/createFastifyServer';
 import { createMtlsFastifyServer } from 'senaev-utils/src/utils/mtls/createMtlsFastifyServer';
 import { createMtlsClient, type MtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
 import { createTestCa, issueTestCertificate } from 'senaev-utils/src/utils/mtls/testPki';
@@ -91,9 +90,8 @@ beforeAll(async () => {
         logger: logger as FastifyBaseLogger,
     }) as unknown as FastifyInstance;
     registerProtectedVaultRoutes(protectedServer);
-    publicServer = createFastifyServer({
-        Fastify,
-        logger: logger as FastifyBaseLogger,
+    publicServer = Fastify({
+        loggerInstance: logger as FastifyBaseLogger,
     });
     registerPublicVaultRoutes(publicServer);
     await Promise.all([

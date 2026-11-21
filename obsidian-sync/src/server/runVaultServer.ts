@@ -1,6 +1,5 @@
 import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
 import { createMtlsFastifyServer } from 'senaev-utils/src/utils/mtls/createMtlsFastifyServer';
-import { createFastifyServer } from 'senaev-utils/src/utils/http/createFastifyServer';
 
 import { logger } from '../logger';
 import { PUBLIC_DIR } from '../vaultPaths';
@@ -25,9 +24,10 @@ export async function runVaultServer(): Promise<{ close: () => Promise<void> }> 
         Fastify,
         logger: logger as FastifyBaseLogger,
     });
-    const publicServer = createFastifyServer({
-        Fastify,
-        logger: logger as FastifyBaseLogger,
+    // Typed as `FastifyBaseLogger`: with pino's own type, the logger type of the instance would
+    // change and the plain `FastifyInstance` would no longer match it.
+    const publicServer = Fastify({
+        loggerInstance: logger as FastifyBaseLogger,
     });
 
     // Only the raw server type (HTTPS) differs from the plain instance; the routes do not use it.

@@ -7,7 +7,6 @@ import {
     afterAll, beforeAll, describe, expect, it, vi,
 } from 'vitest';
 import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
-import { createFastifyServer } from 'senaev-utils/src/utils/http/createFastifyServer';
 
 import { PUBLIC_STATIC_DIR } from '../vaultPaths';
 import { logger } from '../logger';
@@ -43,9 +42,8 @@ beforeAll(async () => {
     symlinkSync(join(paths.vault, 'note.md'), join(paths.publicStatic, 'private-index', 'index.html'));
     symlinkSync(join(paths.publicStatic, 'page.html'), join(paths.publicStatic, 'folder', 'index.html'));
 
-    server = createFastifyServer({
-        Fastify,
-        logger: logger as FastifyBaseLogger,
+    server = Fastify({
+        loggerInstance: logger as FastifyBaseLogger,
     });
     registerPublicStaticRoutes(server);
     await server.ready();

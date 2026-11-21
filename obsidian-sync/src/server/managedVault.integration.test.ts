@@ -5,7 +5,6 @@ import {
     afterEach, describe, expect, it, vi,
 } from 'vitest';
 import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
-import { createFastifyServer } from 'senaev-utils/src/utils/http/createFastifyServer';
 
 import { createTestVault, type TestVault } from '../vault-tools/createTestVault';
 import { VAULT_TOOLS } from '../vault-tools/vaultTools';
@@ -25,9 +24,8 @@ afterEach(async () => {
 
 async function setup() {
     vault = await createTestVault({ 'Note.md': '# Note\n' });
-    server = createFastifyServer({
-        Fastify,
-        logger: logger as FastifyBaseLogger,
+    server = Fastify({
+        loggerInstance: logger as FastifyBaseLogger,
     });
     registerVaultToolRoutes(server, vault.config);
     await server.ready();

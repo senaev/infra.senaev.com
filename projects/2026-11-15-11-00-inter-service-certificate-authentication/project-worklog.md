@@ -1,11 +1,11 @@
-## 2026-11-21 UTC — `createFastifyServer` in senaev-utils
+## 2026-11-21 UTC — No `createVaultServer` and no `createFastifyServer`
 
-`createVaultServer` of obsidian-sync moved to `senaev-utils/src/utils/http/createFastifyServer.ts` as
-`createFastifyServer({ Fastify, logger, https? })`, and `createMtlsFastifyServer` uses it with the
-mTLS `https` options. It has two overloads: without `https` it returns `FastifyInstance`, with
-`https` it returns `FastifyInstance<HttpsServer>`. The logger is a parameter (`FastifyBaseLogger`), so
-every caller, the tests included, passes `logger as FastifyBaseLogger`; the reason for that cast is
-in the doc comment of the function. obsidian-sync has no server factory of its own any more.
+`createVaultServer` was only `Fastify({ loggerInstance })`. A shared `createFastifyServer` with an
+optional `https` needed two overloads (the return type differs for HTTPS) to save one line, so it
+was tried and removed. `runVaultServer` and the tests call `Fastify({ loggerInstance: logger as
+FastifyBaseLogger })` directly; the reason for the cast (with pino's own type the logger type of the
+instance changes, and the plain `FastifyInstance` no longer matches) is a comment in
+`runVaultServer`. `createMtlsFastifyServer` calls `Fastify({ loggerInstance, https })` itself.
 
 ## 2026-11-21 UTC — `createMtlsFastifyServer` runs the credentials watcher
 
