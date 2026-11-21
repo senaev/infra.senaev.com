@@ -1,14 +1,9 @@
-import {
-    mkdtemp, rm, writeFile,
-} from 'node:fs/promises';
 import { createServer, type Server } from 'node:https';
 import type { AddressInfo } from 'node:net';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 
 import { checkMtlsPeer, createMtlsServerOptions } from 'senaev-utils/src/utils/mtls/mtlsServer';
 import { createTestCa, issueTestCertificate } from 'senaev-utils/src/utils/mtls/testPki';
-import { parseTlsCredentials } from 'senaev-utils/src/utils/mtls/tlsCredentials';
+import { parseTlsCredentials, type TlsFiles } from 'senaev-utils/src/utils/mtls/tlsCredentials';
 import {
     afterAll, beforeAll, describe, expect, it, vi,
 } from 'vitest';
@@ -23,8 +18,17 @@ const env = vi.hoisted(() => {
         OBSIDIAN_SYNC_URL: '',
     };
 });
+const mountedFiles = vi.hoisted(() => {
+    return { client: undefined as TlsFiles | undefined };
+});
 
 vi.mock('./env', () => env);
+vi.mock('senaev-utils/src/utils/mtls/tlsCredentials', async (importOriginal) => {
+    return {
+        ...await importOriginal<typeof import('senaev-utils/src/utils/mtls/tlsCredentials')>(),
+        readTlsFiles: () => Promise.resolve(mountedFiles.client),
+    };
+});
 vi.mock('./logger', () => {
     return {
         logger: {
@@ -37,7 +41,6 @@ vi.mock('./logger', () => {
 const CALLER_NAME = 'cluster-helper.test.svc.cluster.local';
 
 let server: Server;
-let directory: string;
 const requests: { url: string | undefined; authorization: string | undefined }[] = [];
 
 beforeAll(async () => {
@@ -47,18 +50,12 @@ beforeAll(async () => {
         dnsName: 'localhost',
         usage: 'server',
     });
-    const clientFiles = await issueTestCertificate({
+
+    mountedFiles.client = await issueTestCertificate({
         ca,
         dnsName: CALLER_NAME,
         usage: 'client',
     });
-
-    directory = await mkdtemp(join(tmpdir(), 'cluster-helper-mtls-'));
-    await Promise.all([
-        writeFile(join(directory, 'tls.key'), clientFiles.key),
-        writeFile(join(directory, 'tls.crt'), clientFiles.cert),
-        writeFile(join(directory, 'ca.crt'), clientFiles.ca),
-    ]);
     server = createServer(createMtlsServerOptions(parseTlsCredentials(serverFiles)), (request, response) => {
         requests.push({
             url: request.url,
@@ -86,10 +83,6 @@ afterAll(async () => {
     await stopObsidianSyncClient();
     server.closeAllConnections();
     await new Promise((resolve) => server.close(resolve));
-    await rm(directory, {
-        recursive: true,
-        force: true,
-    });
 });
 
 describe('the obsidian-sync client over real mTLS', () => {
@@ -98,7 +91,7 @@ describe('the obsidian-sync client over real mTLS', () => {
     });
 
     it('reaches the vault service with the client certificate and no token, and streams a static file', async () => {
-        await startObsidianSyncClient(directory);
+        await startObsidianSyncClient();
 
         const result = await proxyPublicStaticFile({
             path: 'folder/file.txt',

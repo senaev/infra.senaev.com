@@ -1,14 +1,12 @@
 import {
     isSameTlsFiles,
     isTlsCredentialsValidAt,
-    MTLS_DIRECTORY,
     parseTlsCredentials,
     readTlsFiles,
-    type TlsFiles,
     type TlsCredentials,
 } from './tlsCredentials';
 
-const DEFAULT_POLL_INTERVAL_MS = 30_000;
+export const TLS_POLL_INTERVAL_MS = 30_000;
 
 export type TlsCredentialsWatcher = {
     /** The credentials the service uses now: the first valid one, or the newest valid renewal. */
@@ -17,15 +15,10 @@ export type TlsCredentialsWatcher = {
 };
 
 type WatchOptions = {
-    /** Defaults to where the Helm templates mount the Secret. A test may use another one. */
-    directory?: string;
     /** Called with each set of renewed credentials that is complete and not expired. */
     onChange: (credentials: TlsCredentials) => void;
     /** Called for a snapshot that cannot be used, or a certificate that is not valid now. The services log it. */
     onError: (error: Error) => void;
-    pollIntervalMs?: number;
-    now?: () => Date;
-    readFiles?: (directory: string) => Promise<TlsFiles>;
 };
 
 function toError(error: unknown): Error {
@@ -43,15 +36,8 @@ function toError(error: unknown): Error {
  * credentials are not valid, the service still starts, reports it, and uses the renewed files on
  * a later poll.
  */
-export async function watchTlsCredentials({
-    directory = MTLS_DIRECTORY,
-    onChange,
-    onError,
-    pollIntervalMs = DEFAULT_POLL_INTERVAL_MS,
-    now = () => new Date(),
-    readFiles = readTlsFiles,
-}: WatchOptions): Promise<TlsCredentialsWatcher> {
-    let files = await readFiles(directory);
+export async function watchTlsCredentials({ onChange, onError }: WatchOptions): Promise<TlsCredentialsWatcher> {
+    let files = await readTlsFiles();
     let stopped = false;
     const watcher: TlsCredentialsWatcher = {
         credentials: parseTlsCredentials(files),
@@ -63,7 +49,7 @@ export async function watchTlsCredentials({
     let polling = false;
     let invalidityReported = false;
     const reportInvalidityOnce = () => {
-        if (invalidityReported || isTlsCredentialsValidAt(watcher.credentials, now())) {
+        if (invalidityReported || isTlsCredentialsValidAt(watcher.credentials, new Date())) {
             return;
         }
 
@@ -81,7 +67,7 @@ export async function watchTlsCredentials({
         polling = true;
 
         try {
-            const latest = await readFiles(directory);
+            const latest = await readTlsFiles();
 
             if (stopped) {
                 return;
@@ -95,7 +81,7 @@ export async function watchTlsCredentials({
 
             const credentials = parseTlsCredentials(latest);
 
-            if (!isTlsCredentialsValidAt(credentials, now())) {
+            if (!isTlsCredentialsValidAt(credentials, new Date())) {
                 throw new Error('The renewed TLS certificate is not valid now');
             }
 
@@ -111,7 +97,7 @@ export async function watchTlsCredentials({
     };
     const timer = setInterval(() => {
         void poll();
-    }, pollIntervalMs);
+    }, TLS_POLL_INTERVAL_MS);
 
     timer.unref();
 

@@ -1,17 +1,33 @@
 import {
-    afterEach, describe, expect, it, vi,
+    afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
 
 import { createTestCa, issueTestCertificate } from './testPki';
 import {
     isTlsCredentialsValidAt, parseTlsCredentials, type TlsFiles,
 } from './tlsCredentials';
-import { watchTlsCredentials, type TlsCredentialsWatcher } from './watchTlsCredentials';
+import {
+    TLS_POLL_INTERVAL_MS, watchTlsCredentials, type TlsCredentialsWatcher,
+} from './watchTlsCredentials';
+
+const mocks = vi.hoisted(() => {
+    return { readTlsFiles: vi.fn<() => Promise<TlsFiles>>() };
+});
+
+vi.mock('./tlsCredentials', async (importOriginal) => {
+    return {
+        ...await importOriginal<typeof import('./tlsCredentials')>(),
+        readTlsFiles: mocks.readTlsFiles,
+    };
+});
 
 const HOUR_MS = 3_600_000;
-const POLL_MS = 1_000;
 
 const watchers: TlsCredentialsWatcher[] = [];
+
+beforeEach(() => {
+    mocks.readTlsFiles.mockReset();
+});
 
 afterEach(() => {
     watchers.splice(0).forEach((watcher) => watcher.stop());
@@ -78,17 +94,19 @@ describe('parseTlsCredentials', () => {
 });
 
 describe('watchTlsCredentials', () => {
-    async function watch(initial: TlsFiles, options: { now?: () => Date } = {}) {
-        let current = initial;
+    beforeEach(() => {
+        vi.useFakeTimers();
+    });
+
+    async function watch(initial: TlsFiles) {
         const onChange = vi.fn();
         const onError = vi.fn();
+
+        mocks.readTlsFiles.mockResolvedValue(initial);
+
         const watcher = await watchTlsCredentials({
-            directory: 'unused',
-            pollIntervalMs: POLL_MS,
-            readFiles: () => Promise.resolve(current),
             onChange,
             onError,
-            ...options,
         });
 
         watchers.push(watcher);
@@ -98,34 +116,32 @@ describe('watchTlsCredentials', () => {
             onChange,
             onError,
             replaceFiles: (files: TlsFiles) => {
-                current = files;
+                mocks.readTlsFiles.mockResolvedValue(files);
             },
         };
     }
 
     it('uses a renewal at the next poll, and stays quiet while the files do not change', async () => {
-        vi.useFakeTimers();
         const {
             watcher, onChange, onError, replaceFiles,
         } = await watch(await issueFiles());
         const renewed = await issueFiles();
 
-        await vi.advanceTimersByTimeAsync(POLL_MS);
+        await vi.advanceTimersByTimeAsync(TLS_POLL_INTERVAL_MS);
         expect(onChange).not.toHaveBeenCalled();
 
         replaceFiles(renewed);
-        await vi.advanceTimersByTimeAsync(POLL_MS);
+        await vi.advanceTimersByTimeAsync(TLS_POLL_INTERVAL_MS);
 
         expect(onChange).toHaveBeenCalledTimes(1);
         expect(watcher.credentials.cert).toBe(renewed.cert);
         expect(onError).not.toHaveBeenCalled();
 
-        await vi.advanceTimersByTimeAsync(POLL_MS);
+        await vi.advanceTimersByTimeAsync(TLS_POLL_INTERVAL_MS);
         expect(onChange).toHaveBeenCalledTimes(1);
     });
 
     it('keeps the last good credentials and reports a broken snapshot', async () => {
-        vi.useFakeTimers();
         const initial = await issueFiles();
         const {
             watcher, onChange, onError, replaceFiles,
@@ -136,29 +152,29 @@ describe('watchTlsCredentials', () => {
             ...initial,
             key: other.key,
         });
-        await vi.advanceTimersByTimeAsync(POLL_MS);
+        await vi.advanceTimersByTimeAsync(TLS_POLL_INTERVAL_MS);
 
         expect(onChange).not.toHaveBeenCalled();
         expect(onError).toHaveBeenCalledTimes(1);
         expect(watcher.credentials.cert).toBe(initial.cert);
 
         replaceFiles(other);
-        await vi.advanceTimersByTimeAsync(POLL_MS);
+        await vi.advanceTimersByTimeAsync(TLS_POLL_INTERVAL_MS);
         expect(watcher.credentials.cert).toBe(other.cert);
     });
 
     it('starts with expired files, reports them, and takes the renewal later', async () => {
-        vi.useFakeTimers();
         const ca = await createTestCa();
+        const expiring = await issueFiles({
+            ca,
+            validTo: new Date(Date.now() + HOUR_MS),
+        });
+
+        vi.setSystemTime(Date.now() + 2 * HOUR_MS);
+
         const {
             watcher, onChange, onError, replaceFiles,
-        } = await watch(
-            await issueFiles({
-                ca,
-                validTo: new Date(Date.now() + HOUR_MS),
-            }),
-            { now: () => new Date(Date.now() + 2 * HOUR_MS) }
-        );
+        } = await watch(expiring);
 
         expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'The TLS certificate in use is not valid now' }));
 
@@ -168,21 +184,20 @@ describe('watchTlsCredentials', () => {
         });
 
         replaceFiles(renewed);
-        await vi.advanceTimersByTimeAsync(POLL_MS);
+        await vi.advanceTimersByTimeAsync(TLS_POLL_INTERVAL_MS);
 
         expect(onChange).toHaveBeenCalledTimes(1);
         expect(watcher.credentials.cert).toBe(renewed.cert);
     });
 
     it('does not replace good credentials with an expired renewal', async () => {
-        vi.useFakeTimers();
         const {
             watcher, onChange, onError, replaceFiles,
         } = await watch(await issueFiles());
         const initialCert = watcher.credentials.cert;
 
         replaceFiles(await issueFiles({ validTo: new Date(Date.now() - 1) }));
-        await vi.advanceTimersByTimeAsync(POLL_MS);
+        await vi.advanceTimersByTimeAsync(TLS_POLL_INTERVAL_MS);
 
         expect(onChange).not.toHaveBeenCalled();
         expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'The renewed TLS certificate is not valid now' }));
@@ -190,14 +205,13 @@ describe('watchTlsCredentials', () => {
     });
 
     it('does not replace good credentials with a renewal that is not valid yet', async () => {
-        vi.useFakeTimers();
         const {
             watcher, onChange, onError, replaceFiles,
         } = await watch(await issueFiles());
         const initialCert = watcher.credentials.cert;
 
         replaceFiles(await issueFiles({ validFrom: new Date(Date.now() + HOUR_MS) }));
-        await vi.advanceTimersByTimeAsync(POLL_MS);
+        await vi.advanceTimersByTimeAsync(TLS_POLL_INTERVAL_MS);
 
         expect(onChange).not.toHaveBeenCalled();
         expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'The renewed TLS certificate is not valid now' }));
@@ -205,65 +219,45 @@ describe('watchTlsCredentials', () => {
     });
 
     it('reports once that the credentials in use have expired, and again after a renewal expires', async () => {
-        vi.useFakeTimers();
-        let currentTime = new Date();
         const ca = await createTestCa();
         const {
             onError, replaceFiles,
-        } = await watch(
-            await issueFiles({
-                ca,
-                validTo: new Date(currentTime.getTime() + HOUR_MS),
-            }),
-            { now: () => currentTime }
-        );
+        } = await watch(await issueFiles({
+            ca,
+            validTo: new Date(Date.now() + HOUR_MS),
+        }));
 
-        await vi.advanceTimersByTimeAsync(POLL_MS);
+        await vi.advanceTimersByTimeAsync(TLS_POLL_INTERVAL_MS);
         expect(onError).not.toHaveBeenCalled();
 
-        currentTime = new Date(currentTime.getTime() + 2 * HOUR_MS);
-        await vi.advanceTimersByTimeAsync(POLL_MS);
-        await vi.advanceTimersByTimeAsync(POLL_MS);
+        vi.setSystemTime(Date.now() + 2 * HOUR_MS);
+        await vi.advanceTimersByTimeAsync(TLS_POLL_INTERVAL_MS);
+        await vi.advanceTimersByTimeAsync(TLS_POLL_INTERVAL_MS);
         expect(onError).toHaveBeenCalledTimes(1);
         expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'The TLS certificate in use is not valid now' }));
 
         replaceFiles(await issueFiles({
             ca,
-            validTo: new Date(currentTime.getTime() + HOUR_MS),
+            validTo: new Date(Date.now() + HOUR_MS),
         }));
-        await vi.advanceTimersByTimeAsync(POLL_MS);
+        await vi.advanceTimersByTimeAsync(TLS_POLL_INTERVAL_MS);
         expect(onError).toHaveBeenCalledTimes(1);
 
-        currentTime = new Date(currentTime.getTime() + 2 * HOUR_MS);
-        await vi.advanceTimersByTimeAsync(POLL_MS);
+        vi.setSystemTime(Date.now() + 2 * HOUR_MS);
+        await vi.advanceTimersByTimeAsync(TLS_POLL_INTERVAL_MS);
         expect(onError).toHaveBeenCalledTimes(2);
     });
 
     it('does not apply a renewal that was read while stop() was called', async () => {
-        vi.useFakeTimers();
         const initial = await issueFiles();
         const renewed = await issueFiles();
-        const onChange = vi.fn();
         let finishRead: (files: TlsFiles) => void = () => undefined;
-        let reads = 0;
-        const watcher = await watchTlsCredentials({
-            directory: 'unused',
-            pollIntervalMs: POLL_MS,
-            readFiles: () => {
-                reads += 1;
+        const { watcher, onChange } = await watch(initial);
 
-                return reads === 1
-                    ? Promise.resolve(initial)
-                    : new Promise<TlsFiles>((resolve) => {
-                        finishRead = resolve;
-                    });
-            },
-            onChange,
-            onError: vi.fn(),
-        });
-
-        watchers.push(watcher);
-        await vi.advanceTimersByTimeAsync(POLL_MS);
+        mocks.readTlsFiles.mockReturnValueOnce(new Promise<TlsFiles>((resolve) => {
+            finishRead = resolve;
+        }));
+        await vi.advanceTimersByTimeAsync(TLS_POLL_INTERVAL_MS);
         watcher.stop();
         finishRead(renewed);
         await vi.advanceTimersByTimeAsync(0);
@@ -273,9 +267,9 @@ describe('watchTlsCredentials', () => {
     });
 
     it('fails to start without any credentials', async () => {
+        mocks.readTlsFiles.mockRejectedValue(new Error('ENOENT'));
+
         await expect(watchTlsCredentials({
-            directory: 'unused',
-            readFiles: () => Promise.reject(new Error('ENOENT')),
             onChange: vi.fn(),
             onError: vi.fn(),
         })).rejects.toThrow('ENOENT');

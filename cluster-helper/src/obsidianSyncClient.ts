@@ -9,13 +9,9 @@ import { logger } from './logger';
 let client: MtlsClient | undefined;
 let certificates: TlsCredentialsWatcher | undefined;
 
-/**
- * Loads the client certificate and keeps it renewed. Must finish before the first call.
- * `directory` is for tests: the mounted Secret is always in the default place.
- */
-export async function startObsidianSyncClient(directory?: string): Promise<void> {
+/** Loads the client certificate and keeps it renewed. Must finish before the first call. */
+export async function startObsidianSyncClient(): Promise<void> {
     certificates = await watchTlsCredentials({
-        ...directory !== undefined && { directory },
         onChange: (credentials) => {
             client?.updateCredentials(credentials);
             logger.info({ validTo: credentials.validTo.toISOString() }, '🔐 Loaded the renewed mTLS certificate');

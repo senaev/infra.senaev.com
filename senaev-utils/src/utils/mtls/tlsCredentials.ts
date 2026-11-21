@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import type { SecureContextOptions } from 'node:tls';
 
 /** Where the Helm templates mount the Certificate Secret of a service. */
-export const MTLS_DIRECTORY = '/etc/mtls';
+const MTLS_DIRECTORY = '/etc/mtls';
 
 /** The file names that cert-manager writes into a Certificate Secret. */
 const TLS_KEY_FILE = 'tls.key';
@@ -27,11 +27,11 @@ export type TlsCredentials = TlsFiles & {
     validTo: Date;
 };
 
-export function readTlsFiles(directory: string): Promise<TlsFiles> {
+export function readTlsFiles(): Promise<TlsFiles> {
     return Promise.all([
-        readFile(join(directory, TLS_KEY_FILE), 'utf8'),
-        readFile(join(directory, TLS_CERT_FILE), 'utf8'),
-        readFile(join(directory, TLS_CA_FILE), 'utf8'),
+        readFile(join(MTLS_DIRECTORY, TLS_KEY_FILE), 'utf8'),
+        readFile(join(MTLS_DIRECTORY, TLS_CERT_FILE), 'utf8'),
+        readFile(join(MTLS_DIRECTORY, TLS_CA_FILE), 'utf8'),
     ]).then(([
         key,
         cert,
