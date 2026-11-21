@@ -1,3 +1,12 @@
+## 2026-11-21 UTC — `createFastifyServer` in senaev-utils
+
+`createVaultServer` of obsidian-sync moved to `senaev-utils/src/utils/http/createFastifyServer.ts` as
+`createFastifyServer({ Fastify, logger, https? })`, and `createMtlsFastifyServer` uses it with the
+mTLS `https` options. It has two overloads: without `https` it returns `FastifyInstance`, with
+`https` it returns `FastifyInstance<HttpsServer>`. The logger is a parameter (`FastifyBaseLogger`), so
+every caller, the tests included, passes `logger as FastifyBaseLogger`; the reason for that cast is
+in the doc comment of the function. obsidian-sync has no server factory of its own any more.
+
 ## 2026-11-21 UTC — `createMtlsFastifyServer` runs the credentials watcher
 
 `createMtlsFastifyServer({ Fastify, logger })` is now async and returns the Fastify instance. It

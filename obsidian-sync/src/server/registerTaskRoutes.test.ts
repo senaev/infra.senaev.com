@@ -1,11 +1,12 @@
 import {
     afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
-import type { FastifyInstance } from 'fastify';
+import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
+import { createFastifyServer } from 'senaev-utils/src/utils/http/createFastifyServer';
 
 import { prependTaskLine } from '../tasks/prependTaskLine';
+import { logger } from '../logger';
 
-import { createVaultServer } from './createVaultServer';
 import { registerTaskRoutes } from './registerTaskRoutes';
 
 vi.mock('../tasks/prependTaskLine', () => {
@@ -16,7 +17,10 @@ let server: FastifyInstance;
 
 beforeEach(async () => {
     vi.clearAllMocks();
-    server = createVaultServer();
+    server = createFastifyServer({
+        Fastify,
+        logger: logger as FastifyBaseLogger,
+    });
     registerTaskRoutes(server);
     await server.ready();
 });

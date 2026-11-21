@@ -6,11 +6,12 @@ import { dirname, join } from 'node:path';
 import {
     afterAll, beforeAll, describe, expect, it, vi,
 } from 'vitest';
-import type { FastifyInstance } from 'fastify';
+import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
+import { createFastifyServer } from 'senaev-utils/src/utils/http/createFastifyServer';
 
 import { PUBLIC_STATIC_DIR } from '../vaultPaths';
+import { logger } from '../logger';
 
-import { createVaultServer } from './createVaultServer';
 import { registerPublicStaticRoutes } from './registerPublicStaticRoutes';
 
 vi.mock('../vaultPaths', async () => {
@@ -42,7 +43,10 @@ beforeAll(async () => {
     symlinkSync(join(paths.vault, 'note.md'), join(paths.publicStatic, 'private-index', 'index.html'));
     symlinkSync(join(paths.publicStatic, 'page.html'), join(paths.publicStatic, 'folder', 'index.html'));
 
-    server = createVaultServer();
+    server = createFastifyServer({
+        Fastify,
+        logger: logger as FastifyBaseLogger,
+    });
     registerPublicStaticRoutes(server);
     await server.ready();
 });

@@ -3,13 +3,14 @@ import { writeFile } from 'node:fs/promises';
 import {
     afterAll, beforeAll, describe, expect, it, vi,
 } from 'vitest';
-import type { FastifyInstance } from 'fastify';
+import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
+import { createFastifyServer } from 'senaev-utils/src/utils/http/createFastifyServer';
 
 import * as downloadModule from '../vault-tools/tools/downloadTool';
 import { downloadTool } from '../vault-tools/tools/downloadTool';
 import { createTestVault, type TestVault } from '../vault-tools/createTestVault';
+import { logger } from '../logger';
 
-import { createVaultServer } from './createVaultServer';
 import { registerVaultToolRoutes } from './registerVaultToolRoutes';
 
 let vault: TestVault;
@@ -17,7 +18,10 @@ let server: FastifyInstance;
 
 beforeAll(async () => {
     vault = await createTestVault({ 'Note.md': '# Note\n' });
-    server = createVaultServer();
+    server = createFastifyServer({
+        Fastify,
+        logger: logger as FastifyBaseLogger,
+    });
     registerVaultToolRoutes(server, vault.config);
     await server.ready();
 });

@@ -3,6 +3,8 @@ import type { Server as HttpsServer } from 'node:https';
 import type FastifyFactory from 'fastify';
 import type { FastifyBaseLogger, FastifyInstance } from 'fastify';
 
+import { createFastifyServer } from '../http/createFastifyServer';
+
 import { createMtlsServerOptions } from './mtlsServer';
 import { registerMtlsAuthentication } from './registerMtlsAuthentication';
 import { createSecureContextOptions } from './tlsCredentials';
@@ -32,8 +34,9 @@ export async function createMtlsFastifyServer({ Fastify, logger }: {
         },
         onError: (error) => logger.error({ err: error }, '❌ mTLS certificate files cannot be used, keeping the last valid ones'),
     });
-    const server = Fastify({
-        loggerInstance: logger,
+    const server = createFastifyServer({
+        Fastify,
+        logger,
         https: createMtlsServerOptions(certificates.credentials),
     });
 

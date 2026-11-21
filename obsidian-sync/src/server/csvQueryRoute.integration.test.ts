@@ -2,11 +2,12 @@ import {
     afterEach, expect, it,
 } from 'vitest';
 import { completeOperation } from 'senaev-utils/src/operations/testing/completeOperation';
-import type { FastifyInstance } from 'fastify';
+import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
+import { createFastifyServer } from 'senaev-utils/src/utils/http/createFastifyServer';
 
 import { createTestVault, type TestVault } from '../vault-tools/createTestVault';
+import { logger } from '../logger';
 
-import { createVaultServer } from './createVaultServer';
 import { registerVaultToolRoutes } from './registerVaultToolRoutes';
 
 let vault: TestVault | undefined;
@@ -19,7 +20,10 @@ afterEach(async () => {
 
 it('retains a real CSV query result through managed HTTP operations', async () => {
     vault = await createTestVault({ 'a.csv': 'id,amount\n00123,100\n00124,250\n' });
-    server = createVaultServer();
+    server = createFastifyServer({
+        Fastify,
+        logger: logger as FastifyBaseLogger,
+    });
     registerVaultToolRoutes(server, vault.config);
     await server.ready();
     const payload = {
@@ -67,7 +71,10 @@ it('retains a real CSV query result through managed HTTP operations', async () =
 
 it('returns saved and unchanged hashes through the same HTTP command, including conflict errors', async () => {
     vault = await createTestVault({});
-    server = createVaultServer();
+    server = createFastifyServer({
+        Fastify,
+        logger: logger as FastifyBaseLogger,
+    });
     registerVaultToolRoutes(server, vault.config);
     await server.ready();
     const call = async (tool: string, payload: Record<string, unknown>) => {

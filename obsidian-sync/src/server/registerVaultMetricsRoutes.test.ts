@@ -7,11 +7,14 @@ import { join } from 'node:path';
 import {
     afterEach, expect, it,
 } from 'vitest';
+import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
+import { createFastifyServer } from 'senaev-utils/src/utils/http/createFastifyServer';
 
-import { createVaultServer } from './createVaultServer';
+import { logger } from '../logger';
+
 import { registerVaultMetricsRoutes } from './registerVaultMetricsRoutes';
 
-const servers: ReturnType<typeof createVaultServer>[] = [];
+const servers: FastifyInstance[] = [];
 const roots: string[] = [];
 
 afterEach(async () => {
@@ -29,7 +32,10 @@ it('serves the scrape metrics', async () => {
 
     roots.push(root);
     await writeFile(join(root, 'file.csv'), 'hello');
-    const server = createVaultServer();
+    const server = createFastifyServer({
+        Fastify,
+        logger: logger as FastifyBaseLogger,
+    });
 
     servers.push(server);
     registerVaultMetricsRoutes(server, root);
@@ -47,7 +53,10 @@ it('serves the scrape metrics', async () => {
 
 it('indicates scan failure instead of serving stale inventory as healthy', async () => {
     const root = join(tmpdir(), 'this-vault-does-not-exist');
-    const server = createVaultServer();
+    const server = createFastifyServer({
+        Fastify,
+        logger: logger as FastifyBaseLogger,
+    });
 
     servers.push(server);
     registerVaultMetricsRoutes(server, root);
