@@ -6,9 +6,9 @@ import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { logger } from '../logger';
 import { prependTaskLine } from '../tasks/prependTaskLine';
 
-import type { VaultServer } from './createVaultServer';
+import type { VaultRouter } from './createVaultServer';
 
-export function registerTaskRoutes(server: VaultServer): void {
+export function registerTaskRoutes(server: VaultRouter): void {
     server.post<{ Body: unknown }>('/tasks', async (request, reply) => {
         const { body } = request;
 

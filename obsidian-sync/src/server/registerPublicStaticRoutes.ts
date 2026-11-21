@@ -8,7 +8,7 @@ import fastifyStatic from '@fastify/static';
 import { logger } from '../logger';
 import { PUBLIC_STATIC_DIR } from '../vaultPaths';
 
-import { VaultServer } from './createVaultServer';
+import type { VaultRouter } from './createVaultServer';
 
 export const PUBLIC_STATIC_PREFIX = '/public-static/';
 
@@ -27,7 +27,7 @@ export const PUBLIC_STATIC_PREFIX = '/public-static/';
  * would leak all of them. It also brings ETag, Last-Modified, Range support
  * and streaming, none of which the `?file=` route has.
  */
-export function registerPublicStaticRoutes(server: VaultServer): void {
+export function registerPublicStaticRoutes(server: VaultRouter): void {
     // @fastify/static throws at registration if the root is missing, and the
     // directory only appears once the user creates it in Obsidian. Idempotent:
     // an existing directory is left untouched.

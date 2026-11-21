@@ -5,11 +5,11 @@ import { logger } from '../logger';
 import { isAllowedShortLinkTarget } from '../short-links/shortLinksCsv';
 import { createShortLink, getShortLinkUrl } from '../short-links/shortLinksStore';
 
-import type { VaultServer } from './createVaultServer';
+import type { VaultRouter } from './createVaultServer';
 
 const MAX_URL_LENGTH = 8192;
 
-export function registerShortLinkRoutes(server: VaultServer): void {
+export function registerShortLinkRoutes(server: VaultRouter): void {
     server.post<{ Body: unknown }>('/short_links', async (request, reply) => {
         const { body } = request;
 

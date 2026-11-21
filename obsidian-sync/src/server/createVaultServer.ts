@@ -24,6 +24,9 @@ export function createVaultServer() {
  */
 export type VaultServer = ReturnType<typeof createVaultServer>;
 
+/** What the route registrars use of a server: a registrar cannot start or stop it. */
+export type VaultRouter = Pick<VaultServer, 'get' | 'post' | 'addHook' | 'register'>;
+
 /**
  * HTTPS that accepts only clients with a certificate of the internal CA. A Fastify instance has
  * one listener, and its HTTPS options are fixed when it is created, so the protected routes

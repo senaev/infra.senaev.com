@@ -9,10 +9,10 @@ import { logger } from '../logger';
 import { VAULT_TOOLS } from '../vault-tools/vaultTools';
 import type { VaultToolsConfig } from '../vault-tools/vaultToolsConfig';
 
-import type { VaultServer } from './createVaultServer';
+import type { VaultRouter } from './createVaultServer';
 
 /** The vault tools behind cluster-helper's ChatGPT MCP endpoint. */
-export function registerVaultToolRoutes(server: VaultServer, config: VaultToolsConfig): void {
+export function registerVaultToolRoutes(server: VaultRouter, config: VaultToolsConfig): void {
     const service = createManagedToolService({
         backend: 'obsidian',
         logger,

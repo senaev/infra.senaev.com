@@ -2,7 +2,7 @@ import { authenticateMtlsPeer } from 'senaev-utils/src/utils/mtls/mtlsServer';
 
 import { logger } from '../logger';
 
-import type { VaultServer } from './createVaultServer';
+import type { VaultRouter, VaultServer } from './createVaultServer';
 
 declare module 'fastify' {
     interface FastifyContextConfig {
@@ -61,7 +61,7 @@ export function registerMtlsAuthorization(server: VaultServer): void {
 export function registerRoutesForCallers(
     server: Pick<VaultServer, 'register'>,
     callers: readonly string[],
-    registerRoutes: (server: VaultServer) => void
+    registerRoutes: (server: VaultRouter) => void
 ): void {
     void server.register((scope, _options, done) => {
         scope.addHook('onRoute', (route) => {
@@ -70,7 +70,7 @@ export function registerRoutesForCallers(
                 callers,
             };
         });
-        registerRoutes(scope as unknown as VaultServer);
+        registerRoutes(scope as unknown as VaultRouter);
         done();
     });
 }
