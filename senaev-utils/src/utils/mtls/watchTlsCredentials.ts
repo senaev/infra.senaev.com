@@ -37,10 +37,9 @@ function toError(error: unknown): Error {
  * a later poll.
  */
 export async function watchTlsCredentials({ onChange, onError }: WatchOptions): Promise<TlsCredentialsWatcher> {
-    let files = await readTlsFiles();
     let stopped = false;
     const watcher: TlsCredentialsWatcher = {
-        credentials: parseTlsCredentials(files),
+        credentials: parseTlsCredentials(await readTlsFiles()),
         stop: () => {
             stopped = true;
             clearInterval(timer);
@@ -73,7 +72,7 @@ export async function watchTlsCredentials({ onChange, onError }: WatchOptions): 
                 return;
             }
 
-            if (isSameTlsFiles(latest, files)) {
+            if (isSameTlsFiles(latest, watcher.credentials)) {
                 reportInvalidityOnce();
 
                 return;
@@ -87,7 +86,6 @@ export async function watchTlsCredentials({ onChange, onError }: WatchOptions): 
 
             onChange(credentials);
             watcher.credentials = credentials;
-            files = latest;
             invalidityReported = false;
         } catch (error) {
             onError(toError(error));
