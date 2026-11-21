@@ -1,7 +1,7 @@
 import { createServer, type Server } from 'node:https';
 import type { AddressInfo } from 'node:net';
 
-import { checkMtlsPeer, createMtlsServerOptions } from 'senaev-utils/src/utils/mtls/mtlsServer';
+import { authenticateMtlsPeer, createMtlsServerOptions } from 'senaev-utils/src/utils/mtls/mtlsServer';
 import { createTestCa, issueTestCertificate } from 'senaev-utils/src/utils/mtls/testPki';
 import { parseTlsCredentials, type TlsFiles } from 'senaev-utils/src/utils/mtls/tlsCredentials';
 import {
@@ -62,7 +62,9 @@ beforeAll(async () => {
             authorization: request.headers.authorization,
         });
 
-        if (!checkMtlsPeer(request.socket, CALLER_NAME, new Date()).ok) {
+        const authentication = authenticateMtlsPeer(request.socket, new Date());
+
+        if (!authentication.ok || !authentication.peer.hasName(CALLER_NAME)) {
             response.statusCode = 401;
             response.end('unauthorized');
 

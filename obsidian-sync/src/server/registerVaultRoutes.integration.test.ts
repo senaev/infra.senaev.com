@@ -7,12 +7,11 @@ import {
     afterAll, beforeAll, describe, expect, it,
 } from 'vitest';
 
+import { CLUSTER_HELPER } from './callers';
 import {
     createProtectedVaultServer, createVaultServer, type VaultServer,
 } from './createVaultServer';
 import { registerProtectedVaultRoutes, registerPublicVaultRoutes } from './registerVaultRoutes';
-
-const CALLER_NAME = 'cluster-helper.test.svc.cluster.local';
 
 const PROTECTED_REQUESTS = [
     {
@@ -77,7 +76,7 @@ beforeAll(async () => {
     const instance = createProtectedVaultServer(parseTlsCredentials(serverFiles));
 
     protectedServer = instance.server;
-    registerProtectedVaultRoutes(protectedServer, CALLER_NAME);
+    registerProtectedVaultRoutes(protectedServer);
     publicServer = createVaultServer();
     registerPublicVaultRoutes(publicServer);
     await Promise.all([
@@ -94,7 +93,7 @@ beforeAll(async () => {
     publicOrigin = originOf(publicServer, 'http');
     allowedClient = createClient(protectedOrigin, await issueTestCertificate({
         ca,
-        dnsName: CALLER_NAME,
+        dnsName: CLUSTER_HELPER,
         usage: 'client',
     }));
     otherServiceClient = createClient(protectedOrigin, await issueTestCertificate({
@@ -118,18 +117,19 @@ describe('protected vault routes', () => {
         const response = await allowedClient.fetch(`${protectedOrigin}${path}`, { method });
 
         expect(response.status).not.toBe(401);
+        expect(response.status).not.toBe(403);
     });
 
     it.each(PROTECTED_REQUESTS)('refuse another service with a valid certificate: $method $path', async ({ method, path }) => {
         const response = await otherServiceClient.fetch(`${protectedOrigin}${path}`, { method });
 
-        expect(response.status).toBe(401);
+        expect(response.status).toBe(403);
     });
 
-    it('refuse an unknown path with 401 too, so the 404 handler is covered', async () => {
+    it('refuse an unknown path with 403, so the 404 handler is covered', async () => {
         const response = await otherServiceClient.fetch(`${protectedOrigin}/no-such-route`);
 
-        expect(response.status).toBe(401);
+        expect(response.status).toBe(403);
     });
 });
 

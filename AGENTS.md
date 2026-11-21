@@ -149,14 +149,16 @@ cluster-helper calls the protected obsidian-sync API (everything that reads or e
 a client certificate, not a token. cert-manager (`provisioning/helm/pki/cert-manager`) and a private
 CA (`provisioning/helm/pki/issuers`, ClusterIssuer `internal-ca`, key only in the `pki` namespace)
 issue two 7-day leaves in `senaev-com` (`templates/internal-mtls.yaml`). The identity is a DNS SAN:
-obsidian-sync allows only `cluster-helper.<ns>.svc.cluster.local` (`ALLOWED_CLIENT_NAME` in its code), and
-cluster-helper connects to `https://obsidian-sync.<ns>.svc.cluster.local:8443`. Both services mount
+obsidian-sync knows its callers by that name (`CLUSTER_HELPER` in `obsidian-sync/src/server/callers.ts`),
+and cluster-helper connects to `https://obsidian-sync.<ns>.svc.cluster.local:8443`. Both services mount
 their Secret as a directory at `/etc/mtls` (never subPath or env), poll the files and reload without
 a restart (`senaev-utils/src/utils/mtls`). They fail closed: no fallback to HTTP or a token.
 
 obsidian-sync has two Fastify instances: mTLS on 8443 with all protected routes, and plain HTTP on
 8080 with only the published-file (`?note=`/`?file=`, nextjs-app) and `/metrics` (vmagent) routes. Add
-new vault routes only to `registerProtectedVaultRoutes`. The `pki` namespace must sort before
+new vault routes only to `registerProtectedVaultRoutes`, inside `registerRoutesForCallers` with the
+services that may call them: the utils authenticate the caller (401), the service authorizes it per
+route (403), and a route without callers is denied. The `pki` namespace must sort before
 `senaev-com` (the CI deploys namespaces in sorted order). To replace the CA, see
 [`projects/2026-11-15-11-00-inter-service-certificate-authentication`](projects/2026-11-15-11-00-inter-service-certificate-authentication/README.md).
 

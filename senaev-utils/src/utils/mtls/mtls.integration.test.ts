@@ -7,7 +7,7 @@ import {
 } from 'vitest';
 
 import { createMtlsClient, type MtlsClient } from './mtlsClient';
-import { checkMtlsPeer, createMtlsServerOptions } from './mtlsServer';
+import { authenticateMtlsPeer, createMtlsServerOptions } from './mtlsServer';
 import {
     createTestCa, issueTestCertificate, renewTestCa,
 } from './testPki';
@@ -31,10 +31,17 @@ afterEach(async () => {
 
 async function startServer(files: TlsFiles, now: () => Date = () => new Date()): Promise<{ server: Server; origin: string }> {
     const server = createServer(createMtlsServerOptions(parseTlsCredentials(files)), (request, response) => {
-        const check = checkMtlsPeer(request.socket, CALLER_NAME, now());
+        const authentication = authenticateMtlsPeer(request.socket, now());
 
-        response.statusCode = check.ok ? 200 : 403;
-        response.end(check.ok ? 'ok' : check.reason);
+        if (!authentication.ok) {
+            response.statusCode = 401;
+            response.end(authentication.reason);
+
+            return;
+        }
+
+        response.statusCode = authentication.peer.hasName(CALLER_NAME) ? 200 : 403;
+        response.end(response.statusCode === 200 ? 'ok' : 'forbidden');
     });
 
     servers.push(server);
@@ -140,7 +147,7 @@ describe('mTLS between a client and a server', () => {
         const response = await startClient(origin, other).fetch(`${origin}/`);
 
         expect(response.status).toBe(403);
-        expect(await response.text()).toBe('The client certificate is not for an allowed service');
+        expect(await response.text()).toBe('forbidden');
     });
 
     it('denies a client whose certificate expired on a connection that is still open', async () => {
@@ -154,7 +161,7 @@ describe('mTLS between a client and a server', () => {
 
         const response = await client.fetch(`${origin}/`);
 
-        expect(response.status).toBe(403);
+        expect(response.status).toBe(401);
         expect(await response.text()).toBe('The client certificate is expired');
     });
 

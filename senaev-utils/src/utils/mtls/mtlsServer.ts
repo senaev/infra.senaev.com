@@ -12,7 +12,12 @@ export function createMtlsServerOptions(credentials: TlsCredentials) {
     };
 }
 
-export type MtlsPeerCheck = { ok: true } | { ok: false; reason: string };
+export type MtlsPeer = {
+    /** True when the client certificate carries exactly this DNS name. */
+    hasName: (name: string) => boolean;
+};
+
+export type MtlsPeerAuthentication = { ok: true; peer: MtlsPeer } | { ok: false; reason: string };
 
 const EXACT_NAME_MATCH = {
     subject: 'never',
@@ -22,13 +27,13 @@ const EXACT_NAME_MATCH = {
 } as const;
 
 /**
- * Authorizes the caller of a request on a connection that the TLS server already verified
- * against the CA. It still checks the caller on every request, because a connection can outlive
- * the certificate: the certificate must not be expired, and it must carry exactly the DNS name
- * that this service allows. The names are plain labels that cert-manager puts in the
- * certificate, and Node does the matching.
+ * Identifies the caller of a request on a connection that the TLS server already verified
+ * against the CA. It checks again on every request, because a connection can outlive the
+ * certificate: the certificate must not be expired. It does not decide who may do what: the
+ * service asks the peer for the names it allows, and Node does the matching. The names are plain
+ * labels that cert-manager puts in the certificate.
  */
-export function checkMtlsPeer(socket: Socket, allowedName: string, now: Date): MtlsPeerCheck {
+export function authenticateMtlsPeer(socket: Socket, now: Date): MtlsPeerAuthentication {
     if (!(socket instanceof TLSSocket) || !socket.authorized) {
         return {
             ok: false,
@@ -52,12 +57,8 @@ export function checkMtlsPeer(socket: Socket, allowedName: string, now: Date): M
         };
     }
 
-    if (certificate.checkHost(allowedName, EXACT_NAME_MATCH) === undefined) {
-        return {
-            ok: false,
-            reason: 'The client certificate is not for an allowed service',
-        };
-    }
-
-    return { ok: true };
+    return {
+        ok: true,
+        peer: { hasName: (name) => certificate.checkHost(name, EXACT_NAME_MATCH) !== undefined },
+    };
 }

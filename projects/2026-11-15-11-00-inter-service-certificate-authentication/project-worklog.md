@@ -1,3 +1,14 @@
+## 2026-11-21 UTC — Authorization per route in obsidian-sync, not in the utils
+
+`checkMtlsPeer` is now `authenticateMtlsPeer` in senaev-utils: it checks the verified connection
+and the expiry, and returns a peer with `hasName(name)`. obsidian-sync decides who may do what:
+`registerMtlsAuthorization` answers 401 without a valid certificate and 403 when the route does
+not name the caller; a route that names no caller is denied (default deny, also the 404
+handler). A route group is declared with `registerRoutesForCallers(server, [CLUSTER_HELPER], ...)`;
+the service names are in `callers.ts`. Also removed the image-import `RUN` checks that I had added
+to the cluster-helper and obsidian-sync Dockerfiles: they still named the renamed file
+`watchTlsMaterial.ts`, so the image build would have failed. The older oauth check stays.
+
 ## 2026-11-21 UTC — The allowed client name moves from Helm into the code
 
 obsidian-sync decides which service may call it, so the name is now the constant

@@ -1,9 +1,10 @@
 import { OBSIDIAN_VAULT_PATH } from '../env';
 import { createVaultToolsConfig } from '../vault-tools/vaultToolsConfig';
 
+import { CLUSTER_HELPER } from './callers';
 import type { VaultServer } from './createVaultServer';
 import { registerMilestoneRoutes } from './registerMilestoneRoutes';
-import { registerMtlsPeerCheck } from './registerMtlsPeerCheck';
+import { registerMtlsAuthorization, registerRoutesForCallers } from './registerMtlsAuthorization';
 import { registerPublicFileRoutes } from './registerPublicFileRoutes';
 import { registerPublicStaticRoutes } from './registerPublicStaticRoutes';
 import { registerShortLinkRoutes } from './registerShortLinkRoutes';
@@ -11,16 +12,21 @@ import { registerTaskRoutes } from './registerTaskRoutes';
 import { registerVaultFileStatsRoute, registerVaultMetricsRoutes } from './registerVaultMetricsRoutes';
 import { registerVaultToolRoutes } from './registerVaultToolRoutes';
 
-/** Everything that reads or edits the vault. Only for the mTLS instance. */
-export function registerProtectedVaultRoutes(server: VaultServer, allowedClientName: string): void {
+/**
+ * Everything that reads or edits the vault. Only for the mTLS instance. Register a route inside
+ * `registerRoutesForCallers` with the services that may call it: a route outside is denied.
+ */
+export function registerProtectedVaultRoutes(server: VaultServer): void {
     // First, so the check covers every route registered below.
-    registerMtlsPeerCheck(server, allowedClientName);
-    registerVaultFileStatsRoute(server, OBSIDIAN_VAULT_PATH);
-    registerVaultToolRoutes(server, createVaultToolsConfig(OBSIDIAN_VAULT_PATH));
-    registerTaskRoutes(server);
-    registerShortLinkRoutes(server);
-    registerMilestoneRoutes(server);
-    registerPublicStaticRoutes(server);
+    registerMtlsAuthorization(server);
+    registerRoutesForCallers(server, [CLUSTER_HELPER], (scope) => {
+        registerVaultFileStatsRoute(scope, OBSIDIAN_VAULT_PATH);
+        registerVaultToolRoutes(scope, createVaultToolsConfig(OBSIDIAN_VAULT_PATH));
+        registerTaskRoutes(scope);
+        registerShortLinkRoutes(scope);
+        registerMilestoneRoutes(scope);
+        registerPublicStaticRoutes(scope);
+    });
 }
 
 /**
