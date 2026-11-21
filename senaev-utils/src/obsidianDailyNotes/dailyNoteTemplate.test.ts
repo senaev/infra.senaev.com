@@ -10,91 +10,48 @@ import {
     isDailyNoteDate,
     renderDailyNote,
 } from './dailyNoteTemplate';
-import { DAILY_NOTE_TEMPLATE_FIXTURES } from './dailyNoteTemplate.fixtures';
 
 describe('renderDailyNote', () => {
-    it('schedules tasks by the note date, including overlapping monthly and weekend rules', () => {
-        const cases = [
-            [
-                '2026-10-29',
-                true,
-                false,
-                false,
-                false,
-                '2026q4',
-            ],
-            [
-                '2026-08-01',
-                false,
-                true,
-                true,
-                false,
-                '2026q3',
-            ],
-            [
-                '2026-11-01',
-                false,
-                true,
-                false,
-                true,
-                '2026q4',
-            ],
-            [
-                '2027-02-01',
-                true,
-                true,
-                false,
-                false,
-                '2027q1',
-            ],
-            [
-                '2026-12-31',
-                true,
-                false,
-                false,
-                false,
-                '2026q4',
-            ],
-            [
-                '2027-01-01',
-                true,
-                true,
-                false,
-                false,
-                '2027q1',
-            ],
-        ] as const;
+    it('orders each section independently and schedules reminders on the note date', () => {
+        const notes = [
+            {
+                path: 'wiki/Alpha.md',
+                frontmatter: {
+                    'morning-reminder': 'Start',
+                    'morning-reminder-order': 10,
+                    'evening-reminder': 'Finish',
+                    'evening-reminder-order': 1,
+                },
+            },
+            {
+                path: 'wiki/Beta.md',
+                frontmatter: {
+                    'morning-reminder': 'Prepare',
+                    'morning-reminder-order': 2,
+                    'evening-reminder': 'Review',
+                    'evening-reminder-order': 2,
+                },
+            },
+            {
+                path: 'wiki/Gamma.md',
+                frontmatter: {
+                    'day-reminder': 'Weekly',
+                    'day-reminder-schedule': 'FREQ=WEEKLY;BYDAY=SA',
+                },
+            },
+            {
+                path: 'wiki/Delta.md',
+                frontmatter: { 'day-reminder': 'Daily' },
+            },
+        ];
+        const saturday = renderDailyNote('2026-08-01', { notes });
 
-        for (const [
-            day,
-            weekday,
-            monthly,
-            saturday,
-            sunday,
-            quarter,
-        ] of cases) {
-            const text = renderDailyNote(day);
-
-            expect(text.includes('[[Leetcode]]'), day).toBe(weekday);
-            expect(text.includes('[[LinkedIn]]'), day).toBe(monthly);
-            expect(text.includes('[[@senaev_speaks]]'), day).toBe(saturday);
-            expect(text.includes('[[@mom]]'), day).toBe(saturday);
-            expect(text.includes('[[🥞 Sunday Breakfast]]'), day).toBe(sunday);
-            expect(text).toContain(`[[${quarter}#${day}]]`);
-            expect(text).toContain('\n---\n\n⬆️ Daily Note ⬆️\n\n---\n');
-            expect(text).not.toContain('daily_note_stream');
-            expect(text).toContain('window.senaevPersonalTools.filterTasksForDaily({task, query})');
-            expect(text).toContain('window.senaevPersonalTools.sortKeyForDaily({task})');
-        }
-    });
-
-    it('preserves the complete output captured from the retired template and script', () => {
-        for (const [
-            day,
-            expected,
-        ] of Object.entries(DAILY_NOTE_TEMPLATE_FIXTURES)) {
-            expect(renderDailyNote(day), day).toBe(expected);
-        }
+        expect(saturday).toContain('[[wiki/Beta|Prepare]]\n- [ ] [[wiki/Alpha|Start]]');
+        expect(saturday).toContain('[[wiki/Alpha|Finish]]\n- [ ] [[wiki/Beta|Review]]');
+        expect(saturday).toContain('[[wiki/Delta|Daily]]\n- [ ] [[wiki/Gamma|Weekly]]');
+        expect(renderDailyNote('2026-08-02', { notes })).not.toContain('Weekly');
+        expect(saturday).toContain('window.senaevPersonalTools.filterTasksForDaily');
+        expect(saturday).toContain('⬆️ Daily Note ⬆️');
     });
 
     it('rejects days that do not exist', () => {

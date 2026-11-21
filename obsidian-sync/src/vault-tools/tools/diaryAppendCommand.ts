@@ -6,12 +6,20 @@ import { CommandError } from 'senaev-utils/src/commands/CommandError';
 import { createFileDiffAsync } from 'senaev-utils/src/files/createFileDiffAsync';
 import { readTextFile } from 'senaev-utils/src/files/readTextFile';
 import { withFileMutations } from 'senaev-utils/src/files/withFileMutation';
+import {
+    hasReminder, type ReminderNote, type ReminderSource,
+} from 'senaev-utils/src/obsidianDailyNotes/dailyReminders';
 import { dailyNotePath, initializeDailyNote } from 'senaev-utils/src/obsidianDailyNotes/dailyNoteTemplate';
 import { formatDiaryRecord, insertDiaryRecords } from 'senaev-utils/src/obsidianDailyNotes/diaryRecord';
 import { createFileExclusively, replaceFileAtomically } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
 import { isAlreadyExistsError } from 'senaev-utils/src/utils/Error/isAlreadyExistsError/isAlreadyExistsError';
 
-import { prepareNewNote, resolveExistingNote } from '../access/vaultAccess';
+import { logger } from '../../logger';
+import { parseNoteFrontmatter } from '../../markdown/parseNoteFrontmatter';
+import {
+    isNotePath, prepareNewNote, resolveExistingNote,
+} from '../access/vaultAccess';
+import { walkVault } from '../access/walkVault';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
 
 export type DiaryRecordInput = {
@@ -47,35 +55,65 @@ async function findExistingNote(config: VaultToolsConfig, path: string, executio
     }
 }
 
-/**
- * The daily note with the records of the day inserted, in memory. A blank note is first filled
- * from the template, as the Obsidian plugin does.
- */
-function buildNote(path: string, content: string, records: readonly string[]): string {
-    const initialized = initializeDailyNote(path, content);
+async function readReminderSource(config: VaultToolsConfig, execution: CommandExecution): Promise<ReminderSource> {
+    const { files, errors } = await walkVault(config, '', execution);
+    const notes: ReminderNote[] = [];
 
-    if (initialized === content && content.trim() === '') {
-        throw new CommandError('command_failed', `Could not create the daily note "${path}" from the template`);
+    for (const { path } of errors) {
+        logger.warn({ path }, 'Could not search folder for daily reminders');
     }
 
-    return insertDiaryRecords(initialized, records, path);
+    for (const path of files) {
+        if (!isNotePath(config, path) || path.startsWith(`${config.diaryFolder}/`)) {
+            continue;
+        }
+
+        await execution.checkpoint();
+        try {
+            const content = await readTextFile(join(config.root, path), execution);
+            const frontmatter = parseNoteFrontmatter(content);
+
+            if (frontmatter && hasReminder(frontmatter)) {
+                notes.push({
+                    path,
+                    frontmatter,
+                });
+            }
+        } catch {
+            execution.throwIfAborted();
+            logger.warn({ path }, 'Could not read frontmatter for daily reminders');
+        }
+    }
+
+    return {
+        notes,
+        onInvalidSchedule: (path) => {
+            logger.warn({ path }, 'Invalid daily reminder schedule');
+        },
+    };
 }
 
 /** Reads the daily note of the day, or starts it from the template when it is missing. */
 async function planNote(
     config: VaultToolsConfig,
-    path: string,
-    records: readonly string[],
-    execution: CommandExecution
+    [
+        path,
+        records]: [string, readonly string[]
+    ],
+    execution: CommandExecution,
+    loadReminders: () => Promise<ReminderSource>
 ): Promise<PlannedNote> {
     const existing = await findExistingNote(config, path, execution);
     const before = existing === undefined ? '' : await readTextFile(existing, execution);
+
+    const scaffold = initializeDailyNote(path, before);
+    const initialized = scaffold === before ? before : initializeDailyNote(path, before, await loadReminders());
 
     return {
         path,
         absolutePath: existing,
         before,
-        after: buildNote(path, before, records),
+        after: insertDiaryRecords(initialized, records, path),
         records,
     };
 }
@@ -162,10 +200,19 @@ export async function diaryAppendCommand(config: VaultToolsConfig, input: DiaryA
 
     return await withFileMutations(paths.map((path) => join(config.root, path)), async () => {
         const notes: PlannedNote[] = [];
+        let reminderSource: Promise<ReminderSource> | undefined;
+        const loadReminders = () => {
+            reminderSource ??= readReminderSource(config, execution);
+
+            return reminderSource;
+        };
 
         for (const path of paths) {
             await execution.checkpoint();
-            notes.push(await planNote(config, path, recordsByPath.get(path) ?? [], execution));
+            notes.push(await planNote(config, [
+                path,
+                recordsByPath.get(path) ?? [],
+            ], execution, loadReminders));
         }
 
         await execution.checkpoint();
