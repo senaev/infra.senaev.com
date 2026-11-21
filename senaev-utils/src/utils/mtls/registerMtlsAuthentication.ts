@@ -1,13 +1,14 @@
-import type { FastifyInstance, RawServerBase } from 'fastify';
+import type {
+    FastifyInstance, FastifyRequest, RawServerBase,
+} from 'fastify';
 
 import { authenticateMtlsCaller, type MtlsCaller } from './mtlsServer';
 
-declare module 'fastify' {
-    interface FastifyRequest {
-        /** The caller of the request, set by `registerMtlsAuthentication`. */
-        mtlsCaller: MtlsCaller | undefined;
-    }
-}
+/** A request on a server with `registerMtlsAuthentication`. Cast to it to set or read the caller. */
+export type FastifyRequestWithMtls = FastifyRequest & {
+    /** The caller of the request, set by `registerMtlsAuthentication`. */
+    mtlsCaller?: MtlsCaller;
+};
 
 /**
  * The TLS handshake already proved that the caller has a certificate of the internal CA. This
@@ -35,7 +36,7 @@ export function registerMtlsAuthentication<RawServer extends RawServerBase>(serv
             return;
         }
 
-        request.mtlsCaller = authentication.caller;
+        (request as FastifyRequestWithMtls).mtlsCaller = authentication.caller;
         done();
     });
 }

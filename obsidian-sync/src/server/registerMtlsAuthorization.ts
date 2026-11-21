@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import type { FastifyRequestWithMtls } from 'senaev-utils/src/utils/mtls/registerMtlsAuthentication';
 
 import { logger } from '../logger';
 
@@ -14,7 +15,7 @@ export function registerMtlsAuthorization(
     allowedCallers: readonly string[]
 ): void {
     server.addHook('onRequest', (request, reply, done) => {
-        const { mtlsCaller } = request;
+        const { mtlsCaller } = request as FastifyRequestWithMtls;
 
         if (mtlsCaller === undefined) {
             logger.error({

@@ -1,3 +1,11 @@
+## 2026-11-21 UTC — `FastifyRequestWithMtls` replaces the Fastify module augmentation
+
+The `declare module 'fastify'` block for `mtlsCaller` is removed, because it changed the type of
+every Fastify request in every package that imports senaev-utils. `registerMtlsAuthentication`
+exports `FastifyRequestWithMtls` (`FastifyRequest & { mtlsCaller?: MtlsCaller }`), and the code
+casts to it where it sets or reads the caller (the authentication hook and
+`registerMtlsAuthorization`). `decorateRequest('mtlsCaller', undefined)` stays for the request shape.
+
 ## 2026-11-21 UTC — The mTLS Fastify factory moved to senaev-utils
 
 `createProtectedVaultServer` is now `createMtlsFastifyServer(credentials, logger)` in
