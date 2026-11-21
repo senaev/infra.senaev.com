@@ -3,8 +3,6 @@ import { authenticateMtlsPeer } from 'senaev-utils/src/utils/mtls/mtlsServer';
 
 import { logger } from '../logger';
 
-import type { VaultServer } from './createVaultServer';
-
 declare module 'fastify' {
     interface FastifyContextConfig {
         /** The services that may call the route, by the DNS name in their client certificate. */
@@ -19,7 +17,7 @@ declare module 'fastify' {
  * never opens a route to every service of the CA. Added before the routes, so it covers all of
  * them, the 404 handler included.
  */
-export function registerMtlsAuthorization(server: VaultServer): void {
+export function registerMtlsAuthorization(server: Pick<FastifyInstance, 'addHook'>): void {
     server.addHook('onRequest', (request, reply, done) => {
         const authentication = authenticateMtlsPeer(request.raw.socket, new Date());
 
