@@ -1,9 +1,9 @@
-- [ ] Collect container logs through OpenTelemetry into ClickHouse and visualize them in Grafana.
+- [ ] Verify the Hetzner pilot and expand OpenTelemetry container log collection to the other nodes.
 
 ## Stage
 
-Open; the original document describes a design and desired deployment but does not provide completed end-to-end rollout evidence.
+The Helm pilot deploys one ClickHouse on `senaev-madrid`, a persistent OpenTelemetry gateway on Hetzner, and a Hetzner-only agent. The existing Grafana gains a read-only **ClickHouse Logs** data source.
 
 ## Next steps
 
-Implement the OTel collector-to-ClickHouse pipeline and verify ingestion and Grafana queries.
+Add both Vault password keys, merge the pilot PR, and run the [verification](README.md#verification) before expanding collection.

@@ -1,102 +1,44 @@
 # 2026-10-18 — Collect pod logs into ClickHouse in OTel format
 
-- [ ] Collect all container logs with OpenTelemetry Collectors, keep them in our own ClickHouse in the standard OTel format, and view them in the existing Grafana
+Collect container logs with OpenTelemetry and search them in Grafana alongside the existing Datadog collection.
 
 ## Goal
 
-Our own log storage in the cluster, next to Datadog (Datadog does not change). The UI
-(SigNoz, HyperDX) and the ChatGPT MCP tools are out of scope.
-
-Data path: OTel agent (DaemonSet) → OTLP → OTel gateway → ClickHouse `otel.otel_logs` → Grafana.
+A node-local Collector reads Kubernetes container stdout and stderr and adds Kubernetes metadata. It sends logs over OTLP to the gateway on Hetzner. The gateway writes to `otel.otel_logs` in ClickHouse on `senaev-madrid`. The existing Grafana reads the table through the **ClickHouse Logs** data source in Explore. The log table has a 14-day TTL.
 
 ## Context
 
-- Grafana: the `grafana` subchart of `victoria-metrics-k8s-stack` 0.72.2 in
-  `provisioning/helm/vm-stack/values.yaml`, `telemetry` namespace. Extra datasources go to
-  `defaultDatasources.extra` and are rendered into a ConfigMap. Do not put passwords there.
-- Chart pattern: a wrapper chart with a vendored `.tgz` in `charts/` (see `vm-operator`),
-  deployed by `upgrade-namespace.sh <chart> <namespace>` and by `update-helm-charts.yml`.
-- Secrets: Vault `senaev-com-kv` → External Secrets → `senaev-com-kv-secrets`.
-- Pods are pinned with `nodeSelector: vps: <node>`. On `senaev-media`, data lives on a
-  `hostPath` under `mediaServerStoragePath` (`/mnt/sdb1`, `provisioning/helm/common-values.yaml`),
-  for example `/mnt/sdb1/volumes/minio`.
-- `senaev-media` is a sensitive home node (see root `AGENTS.md`): no host network, roll out
-  to it last, and ask the user first.
+- The [Madrid migration](../2026-11-14-18-42-migrate-telemetry-to-madrid/README.md) established node-local storage under `/k3s-cluster/volumes`. The [logs chart](../../provisioning/helm/telemetry/clickhouse-logs/) uses that layout for ClickHouse, the gateway queue and the agent's queue and file offsets.
+- Hetzner hosts the gateway and the first agent. The gateway can accept logs while Madrid is unavailable and retry when ClickHouse returns. Its queue holds up to 512 MiB of serialized batches. The amount of outage time this covers depends on the incoming log rate. Retries can produce duplicates.
+- ClickHouse is a single instance. Its writer can insert and inspect column definitions. Grafana can read the logs table and set a query timeout up to 60 seconds.
+- The collectors start with new lines and resume at saved offsets after restarts. They skip the pipeline's own logs to prevent exporter errors from feeding the queue.
 
 ## Plan
 
-1. **Capacity check on `senaev-media`** (read-only): `kubectl top nodes`, `free -h`,
-   `df -h /mnt/sdb1`. Retention: 14 days.
-2. **ClickHouse on `senaev-media`**: 1 shard, 1 replica, `MergeTree`, no Keeper,
-   `nodeSelector: vps: senaev-media`, data on `hostPath` `/mnt/sdb1/volumes/clickhouse`,
-   in-cluster access only. Set memory limits, so ClickHouse cannot starve the media services.
-   Ask the user before the first deploy (sensitive node).
-   ❓ Install with the Altinity `clickhouse-operator` (vendored chart + `ClickHouseInstallation`)?
-   Users:
-   - `otel_writer`: `CREATE` and `INSERT` on the `otel` database only
-   - `reader`: `readonly=1`, with limits on query time and result rows, and
-     `max_execution_time CHANGEABLE_IN_READONLY` (the Grafana plugin sets it on every query)
-3. **OTel gateway**: chart `opentelemetry-collector` 0.176.0
-   (https://open-telemetry.github.io/opentelemetry-helm-charts), `mode: deployment`,
-   1 replica, image `otel/opentelemetry-collector-contrib`, pinned to `hetzner`.
-   - receiver `otlp` (gRPC), cluster-internal Service
-   - exporter `clickhouse`: `database: otel`, `ttl: 336h`, `create_schema: true`, user `otel_writer`
-   - `sending_queue.batch` (`min_size: 5000`, `flush_timeout: 5s`) instead of the `batch` processor
-   - `sending_queue.storage` with `file_storage` on a small PVC. The gateway stays on
-     `hetzner`, so it buffers logs while the home link to `senaev-media` is down. Size the
-     queue and `retry_on_failure.max_elapsed_time` for an outage of at least 1 hour.
-4. **OTel agent**: the same chart, a second release, `mode: daemonset`.
-   - `presets.logsCollection` and `presets.kubernetesAttributes`
-   - exporter `otlp` to the gateway
-   - no host network, no metrics; set resource requests/limits
-   - rollout: `hetzner` → `firstvds` → `senaev-media` (ask first)
-5. **Grafana**, in `provisioning/helm/vm-stack/values.yaml`:
-   - `grafana.plugins: [grafana-clickhouse-datasource]`
-   - `grafana.envValueFrom.CLICKHOUSE_READER_PASSWORD` from `senaev-com-kv-secrets`
-   - in `defaultDatasources.extra`:
-     ```yaml
-     - name: ClickHouse Logs
-       type: grafana-clickhouse-datasource
-       jsonData:
-         host: <clickhouse-service>.<namespace>.svc.cluster.local
-         port: 9000
-         protocol: native
-         username: reader
-         defaultDatabase: otel
-         logs:
-           defaultDatabase: otel
-           defaultTable: otel_logs
-           otelEnabled: true
-       secureJsonData:
-         password: $CLICKHOUSE_READER_PASSWORD
-     ```
-6. **Secrets**: put the `otel_writer` and `reader` passwords in Vault.
-7. **CI**: the new charts are in the `update-helm-charts.yml` matrix; `npm run check:helm` passes.
-8. **Optional**: `vmagent` scrapes the ClickHouse and collector metrics, and a vmalert rule
-   sends a Telegram alert on high ClickHouse disk usage or exporter send failures.
+1. Add `CLICKHOUSE_WRITER_PASSWORD` and `CLICKHOUSE_READER_PASSWORD` to the existing Vault `kv/senaev-com-kv` record as two independent random secrets. The [Vault editor](https://vault.senaev.com/ui/vault/secrets/kv/kv/senaev-com-kv/details/edit) and `vault kv patch kv/senaev-com-kv` both support preserving the existing keys.
+2. Merge the pilot once the Vault keys are in place. CI deploys the `clickhouse-logs` and `vm-stack` releases in `telemetry`. External Secrets creates `clickhouse-logs-writer` and `clickhouse-logs-reader`.
+3. Verify the Hetzner pilot, then expand the agent's node selection in stages.
 
 ## Verification
 
-- Logs from every node with an agent arrive within one minute:
-  `SELECT ResourceAttributes['k8s.node.name'] AS node, count(), max(Timestamp) FROM otel.otel_logs WHERE Timestamp > now() - INTERVAL 5 MINUTE GROUP BY node`
-- Grafana: the datasource test passes. In Explore, logs show the level and the body, filter
-  by `k8s.namespace.name` and `k8s.pod.name`, and text search finds a known log line.
-- The log count for one pod and one hour is the same as in Datadog.
-- A restart of the agent or the gateway gives no gap and no duplicate log lines.
-- ClickHouse scaled to 0 for 10 minutes, then back: the gateway sends the queued logs, no gap.
-- `reader` cannot run `INSERT` or `CREATE`.
-- After 14 days, old logs are removed and disk usage stays flat.
-- `senaev-media` stays reachable (`tailscale status` shows `direct`, SSH works).
+- Confirm both ExternalSecrets are ready and the three workloads are running on their intended nodes. Run these in the personal-cluster terminal.
+  ```sh
+  kubectl -n telemetry wait --for=condition=Ready externalsecret/clickhouse-logs-writer externalsecret/clickhouse-logs-reader --timeout=60s
+  kubectl -n telemetry get pods -o wide -l 'app in (clickhouse-logs,otel-logs-gateway,otel-logs-agent)'
+  ```
+- Find a fresh line from a known Hetzner pod in Grafana Explore. Filter by its namespace and pod name, then search for part of the line. Run the query below in SQL mode to check the source node and timestamp.
+  ```sql
+  SELECT
+      ResourceAttributes['k8s.node.name'] AS node,
+      count() AS records,
+      max(Timestamp) AS latest
+  FROM otel.otel_logs
+  WHERE Timestamp > now() - INTERVAL 5 MINUTE
+  GROUP BY node
+  ```
+- For the recovery test, temporarily scale only `deployment/clickhouse-logs` to zero, then let a Hetzner pod emit a distinctive log line. Verify that `otelcol_exporter_queue_size{exporter="clickhouse"}` rises in VictoriaMetrics. Restore one replica with `kubectl -n telemetry scale deployment/clickhouse-logs --replicas=1`, wait for readiness, and find the line in Grafana as the queue drains.
+- Confirm Datadog still receives the Hetzner pod's logs and that Grafana's VictoriaMetrics data source still returns a fresh `up` sample.
 
-## Findings
+## Result
 
-### 2026-10-18 — Decisions
-
-ClickHouse with the standard OTel `clickhouseexporter` schema, so the data does not depend
-on one UI. Logs only: metrics stay in VictoriaMetrics. Grafana is the first way to view
-the logs.
-
-### 2026-10-19 — ClickHouse on `senaev-media`
-
-ClickHouse lives on `senaev-media`, with data on `/mnt/sdb1`. The gateway stays on
-`hetzner` with a persistent queue, because the home link is less reliable.
+The pilot is implemented. Production ingestion, the Grafana Explore query, queue recovery in the cluster, and rollout beyond Hetzner are pending. See the [worklog](project-worklog.md).
