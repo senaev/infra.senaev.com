@@ -1,3 +1,15 @@
+## 2026-11-21 UTC — The mTLS Fastify factory moved to senaev-utils
+
+`createProtectedVaultServer` is now `createMtlsFastifyServer(credentials, logger)` in
+`senaev-utils/src/utils/mtls/`, with `registerMtlsAuthentication` (its hook logs with
+`request.log`, so it needs no service logger). The unit test of the hook moved with it.
+obsidian-sync keeps `registerMtlsAuthorization`, `ALLOWED_CALLERS` and the routes.
+`fastify` is now a production dependency of senaev-utils (no longer a dev dependency and an
+optional peer), so the library can call `Fastify(...)`. The services keep their own `fastify`
+dependency, because their code imports it directly and Node resolves it from the service's
+`node_modules`, not from the library's. `bodyLimit` is no longer set: the Fastify default is
+1 MiB, the same as the old value.
+
 ## 2026-11-21 UTC — The factory installs the authentication hook
 
 `createProtectedVaultServer` calls `registerMtlsAuthentication` itself, so a protected server cannot

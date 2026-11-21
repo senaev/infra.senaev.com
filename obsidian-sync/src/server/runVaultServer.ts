@@ -1,10 +1,11 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyBaseLogger, FastifyInstance } from 'fastify';
+import { createMtlsFastifyServer } from 'senaev-utils/src/utils/mtls/createMtlsFastifyServer';
 import { watchTlsCredentials } from 'senaev-utils/src/utils/mtls/watchTlsCredentials';
 
 import { logger } from '../logger';
 import { PUBLIC_DIR } from '../vaultPaths';
 
-import { createProtectedVaultServer, createVaultServer } from './createVaultServer';
+import { createVaultServer } from './createVaultServer';
 import { registerProtectedVaultRoutes, registerPublicVaultRoutes } from './registerVaultRoutes';
 
 const HOST = '0.0.0.0';
@@ -22,7 +23,7 @@ const PUBLIC_PORT = 8080;
  */
 export async function runVaultServer(): Promise<{ close: () => Promise<void> }> {
     // The watcher needs the server for reloads, and the server needs the first credentials from the watcher.
-    const reloadTarget: { server?: ReturnType<typeof createProtectedVaultServer> } = {};
+    const reloadTarget: { server?: ReturnType<typeof createMtlsFastifyServer> } = {};
     const certificates = await watchTlsCredentials({
         onChange: (credentials) => {
             reloadTarget.server?.updateCredentials(credentials);
@@ -31,7 +32,7 @@ export async function runVaultServer(): Promise<{ close: () => Promise<void> }> 
         onError: (error) => logger.error({ err: error }, '❌ mTLS certificate files cannot be used, keeping the last valid ones'),
     });
 
-    const protectedInstance = createProtectedVaultServer(certificates.credentials, logger);
+    const protectedInstance = createMtlsFastifyServer(certificates.credentials, logger as FastifyBaseLogger);
 
     reloadTarget.server = protectedInstance;
 

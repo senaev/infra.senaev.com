@@ -156,7 +156,7 @@ a restart (`senaev-utils/src/utils/mtls`). They fail closed: no fallback to HTTP
 
 obsidian-sync has two Fastify instances: mTLS on 8443 with all protected routes, and plain HTTP on
 8080 with only the published-file (`?note=`/`?file=`, nextjs-app) and `/metrics` (vmagent) routes. Add
-new vault routes only to `registerProtectedVaultRoutes`: `createProtectedVaultServer` installs
+new vault routes only to `registerProtectedVaultRoutes`: `createMtlsFastifyServer` (senaev-utils) installs
 `registerMtlsAuthentication`, which rejects an invalid certificate (401), and `registerMtlsAuthorization`
 allows only the services in `ALLOWED_CALLERS`
 (`obsidian-sync/src/server/callers.ts`) on every route of that instance (403). The list is for the

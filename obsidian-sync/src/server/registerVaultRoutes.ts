@@ -19,7 +19,7 @@ import { registerVaultToolRoutes } from './registerVaultToolRoutes';
  */
 export function registerProtectedVaultRoutes(server: Pick<FastifyInstance, 'addHook' | 'get' | 'post' | 'register'>): void {
     // First, so the check covers every route registered below. The caller is already
-    // authenticated by `createProtectedVaultServer`.
+    // authenticated by `createMtlsFastifyServer`.
     registerMtlsAuthorization(server, ALLOWED_CALLERS);
     registerVaultToolRoutes(server, createVaultToolsConfig(OBSIDIAN_VAULT_PATH));
     registerTaskRoutes(server);

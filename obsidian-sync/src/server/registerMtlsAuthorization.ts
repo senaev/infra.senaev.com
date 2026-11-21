@@ -5,7 +5,7 @@ import { logger } from '../logger';
 /**
  * Requires that the caller is one of the allowed services (403), by the DNS name in its client
  * certificate. Everything else is refused, so a forgotten route is never open to every service
- * of the CA. The caller comes from `registerMtlsAuthentication`, which must be registered
+ * of the CA. The caller comes from `registerMtlsAuthentication` (senaev-utils), which must be registered
  * first: without a caller on the request, everything is refused (401). Added before the routes,
  * so it covers all of them, the 404 handler included.
  */
