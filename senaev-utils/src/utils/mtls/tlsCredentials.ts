@@ -91,5 +91,7 @@ export function createSecureContextOptions({
 }
 
 export function isTlsCredentialsValidAt(credentials: TlsCredentials, now: Date): boolean {
-    return credentials.validFrom.getTime() <= now.getTime() && now.getTime() < credentials.validTo.getTime();
+    const time = now.getTime();
+
+    return credentials.validFrom.getTime() <= time && time < credentials.validTo.getTime();
 }
