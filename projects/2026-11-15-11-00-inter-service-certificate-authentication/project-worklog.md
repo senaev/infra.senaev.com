@@ -4,7 +4,7 @@
 `senaev-utils/src/utils/mtls/`, with `registerMtlsAuthentication` (its hook logs with
 `request.log`, so it needs no service logger). The unit test of the hook moved with it.
 obsidian-sync keeps `registerMtlsAuthorization`, `ALLOWED_CALLERS` and the routes.
-The caller passes `fastify` (`createMtlsFastifyServer({ fastify, credentials, logger })`), so the
+The caller passes `Fastify` (`createMtlsFastifyServer({ Fastify, credentials, logger })`), so the
 library imports only Fastify types. `fastify` stays a dev dependency and an optional peer of
 senaev-utils: a peer cannot give a runtime import to a symlinked library (Node resolves it from
 `/app/senaev-utils`, not from the service), and a production dependency would add a second copy

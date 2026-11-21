@@ -1,6 +1,6 @@
 import type { Server as HttpsServer } from 'node:https';
 
-import type Fastify from 'fastify';
+import type FastifyFactory from 'fastify';
 import type { FastifyBaseLogger, FastifyInstance } from 'fastify';
 
 import { createMtlsServerOptions } from './mtlsServer';
@@ -17,9 +17,9 @@ import { createSecureContextOptions, type TlsCredentials } from './tlsCredential
  * senaev-utils does not need Fastify, and the service and the library use one copy.
  */
 export function createMtlsFastifyServer({
-    fastify, credentials, logger,
+    Fastify, credentials, logger,
 }: {
-    fastify: typeof Fastify;
+    Fastify: typeof FastifyFactory;
     credentials: TlsCredentials;
     logger: FastifyBaseLogger;
 }): {
@@ -27,7 +27,7 @@ export function createMtlsFastifyServer({
         /** New connections use the renewed certificate; open ones keep the old one. */
         updateCredentials: (renewed: TlsCredentials) => void;
     } {
-    const server = fastify({
+    const server = Fastify({
         loggerInstance: logger,
         https: createMtlsServerOptions(credentials),
     });

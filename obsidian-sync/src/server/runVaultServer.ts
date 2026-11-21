@@ -33,7 +33,7 @@ export async function runVaultServer(): Promise<{ close: () => Promise<void> }> 
     });
 
     const protectedInstance = createMtlsFastifyServer({
-        fastify: Fastify,
+        Fastify,
         credentials: certificates.credentials,
         logger: logger as FastifyBaseLogger,
     });

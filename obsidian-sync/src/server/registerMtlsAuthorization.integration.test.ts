@@ -25,7 +25,7 @@ let ca: Awaited<ReturnType<typeof createTestCa>>;
 async function startServer(allowedCallers: readonly string[]): Promise<string> {
     // Only the raw server type (HTTPS) differs from the plain instance; the hooks do not use it.
     const server = createMtlsFastifyServer({
-        fastify: Fastify,
+        Fastify,
         credentials: parseTlsCredentials(serverFiles),
         logger: logger as FastifyBaseLogger,
     }).server as unknown as FastifyInstance;

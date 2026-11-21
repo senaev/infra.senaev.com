@@ -72,7 +72,7 @@ beforeAll(async () => {
         usage: 'server',
     });
     const instance = createMtlsFastifyServer({
-        fastify: Fastify,
+        Fastify,
         credentials: parseTlsCredentials(serverFiles),
         logger: logger as FastifyBaseLogger,
     });
