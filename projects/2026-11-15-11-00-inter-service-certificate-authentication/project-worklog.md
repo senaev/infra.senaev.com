@@ -1,3 +1,11 @@
+## 2026-11-21 UTC — Remove the unused `/vault/file-stats` route
+
+Nothing in the repo called it, and it was the only reason to split `registerVaultMetricsRoutes`
+in two (it returns file names, so it could not share the public HTTP instance with `/metrics`).
+The route, its tests and its README text are removed, and `registerVaultMetricsRoutes` has only
+`/metrics` again. `scanVaultInventory(root, includeFiles)` still has the `includeFiles` option that
+only this route used.
+
 ## 2026-11-21 UTC — Authorization per route in obsidian-sync, not in the utils
 
 `checkMtlsPeer` is now `authenticateMtlsPeer` in senaev-utils: it checks the verified connection

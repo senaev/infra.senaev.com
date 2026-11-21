@@ -9,7 +9,7 @@ import {
 } from 'vitest';
 
 import { createVaultServer } from './createVaultServer';
-import { registerVaultFileStatsRoute, registerVaultMetricsRoutes } from './registerVaultMetricsRoutes';
+import { registerVaultMetricsRoutes } from './registerVaultMetricsRoutes';
 
 const servers: ReturnType<typeof createVaultServer>[] = [];
 const roots: string[] = [];
@@ -24,7 +24,7 @@ afterEach(async () => {
     roots.length = 0;
 });
 
-it('exposes only the scrape metrics on the public instance, and file details on the protected one', async () => {
+it('serves the scrape metrics', async () => {
     const root = await mkdtemp(join(tmpdir(), 'vault-metrics-route-'));
 
     roots.push(root);
@@ -43,29 +43,6 @@ it('exposes only the scrape metrics on the public instance, and file details on 
     expect(metrics.headers['content-type']).toMatch(/^text\/plain; version=0\.0\.4/u);
     expect(metrics.body).toContain('obsidian_vault_files_total 1');
     expect(metrics.body).toContain('obsidian_vault_scan_success 1');
-
-    expect((await server.inject({
-        method: 'GET',
-        url: '/vault/file-stats',
-    })).statusCode).toBe(404);
-
-    const protectedServer = createVaultServer();
-
-    servers.push(protectedServer);
-    registerVaultFileStatsRoute(protectedServer, root);
-    const details = await protectedServer.inject({
-        method: 'GET',
-        url: '/vault/file-stats',
-    });
-
-    expect(details.statusCode).toBe(200);
-    expect(details.json()).toMatchObject({
-        totalFiles: 1,
-        largest: {
-            path: 'file.csv',
-            bytes: 5,
-        },
-    });
 });
 
 it('indicates scan failure instead of serving stale inventory as healthy', async () => {

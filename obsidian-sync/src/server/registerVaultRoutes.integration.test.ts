@@ -40,10 +40,6 @@ const PROTECTED_REQUESTS = [
     },
     {
         method: 'GET',
-        path: '/vault/file-stats',
-    },
-    {
-        method: 'GET',
         path: '/public-static/index.html',
     },
 ] as const;

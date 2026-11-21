@@ -9,7 +9,7 @@ import { registerPublicFileRoutes } from './registerPublicFileRoutes';
 import { registerPublicStaticRoutes } from './registerPublicStaticRoutes';
 import { registerShortLinkRoutes } from './registerShortLinkRoutes';
 import { registerTaskRoutes } from './registerTaskRoutes';
-import { registerVaultFileStatsRoute, registerVaultMetricsRoutes } from './registerVaultMetricsRoutes';
+import { registerVaultMetricsRoutes } from './registerVaultMetricsRoutes';
 import { registerVaultToolRoutes } from './registerVaultToolRoutes';
 
 /**
@@ -20,7 +20,6 @@ export function registerProtectedVaultRoutes(server: VaultServer): void {
     // First, so the check covers every route registered below.
     registerMtlsAuthorization(server);
     registerRoutesForCallers(server, [CLUSTER_HELPER], (scope) => {
-        registerVaultFileStatsRoute(scope, OBSIDIAN_VAULT_PATH);
         registerVaultToolRoutes(scope, createVaultToolsConfig(OBSIDIAN_VAULT_PATH));
         registerTaskRoutes(scope);
         registerShortLinkRoutes(scope);

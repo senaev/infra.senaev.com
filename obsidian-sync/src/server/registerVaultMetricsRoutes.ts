@@ -54,28 +54,3 @@ export function registerVaultMetricsRoutes(server: VaultServer, root: string): v
         return metrics();
     });
 }
-
-/**
- * Detailed filenames stay on the protected mTLS instance (not Prometheus).
- * ?path= is an exact-match lookup in the scanned, allowed vault file inventory.
- */
-export function registerVaultFileStatsRoute(server: VaultServer, root: string): void {
-    server.get<{ Querystring: { path?: string } }>('/vault/file-stats', async (request, reply) => {
-        if (request.query.path === undefined) {
-            return scanVaultInventory(root);
-        }
-
-        const snapshot = await scanVaultInventory(root, true);
-        const file = snapshot.files?.find(({ path }) => path === request.query.path);
-
-        if (!file) {
-            return reply.code(404).send({
-                status: 'error',
-                code: 'not_found',
-                message: 'Vault file not found',
-            });
-        }
-
-        return file;
-    });
-}
