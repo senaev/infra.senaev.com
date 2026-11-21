@@ -1,5 +1,6 @@
 import type { AddressInfo } from 'node:net';
 
+import type { FastifyInstance } from 'fastify';
 import { createMtlsClient, type MtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
 import { createTestCa, issueTestCertificate } from 'senaev-utils/src/utils/mtls/testPki';
 import { parseTlsCredentials, type TlsFiles } from 'senaev-utils/src/utils/mtls/tlsCredentials';
@@ -10,9 +11,7 @@ import {
 import { logger } from '../logger';
 
 import { CLUSTER_HELPER } from './callers';
-import {
-    createProtectedVaultServer, createVaultServer, type VaultServer,
-} from './createVaultServer';
+import { createProtectedVaultServer, createVaultServer } from './createVaultServer';
 import { registerProtectedVaultRoutes, registerPublicVaultRoutes } from './registerVaultRoutes';
 
 const PROTECTED_REQUESTS = [
@@ -46,14 +45,14 @@ const PROTECTED_REQUESTS = [
     },
 ] as const;
 
-let protectedServer: VaultServer;
-let publicServer: VaultServer;
+let protectedServer: FastifyInstance;
+let publicServer: FastifyInstance;
 let protectedOrigin: string;
 let publicOrigin: string;
 let allowedClient: MtlsClient;
 let otherServiceClient: MtlsClient;
 
-function originOf(server: VaultServer, protocol: string): string {
+function originOf(server: FastifyInstance, protocol: string): string {
     return `${protocol}://localhost:${(server.server.address() as AddressInfo).port}`;
 }
 
@@ -74,7 +73,7 @@ beforeAll(async () => {
     const instance = createProtectedVaultServer(parseTlsCredentials(serverFiles), logger);
 
     // Only the raw server type (HTTPS) differs from the plain instance; the routes do not use it.
-    protectedServer = instance.server as unknown as VaultServer;
+    protectedServer = instance.server as unknown as FastifyInstance;
     registerProtectedVaultRoutes(protectedServer);
     publicServer = createVaultServer();
     registerPublicVaultRoutes(publicServer);

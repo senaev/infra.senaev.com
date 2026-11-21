@@ -12,20 +12,12 @@ const BODY_LIMIT_BYTES = 1024 * 1024;
  */
 export function createVaultServer() {
     return Fastify({
+        // Typed as `FastifyBaseLogger`: with pino's own type, the instance's logger type would
+        // change and the plain `FastifyInstance` would no longer match it.
         loggerInstance: logger as FastifyBaseLogger,
         bodyLimit: BODY_LIMIT_BYTES,
     });
 }
-
-/**
- * Derived from the factory. Our pino instance is passed as `FastifyBaseLogger`: with its own
- * type, the instance's logger type would change and the plain `FastifyInstance` would no
- * longer match it.
- */
-export type VaultServer = ReturnType<typeof createVaultServer>;
-
-/** What the route registrars use of a server: a registrar cannot start or stop it. */
-export type VaultRouter = Pick<VaultServer, 'get' | 'post' | 'addHook' | 'register'>;
 
 /**
  * HTTPS that accepts only clients with a certificate of the internal CA. A Fastify instance has

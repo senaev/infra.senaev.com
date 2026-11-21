@@ -6,10 +6,11 @@ import { dirname, join } from 'node:path';
 import {
     afterAll, beforeAll, describe, expect, it, vi,
 } from 'vitest';
+import type { FastifyInstance } from 'fastify';
 
 import { PUBLIC_STATIC_DIR } from '../vaultPaths';
 
-import { createVaultServer, type VaultServer } from './createVaultServer';
+import { createVaultServer } from './createVaultServer';
 import { registerPublicStaticRoutes } from './registerPublicStaticRoutes';
 
 vi.mock('../vaultPaths', async () => {
@@ -25,7 +26,7 @@ const paths = {
     publicStatic: PUBLIC_STATIC_DIR,
 };
 
-let server: VaultServer;
+let server: FastifyInstance;
 
 beforeAll(async () => {
     mkdirSync(join(paths.publicStatic, 'folder'), { recursive: true });

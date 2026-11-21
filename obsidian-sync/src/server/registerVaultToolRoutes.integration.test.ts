@@ -3,16 +3,17 @@ import { writeFile } from 'node:fs/promises';
 import {
     afterAll, beforeAll, describe, expect, it, vi,
 } from 'vitest';
+import type { FastifyInstance } from 'fastify';
 
 import * as downloadModule from '../vault-tools/tools/downloadTool';
 import { downloadTool } from '../vault-tools/tools/downloadTool';
 import { createTestVault, type TestVault } from '../vault-tools/createTestVault';
 
-import { createVaultServer, type VaultServer } from './createVaultServer';
+import { createVaultServer } from './createVaultServer';
 import { registerVaultToolRoutes } from './registerVaultToolRoutes';
 
 let vault: TestVault;
-let server: VaultServer;
+let server: FastifyInstance;
 
 beforeAll(async () => {
     vault = await createTestVault({ 'Note.md': '# Note\n' });

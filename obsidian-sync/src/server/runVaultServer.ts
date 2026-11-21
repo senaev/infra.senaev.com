@@ -1,11 +1,10 @@
+import type { FastifyInstance } from 'fastify';
 import { watchTlsCredentials } from 'senaev-utils/src/utils/mtls/watchTlsCredentials';
 
 import { logger } from '../logger';
 import { PUBLIC_DIR } from '../vaultPaths';
 
-import {
-    createProtectedVaultServer, createVaultServer, type VaultServer,
-} from './createVaultServer';
+import { createProtectedVaultServer, createVaultServer } from './createVaultServer';
 import { registerProtectedVaultRoutes, registerPublicVaultRoutes } from './registerVaultRoutes';
 
 const HOST = '0.0.0.0';
@@ -40,7 +39,7 @@ export async function runVaultServer(): Promise<{ close: () => Promise<void> }> 
     const publicServer = createVaultServer();
 
     // Only the raw server type (HTTPS) differs from the plain instance; the routes do not use it.
-    registerProtectedVaultRoutes(protectedServer as unknown as VaultServer);
+    registerProtectedVaultRoutes(protectedServer as unknown as FastifyInstance);
     registerPublicVaultRoutes(publicServer);
 
     await Promise.all([

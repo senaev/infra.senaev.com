@@ -1,3 +1,13 @@
+## 2026-11-21 UTC — No shared server types in obsidian-sync
+
+`VaultServer` and `VaultRouter` are removed from `createVaultServer.ts`. Each route registrar types
+only what it calls, with `Pick<FastifyInstance, …>` (`registerTaskRoutes` takes `'post'`,
+`registerPublicStaticRoutes` takes `'register'`, and so on); tests use `FastifyInstance`.
+`createProtectedVaultServer(credentials, logger)` takes the logger and returns the real HTTPS
+instance. The one cast from it to `FastifyInstance` is in `runVaultServer.ts` (and in two tests),
+because the HTTPS raw server type is not assignable to the plain one. A generic over the raw server
+was tried and dropped: `reply.raw` in `registerVaultToolRoutes` cannot be narrowed that way.
+
 ## 2026-11-21 UTC — "Caller" replaces "peer" in the names of the mTLS caller
 
 The verified client is a caller in the product code and in the utils: `request.mtlsCaller`,

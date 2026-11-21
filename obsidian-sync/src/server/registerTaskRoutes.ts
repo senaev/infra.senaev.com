@@ -2,13 +2,12 @@ import {
     findTaskFieldsError, serializeTask, type TaskFields,
 } from 'senaev-utils/src/obsidianTasks/taskLine';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
+import type { FastifyInstance } from 'fastify';
 
 import { logger } from '../logger';
 import { prependTaskLine } from '../tasks/prependTaskLine';
 
-import type { VaultRouter } from './createVaultServer';
-
-export function registerTaskRoutes(server: VaultRouter): void {
+export function registerTaskRoutes(server: Pick<FastifyInstance, 'post'>): void {
     server.post<{ Body: unknown }>('/tasks', async (request, reply) => {
         const { body } = request;
 

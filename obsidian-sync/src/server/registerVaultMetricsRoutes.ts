@@ -1,11 +1,11 @@
+import type { FastifyInstance } from 'fastify';
+
 import { logger } from '../logger';
 import { renderVaultMetrics, scanVaultInventory } from '../telemetry/vaultInventory';
 
-import type { VaultServer } from './createVaultServer';
-
 const METRICS_CACHE_MS = 15_000;
 
-export function registerVaultMetricsRoutes(server: VaultServer, root: string): void {
+export function registerVaultMetricsRoutes(server: Pick<FastifyInstance, 'get'>, root: string): void {
     let lastScanAt = 0;
     let lastSuccessfulScan = 0;
     let lastMetrics: string | undefined;

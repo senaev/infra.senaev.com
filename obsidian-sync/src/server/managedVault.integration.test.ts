@@ -4,15 +4,16 @@ import { completeOperation, awaitOperation } from 'senaev-utils/src/operations/t
 import {
     afterEach, describe, expect, it, vi,
 } from 'vitest';
+import type { FastifyInstance } from 'fastify';
 
 import { createTestVault, type TestVault } from '../vault-tools/createTestVault';
 import { VAULT_TOOLS } from '../vault-tools/vaultTools';
 
-import { createVaultServer, type VaultServer } from './createVaultServer';
+import { createVaultServer } from './createVaultServer';
 import { registerVaultToolRoutes } from './registerVaultToolRoutes';
 
 let vault: TestVault;
-let server: VaultServer;
+let server: FastifyInstance;
 
 afterEach(async () => {
     await server?.close();

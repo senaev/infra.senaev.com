@@ -1,17 +1,18 @@
 import {
     afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
+import type { FastifyInstance } from 'fastify';
 
 import { prependTaskLine } from '../tasks/prependTaskLine';
 
-import { createVaultServer, type VaultServer } from './createVaultServer';
+import { createVaultServer } from './createVaultServer';
 import { registerTaskRoutes } from './registerTaskRoutes';
 
 vi.mock('../tasks/prependTaskLine', () => {
     return { prependTaskLine: vi.fn() };
 });
 
-let server: VaultServer;
+let server: FastifyInstance;
 
 beforeEach(async () => {
     vi.clearAllMocks();

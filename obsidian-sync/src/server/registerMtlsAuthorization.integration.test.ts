@@ -1,5 +1,6 @@
 import type { AddressInfo } from 'node:net';
 
+import type { FastifyInstance } from 'fastify';
 import { createMtlsClient, type MtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
 import { createTestCa, issueTestCertificate } from 'senaev-utils/src/utils/mtls/testPki';
 import { parseTlsCredentials, type TlsFiles } from 'senaev-utils/src/utils/mtls/tlsCredentials';
@@ -9,7 +10,7 @@ import {
 
 import { logger } from '../logger';
 
-import { createProtectedVaultServer, type VaultServer } from './createVaultServer';
+import { createProtectedVaultServer } from './createVaultServer';
 import { registerMtlsAuthentication } from './registerMtlsAuthentication';
 import { registerMtlsAuthorization } from './registerMtlsAuthorization';
 
@@ -17,14 +18,14 @@ const SERVICE_A = 'service-a.test.svc.cluster.local';
 const SERVICE_B = 'service-b.test.svc.cluster.local';
 const SERVICE_C = 'service-c.test.svc.cluster.local';
 
-const servers: VaultServer[] = [];
+const servers: FastifyInstance[] = [];
 const clients: MtlsClient[] = [];
 let serverFiles: TlsFiles;
 let ca: Awaited<ReturnType<typeof createTestCa>>;
 
 async function startServer(allowedCallers: readonly string[]): Promise<string> {
     // Only the raw server type (HTTPS) differs from the plain instance; the hooks do not use it.
-    const server = createProtectedVaultServer(parseTlsCredentials(serverFiles), logger).server as unknown as VaultServer;
+    const server = createProtectedVaultServer(parseTlsCredentials(serverFiles), logger).server as unknown as FastifyInstance;
 
     registerMtlsAuthentication(server);
     registerMtlsAuthorization(server, allowedCallers);

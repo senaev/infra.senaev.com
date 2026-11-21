@@ -1,12 +1,13 @@
 import {
     afterEach, describe, expect, it,
 } from 'vitest';
+import type { FastifyInstance } from 'fastify';
 
-import { createVaultServer, type VaultServer } from './createVaultServer';
+import { createVaultServer } from './createVaultServer';
 import { registerMtlsAuthentication } from './registerMtlsAuthentication';
 import { registerMtlsAuthorization } from './registerMtlsAuthorization';
 
-const servers: VaultServer[] = [];
+const servers: FastifyInstance[] = [];
 
 afterEach(async () => {
     await Promise.all(servers.splice(0).map((server) => server.close()));
