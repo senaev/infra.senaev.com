@@ -1,6 +1,6 @@
 import type { AddressInfo } from 'node:net';
 
-import type { FastifyBaseLogger, FastifyInstance } from 'fastify';
+import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
 import { createMtlsFastifyServer } from 'senaev-utils/src/utils/mtls/createMtlsFastifyServer';
 import { createMtlsClient, type MtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
 import { createTestCa, issueTestCertificate } from 'senaev-utils/src/utils/mtls/testPki';
@@ -71,7 +71,11 @@ beforeAll(async () => {
         dnsName: 'localhost',
         usage: 'server',
     });
-    const instance = createMtlsFastifyServer(parseTlsCredentials(serverFiles), logger as FastifyBaseLogger);
+    const instance = createMtlsFastifyServer({
+        fastify: Fastify,
+        credentials: parseTlsCredentials(serverFiles),
+        logger: logger as FastifyBaseLogger,
+    });
 
     // Only the raw server type (HTTPS) differs from the plain instance; the routes do not use it.
     protectedServer = instance.server as unknown as FastifyInstance;

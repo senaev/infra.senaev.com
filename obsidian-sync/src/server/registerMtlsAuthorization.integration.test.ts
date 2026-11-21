@@ -1,6 +1,6 @@
 import type { AddressInfo } from 'node:net';
 
-import type { FastifyBaseLogger, FastifyInstance } from 'fastify';
+import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
 import { createMtlsFastifyServer } from 'senaev-utils/src/utils/mtls/createMtlsFastifyServer';
 import { createMtlsClient, type MtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
 import { createTestCa, issueTestCertificate } from 'senaev-utils/src/utils/mtls/testPki';
@@ -24,7 +24,11 @@ let ca: Awaited<ReturnType<typeof createTestCa>>;
 
 async function startServer(allowedCallers: readonly string[]): Promise<string> {
     // Only the raw server type (HTTPS) differs from the plain instance; the hooks do not use it.
-    const server = createMtlsFastifyServer(parseTlsCredentials(serverFiles), logger as FastifyBaseLogger).server as unknown as FastifyInstance;
+    const server = createMtlsFastifyServer({
+        fastify: Fastify,
+        credentials: parseTlsCredentials(serverFiles),
+        logger: logger as FastifyBaseLogger,
+    }).server as unknown as FastifyInstance;
 
     registerMtlsAuthorization(server, allowedCallers);
     server.get('/route', () => 'ok');

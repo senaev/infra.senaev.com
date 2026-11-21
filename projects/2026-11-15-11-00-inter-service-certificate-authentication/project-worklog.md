@@ -4,11 +4,12 @@
 `senaev-utils/src/utils/mtls/`, with `registerMtlsAuthentication` (its hook logs with
 `request.log`, so it needs no service logger). The unit test of the hook moved with it.
 obsidian-sync keeps `registerMtlsAuthorization`, `ALLOWED_CALLERS` and the routes.
-`fastify` is now a production dependency of senaev-utils (no longer a dev dependency and an
-optional peer), so the library can call `Fastify(...)`. The services keep their own `fastify`
-dependency, because their code imports it directly and Node resolves it from the service's
-`node_modules`, not from the library's. `bodyLimit` is no longer set: the Fastify default is
-1 MiB, the same as the old value.
+The caller passes `fastify` (`createMtlsFastifyServer({ fastify, credentials, logger })`), so the
+library imports only Fastify types. `fastify` stays a dev dependency and an optional peer of
+senaev-utils: a peer cannot give a runtime import to a symlinked library (Node resolves it from
+`/app/senaev-utils`, not from the service), and a production dependency would add a second copy
+of Fastify to every image and to `supabase-list-notes`. `bodyLimit` is no longer set: the
+Fastify default is 1 MiB, the same as the old value.
 
 ## 2026-11-21 UTC — The factory installs the authentication hook
 

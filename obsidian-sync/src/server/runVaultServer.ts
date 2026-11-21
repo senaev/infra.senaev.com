@@ -1,4 +1,4 @@
-import type { FastifyBaseLogger, FastifyInstance } from 'fastify';
+import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
 import { createMtlsFastifyServer } from 'senaev-utils/src/utils/mtls/createMtlsFastifyServer';
 import { watchTlsCredentials } from 'senaev-utils/src/utils/mtls/watchTlsCredentials';
 
@@ -32,7 +32,11 @@ export async function runVaultServer(): Promise<{ close: () => Promise<void> }> 
         onError: (error) => logger.error({ err: error }, '❌ mTLS certificate files cannot be used, keeping the last valid ones'),
     });
 
-    const protectedInstance = createMtlsFastifyServer(certificates.credentials, logger as FastifyBaseLogger);
+    const protectedInstance = createMtlsFastifyServer({
+        fastify: Fastify,
+        credentials: certificates.credentials,
+        logger: logger as FastifyBaseLogger,
+    });
 
     reloadTarget.server = protectedInstance;
 
