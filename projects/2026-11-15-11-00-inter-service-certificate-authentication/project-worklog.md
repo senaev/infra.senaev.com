@@ -1,3 +1,15 @@
+## 2026-11-21 UTC — Triage of the CodeRabbit review
+
+Fixed: `stop()` of the certificate watcher now stops a poll that is already running; the
+watcher reports once when the material in use expires (no renewal may arrive to change the
+files, and there are no alerts); `validFrom` is checked together with `validTo`
+(`notAfter` is renamed to `validTo`). Added the permission check to the activation gates in the
+README. Decided not to change: the mixed-version window of the rolling update (no dual mode;
+a bad deploy means `git revert`); `AbortSignal.any` on Node 18 (the services run Node 24, and the
+only Node 18 consumer does not use it); the test of `createSignalWithTimeout` keeps its stub of
+`AbortSignal.timeout`. Already done before the review: exact `checkHost` options, the expiry
+check of the peer on every request.
+
 ## 2026-11-16 UTC — Renew the CA automatically with the same key
 
 User did not want a manual CA replacement or a risk of downtime. The CA Certificate now uses

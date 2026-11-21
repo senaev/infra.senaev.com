@@ -99,8 +99,10 @@ Implemented in PR #203 (the plan and the code), not yet deployed or verified liv
   the Vault property `INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN` is unused and can be deleted.
 
 Activation gates, to check after the deploy: the `pki` releases and the leaf Secrets are ready
-(`kubectl get certificate -A`), both services start and load their certificate,
-`npm run test:smoke`, and a vault read/search in ChatGPT MCP.
+(`kubectl get certificate -A`), no application or LLM workspace ServiceAccount can read the
+leaf Secrets or create Certificates and CertificateRequests (`kubectl auth can-i ... --as=system:serviceaccount:<namespace>:<name>`),
+both services start and load their certificate, `npm run test:smoke`, and a vault read/search
+in ChatGPT MCP.
 
 📌 Delete the Vault property `INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN` (path
 `senaev-com-kv`) after the deploy is verified. Nothing reads it any more.

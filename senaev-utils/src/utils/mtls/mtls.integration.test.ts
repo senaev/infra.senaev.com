@@ -54,7 +54,8 @@ function startClient(origin: string, files: TlsFiles): MtlsClient {
         origin,
         material: {
             ...files,
-            notAfter: new Date(Date.now() + HOUR_MS),
+            validFrom: new Date(Date.now() - HOUR_MS),
+            validTo: new Date(Date.now() + HOUR_MS),
         },
     });
 
@@ -171,7 +172,7 @@ describe('mTLS between a client and a server', () => {
 
     it('keeps trusting leaves across a CA renewal that keeps the CA key, in both directions', async () => {
         const pki = await createPki();
-        const renewedCa = await renewTestCa(pki.ca, { notAfter: new Date(Date.now() + 100 * HOUR_MS) });
+        const renewedCa = await renewTestCa(pki.ca, { validTo: new Date(Date.now() + 100 * HOUR_MS) });
         const renewedServer = await issueTestCertificate({
             ca: renewedCa,
             dnsName: 'localhost',

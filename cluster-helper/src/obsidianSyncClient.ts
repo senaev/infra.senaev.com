@@ -18,7 +18,7 @@ export async function startObsidianSyncClient(directory?: string): Promise<void>
         ...directory !== undefined && { directory },
         onChange: (material) => {
             client?.updateMaterial(material);
-            logger.info({ notAfter: material.notAfter.toISOString() }, '🔐 Loaded the renewed mTLS certificate');
+            logger.info({ validTo: material.validTo.toISOString() }, '🔐 Loaded the renewed mTLS certificate');
         },
         onError: (error) => logger.error({ err: error }, '❌ mTLS certificate files cannot be used, keeping the last valid ones'),
     });

@@ -21,7 +21,7 @@ type WatchOptions = {
     directory?: string;
     /** Called with each renewed material that is complete and not expired. */
     onChange: (material: TlsMaterial) => void;
-    /** Called for a snapshot that cannot be used, or an expired certificate. The services log it. */
+    /** Called for a snapshot that cannot be used, or a certificate that is not valid now. The services log it. */
     onError: (error: Error) => void;
     pollIntervalMs?: number;
     now?: () => Date;
@@ -35,12 +35,13 @@ function toError(error: unknown): Error {
 /**
  * Loads the files that cert-manager keeps renewed in a mounted Secret, and polls them. Kubelet
  * replaces the mounted files some time after a renewal, and polling avoids watchers that depend
- * on inodes. A snapshot that is incomplete, mixed up or already expired is reported and ignored,
- * so the last good material stays in use.
+ * on inodes. A snapshot that is incomplete, mixed up or not valid now (expired, or not yet
+ * valid) is reported and ignored, so the last good material stays in use. The material in use
+ * is reported once when it expires, because no renewal may arrive to change the files.
  *
  * The first read must succeed: without any material the service cannot start. If that first
- * material is already expired, the service still starts, reports it, and uses the renewed files
- * on a later poll.
+ * material is not valid, the service still starts, reports it, and uses the renewed files on a
+ * later poll.
  */
 export async function watchTlsMaterial({
     directory = MTLS_DIRECTORY,
@@ -51,15 +52,26 @@ export async function watchTlsMaterial({
     readFiles = readTlsFiles,
 }: WatchOptions): Promise<TlsMaterialWatcher> {
     let files = await readFiles(directory);
+    let stopped = false;
     const watcher: TlsMaterialWatcher = {
         material: parseTlsMaterial(files),
-        stop: () => clearInterval(timer),
+        stop: () => {
+            stopped = true;
+            clearInterval(timer);
+        },
     };
     let polling = false;
+    let invalidityReported = false;
+    const reportInvalidityOnce = () => {
+        if (invalidityReported || isTlsMaterialValidAt(watcher.material, now())) {
+            return;
+        }
 
-    if (!isTlsMaterialValidAt(watcher.material, now())) {
-        onError(new Error('The loaded TLS certificate is expired'));
-    }
+        invalidityReported = true;
+        onError(new Error('The TLS certificate in use is not valid now'));
+    };
+
+    reportInvalidityOnce();
 
     const poll = async () => {
         if (polling) {
@@ -71,19 +83,26 @@ export async function watchTlsMaterial({
         try {
             const latest = await readFiles(directory);
 
+            if (stopped) {
+                return;
+            }
+
             if (isSameTlsFiles(latest, files)) {
+                reportInvalidityOnce();
+
                 return;
             }
 
             const material = parseTlsMaterial(latest);
 
             if (!isTlsMaterialValidAt(material, now())) {
-                throw new Error('The renewed TLS certificate is already expired');
+                throw new Error('The renewed TLS certificate is not valid now');
             }
 
             onChange(material);
             watcher.material = material;
             files = latest;
+            invalidityReported = false;
         } catch (error) {
             onError(toError(error));
         } finally {

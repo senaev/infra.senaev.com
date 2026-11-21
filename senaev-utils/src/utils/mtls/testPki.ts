@@ -21,8 +21,8 @@ export type TestCa = {
 };
 
 type Validity = {
-    notBefore?: Date;
-    notAfter?: Date;
+    validFrom?: Date;
+    validTo?: Date;
 };
 
 async function exportPrivateKeyPem(key: CryptoKey): Promise<string> {
@@ -36,8 +36,8 @@ async function createCaCertificate(name: string, keys: CryptoKeyPair, validity: 
     const certificate = await x509.X509CertificateGenerator.createSelfSigned({
         serialNumber,
         name: `CN=${name}`,
-        notBefore: validity.notBefore ?? new Date(now - HOUR_MS),
-        notAfter: validity.notAfter ?? new Date(now + 24 * HOUR_MS),
+        notBefore: validity.validFrom ?? new Date(now - HOUR_MS),
+        notAfter: validity.validTo ?? new Date(now + 24 * HOUR_MS),
         signingAlgorithm: ALGORITHM,
         keys,
         extensions: [
@@ -84,8 +84,8 @@ export async function issueTestCertificate({
         serialNumber,
         subject: `CN=${dnsName}`,
         issuer: `CN=${ca.name}`,
-        notBefore: validity.notBefore ?? new Date(now - HOUR_MS),
-        notAfter: validity.notAfter ?? new Date(now + 24 * HOUR_MS),
+        notBefore: validity.validFrom ?? new Date(now - HOUR_MS),
+        notAfter: validity.validTo ?? new Date(now + 24 * HOUR_MS),
         signingAlgorithm: ALGORITHM,
         publicKey: keys.publicKey,
         signingKey: ca.keys.privateKey,

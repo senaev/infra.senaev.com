@@ -21,8 +21,10 @@ export type TlsFiles = {
 };
 
 export type TlsMaterial = TlsFiles & {
+    /** Start of the validity of the own certificate. */
+    validFrom: Date;
     /** End of the validity of the own certificate. */
-    notAfter: Date;
+    validTo: Date;
 };
 
 export function readTlsFiles(directory: string): Promise<TlsFiles> {
@@ -50,7 +52,7 @@ export function isSameTlsFiles(a: TlsFiles, b: TlsFiles): boolean {
 /**
  * Checks that the files fit together: the key belongs to the certificate, and the CA
  * certificate signed it. A half-written or mixed-up snapshot fails here, so the caller keeps
- * its last good material. Expiry is not checked here: see `isTlsMaterialValidAt`.
+ * its last good material. The validity period is not checked here: see `isTlsMaterialValidAt`.
  */
 export function parseTlsMaterial(files: TlsFiles): TlsMaterial {
     const cert = new X509Certificate(files.cert);
@@ -66,7 +68,8 @@ export function parseTlsMaterial(files: TlsFiles): TlsMaterial {
 
     return {
         ...files,
-        notAfter: new Date(cert.validTo),
+        validFrom: new Date(cert.validFrom),
+        validTo: new Date(cert.validTo),
     };
 }
 
@@ -88,5 +91,5 @@ export function createSecureContextOptions({
 }
 
 export function isTlsMaterialValidAt(material: TlsMaterial, now: Date): boolean {
-    return now.getTime() < material.notAfter.getTime();
+    return material.validFrom.getTime() <= now.getTime() && now.getTime() < material.validTo.getTime();
 }
