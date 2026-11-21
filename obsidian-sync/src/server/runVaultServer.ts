@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import { createMtlsFastifyServer } from 'senaev-utils/src/utils/mtls/createMtlsFastifyServer';
+import { watchTlsCredentials } from 'senaev-utils/src/utils/mtls/watchTlsCredentials';
 
 import { logger } from '../logger';
 import { PUBLIC_DIR } from '../vaultPaths';
@@ -20,9 +21,11 @@ const PUBLIC_PORT = 8080;
  * Fastify instances, so no protected route can ever be reached over plain HTTP.
  */
 export async function runVaultServer(): Promise<{ close: () => Promise<void> }> {
-    const protectedServer = await createMtlsFastifyServer({
+    const certificates = await watchTlsCredentials({ logger });
+    const protectedServer = createMtlsFastifyServer({
         Fastify,
         logger,
+        credentials: certificates.credentials,
     });
     const publicServer = Fastify({
         loggerInstance: logger,
@@ -50,6 +53,7 @@ export async function runVaultServer(): Promise<{ close: () => Promise<void> }> 
 
     return {
         close: async () => {
+            certificates.stop();
             await Promise.all([
                 protectedServer.close(),
                 publicServer.close(),

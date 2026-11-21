@@ -4,6 +4,7 @@ import { ResourceReadGate } from 'senaev-utils/src/toolServer/ResourceReadGate';
 import Fastify, { FastifyReply } from 'fastify';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { createMtlsFastifyServer } from 'senaev-utils/src/utils/mtls/createMtlsFastifyServer';
+import { watchTlsCredentials, type TlsCredentialsWatcher } from 'senaev-utils/src/utils/mtls/watchTlsCredentials';
 import { callTelegramApi } from 'senaev-utils/src/utils/TelegramApi/callTelegramApi';
 import { createTelegramApiBaseUrl } from 'senaev-utils/src/utils/TelegramApi/createTelegramApiBaseUrl';
 import { escapeTelegramMarkdown } from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
@@ -94,7 +95,9 @@ export const webhookSecretToken = randomBytes(32).toString('hex');
 const internalServer = Fastify({ loggerInstance: logger });
 const publicServer = Fastify({ loggerInstance: logger });
 
-let mtlsServer: Awaited<ReturnType<typeof createMtlsFastifyServer>> | undefined;
+// One watcher of the certificate files for the obsidian-sync client and the mTLS server.
+let certificates: TlsCredentialsWatcher | undefined;
+let mtlsServer: ReturnType<typeof createMtlsFastifyServer> | undefined;
 let isReady = false;
 
 internalServer.get('/health/live', (_request, reply) => {
@@ -352,7 +355,8 @@ const googleLogin = createGoogleLogin({
 async function main(): Promise<void> {
     logStartupStep('modules loaded');
 
-    await startObsidianSyncClient();
+    certificates = await watchTlsCredentials({ logger });
+    startObsidianSyncClient(certificates.credentials);
     logStartupStep('obsidian-sync client started');
 
     const botUser: TelegramUser = await getCurrentTelegramBotInfo(TG_TOKEN_SENAEV_COM_BOT);
@@ -451,9 +455,10 @@ async function main(): Promise<void> {
     logger.info({ port: PUBLIC_PORT }, '✅ Public server listening');
     logStartupStep('public server listening');
 
-    mtlsServer = await createMtlsFastifyServer({
+    mtlsServer = createMtlsFastifyServer({
         Fastify,
         logger,
+        credentials: certificates.credentials,
     });
     await mtlsServer.listen({
         port: MTLS_PORT,
@@ -497,6 +502,7 @@ async function shutdown(): Promise<void> {
         mtlsServer?.close(),
     ]);
     await stopObsidianSyncClient();
+    certificates?.stop();
     stopTorrentOutboxProcessor();
     process.exit(0);
 }

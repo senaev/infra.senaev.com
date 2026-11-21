@@ -34,6 +34,13 @@ afterEach(() => {
     vi.useRealTimers();
 });
 
+function errorWith(message: string) {
+    return [
+        expect.objectContaining({ err: expect.objectContaining({ message }) }),
+        expect.any(String),
+    ];
+}
+
 async function issueFiles(options: { ca?: Awaited<ReturnType<typeof createTestCa>>; validFrom?: Date; validTo?: Date } = {}): Promise<TlsFiles> {
     const ca = options.ca ?? await createTestCa();
 
@@ -100,21 +107,23 @@ describe('watchTlsCredentials', () => {
 
     async function watch(initial: TlsFiles) {
         const onChange = vi.fn();
-        const onError = vi.fn();
+        const logger = {
+            info: vi.fn(),
+            error: vi.fn(),
+        };
 
         mocks.readTlsFiles.mockResolvedValue(initial);
 
-        const watcher = await watchTlsCredentials({
-            onChange,
-            onError,
-        });
+        const watcher = await watchTlsCredentials({ logger });
 
         watchers.push(watcher);
+        watcher.credentials.subscribe(onChange);
 
         return {
             watcher,
             onChange,
-            onError,
+            onError: logger.error,
+            logger,
             replaceFiles: (files: TlsFiles) => {
                 mocks.readTlsFiles.mockResolvedValue(files);
             },
@@ -134,11 +143,26 @@ describe('watchTlsCredentials', () => {
         await vi.advanceTimersByTimeAsync(TLS_POLL_INTERVAL_MS);
 
         expect(onChange).toHaveBeenCalledTimes(1);
-        expect(watcher.credentials.cert).toBe(renewed.cert);
+        expect(watcher.credentials.getValue().cert).toBe(renewed.cert);
         expect(onError).not.toHaveBeenCalled();
 
         await vi.advanceTimersByTimeAsync(TLS_POLL_INTERVAL_MS);
         expect(onChange).toHaveBeenCalledTimes(1);
+    });
+
+    it('logs a renewal once and gives it to every subscriber', async () => {
+        const {
+            watcher, onChange, logger, replaceFiles,
+        } = await watch(await issueFiles());
+        const secondSubscriber = vi.fn();
+
+        watcher.credentials.subscribe(secondSubscriber);
+        replaceFiles(await issueFiles());
+        await vi.advanceTimersByTimeAsync(TLS_POLL_INTERVAL_MS);
+
+        expect(onChange).toHaveBeenCalledTimes(1);
+        expect(secondSubscriber).toHaveBeenCalledTimes(1);
+        expect(logger.info).toHaveBeenCalledTimes(1);
     });
 
     it('keeps the last good credentials and reports a broken snapshot', async () => {
@@ -156,11 +180,11 @@ describe('watchTlsCredentials', () => {
 
         expect(onChange).not.toHaveBeenCalled();
         expect(onError).toHaveBeenCalledTimes(1);
-        expect(watcher.credentials.cert).toBe(initial.cert);
+        expect(watcher.credentials.getValue().cert).toBe(initial.cert);
 
         replaceFiles(other);
         await vi.advanceTimersByTimeAsync(TLS_POLL_INTERVAL_MS);
-        expect(watcher.credentials.cert).toBe(other.cert);
+        expect(watcher.credentials.getValue().cert).toBe(other.cert);
     });
 
     it('starts with expired files, reports them, and takes the renewal later', async () => {
@@ -176,7 +200,7 @@ describe('watchTlsCredentials', () => {
             watcher, onChange, onError, replaceFiles,
         } = await watch(expiring);
 
-        expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'The TLS certificate in use is not valid now' }));
+        expect(onError).toHaveBeenCalledWith(...errorWith('The TLS certificate in use is not valid now'));
 
         const renewed = await issueFiles({
             ca,
@@ -187,35 +211,35 @@ describe('watchTlsCredentials', () => {
         await vi.advanceTimersByTimeAsync(TLS_POLL_INTERVAL_MS);
 
         expect(onChange).toHaveBeenCalledTimes(1);
-        expect(watcher.credentials.cert).toBe(renewed.cert);
+        expect(watcher.credentials.getValue().cert).toBe(renewed.cert);
     });
 
     it('does not replace good credentials with an expired renewal', async () => {
         const {
             watcher, onChange, onError, replaceFiles,
         } = await watch(await issueFiles());
-        const initialCert = watcher.credentials.cert;
+        const initialCert = watcher.credentials.getValue().cert;
 
         replaceFiles(await issueFiles({ validTo: new Date(Date.now() - 1) }));
         await vi.advanceTimersByTimeAsync(TLS_POLL_INTERVAL_MS);
 
         expect(onChange).not.toHaveBeenCalled();
-        expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'The renewed TLS certificate is not valid now' }));
-        expect(watcher.credentials.cert).toBe(initialCert);
+        expect(onError).toHaveBeenCalledWith(...errorWith('The renewed TLS certificate is not valid now'));
+        expect(watcher.credentials.getValue().cert).toBe(initialCert);
     });
 
     it('does not replace good credentials with a renewal that is not valid yet', async () => {
         const {
             watcher, onChange, onError, replaceFiles,
         } = await watch(await issueFiles());
-        const initialCert = watcher.credentials.cert;
+        const initialCert = watcher.credentials.getValue().cert;
 
         replaceFiles(await issueFiles({ validFrom: new Date(Date.now() + HOUR_MS) }));
         await vi.advanceTimersByTimeAsync(TLS_POLL_INTERVAL_MS);
 
         expect(onChange).not.toHaveBeenCalled();
-        expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'The renewed TLS certificate is not valid now' }));
-        expect(watcher.credentials.cert).toBe(initialCert);
+        expect(onError).toHaveBeenCalledWith(...errorWith('The renewed TLS certificate is not valid now'));
+        expect(watcher.credentials.getValue().cert).toBe(initialCert);
     });
 
     it('reports once that the credentials in use have expired, and again after a renewal expires', async () => {
@@ -234,7 +258,7 @@ describe('watchTlsCredentials', () => {
         await vi.advanceTimersByTimeAsync(TLS_POLL_INTERVAL_MS);
         await vi.advanceTimersByTimeAsync(TLS_POLL_INTERVAL_MS);
         expect(onError).toHaveBeenCalledTimes(1);
-        expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'The TLS certificate in use is not valid now' }));
+        expect(onError).toHaveBeenCalledWith(...errorWith('The TLS certificate in use is not valid now'));
 
         replaceFiles(await issueFiles({
             ca,
@@ -263,15 +287,17 @@ describe('watchTlsCredentials', () => {
         await vi.advanceTimersByTimeAsync(0);
 
         expect(onChange).not.toHaveBeenCalled();
-        expect(watcher.credentials.cert).toBe(initial.cert);
+        expect(watcher.credentials.getValue().cert).toBe(initial.cert);
     });
 
     it('fails to start without any credentials', async () => {
         mocks.readTlsFiles.mockRejectedValue(new Error('ENOENT'));
 
         await expect(watchTlsCredentials({
-            onChange: vi.fn(),
-            onError: vi.fn(),
+            logger: {
+                info: vi.fn(),
+                error: vi.fn(),
+            },
         })).rejects.toThrow('ENOENT');
     });
 });

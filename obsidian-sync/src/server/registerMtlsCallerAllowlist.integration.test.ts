@@ -1,26 +1,16 @@
 import type { AddressInfo } from 'node:net';
 
 import Fastify, { type FastifyInstance } from 'fastify';
+import { Signal } from 'senaev-utils/src/utils/Signal/Signal';
 import { createMtlsFastifyServer } from 'senaev-utils/src/utils/mtls/createMtlsFastifyServer';
 import { createMtlsClient, type MtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
 import { createTestCa, issueTestCertificate } from 'senaev-utils/src/utils/mtls/testPki';
 import { parseTlsCredentials, type TlsFiles } from 'senaev-utils/src/utils/mtls/tlsCredentials';
 import {
-    afterAll, beforeAll, describe, expect, it, vi,
+    afterAll, beforeAll, describe, expect, it,
 } from 'vitest';
 
 import { logger } from '../logger';
-
-const mocks = vi.hoisted(() => {
-    return { readTlsFiles: vi.fn() };
-});
-
-vi.mock('senaev-utils/src/utils/mtls/tlsCredentials', async (importOriginal) => {
-    return {
-        ...await importOriginal<typeof import('senaev-utils/src/utils/mtls/tlsCredentials')>(),
-        readTlsFiles: mocks.readTlsFiles,
-    };
-});
 
 import { registerMtlsCallerAllowlist } from './registerMtlsCallerAllowlist';
 
@@ -35,11 +25,10 @@ let ca: Awaited<ReturnType<typeof createTestCa>>;
 
 async function startServer(allowedCallers: readonly string[]): Promise<string> {
     // Only the raw server type (HTTPS) differs from the plain instance; the hooks do not use it.
-    mocks.readTlsFiles.mockResolvedValue(serverFiles);
-
-    const server = await createMtlsFastifyServer({
+    const server = createMtlsFastifyServer({
         Fastify,
         logger,
+        credentials: new Signal(parseTlsCredentials(serverFiles)),
     }) as unknown as FastifyInstance;
 
     registerMtlsCallerAllowlist(server, allowedCallers);
@@ -56,11 +45,11 @@ async function startServer(allowedCallers: readonly string[]): Promise<string> {
 async function startClient(origin: string, serviceName: string): Promise<MtlsClient> {
     const client = createMtlsClient({
         origin,
-        credentials: parseTlsCredentials(await issueTestCertificate({
+        credentials: new Signal(parseTlsCredentials(await issueTestCertificate({
             ca,
             dnsName: serviceName,
             usage: 'client',
-        })),
+        }))),
     });
 
     clients.push(client);

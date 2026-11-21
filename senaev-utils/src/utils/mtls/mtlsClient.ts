@@ -2,14 +2,14 @@ import {
     Agent, fetch as undiciFetch, type RequestInit as UndiciRequestInit,
 } from 'undici';
 
+import type { Signal } from '../Signal/Signal';
+
 import { createSecureContextOptions, type TlsCredentials } from './tlsCredentials';
 
 export type MtlsFetch = (url: string | URL, init?: RequestInit) => Promise<Response>;
 
 export type MtlsClient = {
     fetch: MtlsFetch;
-    /** Uses new credentials for new connections; the old connections finish their requests first. */
-    updateCredentials: (credentials: TlsCredentials) => void;
     close: () => Promise<void>;
 };
 
@@ -25,11 +25,21 @@ function createAgent(credentials: TlsCredentials): Agent {
  * `origin` must be a normal origin, like `https://host:8443`, with no path and no trailing
  * slash. Any other form matches no URL, so every request is refused.
  *
+ * `credentials` comes from `watchTlsCredentials`, which the caller owns and stops. Each renewal
+ * is used for new connections; the old connections finish their requests first. `close()`
+ * unsubscribes the client.
+ *
  * It uses undici's own `fetch` with its own `Agent`: the built-in `fetch` cannot take TLS
  * options, and a global dispatcher would change every other request of the process.
  */
-export function createMtlsClient({ origin, credentials }: { origin: string; credentials: TlsCredentials }): MtlsClient {
-    let agent = createAgent(credentials);
+export function createMtlsClient({ origin, credentials }: { origin: string; credentials: Signal<TlsCredentials> }): MtlsClient {
+    let agent = createAgent(credentials.getValue());
+    const unsubscribe = credentials.subscribe((renewed) => {
+        const previous = agent;
+
+        agent = createAgent(renewed);
+        void previous.close().catch(() => undefined);
+    });
 
     return {
         fetch: (url, init) => {
@@ -46,12 +56,10 @@ export function createMtlsClient({ origin, credentials }: { origin: string; cred
                 redirect: 'error',
             }) as unknown as Promise<Response>;
         },
-        updateCredentials: (next) => {
-            const previous = agent;
+        close: () => {
+            unsubscribe();
 
-            agent = createAgent(next);
-            void previous.close().catch(() => undefined);
+            return agent.close();
         },
-        close: () => agent.close(),
     };
 }

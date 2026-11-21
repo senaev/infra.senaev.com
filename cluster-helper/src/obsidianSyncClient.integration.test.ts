@@ -1,9 +1,10 @@
 import { createServer, type Server } from 'node:https';
 import type { AddressInfo } from 'node:net';
 
+import { Signal } from 'senaev-utils/src/utils/Signal/Signal';
 import { authenticateMtlsCaller, createMtlsServerOptions } from 'senaev-utils/src/utils/mtls/mtlsServer';
 import { createTestCa, issueTestCertificate } from 'senaev-utils/src/utils/mtls/testPki';
-import { parseTlsCredentials, type TlsFiles } from 'senaev-utils/src/utils/mtls/tlsCredentials';
+import { parseTlsCredentials, type TlsCredentials } from 'senaev-utils/src/utils/mtls/tlsCredentials';
 import {
     afterAll, beforeAll, describe, expect, it, vi,
 } from 'vitest';
@@ -18,17 +19,8 @@ const env = vi.hoisted(() => {
         OBSIDIAN_SYNC_URL: '',
     };
 });
-const mountedFiles = vi.hoisted(() => {
-    return { client: undefined as TlsFiles | undefined };
-});
 
 vi.mock('./env', () => env);
-vi.mock('senaev-utils/src/utils/mtls/tlsCredentials', async (importOriginal) => {
-    return {
-        ...await importOriginal<typeof import('senaev-utils/src/utils/mtls/tlsCredentials')>(),
-        readTlsFiles: () => Promise.resolve(mountedFiles.client),
-    };
-});
 vi.mock('./logger', () => {
     return {
         logger: {
@@ -41,6 +33,7 @@ vi.mock('./logger', () => {
 const CALLER_NAME = 'cluster-helper.test.svc.cluster.local';
 
 let server: Server;
+let clientCredentials: Signal<TlsCredentials>;
 const requests: { url: string | undefined; authorization: string | undefined }[] = [];
 
 beforeAll(async () => {
@@ -51,11 +44,11 @@ beforeAll(async () => {
         usage: 'server',
     });
 
-    mountedFiles.client = await issueTestCertificate({
+    clientCredentials = new Signal(parseTlsCredentials(await issueTestCertificate({
         ca,
         dnsName: CALLER_NAME,
         usage: 'client',
-    });
+    })));
     server = createServer(createMtlsServerOptions(parseTlsCredentials(serverFiles)), (request, response) => {
         requests.push({
             url: request.url,
@@ -93,7 +86,7 @@ describe('the obsidian-sync client over real mTLS', () => {
     });
 
     it('reaches the vault service with the client certificate and no token, and streams a static file', async () => {
-        await startObsidianSyncClient();
+        startObsidianSyncClient(clientCredentials);
 
         const result = await proxyPublicStaticFile({
             path: 'folder/file.txt',

@@ -1,31 +1,22 @@
+import type { Signal } from 'senaev-utils/src/utils/Signal/Signal';
 import {
     createMtlsClient, type MtlsClient, type MtlsFetch,
 } from 'senaev-utils/src/utils/mtls/mtlsClient';
-import { watchTlsCredentials, type TlsCredentialsWatcher } from 'senaev-utils/src/utils/mtls/watchTlsCredentials';
+import type { TlsCredentials } from 'senaev-utils/src/utils/mtls/tlsCredentials';
 
 import { OBSIDIAN_SYNC_URL } from './env';
-import { logger } from './logger';
 
 let client: MtlsClient | undefined;
-let certificates: TlsCredentialsWatcher | undefined;
 
-/** Loads the client certificate and keeps it renewed. Must finish before the first call. */
-export async function startObsidianSyncClient(): Promise<void> {
-    certificates = await watchTlsCredentials({
-        onChange: (credentials) => {
-            client?.updateCredentials(credentials);
-            logger.info({ validTo: credentials.validTo.toISOString() }, '🔐 Loaded the renewed mTLS certificate');
-        },
-        onError: (error) => logger.error({ err: error }, '❌ mTLS certificate files cannot be used, keeping the last valid ones'),
-    });
+/** Must run before the first call. The credentials are renewed by their owner. */
+export function startObsidianSyncClient(credentials: Signal<TlsCredentials>): void {
     client = createMtlsClient({
         origin: OBSIDIAN_SYNC_URL,
-        credentials: certificates.credentials,
+        credentials,
     });
 }
 
 export async function stopObsidianSyncClient(): Promise<void> {
-    certificates?.stop();
     await client?.close();
 }
 

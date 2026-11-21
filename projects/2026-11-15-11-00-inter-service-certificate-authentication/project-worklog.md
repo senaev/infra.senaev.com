@@ -1,3 +1,15 @@
+## 2026-11-22 UTC — One shared watcher of the certificate files
+
+`watchTlsCredentials({ logger })` returns `{ credentials: Signal<TlsCredentials>, stop }` and logs
+each renewal and each unusable snapshot itself (`onChange` and `onError` are gone). The process
+creates one watcher and gives its signal to every user: `createMtlsFastifyServer({ Fastify, logger,
+credentials })` (now synchronous) calls `setSecureContext` on each renewal, and `createMtlsClient({
+origin, credentials })` makes a new agent on each renewal; `close()` of each unsubscribes it. The
+owner stops the watcher (`runVaultServer` in obsidian-sync, `shutdown` in cluster-helper). So
+cluster-helper polls the files once, for the obsidian-sync client and for its mTLS server.
+`MtlsClient.updateCredentials` is removed. Tests pass a `Signal` with test credentials, so the
+obsidian-sync and cluster-helper tests no longer mock `readTlsFiles`.
+
 ## 2026-11-22 UTC — An empty mTLS listener in cluster-helper
 
 cluster-helper starts `createMtlsFastifyServer` on 8443: certificate check (CA and expiry) and no
@@ -6,8 +18,7 @@ on port 80 cannot move to mTLS: its callers (Alertmanager, n8n, qBittorrent, kub
 certificate. The certificate is now `cluster-helper-tls` with `client auth` and `server auth` (one
 certificate for both roles in `/etc/mtls`), the port is on the Deployment and the Service, and the
 NetworkPolicy has no rule for it, so nothing can reach it. There is no allowed-callers check yet:
-add one with the first route. cluster-helper runs two watchers on the same files (one for the
-client of obsidian-sync, one inside the server factory); this is accepted for now.
+add one with the first route.
 
 ## 2026-11-21 UTC — `registerMtlsAuthorization` is now `registerMtlsCallerAllowlist`
 

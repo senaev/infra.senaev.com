@@ -1,26 +1,16 @@
 import type { AddressInfo } from 'node:net';
 
 import Fastify, { type FastifyInstance } from 'fastify';
+import { Signal } from 'senaev-utils/src/utils/Signal/Signal';
 import { createMtlsFastifyServer } from 'senaev-utils/src/utils/mtls/createMtlsFastifyServer';
 import { createMtlsClient, type MtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
 import { createTestCa, issueTestCertificate } from 'senaev-utils/src/utils/mtls/testPki';
 import { parseTlsCredentials, type TlsFiles } from 'senaev-utils/src/utils/mtls/tlsCredentials';
 import {
-    afterAll, beforeAll, describe, expect, it, vi,
+    afterAll, beforeAll, describe, expect, it,
 } from 'vitest';
 
 import { logger } from '../logger';
-
-const mocks = vi.hoisted(() => {
-    return { readTlsFiles: vi.fn() };
-});
-
-vi.mock('senaev-utils/src/utils/mtls/tlsCredentials', async (importOriginal) => {
-    return {
-        ...await importOriginal<typeof import('senaev-utils/src/utils/mtls/tlsCredentials')>(),
-        readTlsFiles: mocks.readTlsFiles,
-    };
-});
 
 import { CLUSTER_HELPER } from './callers';
 import { registerProtectedVaultRoutes, registerPublicVaultRoutes } from './registerVaultRoutes';
@@ -70,7 +60,7 @@ function originOf(server: FastifyInstance, protocol: string): string {
 function createClient(origin: string, files: TlsFiles): MtlsClient {
     return createMtlsClient({
         origin,
-        credentials: parseTlsCredentials(files),
+        credentials: new Signal(parseTlsCredentials(files)),
     });
 }
 
@@ -82,12 +72,11 @@ beforeAll(async () => {
         usage: 'server',
     });
 
-    mocks.readTlsFiles.mockResolvedValue(serverFiles);
-
     // Only the raw server type (HTTPS) differs from the plain instance; the routes do not use it.
-    protectedServer = await createMtlsFastifyServer({
+    protectedServer = createMtlsFastifyServer({
         Fastify,
         logger,
+        credentials: new Signal(parseTlsCredentials(serverFiles)),
     }) as unknown as FastifyInstance;
     registerProtectedVaultRoutes(protectedServer);
     publicServer = Fastify({

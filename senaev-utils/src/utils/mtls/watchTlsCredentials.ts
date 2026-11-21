@@ -1,3 +1,7 @@
+import type { Logger } from 'pino';
+
+import { Signal } from '../Signal/Signal';
+
 import {
     isSameTlsFiles,
     isTlsCredentialsValidAt,
@@ -9,17 +13,20 @@ import {
 export const TLS_POLL_INTERVAL_MS = 30_000;
 
 export type TlsCredentialsWatcher = {
-    /** The credentials the service uses now: the first valid one, or the newest valid renewal. */
-    credentials: TlsCredentials;
+    /**
+     * The credentials the service uses now: the first valid ones, or the newest valid renewal.
+     * Subscribers get each renewal that is complete and not expired.
+     */
+    credentials: Signal<TlsCredentials>;
     stop: () => void;
 };
 
 type WatchOptions = {
-    /** Called with each set of renewed credentials that is complete and not expired. */
-    onChange: (credentials: TlsCredentials) => void;
-    /** Called for a snapshot that cannot be used, or a certificate that is not valid now. The services log it. */
-    onError: (error: Error) => void;
+    /** Gets each renewal, and each snapshot that cannot be used or certificate that is not valid now. */
+    logger: Pick<Logger, 'info' | 'error'>;
 };
+
+const FILES_UNUSABLE_MESSAGE = '❌ mTLS certificate files cannot be used, keeping the last valid ones';
 
 function toError(error: unknown): Error {
     return error instanceof Error ? error : new Error(String(error));
@@ -29,17 +36,22 @@ function toError(error: unknown): Error {
  * Loads the files that cert-manager keeps renewed in a mounted Secret, and polls them. Kubelet
  * replaces the mounted files some time after a renewal, and polling avoids watchers that depend
  * on inodes. A snapshot that is incomplete, mixed up or not valid now (expired, or not yet
- * valid) is reported and ignored, so the last good credentials stay in use. The credentials in use
- * are reported once when they expire, because no renewal may arrive to change the files.
+ * valid) is logged and ignored, so the last good credentials stay in use. The credentials in use
+ * are logged once when they expire, because no renewal may arrive to change the files.
+ *
+ * One watcher serves all the servers and clients of a process: each of them subscribes to the
+ * signal. The process that creates the watcher calls `stop()`.
  *
  * The first read must succeed: without any credentials the service cannot start. If those first
- * credentials are not valid, the service still starts, reports it, and uses the renewed files on
+ * credentials are not valid, the service still starts, logs it, and uses the renewed files on
  * a later poll.
  */
-export async function watchTlsCredentials({ onChange, onError }: WatchOptions): Promise<TlsCredentialsWatcher> {
+export async function watchTlsCredentials({ logger }: WatchOptions): Promise<TlsCredentialsWatcher> {
     let stopped = false;
+    const initialCredentials = parseTlsCredentials(await readTlsFiles());
+    const credentials = new Signal(initialCredentials);
     const watcher: TlsCredentialsWatcher = {
-        credentials: parseTlsCredentials(await readTlsFiles()),
+        credentials,
         stop: () => {
             stopped = true;
             clearInterval(timer);
@@ -48,12 +60,12 @@ export async function watchTlsCredentials({ onChange, onError }: WatchOptions): 
     let polling = false;
     let invalidityReported = false;
     const reportInvalidityOnce = () => {
-        if (invalidityReported || isTlsCredentialsValidAt(watcher.credentials, new Date())) {
+        if (invalidityReported || isTlsCredentialsValidAt(credentials.getValue(), new Date())) {
             return;
         }
 
         invalidityReported = true;
-        onError(new Error('The TLS certificate in use is not valid now'));
+        logger.error({ err: new Error('The TLS certificate in use is not valid now') }, FILES_UNUSABLE_MESSAGE);
     };
 
     reportInvalidityOnce();
@@ -72,23 +84,23 @@ export async function watchTlsCredentials({ onChange, onError }: WatchOptions): 
                 return;
             }
 
-            if (isSameTlsFiles(latest, watcher.credentials)) {
+            if (isSameTlsFiles(latest, credentials.getValue())) {
                 reportInvalidityOnce();
 
                 return;
             }
 
-            const credentials = parseTlsCredentials(latest);
+            const renewed = parseTlsCredentials(latest);
 
-            if (!isTlsCredentialsValidAt(credentials, new Date())) {
+            if (!isTlsCredentialsValidAt(renewed, new Date())) {
                 throw new Error('The renewed TLS certificate is not valid now');
             }
 
-            onChange(credentials);
-            watcher.credentials = credentials;
             invalidityReported = false;
+            logger.info({ validTo: renewed.validTo.toISOString() }, '🔐 Loaded the renewed mTLS certificate');
+            credentials.dispatch(renewed);
         } catch (error) {
-            onError(toError(error));
+            logger.error({ err: toError(error) }, FILES_UNUSABLE_MESSAGE);
         } finally {
             polling = false;
         }

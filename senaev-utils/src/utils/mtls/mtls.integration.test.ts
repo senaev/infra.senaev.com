@@ -6,13 +6,15 @@ import {
     afterEach, describe, expect, it,
 } from 'vitest';
 
+import { Signal } from '../Signal/Signal';
+
 import { createMtlsClient, type MtlsClient } from './mtlsClient';
 import { authenticateMtlsCaller, createMtlsServerOptions } from './mtlsServer';
 import {
     createTestCa, issueTestCertificate, renewTestCa,
 } from './testPki';
 import {
-    createSecureContextOptions, parseTlsCredentials, type TlsFiles,
+    createSecureContextOptions, parseTlsCredentials, type TlsCredentials, type TlsFiles,
 } from './tlsCredentials';
 
 const CALLER_NAME = 'cluster-helper.test.svc.cluster.local';
@@ -55,15 +57,19 @@ async function startServer(files: TlsFiles, now: () => Date = () => new Date()):
     };
 }
 
+// Not parseTlsCredentials: some cases need credentials that do not fit together.
+function toCredentials(files: TlsFiles): TlsCredentials {
+    return {
+        ...files,
+        validFrom: new Date(Date.now() - HOUR_MS),
+        validTo: new Date(Date.now() + HOUR_MS),
+    };
+}
+
 function startClient(origin: string, files: TlsFiles): MtlsClient {
-    // Not parseTlsCredentials: some cases need credentials that do not fit together.
     const client = createMtlsClient({
         origin,
-        credentials: {
-            ...files,
-            validFrom: new Date(Date.now() - HOUR_MS),
-            validTo: new Date(Date.now() + HOUR_MS),
-        },
+        credentials: new Signal(toCredentials(files)),
     });
 
     clients.push(client);
@@ -234,8 +240,13 @@ describe('mTLS between a client and a server', () => {
     it('uses renewed certificates for new connections without a restart', async () => {
         const pki = await createPki();
         const { server, origin } = await startServer(pki.server);
-        const client = startClient(origin, pki.client);
+        const clientCredentials = new Signal(toCredentials(pki.client));
+        const client = createMtlsClient({
+            origin,
+            credentials: clientCredentials,
+        });
 
+        clients.push(client);
         expect((await client.fetch(`${origin}/`)).status).toBe(200);
 
         const renewedCa = await createTestCa('renewed-ca');
@@ -253,7 +264,7 @@ describe('mTLS between a client and a server', () => {
         await expect(startClient(origin, renewedClient).fetch(`${origin}/`)).rejects.toThrow();
 
         server.setSecureContext(createSecureContextOptions(renewedServer));
-        client.updateCredentials(parseTlsCredentials(renewedClient));
+        clientCredentials.dispatch(toCredentials(renewedClient));
 
         expect((await client.fetch(`${origin}/`)).status).toBe(200);
     });
