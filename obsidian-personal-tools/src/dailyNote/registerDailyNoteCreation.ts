@@ -1,6 +1,7 @@
 import { Notice, TFile } from 'obsidian';
 import type { App, Plugin } from 'obsidian';
 import { createDailyNoteInitializer } from './dailyNoteInitializer';
+import { hasReminder, type ReminderNote } from 'senaev-utils/src/obsidianDailyNotes/dailyReminders';
 import { dailyDateFromPath, dailyNotePathForRootNote } from 'senaev-utils/src/obsidianDailyNotes/dailyNoteTemplate';
 import { DAILY_NOTE_FOLDER, getDailyNotePath } from './dailyNotePath';
 
@@ -25,13 +26,30 @@ async function moveRootDailyNote(app: App, file: TFile): Promise<void> {
 	await app.fileManager.renameFile(file, target);
 }
 
+function readReminders(app: App): ReminderNote[] {
+	const notes: ReminderNote[] = [];
+	for (const file of app.vault.getMarkdownFiles()) {
+		if (file.path.startsWith(DAILY_NOTE_FOLDER) || file.path.startsWith('plugins/') ||
+			file.path.endsWith('.excalidraw.md') ||
+			file.path.split('/').slice(0, -1).some(segment => segment.startsWith('.') || segment === 'node_modules')) {
+			continue;
+		}
+		const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
+		if (frontmatter && hasReminder(frontmatter)) notes.push({ path: file.path, frontmatter });
+	}
+	return notes;
+}
+
 /** Handles all vault entry points rather than depending on one note-creation command. */
 export function registerDailyNoteCreation(plugin: Plugin): void {
 	const { app } = plugin;
 	const initializer = createDailyNoteInitializer<TFile>({
 		read: file => app.vault.read(file),
 		process: (file, transform) => app.vault.process(file, transform),
-	});
+	}, () => ({
+		notes: readReminders(app),
+		onInvalidSchedule: path => { console.warn('Invalid daily reminder schedule', path); },
+	}));
 	plugin.register(() => initializer.dispose());
 	const initialize = (file: unknown): void => {
 		if (!(file instanceof TFile) || !dailyDateFromPath(file.path)) return;

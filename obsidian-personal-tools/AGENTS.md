@@ -5,9 +5,12 @@
 The daily-note template lives in the `senaev-utils` npm package
 (`src/obsidianDailyNotes/dailyNoteTemplate.ts` in infra.senaev.com), shared with obsidian-sync,
 which creates a missing daily note the same way before it writes a diary record into it. It
-generates the habits, Tasks query, date-dependent tasks, quarterly achievements link and the
-`⬆️ Daily Note ⬆️` line that ends the diary block, above which diary records are inserted. The note filename supplies the calendar date; the current clock, time zone and
-Moment locale do not affect scheduling. Header/footer widgets remain separate. To change the
+renders reminders from vault note properties alongside the Tasks query and the
+`⬆️ Daily Note ⬆️` line, above which diary records are inserted. Use
+`morning-reminder`, `day-reminder`, or `evening-reminder` for checkbox text. The matching
+`*-reminder-order` property sets ascending numeric order. A daytime reminder can specify an
+RRULE in `day-reminder-schedule`. The daily note filename supplies the calendar date.
+Header/footer widgets remain separate. To change the
 template, change senaev-utils, wait for the `ci` release, and update the exact version in
 `package.json`, as for the Tasks rules below.
 

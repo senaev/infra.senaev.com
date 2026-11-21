@@ -1,3 +1,4 @@
+import type { ReminderSource } from 'senaev-utils/src/obsidianDailyNotes/dailyReminders';
 import { initializeDailyNote } from 'senaev-utils/src/obsidianDailyNotes/dailyNoteTemplate';
 
 export interface DailyFile { path: string }
@@ -7,7 +8,7 @@ export interface DailyVault<F extends DailyFile> {
 }
 
 /** Serialize events, rechecking changes delivered while a write was in flight. */
-export function createDailyNoteInitializer<F extends DailyFile>(vault: DailyVault<F>) {
+export function createDailyNoteInitializer<F extends DailyFile>(vault: DailyVault<F>, readReminders?: () => ReminderSource) {
 	const pending = new Map<F, { promise: Promise<void>; dirty: boolean }>();
 	let active = true;
 	return {
@@ -27,7 +28,8 @@ export function createDailyNoteInitializer<F extends DailyFile>(vault: DailyVaul
 					const content = await vault.read(file);
 					if (!active) return;
 					if (initializeDailyNote(file.path, content) !== content) {
-						await vault.process(file, latest => active ? initializeDailyNote(file.path, latest) : latest);
+						const reminders = readReminders?.();
+						await vault.process(file, latest => active ? initializeDailyNote(file.path, latest, reminders) : latest);
 					}
 				} while (active && job.dirty);
 			}).finally(() => { pending.delete(file); });
