@@ -1,0 +1,41 @@
+<clickhouse>
+    <profiles>
+        <grafana_reader>
+            <readonly>1</readonly>
+            <max_execution_time>30</max_execution_time>
+            <max_memory_usage>268435456</max_memory_usage>
+            <max_result_rows>50000</max_result_rows>
+            <max_threads>2</max_threads>
+            <constraints>
+                <max_execution_time>
+                    <min>1</min>
+                    <max>60</max>
+                    <changeable_in_readonly/>
+                </max_execution_time>
+            </constraints>
+        </grafana_reader>
+    </profiles>
+    <users>
+        <default>
+            <networks replace="replace">
+                <ip>127.0.0.1</ip>
+                <ip>::1</ip>
+            </networks>
+        </default>
+        <otel_writer>
+            <password from_env="CLICKHOUSE_WRITER_PASSWORD" hide_in_preprocessed="true"/>
+            <networks><ip>::/0</ip></networks>
+            <grants>
+                <query>GRANT INSERT, SHOW COLUMNS ON otel.otel_logs</query>
+            </grants>
+        </otel_writer>
+        <grafana_reader>
+            <password from_env="CLICKHOUSE_READER_PASSWORD" hide_in_preprocessed="true"/>
+            <networks><ip>::/0</ip></networks>
+            <profile>grafana_reader</profile>
+            <grants>
+                <query>GRANT SELECT ON otel.otel_logs</query>
+            </grants>
+        </grafana_reader>
+    </users>
+</clickhouse>
