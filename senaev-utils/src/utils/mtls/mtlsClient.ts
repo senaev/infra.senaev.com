@@ -22,18 +22,20 @@ function createAgent(material: TlsMaterial): Agent {
  * the standard way: against our CA, and against the host name of the URL. The credentials
  * are never sent anywhere else: another origin and every redirect are refused.
  *
+ * `origin` must be a normal origin, like `https://host:8443`, with no path and no trailing
+ * slash. Any other form matches no URL, so every request is refused.
+ *
  * It uses undici's own `fetch` with its own `Agent`: the built-in `fetch` cannot take TLS
  * options, and a global dispatcher would change every other request of the process.
  */
 export function createMtlsClient({ origin, material }: { origin: string; material: TlsMaterial }): MtlsClient {
-    const expectedOrigin = new URL(origin).origin;
     let agent = createAgent(material);
 
     return {
         fetch: (url, init) => {
             const target = new URL(url);
 
-            if (target.origin !== expectedOrigin) {
+            if (target.origin !== origin) {
                 return Promise.reject(new Error(`Refusing to send the client certificate to ${target.origin}`));
             }
 
