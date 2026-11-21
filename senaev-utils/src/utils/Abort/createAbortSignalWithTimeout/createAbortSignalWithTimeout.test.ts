@@ -2,7 +2,7 @@ import {
     afterEach, expect, it, vi,
 } from 'vitest';
 
-import { createSignalWithTimeout } from './createSignalWithTimeout';
+import { createAbortSignalWithTimeout } from './createAbortSignalWithTimeout';
 
 afterEach(() => {
     vi.restoreAllMocks();
@@ -21,8 +21,8 @@ function controlTimeoutSignal() {
 
 it('aborts when the timeout passes, with or without a signal of the caller', () => {
     const { spy, timeout } = controlTimeoutSignal();
-    const alone = createSignalWithTimeout(1_000);
-    const withCaller = createSignalWithTimeout(1_000, new AbortController().signal);
+    const alone = createAbortSignalWithTimeout(1_000);
+    const withCaller = createAbortSignalWithTimeout(1_000, new AbortController().signal);
 
     expect(spy).toHaveBeenCalledWith(1_000);
     expect(alone.aborted).toBe(false);
@@ -37,7 +37,7 @@ it('aborts when the timeout passes, with or without a signal of the caller', () 
 it('aborts with the reason of the caller before the timeout', () => {
     const { timeout } = controlTimeoutSignal();
     const caller = new AbortController();
-    const signal = createSignalWithTimeout(1_000, caller.signal);
+    const signal = createAbortSignalWithTimeout(1_000, caller.signal);
     const reason = new Error('cancelled by the caller');
 
     caller.abort(reason);
@@ -53,5 +53,5 @@ it('is already aborted when the signal of the caller is', () => {
 
     caller.abort();
 
-    expect(createSignalWithTimeout(1_000, caller.signal).aborted).toBe(true);
+    expect(createAbortSignalWithTimeout(1_000, caller.signal).aborted).toBe(true);
 });

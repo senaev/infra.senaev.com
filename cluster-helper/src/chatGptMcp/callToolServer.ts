@@ -1,6 +1,6 @@
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { createBearerAuthorizationHeader } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
-import { createSignalWithTimeout } from 'senaev-utils/src/utils/Abort/createSignalWithTimeout/createSignalWithTimeout';
+import { createAbortSignalWithTimeout } from 'senaev-utils/src/utils/Abort/createAbortSignalWithTimeout/createAbortSignalWithTimeout';
 
 import type { ToolReply } from './toolFamilies';
 
@@ -36,7 +36,7 @@ export async function callToolServer({
             authorization: createBearerAuthorizationHeader(token),
         },
         body: JSON.stringify(args),
-        signal: createSignalWithTimeout(timeoutMs, signal),
+        signal: createAbortSignalWithTimeout(timeoutMs, signal),
     });
 
     return readToolReply(response, serverName);
