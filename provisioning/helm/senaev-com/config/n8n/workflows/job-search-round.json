@@ -18,6 +18,19 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
+        -680,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// One start time for the prompt and for the heading of the LLM Recommendations Log, so that the\n// round's records in both logs get the same date and time.\nconst iso = new Date().toISOString();\n\nreturn [{\n  json: {\n    date: iso.slice(0, 10),\n    time: iso.slice(11, 16),\n  },\n}];"
+      },
+      "id": "start-time",
+      "name": "Take the start time",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
         -460,
         0
       ]
@@ -28,7 +41,7 @@
         "url": "http://senaev-claude-code:8080/run",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ prompt: \"Read the note \\\"LLM Job Search Round\\\" in the Obsidian vault with the obsidian MCP tools, and do one round exactly as it says. It is now \" + $now.setZone('UTC').toFormat('yyyy-MM-dd HH:mm') + \" UTC.\\n\\nAnswer only with the summary of its step 5.\" }) }}",
+        "jsonBody": "={{ JSON.stringify({ prompt: \"Read the note \\\"LLM Job Search Round\\\" in the Obsidian vault with the obsidian MCP tools, and do one round exactly as it says. It is now \" + $json.date + \" \" + $json.time + \" UTC.\\n\\nAnswer only with the summary of its step 5.\" }) }}",
         "options": {
           "timeout": 3660000
         }
@@ -64,12 +77,36 @@
       "onError": "continueErrorOutput",
       "position": [
         -20,
-        -80
+        -120
       ]
     },
     {
       "parameters": {
-        "jsCode": "// The prompt API answers 502 with { status: 'error', message } when Claude Code fails,\n// 409 when another prompt runs, and the request fails when the pod is down.\n// The Telegram request fails when cluster-helper or Telegram is down.\nconst item = $input.first().json;\nconst err = item.error ?? item;\nconst message = (err && err.message) ? err.message : JSON.stringify(err).slice(0, 300);\n\nreturn [{\n  json: {\n    text: `⚠️ Failed to run the job search round: ${message}`,\n  },\n}];"
+        "method": "POST",
+        "url": "http://cluster-helper/job-search/recommendations",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ date: $('Take the start time').item.json.date, time: $('Take the start time').item.json.time, text: $json.result }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "log-recommendations",
+      "name": "Add the recommendations to the LLM Recommendations Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput",
+      "position": [
+        -20,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// The prompt API answers 502 with { status: 'error', message } when Claude Code fails,\n// 409 when another prompt runs, and the request fails when the pod is down.\n// The Telegram request fails when cluster-helper or Telegram is down; the log request fails\n// when obsidian-sync is down or the LLM Recommendations Log note is missing.\nconst item = $input.first().json;\nconst err = item.error ?? item;\nconst message = (err && err.message) ? err.message : JSON.stringify(err).slice(0, 300);\n\nreturn [{\n  json: {\n    text: `⚠️ Failed to run the job search round: ${message}`,\n  },\n}];"
       },
       "id": "format-error",
       "name": "Format error message",
@@ -77,7 +114,7 @@
       "typeVersion": 2,
       "position": [
         200,
-        120
+        200
       ]
     },
     {
@@ -94,7 +131,7 @@
       "typeVersion": 1.2,
       "position": [
         420,
-        120
+        200
       ],
       "credentials": {
         "telegramApi": {
@@ -109,7 +146,7 @@
       "main": [
         [
           {
-            "node": "Run a job search round in Claude Code",
+            "node": "Take the start time",
             "type": "main",
             "index": 0
           }
@@ -121,6 +158,11 @@
         [
           {
             "node": "Send the recommendations to the Job Search Framework chat",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Add the recommendations to the LLM Recommendations Log",
             "type": "main",
             "index": 0
           }
@@ -151,6 +193,29 @@
         [
           {
             "node": "Notify cluster chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Take the start time": {
+      "main": [
+        [
+          {
+            "node": "Run a job search round in Claude Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add the recommendations to the LLM Recommendations Log": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Format error message",
             "type": "main",
             "index": 0
           }
