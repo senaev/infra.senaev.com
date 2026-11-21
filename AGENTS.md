@@ -524,8 +524,10 @@ only in `senaev`.
   adds the same text to the note `LLM Recommendations Log` through
   `POST http://cluster-helper/job-search/recommendations` (`{ date, time, text }`, the start time
   in UTC, also given in the prompt), which forwards to obsidian-sync: the record goes right
-  under the `---` line that ends the note's header, as `## [[date]] HH:MM UTC`. Errors go to the
-  cluster chat.
+  under the `---` line that ends the note's header, as `## [[date]] HH:MM UTC`; a retry that finds
+  that heading adds nothing. With the `v1` execution order n8n runs the two branches one after the
+  other, top to bottom on the canvas, so the Telegram node sits above the log node: a failed log
+  write cannot delay or stop the message. Errors go to the cluster chat.
 - The Claude Code version is pinned in `claude-code/Dockerfile`. Raise it in a pull request.
 - The readiness probe checks only the prompt API, which starts before the login check, so a deploy does not wait for the login.
 

@@ -15,6 +15,7 @@ let server: VaultServer;
 
 beforeEach(async () => {
     vi.clearAllMocks();
+    vi.mocked(prependRecommendationsRecord).mockResolvedValue(true);
     server = createVaultServer();
     registerJobSearchRoutes(server);
     await server.ready();
@@ -60,9 +61,42 @@ describe('POST /job-search/recommendations', () => {
             time: '04:00',
             text: ' ',
         },
+        {
+            date: '2026-02-30',
+            time: '04:00',
+            text: 'x',
+        },
+        {
+            date: '2026-11-22',
+            time: '24:00',
+            text: 'x',
+        },
+        {
+            date: '2026-11-22',
+            time: '04:60',
+            text: 'x',
+        },
     ])('rejects an invalid request: %o', async (payload) => {
         expect((await post(payload)).statusCode).toBe(400);
         expect(prependRecommendationsRecord).not.toHaveBeenCalled();
+    });
+
+    it('accepts a leap day', async () => {
+        expect((await post({
+            date: '2028-02-29',
+            time: '23:59',
+            text: 'x',
+        })).statusCode).toBe(201);
+    });
+
+    it('answers 200 and adds nothing when a retry finds the record already there', async () => {
+        vi.mocked(prependRecommendationsRecord).mockResolvedValueOnce(false);
+
+        expect((await post({
+            date: '2026-11-22',
+            time: '04:00',
+            text: 'x',
+        })).statusCode).toBe(200);
     });
 
     it('answers 500 when the note cannot be written', async () => {

@@ -5,9 +5,17 @@ import { logger } from '../logger';
 
 import type { VaultServer } from './createVaultServer';
 
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-const TIME_PATTERN = /^\d{2}:\d{2}$/;
 const MAX_TEXT_LENGTH = 100_000;
+
+/** A real calendar day, e.g. not `2026-02-30`. */
+function isValidDate(date: unknown): date is string {
+    return typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) && new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) === date;
+}
+
+/** `HH:MM` from `00:00` to `23:59`. */
+function isValidTime(time: unknown): time is string {
+    return typeof time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(time);
+}
 
 export function registerJobSearchRoutes(server: VaultServer): void {
     // n8n, through cluster-helper: the answer of a job search round, as posted to Telegram.
@@ -17,7 +25,7 @@ export function registerJobSearchRoutes(server: VaultServer): void {
             date, time, text,
         } = body;
 
-        if (typeof date !== 'string' || !DATE_PATTERN.test(date) || typeof time !== 'string' || !TIME_PATTERN.test(time)) {
+        if (!isValidDate(date) || !isValidTime(time)) {
             return reply.code(400).type('text/plain').send('Fields "date" (YYYY-MM-DD) and "time" (HH:MM, UTC) are required');
         }
 
@@ -25,8 +33,10 @@ export function registerJobSearchRoutes(server: VaultServer): void {
             return reply.code(400).type('text/plain').send(`Field "text" must be a non-empty string up to ${MAX_TEXT_LENGTH} characters`);
         }
 
+        let added: boolean;
+
         try {
-            await prependRecommendationsRecord(`## [[${date}]] ${time} UTC`, text);
+            added = await prependRecommendationsRecord(`## [[${date}]] ${time} UTC`, text);
         } catch (error) {
             logger.error(error, '❌ Failed to add the job search recommendations');
 
@@ -37,8 +47,10 @@ export function registerJobSearchRoutes(server: VaultServer): void {
             date,
             time,
             textLength: text.length,
-        }, '✅ Job search recommendations added');
+        }, added ? '✅ Job search recommendations added' : '🔁 Job search recommendations were already there');
 
-        return reply.code(201).type('text/plain').send('Created');
+        return added
+            ? reply.code(201).type('text/plain').send('Created')
+            : reply.code(200).type('text/plain').send('Already there');
     });
 }

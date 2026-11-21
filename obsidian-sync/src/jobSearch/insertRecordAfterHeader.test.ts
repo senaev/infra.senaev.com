@@ -2,7 +2,7 @@ import {
     describe, expect, it,
 } from 'vitest';
 
-import { insertRecordAfterHeader } from './insertRecordAfterHeader';
+import { hasRecord, insertRecordAfterHeader } from './insertRecordAfterHeader';
 
 const HEADER = '# LLM Recommendations Log\n\nThe recommendations, newest first.\n\n---\n';
 
@@ -25,7 +25,21 @@ describe('insertRecordAfterHeader', () => {
         expect(result.endsWith('A\n\n---\n\nB\n')).toBe(true);
     });
 
+    it('keeps the text as it is, leading indentation included', () => {
+        expect(insertRecordAfterHeader(HEADER, '## h', '    SELECT 1;\n\n')).toBe(`${HEADER}\n## h\n\n    SELECT 1;\n`);
+    });
+
     it('rejects a note without the header separator', () => {
         expect(() => insertRecordAfterHeader('# Log\n', '## x', 'y')).toThrow('---');
+    });
+});
+
+describe('hasRecord', () => {
+    it('finds a record only by its whole heading line', () => {
+        const content = `${HEADER}\n## [[2026-11-21]] 04:00 UTC\n\nOld\n`;
+
+        expect(hasRecord(content, '## [[2026-11-21]] 04:00 UTC')).toBe(true);
+        expect(hasRecord(content, '## [[2026-11-22]] 04:00 UTC')).toBe(false);
+        expect(hasRecord(content, '## [[2026-11-21]] 04:00')).toBe(false);
     });
 });
