@@ -39,7 +39,7 @@ export function registerMtlsAuthorization(
             void reply.code(403).send({
                 status: 'error',
                 code: 'forbidden',
-                message: 'Forbidden',
+                message: 'This service is not allowed to call this API',
             });
 
             return;

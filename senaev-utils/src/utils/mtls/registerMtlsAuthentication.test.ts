@@ -25,6 +25,9 @@ describe('registerMtlsAuthentication', () => {
         });
 
         expect(response.statusCode).toBe(401);
-        expect(response.json()).toMatchObject({ code: 'unauthorized' });
+        expect(response.json()).toMatchObject({
+            code: 'unauthorized',
+            message: 'No verified client certificate',
+        });
     });
 });

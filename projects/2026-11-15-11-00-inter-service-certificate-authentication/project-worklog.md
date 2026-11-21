@@ -1,3 +1,12 @@
+## 2026-11-21 UTC — The 401 and 403 answers say why
+
+The caller of the protected API is one of our own services (it passed the TLS handshake), so a
+reason is safe and saves a look in the server logs. `registerMtlsAuthentication` answers 401 with the
+reason of `authenticateMtlsCaller` (for example `The client certificate is expired`), and
+`registerMtlsAuthorization` answers 403 with `This service is not allowed to call this API`. The
+`code` values are unchanged. The 401 without a caller in `registerMtlsAuthorization` stays generic:
+it is a server bug, not a client problem. The answer never holds the caller name or the allowed list.
+
 ## 2026-11-21 UTC — `FastifyRequestWithMtls` replaces the Fastify module augmentation
 
 The `declare module 'fastify'` block for `mtlsCaller` is removed, because it changed the type of

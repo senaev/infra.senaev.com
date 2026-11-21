@@ -30,7 +30,7 @@ export function registerMtlsAuthentication<RawServer extends RawServerBase>(serv
             void reply.code(401).send({
                 status: 'error',
                 code: 'unauthorized',
-                message: 'Unauthorized',
+                message: authentication.reason,
             });
 
             return;

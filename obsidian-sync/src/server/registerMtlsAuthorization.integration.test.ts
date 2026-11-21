@@ -92,7 +92,10 @@ describe('registerMtlsAuthorization', () => {
         const response = await client.fetch(`${origin}/route`);
 
         expect(response.status).toBe(403);
-        expect(await response.json()).toMatchObject({ code: 'forbidden' });
+        expect(await response.json()).toMatchObject({
+            code: 'forbidden',
+            message: 'This service is not allowed to call this API',
+        });
         expect((await client.fetch(`${origin}/no-such-route`)).status).toBe(403);
     });
 
