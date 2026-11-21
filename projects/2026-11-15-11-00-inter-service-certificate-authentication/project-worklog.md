@@ -1,3 +1,13 @@
+## 2026-11-22 UTC — No `obsidianSyncClient.ts` in cluster-helper
+
+The module had three short wrappers (`startObsidianSyncClient`, `stopObsidianSyncClient`,
+`obsidianSyncFetch`) around one variable. `main()` in `index.ts` now calls `createMtlsClient`
+and `shutdown` calls `close()`. `obsidianSyncApi.ts` cannot import `index.ts` (it starts the
+service on import, and cluster-helper is CommonJS, so no top-level `await`), so it keeps one
+exported holder, `obsidianSyncClientHolder`, that `main()` fills; `fetchObsidianSync` calls
+`client.fetch` and rejects when there is no client. Injecting the client through every caller
+(about 10 modules and their tests) was judged too large for the gain.
+
 ## 2026-11-22 UTC — One shared watcher of the certificate files
 
 `watchTlsCredentials({ logger })` returns `{ credentials: Signal<TlsCredentials>, stop }` and logs

@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { ResourceReadGate } from 'senaev-utils/src/toolServer/ResourceReadGate';
 import Fastify, { FastifyReply } from 'fastify';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { createMtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
 import { createMtlsFastifyServer } from 'senaev-utils/src/utils/mtls/createMtlsFastifyServer';
 import { watchTlsCredentials, type TlsCredentialsWatcher } from 'senaev-utils/src/utils/mtls/watchTlsCredentials';
 import { callTelegramApi } from 'senaev-utils/src/utils/TelegramApi/callTelegramApi';
@@ -32,6 +33,7 @@ import {
     LLM_SERVER_URL,
     MCP_DOMAIN,
     MCP_GRAFANA_URL,
+    OBSIDIAN_SYNC_URL,
     TELEGRAM_PUBLIC_API_SECRET,
     TG_CLUSTER_CHAT_ID,
     TG_MEDIA_SERVER_CHAT_ID,
@@ -50,9 +52,8 @@ import { createGoogleLogin, parseGoogleAdminEmails } from './oauth/googleLogin';
 import { GOOGLE_CALLBACK_PATH } from './oauth/registerOAuthRoutes';
 import { createToolFamilies } from './chatGptMcp/toolFamilies';
 import { callCodeTool } from './codeToolsApi';
-import { startObsidianSyncClient, stopObsidianSyncClient } from './obsidianSyncClient';
 import {
-    callVaultTool, getShortLink, readVaultResource,
+    callVaultTool, getShortLink, obsidianSyncClientHolder, readVaultResource,
 } from './obsidianSyncApi';
 import { processTelegramWebhookData } from './processTelegramWebhookData';
 import { proxyPublicStaticFile } from './publicStaticProxy';
@@ -356,7 +357,10 @@ async function main(): Promise<void> {
     logStartupStep('modules loaded');
 
     certificates = await watchTlsCredentials({ logger });
-    startObsidianSyncClient(certificates.credentials);
+    obsidianSyncClientHolder.client = createMtlsClient({
+        origin: OBSIDIAN_SYNC_URL,
+        credentials: certificates.credentials,
+    });
     logStartupStep('obsidian-sync client started');
 
     const botUser: TelegramUser = await getCurrentTelegramBotInfo(TG_TOKEN_SENAEV_COM_BOT);
@@ -501,7 +505,7 @@ async function shutdown(): Promise<void> {
         publicServer.close(),
         mtlsServer?.close(),
     ]);
-    await stopObsidianSyncClient();
+    await obsidianSyncClientHolder.client?.close();
     certificates?.stop();
     stopTorrentOutboxProcessor();
     process.exit(0);

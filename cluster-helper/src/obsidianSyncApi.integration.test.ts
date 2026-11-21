@@ -2,6 +2,7 @@ import { createServer, type Server } from 'node:https';
 import type { AddressInfo } from 'node:net';
 
 import { Signal } from 'senaev-utils/src/utils/Signal/Signal';
+import { createMtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
 import { authenticateMtlsCaller, createMtlsServerOptions } from 'senaev-utils/src/utils/mtls/mtlsServer';
 import { createTestCa, issueTestCertificate } from 'senaev-utils/src/utils/mtls/testPki';
 import { parseTlsCredentials, type TlsCredentials } from 'senaev-utils/src/utils/mtls/tlsCredentials';
@@ -9,9 +10,7 @@ import {
     afterAll, beforeAll, describe, expect, it, vi,
 } from 'vitest';
 
-import {
-    obsidianSyncFetch, startObsidianSyncClient, stopObsidianSyncClient,
-} from './obsidianSyncClient';
+import { fetchObsidianSync, obsidianSyncClientHolder } from './obsidianSyncApi';
 import { proxyPublicStaticFile } from './publicStaticProxy';
 
 const env = vi.hoisted(() => {
@@ -75,18 +74,21 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-    await stopObsidianSyncClient();
+    await obsidianSyncClientHolder.client?.close();
     server.closeAllConnections();
     await new Promise((resolve) => server.close(resolve));
 });
 
-describe('the obsidian-sync client over real mTLS', () => {
+describe('fetchObsidianSync over real mTLS', () => {
     it('refuses calls before it is started', async () => {
-        await expect(obsidianSyncFetch(`${env.OBSIDIAN_SYNC_URL}/`)).rejects.toThrow('not started');
+        await expect(fetchObsidianSync('/')).rejects.toThrow('not started');
     });
 
     it('reaches the vault service with the client certificate and no token, and streams a static file', async () => {
-        startObsidianSyncClient(clientCredentials);
+        obsidianSyncClientHolder.client = createMtlsClient({
+            origin: env.OBSIDIAN_SYNC_URL,
+            credentials: clientCredentials,
+        });
 
         const result = await proxyPublicStaticFile({
             path: 'folder/file.txt',

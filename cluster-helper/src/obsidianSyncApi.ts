@@ -2,20 +2,30 @@ import { TRANSPORT_TIMEOUT_MS } from 'senaev-utils/src/operations/operationLimit
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 import { readStatusResponse } from 'senaev-utils/src/utils/http/readStatusResponse/readStatusResponse';
 import { createAbortSignalWithTimeout } from 'senaev-utils/src/utils/Abort/createAbortSignalWithTimeout/createAbortSignalWithTimeout';
+import type { MtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
 
 import { readToolReply } from './chatGptMcp/callToolServer';
 import type { ToolReply } from './chatGptMcp/toolFamilies';
 import { OBSIDIAN_SYNC_URL } from './env';
-import { obsidianSyncFetch } from './obsidianSyncClient';
+
+/** Set by `main()` in index.ts before the first call, and closed on shutdown. */
+export const obsidianSyncClientHolder: { client: MtlsClient | undefined } = { client: undefined };
 
 /**
  * Every call to obsidian-sync goes through here, because obsidian-sync rejects any caller
- * without the client certificate that this fetch presents.
+ * without the client certificate that this fetch presents. It talks only to obsidian-sync:
+ * the client refuses any other origin.
  */
 export function fetchObsidianSync(pathOrUrl: string | URL, init: RequestInit = {}): Promise<Response> {
+    const { client } = obsidianSyncClientHolder;
+
+    if (client === undefined) {
+        return Promise.reject(new Error('The obsidian-sync client is not started'));
+    }
+
     const url = typeof pathOrUrl === 'string' ? `${OBSIDIAN_SYNC_URL}${pathOrUrl}` : pathOrUrl;
 
-    return obsidianSyncFetch(url, init);
+    return client.fetch(url, init);
 }
 
 async function postToObsidianSync({
