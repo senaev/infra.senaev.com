@@ -50,7 +50,7 @@ import {
 } from './chatGptMcp/toolFamilies';
 import { callCodeTool } from './codeToolsApi';
 import {
-    callVaultTool, getShortLink, readVaultResource,
+    addJobSearchRecommendations, callVaultTool, getShortLink, readVaultResource,
 } from './obsidianSyncApi';
 import { processTelegramWebhookData } from './processTelegramWebhookData';
 import { proxyPublicStaticFile } from './publicStaticProxy';
@@ -168,6 +168,46 @@ internalServer.get<{ Querystring: { date?: string } }>('/send-daily-overview', a
             message: error instanceof Error ? error.message : String(error),
         });
     }
+});
+
+// Called by the n8n `job-search-round` workflow with the same text that it posts to Telegram.
+internalServer.post<{ Body: unknown }>('/job-search/recommendations', async (request, reply) => {
+    const {
+        date, time, text,
+    } = (request.body ?? {}) as { date?: unknown; time?: unknown; text?: unknown };
+
+    if (typeof date !== 'string' || typeof time !== 'string' || typeof text !== 'string') {
+        return reply.code(400).send({
+            status: 'error',
+            message: 'The body must be { "date": "YYYY-MM-DD", "time": "HH:MM", "text": "..." }',
+        });
+    }
+
+    logger.info({
+        date,
+        time,
+        textLength: text.length,
+    }, '🆕 Received job search recommendations');
+
+    try {
+        await addJobSearchRecommendations({
+            date,
+            time,
+            text,
+        });
+    } catch (error) {
+        logger.error({
+            err: error,
+            status: 'error',
+        }, '❌ Failed to add the job search recommendations');
+
+        return reply.code(502).send({
+            status: 'error',
+            message: error instanceof Error ? error.message : String(error),
+        });
+    }
+
+    return reply.code(204).send();
 });
 
 internalServer.post<{ Body: unknown }>('/qbittorrent/torrent-event', async (request, reply) => {

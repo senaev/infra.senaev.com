@@ -5,6 +5,7 @@ import { PUBLIC_DIR } from '../vaultPaths';
 
 import { createVaultServer } from './createVaultServer';
 import { registerInternalTokenCheck } from './registerInternalTokenCheck';
+import { registerJobSearchRoutes } from './registerJobSearchRoutes';
 import { registerMilestoneRoutes } from './registerMilestoneRoutes';
 import { registerPublicFileRoutes } from './registerPublicFileRoutes';
 import { registerPublicStaticRoutes } from './registerPublicStaticRoutes';
@@ -25,6 +26,7 @@ export async function runVaultServer() {
     registerVaultMetricsRoutes(server, OBSIDIAN_VAULT_PATH);
     registerVaultToolRoutes(server, createVaultToolsConfig(OBSIDIAN_VAULT_PATH));
     registerTaskRoutes(server);
+    registerJobSearchRoutes(server);
     registerShortLinkRoutes(server);
     registerMilestoneRoutes(server);
     registerPublicStaticRoutes(server);
