@@ -1,6 +1,5 @@
 import { watchTlsCredentials } from 'senaev-utils/src/utils/mtls/watchTlsCredentials';
 
-import { MTLS_ALLOWED_CLIENT_NAME } from '../env';
 import { logger } from '../logger';
 import { PUBLIC_DIR } from '../vaultPaths';
 
@@ -10,6 +9,11 @@ import { registerProtectedVaultRoutes, registerPublicVaultRoutes } from './regis
 const HOST = '0.0.0.0';
 const PROTECTED_PORT = 8443;
 const PUBLIC_PORT = 8080;
+/**
+ * The only service that may call the protected API: the DNS name in its client certificate
+ * (`templates/internal-mtls.yaml`). The chart is deployed to the `senaev-com` namespace.
+ */
+const ALLOWED_CLIENT_NAME = 'cluster-helper.senaev-com.svc.cluster.local';
 
 /**
  * Starts the two vault HTTP servers and resolves once both accept connections.
@@ -36,7 +40,7 @@ export async function runVaultServer() {
     const { server: protectedServer } = protectedInstance;
     const publicServer = createVaultServer();
 
-    registerProtectedVaultRoutes(protectedServer, MTLS_ALLOWED_CLIENT_NAME);
+    registerProtectedVaultRoutes(protectedServer, ALLOWED_CLIENT_NAME);
     registerPublicVaultRoutes(publicServer);
 
     await Promise.all([

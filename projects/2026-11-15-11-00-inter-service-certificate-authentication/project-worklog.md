@@ -1,3 +1,11 @@
+## 2026-11-21 UTC — The allowed client name moves from Helm into the code
+
+obsidian-sync decides which service may call it, so the name is now the constant
+`ALLOWED_CLIENT_NAME` (`cluster-helper.senaev-com.svc.cluster.local`) in `runVaultServer.ts`. The
+env variable `MTLS_ALLOWED_CLIENT_NAME` is removed from `env.ts`, the Helm template and the test
+setup. The namespace is now written in two places, the code and `internal-mtls.yaml`
+(`.Release.Namespace`); a mismatch fails closed with 401.
+
 ## 2026-11-21 UTC — Rename TlsMaterial to TlsCredentials
 
 "Material" is not a standard TLS term (only "keying material" is, in cryptography). The bundle

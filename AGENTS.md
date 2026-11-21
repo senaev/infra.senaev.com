@@ -149,7 +149,7 @@ cluster-helper calls the protected obsidian-sync API (everything that reads or e
 a client certificate, not a token. cert-manager (`provisioning/helm/pki/cert-manager`) and a private
 CA (`provisioning/helm/pki/issuers`, ClusterIssuer `internal-ca`, key only in the `pki` namespace)
 issue two 7-day leaves in `senaev-com` (`templates/internal-mtls.yaml`). The identity is a DNS SAN:
-obsidian-sync allows only `cluster-helper.<ns>.svc.cluster.local` (`MTLS_ALLOWED_CLIENT_NAME`), and
+obsidian-sync allows only `cluster-helper.<ns>.svc.cluster.local` (`ALLOWED_CLIENT_NAME` in its code), and
 cluster-helper connects to `https://obsidian-sync.<ns>.svc.cluster.local:8443`. Both services mount
 their Secret as a directory at `/etc/mtls` (never subPath or env), poll the files and reload without
 a restart (`senaev-utils/src/utils/mtls`). They fail closed: no fallback to HTTP or a token.
