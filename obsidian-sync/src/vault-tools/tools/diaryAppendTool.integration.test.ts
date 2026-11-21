@@ -75,8 +75,10 @@ describe('diaryAppendTool', () => {
         expect(result.notes[0]?.diff).not.toMatch(/^-(?!-- a\/)/m);
     });
 
-    it('creates a missing daily note from the template, with its folders', async () => {
-        const { config, path } = await vaultWith({});
+    it('creates a missing daily note with reminders from vault frontmatter', async () => {
+        const { config, path } = await vaultWith({
+            'Reminder.md': '---\nday-reminder: Check the calendar\nday-reminder-schedule: FREQ=WEEKLY;BYDAY=WE\n---\n',
+        });
 
         const result = await diaryAppendTool(config, {
             records: [
@@ -92,7 +94,18 @@ describe('diaryAppendTool', () => {
             path: DAY,
             created: true,
         });
-        expect(content.replace(/\n\[\[2026-11-18\|.*✍️\n/, '')).toBe(renderDailyNote('2026-11-18'));
+        expect(content.replace(/\n\[\[2026-11-18\|.*✍️\n/, '')).toBe(renderDailyNote('2026-11-18', {
+            notes: [
+                {
+                    path: 'Reminder.md',
+                    frontmatter: {
+                        'day-reminder': 'Check the calendar',
+                        'day-reminder-schedule': 'FREQ=WEEKLY;BYDAY=WE',
+                    },
+                },
+            ],
+        }));
+        expect(content).toContain('- [ ] [[Reminder|Check the calendar]]');
         expect(content).toMatch(new RegExp(`---\\n\\n${record('2026-11-18', 'Мы гуляли\\.').source}\\n\\n${MARKER}\\n\\n---`));
     });
 
@@ -108,7 +121,7 @@ describe('diaryAppendTool', () => {
             ],
         });
 
-        expect(await readFile(path(DAY), 'utf8')).toContain('[[⏰ Wake up consistently]]');
+        expect(await readFile(path(DAY), 'utf8')).toContain('window.senaevPersonalTools.filterTasksForDaily');
     });
 
     it('fails without writing anything when a note has no place for the record', async () => {
