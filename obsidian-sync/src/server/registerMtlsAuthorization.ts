@@ -1,3 +1,4 @@
+import type { FastifyInstance } from 'fastify';
 import { authenticateMtlsPeer } from 'senaev-utils/src/utils/mtls/mtlsServer';
 
 import { logger } from '../logger';
@@ -58,7 +59,7 @@ export function registerMtlsAuthorization(server: VaultServer): void {
 }
 
 /** Registers routes that only the given services may call. */
-export function registerRoutesForCallers<T extends Pick<VaultServer, 'register'>>(
+export function registerRoutesForCallers<T extends Pick<FastifyInstance, 'register'>>(
     server: T,
     callers: readonly string[],
     registerRoutes: (server: T) => void
