@@ -14,9 +14,9 @@ export function registerMtlsAuthorization(
     allowedCallers: readonly string[]
 ): void {
     server.addHook('onRequest', (request, reply, done) => {
-        const { mtlsPeer } = request;
+        const { mtlsCaller } = request;
 
-        if (mtlsPeer === undefined) {
+        if (mtlsCaller === undefined) {
             logger.error({
                 method: request.method,
                 url: request.url,
@@ -30,7 +30,7 @@ export function registerMtlsAuthorization(
             return;
         }
 
-        if (!allowedCallers.some((name) => mtlsPeer.hasDnsName(name))) {
+        if (!allowedCallers.some((name) => mtlsCaller.hasDnsName(name))) {
             logger.warn({
                 method: request.method,
                 url: request.url,

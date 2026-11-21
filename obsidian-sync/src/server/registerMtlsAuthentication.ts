@@ -6,7 +6,7 @@ import { logger } from '../logger';
 declare module 'fastify' {
     interface FastifyRequest {
         /** The caller of the request, set by `registerMtlsAuthentication`. */
-        mtlsPeer: MtlsPeer | undefined;
+        mtlsCaller: MtlsPeer | undefined;
     }
 }
 
@@ -17,7 +17,7 @@ declare module 'fastify' {
  * handler included.
  */
 export function registerMtlsAuthentication(server: Pick<FastifyInstance, 'addHook' | 'decorateRequest'>): void {
-    server.decorateRequest('mtlsPeer', undefined);
+    server.decorateRequest('mtlsCaller', undefined);
     server.addHook('onRequest', (request, reply, done) => {
         const authentication = authenticateMtlsPeer(request.raw.socket, new Date());
 
@@ -36,7 +36,7 @@ export function registerMtlsAuthentication(server: Pick<FastifyInstance, 'addHoo
             return;
         }
 
-        request.mtlsPeer = authentication.peer;
+        request.mtlsCaller = authentication.peer;
         done();
     });
 }

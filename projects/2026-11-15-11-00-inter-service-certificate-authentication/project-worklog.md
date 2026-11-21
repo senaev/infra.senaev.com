@@ -10,7 +10,7 @@ when a second service needs only some routes, add the per-route rule again.
 ## 2026-11-21 UTC — Authentication and authorization are separate hooks
 
 `registerMtlsAuthentication` (401) checks the certificate with `authenticateMtlsPeer` and keeps
-the peer on the request (`request.mtlsPeer`). `registerMtlsAuthorization` (403) checks the peer
+the peer on the request (`request.mtlsCaller`). `registerMtlsAuthorization` (403) checks the peer
 against the allowed callers, and answers 401 when there is no peer, so it fails closed if
 the authentication hook is missing. Both are `onRequest` hooks, registered in this order in
 `registerProtectedVaultRoutes`. Both take only Fastify types (`Pick<FastifyInstance, …>`), after
