@@ -6,10 +6,21 @@ import { createMtlsClient, type MtlsClient } from 'senaev-utils/src/utils/mtls/m
 import { createTestCa, issueTestCertificate } from 'senaev-utils/src/utils/mtls/testPki';
 import { parseTlsCredentials, type TlsFiles } from 'senaev-utils/src/utils/mtls/tlsCredentials';
 import {
-    afterAll, beforeAll, describe, expect, it,
+    afterAll, beforeAll, describe, expect, it, vi,
 } from 'vitest';
 
 import { logger } from '../logger';
+
+const mocks = vi.hoisted(() => {
+    return { readTlsFiles: vi.fn() };
+});
+
+vi.mock('senaev-utils/src/utils/mtls/tlsCredentials', async (importOriginal) => {
+    return {
+        ...await importOriginal<typeof import('senaev-utils/src/utils/mtls/tlsCredentials')>(),
+        readTlsFiles: mocks.readTlsFiles,
+    };
+});
 
 import { CLUSTER_HELPER } from './callers';
 import { createVaultServer } from './createVaultServer';
@@ -71,14 +82,14 @@ beforeAll(async () => {
         dnsName: 'localhost',
         usage: 'server',
     });
-    const instance = createMtlsFastifyServer({
-        Fastify,
-        credentials: parseTlsCredentials(serverFiles),
-        logger: logger as FastifyBaseLogger,
-    });
+
+    mocks.readTlsFiles.mockResolvedValue(serverFiles);
 
     // Only the raw server type (HTTPS) differs from the plain instance; the routes do not use it.
-    protectedServer = instance.server as unknown as FastifyInstance;
+    protectedServer = await createMtlsFastifyServer({
+        Fastify,
+        logger: logger as FastifyBaseLogger,
+    }) as unknown as FastifyInstance;
     registerProtectedVaultRoutes(protectedServer);
     publicServer = createVaultServer();
     registerPublicVaultRoutes(publicServer);

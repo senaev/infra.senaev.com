@@ -1,3 +1,11 @@
+## 2026-11-21 UTC — `createMtlsFastifyServer` runs the credentials watcher
+
+`createMtlsFastifyServer({ Fastify, logger })` is now async and returns the Fastify instance. It
+calls `watchTlsCredentials` itself: renewed files go to `setSecureContext`, the two log lines moved
+into it, and an `onClose` hook stops the polling, so `server.close()` is the only cleanup.
+`runVaultServer` lost its reload-target workaround. The obsidian-sync integration tests mock
+`readTlsFiles` instead of passing credentials.
+
 ## 2026-11-21 UTC — The 401 and 403 answers say why
 
 The caller of the protected API is one of our own services (it passed the TLS handshake), so a

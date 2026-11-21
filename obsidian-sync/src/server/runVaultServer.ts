@@ -1,6 +1,5 @@
 import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
 import { createMtlsFastifyServer } from 'senaev-utils/src/utils/mtls/createMtlsFastifyServer';
-import { watchTlsCredentials } from 'senaev-utils/src/utils/mtls/watchTlsCredentials';
 
 import { logger } from '../logger';
 import { PUBLIC_DIR } from '../vaultPaths';
@@ -22,25 +21,10 @@ const PUBLIC_PORT = 8080;
  * Fastify instances, so no protected route can ever be reached over plain HTTP.
  */
 export async function runVaultServer(): Promise<{ close: () => Promise<void> }> {
-    // The watcher needs the server for reloads, and the server needs the first credentials from the watcher.
-    const reloadTarget: { server?: ReturnType<typeof createMtlsFastifyServer> } = {};
-    const certificates = await watchTlsCredentials({
-        onChange: (credentials) => {
-            reloadTarget.server?.updateCredentials(credentials);
-            logger.info({ validTo: credentials.validTo.toISOString() }, '🔐 Loaded the renewed mTLS certificate');
-        },
-        onError: (error) => logger.error({ err: error }, '❌ mTLS certificate files cannot be used, keeping the last valid ones'),
-    });
-
-    const protectedInstance = createMtlsFastifyServer({
+    const protectedServer = await createMtlsFastifyServer({
         Fastify,
-        credentials: certificates.credentials,
         logger: logger as FastifyBaseLogger,
     });
-
-    reloadTarget.server = protectedInstance;
-
-    const { server: protectedServer } = protectedInstance;
     const publicServer = createVaultServer();
 
     // Only the raw server type (HTTPS) differs from the plain instance; the routes do not use it.
@@ -65,7 +49,6 @@ export async function runVaultServer(): Promise<{ close: () => Promise<void> }> 
 
     return {
         close: async () => {
-            certificates.stop();
             await Promise.all([
                 protectedServer.close(),
                 publicServer.close(),

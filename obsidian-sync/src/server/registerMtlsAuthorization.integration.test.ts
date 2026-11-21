@@ -6,10 +6,21 @@ import { createMtlsClient, type MtlsClient } from 'senaev-utils/src/utils/mtls/m
 import { createTestCa, issueTestCertificate } from 'senaev-utils/src/utils/mtls/testPki';
 import { parseTlsCredentials, type TlsFiles } from 'senaev-utils/src/utils/mtls/tlsCredentials';
 import {
-    afterAll, beforeAll, describe, expect, it,
+    afterAll, beforeAll, describe, expect, it, vi,
 } from 'vitest';
 
 import { logger } from '../logger';
+
+const mocks = vi.hoisted(() => {
+    return { readTlsFiles: vi.fn() };
+});
+
+vi.mock('senaev-utils/src/utils/mtls/tlsCredentials', async (importOriginal) => {
+    return {
+        ...await importOriginal<typeof import('senaev-utils/src/utils/mtls/tlsCredentials')>(),
+        readTlsFiles: mocks.readTlsFiles,
+    };
+});
 
 import { registerMtlsAuthorization } from './registerMtlsAuthorization';
 
@@ -24,11 +35,12 @@ let ca: Awaited<ReturnType<typeof createTestCa>>;
 
 async function startServer(allowedCallers: readonly string[]): Promise<string> {
     // Only the raw server type (HTTPS) differs from the plain instance; the hooks do not use it.
-    const server = createMtlsFastifyServer({
+    mocks.readTlsFiles.mockResolvedValue(serverFiles);
+
+    const server = await createMtlsFastifyServer({
         Fastify,
-        credentials: parseTlsCredentials(serverFiles),
         logger: logger as FastifyBaseLogger,
-    }).server as unknown as FastifyInstance;
+    }) as unknown as FastifyInstance;
 
     registerMtlsAuthorization(server, allowedCallers);
     server.get('/route', () => 'ok');
