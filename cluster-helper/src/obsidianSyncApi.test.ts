@@ -1,10 +1,8 @@
 import {
-    afterEach, beforeAll, describe, expect, it, vi,
+    afterEach, describe, expect, it, vi,
 } from 'vitest';
 
-import {
-    callVaultTool, getShortLink, obsidianSyncClientHolder,
-} from './obsidianSyncApi';
+import { createObsidianSyncApi } from './obsidianSyncApi';
 
 // env.ts validates the whole environment at import time; vitest runs this before the imports.
 vi.hoisted(() => {
@@ -46,12 +44,7 @@ vi.hoisted(() => {
 
 const mtlsFetchMock = vi.hoisted(() => vi.fn());
 
-beforeAll(() => {
-    obsidianSyncClientHolder.client = {
-        fetch: mtlsFetchMock,
-        close: vi.fn(),
-    };
-});
+const { callVaultTool, getShortLink } = createObsidianSyncApi({ fetch: mtlsFetchMock });
 
 function mockFetch(status: number, body: unknown) {
     mtlsFetchMock.mockResolvedValue(new Response(JSON.stringify(body), { status }));

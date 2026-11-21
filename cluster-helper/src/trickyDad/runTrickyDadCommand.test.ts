@@ -3,7 +3,6 @@ import {
 } from 'vitest';
 
 import { callLlmJson } from '../llm/callLlmJson';
-import { addObsidianTasks } from '../obsidianSyncApi';
 
 import { addItemsToSupabaseGroceryList } from './actions/addItemsToSupabaseGroceryList';
 import { runTrickyDadCommand } from './runTrickyDadCommand';
@@ -31,10 +30,6 @@ vi.mock('../llm/callLlmJson', () => {
     return { callLlmJson: vi.fn() };
 });
 
-vi.mock('../obsidianSyncApi', () => {
-    return { addObsidianTasks: vi.fn() };
-});
-
 vi.mock('./actions/addItemsToSupabaseGroceryList', () => {
     return { addItemsToSupabaseGroceryList: vi.fn() };
 });
@@ -53,6 +48,8 @@ function answerWith(answer: unknown): void {
     }) as ReturnType<typeof callLlmJson>);
 }
 
+const obsidianSyncApi = { addObsidianTasks: vi.fn() };
+
 beforeEach(() => {
     vi.clearAllMocks();
 });
@@ -61,10 +58,10 @@ describe('runTrickyDadCommand', () => {
     it('adds the shopping items from Alisa to the shopping list, and never a task', async () => {
         answerWith({ items: ['Арбуз'] });
 
-        const result = await runTrickyDadCommand('попроси умного папу купить арбуз', 'Alisa');
+        const result = await runTrickyDadCommand('попроси умного папу купить арбуз', 'Alisa', obsidianSyncApi);
 
         expect(addItemsToSupabaseGroceryList).toHaveBeenCalledWith(['Арбуз']);
-        expect(addObsidianTasks).not.toHaveBeenCalled();
+        expect(obsidianSyncApi.addObsidianTasks).not.toHaveBeenCalled();
         expect(result.llmProvider).toBe('openrouter');
         expect(result.actionResults.map(({ error }) => error)).toEqual([null]);
     });
@@ -79,9 +76,9 @@ describe('runTrickyDadCommand', () => {
             ],
         });
 
-        await runTrickyDadCommand('позвонить в банк', 'Tasks Telegram chat');
+        await runTrickyDadCommand('позвонить в банк', 'Tasks Telegram chat', obsidianSyncApi);
 
-        expect(addObsidianTasks).toHaveBeenCalledWith([
+        expect(obsidianSyncApi.addObsidianTasks).toHaveBeenCalledWith([
             {
                 title: 'Позвонить в банк',
                 date: null,
@@ -95,7 +92,7 @@ describe('runTrickyDadCommand', () => {
         answerWith({ items: ['Хлеб'] });
         vi.mocked(addItemsToSupabaseGroceryList).mockRejectedValue(new Error('Supabase is down'));
 
-        const result = await runTrickyDadCommand('купи хлеб', 'Tricky Dad Telegram chat');
+        const result = await runTrickyDadCommand('купи хлеб', 'Tricky Dad Telegram chat', obsidianSyncApi);
 
         expect(result.actionResults[0]?.error).toContain('❌ Failed to run add_shopping_items: ');
         expect(result.actionResults[0]?.error).toContain('Supabase is down');

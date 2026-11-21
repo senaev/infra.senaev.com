@@ -35,6 +35,8 @@ vi.mock('./sendTrickyDadReport', () => {
     };
 });
 
+const obsidianSyncApi = { addObsidianTasks: vi.fn() };
+
 beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(sendTrickyDadErrorReport).mockResolvedValue(undefined);
@@ -46,7 +48,7 @@ describe('handleAlisaRequest', () => {
         '   ',
         '\n\t',
     ])('does not dispatch an empty launch command [%s]', (command) => {
-        const response = handleAlisaRequest({ request: { command } });
+        const response = handleAlisaRequest({ request: { command } }, obsidianSyncApi);
 
         expect(response).toBe('Ничего не понял. Можете, пожалуйста, повторить?');
         expect(sendTrickyDadErrorReport).toHaveBeenCalledWith({
@@ -65,7 +67,7 @@ describe('handleAlisaRequest', () => {
                 original_utterance: 'Купи хлеб',
             },
             session: { user: { user_id: 'secret-user-id' } },
-        });
+        }, obsidianSyncApi);
 
         expect(vi.mocked(logger.info)).toHaveBeenCalledWith({ command: 'купи хлеб' }, '🆕 Received Alisa command');
         expect(JSON.stringify(vi.mocked(logger.info).mock.calls)).not.toMatch(/secret-user-id|original_utterance/);

@@ -1,12 +1,17 @@
-## 2026-11-22 UTC — No `obsidianSyncClient.ts` in cluster-helper
+## 2026-11-22 UTC — The obsidian-sync API is an argument, not module state
 
-The module had three short wrappers (`startObsidianSyncClient`, `stopObsidianSyncClient`,
-`obsidianSyncFetch`) around one variable. `main()` in `index.ts` now calls `createMtlsClient`
-and `shutdown` calls `close()`. `obsidianSyncApi.ts` cannot import `index.ts` (it starts the
-service on import, and cluster-helper is CommonJS, so no top-level `await`), so it keeps one
-exported holder, `obsidianSyncClientHolder`, that `main()` fills; `fetchObsidianSync` calls
-`client.fetch` and rejects when there is no client. Injecting the client through every caller
-(about 10 modules and their tests) was judged too large for the gain.
+`cluster-helper/src/obsidianSyncClient.ts` is gone. `obsidianSyncApi.ts` exports
+`createObsidianSyncApi(client)`, which returns the bound functions (`fetchObsidianSync`,
+`callVaultTool`, `getMilestones`, `getShortLink`, `createShortLink`, `addObsidianTasks`,
+`readVaultResource`). `main()` in `index.ts` creates the client with `createMtlsClient`, builds the
+API and closes the client on shutdown. cluster-helper is CommonJS (no top-level `await`) and the
+credentials exist only after `await watchTlsCredentials`, so `index.ts` keeps a local, not
+exported `let obsidianSyncApi`, which `main()` sets before any server listens. Modules receive the
+API as an argument, typed as `Pick<ObsidianSyncApi, …>` of what they call:
+`processTelegramWebhookData`, `processOwnerDirectMessage`, `processTrickyDadChatMessage`,
+`handleAlisaRequest`, `runTrickyDadCommand` (the action `run` context has `obsidianSyncApi`),
+`sendDailyOverview` and `proxyPublicStaticFile`. Tests pass a plain object with `vi.fn()`, and
+three `vi.mock('../obsidianSyncApi')` calls are gone.
 
 ## 2026-11-22 UTC — One shared watcher of the certificate files
 

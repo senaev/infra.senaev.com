@@ -2,13 +2,16 @@ import { createTelegramRichMessage } from 'senaev-utils/src/utils/TelegramApi/cr
 
 import { TG_TOKEN_SENAEV_COM_BOT, TRICKY_DAD_CHAT_ID } from '../env';
 import { logger } from '../logger';
-import { getMilestones } from '../obsidianSyncApi';
+import type { ObsidianSyncApi } from '../obsidianSyncApi';
 
 import { formatDailyOverview } from './formatDailyOverview';
 
 /** Posts the milestones of `date` (default: today) and of the next day to the Tricky Dad chat. */
-export async function sendDailyOverview(date?: string): Promise<{ messageId: number; text: string }> {
-    const text = formatDailyOverview(await getMilestones(date));
+export async function sendDailyOverview(
+    obsidianSyncApi: Pick<ObsidianSyncApi, 'getMilestones'>,
+    date?: string
+): Promise<{ messageId: number; text: string }> {
+    const text = formatDailyOverview(await obsidianSyncApi.getMilestones(date));
 
     // A rich message, so that headings and lists render as real blocks.
     const messageId = await createTelegramRichMessage({

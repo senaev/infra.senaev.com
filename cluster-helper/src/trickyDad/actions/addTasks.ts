@@ -4,7 +4,7 @@ import { isNonEmptyArray } from 'senaev-utils/src/utils/Array/isNonEmptyArray/is
 import { isNonEmptyString } from 'senaev-utils/src/utils/String/NonEmptyString/NonEmptyString';
 
 import { OBSIDIAN_TASKS_CHAT_ID } from '../../env';
-import { addObsidianTasks, type ObsidianTaskInput } from '../../obsidianSyncApi';
+import type { ObsidianTaskInput } from '../../obsidianSyncApi';
 
 import type { PlannedTrickyDadAction, TrickyDadAction } from './TrickyDadAction';
 
@@ -18,8 +18,8 @@ function planAddTasks(tasks: TaskWithDate[]): PlannedTrickyDadAction {
         emoji: '👉',
         reportChatId: OBSIDIAN_TASKS_CHAT_ID,
         entries: tasks.map(({ title }) => title),
-        run: async ({ source }) => {
-            await addObsidianTasks(tasks.map(({ title, date }): ObsidianTaskInput => {
+        run: async ({ source, obsidianSyncApi }) => {
+            await obsidianSyncApi.addObsidianTasks(tasks.map(({ title, date }): ObsidianTaskInput => {
                 return {
                     title,
                     date,

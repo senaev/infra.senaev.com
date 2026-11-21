@@ -2,7 +2,7 @@ import { createServer, type Server } from 'node:https';
 import type { AddressInfo } from 'node:net';
 
 import { Signal } from 'senaev-utils/src/utils/Signal/Signal';
-import { createMtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
+import { createMtlsClient, type MtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
 import { authenticateMtlsCaller, createMtlsServerOptions } from 'senaev-utils/src/utils/mtls/mtlsServer';
 import { createTestCa, issueTestCertificate } from 'senaev-utils/src/utils/mtls/testPki';
 import { parseTlsCredentials, type TlsCredentials } from 'senaev-utils/src/utils/mtls/tlsCredentials';
@@ -10,7 +10,7 @@ import {
     afterAll, beforeAll, describe, expect, it, vi,
 } from 'vitest';
 
-import { fetchObsidianSync, obsidianSyncClientHolder } from './obsidianSyncApi';
+import { createObsidianSyncApi } from './obsidianSyncApi';
 import { proxyPublicStaticFile } from './publicStaticProxy';
 
 const env = vi.hoisted(() => {
@@ -32,6 +32,7 @@ vi.mock('./logger', () => {
 const CALLER_NAME = 'cluster-helper.test.svc.cluster.local';
 
 let server: Server;
+let client: MtlsClient | undefined;
 let clientCredentials: Signal<TlsCredentials>;
 const requests: { url: string | undefined; authorization: string | undefined }[] = [];
 
@@ -74,23 +75,20 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-    await obsidianSyncClientHolder.client?.close();
+    await client?.close();
     server.closeAllConnections();
     await new Promise((resolve) => server.close(resolve));
 });
 
-describe('fetchObsidianSync over real mTLS', () => {
-    it('refuses calls before it is started', async () => {
-        await expect(fetchObsidianSync('/')).rejects.toThrow('not started');
-    });
-
+describe('the obsidian-sync API over real mTLS', () => {
     it('reaches the vault service with the client certificate and no token, and streams a static file', async () => {
-        obsidianSyncClientHolder.client = createMtlsClient({
+        client = createMtlsClient({
             origin: env.OBSIDIAN_SYNC_URL,
             credentials: clientCredentials,
         });
 
         const result = await proxyPublicStaticFile({
+            obsidianSyncApi: createObsidianSyncApi(client),
             path: 'folder/file.txt',
             requestHeaders: {},
         });

@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { ResourceReadGate } from 'senaev-utils/src/toolServer/ResourceReadGate';
 import Fastify, { FastifyReply } from 'fastify';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
-import { createMtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
+import { createMtlsClient, type MtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
 import { createMtlsFastifyServer } from 'senaev-utils/src/utils/mtls/createMtlsFastifyServer';
 import { watchTlsCredentials, type TlsCredentialsWatcher } from 'senaev-utils/src/utils/mtls/watchTlsCredentials';
 import { callTelegramApi } from 'senaev-utils/src/utils/TelegramApi/callTelegramApi';
@@ -52,9 +52,7 @@ import { createGoogleLogin, parseGoogleAdminEmails } from './oauth/googleLogin';
 import { GOOGLE_CALLBACK_PATH } from './oauth/registerOAuthRoutes';
 import { createToolFamilies } from './chatGptMcp/toolFamilies';
 import { callCodeTool } from './codeToolsApi';
-import {
-    callVaultTool, getShortLink, obsidianSyncClientHolder, readVaultResource,
-} from './obsidianSyncApi';
+import { createObsidianSyncApi, type ObsidianSyncApi } from './obsidianSyncApi';
 import { processTelegramWebhookData } from './processTelegramWebhookData';
 import { proxyPublicStaticFile } from './publicStaticProxy';
 import { formatTorrentEvent, isTorrentEvent } from './qbittorrent/formatTorrentEvent';
@@ -98,6 +96,9 @@ const publicServer = Fastify({ loggerInstance: logger });
 
 // One watcher of the certificate files for the obsidian-sync client and the mTLS server.
 let certificates: TlsCredentialsWatcher | undefined;
+let obsidianSyncClient: MtlsClient | undefined;
+// Set by main() before any server listens, so the handlers below never run without it.
+let obsidianSyncApi: ObsidianSyncApi;
 let mtlsServer: ReturnType<typeof createMtlsFastifyServer> | undefined;
 let isReady = false;
 
@@ -139,7 +140,7 @@ internalServer.post<{ Body: unknown }>('/telegram/send-message', async (request,
 // that the scheduler needs no body; it is safe only because this port is internal.
 internalServer.get<{ Querystring: { date?: string } }>('/send-daily-overview', async (request, reply) => {
     try {
-        const { messageId, text } = await sendDailyOverview(request.query.date);
+        const { messageId, text } = await sendDailyOverview(obsidianSyncApi, request.query.date);
 
         logger.info({
             messageId,
@@ -188,7 +189,7 @@ publicServer.get('/short_links/:shortId', async (request, reply) => {
     const { shortId } = request.params as { shortId: string };
 
     try {
-        const targetUrl = await getShortLink(shortId);
+        const targetUrl = await obsidianSyncApi.getShortLink(shortId);
 
         if (targetUrl === null) {
             return reply.code(404).send('Not Found');
@@ -213,6 +214,7 @@ publicServer.get('/public-static/*', async (request, reply) => {
 
     try {
         const result = await proxyPublicStaticFile({
+            obsidianSyncApi,
             path,
             requestHeaders: request.headers,
         });
@@ -239,7 +241,7 @@ publicServer.post(ALISA_WEBHOOK_PATH, ({ body }, reply) => {
     return reply.send({
         version: '1.0',
         response: {
-            text: handleAlisaRequest(body),
+            text: handleAlisaRequest(body, obsidianSyncApi),
             end_session: true,
         },
     });
@@ -248,8 +250,8 @@ publicServer.post(ALISA_WEBHOOK_PATH, ({ body }, reply) => {
 // MCP server for the ChatGPT connector. The obsidian-* tools are forwarded to obsidian-sync,
 // which does all vault work, and the code-* tools to code-tools in the opencode-serve pod.
 const MCP_TOOL_FAMILIES = createToolFamilies({
-    readVaultResource,
-    callVaultTool,
+    readVaultResource: (uri, signal) => obsidianSyncApi.readVaultResource(uri, signal),
+    callVaultTool: (name, args) => obsidianSyncApi.callVaultTool(name, args),
     callCodeTool,
 });
 
@@ -357,10 +359,11 @@ async function main(): Promise<void> {
     logStartupStep('modules loaded');
 
     certificates = await watchTlsCredentials({ logger });
-    obsidianSyncClientHolder.client = createMtlsClient({
+    obsidianSyncClient = createMtlsClient({
         origin: OBSIDIAN_SYNC_URL,
         credentials: certificates.credentials,
     });
+    obsidianSyncApi = createObsidianSyncApi(obsidianSyncClient);
     logStartupStep('obsidian-sync client started');
 
     const botUser: TelegramUser = await getCurrentTelegramBotInfo(TG_TOKEN_SENAEV_COM_BOT);
@@ -404,6 +407,7 @@ async function main(): Promise<void> {
         void processTelegramWebhookData({
             botUser,
             update: update as TelegramUpdate,
+            obsidianSyncApi,
         }).then(
             () => {
                 logger.info('✅ Successfully processed Telegram update');
@@ -505,7 +509,7 @@ async function shutdown(): Promise<void> {
         publicServer.close(),
         mtlsServer?.close(),
     ]);
-    await obsidianSyncClientHolder.client?.close();
+    await obsidianSyncClient?.close();
     certificates?.stop();
     stopTorrentOutboxProcessor();
     process.exit(0);
