@@ -1,5 +1,18 @@
 # Worklog
 
+## 2026-11-21 22:27 UTC — Project canceled and unused API removed
+
+The owner canceled the project because the current hardware cannot support the intended
+model-serving setup. The cleanup drops `GET /llm/models` and `POST /llm/chat/completions`,
+the model registry and proxy, the connector's API-key wiring, and n8n's NetworkPolicy
+allowance for the cluster-helper public port. The job search workflow calls
+cluster-helper on its internal port.
+
+```text
+No retired endpoint references in code, Helm, or operating instructions
+Helm render verifies secret removal and n8n access limited to the internal port.
+```
+
 ## 2026-11-21 20:39 UTC — Agent connections confirmed and model API status updated
 
 The user confirmed connecting Code Tools MCP, Claude Code and Codex and setting up their
