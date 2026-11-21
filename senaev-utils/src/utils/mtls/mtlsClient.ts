@@ -2,19 +2,19 @@ import {
     Agent, fetch as undiciFetch, type RequestInit as UndiciRequestInit,
 } from 'undici';
 
-import { createSecureContextOptions, type TlsMaterial } from './tlsMaterial';
+import { createSecureContextOptions, type TlsCredentials } from './tlsCredentials';
 
 export type MtlsFetch = (url: string | URL, init?: RequestInit) => Promise<Response>;
 
 export type MtlsClient = {
     fetch: MtlsFetch;
-    /** Uses new material for new connections; the old connections finish their requests first. */
-    updateMaterial: (material: TlsMaterial) => void;
+    /** Uses new credentials for new connections; the old connections finish their requests first. */
+    updateCredentials: (credentials: TlsCredentials) => void;
     close: () => Promise<void>;
 };
 
-function createAgent(material: TlsMaterial): Agent {
-    return new Agent({ connect: createSecureContextOptions(material) });
+function createAgent(credentials: TlsCredentials): Agent {
+    return new Agent({ connect: createSecureContextOptions(credentials) });
 }
 
 /**
@@ -28,8 +28,8 @@ function createAgent(material: TlsMaterial): Agent {
  * It uses undici's own `fetch` with its own `Agent`: the built-in `fetch` cannot take TLS
  * options, and a global dispatcher would change every other request of the process.
  */
-export function createMtlsClient({ origin, material }: { origin: string; material: TlsMaterial }): MtlsClient {
-    let agent = createAgent(material);
+export function createMtlsClient({ origin, credentials }: { origin: string; credentials: TlsCredentials }): MtlsClient {
+    let agent = createAgent(credentials);
 
     return {
         fetch: (url, init) => {
@@ -46,7 +46,7 @@ export function createMtlsClient({ origin, material }: { origin: string; materia
                 redirect: 'error',
             }) as unknown as Promise<Response>;
         },
-        updateMaterial: (next) => {
+        updateCredentials: (next) => {
             const previous = agent;
 
             agent = createAgent(next);

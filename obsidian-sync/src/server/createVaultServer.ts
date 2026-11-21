@@ -1,6 +1,6 @@
 import Fastify from 'fastify';
 import { createMtlsServerOptions } from 'senaev-utils/src/utils/mtls/mtlsServer';
-import { createSecureContextOptions, type TlsMaterial } from 'senaev-utils/src/utils/mtls/tlsMaterial';
+import { createSecureContextOptions, type TlsCredentials } from 'senaev-utils/src/utils/mtls/tlsCredentials';
 
 import { logger } from '../logger';
 
@@ -29,18 +29,18 @@ export type VaultServer = ReturnType<typeof createVaultServer>;
  * one listener, and its HTTPS options are fixed when it is created, so the protected routes
  * need an instance of their own.
  */
-export function createProtectedVaultServer(material: TlsMaterial) {
+export function createProtectedVaultServer(credentials: TlsCredentials) {
     const server = Fastify({
         loggerInstance: logger,
         bodyLimit: BODY_LIMIT_BYTES,
-        https: createMtlsServerOptions(material),
+        https: createMtlsServerOptions(credentials),
     });
 
     return {
         // Only the raw server type differs from the plain instance; the routes do not use it.
         server: server as unknown as VaultServer,
         /** New connections use the renewed certificate; open ones keep the old one. */
-        updateMaterial: (renewed: TlsMaterial) => {
+        updateCredentials: (renewed: TlsCredentials) => {
             server.server.setSecureContext(createSecureContextOptions(renewed));
         },
     };

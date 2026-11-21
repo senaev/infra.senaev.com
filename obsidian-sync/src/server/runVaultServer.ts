@@ -1,4 +1,4 @@
-import { watchTlsMaterial } from 'senaev-utils/src/utils/mtls/watchTlsMaterial';
+import { watchTlsCredentials } from 'senaev-utils/src/utils/mtls/watchTlsCredentials';
 
 import { MTLS_ALLOWED_CLIENT_NAME } from '../env';
 import { logger } from '../logger';
@@ -19,17 +19,17 @@ const PUBLIC_PORT = 8080;
  * Fastify instances, so no protected route can ever be reached over plain HTTP.
  */
 export async function runVaultServer() {
-    // The watcher needs the server for reloads, and the server needs the first material from the watcher.
+    // The watcher needs the server for reloads, and the server needs the first credentials from the watcher.
     const reloadTarget: { server?: ReturnType<typeof createProtectedVaultServer> } = {};
-    const certificates = await watchTlsMaterial({
-        onChange: (material) => {
-            reloadTarget.server?.updateMaterial(material);
-            logger.info({ validTo: material.validTo.toISOString() }, '🔐 Loaded the renewed mTLS certificate');
+    const certificates = await watchTlsCredentials({
+        onChange: (credentials) => {
+            reloadTarget.server?.updateCredentials(credentials);
+            logger.info({ validTo: credentials.validTo.toISOString() }, '🔐 Loaded the renewed mTLS certificate');
         },
         onError: (error) => logger.error({ err: error }, '❌ mTLS certificate files cannot be used, keeping the last valid ones'),
     });
 
-    const protectedInstance = createProtectedVaultServer(certificates.material);
+    const protectedInstance = createProtectedVaultServer(certificates.credentials);
 
     reloadTarget.server = protectedInstance;
 

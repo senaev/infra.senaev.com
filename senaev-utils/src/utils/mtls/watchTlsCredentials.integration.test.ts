@@ -4,14 +4,14 @@ import {
 
 import { createTestCa, issueTestCertificate } from './testPki';
 import {
-    isTlsMaterialValidAt, parseTlsMaterial, type TlsFiles,
-} from './tlsMaterial';
-import { watchTlsMaterial, type TlsMaterialWatcher } from './watchTlsMaterial';
+    isTlsCredentialsValidAt, parseTlsCredentials, type TlsFiles,
+} from './tlsCredentials';
+import { watchTlsCredentials, type TlsCredentialsWatcher } from './watchTlsCredentials';
 
 const HOUR_MS = 3_600_000;
 const POLL_MS = 1_000;
 
-const watchers: TlsMaterialWatcher[] = [];
+const watchers: TlsCredentialsWatcher[] = [];
 
 afterEach(() => {
     watchers.splice(0).forEach((watcher) => watcher.stop());
@@ -30,18 +30,18 @@ async function issueFiles(options: { ca?: Awaited<ReturnType<typeof createTestCa
     });
 }
 
-describe('parseTlsMaterial', () => {
+describe('parseTlsCredentials', () => {
     it('accepts a key, a certificate and the CA that fit together', async () => {
         const files = await issueFiles();
 
-        expect(parseTlsMaterial(files).validTo.getTime()).toBeGreaterThan(Date.now());
+        expect(parseTlsCredentials(files).validTo.getTime()).toBeGreaterThan(Date.now());
     });
 
     it('refuses a key of another certificate', async () => {
         const files = await issueFiles();
         const other = await issueFiles();
 
-        expect(() => parseTlsMaterial({
+        expect(() => parseTlsCredentials({
             ...files,
             key: other.key,
         })).toThrow('does not belong');
@@ -51,7 +51,7 @@ describe('parseTlsMaterial', () => {
         const files = await issueFiles();
         const otherCa = await createTestCa('other-ca');
 
-        expect(() => parseTlsMaterial({
+        expect(() => parseTlsCredentials({
             ...files,
             ca: otherCa.certificatePem,
         })).toThrow('not signed by the CA');
@@ -60,7 +60,7 @@ describe('parseTlsMaterial', () => {
     it('refuses a half-written file', async () => {
         const files = await issueFiles();
 
-        expect(() => parseTlsMaterial({
+        expect(() => parseTlsCredentials({
             ...files,
             cert: files.cert.slice(0, 80),
         })).toThrow();
@@ -68,21 +68,21 @@ describe('parseTlsMaterial', () => {
 
     it('is valid from the start of the certificate until, but not including, its end', async () => {
         const files = await issueFiles();
-        const material = parseTlsMaterial(files);
+        const credentials = parseTlsCredentials(files);
 
-        expect(isTlsMaterialValidAt(material, new Date())).toBe(true);
-        expect(isTlsMaterialValidAt(material, new Date(material.validFrom.getTime() - 1))).toBe(false);
-        expect(isTlsMaterialValidAt(material, material.validFrom)).toBe(true);
-        expect(isTlsMaterialValidAt(material, material.validTo)).toBe(false);
+        expect(isTlsCredentialsValidAt(credentials, new Date())).toBe(true);
+        expect(isTlsCredentialsValidAt(credentials, new Date(credentials.validFrom.getTime() - 1))).toBe(false);
+        expect(isTlsCredentialsValidAt(credentials, credentials.validFrom)).toBe(true);
+        expect(isTlsCredentialsValidAt(credentials, credentials.validTo)).toBe(false);
     });
 });
 
-describe('watchTlsMaterial', () => {
+describe('watchTlsCredentials', () => {
     async function watch(initial: TlsFiles, options: { now?: () => Date } = {}) {
         let current = initial;
         const onChange = vi.fn();
         const onError = vi.fn();
-        const watcher = await watchTlsMaterial({
+        const watcher = await watchTlsCredentials({
             directory: 'unused',
             pollIntervalMs: POLL_MS,
             readFiles: () => Promise.resolve(current),
@@ -117,14 +117,14 @@ describe('watchTlsMaterial', () => {
         await vi.advanceTimersByTimeAsync(POLL_MS);
 
         expect(onChange).toHaveBeenCalledTimes(1);
-        expect(watcher.material.cert).toBe(renewed.cert);
+        expect(watcher.credentials.cert).toBe(renewed.cert);
         expect(onError).not.toHaveBeenCalled();
 
         await vi.advanceTimersByTimeAsync(POLL_MS);
         expect(onChange).toHaveBeenCalledTimes(1);
     });
 
-    it('keeps the last good material and reports a broken snapshot', async () => {
+    it('keeps the last good credentials and reports a broken snapshot', async () => {
         vi.useFakeTimers();
         const initial = await issueFiles();
         const {
@@ -140,11 +140,11 @@ describe('watchTlsMaterial', () => {
 
         expect(onChange).not.toHaveBeenCalled();
         expect(onError).toHaveBeenCalledTimes(1);
-        expect(watcher.material.cert).toBe(initial.cert);
+        expect(watcher.credentials.cert).toBe(initial.cert);
 
         replaceFiles(other);
         await vi.advanceTimersByTimeAsync(POLL_MS);
-        expect(watcher.material.cert).toBe(other.cert);
+        expect(watcher.credentials.cert).toBe(other.cert);
     });
 
     it('starts with expired files, reports them, and takes the renewal later', async () => {
@@ -171,40 +171,40 @@ describe('watchTlsMaterial', () => {
         await vi.advanceTimersByTimeAsync(POLL_MS);
 
         expect(onChange).toHaveBeenCalledTimes(1);
-        expect(watcher.material.cert).toBe(renewed.cert);
+        expect(watcher.credentials.cert).toBe(renewed.cert);
     });
 
-    it('does not replace good material with an expired renewal', async () => {
+    it('does not replace good credentials with an expired renewal', async () => {
         vi.useFakeTimers();
         const {
             watcher, onChange, onError, replaceFiles,
         } = await watch(await issueFiles());
-        const initialCert = watcher.material.cert;
+        const initialCert = watcher.credentials.cert;
 
         replaceFiles(await issueFiles({ validTo: new Date(Date.now() - 1) }));
         await vi.advanceTimersByTimeAsync(POLL_MS);
 
         expect(onChange).not.toHaveBeenCalled();
         expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'The renewed TLS certificate is not valid now' }));
-        expect(watcher.material.cert).toBe(initialCert);
+        expect(watcher.credentials.cert).toBe(initialCert);
     });
 
-    it('does not replace good material with a renewal that is not valid yet', async () => {
+    it('does not replace good credentials with a renewal that is not valid yet', async () => {
         vi.useFakeTimers();
         const {
             watcher, onChange, onError, replaceFiles,
         } = await watch(await issueFiles());
-        const initialCert = watcher.material.cert;
+        const initialCert = watcher.credentials.cert;
 
         replaceFiles(await issueFiles({ validFrom: new Date(Date.now() + HOUR_MS) }));
         await vi.advanceTimersByTimeAsync(POLL_MS);
 
         expect(onChange).not.toHaveBeenCalled();
         expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'The renewed TLS certificate is not valid now' }));
-        expect(watcher.material.cert).toBe(initialCert);
+        expect(watcher.credentials.cert).toBe(initialCert);
     });
 
-    it('reports once that the material in use has expired, and again after a renewal expires', async () => {
+    it('reports once that the credentials in use have expired, and again after a renewal expires', async () => {
         vi.useFakeTimers();
         let currentTime = new Date();
         const ca = await createTestCa();
@@ -246,7 +246,7 @@ describe('watchTlsMaterial', () => {
         const onChange = vi.fn();
         let finishRead: (files: TlsFiles) => void = () => undefined;
         let reads = 0;
-        const watcher = await watchTlsMaterial({
+        const watcher = await watchTlsCredentials({
             directory: 'unused',
             pollIntervalMs: POLL_MS,
             readFiles: () => {
@@ -269,11 +269,11 @@ describe('watchTlsMaterial', () => {
         await vi.advanceTimersByTimeAsync(0);
 
         expect(onChange).not.toHaveBeenCalled();
-        expect(watcher.material.cert).toBe(initial.cert);
+        expect(watcher.credentials.cert).toBe(initial.cert);
     });
 
-    it('fails to start without any material', async () => {
-        await expect(watchTlsMaterial({
+    it('fails to start without any credentials', async () => {
+        await expect(watchTlsCredentials({
             directory: 'unused',
             readFiles: () => Promise.reject(new Error('ENOENT')),
             onChange: vi.fn(),

@@ -1,12 +1,12 @@
 import type { Socket } from 'node:net';
 import { TLSSocket } from 'node:tls';
 
-import { createSecureContextOptions, type TlsMaterial } from './tlsMaterial';
+import { createSecureContextOptions, type TlsCredentials } from './tlsCredentials';
 
 /** Options for `https.createServer` / Fastify `https`: the client must present a certificate of our CA. */
-export function createMtlsServerOptions(material: TlsMaterial) {
+export function createMtlsServerOptions(credentials: TlsCredentials) {
     return {
-        ...createSecureContextOptions(material),
+        ...createSecureContextOptions(credentials),
         requestCert: true,
         rejectUnauthorized: true,
     };

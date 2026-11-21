@@ -103,13 +103,13 @@ aborts, body timeouts and streaming. Do not automatically retry mutations.
 ## Renewal and recovery
 
 cert-manager renews leaves/keys into Secrets; kubelet updates the mounted files after a
-delay. Each service polls the files, validates the complete material (PEM, key pair,
+delay. Each service polls the files, validates the complete credentials (PEM, key pair,
 chain) and applies it without a restart:
 
 - Server: `server.setSecureContext()` on the HTTPS server.
 - Client: create a new Undici `Agent`, then close the old one when its requests end.
 
-A malformed snapshot is ignored: keep the last valid material and log an error. At expiry,
+A malformed snapshot is ignored: keep the last valid credentials and log an error. At expiry,
 fail closed, with no fallback to HTTP or token. A service never requests certificates: only
 cert-manager does. A service that starts, or wakes up, with expired files stays up, logs an
 error and uses the renewed files on the next poll.
@@ -154,7 +154,7 @@ obsidian-sync uses Recreate: rollouts can briefly interrupt requests, renewal mu
 - Unit tests: identity matching, destination scoping, reload decisions/failures.
 - Real TLS tests: correct peer succeeds; missing/expired/wrong CA, caller identity or
   server hostname fails. Unrelated trusted service is denied.
-- Renewal changes keys without restart; malformed snapshots retain valid material;
+- Renewal changes keys without restart; malformed snapshots retain valid credentials;
   expired credentials also fail on reused connections.
 - Protected operations cannot use HTTP. Public notes/files, metrics, vault read/search/
   write, static proxy streaming and code-tools token transport retain intended behavior.

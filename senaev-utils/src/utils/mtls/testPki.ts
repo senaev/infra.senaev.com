@@ -2,7 +2,7 @@ import 'reflect-metadata';
 
 import * as x509 from '@peculiar/x509';
 
-import type { TlsFiles } from './tlsMaterial';
+import type { TlsFiles } from './tlsCredentials';
 
 /** Test-only: builds a throwaway CA and leaf certificates like the ones cert-manager issues. */
 

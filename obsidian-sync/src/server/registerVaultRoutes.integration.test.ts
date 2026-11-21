@@ -2,7 +2,7 @@ import type { AddressInfo } from 'node:net';
 
 import { createMtlsClient, type MtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
 import { createTestCa, issueTestCertificate } from 'senaev-utils/src/utils/mtls/testPki';
-import { parseTlsMaterial, type TlsFiles } from 'senaev-utils/src/utils/mtls/tlsMaterial';
+import { parseTlsCredentials, type TlsFiles } from 'senaev-utils/src/utils/mtls/tlsCredentials';
 import {
     afterAll, beforeAll, describe, expect, it,
 } from 'vitest';
@@ -63,7 +63,7 @@ function originOf(server: VaultServer, protocol: string): string {
 function createClient(origin: string, files: TlsFiles): MtlsClient {
     return createMtlsClient({
         origin,
-        material: parseTlsMaterial(files),
+        credentials: parseTlsCredentials(files),
     });
 }
 
@@ -74,7 +74,7 @@ beforeAll(async () => {
         dnsName: 'localhost',
         usage: 'server',
     });
-    const instance = createProtectedVaultServer(parseTlsMaterial(serverFiles));
+    const instance = createProtectedVaultServer(parseTlsCredentials(serverFiles));
 
     protectedServer = instance.server;
     registerProtectedVaultRoutes(protectedServer, CALLER_NAME);

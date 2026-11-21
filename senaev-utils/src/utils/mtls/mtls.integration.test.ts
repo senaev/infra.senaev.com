@@ -12,8 +12,8 @@ import {
     createTestCa, issueTestCertificate, renewTestCa,
 } from './testPki';
 import {
-    createSecureContextOptions, parseTlsMaterial, type TlsFiles,
-} from './tlsMaterial';
+    createSecureContextOptions, parseTlsCredentials, type TlsFiles,
+} from './tlsCredentials';
 
 const CALLER_NAME = 'cluster-helper.test.svc.cluster.local';
 const HOUR_MS = 3_600_000;
@@ -30,7 +30,7 @@ afterEach(async () => {
 });
 
 async function startServer(files: TlsFiles, now: () => Date = () => new Date()): Promise<{ server: Server; origin: string }> {
-    const server = createServer(createMtlsServerOptions(parseTlsMaterial(files)), (request, response) => {
+    const server = createServer(createMtlsServerOptions(parseTlsCredentials(files)), (request, response) => {
         const check = checkMtlsPeer(request.socket, CALLER_NAME, now());
 
         response.statusCode = check.ok ? 200 : 403;
@@ -49,10 +49,10 @@ async function startServer(files: TlsFiles, now: () => Date = () => new Date()):
 }
 
 function startClient(origin: string, files: TlsFiles): MtlsClient {
-    // Not parseTlsMaterial: some cases need material that does not fit together.
+    // Not parseTlsCredentials: some cases need credentials that do not fit together.
     const client = createMtlsClient({
         origin,
-        material: {
+        credentials: {
             ...files,
             validFrom: new Date(Date.now() - HOUR_MS),
             validTo: new Date(Date.now() + HOUR_MS),
@@ -246,7 +246,7 @@ describe('mTLS between a client and a server', () => {
         await expect(startClient(origin, renewedClient).fetch(`${origin}/`)).rejects.toThrow();
 
         server.setSecureContext(createSecureContextOptions(renewedServer));
-        client.updateMaterial(parseTlsMaterial(renewedClient));
+        client.updateCredentials(parseTlsCredentials(renewedClient));
 
         expect((await client.fetch(`${origin}/`)).status).toBe(200);
     });

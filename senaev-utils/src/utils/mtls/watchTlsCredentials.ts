@@ -1,26 +1,26 @@
 import {
     isSameTlsFiles,
-    isTlsMaterialValidAt,
+    isTlsCredentialsValidAt,
     MTLS_DIRECTORY,
-    parseTlsMaterial,
+    parseTlsCredentials,
     readTlsFiles,
     type TlsFiles,
-    type TlsMaterial,
-} from './tlsMaterial';
+    type TlsCredentials,
+} from './tlsCredentials';
 
 const DEFAULT_POLL_INTERVAL_MS = 30_000;
 
-export type TlsMaterialWatcher = {
-    /** The material the service uses now: the first valid one, or the newest valid renewal. */
-    material: TlsMaterial;
+export type TlsCredentialsWatcher = {
+    /** The credentials the service uses now: the first valid one, or the newest valid renewal. */
+    credentials: TlsCredentials;
     stop: () => void;
 };
 
 type WatchOptions = {
     /** Defaults to where the Helm templates mount the Secret. A test may use another one. */
     directory?: string;
-    /** Called with each renewed material that is complete and not expired. */
-    onChange: (material: TlsMaterial) => void;
+    /** Called with each set of renewed credentials that is complete and not expired. */
+    onChange: (credentials: TlsCredentials) => void;
     /** Called for a snapshot that cannot be used, or a certificate that is not valid now. The services log it. */
     onError: (error: Error) => void;
     pollIntervalMs?: number;
@@ -36,25 +36,25 @@ function toError(error: unknown): Error {
  * Loads the files that cert-manager keeps renewed in a mounted Secret, and polls them. Kubelet
  * replaces the mounted files some time after a renewal, and polling avoids watchers that depend
  * on inodes. A snapshot that is incomplete, mixed up or not valid now (expired, or not yet
- * valid) is reported and ignored, so the last good material stays in use. The material in use
- * is reported once when it expires, because no renewal may arrive to change the files.
+ * valid) is reported and ignored, so the last good credentials stay in use. The credentials in use
+ * are reported once when they expire, because no renewal may arrive to change the files.
  *
- * The first read must succeed: without any material the service cannot start. If that first
- * material is not valid, the service still starts, reports it, and uses the renewed files on a
- * later poll.
+ * The first read must succeed: without any credentials the service cannot start. If those first
+ * credentials are not valid, the service still starts, reports it, and uses the renewed files on
+ * a later poll.
  */
-export async function watchTlsMaterial({
+export async function watchTlsCredentials({
     directory = MTLS_DIRECTORY,
     onChange,
     onError,
     pollIntervalMs = DEFAULT_POLL_INTERVAL_MS,
     now = () => new Date(),
     readFiles = readTlsFiles,
-}: WatchOptions): Promise<TlsMaterialWatcher> {
+}: WatchOptions): Promise<TlsCredentialsWatcher> {
     let files = await readFiles(directory);
     let stopped = false;
-    const watcher: TlsMaterialWatcher = {
-        material: parseTlsMaterial(files),
+    const watcher: TlsCredentialsWatcher = {
+        credentials: parseTlsCredentials(files),
         stop: () => {
             stopped = true;
             clearInterval(timer);
@@ -63,7 +63,7 @@ export async function watchTlsMaterial({
     let polling = false;
     let invalidityReported = false;
     const reportInvalidityOnce = () => {
-        if (invalidityReported || isTlsMaterialValidAt(watcher.material, now())) {
+        if (invalidityReported || isTlsCredentialsValidAt(watcher.credentials, now())) {
             return;
         }
 
@@ -93,14 +93,14 @@ export async function watchTlsMaterial({
                 return;
             }
 
-            const material = parseTlsMaterial(latest);
+            const credentials = parseTlsCredentials(latest);
 
-            if (!isTlsMaterialValidAt(material, now())) {
+            if (!isTlsCredentialsValidAt(credentials, now())) {
                 throw new Error('The renewed TLS certificate is not valid now');
             }
 
-            onChange(material);
-            watcher.material = material;
+            onChange(credentials);
+            watcher.credentials = credentials;
             files = latest;
             invalidityReported = false;
         } catch (error) {

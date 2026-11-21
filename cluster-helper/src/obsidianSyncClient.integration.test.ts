@@ -8,7 +8,7 @@ import { join } from 'node:path';
 
 import { checkMtlsPeer, createMtlsServerOptions } from 'senaev-utils/src/utils/mtls/mtlsServer';
 import { createTestCa, issueTestCertificate } from 'senaev-utils/src/utils/mtls/testPki';
-import { parseTlsMaterial } from 'senaev-utils/src/utils/mtls/tlsMaterial';
+import { parseTlsCredentials } from 'senaev-utils/src/utils/mtls/tlsCredentials';
 import {
     afterAll, beforeAll, describe, expect, it, vi,
 } from 'vitest';
@@ -59,7 +59,7 @@ beforeAll(async () => {
         writeFile(join(directory, 'tls.crt'), clientFiles.cert),
         writeFile(join(directory, 'ca.crt'), clientFiles.ca),
     ]);
-    server = createServer(createMtlsServerOptions(parseTlsMaterial(serverFiles)), (request, response) => {
+    server = createServer(createMtlsServerOptions(parseTlsCredentials(serverFiles)), (request, response) => {
         requests.push({
             url: request.url,
             authorization: request.headers.authorization,

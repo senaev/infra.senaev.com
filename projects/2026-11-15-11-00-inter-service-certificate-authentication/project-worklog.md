@@ -1,7 +1,15 @@
+## 2026-11-21 UTC — Rename TlsMaterial to TlsCredentials
+
+"Material" is not a standard TLS term (only "keying material" is, in cryptography). The bundle
+of key, certificate, CA certificate and validity dates is now `TlsCredentials`: files
+`tlsCredentials.ts` and `watchTlsCredentials.ts`, functions `parseTlsCredentials`,
+`watchTlsCredentials`, `isTlsCredentialsValidAt`, and the client and server method
+`updateCredentials`. `createMtlsClient` also takes a plain origin now, with no normalization.
+
 ## 2026-11-21 UTC — Triage of the CodeRabbit review
 
 Fixed: `stop()` of the certificate watcher now stops a poll that is already running; the
-watcher reports once when the material in use expires (no renewal may arrive to change the
+watcher reports once when the credentials in use expire (no renewal may arrive to change the
 files, and there are no alerts); `validFrom` is checked together with `validTo`
 (`notAfter` is renamed to `validTo`). Added the permission check to the activation gates in the
 README. Decided not to change: the mixed-version window of the rolling update (no dual mode;
