@@ -8,88 +8,91 @@ import {
 } from 'vitest';
 
 import { createProtectedVaultServer, type VaultServer } from './createVaultServer';
-import { registerMtlsAuthorization, registerRoutesForCallers } from './registerMtlsAuthorization';
+import { registerMtlsAuthentication } from './registerMtlsAuthentication';
+import { registerMtlsAuthorization } from './registerMtlsAuthorization';
 
 const SERVICE_A = 'service-a.test.svc.cluster.local';
 const SERVICE_B = 'service-b.test.svc.cluster.local';
+const SERVICE_C = 'service-c.test.svc.cluster.local';
 
-let server: VaultServer;
-let origin: string;
-let clientA: MtlsClient;
-let clientB: MtlsClient;
+const servers: VaultServer[] = [];
+const clients: MtlsClient[] = [];
+let serverFiles: TlsFiles;
+let ca: Awaited<ReturnType<typeof createTestCa>>;
 
-function createClient(files: TlsFiles): MtlsClient {
-    return createMtlsClient({
-        origin,
-        credentials: parseTlsCredentials(files),
-    });
-}
+async function startServer(allowedCallers: readonly string[]): Promise<string> {
+    const { server } = createProtectedVaultServer(parseTlsCredentials(serverFiles));
 
-beforeAll(async () => {
-    const ca = await createTestCa();
-    const serverFiles = await issueTestCertificate({
-        ca,
-        dnsName: 'localhost',
-        usage: 'server',
-    });
-
-    server = createProtectedVaultServer(parseTlsCredentials(serverFiles)).server;
-    registerMtlsAuthorization(server);
-    registerRoutesForCallers(server, [SERVICE_A], (scope) => {
-        scope.get('/only-a', () => 'a');
-    });
-    registerRoutesForCallers(server, [
-        SERVICE_A,
-        SERVICE_B,
-    ], (scope) => {
-        scope.get('/a-and-b', () => 'ab');
-    });
-    server.get('/undeclared', () => 'nobody');
+    registerMtlsAuthentication(server);
+    registerMtlsAuthorization(server, allowedCallers);
+    server.get('/route', () => 'ok');
     await server.listen({
         port: 0,
         host: '127.0.0.1',
     });
-    origin = `https://localhost:${(server.server.address() as AddressInfo).port}`;
-    clientA = createClient(await issueTestCertificate({
+    servers.push(server);
+
+    return `https://localhost:${(server.server.address() as AddressInfo).port}`;
+}
+
+async function startClient(origin: string, serviceName: string): Promise<MtlsClient> {
+    const client = createMtlsClient({
+        origin,
+        credentials: parseTlsCredentials(await issueTestCertificate({
+            ca,
+            dnsName: serviceName,
+            usage: 'client',
+        })),
+    });
+
+    clients.push(client);
+
+    return client;
+}
+
+beforeAll(async () => {
+    ca = await createTestCa();
+    serverFiles = await issueTestCertificate({
         ca,
-        dnsName: SERVICE_A,
-        usage: 'client',
-    }));
-    clientB = createClient(await issueTestCertificate({
-        ca,
-        dnsName: SERVICE_B,
-        usage: 'client',
-    }));
+        dnsName: 'localhost',
+        usage: 'server',
+    });
 });
 
 afterAll(async () => {
     await Promise.all([
-        clientA.close(),
-        clientB.close(),
-        server.close(),
+        ...clients.map((client) => client.close()),
+        ...servers.map((server) => server.close()),
     ]);
 });
 
 describe('registerMtlsAuthorization', () => {
-    it('lets a service call a route that names it', async () => {
-        expect((await clientA.fetch(`${origin}/only-a`)).status).toBe(200);
-        expect((await clientA.fetch(`${origin}/a-and-b`)).status).toBe(200);
-        expect((await clientB.fetch(`${origin}/a-and-b`)).status).toBe(200);
+    it('lets every allowed service call a route', async () => {
+        const origin = await startServer([
+            SERVICE_A,
+            SERVICE_B,
+        ]);
+
+        expect((await (await startClient(origin, SERVICE_A)).fetch(`${origin}/route`)).status).toBe(200);
+        expect((await (await startClient(origin, SERVICE_B)).fetch(`${origin}/route`)).status).toBe(200);
     });
 
-    it('denies a service with a valid certificate on a route that does not name it', async () => {
-        const response = await clientB.fetch(`${origin}/only-a`);
+    it('denies a service with a valid certificate that is not on the list, on every path', async () => {
+        const origin = await startServer([
+            SERVICE_A,
+            SERVICE_B,
+        ]);
+        const client = await startClient(origin, SERVICE_C);
+        const response = await client.fetch(`${origin}/route`);
 
         expect(response.status).toBe(403);
         expect(await response.json()).toMatchObject({ code: 'forbidden' });
+        expect((await client.fetch(`${origin}/no-such-route`)).status).toBe(403);
     });
 
-    it('denies every service on a route that names no service', async () => {
-        expect((await clientA.fetch(`${origin}/undeclared`)).status).toBe(403);
-        expect((await clientB.fetch(`${origin}/undeclared`)).status).toBe(403);
-    });
+    it('denies every service when the list is empty', async () => {
+        const origin = await startServer([]);
 
-    it('denies every service on an unknown path', async () => {
-        expect((await clientA.fetch(`${origin}/no-such-route`)).status).toBe(403);
+        expect((await (await startClient(origin, SERVICE_A)).fetch(`${origin}/route`)).status).toBe(403);
     });
 });

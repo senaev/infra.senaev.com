@@ -14,7 +14,7 @@ export function createMtlsServerOptions(credentials: TlsCredentials) {
 
 export type MtlsPeer = {
     /** True when the client certificate carries exactly this DNS name. */
-    hasName: (name: string) => boolean;
+    hasDnsName: (name: string) => boolean;
 };
 
 export type MtlsPeerAuthentication = { ok: true; peer: MtlsPeer } | { ok: false; reason: string };
@@ -59,6 +59,6 @@ export function authenticateMtlsPeer(socket: Socket, now: Date): MtlsPeerAuthent
 
     return {
         ok: true,
-        peer: { hasName: (name) => certificate.checkHost(name, EXACT_NAME_MATCH) !== undefined },
+        peer: { hasDnsName: (name) => certificate.checkHost(name, EXACT_NAME_MATCH) !== undefined },
     };
 }

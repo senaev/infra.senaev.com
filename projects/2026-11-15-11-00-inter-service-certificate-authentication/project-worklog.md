@@ -1,3 +1,21 @@
+## 2026-11-21 UTC — One list of allowed callers for the whole protected instance
+
+The per-route `callers` (an `onRoute` hook that wrote the list into the route `config`, and
+`registerRoutesForCallers`) is removed. `registerMtlsAuthorization(server, allowedCallers)` takes
+one list for the whole instance; `ALLOWED_CALLERS` is in `callers.ts`. Default deny stays and is
+simpler: any service that is not on the list is refused on every path, the 404 handler included, and
+an empty list refuses all. The cost is that all protected routes have the same allowed callers;
+when a second service needs only some routes, add the per-route rule again.
+
+## 2026-11-21 UTC — Authentication and authorization are separate hooks
+
+`registerMtlsAuthentication` (401) checks the certificate with `authenticateMtlsPeer` and keeps
+the peer on the request (`request.mtlsPeer`). `registerMtlsAuthorization` (403) checks the peer
+against the allowed callers, and answers 401 when there is no peer, so it fails closed if
+the authentication hook is missing. Both are `onRequest` hooks, registered in this order in
+`registerProtectedVaultRoutes`. Both take only Fastify types (`Pick<FastifyInstance, …>`), after
+the pino logger was typed as `FastifyBaseLogger` in the server factories.
+
 ## 2026-11-21 UTC — Remove the unused `/vault/file-stats` route
 
 Nothing in the repo called it, and it was the only reason to split `registerVaultMetricsRoutes`
@@ -9,7 +27,7 @@ only this route used.
 ## 2026-11-21 UTC — Authorization per route in obsidian-sync, not in the utils
 
 `checkMtlsPeer` is now `authenticateMtlsPeer` in senaev-utils: it checks the verified connection
-and the expiry, and returns a peer with `hasName(name)`. obsidian-sync decides who may do what:
+and the expiry, and returns a peer with `hasDnsName(name)`. obsidian-sync decides who may do what:
 `registerMtlsAuthorization` answers 401 without a valid certificate and 403 when the route does
 not name the caller; a route that names no caller is denied (default deny, also the 404
 handler). A route group is declared with `registerRoutesForCallers(server, [CLUSTER_HELPER], ...)`;

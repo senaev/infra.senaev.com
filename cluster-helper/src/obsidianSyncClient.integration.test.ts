@@ -64,7 +64,7 @@ beforeAll(async () => {
 
         const authentication = authenticateMtlsPeer(request.socket, new Date());
 
-        if (!authentication.ok || !authentication.peer.hasName(CALLER_NAME)) {
+        if (!authentication.ok || !authentication.peer.hasDnsName(CALLER_NAME)) {
             response.statusCode = 401;
             response.end('unauthorized');
 

@@ -40,7 +40,7 @@ async function startServer(files: TlsFiles, now: () => Date = () => new Date()):
             return;
         }
 
-        response.statusCode = authentication.peer.hasName(CALLER_NAME) ? 200 : 403;
+        response.statusCode = authentication.peer.hasDnsName(CALLER_NAME) ? 200 : 403;
         response.end(response.statusCode === 200 ? 'ok' : 'forbidden');
     });
 

@@ -156,9 +156,10 @@ a restart (`senaev-utils/src/utils/mtls`). They fail closed: no fallback to HTTP
 
 obsidian-sync has two Fastify instances: mTLS on 8443 with all protected routes, and plain HTTP on
 8080 with only the published-file (`?note=`/`?file=`, nextjs-app) and `/metrics` (vmagent) routes. Add
-new vault routes only to `registerProtectedVaultRoutes`, inside `registerRoutesForCallers` with the
-services that may call them: the utils authenticate the caller (401), the service authorizes it per
-route (403), and a route without callers is denied. The `pki` namespace must sort before
+new vault routes only to `registerProtectedVaultRoutes`: `registerMtlsAuthentication` rejects an invalid
+certificate (401), and `registerMtlsAuthorization` allows only the services in `ALLOWED_CALLERS`
+(`obsidian-sync/src/server/callers.ts`) on every route of that instance (403). The list is for the
+whole instance, not for a route. The `pki` namespace must sort before
 `senaev-com` (the CI deploys namespaces in sorted order). To replace the CA, see
 [`projects/2026-11-15-11-00-inter-service-certificate-authentication`](projects/2026-11-15-11-00-inter-service-certificate-authentication/README.md).
 
