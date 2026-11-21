@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { ResourceReadGate } from 'senaev-utils/src/toolServer/ResourceReadGate';
 import Fastify, { FastifyReply } from 'fastify';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { createMtlsFastifyServer } from 'senaev-utils/src/utils/mtls/createMtlsFastifyServer';
 import { callTelegramApi } from 'senaev-utils/src/utils/TelegramApi/callTelegramApi';
 import { createTelegramApiBaseUrl } from 'senaev-utils/src/utils/TelegramApi/createTelegramApiBaseUrl';
 import { escapeTelegramMarkdown } from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
@@ -80,6 +81,10 @@ const HOST = '0.0.0.0';
 // merge them.
 export const INTERNAL_PORT = 80;
 export const PUBLIC_PORT = 3000;
+// MTLS_PORT accepts only services with a certificate of the internal CA. It has no routes and
+// no caller yet. Before the first route, add a check of the allowed callers: see
+// projects/2026-11-15-11-00-inter-service-certificate-authentication/README.md
+export const MTLS_PORT = 8443;
 
 export const TELEGRAM_WEBHOOK_PATH = '/telegram-webhook';
 export const ALISA_WEBHOOK_PATH = '/alisa-webhook';
@@ -89,6 +94,7 @@ export const webhookSecretToken = randomBytes(32).toString('hex');
 const internalServer = Fastify({ loggerInstance: logger });
 const publicServer = Fastify({ loggerInstance: logger });
 
+let mtlsServer: Awaited<ReturnType<typeof createMtlsFastifyServer>> | undefined;
 let isReady = false;
 
 internalServer.get('/health/live', (_request, reply) => {
@@ -445,7 +451,18 @@ async function main(): Promise<void> {
     logger.info({ port: PUBLIC_PORT }, '✅ Public server listening');
     logStartupStep('public server listening');
 
-    // Ready as soon as both listeners are up, deliberately before setWebhook below.
+    mtlsServer = await createMtlsFastifyServer({
+        Fastify,
+        logger,
+    });
+    await mtlsServer.listen({
+        port: MTLS_PORT,
+        host: HOST,
+    });
+    logger.info({ port: MTLS_PORT }, '✅ mTLS server listening');
+    logStartupStep('mtls server listening');
+
+    // Ready as soon as all listeners are up, deliberately before setWebhook below.
     // Gating readiness on a Telegram call would let a Telegram outage drop this pod from
     // the Service endpoints, which would also cut off Alertmanager delivery on the
     // internal port. A hard setWebhook failure still exits and restarts the pod.
@@ -477,6 +494,7 @@ async function shutdown(): Promise<void> {
     await Promise.all([
         internalServer.close(),
         publicServer.close(),
+        mtlsServer?.close(),
     ]);
     await stopObsidianSyncClient();
     stopTorrentOutboxProcessor();

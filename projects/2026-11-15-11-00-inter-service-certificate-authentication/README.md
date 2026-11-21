@@ -115,12 +115,21 @@ them certificates from the same CA, check them on obsidian-sync, and close the p
 8080. The final state is that all traffic to obsidian-sync is under mTLS. Not in this PR: it
 needs changes in the Next.js app and in the vmagent scrape configuration.
 
+📌 Delete the old Secret `cluster-helper-client-tls` in `senaev-com` after the deploy. The
+certificate was renamed to `cluster-helper-tls`, and cert-manager does not delete the Secret of a
+removed Certificate.
+
+📌 cluster-helper has an mTLS listener on 8443 with no routes and no NetworkPolicy rule. Before the
+first route: add the check of the allowed callers (like `registerMtlsCallerAllowlist` of
+obsidian-sync, probably moved to senaev-utils), the certificate of the caller, and the
+NetworkPolicy rule.
+
 ### Replace the CA key (lost or compromised key only)
 
 The CA certificate renews by itself and keeps its key, so a normal renewal needs no step.
 
 1. Delete the Secret `internal-ca` in the `pki` namespace. cert-manager issues a new CA key.
-2. Delete the Secrets `obsidian-sync-tls` and `cluster-helper-client-tls` in `senaev-com`.
+2. Delete the Secrets `obsidian-sync-tls` and `cluster-helper-tls` in `senaev-com`.
    cert-manager issues new leaves from the new CA.
 3. Restart `obsidian-sync` and `cluster-helper`. The vault tools are down for a short time.
 

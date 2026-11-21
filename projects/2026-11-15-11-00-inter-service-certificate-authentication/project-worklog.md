@@ -1,3 +1,14 @@
+## 2026-11-22 UTC — An empty mTLS listener in cluster-helper
+
+cluster-helper starts `createMtlsFastifyServer` on 8443: certificate check (CA and expiry) and no
+routes. It prepares the next step, when a service calls cluster-helper over mTLS. The `internalServer`
+on port 80 cannot move to mTLS: its callers (Alertmanager, n8n, qBittorrent, kubelet) have no
+certificate. The certificate is now `cluster-helper-tls` with `client auth` and `server auth` (one
+certificate for both roles in `/etc/mtls`), the port is on the Deployment and the Service, and the
+NetworkPolicy has no rule for it, so nothing can reach it. There is no allowed-callers check yet:
+add one with the first route. cluster-helper runs two watchers on the same files (one for the
+client of obsidian-sync, one inside the server factory); this is accepted for now.
+
 ## 2026-11-21 UTC — `registerMtlsAuthorization` is now `registerMtlsCallerAllowlist`
 
 The new name says that the hook is a list of allowed callers (403 for any other service), like

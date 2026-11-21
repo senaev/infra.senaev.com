@@ -160,7 +160,11 @@ new vault routes only to `registerProtectedVaultRoutes`: `createMtlsFastifyServe
 `registerMtlsAuthentication`, which rejects an invalid certificate (401), and `registerMtlsCallerAllowlist`
 allows only the services in `ALLOWED_CALLERS`
 (`obsidian-sync/src/server/callers.ts`) on every route of that instance (403). The list is for the
-whole instance, not for a route. The `pki` namespace must sort before
+whole instance, not for a route. cluster-helper has an mTLS listener on 8443 as well
+(`createMtlsFastifyServer`, the certificate `cluster-helper-tls` with both usages). It has no routes,
+and its NetworkPolicy has no rule for the port, so nothing can use it yet. Before adding the first
+route, add a check of the allowed callers like `registerMtlsCallerAllowlist`, which is now in
+obsidian-sync only, and a NetworkPolicy rule. The `pki` namespace must sort before
 `senaev-com` (the CI deploys namespaces in sorted order). To replace the CA, see
 [`projects/2026-11-15-11-00-inter-service-certificate-authentication`](projects/2026-11-15-11-00-inter-service-certificate-authentication/README.md).
 
