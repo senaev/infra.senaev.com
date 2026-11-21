@@ -1,5 +1,29 @@
 # Worklog
 
+## 2026-11-21 20:39 UTC — Agent connections confirmed and model API status updated
+
+The user confirmed connecting Code Tools MCP, Claude Code and Codex and setting up their
+cluster OAuth server. The repository records these integrations and the separate
+bearer-key model API. Relevant commits on `main`:
+
+```text
+1f788b1d ✨ Add the /llm OpenAI-compatible endpoint for in-cluster models to cluster-helper (#125)
+07fcf0cb ⏸️ Disable media LLM and finish telemetry migration follow-up (#192)
+bc9b91d0 ✨ Split the ChatGPT MCP endpoint into /obsidian and /code-tools (#216)
+```
+
+The [shutdown deployment](https://github.com/senaev/infra.senaev.com/actions/runs/43654869486)
+passed. The unauthenticated public `GET /llm/models` returned:
+
+```text
+{"error":{"message":"Invalid API key","type":"invalid_request_error","code":"invalid_api_key"}}
+HTTP 401
+```
+
+The route answers and enforces authentication. The Helm template omits `LLM_SERVER_URL`
+with the server disabled, so the model registry is empty under the deployed settings.
+The model-serving goal remains paused pending a usable backend and authenticated client verification.
+
 ## 2026-11-06 14:20 UTC — `/llm` endpoint written (branch `llm-endpoint`)
 
 A Fastify plugin in cluster-helper (`cluster-helper/src/llm/llmEndpoint.ts`): API key check
