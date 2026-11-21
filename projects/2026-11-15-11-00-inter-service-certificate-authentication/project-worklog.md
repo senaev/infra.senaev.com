@@ -1,3 +1,12 @@
+## 2026-11-21 UTC — The factory installs the authentication hook
+
+`createProtectedVaultServer` calls `registerMtlsAuthentication` itself, so a protected server cannot
+exist without it and the hook always runs before the authorization hook. `registerMtlsAuthentication`
+is generic over the raw server (`<RawServer extends RawServerBase>`) because the factory holds the
+HTTPS instance. The factory has an explicit return type
+(`{ server: FastifyInstance<HttpsServer>; updateCredentials }`). `registerProtectedVaultRoutes` only
+registers the authorization hook and the routes.
+
 ## 2026-11-21 UTC — No shared server types in obsidian-sync
 
 `VaultServer` and `VaultRouter` are removed from `createVaultServer.ts`. Each route registrar types

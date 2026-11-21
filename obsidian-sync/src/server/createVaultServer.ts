@@ -1,8 +1,12 @@
-import Fastify, { type FastifyBaseLogger } from 'fastify';
+import type { Server as HttpsServer } from 'node:https';
+
+import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
 import { createMtlsServerOptions } from 'senaev-utils/src/utils/mtls/mtlsServer';
 import { createSecureContextOptions, type TlsCredentials } from 'senaev-utils/src/utils/mtls/tlsCredentials';
 
 import { logger } from '../logger';
+
+import { registerMtlsAuthentication } from './registerMtlsAuthentication';
 
 const BODY_LIMIT_BYTES = 1024 * 1024;
 
@@ -20,21 +24,30 @@ export function createVaultServer() {
 }
 
 /**
- * HTTPS that accepts only clients with a certificate of the internal CA. A Fastify instance has
- * one listener, and its HTTPS options are fixed when it is created, so the protected routes
+ * HTTPS that accepts only clients with a certificate of the internal CA, and checks on every
+ * request that the certificate is still valid (`registerMtlsAuthentication`). A Fastify instance
+ * has one listener, and its HTTPS options are fixed when it is created, so the protected routes
  * need an instance of their own.
  */
-export function createProtectedVaultServer(credentials: TlsCredentials, serverLogger: FastifyBaseLogger) {
+export function createProtectedVaultServer(
+    credentials: TlsCredentials,
+    serverLogger: FastifyBaseLogger
+): {
+        server: FastifyInstance<HttpsServer>;
+        /** New connections use the renewed certificate; open ones keep the old one. */
+        updateCredentials: (renewed: TlsCredentials) => void;
+    } {
     const server = Fastify({
         loggerInstance: serverLogger,
         bodyLimit: BODY_LIMIT_BYTES,
         https: createMtlsServerOptions(credentials),
     });
 
+    registerMtlsAuthentication(server);
+
     return {
         server,
-        /** New connections use the renewed certificate; open ones keep the old one. */
-        updateCredentials: (renewed: TlsCredentials) => {
+        updateCredentials: (renewed) => {
             server.server.setSecureContext(createSecureContextOptions(renewed));
         },
     };

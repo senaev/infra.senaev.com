@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, RawServerBase } from 'fastify';
 import { authenticateMtlsCaller, type MtlsCaller } from 'senaev-utils/src/utils/mtls/mtlsServer';
 
 import { logger } from '../logger';
@@ -16,7 +16,7 @@ declare module 'fastify' {
  * for `registerMtlsAuthorization`. Added before the routes, so it covers all of them, the 404
  * handler included.
  */
-export function registerMtlsAuthentication(server: Pick<FastifyInstance, 'addHook' | 'decorateRequest'>): void {
+export function registerMtlsAuthentication<RawServer extends RawServerBase>(server: Pick<FastifyInstance<RawServer>, 'addHook' | 'decorateRequest'>): void {
     server.decorateRequest('mtlsCaller', undefined);
     server.addHook('onRequest', (request, reply, done) => {
         const authentication = authenticateMtlsCaller(request.raw.socket, new Date());

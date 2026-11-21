@@ -11,7 +11,6 @@ import {
 import { logger } from '../logger';
 
 import { createProtectedVaultServer } from './createVaultServer';
-import { registerMtlsAuthentication } from './registerMtlsAuthentication';
 import { registerMtlsAuthorization } from './registerMtlsAuthorization';
 
 const SERVICE_A = 'service-a.test.svc.cluster.local';
@@ -27,7 +26,6 @@ async function startServer(allowedCallers: readonly string[]): Promise<string> {
     // Only the raw server type (HTTPS) differs from the plain instance; the hooks do not use it.
     const server = createProtectedVaultServer(parseTlsCredentials(serverFiles), logger).server as unknown as FastifyInstance;
 
-    registerMtlsAuthentication(server);
     registerMtlsAuthorization(server, allowedCallers);
     server.get('/route', () => 'ok');
     await server.listen({
