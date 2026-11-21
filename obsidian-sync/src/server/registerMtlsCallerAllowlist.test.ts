@@ -5,7 +5,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 
 import { logger } from '../logger';
 
-import { registerMtlsAuthorization } from './registerMtlsAuthorization';
+import { registerMtlsCallerAllowlist } from './registerMtlsCallerAllowlist';
 
 const servers: FastifyInstance[] = [];
 
@@ -13,14 +13,14 @@ afterEach(async () => {
     await Promise.all(servers.splice(0).map((server) => server.close()));
 });
 
-describe('registerMtlsAuthorization', () => {
+describe('registerMtlsCallerAllowlist', () => {
     it('refuses everything when no authentication ran before it, even for an allowed name', async () => {
         const server = Fastify({
             loggerInstance: logger,
         });
 
         servers.push(server);
-        registerMtlsAuthorization(server, ['service-a.test.svc.cluster.local']);
+        registerMtlsCallerAllowlist(server, ['service-a.test.svc.cluster.local']);
         server.get('/route', () => 'ok');
 
         const response = await server.inject({

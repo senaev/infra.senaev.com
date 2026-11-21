@@ -22,7 +22,7 @@ vi.mock('senaev-utils/src/utils/mtls/tlsCredentials', async (importOriginal) => 
     };
 });
 
-import { registerMtlsAuthorization } from './registerMtlsAuthorization';
+import { registerMtlsCallerAllowlist } from './registerMtlsCallerAllowlist';
 
 const SERVICE_A = 'service-a.test.svc.cluster.local';
 const SERVICE_B = 'service-b.test.svc.cluster.local';
@@ -42,7 +42,7 @@ async function startServer(allowedCallers: readonly string[]): Promise<string> {
         logger,
     }) as unknown as FastifyInstance;
 
-    registerMtlsAuthorization(server, allowedCallers);
+    registerMtlsCallerAllowlist(server, allowedCallers);
     server.get('/route', () => 'ok');
     await server.listen({
         port: 0,
@@ -84,7 +84,7 @@ afterAll(async () => {
     ]);
 });
 
-describe('registerMtlsAuthorization', () => {
+describe('registerMtlsCallerAllowlist', () => {
     it('lets every allowed service call a route', async () => {
         const origin = await startServer([
             SERVICE_A,

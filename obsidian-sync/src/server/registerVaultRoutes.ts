@@ -5,7 +5,7 @@ import { createVaultToolsConfig } from '../vault-tools/vaultToolsConfig';
 
 import { ALLOWED_CALLERS } from './callers';
 import { registerMilestoneRoutes } from './registerMilestoneRoutes';
-import { registerMtlsAuthorization } from './registerMtlsAuthorization';
+import { registerMtlsCallerAllowlist } from './registerMtlsCallerAllowlist';
 import { registerPublicFileRoutes } from './registerPublicFileRoutes';
 import { registerPublicStaticRoutes } from './registerPublicStaticRoutes';
 import { registerShortLinkRoutes } from './registerShortLinkRoutes';
@@ -20,7 +20,7 @@ import { registerVaultToolRoutes } from './registerVaultToolRoutes';
 export function registerProtectedVaultRoutes(server: Pick<FastifyInstance, 'addHook' | 'get' | 'post' | 'register'>): void {
     // First, so the check covers every route registered below. The caller is already
     // authenticated by `createMtlsFastifyServer`.
-    registerMtlsAuthorization(server, ALLOWED_CALLERS);
+    registerMtlsCallerAllowlist(server, ALLOWED_CALLERS);
     registerVaultToolRoutes(server, createVaultToolsConfig(OBSIDIAN_VAULT_PATH));
     registerTaskRoutes(server);
     registerShortLinkRoutes(server);

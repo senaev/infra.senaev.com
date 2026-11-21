@@ -1,3 +1,8 @@
+## 2026-11-21 UTC — `registerMtlsAuthorization` is now `registerMtlsCallerAllowlist`
+
+The new name says that the hook is a list of allowed callers (403 for any other service), like
+`ALLOWED_CALLERS`. The files moved with it. Older records below use the old name.
+
 ## 2026-11-21 UTC — No `createVaultServer` and no `createFastifyServer`
 
 `createVaultServer` was only `Fastify({ loggerInstance })`. A shared `createFastifyServer` with an

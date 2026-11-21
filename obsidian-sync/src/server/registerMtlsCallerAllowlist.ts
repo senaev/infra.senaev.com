@@ -10,7 +10,7 @@ import { logger } from '../logger';
  * first: without a caller on the request, everything is refused (401). Added before the routes,
  * so it covers all of them, the 404 handler included.
  */
-export function registerMtlsAuthorization(
+export function registerMtlsCallerAllowlist(
     server: Pick<FastifyInstance, 'addHook'>,
     allowedCallers: readonly string[]
 ): void {
