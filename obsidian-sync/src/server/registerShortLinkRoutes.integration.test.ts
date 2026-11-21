@@ -8,7 +8,7 @@ import {
 } from 'vitest';
 import { createCommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { withFileMutation } from 'senaev-utils/src/files/withFileMutation';
-import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance } from 'fastify';
 
 import { SHORT_LINKS_FILE_PATH } from '../vaultPaths';
 import { logger } from '../logger';
@@ -35,7 +35,7 @@ let server: FastifyInstance;
 beforeEach(async () => {
     await mkdir(join(paths.vault, 'short_links'), { recursive: true });
     server = Fastify({
-        loggerInstance: logger as FastifyBaseLogger,
+        loggerInstance: logger,
     });
     registerShortLinkRoutes(server);
     await server.ready();

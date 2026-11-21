@@ -6,7 +6,7 @@ import { dirname, join } from 'node:path';
 import {
     afterAll, beforeAll, describe, expect, it, vi,
 } from 'vitest';
-import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance } from 'fastify';
 
 import { PUBLIC_STATIC_DIR } from '../vaultPaths';
 import { logger } from '../logger';
@@ -43,7 +43,7 @@ beforeAll(async () => {
     symlinkSync(join(paths.publicStatic, 'page.html'), join(paths.publicStatic, 'folder', 'index.html'));
 
     server = Fastify({
-        loggerInstance: logger as FastifyBaseLogger,
+        loggerInstance: logger,
     });
     registerPublicStaticRoutes(server);
     await server.ready();

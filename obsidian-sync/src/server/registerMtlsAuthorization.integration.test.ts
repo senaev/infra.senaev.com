@@ -1,6 +1,6 @@
 import type { AddressInfo } from 'node:net';
 
-import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance } from 'fastify';
 import { createMtlsFastifyServer } from 'senaev-utils/src/utils/mtls/createMtlsFastifyServer';
 import { createMtlsClient, type MtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
 import { createTestCa, issueTestCertificate } from 'senaev-utils/src/utils/mtls/testPki';
@@ -39,7 +39,7 @@ async function startServer(allowedCallers: readonly string[]): Promise<string> {
 
     const server = await createMtlsFastifyServer({
         Fastify,
-        logger: logger as FastifyBaseLogger,
+        logger,
     }) as unknown as FastifyInstance;
 
     registerMtlsAuthorization(server, allowedCallers);

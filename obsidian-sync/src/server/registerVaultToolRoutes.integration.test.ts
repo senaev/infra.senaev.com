@@ -3,7 +3,7 @@ import { writeFile } from 'node:fs/promises';
 import {
     afterAll, beforeAll, describe, expect, it, vi,
 } from 'vitest';
-import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance } from 'fastify';
 
 import * as downloadModule from '../vault-tools/tools/downloadTool';
 import { downloadTool } from '../vault-tools/tools/downloadTool';
@@ -18,7 +18,7 @@ let server: FastifyInstance;
 beforeAll(async () => {
     vault = await createTestVault({ 'Note.md': '# Note\n' });
     server = Fastify({
-        loggerInstance: logger as FastifyBaseLogger,
+        loggerInstance: logger,
     });
     registerVaultToolRoutes(server, vault.config);
     await server.ready();

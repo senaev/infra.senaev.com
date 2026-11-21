@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import {
     afterEach, expect, it,
 } from 'vitest';
-import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance } from 'fastify';
 
 import { logger } from '../logger';
 
@@ -32,7 +32,7 @@ it('serves the scrape metrics', async () => {
     roots.push(root);
     await writeFile(join(root, 'file.csv'), 'hello');
     const server = Fastify({
-        loggerInstance: logger as FastifyBaseLogger,
+        loggerInstance: logger,
     });
 
     servers.push(server);
@@ -52,7 +52,7 @@ it('serves the scrape metrics', async () => {
 it('indicates scan failure instead of serving stale inventory as healthy', async () => {
     const root = join(tmpdir(), 'this-vault-does-not-exist');
     const server = Fastify({
-        loggerInstance: logger as FastifyBaseLogger,
+        loggerInstance: logger,
     });
 
     servers.push(server);

@@ -3,9 +3,13 @@
 `createVaultServer` was only `Fastify({ loggerInstance })`. A shared `createFastifyServer` with an
 optional `https` needed two overloads (the return type differs for HTTPS) to save one line, so it
 was tried and removed. `runVaultServer` and the tests call `Fastify({ loggerInstance: logger as
-FastifyBaseLogger })` directly; the reason for the cast (with pino's own type the logger type of the
-instance changes, and the plain `FastifyInstance` no longer matches) is a comment in
-`runVaultServer`. `createMtlsFastifyServer` calls `Fastify({ loggerInstance, https })` itself.
+FastifyBaseLogger })` directly. `createMtlsFastifyServer` calls `Fastify({ loggerInstance, https })`
+itself.
+
+The casts are gone too: `obsidian-sync/src/logger.ts` exports `logger` typed as `FastifyBaseLogger`
+(with pino's own type the logger type of the instance changes, and the plain `FastifyInstance` no
+longer matches; the comment is there). `runToolCall` in senaev-utils now takes
+`Pick<Logger, 'info' | 'error'>` instead of the whole pino `Logger`, so it accepts that logger.
 
 ## 2026-11-21 UTC — `createMtlsFastifyServer` runs the credentials watcher
 

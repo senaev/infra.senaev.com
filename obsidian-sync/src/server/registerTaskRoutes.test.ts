@@ -1,7 +1,7 @@
 import {
     afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
-import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance } from 'fastify';
 
 import { prependTaskLine } from '../tasks/prependTaskLine';
 import { logger } from '../logger';
@@ -17,7 +17,7 @@ let server: FastifyInstance;
 beforeEach(async () => {
     vi.clearAllMocks();
     server = Fastify({
-        loggerInstance: logger as FastifyBaseLogger,
+        loggerInstance: logger,
     });
     registerTaskRoutes(server);
     await server.ready();

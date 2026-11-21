@@ -2,7 +2,7 @@ import {
     afterEach, expect, it,
 } from 'vitest';
 import { completeOperation } from 'senaev-utils/src/operations/testing/completeOperation';
-import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance } from 'fastify';
 
 import { createTestVault, type TestVault } from '../vault-tools/createTestVault';
 import { logger } from '../logger';
@@ -20,7 +20,7 @@ afterEach(async () => {
 it('retains a real CSV query result through managed HTTP operations', async () => {
     vault = await createTestVault({ 'a.csv': 'id,amount\n00123,100\n00124,250\n' });
     server = Fastify({
-        loggerInstance: logger as FastifyBaseLogger,
+        loggerInstance: logger,
     });
     registerVaultToolRoutes(server, vault.config);
     await server.ready();
@@ -70,7 +70,7 @@ it('retains a real CSV query result through managed HTTP operations', async () =
 it('returns saved and unchanged hashes through the same HTTP command, including conflict errors', async () => {
     vault = await createTestVault({});
     server = Fastify({
-        loggerInstance: logger as FastifyBaseLogger,
+        loggerInstance: logger,
     });
     registerVaultToolRoutes(server, vault.config);
     await server.ready();

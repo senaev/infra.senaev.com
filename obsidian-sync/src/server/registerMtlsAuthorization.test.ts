@@ -1,7 +1,7 @@
 import {
     afterEach, describe, expect, it,
 } from 'vitest';
-import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance } from 'fastify';
 
 import { logger } from '../logger';
 
@@ -16,7 +16,7 @@ afterEach(async () => {
 describe('registerMtlsAuthorization', () => {
     it('refuses everything when no authentication ran before it, even for an allowed name', async () => {
         const server = Fastify({
-            loggerInstance: logger as FastifyBaseLogger,
+            loggerInstance: logger,
         });
 
         servers.push(server);
