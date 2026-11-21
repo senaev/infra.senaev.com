@@ -12,8 +12,8 @@ list. Whether OpenCode reads the list by itself is not known yet.
 
 - Home model: `llm-server` (llama.cpp, OpenAI-compatible API). See
   [`2026-10-18-16-05-home-development-llm-server`](../2026-10-18-16-05-home-development-llm-server/README.md).
-- cluster-helper already has a provider chain (llm-server, then OpenRouter):
-  `cluster-helper/src/llm/`.
+- The home server was disabled in [PR #192](https://github.com/senaev/infra.senaev.com/pull/192/changes).
+  Helm omits `LLM_SERVER_URL` while it is disabled.
 
 ## Design
 
@@ -43,21 +43,17 @@ list. Whether OpenCode reads the list by itself is not known yet.
 | Outside the cluster (OpenCode on the laptop) | `https://api.senaev.com/llm` |
 | Inside the cluster (n8n, other services) | `http://cluster-helper:3000/llm` |
 
-- The public host `webhook-endpoint.senaev.com` is renamed to `api.senaev.com` before the
-  LLM endpoint is built, because it now serves more than webhooks:
-  - ✅ DNS: `api.senaev.com` A `77.42.120.71` (the user added it);
-  - 📌 `clusterHelper.webhookDomain` → `apiDomain`, env `WEBHOOK_DOMAIN` → `API_DOMAIN`;
-    cluster-helper registers the new Telegram webhook URL at startup by itself;
-  - 📌 the ingress serves both hosts until every external caller has moved;
-  - 📌 the user changes the Alisa skill URL in the Yandex Dialogs console by hand;
-  - 📌 then remove `webhook-endpoint.senaev.com` from the ingress and DNS.
+- [PR #123](https://github.com/senaev/infra.senaev.com/pull/123/changes) made `api.senaev.com`
+  the primary API hostname. Cluster-helper registers the Telegram webhook on that hostname.
+  A live Alisa command was verified on the
+  [new webhook](../2026-11-13-13-16-remove-secrets-from-paths/project-worklog.md).
+  The old hostname still serves traffic through the ingress and remains a cleanup item.
 - Internal clients need a rule in the cluster-helper NetworkPolicy. n8n has one already.
 - `llm-server` stays private. Only cluster-helper and n8n can reach it.
 
 ### Model registry
 
-- Only models that run in the cluster. No OpenRouter models and no fallback chains in the
-  connector; the OpenRouter fallback stays inside tricky-dad.
+- The connector lists in-cluster models. Tricky Dad uses OpenRouter through its own provider.
 - One list in the code, `cluster-helper/src/llm/llmEndpointModels.ts`. Each entry has a
   public model id and the in-cluster upstream URL. The first and only entry:
   `home/qwen3-4b` → `llm-server`. The list is empty when `llmServer.enabled` is false.
@@ -85,8 +81,6 @@ list. Whether OpenCode reads the list by itself is not known yet.
   cluster-helper through External Secrets as an environment variable.
 - cluster-helper compares the key in constant time and returns `401` without it, also
   for internal requests: the same port is public. `GET /models` needs the key too.
-- 📌 Before the deploy: add `LLM_ENDPOINT_API_KEY` to Vault `senaev-com-kv`. Without it
-  the ExternalSecret cannot sync and cluster-helper cannot start.
 - To change the key: put a new value in Vault, then update every client.
 
 ### Clients
@@ -96,5 +90,23 @@ list. Whether OpenCode reads the list by itself is not known yet.
   `opencode.json` by hand or by a script.
 - **n8n**: an OpenAI credential with the internal base URL and the key. Its direct access
   to llm-server stays too.
-- **cluster-helper** (tricky-dad and others): keeps calling the providers in-process; it
-  does not need to call itself over HTTP.
+- **cluster-helper** calls providers in-process. Tricky Dad uses OpenRouter.
+
+## Result
+
+[PR #125](https://github.com/senaev/infra.senaev.com/pull/125/changes) merged the
+OpenAI-compatible route and model registry. On 2026-11-21 an unauthenticated request to
+`GET /llm/models` returned the expected `401 invalid_api_key`. The deployed Helm settings
+leave the registry empty while the home server is off.
+
+The user confirmed setting up and connecting Code Tools MCP, connecting Claude Code and
+Codex, and setting up the cluster OAuth server. The repository records the
+[Code Tools MCP split](https://github.com/senaev/infra.senaev.com/pull/216/changes), the
+[OAuth server](../../cluster-helper/src/oauth/authorizationServer.ts), and the
+[Claude Code](../2026-11-15-18-42-claude-code-remote-control/README.md) and
+[Codex](../2026-11-19-21-17-codex-remote-control/README.md) integrations. These provide
+agent and tool access. The model API uses its own bearer key.
+
+The original model-serving goal is paused. To finish it, enable and register an in-cluster
+model, verify authenticated model listing and a completion, then confirm that the intended
+clients can use it. The original client plan named OpenCode and n8n.

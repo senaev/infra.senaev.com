@@ -1,18 +1,20 @@
-- [ ] One personal LLM connector; a new model appears in the API automatically
+- [ ] Serve in-cluster models through one OpenAI-compatible API and publish them in its model list.
 
-Stage: step 2 of 2, the `/llm` endpoint: code written on branch `llm-endpoint`, PR not
-opened yet.
+## Stage
 
-Decided: runs in cluster-helper; prefix `/llm` on `https://api.senaev.com` and
-`http://cluster-helper:3000`; one API key for all clients; only in-cluster models
-(`home/qwen3-4b`), no OpenRouter; no timeout, 100 MB body limit; no LiteLLM. Clients:
-OpenCode, n8n, cluster services.
+Paused with the API implemented. [PR #125](https://github.com/senaev/infra.senaev.com/pull/125/changes)
+merged the `/llm` endpoint. [PR #192](https://github.com/senaev/infra.senaev.com/pull/192/changes)
+disabled the home model server, leaving the model registry empty under the deployed settings.
 
-Done: `api.senaev.com` rename (PR #123), OpenCode OAuth client for the MCP endpoints
-(PR #124).
+## Completed alongside the model API
 
-Open: Telegram and Alisa checks after the rename; the Alisa skill URL; then remove the old
-host.
+The user reports that Code Tools MCP, Claude Code, Codex and cluster OAuth are connected.
+The repository records these integrations. The `/llm` model API uses a separate bearer key.
 
-Next: the user adds `LLM_ENDPOINT_API_KEY` to Vault; open and merge the PR; test with
-curl; add the OpenCode provider and an n8n credential.
+## Remaining
+
+- Enable and register an in-cluster model. Verify authenticated `GET /llm/models` and
+  `POST /llm/chat/completions`, then verify the intended clients. The original plan named
+  OpenCode and n8n.
+- The Alisa webhook migration was verified separately. Retiring
+  `webhook-endpoint.senaev.com` from ingress and DNS remains hostname cleanup.
