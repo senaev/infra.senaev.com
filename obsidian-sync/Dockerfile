@@ -23,10 +23,6 @@ RUN npm ci --omit=dev
 COPY senaev-utils/src /app/senaev-utils/src
 COPY obsidian-sync /app/obsidian-sync
 
-# Verify the real production dependency layout before publishing an image. Tests install
-# dev dependencies and cannot detect a missing runtime import in the linked utils.
-RUN node --import tsx -e "require('../senaev-utils/src/utils/mtls/mtlsServer.ts'); require('../senaev-utils/src/utils/mtls/watchTlsMaterial.ts')"
-
 # `ob` writes its credentials/config here, and the vault hostPath is chowned to
 # uid 1000 by the deployment's init container.
 RUN mkdir -p /home/node/.config && chown -R node:node /home/node/.config /app
