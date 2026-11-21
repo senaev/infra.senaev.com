@@ -8,6 +8,8 @@ import { registerProtectedVaultRoutes, registerPublicVaultRoutes } from './regis
 
 const HOST = '0.0.0.0';
 const PROTECTED_PORT = 8443;
+// TODO: remove this plain HTTP port when nextjs-app and vmagent use mTLS, see
+// projects/2026-11-15-11-00-inter-service-certificate-authentication/README.md
 const PUBLIC_PORT = 8080;
 
 /**
@@ -17,7 +19,7 @@ const PUBLIC_PORT = 8080;
  * public instance on 8080 has only the published-file and metrics routes. They are separate
  * Fastify instances, so no protected route can ever be reached over plain HTTP.
  */
-export async function runVaultServer() {
+export async function runVaultServer(): Promise<{ close: () => Promise<void> }> {
     // The watcher needs the server for reloads, and the server needs the first credentials from the watcher.
     const reloadTarget: { server?: ReturnType<typeof createProtectedVaultServer> } = {};
     const certificates = await watchTlsCredentials({
