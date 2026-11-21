@@ -59,7 +59,7 @@ export function registerMtlsAuthorization(server: VaultServer): void {
 
 /** Registers routes that only the given services may call. */
 export function registerRoutesForCallers(
-    server: VaultServer,
+    server: Pick<VaultServer, 'register'>,
     callers: readonly string[],
     registerRoutes: (server: VaultServer) => void
 ): void {
