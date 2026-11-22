@@ -22,8 +22,8 @@ for retrying a failed publish.
 ## Verification
 
 The first release’s three assets downloaded successfully, the deploy smoke tests passed,
-and the vault owner confirmed that the plugin worked after the cleanup sync. Confirm that
-BRAT detects and installs the next plugin release when it ships.
+and the vault owner confirmed that the plugin worked after the cleanup sync. The owner then
+updated to `0.1.2` through BRAT and verified the reminders in a newly created daily note.
 
 ## Result
 
@@ -41,3 +41,7 @@ plugin commits with a merge commit and published [release `0.1.1`](https://githu
 Telegram accepted the release notification. Vault PR #10 removed the old source and build
 workflow and stopped tracking the release assets. The vault owner confirmed that the plugin
 works after syncing the cleanup.
+
+[Infra PR #280](https://github.com/senaev/infra.senaev.com/pull/280/changes) published
+[release `0.1.2`](https://github.com/senaev/infra.senaev.com/releases/tag/0.1.2) with shorter
+reminder links. The successful update and daily-note check complete the migration.
