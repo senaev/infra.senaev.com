@@ -113,8 +113,9 @@ Secrets or create Certificates and CertificateRequests
 📌 Delete the Vault property `INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN` (path
 `senaev-com-kv`). The deploy is verified, and nothing reads it any more.
 
-📌 Add alerts on the cert-manager metrics (Certificate not ready, leaf expires in less than
-2 days) and a scrape of cert-manager. Until then, nothing warns about a failed renewal.
+✅ Alerts on the cert-manager metrics (Certificate not ready, leaf expires in less than
+2 days, no metrics) and a scrape of cert-manager are added in the second project's pull request.
+They are not yet seen firing on the live cluster.
 
 📌 Move nextjs-app (published notes and files) and vmagent (`/metrics`) to mTLS as well: give
 them certificates from the same CA, check them on obsidian-sync, and close the plain HTTP port

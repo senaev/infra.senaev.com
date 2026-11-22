@@ -91,8 +91,14 @@ have answered 413. `createCodeToolsMtlsServer` sets it now, and a test sends a 2
 "refuses a caller without a certificate" now use `fetchWithoutClientCertificate` (`testPki.ts`), which trusts
 the test CA: global `fetch` failed on the server certificate first and proved nothing.
 
-Open for later: alerts on cert-manager (a Certificate that is not `Ready` or near expiry; the 7-day leaves
-renew about 4 days in, so a broken renewal shows only after days); nextjs-app and vmagent to mTLS.
+Alerts on the certificates are added in the follow-up pull request
+([#275](https://github.com/senaev/infra.senaev.com/pull/275)), because a leaf lasts 7 days and renews at day 4,
+so a broken renewal would show in the services only after days: a `VMServiceScrape` of cert-manager (in the
+`vm-stack` chart) and the rules `certificate-not-ready` (15 min), `certificate-expires-soon` (under 2 days) and
+`certificate-metrics-unavailable`. Check after its deploy: the `cert-manager` target is up in vmagent and
+`certmanager_certificate_ready_status` has a series for each of the six Certificates.
+
+Open for later: nextjs-app and vmagent to mTLS (and then close plain `:8080` of obsidian-sync).
 
 ## Risks
 

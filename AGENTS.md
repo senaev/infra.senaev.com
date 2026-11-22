@@ -247,6 +247,10 @@ route. Add new routes only to the function that registers the protected routes o
 present a certificate, so obsidian-sync (8080) and code-tools (8081, only `/health`) also have a plain
 HTTP instance for what the kubelet or vmagent needs; media-server-helper has no plain port and no probe.
 The shell tools of code-tools run in its container, so they can read the server's private key (accepted).
+Three alerts watch the leaves (group `internal-certificates` in `senaev-com/templates/alerts.yaml`):
+`certificate-not-ready` (15 min), `certificate-expires-soon` (less than 2 days left; a leaf renews at 3 days)
+and `certificate-metrics-unavailable`. They read the cert-manager metrics, which the `cert-manager`
+`VMServiceScrape` in the `vm-stack` chart scrapes from the `pki` namespace.
 The `pki` namespace must sort before `senaev-com` (the CI deploys namespaces in sorted order). To replace
 the CA, see
 [`projects/2026-11-15-11-00-inter-service-certificate-authentication`](projects/2026-11-15-11-00-inter-service-certificate-authentication/README.md).

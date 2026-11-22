@@ -1,3 +1,16 @@
+## 2026-11-22 16:10 UTC — Certificate alerts added
+
+The user asked to add the cert-manager alerts to the docs pull request (#275). Added: a `VMServiceScrape`
+`cert-manager` in `telemetry/vm-stack/templates/scrape.yaml` (namespace `pki`, port `http-metrics`, label
+selector of the controller Service; `honorLabels: true` so the `namespace` label stays the namespace of the
+Certificate; it lives in vm-stack because the CRDs come from the telemetry release, which deploys after
+`pki`), and the group `internal-certificates` in `senaev-com/templates/alerts.yaml`: `certificate-not-ready`
+(`certmanager_certificate_ready_status{condition="True"} == 0` for 15 min), `certificate-expires-soon`
+(`expiration_timestamp - time() < 2 days`; a leaf renews at 3 days left) and `certificate-metrics-unavailable`
+(`absent(...)` for 15 min). `npm run check:helm` passes and the templates render; the rules are not run
+against real data before the deploy (no `promtool` here). To check after the deploy: the target is up and
+the metrics have six series.
+
 ## 2026-11-22 15:41 UTC — Merged, deployed and verified
 
 Pull request #272 was merged; its own Deploy run failed in the image builds because #267 was merged right
