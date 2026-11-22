@@ -14,6 +14,9 @@ certificate. Likely cause: the ISP drops QUIC on UDP 443 to foreign servers (QUI
 SNI in its first packet); Tailscale uses WireGuard on another port. The fix moves profile 6 to
 UDP 47443 with salamander obfuscation and turns on `info` logs on both ends, so the next
 failure, if any, shows where it stops. **Do not use profile 6 until its probe passes.**
+**Correction (2026-11-22):** the probe's failures after #260 and #261 came from our own
+NetworkPolicy (probe egress allowed only TCP 443), not from the ISP; the follow-up PR allows
+UDP to the Hysteria port.
 
 **Use profile 1 (`🇫🇮 1. firstvds → hetzner`).** It had no failures in the last 24 h. Profile 6
 (`⚡ 6. hetzner UDP → freedom`, new in round 4) is a test candidate.
