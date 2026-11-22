@@ -30,10 +30,6 @@ vi.mock('../logger', () => {
     };
 });
 
-vi.mock('../obsidianSyncApi', () => {
-    return { addObsidianTasks: vi.fn() };
-});
-
 vi.mock('./actions/addItemsToSupabaseGroceryList', () => {
     return { addItemsToSupabaseGroceryList: vi.fn() };
 });

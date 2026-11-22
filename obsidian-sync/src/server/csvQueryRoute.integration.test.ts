@@ -2,25 +2,26 @@ import {
     afterEach, expect, it,
 } from 'vitest';
 import { completeOperation } from 'senaev-utils/src/operations/testing/completeOperation';
+import Fastify, { type FastifyInstance } from 'fastify';
 
 import { createTestVault, type TestVault } from '../vault-tools/createTestVault';
+import { logger } from '../logger';
 
-import { createVaultServer, type VaultServer } from './createVaultServer';
 import { registerVaultToolRoutes } from './registerVaultToolRoutes';
-import { registerInternalTokenCheck } from './registerInternalTokenCheck';
 
 let vault: TestVault | undefined;
-let server: VaultServer | undefined;
+let server: FastifyInstance | undefined;
 
 afterEach(async () => {
     await server?.close();
     await vault?.remove();
 });
 
-it('authenticates and retains a real CSV query result through managed HTTP operations', async () => {
+it('retains a real CSV query result through managed HTTP operations', async () => {
     vault = await createTestVault({ 'a.csv': 'id,amount\n00123,100\n00124,250\n' });
-    server = createVaultServer();
-    registerInternalTokenCheck(server, 'test-token');
+    server = Fastify({
+        loggerInstance: logger,
+    });
     registerVaultToolRoutes(server, vault.config);
     await server.ready();
     const payload = {
@@ -34,16 +35,10 @@ it('authenticates and retains a real CSV query result through managed HTTP opera
         params: ['00123'],
     };
 
-    expect((await server.inject({
-        method: 'POST',
-        url: '/vault/csv_query',
-        payload,
-    })).statusCode).toBe(401);
     const call = async (tool: string, body: Record<string, unknown>) => {
         const response = await server!.inject({
             method: 'POST',
             url: `/vault/${tool}`,
-            headers: { authorization: 'Bearer test-token' },
             payload: body,
         });
 
@@ -74,15 +69,15 @@ it('authenticates and retains a real CSV query result through managed HTTP opera
 
 it('returns saved and unchanged hashes through the same HTTP command, including conflict errors', async () => {
     vault = await createTestVault({});
-    server = createVaultServer();
-    registerInternalTokenCheck(server, 'test-token');
+    server = Fastify({
+        loggerInstance: logger,
+    });
     registerVaultToolRoutes(server, vault.config);
     await server.ready();
     const call = async (tool: string, payload: Record<string, unknown>) => {
         const response = await server!.inject({
             method: 'POST',
             url: `/vault/${tool}`,
-            headers: { authorization: 'Bearer test-token' },
             payload,
         });
 

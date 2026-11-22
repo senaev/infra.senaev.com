@@ -20,10 +20,6 @@ vi.mock('../llm/callLlmJson', () => {
     return { callLlmJson: vi.fn() };
 });
 
-vi.mock('../obsidianSyncApi', () => {
-    return { addObsidianTasks: vi.fn() };
-});
-
 vi.mock('./actions/addItemsToSupabaseGroceryList', () => {
     return { addItemsToSupabaseGroceryList: vi.fn() };
 });

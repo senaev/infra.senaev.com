@@ -1,9 +1,8 @@
+import type { FastifyInstance } from 'fastify';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 
 import { prependRecommendationsRecord } from '../jobSearch/prependRecommendationsRecord';
 import { logger } from '../logger';
-
-import type { VaultServer } from './createVaultServer';
 
 const MAX_TEXT_LENGTH = 100_000;
 
@@ -17,7 +16,7 @@ function isValidTime(time: unknown): time is string {
     return typeof time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(time);
 }
 
-export function registerJobSearchRoutes(server: VaultServer): void {
+export function registerJobSearchRoutes(server: Pick<FastifyInstance, 'post'>): void {
     // n8n, through cluster-helper: the answer of a job search round, as posted to Telegram.
     server.post<{ Body: unknown }>('/job-search/recommendations', async (request, reply) => {
         const body = isObject(request.body) ? request.body : {};

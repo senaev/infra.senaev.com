@@ -6,12 +6,15 @@ import { TelegramMessage } from 'senaev-utils/src/utils/TelegramApi/types';
 
 import { TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from './env';
 import { logger } from './logger';
-import { createShortLink } from './obsidianSyncApi';
+import type { ObsidianSyncApi } from './obsidianSyncApi';
 
 const SHORT_LINK_BASE_URL = 'https://s.senaev.com';
 
 /** Handles direct messages sent by the owner to the bot's private chat. */
-export async function processOwnerDirectMessage(message: TelegramMessage): Promise<void> {
+export async function processOwnerDirectMessage(
+    message: TelegramMessage,
+    obsidianSyncApi: Pick<ObsidianSyncApi, 'createShortLink'>
+): Promise<void> {
     const command = getTelegramCommandFromMessage(message.text ?? '');
 
     if (!command || command.commandName !== 'short_link') {
@@ -24,10 +27,14 @@ export async function processOwnerDirectMessage(message: TelegramMessage): Promi
         return;
     }
 
-    await handleShortLinkCommand(command.commandArgument, message);
+    await handleShortLinkCommand(command.commandArgument, message, obsidianSyncApi);
 }
 
-async function handleShortLinkCommand(link: string, message: TelegramMessage): Promise<void> {
+async function handleShortLinkCommand(
+    link: string,
+    message: TelegramMessage,
+    obsidianSyncApi: Pick<ObsidianSyncApi, 'createShortLink'>
+): Promise<void> {
     if (!link) {
         await replyToOwner(message, '❌ Usage: /short_link <url>');
 
@@ -36,7 +43,7 @@ async function handleShortLinkCommand(link: string, message: TelegramMessage): P
 
     try {
         logger.info({ link }, '👉 Creating short link');
-        const id = await createShortLink(link);
+        const id = await obsidianSyncApi.createShortLink(link);
 
         logger.info({ id }, '✅ Created short link');
         await replyToOwner(message, `${SHORT_LINK_BASE_URL}/${id}`);

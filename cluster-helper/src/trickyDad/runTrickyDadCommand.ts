@@ -2,7 +2,7 @@ import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnk
 
 import { logger } from '../logger';
 
-import type { PlannedTrickyDadAction } from './actions/TrickyDadAction';
+import type { PlannedTrickyDadAction, TrickyDadObsidianSyncApi } from './actions/TrickyDadAction';
 import { planTrickyDadCommand, type TrickyDadCommandPlan } from './planTrickyDadCommand';
 import type { TrickyDadSource } from './TrickyDadSource';
 
@@ -26,7 +26,8 @@ export type TrickyDadCommandResult = Omit<TrickyDadCommandPlan, 'actions'> & {
 async function runAction(
     action: PlannedTrickyDadAction,
     command: string,
-    source: TrickyDadSource
+    source: TrickyDadSource,
+    obsidianSyncApi: TrickyDadObsidianSyncApi
 ): Promise<TrickyDadActionResult> {
     const startTime = Date.now();
 
@@ -39,6 +40,7 @@ async function runAction(
         const output = await action.run({
             command,
             source,
+            obsidianSyncApi,
         });
 
         logger.info({ type: action.type }, '✅ Finished tricky dad action');
@@ -66,7 +68,8 @@ async function runAction(
 
 export async function runTrickyDadCommand(
     command: string,
-    source: TrickyDadSource
+    source: TrickyDadSource,
+    obsidianSyncApi: TrickyDadObsidianSyncApi
 ): Promise<TrickyDadCommandResult> {
     logger.info({
         command,
@@ -84,7 +87,7 @@ export async function runTrickyDadCommand(
         }, '❌ Cannot plan tricky dad command, using command fallback');
     }
 
-    const actionResults = await Promise.all(actions.map((action) => runAction(action, command, source)));
+    const actionResults = await Promise.all(actions.map((action) => runAction(action, command, source, obsidianSyncApi)));
 
     return {
         ...plan,

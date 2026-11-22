@@ -211,6 +211,31 @@ comes back unchanged. JSON only, up to 1 MiB. All methods and chats are allowed.
 is read. Code: `cluster-helper/src/telegramPublicApi.ts`. See
 [`projects/2026-11-12-14-15-public-telegram-notification-path`](projects/2026-11-12-14-15-public-telegram-notification-path/README.md).
 
+## Internal mTLS (cluster-helper → obsidian-sync)
+
+cluster-helper calls the protected obsidian-sync API (everything that reads or edits the vault) with
+a client certificate, not a token. cert-manager (`provisioning/helm/pki/cert-manager`) and a private
+CA (`provisioning/helm/pki/issuers`, ClusterIssuer `internal-ca`, key only in the `pki` namespace)
+issue two 7-day leaves in `senaev-com` (`templates/internal-mtls.yaml`). The identity is a DNS SAN:
+obsidian-sync knows its callers by that name (`CLUSTER_HELPER` in `obsidian-sync/src/server/callers.ts`),
+and cluster-helper connects to `https://obsidian-sync.<ns>.svc.cluster.local:8443`. Both services mount
+their Secret as a directory at `/etc/mtls` (never subPath or env), poll the files and reload without
+a restart (`senaev-utils/src/utils/mtls`). They fail closed: no fallback to HTTP or a token.
+
+obsidian-sync has two Fastify instances: mTLS on 8443 with all protected routes, and plain HTTP on
+8080 with only the published-file (`?note=`/`?file=`, nextjs-app) and `/metrics` (vmagent) routes. Add
+new vault routes only to `registerProtectedVaultRoutes`: `createMtlsFastifyServer` (senaev-utils) installs
+`registerMtlsAuthentication`, which rejects an invalid certificate (401), and `registerMtlsCallerAllowlist`
+allows only the services in `ALLOWED_CALLERS`
+(`obsidian-sync/src/server/callers.ts`) on every route of that instance (403). The list is for the
+whole instance, not for a route. cluster-helper has an mTLS listener on 8443 as well
+(`createMtlsFastifyServer`, the certificate `cluster-helper-tls` with both usages). It has no routes,
+and its NetworkPolicy has no rule for the port, so nothing can use it yet. Before adding the first
+route, add a check of the allowed callers like `registerMtlsCallerAllowlist`, which is now in
+obsidian-sync only, and a NetworkPolicy rule. The `pki` namespace must sort before
+`senaev-com` (the CI deploys namespaces in sorted order). To replace the CA, see
+[`projects/2026-11-15-11-00-inter-service-certificate-authentication`](projects/2026-11-15-11-00-inter-service-certificate-authentication/README.md).
+
 ## Shared Toolchain
 
 The root `package.json` is not a workspace root. It is a private manifest that owns the
@@ -340,7 +365,7 @@ does not run on that machine; then run `npm run ci:all` by hand.
 
 The services in this repo consume it **by path**: `"senaev-utils": "file:../senaev-utils"`, which npm links as a symlink into `node_modules`. A change to `senaev-utils/` is therefore picked up immediately, with no version bump and no publish step in between.
 
-It is **also published to npm**, because `supabase-list-notes` lives in a separate repo and pins an exact published version. `.github/workflows/publish-senaev-utils.yml` lints, tests and typechecks it, then publishes `1.0.0-ci.<run_id>.<attempt>` under the `ci` dist-tag on every push to `main` that touches `senaev-utils/**`. That external consumer is why publishing stays on npm, and why the package must keep `@types/node` in `dependencies` and must not raise `engines.node` past `>=18`.
+It is **also published to npm**, because `supabase-list-notes` lives in a separate repo and pins an exact published version. `.github/workflows/publish-senaev-utils.yml` lints, tests and typechecks it, then publishes `1.0.0-ci.<run_id>.<attempt>` under the `ci` dist-tag on every push to `main` that touches `senaev-utils/**`. That external consumer is why publishing stays on npm, and why the package must keep `@types/node` in `dependencies` and must not raise `engines.node` past `>=18`. For the same reason the mTLS client uses undici 6.x (`undici` 7 needs Node 20.18).
 
 Services linking the library use the repository root as their Docker context.
 The planner rebuilds packages declaring a `senaev-utils` dependency when the

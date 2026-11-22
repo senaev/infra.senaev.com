@@ -4,15 +4,16 @@ import { completeOperation, awaitOperation } from 'senaev-utils/src/operations/t
 import {
     afterEach, describe, expect, it, vi,
 } from 'vitest';
+import Fastify, { type FastifyInstance } from 'fastify';
 
 import { createTestVault, type TestVault } from '../vault-tools/createTestVault';
 import { VAULT_TOOLS } from '../vault-tools/vaultTools';
+import { logger } from '../logger';
 
-import { createVaultServer, type VaultServer } from './createVaultServer';
 import { registerVaultToolRoutes } from './registerVaultToolRoutes';
 
 let vault: TestVault;
-let server: VaultServer;
+let server: FastifyInstance;
 
 afterEach(async () => {
     await server?.close();
@@ -25,7 +26,9 @@ const DAILY_NOTE = 'periodic/day/2026-11-18.md';
 
 async function setup() {
     vault = await createTestVault({ 'Note.md': '# Note\n' });
-    server = createVaultServer();
+    server = Fastify({
+        loggerInstance: logger,
+    });
     registerVaultToolRoutes(server, vault.config);
     await server.ready();
 }

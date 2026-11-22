@@ -6,6 +6,7 @@ import { TG_TOKEN_SENAEV_COM_BOT, OBSIDIAN_TASKS_CHAT_ID } from '../env';
 import { getRandomValueFromArray } from '../getRandomValueFromArray';
 import { logger } from '../logger';
 
+import type { TrickyDadObsidianSyncApi } from './actions/TrickyDadAction';
 import { runTrickyDadCommand } from './runTrickyDadCommand';
 import { sendTrickyDadErrorReport, sendTrickyDadReport } from './sendTrickyDadReport';
 import { TRICKY_DAD_FUNNY_RESPONSES } from './TRICKY_DAD_FUNNY_RESPONSES';
@@ -14,7 +15,7 @@ import { TRICKY_DAD_FUNNY_RESPONSES } from './TRICKY_DAD_FUNNY_RESPONSES';
  * Synchronous on purpose. Alisa times out quickly, so the command is dispatched as a
  * background promise and an immediate acknowledgement is returned at once, without awaiting it.
  */
-export function handleAlisaRequest(body: unknown): string {
+export function handleAlisaRequest(body: unknown, obsidianSyncApi: TrickyDadObsidianSyncApi): string {
     const startTime = Date.now();
 
     try {
@@ -53,7 +54,7 @@ export function handleAlisaRequest(body: unknown): string {
             return 'Ничего не понял. Можете, пожалуйста, повторить?';
         }
 
-        runTrickyDadCommand(command, 'Alisa')
+        runTrickyDadCommand(command, 'Alisa', obsidianSyncApi)
             .then((result) =>
                 sendTrickyDadReport({
                     command,

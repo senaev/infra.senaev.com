@@ -74,7 +74,6 @@ it('counts content and attachments by type and byte size, including the largest 
         bytes: 32,
         type: 'webp',
     });
-    expect(result.largestFiles).toHaveLength(6);
     expect(result.oversizedFiles).toBe(0);
     expect(renderVaultMetrics(result)).toContain('obsidian_vault_largest_file_bytes{path="assets/photo.webp",type="webp"} 32');
 });
@@ -122,16 +121,21 @@ it('detects the exact early-warning threshold and escapes metric label values', 
     expect(renderVaultMetrics(result)).toContain('obsidian_vault_oversized_files 1');
 });
 
-it('bounds the largest-file list to ten and refuses invalid roots', async () => {
+it('picks the first path among the largest files, and refuses invalid roots', async () => {
     for (let i = 0; i < 15; i++) {
         await writeFile(join(root, `${i}.csv`), Buffer.alloc(i));
     }
 
+    await writeFile(join(root, '0-same-size.csv'), Buffer.alloc(14));
+
     const result = await scanVaultInventory(root);
 
-    expect(result.totalFiles).toBe(15);
-    expect(result.largestFiles).toHaveLength(10);
-    expect(result.largest?.bytes).toBe(14);
+    expect(result.totalFiles).toBe(16);
+    expect(result.largest).toEqual({
+        path: '0-same-size.csv',
+        bytes: 14,
+        type: 'csv',
+    });
     await expect(scanVaultInventory(join(root, 'missing'))).rejects.toThrow();
 });
 

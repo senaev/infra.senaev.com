@@ -1,22 +1,25 @@
+import Fastify, { type FastifyInstance } from 'fastify';
 import {
     afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
 
 import { prependRecommendationsRecord } from '../jobSearch/prependRecommendationsRecord';
+import { logger } from '../logger';
 
-import { createVaultServer, type VaultServer } from './createVaultServer';
 import { registerJobSearchRoutes } from './registerJobSearchRoutes';
 
 vi.mock('../jobSearch/prependRecommendationsRecord', () => {
     return { prependRecommendationsRecord: vi.fn() };
 });
 
-let server: VaultServer;
+let server: FastifyInstance;
 
 beforeEach(async () => {
     vi.clearAllMocks();
     vi.mocked(prependRecommendationsRecord).mockResolvedValue(true);
-    server = createVaultServer();
+    server = Fastify({
+        loggerInstance: logger,
+    });
     registerJobSearchRoutes(server);
     await server.ready();
 });

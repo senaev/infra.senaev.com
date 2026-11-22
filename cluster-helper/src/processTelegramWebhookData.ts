@@ -17,15 +17,18 @@ import {
     TelegramCallbackQuery,
 } from './processMediaServerCallbackQuery';
 import { processMediaServerChatMessage } from './processMediaServerChatMessage';
+import type { ObsidianSyncApi } from './obsidianSyncApi';
 import { processOwnerDirectMessage } from './processOwnerDirectMessage';
 import { processTrickyDadChatMessage } from './trickyDad/processTrickyDadChatMessage';
 
 export async function processTelegramWebhookData({
     botUser,
     update,
+    obsidianSyncApi,
 }: {
     botUser: TelegramUser;
     update: Record<string, unknown>;
+    obsidianSyncApi: Pick<ObsidianSyncApi, 'addObsidianTasks' | 'createShortLink'>;
 }): Promise<void> {
     logger.info('👉 processTelegramWebhookData');
     const { callback_query, message } = update;
@@ -105,14 +108,14 @@ export async function processTelegramWebhookData({
 
     if (chatIdStr === OBSIDIAN_TASKS_CHAT_ID) {
         logger.info({ messageId: message.message_id }, '🆕 Received new message in tasks chat');
-        await processTrickyDadChatMessage(message as TelegramMessage, 'Tasks Telegram chat');
+        await processTrickyDadChatMessage(message as TelegramMessage, 'Tasks Telegram chat', obsidianSyncApi);
 
         return;
     }
 
     if (chatIdStr === TRICKY_DAD_CHAT_ID) {
         logger.info({ messageId: message.message_id }, '🆕 Received new message in tricky dad chat');
-        await processTrickyDadChatMessage(message as TelegramMessage, 'Tricky Dad Telegram chat');
+        await processTrickyDadChatMessage(message as TelegramMessage, 'Tricky Dad Telegram chat', obsidianSyncApi);
 
         return;
     }
@@ -122,7 +125,7 @@ export async function processTelegramWebhookData({
             { messageId: message.message_id },
             '🆕 Received new message in owner direct message chat'
         );
-        await processOwnerDirectMessage(message as TelegramMessage);
+        await processOwnerDirectMessage(message as TelegramMessage, obsidianSyncApi);
 
         return;
     }

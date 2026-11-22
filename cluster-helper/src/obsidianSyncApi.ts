@@ -1,39 +1,12 @@
 import { TRANSPORT_TIMEOUT_MS } from 'senaev-utils/src/operations/operationLimits';
-import { createBearerAuthorizationHeader } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 import { readStatusResponse } from 'senaev-utils/src/utils/http/readStatusResponse/readStatusResponse';
+import { createAbortSignalWithTimeout } from 'senaev-utils/src/utils/Abort/createAbortSignalWithTimeout/createAbortSignalWithTimeout';
+import type { MtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
 
-import { callToolServer } from './chatGptMcp/callToolServer';
+import { readToolReply } from './chatGptMcp/callToolServer';
 import type { ToolReply } from './chatGptMcp/toolFamilies';
-import { INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN, OBSIDIAN_SYNC_URL } from './env';
-
-/**
- * Every call to obsidian-sync goes through here, because obsidian-sync rejects any request
- * without the internal token.
- */
-export function fetchObsidianSync(pathOrUrl: string | URL, init: RequestInit = {}): Promise<Response> {
-    const headers = new Headers(init.headers);
-
-    headers.set('authorization', createBearerAuthorizationHeader(INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN));
-
-    const url = typeof pathOrUrl === 'string' ? `${OBSIDIAN_SYNC_URL}${pathOrUrl}` : pathOrUrl;
-
-    return fetch(url, {
-        ...init,
-        headers,
-    });
-}
-
-/** Runs a vault tool in obsidian-sync with `POST /vault/<name>`. */
-export function callVaultTool(vaultToolName: string, args: unknown): Promise<ToolReply> {
-    return callToolServer({
-        url: `${OBSIDIAN_SYNC_URL}/vault/${encodeURIComponent(vaultToolName)}`,
-        token: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN,
-        args,
-        timeoutMs: TRANSPORT_TIMEOUT_MS,
-        serverName: 'obsidian-sync',
-    });
-}
+import { OBSIDIAN_SYNC_URL } from './env';
 
 export type ObsidianTaskInput = {
     title: string;
@@ -61,125 +34,171 @@ export type MilestonesOverview = {
     tomorrow: DayMilestones;
 };
 
+export type ObsidianSyncApi = ReturnType<typeof createObsidianSyncApi>;
+
 /**
- * Collects the milestones (birthdays, holidays, ...) of a day and of the day after it by
- * calling the obsidian-sync container's `GET /milestones` HTTP API. Without `date`,
- * obsidian-sync uses its own idea of today.
+ * Every call to obsidian-sync goes through the client, because obsidian-sync rejects any caller
+ * without the client certificate that the client presents. The client talks only to obsidian-sync:
+ * it refuses any other origin.
  */
-export async function getMilestones(date?: string): Promise<MilestonesOverview> {
-    const query = date === undefined ? '' : `?date=${encodeURIComponent(date)}`;
-    const body = await readStatusResponse(await fetchObsidianSync(`/milestones${query}`)).catch((error: unknown) => {
-        throw new Error(`Failed to get milestones: ${stringifyUnknownError(error)}`, { cause: error });
-    }) as MilestonesOverview;
+export function createObsidianSyncApi(client: Pick<MtlsClient, 'fetch'>) {
+    function fetchObsidianSync(pathOrUrl: string | URL, init: RequestInit = {}): Promise<Response> {
+        const url = typeof pathOrUrl === 'string' ? `${OBSIDIAN_SYNC_URL}${pathOrUrl}` : pathOrUrl;
+
+        return client.fetch(url, init);
+    }
+
+    async function postToObsidianSync({
+        path, args, timeoutMs, signal,
+    }: { path: string; args: unknown; timeoutMs: number; signal?: AbortSignal }): Promise<ToolReply> {
+        const response = await fetchObsidianSync(path, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(args),
+            signal: createAbortSignalWithTimeout(timeoutMs, signal),
+        });
+
+        return readToolReply(response, 'obsidian-sync');
+    }
+
+    /** Runs a vault tool in obsidian-sync with `POST /vault/<name>`. */
+    function callVaultTool(vaultToolName: string, args: unknown): Promise<ToolReply> {
+        return postToObsidianSync({
+            path: `/vault/${encodeURIComponent(vaultToolName)}`,
+            args,
+            timeoutMs: TRANSPORT_TIMEOUT_MS,
+        });
+    }
+
+    /**
+     * Collects the milestones (birthdays, holidays, ...) of a day and of the day after it by
+     * calling the obsidian-sync container's `GET /milestones` HTTP API. Without `date`,
+     * obsidian-sync uses its own idea of today.
+     */
+    async function getMilestones(date?: string): Promise<MilestonesOverview> {
+        const query = date === undefined ? '' : `?date=${encodeURIComponent(date)}`;
+        const body = await readStatusResponse(await fetchObsidianSync(`/milestones${query}`)).catch((error: unknown) => {
+            throw new Error(`Failed to get milestones: ${stringifyUnknownError(error)}`, { cause: error });
+        }) as MilestonesOverview;
+
+        return {
+            today: body.today,
+            tomorrow: body.tomorrow,
+        };
+    }
+
+    /**
+     * Resolves a short link id by calling the obsidian-sync container's
+     * `GET /short_links/:id` HTTP API, which reads the mapping from the Obsidian
+     * vault's short_links.csv file.
+     *
+     * Returns the target URL, or `null` if the short link id is not found.
+     */
+    async function getShortLink(shortId: string): Promise<string | null> {
+        const response = await fetchObsidianSync(`/short_links/${encodeURIComponent(shortId)}`);
+
+        if (response.status === 404) {
+            return null;
+        }
+
+        const body = await readStatusResponse(response).catch((error: unknown) => {
+            throw new Error(`Failed to resolve short link: ${stringifyUnknownError(error)}`, { cause: error });
+        }) as { url: string };
+
+        return body.url;
+    }
+
+    /**
+     * Creates a new short link by calling the obsidian-sync container's
+     * `POST /short_links` HTTP API, which validates the link and appends it to
+     * the Obsidian vault's short_links.csv file.
+     *
+     * Returns the newly assigned short link id. Throws with the obsidian-sync
+     * error message (e.g. an invalid link) on failure.
+     */
+    async function createShortLink(link: string): Promise<string> {
+        const response = await fetchObsidianSync('/short_links', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ link }),
+        });
+        const body = await readStatusResponse(response) as { id: string };
+
+        return body.id;
+    }
+
+    /**
+     * Creates a task in the Obsidian vault by calling the obsidian-sync container's
+     * `POST /tasks` HTTP API, which appends a checkbox line to the Obsidian Tasks
+     * streaming file directly on disk.
+     */
+    async function addObsidianTask(task: ObsidianTaskInput): Promise<void> {
+        const response = await fetchObsidianSync('/tasks', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(task),
+        });
+
+        await readStatusResponse(response).catch((error: unknown) => {
+            throw new Error(`Failed to add Obsidian task: ${stringifyUnknownError(error)}`, { cause: error });
+        });
+    }
+
+    /**
+     * Adds a job search round's answer at the top of the LLM Recommendations Log by calling the
+     * obsidian-sync container's `POST /job-search/recommendations` HTTP API.
+     */
+    async function addJobSearchRecommendations(record: { date: string; time: string; text: string }): Promise<void> {
+        const response = await fetchObsidianSync('/job-search/recommendations', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(record),
+        });
+
+        await readStatusResponse(response).catch((error: unknown) => {
+            throw new Error(`Failed to add the job search recommendations: ${stringifyUnknownError(error)}`, { cause: error });
+        });
+    }
+
+    /**
+     * Creates several tasks in the Obsidian vault.
+     *
+     * The writes must stay sequential: `POST /tasks` does a read-modify-write of a
+     * single vault file, so concurrent requests would overwrite each other and lose
+     * tasks. The list is also written back-to-front because each request prepends
+     * its line to the top of the file — writing in reverse leaves the tasks in the
+     * vault in the same order the user said them.
+     */
+    async function addObsidianTasks(tasks: ObsidianTaskInput[]): Promise<void> {
+        for (const task of [...tasks].reverse()) {
+            await addObsidianTask(task);
+        }
+    }
+
+    /** Resource bytes use a separate authenticated route instead of managed result JSON pagination. */
+    function readVaultResource(uri: string, signal?: AbortSignal): Promise<ToolReply> {
+        return postToObsidianSync({
+            path: '/vault-file-resource',
+            args: { uri },
+            timeoutMs: 65_000,
+            ...signal !== undefined && { signal },
+        });
+    }
 
     return {
-        today: body.today,
-        tomorrow: body.tomorrow,
+        fetchObsidianSync,
+        callVaultTool,
+        getMilestones,
+        getShortLink,
+        createShortLink,
+        addObsidianTasks,
+        addJobSearchRecommendations,
+        readVaultResource,
     };
-}
-
-/**
- * Resolves a short link id by calling the obsidian-sync container's
- * `GET /short_links/:id` HTTP API, which reads the mapping from the Obsidian
- * vault's short_links.csv file.
- *
- * Returns the target URL, or `null` if the short link id is not found.
- */
-export async function getShortLink(shortId: string): Promise<string | null> {
-    const response = await fetchObsidianSync(`/short_links/${encodeURIComponent(shortId)}`);
-
-    if (response.status === 404) {
-        return null;
-    }
-
-    const body = await readStatusResponse(response).catch((error: unknown) => {
-        throw new Error(`Failed to resolve short link: ${stringifyUnknownError(error)}`, { cause: error });
-    }) as { url: string };
-
-    return body.url;
-}
-
-/**
- * Creates a new short link by calling the obsidian-sync container's
- * `POST /short_links` HTTP API, which validates the link and appends it to
- * the Obsidian vault's short_links.csv file.
- *
- * Returns the newly assigned short link id. Throws with the obsidian-sync
- * error message (e.g. an invalid link) on failure.
- */
-export async function createShortLink(link: string): Promise<string> {
-    const response = await fetchObsidianSync('/short_links', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ link }),
-    });
-    const body = await readStatusResponse(response) as { id: string };
-
-    return body.id;
-}
-
-/**
- * Creates a task in the Obsidian vault by calling the obsidian-sync container's
- * `POST /tasks` HTTP API, which appends a checkbox line to the Obsidian Tasks
- * streaming file directly on disk.
- */
-export async function addObsidianTask(task: ObsidianTaskInput): Promise<void> {
-    const response = await fetchObsidianSync('/tasks', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(task),
-    });
-
-    await readStatusResponse(response).catch((error: unknown) => {
-        throw new Error(`Failed to add Obsidian task: ${stringifyUnknownError(error)}`, { cause: error });
-    });
-}
-
-/**
- * Adds a job search round's answer at the top of the LLM Recommendations Log by calling the
- * obsidian-sync container's `POST /job-search/recommendations` HTTP API.
- */
-export async function addJobSearchRecommendations(record: { date: string; time: string; text: string }): Promise<void> {
-    const response = await fetchObsidianSync('/job-search/recommendations', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(record),
-    });
-
-    await readStatusResponse(response).catch((error: unknown) => {
-        throw new Error(`Failed to add the job search recommendations: ${stringifyUnknownError(error)}`, { cause: error });
-    });
-}
-
-/**
- * Creates several tasks in the Obsidian vault.
- *
- * The writes must stay sequential: `POST /tasks` does a read-modify-write of a
- * single vault file, so concurrent requests would overwrite each other and lose
- * tasks. The list is also written back-to-front because each request prepends
- * its line to the top of the file — writing in reverse leaves the tasks in the
- * vault in the same order the user said them.
- */
-export async function addObsidianTasks(tasks: ObsidianTaskInput[]): Promise<void> {
-    for (const task of [...tasks].reverse()) {
-        await addObsidianTask(task);
-    }
-}
-
-/** Resource bytes use a separate authenticated route instead of managed result JSON pagination. */
-export function readVaultResource(uri: string, signal?: AbortSignal): Promise<ToolReply> {
-    return callToolServer({
-        url: `${OBSIDIAN_SYNC_URL}/vault-file-resource`,
-        token: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN,
-        args: { uri },
-        timeoutMs: 65_000,
-        ...signal !== undefined && { signal },
-        serverName: 'obsidian-sync',
-    });
 }

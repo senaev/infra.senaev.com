@@ -2,7 +2,7 @@ import {
     afterEach, describe, expect, it, vi,
 } from 'vitest';
 
-import { callVaultTool, getShortLink } from './obsidianSyncApi';
+import { createObsidianSyncApi } from './obsidianSyncApi';
 
 // env.ts validates the whole environment at import time; vitest runs this before the imports.
 vi.hoisted(() => {
@@ -34,19 +34,20 @@ vi.hoisted(() => {
         process.env[name] ??= 'test';
     }
 
-    process.env.OBSIDIAN_SYNC_URL = 'http://obsidian-sync:8080';
-    process.env.INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN = 'internal-token';
+    process.env.OBSIDIAN_SYNC_URL = 'https://obsidian-sync.senaev-com.svc.cluster.local:8443';
     process.env.CODE_TOOLS_URL = 'http://code-tools:8080';
     process.env.INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS = 'code-tools-token';
     process.env.MCP_GRAFANA_URL = 'http://mcp-grafana.telemetry.svc.cluster.local:8000/mcp';
 });
 
+const mtlsFetchMock = vi.hoisted(() => vi.fn());
+
+const { callVaultTool, getShortLink } = createObsidianSyncApi({ fetch: mtlsFetchMock });
+
 function mockFetch(status: number, body: unknown) {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status }));
+    mtlsFetchMock.mockResolvedValue(new Response(JSON.stringify(body), { status }));
 
-    vi.stubGlobal('fetch', fetchMock);
-
-    return fetchMock;
+    return mtlsFetchMock;
 }
 
 function sentRequest(fetchMock: ReturnType<typeof vi.fn>): { url: string; init: RequestInit } {
@@ -62,11 +63,11 @@ function sentRequest(fetchMock: ReturnType<typeof vi.fn>): { url: string; init: 
 }
 
 afterEach(() => {
-    vi.unstubAllGlobals();
+    mtlsFetchMock.mockReset();
 });
 
 describe('callVaultTool', () => {
-    it('posts the arguments unchanged to /vault/<tool> with the internal token', async () => {
+    it('posts the arguments unchanged to /vault/<tool> through the mTLS client, with no token', async () => {
         const fetchMock = mockFetch(200, { status: 'ok' });
         const args = { queries: ['gym'] };
 
@@ -74,10 +75,10 @@ describe('callVaultTool', () => {
 
         const { url, init } = sentRequest(fetchMock);
 
-        expect(url).toBe('http://obsidian-sync:8080/vault/search');
+        expect(url).toBe('https://obsidian-sync.senaev-com.svc.cluster.local:8443/vault/search');
         expect(init.method).toBe('POST');
         expect(JSON.parse(init.body as string)).toEqual(args);
-        expect(new Headers(init.headers).get('authorization')).toBe('Bearer internal-token');
+        expect((init.headers as Record<string, string>).authorization).toBeUndefined();
     });
 
     it('marks an ok reply as a success and an error reply as a tool error', async () => {
@@ -117,7 +118,7 @@ describe('callVaultTool', () => {
 });
 
 describe('the other obsidian-sync calls', () => {
-    it('send the internal token too', async () => {
+    it('go through the mTLS client too', async () => {
         const fetchMock = mockFetch(200, {
             status: 'ok',
             url: 'https://senaev.com',
@@ -125,10 +126,9 @@ describe('the other obsidian-sync calls', () => {
 
         await getShortLink('abc');
 
-        const { url, init } = sentRequest(fetchMock);
+        const { url } = sentRequest(fetchMock);
 
-        expect(url).toBe('http://obsidian-sync:8080/short_links/abc');
-        expect(new Headers(init.headers).get('authorization')).toBe('Bearer internal-token');
+        expect(url).toBe('https://obsidian-sync.senaev-com.svc.cluster.local:8443/short_links/abc');
     });
 });
 
@@ -149,8 +149,7 @@ describe('file-reference forwarding', () => {
         await callVaultTool('upload', args);
         const { url, init } = sentRequest(fetchMock);
 
-        expect(url).toBe('http://obsidian-sync:8080/vault/upload');
+        expect(url).toBe('https://obsidian-sync.senaev-com.svc.cluster.local:8443/vault/upload');
         expect(JSON.parse(init.body as string)).toEqual(args);
-        expect((init.headers as Record<string, string>).authorization).toBe('Bearer internal-token');
     });
 });

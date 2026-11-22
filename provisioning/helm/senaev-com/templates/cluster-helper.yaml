@@ -88,6 +88,9 @@ spec:
               name: internal
             - containerPort: 3000
               name: webhook
+            # Needs a client certificate of the internal CA. No route and no NetworkPolicy rule yet.
+            - containerPort: 8443
+              name: mtls
           env:
             - name: API_DOMAIN
               value: {{ .Values.clusterHelper.apiDomain }}
@@ -114,7 +117,7 @@ spec:
             - name: PROWLARR_CONFIG_FILE
               value: /prowlarr-config/config.xml
             - name: OBSIDIAN_SYNC_URL
-              value: "http://obsidian-sync:8080"
+              value: "https://obsidian-sync.{{ .Release.Namespace }}.svc.cluster.local:8443"
             - name: CODE_TOOLS_URL
               value: "http://senaev-code-tools:8080"
             - name: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
@@ -171,12 +174,6 @@ spec:
                   name: senaev-com-kv-secrets
                   key: GOOGLE_OAUTH_ADMIN_EMAILS
                   optional: false
-            - name: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN
-              valueFrom:
-                secretKeyRef:
-                  name: senaev-com-kv-secrets
-                  key: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN
-                  optional: false
             - name: OPENROUTER_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -231,6 +228,11 @@ spec:
             - name: prowlarr-config
               mountPath: /prowlarr-config
               readOnly: true
+            # The whole directory, never subPath or env: only a directory mount follows renewals.
+            # The path is MTLS_DIRECTORY in senaev-utils, which the service reads.
+            - name: mtls
+              mountPath: /etc/mtls
+              readOnly: true
       volumes:
         - name: torrent-outbox
           hostPath:
@@ -242,6 +244,9 @@ spec:
           hostPath:
             path: {{ .Values.global.clusterRootPath }}/{{ .Values.prowlarr.volumePath }}/config
             type: DirectoryOrCreate
+        - name: mtls
+          secret:
+            secretName: cluster-helper-tls
 ---
 apiVersion: v1
 kind: Service
@@ -261,10 +266,14 @@ spec:
     - name: webhook
       port: 3000
       targetPort: 3000
+    - name: mtls
+      port: 8443
+      targetPort: 8443
 ---
 # The "internal" port has no authentication, and /telegram/send-message sends any text
 # from the bot, so only its known callers can reach it. The public "webhook" port is
-# reached through Traefik only.
+# reached through Traefik only. The "mtls" port 8443 has no rule on purpose, so no pod can
+# reach it until a caller is added here together with its route.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

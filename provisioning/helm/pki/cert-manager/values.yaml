@@ -1,0 +1,21 @@
+cert-manager:
+  # `keep` stops a release deletion from deleting the CRDs, and with them every
+  # Certificate in the cluster and the Secrets that they own.
+  crds:
+    enabled: true
+    keep: true
+
+  nodeSelector:
+    vps: hetzner
+
+  webhook:
+    nodeSelector:
+      vps: hetzner
+
+  cainjector:
+    nodeSelector:
+      vps: hetzner
+
+  startupapicheck:
+    nodeSelector:
+      vps: hetzner

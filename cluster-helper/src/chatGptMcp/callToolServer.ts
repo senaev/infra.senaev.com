@@ -1,12 +1,30 @@
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { createBearerAuthorizationHeader } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
+import { createAbortSignalWithTimeout } from 'senaev-utils/src/utils/Abort/createAbortSignalWithTimeout/createAbortSignalWithTimeout';
 
 import type { ToolReply } from './toolFamilies';
 
 /**
- * Runs a tool on a tool server (obsidian-sync, code-tools) with `POST <url>` and the
- * internal token. A reply with `status: "error"` is a normal tool error for ChatGPT; only a
- * transport failure, a timeout or a reply that is not a JSON object throws.
+ * A reply with `status: "error"` is a normal tool error for ChatGPT; only a reply that is
+ * not a JSON object throws.
+ */
+export async function readToolReply(response: Response, serverName: string): Promise<ToolReply> {
+    const body: unknown = await response.json();
+
+    if (!isObject(body) || Array.isArray(body)) {
+        throw new Error(`${serverName} answered HTTP ${response.status} with a body that is not a JSON object`);
+    }
+
+    return {
+        isError: !response.ok || body.status !== 'ok',
+        body,
+    };
+}
+
+/**
+ * Runs a tool on a tool server (code-tools) with `POST <url>` and the internal token. A reply
+ * with `status: "error"` is a normal tool error for ChatGPT; only a transport failure, a
+ * timeout or a reply that is not a JSON object throws.
  */
 export async function callToolServer({
     url, token, args, timeoutMs, serverName, signal,
@@ -18,21 +36,8 @@ export async function callToolServer({
             authorization: createBearerAuthorizationHeader(token),
         },
         body: JSON.stringify(args),
-        signal: signal
-            ? AbortSignal.any([
-                signal,
-                AbortSignal.timeout(timeoutMs),
-            ])
-            : AbortSignal.timeout(timeoutMs),
+        signal: createAbortSignalWithTimeout(timeoutMs, signal),
     });
-    const body: unknown = await response.json();
 
-    if (!isObject(body) || Array.isArray(body)) {
-        throw new Error(`${serverName} answered HTTP ${response.status} with a body that is not a JSON object`);
-    }
-
-    return {
-        isError: !response.ok || body.status !== 'ok',
-        body,
-    };
+    return readToolReply(response, serverName);
 }

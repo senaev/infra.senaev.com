@@ -5,13 +5,15 @@ import { TG_TOKEN_SENAEV_COM_BOT } from '../env';
 import { logger } from '../logger';
 import { parseTextOrAudioMessageFromTelegram } from '../parseTextOrAudioMessageFromTelegram';
 
+import type { TrickyDadObsidianSyncApi } from './actions/TrickyDadAction';
 import { runTrickyDadCommand } from './runTrickyDadCommand';
 import { sendTrickyDadErrorReport, sendTrickyDadReport } from './sendTrickyDadReport';
 import { TrickyDadSource } from './TrickyDadSource';
 
 export async function processTrickyDadChatMessage(
     message: TelegramMessage,
-    source: TrickyDadSource
+    source: TrickyDadSource,
+    obsidianSyncApi: TrickyDadObsidianSyncApi
 ): Promise<void> {
     const startTime = Date.now();
 
@@ -44,7 +46,7 @@ export async function processTrickyDadChatMessage(
     }, '👉 Processing tricky dad chat message');
 
     try {
-        const result = await runTrickyDadCommand(command, source);
+        const result = await runTrickyDadCommand(command, source, obsidianSyncApi);
         const durationSeconds = ((Date.now() - startTime) / 1000).toFixed(2);
 
         logger.info({ result }, '✅ Finished processing tricky dad chat message');
