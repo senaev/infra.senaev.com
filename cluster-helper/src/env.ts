@@ -8,8 +8,6 @@ export const API_DOMAIN = requireEnv('API_DOMAIN');
 export const ALISA_ALLOWED_USER_IDS = requireEnv('ALISA_ALLOWED_USER_IDS');
 export const AUTH_DOMAIN = requireEnv('AUTH_DOMAIN');
 export const MCP_DOMAIN = requireEnv('MCP_DOMAIN');
-export const AUTH_MY_USERNAME = requireEnv('AUTH_MY_USERNAME');
-export const AUTH_MY_PASSWORD = requireEnv('AUTH_MY_PASSWORD');
 export const AUTH_TOKEN_SIGNING_SECRET = requireEnv('AUTH_TOKEN_SIGNING_SECRET');
 export const GOOGLE_OAUTH_CLIENT_ID = requireEnv('GOOGLE_OAUTH_CLIENT_ID');
 export const GOOGLE_OAUTH_CLIENT_SECRET = requireEnv('GOOGLE_OAUTH_CLIENT_SECRET');
@@ -28,6 +26,7 @@ export const PROWLARR_CONFIG_FILE = requireEnv('PROWLARR_CONFIG_FILE');
 export const TG_VPN_SUBSCRIPTION_CHAT_ID = requireEnv('TG_VPN_SUBSCRIPTION_CHAT_ID');
 export const OBSIDIAN_TASKS_CHAT_ID = requireEnv('OBSIDIAN_TASKS_CHAT_ID');
 export const TRICKY_DAD_CHAT_ID = requireEnv('TRICKY_DAD_CHAT_ID');
+export const JOB_SEARCH_FRAMEWORK_CHAT_ID = requireEnv('JOB_SEARCH_FRAMEWORK_CHAT_ID');
 /** The mTLS origin of obsidian-sync. Its host must be the DNS name in its certificate. */
 export const OBSIDIAN_SYNC_URL = requireEnv('OBSIDIAN_SYNC_URL');
 /** code-tools runs in the opencode-serve container and serves the code-* MCP tools. */

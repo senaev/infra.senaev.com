@@ -7,18 +7,21 @@ Tools and commands work in any folder, by absolute path. Repositories have this 
 
 ```
 /code/
-├── projects/<repo>/            # the main checkout, always on the default branch; do not edit here
+├── projects/<repo>/            # the main checkout, always on the default branch; never change it
 └── worktrees/<repo>/<branch>/  # one git worktree for each task
 ```
 
 - `<repo>` is the repository name. `<branch>` is the branch name, a slug without `/`.
+- Never change anything in the main checkout: no edits, commits, branch switches or stashes.
+  Several agents use it at the same time. Use it only to pull the default branch and to add or
+  remove worktrees; do every task in a worktree.
 - To add a repository: `git clone <url> /code/projects/<repo>`. Do not clone a repository
   that is already there.
 - GitHub works over SSH (`git@github.com:owner/repo.git`) and HTTPS; `gh` is logged in.
 
 ## Workflow for a task
 
-1. In the main checkout: `git -C /code/projects/<repo> fetch origin`, then
+1. In the main checkout: `git -C /code/projects/<repo> pull --ff-only`, then
    `git -C /code/projects/<repo> worktree add /code/worktrees/<repo>/<branch> -b <branch> origin/<default-branch>`.
 2. Work in the worktree. Read the repository's `AGENTS.md` (or `README.md`).
 3. Make the changes and run the repository's checks.

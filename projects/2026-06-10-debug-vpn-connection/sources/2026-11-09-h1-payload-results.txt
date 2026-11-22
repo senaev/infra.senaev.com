@@ -1,4 +1,4 @@
-First #151 payload cycle. Selected-field Datadog connector response verbatim; parsed interpretation is in project-status.md.
+First #151 payload cycle. Selected-field Datadog connector response verbatim; parsed interpretation is in project-worklog.md.
 
 <METADATA>
   <displayed_items>18</displayed_items>

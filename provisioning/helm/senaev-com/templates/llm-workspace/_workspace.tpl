@@ -1,5 +1,4 @@
 {{- define "senaev-com.llmWorkspace.workspace" -}}
-{{- if or .Values.opencode.enabled .Values.ompWeb.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -10,6 +9,7 @@ data:
 {{ .Files.Get (printf "%s/AGENTS.md" .Values.instructionsPath) | required "Missing workspace AGENTS.md" | indent 4 }}
   CLAUDE.md: |
 {{ .Files.Get (printf "%s/CLAUDE.md" .Values.instructionsPath) | required "Missing workspace CLAUDE.md" | indent 4 }}
+{{- if .Values.ompWeb.enabled }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -24,6 +24,7 @@ spec:
   resources:
     requests:
       storage: {{ .Values.projectsStorageSize }}
+{{- end }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -38,5 +39,4 @@ spec:
   resources:
     requests:
       storage: {{ .Values.codeStorageSize }}
-{{- end }}
 {{- end -}}

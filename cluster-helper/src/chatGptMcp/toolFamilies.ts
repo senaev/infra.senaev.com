@@ -26,24 +26,25 @@ export type ToolFamily = {
 
 export type McpTool = ToolDefinition & { name: string };
 
-export function createToolFamilies({
-    callVaultTool, callCodeTool, readVaultResource,
-}: { callVaultTool: CallTool; callCodeTool: CallTool; readVaultResource?: (uri: string, signal?: AbortSignal) => Promise<ToolReply> }): ToolFamily[] {
-    return [
-        {
-            prefix: OBSIDIAN_TOOL_PREFIX,
-            definitions: VAULT_MCP_TOOL_DEFINITIONS,
-            backendName: 'The Obsidian vault',
-            call: callVaultTool,
-            ...readVaultResource !== undefined && { readResource: readVaultResource },
-        },
-        {
-            prefix: CODE_TOOL_PREFIX,
-            definitions: CODE_MCP_TOOL_DEFINITIONS,
-            backendName: 'The code tools server',
-            call: callCodeTool,
-        },
-    ];
+export function createObsidianToolFamily({
+    callVaultTool, readVaultResource,
+}: { callVaultTool: CallTool; readVaultResource?: (uri: string, signal?: AbortSignal) => Promise<ToolReply> }): ToolFamily {
+    return {
+        prefix: OBSIDIAN_TOOL_PREFIX,
+        definitions: VAULT_MCP_TOOL_DEFINITIONS,
+        backendName: 'The Obsidian vault',
+        call: callVaultTool,
+        ...readVaultResource !== undefined && { readResource: readVaultResource },
+    };
+}
+
+export function createCodeToolFamily({ callCodeTool }: { callCodeTool: CallTool }): ToolFamily {
+    return {
+        prefix: CODE_TOOL_PREFIX,
+        definitions: CODE_MCP_TOOL_DEFINITIONS,
+        backendName: 'The code tools server',
+        call: callCodeTool,
+    };
 }
 
 export function listMcpTools(families: readonly ToolFamily[]): McpTool[] {

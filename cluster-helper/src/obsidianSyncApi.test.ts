@@ -15,8 +15,6 @@ vi.hoisted(() => {
         'ALISA_ALLOWED_USER_IDS',
         'AUTH_DOMAIN',
         'MCP_DOMAIN',
-        'AUTH_MY_USERNAME',
-        'AUTH_MY_PASSWORD',
         'AUTH_TOKEN_SIGNING_SECRET',
         'GOOGLE_OAUTH_CLIENT_ID',
         'GOOGLE_OAUTH_CLIENT_SECRET',
@@ -30,6 +28,7 @@ vi.hoisted(() => {
         'TG_VPN_SUBSCRIPTION_CHAT_ID',
         'OBSIDIAN_TASKS_CHAT_ID',
         'TRICKY_DAD_CHAT_ID',
+        'JOB_SEARCH_FRAMEWORK_CHAT_ID',
         'TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID',
         'TELEGRAM_PUBLIC_API_SECRET',
     ]) {

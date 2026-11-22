@@ -7,11 +7,13 @@ import { watchTlsCredentials } from 'senaev-utils/src/utils/mtls/watchTlsCredent
 import { createShutdownController } from 'senaev-utils/src/utils/process/createShutdownController';
 import { callTelegramApi } from 'senaev-utils/src/utils/TelegramApi/callTelegramApi';
 import { getCurrentTelegramBotInfo } from 'senaev-utils/src/utils/TelegramApi/getCurrentTelegramBotInfo';
+import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
 
+import { createAlertingHeartbeatMonitor } from './alerts/alertingHeartbeatMonitor';
 import { createInternalServer } from './createInternalServer';
 import { createPublicServer, TELEGRAM_WEBHOOK_PATH } from './createPublicServer';
 import {
-    API_DOMAIN, OBSIDIAN_SYNC_URL, TG_TOKEN_SENAEV_COM_BOT,
+    API_DOMAIN, OBSIDIAN_SYNC_URL, TG_CLUSTER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT,
 } from './env';
 import { logger } from './logger';
 import { createObsidianSyncApi } from './obsidianSyncApi';
@@ -79,8 +81,21 @@ export async function run(): Promise<void> {
 
     logStartupStep('public routes registered');
 
+    const alertingHeartbeatMonitor = createAlertingHeartbeatMonitor({
+        notify: async (text) => {
+            await sendTelegramMessage({
+                chatId: TG_CLUSTER_CHAT_ID,
+                text,
+                token: TG_TOKEN_SENAEV_COM_BOT,
+            });
+        },
+    });
+
+    subscribeShutdown(() => alertingHeartbeatMonitor.stop());
+
     const internalServer = createInternalServer({
         obsidianSyncApi,
+        alertingHeartbeatMonitor,
         isReady: () => isReady,
     });
     const mtlsServer = createMtlsFastifyServer({
@@ -106,6 +121,8 @@ export async function run(): Promise<void> {
     await startTorrentOutboxProcessor(subscribeShutdown);
     logger.info('✅ Torrent outbox processor started');
     logStartupStep('torrent outbox processor started');
+
+    alertingHeartbeatMonitor.start();
 
     await internalServer.listen({
         port: INTERNAL_PORT,

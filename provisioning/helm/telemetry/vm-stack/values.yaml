@@ -131,6 +131,13 @@ victoria-metrics-k8s-stack:
       route:
         receiver: blackhole
         routes:
+          # The always-firing heartbeat, resent every minute; see the alerting-heartbeat rule.
+          - matchers:
+              - route="alerting-heartbeat"
+            receiver: alerting-heartbeat-receiver
+            group_wait: 0s
+            group_interval: 30s
+            repeat_interval: 1m
           - matchers:
               - route="senaev-com-alerts"
             receiver: telegram-alerts-receiver
@@ -139,6 +146,10 @@ victoria-metrics-k8s-stack:
             repeat_interval: 24h
       receivers:
         - name: blackhole
+        - name: alerting-heartbeat-receiver
+          webhook_configs:
+            - url: http://cluster-helper.senaev-com.svc.cluster.local/alertmanager/heartbeat
+              send_resolved: false
         - name: telegram-alerts-receiver
           webhook_configs:
             - url: http://cluster-helper.senaev-com.svc.cluster.local/alertmanager/webhook
@@ -168,6 +179,22 @@ victoria-metrics-k8s-stack:
     enabled: true
     nodeSelector:
       vps: senaev-madrid
+
+  prometheus-node-exporter:
+    vmScrape:
+      spec:
+        # Helm replaces lists, so this repeats the chart's endpoint (version 0.72.2) and adds
+        # relabelConfigs: a `node` label with the Kubernetes node name, so that node alerts
+        # name the VPS instead of only its tailnet IP and the exporter pod.
+        endpoints:
+          - port: metrics
+            relabelConfigs:
+              - source_labels: [__meta_kubernetes_pod_node_name]
+                target_label: node
+            metricRelabelConfigs:
+              - action: drop
+                source_labels: [mountpoint]
+                regex: "/var/lib/kubelet/pods.+"
 
 smokepingProber:
   enabled: true
@@ -208,6 +235,11 @@ iperf3Monitor:
       target: hetzner
     - source: senaev-media
       target: firstvds
+    # Download direction to home (2026-11-20, VPN repair project).
+    - source: hetzner
+      target: senaev-media
+    - source: firstvds
+      target: senaev-media
     - source: proxmox-madrid
       target: hetzner
     - source: proxmox-madrid

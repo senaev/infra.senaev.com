@@ -1,3 +1,16 @@
+## 2026-11-22 UTC — Merged `main` into the branch
+
+`main` had moved on (the PR conflicted in five files), and the old `cluster-helper/src/index.ts`
+that it changed no longer exists here, so its changes were applied by hand to the new files:
+the alerting heartbeat monitor (created in `run.ts`, `recordHeartbeat` on the internal server,
+`start()` before the listeners, `stop()` subscribed before the servers so that it closes after
+them), the `/job-search/recommendations` route of the internal server (now through
+`obsidianSyncApi.addJobSearchRecommendations`), the three MCP servers (obsidian, code, telegram)
+and the removal of the password login in `createPublicServer.ts`. On the obsidian-sync side,
+`registerJobSearchRoutes` takes a plain Fastify instance and is registered among the protected
+routes (mTLS, caller allowlist). The new `claude-code` package needs its own `npm ci` (`ci:all`).
+Checked: lint, typecheck, `check:helm` and all 2070 tests pass. Not run in a cluster.
+
 ## 2026-11-22 UTC — Fixes from the robot review of the PR
 
 Done: the three servers of cluster-helper close with `Promise.allSettled` and throw an `AggregateError`

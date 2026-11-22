@@ -7,6 +7,7 @@ import { configDefaults, defineConfig } from 'vitest/config';
 // Everything runs under the node environment. The single test that needs a DOM asks for
 // one with a `@vitest-environment jsdom` docblock at the top of the file.
 const PACKAGES = [
+    'claude-code',
     'cluster-helper',
     'code-tools',
     'media-server-helper',

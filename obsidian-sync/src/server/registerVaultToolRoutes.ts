@@ -10,7 +10,7 @@ import { logger } from '../logger';
 import { VAULT_TOOLS } from '../vault-tools/vaultTools';
 import type { VaultToolsConfig } from '../vault-tools/vaultToolsConfig';
 
-/** The vault tools behind cluster-helper's ChatGPT MCP endpoint. */
+/** The vault tools behind cluster-helper's Obsidian MCP endpoint (/obsidian). */
 export function registerVaultToolRoutes(
     server: Pick<FastifyInstance, 'addHook' | 'post'>,
     config: VaultToolsConfig

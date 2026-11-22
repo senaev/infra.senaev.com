@@ -149,6 +149,24 @@ export function createObsidianSyncApi(client: Pick<MtlsClient, 'fetch'>) {
     }
 
     /**
+     * Adds a job search round's answer at the top of the LLM Recommendations Log by calling the
+     * obsidian-sync container's `POST /job-search/recommendations` HTTP API.
+     */
+    async function addJobSearchRecommendations(record: { date: string; time: string; text: string }): Promise<void> {
+        const response = await fetchObsidianSync('/job-search/recommendations', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(record),
+        });
+
+        await readStatusResponse(response).catch((error: unknown) => {
+            throw new Error(`Failed to add the job search recommendations: ${stringifyUnknownError(error)}`, { cause: error });
+        });
+    }
+
+    /**
      * Creates several tasks in the Obsidian vault.
      *
      * The writes must stay sequential: `POST /tasks` does a read-modify-write of a
@@ -180,6 +198,7 @@ export function createObsidianSyncApi(client: Pick<MtlsClient, 'fetch'>) {
         getShortLink,
         createShortLink,
         addObsidianTasks,
+        addJobSearchRecommendations,
         readVaultResource,
     };
 }

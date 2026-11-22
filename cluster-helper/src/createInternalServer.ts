@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
 
+import type { AlertingHeartbeatMonitor } from './alerts/alertingHeartbeatMonitor';
 import { handleAlertmanagerWebhook } from './alerts/handleAlertmanagerWebhook';
 import { sendDailyOverview } from './dailyOverview/sendDailyOverview';
 import { TG_MEDIA_SERVER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from './env';
@@ -15,8 +16,11 @@ import { formatTorrentEvent, isTorrentEvent } from './qbittorrent/formatTorrentE
  * address it as http://cluster-helper: alertmanager, qbittorrent's tg-notify.sh, vpn-subscription
  * and n8n. Do not merge it with the public server.
  */
-export function createInternalServer({ obsidianSyncApi, isReady }: {
-    obsidianSyncApi: Pick<ObsidianSyncApi, 'getMilestones'>;
+export function createInternalServer({
+    obsidianSyncApi, alertingHeartbeatMonitor, isReady,
+}: {
+    obsidianSyncApi: Pick<ObsidianSyncApi, 'getMilestones' | 'addJobSearchRecommendations'>;
+    alertingHeartbeatMonitor: Pick<AlertingHeartbeatMonitor, 'recordHeartbeat'>;
     isReady: () => boolean;
 }) {
     const server = Fastify({ loggerInstance: logger });
@@ -37,6 +41,14 @@ export function createInternalServer({ obsidianSyncApi, isReady }: {
 
     server.post<{ Body: unknown }>('/alertmanager/webhook', (request, reply) => {
         handleAlertmanagerWebhook(request.body);
+
+        reply.code(204).send();
+    });
+
+    // Alertmanager posts the always-firing `alerting-heartbeat` alert here about once a minute. The
+    // body is not read: any call proves that vmagent, VMSingle, vmalert and Alertmanager work.
+    server.post('/alertmanager/heartbeat', async (_request, reply) => {
+        await alertingHeartbeatMonitor.recordHeartbeat();
 
         reply.code(204).send();
     });
@@ -78,6 +90,46 @@ export function createInternalServer({ obsidianSyncApi, isReady }: {
                 message: error instanceof Error ? error.message : String(error),
             });
         }
+    });
+
+    // Called by the n8n `job-search-round` workflow with the same text that it posts to Telegram.
+    server.post<{ Body: unknown }>('/job-search/recommendations', async (request, reply) => {
+        const {
+            date, time, text,
+        } = (request.body ?? {}) as { date?: unknown; time?: unknown; text?: unknown };
+
+        if (typeof date !== 'string' || typeof time !== 'string' || typeof text !== 'string') {
+            return reply.code(400).send({
+                status: 'error',
+                message: 'The body must be { "date": "YYYY-MM-DD", "time": "HH:MM", "text": "..." }',
+            });
+        }
+
+        logger.info({
+            date,
+            time,
+            textLength: text.length,
+        }, '🆕 Received job search recommendations');
+
+        try {
+            await obsidianSyncApi.addJobSearchRecommendations({
+                date,
+                time,
+                text,
+            });
+        } catch (error) {
+            logger.error({
+                err: error,
+                status: 'error',
+            }, '❌ Failed to add the job search recommendations');
+
+            return reply.code(502).send({
+                status: 'error',
+                message: error instanceof Error ? error.message : String(error),
+            });
+        }
+
+        return reply.code(204).send();
     });
 
     server.post<{ Body: unknown }>('/qbittorrent/torrent-event', async (request, reply) => {

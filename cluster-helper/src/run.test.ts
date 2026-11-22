@@ -34,6 +34,7 @@ const mocks = vi.hoisted(() => {
 vi.mock('./env', () => {
     return {
         API_DOMAIN: 'api.test',
+        TG_CLUSTER_CHAT_ID: 1,
         OBSIDIAN_SYNC_URL: 'https://obsidian-sync.test:8443',
         TG_TOKEN_SENAEV_COM_BOT: 'token',
     };
@@ -53,6 +54,18 @@ vi.mock('./obsidianSyncApi', () => {
     return {
         createObsidianSyncApi: () => {
             return {};
+        },
+    };
+});
+vi.mock('./alerts/alertingHeartbeatMonitor', () => {
+    return {
+        createAlertingHeartbeatMonitor: () => {
+            return {
+                start: vi.fn(),
+                stop: () => {
+                    mocks.closed.push('alerting heartbeat monitor');
+                },
+            };
         },
     };
 });
@@ -137,7 +150,7 @@ beforeEach(() => {
 });
 
 describe('run', () => {
-    it('after SIGTERM stops the outbox, closes the servers, then the client, then the certificate watcher, and exits', async () => {
+    it('after SIGTERM stops the outbox, closes the servers, then the heartbeat monitor, the client and the certificate watcher, and exits', async () => {
         await run();
 
         expect(mocks.closed).toEqual([]);
@@ -150,6 +163,7 @@ describe('run', () => {
             'internal server',
             'public server',
             'mtls server',
+            'alerting heartbeat monitor',
             'obsidian-sync client',
             'certificate watcher',
         ]);
@@ -167,6 +181,7 @@ describe('run', () => {
             'internal server',
             'public server',
             'mtls server',
+            'alerting heartbeat monitor',
             'obsidian-sync client',
             'certificate watcher',
         ]);

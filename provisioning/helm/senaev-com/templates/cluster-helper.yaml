@@ -108,6 +108,8 @@ spec:
               value: {{ .Values.global.obsidianTasksChatId | quote }}
             - name: TRICKY_DAD_CHAT_ID
               value: {{ .Values.global.trickyDadChatId | quote }}
+            - name: JOB_SEARCH_FRAMEWORK_CHAT_ID
+              value: {{ .Values.global.jobSearchFrameworkChatId | quote }}
             - name: TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID
               value: {{ .Values.global.telegramSenaevComBotDirectMessageWithOwnerChatId | quote }}
             - name: PROWLARR_URL
@@ -153,18 +155,6 @@ spec:
                 secretKeyRef:
                   name: senaev-com-kv-secrets
                   key: ALISA_ALLOWED_USER_IDS
-                  optional: false
-            - name: AUTH_MY_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: senaev-com-kv-secrets
-                  key: AUTH_MY_USERNAME
-                  optional: false
-            - name: AUTH_MY_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: senaev-com-kv-secrets
-                  key: AUTH_MY_PASSWORD
                   optional: false
             - name: AUTH_TOKEN_SIGNING_SECRET
               valueFrom:

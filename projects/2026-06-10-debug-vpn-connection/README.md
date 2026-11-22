@@ -1,6 +1,69 @@
 # 2026-06-10 — Debug VPN connection (firstvds entry point)
 
-- [ ] Make the firstvds VPN entry point work from Russian ISPs
+- [ ] Restore reliable VPN access from the affected Russian ISPs: through every production
+  profile, the same public target and size succeed as often as directly from home.
+
+## Current status (updated every round)
+
+**Round 4 — 2026-11-20 20:45 UTC, PR "Add a Hysteria2 (UDP) profile from home straight to Hetzner".**
+
+**Round 4 fix — 2026-11-20 22:50 UTC, PR "Hide Hysteria2 with salamander on UDP 47443".**
+Profile 6 as deployed by #260 (Hysteria2 on UDP 443, no obfuscation) failed every VPN check
+from home at once (curl exit 35, no TLS), while the server started cleanly with the
+certificate. Likely cause: the ISP drops QUIC on UDP 443 to foreign servers (QUIC shows the
+SNI in its first packet); Tailscale uses WireGuard on another port. The fix moves profile 6 to
+UDP 47443 with salamander obfuscation and turns on `info` logs on both ends, so the next
+failure, if any, shows where it stops. **Do not use profile 6 until its probe passes.**
+
+**Use profile 1 (`🇫🇮 1. firstvds → hetzner`).** It had no failures in the last 24 h. Profile 6
+(`⚡ 6. hetzner UDP → freedom`, new in round 4) is a test candidate.
+
+The freeze to Hetzner is not tied to the time of day. Profiles 3/4 (home → Hetzner over TCP)
+failed 94–100 % from 2026-11-19 ~14:30 UTC to 2026-11-20 ~08:30 UTC (18 h, through the night),
+then worked again until now. Today's failures: 339 of 357 at `transfer`, ~20 KB received then
+nothing. Profile 1: 0 parity failures in 24 h.
+
+Uncapped Cloudflare 4 MiB, median seconds (VPN vs direct):
+
+| profile | 2026-11-19 23:00 – 11-20 14:00 | 11-20 15:00 – 20:30 |
+|---|---|---|
+| 1. firstvds → hetzner | 1.41 vs 0.93 | 1.69 vs 1.20 |
+| 3. hetzner → senaev-media | 5.07 vs 0.98 (11 of 28 ok) | 4.77 vs 1.18 |
+| 4. hetzner → freedom | 1.47 vs 0.98 (10 of 28 ok) | 1.53 vs 1.20 |
+
+Legs from the servers (round 3), mean seconds: FirstVDS → Cloudflare 4 MiB 0.64–0.71 at night,
+0.86–1.13 in the evening; FirstVDS → senaev.com 512 KiB 0.33–0.52; Hetzner 0.26–0.33 and
+0.16–0.25. iperf3 Hetzner → FirstVDS stayed at 20 Mbit/s except two dips to 13.
+**iperf3 home → Hetzner over Tailscale (UDP) stayed at 19.9 Mbit/s for the whole 18 h TCP
+freeze.**
+
+Round 3 hypotheses: the profile 1 evening slowdown did not come back today, so neither
+"FirstVDS itself slow" nor "Hetzner → FirstVDS leg throttled" is settled; FirstVDS is somewhat
+slower in the evening (+30–60 % on Cloudflare), with no collapse.
+
+Hypotheses, ranked:
+
+1. The ISP filter freezes TCP/TLS flows from home to Hetzner for hours at a time (not by time
+   of day), and does not touch UDP. Signal: profile 6 (Hysteria2, UDP 443) passes parity while
+   profiles 3/4 fail. Fix: profile 6 as a direct route to Hetzner, no FirstVDS hop.
+2. The filter also blocks QUIC/Hysteria2 (unlike Tailscale's WireGuard). Signal: profile 6
+   fails with 3/4. Then FirstVDS-entry profiles stay the only route.
+3. Profile 1 stays reliable but costs ~1.4–1.5× direct time; acceptable as the fallback.
+
+Round 4 adds: `xray-hysteria` on Hetzner (Hysteria2 on UDP 443 with the senaev.com Let's
+Encrypt certificate, separate from the Reality servers), subscription profile 6, probe
+`vpn-probe-6` with the same parity and throughput checks, and iperf3 pairs hetzner →
+senaev-media and firstvds → senaev-media (download direction to home).
+**User test wanted:** profile 1 in the evening, and profile 6 once it is deployed.
+
+## Round workflow
+
+Each round: user OK → merge the round PR → follow the deploy → collect 30 min–2 h of data →
+analyze → open the next PR. Status lives in this section and in
+[`project-worklog.md`](project-worklog.md); `project-status.md` was retired on 2026-11-18.
+
+## Earlier history
+
 
 > **This file is the working log for the investigation.** All findings, command outputs, screenshots, hypotheses confirmed/refuted, and the eventual fix must be appended to this file as we go — so the whole debug session lives in one place and is searchable later.
 >
@@ -742,7 +805,7 @@ No debugging client or automated experiments are included in this step.
 
 Prepare six isolated clients on senaev-media, with lightweight checks every ~30s and
 bounded exit/download checks every ~300s.
-Deployed through PRs #135 and #137. Several rounds show repeatable transfer stalls on direct Hetzner entry, while FirstVDS → Hetzner downloads succeed. See [deployed baseline](BASELINE-EXPERIMENT.md) and [project status](project-status.md).
+Deployed through PRs #135 and #137. Several rounds show repeatable transfer stalls on direct Hetzner entry, while FirstVDS → Hetzner downloads succeed. See [deployed baseline](BASELINE-EXPERIMENT.md).
 
 
 ## Controlled recovery investigation
@@ -779,7 +842,7 @@ both passed on Hetzner. PR #151 then deployed [payload validation](H1-PAYLOAD-VA
 Its first ladder passed4/16/64KiB on Hetzner but failed all three from home; paired
 direct controls passed. H1 is not a working payload workaround yet.
 [Raw results](sources/2026-11-09-h1-payload-results.txt) and
-[current stage](project-status.md) record the limits. PR #152 deployed the fresh, exit-validated4KiB comparison without long post-exit
+the [worklog](project-worklog.md) record the limits. PR #152 deployed the fresh, exit-validated4KiB comparison without long post-exit
 idle. Its first cycle passed on home and Hetzner; home reused16/64KiB still failed.
 [Current evidence](sources/2026-11-09-h1-fresh-control.txt) also records the longer
 #151 baseline (home4KiB7/8,16/64KiB0/8). Fresh checks are logged but missing from
@@ -1262,3 +1325,31 @@ Additional live home MSS-arm observation experiment
 b7d87e4f-76a6-47ae-9eb6-f13d09cd6078: mss988,advmss988/1000,
 rcvmss988,pmtu1300. This confirms an effective socket sizing difference
 versus observed default1248; it is not complete WAN packet-size evidence.
+
+### 2026-11-15 11:40 UTC — Observe TCP queues during stalled payloads
+
+Post200 current-pod snapshot: home XHTTP default0/10,MSS0/10 with
+direct10/10 each; each gate had one failure/skip. Hetzner11/11 botharms,
+FirstVDSdefault10/10,MSS11/11 with one default gate skip. Counts are not
+matched rounds; home logs confirm both arms for three experiment_ids:
+a1ab2211,899b65a9,d952bfef (prefixes), valid direct controls.
+Latest default a1ab2211 socket3 remained ESTAB in payloadphase:
+bytes_received22380 at8.289s,23628 at9.302s,then23628 through14.369s.
+This is encrypted transport bytes, not the exact endpoint payload; curl
+received3748/16384 and timed out. MSS arm same round gotHTTP0/0bytes.
+No inference about TLS stage, inbound loss location or DPI/PMTU.
+Allfour currentprobesup,zero restarts and no observed55mincounterresets.
+Last priority samples approximately3.6–5.6minold,consistent withcadence.
+
+Ordinaryhome8/16KiB11/11,64KiB0/11; Cloudflaredirect3/3,XHTTP0/3;
+oldendpoint64direct/XHTTP0/2 isinconclusive. VPS ordinary sizespassed.
+Backend pod changed sinceinitialrollout; retainpod/timecohorts.
+
+Next diagnostic adds numeric Recv-Q/Send-Q from PID-owned socket headers
+and bytes_sent/bytes_retrans/notsent/rcv_space/snd_wnd when ss supplies them.
+Keep socketID,state,phase and sampling unchanged. Missing values stay absent.
+This distinguishes persistent unread local bytes from an empty receivequeue,
+without assuming the cause of either. Send queues/retransmissions describe
+client outbound behavior and do not establish server-side loss.
+No traffic, timers, tuning, permissions, host/production changes.
+Review/test/openPR; nevermergeordeploywithoutuserOK.

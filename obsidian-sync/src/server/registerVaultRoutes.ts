@@ -4,6 +4,7 @@ import { OBSIDIAN_VAULT_PATH } from '../env';
 import { createVaultToolsConfig } from '../vault-tools/vaultToolsConfig';
 
 import { ALLOWED_CALLERS } from './callers';
+import { registerJobSearchRoutes } from './registerJobSearchRoutes';
 import { registerMilestoneRoutes } from './registerMilestoneRoutes';
 import { registerMtlsCallerAllowlist } from './registerMtlsCallerAllowlist';
 import { registerPublicFileRoutes } from './registerPublicFileRoutes';
@@ -23,6 +24,7 @@ export function registerProtectedVaultRoutes(server: Pick<FastifyInstance, 'addH
     registerMtlsCallerAllowlist(server, ALLOWED_CALLERS);
     registerVaultToolRoutes(server, createVaultToolsConfig(OBSIDIAN_VAULT_PATH));
     registerTaskRoutes(server);
+    registerJobSearchRoutes(server);
     registerShortLinkRoutes(server);
     registerMilestoneRoutes(server);
     registerPublicStaticRoutes(server);

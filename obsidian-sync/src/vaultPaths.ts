@@ -19,6 +19,19 @@ export const PUBLIC_STATIC_DIR = join(OBSIDIAN_VAULT_PATH, 'public-static');
  */
 export const TASKS_FILE_PATH = join(OBSIDIAN_VAULT_PATH, '@senaev', 'tasks', 'tasks_stream.md');
 
+/**
+ * Receives each job search round's answer through `POST /job-search/recommendations`: n8n
+ * writes the exact text that it posts to Telegram, so the note never depends on an LLM
+ * copying it.
+ */
+export const JOB_SEARCH_RECOMMENDATIONS_LOG_PATH = join(
+    OBSIDIAN_VAULT_PATH,
+    '@senaev',
+    'My Career',
+    'Job Search Framework',
+    'LLM Recommendations Log.md'
+);
+
 /** `id,url` table backing the short link routes; obsidian-csv_query can read and edit it. */
 export const SHORT_LINKS_FILE_PATH = join(OBSIDIAN_VAULT_PATH, 'short_links', 'short_links.csv');
 

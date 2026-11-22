@@ -39,10 +39,20 @@ export type TelegramMessage = {
     document?: TelegramFile;
 };
 
+/** A press of an inline keyboard button with `callback_data`. */
+export type TelegramCallbackQuery = {
+    id: string;
+    from: TelegramUser;
+    /** The message with the button; missing when the message is too old. */
+    message?: TelegramMessage;
+    data?: string;
+};
+
 export type TelegramUpdate = {
     update_id: number;
     message?: TelegramMessage;
     channel_post?: TelegramMessage;
+    callback_query?: TelegramCallbackQuery;
 };
 
 export type TelegramApiResponse<T> = {

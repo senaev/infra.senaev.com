@@ -8,6 +8,7 @@ global:
   telegramVpnSubscriptionChatId: "-1003702952069"
   obsidianTasksChatId: "-5365516821"
   trickyDadChatId: "-5242876030"
+  jobSearchFrameworkChatId: "-5547996254"
   telegramSenaevComBotDirectMessageWithOwnerChatId: "184352484"
 
   # The vm-stack chart creates this Grafana admin; mcp-grafana in senaev-com logs in with it.

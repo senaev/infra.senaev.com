@@ -1,0 +1,276 @@
+import { open } from 'node:fs/promises';
+import { join } from 'node:path';
+
+import type { CommandRunner } from './claude';
+import {
+    type LoginProcess, type LoginResult, wrapChildProcess,
+} from './login';
+
+// The Codex login of the codex container: its CODEX_HOME is mounted in this container, and the
+// `codex` command reads it from the CODEX_HOME env variable.
+
+export type CodexDevicePrompt = {
+    url: string;
+    code: string;
+};
+
+export type CodexDeviceLogin = {
+    // The link and the one-time code that the CLI prints first.
+    prompt: Promise<CodexDevicePrompt>;
+    // Ends when the CLI exits: after the user enters the code, or when the code expires.
+    result: Promise<LoginResult>;
+    cancel(): void;
+};
+
+export type CodexDeviceLoginTimeouts = {
+    promptMs: number;
+    // The CLI gives up by itself after 15 minutes; this only stops a command that hangs.
+    resultMs: number;
+};
+
+const DEFAULT_TIMEOUTS: CodexDeviceLoginTimeouts = {
+    promptMs: 30_000,
+    resultMs: 16 * 60 * 1000,
+};
+
+const SUCCESS_TEXT = 'Successfully logged in';
+// eslint-disable-next-line no-control-regex
+const ANSI_PATTERN = /\u001b\[[0-9;]*m/g;
+// Each value is on its own line, so a line break ends it even when the output comes in pieces.
+const URL_PATTERN = /(https:\/\/\S+)\s*\n/;
+const CODE_PATTERN = /one-time code[^\n]*\n\s*([A-Z0-9]{4,}-[A-Z0-9]{4,})\s*\n/;
+const MAX_REASON_LENGTH = 200;
+
+export function spawnCodexDeviceLogin(): LoginProcess {
+    return wrapChildProcess('codex', [
+        'login',
+        '--device-auth',
+    ]);
+}
+
+// `codex login status` exits with 0 only when a login exists.
+export async function isCodexLoggedIn(run: CommandRunner): Promise<boolean> {
+    const { exitCode } = await run('codex', [
+        'login',
+        'status',
+    ]);
+
+    return exitCode === 0;
+}
+
+// Exits with 0 also when nobody was logged in, so the caller checks the status afterwards.
+export async function logoutCodex(run: CommandRunner): Promise<void> {
+    const { exitCode, stdout } = await run('codex', ['logout']);
+
+    if (exitCode !== 0) {
+        throw new Error(`codex logout failed with exit code ${exitCode}: ${stdout.trim().slice(0, MAX_REASON_LENGTH)}`);
+    }
+}
+
+function describeFailure(output: string, code: string | undefined, exitCode: number | null): string {
+    const lastLine = output.split('\n').map((line) => line.trim()).filter((line) => line.length > 0).at(-1) ?? '';
+    const masked = (code === undefined ? lastLine : lastLine.replaceAll(code, '***')).slice(0, MAX_REASON_LENGTH);
+
+    return `exit code ${exitCode ?? 'none'}${masked.length > 0 ? `: ${masked}` : ''}`;
+}
+
+export function startCodexDeviceLogin(
+    spawnProcess: () => LoginProcess,
+    timeouts: CodexDeviceLoginTimeouts = DEFAULT_TIMEOUTS
+): CodexDeviceLogin {
+    const loginProcess = spawnProcess();
+    let output = '';
+    let running = true;
+    let prompt: CodexDevicePrompt | undefined;
+
+    let resolvePrompt: (value: CodexDevicePrompt) => void = () => undefined;
+    let rejectPrompt: (error: Error) => void = () => undefined;
+    const promptPromise = new Promise<CodexDevicePrompt>((resolve, reject) => {
+        resolvePrompt = resolve;
+        rejectPrompt = reject;
+    });
+
+    // The caller awaits it. This only stops a prompt that nobody waits for from crashing the process.
+    promptPromise.catch(() => undefined);
+
+    let resolveResult: (result: LoginResult) => void = () => undefined;
+    const result = new Promise<LoginResult>((resolve) => {
+        resolveResult = resolve;
+    });
+
+    function finish(loginResult: LoginResult): void {
+        clearTimeout(promptTimer);
+        clearTimeout(resultTimer);
+        resolveResult(loginResult);
+    }
+
+    const promptTimer = setTimeout(() => {
+        rejectPrompt(new Error('the login command did not print a link and a code in time'));
+    }, timeouts.promptMs);
+
+    const resultTimer = setTimeout(() => {
+        if (running) {
+            loginProcess.kill();
+        }
+
+        finish({
+            ok: false,
+            reason: 'the login command gave no answer in time',
+        });
+    }, timeouts.resultMs);
+
+    loginProcess.onOutput((text) => {
+        output += text.replace(ANSI_PATTERN, '');
+
+        if (prompt !== undefined) {
+            return;
+        }
+
+        const url = URL_PATTERN.exec(output)?.[1];
+        const code = CODE_PATTERN.exec(output)?.[1];
+
+        if (url !== undefined && code !== undefined) {
+            prompt = {
+                url,
+                code,
+            };
+            clearTimeout(promptTimer);
+            resolvePrompt(prompt);
+        }
+    });
+
+    loginProcess.onExit((exitCode) => {
+        running = false;
+
+        if (prompt === undefined) {
+            rejectPrompt(new Error(`the login command stopped before it printed a link and a code (${describeFailure(output, undefined, exitCode)})`));
+        }
+
+        // Both: a CLI that prints the text but fails later must not count as a login.
+        finish(exitCode === 0 && output.includes(SUCCESS_TEXT)
+            ? { ok: true }
+            : {
+                ok: false,
+                reason: describeFailure(output, prompt?.code, exitCode),
+            });
+    });
+
+    return {
+        prompt: promptPromise,
+        result,
+        cancel() {
+            if (running) {
+                loginProcess.kill();
+            }
+        },
+    };
+}
+
+export type CodexPairing = {
+    code: string;
+    expiresAt: Date;
+};
+
+// The JSON of `codex remote-control pair --json` (RemoteControlPairingStartResponse): the code to
+// type on the phone, and its expiry in Unix seconds.
+export function parseCodexPairing(stdout: string): CodexPairing {
+    const parsed: unknown = JSON.parse(stdout);
+
+    if (typeof parsed !== 'object' || parsed === null) {
+        throw new Error('codex remote-control pair did not print a JSON object');
+    }
+
+    const { manualPairingCode, expiresAt } = parsed as Record<string, unknown>;
+
+    if (typeof manualPairingCode !== 'string' || manualPairingCode === '') {
+        throw new Error('codex remote-control pair printed no manual pairing code');
+    }
+
+    if (typeof expiresAt !== 'number') {
+        throw new Error('codex remote-control pair printed no expiry');
+    }
+
+    return {
+        code: manualPairingCode,
+        expiresAt: new Date(expiresAt * 1000),
+    };
+}
+
+// The CLI prints an anyhow error: the message, then "Caused by:" and the causes, one per line
+// (numbered when there are several). All of them, on one line: the cause says why, such as
+// "No such file or directory (os error 2)".
+export function describeCliError(stderr: string, exitCode: number): string {
+    const parts = stderr.replace(ANSI_PATTERN, '')
+        .split('\n')
+        .map((line) => line.trim().replace(/^Error: /, '').replace(/^\d+: /, ''))
+        .filter((line) => line !== '' && line !== 'Caused by:');
+
+    return parts.length === 0 ? `exit code ${exitCode}` : parts.join(': ').slice(0, 2 * MAX_REASON_LENGTH);
+}
+
+// Talks to the daemon of the codex container through the control socket in CODEX_HOME; it never
+// starts a daemon.
+export async function startCodexPairing(run: CommandRunner): Promise<CodexPairing> {
+    const {
+        stdout, stderr, exitCode,
+    } = await run('codex', [
+        'remote-control',
+        'pair',
+        '--json',
+    ]);
+
+    if (exitCode !== 0) {
+        throw new Error(describeCliError(stderr ?? '', exitCode));
+    }
+
+    return parseCodexPairing(stdout);
+}
+
+const LOG_TAIL_BYTES = 256 * 1024;
+const CONNECTION_ERROR_PATTERN = /failed to connect to app-server remote control websocket .*? error=(.+?) error_kind=/;
+const CONNECTED_PATTERN = /\bconnected to app-server remote control websocket\b/;
+
+// The reason of the last failed connection of remote control, from the log of the daemon; nothing
+// when a later connection succeeded. It is there only with RUST_LOG at info for the remote control
+// module, as the codex container sets it.
+export function findLastConnectionError(log: string): string | undefined {
+    const lines = log.replace(ANSI_PATTERN, '').split('\n');
+
+    for (let index = lines.length - 1; index >= 0; index--) {
+        const line = lines[index] ?? '';
+
+        if (CONNECTED_PATTERN.test(line)) {
+            return undefined;
+        }
+
+        const match = CONNECTION_ERROR_PATTERN.exec(line);
+
+        if (match?.[1] !== undefined) {
+            return match[1].slice(0, 2 * MAX_REASON_LENGTH);
+        }
+    }
+
+    return undefined;
+}
+
+export async function readLastConnectionError(codexHome: string): Promise<string | undefined> {
+    let file;
+
+    try {
+        file = await open(join(codexHome, 'app-server-daemon', 'daemon.stderr.log'), 'r');
+    } catch {
+        return undefined;
+    }
+
+    try {
+        const { size } = await file.stat();
+        const length = Math.min(size, LOG_TAIL_BYTES);
+        const buffer = Buffer.alloc(length);
+
+        await file.read(buffer, 0, length, size - length);
+
+        return findLastConnectionError(buffer.toString('utf8'));
+    } finally {
+        await file.close();
+    }
+}

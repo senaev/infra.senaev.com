@@ -36,9 +36,8 @@ function requestFields(request: AuthorizeRequest): string {
 }
 
 /**
- * Both forms carry the original request in hidden fields: the password form posts back to
- * /authorize, the Google form starts the Google flow. The server checks the request again
- * in both cases.
+ * The Google form carries the original request in hidden fields to /google/start, which
+ * checks the request again before it starts the Google flow.
  */
 export function renderLoginPage(request: AuthorizeRequest, error: string | undefined): string {
     return `<!doctype html>
@@ -51,12 +50,10 @@ export function renderLoginPage(request: AuthorizeRequest, error: string | undef
 body { font-family: system-ui, sans-serif; display: flex; justify-content: center; padding-top: 15vh; background: #f4f4f5; }
 main { background: #fff; padding: 2rem; border-radius: 12px; box-shadow: 0 2px 12px rgba(0, 0, 0, .08); width: 18rem; display: flex; flex-direction: column; gap: .75rem; }
 form { display: flex; flex-direction: column; gap: .75rem; margin: 0; }
-input { font: inherit; padding: .5rem; border: 1px solid #d4d4d8; border-radius: 6px; }
 button { font: inherit; padding: .6rem; border: 0; border-radius: 6px; background: #18181b; color: #fff; cursor: pointer; width: 100%; }
 .google { background: #fff; color: #1f1f1f; border: 1px solid #747775; display: flex; justify-content: center; align-items: center; gap: .75rem; font-weight: 500; }
 .google:hover { background: #f4f4f5; }
 .google svg { width: 1.25rem; height: 1.25rem; display: block; flex: none; }
-.separator { color: #71717a; font-size: .85rem; text-align: center; margin: 0; }
 .error { color: #b91c1c; margin: 0; }
 .client { color: #71717a; font-size: .85rem; margin: 0; word-break: break-all; }
 </style>
@@ -66,13 +63,6 @@ button { font: inherit; padding: .6rem; border: 0; border-radius: 6px; backgroun
 <h1 style="margin: 0; font-size: 1.25rem;">Sign in</h1>
 <p class="client">${escapeHtml(request.clientId)} asks for access to ${escapeHtml(request.resource)}</p>
 ${error === undefined ? '' : `<p class="error" role="alert">${escapeHtml(error)}</p>`}
-<form method="post" action="/authorize">
-<input name="username" autocomplete="username" placeholder="Username" required autofocus>
-<input name="password" type="password" autocomplete="current-password" placeholder="Password" required>
-${requestFields(request)}
-<button type="submit">Sign in</button>
-</form>
-<p class="separator">or</p>
 <form method="get" action="/google/start">
 ${requestFields(request)}
 <button type="submit" class="google">${GOOGLE_LOGO}<span>Sign in with Google</span></button>

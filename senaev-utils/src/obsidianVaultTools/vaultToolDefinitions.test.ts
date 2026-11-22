@@ -54,7 +54,7 @@ describe('vault tool definitions', () => {
             'executionPolicy',
             'timeoutSeconds',
             'requestId',
-            'text',
+            'records',
         ]);
         expect(getVaultToolArgumentKeys('list')).toEqual([
             'executionPolicy',

@@ -12,12 +12,33 @@ Each instance runs as a Kubernetes Deployment in the `vpn` namespace (release `v
 
 Inter-instance routing uses internal Socks proxies (port 1080). Instances chain traffic to each other before exiting to the internet.
 
+### Hysteria2 server (UDP)
+
+`xray-hysteria` (`templates/xray-hysteria.yaml`, values `xrayHysteria`) is a separate Deployment on
+hetzner: Hysteria2 (QUIC) on UDP 47443 through a `hostPort`, exit straight to the internet there
+(freedom). Subscription profile 6, `hysteria2://{XRAY_USER_UUID:6}@senaev.com:47443?sni=senaev.com&obfs=salamander&obfs-password={XRAY_USER_UUID:6-obfs}`;
+the password is the UUID derived from seed 6, like the VLESS users, and the salamander
+obfuscation password (`finalmask.udp` in Xray) the UUID derived from seed `6-obfs`. Salamander
+makes every packet look like random bytes, so the QUIC handshake and its SNI are not visible.
+On UDP 443 without obfuscation no connection from home came up (2026-11-20). Server and probe
+log at `info` while profile 6 is being debugged: Xray logs Hysteria errors only at that level. Added on 2026-11-20 because
+the home ISP freezes TCP/TLS connections to hetzner for hours while UDP (Tailscale) keeps working.
+
+- TLS uses the real Let's Encrypt certificate of `senaev.com`: the `certificate-init` init
+  container and the `certificate-refresh` sidecar copy it from Traefik's `acme.json` (hostPath
+  `/k3s-cluster/volumes/traefik/acme`, read-only) into an `emptyDir`; Xray reloads certificate
+  files every hour. If the certificate is missing, only this pod fails; the Reality instances
+  are separate.
+- Without the salamander password the server does not answer at all. A client with it but
+  without the user password gets `https://senaev.com/` through the masquerade proxy.
+- Traefik binds only TCP 80/443 on hetzner; UDP 47443 is used only by this pod.
+
 ### vpn-subscription service
 
 Node.js/Fastify service at `vpn-subscription.senaev.com`. Authenticated by a secret URL path (`VPN_SUBSCRIPTION_SECRET`).
 
 **GET `/:secret`** — returns connection config or HTML instructions based on `User-Agent`:
-- VPN apps (HiddifyNext, Happ): subscription body with 5 VLESS entries
+- VPN apps (HiddifyNext, Happ): subscription body with the VLESS entries and the Hysteria2 entry
 - Browsers: HTML page with setup instructions and deep links
 
 **POST `/:secret`** — receives error reports from clients, forwards to Telegram via `cluster-helper`.

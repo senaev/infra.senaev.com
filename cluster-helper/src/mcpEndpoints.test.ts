@@ -6,7 +6,7 @@ import {
 } from 'vitest';
 
 import {
-    CHAT_GPT_MCP_PATH,
+    CODE_MCP_PATH,
     GRAFANA_MCP_PATH,
     MCP_PATHS,
     mcpEndpoints,
@@ -14,6 +14,8 @@ import {
     mcpResource,
     mcpResourceMetadataUrl,
     mcpResources,
+    OBSIDIAN_MCP_PATH,
+    TELEGRAM_MCP_PATH,
 } from './mcpEndpoints';
 import { AuthorizationServer, createAuthorizationServer } from './oauth/authorizationServer';
 import { createGoogleLogin } from './oauth/googleLogin';
@@ -28,14 +30,20 @@ const CODE_CHALLENGE = createHash('sha256').update(CODE_VERIFIER).digest('base64
 
 let server: FastifyInstance;
 let authorizationServer: AuthorizationServer;
-let replyToChatGptMessage: Mock<McpEndpointsOptions['replyToChatGptMessage']>;
+let replyToObsidianMessage: Mock<McpEndpointsOptions['replyToObsidianMessage']>;
+let replyToCodeMessage: Mock<McpEndpointsOptions['replyToCodeMessage']>;
+let replyToTelegramMessage: Mock<McpEndpointsOptions['replyToTelegramMessage']>;
 let fetchGrafana: Mock<typeof fetch>;
 
+const GOOGLE_EMAIL = 'admin@gmail.com';
+
 describe('MCP resources', () => {
-    it('serves the ChatGPT and the Grafana endpoints, ChatGPT first as the default resource', () => {
+    it('serves the Obsidian, the code, the Grafana and the Telegram endpoints, Obsidian first as the default resource', () => {
         expect(MCP_PATHS).toEqual([
-            CHAT_GPT_MCP_PATH,
+            OBSIDIAN_MCP_PATH,
+            CODE_MCP_PATH,
             GRAFANA_MCP_PATH,
+            TELEGRAM_MCP_PATH,
         ]);
     });
 });
@@ -45,12 +53,12 @@ describe('mcpEndpoints HTTP wiring', () => {
         authorizationServer = createAuthorizationServer({
             issuer: `https://${AUTH_DOMAIN}`,
             resources: mcpResources(MCP_DOMAIN),
-            username: 'andrei',
-            password: 'secret-password',
             signingSecret: 'signing-secret',
-            googleAdminEmails: new Set(),
+            googleAdminEmails: new Set([GOOGLE_EMAIL]),
         });
-        replyToChatGptMessage = vi.fn<McpEndpointsOptions['replyToChatGptMessage']>((_message, reply) => Promise.resolve(reply.code(200).send({ from: 'chat-gpt' })));
+        replyToObsidianMessage = vi.fn<McpEndpointsOptions['replyToObsidianMessage']>((_message, reply) => Promise.resolve(reply.code(200).send({ from: 'obsidian' })));
+        replyToCodeMessage = vi.fn<McpEndpointsOptions['replyToCodeMessage']>((_message, reply) => Promise.resolve(reply.code(200).send({ from: 'code' })));
+        replyToTelegramMessage = vi.fn<McpEndpointsOptions['replyToTelegramMessage']>((_message, reply) => Promise.resolve(reply.code(200).send({ from: 'telegram' })));
         fetchGrafana = vi.fn<typeof fetch>(() => Promise.resolve(new Response('{"from":"grafana"}', {
             status: 200,
             headers: { 'content-type': 'application/json' },
@@ -70,7 +78,9 @@ describe('mcpEndpoints HTTP wiring', () => {
             }),
             authDomain: AUTH_DOMAIN,
             mcpDomain: MCP_DOMAIN,
-            replyToChatGptMessage,
+            replyToObsidianMessage,
+            replyToCodeMessage,
+            replyToTelegramMessage,
             grafanaUpstreamUrl: GRAFANA_UPSTREAM_URL,
             fetch: fetchGrafana,
         });
@@ -82,7 +92,7 @@ describe('mcpEndpoints HTTP wiring', () => {
 
     async function getAccessToken(path: string): Promise<string> {
         const resource = mcpResource(MCP_DOMAIN, path);
-        const outcome = authorizationServer.login({
+        const checked = authorizationServer.authorize({
             response_type: 'code',
             client_id: CLIENT_ID,
             redirect_uri: REDIRECT_URI,
@@ -90,8 +100,16 @@ describe('mcpEndpoints HTTP wiring', () => {
             code_challenge: CODE_CHALLENGE,
             code_challenge_method: 'S256',
             resource,
-            username: 'andrei',
-            password: 'secret-password',
+        });
+
+        if (checked.kind !== 'show-login') {
+            throw new Error(`Expected show-login, got ${checked.kind}`);
+        }
+
+        // What the Google callback does after Google confirmed an allowed email.
+        const outcome = authorizationServer.completeAuthorization(checked.request, {
+            method: 'google',
+            email: GOOGLE_EMAIL,
         });
 
         if (outcome.kind !== 'redirect') {
@@ -160,11 +178,33 @@ describe('mcpEndpoints HTTP wiring', () => {
             });
         });
 
-        it('sends a valid /chat-gpt request to the ChatGPT MCP server', async () => {
-            const response = await postMcp(CHAT_GPT_MCP_PATH, await getAccessToken(CHAT_GPT_MCP_PATH));
+        it('sends a valid /obsidian request to the Obsidian MCP server only', async () => {
+            const response = await postMcp(OBSIDIAN_MCP_PATH, await getAccessToken(OBSIDIAN_MCP_PATH));
 
-            expect(response.json()).toEqual({ from: 'chat-gpt' });
-            expect(replyToChatGptMessage).toHaveBeenCalledTimes(1);
+            expect(response.json()).toEqual({ from: 'obsidian' });
+            expect(replyToObsidianMessage).toHaveBeenCalledTimes(1);
+            expect(replyToCodeMessage).not.toHaveBeenCalled();
+            expect(replyToTelegramMessage).not.toHaveBeenCalled();
+            expect(fetchGrafana).not.toHaveBeenCalled();
+        });
+
+        it('sends a valid /code-tools request to the code MCP server only', async () => {
+            const response = await postMcp(CODE_MCP_PATH, await getAccessToken(CODE_MCP_PATH));
+
+            expect(response.json()).toEqual({ from: 'code' });
+            expect(replyToCodeMessage).toHaveBeenCalledTimes(1);
+            expect(replyToObsidianMessage).not.toHaveBeenCalled();
+            expect(replyToTelegramMessage).not.toHaveBeenCalled();
+            expect(fetchGrafana).not.toHaveBeenCalled();
+        });
+
+        it('sends a valid /telegram request to the Telegram MCP server only', async () => {
+            const response = await postMcp(TELEGRAM_MCP_PATH, await getAccessToken(TELEGRAM_MCP_PATH));
+
+            expect(response.json()).toEqual({ from: 'telegram' });
+            expect(replyToTelegramMessage).toHaveBeenCalledTimes(1);
+            expect(replyToObsidianMessage).not.toHaveBeenCalled();
+            expect(replyToCodeMessage).not.toHaveBeenCalled();
             expect(fetchGrafana).not.toHaveBeenCalled();
         });
 
@@ -173,12 +213,24 @@ describe('mcpEndpoints HTTP wiring', () => {
 
             expect(response.json()).toEqual({ from: 'grafana' });
             expect(fetchGrafana).toHaveBeenCalledWith(GRAFANA_UPSTREAM_URL, expect.anything());
-            expect(replyToChatGptMessage).not.toHaveBeenCalled();
+            expect(replyToObsidianMessage).not.toHaveBeenCalled();
+            expect(replyToCodeMessage).not.toHaveBeenCalled();
+            expect(replyToTelegramMessage).not.toHaveBeenCalled();
         });
 
-        it('answers GET /chat-gpt with 405, as it has no SSE stream', async () => {
+        it('no longer serves the combined /chat-gpt endpoint', async () => {
+            const response = await postMcp('/chat-gpt', await getAccessToken(OBSIDIAN_MCP_PATH));
+
+            expect(response.statusCode).toBe(404);
+        });
+
+        it.each([
+            OBSIDIAN_MCP_PATH,
+            CODE_MCP_PATH,
+            TELEGRAM_MCP_PATH,
+        ])('answers GET %s with 405, as it has no SSE stream', async (path) => {
             const response = await server.inject({
-                url: CHAT_GPT_MCP_PATH,
+                url: path,
                 headers: { host: MCP_DOMAIN },
             });
 

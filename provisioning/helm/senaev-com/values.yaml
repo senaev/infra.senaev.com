@@ -161,10 +161,11 @@ clusterHelper:
   # Public API host: the Telegram webhook and Alisa. The app registers this URL with
   # Telegram at startup, so it must keep matching the ingress.
   apiDomain: api.senaev.com
-  # OAuth authorization server for the MCP endpoints at https://<mcpDomain>/chat-gpt and
-  # https://<mcpDomain>/grafana. It is the token issuer, so changing it makes every issued token invalid.
+  # OAuth authorization server for the MCP endpoints at https://<mcpDomain>/obsidian,
+  # https://<mcpDomain>/code-tools, https://<mcpDomain>/grafana and
+  # https://<mcpDomain>/telegram. It is the token issuer, so changing it makes every issued token invalid.
   authDomain: auth.senaev.com
-  # Host of the OAuth-protected MCP endpoint. The tokens are issued for it, so changing it
+  # Host of the OAuth-protected MCP endpoints. The tokens are issued for it, so changing it
   # makes every issued token invalid too.
   mcpDomain: mcp.senaev.com
   torrentOutboxVolumePath: volumes/webhook-endpoint/torrent-outbox
@@ -206,10 +207,6 @@ llmWorkspaces:
     projectsStorageSize: 16Gi
     codeStorageSize: 16Gi
     agent:
-      mcp:
-        datadog:
-          url: https://mcp.datadoghq.eu/v1/mcp?toolsets=core,software-delivery
-          oauth: {}
       defaultModel:
         provider: openrouter
         id: anthropic/claude-haiku-4.5
@@ -232,11 +229,18 @@ llmWorkspaces:
     opencode:
       enabled: true
       hostname: opencode.senaev.com
-      dataPath: /k3s-cluster/volumes/opencode-data
-      mcpOAuth:
-        hostname: opencode.senaev.com
-        # All remote MCPs share one callback; authorize one server at a time.
-        callbackPort: 4100
+      # OpenCode remote MCP servers, passed as they are; the template adds type and the OAuth
+      # callback https://<hostname>/auth/mcp/callback, shared by all: log in to one at a time.
+      mcp:
+        datadog:
+          url: https://mcp.datadoghq.eu/v1/mcp?toolsets=core,software-delivery
+        # cluster-helper, OAuth with the auth.senaev.com login. With its public callback OpenCode
+        # sends its own client id no more, so it needs the static client id that cluster-helper
+        # allows only with https://opencode.senaev.com/auth/mcp/callback.
+        grafana:
+          url: https://mcp.senaev.com/grafana
+          oauth:
+            client_id: opencode.senaev.com
       secrets:
         opencodePassword: OPENCODE_PASSWORD
     ompWeb:
@@ -249,6 +253,32 @@ llmWorkspaces:
       enabled: true
       secrets:
         codeToolsToken: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
+    claudeCode:
+      enabled: true
+      model: sonnet
+      # HTTP MCP servers with OAuth; Claude Code logs in with its own client id.
+      mcp:
+        datadog:
+          url: https://mcp.datadoghq.eu/v1/mcp?toolsets=core,software-delivery
+        grafana:
+          url: https://mcp.senaev.com/grafana
+        obsidian:
+          url: https://mcp.senaev.com/obsidian
+        telegram:
+          url: https://mcp.senaev.com/telegram
+        vas3k:
+          url: https://vas3k-mcp.rmbk.me/mcp
+      # @senaev_claude_helper_bot. The chat is the private chat of the user with the bot: its id is the user id.
+      telegram:
+        token: TG_TOKEN_CLAUDE_HELPER_BOT
+        user: TG_SENAEV_USER_ID
+    # Codex with the ChatGPT login. The Telegram helper of claude-code logs it in (/codex_auth)
+    # and sends a code for Pair manually in the ChatGPT app (/codex_pair). Remote control runs in
+    # the Codex daemon; its enrollment answered 403 "Multi-factor authentication required" on
+    # 2026-11-20 (without MFA on the account): /codex_pair shows the current error.
+    codex:
+      enabled: true
+      remoteControl: true
   galkin:
     enabled: true
     vps: galkin
@@ -258,7 +288,6 @@ llmWorkspaces:
     projectsStorageSize: 8Gi
     codeStorageSize: 8Gi
     agent:
-      mcp: {}
       defaultModel:
         provider: openrouter
         id: anthropic/claude-haiku-4.5

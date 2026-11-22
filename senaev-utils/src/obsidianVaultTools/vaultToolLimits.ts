@@ -33,6 +33,10 @@ export const LINKS_LIMITS = {
     maxOffset: 1_000_000,
 } as const;
 
+export const DIARY_APPEND_LIMITS = {
+    maxRecords: 20,
+} as const;
+
 export const PATCH_LIMITS = {
     maxOperations: 20,
 } as const;

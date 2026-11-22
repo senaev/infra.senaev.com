@@ -9,14 +9,14 @@ import { TelegramUpdate, TelegramUser } from 'senaev-utils/src/utils/TelegramApi
 import {
     describeMcpExchange, handleMcpMessage, McpServerOptions,
 } from './chatGptMcp/handleMcpMessage';
-import { createToolFamilies } from './chatGptMcp/toolFamilies';
+import {
+    createCodeToolFamily, createObsidianToolFamily, type ToolFamily,
+} from './chatGptMcp/toolFamilies';
 import { callCodeTool } from './codeToolsApi';
 import { describeTelegramUpdate } from './describeTelegramUpdate';
 import {
     ALISA_ALLOWED_USER_IDS,
     AUTH_DOMAIN,
-    AUTH_MY_PASSWORD,
-    AUTH_MY_USERNAME,
     AUTH_TOKEN_SIGNING_SECRET,
     GOOGLE_OAUTH_ADMIN_EMAILS,
     GOOGLE_OAUTH_CLIENT_ID,
@@ -41,6 +41,8 @@ import { GOOGLE_CALLBACK_PATH } from './oauth/registerOAuthRoutes';
 import type { ObsidianSyncApi } from './obsidianSyncApi';
 import { processTelegramWebhookData } from './processTelegramWebhookData';
 import { proxyPublicStaticFile } from './publicStaticProxy';
+import { TELEGRAM_MCP_CHANNELS } from './telegramMcp/telegramMcpChannels';
+import { createTelegramToolFamily } from './telegramMcp/telegramToolFamily';
 import { TELEGRAM_PUBLIC_API_PATH, telegramPublicApi } from './telegramPublicApi';
 import { handleAlisaRequest } from './trickyDad/handleAlisaRequest';
 import { isAllowedAlisaRequest, parseAlisaAllowedUserIds } from './trickyDad/isAllowedAlisaRequest';
@@ -48,14 +50,19 @@ import { isAllowedAlisaRequest, parseAlisaAllowedUserIds } from './trickyDad/isA
 export const TELEGRAM_WEBHOOK_PATH = '/telegram-webhook';
 const ALISA_WEBHOOK_PATH = '/alisa-webhook';
 
-const MCP_SERVER_OPTIONS: McpServerOptions = {
-    securitySchemes: [
-        {
-            type: 'oauth2',
-            scopes: [MCP_SCOPE],
-        },
-    ],
+type LocalMcpServer = {
+    families: readonly ToolFamily[];
+    options: McpServerOptions;
+    /** The message of the log line of every exchange. */
+    logMessage: string;
 };
+
+const MCP_SECURITY_SCHEMES = [
+    {
+        type: 'oauth2',
+        scopes: [MCP_SCOPE],
+    },
+];
 
 const MAX_NOTIFIED_ACCOUNT_LENGTH = 100;
 
@@ -85,7 +92,7 @@ function notifyLoginAttempt({
 /**
  * The routes that the five ingresses target: api.senaev.com, auth.senaev.com, mcp.senaev.com,
  * s.senaev.com and static.senaev.com. Every route is either authenticated (Telegram secret token,
- * Alisa secret path or skill and user check, OAuth bearer tokens for the ChatGPT MCP endpoints,
+ * Alisa secret path or skill and user check, OAuth bearer tokens for the MCP endpoints,
  * the API key of /llm, the bearer secret of /telegram-public-bot-api), part of the OAuth flow, or
  * safe to publish, and the catch-all answers 401 so nothing new leaks by accident.
  *
@@ -210,23 +217,63 @@ export async function createPublicServer({
                 logger.info('✅ Successfully processed Telegram update');
             },
             (err: unknown) => {
-                logger.error(err, '❌ Error processing Telegram webhook data');
+                // Datadog ignores the numeric pino level and shows every line as info; it reads `status` first.
+                logger.error({
+                    err,
+                    status: 'error',
+                }, '❌ Error processing Telegram webhook data');
             }
         );
 
         return reply.send('OK');
     });
 
-    // MCP server for the ChatGPT connector. The obsidian-* tools are forwarded to obsidian-sync,
-    // which does all vault work, and the code-* tools to code-tools in the opencode-serve pod.
-    const mcpToolFamilies = createToolFamilies({
-        readVaultResource: obsidianSyncApi.readVaultResource,
-        callVaultTool: obsidianSyncApi.callVaultTool,
-        callCodeTool,
-    });
+    // Three MCP servers, each on its own endpoint. The obsidian-* tools are forwarded to obsidian-sync,
+    // which does all vault work, the code-* tools to code-tools in the opencode-serve pod, and the
+    // telegram-* tools post with the senaev.com bot to the chats of TELEGRAM_MCP_CHANNELS.
+    const obsidianMcpServer: LocalMcpServer = {
+        families: [
+            createObsidianToolFamily({
+                readVaultResource: obsidianSyncApi.readVaultResource,
+                callVaultTool: obsidianSyncApi.callVaultTool,
+            }),
+        ],
+        options: {
+            serverName: 'senaev-obsidian',
+            securitySchemes: MCP_SECURITY_SCHEMES,
+        },
+        logMessage: '📓 Obsidian MCP message',
+    };
+    const codeMcpServer: LocalMcpServer = {
+        families: [createCodeToolFamily({ callCodeTool })],
+        options: {
+            serverName: 'senaev-code',
+            securitySchemes: MCP_SECURITY_SCHEMES,
+        },
+        logMessage: '🧑‍💻 Code MCP message',
+    };
+    const telegramMcpServer: LocalMcpServer = {
+        families: [
+            createTelegramToolFamily({
+                channels: TELEGRAM_MCP_CHANNELS,
+                sendMarkdown: ({ chatId, text }) => sendTelegramMessage({
+                    chatId,
+                    text,
+                    token: TG_TOKEN_SENAEV_COM_BOT,
+                }),
+            }),
+        ],
+        options: {
+            serverName: 'senaev-telegram',
+            securitySchemes: MCP_SECURITY_SCHEMES,
+        },
+        logMessage: '✉️ Telegram MCP message',
+    };
     const resourceReads = new ResourceReadGate();
 
-    async function replyToMcpMessage(message: unknown, reply: FastifyReply, options: McpServerOptions) {
+    async function replyToMcpMessage(message: unknown, reply: FastifyReply, {
+        families, options, logMessage,
+    }: LocalMcpServer) {
         const isResourceRead = isObject(message) && message.method === 'resources/read';
         const transfer = isResourceRead ? resourceReads.begin(reply.raw, 65_000) : null;
 
@@ -242,12 +289,12 @@ export async function createPublicServer({
         }
 
         try {
-            const response = await handleMcpMessage(message, mcpToolFamilies, {
+            const response = await handleMcpMessage(message, families, {
                 ...options,
                 ...transfer !== null && { signal: transfer.signal },
             });
 
-            logger.info(describeMcpExchange(message, response), '🤖 ChatGPT MCP message');
+            logger.info(describeMcpExchange(message, response), logMessage);
 
             if (response === null) {
                 return reply.code(202).send();
@@ -255,7 +302,10 @@ export async function createPublicServer({
 
             return reply.code(200).send(response);
         } catch (error) {
-            logger.error(error, '❌ Failed to handle ChatGPT MCP message');
+            logger.error({
+                err: error,
+                server: options.serverName,
+            }, '❌ Failed to handle an MCP message');
 
             return reply.code(500).send({
                 jsonrpc: '2.0',
@@ -274,11 +324,8 @@ export async function createPublicServer({
     const authorizationServer = createAuthorizationServer({
         issuer: `https://${AUTH_DOMAIN}`,
         resources: mcpResources(MCP_DOMAIN),
-        username: AUTH_MY_USERNAME,
-        password: AUTH_MY_PASSWORD,
         signingSecret: AUTH_TOKEN_SIGNING_SECRET,
         googleAdminEmails,
-        onLoginAttempt: notifyLoginAttempt,
     });
     const googleLogin = createGoogleLogin({
         clientId: GOOGLE_OAUTH_CLIENT_ID,
@@ -294,7 +341,9 @@ export async function createPublicServer({
         onLoginAttempt: notifyLoginAttempt,
         authDomain: AUTH_DOMAIN,
         mcpDomain: MCP_DOMAIN,
-        replyToChatGptMessage: (message, reply) => replyToMcpMessage(message, reply, MCP_SERVER_OPTIONS),
+        replyToObsidianMessage: (message, reply) => replyToMcpMessage(message, reply, obsidianMcpServer),
+        replyToCodeMessage: (message, reply) => replyToMcpMessage(message, reply, codeMcpServer),
+        replyToTelegramMessage: (message, reply) => replyToMcpMessage(message, reply, telegramMcpServer),
         grafanaUpstreamUrl: MCP_GRAFANA_URL,
     });
 
