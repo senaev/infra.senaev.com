@@ -171,8 +171,10 @@ const routeMessage = createMessageRouter(routerDependencies);
 const routeCallbackQuery = createCallbackQueryRouter(routerDependencies);
 
 const polling = new AbortController();
-const reportShutdownError = (error: unknown) => logger.error(error, '❌ Telegram login helper shutdown failed');
-const subscribeShutdown = createShutdownController(process, reportShutdownError);
+const subscribeShutdown = createShutdownController(
+    process,
+    (error) => logger.error(error, '❌ Telegram login helper shutdown failed')
+);
 
 function stop(): void {
     polling.abort(new Error('Service stopping'));
@@ -217,15 +219,5 @@ function main(): Promise<void> {
     });
 }
 
-main().catch((error) => {
-    if (!polling.signal.aborted) {
-        logger.error(error, '❌ Telegram login helper exited');
-        try {
-            stop();
-        } catch (shutdownError) {
-            reportShutdownError(shutdownError);
-        } finally {
-            process.exit(1);
-        }
-    }
-});
+// A failure of the polling is an unhandled rejection: Node prints it and exits with 1.
+void main();
