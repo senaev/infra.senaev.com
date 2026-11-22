@@ -21,16 +21,12 @@ import {
     GOOGLE_OAUTH_ADMIN_EMAILS,
     GOOGLE_OAUTH_CLIENT_ID,
     GOOGLE_OAUTH_CLIENT_SECRET,
-    LLM_ENDPOINT_API_KEY,
-    LLM_SERVER_URL,
     MCP_DOMAIN,
     MCP_GRAFANA_URL,
     TELEGRAM_PUBLIC_API_SECRET,
     TG_CLUSTER_CHAT_ID,
     TG_TOKEN_SENAEV_COM_BOT,
 } from './env';
-import { LLM_ENDPOINT_PREFIX, llmEndpoint } from './llm/llmEndpoint';
-import { getLlmEndpointModels } from './llm/llmEndpointModels';
 import { logger } from './logger';
 import { mcpEndpoints, mcpResources } from './mcpEndpoints';
 import {
@@ -93,7 +89,7 @@ function notifyLoginAttempt({
  * The routes that the five ingresses target: api.senaev.com, auth.senaev.com, mcp.senaev.com,
  * s.senaev.com and static.senaev.com. Every route is either authenticated (Telegram secret token,
  * Alisa secret path or skill and user check, OAuth bearer tokens for the MCP endpoints,
- * the API key of /llm, the bearer secret of /telegram-public-bot-api), part of the OAuth flow, or
+ * the bearer secret of /telegram-public-bot-api), part of the OAuth flow, or
  * safe to publish, and the catch-all answers 401 so nothing new leaks by accident.
  *
  * Serving it together with the internal routes would publish them, so do not merge the two.
@@ -345,14 +341,6 @@ export async function createPublicServer({
         replyToCodeMessage: (message, reply) => replyToMcpMessage(message, reply, codeMcpServer),
         replyToTelegramMessage: (message, reply) => replyToMcpMessage(message, reply, telegramMcpServer),
         grafanaUpstreamUrl: MCP_GRAFANA_URL,
-    });
-
-    // No host constraint: the same path serves https://api.senaev.com/llm and, inside the
-    // cluster, http://cluster-helper:3000/llm.
-    await server.register(llmEndpoint, {
-        prefix: LLM_ENDPOINT_PREFIX,
-        apiKey: LLM_ENDPOINT_API_KEY,
-        models: getLlmEndpointModels(LLM_SERVER_URL),
     });
 
     await server.register(telegramPublicApi, {

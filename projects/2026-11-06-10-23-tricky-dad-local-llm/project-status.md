@@ -1,16 +1,18 @@
-- [ ] Verify the deployed Tricky Dad action registry and home llm-server-first provider chain across the planned end-to-end scenarios.
+- [x] Deploy the Tricky Dad action registry and evaluate the home LLM for production commands.
 
 ## Stage
 
-PR #122 merged on 2026-11-07; implementation deployed. Partial production acceptance verified, full matrix remains open.
+Local-model trial complete. After deployment tests, the user concluded that the available
+home hardware could not deliver both the response speed and answer quality Tricky Dad needs.
 
 ## Completed
 
-- Action registry, source-specific allowed actions and fallback provider implementation are in `main`.
-- Alisa shopping-list command reached production and the `add_shopping_items` action finished successfully.
-- The same request exercised llm-server error handling and fallback to OpenRouter, as seen in Datadog logs on 2026-11-07.
+- PR #122 deployed the action registry and the local-model-first trial with OpenRouter fallback.
+- PR #172 switched Tricky Dad to OpenRouter only. PR #173 assigned one action per source.
+- A live Alisa shopping command succeeded with OpenRouter after those changes.
+- PR #192 disabled the home model server and its deployment passed.
 
-## Remaining verification
+## Follow-up verification for the current setup
 
-- Confirm native llm-server success, task due dates and task/chat routing, multi-action command handling, and the Tasks-only source via the original README acceptance tests.
-- Separate follow-ups: `list_shopping_items` and calendar actions are outside the original implementation.
+- If still unverified, check one shopping message in the Tricky Dad Telegram chat and one
+  dated task in the Tasks Telegram chat. These checks cover the current one-action routing.
