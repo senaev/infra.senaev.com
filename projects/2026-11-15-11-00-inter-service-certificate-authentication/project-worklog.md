@@ -1,3 +1,34 @@
+## 2026-11-22 UTC — `createShutdownController(process, reportError)` owns the closers
+
+`senaev-utils/src/utils/process/createShutdownController.ts` listens once for SIGTERM and SIGINT and
+returns `subscribeShutdown(close)`. The controller keeps the closers, runs them on the first signal in
+the reverse order of the subscription (awaited, one after another), reports a failing closer with
+`reportError`, keeps going, and calls `process.exit(0)` (or 1 after a failure). A second signal finds no
+listener and ends the process at once. `run()` of cluster-helper therefore has no `try`/`finally` and no
+closers array: each part subscribes right after it is created (the certificate watcher, the client,
+the three servers, the torrent outbox), and the "shutting down, not ready" step is subscribed last so it
+runs first. `run()` returns when the service is up (the listeners keep the process alive); a failed start
+is thrown, and `index.ts` exits with 1 without closing the parts that already exist, as before the
+refactor. This replaces the `waitForShutdown` function below; the earlier records are history.
+
+## 2026-11-22 UTC — cluster-helper has no module state: `run()` owns the lifecycle
+
+`index.ts` only calls `run()` (`run.ts`). `run()` calls `createShutdownController(process)`
+(senaev-utils, `utils/process`), which subscribes once to SIGTERM and SIGINT (a second signal ends the
+process at once) and returns `waitForShutdown`, a function that gives the same promise to every caller.
+`run()` creates the parts in order and registers a closer for each. The promise only ends the wait: the parts are closed in the
+reverse order, one after another, in `finally` (servers, then the obsidian-sync client, then the
+certificate watcher). The order matters because a request in progress may still use the client; a
+listener in every part would close them all at the same moment, and `run()` could not know when the
+closing ends. Only a part that must stop on its own gets `waitForShutdown`: the torrent outbox loop
+(`startTorrentOutboxProcessor(waitForShutdown)`, which keeps a local `AbortController` only to end its
+sleep between two passes). One subscription per part instead of the closers array was dropped for the
+same reason. The outbox now stops on the signal only, not when the start fails (the process exits then).
+The routes moved into `createInternalServer` and `createPublicServer`, which take their dependencies
+(`obsidianSyncApi`, the bot user, the webhook secret) as arguments. `run.test.ts` checks the close
+order, the outbox signal and the cleanup after a failed start. The local `let obsidianSyncApi` of
+`index.ts` is gone with the module.
+
 ## 2026-11-22 UTC — The obsidian-sync API is an argument, not module state
 
 `cluster-helper/src/obsidianSyncClient.ts` is gone. `obsidianSyncApi.ts` exports

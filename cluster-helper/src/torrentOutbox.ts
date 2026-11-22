@@ -19,8 +19,6 @@ type EnqueueTorrentFileInput = {
     fileName: string;
 };
 
-let processorAbortController: AbortController | undefined;
-
 export async function enqueueTorrentFile(input: EnqueueTorrentFileInput): Promise<string> {
     const id = randomUUID();
     const tempDir = join(TORRENT_OUTBOX_DIR, `.${id}.tmp`);
@@ -33,15 +31,17 @@ export async function enqueueTorrentFile(input: EnqueueTorrentFileInput): Promis
     return id;
 }
 
-export async function startTorrentOutboxProcessor(): Promise<void> {
+/** Delivers the queued files until the shutdown. */
+export async function startTorrentOutboxProcessor(subscribeShutdown: (close: () => void) => void): Promise<void> {
     await mkdir(TORRENT_OUTBOX_DIR, { recursive: true });
-    processorAbortController = new AbortController();
-    void runTorrentOutboxProcessor(processorAbortController.signal);
-}
 
-export function stopTorrentOutboxProcessor(): void {
-    processorAbortController?.abort();
-    processorAbortController = undefined;
+    // Only to end the sleep between two passes at once.
+    const sleepAbortController = new AbortController();
+
+    subscribeShutdown(() => {
+        sleepAbortController.abort();
+    });
+    void runTorrentOutboxProcessor(sleepAbortController.signal);
 }
 
 async function runTorrentOutboxProcessor(signal: AbortSignal): Promise<void> {
