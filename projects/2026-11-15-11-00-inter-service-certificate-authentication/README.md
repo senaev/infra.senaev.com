@@ -84,7 +84,11 @@ implementation work.
 
 ## Result
 
-Implemented in PR #203 (the plan and the code), not yet deployed or verified live.
+Implemented in PR #203 (the plan and the code), merged and deployed on 2026-11-22. Verified live:
+both Certificates `cluster-helper-tls` and `obsidian-sync-tls` are ready, the smoke test passes, a
+vault read through the Obsidian MCP connector works, and the logs of both services show the mTLS
+listeners and no errors. Not verified live: the RBAC checks (`kubectl auth can-i`), renewal of a leaf
+(the first one is due about 4 days after the issue), and `internal-ca` in the `pki` namespace.
 
 - `provisioning/helm/pki/cert-manager` (cert-manager v1.21.3, on hetzner) and
   `provisioning/helm/pki/issuers` (the CA and the `internal-ca` ClusterIssuer).
@@ -95,17 +99,19 @@ Implemented in PR #203 (the plan and the code), not yet deployed or verified liv
   and caller check, and the client that talks to one origin (undici 6, because the library
   keeps `engines.node >=18`).
 - obsidian-sync: two Fastify instances (`registerVaultRoutes.ts`), mTLS on 8443 and public HTTP
-  on 8080. cluster-helper: `obsidianSyncClient.ts`. The token and its secret wiring are removed;
+  on 8080. cluster-helper: `run.ts` creates the client (`createMtlsClient`), and
+  `obsidianSyncApi.ts` holds the calls. The token and its secret wiring are removed;
   the Vault property `INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN` is unused and can be deleted.
 
-Activation gates, to check after the deploy: the `pki` releases and the leaf Secrets are ready
-(`kubectl get certificate -A`), no application or LLM workspace ServiceAccount can read the
-leaf Secrets or create Certificates and CertificateRequests (`kubectl auth can-i ... --as=system:serviceaccount:<namespace>:<name>`),
-both services start and load their certificate, `npm run test:smoke`, and a vault read/search
-in ChatGPT MCP.
+Activation gates, checked after the deploy: the leaf Secrets are ready
+(`kubectl -n senaev-com get certificate`: done, both `READY=True`), both services start and load
+their certificate (done, logs), `npm run test:smoke` (done), and a vault read in the Obsidian MCP
+connector (done). Still open: no application or LLM workspace ServiceAccount can read the leaf
+Secrets or create Certificates and CertificateRequests
+(`kubectl auth can-i ... --as=system:serviceaccount:<namespace>:<name>`).
 
 📌 Delete the Vault property `INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN` (path
-`senaev-com-kv`) after the deploy is verified. Nothing reads it any more.
+`senaev-com-kv`). The deploy is verified, and nothing reads it any more.
 
 📌 Add alerts on the cert-manager metrics (Certificate not ready, leaf expires in less than
 2 days) and a scrape of cert-manager. Until then, nothing warns about a failed renewal.
@@ -116,10 +122,6 @@ them certificates from the same CA, check them on obsidian-sync, and close the p
 needs changes in the Next.js app and in the vmagent scrape configuration. It also ends the
 exposure of `/metrics` to nextjs-app: until then, nextjs-app can read the `path` label of
 `obsidian_vault_largest_file_bytes` (a vault file name), as it could before this PR.
-
-📌 Delete the old Secret `cluster-helper-client-tls` in `senaev-com` after the deploy. The
-certificate was renamed to `cluster-helper-tls`, and cert-manager does not delete the Secret of a
-removed Certificate.
 
 📌 cluster-helper has an mTLS listener on 8443 with no routes and no NetworkPolicy rule. Before the
 first route: add the check of the allowed callers (like `registerMtlsCallerAllowlist` of
