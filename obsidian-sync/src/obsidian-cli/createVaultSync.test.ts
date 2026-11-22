@@ -29,30 +29,32 @@ describe('createVaultSync', () => {
         vi.resetAllMocks();
     });
 
-    it('aborts the running command on close and waits until it has ended', async () => {
+    it('aborts the running continuous sync on close', async () => {
         mocks.runContinuous.mockImplementation(stopOnAbort);
         const sync = createVaultSync();
         const running = sync.runContinuous();
 
-        await sync.close();
+        sync.close();
         await running;
 
         expect(mocks.runContinuous.mock.calls[0]?.[0].aborted).toBe(true);
     });
 
-    it('does not fail close when set up failed', async () => {
-        mocks.setUp.mockRejectedValue(new Error('login failed'));
+    it('aborts the running set up on close', async () => {
+        mocks.setUp.mockImplementation(stopOnAbort);
         const sync = createVaultSync();
         const settingUp = sync.setUp();
 
-        await expect(settingUp).rejects.toThrow('login failed');
-        await expect(sync.close()).resolves.toBeUndefined();
+        sync.close();
+        await settingUp;
+
+        expect(mocks.setUp.mock.calls[0]?.[0].aborted).toBe(true);
     });
 
     it('does not start continuous sync after close', async () => {
         const sync = createVaultSync();
 
-        await sync.close();
+        sync.close();
         await sync.runContinuous();
 
         expect(mocks.runContinuous).not.toHaveBeenCalled();

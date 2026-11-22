@@ -137,20 +137,15 @@ describe('Obsidian process wiring', () => {
         expect(exit).toHaveBeenCalledExactlyOnceWith(0);
     });
 
-    it('waits for startup cleanup before exiting after a startup signal', async () => {
+    it('aborts the set up and exits with 0 after a startup signal', async () => {
         const { exit, finished } = observeExit();
-        let release: () => void = () => undefined;
 
-        mocks.setup.mockReturnValue(new Promise<void>((resolve) => {
-            release = resolve;
-        }));
+        mocks.setup.mockReturnValue(new Promise<void>(() => undefined));
         await import('./index.js');
         expect(mocks.setup).toHaveBeenCalledTimes(1);
         stop();
-        await Promise.resolve();
-        expect(exit).not.toHaveBeenCalled();
-        release();
         await finished;
+        expect(mocks.setup.mock.calls[0]?.[0].aborted).toBe(true);
         expect(exit).toHaveBeenCalledExactlyOnceWith(0);
     });
 });
