@@ -32,7 +32,7 @@ update the section — the history is in `project-worklog.md`. Structure:
 1. `# YYYY-MM-DD — <title>`, then a blank line and a Markdown checkbox with a one-line goal.
    Keep this checkbox current in every project README. Start with `- [ ] <goal>` and
    change it to `- [x] <goal>` when the agreed scope is complete and required verification
-   has passed. For a canceled project, leave it unchecked and record the cancellation on
+   has passed. Also check the box when a project is canceled and record the cancellation on
    the goal line.
 2. `## Goal` — what we want, or what is wrong. Paste errors and logs verbatim.
 3. `## Context` — only the facts needed for this task. Link files by path; do not copy them.
