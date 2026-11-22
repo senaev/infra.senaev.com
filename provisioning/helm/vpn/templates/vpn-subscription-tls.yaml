@@ -1,7 +1,6 @@
 # The client certificate of vpn-subscription, issued by the private CA of the pki namespace. The DNS
 # name is the identity: cluster-helper allows only this name on its mTLS port (VPN_SUBSCRIPTION in
-# cluster-helper/src/callers.ts). It has no server usage: vpn-subscription serves no mTLS port. A new
-# key is made on every renewal, 3 days before the end; the service loads it by polling.
+# cluster-helper/src/callers.ts). The certificate authenticates vpn-subscription as a client.
 {{- if .Values.vpnSubscription.enabled }}
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -15,14 +14,5 @@ spec:
   usages:
     - digital signature
     - client auth
-  duration: 168h
-  renewBefore: 72h
-  privateKey:
-    algorithm: ECDSA
-    size: 256
-    rotationPolicy: Always
-  issuerRef:
-    name: internal-ca
-    kind: ClusterIssuer
-    group: cert-manager.io
+  {{- toYaml .Values.global.internalMtlsCertificate | nindent 2 }}
 {{- end }}

@@ -6,7 +6,6 @@
 # the mTLS port of cluster-helper itself. The code-tools certificate is in the llm-workspace
 # template, because its name follows the workspace; the vpn-subscription client certificate is in
 # the vpn release, because a Secret is namespaced.
-# A new key is made on every renewal, 3 days before the end; the services load it by polling.
 {{- if .Values.obsidianSync.enabled }}
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -20,16 +19,7 @@ spec:
   usages:
     - digital signature
     - server auth
-  duration: 168h
-  renewBefore: 72h
-  privateKey:
-    algorithm: ECDSA
-    size: 256
-    rotationPolicy: Always
-  issuerRef:
-    name: internal-ca
-    kind: ClusterIssuer
-    group: cert-manager.io
+  {{- toYaml .Values.global.internalMtlsCertificate | nindent 2 }}
 ---
 {{- end }}
 {{- if .Values.mediaServerHelper.enabled }}
@@ -45,16 +35,7 @@ spec:
   usages:
     - digital signature
     - server auth
-  duration: 168h
-  renewBefore: 72h
-  privateKey:
-    algorithm: ECDSA
-    size: 256
-    rotationPolicy: Always
-  issuerRef:
-    name: internal-ca
-    kind: ClusterIssuer
-    group: cert-manager.io
+  {{- toYaml .Values.global.internalMtlsCertificate | nindent 2 }}
 ---
 {{- end }}
 {{- if .Values.clusterHelper.enabled }}
@@ -71,14 +52,5 @@ spec:
     - digital signature
     - client auth
     - server auth
-  duration: 168h
-  renewBefore: 72h
-  privateKey:
-    algorithm: ECDSA
-    size: 256
-    rotationPolicy: Always
-  issuerRef:
-    name: internal-ca
-    kind: ClusterIssuer
-    group: cert-manager.io
+  {{- toYaml .Values.global.internalMtlsCertificate | nindent 2 }}
 {{- end }}

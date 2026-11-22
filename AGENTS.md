@@ -226,7 +226,8 @@ cert-manager (`provisioning/helm/pki/cert-manager`) and a private CA (`provision
 ClusterIssuer `internal-ca`, key only in the `pki` namespace) issue 7-day leaves: `cluster-helper-tls`
 (both usages), `obsidian-sync-tls`, `media-server-helper-tls` (`templates/internal-mtls.yaml`),
 `<workspace>-code-tools-tls` (`llm-workspace/_code-tools.tpl`) and `vpn-subscription-tls` (client only,
-in the `vpn` release, because a Secret is namespaced). The identity is a DNS SAN
+in the `vpn` release, because a Secret is namespaced). Their common settings are in
+`global.internalMtlsCertificate` in `provisioning/helm/global-values.yaml`. The identity is a DNS SAN
 `<service>.<namespace>.svc.cluster.local`: a callee knows its callers by that name, and a client
 connects to a URL whose host is the callee's name. The URLs are constants in
 `cluster-helper/src/mtlsServiceUrls.ts` and `vpn-subscription/src/clusterHelperTelegramApi.ts`.
