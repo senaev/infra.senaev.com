@@ -1,0 +1,262 @@
+clickhouse:
+  image: clickhouse/clickhouse-server:26.8.43.13@sha256:1136f5db3a9ecd97debe87260c78bf3be94bc80474ede020d89b0943d08898a8
+  vps: senaev-madrid
+  resources:
+    requests:
+      cpu: 250m
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 3Gi
+
+otel-agent:
+  fullnameOverride: otel-agent
+  mode: daemonset
+  image:
+    repository: otel/opentelemetry-collector-contrib
+  command:
+    name: otelcol-contrib
+    # Hand off records to the persistent queue before filelog advances its checkpoint.
+    extraArgs:
+      - --feature-gates=stanza.synchronousLogEmitter
+  podLabels:
+    app: otel-logs-agent
+  # Expand to the other nodes after verifying this pilot.
+  nodeSelector:
+    vps: hetzner
+  presets:
+    kubernetesAttributes:
+      enabled: true
+  ports:
+    otlp:
+      enabled: false
+    otlp-http:
+      enabled: false
+    jaeger-compact:
+      enabled: false
+    jaeger-thrift:
+      enabled: false
+    jaeger-grpc:
+      enabled: false
+    zipkin:
+      enabled: false
+  extraVolumes:
+    - name: pod-logs
+      hostPath:
+        path: /var/log/pods
+        type: Directory
+    - name: storage
+      hostPath:
+        path: '{{ .Values.global.clusterRootPath }}/volumes/otel-logs-agent'
+        type: DirectoryOrCreate
+  extraVolumeMounts:
+    - name: pod-logs
+      mountPath: /var/log/pods
+      readOnly: true
+    - name: storage
+      mountPath: /var/lib/otelcol
+  securityContext:
+    runAsUser: 0
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: [ALL]
+    readOnlyRootFilesystem: true
+  podSecurityContext:
+    seccompProfile:
+      type: RuntimeDefault
+  resources:
+    requests:
+      cpu: 50m
+      memory: 96Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  alternateConfig:
+    extensions:
+      health_check:
+        endpoint: "${env:MY_POD_IP}:13133"
+      file_storage:
+        directory: /var/lib/otelcol
+        fsync: true
+    receivers:
+      file_log:
+        include: [/var/log/pods/*/*/*.log]
+        # Exporter failures must not generate more traffic for the same pipeline.
+        exclude:
+          - /var/log/pods/telemetry_otel-agent-*_*/*/*.log
+          - /var/log/pods/telemetry_otel-gateway-*_*/*/*.log
+          - /var/log/pods/telemetry_clickhouse-logs-*_*/*/*.log
+        start_at: end
+        include_file_path: true
+        include_file_name: false
+        storage: file_storage
+        retry_on_failure:
+          enabled: true
+          max_elapsed_time: 0s
+        operators:
+          - type: container
+            max_log_size: 102400
+    processors:
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 200
+        spike_limit_mib: 50
+    exporters:
+      otlp_grpc:
+        endpoint: otel-gateway.telemetry.svc.cluster.local:4317
+        tls:
+          insecure: true
+        retry_on_failure:
+          max_elapsed_time: 0s
+        sending_queue:
+          storage: file_storage
+          num_consumers: 1
+          sizer: bytes
+          queue_size: 67108864 # 64 MiB of serialized log batches
+          batch:
+            min_size: 65536
+            max_size: 1048576
+            flush_timeout: 1s
+    service:
+      extensions: [health_check, file_storage]
+      pipelines:
+        logs:
+          receivers: [file_log]
+          processors: [memory_limiter]
+          exporters: [otlp_grpc]
+
+otel-gateway:
+  fullnameOverride: otel-gateway
+  mode: deployment
+  replicaCount: 1
+  rollout:
+    strategy: Recreate
+  image:
+    repository: otel/opentelemetry-collector-contrib
+  command:
+    name: otelcol-contrib
+  podLabels:
+    app: otel-logs-gateway
+  annotations:
+    secret.reloader.stakater.com/reload: clickhouse-logs-writer
+  nodeSelector:
+    vps: hetzner
+  serviceAccount:
+    automountServiceAccountToken: false
+  ports:
+    otlp:
+      hostPort: null
+    otlp-http:
+      enabled: false
+    jaeger-compact:
+      enabled: false
+    jaeger-thrift:
+      enabled: false
+    jaeger-grpc:
+      enabled: false
+    zipkin:
+      enabled: false
+    metrics:
+      enabled: true
+  extraEnvs:
+    - name: CLICKHOUSE_WRITER_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: clickhouse-logs-writer
+          key: CLICKHOUSE_WRITER_PASSWORD
+  extraVolumes:
+    - name: storage
+      hostPath:
+        path: '{{ .Values.global.clusterRootPath }}/volumes/otel-logs-gateway'
+        type: DirectoryOrCreate
+  extraVolumeMounts:
+    - name: storage
+      mountPath: /var/lib/otelcol
+  initContainers:
+    - name: prepare-storage
+      image: busybox:1.37.0-uclibc
+      command: [sh, -ec, 'chmod 0700 /var/lib/otelcol && chown 10001:10001 /var/lib/otelcol']
+      securityContext:
+        runAsUser: 0
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: [ALL]
+          add: [CHOWN, FOWNER]
+      volumeMounts:
+        - name: storage
+          mountPath: /var/lib/otelcol
+  securityContext:
+    runAsUser: 10001
+    runAsGroup: 10001
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: [ALL]
+    readOnlyRootFilesystem: true
+  podSecurityContext:
+    seccompProfile:
+      type: RuntimeDefault
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+  alternateConfig:
+    extensions:
+      health_check:
+        endpoint: "${env:MY_POD_IP}:13133"
+      file_storage:
+        directory: /var/lib/otelcol
+        fsync: true
+        compaction:
+          directory: /var/lib/otelcol
+          on_rebound: true
+          cleanup_on_start: true
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: "${env:MY_POD_IP}:4317"
+    processors:
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 400
+        spike_limit_mib: 100
+    exporters:
+      clickhouse:
+        endpoint: tcp://clickhouse-logs.telemetry.svc.cluster.local:9000
+        database: otel
+        logs_table_name: otel_logs
+        username: otel_writer
+        password: "${env:CLICKHOUSE_WRITER_PASSWORD}"
+        # ClickHouse installs the schema. The gateway can accept logs during a ClickHouse outage.
+        create_schema: false
+        timeout: 10s
+        retry_on_failure:
+          max_elapsed_time: 0s
+        sending_queue:
+          storage: file_storage
+          num_consumers: 1
+          sizer: bytes
+          queue_size: 536870912 # 512 MiB of serialized log batches
+          batch:
+            min_size: 524288
+            max_size: 4194304
+            flush_timeout: 5s
+    service:
+      extensions: [health_check, file_storage]
+      telemetry:
+        metrics:
+          readers:
+            - pull:
+                exporter:
+                  prometheus:
+                    host: "${env:MY_POD_IP}"
+                    port: 8888
+      pipelines:
+        logs:
+          receivers: [otlp]
+          processors: [memory_limiter]
+          exporters: [clickhouse]
