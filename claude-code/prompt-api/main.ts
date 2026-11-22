@@ -38,10 +38,5 @@ async function main(): Promise<void> {
     logger.info({ port: PORT }, '✅ Prompt API listening');
 }
 
-// A signal during the start closes the server, so the listen can fail after it. That logs one
-// more error and closes the server a second time, which does no harm.
-main().catch(async (error) => {
-    logger.error(error, '❌ Prompt API exited');
-    await server.close().catch(reportShutdownError);
-    process.exit(1);
-});
+// A failed start is an unhandled rejection: Node prints it and exits with 1.
+void main();
