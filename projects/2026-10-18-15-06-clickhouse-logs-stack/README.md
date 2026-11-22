@@ -17,7 +17,7 @@ A node-local Collector reads Kubernetes container stdout and stderr and adds Kub
 
 1. Add `CLICKHOUSE_WRITER_PASSWORD` and `CLICKHOUSE_READER_PASSWORD` to the existing Vault `kv/senaev-com-kv` record as two independent random secrets. The [Vault editor](https://vault.senaev.com/ui/vault/secrets/kv/kv/senaev-com-kv/details/edit) and `vault kv patch kv/senaev-com-kv` both support preserving the existing keys.
 2. Merge the pilot once the Vault keys are in place. CI deploys the `clickhouse-logs` and `vm-stack` releases in `telemetry`. External Secrets creates `clickhouse-logs-writer` and `clickhouse-logs-reader`.
-3. Verify the Hetzner pilot, then expand the agent's node selection in stages.
+3. Verify the Hetzner pilot, then deploy one agent on every Linux node.
 
 ## Verification
 
@@ -26,7 +26,7 @@ A node-local Collector reads Kubernetes container stdout and stderr and adds Kub
   kubectl -n telemetry wait --for=condition=Ready externalsecret/clickhouse-logs-writer externalsecret/clickhouse-logs-reader --timeout=60s
   kubectl -n telemetry get pods -o wide -l 'app in (clickhouse-logs,otel-logs-gateway,otel-logs-agent)'
   ```
-- Find a fresh line from a known Hetzner pod in Grafana Explore. Filter by its namespace and pod name, then search for part of the line. Run the query below in SQL mode to check the source node and timestamp.
+- In Grafana Explore, find a fresh line from a known pod by filtering for its namespace and pod name. After cluster-wide rollout, use SQL mode to check that every node with active pods contributes fresh logs.
   ```sql
   SELECT
       ResourceAttributes['k8s.node.name'] AS node,
