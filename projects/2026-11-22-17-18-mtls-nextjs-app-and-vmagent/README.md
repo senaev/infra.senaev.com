@@ -1,6 +1,6 @@
 # 2026-11-22 — mTLS for nextjs-app and vmagent, and the plain port of obsidian-sync closed
 
-All traffic to obsidian-sync is mutual TLS, so plain HTTP `:8080` of obsidian-sync can be closed, and no pod can read published notes or the vault metrics without a certificate of the private CA.
+- [ ] All traffic to obsidian-sync is mutual TLS, so plain HTTP `:8080` of obsidian-sync can be closed, and no pod can read published notes or the vault metrics without a certificate of the private CA.
 
 ## Goal
 

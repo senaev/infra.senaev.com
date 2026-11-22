@@ -1,6 +1,6 @@
 # 2026-10-18 — Collect pod logs into ClickHouse in OTel format
 
-Collect container logs with OpenTelemetry and search them in Grafana alongside the existing Datadog collection.
+- [ ] Collect container logs with OpenTelemetry and search them in Grafana alongside the existing Datadog collection.
 
 ## Goal
 

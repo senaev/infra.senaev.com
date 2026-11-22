@@ -1,6 +1,6 @@
 # 2026-11-07 — Obsidian vault file telemetry and size alert
 
-Monitor the files in my Obsidian vault and warn before an individual file exceeds Obsidian Sync's practical size limit.
+- [x] Monitor the files in my Obsidian vault and warn before an individual file exceeds Obsidian Sync's practical size limit.
 
 ## Goal
 

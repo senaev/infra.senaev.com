@@ -1,6 +1,6 @@
 # 2026-11-07 — Shared CSV folder settings and yearly finance register
 
-Allow Obsidian MCP to treat a directory of CSV files as one logical table, while keeping each file independently editable and safely synchronized.
+- [x] Allow Obsidian MCP to treat a directory of CSV files as one logical table, while keeping each file independently editable and safely synchronized.
 
 ## Goal
 
