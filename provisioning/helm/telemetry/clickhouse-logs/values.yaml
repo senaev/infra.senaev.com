@@ -102,6 +102,9 @@ otel-agent:
         operators:
           - type: container
             max_log_size: 102400
+          - type: add
+            field: resource["k8s.node.name"]
+            value: "${env:K8S_NODE_NAME}"
     processors:
       memory_limiter:
         check_interval: 1s
