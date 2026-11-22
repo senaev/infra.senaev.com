@@ -18,6 +18,8 @@ export default [
     {
         ignores: [
             '**/dist/**',
+            // The Obsidian plugin uses its own ESLint rules in the release workflow.
+            'obsidian-personal-tools/**',
             '**/node_modules/**',
         ],
     },

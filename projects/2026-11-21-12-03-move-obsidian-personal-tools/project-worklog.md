@@ -1,3 +1,17 @@
+## 2026-11-22 15:47 UTC — Prepare the plugin migration PR
+
+Imported 31 plugin commits into infra and prepared the first release as `0.1.1`.
+The plugin and Obsidian Sync now use the milestone configuration from senaev-utils.
+
+```text
+ℹ tests 89
+ℹ pass 89
+ℹ fail 0
+```
+
+The local build produced the three release assets. BRAT installation and updates
+will be verified after the first release is published.
+
 ## 2026-11-21 18:27 UTC — Verify the reminder prerequisite in the live vault
 
 The first attempt created the daily-note layout with zero reminders. The live vault

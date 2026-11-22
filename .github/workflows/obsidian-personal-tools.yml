@@ -4,12 +4,14 @@ on:
   pull_request:
     paths:
       - obsidian-personal-tools/**
+      - senaev-utils/src/obsidianMilestones/milestones.json
       - .github/workflows/obsidian-personal-tools.yml
       - .nvmrc
   push:
     branches: [main]
     paths:
       - obsidian-personal-tools/**
+      - senaev-utils/src/obsidianMilestones/milestones.json
       - .github/workflows/obsidian-personal-tools.yml
   workflow_dispatch:
 
