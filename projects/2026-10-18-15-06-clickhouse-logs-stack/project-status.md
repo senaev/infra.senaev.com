@@ -1,9 +1,11 @@
-- [ ] Verify the Hetzner pilot and expand OpenTelemetry container log collection to the other nodes.
+- [ ] Expand OpenTelemetry container log collection beyond the Hetzner pilot.
 
 ## Stage
 
-The Helm pilot deploys one ClickHouse on `senaev-madrid`, a persistent OpenTelemetry gateway on Hetzner, and a Hetzner-only agent. The existing Grafana gains a read-only **ClickHouse Logs** data source.
+The pilot is deployed and verified. ClickHouse on `senaev-madrid` receives logs from the
+agent and gateway on Hetzner. The read-only Grafana datasource returned live logs.
 
 ## Next steps
 
-Add both Vault password keys, merge the pilot PR, and run the [verification](README.md#verification) before expanding collection.
+Run the controlled outage check in the [verification](README.md#verification), then
+expand the agent's node selection in stages.

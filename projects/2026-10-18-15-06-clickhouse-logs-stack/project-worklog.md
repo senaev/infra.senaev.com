@@ -1,3 +1,26 @@
+## 2026-11-22 18:03 UTC — Verified the deployed Hetzner pilot
+
+PR #269 merged as `96ef7eef`. The first Helm attempt timed out after External Secrets
+reported `cannot find secret data for key: "CLICKHOUSE_READER_PASSWORD"`. After the user
+corrected the Vault record, the reader Secret was created at 17:58:56 UTC. ClickHouse
+became ready and [deployment attempt 2](https://github.com/senaev/infra.senaev.com/actions/runs/45048887994/attempts/2) completed both releases.
+
+```text
+NAME: clickhouse-logs
+STATUS: deployed
+NAME: vm-stack
+STATUS: deployed
+TTL toDateTime(Timestamp) + toIntervalDay(450)
+Tests  5 passed (5)
+```
+
+No restarts were reported for the pilot or Grafana containers. Grafana queried recent
+ClickHouse rows and returned a cluster-helper `request completed` log from the
+`senaev-com` namespace. The gateway counters showed 13,940 logs accepted and 13,932
+exported, with 6,723 bytes queued and zero receiver failures or refusals. All 62 scrape
+targets were up, and Datadog received fresh cluster-helper logs. A deliberate outage
+test is still pending.
+
 ## 2026-11-22 17:08 UTC — Enabled synchronous log emission on the agent
 
 The user confirmed both Vault password entries were added. The agent now passes `--feature-gates=stanza.synchronousLogEmitter` so filelog hands off each batch to the persistent exporter queue before advancing its checkpoint. Collector v0.165.0 accepted the rendered agent configuration.

@@ -41,4 +41,14 @@ A node-local Collector reads Kubernetes container stdout and stderr and adds Kub
 
 ## Result
 
-The pilot is implemented. Production ingestion, the Grafana Explore query, queue recovery in the cluster, and rollout beyond Hetzner are pending. See the [worklog](project-worklog.md).
+The Hetzner pilot is deployed and serving logs. The first attempt waited for the reader
+credential and timed out. External Secrets synced the key after the Vault record was
+corrected, and [deployment attempt 2](https://github.com/senaev/infra.senaev.com/actions/runs/45048887994/attempts/2) succeeded.
+
+ClickHouse and Grafana were ready on `senaev-madrid`. The agent and gateway were ready on
+Hetzner. Grafana queried a fresh cluster-helper log and returned 1,606 Hetzner records
+from a five-minute window. The live table has a 450-day TTL. All 62 scrape targets were
+up, Datadog received fresh cluster-helper logs, and five public smoke checks passed.
+
+The controlled ClickHouse outage test and collection beyond Hetzner are pending.
+See the [worklog](project-worklog.md).
