@@ -137,7 +137,7 @@ describe('Obsidian process wiring', () => {
         expect(exit).toHaveBeenCalledExactlyOnceWith(0);
     });
 
-    it('waits for startup cleanup and never opens the server after a startup signal', async () => {
+    it('waits for startup cleanup before exiting after a startup signal', async () => {
         const { exit, finished } = observeExit();
         let release: () => void = () => undefined;
 
@@ -152,16 +152,5 @@ describe('Obsidian process wiring', () => {
         release();
         await finished;
         expect(exit).toHaveBeenCalledExactlyOnceWith(0);
-        expect(mocks.serve).not.toHaveBeenCalled();
-    });
-
-    it('logs and exits with 1 when continuous sync fails', async () => {
-        const { exit, finished } = observeExit();
-
-        mocks.continuous.mockRejectedValue(new Error('sync died'));
-        await import('./index.js');
-        await finished;
-        expect(exit).toHaveBeenCalledExactlyOnceWith(1);
-        expect(mocks.logger.error).toHaveBeenCalledExactlyOnceWith(expect.any(Error), '❌ obsidian-sync exited');
     });
 });

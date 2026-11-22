@@ -18,6 +18,10 @@ export function createVaultSync() {
         },
         /** Settles only when sync stops: with a rejection if it dies, and normally after `close()`. */
         runContinuous: () => {
+            if (controller.signal.aborted) {
+                return Promise.resolve();
+            }
+
             continuous = runContinuousSync(controller.signal);
 
             return continuous;

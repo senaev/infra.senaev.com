@@ -5,7 +5,6 @@ import { createVaultSync } from './obsidian-cli/createVaultSync';
 import { runVaultServer } from './server/runVaultServer';
 import { startTelegramPostSyncInBackground } from './telegram-post-sync/startTelegramPostSync';
 
-let stopping = false;
 const subscribeShutdown = createShutdownController(
     process,
     (error) => logger.error(error, '❌ Obsidian shutdown failed')
@@ -16,25 +15,13 @@ const subscribeShutdown = createShutdownController(
 async function main(): Promise<void> {
     const sync = createVaultSync();
 
-    subscribeShutdown(() => {
-        stopping = true;
-
-        return sync.close();
-    });
+    subscribeShutdown(() => sync.close());
 
     await sync.setUp();
-
-    if (stopping) {
-        return;
-    }
 
     const server = await runVaultServer();
 
     subscribeShutdown(() => server.close());
-
-    if (stopping) {
-        return;
-    }
 
     const background = startTelegramPostSyncInBackground();
 
@@ -43,9 +30,5 @@ async function main(): Promise<void> {
     await sync.runContinuous();
 }
 
-main().catch((error) => {
-    if (!stopping) {
-        logger.error(error, '❌ obsidian-sync exited');
-        process.exit(1);
-    }
-});
+// A failure is an unhandled rejection: Node prints it and exits with 1.
+void main();
