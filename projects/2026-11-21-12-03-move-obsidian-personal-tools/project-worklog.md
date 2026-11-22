@@ -24,5 +24,3 @@ is generated under an ignored dist directory.
 ```text
 Merge made by the 'ort' strategy.
 ```
-
-The local history was then sanitized before any public push.
