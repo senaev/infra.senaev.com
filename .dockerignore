@@ -17,3 +17,6 @@ provisioning
 scripts
 **/Dockerfile
 .dockerignore
+
+# Next.js serves this tree verbatim, including vendored bundles under dist/.
+!nextjs-app/public/**
