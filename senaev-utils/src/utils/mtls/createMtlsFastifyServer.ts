@@ -23,18 +23,15 @@ import { createSecureContextOptions, type TlsCredentials } from './tlsCredential
  * senaev-utils does not need Fastify, and the service and the library use one copy.
  */
 export function createMtlsFastifyServer({
-    Fastify, logger, credentials, bodyLimit,
+    Fastify, logger, credentials,
 }: {
     Fastify: typeof FastifyFactory;
     logger: FastifyBaseLogger;
     credentials: Signal<TlsCredentials>;
-    /** The largest request body in bytes. The Fastify default (1 MiB) when it is not set. */
-    bodyLimit?: number;
 }): FastifyInstance<HttpsServer> {
     const server = Fastify({
         loggerInstance: logger,
         https: createMtlsServerOptions(credentials.getValue()),
-        ...bodyLimit === undefined ? {} : { bodyLimit },
     });
 
     registerMtlsAuthentication(server);

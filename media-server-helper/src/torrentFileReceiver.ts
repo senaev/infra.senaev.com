@@ -6,7 +6,6 @@ import { logger } from './logger';
 import { registerTorrentFileRoutes } from './registerTorrentFileRoutes';
 
 const PORT = 8443;
-const BODY_LIMIT_BYTES = 50 * 1024 * 1024;
 
 /**
  * Receives torrent files on an mTLS port. There is no plain HTTP port and no probe: the only
@@ -18,7 +17,6 @@ export async function runTorrentFileReceiver(writeFile: (buffer: Buffer, fileNam
         Fastify,
         logger,
         credentials: certificates.credentials,
-        bodyLimit: BODY_LIMIT_BYTES,
     });
 
     // Only the raw server type (HTTPS) differs from the plain instance; the routes do not use it.

@@ -6,7 +6,6 @@ import { watchTlsCredentials } from 'senaev-utils/src/utils/mtls/watchTlsCredent
 import { logger } from '../logger';
 import type { CodeToolsConfig } from '../tools/codeToolsConfig';
 
-import { CODE_TOOLS_BODY_LIMIT_BYTES } from './codeToolsBodyLimit';
 import { registerProtectedCodeToolsRoutes } from './registerProtectedCodeToolsRoutes';
 
 const HOST = '0.0.0.0';
@@ -26,7 +25,6 @@ export async function runCodeToolsServer(config: CodeToolsConfig): Promise<{ clo
         Fastify,
         logger,
         credentials: certificates.credentials,
-        bodyLimit: CODE_TOOLS_BODY_LIMIT_BYTES,
     });
     const healthServer = createHealthServer({
         Fastify,
