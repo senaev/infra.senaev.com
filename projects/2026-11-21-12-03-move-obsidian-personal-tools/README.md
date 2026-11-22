@@ -9,14 +9,14 @@ plugin builds to BRAT after verifying the first release.
 
 ## Context
 
-The vault still contains the source and installed build. The local migration branch contains a draft history import and release workflow.
+The plugin source is in [the migration branch](../../obsidian-personal-tools/). The vault
+still tracks its copy until BRAT is verified.
 
 ## Plan
 
-1. Refresh the import from vault main and retain the plugin folder’s commit history.
-2. Open the infra migration PR and land it with a merge commit to preserve the imported history.
-3. Publish GitHub releases automatically from infra main and install the first release through BRAT.
-4. Land the vault cleanup after verifying that BRAT installs and updates the plugin.
+1. Land the infra migration PR with a merge commit to preserve the imported history.
+2. Publish GitHub releases automatically from infra main and install the first release through BRAT.
+3. Land the vault cleanup after verifying that BRAT installs and updates the plugin.
 
 ## Release workflow
 
@@ -41,4 +41,5 @@ verified against the merged vault revision.
 An Obsidian MCP smoke test confirmed correct weekday, first-of-month, Saturday, and Sunday
 reminders and ascending section order. The test notes were moved to recoverable trash.
 The four-note request took 1.75 seconds including one shared vault scan. The plugin migration,
-first BRAT release, and vault cleanup are pending.
+first BRAT release, and vault cleanup are pending. The migration branch imports 31 plugin
+commits and prepares the first release as `0.1.1`.

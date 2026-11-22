@@ -1,5 +1,6 @@
 import esbuild from 'esbuild';
 import process from 'process';
+import { copyFile, mkdir } from 'node:fs/promises';
 import { builtinModules } from 'node:module';
 
 const banner = `/*
@@ -37,13 +38,19 @@ const context = await esbuild.context({
 	logLevel: 'info',
 	sourcemap: prod ? false : 'inline',
 	treeShaking: true,
-	outfile: '../../.obsidian/plugins/senaev-personal-tools/main.js',
+	outfile: 'dist/main.js',
 	minify: prod,
 });
 
+await mkdir('dist', { recursive: true });
+await Promise.all(['manifest.json', 'styles.css'].map(file => copyFile(file, `dist/${file}`)));
+
 if (prod) {
-	await context.rebuild();
-	process.exit(0);
+	try {
+		await context.rebuild();
+	} finally {
+		await context.dispose();
+	}
 } else {
 	await context.watch();
 }

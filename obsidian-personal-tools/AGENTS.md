@@ -47,13 +47,13 @@ Also open a synced note with diary content and verify that it is untouched.
 
 ## Features
 
-- **Daily note widgets** (`src/dailyNote/`) — injects a header (date heading → nav row → milestones) and a footer (milestones → nav row) into every `periodic/day/YYYY-MM-DD` note, in both Reading view and Live Preview. Needs no markup in the note itself. The milestones logic and config live in `src/milestones/` — see below.
+- **Daily note widgets** (`src/dailyNote/`) — injects a header (date heading → nav row → milestones) and a footer (milestones → nav row) into every `periodic/day/YYYY-MM-DD` note, in both Reading view and Live Preview. Needs no markup in the note itself. The milestones logic lives in `src/milestones/`.
 - **Global API for the Tasks plugin** (`src/tasks/`) — see below.
 - **Commands** (`src/commands/`) — *Copy public link*, plus three that act on the editor selection: *Copy text to public*, *Search selection in Google*, *Translate selection in Google Translate*. The last three flatten wiki-links first via `src/utils/stripWikiLinks.ts`, because `[[...]]` syntax is meaningless outside the vault.
 
 ## Milestones — `src/milestones/`
 
-Milestone types are data, not code. The JSON files are written for external code as well, so that code collecting milestones for a date can read the same rules as the plugin. The folder holds the config and the logic that reads it; only the rendering (`src/dailyNote/milestonesWidget.ts`) is elsewhere.
+Milestone types are data, not code. The JSON files are written for external code as well, so that code collecting milestones for a date can read the same rules as the plugin. The plugin and Obsidian Sync consume the config in `senaev-utils/src/obsidianMilestones/`.
 
 | File | Purpose |
 | --- | --- |
@@ -61,8 +61,8 @@ Milestone types are data, not code. The JSON files are written for external code
 | `milestoneTypes.ts` | reads `milestones.json` and fills templates |
 | `milestoneRule.ts` | evaluates calculated dates (RRULE) |
 | `calendarDay.ts` | the `CalendarDay` type |
-| `milestones.json` | the config: types in display order, the hidden property, the tomorrow emoji, the first year with a known age |
-| `milestones.schema.json` | JSON Schema for the config; every field is described there |
+| `senaev-utils/src/obsidianMilestones/milestones.json` | the config: types in display order, the hidden property, the tomorrow emoji, the first year with a known age |
+| `senaev-utils/src/obsidianMilestones/milestones.schema.json` | JSON Schema for the config; every field is described there |
 | `rule-test-vectors.json` | expected dates for calculated rules, which every consumer should test against |
 
 The plugin bundles `milestones.json` at build time, so an edit there needs `npm run build`. Adding a type needs no change to any `.ts` file:
@@ -155,24 +155,18 @@ Renaming this global is a breaking change: ~649 notes and the daily-note templat
 
 ## Build
 
-Source lives in `plugins/senaev-personal-tools/src/`. Built artifacts go to `.obsidian/plugins/senaev-personal-tools/`.
-
-Run from the `plugins/senaev-personal-tools/` directory:
+Run from `obsidian-personal-tools/`.
 
 ```bash
-npm install       # first time only
-npm run typecheck # TypeScript checks alone
-npm run build     # bundle src/main.ts → ../../.obsidian/plugins/senaev-personal-tools/main.js
-npm test          # tests alone
+npm ci
+npm run lint
+npm run typecheck
+npm test
+npm run build
 ```
 
-`build` runs esbuild only. Run `npm run typecheck` and `npm test` separately to validate changes; CI runs them as separate steps before the build. The test bundler does not check types.
-
-After changing plugin source or bundled configuration, run `npm run build`.
-
-Do not commit plugin changes by default. Commit only when the user asks. When you commit, include the updated `.obsidian/plugins/senaev-personal-tools/main.js` in the same commit as the plugin changes. The vault tracks this installed build so Obsidian can load the updated plugin immediately.
-
-Never edit `main.js` directly.
+Build output goes to `dist/`. GitHub Actions runs the plugin’s own lint, type checks,
+tests, and production build before publishing a release. Keep generated files out of Git.
 
 ## Tests
 
@@ -221,8 +215,6 @@ npm run build
 
 - ESLint is preconfigured with `eslint-plugin-obsidianmd` for Obsidian-specific rules.
 - Run `npm run lint` to lint the project.
-- `.github/workflows/plugin-checks.yml` checks only this plugin on every push to any branch: clean install, lint, TypeScript, tests, build, and committed build consistency.
-- `manifest.json` is a symlink to the installed manifest in `.obsidian/plugins/senaev-personal-tools/`, so lint and version tooling share the canonical metadata.
 - Node imports are allowed only in test files; test registrations explicitly use `void` because Node's runner manages their completion.
 
 ## File & folder conventions
@@ -283,7 +275,7 @@ npm run build
 - Bump `version` in `manifest.json` (SemVer) and update `versions.json` to map plugin version → minimum app version.
 - Create a GitHub release whose tag exactly matches `manifest.json`'s `version`. Do not use a leading `v`.
 - Attach `manifest.json`, `main.js`, and `styles.css` (if present) to the release as individual assets.
-- After the initial release, follow the process to add/update your plugin in the community catalog as required.
+- Merge the version bump into infra main to trigger the GitHub Actions release for BRAT.
 
 ## Security, privacy, and compliance
 

@@ -1,13 +1,13 @@
+import milestonesConfig from 'senaev-utils/src/obsidianMilestones/milestones.json';
 import {
     describe, expect, it,
 } from 'vitest';
 
 import { parseIsoCalendarDay } from './calendarDay';
 import { collectMilestones, type VaultNote } from './collectMilestones';
-import { readFixture } from './fixtures/readFixture';
 import { parseMilestonesConfig } from './milestonesConfig';
 
-const CONFIG = parseMilestonesConfig(readFixture('milestones.json'));
+const CONFIG = parseMilestonesConfig(milestonesConfig);
 
 function note(path: string, frontmatter: Record<string, unknown>): VaultNote {
     return {

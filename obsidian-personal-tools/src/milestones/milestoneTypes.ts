@@ -1,4 +1,4 @@
-import milestonesConfig from './milestones.json';
+import milestonesConfig from '../../../senaev-utils/src/obsidianMilestones/milestones.json';
 
 /** How one kind of milestone is found in frontmatter, worded and marked. */
 export interface MilestoneType {
@@ -13,9 +13,7 @@ export interface MilestoneType {
 }
 
 /**
- * Milestone types in display order, from `milestones.json` next to this file,
- * which external code reads too. Adding
- * a type is a matter of adding an entry there and rebuilding the plugin.
+ * Milestone types in display order. The plugin and Obsidian Sync use the same configuration.
  */
 export const MILESTONE_TYPES: readonly MilestoneType[] = milestonesConfig.types;
 

@@ -1,6 +1,6 @@
 {
 	"name": "senaev-personal-tools",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Personal tools for Andrei Senaev's Obsidian vault.",
 	"main": "main.js",
 	"type": "module",
