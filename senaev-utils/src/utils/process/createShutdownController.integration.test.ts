@@ -11,11 +11,11 @@ it('handles a real child-process SIGTERM only after its cleanup completes', asyn
         `
             import { createShutdownController } from ${JSON.stringify(helper)};
             const keepAlive = setInterval(() => {}, 1000);
-            const lifecycle = createShutdownController({
+            const subscribeShutdown = createShutdownController(
                 process,
-                reportError: error => { process.stderr.write('shutdown-error:' + String(error)); }
-            });
-            lifecycle.subscribeShutdown(async () => {
+                error => { process.stderr.write('shutdown-error:' + String(error)); }
+            );
+            subscribeShutdown(async () => {
                 await new Promise(resolve => setTimeout(resolve, 30));
                 process.stdout.write('cleaned');
                 clearInterval(keepAlive);

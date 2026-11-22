@@ -58,12 +58,19 @@ function observeExit() {
 
 let started = completion();
 let serverClosed = completion();
-let originalSignals: ((signal: 'SIGTERM') => void)[] = [];
+const shutdownSignals = [
+    'SIGTERM',
+    'SIGINT',
+] as const;
+const originalSignals = new Map<typeof shutdownSignals[number], Set<unknown>>();
 
 beforeEach(() => {
     vi.resetModules();
     vi.resetAllMocks();
-    originalSignals = process.listeners('SIGTERM');
+    for (const signal of shutdownSignals) {
+        originalSignals.set(signal, new Set(process.listeners(signal)));
+    }
+
     mocks.setup.mockResolvedValue(undefined);
     mocks.serve.mockResolvedValue({ close: mocks.closeServer });
     started = completion();
@@ -82,18 +89,20 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-    for (const listener of process.listeners('SIGTERM')) {
-        if (!originalSignals.includes(listener)) {
-            process.removeListener('SIGTERM', listener);
-            process.removeListener('SIGINT', listener);
+    for (const signal of shutdownSignals) {
+        for (const listener of process.listeners(signal)) {
+            if (!originalSignals.get(signal)?.has(listener)) {
+                process.removeListener(signal, listener);
+            }
         }
     }
 
     vi.restoreAllMocks();
+    vi.useRealTimers();
 });
 
 function stop() {
-    const listener = process.listeners('SIGTERM').find((candidate) => !originalSignals.includes(candidate));
+    const listener = process.listeners('SIGTERM').find((candidate) => !originalSignals.get('SIGTERM')?.has(candidate));
 
     expect(listener).toBeDefined();
     listener?.('SIGTERM');
@@ -147,5 +156,33 @@ describe('Obsidian process wiring', () => {
         expect(exit).toHaveBeenCalledExactlyOnceWith(1);
         expect(mocks.closeServer).toHaveBeenCalledTimes(1);
         expect(mocks.closeBackground).toHaveBeenCalledTimes(1);
+    });
+
+    it('exits with an error after ten seconds if cleanup hangs', async () => {
+        vi.useFakeTimers({
+            toFake: [
+                'setTimeout',
+                'clearTimeout',
+            ],
+        });
+        const { exit, finished } = observeExit();
+        const backgroundClosed = completion();
+
+        mocks.closeBackground.mockReturnValue(backgroundClosed.promise);
+        await import('./index.js');
+        await started.promise;
+        stop();
+
+        await vi.advanceTimersByTimeAsync(9999);
+        expect(exit).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(1);
+        await finished;
+        backgroundClosed.resolve();
+
+        expect(exit).toHaveBeenCalledExactlyOnceWith(1);
+        expect(mocks.logger.error).toHaveBeenCalledExactlyOnceWith(
+            new Error('Service cleanup exceeded shutdown grace'),
+            '❌ Obsidian shutdown failed'
+        );
     });
 });

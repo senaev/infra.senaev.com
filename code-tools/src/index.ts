@@ -1,33 +1,31 @@
 import { createShutdownController } from 'senaev-utils/src/utils/process/createShutdownController';
+import { waitForShutdownCleanup } from 'senaev-utils/src/utils/process/waitForShutdownCleanup';
 
 import { logger } from './logger';
 import { runCodeToolsServer } from './server/runCodeToolsServer';
 import { createCodeToolsConfig } from './tools/codeToolsConfig';
 
-let server: Awaited<ReturnType<typeof runCodeToolsServer>> | undefined;
-let starting: Promise<void> | undefined;
-
-const lifecycle = createShutdownController({
+let stopping = false;
+const subscribeShutdown = createShutdownController(
     process,
-    reportError: (error) => logger.error(error, '❌ Code tools shutdown failed'),
-});
-
-lifecycle.subscribeShutdown(async () => {
-    await starting?.catch(() => undefined);
-    await server?.close();
-});
+    (error) => logger.error(error, '❌ Code tools shutdown failed')
+);
 
 async function main(): Promise<void> {
-    starting = runCodeToolsServer(createCodeToolsConfig()).then((started) => {
-        server = started;
+    const starting = runCodeToolsServer(createCodeToolsConfig());
+
+    subscribeShutdown(() => {
+        stopping = true;
+
+        return waitForShutdownCleanup(starting.then((server) => server.close(), () => undefined));
     });
+
     await starting;
-    lifecycle.signal.throwIfAborted();
 }
 
-main().catch(async (error) => {
-    if (!lifecycle.signal.aborted) {
+main().catch((error) => {
+    if (!stopping) {
         logger.error(error, '❌ code-tools exited');
-        await lifecycle.shutdown(1);
+        process.exit(1);
     }
 });

@@ -2,6 +2,7 @@ import { mkdir } from 'node:fs/promises';
 
 import { requireEnv } from 'senaev-utils/src/utils/env/requireEnv/requireEnv';
 import { createShutdownController } from 'senaev-utils/src/utils/process/createShutdownController';
+import { waitForShutdownCleanup } from 'senaev-utils/src/utils/process/waitForShutdownCleanup';
 
 import { logger } from './logger';
 import { createPromptRunner, spawnClaude } from './runPrompt';
@@ -23,15 +24,23 @@ const server = createPromptApiServer(createPromptRunner({
     timeoutMs: RUN_TIMEOUT_MS,
 }));
 
-const lifecycle = createShutdownController({
-    process,
-    reportError: (error) => logger.error(error, '❌ Prompt API shutdown failed'),
-});
+let closing: Promise<void> | undefined;
+const reportShutdownError = (error: unknown) => logger.error(error, '❌ Prompt API shutdown failed');
+const subscribeShutdown = createShutdownController(process, reportShutdownError);
 
-lifecycle.subscribeShutdown(() => server.close());
+subscribeShutdown(() => {
+    closing ??= waitForShutdownCleanup(server.close());
+
+    return closing;
+});
 
 async function main(): Promise<void> {
     await mkdir(RUN_DIRECTORY, { recursive: true });
+
+    if (closing) {
+        return;
+    }
+
     process.chdir(RUN_DIRECTORY);
     await server.listen({
         port: PORT,
@@ -41,8 +50,11 @@ async function main(): Promise<void> {
 }
 
 main().catch(async (error) => {
-    if (!lifecycle.signal.aborted) {
+    if (!closing) {
         logger.error(error, '❌ Prompt API exited');
-        await lifecycle.shutdown(1);
+        closing = waitForShutdownCleanup(server.close()).catch(reportShutdownError).finally(() => {
+            process.exit(1);
+        });
+        await closing;
     }
 });

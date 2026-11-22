@@ -170,15 +170,17 @@ const routerDependencies = {
 const routeMessage = createMessageRouter(routerDependencies);
 const routeCallbackQuery = createCallbackQueryRouter(routerDependencies);
 
-const lifecycle = createShutdownController({
-    process,
-    reportError: (error) => logger.error(error, '❌ Telegram login helper shutdown failed'),
-});
+const polling = new AbortController();
+const reportShutdownError = (error: unknown) => logger.error(error, '❌ Telegram login helper shutdown failed');
+const subscribeShutdown = createShutdownController(process, reportShutdownError);
 
-lifecycle.subscribeShutdown(() => {
+function stop(): void {
+    polling.abort(new Error('Service stopping'));
     assistant.stop();
     codexLogin?.stop();
-});
+}
+
+subscribeShutdown(stop);
 
 // One step at a time: a login code must not be handled while a check still waits for its answer.
 let queue: Promise<void> = Promise.resolve();
@@ -207,7 +209,7 @@ function main(): Promise<void> {
 
     return pollTelegramMessages({
         token,
-        signal: lifecycle.signal,
+        signal: polling.signal,
         skipMessagesSentBeforeStart: true,
         onMessage: (message) => enqueue('Handling a message', () => routeMessage(message)),
         onCallbackQuery: (callbackQuery) => enqueue('Handling a button press', () => routeCallbackQuery(callbackQuery)),
@@ -215,9 +217,15 @@ function main(): Promise<void> {
     });
 }
 
-main().catch(async (error) => {
-    if (!lifecycle.signal.aborted) {
+main().catch((error) => {
+    if (!polling.signal.aborted) {
         logger.error(error, '❌ Telegram login helper exited');
-        await lifecycle.shutdown(1);
+        try {
+            stop();
+        } catch (shutdownError) {
+            reportShutdownError(shutdownError);
+        } finally {
+            process.exit(1);
+        }
     }
 });

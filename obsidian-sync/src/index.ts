@@ -1,4 +1,5 @@
 import { createShutdownController } from 'senaev-utils/src/utils/process/createShutdownController';
+import { waitForShutdownCleanup } from 'senaev-utils/src/utils/process/waitForShutdownCleanup';
 
 import { logger } from './logger';
 import { runContinuousSync } from './obsidian-cli/runContinuousSync';
@@ -10,13 +11,15 @@ let server: Awaited<ReturnType<typeof runVaultServer>> | undefined;
 let background: ReturnType<typeof startTelegramPostSyncInBackground> | undefined;
 let continuous: Promise<void> | undefined;
 let starting: Promise<void> | undefined;
+let closing: Promise<void> | undefined;
 
-const lifecycle = createShutdownController({
-    process,
-    reportError: (error) => logger.error(error, '❌ Obsidian shutdown failed'),
-});
+const cancellation = new AbortController();
+const { signal } = cancellation;
+const reportShutdownError = (error: unknown) => logger.error(error, '❌ Obsidian shutdown failed');
+const subscribeShutdown = createShutdownController(process, reportShutdownError);
 
-lifecycle.subscribeShutdown(async () => {
+async function stop(): Promise<void> {
+    cancellation.abort(new Error('Service stopping'));
     await starting?.catch(() => undefined);
     const outcomes = await Promise.allSettled([
         server?.close(),
@@ -28,27 +31,36 @@ lifecycle.subscribeShutdown(async () => {
     if (failed?.status === 'rejected') {
         throw failed.reason;
     }
+}
+
+subscribeShutdown(() => {
+    closing ??= waitForShutdownCleanup(stop());
+
+    return closing;
 });
 
 async function start(): Promise<void> {
-    await setUpVaultSync(lifecycle.signal);
-    lifecycle.signal.throwIfAborted();
+    await setUpVaultSync(signal);
+    signal.throwIfAborted();
     server = await runVaultServer();
-    lifecycle.signal.throwIfAborted();
-    background = startTelegramPostSyncInBackground(lifecycle.signal);
+    signal.throwIfAborted();
+    background = startTelegramPostSyncInBackground(signal);
 }
 
 async function main(): Promise<void> {
     starting = start();
     await starting;
-    lifecycle.signal.throwIfAborted();
-    continuous = runContinuousSync(lifecycle.signal);
+    signal.throwIfAborted();
+    continuous = runContinuousSync(signal);
     await continuous;
 }
 
 main().catch(async (error) => {
-    if (!lifecycle.signal.aborted) {
+    if (!closing) {
         logger.error(error, '❌ obsidian-sync exited');
-        await lifecycle.shutdown(1);
+        closing = waitForShutdownCleanup(stop()).catch(reportShutdownError).finally(() => {
+            process.exit(1);
+        });
+        await closing;
     }
 });
