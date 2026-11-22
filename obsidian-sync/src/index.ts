@@ -1,65 +1,51 @@
 import { createShutdownController } from 'senaev-utils/src/utils/process/createShutdownController';
 
 import { logger } from './logger';
-import { runContinuousSync } from './obsidian-cli/runContinuousSync';
-import { setUpVaultSync } from './obsidian-cli/setUpVaultSync';
+import { createVaultSync } from './obsidian-cli/createVaultSync';
 import { runVaultServer } from './server/runVaultServer';
 import { startTelegramPostSyncInBackground } from './telegram-post-sync/startTelegramPostSync';
 
-let server: Awaited<ReturnType<typeof runVaultServer>> | undefined;
-let background: ReturnType<typeof startTelegramPostSyncInBackground> | undefined;
-let continuous: Promise<void> | undefined;
-let starting: Promise<void> | undefined;
-let closing: Promise<void> | undefined;
+let stopping = false;
+const subscribeShutdown = createShutdownController(
+    process,
+    (error) => logger.error(error, '❌ Obsidian shutdown failed')
+);
 
-const cancellation = new AbortController();
-const { signal } = cancellation;
-const reportShutdownError = (error: unknown) => logger.error(error, '❌ Obsidian shutdown failed');
-const subscribeShutdown = createShutdownController(process, reportShutdownError);
-
-async function stop(): Promise<void> {
-    cancellation.abort(new Error('Service stopping'));
-    await starting?.catch(() => undefined);
-    const outcomes = await Promise.allSettled([
-        server?.close(),
-        background?.close(),
-        continuous,
-    ]);
-    const failed = outcomes.find((outcome) => outcome.status === 'rejected');
-
-    if (failed?.status === 'rejected') {
-        throw failed.reason;
-    }
-}
-
-subscribeShutdown(() => {
-    closing ??= stop();
-
-    return closing;
-});
-
-async function start(): Promise<void> {
-    await setUpVaultSync(signal);
-    signal.throwIfAborted();
-    server = await runVaultServer();
-    signal.throwIfAborted();
-    background = startTelegramPostSyncInBackground(signal);
-}
-
+// Each part is subscribed right after it exists, so on a signal they close in the reverse order:
+// the background sync and the server first, then the `ob` commands.
 async function main(): Promise<void> {
-    starting = start();
-    await starting;
-    signal.throwIfAborted();
-    continuous = runContinuousSync(signal);
-    await continuous;
+    const sync = createVaultSync();
+
+    subscribeShutdown(() => {
+        stopping = true;
+
+        return sync.close();
+    });
+
+    await sync.setUp();
+
+    if (stopping) {
+        return;
+    }
+
+    const server = await runVaultServer();
+
+    subscribeShutdown(() => server.close());
+
+    if (stopping) {
+        return;
+    }
+
+    const background = startTelegramPostSyncInBackground();
+
+    subscribeShutdown(() => background.close());
+
+    await sync.runContinuous();
 }
 
-main().catch(async (error) => {
-    if (!closing) {
+main().catch((error) => {
+    if (!stopping) {
         logger.error(error, '❌ obsidian-sync exited');
-        closing = stop().catch(reportShutdownError).finally(() => {
-            process.exit(1);
-        });
-        await closing;
+        process.exit(1);
     }
 });

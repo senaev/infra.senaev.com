@@ -124,13 +124,16 @@ describe('Obsidian process wiring', () => {
         await started.promise;
         expect(mocks.continuous).toHaveBeenCalledTimes(1);
         stop();
-        await serverClosed.promise;
-        expect(mocks.closeServer).toHaveBeenCalledTimes(1);
-        expect(mocks.continuous.mock.calls[0]?.[0].aborted).toBe(true);
         await vi.advanceTimersByTimeAsync(10_001);
+        expect(mocks.closeBackground).toHaveBeenCalledTimes(1);
+        expect(mocks.closeServer).not.toHaveBeenCalled();
+        expect(mocks.continuous.mock.calls[0]?.[0].aborted).toBe(false);
         expect(exit).not.toHaveBeenCalled();
         backgroundClosed.resolve();
+        await serverClosed.promise;
         await finished;
+        expect(mocks.closeServer).toHaveBeenCalledTimes(1);
+        expect(mocks.continuous.mock.calls[0]?.[0].aborted).toBe(true);
         expect(exit).toHaveBeenCalledExactlyOnceWith(0);
     });
 
@@ -152,14 +155,13 @@ describe('Obsidian process wiring', () => {
         expect(mocks.serve).not.toHaveBeenCalled();
     });
 
-    it('closes resources when continuous sync fails', async () => {
+    it('logs and exits with 1 when continuous sync fails', async () => {
         const { exit, finished } = observeExit();
 
         mocks.continuous.mockRejectedValue(new Error('sync died'));
         await import('./index.js');
         await finished;
         expect(exit).toHaveBeenCalledExactlyOnceWith(1);
-        expect(mocks.closeServer).toHaveBeenCalledTimes(1);
-        expect(mocks.closeBackground).toHaveBeenCalledTimes(1);
+        expect(mocks.logger.error).toHaveBeenCalledExactlyOnceWith(expect.any(Error), '❌ obsidian-sync exited');
     });
 });
