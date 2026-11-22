@@ -23,23 +23,13 @@ const server = createPromptApiServer(createPromptRunner({
     timeoutMs: RUN_TIMEOUT_MS,
 }));
 
-let closing: Promise<void> | undefined;
 const reportShutdownError = (error: unknown) => logger.error(error, '❌ Prompt API shutdown failed');
 const subscribeShutdown = createShutdownController(process, reportShutdownError);
 
-subscribeShutdown(() => {
-    closing ??= server.close();
-
-    return closing;
-});
+subscribeShutdown(() => server.close());
 
 async function main(): Promise<void> {
     await mkdir(RUN_DIRECTORY, { recursive: true });
-
-    if (closing) {
-        return;
-    }
-
     process.chdir(RUN_DIRECTORY);
     await server.listen({
         port: PORT,
@@ -48,12 +38,10 @@ async function main(): Promise<void> {
     logger.info({ port: PORT }, '✅ Prompt API listening');
 }
 
+// A signal during the start closes the server, so the listen can fail after it. That logs one
+// more error and closes the server a second time, which does no harm.
 main().catch(async (error) => {
-    if (!closing) {
-        logger.error(error, '❌ Prompt API exited');
-        closing = server.close().catch(reportShutdownError).finally(() => {
-            process.exit(1);
-        });
-        await closing;
-    }
+    logger.error(error, '❌ Prompt API exited');
+    await server.close().catch(reportShutdownError);
+    process.exit(1);
 });
