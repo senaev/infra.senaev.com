@@ -1,8 +1,6 @@
 import type { AddressInfo } from 'node:net';
 
-import Fastify, { type FastifyInstance } from 'fastify';
 import { Signal } from 'senaev-utils/src/utils/Signal/Signal';
-import { createMtlsFastifyServer } from 'senaev-utils/src/utils/mtls/createMtlsFastifyServer';
 import { createMtlsClient, type MtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
 import { createTestCa, issueTestCertificate } from 'senaev-utils/src/utils/mtls/testPki';
 import { parseTlsCredentials, type TlsFiles } from 'senaev-utils/src/utils/mtls/tlsCredentials';
@@ -11,12 +9,11 @@ import {
 } from 'vitest';
 
 import { CLUSTER_HELPER } from './callers';
-import { logger } from './logger';
-import { registerTorrentFileRoutes } from './registerTorrentFileRoutes';
+import { createTorrentFileReceiver } from './torrentFileReceiver';
 
 const writeFile = vi.fn<(buffer: Buffer, fileName: string) => string>();
 
-let server: FastifyInstance;
+let server: ReturnType<typeof createTorrentFileReceiver>;
 let origin: string;
 let clusterHelperClient: MtlsClient;
 let otherServiceClient: MtlsClient;
@@ -44,13 +41,7 @@ beforeAll(async () => {
         usage: 'server',
     });
 
-    // Only the raw server type (HTTPS) differs from the plain instance; the routes do not use it.
-    server = createMtlsFastifyServer({
-        Fastify,
-        logger,
-        credentials: new Signal(parseTlsCredentials(serverFiles)),
-    }) as unknown as FastifyInstance;
-    registerTorrentFileRoutes(server, writeFile);
+    server = createTorrentFileReceiver(new Signal(parseTlsCredentials(serverFiles)), writeFile);
     await server.listen({
         port: 0,
         host: '127.0.0.1',
@@ -80,7 +71,7 @@ afterAll(async () => {
     ]);
 });
 
-describe('registerTorrentFileRoutes', () => {
+describe('createTorrentFileReceiver', () => {
     it('writes the file that cluster-helper sends', async () => {
         const response = await clusterHelperClient.fetch(`${origin}/torrent-files`, postTorrentFile({
             fileName: 'a.torrent',
@@ -89,6 +80,19 @@ describe('registerTorrentFileRoutes', () => {
 
         expect(response.status).toBe(200);
         expect(writeFile).toHaveBeenCalledExactlyOnceWith(Buffer.from('data'), 'a.torrent');
+    });
+
+    it('accepts an encoded torrent larger than Fastify’s default request limit', async () => {
+        const file = Buffer.alloc(800 * 1024, 1);
+        const response = await clusterHelperClient.fetch(`${origin}/torrent-files`, postTorrentFile({
+            fileName: 'large.torrent',
+            contentBase64: file.toString('base64'),
+        }));
+
+        expect(server.initialConfig.bodyLimit).toBe(50 * 1024 * 1024);
+        expect(response.status).toBe(200);
+        expect(writeFile).toHaveBeenCalledExactlyOnceWith(expect.any(Buffer), 'large.torrent');
+        expect(writeFile.mock.lastCall?.[0].equals(file)).toBe(true);
     });
 
     it('answers 400 to an invalid body and to an empty file, and writes nothing', async () => {
