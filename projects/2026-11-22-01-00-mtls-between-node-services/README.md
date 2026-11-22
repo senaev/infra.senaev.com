@@ -1,6 +1,6 @@
 # 2026-11-22 — mTLS between the Node.js services
 
-Every call between the self-written Node.js containers of this repo is mutual TLS with a certificate from the private CA, and the shared tokens between them are gone.
+- [x] Every call between the self-written Node.js containers of this repo is mutual TLS with a certificate from the private CA, and the shared tokens between them are gone.
 
 ## Goal
 

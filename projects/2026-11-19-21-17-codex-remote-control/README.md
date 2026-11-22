@@ -1,6 +1,6 @@
 # 2026-11-19 — Codex server for the ChatGPT app
 
-Run Codex (ChatGPT subscription) in a container of the `senaev` LLM workspace, work on the shared `/code` folder, and drive it from the ChatGPT mobile app, like the Claude Code container.
+- [x] Run Codex (ChatGPT subscription) in a container of the `senaev` LLM workspace, work on the shared `/code` folder, and drive it from the ChatGPT mobile app, like the Claude Code container.
 
 ## Goal
 

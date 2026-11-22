@@ -1,6 +1,6 @@
 # 2026-11-14 — LLM workspace on Madrid
 
-Move the senaev coding workspace from Hetzner to Madrid with a fresh start.
+- [x] Move the senaev coding workspace from Hetzner to Madrid with a fresh start.
 
 Status: completed on 2026-11-14. The senaev workspace runs on `senaev-madrid`
 after an intentional fresh start. The user confirmed that everything works.

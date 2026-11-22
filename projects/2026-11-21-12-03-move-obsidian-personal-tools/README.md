@@ -1,6 +1,6 @@
 # 2026-11-21 — Move Senaev Personal Tools
 
-Build Senaev Personal Tools in infra and let BRAT install and update it from GitHub releases.
+- [x] Build Senaev Personal Tools in infra and let BRAT install and update it from GitHub releases.
 
 ## Goal
 

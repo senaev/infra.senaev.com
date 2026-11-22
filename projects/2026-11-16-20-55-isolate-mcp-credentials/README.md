@@ -1,6 +1,6 @@
 # 2026-11-16 — Isolate MCP credentials from the agent runtime
 
-Agents in the LLM workspaces use the OAuth-protected MCP servers, but cannot read their tokens.
+- [ ] Agents in the LLM workspaces use the OAuth-protected MCP servers, but cannot read their tokens.
 
 ## Goal
 

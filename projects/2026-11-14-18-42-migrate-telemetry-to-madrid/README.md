@@ -1,6 +1,6 @@
 # 2026-11-14 — Migrate telemetry from Hetzner to senaev-madrid
 
-**Status: completed.** Central telemetry and its existing data now run on Madrid.
+- [x] **Status: completed.** Central telemetry and its existing data now run on Madrid.
 
 ## Goal
 

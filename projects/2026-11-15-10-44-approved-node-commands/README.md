@@ -1,6 +1,6 @@
 # 2026-11-15 — Telegram-approved node commands
 
-Allow LLM workspaces to request commands on Kubernetes nodes with explicit user approval.
+- [ ] Allow LLM workspaces to request commands on Kubernetes nodes with explicit user approval.
 
 ## Goal
 
