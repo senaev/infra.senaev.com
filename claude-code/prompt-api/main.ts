@@ -23,8 +23,10 @@ const server = createPromptApiServer(createPromptRunner({
     timeoutMs: RUN_TIMEOUT_MS,
 }));
 
-const reportShutdownError = (error: unknown) => logger.error(error, '❌ Prompt API shutdown failed');
-const subscribeShutdown = createShutdownController(process, reportShutdownError);
+const subscribeShutdown = createShutdownController(
+    process,
+    (error) => logger.error(error, '❌ Prompt API shutdown failed')
+);
 
 subscribeShutdown(() => server.close());
 
