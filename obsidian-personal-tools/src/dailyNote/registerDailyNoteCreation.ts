@@ -1,7 +1,7 @@
 import { Notice, TFile } from 'obsidian';
 import type { App, Plugin } from 'obsidian';
 import { createDailyNoteInitializer } from './dailyNoteInitializer';
-import { hasReminder, type ReminderNote } from 'senaev-utils/src/obsidianDailyNotes/dailyReminders';
+import { hasReminder, type ReminderNote, type ReminderSource } from 'senaev-utils/src/obsidianDailyNotes/dailyReminders';
 import { dailyDateFromPath, dailyNotePathForRootNote } from 'senaev-utils/src/obsidianDailyNotes/dailyNoteTemplate';
 import { DAILY_NOTE_FOLDER, getDailyNotePath } from './dailyNotePath';
 
@@ -26,9 +26,10 @@ async function moveRootDailyNote(app: App, file: TFile): Promise<void> {
 	await app.fileManager.renameFile(file, target);
 }
 
-function readReminders(app: App): ReminderNote[] {
+function readReminders(app: App): ReminderSource {
+	const files = app.vault.getMarkdownFiles();
 	const notes: ReminderNote[] = [];
-	for (const file of app.vault.getMarkdownFiles()) {
+	for (const file of files) {
 		if (file.path.startsWith(DAILY_NOTE_FOLDER) || file.path.startsWith('plugins/') ||
 			file.path.endsWith('.excalidraw.md') ||
 			file.path.split('/').slice(0, -1).some(segment => segment.startsWith('.') || segment === 'node_modules')) {
@@ -37,7 +38,11 @@ function readReminders(app: App): ReminderNote[] {
 		const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
 		if (frontmatter && hasReminder(frontmatter)) notes.push({ path: file.path, frontmatter });
 	}
-	return notes;
+	return {
+		notes,
+		notePaths: files.map(file => file.path),
+		onInvalidSchedule: path => { console.warn('Invalid daily reminder schedule', path); },
+	};
 }
 
 /** Handles all vault entry points rather than depending on one note-creation command. */
@@ -46,10 +51,7 @@ export function registerDailyNoteCreation(plugin: Plugin): void {
 	const initializer = createDailyNoteInitializer<TFile>({
 		read: file => app.vault.read(file),
 		process: (file, transform) => app.vault.process(file, transform),
-	}, () => ({
-		notes: readReminders(app),
-		onInvalidSchedule: path => { console.warn('Invalid daily reminder schedule', path); },
-	}));
+	}, () => readReminders(app));
 	plugin.register(() => initializer.dispose());
 	const initialize = (file: unknown): void => {
 		if (!(file instanceof TFile) || !dailyDateFromPath(file.path)) return;

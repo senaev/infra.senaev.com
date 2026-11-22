@@ -57,14 +57,15 @@ async function findExistingNote(config: VaultToolsConfig, path: string, executio
 
 async function readReminderSource(config: VaultToolsConfig, execution: CommandExecution): Promise<ReminderSource> {
     const { files, errors } = await walkVault(config, '', execution);
+    const notePaths = files.filter((path) => isNotePath(config, path));
     const notes: ReminderNote[] = [];
 
     for (const { path } of errors) {
         logger.warn({ path }, 'Could not search folder for daily reminders');
     }
 
-    for (const path of files) {
-        if (!isNotePath(config, path) || path.startsWith(`${config.diaryFolder}/`)) {
+    for (const path of notePaths) {
+        if (path.startsWith(`${config.diaryFolder}/`)) {
             continue;
         }
 
@@ -87,6 +88,7 @@ async function readReminderSource(config: VaultToolsConfig, execution: CommandEx
 
     return {
         notes,
+        notePaths,
         onInvalidSchedule: (path) => {
             logger.warn({ path }, 'Invalid daily reminder schedule');
         },

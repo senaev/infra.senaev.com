@@ -56,26 +56,24 @@ export function dailyNotePathForRootNote(path: string): string | null {
 
 /** The complete editable daily note; headers and footers remain plugin widgets. */
 export function renderDailyNote(day: string, reminders: ReminderSource = { notes: [] }): string {
-    if (!isDailyNoteDate(day)) {
-        throw new Error(`Invalid daily note date: ${day}`);
-    }
+    const path = dailyNotePath(day);
 
     return `
-${renderReminders(day, 'morning', reminders)}\`\`\`tasks
+${renderReminders(day, 'morning', reminders, path)}\`\`\`tasks
 filter by function window.senaevPersonalTools.filterTasksForDaily({task, query})
 sort by function window.senaevPersonalTools.sortKeyForDaily({task})
 \`\`\`
 
 ---
 
-${renderReminders(day, 'day', reminders)}
+${renderReminders(day, 'day', reminders, path)}
 ---
 
 ${DIARY_RECORD_MARKER}
 
 ---
 
-${renderReminders(day, 'evening', reminders)}`;
+${renderReminders(day, 'evening', reminders, path)}`;
 }
 
 const FRONTMATTER = /^(---\r?\n(?:[\s\S]*?\r?\n)?---(?:\r?\n|$))([\s\S]*)$/;
