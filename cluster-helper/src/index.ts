@@ -25,8 +25,6 @@ import {
     GOOGLE_OAUTH_ADMIN_EMAILS,
     GOOGLE_OAUTH_CLIENT_ID,
     GOOGLE_OAUTH_CLIENT_SECRET,
-    LLM_ENDPOINT_API_KEY,
-    LLM_SERVER_URL,
     MCP_DOMAIN,
     MCP_GRAFANA_URL,
     TELEGRAM_PUBLIC_API_SECRET,
@@ -36,8 +34,6 @@ import {
 } from './env';
 import { handleAlisaRequest } from './trickyDad/handleAlisaRequest';
 import { isAllowedAlisaRequest, parseAlisaAllowedUserIds } from './trickyDad/isAllowedAlisaRequest';
-import { LLM_ENDPOINT_PREFIX, llmEndpoint } from './llm/llmEndpoint';
-import { getLlmEndpointModels } from './llm/llmEndpointModels';
 import { logger } from './logger';
 import { mcpEndpoints, mcpResources } from './mcpEndpoints';
 import {
@@ -73,10 +69,9 @@ const HOST = '0.0.0.0';
 //
 // PUBLIC_PORT is what the five ingresses target -- api.senaev.com,
 // auth.senaev.com, mcp.senaev.com, s.senaev.com and static.senaev.com. Every route on it is either
-// authenticated (Telegram secret token, Alisa secret path or skill and user check, OAuth bearer tokens for the
-// MCP endpoints, the API key of /llm, the bearer secret of /telegram-public-bot-api), part of
-// the OAuth flow, or safe to publish, and the catch-all
-// below answers 401 so nothing new leaks by accident.
+// authenticated (Telegram secret token, Alisa skill and user check, OAuth bearer tokens for the
+// MCP endpoints, the bearer secret of /telegram-public-bot-api), part of the OAuth flow, or
+// safe to publish. The catch-all answers 401.
 //
 // Serving both from one Fastify instance would publish the internal routes, so do not
 // merge them.
@@ -516,14 +511,6 @@ async function main(): Promise<void> {
         replyToCodeMessage: (message, reply) => replyToMcpMessage(message, reply, CODE_MCP_SERVER),
         replyToTelegramMessage: (message, reply) => replyToMcpMessage(message, reply, TELEGRAM_MCP_SERVER),
         grafanaUpstreamUrl: MCP_GRAFANA_URL,
-    });
-
-    // No host constraint: the same path serves https://api.senaev.com/llm and, inside the
-    // cluster, http://cluster-helper:3000/llm.
-    await publicServer.register(llmEndpoint, {
-        prefix: LLM_ENDPOINT_PREFIX,
-        apiKey: LLM_ENDPOINT_API_KEY,
-        models: getLlmEndpointModels(LLM_SERVER_URL),
     });
 
     await publicServer.register(telegramPublicApi, {

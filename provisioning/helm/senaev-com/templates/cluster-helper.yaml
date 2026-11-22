@@ -127,12 +127,6 @@ spec:
             - name: LLM_SERVER_URL
               value: "http://llm-server:{{ .Values.llmServer.port }}"
             {{- end }}
-            - name: LLM_ENDPOINT_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: senaev-com-kv-secrets
-                  key: LLM_ENDPOINT_API_KEY
-                  optional: false
             - name: TELEGRAM_PUBLIC_API_SECRET
               valueFrom:
                 secretKeyRef:
@@ -290,10 +284,6 @@ spec:
           podSelector:
             matchLabels:
               app: traefik
-        # /llm, with the API key
-        - podSelector:
-            matchLabels:
-              app: n8n
       ports:
         - protocol: TCP
           port: 3000
