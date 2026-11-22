@@ -37,5 +37,5 @@ CREATE TABLE IF NOT EXISTS otel.otel_logs (
 ) ENGINE = MergeTree()
 PARTITION BY toDate(Timestamp)
 ORDER BY (toStartOfFiveMinutes(Timestamp), ServiceName, Timestamp)
-TTL toDateTime(Timestamp) + INTERVAL 14 DAY
+TTL toDateTime(Timestamp) + INTERVAL 450 DAY
 SETTINGS index_granularity = 8192, ttl_only_drop_parts = 1;

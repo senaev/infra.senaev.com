@@ -1,3 +1,11 @@
+## 2026-11-22 00:34 UTC — Set log retention to 450 days
+
+The user set the pilot's retention to 450 days before the first deployment. ClickHouse accepted the rendered Helm schema on a fresh database and reported:
+
+```text
+TTL toDateTime(Timestamp) + toIntervalDay(450)
+```
+
 ## 2026-11-21 20:48 UTC — Implemented the Hetzner pilot
 
 The user chose `senaev-madrid` for ClickHouse and kept the gateway and persistent queue on Hetzner. The first DaemonSet agent is restricted to Hetzner. The ClickHouse server uses the OpenTelemetry Collector Contrib v0.165.0 table definition, adjusted for the 14-day TTL. Grafana uses the read-only account. The ClickHouse and OTLP services have ingress NetworkPolicies.
