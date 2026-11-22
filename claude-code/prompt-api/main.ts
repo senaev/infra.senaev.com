@@ -2,7 +2,6 @@ import { mkdir } from 'node:fs/promises';
 
 import { requireEnv } from 'senaev-utils/src/utils/env/requireEnv/requireEnv';
 import { createShutdownController } from 'senaev-utils/src/utils/process/createShutdownController';
-import { waitForShutdownCleanup } from 'senaev-utils/src/utils/process/waitForShutdownCleanup';
 
 import { logger } from './logger';
 import { createPromptRunner, spawnClaude } from './runPrompt';
@@ -29,7 +28,7 @@ const reportShutdownError = (error: unknown) => logger.error(error, '❌ Prompt 
 const subscribeShutdown = createShutdownController(process, reportShutdownError);
 
 subscribeShutdown(() => {
-    closing ??= waitForShutdownCleanup(server.close());
+    closing ??= server.close();
 
     return closing;
 });
@@ -52,7 +51,7 @@ async function main(): Promise<void> {
 main().catch(async (error) => {
     if (!closing) {
         logger.error(error, '❌ Prompt API exited');
-        closing = waitForShutdownCleanup(server.close()).catch(reportShutdownError).finally(() => {
+        closing = server.close().catch(reportShutdownError).finally(() => {
             process.exit(1);
         });
         await closing;

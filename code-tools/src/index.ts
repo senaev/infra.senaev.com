@@ -1,5 +1,4 @@
 import { createShutdownController } from 'senaev-utils/src/utils/process/createShutdownController';
-import { waitForShutdownCleanup } from 'senaev-utils/src/utils/process/waitForShutdownCleanup';
 
 import { logger } from './logger';
 import { runCodeToolsServer } from './server/runCodeToolsServer';
@@ -17,7 +16,7 @@ async function main(): Promise<void> {
     subscribeShutdown(() => {
         stopping = true;
 
-        return waitForShutdownCleanup(starting.then((server) => server.close(), () => undefined));
+        return starting.then((server) => server.close(), () => undefined);
     });
 
     await starting;

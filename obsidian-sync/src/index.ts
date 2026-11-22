@@ -1,5 +1,4 @@
 import { createShutdownController } from 'senaev-utils/src/utils/process/createShutdownController';
-import { waitForShutdownCleanup } from 'senaev-utils/src/utils/process/waitForShutdownCleanup';
 
 import { logger } from './logger';
 import { runContinuousSync } from './obsidian-cli/runContinuousSync';
@@ -34,7 +33,7 @@ async function stop(): Promise<void> {
 }
 
 subscribeShutdown(() => {
-    closing ??= waitForShutdownCleanup(stop());
+    closing ??= stop();
 
     return closing;
 });
@@ -58,7 +57,7 @@ async function main(): Promise<void> {
 main().catch(async (error) => {
     if (!closing) {
         logger.error(error, '❌ obsidian-sync exited');
-        closing = waitForShutdownCleanup(stop()).catch(reportShutdownError).finally(() => {
+        closing = stop().catch(reportShutdownError).finally(() => {
             process.exit(1);
         });
         await closing;

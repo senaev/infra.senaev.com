@@ -109,13 +109,17 @@ function stop() {
 }
 
 describe('Obsidian process wiring', () => {
-    it('closes the HTTP manager and drains background work before exiting on a signal', async () => {
+    it('closes the HTTP manager and waits for background work past the former deadline', async () => {
+        vi.useFakeTimers({
+            toFake: [
+                'setTimeout',
+                'clearTimeout',
+            ],
+        });
         const { exit, finished } = observeExit();
-        let release: () => void = () => undefined;
+        const backgroundClosed = completion();
 
-        mocks.closeBackground.mockReturnValue(new Promise<void>((resolve) => {
-            release = resolve;
-        }));
+        mocks.closeBackground.mockReturnValue(backgroundClosed.promise);
         await import('./index.js');
         await started.promise;
         expect(mocks.continuous).toHaveBeenCalledTimes(1);
@@ -123,8 +127,9 @@ describe('Obsidian process wiring', () => {
         await serverClosed.promise;
         expect(mocks.closeServer).toHaveBeenCalledTimes(1);
         expect(mocks.continuous.mock.calls[0]?.[0].aborted).toBe(true);
+        await vi.advanceTimersByTimeAsync(10_001);
         expect(exit).not.toHaveBeenCalled();
-        release();
+        backgroundClosed.resolve();
         await finished;
         expect(exit).toHaveBeenCalledExactlyOnceWith(0);
     });
@@ -156,33 +161,5 @@ describe('Obsidian process wiring', () => {
         expect(exit).toHaveBeenCalledExactlyOnceWith(1);
         expect(mocks.closeServer).toHaveBeenCalledTimes(1);
         expect(mocks.closeBackground).toHaveBeenCalledTimes(1);
-    });
-
-    it('exits with an error after ten seconds if cleanup hangs', async () => {
-        vi.useFakeTimers({
-            toFake: [
-                'setTimeout',
-                'clearTimeout',
-            ],
-        });
-        const { exit, finished } = observeExit();
-        const backgroundClosed = completion();
-
-        mocks.closeBackground.mockReturnValue(backgroundClosed.promise);
-        await import('./index.js');
-        await started.promise;
-        stop();
-
-        await vi.advanceTimersByTimeAsync(9999);
-        expect(exit).not.toHaveBeenCalled();
-        await vi.advanceTimersByTimeAsync(1);
-        await finished;
-        backgroundClosed.resolve();
-
-        expect(exit).toHaveBeenCalledExactlyOnceWith(1);
-        expect(mocks.logger.error).toHaveBeenCalledExactlyOnceWith(
-            new Error('Service cleanup exceeded shutdown grace'),
-            '❌ Obsidian shutdown failed'
-        );
     });
 });
