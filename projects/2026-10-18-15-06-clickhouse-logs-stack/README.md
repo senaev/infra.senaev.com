@@ -15,9 +15,9 @@ A node-local Collector reads Kubernetes container stdout and stderr and adds Kub
 
 ## Plan
 
-1. Add `CLICKHOUSE_WRITER_PASSWORD` and `CLICKHOUSE_READER_PASSWORD` to the existing Vault `kv/senaev-com-kv` record as two independent random secrets. The [Vault editor](https://vault.senaev.com/ui/vault/secrets/kv/kv/senaev-com-kv/details/edit) and `vault kv patch kv/senaev-com-kv` both support preserving the existing keys.
-2. Merge the pilot once the Vault keys are in place. CI deploys the `clickhouse-logs` and `vm-stack` releases in `telemetry`. External Secrets creates `clickhouse-logs-writer` and `clickhouse-logs-reader`.
-3. Verify the Hetzner pilot, then deploy one agent on every Linux node.
+1. The Hetzner pilot was deployed and verified after both Vault password keys were in place. [Pilot deployment](https://github.com/senaev/infra.senaev.com/actions/runs/45048887994/attempts/2)
+2. Merge the cluster-wide rollout. CI upgrades the `clickhouse-logs` release and deploys one agent on every Linux node.
+3. Verify that every node contributes logs. Compare ClickHouse with Datadog on their shared nodes.
 
 ## Verification
 
@@ -26,7 +26,7 @@ A node-local Collector reads Kubernetes container stdout and stderr and adds Kub
   kubectl -n telemetry wait --for=condition=Ready externalsecret/clickhouse-logs-writer externalsecret/clickhouse-logs-reader --timeout=60s
   kubectl -n telemetry get pods -o wide -l 'app in (clickhouse-logs,otel-logs-gateway,otel-logs-agent)'
   ```
-- In Grafana Explore, find a fresh line from a known pod by filtering for its namespace and pod name. After cluster-wide rollout, use SQL mode to check that every node with active pods contributes fresh logs.
+- Use the SQL query below to check for recent logs from each node. If a node is quiet, emit a distinctive line from a pod on that node and find it in Grafana Explore by filtering on the namespace and pod name.
   ```sql
   SELECT
       ResourceAttributes['k8s.node.name'] AS node,
