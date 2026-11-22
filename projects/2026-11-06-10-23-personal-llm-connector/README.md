@@ -2,6 +2,14 @@
 
 Provide one OpenAI-compatible API and model list for models running in the cluster.
 
+## Verification
+
+- After rollout, `GET https://api.senaev.com/llm/models` returns the public catch-all
+  response, HTTP 401 with the body `Unauthorized`. Posting an empty JSON object to
+  `https://api.senaev.com/llm/chat/completions` returns HTTP 404.
+- The deployed cluster-helper NetworkPolicy allows n8n to use the internal port 80
+  and restricts port 3000 to Traefik. The n8n job search workflow uses port 80.
+
 ## Result
 
 Canceled on 2026-11-21. The owner concluded that the available hardware could not support
