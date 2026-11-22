@@ -7,7 +7,15 @@ import {
 import { createShutdownController } from './createShutdownController';
 
 function createFakeProcess() {
-    return Object.assign(new EventEmitter(), { exit: vi.fn() });
+    let exited: (code: number) => void = () => undefined;
+    const exitCode = new Promise<number>((resolve) => {
+        exited = resolve;
+    });
+
+    return Object.assign(new EventEmitter(), {
+        exit: vi.fn((code: number) => exited(code)),
+        exitCode,
+    });
 }
 
 describe('createShutdownController', () => {
@@ -16,11 +24,16 @@ describe('createShutdownController', () => {
         const subscribeShutdown = createShutdownController(process, vi.fn());
         const events: string[] = [];
         let finishSecond: () => void = () => undefined;
+        let secondStarted: () => void = () => undefined;
+        const secondHasStarted = new Promise<void>((resolve) => {
+            secondStarted = resolve;
+        });
 
         subscribeShutdown(() => {
             events.push('first');
         });
         subscribeShutdown(() => new Promise<void>((resolve) => {
+            secondStarted();
             finishSecond = () => {
                 events.push('second');
                 resolve();
@@ -31,15 +44,14 @@ describe('createShutdownController', () => {
         });
 
         process.emit('SIGTERM');
-        await vi.waitFor(() => {
-            expect(events).toEqual(['third']);
-        });
+        await secondHasStarted;
+
+        expect(events).toEqual(['third']);
         expect(process.exit).not.toHaveBeenCalled();
 
         finishSecond();
-        await vi.waitFor(() => {
-            expect(process.exit).toHaveBeenCalledExactlyOnceWith(0);
-        });
+
+        expect(await process.exitCode).toBe(0);
         expect(events).toEqual([
             'third',
             'second',
@@ -60,9 +72,8 @@ describe('createShutdownController', () => {
         });
 
         process.emit('SIGINT');
-        await vi.waitFor(() => {
-            expect(process.exit).toHaveBeenCalledExactlyOnceWith(1);
-        });
+
+        expect(await process.exitCode).toBe(1);
         expect(reportError).toHaveBeenCalledExactlyOnceWith(failure);
         expect(closeFirst).toHaveBeenCalledTimes(1);
     });
@@ -75,9 +86,9 @@ describe('createShutdownController', () => {
         subscribeShutdown(close);
         process.emit('SIGTERM');
         process.emit('SIGINT');
-        await vi.waitFor(() => {
-            expect(process.exit).toHaveBeenCalledTimes(1);
-        });
+        await process.exitCode;
+
+        expect(process.exit).toHaveBeenCalledTimes(1);
         expect(close).toHaveBeenCalledTimes(1);
     });
 

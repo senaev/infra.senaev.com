@@ -54,9 +54,6 @@ export type VaultInventory = {
     totalBytes: number;
     byType: Record<string, { files: number; bytes: number }>;
     largest: VaultFileStat | null;
-    largestFiles: VaultFileStat[];
-    /** Only present for authenticated per-file lookups; never exported as metrics. */
-    files?: VaultFileStat[];
     oversizedFiles: number;
 };
 
@@ -70,8 +67,13 @@ function fileType(name: string): string {
     return KNOWN_TYPES.has(extension) ? extension : 'other';
 }
 
+/** The bigger file wins; equal sizes go to the path that sorts first, so the result does not depend on the scan order. */
+function isLarger(candidate: VaultFileStat, current: VaultFileStat | null): boolean {
+    return !current || candidate.bytes > current.bytes || candidate.bytes === current.bytes && candidate.path.localeCompare(current.path) < 0;
+}
+
 /** Read metadata only. Never follow symbolic links, including directory links. */
-export async function scanVaultInventory(root: string, includeFiles = false): Promise<VaultInventory> {
+export async function scanVaultInventory(root: string): Promise<VaultInventory> {
     const scanRoot = await lstat(root);
 
     if (!scanRoot.isDirectory() || scanRoot.isSymbolicLink()) {
@@ -84,9 +86,7 @@ export async function scanVaultInventory(root: string, includeFiles = false): Pr
         totalBytes: 0,
         byType: {},
         largest: null,
-        largestFiles: [],
         oversizedFiles: 0,
-        ...includeFiles ? { files: [] } : {},
     };
     const queue = [root];
 
@@ -145,16 +145,11 @@ export async function scanVaultInventory(root: string, includeFiles = false): Pr
                 result.oversizedFiles++;
             }
 
-            result.files?.push(stat);
-            result.largestFiles.push(stat);
-            result.largestFiles.sort((a, b) => b.bytes - a.bytes || a.path.localeCompare(b.path));
-            if (result.largestFiles.length > 10) {
-                result.largestFiles.pop();
+            if (isLarger(stat, result.largest)) {
+                result.largest = stat;
             }
         }
     }
-
-    result.largest = result.largestFiles[0] ?? null;
 
     return result;
 }

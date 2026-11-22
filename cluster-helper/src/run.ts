@@ -89,11 +89,19 @@ export async function run(): Promise<void> {
         credentials: certificates.credentials,
     });
 
-    subscribeShutdown(() => Promise.all([
-        internalServer.close(),
-        publicServer.close(),
-        mtlsServer.close(),
-    ]));
+    subscribeShutdown(async () => {
+        // Wait for every server, also after one fails: the client closes next and the others may still serve requests.
+        const results = await Promise.allSettled([
+            internalServer.close(),
+            publicServer.close(),
+            mtlsServer.close(),
+        ]);
+        const errors = results.flatMap((result) => result.status === 'rejected' ? [result.reason] : []);
+
+        if (errors.length) {
+            throw new AggregateError(errors, 'Failed to close a server');
+        }
+    });
 
     await startTorrentOutboxProcessor(subscribeShutdown);
     logger.info('✅ Torrent outbox processor started');

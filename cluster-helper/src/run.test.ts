@@ -7,15 +7,22 @@ import { run } from './run';
 const mocks = vi.hoisted(() => {
     const closed: string[] = [];
 
+    const failingServers = new Set<string>();
+
     return {
         closed,
+        failingServers,
+        publicServerWebhookSecretToken: undefined as string | undefined,
+        loggerError: vi.fn(),
         createServer: (name: string) => {
             return {
                 listen: () => Promise.resolve(),
                 close: () => {
                     closed.push(`${name} server`);
 
-                    return Promise.resolve();
+                    return failingServers.has(name)
+                        ? Promise.reject(new Error(`${name} server failed to close`))
+                        : Promise.resolve();
                 },
             };
         },
@@ -35,7 +42,7 @@ vi.mock('./logger', () => {
     return {
         logger: {
             info: vi.fn(),
-            error: vi.fn(),
+            error: mocks.loggerError,
         },
     };
 });
@@ -55,7 +62,11 @@ vi.mock('./createInternalServer', () => {
 vi.mock('./createPublicServer', () => {
     return {
         TELEGRAM_WEBHOOK_PATH: '/telegram-webhook',
-        createPublicServer: () => Promise.resolve(mocks.createServer('public')),
+        createPublicServer: ({ webhookSecretToken }: { webhookSecretToken: string }) => {
+            mocks.publicServerWebhookSecretToken = webhookSecretToken;
+
+            return Promise.resolve(mocks.createServer('public'));
+        },
     };
 });
 vi.mock('./torrentOutbox', () => {
@@ -103,9 +114,13 @@ vi.mock('senaev-utils/src/utils/TelegramApi/callTelegramApi', () => {
 });
 
 const signalHandlers = new Map<string, () => void>();
+let exited: Promise<number | undefined>;
 
 beforeEach(() => {
     mocks.closed.length = 0;
+    mocks.failingServers.clear();
+    mocks.publicServerWebhookSecretToken = undefined;
+    mocks.loggerError.mockReset();
     signalHandlers.clear();
     mocks.getCurrentTelegramBotInfo.mockReset().mockResolvedValue({ id: 1 });
     mocks.callTelegramApi.mockReset().mockResolvedValue(undefined);
@@ -114,7 +129,11 @@ beforeEach(() => {
 
         return process;
     }) as typeof process.once);
-    vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+    exited = new Promise((resolve) => {
+        vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
+            resolve(code);
+        }) as typeof process.exit);
+    });
 });
 
 describe('run', () => {
@@ -124,10 +143,8 @@ describe('run', () => {
         expect(mocks.closed).toEqual([]);
 
         signalHandlers.get('SIGTERM')?.();
-        await vi.waitFor(() => {
-            expect(process.exit).toHaveBeenCalledExactlyOnceWith(0);
-        });
 
+        expect(await exited).toBe(0);
         expect(mocks.closed).toEqual([
             'torrent outbox',
             'internal server',
@@ -136,6 +153,37 @@ describe('run', () => {
             'obsidian-sync client',
             'certificate watcher',
         ]);
+    });
+
+    it('closes the other servers, the client and the watcher when one server fails to close, then exits with 1', async () => {
+        mocks.failingServers.add('internal');
+        await run();
+
+        signalHandlers.get('SIGTERM')?.();
+
+        expect(await exited).toBe(1);
+        expect(mocks.closed).toEqual([
+            'torrent outbox',
+            'internal server',
+            'public server',
+            'mtls server',
+            'obsidian-sync client',
+            'certificate watcher',
+        ]);
+        expect(mocks.loggerError).toHaveBeenCalledExactlyOnceWith(
+            expect.objectContaining({ errors: [expect.objectContaining({ message: 'internal server failed to close' })] }),
+            expect.any(String)
+        );
+    });
+
+    it('gives Telegram the same webhook secret that the public server checks', async () => {
+        await run();
+
+        expect(mocks.publicServerWebhookSecretToken).toMatch(/^[0-9a-f]{64}$/u);
+        expect(mocks.callTelegramApi).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+            method: 'setWebhook',
+            body: expect.objectContaining({ secret_token: mocks.publicServerWebhookSecretToken }),
+        }));
     });
 
     it('throws when the start fails, and leaves the exit to the caller', async () => {

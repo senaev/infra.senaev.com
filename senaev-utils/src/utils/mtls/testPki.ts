@@ -67,14 +67,18 @@ export function renewTestCa(ca: TestCa, validity: Validity = {}): Promise<TestCa
     return createCaCertificate(ca.name, ca.keys, validity, '03');
 }
 
-/** A leaf certificate with exactly one DNS name, usable only as a server or only as a client. */
+/**
+ * A leaf certificate with exactly one DNS name, usable only as a server or only as a client.
+ * `dnsName` is also the subject CN; `withoutSubjectAltName` leaves the name in the CN only.
+ */
 export async function issueTestCertificate({
     ca,
     dnsName,
     usage,
     serialNumber = '02',
+    withoutSubjectAltName = false,
     ...validity
-}: Validity & { ca: TestCa; dnsName: string; usage: 'server' | 'client'; serialNumber?: string }): Promise<TlsFiles> {
+}: Validity & { ca: TestCa; dnsName: string; usage: 'server' | 'client'; serialNumber?: string; withoutSubjectAltName?: boolean }): Promise<TlsFiles> {
     const keys = await crypto.subtle.generateKey(ALGORITHM, true, [
         'sign',
         'verify',
@@ -93,12 +97,16 @@ export async function issueTestCertificate({
             new x509.BasicConstraintsExtension(false, undefined, true),
             new x509.KeyUsagesExtension(x509.KeyUsageFlags.digitalSignature, true),
             new x509.ExtendedKeyUsageExtension([usage === 'server' ? x509.ExtendedKeyUsage.serverAuth : x509.ExtendedKeyUsage.clientAuth]),
-            new x509.SubjectAlternativeNameExtension([
-                {
-                    type: 'dns',
-                    value: dnsName,
-                },
-            ]),
+            ...withoutSubjectAltName
+                ? []
+                : [
+                    new x509.SubjectAlternativeNameExtension([
+                        {
+                            type: 'dns',
+                            value: dnsName,
+                        },
+                    ]),
+                ],
         ],
     });
 

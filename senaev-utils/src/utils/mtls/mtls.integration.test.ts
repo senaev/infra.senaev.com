@@ -156,6 +156,34 @@ describe('mTLS between a client and a server', () => {
         expect(await response.text()).toBe('forbidden');
     });
 
+    it.each([
+        [
+            'a wildcard name that covers the caller',
+            {
+                dnsName: '*.test.svc.cluster.local',
+                withoutSubjectAltName: false,
+            },
+        ],
+        [
+            'the caller name only in the subject CN, without a SAN',
+            {
+                dnsName: CALLER_NAME,
+                withoutSubjectAltName: true,
+            },
+        ],
+    ])('denies a certificate of the CA with %s', async (_description, certificate) => {
+        const pki = await createPki();
+        const lookalike = await issueTestCertificate({
+            ca: pki.ca,
+            usage: 'client',
+            ...certificate,
+        });
+        const { origin } = await startServer(pki.server);
+        const response = await startClient(origin, lookalike).fetch(`${origin}/`);
+
+        expect(response.status).toBe(403);
+    });
+
     it('denies a client whose certificate expired on a connection that is still open', async () => {
         const pki = await createPki();
         let now = new Date();
@@ -222,19 +250,32 @@ describe('mTLS between a client and a server', () => {
         await expect(startClient(origin, pki.client).fetch(`${origin}/`)).rejects.toThrow();
     });
 
-    it('does not send the certificate to another origin or follow a redirect', async () => {
+    it('does not send the certificate to another origin', async () => {
         const pki = await createPki();
-        const { server, origin } = await startServer(pki.server);
+        const { origin } = await startServer(pki.server);
         const client = startClient(origin, pki.client);
 
         await expect(client.fetch('https://localhost:1/')).rejects.toThrow('Refusing to send the client certificate');
-        server.removeAllListeners('request');
-        server.on('request', (_request, response) => {
+    });
+
+    it('does not follow a redirect, also to a server that would accept the certificate', async () => {
+        const pki = await createPki();
+        const redirecting = await startServer(pki.server);
+        const target = await startServer(pki.server);
+        const requestsToTarget: string[] = [];
+
+        target.server.on('request', (request) => {
+            requestsToTarget.push(request.url ?? '');
+        });
+        redirecting.server.removeAllListeners('request');
+        redirecting.server.on('request', (_request, response) => {
             response.statusCode = 302;
-            response.setHeader('location', 'https://example.com/');
+            response.setHeader('location', `${target.origin}/`);
             response.end();
         });
-        await expect(client.fetch(`${origin}/`)).rejects.toThrow();
+
+        await expect(startClient(redirecting.origin, pki.client).fetch(`${redirecting.origin}/`)).rejects.toThrow();
+        expect(requestsToTarget).toEqual([]);
     });
 
     it('uses renewed certificates for new connections without a restart', async () => {

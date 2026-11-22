@@ -1,3 +1,23 @@
+## 2026-11-22 UTC — Fixes from the robot review of the PR
+
+Done: the three servers of cluster-helper close with `Promise.allSettled` and throw an `AggregateError`
+afterwards, so the client closes only after every server finished and the controller still reports the
+failure and exits with 1. `scanVaultInventory` lost `includeFiles`, the `files` field and `largestFiles`
+(a running maximum with a path tie-break replaces the top-10 list). Tests added or fixed: wildcard SAN
+and CN-only certificates are denied; the redirect test now redirects to a server that would accept the
+certificate and counts its requests; the real `registerMtlsAuthentication` hook is tested for the
+caller and for an expired certificate (fake `Date`); the allowed-caller route test pins the status
+that each route answers; `run.test.ts` checks that the webhook secret of the public server and of
+`setWebhook` is the same, and a failing server close; the shutdown tests wait on the `exit` call, not on
+`vi.waitFor`.
+
+Not done, on purpose: dropping the `path` label of `obsidian_vault_largest_file_bytes`. `/metrics` was
+already on port 8080 and reachable by nextjs-app before this PR, an attacker needs an SSRF in
+nextjs-app, and the label gives only a file name, which the 4.5 MB early warning needs. If it must
+close, give `/metrics` its own port that only vmagent can reach (a follow-up, not a fix here).
+Also not done: tests for the routes moved into `createPublicServer` and `createInternalServer` (they
+had none in `index.ts` either), and the other low-value test gaps.
+
 ## 2026-11-22 UTC — `createShutdownController(process, reportError)` owns the closers
 
 `senaev-utils/src/utils/process/createShutdownController.ts` listens once for SIGTERM and SIGINT and
@@ -170,8 +190,8 @@ the pino logger was typed as `FastifyBaseLogger` in the server factories.
 Nothing in the repo called it, and it was the only reason to split `registerVaultMetricsRoutes`
 in two (it returns file names, so it could not share the public HTTP instance with `/metrics`).
 The route, its tests and its README text are removed, and `registerVaultMetricsRoutes` has only
-`/metrics` again. `scanVaultInventory(root, includeFiles)` still has the `includeFiles` option that
-only this route used.
+`/metrics` again. (The `includeFiles` option of `scanVaultInventory`, which only this route used,
+was removed later: see the record about the robot review.)
 
 ## 2026-11-21 UTC — Authorization per route in obsidian-sync, not in the utils
 

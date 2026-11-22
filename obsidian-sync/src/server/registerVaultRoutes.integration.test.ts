@@ -19,30 +19,37 @@ const PROTECTED_REQUESTS = [
     {
         method: 'POST',
         path: '/vault/list',
+        reachedStatus: 200,
     },
     {
         method: 'POST',
         path: '/vault-file-resource',
+        reachedStatus: 400,
     },
     {
         method: 'POST',
         path: '/tasks',
+        reachedStatus: 400,
     },
     {
         method: 'POST',
         path: '/short_links',
+        reachedStatus: 400,
     },
     {
         method: 'GET',
         path: '/short_links/abc',
+        reachedStatus: 404,
     },
     {
         method: 'GET',
         path: '/milestones',
+        reachedStatus: 500,
     },
     {
         method: 'GET',
         path: '/public-static/index.html',
+        reachedStatus: 404,
     },
 ] as const;
 
@@ -117,11 +124,13 @@ afterAll(async () => {
 });
 
 describe('protected vault routes', () => {
-    it.each(PROTECTED_REQUESTS)('let the allowed service through: $method $path', async ({ method, path }) => {
+    // The requests carry no valid input, so the status is what the route itself answers to them.
+    it.each(PROTECTED_REQUESTS)('let the allowed service through to the route: $method $path', async ({
+        method, path, reachedStatus,
+    }) => {
         const response = await allowedClient.fetch(`${protectedOrigin}${path}`, { method });
 
-        expect(response.status).not.toBe(401);
-        expect(response.status).not.toBe(403);
+        expect(response.status).toBe(reachedStatus);
     });
 
     it.each(PROTECTED_REQUESTS)('refuse another service with a valid certificate: $method $path', async ({ method, path }) => {

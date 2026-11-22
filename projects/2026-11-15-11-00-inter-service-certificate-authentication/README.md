@@ -113,7 +113,9 @@ in ChatGPT MCP.
 📌 Move nextjs-app (published notes and files) and vmagent (`/metrics`) to mTLS as well: give
 them certificates from the same CA, check them on obsidian-sync, and close the plain HTTP port
 8080. The final state is that all traffic to obsidian-sync is under mTLS. Not in this PR: it
-needs changes in the Next.js app and in the vmagent scrape configuration.
+needs changes in the Next.js app and in the vmagent scrape configuration. It also ends the
+exposure of `/metrics` to nextjs-app: until then, nextjs-app can read the `path` label of
+`obsidian_vault_largest_file_bytes` (a vault file name), as it could before this PR.
 
 📌 Delete the old Secret `cluster-helper-client-tls` in `senaev-com` after the deploy. The
 certificate was renamed to `cluster-helper-tls`, and cert-manager does not delete the Secret of a
