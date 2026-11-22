@@ -1,3 +1,13 @@
+## 2026-11-22 17:08 UTC — Enabled synchronous log emission on the agent
+
+The user confirmed both Vault password entries were added. The agent now passes `--feature-gates=stanza.synchronousLogEmitter` so filelog hands off each batch to the persistent exporter queue before advancing its checkpoint. Collector v0.165.0 accepted the rendered agent configuration.
+
+A local CRI fixture queued 24 logs with the gateway offline. After a forced agent stop, the gateway came online and the restarted agent delivered the queued logs to ClickHouse.
+
+```text
+Recovered all 24 distinct fixture logs in ClickHouse after the abrupt agent restart.
+```
+
 ## 2026-11-22 00:34 UTC — Set log retention to 450 days
 
 The user set the pilot's retention to 450 days before the first deployment. ClickHouse accepted the rendered Helm schema on a fresh database and reported:

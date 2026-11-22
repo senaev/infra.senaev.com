@@ -16,6 +16,9 @@ otel-agent:
     repository: otel/opentelemetry-collector-contrib
   command:
     name: otelcol-contrib
+    # Hand off records to the persistent queue before filelog advances its checkpoint.
+    extraArgs:
+      - --feature-gates=stanza.synchronousLogEmitter
   podLabels:
     app: otel-logs-agent
   # Expand to the other nodes after verifying this pilot.
