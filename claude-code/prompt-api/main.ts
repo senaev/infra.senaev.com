@@ -1,7 +1,7 @@
 import { mkdir } from 'node:fs/promises';
 
 import { requireEnv } from 'senaev-utils/src/utils/env/requireEnv/requireEnv';
-import { installGracefulShutdown } from 'senaev-utils/src/utils/process/installGracefulShutdown';
+import { createShutdownController } from 'senaev-utils/src/utils/process/createShutdownController';
 
 import { logger } from './logger';
 import { createPromptRunner, spawnClaude } from './runPrompt';
@@ -23,10 +23,12 @@ const server = createPromptApiServer(createPromptRunner({
     timeoutMs: RUN_TIMEOUT_MS,
 }));
 
-const lifecycle = installGracefulShutdown({
-    stop: () => server.close(),
+const lifecycle = createShutdownController({
+    process,
     reportError: (error) => logger.error(error, '❌ Prompt API shutdown failed'),
 });
+
+lifecycle.subscribeShutdown(() => server.close());
 
 async function main(): Promise<void> {
     await mkdir(RUN_DIRECTORY, { recursive: true });

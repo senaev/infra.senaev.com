@@ -48,10 +48,12 @@ const MTLS_PORT = 8443;
 export async function run(): Promise<void> {
     logStartupStep('modules loaded');
 
-    const subscribeShutdown = createShutdownController(
+    const { subscribeShutdown } = createShutdownController({
         process,
-        (error) => logger.error(error, '❌ Failed to close a part of the service')
-    );
+        reportError: (error) => logger.error(error, '❌ Failed to close a part of the service'),
+        graceMs: null,
+        forceExitOnRepeatedSignal: true,
+    });
     let isReady = false;
 
     const certificates = await watchTlsCredentials({ logger });

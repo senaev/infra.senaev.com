@@ -262,10 +262,12 @@ server.post<{ Params: { secret: string } }>('/:secret', async (request, reply) =
 });
 
 async function main(): Promise<void> {
-    const subscribeShutdown = createShutdownController(
+    const { subscribeShutdown } = createShutdownController({
         process,
-        (error) => logger.error(error, '❌ Failed to close a part of the service')
-    );
+        reportError: (error) => logger.error(error, '❌ Failed to close a part of the service'),
+        graceMs: null,
+        forceExitOnRepeatedSignal: true,
+    });
     const certificates = await watchTlsCredentials({ logger });
 
     subscribeShutdown(() => certificates.stop());

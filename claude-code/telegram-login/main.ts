@@ -5,7 +5,7 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 import { requireEnv } from 'senaev-utils/src/utils/env/requireEnv/requireEnv';
-import { installGracefulShutdown } from 'senaev-utils/src/utils/process/installGracefulShutdown';
+import { createShutdownController } from 'senaev-utils/src/utils/process/createShutdownController';
 import { answerTelegramCallbackQuery } from 'senaev-utils/src/utils/TelegramApi/answerTelegramCallbackQuery';
 import { deleteTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/deleteTelegramMessage';
 import { editTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/editTelegramMessage';
@@ -170,14 +170,14 @@ const routerDependencies = {
 const routeMessage = createMessageRouter(routerDependencies);
 const routeCallbackQuery = createCallbackQueryRouter(routerDependencies);
 
-const lifecycle = installGracefulShutdown({
-    stop: () => {
-        assistant.stop();
-        codexLogin?.stop();
-
-        return Promise.resolve();
-    },
+const lifecycle = createShutdownController({
+    process,
     reportError: (error) => logger.error(error, '❌ Telegram login helper shutdown failed'),
+});
+
+lifecycle.subscribeShutdown(() => {
+    assistant.stop();
+    codexLogin?.stop();
 });
 
 // One step at a time: a login code must not be handled while a check still waits for its answer.

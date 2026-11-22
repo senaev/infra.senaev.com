@@ -1,4 +1,4 @@
-import { installGracefulShutdown } from 'senaev-utils/src/utils/process/installGracefulShutdown';
+import { createShutdownController } from 'senaev-utils/src/utils/process/createShutdownController';
 
 import { logger } from './logger';
 import { runCodeToolsServer } from './server/runCodeToolsServer';
@@ -7,12 +7,14 @@ import { createCodeToolsConfig } from './tools/codeToolsConfig';
 let server: Awaited<ReturnType<typeof runCodeToolsServer>> | undefined;
 let starting: Promise<void> | undefined;
 
-const lifecycle = installGracefulShutdown({
-    stop: async () => {
-        await starting?.catch(() => undefined);
-        await server?.close();
-    },
+const lifecycle = createShutdownController({
+    process,
     reportError: (error) => logger.error(error, '❌ Code tools shutdown failed'),
+});
+
+lifecycle.subscribeShutdown(async () => {
+    await starting?.catch(() => undefined);
+    await server?.close();
 });
 
 async function main(): Promise<void> {

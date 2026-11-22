@@ -1,4 +1,4 @@
-import { installGracefulShutdown } from 'senaev-utils/src/utils/process/installGracefulShutdown';
+import { createShutdownController } from 'senaev-utils/src/utils/process/createShutdownController';
 
 import { logger } from './logger';
 import { runContinuousSync } from './obsidian-cli/runContinuousSync';
@@ -11,21 +11,23 @@ let background: ReturnType<typeof startTelegramPostSyncInBackground> | undefined
 let continuous: Promise<void> | undefined;
 let starting: Promise<void> | undefined;
 
-const lifecycle = installGracefulShutdown({
-    stop: async () => {
-        await starting?.catch(() => undefined);
-        const outcomes = await Promise.allSettled([
-            server?.close(),
-            background?.close(),
-            continuous,
-        ]);
-        const failed = outcomes.find((outcome) => outcome.status === 'rejected');
-
-        if (failed?.status === 'rejected') {
-            throw failed.reason;
-        }
-    },
+const lifecycle = createShutdownController({
+    process,
     reportError: (error) => logger.error(error, '❌ Obsidian shutdown failed'),
+});
+
+lifecycle.subscribeShutdown(async () => {
+    await starting?.catch(() => undefined);
+    const outcomes = await Promise.allSettled([
+        server?.close(),
+        background?.close(),
+        continuous,
+    ]);
+    const failed = outcomes.find((outcome) => outcome.status === 'rejected');
+
+    if (failed?.status === 'rejected') {
+        throw failed.reason;
+    }
 });
 
 async function start(): Promise<void> {
