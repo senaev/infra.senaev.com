@@ -2,7 +2,9 @@ import type { AddressInfo } from 'node:net';
 
 import { Signal } from 'senaev-utils/src/utils/Signal/Signal';
 import { createMtlsClient, type MtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
-import { createTestCa, issueTestCertificate } from 'senaev-utils/src/utils/mtls/testPki';
+import {
+    CONNECTION_CLOSED_BY_SERVER, createTestCa, fetchWithoutClientCertificate, issueTestCertificate, type TestCa,
+} from 'senaev-utils/src/utils/mtls/testPki';
 import { parseTlsCredentials, type TlsFiles } from 'senaev-utils/src/utils/mtls/tlsCredentials';
 import {
     afterAll, beforeAll, beforeEach, describe, expect, it, vi,
@@ -15,6 +17,7 @@ const writeFile = vi.fn<(buffer: Buffer, fileName: string) => string>();
 
 let server: ReturnType<typeof createTorrentFileReceiver>;
 let origin: string;
+let testCa: TestCa;
 let clusterHelperClient: MtlsClient;
 let otherServiceClient: MtlsClient;
 
@@ -41,6 +44,7 @@ beforeAll(async () => {
         usage: 'server',
     });
 
+    testCa = ca;
     server = createTorrentFileReceiver(new Signal(parseTlsCredentials(serverFiles)), writeFile);
     await server.listen({
         port: 0,
@@ -118,6 +122,7 @@ describe('createTorrentFileReceiver', () => {
     });
 
     it('refuses a caller without a certificate at the handshake', async () => {
-        await expect(fetch(`${origin}/torrent-files`, postTorrentFile({}))).rejects.toThrow();
+        await expect(fetchWithoutClientCertificate(`${origin}/torrent-files`, testCa, postTorrentFile({}))).rejects.toMatchObject({ cause: { code: CONNECTION_CLOSED_BY_SERVER } });
+        expect(writeFile).not.toHaveBeenCalled();
     });
 });

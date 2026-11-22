@@ -2,7 +2,9 @@ import type { AddressInfo } from 'node:net';
 
 import { Signal } from 'senaev-utils/src/utils/Signal/Signal';
 import { createMtlsClient, type MtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
-import { createTestCa, issueTestCertificate } from 'senaev-utils/src/utils/mtls/testPki';
+import {
+    CONNECTION_CLOSED_BY_SERVER, createTestCa, fetchWithoutClientCertificate, issueTestCertificate, type TestCa,
+} from 'senaev-utils/src/utils/mtls/testPki';
 import { parseTlsCredentials, type TlsFiles } from 'senaev-utils/src/utils/mtls/tlsCredentials';
 import {
     afterAll, beforeAll, beforeEach, describe, expect, it, vi,
@@ -27,6 +29,7 @@ const MESSAGE = {
 
 let server: ReturnType<typeof createMtlsServer>;
 let origin: string;
+let testCa: TestCa;
 let vpnSubscriptionClient: MtlsClient;
 let otherServiceClient: MtlsClient;
 let serverFiles: TlsFiles;
@@ -49,6 +52,7 @@ function sendMessageRequest(): RequestInit {
 beforeAll(async () => {
     const ca = await createTestCa();
 
+    testCa = ca;
     serverFiles = await issueTestCertificate({
         ca,
         dnsName: 'localhost',
@@ -103,7 +107,7 @@ describe('the mTLS server of cluster-helper', () => {
     });
 
     it('refuses a caller without a certificate at the handshake and sends nothing', async () => {
-        await expect(fetch(`${origin}/telegram/send-message`, sendMessageRequest())).rejects.toThrow();
+        await expect(fetchWithoutClientCertificate(`${origin}/telegram/send-message`, testCa, sendMessageRequest())).rejects.toMatchObject({ cause: { code: CONNECTION_CLOSED_BY_SERVER } });
         expect(sendTelegramMessage).not.toHaveBeenCalled();
     });
 

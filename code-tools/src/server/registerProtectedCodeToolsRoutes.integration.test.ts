@@ -1,24 +1,24 @@
 import type { AddressInfo } from 'node:net';
 
-import Fastify, { type FastifyInstance } from 'fastify';
 import { Signal } from 'senaev-utils/src/utils/Signal/Signal';
-import { createMtlsFastifyServer } from 'senaev-utils/src/utils/mtls/createMtlsFastifyServer';
 import { createMtlsClient, type MtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
-import { createTestCa, issueTestCertificate } from 'senaev-utils/src/utils/mtls/testPki';
+import {
+    CONNECTION_CLOSED_BY_SERVER, createTestCa, fetchWithoutClientCertificate, issueTestCertificate, type TestCa,
+} from 'senaev-utils/src/utils/mtls/testPki';
 import { parseTlsCredentials, type TlsFiles } from 'senaev-utils/src/utils/mtls/tlsCredentials';
 import {
     afterAll, beforeAll, describe, expect, it,
 } from 'vitest';
 
-import { logger } from '../logger';
 import { createTestRepositories, type TestRepositories } from '../tools/createTestRepositories';
 
 import { CLUSTER_HELPER } from './callers';
-import { registerProtectedCodeToolsRoutes } from './registerProtectedCodeToolsRoutes';
+import { BODY_LIMIT_BYTES, createCodeToolsMtlsServer } from './createCodeToolsMtlsServer';
 
 let repos: TestRepositories;
-let server: FastifyInstance;
+let server: ReturnType<typeof createCodeToolsMtlsServer>;
 let origin: string;
+let testCa: TestCa;
 let allowedClient: MtlsClient;
 let otherServiceClient: MtlsClient;
 
@@ -33,19 +33,16 @@ beforeAll(async () => {
     repos = await createTestRepositories({ demo: { 'README.md': 'hello\n' } });
 
     const ca = await createTestCa();
+
+    testCa = ca;
+
     const serverFiles = await issueTestCertificate({
         ca,
         dnsName: 'localhost',
         usage: 'server',
     });
 
-    // Only the raw server type (HTTPS) differs from the plain instance; the routes do not use it.
-    server = createMtlsFastifyServer({
-        Fastify,
-        logger,
-        credentials: new Signal(parseTlsCredentials(serverFiles)),
-    }) as unknown as FastifyInstance;
-    registerProtectedCodeToolsRoutes(server, repos.config);
+    server = createCodeToolsMtlsServer(new Signal(parseTlsCredentials(serverFiles)), repos.config);
     await server.listen({
         port: 0,
         host: '127.0.0.1',
@@ -93,7 +90,21 @@ describe('protected code tools routes', () => {
         expect((await otherServiceClient.fetch(`${origin}/no-such-route`)).status).toBe(403);
     });
 
+    it('accept a body over the default Fastify limit of 1 MiB', async () => {
+        const response = await allowedClient.fetch(`${origin}/code/list`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                folder: repos.root,
+                padding: 'a'.repeat(2 * 1024 * 1024),
+            }),
+        });
+
+        expect(server.initialConfig.bodyLimit).toBe(BODY_LIMIT_BYTES);
+        expect(response.status).not.toBe(413);
+    });
+
     it('refuse a caller without a certificate at the handshake', async () => {
-        await expect(fetch(`${origin}/code/list`, listRequest())).rejects.toThrow();
+        await expect(fetchWithoutClientCertificate(`${origin}/code/list`, testCa, listRequest())).rejects.toMatchObject({ cause: { code: CONNECTION_CLOSED_BY_SERVER } });
     });
 });

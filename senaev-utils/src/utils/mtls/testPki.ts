@@ -1,6 +1,9 @@
 import 'reflect-metadata';
 
 import * as x509 from '@peculiar/x509';
+import {
+    Agent, fetch as undiciFetch, type RequestInit as UndiciRequestInit,
+} from 'undici';
 
 import type { TlsFiles } from './tlsCredentials';
 
@@ -115,4 +118,24 @@ export async function issueTestCertificate({
         cert: certificate.toString('pem'),
         ca: ca.certificatePem,
     };
+}
+
+/** The error cause when the server drops a connection that has no client certificate, after the TLS 1.3 handshake. */
+export const CONNECTION_CLOSED_BY_SERVER = 'UND_ERR_SOCKET';
+
+/**
+ * A request that trusts the server certificate of `ca` but sends no client certificate. Global
+ * `fetch` would fail earlier, on the server certificate, and prove nothing about the client one.
+ */
+export async function fetchWithoutClientCertificate(url: string, ca: TestCa, init?: RequestInit): Promise<void> {
+    const agent = new Agent({ connect: { ca: ca.certificatePem } });
+
+    try {
+        await undiciFetch(url, {
+            ...init as UndiciRequestInit,
+            dispatcher: agent,
+        });
+    } finally {
+        await agent.close();
+    }
 }

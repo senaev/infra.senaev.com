@@ -1,12 +1,11 @@
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify from 'fastify';
 import { createHealthServer } from 'senaev-utils/src/utils/http/createHealthServer';
-import { createMtlsFastifyServer } from 'senaev-utils/src/utils/mtls/createMtlsFastifyServer';
 import { watchTlsCredentials } from 'senaev-utils/src/utils/mtls/watchTlsCredentials';
 
 import { logger } from '../logger';
 import type { CodeToolsConfig } from '../tools/codeToolsConfig';
 
-import { registerProtectedCodeToolsRoutes } from './registerProtectedCodeToolsRoutes';
+import { createCodeToolsMtlsServer } from './createCodeToolsMtlsServer';
 
 const HOST = '0.0.0.0';
 const TOOLS_PORT = 8443;
@@ -21,18 +20,11 @@ const HEALTH_PORT = 8081;
  */
 export async function runCodeToolsServer(config: CodeToolsConfig): Promise<{ close: () => Promise<void> }> {
     const certificates = await watchTlsCredentials({ logger });
-    const toolsServer = createMtlsFastifyServer({
-        Fastify,
-        logger,
-        credentials: certificates.credentials,
-    });
+    const toolsServer = createCodeToolsMtlsServer(certificates.credentials, config);
     const healthServer = createHealthServer({
         Fastify,
         logger,
     });
-
-    // Only the raw server type (HTTPS) differs from the plain instance; the routes do not use it.
-    registerProtectedCodeToolsRoutes(toolsServer as unknown as FastifyInstance, config);
 
     await Promise.all([
         toolsServer.listen({
