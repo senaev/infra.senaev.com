@@ -1,3 +1,29 @@
+## 2026-11-22 00:43 UTC — Deployed and verified
+
+PR #203 was squash-merged as `790ce455` and the Deploy run (`44967022067`) succeeded in all jobs,
+`pki` and `senaev-com` included. `npm run test:smoke` passed 5 of 5; it covers the short link
+(`s.senaev.com`) and `static.senaev.com`, which both go through the cluster-helper mTLS client to
+obsidian-sync, and a nextjs-app page on plain HTTP 8080. Datadog logs show `✅ mTLS server listening`
+in cluster-helper, `✅ Vault servers listening` on 8443 and 8080 in obsidian-sync, incoming requests
+on the new pod, and no error or warning lines apart from `npm notice` output. The user then ran:
+
+```
+kubectl -n senaev-com get certificate
+NAME                 READY   SECRET               AGE
+cluster-helper-tls   True    cluster-helper-tls   7m6s
+obsidian-sync-tls    True    obsidian-sync-tls    7m6s
+
+kubectl -n senaev-com get pods -o yaml | grep -c cluster-helper-client-tls
+0
+```
+
+Both leaves are ready and no pod mounts the old Secret name. The user also read a note through the
+Obsidian MCP connector in ChatGPT: it works. `kubectl -n senaev-com delete secret
+cluster-helper-client-tls` answered `NotFound`: the Certificate was renamed before its first deploy, so
+that Secret never existed, and the follow-up to delete it is dropped. Open: delete the Vault property
+`INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN`, the RBAC check with `kubectl auth can-i`, the first
+leaf renewal, and the other 📌 follow-ups of the README.
+
 ## 2026-11-22 UTC — Merged `main` into the branch
 
 `main` had moved on (the PR conflicted in five files), and the old `cluster-helper/src/index.ts`
