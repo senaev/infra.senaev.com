@@ -23,6 +23,13 @@ otel-agent:
     app: otel-logs-agent
   nodeSelector:
     kubernetes.io/os: linux
+  # Give the Collector time to initialize before liveness can restart it.
+  startupProbe:
+    httpGet:
+      path: /
+      port: 13133
+    periodSeconds: 5
+    failureThreshold: 24
   presets:
     kubernetesAttributes:
       enabled: true
