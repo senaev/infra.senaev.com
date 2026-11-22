@@ -170,14 +170,12 @@ const routerDependencies = {
 const routeMessage = createMessageRouter(routerDependencies);
 const routeCallbackQuery = createCallbackQueryRouter(routerDependencies);
 
-const polling = new AbortController();
 const subscribeShutdown = createShutdownController(
     process,
     (error) => logger.error(error, '❌ Telegram login helper shutdown failed')
 );
 
 subscribeShutdown(() => {
-    polling.abort(new Error('Service stopping'));
     assistant.stop();
     codexLogin?.stop();
 });
@@ -206,6 +204,10 @@ function main(): Promise<void> {
 
     checkAll();
     setInterval(checkAll, LOGIN_CHECK_INTERVAL_MS).unref();
+
+    const polling = new AbortController();
+
+    subscribeShutdown(() => polling.abort(new Error('Service stopping')));
 
     return pollTelegramMessages({
         token,
