@@ -1,6 +1,6 @@
 # 2026-11-06 — Personal LLM connector
 
-- [x] Provide one OpenAI-compatible API and model list for models running in the cluster. **Canceled on 2026-11-21.**
+- [x] ~~Provide one OpenAI-compatible API and model list for models running in the cluster. **Canceled on 2026-11-21.**~~
 
 ## Verification
 
