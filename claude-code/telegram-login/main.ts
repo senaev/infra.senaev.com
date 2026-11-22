@@ -176,13 +176,11 @@ const subscribeShutdown = createShutdownController(
     (error) => logger.error(error, '❌ Telegram login helper shutdown failed')
 );
 
-function stop(): void {
+subscribeShutdown(() => {
     polling.abort(new Error('Service stopping'));
     assistant.stop();
     codexLogin?.stop();
-}
-
-subscribeShutdown(stop);
+});
 
 // One step at a time: a login code must not be handled while a check still waits for its answer.
 let queue: Promise<void> = Promise.resolve();
