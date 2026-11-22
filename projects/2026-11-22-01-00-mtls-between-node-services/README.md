@@ -77,13 +77,22 @@ One pull request for the three edges (decided by the user). Order inside it:
 
 ## Result
 
-Code and chart are done and checked (`npm run simple-checks`, `helm template`); the pull request is open
-and waits for the user's approval to merge. Ports: code-tools tool routes on 8443 and `/health` on plain
-8081 (the Service has only 8443); media-server-helper on 8443 only; cluster-helper `:8443` has
-`POST /telegram/send-message`, open in the NetworkPolicy only to vpn-subscription. cluster-helper
-`:80` lost the vpn-subscription rule. Vault: the property
-`INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS` is no longer read; delete it after the deploy is
-verified (the user does this). Open: the verification above on the live cluster.
+Done and verified on the live cluster on 2026-11-22 (pull request
+[#272](https://github.com/senaev/infra.senaev.com/pull/272), merged and deployed). Ports: code-tools tool
+routes on 8443 and `/health` on plain 8081 (the Service has only 8443); media-server-helper on 8443 only;
+cluster-helper `:8443` has `POST /telegram/send-message`, open in the NetworkPolicy only to
+vpn-subscription. cluster-helper `:80` lost the vpn-subscription rule. The Vault properties
+`INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS` and `INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN`
+are deleted.
+
+The review before the merge found one defect, fixed in the same pull request: the mTLS server of code-tools
+had lost the 4 MiB body limit (`code-write` can send about 2 MB of JSON), so Fastify's 1 MiB default would
+have answered 413. `createCodeToolsMtlsServer` sets it now, and a test sends a 2 MiB body. The tests
+"refuses a caller without a certificate" now use `fetchWithoutClientCertificate` (`testPki.ts`), which trusts
+the test CA: global `fetch` failed on the server certificate first and proved nothing.
+
+Open for later: alerts on cert-manager (a Certificate that is not `Ready` or near expiry; the 7-day leaves
+renew about 4 days in, so a broken renewal shows only after days); nextjs-app and vmagent to mTLS.
 
 ## Risks
 

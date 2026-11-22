@@ -1,3 +1,38 @@
+## 2026-11-22 15:41 UTC — Merged, deployed and verified
+
+Pull request #272 was merged; its own Deploy run failed in the image builds because #267 was merged right
+after it (the build step refuses a commit that is no longer the head of `main`). The run of #267 built all six
+images and deployed every release, so the change went out with it. Checked after the deploy:
+- Datadog logs: all services listen on the new ports; no real errors or warnings (only `npm notice`,
+  `exiting on signal 15` of the old pods and an ssh identity line, all on stderr).
+- Datadog metrics: zero container restarts; every deployment at full availability (a short dip for the
+  `Recreate` of code-tools).
+- `npm run test:smoke` passes.
+- `kubectl get certificate -A` (run by the user):
+
+```
+NAMESPACE    NAME                      READY   SECRET                    AGE
+pki          internal-ca               True    internal-ca               15h
+senaev-com   cluster-helper-tls        True    cluster-helper-tls        15h
+senaev-com   media-server-helper-tls   True    media-server-helper-tls   29m
+senaev-com   obsidian-sync-tls         True    obsidian-sync-tls         15h
+senaev-com   senaev-code-tools-tls     True    senaev-code-tools-tls     29m
+vpn          vpn-subscription-tls      True    vpn-subscription-tls      24m
+```
+
+All six are ready. The user then tested each edge by hand: a vpn-subscription Telegram message, a code tool
+call from ChatGPT and a torrent file delivered to senaev-media all work, and deleted the two Vault
+properties of the removed tokens. The project is done; the cert-manager alerts are a later follow-up.
+
+## 2026-11-22 14:30 UTC — Review fixes before the merge
+
+A review of the pull request (six reviewers) found one defect: code-tools lost its 4 MiB body limit. Fixed with
+`createCodeToolsMtlsServer` (limit 4 MiB, a test with a 2 MiB body), the stale `EXPOSE 8080` of the code-tools
+image was corrected, and the three tests of a caller without a certificate were rewritten to use a client that
+trusts the test CA (`fetchWithoutClientCertificate`), so they really test the client certificate. The user
+chose to skip two non-blocking points: the deploy-order windows (a few minutes of failed calls, they heal) and
+the open `chatId` of the Telegram route (not new; now limited to vpn-subscription).
+
 ## 2026-11-22 10:00 UTC — Implemented, pull request opened
 
 All three edges are implemented in one branch. Shape, in short:
