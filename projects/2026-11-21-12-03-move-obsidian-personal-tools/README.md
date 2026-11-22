@@ -9,14 +9,8 @@ plugin builds to BRAT after verifying the first release.
 
 ## Context
 
-The plugin source is in [the migration branch](../../obsidian-personal-tools/). The vault
-still tracks its copy until BRAT is verified.
-
-## Plan
-
-1. Land the infra migration PR with a merge commit to preserve the imported history.
-2. Publish GitHub releases automatically from infra main and install the first release through BRAT.
-3. Land the vault cleanup after verifying that BRAT installs and updates the plugin.
+The [plugin source](../../obsidian-personal-tools/) and its history are in infra.
+BRAT manages the installed release in the vault.
 
 ## Release workflow
 
@@ -27,9 +21,9 @@ for retrying a failed publish.
 
 ## Verification
 
-Check the release assets `main.js`, `manifest.json`, and `styles.css`. In Obsidian, verify
-the installed version, daily-note reminders, widgets, and Tasks queries. Verify that BRAT
-detects a subsequent release before completing the migration.
+The first release’s three assets downloaded successfully, the deploy smoke tests passed,
+and the vault owner confirmed that the plugin worked after the cleanup sync. Confirm that
+BRAT detects and installs the next plugin release when it ships.
 
 ## Result
 
@@ -40,6 +34,10 @@ verified against the merged vault revision.
 
 An Obsidian MCP smoke test confirmed correct weekday, first-of-month, Saturday, and Sunday
 reminders and ascending section order. The test notes were moved to recoverable trash.
-The four-note request took 1.75 seconds including one shared vault scan. The plugin migration,
-first BRAT release, and vault cleanup are pending. The migration branch imports 31 plugin
-commits and prepares the first release as `0.1.1`.
+The four-note request took 1.75 seconds including one shared vault scan.
+
+[Infra PR #276](https://github.com/senaev/infra.senaev.com/pull/276/changes) imported 31
+plugin commits with a merge commit and published [release `0.1.1`](https://github.com/senaev/infra.senaev.com/releases/tag/0.1.1).
+Telegram accepted the release notification. Vault PR #10 removed the old source and build
+workflow and stopped tracking the release assets. The vault owner confirmed that the plugin
+works after syncing the cleanup.
