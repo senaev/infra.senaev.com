@@ -87,6 +87,42 @@ spec:
           labels:
             severity: critical
             route: senaev-com-alerts
+    # The internal mTLS leaves last 168 h and renew 72 h before the end (global-values.yaml), so a
+    # renewal that fails shows as a failure of the services only days later.
+    - name: internal-certificates
+      rules:
+        - alert: certificate-not-ready
+          expr: |
+            certmanager_certificate_ready_status{condition="True"} == 0
+          for: 15m
+          labels:
+            severity: warning
+            route: senaev-com-alerts
+          annotations:
+            summary: "Certificate {{`{{ $labels.namespace }}`}}/{{`{{ $labels.name }}`}} is not ready"
+            description: "cert-manager cannot issue or renew it. Check `kubectl describe certificate` and the cert-manager logs."
+        # A leaf is renewed 3 days before the end. Less than 2 days left means that the renewal has
+        # failed for a day already.
+        - alert: certificate-expires-soon
+          expr: |
+            certmanager_certificate_expiration_timestamp_seconds - time() < 2 * 86400
+          for: 5m
+          labels:
+            severity: critical
+            route: senaev-com-alerts
+          annotations:
+            summary: "Certificate {{`{{ $labels.namespace }}`}}/{{`{{ $labels.name }}`}} expires in {{`{{ $value | humanizeDuration }}`}}"
+            description: "Services that use it stop accepting its callers when it expires."
+        - alert: certificate-metrics-unavailable
+          expr: |
+            absent(certmanager_certificate_expiration_timestamp_seconds)
+          for: 15m
+          labels:
+            severity: warning
+            route: senaev-com-alerts
+          annotations:
+            summary: "No cert-manager certificate metrics"
+            description: "cert-manager is down, or vmagent cannot scrape it. The certificate alerts cannot fire."
     {{- if .Values.llmServer.enabled }}
     # The webhook in cluster-helper needs the job, instance and pod labels, so these rules use
     # kube-state-metrics series and keep their labels.
