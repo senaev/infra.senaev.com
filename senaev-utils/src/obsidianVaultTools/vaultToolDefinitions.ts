@@ -442,7 +442,7 @@ const diary_append: ToolDefinition = {
                         text: {
                             type: 'string',
                             minLength: 1,
-                            description: 'The edited text of the record, with blank lines between paragraphs.',
+                            description: 'The text of the record.',
                         },
                     },
                     required: [
