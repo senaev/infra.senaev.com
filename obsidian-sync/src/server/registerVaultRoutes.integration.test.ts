@@ -44,7 +44,7 @@ const PROTECTED_REQUESTS = [
     {
         method: 'GET',
         path: '/milestones',
-        reachedStatus: 500,
+        reachedStatus: 200,
     },
     {
         method: 'GET',
