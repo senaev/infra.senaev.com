@@ -35,9 +35,6 @@ vi.mock('./env', () => {
     return {
         API_DOMAIN: 'api.test',
         TG_CLUSTER_CHAT_ID: 1,
-        OBSIDIAN_SYNC_URL: 'https://obsidian-sync.test:8443',
-        CODE_TOOLS_URL: 'https://code-tools.test:8443',
-        MEDIA_SERVER_HELPER_URL: 'https://media-server-helper.test:8443',
         TG_TOKEN_SENAEV_COM_BOT: 'token',
     };
 });
@@ -167,7 +164,7 @@ describe('run', () => {
             'mtls server',
             'alerting heartbeat monitor',
             'media-server-helper client',
-            'code-tools client',
+            'senaev-code-tools client',
             'obsidian-sync client',
             'certificate watcher',
         ]);
@@ -187,7 +184,7 @@ describe('run', () => {
             'mtls server',
             'alerting heartbeat monitor',
             'media-server-helper client',
-            'code-tools client',
+            'senaev-code-tools client',
             'obsidian-sync client',
             'certificate watcher',
         ]);

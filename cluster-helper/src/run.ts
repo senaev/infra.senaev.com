@@ -13,14 +13,12 @@ import { createInternalServer } from './createInternalServer';
 import { createMtlsServer } from './createMtlsServer';
 import { createPublicServer, TELEGRAM_WEBHOOK_PATH } from './createPublicServer';
 import {
-    API_DOMAIN,
-    CODE_TOOLS_URL,
-    MEDIA_SERVER_HELPER_URL,
-    OBSIDIAN_SYNC_URL,
-    TG_CLUSTER_CHAT_ID,
-    TG_TOKEN_SENAEV_COM_BOT,
+    API_DOMAIN, TG_CLUSTER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT,
 } from './env';
 import { logger } from './logger';
+import {
+    CODE_TOOLS_URL, MEDIA_SERVER_HELPER_URL, OBSIDIAN_SYNC_URL,
+} from './mtlsServiceUrls';
 import { createObsidianSyncApi } from './obsidianSyncApi';
 import { logStartupStep } from './startupTimer';
 import { startTorrentOutboxProcessor } from './torrentOutbox';

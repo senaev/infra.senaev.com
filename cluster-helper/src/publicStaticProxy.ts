@@ -1,7 +1,7 @@
 import { posix } from 'node:path';
 import { Readable } from 'node:stream';
 
-import { OBSIDIAN_SYNC_URL } from './env';
+import { OBSIDIAN_SYNC_URL } from './mtlsServiceUrls';
 import type { ObsidianSyncApi } from './obsidianSyncApi';
 
 /** Trailing slash is load-bearing: see the prefix check in buildUpstreamPath. */

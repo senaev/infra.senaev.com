@@ -116,12 +116,6 @@ spec:
               value: http://prowlarr:{{ .Values.prowlarr.webuiPort }}
             - name: PROWLARR_CONFIG_FILE
               value: /prowlarr-config/config.xml
-            - name: OBSIDIAN_SYNC_URL
-              value: "https://obsidian-sync.{{ .Release.Namespace }}.svc.cluster.local:8443"
-            - name: CODE_TOOLS_URL
-              value: "https://senaev-code-tools.{{ .Release.Namespace }}.svc.cluster.local:8443"
-            - name: MEDIA_SERVER_HELPER_URL
-              value: "https://media-server-helper.{{ .Release.Namespace }}.svc.cluster.local:8443"
             {{- if .Values.llmServer.enabled }}
             - name: LLM_SERVER_URL
               value: "http://llm-server:{{ .Values.llmServer.port }}"

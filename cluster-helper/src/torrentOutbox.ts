@@ -8,8 +8,8 @@ import { setTimeout } from 'node:timers/promises';
 import type { MtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
 import { sanitizeFileName } from 'senaev-utils/src/utils/String/sanitizeFileName/sanitizeFileName';
 
-import { MEDIA_SERVER_HELPER_URL } from './env';
 import { logger } from './logger';
+import { MEDIA_SERVER_HELPER_URL } from './mtlsServiceUrls';
 
 type MediaServerHelperClient = Pick<MtlsClient, 'fetch'>;
 

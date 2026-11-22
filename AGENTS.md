@@ -228,9 +228,10 @@ ClusterIssuer `internal-ca`, key only in the `pki` namespace) issue 7-day leaves
 `<workspace>-code-tools-tls` (`llm-workspace/_code-tools.tpl`) and `vpn-subscription-tls` (client only,
 in the `vpn` release, because a Secret is namespaced). The identity is a DNS SAN
 `<service>.<namespace>.svc.cluster.local`: a callee knows its callers by that name, and a client
-connects to a URL whose host is the callee's name (the env `OBSIDIAN_SYNC_URL`, `CODE_TOOLS_URL`,
-`MEDIA_SERVER_HELPER_URL`, `CLUSTER_HELPER_URL`). Every service mounts its Secret as a directory at
-`/etc/mtls` (never subPath or env), polls the files and reloads without a restart
+connects to a URL whose host is the callee's name. The URLs are constants in
+`cluster-helper/src/mtlsServiceUrls.ts` and `vpn-subscription/src/index.ts`.
+Every service mounts its Secret as a directory at `/etc/mtls` (never subPath or env),
+polls the files and reloads without a restart
 (`senaev-utils/src/utils/mtls`). They fail closed: no fallback to HTTP or a token. cluster-helper has
 one `createMtlsClient` for each callee (a client sends its certificate to one origin only), all fed
 by one `watchTlsCredentials`.

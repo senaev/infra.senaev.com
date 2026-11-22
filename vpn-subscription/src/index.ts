@@ -10,7 +10,6 @@ import {
 import { type ClusterHelperTelegram, createClusterHelperTelegram } from './clusterHelperTelegram';
 import { logger } from './logger';
 import {
-    CLUSTER_HELPER_URL,
     PORT,
     SUBSCRIPTION_ENTRIES,
     VPN_SUBSCRIPTION_CHAT,
@@ -22,6 +21,7 @@ import {
 import { renderInstructionsPage } from './renderInstructionsPage';
 import { logController, logServerError } from './requestLogging';
 
+const CLUSTER_HELPER_URL = 'https://cluster-helper.senaev-com.svc.cluster.local:8443';
 const TITLE = 'Senaev🔐VPN';
 const ANNOUNCEMENTS = [
     '🚀 Обязательно добавляйтесь в чат телеги.',

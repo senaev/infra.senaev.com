@@ -3,7 +3,7 @@ import type { MtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
 
 import { callToolServer } from './chatGptMcp/callToolServer';
 import type { ToolReply } from './chatGptMcp/toolFamilies';
-import { CODE_TOOLS_URL } from './env';
+import { CODE_TOOLS_URL } from './mtlsServiceUrls';
 
 export type CodeToolsApi = ReturnType<typeof createCodeToolsApi>;
 

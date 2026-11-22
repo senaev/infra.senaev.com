@@ -3,9 +3,9 @@
 {{- $keys := list .Values.git.githubToken .Values.git.sshPrivateKey }}
 {{ include "senaev-com.llmWorkspace.componentSecret" (dict "name" (printf "%s-code-tools-env" .Values.name) "namespace" .Release.Namespace "keys" $keys) }}
 ---
-# The server certificate of code-tools. The DNS name is the host that cluster-helper dials
-# (CODE_TOOLS_URL). It has no client usage: code-tools calls nobody. A new key is made on every
-# renewal, 3 days before the end; the service loads it by polling.
+# The code-tools server certificate. Its DNS name must match the host in
+# cluster-helper/src/mtlsServiceUrls.ts. A new key is made on every renewal, 3 days before
+# the end; the service loads it by polling.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:

@@ -4,10 +4,6 @@ import {
 
 import { createCodeToolsApi } from './codeToolsApi';
 
-vi.mock('./env', () => {
-    return { CODE_TOOLS_URL: 'https://code-tools.test:8443' };
-});
-
 afterEach(() => {
     vi.restoreAllMocks();
 });
@@ -60,7 +56,7 @@ describe('code operation proxy', () => {
                 body,
             });
             expect(timeout).toHaveBeenLastCalledWith(15000);
-            expect(fetchMock).toHaveBeenLastCalledWith(`https://code-tools.test:8443/code/${name}`, expect.objectContaining({
+            expect(fetchMock).toHaveBeenLastCalledWith(`https://senaev-code-tools.senaev-com.svc.cluster.local:8443/code/${name}`, expect.objectContaining({
                 method: 'POST',
                 body: JSON.stringify(args),
                 headers: { 'Content-Type': 'application/json' },

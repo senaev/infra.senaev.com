@@ -4,43 +4,7 @@ import {
 
 import { createObsidianSyncApi } from './obsidianSyncApi';
 
-// env.ts validates the whole environment at import time; vitest runs this before the imports.
-vi.hoisted(() => {
-    for (const name of [
-        'TG_TOKEN_SENAEV_COM_BOT',
-        'TG_MEDIA_SERVER_CHAT_ID',
-        'TG_CLUSTER_CHAT_ID',
-        'API_DOMAIN',
-        'ALISA_ALLOWED_USER_IDS',
-        'AUTH_DOMAIN',
-        'MCP_DOMAIN',
-        'AUTH_TOKEN_SIGNING_SECRET',
-        'GOOGLE_OAUTH_CLIENT_ID',
-        'GOOGLE_OAUTH_CLIENT_SECRET',
-        'GOOGLE_OAUTH_ADMIN_EMAILS',
-        'OPENROUTER_API_KEY',
-        'GROQ_API_KEY',
-        'SUPABASE_PROJECT_URL',
-        'SUPABASE_PUBLISHABLE_KEY',
-        'PROWLARR_URL',
-        'PROWLARR_CONFIG_FILE',
-        'TG_VPN_SUBSCRIPTION_CHAT_ID',
-        'OBSIDIAN_TASKS_CHAT_ID',
-        'TRICKY_DAD_CHAT_ID',
-        'JOB_SEARCH_FRAMEWORK_CHAT_ID',
-        'TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID',
-        'TELEGRAM_PUBLIC_API_SECRET',
-    ]) {
-        process.env[name] ??= 'test';
-    }
-
-    process.env.OBSIDIAN_SYNC_URL = 'https://obsidian-sync.senaev-com.svc.cluster.local:8443';
-    process.env.CODE_TOOLS_URL = 'https://senaev-code-tools.senaev-com.svc.cluster.local:8443';
-    process.env.MEDIA_SERVER_HELPER_URL = 'https://media-server-helper.senaev-com.svc.cluster.local:8443';
-    process.env.MCP_GRAFANA_URL = 'http://mcp-grafana.telemetry.svc.cluster.local:8000/mcp';
-});
-
-const mtlsFetchMock = vi.hoisted(() => vi.fn());
+const mtlsFetchMock = vi.fn();
 
 const { callVaultTool, getShortLink } = createObsidianSyncApi({ fetch: mtlsFetchMock });
 

@@ -25,12 +25,6 @@ export const TG_VPN_SUBSCRIPTION_CHAT_ID = requireEnv('TG_VPN_SUBSCRIPTION_CHAT_
 export const OBSIDIAN_TASKS_CHAT_ID = requireEnv('OBSIDIAN_TASKS_CHAT_ID');
 export const TRICKY_DAD_CHAT_ID = requireEnv('TRICKY_DAD_CHAT_ID');
 export const JOB_SEARCH_FRAMEWORK_CHAT_ID = requireEnv('JOB_SEARCH_FRAMEWORK_CHAT_ID');
-/** The mTLS origin of obsidian-sync. Its host must be the DNS name in its certificate. */
-export const OBSIDIAN_SYNC_URL = requireEnv('OBSIDIAN_SYNC_URL');
-/** The mTLS origin of code-tools, which serves the code-* MCP tools. Its host must be the DNS name in its certificate. */
-export const CODE_TOOLS_URL = requireEnv('CODE_TOOLS_URL');
-/** The mTLS origin of media-server-helper. Its host must be the DNS name in its certificate. */
-export const MEDIA_SERVER_HELPER_URL = requireEnv('MEDIA_SERVER_HELPER_URL');
 /** The streamable-HTTP endpoint of mcp-grafana, which the /grafana MCP endpoint proxies to. */
 export const MCP_GRAFANA_URL = requireEnv('MCP_GRAFANA_URL');
 export const TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID = requireEnv('TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID');

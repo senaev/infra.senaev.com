@@ -33,8 +33,6 @@ spec:
           ports:
             - containerPort: 3000
           env:
-            - name: CLUSTER_HELPER_URL
-              value: https://cluster-helper.senaev-com.svc.cluster.local:8443
             - name: SUBSCRIPTION_ENTRIES
               value: {{ toJson .Values.vpnSubscription.entries | quote }}
             - name: VPN_SUBSCRIPTION_CHAT_ID

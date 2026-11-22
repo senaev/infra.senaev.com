@@ -6,7 +6,7 @@ import type { MtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
 
 import { readToolReply } from './chatGptMcp/callToolServer';
 import type { ToolReply } from './chatGptMcp/toolFamilies';
-import { OBSIDIAN_SYNC_URL } from './env';
+import { OBSIDIAN_SYNC_URL } from './mtlsServiceUrls';
 
 export type ObsidianTaskInput = {
     title: string;

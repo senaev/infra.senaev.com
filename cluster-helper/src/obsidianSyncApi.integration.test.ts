@@ -13,21 +13,13 @@ import {
 import { createObsidianSyncApi } from './obsidianSyncApi';
 import { proxyPublicStaticFile } from './publicStaticProxy';
 
-const env = vi.hoisted(() => {
+const serviceUrls = vi.hoisted(() => {
     return {
         OBSIDIAN_SYNC_URL: '',
     };
 });
 
-vi.mock('./env', () => env);
-vi.mock('./logger', () => {
-    return {
-        logger: {
-            info: vi.fn(),
-            error: vi.fn(),
-        },
-    };
-});
+vi.mock('./mtlsServiceUrls', () => serviceUrls);
 
 const CALLER_NAME = 'cluster-helper.test.svc.cluster.local';
 
@@ -71,7 +63,7 @@ beforeAll(async () => {
     await new Promise<void>((resolve) => {
         server.listen(0, '127.0.0.1', resolve);
     });
-    env.OBSIDIAN_SYNC_URL = `https://localhost:${(server.address() as AddressInfo).port}`;
+    serviceUrls.OBSIDIAN_SYNC_URL = `https://localhost:${(server.address() as AddressInfo).port}`;
 });
 
 afterAll(async () => {
@@ -83,7 +75,7 @@ afterAll(async () => {
 describe('the obsidian-sync API over real mTLS', () => {
     it('reaches the vault service with the client certificate and no token, and streams a static file', async () => {
         client = createMtlsClient({
-            origin: env.OBSIDIAN_SYNC_URL,
+            origin: serviceUrls.OBSIDIAN_SYNC_URL,
             credentials: clientCredentials,
         });
 
