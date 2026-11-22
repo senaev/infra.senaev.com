@@ -9,17 +9,21 @@ plugin builds to BRAT after verifying the first release.
 
 ## Context
 
-The vault still contains the source and installed build. Work on a local migration branch
-extracted the plugin history, sanitized personal details, and added release automation.
-The import was paused while hardcoded reminder definitions were moved into vault notes.
+The vault still contains the source and installed build. The local migration branch contains a draft history import and release workflow.
 
 ## Plan
 
-1. Refresh the sanitized import from the current vault main and review the incoming commits and
-   compiled bundle for personal details before pushing.
+1. Refresh the import from vault main and retain the plugin folder’s commit history.
 2. Open the infra migration PR and land it with a merge commit to preserve the imported history.
-3. Publish the first GitHub release and install it through BRAT.
+3. Publish GitHub releases automatically from infra main and install the first release through BRAT.
 4. Land the vault cleanup after verifying that BRAT installs and updates the plugin.
+
+## Release workflow
+
+A merged PR with a new plugin manifest version triggers a production build and tests.
+After they pass, GitHub Actions publishes the three release files under the manifest
+version. An already published version is left as-is. Keep manual dispatch available
+for retrying a failed publish.
 
 ## Verification
 
