@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-
 import { createCrossOriginHeaders } from 'utils/net/createCrossOriginHeaders';
 
 export async function POST(
@@ -7,6 +6,7 @@ export async function POST(
     { params }: { params: Promise<{ page: string }> }
 ): Promise<NextResponse> {
     const { page } = await params;
+
     return NextResponse.json({
         id: '4b3afc8a28d955',
         seatbid: [
@@ -17,7 +17,7 @@ export async function POST(
                         id: '7190337350497011989',
                         cid: '1_177204806',
                         impid: '1',
-                        // eslint-disable-next-line no-template-curly-in-string -- this format of template is used in yandex
+
                         nurl: 'https://bs.yandex.ru/ssp_notifications/1JUdyi?ssp-notification-type=1&ssp-request-id=4b3afc8a28d955&ssp-cur-price=${AUCTION_PRICE}&ssp-cur=${AUCTION_CURRENCY}',
                         crid: '1_177204806_320x180',
                         iurl: 'https://bs.yandex.ru/resource/spacer.gif',

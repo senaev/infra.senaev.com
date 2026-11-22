@@ -3,6 +3,7 @@ import {
     expect,
     it,
 } from 'vitest';
+
 import { tryStringify } from './';
 
 describe('tryStringify', () => {
@@ -26,6 +27,7 @@ describe('tryStringify', () => {
         };
 
         const attempt = tryStringify(testObj);
+
         delete testObj.foobar; // function is not stringifiable
         expect(attempt).toEqual(JSON.stringify(testObj));
     });
@@ -35,6 +37,7 @@ describe('tryStringify', () => {
             foo: 'bar',
             baz: null,
         };
+
         testObj.baz = testObj;
 
         expect(tryStringify(testObj)).toEqual(undefined);

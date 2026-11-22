@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, type JSX } from 'react';
-
 import { loadScript } from 'utils/Script/loadScript';
 import type { Bid, PrebidWindow } from 'utils/types/Prebid';
 
@@ -10,10 +9,9 @@ const BLOCK_ID = 'test-block' as const;
 
 export default function Page (): JSX.Element {
     useEffect(() => {
-    // eslint-disable-next-line no-restricted-globals -- ignore
         const win: PrebidWindow = window;
         const doc = win.document;
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- ignore
+
         const div = doc.getElementById(BLOCK_ID)!;
 
         /* eslint-disable no-console -- ignore */
@@ -62,7 +60,6 @@ export default function Page (): JSX.Element {
                     },
                 ];
 
-                // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
                 if (!win.pbjs) {
                     throw new Error('win.pbjs is nod defined');
                 }
@@ -72,17 +69,18 @@ export default function Page (): JSX.Element {
                 function renderOne (winningBid?: Bid): void {
                     console.log('renderOne', winningBid);
 
-                    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
                     if (winningBid?.adId) {
                         const renderToElement = doc.getElementById(winningBid.adUnitCode);
-                        // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+
                         if (renderToElement) {
                             const iframe = doc.createElement('iframe');
+
                             console.log('iframe', iframe);
                             iframe.frameBorder = '0';
                             renderToElement.appendChild(iframe);
-                            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- ignore
+
                             const iframeDoc = iframe.contentWindow!.document;
+
                             pbjs.renderAd(iframeDoc, winningBid.adId);
                         }
                     }
@@ -102,8 +100,10 @@ export default function Page (): JSX.Element {
 
                             if (winners.length === 0) {
                                 const message = 'No winners in this auction';
+
                                 div.innerText = message;
                                 console.log(message);
+
                                 return;
                             }
 
@@ -127,12 +127,10 @@ export default function Page (): JSX.Element {
 
     /* eslint-enable -- ignore */
 
-    return (
-        <>
-            <h5>
-                {'320x180 || 180x320'}
-            </h5>
-            <div id={BLOCK_ID} />
-        </>
-    );
+    return <>
+        <h5>
+            {'320x180 || 180x320'}
+        </h5>
+        <div id={BLOCK_ID}/>
+    </>;
 }

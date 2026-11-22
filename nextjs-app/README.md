@@ -19,6 +19,12 @@
 - [Short](https://senaev.com/cv/1min)
 - [Detailed](https://senaev.com/cv/5min)
 
+## Development
+
+From the repository root, install dependencies with `npm run ci:all` and start the app
+with `npm run dev --prefix nextjs-app`. Run `npm run simple-checks` from the repository
+root. The infrastructure deployment workflow builds the standalone Next.js image.
+
 ## VPN diagnostic response
 
 `GET /api/vpn-test?bytes=16384` returns exactly the requested number of binary bytes

@@ -1,4 +1,5 @@
 type Fn = (...args: unknown[]) => unknown;
+
 type Cb = (e: unknown) => unknown;
 
 export function tryCatch<T extends Fn, E extends Cb>(

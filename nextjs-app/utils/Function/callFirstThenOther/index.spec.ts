@@ -5,6 +5,7 @@ import {
     it,
     vi, type Mock,
 } from 'vitest';
+
 import { callFirstThenOther } from '.';
 
 describe('callFirstThenOther', () => {

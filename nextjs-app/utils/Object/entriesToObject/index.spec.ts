@@ -3,6 +3,7 @@ import {
     expect,
     it,
 } from 'vitest';
+
 import { entriesToObject } from './';
 
 describe('entriesToObject', () => {
@@ -65,7 +66,7 @@ describe('entriesToObject', () => {
             }
 
             public method() {
-                //
+                return this.prop1;
             }
         }
 

@@ -1,6 +1,6 @@
-import type { CubeDirection } from '../types/CubeDirection';
-
 import { getObjectKeys } from 'utils/Object/getObjectKeys';
+
+import type { CubeDirection } from '../types/CubeDirection';
 
 export const CUBE_COLORS = {
     blue: undefined,
@@ -16,7 +16,7 @@ export const CUBE_COLORS = {
 };
 
 export const ALL_CUBE_COLORS = getObjectKeys(CUBE_COLORS);
-export type CubeColor = keyof typeof CUBE_COLORS
+export type CubeColor = keyof typeof CUBE_COLORS;
 
 export const CUBES_DATA = {
     // ширина доски в кубиках
@@ -61,7 +61,6 @@ export const CUBES_DATA = {
                         100: 25,
                     };
 
-                    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- ignore
                     return cubesCount[level.toString()]!;
                 }
 
@@ -69,7 +68,6 @@ export const CUBES_DATA = {
             },
             getPositions (level: number): Array<[number, number]> {
                 if ((level > 0 && level < 11) || level === 100) {
-                    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- ignore
                     return CUBES_DATA.numbers[level.toString()]!;
                 }
 
@@ -78,7 +76,6 @@ export const CUBES_DATA = {
         },
 
         rand: function rand (min: number, max: number): number {
-            // eslint-disable-next-line no-bitwise -- ignore
             return min + ((max - min + 1) * Math.random() ^ 0);
         },
         reverseField (field: CubeDirection): CubeDirection {
@@ -98,7 +95,7 @@ export const CUBES_DATA = {
         },
     },
     // координаты кубиков для уровней с рисунками
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+
     numbers: {
         1: [
             [

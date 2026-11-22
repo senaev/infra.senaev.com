@@ -1,6 +1,7 @@
 import {
     describe, expect, it,
 } from 'vitest';
+
 import { getObjectEntries } from './';
 
 describe('getObjectEntries', () => {
@@ -15,7 +16,7 @@ describe('getObjectEntries', () => {
         }
 
         public method() {
-            //
+            return this.prop1;
         }
     }
 
@@ -59,9 +60,8 @@ describe('getObjectEntries', () => {
         ]);
 
         // typescript passes through property name types
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- ignore
+
         if (StringEnum[keys[0]![0]] === StringEnum.prop1) {
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- ignore
             expect(StringEnum[keys[1]![0]]).toStrictEqual(StringEnum.prop2);
         }
     });

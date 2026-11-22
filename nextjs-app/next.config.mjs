@@ -1,6 +1,10 @@
+import { dirname } from 'node:path';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     output: 'standalone',
+    outputFileTracingRoot: dirname(import.meta.dirname),
+    typescript: { tsconfigPath: 'tsconfig.build.json' },
     reactStrictMode: false,
 
     // Experimental features for faster builds
@@ -14,15 +18,14 @@ const nextConfig = {
         ],
     },
 
-    async rewrites() {
-        return [
+    rewrites() {
+        return Promise.resolve([
             {
                 source: '/wedding',
                 destination: '/wedding/index.html',
             },
-        ];
+        ]);
     },
 };
 
-// eslint-disable-next-line no-undef
-module.exports = nextConfig;
+export default nextConfig;

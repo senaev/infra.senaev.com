@@ -1,3 +1,5 @@
+/* eslint @stylistic/quote-props: ["error", "as-needed", { "numbers": true }] -- The fixture models string keys. */
+
 import type { AssertTypesCompatible } from '../../../types/AssertTypesCompatible';
 
 import type { Invert } from '.';
@@ -32,6 +34,7 @@ type c = AssertTypesCompatible<Foo, {
 
 // the same as Foo
 type DoubleInvertedFoo = Invert<InvertedFoo>;
+
 type d = AssertTypesCompatible<Foo, DoubleInvertedFoo>;
 
 // @ts-expect-error ignore unused type

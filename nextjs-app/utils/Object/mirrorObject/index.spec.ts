@@ -3,6 +3,7 @@ import {
     expect,
     it,
 } from 'vitest';
+
 import { mirrorObject } from './';
 
 describe('mirrorObject', () => {
@@ -26,12 +27,12 @@ describe('mirrorObject', () => {
             },
         ],
     ];
+
     testCases.forEach(([
         obj,
         expectedResult,
     ]) => {
         it(`${JSON.stringify(obj)} -> ${String(expectedResult)}`, () => {
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- ignore
             expect(mirrorObject(obj!)).toEqual(expectedResult);
         });
     });

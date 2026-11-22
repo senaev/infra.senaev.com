@@ -3,6 +3,7 @@ import {
     expect,
     it,
 } from 'vitest';
+
 import { forOwn } from './';
 
 const a = 1;
@@ -19,9 +20,12 @@ describe('forOwn', () => {
             a,
             b,
         });
+
         expect(obj.a).toEqual(a);
         expect(obj.b).toEqual(b);
-        forOwn(obj, (elem) => (sum += elem));
+        forOwn(obj, (elem) => {
+            sum += elem;
+        });
         expect(sum).toEqual(b + a);
     });
 
@@ -32,7 +36,7 @@ describe('forOwn', () => {
             Object.create({
                 c,
                 run(elem: number) {
-                    sum += (this as { c: number; }).c + elem;
+                    sum += (this as { c: number }).c + elem;
                 },
             }) as {
                 c: number;
@@ -55,6 +59,7 @@ describe('forOwn', () => {
             b,
             c,
         };
+
         forOwn(testObj, (elem, key, obj) => {
             if (obj[key] !== elem) {
                 throw new Error('element has not been passed');

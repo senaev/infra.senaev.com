@@ -1,6 +1,7 @@
 import {
     describe, expect, it,
 } from 'vitest';
+
 import { GET, HEAD } from './route';
 
 const request = (query = '', headers = {}) => new Request(`https://senaev.com/api/vpn-test${query}`, { headers });
@@ -14,6 +15,7 @@ describe('bounded VPN test response', () => {
         524288,
     ])('returns exactly %i binary bytes', async (bytes) => {
         const response = GET(request(`?bytes=${bytes}`));
+
         expect(response.status).toBe(200);
         expect(response.headers.get('content-length')).toBe(String(bytes));
         expect(response.headers.get('content-encoding')).toBe('identity');
@@ -24,6 +26,7 @@ describe('bounded VPN test response', () => {
     it('uses deterministic prefixes and a 16 KiB default', async () => {
         const short = new Uint8Array(await GET(request('?bytes=8192')).arrayBuffer());
         const normal = new Uint8Array(await GET(request()).arrayBuffer());
+
         expect(normal.length).toBe(16384);
         expect(short).toEqual(normal.slice(0, short.length));
         expect(new Set(short).size).toBe(256);
@@ -51,10 +54,12 @@ describe('bounded VPN test response', () => {
 
     it('HEAD preserves metadata and has no body, including errors', async () => {
         const response = HEAD(request('?bytes=524288'));
+
         expect(response.status).toBe(200);
         expect(response.headers.get('content-length')).toBe('524288');
         expect(await response.text()).toBe('');
         const invalid = HEAD(request('?bytes=0'));
+
         expect(invalid.status).toBe(400);
         expect(await invalid.text()).toBe('');
     });

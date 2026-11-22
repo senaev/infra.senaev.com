@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/strict-boolean-expressions */
 'use client';
 
 import classnames from 'classnames';
@@ -22,29 +21,32 @@ export default function Page (): JSX.Element {
     const sizerBottomRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
-    // eslint-disable-next-line no-restricted-globals -- ignore
         const doc = document;
-        // eslint-disable-next-line no-restricted-globals -- ignore
+
         const win = window;
 
         if (!resizableContainerRef.current) {
             return;
         }
+
         const resizableContainer = resizableContainerRef.current;
 
         if (!bannerFrameRef.current) {
             return;
         }
+
         const bannerFrame = bannerFrameRef.current;
 
         if (!sizerRightRef.current) {
             return;
         }
+
         const sizerRight = sizerRightRef.current;
 
         if (!sizerBottomRef.current) {
             return;
         }
+
         const sizerBottom = sizerBottomRef.current;
 
         let startHeight = NaN;
@@ -83,9 +85,8 @@ export default function Page (): JSX.Element {
         }
 
         function stopDrag (): void {
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- ignore
             resizableContainer.classList.remove(styles.resizable!);
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- ignore
+
             doc.body.classList.remove(styles.noUserSelect!);
 
             doc.removeEventListener('mousemove', doDrag, false);
@@ -98,7 +99,7 @@ export default function Page (): JSX.Element {
         sizerBottom.innerText = String(bannerFrame.offsetWidth);
 
         const handle = doc.createElement('div');
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- ignore
+
         handle.classList.add(styles.handle!);
         resizableContainer.appendChild(handle);
 
@@ -106,10 +107,8 @@ export default function Page (): JSX.Element {
             coords.x = event.clientX;
             coords.y = event.clientY;
 
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- ignore
             doc.body.classList.add(styles.noUserSelect!);
 
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- ignore
             resizableContainer.classList.add(styles.resizable!);
 
             startWidth = parseInt(win.getComputedStyle(resizableContainer).width, 10);
@@ -120,36 +119,34 @@ export default function Page (): JSX.Element {
         }, false);
     });
 
-    return (
-        <div id={'app'}>
-            <div className={styles.container}>
+    return <div id={'app'}>
+        <div className={styles.container}>
+            <div
+                className={styles['resizable-container']}
+                ref={resizableContainerRef}
+            >
                 <div
-                    className={styles['resizable-container']}
-                    ref={resizableContainerRef}
+                    ref={sizerRightRef}
+                    className={classnames(styles.sizer, styles.sizer_right)}
                 >
-                    <div
-                        ref={sizerRightRef}
-                        className={classnames(styles.sizer, styles.sizer_right)}
-                    >
-                        {'###'}
-                    </div>
-                    <div className={styles['frame-wrapper']}>
-                        <iframe
-                            ref={bannerFrameRef}
-                            title={'adaptive-iframe'}
-                            className={styles.iframe}
-                            src={'/iframes/adaptive-size'}
-                            name={'banner-frame'}
-                        />
-                    </div>
-                    <div
-                        ref={sizerBottomRef}
-                        className={classnames(styles.sizer, styles.sizer_bottom)}
-                    >
-                        {'###'}
-                    </div>
+                    {'###'}
+                </div>
+                <div className={styles['frame-wrapper']}>
+                    <iframe
+                        ref={bannerFrameRef}
+                        title={'adaptive-iframe'}
+                        className={styles.iframe}
+                        src={'/iframes/adaptive-size'}
+                        name={'banner-frame'}
+                    />
+                </div>
+                <div
+                    ref={sizerBottomRef}
+                    className={classnames(styles.sizer, styles.sizer_bottom)}
+                >
+                    {'###'}
                 </div>
             </div>
         </div>
-    );
+    </div>;
 }

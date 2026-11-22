@@ -1,4 +1,5 @@
 import { forOwn } from '../forOwn';
+
 import type { Invert } from './Invert';
 
 /**

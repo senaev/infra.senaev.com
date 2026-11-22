@@ -5,12 +5,12 @@ import { once } from 'utils/Function/once';
 import { loadScript } from 'utils/Script/loadScript';
 
 declare const Ya: {
-  Context: {
-    AdvManager: {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ignore
-      render: (arg: any) => void
-    }
-  }
+    Context: {
+        AdvManager: {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ignore
+            render: (arg: any) => void;
+        };
+    };
 };
 
 const loadContextScript = once(async (): Promise<void> => {
@@ -21,11 +21,11 @@ export function AirAdUnit ({
     size,
     blockId,
 }: {
-  size: {
-    width: number
-    height: number
-  }
-  blockId: string
+    size: {
+        width: number;
+        height: number;
+    };
+    blockId: string;
 }): JSX.Element {
     const { width, height } = size;
 
@@ -47,23 +47,21 @@ export function AirAdUnit ({
         elementId,
     ]);
 
-    return (
+    return <div
+        style={{
+            width,
+            height: height + 45,
+        }}
+    >
+        <h3>
+            {`${width}x${height}`}
+        </h3>
         <div
             style={{
                 width,
-                height: height + 45,
+                height,
             }}
-        >
-            <h3>
-                {`${width}x${height}`}
-            </h3>
-            <div
-                style={{
-                    width,
-                    height,
-                }}
-                id={elementId}
-            />
-        </div>
-    );
+            id={elementId}
+        />
+    </div>;
 }

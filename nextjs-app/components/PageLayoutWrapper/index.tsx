@@ -7,17 +7,15 @@ import { FONT_MERRIWEATHER_CLASSNAMES } from 'const/FONT_MERRIWEATHER_CLASSNAMES
 import React, { type JSX } from 'react';
 
 export function PageLayoutWrapper ({ children }: { children: React.ReactNode }): JSX.Element {
-    return (
-        <>
-            <YandexMetrikaCounter />
-            <GoogleAdSenseCodeSnippet />
-            <GoogleAnalyticsCodeSnippet />
-            <Navigation />
-            <GoogleTagManagerHead />
-            <GoogleTagManagerBody />
-            <main className={FONT_MERRIWEATHER_CLASSNAMES}>
-                {children}
-            </main>
-        </>
-    );
+    return <>
+        <YandexMetrikaCounter/>
+        <GoogleAdSenseCodeSnippet/>
+        <GoogleAnalyticsCodeSnippet/>
+        <Navigation/>
+        <GoogleTagManagerHead/>
+        <GoogleTagManagerBody/>
+        <main className={FONT_MERRIWEATHER_CLASSNAMES}>
+            {children}
+        </main>
+    </>;
 }

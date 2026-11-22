@@ -6,7 +6,5 @@ export function MarkdownContainer ({
 }: {
     contentHtml: string;
 }): JSX.Element {
-    return (
-        <div dangerouslySetInnerHTML={{ __html: contentHtml }} />
-    );
+    return <div dangerouslySetInnerHTML={{ __html: contentHtml }}/>;
 }

@@ -3,7 +3,7 @@ import {
 } from 'const/const';
 import type { JSX } from 'react';
 
-export default async function Page (): Promise<JSX.Element> {
+export default function Page(): JSX.Element {
     return <div style={{ padding: '1em' }}>
         {
             SENAEV_SOCIALS.map(({

@@ -1,5 +1,6 @@
 import classNames from 'classnames';
 import { Merriweather } from 'next/font/google';
+
 import styles from './index.module.css';
 
 // Font from vas3k website

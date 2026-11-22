@@ -42,7 +42,7 @@ type Contact = {
     header: string;
     title: string;
     link?: string;
-}
+};
 
 export const SENAEV_SOCIALS: {
     name: string;
@@ -117,6 +117,7 @@ type Education = {
     degree: string;
     level: string;
 };
+
 export const SENAEV_EDUCATIONS: Education[] = [
     {
         since: 2012,

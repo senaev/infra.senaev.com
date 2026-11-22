@@ -3,7 +3,7 @@ import { ensureEmptyLineAfterTables } from './Notes/ensureEmptyLineAfterTables/e
 function replaceWikiLinksInTextWithRelativeLinks(text: string) {
     const regex = /\[\[([^\]]*)\]\]/gm;
 
-    return text.replace(regex, function (match) {
+    return text.replace(regex, (match) => {
         const withSquarePqrenthesisRemoved = match.substring(2, match.length - 2);
 
         const parts = withSquarePqrenthesisRemoved.split('|');
@@ -20,8 +20,10 @@ function replaceWikiLinksInTextWithRelativeLinks(text: string) {
     });
 }
 
-export async function prepareMarkdownContentForNote(rawMarkdown: string): Promise<string> {
+export function prepareMarkdownContentForNote(rawMarkdown: string): string {
     let processed = replaceWikiLinksInTextWithRelativeLinks(rawMarkdown);
+
     processed = ensureEmptyLineAfterTables(processed);
+
     return processed;
 }

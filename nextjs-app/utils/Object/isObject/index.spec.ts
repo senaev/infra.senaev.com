@@ -3,6 +3,7 @@ import {
     expect,
     it,
 } from 'vitest';
+
 import { isObject } from './';
 
 describe('isObject', () => {
@@ -38,6 +39,7 @@ describe('isObject', () => {
             output: false,
         },
     ];
+
     testCases.forEach(({ input, output }) => {
         it(`isObject(${JSON.stringify(input)}) -> ${String(output)}`, () => {
             expect(isObject(input)).toEqual(output);

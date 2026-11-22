@@ -7,6 +7,7 @@ export function groupBy<T, R extends string = string>(
     array.forEach((el, i, arr) => {
         const key = iteratee(el, i, arr);
         const record = obj[key];
+
         if (record) {
             record.push(el);
         } else {

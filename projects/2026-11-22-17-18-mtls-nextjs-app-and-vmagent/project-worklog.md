@@ -1,3 +1,9 @@
+## 2026-11-22 21:55 UTC — Migrate the app before the mTLS change
+
+The user chose to move `senaev.com` into infra and use the standard service deployment
+pipeline before implementing mTLS. The app source and its chart now belong in the same
+repository, so the direct mTLS client no longer needs a cross-repository release.
+
 ## 2026-11-22 17:18 UTC — Project started: plan written, three open questions
 
 The user asked for a separate project and pull request for the last open mTLS edge, "nextjs-app and vmagent to

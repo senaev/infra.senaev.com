@@ -1,6 +1,8 @@
+import { basename } from 'path';
+
 import isNumber from 'is-number';
 import { type Tokens } from 'marked';
-import { basename } from 'path';
+
 import { checkIfItIsNoteRelativeLink } from './checkIfItIsNoteRelativeLink';
 
 function getMarkdownSizeByAnnotation(annotationRaw: string): {
@@ -8,6 +10,7 @@ function getMarkdownSizeByAnnotation(annotationRaw: string): {
     height?: string;
 } {
     const annotation = annotationRaw.trim();
+
     if (!annotation) {
         return {};
     }
@@ -19,6 +22,7 @@ function getMarkdownSizeByAnnotation(annotationRaw: string): {
     }
 
     const parts = annotation.split('x');
+
     if (parts.length === 2) {
         const [
             w,
@@ -60,10 +64,10 @@ function getMarkdownImageAttributes({
     href: string;
     annotation: string;
 }): {
-    src: string;
-    width?: string;
-    height?: string;
-} {
+        src: string;
+        width?: string;
+        height?: string;
+    } {
     const isNoteRelativeLink = checkIfItIsNoteRelativeLink(href);
     const filename = decodeURIComponent(basename(href));
 

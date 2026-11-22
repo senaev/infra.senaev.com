@@ -3,6 +3,7 @@ import {
     expect,
     it,
 } from 'vitest';
+
 import { noop } from '../../Function';
 
 import { mapObjectValues } from '.';
@@ -28,6 +29,7 @@ describe('mapObjectValues', () => {
             },
         ],
     ];
+
     testCases.forEach(([
         obj,
         expectedResult,
@@ -41,9 +43,11 @@ describe('mapObjectValues', () => {
         type A = {
             foo: string;
         };
+
         type B = {
             foo: 'baz' | undefined;
         };
+
         const expectB = (_b: B) => {
             noop(_b);
         };

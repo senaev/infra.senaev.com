@@ -3,6 +3,7 @@ import {
     expect,
     it,
 } from 'vitest';
+
 import { getObjectKeys } from './';
 
 describe('getObjectKeys', () => {
@@ -10,7 +11,7 @@ describe('getObjectKeys', () => {
         public constructor(public readonly prop1: unknown, public readonly prop2: unknown) {}
 
         public method() {
-            //
+            return this.prop1;
         }
     }
 
@@ -39,9 +40,8 @@ describe('getObjectKeys', () => {
         ]);
 
         // typescript passes through property name types
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- ignore
+
         if (StringEnum[keys[0]!] === StringEnum.prop1) {
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- ignore
             expect(StringEnum[keys[1]!]).toEqual(StringEnum.prop2);
         }
     });

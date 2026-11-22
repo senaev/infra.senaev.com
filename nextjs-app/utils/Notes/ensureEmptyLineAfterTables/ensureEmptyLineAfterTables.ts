@@ -15,9 +15,11 @@ export function ensureEmptyLineAfterTables(text: string): string {
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
+
         if (line === undefined) {
             continue;
         }
+
         const isTableRow = /^\s*\|.*\|\s*$/.test(line);
         const isTableSeparator = /^\s*\|[\s\-:|]+\|\s*$/.test(line);
 
@@ -27,10 +29,12 @@ export function ensureEmptyLineAfterTables(text: string): string {
         } else {
             if (inTable && line.trim() !== '') {
                 const lastLine = result[result.length - 1];
+
                 if (result.length > 0 && lastLine !== undefined && lastLine.trim() !== '') {
                     result.push('');
                 }
             }
+
             inTable = false;
             result.push(line);
         }

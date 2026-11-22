@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import React, { type JSX } from 'react';
-import './globals.css';
-
 import { SENAEV_SITE_METADATA } from 'const/const';
 import { prometheusCounters } from 'utils/prometheus/nextjs-metrics';
+
+import './globals.css';
 
 export const metadata: Metadata = SENAEV_SITE_METADATA;
 
@@ -16,16 +16,15 @@ export default async function Layout ({
     const headersList = await headers();
     const path = headersList.get('x-pathname') ?? 'unknown';
     const method = headersList.get('x-method') ?? 'unknown';
+
     prometheusCounters.nextjsHttpRequestsTotal.inc({
         path,
         method,
     });
 
-    return (
-        <html lang={'en'}>
-            <body>
-                {children}
-            </body>
-        </html>
-    );
+    return <html lang={'en'}>
+        <body>
+            {children}
+        </body>
+    </html>;
 }

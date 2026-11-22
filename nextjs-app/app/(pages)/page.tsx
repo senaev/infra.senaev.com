@@ -7,13 +7,15 @@ import {
 import { NON_BREAKING_SPACE } from 'const/NON_BREAKING_SPACE';
 import Image from 'next/image';
 import Link from 'next/link';
-import './index.css';
-import styles from './index.module.css';
 import type { JSX } from 'react';
+
+import './index.css';
+
+import styles from './index.module.css';
 
 const AVATAR_SIZE = 150;
 
-export default async function Page (): Promise<JSX.Element> {
+export default function Page(): JSX.Element {
     return <div className={styles.MainPage__container}>
         <div className={styles.MainPage__container_center}>
             <div className={styles.MainPage__photoAndTitle}>

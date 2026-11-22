@@ -3,6 +3,7 @@ import {
     expect,
     it,
 } from 'vitest';
+
 import { hasOwnProperty } from './';
 
 describe('hasOwnProperty', () => {
@@ -18,6 +19,7 @@ describe('hasOwnProperty', () => {
         const obj = Object.create(null) as {
             a?: number;
         };
+
         obj.a = 1;
 
         expect(hasOwnProperty(obj, 'a')).toEqual(true);

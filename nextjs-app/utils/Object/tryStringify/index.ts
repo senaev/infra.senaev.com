@@ -3,7 +3,7 @@ export function tryStringify(obj: unknown): string | undefined {
 
     try {
         result = JSON.stringify(obj);
-    } catch (e) {
+    } catch {
         // not stringifiable
     }
 

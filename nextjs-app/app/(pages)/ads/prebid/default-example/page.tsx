@@ -1,13 +1,11 @@
 'use client';
 
 import { useEffect, type JSX } from 'react';
-
 import { loadScript } from 'utils/Script/loadScript';
 import type { PrebidWindow } from 'utils/types/Prebid';
 
 export default function Page (): JSX.Element {
     useEffect(() => {
-    // eslint-disable-next-line no-restricted-globals -- ignore
         const win: PrebidWindow = window;
 
         /* eslint-disable no-console -- ignore */
@@ -79,23 +77,23 @@ export default function Page (): JSX.Element {
 
                 // ======== DO NOT EDIT BELOW THIS LINE =========== //
 
-                // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
                 if (!win.googletag) {
                     throw new Error('win.googletag is nod defined');
                 }
 
-                // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
                 if (!win.pbjs) {
                     throw new Error('win.pbjs is nod defined');
                 }
 
                 const { googletag } = win;
+
                 googletag.cmd ||= [];
                 googletag.cmd.push(() => {
                     googletag.pubads().disableInitialLoad();
                 });
 
                 const { pbjs } = win;
+
                 pbjs.que ||= [];
 
                 pbjs.que.push(() => {
@@ -110,6 +108,7 @@ export default function Page (): JSX.Element {
                     if (pbjs.initAdserverSet) {
                         return;
                     }
+
                     pbjs.initAdserverSet = true;
                     googletag.cmd.push(() => {
                         pbjs.que.push(() => {
@@ -118,6 +117,7 @@ export default function Page (): JSX.Element {
                         });
                     });
                 }
+
                 // in case PBJS doesn't load
                 setTimeout(() => {
                     initAdserver();
@@ -160,24 +160,22 @@ export default function Page (): JSX.Element {
 
     /* eslint-enable -- ignore */
 
-    return (
-        <>
-            <h2>
-                {'Basic Prebid.js Example'}
-            </h2>
-            <a href={'https://docs.prebid.org/dev-docs/examples/basic-example.html'}>
-                {'Source of example'}
-            </a>
+    return <>
+        <h2>
+            {'Basic Prebid.js Example'}
+        </h2>
+        <a href={'https://docs.prebid.org/dev-docs/examples/basic-example.html'}>
+            {'Source of example'}
+        </a>
 
-            <h5>
-                {'Div-1'}
-            </h5>
-            <div id={'div-1'} />
+        <h5>
+            {'Div-1'}
+        </h5>
+        <div id={'div-1'}/>
 
-            <h5>
-                {'Div-2'}
-            </h5>
-            <div id={'div-2'} />
-        </>
-    );
+        <h5>
+            {'Div-2'}
+        </h5>
+        <div id={'div-2'}/>
+    </>;
 }

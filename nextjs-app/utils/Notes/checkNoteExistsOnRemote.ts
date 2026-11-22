@@ -5,9 +5,11 @@ export async function checkNoteExistsOnRemote(noteName: string): Promise<boolean
 
     try {
         const response = await fetch(url);
+
         // Drain the body instead of response.body?.cancel(): cancel() can hang
         // indefinitely against a keep-alive connection, stalling the request.
         await response.text();
+
         return response.status === 200;
     } catch {
         return false;

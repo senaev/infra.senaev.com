@@ -3,6 +3,7 @@ import {
     expect,
     it,
 } from 'vitest';
+
 import { generateHexString } from '../../String';
 
 import { mapObjectKeys } from './';
@@ -33,7 +34,7 @@ describe('mapObjectKeys', () => {
         };
 
         const entries = Object.entries(initialObject);
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- ignore
+
         const lastIterableValue = entries[entries.length - 1]![1];
 
         expect(mapObjectKeys(initialObject, () => 'propertyName')).toEqual({

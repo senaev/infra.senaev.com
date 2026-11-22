@@ -11,6 +11,7 @@ const PACKAGES = [
     'cluster-helper',
     'code-tools',
     'media-server-helper',
+    'nextjs-app',
     'obsidian-sync',
     'senaev-utils',
     'vpn-subscription',

@@ -1,8 +1,8 @@
 import { getObjectEntries } from 'utils/Object/getObjectEntries';
 import { getHashFromString } from 'utils/Script/getHashFromString';
+import type { JSX } from 'react';
 
 import styles from './index.module.css';
-import type { JSX } from 'react';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +36,7 @@ const CURRENT_PAGE_URL = '/fun/what-to-eat-today';
 export default async function Page ({ searchParams }: { searchParams: Promise<{ offset: string }> }): Promise<JSX.Element> {
     let resultOffset = 0;
     const { offset } = await searchParams;
+
     if (offset !== undefined) {
         if (!Number.isInteger(Number(offset))) {
             throw new Error(`offset=[${offset}] is NOT valid`);
@@ -45,6 +46,7 @@ export default async function Page ({ searchParams }: { searchParams: Promise<{ 
     }
 
     const date = new Date();
+
     date.setDate(date.getDate() + resultOffset);
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -65,36 +67,34 @@ export default async function Page ({ searchParams }: { searchParams: Promise<{ 
         ];
     });
 
-    return (
-        <div className={styles.Container}>
-            <div className={styles.ServiceInfo}>
-                <a href={`${CURRENT_PAGE_URL}?offset=${resultOffset - 1}`}>
-                    {'Yesterday'}
+    return <div className={styles.Container}>
+        <div className={styles.ServiceInfo}>
+            <a href={`${CURRENT_PAGE_URL}?offset=${resultOffset - 1}`}>
+                {'Yesterday'}
+            </a>
+            <div>
+                <a href={CURRENT_PAGE_URL}>
+                    {'Today'}
                 </a>
-                <div>
-                    <a href={CURRENT_PAGE_URL}>
-                        {'Today'}
-                    </a>
-                    {':'}
-                    {todayString}
-                </div>
-                <a href={`${CURRENT_PAGE_URL}?offset=${resultOffset + 1}`}>
-                    {'Tomorrow'}
-                </a>
-                <div>
-                    {'Hash: '}
-                    {hash.join('')}
-                </div>
-                <div>
-                    {'We are eating: '}
-                    {JSON.stringify(randoms)}
-                </div>
+                {':'}
+                {todayString}
             </div>
-            <div className={styles.MainInfo}>
-                <div>
-                    {`${randoms[0]![1]} ${randoms[1]![1]} and ${randoms[2]![1]} ${randoms[3]![1]}`}
-                </div>
+            <a href={`${CURRENT_PAGE_URL}?offset=${resultOffset + 1}`}>
+                {'Tomorrow'}
+            </a>
+            <div>
+                {'Hash: '}
+                {hash.join('')}
+            </div>
+            <div>
+                {'We are eating: '}
+                {JSON.stringify(randoms)}
             </div>
         </div>
-    );
+        <div className={styles.MainInfo}>
+            <div>
+                {`${randoms[0]![1]} ${randoms[1]![1]} and ${randoms[2]![1]} ${randoms[3]![1]}`}
+            </div>
+        </div>
+    </div>;
 }

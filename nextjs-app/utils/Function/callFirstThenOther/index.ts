@@ -7,6 +7,7 @@ export function callFirstThenOther<T extends (
     let called = false;
     const wrapper = function (this: unknown) {
         const fn = called ? other : first;
+
         called = true;
 
         // eslint-disable-next-line prefer-rest-params -- use arguments as a native way to pass parameters

@@ -3,6 +3,7 @@ import {
     expect,
     it,
 } from 'vitest';
+
 import { deleteUndefinedProperties } from './';
 
 describe('deleteUndefinedProperties', () => {

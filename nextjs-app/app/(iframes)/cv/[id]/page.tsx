@@ -1,3 +1,5 @@
+import { resolve } from 'path';
+
 import classNames from 'classnames';
 import { ErrorPage } from 'components/ErrorPage';
 import { MarkdownHeader } from 'components/MarkdownHeader';
@@ -15,12 +17,12 @@ import { FONT_MERRIWEATHER_CLASSNAMES } from 'const/FONT_MERRIWEATHER_CLASSNAMES
 import { NON_BREAKING_SPACE } from 'const/NON_BREAKING_SPACE';
 import Image from 'next/image';
 import Link from 'next/link';
-import { resolve } from 'path';
 import type { JSX } from 'react';
 import { getNextJsRootDirectory } from 'utils/getNextJsRootDirectory';
 import { getNoteByFilePath } from 'utils/Notes/getNoteByFilePath';
 import { renderNoteByMarkdownContent } from 'utils/Notes/renderNoteByMarkdownContent';
 import { getObjectEntries } from 'utils/Object/getObjectEntries';
+
 import './index.css';
 import styles from './index.module.css';
 
@@ -29,7 +31,7 @@ const AVATAR_SIZE = 150;
 export default async function Page ({
     params,
 }: {
-    params: Promise<{id: string}>
+    params: Promise<{id: string}>;
 }): Promise<JSX.Element> {
     const { id } = await params;
 
@@ -121,7 +123,7 @@ export default async function Page ({
 
         <main className={styles.Content}>
             <div className={styles.Content__noPrint}>
-                <PrintButton />
+                <PrintButton/>
             </div>
             <MarkdownHeader
                 depth={2}
@@ -194,7 +196,7 @@ export default async function Page ({
                         text={skillCategory}
                     />
                     <ul>
-                        {skillsArray.map((skill, i) => <li key={i}>
+                        {skillsArray.map((skill, skillIndex) => <li key={skillIndex}>
                             {skill}
                         </li>)}
                     </ul>

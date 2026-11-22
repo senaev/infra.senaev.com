@@ -28,6 +28,7 @@ export async function getNoteFromRemote(noteName: string): Promise<string | null
         // Drain the body instead of response.body?.cancel(): cancel() can hang
         // indefinitely against a keep-alive connection, stalling the request.
         await response.text();
+
         return null;
     }
 

@@ -3,6 +3,7 @@ import {
     expect,
     it,
 } from 'vitest';
+
 import { isNonEmptyString } from '.';
 
 const TEST_CASES: {

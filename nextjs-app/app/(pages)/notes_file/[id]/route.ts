@@ -1,7 +1,8 @@
+import { basename } from 'path';
+
 import { NOTES_REMOTE_URL } from 'const/NOTES_REMOTE_URL';
 import { notFound } from 'next/navigation';
 import { NextResponse } from 'next/server';
-import { basename } from 'path';
 
 export async function GET(request: Request): Promise<NextResponse> {
     const decodedId = decodeURIComponent(basename(request.url));

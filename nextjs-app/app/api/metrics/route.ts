@@ -7,6 +7,7 @@ export const runtime = 'nodejs';
 export async function GET() {
     try {
         const metrics = await prometheusRegistry.metrics();
+
         return new NextResponse(metrics, {
             headers: {
                 'Content-Type': prometheusRegistry.contentType,

@@ -22,7 +22,7 @@ function removeFrontmatter(markdown: string): string {
 export async function getNoteByFilePath({
     filePath,
 }: {
-    filePath: string
+    filePath: string;
 }): Promise<string> {
     const fileContent = (await promises.readFile(filePath)).toString();
 

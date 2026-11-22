@@ -1,6 +1,7 @@
 tmp/
 node_modules
 .next
+/nextjs-app/next-env.d.ts
 .DS_Store
 .idea
 .eslintcache

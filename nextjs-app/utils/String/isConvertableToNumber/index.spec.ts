@@ -3,6 +3,7 @@ import {
     expect,
     it,
 } from 'vitest';
+
 import { isConvertableToInteger } from './';
 
 describe('isConvertableToNumber', () => {

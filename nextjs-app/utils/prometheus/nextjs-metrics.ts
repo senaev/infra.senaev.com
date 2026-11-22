@@ -4,11 +4,11 @@ type NextjsPrometheusSingletone = {
     registry: Registry;
     counters: {
         nextjsHttpRequestsTotal: Counter<string>;
-    }
+    };
 };
 
 declare global {
-    // eslint-disable-next-line no-var
+
     var __nextjs_prometheus_singletone__: NextjsPrometheusSingletone | undefined;
 }
 

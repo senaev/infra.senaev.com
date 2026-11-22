@@ -3,9 +3,10 @@ import {
     expect,
     it,
 } from 'vitest';
+
 import { groupBy } from './';
 
-type Student = { name: string; score: number; };
+type Student = { name: string; score: number };
 
 describe('groupBy', () => {
     it('should split the list into groups according to the grouping function', () => {

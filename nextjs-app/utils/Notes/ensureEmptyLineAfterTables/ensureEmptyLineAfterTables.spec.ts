@@ -3,6 +3,7 @@ import {
     expect,
     it,
 } from 'vitest';
+
 import { ensureEmptyLineAfterTables } from './ensureEmptyLineAfterTables';
 
 describe('ensureEmptyLineAfterTables', () => {

@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-
 import { SENAEV_SITE_DOMAIN } from 'const/const';
 import { createCrossOriginHeaders } from 'utils/net/createCrossOriginHeaders';
 
@@ -10,14 +9,14 @@ export function GET (request: Request): NextResponse {
 
     let parsedTopics: number[] | undefined;
     let version: string | undefined;
-    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+
     if (secBrowsingTopics) {
         const split = secBrowsingTopics.split(';');
         const topicsPart = split[0];
 
         // default is '();p=P0000000000000000000000000000000'
         // when topic exists '(299 328);v=chrome.1:1:1, ();p=P00000'
-        // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+
         if (topicsPart && topicsPart.length > 2) {
             if (topicsPart.startsWith('(') && topicsPart.endsWith(')')) {
                 const topics = topicsPart.slice(1, -1).split(' ')

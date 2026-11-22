@@ -3,6 +3,11 @@
 **/node_modules
 **/npm-debug.log
 **/dist
+**/.next
+**/*.tsbuildinfo
+nextjs-app/.env
+nextjs-app/.env*.local
+nextjs-app/next-env.d.ts
 .git
 .gitignore
 .github

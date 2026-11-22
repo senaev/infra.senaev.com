@@ -1,19 +1,18 @@
 'use client';
 
 import { useEffect, type JSX } from 'react';
-
-import styles from './index.module.css';
-
 import { once } from 'utils/Function/once';
 import { loadScript } from 'utils/Script/loadScript';
 
+import styles from './index.module.css';
+
 declare const Ya: {
-  Context: {
-    AdvManager: {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ignore
-      render: (arg: any) => void
-    }
-  }
+    Context: {
+        AdvManager: {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ignore
+            render: (arg: any) => void;
+        };
+    };
 };
 
 const loadContextScript = once(async (): Promise<void> => {
@@ -23,7 +22,7 @@ const loadContextScript = once(async (): Promise<void> => {
 export function YandexAdUnit ({
     blockId,
 }: {
-  blockId: string
+    blockId: string;
 }): JSX.Element {
     const elementId = `${blockId}-element`;
 
@@ -43,10 +42,8 @@ export function YandexAdUnit ({
         elementId,
     ]);
 
-    return (
-        <div
-            className={styles.container}
-            id={elementId}
-        />
-    );
+    return <div
+        className={styles.container}
+        id={elementId}
+    />;
 }

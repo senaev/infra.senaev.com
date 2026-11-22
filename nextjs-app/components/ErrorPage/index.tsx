@@ -3,11 +3,9 @@ import type { JSX } from 'react';
 export function ErrorPage ({
     message,
 }: {
-  message: string;
+    message: string;
 }): JSX.Element {
-    return (
-        <div>
-            {message}
-        </div>
-    );
+    return <div>
+        {message}
+    </div>;
 }

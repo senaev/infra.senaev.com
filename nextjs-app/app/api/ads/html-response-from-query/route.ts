@@ -32,13 +32,13 @@ export function GET (request: Request): NextResponse {
     const htmlContent = searchParams.get('html') ?? PLACEHOLDER_TEXT;
 
     const responseHeadersFromRequest: Record<string, string> = {};
+
     searchParams.getAll('header').forEach((header) => {
         const [
             key,
             value,
         ] = header.split(':');
 
-        // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
         if (!key || !value) {
             throw new Error(`Header key of value is wrong in header=[${header}] in url=[${request.url}]`);
         }

@@ -5,10 +5,11 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getNoteFromRemote } from 'utils/Notes/getNoteFromRemote';
 import { renderNoteByMarkdownContent } from 'utils/Notes/renderNoteByMarkdownContent';
+
 import styles from './index.module.css';
 
 type NotePageProps = {
-    params: Promise<{id: string}>
+    params: Promise<{id: string}>;
 };
 
 export async function generateMetadata({

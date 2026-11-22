@@ -1,11 +1,13 @@
+import { basename } from 'path';
+
 import { MarkdownContainer } from 'components/MarkdownContainer';
 import GithubSlugger from 'github-slugger';
 import hljs from 'highlight.js';
 import { Marked } from 'marked';
 import { markedHighlight } from 'marked-highlight';
-import { basename } from 'path';
 import removeMarkdown from 'remove-markdown';
 import { prepareMarkdownContentForNote } from 'utils/prepareMarkdownContentForNote';
+
 import { checkIfItIsNoteRelativeLink } from './checkIfItIsNoteRelativeLink';
 import { checkNoteExistsOnRemote } from './checkNoteExistsOnRemote';
 import { createMarkdownHeaderText, type HeaderDepth } from './createMarkdownHeaderText';
@@ -16,17 +18,18 @@ const RELATIVE_NOTE_LINK_REGEX = /(?<!!)\[[^\]]*\]\(\.\/([^/)]+)\)/g;
 
 function extractRelativeNoteNames(markdown: string): string[] {
     const matches = markdown.matchAll(RELATIVE_NOTE_LINK_REGEX);
+
     return Array.from(matches, (m) => m[1]).filter((name): name is string => name !== undefined).map(decodeURIComponent);
 }
 
 async function buildPublicNotesSet(noteNames: string[]): Promise<Set<string>> {
     const uniqueNames = [...new Set(noteNames)];
-    const results = await Promise.all(
-        uniqueNames.map(async (name) => {
-            const exists = await checkNoteExistsOnRemote(name);
-            return exists ? name : null;
-        })
-    );
+    const results = await Promise.all(uniqueNames.map(async (name) => {
+        const exists = await checkNoteExistsOnRemote(name);
+
+        return exists ? name : null;
+    }));
+
     return new Set(results.filter((name): name is string => name !== null));
 }
 
@@ -35,6 +38,7 @@ const highlightExtension = markedHighlight({
     langPrefix: 'hljs language-',
     highlight(code, lang) {
         const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+
         return hljs.highlight(code, { language }).value;
     },
 });
@@ -50,6 +54,7 @@ const obsidianHighlightExtension = {
             tokenizer(src: string) {
                 const rule = /^==([^=]+)==/;
                 const match = rule.exec(src);
+
                 if (match) {
                     return {
                         type: 'obsidianHighlight',
@@ -57,6 +62,7 @@ const obsidianHighlightExtension = {
                         text: match[1],
                     };
                 }
+
                 return undefined;
             },
             renderer(token: { text: string }) {
@@ -80,6 +86,7 @@ function createMarkedInstance(publicNotes: Set<string>) {
             preprocess(src) {
                 // https://github.com/markedjs/marked-gfm-heading-id/blob/eeb9d48df948a6a78d1c52095b381868ea5120fb/src/index.js#L58
                 slugger = new GithubSlugger();
+
                 return src;
             },
         },
@@ -92,6 +99,7 @@ function createMarkedInstance(publicNotes: Set<string>) {
                 } = input;
                 const text = this.parser.parseInline(tokens);
                 const id = slugger.slug(removeMarkdown(raw).trim().toLowerCase());
+
                 return createMarkdownHeaderText({
                     id,
                     depth: depth as HeaderDepth,
@@ -126,7 +134,7 @@ function createMarkedInstance(publicNotes: Set<string>) {
 }
 
 export async function renderNoteByMarkdownContent({ markdownContent }: { markdownContent: string }) {
-    const preparedMarkdownContent = await prepareMarkdownContentForNote(markdownContent);
+    const preparedMarkdownContent = prepareMarkdownContentForNote(markdownContent);
 
     const noteNames = extractRelativeNoteNames(preparedMarkdownContent);
     const publicNotes = await buildPublicNotesSet(noteNames);
@@ -137,5 +145,5 @@ export async function renderNoteByMarkdownContent({ markdownContent }: { markdow
     const processedContent = await marked.parse(preparedMarkdownContent);
     const contentHtml = processedContent.toString();
 
-    return <MarkdownContainer contentHtml={contentHtml} />;
+    return <MarkdownContainer contentHtml={contentHtml}/>;
 }
