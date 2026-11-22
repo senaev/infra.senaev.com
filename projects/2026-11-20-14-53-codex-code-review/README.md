@@ -5,7 +5,7 @@ Turn on the built-in Codex code review on GitHub, with review rules written for 
 ## Goal
 
 - Codex reviews the pull requests of the repositories by itself, and on `@codex review`.
-- Each repository has its own `## Code Review Rules` in its `AGENTS.md`, so the review checks what can really break there.
+- Each repository has its own review rules (in infra.senaev.com: `CODE_REVIEW.md`, linked from the `## Code Review Rules` section of `AGENTS.md`), so the review checks what can really break there.
 - First infra.senaev.com; the other repositories after the review quality is checked (decision of the user, 2026-11-20).
 
 ## Context
@@ -20,7 +20,7 @@ Turn on the built-in Codex code review on GitHub, with review rules written for 
 
 ## Plan
 
-1. ⏳ Rules for infra.senaev.com: `## Code Review Rules` in the root `AGENTS.md`, from the conventions already there (sensitive nodes, secrets, data loss on deploy, tests, the published library). One PR.
+1. ⏳ Rules for infra.senaev.com: `## Code Review Rules` in `CODE_REVIEW.md` (the root `AGENTS.md` section `## Code Review Rules` points to it), from the conventions already there (sensitive nodes, secrets, data loss on deploy, tests, the published library). One PR.
 2. The user: connect infra.senaev.com to Codex cloud (chatgpt.com/codex), then turn on code review for it at `chatgpt.com/settings/code-review`. Note what the plan allows and the "Review trigger" options.
 3. Test: `@codex review` on an open pull request, and the automatic review on a new one. Check that the review follows the rules, and what a new push does.
 4. Tune the rules after a few reviews (too noisy, or missing real problems).
