@@ -52,24 +52,23 @@ afterEach(() => {
 
 describe('background sync cleanup', () => {
     it('stops the watcher and timer immediately and waits for in-flight work', async () => {
-        const controller = new AbortController();
         let release: () => void = () => undefined;
         const gate = new Promise<void>((resolve) => {
             release = resolve;
         });
-        const background = startTelegramPostSyncInBackground(controller.signal);
+        const background = startTelegramPostSyncInBackground();
 
         await vi.advanceTimersByTimeAsync(0);
         const changed = mocks.watch.mock.calls[0]?.[0] as (path: string) => void;
 
         mocks.sync.mockReturnValue(gate);
         changed('A.md');
-        controller.abort();
-        expect(mocks.closeWatch).toHaveBeenCalledTimes(1);
         let drained = false;
         const closing = background.close().then(() => {
             drained = true;
         });
+
+        expect(mocks.closeWatch).toHaveBeenCalledTimes(1);
 
         await vi.advanceTimersByTimeAsync(30000);
         expect(drained).toBe(false);
@@ -88,7 +87,7 @@ describe('background sync cleanup', () => {
         mocks.scan.mockReturnValue(new Promise((resolve) => {
             release = resolve;
         }));
-        const background = startTelegramPostSyncInBackground(new AbortController().signal);
+        const background = startTelegramPostSyncInBackground();
         const closing = background.close();
 
         release([{ relativePath: 'A.md' }]);

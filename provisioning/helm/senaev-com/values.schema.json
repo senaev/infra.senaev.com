@@ -352,25 +352,11 @@
             "type": "object",
             "additionalProperties": false,
             "required": [
-              "enabled",
-              "secrets"
+              "enabled"
             ],
             "properties": {
               "enabled": {
                 "type": "boolean"
-              },
-              "secrets": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "codeToolsToken"
-                ],
-                "properties": {
-                  "codeToolsToken": {
-                    "type": "string",
-                    "minLength": 1
-                  }
-                }
               }
             }
           }

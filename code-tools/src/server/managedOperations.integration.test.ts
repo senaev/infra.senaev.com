@@ -2,7 +2,6 @@ import { completeOperation } from 'senaev-utils/src/operations/testing/completeO
 import type { OperationLaunchReply, OperationObservation } from 'senaev-utils/src/operations/operationTypes';
 import { OperationManager } from 'senaev-utils/src/operations/OperationManager';
 import { CommandError } from 'senaev-utils/src/commands/CommandError';
-import { createBearerAuthorizationHeader } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
 import {
     afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
@@ -10,10 +9,7 @@ import {
 import { CODE_TOOLS } from '../tools/codeTools';
 import { createTestRepositories, type TestRepositories } from '../tools/createTestRepositories';
 
-import { createCodeToolsServer, type CodeToolsServer } from './createCodeToolsServer';
-
-const TOKEN = 'managed-operations-test';
-const HEADERS = { authorization: createBearerAuthorizationHeader(TOKEN) };
+import { createTestCodeToolsServer, type TestCodeToolsServer } from './createTestCodeToolsServer';
 
 type Reply = {
     status: string;
@@ -42,11 +38,11 @@ function deferred() {
 
 describe('managed execution HTTP contract', () => {
     let repos: TestRepositories;
-    let server: CodeToolsServer;
+    let server: TestCodeToolsServer;
 
     beforeEach(async () => {
         repos = await createTestRepositories({ demo: { 'README.md': 'hello\n' } });
-        server = createCodeToolsServer(TOKEN, repos.config);
+        server = createTestCodeToolsServer(repos.config);
     });
 
     afterEach(async () => {
@@ -60,7 +56,6 @@ describe('managed execution HTTP contract', () => {
         return server.inject({
             method: 'POST',
             url: `/code/${tool}`,
-            headers: HEADERS,
             payload,
         });
     }
@@ -96,7 +91,7 @@ describe('managed execution HTTP contract', () => {
         };
     }
 
-    it('returns a fast real result and exposes the same result through authenticated controls', async () => {
+    it('returns a fast real result and exposes the same result through the controls', async () => {
         const response = await list();
         const body = response.json<Reply>();
 
@@ -124,21 +119,6 @@ describe('managed execution HTTP contract', () => {
             },
         });
         expect((await call('operations')).json<Reply>().operations).toContainEqual(expect.objectContaining({ id }));
-        for (const tool of [
-            'list',
-            'operations',
-            'operation_status',
-            'operation_result',
-            'operation_cancel',
-        ]) {
-            const unauthorized = await server.inject({
-                method: 'POST',
-                url: `/code/${tool}`,
-                payload: { id },
-            });
-
-            expect(unauthorized.statusCode).toBe(401);
-        }
     });
 
     it('does not abort execution when the observation client disconnects', async () => {
@@ -160,10 +140,7 @@ describe('managed execution HTTP contract', () => {
         const client = new AbortController();
         const response = fetch(`${address}/code/list`, {
             method: 'POST',
-            headers: {
-                ...HEADERS,
-                'content-type': 'application/json',
-            },
+            headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ folder: repos.root }),
             signal: client.signal,
         }).catch((error: unknown) => error);
@@ -185,7 +162,7 @@ describe('managed execution HTTP contract', () => {
         const reply = (await list()).json<Reply>();
 
         await server.close();
-        server = createCodeToolsServer(TOKEN, repos.config);
+        server = createTestCodeToolsServer(repos.config);
         expect((await call('operation_status', { id: reply.operation.id })).statusCode).toBe(404);
         expect((await call('operations')).json<Reply>().operations).toEqual([]);
     });

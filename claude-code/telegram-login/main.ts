@@ -5,7 +5,7 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 import { requireEnv } from 'senaev-utils/src/utils/env/requireEnv/requireEnv';
-import { installGracefulShutdown } from 'senaev-utils/src/utils/process/installGracefulShutdown';
+import { createShutdownController } from 'senaev-utils/src/utils/process/createShutdownController';
 import { answerTelegramCallbackQuery } from 'senaev-utils/src/utils/TelegramApi/answerTelegramCallbackQuery';
 import { deleteTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/deleteTelegramMessage';
 import { editTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/editTelegramMessage';
@@ -170,14 +170,14 @@ const routerDependencies = {
 const routeMessage = createMessageRouter(routerDependencies);
 const routeCallbackQuery = createCallbackQueryRouter(routerDependencies);
 
-const lifecycle = installGracefulShutdown({
-    stop: () => {
-        assistant.stop();
-        codexLogin?.stop();
+const subscribeShutdown = createShutdownController(
+    process,
+    (error) => logger.error(error, '❌ Telegram login helper shutdown failed')
+);
 
-        return Promise.resolve();
-    },
-    reportError: (error) => logger.error(error, '❌ Telegram login helper shutdown failed'),
+subscribeShutdown(() => {
+    assistant.stop();
+    codexLogin?.stop();
 });
 
 // One step at a time: a login code must not be handled while a check still waits for its answer.
@@ -205,9 +205,13 @@ function main(): Promise<void> {
     checkAll();
     setInterval(checkAll, LOGIN_CHECK_INTERVAL_MS).unref();
 
+    const polling = new AbortController();
+
+    subscribeShutdown(() => polling.abort(new Error('Service stopping')));
+
     return pollTelegramMessages({
         token,
-        signal: lifecycle.signal,
+        signal: polling.signal,
         skipMessagesSentBeforeStart: true,
         onMessage: (message) => enqueue('Handling a message', () => routeMessage(message)),
         onCallbackQuery: (callbackQuery) => enqueue('Handling a button press', () => routeCallbackQuery(callbackQuery)),
@@ -215,9 +219,5 @@ function main(): Promise<void> {
     });
 }
 
-main().catch(async (error) => {
-    if (!lifecycle.signal.aborted) {
-        logger.error(error, '❌ Telegram login helper exited');
-        await lifecycle.shutdown(1);
-    }
-});
+// A failure of the polling is an unhandled rejection: Node prints it and exits with 1.
+void main();

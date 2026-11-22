@@ -50,18 +50,6 @@ describe('runTool', () => {
         });
     });
 
-    it('does not pass the internal token to the command', async () => {
-        // vitest.setup.ts puts the token into process.env, which the test config is made from.
-        expect(process.env.INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS).toBeTruthy();
-
-        const result = await runTool(repos.config, {
-            cwd: repos.path('demo'),
-            command: 'echo "token:${INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS:-}"',
-        });
-
-        expect(result.stdout).toBe('token:\n');
-    });
-
     it('stops a command under the common execution deadline', async () => {
         const manager = new OperationManager('test');
         const args = {

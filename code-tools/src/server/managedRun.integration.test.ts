@@ -1,16 +1,12 @@
 import { readFile } from 'node:fs/promises';
 
-import { createBearerAuthorizationHeader } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
 import {
     afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
 
 import { createTestRepositories, type TestRepositories } from '../tools/createTestRepositories';
 
-import { createCodeToolsServer, type CodeToolsServer } from './createCodeToolsServer';
-
-const TOKEN = 'run-test';
-const HEADERS = { authorization: createBearerAuthorizationHeader(TOKEN) };
+import { createTestCodeToolsServer, type TestCodeToolsServer } from './createTestCodeToolsServer';
 
 type Reply = {
     status: string; code?: string; exitCode?: number; stdout?: string; outputTruncated?: boolean;
@@ -22,11 +18,11 @@ type Reply = {
 
 describe('managed shell execution', () => {
     let repos: TestRepositories;
-    let server: CodeToolsServer;
+    let server: TestCodeToolsServer;
 
     beforeEach(async () => {
         repos = await createTestRepositories({ demo: { 'README.md': 'repair access' } });
-        server = createCodeToolsServer(TOKEN, repos.config);
+        server = createTestCodeToolsServer(repos.config);
     });
     afterEach(async () => {
         await server.close();
@@ -36,7 +32,6 @@ describe('managed shell execution', () => {
         return server.inject({
             method: 'POST',
             url: `/code/${tool}`,
-            headers: HEADERS,
             payload,
         });
     }

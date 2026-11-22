@@ -4,20 +4,21 @@ import { once } from 'node:events';
 import { expect, it } from 'vitest';
 
 it('handles a real child-process SIGTERM only after its cleanup completes', async () => {
-    const helper = new URL('./installGracefulShutdown.ts', import.meta.url).href;
+    const helper = new URL('./createShutdownController.ts', import.meta.url).href;
     const child = spawn(process.execPath, [
         '--input-type=module',
         '-e',
         `
-            import { installGracefulShutdown } from ${JSON.stringify(helper)};
+            import { createShutdownController } from ${JSON.stringify(helper)};
             const keepAlive = setInterval(() => {}, 1000);
-            installGracefulShutdown({
-                stop: async () => {
-                    await new Promise(resolve => setTimeout(resolve, 30));
-                    process.stdout.write('cleaned');
-                    clearInterval(keepAlive);
-                },
-                reportError: error => { process.stderr.write('shutdown-error:' + String(error)); }
+            const subscribeShutdown = createShutdownController(
+                process,
+                error => { process.stderr.write('shutdown-error:' + String(error)); }
+            );
+            subscribeShutdown(async () => {
+                await new Promise(resolve => setTimeout(resolve, 30));
+                process.stdout.write('cleaned');
+                clearInterval(keepAlive);
             });
             process.stdout.write('ready');
         `,

@@ -1,4 +1,3 @@
-import { createBearerAuthorizationHeader } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
 import {
     afterEach,
     beforeEach,
@@ -9,18 +8,15 @@ import {
 
 import { createTestRepositories, type TestRepositories } from '../tools/createTestRepositories';
 
-import { createCodeToolsServer, type CodeToolsServer } from './createCodeToolsServer';
+import { createTestCodeToolsServer, type TestCodeToolsServer } from './createTestCodeToolsServer';
 
-const TOKEN = 'test-token';
-const AUTHORIZED = { authorization: createBearerAuthorizationHeader(TOKEN) };
-
-describe('createCodeToolsServer', () => {
+describe('registerCodeToolsRoutes', () => {
     let repos: TestRepositories;
-    let server: CodeToolsServer;
+    let server: TestCodeToolsServer;
 
     beforeEach(async () => {
         repos = await createTestRepositories({ demo: { 'README.md': 'hello\n' } });
-        server = createCodeToolsServer(TOKEN, repos.config);
+        server = createTestCodeToolsServer(repos.config);
     });
 
     afterEach(async () => {
@@ -28,28 +24,10 @@ describe('createCodeToolsServer', () => {
         await repos.remove();
     });
 
-    it('answers the health check without a token', async () => {
-        const response = await server.inject({ url: '/health' });
-
-        expect(response.statusCode).toBe(200);
-        expect(response.json()).toEqual({ status: 'ok' });
-    });
-
-    it('rejects a tool call without the internal token', async () => {
-        const response = await server.inject({
-            method: 'POST',
-            url: '/code/list',
-            payload: { folder: repos.root },
-        });
-
-        expect(response.statusCode).toBe(401);
-    });
-
-    it('runs a tool with the internal token', async () => {
+    it('runs a tool', async () => {
         const response = await server.inject({
             method: 'POST',
             url: '/code/read',
-            headers: AUTHORIZED,
             payload: { paths: [repos.path('demo', 'README.md')] },
         });
 
@@ -64,13 +42,11 @@ describe('createCodeToolsServer', () => {
         const unknown = await server.inject({
             method: 'POST',
             url: '/code/delete',
-            headers: AUTHORIZED,
             payload: {},
         });
         const missingFile = await server.inject({
             method: 'POST',
             url: '/code/read',
-            headers: AUTHORIZED,
             payload: { paths: [repos.path('nope', 'README.md')] },
         });
 
@@ -79,7 +55,6 @@ describe('createCodeToolsServer', () => {
         const relativePath = await server.inject({
             method: 'POST',
             url: '/code/read',
-            headers: AUTHORIZED,
             payload: { paths: ['demo/README.md'] },
         });
 

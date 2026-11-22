@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { registerMtlsCallerAllowlist } from 'senaev-utils/src/utils/mtls/registerMtlsCallerAllowlist';
 
 import { OBSIDIAN_VAULT_PATH } from '../env';
 import { createVaultToolsConfig } from '../vault-tools/vaultToolsConfig';
@@ -6,7 +7,6 @@ import { createVaultToolsConfig } from '../vault-tools/vaultToolsConfig';
 import { ALLOWED_CALLERS } from './callers';
 import { registerJobSearchRoutes } from './registerJobSearchRoutes';
 import { registerMilestoneRoutes } from './registerMilestoneRoutes';
-import { registerMtlsCallerAllowlist } from './registerMtlsCallerAllowlist';
 import { registerPublicFileRoutes } from './registerPublicFileRoutes';
 import { registerPublicStaticRoutes } from './registerPublicStaticRoutes';
 import { registerShortLinkRoutes } from './registerShortLinkRoutes';

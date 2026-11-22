@@ -84,9 +84,10 @@ The Vault store and property names are unchanged. The new namespaced Kubernetes 
 contains only VPN properties; the old shared secret is left unchanged during migration
 to avoid reloader restarts of unrelated services.
 
-The subscription service keeps its existing `http://cluster-helper` URL via an ExternalName
-Service pointing to `cluster-helper.senaev-com.svc.cluster.local`. NetworkPolicy permits
-subscription pods in `vpn` and the old namespace during cutover/rollback. Website fallback
+The subscription service posts its Telegram error reports to
+`https://cluster-helper.senaev-com.svc.cluster.local:8443/telegram/send-message` over mTLS, with the
+certificate `vpn-subscription-tls` of the `vpn` release. The ExternalName Service `cluster-helper` that
+this namespace had after the move is gone, and so is the old plain-HTTP rule for it. Website fallback
 ingresses remain in `senaev-com`; Xray already uses fully qualified Traefik service names.
 
 See [cutover and rollback](projects/2026-06-10-debug-vpn-connection/NAMESPACE-MIGRATION.md).

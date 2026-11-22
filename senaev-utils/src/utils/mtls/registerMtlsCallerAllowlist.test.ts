@@ -3,8 +3,6 @@ import {
 } from 'vitest';
 import Fastify, { type FastifyInstance } from 'fastify';
 
-import { logger } from '../logger';
-
 import { registerMtlsCallerAllowlist } from './registerMtlsCallerAllowlist';
 
 const servers: FastifyInstance[] = [];
@@ -15,9 +13,7 @@ afterEach(async () => {
 
 describe('registerMtlsCallerAllowlist', () => {
     it('refuses everything when no authentication ran before it, even for an allowed name', async () => {
-        const server = Fastify({
-            loggerInstance: logger,
-        });
+        const server = Fastify();
 
         servers.push(server);
         registerMtlsCallerAllowlist(server, ['service-a.test.svc.cluster.local']);

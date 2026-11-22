@@ -3,7 +3,6 @@ import { readFile } from 'node:fs/promises';
 import { completeOperation } from 'senaev-utils/src/operations/testing/completeOperation';
 import type { OperationLaunchReply, OperationObservation } from 'senaev-utils/src/operations/operationTypes';
 import { hashContent } from 'senaev-utils/src/files/contentHash';
-import { createBearerAuthorizationHeader } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
 import {
     afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
@@ -11,7 +10,7 @@ import {
 import { CODE_TOOLS } from '../tools/codeTools';
 import { createTestRepositories, type TestRepositories } from '../tools/createTestRepositories';
 
-import { createCodeToolsServer, type CodeToolsServer } from './createCodeToolsServer';
+import { createTestCodeToolsServer, type TestCodeToolsServer } from './createTestCodeToolsServer';
 
 type Reply = {
     status: string; code?: string;
@@ -22,11 +21,11 @@ type Reply = {
 
 describe('all managed file tools', { timeout: 60000 }, () => {
     let repos: TestRepositories;
-    let server: CodeToolsServer;
+    let server: TestCodeToolsServer;
 
     beforeEach(async () => {
         repos = await createTestRepositories({ demo: { 'README.md': 'hello\nsecond\n' } });
-        server = createCodeToolsServer('files-test', repos.config);
+        server = createTestCodeToolsServer(repos.config);
     });
     afterEach(async () => {
         await server.close();
@@ -38,7 +37,6 @@ describe('all managed file tools', { timeout: 60000 }, () => {
         return server.inject({
             method: 'POST',
             url: `/code/${tool}`,
-            headers: { authorization: createBearerAuthorizationHeader('files-test') },
             payload,
         });
     }
