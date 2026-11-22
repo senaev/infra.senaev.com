@@ -1,0 +1,94 @@
+name: Obsidian Personal Tools
+
+on:
+  pull_request:
+    paths:
+      - obsidian-personal-tools/**
+      - .github/workflows/obsidian-personal-tools.yml
+      - .nvmrc
+  push:
+    branches: [main]
+    paths:
+      - obsidian-personal-tools/**
+      - .github/workflows/obsidian-personal-tools.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      built: ${{ steps.build.outputs.built }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check whether the plugin has landed
+        id: plugin
+        run: |
+          if [[ -d obsidian-personal-tools ]]; then
+            echo 'present=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'Plugin source is not present in this revision.'
+          fi
+      - uses: actions/setup-node@v6
+        if: steps.plugin.outputs.present == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: obsidian-personal-tools/package-lock.json
+      - name: Validate and build plugin
+        if: steps.plugin.outputs.present == 'true'
+        id: build
+        working-directory: obsidian-personal-tools
+        run: |
+          npm ci
+          npm run lint
+          npm run typecheck
+          npm test
+          npm run build
+          echo 'built=true' >> "$GITHUB_OUTPUT"
+      - name: Upload release files
+        if: steps.build.outputs.built == 'true' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: obsidian-personal-tools
+          path: |
+            obsidian-personal-tools/dist/main.js
+            obsidian-personal-tools/dist/manifest.json
+            obsidian-personal-tools/dist/styles.css
+          if-no-files-found: error
+
+  publish:
+    if: github.ref == 'refs/heads/main' && needs.check.outputs.built == 'true'
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: obsidian-personal-tools-release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: obsidian-personal-tools
+          path: dist
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(jq -er .version dist/manifest.json)
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+
+          for asset in main.js manifest.json styles.css; do
+            test -s "dist/$asset"
+          done
+
+          if gh release view "$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $version already exists."
+            exit 0
+          fi
+
+          gh release create "$version" dist/main.js dist/manifest.json dist/styles.css \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "$version" --notes "Senaev Personal Tools $version"
