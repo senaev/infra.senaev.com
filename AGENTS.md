@@ -229,7 +229,7 @@ ClusterIssuer `internal-ca`, key only in the `pki` namespace) issue 7-day leaves
 in the `vpn` release, because a Secret is namespaced). The identity is a DNS SAN
 `<service>.<namespace>.svc.cluster.local`: a callee knows its callers by that name, and a client
 connects to a URL whose host is the callee's name. The URLs are constants in
-`cluster-helper/src/mtlsServiceUrls.ts` and `vpn-subscription/src/index.ts`.
+`cluster-helper/src/mtlsServiceUrls.ts` and `vpn-subscription/src/clusterHelperTelegramApi.ts`.
 Every service mounts its Secret as a directory at `/etc/mtls` (never subPath or env),
 polls the files and reloads without a restart
 (`senaev-utils/src/utils/mtls`). They fail closed: no fallback to HTTP or a token. cluster-helper has

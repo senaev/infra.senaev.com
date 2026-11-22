@@ -8,7 +8,9 @@ import {
     telegramBold, telegramCode, escapeTelegramMarkdown,
 } from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
 
-import { type ClusterHelperTelegram, createClusterHelperTelegram } from './clusterHelperTelegram';
+import {
+    CLUSTER_HELPER_URL, type ClusterHelperTelegramApi, createClusterHelperTelegramApi,
+} from './clusterHelperTelegramApi';
 import { logger } from './logger';
 import {
     PORT,
@@ -22,7 +24,6 @@ import {
 import { renderInstructionsPage } from './renderInstructionsPage';
 import { logController, logServerError } from './requestLogging';
 
-const CLUSTER_HELPER_URL = 'https://cluster-helper.senaev-com.svc.cluster.local:8443';
 const TITLE = 'Senaev🔐VPN';
 const ANNOUNCEMENTS = [
     '🚀 Обязательно добавляйтесь в чат телеги.',
@@ -40,7 +41,7 @@ const server = Fastify({
 server.setErrorHandler(logServerError);
 
 // Set in main() before the server listens, so a request always finds it.
-let clusterHelperTelegram: ClusterHelperTelegram | undefined;
+let clusterHelperTelegramApi: ClusterHelperTelegramApi | undefined;
 
 const macroValues: Record<string, string> = {
     XRAY_REALITY_PUBLIC_KEY,
@@ -239,11 +240,11 @@ server.post<{ Params: { secret: string } }>('/:secret', async (request, reply) =
         escapeTelegramMarkdown(message),
     ].join('\n');
 
-    if (!clusterHelperTelegram) {
+    if (!clusterHelperTelegramApi) {
         throw new Error('The cluster-helper client is not started');
     }
 
-    const clusterHelperResponse = await clusterHelperTelegram.sendMessage({
+    const clusterHelperResponse = await clusterHelperTelegramApi.sendMessage({
         chatId: String(VPN_SUBSCRIPTION_CHAT_ID),
         text: telegramMessage,
     });
@@ -276,10 +277,7 @@ async function main(): Promise<void> {
 
     subscribeShutdown(() => clusterHelperClient.close());
 
-    clusterHelperTelegram = createClusterHelperTelegram({
-        client: clusterHelperClient,
-        origin: CLUSTER_HELPER_URL,
-    });
+    clusterHelperTelegramApi = createClusterHelperTelegramApi(clusterHelperClient);
     subscribeShutdown(() => server.close());
 
     await server.listen({
