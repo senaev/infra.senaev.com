@@ -1,11 +1,13 @@
-- [ ] Expand OpenTelemetry container log collection beyond the Hetzner pilot.
+- [ ] Verify a fresh log from `proxmox` when a workload emits one.
+- [ ] Run the controlled ClickHouse outage check.
 
 ## Stage
 
-The pilot is deployed and verified. ClickHouse on `senaev-madrid` receives logs from the
-agent and gateway on Hetzner. The read-only Grafana datasource returned live logs.
+The cluster-wide DaemonSet is deployed with seven ready agents. Datadog samples from
+Hetzner, `senaev-madrid`, and `senaev-media` matched ClickHouse after recovery.
+The [project result](README.md#result) records the earlier media-node gap.
 
 ## Next steps
 
-Run the controlled outage check in the [verification](README.md#verification), then
-expand the agent's node selection in stages.
+Use the [verification queries](README.md#verification) to confirm a new `proxmox` log
+and verify queue recovery during a controlled ClickHouse outage.

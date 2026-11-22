@@ -50,5 +50,18 @@ Hetzner. Grafana queried a fresh cluster-helper log and returned 1,606 Hetzner r
 from a five-minute window. The live table has a 450-day TTL. All 62 scrape targets were
 up, Datadog received fresh cluster-helper logs, and five public smoke checks passed.
 
-The controlled ClickHouse outage test and collection beyond Hetzner are pending.
-See the [worklog](project-worklog.md).
+### Cluster-wide rollout
+
+PR #286 deployed the agent to all seven nodes. The first Helm attempt timed out during
+startup. The agents recovered, and [attempt 2](https://github.com/senaev/infra.senaev.com/actions/runs/45066157360/attempts/2) succeeded with seven agents
+ready.
+
+All 90 Datadog records from `senaev-media` in the 21:00–21:02 UTC sample matched
+ClickHouse. The same sample matched all 1,199 Madrid log-generator records. All 136
+`cluster-helper` records matched during the Hetzner agent replacement at 20:58 UTC.
+The earlier 664-record gap on `senaev-media` remains in ClickHouse. Those records are
+still available in Datadog.
+
+ClickHouse has received logs from six nodes. The `proxmox` agent is ready, and the
+log file sizes reported for its other pods stayed constant during verification.
+The controlled outage test is pending. See the [worklog](project-worklog.md).

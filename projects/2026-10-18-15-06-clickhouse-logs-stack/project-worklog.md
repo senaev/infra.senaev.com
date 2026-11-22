@@ -1,3 +1,28 @@
+## 2026-11-22 21:08 UTC — Verified the cluster-wide rollout retry
+
+The first [deployment attempt](https://github.com/senaev/infra.senaev.com/actions/runs/45066157360)
+timed out. `firstvds` recovered from its liveness restarts. The `proxmox` agent started at
+20:51:42 UTC. The user supplied pod status showing `senaev-media` ready with zero
+restarts after its agent started at 20:58:40 UTC. The Hetzner replacement started at
+20:58:43 UTC. [Attempt 2](https://github.com/senaev/infra.senaev.com/actions/runs/45066157360/attempts/2) succeeded at 21:05:50 UTC with seven agents ready.
+
+```text
+Tests  5 passed (5)
+```
+
+All 62 VictoriaMetrics scrape targets were up. Grafana passed both datasource health
+checks, and the gateway reported zero receiver failures or refusals. The 21:00–21:02
+UTC comparison matched all 90 Datadog records from `senaev-media` and all 1,199
+Madrid log-generator records. Five media records crossed the time-window boundary
+because the backends used different timestamps. During 20:58:20–21:00:20 UTC,
+all 136 Hetzner `cluster-helper` records matched through the agent replacement.
+
+The first rollout left 664 Datadog records from `senaev-media` missing from ClickHouse
+in the 20:26–20:42 UTC sample. The `proxmox-madrid` agent has delivered logs.
+Kubelet reported zero changes in log file size for the other `proxmox` pods in the
+nine-minute verification window. A new `proxmox` log remains to be verified. PR #287
+was held after `firstvds` recovered.
+
 ## 2026-11-22 18:03 UTC — Verified the deployed Hetzner pilot
 
 PR #269 merged as `96ef7eef`. The first Helm attempt timed out after External Secrets
