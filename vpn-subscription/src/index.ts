@@ -1,8 +1,9 @@
 import { createHash } from 'node:crypto';
 
 import Fastify, { type FastifyReply } from 'fastify';
-import { createMtlsClient, type MtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
+import { createMtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
 import { watchTlsCredentials } from 'senaev-utils/src/utils/mtls/watchTlsCredentials';
+import { createShutdownController } from 'senaev-utils/src/utils/process/createShutdownController';
 import {
     telegramBold, telegramCode, escapeTelegramMarkdown,
 } from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
@@ -38,9 +39,7 @@ const server = Fastify({
 
 server.setErrorHandler(logServerError);
 
-// Set in main() before the server listens, so a request always finds them.
-let certificates: Awaited<ReturnType<typeof watchTlsCredentials>> | undefined;
-let clusterHelperClient: MtlsClient | undefined;
+// Set in main() before the server listens, so a request always finds it.
 let clusterHelperTelegram: ClusterHelperTelegram | undefined;
 
 const macroValues: Record<string, string> = {
@@ -262,31 +261,33 @@ server.post<{ Params: { secret: string } }>('/:secret', async (request, reply) =
 });
 
 async function main(): Promise<void> {
-    certificates = await watchTlsCredentials({ logger });
-    clusterHelperClient = createMtlsClient({
+    const subscribeShutdown = createShutdownController(
+        process,
+        (error) => logger.error(error, '❌ Failed to close a part of the service')
+    );
+    const certificates = await watchTlsCredentials({ logger });
+
+    subscribeShutdown(() => certificates.stop());
+
+    const clusterHelperClient = createMtlsClient({
         origin: CLUSTER_HELPER_URL,
         credentials: certificates.credentials,
     });
+
+    subscribeShutdown(() => clusterHelperClient.close());
+
     clusterHelperTelegram = createClusterHelperTelegram({
         client: clusterHelperClient,
         origin: CLUSTER_HELPER_URL,
     });
+    subscribeShutdown(() => server.close());
+
     await server.listen({
         port: PORT,
         host: '0.0.0.0',
     });
     logger.info(`✅ VPN subscription server listening on port=${PORT}`);
 }
-
-async function shutdown(): Promise<void> {
-    await server.close();
-    await clusterHelperClient?.close();
-    certificates?.stop();
-    process.exit(0);
-}
-
-process.on('SIGTERM', shutdown);
-process.on('SIGINT', shutdown);
 
 main().catch((error: unknown) => {
     logger.error(error, '❌ Failed to start server');
