@@ -200,7 +200,7 @@ spec:
             failureThreshold: 24
           livenessProbe:
             httpGet:
-              path: /health/live
+              path: /health
               port: internal
             initialDelaySeconds: 5
             periodSeconds: 5

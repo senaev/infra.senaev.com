@@ -28,7 +28,6 @@ export function createInternalServer({
     const server = createHealthServer({
         Fastify,
         logger,
-        path: '/health/live',
     });
 
     server.get('/health/ready', (_request, reply) => {

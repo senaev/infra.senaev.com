@@ -1,17 +1,16 @@
 import type FastifyFactory from 'fastify';
 import type { FastifyBaseLogger } from 'fastify';
 
-/** Create a plain HTTP server with a liveness endpoint, using the caller's Fastify installation. */
+/** Create a plain HTTP server with a `/health` endpoint, using the caller's Fastify installation. */
 export function createHealthServer({
-    Fastify, logger, path = '/health',
+    Fastify, logger,
 }: {
     Fastify: typeof FastifyFactory;
     logger: FastifyBaseLogger;
-    path?: string;
 }) {
     const server = Fastify({ loggerInstance: logger });
 
-    server.get(path, () => {
+    server.get('/health', () => {
         return { status: 'ok' };
     });
 
