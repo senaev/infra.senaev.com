@@ -36,6 +36,8 @@ vi.mock('./env', () => {
         API_DOMAIN: 'api.test',
         TG_CLUSTER_CHAT_ID: 1,
         OBSIDIAN_SYNC_URL: 'https://obsidian-sync.test:8443',
+        CODE_TOOLS_URL: 'https://code-tools.test:8443',
+        MEDIA_SERVER_HELPER_URL: 'https://media-server-helper.test:8443',
         TG_TOKEN_SENAEV_COM_BOT: 'token',
     };
 });
@@ -84,7 +86,7 @@ vi.mock('./createPublicServer', () => {
 });
 vi.mock('./torrentOutbox', () => {
     return {
-        startTorrentOutboxProcessor: (subscribeShutdown: (close: () => void) => void) => {
+        startTorrentOutboxProcessor: ({ subscribeShutdown }: { subscribeShutdown: (close: () => void) => void }) => {
             subscribeShutdown(() => {
                 mocks.closed.push('torrent outbox');
             });
@@ -105,10 +107,10 @@ vi.mock('senaev-utils/src/utils/mtls/watchTlsCredentials', () => {
 });
 vi.mock('senaev-utils/src/utils/mtls/mtlsClient', () => {
     return {
-        createMtlsClient: () => {
+        createMtlsClient: ({ origin }: { origin: string }) => {
             return {
                 close: () => {
-                    mocks.closed.push('obsidian-sync client');
+                    mocks.closed.push(`${new URL(origin).hostname.split('.')[0]} client`);
 
                     return Promise.resolve();
                 },
@@ -116,8 +118,8 @@ vi.mock('senaev-utils/src/utils/mtls/mtlsClient', () => {
         },
     };
 });
-vi.mock('senaev-utils/src/utils/mtls/createMtlsFastifyServer', () => {
-    return { createMtlsFastifyServer: () => mocks.createServer('mtls') };
+vi.mock('./createMtlsServer', () => {
+    return { createMtlsServer: () => mocks.createServer('mtls') };
 });
 vi.mock('senaev-utils/src/utils/TelegramApi/getCurrentTelegramBotInfo', () => {
     return { getCurrentTelegramBotInfo: mocks.getCurrentTelegramBotInfo };
@@ -150,7 +152,7 @@ beforeEach(() => {
 });
 
 describe('run', () => {
-    it('after SIGTERM stops the outbox, closes the servers, then the heartbeat monitor, the client and the certificate watcher, and exits', async () => {
+    it('after SIGTERM stops the outbox, closes the servers, then the heartbeat monitor, the clients and the certificate watcher, and exits', async () => {
         await run();
 
         expect(mocks.closed).toEqual([]);
@@ -164,12 +166,14 @@ describe('run', () => {
             'public server',
             'mtls server',
             'alerting heartbeat monitor',
+            'media-server-helper client',
+            'code-tools client',
             'obsidian-sync client',
             'certificate watcher',
         ]);
     });
 
-    it('closes the other servers, the client and the watcher when one server fails to close, then exits with 1', async () => {
+    it('closes the other servers, the clients and the watcher when one server fails to close, then exits with 1', async () => {
         mocks.failingServers.add('internal');
         await run();
 
@@ -182,6 +186,8 @@ describe('run', () => {
             'public server',
             'mtls server',
             'alerting heartbeat monitor',
+            'media-server-helper client',
+            'code-tools client',
             'obsidian-sync client',
             'certificate watcher',
         ]);

@@ -12,7 +12,7 @@ import {
 import {
     createCodeToolFamily, createObsidianToolFamily, type ToolFamily,
 } from './chatGptMcp/toolFamilies';
-import { callCodeTool } from './codeToolsApi';
+import type { CodeToolsApi } from './codeToolsApi';
 import { describeTelegramUpdate } from './describeTelegramUpdate';
 import {
     ALISA_ALLOWED_USER_IDS,
@@ -95,9 +95,10 @@ function notifyLoginAttempt({
  * Serving it together with the internal routes would publish them, so do not merge the two.
  */
 export async function createPublicServer({
-    obsidianSyncApi, botUser, webhookSecretToken,
+    obsidianSyncApi, codeToolsApi, botUser, webhookSecretToken,
 }: {
     obsidianSyncApi: ObsidianSyncApi;
+    codeToolsApi: CodeToolsApi;
     botUser: TelegramUser;
     webhookSecretToken: string;
 }) {
@@ -225,7 +226,7 @@ export async function createPublicServer({
     });
 
     // Three MCP servers, each on its own endpoint. The obsidian-* tools are forwarded to obsidian-sync,
-    // which does all vault work, the code-* tools to code-tools in the opencode-serve pod, and the
+    // which does all vault work, the code-* tools to code-tools, and the
     // telegram-* tools post with the senaev.com bot to the chats of TELEGRAM_MCP_CHANNELS.
     const obsidianMcpServer: LocalMcpServer = {
         families: [
@@ -241,7 +242,7 @@ export async function createPublicServer({
         logMessage: '📓 Obsidian MCP message',
     };
     const codeMcpServer: LocalMcpServer = {
-        families: [createCodeToolFamily({ callCodeTool })],
+        families: [createCodeToolFamily({ callCodeTool: codeToolsApi.callCodeTool })],
         options: {
             serverName: 'senaev-code',
             securitySchemes: MCP_SECURITY_SCHEMES,

@@ -1,57 +1,28 @@
-import Fastify from 'fastify';
-import { isObject } from 'senaev-utils/src/types/Object/Object';
+import Fastify, { type FastifyInstance } from 'fastify';
+import { createMtlsFastifyServer } from 'senaev-utils/src/utils/mtls/createMtlsFastifyServer';
+import { watchTlsCredentials } from 'senaev-utils/src/utils/mtls/watchTlsCredentials';
 
 import { logger } from './logger';
+import { registerTorrentFileRoutes } from './registerTorrentFileRoutes';
 
-const PORT = 3000;
+const PORT = 8443;
 const BODY_LIMIT_BYTES = 50 * 1024 * 1024;
 
-type TorrentFileRequestBody = {
-    fileName: string;
-    contentBase64: string;
-};
-
-function isTorrentFileRequestBody(value: unknown): value is TorrentFileRequestBody {
-    return (
-        isObject(value) && typeof value.fileName === 'string' && typeof value.contentBase64 === 'string'
-    );
-}
-
-function badRequest(message: string): Error & { statusCode: number } {
-    return Object.assign(new Error(message), { statusCode: 400 });
-}
-
+/**
+ * Receives torrent files on an mTLS port. There is no plain HTTP port and no probe: the only
+ * caller is cluster-helper, which keeps the files in its outbox until the delivery works.
+ */
 export async function runTorrentFileReceiver(writeFile: (buffer: Buffer, fileName: string) => string): Promise<void> {
-    const server = Fastify({
+    const certificates = await watchTlsCredentials({ logger });
+    const server = createMtlsFastifyServer({
+        Fastify,
+        logger,
+        credentials: certificates.credentials,
         bodyLimit: BODY_LIMIT_BYTES,
-        loggerInstance: logger,
     });
 
-    server.post<{ Body: unknown }>('/torrent-files', (request, reply) => {
-        if (!isTorrentFileRequestBody(request.body)) {
-            logger.error(
-                {
-                    bodyType: typeof request.body,
-                    body: request.body,
-                },
-                '❌ Invalid torrent file request body'
-            );
-            throw badRequest('Invalid torrent file request body');
-        }
-
-        const buffer = Buffer.from(request.body.contentBase64, 'base64');
-
-        if (buffer.length === 0) {
-            logger.error({ fileName: request.body.fileName }, '❌ Received empty torrent file');
-            throw badRequest('Empty torrent file');
-        }
-
-        const path = writeFile(buffer, request.body.fileName);
-
-        logger.info({ path }, '✅ Wrote torrent file from HTTP request');
-
-        return reply.send('OK');
-    });
+    // Only the raw server type (HTTPS) differs from the plain instance; the routes do not use it.
+    registerTorrentFileRoutes(server as unknown as FastifyInstance, writeFile);
 
     await server.listen({
         port: PORT,

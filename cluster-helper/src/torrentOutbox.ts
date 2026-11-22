@@ -5,11 +5,14 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { setTimeout } from 'node:timers/promises';
 
+import type { MtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
 import { sanitizeFileName } from 'senaev-utils/src/utils/String/sanitizeFileName/sanitizeFileName';
 
+import { MEDIA_SERVER_HELPER_URL } from './env';
 import { logger } from './logger';
 
-const MEDIA_SERVER_HELPER_URL = 'http://media-server-helper:3000';
+type MediaServerHelperClient = Pick<MtlsClient, 'fetch'>;
+
 const TORRENT_OUTBOX_DIR = '/torrent-outbox';
 const RETRY_INTERVAL_MS = 5_000;
 const DELIVERY_TIMEOUT_MS = 30_000;
@@ -31,8 +34,13 @@ export async function enqueueTorrentFile(input: EnqueueTorrentFileInput): Promis
     return id;
 }
 
-/** Delivers the queued files until the shutdown. */
-export async function startTorrentOutboxProcessor(subscribeShutdown: (close: () => void) => void): Promise<void> {
+/** Delivers the queued files through the mTLS client of media-server-helper until the shutdown. */
+export async function startTorrentOutboxProcessor({
+    client, subscribeShutdown,
+}: {
+    client: MediaServerHelperClient;
+    subscribeShutdown: (close: () => void) => void;
+}): Promise<void> {
     await mkdir(TORRENT_OUTBOX_DIR, { recursive: true });
 
     // Only to end the sleep between two passes at once.
@@ -41,13 +49,13 @@ export async function startTorrentOutboxProcessor(subscribeShutdown: (close: () 
     subscribeShutdown(() => {
         sleepAbortController.abort();
     });
-    void runTorrentOutboxProcessor(sleepAbortController.signal);
+    void runTorrentOutboxProcessor(client, sleepAbortController.signal);
 }
 
-async function runTorrentOutboxProcessor(signal: AbortSignal): Promise<void> {
+async function runTorrentOutboxProcessor(client: MediaServerHelperClient, signal: AbortSignal): Promise<void> {
     while (!signal.aborted) {
         try {
-            await processTorrentOutbox();
+            await processTorrentOutbox(client);
             await setTimeout(RETRY_INTERVAL_MS, undefined, { signal });
         } catch (error) {
             if (signal.aborted) {
@@ -59,7 +67,7 @@ async function runTorrentOutboxProcessor(signal: AbortSignal): Promise<void> {
     }
 }
 
-async function processTorrentOutbox(): Promise<void> {
+async function processTorrentOutbox(client: MediaServerHelperClient): Promise<void> {
     const entries = await readdir(TORRENT_OUTBOX_DIR, { withFileTypes: true });
     const itemNames = entries
         .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
@@ -67,11 +75,11 @@ async function processTorrentOutbox(): Promise<void> {
         .sort();
 
     for (const itemName of itemNames) {
-        await processTorrentOutboxItem(itemName);
+        await processTorrentOutboxItem(client, itemName);
     }
 }
 
-async function processTorrentOutboxItem(itemName: string): Promise<void> {
+async function processTorrentOutboxItem(client: MediaServerHelperClient, itemName: string): Promise<void> {
     const itemDir = join(TORRENT_OUTBOX_DIR, itemName);
     const [fileName] = await readdir(itemDir);
 
@@ -86,7 +94,7 @@ async function processTorrentOutboxItem(itemName: string): Promise<void> {
         fileName,
     }, '📤 Sending queued torrent file to media-server-helper');
 
-    const response = await fetch(`${MEDIA_SERVER_HELPER_URL}/torrent-files`, {
+    const response = await client.fetch(`${MEDIA_SERVER_HELPER_URL}/torrent-files`, {
         method: 'POST',
         signal: AbortSignal.timeout(DELIVERY_TIMEOUT_MS),
         headers: {

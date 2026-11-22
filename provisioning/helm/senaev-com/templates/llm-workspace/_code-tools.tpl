@@ -1,7 +1,33 @@
 {{- define "senaev-com.llmWorkspace.codeTools" -}}
 {{- if .Values.codeTools.enabled }}
-{{- $keys := list .Values.git.githubToken .Values.git.sshPrivateKey .Values.codeTools.secrets.codeToolsToken }}
+{{- $keys := list .Values.git.githubToken .Values.git.sshPrivateKey }}
 {{ include "senaev-com.llmWorkspace.componentSecret" (dict "name" (printf "%s-code-tools-env" .Values.name) "namespace" .Release.Namespace "keys" $keys) }}
+---
+# The server certificate of code-tools. The DNS name is the host that cluster-helper dials
+# (CODE_TOOLS_URL). It has no client usage: code-tools calls nobody. A new key is made on every
+# renewal, 3 days before the end; the service loads it by polling.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ printf "%s-code-tools-tls" .Values.name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  secretName: {{ printf "%s-code-tools-tls" .Values.name }}
+  dnsNames:
+    - {{ printf "%s-code-tools.%s.svc.cluster.local" .Values.name .Release.Namespace }}
+  usages:
+    - digital signature
+    - server auth
+  duration: 168h
+  renewBefore: 72h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  issuerRef:
+    name: internal-ca
+    kind: ClusterIssuer
+    group: cert-manager.io
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -43,17 +69,16 @@ spec:
           image: ghcr.io/senaev/code-tools:latest
           imagePullPolicy: Always
           ports:
-            - name: http
-              containerPort: 8080
+            # Plain HTTP with only /health, for the kubelet, which cannot present a certificate.
+            - name: health
+              containerPort: 8081
+            # The tool routes, behind mTLS.
+            - name: mtls
+              containerPort: 8443
           resources:
             requests:
               memory: 256Mi
           env:
-            - name: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
-              valueFrom:
-                secretKeyRef:
-                  name: {{ printf "%s-code-tools-env" $.Values.name }}
-                  key: {{ .Values.codeTools.secrets.codeToolsToken }}
             - name: GIT_AUTHOR_NAME
               value: {{ .Values.git.name | quote }}
             - name: GIT_AUTHOR_EMAIL
@@ -71,17 +96,23 @@ spec:
           startupProbe:
             httpGet:
               path: /health
-              port: http
+              port: health
             periodSeconds: 2
             failureThreshold: 60
           readinessProbe:
             httpGet:
               path: /health
-              port: http
+              port: health
             periodSeconds: 5
           volumeMounts:
             - name: code
               mountPath: /code
+            # The whole directory, never subPath or env: only a directory mount follows renewals.
+            # The path is MTLS_DIRECTORY in senaev-utils, which the service reads. The shell
+            # tools run in this container, so they can read the key of the server (accepted).
+            - name: mtls
+              mountPath: /etc/mtls
+              readOnly: true
 {{ include "senaev-com.llmWorkspace.sshAgent.volumeMount" . | indent 12 }}
             # The server rules that every code tool description points to.
             - name: instructions
@@ -89,6 +120,9 @@ spec:
               subPath: AGENTS.md
       volumes:
 {{ include "senaev-com.llmWorkspace.sshAgent.volumes" (dict "context" . "secretName" (printf "%s-code-tools-env" .Values.name)) | indent 8 }}
+        - name: mtls
+          secret:
+            secretName: {{ printf "%s-code-tools-tls" .Values.name }}
         - name: instructions
           configMap:
             name: {{ printf "%s-instructions" .Values.name }}
@@ -105,12 +139,13 @@ spec:
   selector:
     app: {{ printf "%s-code-tools" .Values.name }}
   ports:
-    - name: http
-      port: 8080
-      targetPort: http
+    - name: mtls
+      port: 8443
+      targetPort: mtls
       protocol: TCP
 ---
-# Full-shell access remains limited to cluster-helper, with the internal token as well.
+# Full-shell access remains limited to cluster-helper, which the server also allows by the name
+# in its client certificate. The health port 8081 has no rule: only the kubelet uses it.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -131,6 +166,6 @@ spec:
               app: cluster-helper
       ports:
         - protocol: TCP
-          port: 8080
+          port: 8443
 {{- end }}
 {{- end -}}

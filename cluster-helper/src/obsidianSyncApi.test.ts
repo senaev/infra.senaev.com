@@ -35,8 +35,8 @@ vi.hoisted(() => {
     }
 
     process.env.OBSIDIAN_SYNC_URL = 'https://obsidian-sync.senaev-com.svc.cluster.local:8443';
-    process.env.CODE_TOOLS_URL = 'http://code-tools:8080';
-    process.env.INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS = 'code-tools-token';
+    process.env.CODE_TOOLS_URL = 'https://senaev-code-tools.senaev-com.svc.cluster.local:8443';
+    process.env.MEDIA_SERVER_HELPER_URL = 'https://media-server-helper.senaev-com.svc.cluster.local:8443';
     process.env.MCP_GRAFANA_URL = 'http://mcp-grafana.telemetry.svc.cluster.local:8000/mcp';
 });
 

@@ -251,8 +251,6 @@ llmWorkspaces:
         ompHtpasswd: OMP_WEB_HTPASSWD_HASH_WITH_USERNAME
     codeTools:
       enabled: true
-      secrets:
-        codeToolsToken: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
     claudeCode:
       enabled: true
       model: sonnet

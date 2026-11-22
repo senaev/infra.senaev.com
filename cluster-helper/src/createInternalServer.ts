@@ -8,13 +8,14 @@ import { TG_MEDIA_SERVER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from './env';
 import { logger } from './logger';
 import type { ObsidianSyncApi } from './obsidianSyncApi';
 import { formatTorrentEvent, isTorrentEvent } from './qbittorrent/formatTorrentEvent';
+import { registerSendTelegramMessageRoute } from './registerSendTelegramMessageRoute';
 
 /**
  * The routes that only the cluster itself may call: no ingress points at this server. They carry
  * no authentication and must never face the internet, above all /telegram/send-message, which
  * sends arbitrary messages with the bot token and would be an open relay if exposed. Its callers
- * address it as http://cluster-helper: alertmanager, qbittorrent's tg-notify.sh, vpn-subscription
- * and n8n. Do not merge it with the public server.
+ * address it as http://cluster-helper: alertmanager, qbittorrent's tg-notify.sh and n8n.
+ * vpn-subscription calls the same route over mTLS. Do not merge it with the public server.
  */
 export function createInternalServer({
     obsidianSyncApi, alertingHeartbeatMonitor, isReady,
@@ -53,19 +54,7 @@ export function createInternalServer({
         reply.code(204).send();
     });
 
-    server.post<{ Body: unknown }>('/telegram/send-message', async (request, reply) => {
-        const message = request.body as Omit<Parameters<typeof sendTelegramMessage>[0], 'token'>;
-
-        logger.info({
-            chatId: message.chatId,
-            textLength: message.text.length,
-        }, '🆕 Received Telegram send message request');
-        await sendTelegramMessage({
-            ...message,
-            token: TG_TOKEN_SENAEV_COM_BOT,
-        });
-        reply.code(204).send();
-    });
+    registerSendTelegramMessageRoute(server);
 
     // Called once a day by the n8n `daily-overview` workflow. A GET with a side effect, so
     // that the scheduler needs no body; it is safe only because this port is internal.

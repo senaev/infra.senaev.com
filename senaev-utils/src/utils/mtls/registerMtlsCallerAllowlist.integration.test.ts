@@ -1,18 +1,20 @@
 import type { AddressInfo } from 'node:net';
 
 import Fastify, { type FastifyInstance } from 'fastify';
-import { Signal } from 'senaev-utils/src/utils/Signal/Signal';
-import { createMtlsFastifyServer } from 'senaev-utils/src/utils/mtls/createMtlsFastifyServer';
-import { createMtlsClient, type MtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
-import { createTestCa, issueTestCertificate } from 'senaev-utils/src/utils/mtls/testPki';
-import { parseTlsCredentials, type TlsFiles } from 'senaev-utils/src/utils/mtls/tlsCredentials';
+import pino from 'pino';
 import {
     afterAll, beforeAll, describe, expect, it,
 } from 'vitest';
 
-import { logger } from '../logger';
+import { Signal } from '../Signal/Signal';
 
+import { createMtlsFastifyServer } from './createMtlsFastifyServer';
+import { createMtlsClient, type MtlsClient } from './mtlsClient';
 import { registerMtlsCallerAllowlist } from './registerMtlsCallerAllowlist';
+import { createTestCa, issueTestCertificate } from './testPki';
+import { parseTlsCredentials, type TlsFiles } from './tlsCredentials';
+
+const logger = pino({ level: 'silent' });
 
 const SERVICE_A = 'service-a.test.svc.cluster.local';
 const SERVICE_B = 'service-b.test.svc.cluster.local';

@@ -1,31 +1,26 @@
 import { installGracefulShutdown } from 'senaev-utils/src/utils/process/installGracefulShutdown';
 
-import { INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS } from './env';
 import { logger } from './logger';
-import { createCodeToolsServer } from './server/createCodeToolsServer';
+import { runCodeToolsServer } from './server/runCodeToolsServer';
 import { createCodeToolsConfig } from './tools/codeToolsConfig';
 
-const HOST = '0.0.0.0';
-const PORT = 8080;
-
-let server: ReturnType<typeof createCodeToolsServer> | undefined;
+let server: Awaited<ReturnType<typeof runCodeToolsServer>> | undefined;
+let starting: Promise<void> | undefined;
 
 const lifecycle = installGracefulShutdown({
-    stop: () => server?.close() ?? Promise.resolve(),
+    stop: async () => {
+        await starting?.catch(() => undefined);
+        await server?.close();
+    },
     reportError: (error) => logger.error(error, '❌ Code tools shutdown failed'),
 });
 
 async function main(): Promise<void> {
-    server = createCodeToolsServer(
-        INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS,
-        createCodeToolsConfig()
-    );
-    lifecycle.signal.throwIfAborted();
-    await server.listen({
-        port: PORT,
-        host: HOST,
+    starting = runCodeToolsServer(createCodeToolsConfig()).then((started) => {
+        server = started;
     });
-    logger.info({ port: PORT }, '✅ Code tools server listening');
+    await starting;
+    lifecycle.signal.throwIfAborted();
 }
 
 main().catch(async (error) => {

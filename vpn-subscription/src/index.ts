@@ -1,12 +1,16 @@
 import { createHash } from 'node:crypto';
 
 import Fastify, { type FastifyReply } from 'fastify';
+import { createMtlsClient, type MtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
+import { watchTlsCredentials } from 'senaev-utils/src/utils/mtls/watchTlsCredentials';
 import {
     telegramBold, telegramCode, escapeTelegramMarkdown,
 } from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
 
+import { type ClusterHelperTelegram, createClusterHelperTelegram } from './clusterHelperTelegram';
 import { logger } from './logger';
 import {
+    CLUSTER_HELPER_URL,
     PORT,
     SUBSCRIPTION_ENTRIES,
     VPN_SUBSCRIPTION_CHAT,
@@ -33,6 +37,11 @@ const server = Fastify({
 });
 
 server.setErrorHandler(logServerError);
+
+// Set in main() before the server listens, so a request always finds them.
+let certificates: Awaited<ReturnType<typeof watchTlsCredentials>> | undefined;
+let clusterHelperClient: MtlsClient | undefined;
+let clusterHelperTelegram: ClusterHelperTelegram | undefined;
 
 const macroValues: Record<string, string> = {
     XRAY_REALITY_PUBLIC_KEY,
@@ -231,15 +240,13 @@ server.post<{ Params: { secret: string } }>('/:secret', async (request, reply) =
         escapeTelegramMarkdown(message),
     ].join('\n');
 
-    const clusterHelperResponse = await fetch('http://cluster-helper/telegram/send-message', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            chatId: String(VPN_SUBSCRIPTION_CHAT_ID),
-            text: telegramMessage,
-        }),
+    if (!clusterHelperTelegram) {
+        throw new Error('The cluster-helper client is not started');
+    }
+
+    const clusterHelperResponse = await clusterHelperTelegram.sendMessage({
+        chatId: String(VPN_SUBSCRIPTION_CHAT_ID),
+        text: telegramMessage,
     });
 
     if (!clusterHelperResponse.ok) {
@@ -255,6 +262,15 @@ server.post<{ Params: { secret: string } }>('/:secret', async (request, reply) =
 });
 
 async function main(): Promise<void> {
+    certificates = await watchTlsCredentials({ logger });
+    clusterHelperClient = createMtlsClient({
+        origin: CLUSTER_HELPER_URL,
+        credentials: certificates.credentials,
+    });
+    clusterHelperTelegram = createClusterHelperTelegram({
+        client: clusterHelperClient,
+        origin: CLUSTER_HELPER_URL,
+    });
     await server.listen({
         port: PORT,
         host: '0.0.0.0',
@@ -264,6 +280,8 @@ async function main(): Promise<void> {
 
 async function shutdown(): Promise<void> {
     await server.close();
+    await clusterHelperClient?.close();
+    certificates?.stop();
     process.exit(0);
 }
 

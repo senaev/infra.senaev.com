@@ -211,30 +211,46 @@ comes back unchanged. JSON only, up to 1 MiB. All methods and chats are allowed.
 is read. Code: `cluster-helper/src/telegramPublicApi.ts`. See
 [`projects/2026-11-12-14-15-public-telegram-notification-path`](projects/2026-11-12-14-15-public-telegram-notification-path/README.md).
 
-## Internal mTLS (cluster-helper → obsidian-sync)
+## Internal mTLS between the Node.js services
 
-cluster-helper calls the protected obsidian-sync API (everything that reads or edits the vault) with
-a client certificate, not a token. cert-manager (`provisioning/helm/pki/cert-manager`) and a private
-CA (`provisioning/helm/pki/issuers`, ClusterIssuer `internal-ca`, key only in the `pki` namespace)
-issue two 7-day leaves in `senaev-com` (`templates/internal-mtls.yaml`). The identity is a DNS SAN:
-obsidian-sync knows its callers by that name (`CLUSTER_HELPER` in `obsidian-sync/src/server/callers.ts`),
-and cluster-helper connects to `https://obsidian-sync.<ns>.svc.cluster.local:8443`. Both services mount
-their Secret as a directory at `/etc/mtls` (never subPath or env), poll the files and reload without
-a restart (`senaev-utils/src/utils/mtls`). They fail closed: no fallback to HTTP or a token.
+The calls between our Node.js services use a client certificate, not a token:
 
-obsidian-sync has two Fastify instances: mTLS on 8443 with all protected routes, and plain HTTP on
-8080 with only the published-file (`?note=`/`?file=`, nextjs-app) and `/metrics` (vmagent) routes. Add
-new vault routes only to `registerProtectedVaultRoutes`: `createMtlsFastifyServer` (senaev-utils) installs
-`registerMtlsAuthentication`, which rejects an invalid certificate (401), and `registerMtlsCallerAllowlist`
-allows only the services in `ALLOWED_CALLERS`
-(`obsidian-sync/src/server/callers.ts`) on every route of that instance (403). The list is for the
-whole instance, not for a route. cluster-helper has an mTLS listener on 8443 as well
-(`createMtlsFastifyServer`, the certificate `cluster-helper-tls` with both usages). It has no routes,
-and its NetworkPolicy has no rule for the port, so nothing can use it yet. Before adding the first
-route, add a check of the allowed callers like `registerMtlsCallerAllowlist`, which is now in
-obsidian-sync only, and a NetworkPolicy rule. The `pki` namespace must sort before
-`senaev-com` (the CI deploys namespaces in sorted order). To replace the CA, see
+| Caller → callee | Port | Allowed caller (`callers.ts`) |
+|---|---|---|
+| cluster-helper → obsidian-sync (everything that reads or edits the vault) | 8443 | `obsidian-sync/src/server/callers.ts` |
+| cluster-helper → code-tools (`senaev-code-tools`, the tool routes) | 8443 | `code-tools/src/server/callers.ts` |
+| cluster-helper → media-server-helper (`POST /torrent-files`) | 8443 | `media-server-helper/src/callers.ts` |
+| vpn-subscription → cluster-helper (`POST /telegram/send-message`) | 8443 | `cluster-helper/src/callers.ts` |
+
+cert-manager (`provisioning/helm/pki/cert-manager`) and a private CA (`provisioning/helm/pki/issuers`,
+ClusterIssuer `internal-ca`, key only in the `pki` namespace) issue 7-day leaves: `cluster-helper-tls`
+(both usages), `obsidian-sync-tls`, `media-server-helper-tls` (`templates/internal-mtls.yaml`),
+`<workspace>-code-tools-tls` (`llm-workspace/_code-tools.tpl`) and `vpn-subscription-tls` (client only,
+in the `vpn` release, because a Secret is namespaced). The identity is a DNS SAN
+`<service>.<namespace>.svc.cluster.local`: a callee knows its callers by that name, and a client
+connects to a URL whose host is the callee's name (the env `OBSIDIAN_SYNC_URL`, `CODE_TOOLS_URL`,
+`MEDIA_SERVER_HELPER_URL`, `CLUSTER_HELPER_URL`). Every service mounts its Secret as a directory at
+`/etc/mtls` (never subPath or env), polls the files and reloads without a restart
+(`senaev-utils/src/utils/mtls`). They fail closed: no fallback to HTTP or a token. cluster-helper has
+one `createMtlsClient` for each callee (a client sends its certificate to one origin only), all fed
+by one `watchTlsCredentials`.
+
+A service with a protected API has a Fastify instance of its own for it: `createMtlsFastifyServer`
+(senaev-utils) installs `registerMtlsAuthentication`, which rejects an invalid certificate (401), and the
+service adds `registerMtlsCallerAllowlist` (senaev-utils) with its `ALLOWED_CALLERS`, which allows only
+those services on every route of that instance (403). The list is for the whole instance, not for a
+route. Add new routes only to the function that registers the protected routes of that service
+(`registerProtectedVaultRoutes`, `registerProtectedCodeToolsRoutes`, `registerTorrentFileRoutes`,
+`createMtlsServer` of cluster-helper), and add a NetworkPolicy rule for the port. The kubelet cannot
+present a certificate, so obsidian-sync (8080) and code-tools (8081, only `/health`) also have a plain
+HTTP instance for what the kubelet or vmagent needs; media-server-helper has no plain port and no probe.
+The shell tools of code-tools run in its container, so they can read the server's private key (accepted).
+The `pki` namespace must sort before `senaev-com` (the CI deploys namespaces in sorted order). To replace
+the CA, see
 [`projects/2026-11-15-11-00-inter-service-certificate-authentication`](projects/2026-11-15-11-00-inter-service-certificate-authentication/README.md).
+The second project, [`projects/2026-11-22-01-00-mtls-between-node-services`](projects/2026-11-22-01-00-mtls-between-node-services/README.md),
+added the other three edges. Calls from n8n, Alertmanager, qbittorrent, vmagent, Traefik and the kubelet cannot
+present a certificate and stay plain HTTP (cluster-helper `:80`, obsidian-sync `:8080`).
 
 ## Shared Toolchain
 
@@ -398,6 +414,8 @@ bot stay in the `senaev-opencode-telegram` Deployment. Both pods, OMP and Claude
 workspace's `senaev-code` PVC at `/code`; only OMP also mounts its `senaev-projects` PVC at
 `/projects`. The workspace `vps` node selector puts them on one node. Code Tools and OpenCode use one replica
 and `Recreate`; a Code Tools update still has a short outage and loses in-memory operation IDs.
+cluster-helper is its only caller, over mTLS on 8443 (see Internal mTLS); the kubelet probes `/health` on
+the plain port 8081.
 
 The code tools take absolute paths and work in any folder. The repository layout under
 `/code` (`projects/<repo>` and `worktrees/<repo>/<branch>`) is described only in the

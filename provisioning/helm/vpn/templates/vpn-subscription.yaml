@@ -33,6 +33,8 @@ spec:
           ports:
             - containerPort: 3000
           env:
+            - name: CLUSTER_HELPER_URL
+              value: https://cluster-helper.senaev-com.svc.cluster.local:8443
             - name: SUBSCRIPTION_ENTRIES
               value: {{ toJson .Values.vpnSubscription.entries | quote }}
             - name: VPN_SUBSCRIPTION_CHAT_ID
@@ -61,6 +63,16 @@ spec:
                   name: senaev-com-kv-secrets
                   key: XRAY_REALITY_PUBLIC_KEY
                   optional: false
+          volumeMounts:
+            # The whole directory, never subPath or env: only a directory mount follows renewals.
+            # The path is MTLS_DIRECTORY in senaev-utils, which the service reads.
+            - name: mtls
+              mountPath: /etc/mtls
+              readOnly: true
+      volumes:
+        - name: mtls
+          secret:
+            secretName: vpn-subscription-tls
 ---
 apiVersion: v1
 kind: Service

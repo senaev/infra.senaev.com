@@ -2,17 +2,13 @@ import {
     afterEach, describe, expect, it, vi,
 } from 'vitest';
 
-import { callCodeTool } from './codeToolsApi';
+import { createCodeToolsApi } from './codeToolsApi';
 
 vi.mock('./env', () => {
-    return {
-        CODE_TOOLS_URL: 'http://code-tools:8080',
-        INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS: 'internal-test',
-    };
+    return { CODE_TOOLS_URL: 'https://code-tools.test:8443' };
 });
 
 afterEach(() => {
-    vi.unstubAllGlobals();
     vi.restoreAllMocks();
 });
 
@@ -27,8 +23,8 @@ describe('code operation proxy', () => {
             },
         };
         const fetchMock = vi.fn(() => Promise.resolve(new Response(JSON.stringify(body))));
+        const { callCodeTool } = createCodeToolsApi({ fetch: fetchMock });
 
-        vi.stubGlobal('fetch', fetchMock);
         for (const name of [
             'run',
             'list',
@@ -64,10 +60,10 @@ describe('code operation proxy', () => {
                 body,
             });
             expect(timeout).toHaveBeenLastCalledWith(15000);
-            expect(fetchMock).toHaveBeenLastCalledWith(`http://code-tools:8080/code/${name}`, expect.objectContaining({
+            expect(fetchMock).toHaveBeenLastCalledWith(`https://code-tools.test:8443/code/${name}`, expect.objectContaining({
                 method: 'POST',
                 body: JSON.stringify(args),
-                headers: expect.objectContaining({ authorization: 'Bearer internal-test' }),
+                headers: { 'Content-Type': 'application/json' },
             }));
         }
     });
@@ -79,7 +75,8 @@ describe('code operation proxy', () => {
             message: 'Queue full',
         };
 
-        vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify(body), { status: 429 }))));
+        const { callCodeTool } = createCodeToolsApi({ fetch: () => Promise.resolve(new Response(JSON.stringify(body), { status: 429 })) });
+
         expect(await callCodeTool('list', { folder: '/' })).toEqual({
             isError: true,
             body,

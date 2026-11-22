@@ -1,7 +1,5 @@
 import { randomBytes } from 'node:crypto';
 
-import Fastify from 'fastify';
-import { createMtlsFastifyServer } from 'senaev-utils/src/utils/mtls/createMtlsFastifyServer';
 import { createMtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
 import { watchTlsCredentials } from 'senaev-utils/src/utils/mtls/watchTlsCredentials';
 import { createShutdownController } from 'senaev-utils/src/utils/process/createShutdownController';
@@ -10,10 +8,17 @@ import { getCurrentTelegramBotInfo } from 'senaev-utils/src/utils/TelegramApi/ge
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
 
 import { createAlertingHeartbeatMonitor } from './alerts/alertingHeartbeatMonitor';
+import { createCodeToolsApi } from './codeToolsApi';
 import { createInternalServer } from './createInternalServer';
+import { createMtlsServer } from './createMtlsServer';
 import { createPublicServer, TELEGRAM_WEBHOOK_PATH } from './createPublicServer';
 import {
-    API_DOMAIN, OBSIDIAN_SYNC_URL, TG_CLUSTER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT,
+    API_DOMAIN,
+    CODE_TOOLS_URL,
+    MEDIA_SERVER_HELPER_URL,
+    OBSIDIAN_SYNC_URL,
+    TG_CLUSTER_CHAT_ID,
+    TG_TOKEN_SENAEV_COM_BOT,
 } from './env';
 import { logger } from './logger';
 import { createObsidianSyncApi } from './obsidianSyncApi';
@@ -26,9 +31,8 @@ const HOST = '0.0.0.0';
 //
 // INTERNAL_PORT is reachable only from inside the cluster: no ingress points at it.
 // PUBLIC_PORT is what the five ingresses target.
-// MTLS_PORT accepts only services with a certificate of the internal CA. It has no routes and
-// no caller yet. Before the first route, add a check of the allowed callers: see
-// projects/2026-11-15-11-00-inter-service-certificate-authentication/README.md
+// MTLS_PORT accepts only services with a certificate of the internal CA, and only the services
+// in `ALLOWED_CALLERS` (callers.ts) may call its routes.
 const INTERNAL_PORT = 80;
 const PUBLIC_PORT = 3000;
 const MTLS_PORT = 8443;
@@ -40,7 +44,7 @@ const MTLS_PORT = 8443;
  * the code that needs it. Each part subscribes with `subscribeShutdown` right after it exists,
  * so on SIGTERM or SIGINT the controller closes them in the reverse order of creation, one after
  * another and then exits: the servers first, so that the requests in progress can still use the
- * obsidian-sync client, then the client, then the certificate watcher. A failed start is thrown
+ * mTLS clients, then the clients, then the certificate watcher. A failed start is thrown
  * to the caller, which exits with 1.
  */
 export async function run(): Promise<void> {
@@ -56,16 +60,22 @@ export async function run(): Promise<void> {
 
     subscribeShutdown(() => certificates.stop());
 
-    const obsidianSyncClient = createMtlsClient({
-        origin: OBSIDIAN_SYNC_URL,
-        credentials: certificates.credentials,
-    });
+    // One client for each service, because a client sends its certificate to one origin only.
+    const createServiceClient = (origin: string) => {
+        const client = createMtlsClient({
+            origin,
+            credentials: certificates.credentials,
+        });
 
-    subscribeShutdown(() => obsidianSyncClient.close());
+        subscribeShutdown(() => client.close());
 
-    const obsidianSyncApi = createObsidianSyncApi(obsidianSyncClient);
+        return client;
+    };
+    const obsidianSyncApi = createObsidianSyncApi(createServiceClient(OBSIDIAN_SYNC_URL));
+    const codeToolsApi = createCodeToolsApi(createServiceClient(CODE_TOOLS_URL));
+    const mediaServerHelperClient = createServiceClient(MEDIA_SERVER_HELPER_URL);
 
-    logStartupStep('obsidian-sync client started');
+    logStartupStep('mTLS clients started');
 
     const botUser = await getCurrentTelegramBotInfo(TG_TOKEN_SENAEV_COM_BOT);
 
@@ -75,6 +85,7 @@ export async function run(): Promise<void> {
     const webhookSecretToken = randomBytes(32).toString('hex');
     const publicServer = await createPublicServer({
         obsidianSyncApi,
+        codeToolsApi,
         botUser,
         webhookSecretToken,
     });
@@ -98,11 +109,7 @@ export async function run(): Promise<void> {
         alertingHeartbeatMonitor,
         isReady: () => isReady,
     });
-    const mtlsServer = createMtlsFastifyServer({
-        Fastify,
-        logger,
-        credentials: certificates.credentials,
-    });
+    const mtlsServer = createMtlsServer(certificates.credentials);
 
     subscribeShutdown(async () => {
         // Wait for every server, also after one fails: the client closes next and the others may still serve requests.
@@ -118,7 +125,10 @@ export async function run(): Promise<void> {
         }
     });
 
-    await startTorrentOutboxProcessor(subscribeShutdown);
+    await startTorrentOutboxProcessor({
+        client: mediaServerHelperClient,
+        subscribeShutdown,
+    });
     logger.info('✅ Torrent outbox processor started');
     logStartupStep('torrent outbox processor started');
 
