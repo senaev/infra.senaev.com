@@ -1,4 +1,5 @@
 import Fastify, { type FastifyInstance } from 'fastify';
+import { createHealthServer } from 'senaev-utils/src/utils/http/createHealthServer';
 import { createMtlsFastifyServer } from 'senaev-utils/src/utils/mtls/createMtlsFastifyServer';
 import { watchTlsCredentials } from 'senaev-utils/src/utils/mtls/watchTlsCredentials';
 
@@ -6,7 +7,6 @@ import { logger } from '../logger';
 import type { CodeToolsConfig } from '../tools/codeToolsConfig';
 
 import { CODE_TOOLS_BODY_LIMIT_BYTES } from './codeToolsBodyLimit';
-import { createHealthServer } from './createHealthServer';
 import { registerProtectedCodeToolsRoutes } from './registerProtectedCodeToolsRoutes';
 
 const HOST = '0.0.0.0';
@@ -28,7 +28,10 @@ export async function runCodeToolsServer(config: CodeToolsConfig): Promise<{ clo
         credentials: certificates.credentials,
         bodyLimit: CODE_TOOLS_BODY_LIMIT_BYTES,
     });
-    const healthServer = createHealthServer();
+    const healthServer = createHealthServer({
+        Fastify,
+        logger,
+    });
 
     // Only the raw server type (HTTPS) differs from the plain instance; the routes do not use it.
     registerProtectedCodeToolsRoutes(toolsServer as unknown as FastifyInstance, config);

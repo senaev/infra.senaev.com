@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import { createHealthServer } from 'senaev-utils/src/utils/http/createHealthServer';
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
 
 import type { AlertingHeartbeatMonitor } from './alerts/alertingHeartbeatMonitor';
@@ -24,10 +25,10 @@ export function createInternalServer({
     alertingHeartbeatMonitor: Pick<AlertingHeartbeatMonitor, 'recordHeartbeat'>;
     isReady: () => boolean;
 }) {
-    const server = Fastify({ loggerInstance: logger });
-
-    server.get('/health/live', (_request, reply) => {
-        reply.code(200).send({ status: 'ok' });
+    const server = createHealthServer({
+        Fastify,
+        logger,
+        path: '/health/live',
     });
 
     server.get('/health/ready', (_request, reply) => {

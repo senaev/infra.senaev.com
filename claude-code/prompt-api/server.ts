@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import { createHealthServer } from 'senaev-utils/src/utils/http/createHealthServer';
 
 import { logger } from './logger';
 import { PromptRunner } from './runPrompt';
@@ -11,10 +12,11 @@ const MAX_PROMPT_LENGTH = 100_000;
  * Only n8n reaches this port (NetworkPolicy), so there is no token.
  */
 export function createPromptApiServer(runPrompt: PromptRunner) {
-    const server = Fastify({ loggerInstance: logger });
+    const server = createHealthServer({
+        Fastify,
+        logger,
+    });
     let running = false;
-
-    server.get('/health', (_request, reply) => reply.send({ status: 'ok' }));
 
     server.post<{ Body: unknown }>('/run', async (request, reply) => {
         const body = request.body as { prompt?: unknown } | null;
