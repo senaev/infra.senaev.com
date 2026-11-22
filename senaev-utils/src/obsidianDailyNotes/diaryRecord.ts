@@ -24,8 +24,8 @@ export function formatRecordTimestamp(now: Date, timeZone: string = RECORD_TIME_
 }
 
 /**
- * One diary record of `day`, as one paragraph without surrounding blank lines: a link to
- * the day with the time it was written, the text, and the ✍️ mark.
+ * Formats one diary record of `day` with a timestamp link at the start and a ✍️ mark at
+ * the end. Preserves paragraph breaks in the text.
  */
 export function formatDiaryRecord(day: string, text: string, now: Date): string {
     return `[[${day}|🎙️ ${formatRecordTimestamp(now)}]]: ${text} ✍️`;
@@ -96,7 +96,7 @@ export function containsAnchorLine(text: string): boolean {
 }
 
 /**
- * Inserts `records`, in order, each as its own paragraph separated by blank lines, right
+ * Inserts `records`, in order, separated by blank lines and preserving their paragraphs, right
  * above the anchor line (see `findDiaryRecordAnchor`) of the note as it was before this call.
  * Later records land under earlier ones. Throws a `conflict` CommandError when the note has no
  * anchor, and `invalid_arguments` when a record contains an anchor line.
@@ -126,7 +126,7 @@ export function insertDiaryRecords(content: string, records: readonly string[], 
         separator = '\n';
     }
 
-    const paragraphs = records.map((record) => `${record.replace(/^\n+|\n+$/g, '')}\n\n`).join('');
+    const separatedRecords = records.map((record) => `${record.replace(/^\n+|\n+$/g, '')}\n\n`).join('');
 
-    return `${before}${separator}${paragraphs}${content.slice(anchor)}`;
+    return `${before}${separator}${separatedRecords}${content.slice(anchor)}`;
 }
