@@ -1,3 +1,26 @@
+## 2026-11-22 16:49 UTC — Verify the first BRAT update
+
+Infra PR #280 published `0.1.2` and deployed the shared reminder-link renderer.
+The vault owner verified the update in Obsidian by creating a new daily note.
+
+```text
+Updated plugins and now everything works. I tried to create new note and now the logic of reminders works correctly
+```
+
+The update and daily-note checks complete the migration.
+
+## 2026-11-22 16:29 UTC — Verify the BRAT cutover after vault sync
+
+Release `0.1.1` published all three assets, and the infra deployment passed its
+five public smoke tests. Vault PR #10 merged with the BRAT configuration and Telegram
+sync state in place. The vault owner confirmed the plugin works after syncing.
+
+```text
+Everything works after this sync
+```
+
+The cutover is complete. The next release will exercise the BRAT update path.
+
 ## 2026-11-22 15:47 UTC — Prepare the plugin migration PR
 
 Imported 31 plugin commits into infra and prepared the first release as `0.1.1`.
