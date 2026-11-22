@@ -21,9 +21,8 @@ otel-agent:
       - --feature-gates=stanza.synchronousLogEmitter
   podLabels:
     app: otel-logs-agent
-  # Expand to the other nodes after verifying this pilot.
   nodeSelector:
-    vps: hetzner
+    kubernetes.io/os: linux
   presets:
     kubernetesAttributes:
       enabled: true
