@@ -77,7 +77,9 @@ describe('diaryAppendTool', () => {
 
     it('creates a missing daily note with reminders from vault frontmatter', async () => {
         const { config, path } = await vaultWith({
-            'Reminder.md': '---\nday-reminder: Check the calendar\nday-reminder-schedule: FREQ=WEEKLY;BYDAY=WE\n---\n',
+            'habits/Reminder.md': '---\nday-reminder: Check the calendar\nday-reminder-schedule: FREQ=WEEKLY;BYDAY=WE\n---\n',
+            'archive/Reminder.md': 'Archive copy\n',
+            'habits/Read.md': '---\nmorning-reminder: Read\n---\n',
         });
 
         const result = await diaryAppendTool(config, {
@@ -95,9 +97,18 @@ describe('diaryAppendTool', () => {
             created: true,
         });
         expect(content.replace(/\n\[\[2026-11-18\|.*✍️\n/, '')).toBe(renderDailyNote('2026-11-18', {
+            notePaths: [
+                'habits/Reminder.md',
+                'archive/Reminder.md',
+                'habits/Read.md',
+            ],
             notes: [
                 {
-                    path: 'Reminder.md',
+                    path: 'habits/Read.md',
+                    frontmatter: { 'morning-reminder': 'Read' },
+                },
+                {
+                    path: 'habits/Reminder.md',
                     frontmatter: {
                         'day-reminder': 'Check the calendar',
                         'day-reminder-schedule': 'FREQ=WEEKLY;BYDAY=WE',
@@ -105,7 +116,8 @@ describe('diaryAppendTool', () => {
                 },
             ],
         }));
-        expect(content).toContain('- [ ] [[Reminder|Check the calendar]]');
+        expect(content).toContain('- [ ] [[Read]]');
+        expect(content).toContain('- [ ] [[habits/Reminder|Check the calendar]]');
         expect(content).toMatch(new RegExp(`---\\n\\n${record('2026-11-18', 'Мы гуляли\\.').source}\\n\\n${MARKER}\\n\\n---`));
     });
 

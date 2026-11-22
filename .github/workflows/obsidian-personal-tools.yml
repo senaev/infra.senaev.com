@@ -4,14 +4,14 @@ on:
   pull_request:
     paths:
       - obsidian-personal-tools/**
-      - senaev-utils/src/obsidianMilestones/milestones.json
+      - senaev-utils/**
       - .github/workflows/obsidian-personal-tools.yml
       - .nvmrc
   push:
     branches: [main]
     paths:
       - obsidian-personal-tools/**
-      - senaev-utils/src/obsidianMilestones/milestones.json
+      - senaev-utils/**
       - .github/workflows/obsidian-personal-tools.yml
   workflow_dispatch:
 
@@ -38,12 +38,15 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-          cache-dependency-path: obsidian-personal-tools/package-lock.json
+          cache-dependency-path: |
+            obsidian-personal-tools/package-lock.json
+            senaev-utils/package-lock.json
       - name: Validate and build plugin
         if: steps.plugin.outputs.present == 'true'
         id: build
         working-directory: obsidian-personal-tools
         run: |
+          npm ci --prefix ../senaev-utils
           npm ci
           npm run lint
           npm run typecheck

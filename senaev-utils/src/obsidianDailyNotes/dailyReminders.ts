@@ -9,6 +9,8 @@ export type ReminderNote = {
 
 export type ReminderSource = {
     notes: readonly ReminderNote[];
+    /** Vault Markdown paths, including notes that do not supply reminders. */
+    notePaths?: readonly string[];
     onInvalidSchedule?: (path: string) => void;
 };
 
@@ -22,7 +24,36 @@ export function hasReminder(frontmatter: ReminderNote['frontmatter']): boolean {
     ] as const).some((section) => typeof frontmatter[`${section}-reminder`] === 'string');
 }
 
-export function renderReminders(day: string, section: Section, source: ReminderSource): string {
+function noteName(path: string): string {
+    return path.slice(path.lastIndexOf('/') + 1).replace(/\.md$/i, '');
+}
+
+function ambiguousNoteNames(paths: ReadonlySet<string>): ReadonlySet<string> {
+    const seen = new Set<string>();
+    const ambiguous = new Set<string>();
+
+    for (const path of paths) {
+        const name = noteName(path).normalize().toLowerCase();
+
+        if (seen.has(name)) {
+            ambiguous.add(name);
+        }
+
+        seen.add(name);
+    }
+
+    return ambiguous;
+}
+
+export function renderReminders(day: string, section: Section, source: ReminderSource, dailyPath?: string): string {
+    const paths = new Set(source.notePaths ?? source.notes.map(({ path }) => path));
+
+    if (dailyPath !== undefined) {
+        paths.add(dailyPath);
+    }
+
+    const ambiguous = ambiguousNoteNames(paths);
+    const relativeRoot = '../'.repeat(dailyPath === undefined ? 0 : dailyPath.split('/').length - 1);
     const reminders: { target: string; label: string; order: number }[] = [];
     const date = isoDayToUtcDate(day);
     const calendarDay = {
@@ -33,7 +64,7 @@ export function renderReminders(day: string, section: Section, source: ReminderS
 
     for (const { path, frontmatter } of source.notes) {
         const label = frontmatter[`${section}-reminder`];
-        const target = path.replace(/\.md$/, '');
+        const target = path.replace(/\.md$/i, '');
 
         if (typeof label !== 'string' || !label.trim() || /[[\]|\r\n]/u.test(label) || /[[\]|#\r\n]/u.test(target)) {
             continue;
@@ -67,6 +98,15 @@ export function renderReminders(day: string, section: Section, source: ReminderS
 
     return reminders
         .sort((left, right) => left.order - right.order || (left.target < right.target ? -1 : Number(left.target > right.target)))
-        .map(({ target, label }) => `- [ ] [[${target}|${label}]]\n`)
+        .map(({ target, label }) => {
+            const name = target.slice(target.lastIndexOf('/') + 1);
+            let link = name;
+
+            if (ambiguous.has(name.normalize().toLowerCase())) {
+                link = target.includes('/') ? target : relativeRoot + target;
+            }
+
+            return `- [ ] [[${link}${link === label ? '' : `|${label}`}]]\n`;
+        })
         .join('');
 }

@@ -46,12 +46,42 @@ describe('renderDailyNote', () => {
         ];
         const saturday = renderDailyNote('2026-08-01', { notes });
 
-        expect(saturday).toContain('[[wiki/Beta|Prepare]]\n- [ ] [[wiki/Alpha|Start]]');
-        expect(saturday).toContain('[[wiki/Alpha|Finish]]\n- [ ] [[wiki/Beta|Review]]');
-        expect(saturday).toContain('[[wiki/Delta|Daily]]\n- [ ] [[wiki/Gamma|Weekly]]');
+        expect(saturday).toContain('[[Beta|Prepare]]\n- [ ] [[Alpha|Start]]');
+        expect(saturday).toContain('[[Alpha|Finish]]\n- [ ] [[Beta|Review]]');
+        expect(saturday).toContain('[[Delta|Daily]]\n- [ ] [[Gamma|Weekly]]');
         expect(renderDailyNote('2026-08-02', { notes })).not.toContain('Weekly');
         expect(saturday).toContain('window.senaevPersonalTools.filterTasksForDaily');
         expect(saturday).toContain('⬆️ Daily Note ⬆️');
+    });
+
+    it('uses short links and keeps paths when another note has the same name', () => {
+        const notes = [
+            {
+                path: 'habits/Cold shower.md',
+                frontmatter: { 'morning-reminder': 'Cold shower' },
+            },
+            {
+                path: 'work/Calendar.md',
+                frontmatter: { 'day-reminder': 'Check the calendar' },
+            },
+            {
+                path: 'Journal.md',
+                frontmatter: { 'evening-reminder': 'Journal' },
+            },
+        ];
+        const notePaths = [
+            ...notes.map(({ path }) => path),
+            'archive/calendar.md',
+            'archive/Journal.md',
+        ];
+        const daily = renderDailyNote('2026-08-01', {
+            notes,
+            notePaths,
+        });
+
+        expect(daily).toContain('- [ ] [[Cold shower]]\n');
+        expect(daily).toContain('- [ ] [[work/Calendar|Check the calendar]]\n');
+        expect(daily).toContain('- [ ] [[../../Journal|Journal]]\n');
     });
 
     it('rejects days that do not exist', () => {
