@@ -1,0 +1,38 @@
+{
+	"name": "senaev-personal-tools",
+	"version": "0.1.0",
+	"description": "Personal tools for Andrei Senaev's Obsidian vault.",
+	"main": "main.js",
+	"type": "module",
+	"scripts": {
+		"dev": "node esbuild.config.mjs",
+		"test": "node esbuild.tests.mjs && node --test --test-reporter=spec 'tests-dist/**/*.test.js'",
+		"build": "node esbuild.config.mjs production",
+		"version": "node version-bump.mjs && git add manifest.json versions.json",
+		"lint": "eslint .",
+		"typecheck": "tsc --noEmit"
+	},
+	"keywords": [],
+	"license": "0-BSD",
+	"devDependencies": {
+		"@codemirror/state": "^6.5.0",
+		"@codemirror/view": "^6.38.6",
+		"@eslint/js": "^9.39.4",
+		"@types/node": "^22.15.17",
+		"esbuild": "0.25.5",
+		"eslint": "^9.39.4",
+		"eslint-plugin-obsidianmd": "^0.3.0",
+		"globals": "^17.6.0",
+		"jiti": "^2.6.1",
+		"obsidian": "latest",
+		"typescript": "^5.8.3",
+		"typescript-eslint": "^8.59.1"
+	},
+	"allowScripts": {
+		"esbuild@0.25.5": true
+	},
+	"dependencies": {
+		"rrule": "^2.8.1",
+		"senaev-utils": "1.0.0-ci.44905687540.1"
+	}
+}

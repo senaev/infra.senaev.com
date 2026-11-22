@@ -1,0 +1,64 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"title": "Vault milestones",
+	"description": "Which frontmatter properties mark a milestone (birthday, holiday, …) and how it is worded. Shared by the senaev-personal-tools plugin and any external code that collects milestones for a date.",
+	"type": "object",
+	"additionalProperties": false,
+	"required": ["version", "hiddenProperty", "minKnownYear", "tomorrowEmoji", "types"],
+	"properties": {
+		"$schema": { "type": "string" },
+		"version": {
+			"description": "Format version. Incremented on any change that an existing consumer cannot read.",
+			"const": 1
+		},
+		"hiddenProperty": {
+			"description": "A note whose frontmatter sets this property to the YAML boolean `true` shows none of its milestones. Any other value is ignored.",
+			"type": "string",
+			"minLength": 1
+		},
+		"minKnownYear": {
+			"description": "Dates with an earlier year recur without a known start (e.g. `0001-12-31`), so no age is computed for them.",
+			"type": "integer"
+		},
+		"tomorrowEmoji": {
+			"description": "Fills `{{EMOJI}}` for a milestone that falls on the day after the requested date.",
+			"type": "string",
+			"minLength": 1
+		},
+		"types": {
+			"description": "Milestone types, in display order.",
+			"type": "array",
+			"minItems": 1,
+			"items": { "$ref": "#/$defs/type" }
+		}
+	},
+	"$defs": {
+		"type": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["property", "emoji", "template"],
+			"properties": {
+				"property": {
+					"description": "Frontmatter property holding a `YYYY-MM-DD` date. Day and month are matched; the year is used only for `{{AGE}}`.",
+					"type": "string",
+					"minLength": 1
+				},
+				"ruleProperty": {
+					"description": "Optional frontmatter property holding an RFC 5545 RRULE value (e.g. `FREQ=YEARLY;BYMONTH=11;BYDAY=-1SU`) for dates that must be calculated. The rule is evaluated as if DTSTART were 1 January of the requested year at 00:00 UTC. `FREQ` is required; `DTSTART` and `COUNT` are not supported. Such milestones have no `{{AGE}}`. See rule-test-vectors.json.",
+					"type": "string",
+					"minLength": 1
+				},
+				"emoji": {
+					"description": "Fills `{{EMOJI}}` when the milestone falls on the requested date.",
+					"type": "string",
+					"minLength": 1
+				},
+				"template": {
+					"description": "Display text. Placeholders: `{{FILENAME}}` (note name without extension), `{{AGE}}` (`(N)` or empty), `{{EMOJI}}`. Whitespace runs are collapsed and the result is trimmed.",
+					"type": "string",
+					"pattern": "\\{\\{FILENAME\\}\\}"
+				}
+			}
+		}
+	}
+}
