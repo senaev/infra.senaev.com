@@ -1,3 +1,23 @@
+## 2026-11-22 17:18 UTC — Implement the executor as node-shell
+
+mTLS is in `main`, so the open authentication question is closed: cluster-helper → executor is
+mTLS. Implemented `node-shell/` and its chart (`senaev-com/templates/node-shell.yaml`): one pod on
+hetzner, `privileged` with `hostPID`, `nsenter --target 1 --all`, then the command in a transient
+systemd unit with `RuntimeMaxSec`, directly on hetzner or through `ssh` from the host for the hosts
+in `nodeShell.sshDestinations`. API on mTLS 8443 only for cluster-helper: `PUT` answers 202 at
+once, `GET` reads the status. An execution ID is saved (file, atomic exclusive create) before the
+command starts and kept 24 h; a restart marks `running` records `interrupted`, never retried. Pod
+network egress closed; no probe, no plain port, no service account token. Not deployed yet; the
+cluster-helper side (Telegram approval, `submit` / `status`) and the skill are the next PR.
+
+```
+ Test Files  9 passed (9)
+      Tests  50 passed (50)
+```
+
+The node-shell suites pass: unit tests for hosts, command building, quoting and the execution
+manager, and integration tests for the store, process runner, real-shell quoting and the mTLS server.
+
 ## 2026-11-20 15:45 UTC — Make the request API asynchronous
 
 User was concerned that harnesses would not wait through approval. Decided: `submit`

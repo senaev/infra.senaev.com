@@ -39,10 +39,9 @@ Approve / Reject buttons before running a command on the chosen node.
   Which hosts the executor accepts is an explicit list in its configuration.
 - Restrict executor API ingress with NetworkPolicy to cluster-helper's pod and the API port.
   No public Ingress or host port. NetworkPolicy is not authentication.
-- Open: authentication of cluster-helper → executor. Recommended: the mTLS from the
-  [inter-service certificate authentication project](../2026-11-15-11-00-inter-service-certificate-authentication/README.md)
-  (PR #203), now for one connection only, with no per-node identities. Simpler alternative:
-  a shared token plus NetworkPolicy. The executor holds root on every node, so mTLS is preferred.
+- Decision (2026-11-22): cluster-helper → executor is mTLS, with the internal CA that is now
+  in `main` (see "Internal mTLS" in [AGENTS.md](../../AGENTS.md)). node-shell allows only
+  `cluster-helper.senaev-com.svc.cluster.local`; it has no plain port.
 - LLM workspaces must not hold executor credentials or direct access to the executor.
   No other workload on hetzner may be privileged or mount host paths, so none can read the key.
 - Approve the exact command string and selected node. Inspecting or pinning scripts
@@ -95,13 +94,13 @@ approval or the command:
 1. Check on hetzner, as root, that SSH reaches every node non-interactively and that
    `known_hosts` has their keys (read-only, run by the user):
    `ssh -o BatchMode=yes -o StrictHostKeyChecking=yes root@<node> hostname`.
-2. Decide the cluster-helper → executor authentication (see Context).
+2. ~~Decide the cluster-helper → executor authentication~~: mTLS (2026-11-22).
 3. Check from a test pod with `privileged: true` and `hostPID: true` on hetzner that
    `nsenter -t 1 -a -- hostname` and `nsenter -t 1 -a -- ssh ... root@<node> hostname` work.
 4. Implement persistent request/approval state in cluster-helper, with the asynchronous
    `submit` / `status` API (see Asynchronous API). Only the authorized
    Telegram user can approve; rejection returns `USER_REJECTED`, expiry `APPROVAL_EXPIRED`.
-5. Implement the executor: authenticated API, `nsenter` into the hetzner host, then SSH; bounded
+5. **Done in [`node-shell/`](../../node-shell/) (not deployed yet).** Implement the executor: authenticated API, `nsenter` into the hetzner host, then SSH; bounded
    connect time and output, runtime bounded on the node by the systemd unit (see Context);
    returns stdout, stderr and exit code.
 6. Persist execution IDs before starting a command so duplicate dispatch cannot rerun
@@ -133,7 +132,11 @@ approval or the command:
 
 ## Result
 
-Design recorded only. No executor or cluster configuration deployed.
+The executor is implemented as `node-shell` (steps 3, 5 and 6 on the executor's side; see
+"Node shell" in [AGENTS.md](../../AGENTS.md)). Its API, `PUT` / `GET /executions/:executionId`, is
+already asynchronous: `PUT` answers at once, and the execution ID is saved before the command
+starts. Not deployed or verified on the cluster yet. Still to do: the Telegram approval with the
+`submit` / `status` API in cluster-helper (step 4), and the workspace skill (step 7).
 
 ## Confirmed execution decisions
 

@@ -1,0 +1,96 @@
+import type { FastifyInstance } from 'fastify';
+import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { registerMtlsCallerAllowlist } from 'senaev-utils/src/utils/mtls/registerMtlsCallerAllowlist';
+
+import { ALLOWED_CALLERS } from './callers';
+import { type ExecutionManager, MAX_TIMEOUT_SECONDS } from './executionManager';
+import { toPublicExecution } from './executionRecord';
+
+// Also the name of the systemd unit on the host, so only characters that systemd keeps as they are.
+const EXECUTION_ID = /^[A-Za-z0-9-]{1,64}$/;
+const MAX_COMMAND_BYTES = 16 * 1024;
+
+type ExecutionRequestBody = {
+    host: string;
+    command: string;
+    timeoutSeconds: number;
+};
+
+function isExecutionRequestBody(value: unknown): value is ExecutionRequestBody {
+    return isObject(value) && typeof value.host === 'string' && typeof value.command === 'string' && value.command.length > 0 && Buffer.byteLength(value.command) <= MAX_COMMAND_BYTES && typeof value.timeoutSeconds === 'number' && Number.isInteger(value.timeoutSeconds) && value.timeoutSeconds >= 1 && value.timeoutSeconds <= MAX_TIMEOUT_SECONDS;
+}
+
+function errorBody(code: string, message: string) {
+    return {
+        status: 'error',
+        code,
+        message,
+    };
+}
+
+/**
+ * The API of node-shell, only on the mTLS instance: only the services in `ALLOWED_CALLERS` may
+ * call any route. The caller asks the user for approval first; node-shell runs what it gets.
+ *
+ * - `PUT /executions/:executionId` starts the command and answers at once (202), or returns the
+ *   saved execution of a repeated request (200). It never runs one execution ID twice.
+ * - `GET /executions/:executionId` returns the execution: status, and when it has ended, the
+ *   exit code and the output.
+ */
+export function registerExecutionRoutes(
+    server: Pick<FastifyInstance, 'addHook' | 'get' | 'put'>,
+    manager: ExecutionManager
+): void {
+    // First, so the check covers every route registered below. The caller is already
+    // authenticated by `createMtlsFastifyServer`.
+    registerMtlsCallerAllowlist(server, ALLOWED_CALLERS);
+
+    server.put<{ Params: { executionId: string }; Body: unknown }>('/executions/:executionId', async (request, reply) => {
+        const { executionId } = request.params;
+
+        if (!EXECUTION_ID.test(executionId)) {
+            return reply.code(400).send(errorBody('invalid_execution_id', 'The execution ID must be 1-64 letters, digits or dashes'));
+        }
+
+        if (!isExecutionRequestBody(request.body)) {
+            return reply.code(400).send(errorBody(
+                'invalid_request',
+                `Expected { host, command (1-${MAX_COMMAND_BYTES} bytes), timeoutSeconds (1-${MAX_TIMEOUT_SECONDS}) }`
+            ));
+        }
+
+        const result = await manager.start({
+            executionId,
+            host: request.body.host,
+            command: request.body.command,
+            timeoutSeconds: request.body.timeoutSeconds,
+        });
+
+        switch (result.kind) {
+        case 'started':
+            return reply.code(202).send({ execution: toPublicExecution(result.record) });
+        case 'existing':
+            return reply.code(200).send({ execution: toPublicExecution(result.record) });
+        case 'conflict':
+            return reply.code(409).send(errorBody('execution_id_conflict', 'This execution ID was used for another request'));
+        case 'unknown-host':
+            return reply.code(400).send(errorBody('unknown_host', 'This host does not accept commands'));
+        case 'busy':
+            break;
+        }
+
+        return reply.code(429).send(errorBody('busy', 'Too many commands are running; try again later'));
+    });
+
+    server.get<{ Params: { executionId: string } }>('/executions/:executionId', async (request, reply) => {
+        const record = EXECUTION_ID.test(request.params.executionId)
+            ? await manager.get(request.params.executionId)
+            : undefined;
+
+        if (record === undefined) {
+            return reply.code(404).send(errorBody('not_found', 'No such execution'));
+        }
+
+        return reply.send({ execution: toPublicExecution(record) });
+    });
+}

@@ -1,0 +1,114 @@
+{{- if .Values.nodeShell.enabled }}
+# Runs approved commands as root on the cluster nodes (node-shell/, and
+# projects/2026-11-15-10-44-approved-node-commands). This is the most privileged workload of the
+# cluster: it is root on its host, the control plane, and through that host's SSH key root on
+# every other host. So:
+# - privileged with hostPID: `nsenter --target 1 --all` enters every namespace of the host, and
+#   ssh, systemd-run and the command run from the host's own filesystem and network;
+# - no hostNetwork: the API stays in the pod network, behind the NetworkPolicy below;
+# - one container, no sidecar, no service account token, no Secret except its own certificate,
+#   and no Datadog injection;
+# - its only input is the mTLS API, and only cluster-helper may call it.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-shell
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: node-shell
+spec:
+  replicas: 1
+  # Never two processes at once: each marks the executions left running as interrupted at start.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: node-shell
+  template:
+    metadata:
+      labels:
+        app: node-shell
+        vps: {{ .Values.nodeShell.vps }}
+    spec:
+      nodeSelector:
+        vps: {{ .Values.nodeShell.vps }}
+      hostPID: true
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      containers:
+        - name: node-shell
+          image: ghcr.io/senaev/node-shell:latest
+          imagePullPolicy: Always
+          securityContext:
+            privileged: true
+            runAsUser: 0
+            runAsGroup: 0
+          ports:
+            # Needs a client certificate of the internal CA; only cluster-helper may call it.
+            # There is no plain port and no probe.
+            - name: mtls
+              containerPort: 8443
+          env:
+            - name: NODE_SHELL_LOCAL_HOST
+              value: {{ .Values.nodeShell.vps | quote }}
+            - name: NODE_SHELL_SSH_DESTINATIONS
+              value: {{ .Values.nodeShell.sshDestinations | toJson | quote }}
+            - name: NODE_SHELL_STATE_DIRECTORY
+              value: /state/executions
+          volumeMounts:
+            - name: state
+              mountPath: /state
+            # The whole directory, never subPath or env: only a directory mount follows renewals.
+            # The path is MTLS_DIRECTORY in senaev-utils, which the service reads.
+            - name: mtls
+              mountPath: /etc/mtls
+              readOnly: true
+      volumes:
+        - name: state
+          hostPath:
+            path: {{ .Values.global.clusterRootPath }}/{{ .Values.nodeShell.volumePath }}
+            type: DirectoryOrCreate
+        - name: mtls
+          secret:
+            secretName: node-shell-tls
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: node-shell
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: node-shell
+spec:
+  type: ClusterIP
+  selector:
+    app: node-shell
+  ports:
+    - name: mtls
+      port: 8443
+      targetPort: mtls
+---
+# Only cluster-helper reaches the mTLS port, and the server also allows it by the name in its
+# certificate. The pod itself makes no connection: ssh runs in the host's network namespace,
+# so all egress of the pod network is closed, DNS included.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: node-shell
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: node-shell
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: cluster-helper
+      ports:
+        - protocol: TCP
+          port: 8443
+{{- end }}

@@ -1,0 +1,201 @@
+import { createHash } from 'node:crypto';
+
+import type { FastifyBaseLogger } from 'fastify';
+
+import {
+    buildNodeCommand, type NodeCommand, SSH_CONNECT_TIMEOUT_SECONDS,
+} from './buildNodeCommand';
+import type { ExecutionRecord } from './executionRecord';
+import type { ExecutionStore } from './executionStore';
+import { isKnownHost, type NodeHosts } from './nodeHosts';
+import type { CommandResult } from './runCommand';
+
+export const MAX_TIMEOUT_SECONDS = 3600;
+export const MAX_CONCURRENT_EXECUTIONS = 4;
+export const MAX_OUTPUT_BYTES = 1024 * 1024;
+// The local process gets this long after the command timeout before node-shell kills it: the
+// SSH connection, and the stop of the systemd unit on the host (SIGTERM, then SIGKILL).
+const DEADLINE_GRACE_MS = (SSH_CONNECT_TIMEOUT_SECONDS + 60) * 1000;
+
+export type StartResult =
+    | { kind: 'started'; record: ExecutionRecord }
+    | { kind: 'existing'; record: ExecutionRecord }
+    | { kind: 'conflict' }
+    | { kind: 'unknown-host' }
+    | { kind: 'busy' };
+
+export type ExecutionManager = {
+    /**
+     * Starts the command once per execution ID and returns at once. A repeated request with the
+     * same ID returns the saved execution and never starts the command again, also after a
+     * restart; the same ID with another request is a conflict.
+     */
+    start: (nodeCommand: NodeCommand) => Promise<StartResult>;
+    get: (executionId: string) => Promise<ExecutionRecord | undefined>;
+    /** Resolves when every command started by this process has ended. For tests and shutdown. */
+    idle: () => Promise<void>;
+};
+
+function hashRequest({
+    host, command, timeoutSeconds,
+}: NodeCommand): string {
+    return createHash('sha256').update(JSON.stringify([
+        host,
+        command,
+        timeoutSeconds,
+    ])).digest('hex');
+}
+
+function toError(error: unknown): Error {
+    return error instanceof Error ? error : new Error(String(error));
+}
+
+export function createExecutionManager({
+    store, hosts, run, logger, now = () => new Date(),
+}: {
+    store: ExecutionStore;
+    hosts: NodeHosts;
+    run: (options: { argv: readonly string[]; deadlineMs: number; maxOutputBytes: number }) => Promise<CommandResult>;
+    logger: Pick<FastifyBaseLogger, 'info' | 'error'>;
+    now?: () => Date;
+}): ExecutionManager {
+    const running = new Set<Promise<void>>();
+
+    const existingResult = (record: ExecutionRecord, requestHash: string): StartResult => (record.requestHash === requestHash
+        ? {
+            kind: 'existing',
+            record,
+        }
+        : { kind: 'conflict' });
+
+    const execute = async (nodeCommand: NodeCommand, record: ExecutionRecord): Promise<void> => {
+        const logFields = {
+            executionId: record.executionId,
+            host: record.host,
+        };
+        let finished: ExecutionRecord;
+
+        try {
+            const result = await run({
+                argv: buildNodeCommand(hosts, nodeCommand),
+                deadlineMs: nodeCommand.timeoutSeconds * 1000 + DEADLINE_GRACE_MS,
+                maxOutputBytes: MAX_OUTPUT_BYTES,
+            });
+
+            finished = {
+                ...record,
+                status: result.deadlineExceeded ? 'failed' : 'completed',
+                finishedAt: now().toISOString(),
+                exitCode: result.exitCode,
+                signal: result.signal,
+                stdout: result.stdout,
+                stderr: result.stderr,
+                outputTruncated: result.outputTruncated,
+                ...result.deadlineExceeded ? { error: 'node-shell killed the command at its deadline' } : {},
+            };
+        } catch (error) {
+            finished = {
+                ...record,
+                status: 'failed',
+                finishedAt: now().toISOString(),
+                error: toError(error).message,
+            };
+        }
+
+        await store.update(finished);
+        // No command and no output in the logs: they can hold secrets.
+        logger.info({
+            ...logFields,
+            status: finished.status,
+            exitCode: finished.exitCode,
+        }, '🏁 Node command finished');
+    };
+
+    return {
+        async start(nodeCommand) {
+            if (!isKnownHost(hosts, nodeCommand.host)) {
+                return { kind: 'unknown-host' };
+            }
+
+            const requestHash = hashRequest(nodeCommand);
+            const existing = await store.read(nodeCommand.executionId);
+
+            if (existing !== undefined) {
+                return existingResult(existing, requestHash);
+            }
+
+            if (running.size >= MAX_CONCURRENT_EXECUTIONS) {
+                return { kind: 'busy' };
+            }
+
+            const record: ExecutionRecord = {
+                executionId: nodeCommand.executionId,
+                host: nodeCommand.host,
+                requestHash,
+                status: 'running',
+                startedAt: now().toISOString(),
+            };
+
+            // Saved before the command starts: if node-shell restarts now, the ID is taken and the
+            // command is not started a second time.
+            if (!await store.create(record)) {
+                const raced = await store.read(nodeCommand.executionId);
+
+                return raced === undefined ? { kind: 'conflict' } : existingResult(raced, requestHash);
+            }
+
+            logger.info({
+                executionId: record.executionId,
+                host: record.host,
+                timeoutSeconds: nodeCommand.timeoutSeconds,
+            }, '▶️ Node command started');
+
+            const execution = execute(nodeCommand, record)
+                .catch((error: unknown) => {
+                    logger.error({
+                        err: toError(error),
+                        executionId: record.executionId,
+                    }, '❌ Failed to save the result of a node command');
+                })
+                .finally(() => {
+                    running.delete(execution);
+                });
+
+            running.add(execution);
+
+            return {
+                kind: 'started',
+                record,
+            };
+        },
+        get: (executionId) => store.read(executionId),
+        async idle() {
+            await Promise.all(running);
+        },
+    };
+}
+
+/**
+ * At startup, no command of this process runs yet: a record still `running` was left by an
+ * earlier process. Its outcome is unknown, and it is not retried.
+ */
+export async function markInterruptedExecutions(
+    store: ExecutionStore,
+    logger: Pick<FastifyBaseLogger, 'warn'>,
+    now = new Date()
+): Promise<void> {
+    for (const record of await store.list()) {
+        if (record.status === 'running') {
+            await store.update({
+                ...record,
+                status: 'interrupted',
+                finishedAt: now.toISOString(),
+                error: 'node-shell restarted while the command ran; the outcome is unknown',
+            });
+            logger.warn({
+                executionId: record.executionId,
+                host: record.host,
+            }, '⚠️ Marked a node command as interrupted by a restart');
+        }
+    }
+}

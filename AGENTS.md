@@ -234,10 +234,11 @@ The calls between our Node.js services use a client certificate, not a token:
 | cluster-helper → code-tools (`senaev-code-tools`, the tool routes) | 8443 | `code-tools/src/server/callers.ts` |
 | cluster-helper → media-server-helper (`POST /torrent-files`) | 8443 | `media-server-helper/src/callers.ts` |
 | vpn-subscription → cluster-helper (`POST /telegram/send-message`) | 8443 | `cluster-helper/src/callers.ts` |
+| cluster-helper → node-shell (`PUT`/`GET /executions/:id`, root commands on the nodes) | 8443 | `node-shell/src/callers.ts` |
 
 cert-manager (`provisioning/helm/pki/cert-manager`) and a private CA (`provisioning/helm/pki/issuers`,
 ClusterIssuer `internal-ca`, key only in the `pki` namespace) issue 7-day leaves: `cluster-helper-tls`
-(both usages), `obsidian-sync-tls`, `media-server-helper-tls` (`templates/internal-mtls.yaml`),
+(both usages), `obsidian-sync-tls`, `media-server-helper-tls`, `node-shell-tls` (`templates/internal-mtls.yaml`),
 `<workspace>-code-tools-tls` (`llm-workspace/_code-tools.tpl`) and `vpn-subscription-tls` (client only,
 in the `vpn` release, because a Secret is namespaced). Their common settings are in
 `global.internalMtlsCertificate` in `provisioning/helm/global-values.yaml`. The identity is a DNS SAN
@@ -256,9 +257,10 @@ service adds `registerMtlsCallerAllowlist` (senaev-utils) with its `ALLOWED_CALL
 those services on every route of that instance (403). The list is for the whole instance, not for a
 route. Add new routes only to the function that registers the protected routes of that service
 (`registerProtectedVaultRoutes`, `registerProtectedCodeToolsRoutes`, `registerTorrentFileRoutes`,
-`createMtlsServer` of cluster-helper), and add a NetworkPolicy rule for the port. The kubelet cannot
-present a certificate, so obsidian-sync (8080) and code-tools (8081, only `/health`) also have a plain
-HTTP instance for what the kubelet or vmagent needs; media-server-helper has no plain port and no probe.
+`registerExecutionRoutes` of node-shell, `createMtlsServer` of cluster-helper), and add a
+NetworkPolicy rule for the port. The kubelet cannot present a certificate, so obsidian-sync (8080)
+and code-tools (8081, only `/health`) also have a plain HTTP instance for what the kubelet or vmagent
+needs; media-server-helper and node-shell have no plain port and no probe.
 The shell tools of code-tools run in its container, so they can read the server's private key (accepted).
 Three alerts watch the leaves (group `internal-certificates` in `senaev-com/templates/alerts.yaml`):
 `certificate-not-ready` (15 min), `certificate-expires-soon` (less than 2 days left; a leaf renews at 3 days)
@@ -270,6 +272,30 @@ the CA, see
 The second project, [`projects/2026-11-22-01-00-mtls-between-node-services`](projects/2026-11-22-01-00-mtls-between-node-services/README.md),
 added the other three edges. Calls from n8n, Alertmanager, qbittorrent, vmagent, Traefik and the kubelet cannot
 present a certificate and stay plain HTTP (cluster-helper `:80`, obsidian-sync `:8080`).
+
+## Node shell
+
+`node-shell` (`node-shell/`, template `senaev-com/templates/node-shell.yaml`) runs commands as root on
+the cluster hosts, for the Telegram-approved node commands of
+[`projects/2026-11-15-10-44-approved-node-commands`](projects/2026-11-15-10-44-approved-node-commands/README.md).
+It is the most privileged workload: one pod on hetzner, `privileged` with `hostPID`, that enters the
+host with `nsenter --target 1 --all`. A command for hetzner runs there; a command for another host goes
+through `ssh` from hetzner with the SSH key of its root, which every host accepts (`nodeShell.sshDestinations`
+lists them; an unlisted host is refused). On the target, each command runs in a transient systemd unit
+`node-shell-<executionId>` with `RuntimeMaxSec`, which kills everything it started at the timeout.
+
+- No `hostNetwork`: the API is mTLS on 8443, only for cluster-helper (NetworkPolicy and `callers.ts`). The
+  pod network has no egress at all; ssh uses the host's network.
+- It does not ask for approval: cluster-helper must ask the user before `PUT /executions/:id`
+  (`{ host, command, timeoutSeconds ≤ 3600 }`), which answers 202 at once. `GET /executions/:id` gives
+  the status (`running`, `completed`, `failed`, `interrupted`), the exit code and up to 1 MiB of each
+  output stream. Exit code 255 can also be ssh's own error (for example, an unreachable host).
+- An execution ID runs at most once. Its record is a file in `<clusterRootPath>/volumes/node-shell`,
+  created before the command starts and kept 24 hours; a repeated `PUT` returns it, the same ID with
+  another request is 409. After a restart, a record still `running` becomes `interrupted`, never retried.
+- At most 4 commands at once (429). The logs have the execution ID, host, status and exit code, never the
+  command or its output.
+- Not done yet: the Telegram approval and the `submit`/`status` API in cluster-helper, and the workspace skill.
 
 ## Shared Toolchain
 
