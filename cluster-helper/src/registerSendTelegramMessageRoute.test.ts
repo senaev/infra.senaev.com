@@ -49,11 +49,11 @@ describe('/telegram/send-message', () => {
         });
     });
 
-    it('turns wikilinks into highlights when asked, and does not pass the option on', async () => {
+    it('turns wikilinks into highlights when asked, and does not pass preprocess on to Telegram', async () => {
         const response = await send({
             chatId: '42',
             text: 'See [[Job Requirements#Salary|the salary]] and [[Career opportunities in Nebius]]',
-            wikiLinks: 'highlight',
+            preprocess: { wikiLinks: 'highlight' },
         });
 
         expect(response.statusCode).toBe(204);
@@ -64,11 +64,22 @@ describe('/telegram/send-message', () => {
         });
     });
 
-    it('refuses an unknown wikiLinks value and sends nothing', async () => {
+    it('refuses an unknown preprocess.wikiLinks value and sends nothing', async () => {
         const response = await send({
             chatId: '42',
             text: '[[Note]]',
-            wikiLinks: 'link',
+            preprocess: { wikiLinks: 'link' },
+        });
+
+        expect(response.statusCode).toBe(400);
+        expect(sendTelegramMessage).not.toHaveBeenCalled();
+    });
+
+    it('refuses a preprocess that is not an object and sends nothing', async () => {
+        const response = await send({
+            chatId: '42',
+            text: '[[Note]]',
+            preprocess: 'highlight',
         });
 
         expect(response.statusCode).toBe(400);
