@@ -1,6 +1,6 @@
 import { posix } from 'node:path';
 
-import type { ExtractedLink } from './extractLinks';
+import type { ExtractedLink } from 'senaev-utils/src/obsidianMarkdown/extractLinks';
 
 export type LinkResolution =
     | { status: 'resolved'; path: string }

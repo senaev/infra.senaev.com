@@ -23,6 +23,10 @@ RUN npm ci --omit=dev
 COPY senaev-utils/src /app/senaev-utils/src
 COPY obsidian-sync /app/obsidian-sync
 
+# The Markdown parser is a dependency of senaev-utils, installed next to the library: check that
+# it loads from the real production layout before publishing the image.
+RUN node --import tsx -e "require('senaev-utils/src/obsidianMarkdown/parseMarkdown')"
+
 # `ob` writes its credentials/config here, and the vault hostPath is chowned to
 # uid 1000 by the deployment's init container.
 RUN mkdir -p /home/node/.config && chown -R node:node /home/node/.config /app

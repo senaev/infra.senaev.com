@@ -22,7 +22,7 @@ COPY cluster-helper /app/cluster-helper
 
 # Verify the real production dependency layout before publishing an image. Tests
 # install dev dependencies and cannot detect missing runtime imports in linked utils.
-RUN node --import tsx -e "require('./src/oauth/registerOAuthRoutes.ts')"
+RUN node --import tsx -e "require('./src/oauth/registerOAuthRoutes.ts'); require('senaev-utils/src/obsidianMarkdown/replaceWikiLinksWithHighlights')"
 
 # 80 is the internal listener: unauthenticated routes for alertmanager,
 # qbittorrent and vpn-subscription, reachable only inside the cluster.

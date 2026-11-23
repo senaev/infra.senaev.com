@@ -559,8 +559,9 @@ only in `senaev`.
   port 8080, and nothing else reaches the pod. The n8n `job-search-round` workflow uses it every
   day at 04:00 UTC: the prompt tells Claude to follow the note `LLM Job Search Playbook` of the
   Obsidian vault, and n8n sends the answer to the Job Search Framework chat through
-  `http://cluster-helper/telegram/send-message` (Telegram Rich Markdown). At the same time it
-  adds the same text to the note `LLM Recommendations Log` through
+  `http://cluster-helper/telegram/send-message` (Telegram Rich Markdown) with `wikiLinks: 'highlight'`,
+  which turns the Obsidian `[[links]]` of the answer into highlights. At the same time it
+  adds the same text, links unchanged, to the note `LLM Recommendations Log` through
   `POST http://cluster-helper/job-search/recommendations` (`{ date, time, text }`, the start time
   in UTC, also given in the prompt), which forwards to obsidian-sync: the record goes right
   under the `---` line that ends the note's header, as `## [[date]] HH:MM UTC`; a retry that finds

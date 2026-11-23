@@ -62,7 +62,7 @@
         "url": "http://cluster-helper/telegram/send-message",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ chatId: $env.TG_JOB_SEARCH_FRAMEWORK_CHAT_ID, text: $json.result }) }}",
+        "jsonBody": "={{ JSON.stringify({ chatId: $env.TG_JOB_SEARCH_FRAMEWORK_CHAT_ID, text: $json.result, wikiLinks: 'highlight' }) }}",
         "options": {
           "timeout": 60000
         }

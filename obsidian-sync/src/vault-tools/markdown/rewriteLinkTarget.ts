@@ -1,6 +1,7 @@
 import { posix } from 'node:path';
 
-import type { ExtractedLink } from './extractLinks';
+import type { ExtractedLink } from 'senaev-utils/src/obsidianMarkdown/extractLinks';
+
 import { type LinkIndex, resolveLink } from './resolveLink';
 
 export type TextEdit = {
