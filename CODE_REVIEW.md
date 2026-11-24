@@ -13,5 +13,5 @@
 ## Shared library
 
 - For every utility the change adds or changes, check whether the same code already exists
-  elsewhere in the repository. If it does, flag it as P1: move the code to `senaev-utils` and reuse
+  elsewhere in the repository. If it does, flag it as P5: move the code to `senaev-utils` and reuse
   it from there.
