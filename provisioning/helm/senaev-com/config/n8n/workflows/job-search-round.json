@@ -1,6 +1,6 @@
 {
   "id": "job-search-round",
-  "name": "Job search round: Claude Code follows LLM Job Search Round and sends its recommendations to Telegram",
+  "name": "Job search round: Claude Code follows LLM Job Search Playbook and sends its recommendations to Telegram",
   "nodes": [
     {
       "parameters": {
@@ -41,7 +41,7 @@
         "url": "http://senaev-claude-code:8080/run",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ prompt: \"Read the note \\\"LLM Job Search Round\\\" in the Obsidian vault with the obsidian MCP tools, and do one round exactly as it says. It is now \" + $json.date + \" \" + $json.time + \" UTC.\\n\\nAnswer only with the summary of its step 5.\" }) }}",
+        "jsonBody": "={{ JSON.stringify({ prompt: \"Read the note \\\"LLM Job Search Playbook\\\" in the Obsidian vault with the obsidian MCP tools, and do one round exactly as it says. It is now \" + $json.date + \" \" + $json.time + \" UTC.\\n\\nAnswer only with the summary of its step 5.\" }) }}",
         "options": {
           "timeout": 3660000
         }
