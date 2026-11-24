@@ -77,6 +77,11 @@ vpnProbe:
   # false restores all four routine profiles.
   controlledExperiment: true
   vps: senaev-media
+  # The same profile probed from another node, outside the home ISP: tells an ISP block from a
+  # server-side problem. Logs from firstvds are not in Datadog (no agent there); metrics are.
+  remoteSources:
+    - probeIndex: 6
+      vps: firstvds
   # UUID seeds identify subscription routes, including the IPv6 entry using seed 5.
   # "direct" compares the home exit to the probe's own public home IP.
   expectedExits:

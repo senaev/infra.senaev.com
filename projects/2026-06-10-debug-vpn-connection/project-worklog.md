@@ -1,3 +1,23 @@
+## 2026-11-24 22:25 UTC — UDP allowed, profile 6 still gets no answer; probe it from FirstVDS
+
+#281 deployed (run 45499675087, success): the probe NetworkPolicy allows UDP 47443. Profile 6
+still fails every VPN check from home, with the same client error at `info`:
+
+```
+22:16:42 app/proxyman/outbound: failed to process outbound traffic > proxy/hysteria: failed to find an available destination > timeout: no recent network activity
+```
+
+`xray-hysteria` logged nothing in 3 h besides its start. Parity over 6 h (Datadog
+`@check:parity_* @route:vpn`): profile 1 130/131, profile 3 48/131, profile 4 50/129, profile 6
+0/133. Hetzner side is ruled out as far as visible: hostPort DNAT in iptables, no Hetzner Cloud
+firewall.
+
+Decision: probe profile 6 also from firstvds (`vpnProbe.remoteSources`), outside the home ISP.
+If it passes there, the home ISP drops this UDP; if it fails there too, the problem is on the
+Hetzner side or in the config. The existing probe Deployments render unchanged (helm template
+diff); only `vpn-probe-6-firstvds` is added. Its logs are not in Datadog (no agent on
+firstvds); the result is in VictoriaMetrics, profile `⚡ 6. hetzner UDP → freedom (from firstvds)`.
+
 ## 2026-11-22 — Profile 6 "failures" were our NetworkPolicy, not the ISP
 
 After #261 (UDP 47443, salamander) the probe's Xray client logged for every attempt
