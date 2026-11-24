@@ -556,8 +556,8 @@ only in `senaev`.
   fails, 409 while another prompt runs. One run at a time, at most 60 minutes. The runs have
   everything the container has: the login, the MCP logins, the git token, the SSH agent and
   `/code`. There is no token: the NetworkPolicy lets only the n8n pod of the namespace reach
-  port 8080, and nothing else reaches the pod. The n8n `job-search-round` workflow uses it every
-  day at 04:00 UTC: the prompt tells Claude to follow the note `LLM Job Search Playbook` of the
+  port 8080, and nothing else reaches the pod. The n8n `job-search-round` workflow uses it Monday
+  to Friday at 04:00 UTC: the prompt tells Claude to follow the note `LLM Job Search Playbook` of the
   Obsidian vault. Then n8n makes one request, `POST http://cluster-helper/job-search/round-report`
   with `{ date, time, text }` (the start time in UTC, also given in the prompt, and the answer).
   cluster-helper (`registerJobSearchRoundReportRoute.ts`) does both deliveries at once, neither
