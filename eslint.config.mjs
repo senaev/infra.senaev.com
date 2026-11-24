@@ -9,15 +9,20 @@ import tseslint from 'typescript-eslint';
 
 const INDENT = 4;
 
-// senaev-utils is the only package with React code, so the React plugin and its rules are
-// scoped to it. The five node services never load them.
-const REACT_FILES = ['senaev-utils/**/*.{ts,tsx,jsx}'];
+const REACT_FILES = [
+    'nextjs-app/**/*.{ts,tsx,jsx}',
+    'senaev-utils/**/*.{ts,tsx,jsx}',
+];
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
     {
         ignores: [
             '**/dist/**',
+            'nextjs-app/.next/**',
+            'nextjs-app/next-env.d.ts',
+            // Vendored browser scripts and static demos are served as-is.
+            'nextjs-app/public/**',
             // The Obsidian plugin uses its own ESLint rules in the release workflow.
             'obsidian-personal-tools/**',
             '**/node_modules/**',
