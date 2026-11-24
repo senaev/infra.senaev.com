@@ -77,10 +77,9 @@ that file.
 ## Codex code review
 
 - Create every pull request as a draft (`gh pr create --draft`).
-- After creating it and after each push, comment `@codex review` and wait until the "Codex Review
-  Summary" comment shows "✅ Completed" for the latest commit (usually under 2 minutes).
-- Fix the real findings (inline comments with P0/P1/P2 badges), then mark the pull request ready
-  (`gh pr ready <number>`).
+- When you open a pull request, and when the user asks for a Codex review, comment `@codex review`
+  and wait until the "Codex Review Summary" comment shows "✅ Completed" for the latest commit
+  (usually under 2 minutes).
 
 ## Service Deployment
 
