@@ -79,9 +79,7 @@ that file.
 ### Codex code review
 
 - Create every pull request as a draft (`gh pr create --draft`).
-- When you open a pull request, and when the user asks for a Codex review, comment `@codex review`
-  and wait until the "Codex Review Summary" comment shows "✅ Completed" for the latest commit
-  (usually under 2 minutes).
+- When you open a pull request, and when the user asks for a Codex review, comment `@codex review`.
 
 ## Service Deployment
 
