@@ -28,6 +28,14 @@ The user asked to reuse code that other containers already have. The first versi
 
 Checked: 36 tests, eslint and `tsc` pass; the image builds with the new layout, `tsx` starts the helper, and with a fake token the error is `HTTP 401` and has no token in it.
 
+## 2026-11-15 21:16 UTC — Telegram login is deployed and works
+
+PR #207 (squash `873545df`) is merged, and the deploy passed; the smoke test passes and the logs of the pod have no errors. The user sent `/auth` to the bot while the old login was still active, took the link, logged in, and sent the code from the page. The helper logs show `/auth` handled, the text taken as a login code, and the message with the code deleted. The bot answered "Logged in. The login is valid until 2026-12-12" (27 days). A login that is still active does not need a logout first: `/auth` starts a new login next to it.
+
+Two things to remember. The deploy restarts the pod twice (Helm, then the step that refreshes rebuilt images), and the helper skips messages that came before its last start, so a message sent in the first minutes after a deploy is lost: send `/auth` again. Datadog files the helper logs under `service:claude-code`, the same as the main container; use `container_name:telegram-login` to read only them.
+
+Open: whether the running server uses the renewed login without a restart, and what happens at the expiry (see the README).
+
 ## 2026-11-15 21:00 UTC — Logged-out notice without a link
 
 The user asked that the bot does not send the login link by itself when Claude Code is logged out: it tells the user once, and the user sends `/auth` for the link. The logged-out notice is sent once for each loss of the login. While making this change I removed a bug: a check that found the user logged in cancelled a login that waited for a code, so a renewal with `/auth` before the expiry could fail within 10 minutes. A waiting login now stays until a code, or a new `/auth`. The tests cover both (38 tests).
