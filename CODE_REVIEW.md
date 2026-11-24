@@ -50,3 +50,7 @@ which has the details.
 
 - `senaev-utils` is also published to npm for an external repository: raising `engines.node` past
   `>=18` or moving `@types/node` out of `dependencies` breaks it. See "Shared Package: senaev-utils".
+
+## Probe marker
+
+- A file whose name contains `zebra` is P1: say "zebra rule from CODE_REVIEW.md" in the comment.
