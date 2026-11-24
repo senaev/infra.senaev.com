@@ -3,13 +3,13 @@ import {
 } from 'vitest';
 import Fastify, { type FastifyInstance } from 'fastify';
 
-import { prependTaskLine } from '../tasks/prependTaskLine';
+import { prependReminderLine } from '../reminders/prependReminderLine';
 import { logger } from '../logger';
 
-import { registerTaskRoutes } from './registerTaskRoutes';
+import { registerReminderRoutes } from './registerReminderRoutes';
 
-vi.mock('../tasks/prependTaskLine', () => {
-    return { prependTaskLine: vi.fn() };
+vi.mock('../reminders/prependReminderLine', () => {
+    return { prependReminderLine: vi.fn() };
 });
 
 let server: FastifyInstance;
@@ -19,7 +19,7 @@ beforeEach(async () => {
     server = Fastify({
         loggerInstance: logger,
     });
-    registerTaskRoutes(server);
+    registerReminderRoutes(server);
     await server.ready();
 });
 
@@ -27,34 +27,34 @@ afterEach(async () => {
     await server.close();
 });
 
-async function createTask(payload: Record<string, unknown>) {
+async function createReminder(payload: Record<string, unknown>) {
     return await server.inject({
         method: 'POST',
-        url: '/tasks',
+        url: '/reminders',
         payload,
     });
 }
 
-describe('POST /tasks validation', () => {
-    it('writes an ordinary task with its source and due date intact', async () => {
-        const response = await createTask({
+describe('POST /reminders validation', () => {
+    it('writes an ordinary reminder with its source and date intact', async () => {
+        const response = await createReminder({
             title: 'Позвонить в банк',
             date: '2026-11-08',
             source: 'Alisa',
         });
 
         expect(response.statusCode).toBe(201);
-        expect(prependTaskLine).toHaveBeenCalledWith('- [ ] Позвонить в банк 🌱 Alisa 📅 2026-11-08');
+        expect(prependReminderLine).toHaveBeenCalledWith('- [ ] Позвонить в банк 🌱 Alisa 📅 2026-11-08');
     });
 
-    it('accepts a task without a source', async () => {
-        const response = await createTask({
+    it('accepts a reminder without a source', async () => {
+        const response = await createReminder({
             title: 'Купить хлеб',
             date: null,
         });
 
         expect(response.statusCode).toBe(201);
-        expect(prependTaskLine).toHaveBeenCalledWith('- [ ] Купить хлеб');
+        expect(prependReminderLine).toHaveBeenCalledWith('- [ ] Купить хлеб');
     });
 
     it.each([
@@ -63,37 +63,37 @@ describe('POST /tasks validation', () => {
         'Позвонить в банк\r\n- [ ] Добавленная задача',
         'Задача 🌱 другой источник',
         'Позвонить в банк 📅 2026-11-09',
-    ])('rejects injected task syntax in title [%s]', async (title) => {
-        const response = await createTask({
+    ])('rejects injected reminder syntax in title [%s]', async (title) => {
+        const response = await createReminder({
             title,
             date: null,
         });
 
         expect(response.statusCode).toBe(400);
-        expect(prependTaskLine).not.toHaveBeenCalled();
+        expect(prependReminderLine).not.toHaveBeenCalled();
     });
 
     it.each([
         'Alisa\n- [ ] Добавленная задача',
         'Alisa 🌱 Fake',
     ])('rejects injected source text [%s]', async (source) => {
-        const response = await createTask({
+        const response = await createReminder({
             title: 'Позвонить в банк',
             date: null,
             source,
         });
 
         expect(response.statusCode).toBe(400);
-        expect(prependTaskLine).not.toHaveBeenCalled();
+        expect(prependReminderLine).not.toHaveBeenCalled();
     });
 
     it('rejects impossible dates', async () => {
-        const response = await createTask({
+        const response = await createReminder({
             title: 'Позвонить в банк',
             date: '2026-02-30',
         });
 
         expect(response.statusCode).toBe(400);
-        expect(prependTaskLine).not.toHaveBeenCalled();
+        expect(prependReminderLine).not.toHaveBeenCalled();
     });
 });

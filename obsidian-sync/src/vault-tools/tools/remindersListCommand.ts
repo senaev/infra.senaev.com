@@ -1,14 +1,14 @@
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import {
-    compareTasks, isActiveDailyDate, isTaskInDailyNote,
-} from 'senaev-utils/src/obsidianTasks/dailyTasks';
-import { todayIsoDay } from 'senaev-utils/src/obsidianTasks/isoDay';
-import type { TaskPriority, TaskStatus } from 'senaev-utils/src/obsidianTasks/taskLine';
-import { TASKS_TIME_ZONE } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
+    compareReminders, isActiveDailyDate, isReminderInDailyNote,
+} from 'senaev-utils/src/obsidianReminders/dailyReminderList';
+import { todayIsoDay } from 'senaev-utils/src/obsidianReminders/isoDay';
+import type { ReminderPriority, ReminderStatus } from 'senaev-utils/src/obsidianReminders/reminderLine';
+import { REMINDERS_TIME_ZONE } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
 
 import type { NoteScope } from '../noteScope';
 import { createTextMatcher, type TextQuery } from '../textQuery';
-import { scanVaultTasks, type VaultTask } from '../tasks/scanVaultTasks';
+import { scanVaultReminders, type VaultReminder } from '../reminders/scanVaultReminders';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
 
 const MAX_REPORTED_ERRORS = 20;
@@ -18,14 +18,14 @@ export type DayRange = {
     to: string | undefined;
 };
 
-export type TasksListCommandInput = {
+export type RemindersListCommandInput = {
     scope: NoteScope;
     /** `today` or `YYYY-MM-DD`. */
     dailyNote: string | undefined;
-    statuses: readonly TaskStatus[] | undefined;
-    priorities: readonly TaskPriority[] | undefined;
+    statuses: readonly ReminderStatus[] | undefined;
+    priorities: readonly ReminderPriority[] | undefined;
     textQuery: TextQuery | undefined;
-    due: DayRange;
+    dates: DayRange;
     closed: DayRange;
     offset: number;
     limit: number;
@@ -40,7 +40,7 @@ function isInRange(day: string | null, { from, to }: DayRange): boolean {
 }
 
 function createDailyNoteFilter(dailyNote: string) {
-    const today = todayIsoDay(TASKS_TIME_ZONE);
+    const today = todayIsoDay(REMINDERS_TIME_ZONE);
     const noteDate = dailyNote === 'today' ? today : dailyNote;
     const isActiveNote = isActiveDailyDate({
         noteDate,
@@ -50,28 +50,28 @@ function createDailyNoteFilter(dailyNote: string) {
     return {
         noteDate,
         isActiveNote,
-        matches: (task: VaultTask) => isTaskInDailyNote(task, {
+        matches: (reminder: VaultReminder) => isReminderInDailyNote(reminder, {
             noteDate,
             isActiveNote,
         }),
     };
 }
 
-/** Lists the tasks of the notes in scope that match every filter, sorted for a daily note. */
-export async function tasksListCommand(config: VaultToolsConfig, input: TasksListCommandInput, execution: CommandExecution) {
+/** Lists the reminders of the notes in scope that match every filter, sorted for a daily note. */
+export async function remindersListCommand(config: VaultToolsConfig, input: RemindersListCommandInput, execution: CommandExecution) {
     execution.throwIfAborted();
     const {
-        scope, statuses, priorities, textQuery, due, closed, offset, limit,
+        scope, statuses, priorities, textQuery, dates, closed, offset, limit,
     } = input;
-    const scan = await scanVaultTasks(config, scope, execution);
+    const scan = await scanVaultReminders(config, scope, execution);
     const dailyNote = input.dailyNote === undefined ? null : createDailyNoteFilter(input.dailyNote);
     const matchesText = textQuery === undefined ? null : createTextMatcher(textQuery);
-    const tasks = scan.tasks.filter((task) => (statuses === undefined || statuses.includes(task.status)) && (priorities === undefined || priorities.includes(task.priority)) && (matchesText === null || matchesText(task.description)) && isInRange(task.dueDate, due) && isInRange(task.status === 'open' ? null : task.closedDate, closed) && (dailyNote === null || dailyNote.matches(task)));
+    const reminders = scan.reminders.filter((reminder) => (statuses === undefined || statuses.includes(reminder.status)) && (priorities === undefined || priorities.includes(reminder.priority)) && (matchesText === null || matchesText(reminder.description)) && isInRange(reminder.date, dates) && isInRange(reminder.status === 'open' ? null : reminder.closedDate, closed) && (dailyNote === null || dailyNote.matches(reminder)));
 
-    tasks.sort(compareTasks);
+    reminders.sort(compareReminders);
 
-    const page = tasks.slice(offset, offset + limit);
-    const nextOffset = offset + page.length < tasks.length ? offset + page.length : null;
+    const page = reminders.slice(offset, offset + limit);
+    const nextOffset = offset + page.length < reminders.length ? offset + page.length : null;
 
     return {
         ...dailyNote !== null && {
@@ -80,7 +80,7 @@ export async function tasksListCommand(config: VaultToolsConfig, input: TasksLis
                 isActive: dailyNote.isActiveNote,
             },
         },
-        total: tasks.length,
+        total: reminders.length,
         offset,
         limit,
         nextOffset,
@@ -92,8 +92,8 @@ export async function tasksListCommand(config: VaultToolsConfig, input: TasksLis
         },
         readErrors: scan.readErrors.slice(0, MAX_REPORTED_ERRORS),
         walkErrors: scan.walkErrors.slice(0, MAX_REPORTED_ERRORS),
-        tasks: page,
+        reminders: page,
     };
 }
 
-export type TasksListCommandResult = Awaited<ReturnType<typeof tasksListCommand>>;
+export type RemindersListCommandResult = Awaited<ReturnType<typeof remindersListCommand>>;

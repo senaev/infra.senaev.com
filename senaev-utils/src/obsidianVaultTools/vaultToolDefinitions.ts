@@ -11,11 +11,11 @@ import {
     READ_ONLY_ANNOTATIONS as READ_ONLY,
     type ToolDefinition,
 } from '../toolServer/toolDefinition';
-import { TASK_PRIORITIES, TASK_STATUSES } from '../obsidianTasks/taskLine';
+import { REMINDER_PRIORITIES, REMINDER_STATUSES } from '../obsidianReminders/reminderLine';
 
 import { PATCH_OPERATION_FIELDS, type VaultCommandName } from './vaultCommands';
 import {
-    DEFAULT_TASKS_NOTE_PATH,
+    DEFAULT_REMINDERS_NOTE_PATH,
     DIARY_APPEND_LIMITS,
     LINKS_LIMITS,
     LIST_LIMITS,
@@ -23,9 +23,9 @@ import {
     PATCH_LIMITS,
     READ_LIMITS,
     SEARCH_LIMITS,
-    TASK_WRITE_LIMITS,
-    TASKS_LIST_LIMITS,
-    TASKS_TIME_ZONE,
+    REMINDER_WRITE_LIMITS,
+    REMINDERS_LIST_LIMITS,
+    REMINDERS_TIME_ZONE,
 } from './vaultToolLimits';
 
 export { PATCH_OPERATION_FIELDS, type PatchOperationType } from './vaultCommands';
@@ -198,7 +198,7 @@ const read: ToolDefinition = {
             },
             lineNumbers: {
                 type: 'boolean',
-                description: 'Start each line of "content" with its line number in the file, e.g. "12: text"; frontmatter lines count too. Use it to find "afterLine" for obsidian-tasks_create. Default: false.',
+                description: 'Start each line of "content" with its line number in the file, e.g. "12: text"; frontmatter lines count too. Use it to find "afterLine" for obsidian-reminders_create. Default: false.',
             },
         },
         additionalProperties: false,
@@ -294,7 +294,7 @@ const patch: ToolDefinition = {
         'Returns "diff", the unified diff of the whole file including frontmatter.',
         DIFF_PRESENTATION_DESCRIPTION,
         'The result has no new hash: to edit the same note again, read it again first.',
-        'To add or change a task (a "- [ ]" line), use obsidian-tasks_create or obsidian-tasks_update instead.',
+        'To add or change a reminder (a "- [ ]" line), use obsidian-reminders_create or obsidian-reminders_update instead.',
         VAULT_RULES,
     ].join(' '),
     inputSchema: {
@@ -464,17 +464,17 @@ const diary_append: ToolDefinition = {
     },
 };
 
-const TASK_FORMAT_DESCRIPTION = [
-    'Tasks are "- [ ]" lines in the emoji format of the Obsidian Tasks plugin.',
-    'A task has: "status" (open, done, cancelled); "description"; "source", who created it, written as "🌱 <source>" (null when absent);',
-    '"priority" (highest 🔺, high ⏫, medium 🔼, normal (no emoji), low 🔽, lowest ⏬); "dueDate" 📅;',
-    '"closedDate", ✅ for done or ❌ for cancelled; "recurrence" 🔁 in the Tasks wording, e.g. "every week", "every 3 months", "every 90 days when done".',
-    `Dates are YYYY-MM-DD; "today" is the owner's day in ${TASKS_TIME_ZONE}.`,
+const REMINDER_FORMAT_DESCRIPTION = [
+    'Reminders are "- [ ]" lines in the emoji format of the Obsidian Tasks plugin.',
+    'A reminder has: "status" (open, done, cancelled); "description"; "source", who created it, written as "🌱 <source>" (null when absent);',
+    '"priority" (highest 🔺, high ⏫, medium 🔼, normal (no emoji), low 🔽, lowest ⏬); "date" 📅, the day the reminder is for: from that day on, an open reminder shows in the daily note until it is closed;',
+    '"closedDate", ✅ for done or ❌ for cancelled; "recurrence" 🔁 in the Tasks plugin wording, e.g. "every week", "every 3 months", "every 90 days when done".',
+    `Dates are YYYY-MM-DD; "today" is the owner's day in ${REMINDERS_TIME_ZONE}.`,
 ].join(' ');
 
 const PRIORITY_PROPERTY = {
     type: 'string',
-    enum: [...TASK_PRIORITIES],
+    enum: [...REMINDER_PRIORITIES],
 };
 
 const NULLABLE_DAY = {
@@ -485,29 +485,29 @@ const NULLABLE_DAY = {
     pattern: ISO_DAY_PATTERN,
 };
 
-const TASK_WRITE_ANNOTATIONS = {
+const REMINDER_WRITE_ANNOTATIONS = {
     readOnlyHint: false,
     destructiveHint: false,
     idempotentHint: false,
     openWorldHint: false,
 };
 
-const TASK_WRITE_RESULT_DESCRIPTION = [
-    'Returns "task" (the written task with its new "line", "raw" and "hash"), "nextOccurrence" (the new task of a completed recurring task, or null),',
-    'the new file "hash" for the next task write in the same note, and "diff".',
+const REMINDER_WRITE_RESULT_DESCRIPTION = [
+    'Returns "reminder" (the written reminder with its new "line", "raw" and "hash"), "nextOccurrence" (the new reminder of a completed recurring reminder, or null),',
+    'the new file "hash" for the next reminder write in the same note, and "diff".',
     DIFF_PRESENTATION_DESCRIPTION,
 ].join(' ');
 
-const tasks_list: ToolDefinition = {
-    title: 'List Obsidian tasks',
+const reminders_list: ToolDefinition = {
+    title: 'List Obsidian reminders',
     description: [
-        'Lists the tasks of the owner\'s Obsidian vault with their note "path", "line", the file "hash" and the line as written ("raw").',
-        TASK_FORMAT_DESCRIPTION,
-        'When displaying tasks to the user, copy each task\'s "raw" field verbatim. Preserve the original language, wording, spelling, checkbox, links, URLs, emojis, tags and dates. Do not translate, paraphrase, shorten, remove links or reconstruct tasks from parsed fields. Preserve the returned order. Put any explanation outside the copied task text. Follow this unless the user explicitly requests a different presentation.',
-        'All filters are optional and combine with AND. Without filters it lists every task, also closed ones.',
-        '"dailyNote" gives exactly the task list of that daily note in Obsidian: the tasks closed on that day, and on the active note (today or a future day) also the open tasks due on or before it and the undated open tasks of normal or higher priority.',
-        'Tasks are sorted by priority, then note path, then line. Tasks in periodic/ notes are part of the list but never of a daily note list.',
-        'Lines that look like tasks but cannot be read (e.g. an invalid date) are not listed; they are counted in "parseErrors".',
+        'Lists the reminders of the owner\'s Obsidian vault with their note "path", "line", the file "hash" and the line as written ("raw").',
+        REMINDER_FORMAT_DESCRIPTION,
+        'When displaying reminders to the user, copy each reminder\'s "raw" field verbatim. Preserve the original language, wording, spelling, checkbox, links, URLs, emojis, tags and dates. Do not translate, paraphrase, shorten, remove links or reconstruct reminders from parsed fields. Preserve the returned order. Put any explanation outside the copied reminder text. Follow this unless the user explicitly requests a different presentation.',
+        'All filters are optional and combine with AND. Without filters it lists every reminder, also closed ones.',
+        '"dailyNote" gives exactly the reminder list of that daily note in Obsidian: the reminders closed on that day, and on the active note (today or a future day) also the open reminders dated on or before it and the undated open reminders of normal or higher priority.',
+        'Reminders are sorted by priority, then note path, then line. Reminders in periodic/ notes are part of the list but never of a daily note list.',
+        'Lines that look like reminders but cannot be read (e.g. an invalid date) are not listed; they are counted in "parseErrors".',
         PAGED_RESULT_DESCRIPTION,
         VAULT_RULES,
     ].join(' '),
@@ -517,22 +517,22 @@ const tasks_list: ToolDefinition = {
             ...MANAGED_TOOL_PROPERTIES,
             dailyNote: {
                 type: 'string',
-                description: `"today" or a day YYYY-MM-DD: list the tasks that the daily note of that day shows. "today" is the owner's day in ${TASKS_TIME_ZONE}; the result tells the day in "dailyNote".`,
+                description: `"today" or a day YYYY-MM-DD: list the reminders that the daily note of that day shows. "today" is the owner's day in ${REMINDERS_TIME_ZONE}; the result tells the day in "dailyNote".`,
             },
             status: {
                 type: 'array',
                 items: {
                     type: 'string',
-                    enum: [...TASK_STATUSES],
+                    enum: [...REMINDER_STATUSES],
                 },
                 minItems: 1,
-                description: 'Only tasks with one of these statuses.',
+                description: 'Only reminders with one of these statuses.',
             },
             priority: {
                 type: 'array',
                 items: PRIORITY_PROPERTY,
                 minItems: 1,
-                description: 'Only tasks with one of these priorities.',
+                description: 'Only reminders with one of these priorities.',
             },
             queries: {
                 type: 'array',
@@ -543,7 +543,7 @@ const tasks_list: ToolDefinition = {
                 },
                 minItems: 1,
                 maxItems: SEARCH_LIMITS.maxQueries,
-                description: 'Literal texts to find in the task description, case-insensitive, as in obsidian-search. Send several languages and word forms.',
+                description: 'Literal texts to find in the reminder description, case-insensitive, as in obsidian-search. Send several languages and word forms.',
             },
             match: {
                 type: 'string',
@@ -557,45 +557,45 @@ const tasks_list: ToolDefinition = {
                 type: 'boolean',
                 description: 'Match whole words only. Default: false.',
             },
-            dueFrom: {
+            dateFrom: {
                 type: 'string',
                 pattern: ISO_DAY_PATTERN,
-                description: 'Only tasks due on or after this day; tasks without a due date are left out.',
+                description: 'Only reminders dated on or after this day; reminders without a date are left out.',
             },
-            dueTo: {
+            dateTo: {
                 type: 'string',
                 pattern: ISO_DAY_PATTERN,
-                description: 'Only tasks due on or before this day; tasks without a due date are left out.',
+                description: 'Only reminders dated on or before this day; reminders without a date are left out.',
             },
             closedFrom: {
                 type: 'string',
                 pattern: ISO_DAY_PATTERN,
-                description: 'Only tasks done or cancelled on or after this day.',
+                description: 'Only reminders done or cancelled on or after this day.',
             },
             closedTo: {
                 type: 'string',
                 pattern: ISO_DAY_PATTERN,
-                description: 'Only tasks done or cancelled on or before this day.',
+                description: 'Only reminders done or cancelled on or before this day.',
             },
             folder: SCOPE_PROPERTIES.folder,
             glob: SCOPE_PROPERTIES.glob,
-            ...pagingProperties(TASKS_LIST_LIMITS, { items: 'Tasks' }),
+            ...pagingProperties(REMINDERS_LIST_LIMITS, { items: 'Reminders' }),
         },
         additionalProperties: false,
     },
     annotations: READ_ONLY,
 };
 
-const tasks_create: ToolDefinition = {
-    title: 'Add an Obsidian task',
+const reminders_create: ToolDefinition = {
+    title: 'Add an Obsidian reminder',
     description: [
-        'Adds one open task to an existing note of the owner\'s Obsidian vault; the server writes the task line.',
-        TASK_FORMAT_DESCRIPTION,
-        `When the user names no note, follow the vault rule: path "${DEFAULT_TASKS_NOTE_PATH}", "afterLine": 0 and "blankLinesAfter": 1, so the task is the first line, separated by a blank line.`,
-        'For another note, read it with obsidian-read and "lineNumbers": true, and choose the line to insert after. The task cannot go inside frontmatter, a code block, an HTML block or a table.',
-        'Pass the note "hash" (from obsidian-read, obsidian-tasks_list or the previous task write) as "expectedHash"; if the note changed, the call fails with a conflict and you must read it again.',
-        'Set "dueDate" only when the user gives a date or deadline. A recurring task needs "dueDate".',
-        TASK_WRITE_RESULT_DESCRIPTION,
+        'Adds one open reminder to an existing note of the owner\'s Obsidian vault; the server writes the reminder line.',
+        REMINDER_FORMAT_DESCRIPTION,
+        `When the user names no note, follow the vault rule: path "${DEFAULT_REMINDERS_NOTE_PATH}", "afterLine": 0 and "blankLinesAfter": 1, so the reminder is the first line, separated by a blank line.`,
+        'For another note, read it with obsidian-read and "lineNumbers": true, and choose the line to insert after. The reminder cannot go inside frontmatter, a code block, an HTML block or a table.',
+        'Pass the note "hash" (from obsidian-read, obsidian-reminders_list or the previous reminder write) as "expectedHash"; if the note changed, the call fails with a conflict and you must read it again.',
+        'Set "date" only when the user gives a date or deadline. A recurring reminder needs "date".',
+        REMINDER_WRITE_RESULT_DESCRIPTION,
         VAULT_RULES,
     ].join(' '),
     inputSchema: {
@@ -604,7 +604,7 @@ const tasks_create: ToolDefinition = {
             ...MANAGED_TOOL_PROPERTIES,
             path: {
                 type: 'string',
-                description: `Vault-relative path of an existing note, e.g. "${DEFAULT_TASKS_NOTE_PATH}".`,
+                description: `Vault-relative path of an existing note, e.g. "${DEFAULT_REMINDERS_NOTE_PATH}".`,
             },
             expectedHash: {
                 type: 'string',
@@ -613,43 +613,43 @@ const tasks_create: ToolDefinition = {
             afterLine: {
                 type: 'integer',
                 minimum: 0,
-                description: 'Insert the task after this line number of the file; 0 puts it at the top.',
+                description: 'Insert the reminder after this line number of the file; 0 puts it at the top.',
             },
             blankLinesBefore: {
                 type: 'integer',
                 minimum: 0,
-                maximum: TASK_WRITE_LIMITS.maxBlankLines,
-                description: 'Empty lines to add before the task; none at the top of the file. Default: 0.',
+                maximum: REMINDER_WRITE_LIMITS.maxBlankLines,
+                description: 'Empty lines to add before the reminder; none at the top of the file. Default: 0.',
             },
             blankLinesAfter: {
                 type: 'integer',
                 minimum: 0,
-                maximum: TASK_WRITE_LIMITS.maxBlankLines,
-                description: 'Empty lines to add after the task; none at the end of the file. Default: 0.',
+                maximum: REMINDER_WRITE_LIMITS.maxBlankLines,
+                description: 'Empty lines to add after the reminder; none at the end of the file. Default: 0.',
             },
             description: {
                 type: 'string',
                 minLength: 1,
-                maxLength: TASK_WRITE_LIMITS.maxDescriptionLength,
-                description: 'The task text, in the user\'s words. Wikilinks are fine.',
+                maxLength: REMINDER_WRITE_LIMITS.maxDescriptionLength,
+                description: 'The reminder text, in the user\'s words. Wikilinks are fine.',
             },
             source: {
                 type: 'string',
-                maxLength: TASK_WRITE_LIMITS.maxSourceLength,
-                description: 'Who created the task. Default: "Agent".',
+                maxLength: REMINDER_WRITE_LIMITS.maxSourceLength,
+                description: 'Who created the reminder. Default: "Agent".',
             },
             priority: {
                 ...PRIORITY_PROPERTY,
                 description: 'Default: "normal".',
             },
-            dueDate: {
+            date: {
                 type: 'string',
                 pattern: ISO_DAY_PATTERN,
-                description: 'The due date, YYYY-MM-DD.',
+                description: 'The day the reminder is for, YYYY-MM-DD.',
             },
             recurrence: {
                 type: 'string',
-                maxLength: TASK_WRITE_LIMITS.maxRecurrenceLength,
+                maxLength: REMINDER_WRITE_LIMITS.maxRecurrenceLength,
                 description: 'E.g. "every month" or "every 2 weeks when done".',
             },
         },
@@ -661,21 +661,21 @@ const tasks_create: ToolDefinition = {
         ],
         additionalProperties: false,
     },
-    annotations: TASK_WRITE_ANNOTATIONS,
+    annotations: REMINDER_WRITE_ANNOTATIONS,
 };
 
-const tasks_update: ToolDefinition = {
-    title: 'Change an Obsidian task',
+const reminders_update: ToolDefinition = {
+    title: 'Change an Obsidian reminder',
     description: [
-        'Changes one task of the owner\'s Obsidian vault, found by "path" and "line" from obsidian-tasks_list or a previous task write.',
-        TASK_FORMAT_DESCRIPTION,
+        'Changes one reminder of the owner\'s Obsidian vault, found by "path" and "line" from obsidian-reminders_list or a previous reminder write.',
+        REMINDER_FORMAT_DESCRIPTION,
         '"changes" is partial: a given field replaces the value, null clears it, and an omitted field stays.',
         'Done or cancelled without "closedDate" sets it to today; back to open clears it.',
-        'Completing a recurring task (it needs "dueDate") adds its next occurrence on the line below, like the Tasks plugin: the next due date counts from the due date, or from the completion day with "when done".',
-        'Only a top-level "- [ ]" task written exactly in this tool\'s format can be changed; otherwise the call fails and returns the line as written ("actual") and as this tool would write it ("expected"). Tell the user, do not edit it with obsidian-patch.',
+        'Completing a recurring reminder (it needs "date") adds its next occurrence on the line below, like the Tasks plugin: the next date counts from the current one, or from the completion day with "when done".',
+        'Only a top-level "- [ ]" reminder written exactly in this tool\'s format can be changed; otherwise the call fails and returns the line as written ("actual") and as this tool would write it ("expected"). Tell the user, do not edit it with obsidian-patch.',
         'Pass the note "hash" as "expectedHash"; if the note changed, the call fails with a conflict: list or read again to get the new line and hash.',
-        'There is no delete: mark a task done or cancelled instead.',
-        TASK_WRITE_RESULT_DESCRIPTION,
+        'There is no delete: mark a reminder done or cancelled instead.',
+        REMINDER_WRITE_RESULT_DESCRIPTION,
         VAULT_RULES,
     ].join(' '),
     inputSchema: {
@@ -689,7 +689,7 @@ const tasks_update: ToolDefinition = {
             line: {
                 type: 'integer',
                 minimum: 1,
-                description: 'The line number of the task in the file.',
+                description: 'The line number of the reminder in the file.',
             },
             expectedHash: {
                 type: 'string',
@@ -701,29 +701,29 @@ const tasks_update: ToolDefinition = {
                 properties: {
                     status: {
                         type: 'string',
-                        enum: [...TASK_STATUSES],
+                        enum: [...REMINDER_STATUSES],
                     },
                     description: {
                         type: 'string',
                         minLength: 1,
-                        maxLength: TASK_WRITE_LIMITS.maxDescriptionLength,
+                        maxLength: REMINDER_WRITE_LIMITS.maxDescriptionLength,
                     },
                     source: {
                         type: [
                             'string',
                             'null',
                         ],
-                        maxLength: TASK_WRITE_LIMITS.maxSourceLength,
+                        maxLength: REMINDER_WRITE_LIMITS.maxSourceLength,
                     },
                     priority: PRIORITY_PROPERTY,
-                    dueDate: NULLABLE_DAY,
+                    date: NULLABLE_DAY,
                     closedDate: NULLABLE_DAY,
                     recurrence: {
                         type: [
                             'string',
                             'null',
                         ],
-                        maxLength: TASK_WRITE_LIMITS.maxRecurrenceLength,
+                        maxLength: REMINDER_WRITE_LIMITS.maxRecurrenceLength,
                     },
                 },
                 additionalProperties: false,
@@ -738,7 +738,7 @@ const tasks_update: ToolDefinition = {
         additionalProperties: false,
     },
     annotations: {
-        ...TASK_WRITE_ANNOTATIONS,
+        ...REMINDER_WRITE_ANNOTATIONS,
         destructiveHint: true,
     },
 };
@@ -983,9 +983,9 @@ export const VAULT_TOOL_DEFINITIONS = {
     patch,
     move,
     diary_append,
-    tasks_list,
-    tasks_create,
-    tasks_update,
+    reminders_list,
+    reminders_create,
+    reminders_update,
 } as const satisfies Record<VaultCommandName, ToolDefinition>;
 
 export type VaultToolName = VaultCommandName;

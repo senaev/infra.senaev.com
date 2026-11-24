@@ -4,8 +4,8 @@ import { getDailyNotePath } from './dailyNotePath';
 /** Yesterday's daily note, if it exists. */
 export interface YesterdayNav {
 	path: string;
-	/** Whether yesterday's note has at least one unchecked task. */
-	hasUndoneTask: boolean;
+	/** Whether yesterday's note has at least one unchecked reminder. */
+	hasUndoneReminder: boolean;
 }
 
 /** Tomorrow's daily note (may not exist yet). */
@@ -24,7 +24,7 @@ export interface DailyHeaderNav {
 }
 
 /** Whether `file` contains at least one unchecked (`- [ ]`) list item. */
-function hasUndoneTask(app: App, file: TFile): boolean {
+function hasUndoneReminder(app: App, file: TFile): boolean {
 	const listItems = app.metadataCache.getFileCache(file)?.listItems ?? [];
 	return listItems.some((item) => item.task === ' ');
 }
@@ -42,7 +42,7 @@ export function getDailyHeaderNav(app: App, noteDate: Date): DailyHeaderNav {
 
 	const yesterday: YesterdayNav | null =
 		yesterdayFile instanceof TFile
-			? { path: yesterdayPath, hasUndoneTask: hasUndoneTask(app, yesterdayFile) }
+			? { path: yesterdayPath, hasUndoneReminder: hasUndoneReminder(app, yesterdayFile) }
 			: null;
 
 	const tomorrowDate = new Date(noteDate);

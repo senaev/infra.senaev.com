@@ -28,7 +28,7 @@ const PROTECTED_REQUESTS = [
     },
     {
         method: 'POST',
-        path: '/tasks',
+        path: '/reminders',
         reachedStatus: 400,
     },
     {

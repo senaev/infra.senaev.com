@@ -10,7 +10,7 @@ import { registerMilestoneRoutes } from './registerMilestoneRoutes';
 import { registerPublicFileRoutes } from './registerPublicFileRoutes';
 import { registerPublicStaticRoutes } from './registerPublicStaticRoutes';
 import { registerShortLinkRoutes } from './registerShortLinkRoutes';
-import { registerTaskRoutes } from './registerTaskRoutes';
+import { registerReminderRoutes } from './registerReminderRoutes';
 import { registerVaultMetricsRoutes } from './registerVaultMetricsRoutes';
 import { registerVaultToolRoutes } from './registerVaultToolRoutes';
 
@@ -23,7 +23,7 @@ export function registerProtectedVaultRoutes(server: Pick<FastifyInstance, 'addH
     // authenticated by `createMtlsFastifyServer`.
     registerMtlsCallerAllowlist(server, ALLOWED_CALLERS);
     registerVaultToolRoutes(server, createVaultToolsConfig(OBSIDIAN_VAULT_PATH));
-    registerTaskRoutes(server);
+    registerReminderRoutes(server);
     registerJobSearchRoutes(server);
     registerShortLinkRoutes(server);
     registerMilestoneRoutes(server);

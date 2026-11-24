@@ -28,7 +28,7 @@ export async function processTelegramWebhookData({
 }: {
     botUser: TelegramUser;
     update: Record<string, unknown>;
-    obsidianSyncApi: Pick<ObsidianSyncApi, 'addObsidianTasks' | 'createShortLink'>;
+    obsidianSyncApi: Pick<ObsidianSyncApi, 'addObsidianReminders' | 'createShortLink'>;
 }): Promise<void> {
     logger.info('👉 processTelegramWebhookData');
     const { callback_query, message } = update;

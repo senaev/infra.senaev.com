@@ -1,6 +1,6 @@
 import { createCommandAdapter } from 'senaev-utils/src/toolServer/createCommandAdapter';
-import { TASKS_LIST_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
-import { TASK_PRIORITIES, TASK_STATUSES } from 'senaev-utils/src/obsidianTasks/taskLine';
+import { REMINDERS_LIST_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
+import { REMINDER_PRIORITIES, REMINDER_STATUSES } from 'senaev-utils/src/obsidianReminders/reminderLine';
 import {
     optionalString, readPageArguments, type ToolArguments,
 } from 'senaev-utils/src/toolServer/toolArguments';
@@ -11,8 +11,8 @@ import { readTextQuery } from '../textQuery';
 import { optionalIsoDay, readVaultToolArguments } from '../toolArguments';
 
 import {
-    type DayRange, type TasksListCommandInput, tasksListCommand,
-} from './tasksListCommand';
+    type DayRange, type RemindersListCommandInput, remindersListCommand,
+} from './remindersListCommand';
 
 function optionalEnumArray<T extends string>(args: ToolArguments, key: string, values: readonly T[]): T[] | undefined {
     const value = args[key];
@@ -48,8 +48,8 @@ function readDailyNote(args: ToolArguments): string | undefined {
     return value === 'today' ? value : optionalIsoDay(args, 'dailyNote');
 }
 
-function parseTasksListInput(input: unknown): TasksListCommandInput {
-    const args = readVaultToolArguments(input, 'tasks_list');
+function parseRemindersListInput(input: unknown): RemindersListCommandInput {
+    const args = readVaultToolArguments(input, 'reminders_list');
 
     if (args.match !== undefined || args.wholeWord !== undefined) {
         if (args.queries === undefined) {
@@ -60,13 +60,13 @@ function parseTasksListInput(input: unknown): TasksListCommandInput {
     return {
         scope: readNoteScope(args),
         dailyNote: readDailyNote(args),
-        statuses: optionalEnumArray(args, 'status', TASK_STATUSES),
-        priorities: optionalEnumArray(args, 'priority', TASK_PRIORITIES),
+        statuses: optionalEnumArray(args, 'status', REMINDER_STATUSES),
+        priorities: optionalEnumArray(args, 'priority', REMINDER_PRIORITIES),
         textQuery: readTextQuery(args),
-        due: readDayRange(args, 'dueFrom', 'dueTo'),
+        dates: readDayRange(args, 'dateFrom', 'dateTo'),
         closed: readDayRange(args, 'closedFrom', 'closedTo'),
-        ...readPageArguments(args, TASKS_LIST_LIMITS),
+        ...readPageArguments(args, REMINDERS_LIST_LIMITS),
     };
 }
 
-export const tasksListTool = createCommandAdapter(parseTasksListInput, tasksListCommand);
+export const remindersListTool = createCommandAdapter(parseRemindersListInput, remindersListCommand);

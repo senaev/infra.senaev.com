@@ -12,7 +12,7 @@ renders reminders from vault note properties alongside the Tasks query and the
 RRULE in `day-reminder-schedule`. The daily note filename supplies the calendar date.
 Header/footer widgets remain separate. To change the
 template, change senaev-utils, wait for the `ci` release, and update the exact version in
-`package.json`, as for the Tasks rules below.
+`package.json`, as for the reminder rules below.
 
 There is no template file: `_templates/Daily note template.md` was deleted.
 `registerDailyNoteCreation.ts` handles vault create/modify/rename and workspace file-open
@@ -23,7 +23,7 @@ note created elsewhere must first be moved into this folder. No whole-vault star
 The active note is checked once at layout readiness.
 
 Initialization fills whitespace-only files and frontmatter-only files, preserving frontmatter.
-Any other content, including existing body text and checked tasks, is left unchanged. Opening an
+Any other content, including existing body text and checked reminders, is left unchanged. Opening an
 old empty daily note intentionally initializes it. A nonempty note is never regenerated on rename.
 `Vault.process` atomically rechecks content before writing; a preliminary read avoids no-op modify
 loops. Per-file jobs serialize overlapping events and recheck changes received during a write.
@@ -38,7 +38,7 @@ The manifest requires Obsidian 1.4.0 for the atomic processing and folder APIs.
 Validation: run lint, typecheck, tests and build. The template itself is tested in senaev-utils,
 against fixtures captured from the retired template/script. For manual desktop
 and mobile QA, create a daily note via Periodic Notes/calendar, a full-path link, file explorer,
-rename/move, and the personal command; reopen it and check that task completion persists.
+rename/move, and the personal command; reopen it and check that reminder completion persists.
 Also open a synced note with diary content and verify that it is untouched.
 
 

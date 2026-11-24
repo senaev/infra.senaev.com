@@ -50,7 +50,7 @@ describe('renderDailyNote', () => {
         expect(saturday).toContain('[[Alpha|Finish]]\n- [ ] [[Beta|Review]]');
         expect(saturday).toContain('[[Delta|Daily]]\n- [ ] [[Gamma|Weekly]]');
         expect(renderDailyNote('2026-08-02', { notes })).not.toContain('Weekly');
-        expect(saturday).toContain('window.senaevPersonalTools.filterTasksForDaily');
+        expect(saturday).toContain('window.senaevPersonalTools.filterRemindersForDaily');
         expect(saturday).toContain('⬆️ Daily Note ⬆️');
     });
 

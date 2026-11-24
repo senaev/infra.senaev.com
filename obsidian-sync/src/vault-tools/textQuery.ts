@@ -18,7 +18,7 @@ export function compileTextQuery(query: string, isWholeWord: boolean): RegExp {
     return new RegExp(isWholeWord ? `(?<![\\p{L}\\p{N}_])${literal}(?![\\p{L}\\p{N}_])` : literal, 'iu');
 }
 
-/** The `queries`, `match` and `wholeWord` arguments shared by obsidian-search and obsidian-tasks_list. */
+/** The `queries`, `match` and `wholeWord` arguments shared by obsidian-search and obsidian-reminders_list. */
 export type TextQuery = {
     queries: string[];
     requireAll: boolean;

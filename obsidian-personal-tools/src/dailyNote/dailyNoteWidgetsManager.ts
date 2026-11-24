@@ -67,7 +67,7 @@ export function registerDailyNoteWidgets(plugin: Plugin): void {
 	plugin.registerEvent(plugin.app.workspace.on('active-leaf-change', () => refreshAllReadingViews(plugin)));
 	plugin.registerEvent(plugin.app.workspace.on('layout-change', () => refreshAllReadingViews(plugin)));
 
-	// Other notes' frontmatter/tasks can change while a daily note stays
+	// Other notes' frontmatter/reminders can change while a daily note stays
 	// open, so keep Reading-mode widgets in sync too.
 	plugin.registerEvent(plugin.app.metadataCache.on('changed', () => refreshAllReadingViews(plugin)));
 

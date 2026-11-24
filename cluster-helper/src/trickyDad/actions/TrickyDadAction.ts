@@ -2,7 +2,7 @@ import type { ObsidianSyncApi } from '../../obsidianSyncApi';
 import type { TrickyDadSource } from '../TrickyDadSource';
 
 /** What the actions use of obsidian-sync. */
-export type TrickyDadObsidianSyncApi = Pick<ObsidianSyncApi, 'addObsidianTasks'>;
+export type TrickyDadObsidianSyncApi = Pick<ObsidianSyncApi, 'addObsidianReminders'>;
 
 export type TrickyDadActionContext = {
     command: string;

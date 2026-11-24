@@ -6,7 +6,7 @@ import {
 
 // Recurrence as the Obsidian Tasks plugin reads it: the text after 🔁, parsed by
 // `rrule`, with an optional ` when done` that counts the next date from the completion
-// day instead of from the due date.
+// day instead of from the date.
 
 const RECURRENCE = /^([a-zA-Z0-9, !]+?)( when done)?$/iu;
 
@@ -77,19 +77,19 @@ function clampSkippedPeriod(rule: RRule, base: Date, next: Date): Date {
 }
 
 /**
- * The due date of the next occurrence when a recurring task is completed: the due date
+ * The date of the next occurrence when a recurring reminder is completed: the date
  * plus the interval, or the completion day plus the interval for ` when done`.
  */
 export function getNextRecurrenceDueDate({
-    recurrence, dueDate, completedOn,
-}: { recurrence: string; dueDate: IsoDay; completedOn: IsoDay }): IsoDay {
+    recurrence, date, completedOn,
+}: { recurrence: string; date: IsoDay; completedOn: IsoDay }): IsoDay {
     const parsed = parseRecurrence(recurrence);
 
     if (parsed === null) {
         throw new Error(`Invalid recurrence: ${recurrence}`);
     }
 
-    const base = isoDayToUtcDate(parsed.isWhenDone ? completedOn : dueDate);
+    const base = isoDayToUtcDate(parsed.isWhenDone ? completedOn : date);
     const rule = new RRule({
         ...parsed.options,
         dtstart: base,

@@ -6,46 +6,46 @@ import { replaceFileAtomically } from 'senaev-utils/src/utils/fs/atomicFileWrite
 import { assertExpectedHash, hashContent } from 'senaev-utils/src/files/contentHash';
 import { createFileDiffAsync } from 'senaev-utils/src/files/createFileDiffAsync';
 import { withFileMutation } from 'senaev-utils/src/files/withFileMutation';
-import { todayIsoDay } from 'senaev-utils/src/obsidianTasks/isoDay';
+import { todayIsoDay } from 'senaev-utils/src/obsidianReminders/isoDay';
 import {
-    findTaskEditBlocker, findTaskFieldsError, parseTaskLine, serializeTask, type TaskFields,
-} from 'senaev-utils/src/obsidianTasks/taskLine';
-import { getNextRecurrenceDueDate } from 'senaev-utils/src/obsidianTasks/taskRecurrence';
-import { TASKS_TIME_ZONE } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
+    findReminderEditBlocker, findReminderFieldsError, parseReminderLine, serializeReminder, type ReminderFields,
+} from 'senaev-utils/src/obsidianReminders/reminderLine';
+import { getNextRecurrenceDueDate } from 'senaev-utils/src/obsidianReminders/reminderRecurrence';
+import { REMINDERS_TIME_ZONE } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
 import { CommandError, invalidArguments } from 'senaev-utils/src/commands/CommandError';
 
 import { normalizeVaultPath, resolveExistingNote } from '../access/vaultAccess';
 import { findRawBlocks, isLineInRawBlock } from '../markdown/rawBlocks';
 import {
-    countLines, getLine, readWrittenTask, replaceLine,
-} from '../tasks/taskFileEdits';
+    countLines, getLine, readWrittenReminder, replaceLine,
+} from '../reminders/reminderFileEdits';
 import type { VaultToolsConfig } from '../vaultToolsConfig';
 
-export type TasksUpdateCommandInput = {
+export type RemindersUpdateCommandInput = {
     path: string;
     line: number;
     expectedHash: string;
-    changes: Partial<TaskFields>;
+    changes: Partial<ReminderFields>;
 };
 
-function readEditableTask(content: string, line: number): TaskFields {
+function readEditableReminder(content: string, line: number): ReminderFields {
     const raw = getLine(content, line);
 
     if (raw === undefined) {
         throw invalidArguments(`Line ${line} does not exist: the note has ${countLines(content)} lines`);
     }
 
-    const parsed = parseTaskLine(raw);
+    const parsed = parseReminderLine(raw);
 
     if (parsed === null || isLineInRawBlock(findRawBlocks(content), line)) {
-        throw new CommandError('invalid_arguments', `Line ${line} is not a task`, { actual: raw });
+        throw new CommandError('invalid_arguments', `Line ${line} is not a reminder`, { actual: raw });
     }
 
     if (!parsed.ok) {
-        throw new CommandError('invalid_arguments', `The task on line ${line} cannot be read: ${parsed.error}`, { actual: raw });
+        throw new CommandError('invalid_arguments', `The reminder on line ${line} cannot be read: ${parsed.error}`, { actual: raw });
     }
 
-    const blocker = findTaskEditBlocker(raw, parsed);
+    const blocker = findReminderEditBlocker(raw, parsed);
 
     if (blocker !== null) {
         throw new CommandError('invalid_arguments', blocker.reason, {
@@ -54,11 +54,11 @@ function readEditableTask(content: string, line: number): TaskFields {
         });
     }
 
-    return parsed.task;
+    return parsed.reminder;
 }
 
-/** The new fields: a closed task always has a closed date, an open task never has one. */
-function applyChanges(current: TaskFields, changes: Partial<TaskFields>): TaskFields {
+/** The new fields: a closed reminder always has a closed date, an open reminder never has one. */
+function applyChanges(current: ReminderFields, changes: Partial<ReminderFields>): ReminderFields {
     const next = {
         ...current,
         ...changes,
@@ -66,7 +66,7 @@ function applyChanges(current: TaskFields, changes: Partial<TaskFields>): TaskFi
 
     if (next.status === 'open') {
         if (changes.closedDate !== undefined && changes.closedDate !== null) {
-            throw invalidArguments('"closedDate" can be set only for a done or cancelled task');
+            throw invalidArguments('"closedDate" can be set only for a done or cancelled reminder');
         }
 
         return {
@@ -79,34 +79,34 @@ function applyChanges(current: TaskFields, changes: Partial<TaskFields>): TaskFi
 
     return {
         ...next,
-        closedDate: isNewlyClosed || next.closedDate === null ? todayIsoDay(TASKS_TIME_ZONE) : next.closedDate,
+        closedDate: isNewlyClosed || next.closedDate === null ? todayIsoDay(REMINDERS_TIME_ZONE) : next.closedDate,
     };
 }
 
-/** The open task that follows a completed recurring task, as the Tasks plugin adds it. */
-function getNextOccurrence(current: TaskFields, next: TaskFields): TaskFields | null {
+/** The open reminder that follows a completed recurring reminder, as the Tasks plugin adds it. */
+function getNextOccurrence(current: ReminderFields, next: ReminderFields): ReminderFields | null {
     if (current.status === 'done' || next.status !== 'done' || next.recurrence === null) {
         return null;
     }
 
-    if (next.dueDate === null || next.closedDate === null) {
-        throw invalidArguments('A recurring task needs "dueDate" to be completed');
+    if (next.date === null || next.closedDate === null) {
+        throw invalidArguments('A recurring reminder needs "date" to be completed');
     }
 
     return {
         ...next,
         status: 'open',
         closedDate: null,
-        dueDate: getNextRecurrenceDueDate({
+        date: getNextRecurrenceDueDate({
             recurrence: next.recurrence,
-            dueDate: next.dueDate,
+            date: next.date,
             completedOn: next.closedDate,
         }),
     };
 }
 
-/** Changes the fields of one task line; completing a recurring task adds the next one below. */
-export async function tasksUpdateCommand(config: VaultToolsConfig, input: TasksUpdateCommandInput, execution: CommandExecution) {
+/** Changes the fields of one reminder line; completing a recurring reminder adds the next one below. */
+export async function remindersUpdateCommand(config: VaultToolsConfig, input: RemindersUpdateCommandInput, execution: CommandExecution) {
     execution.throwIfAborted();
     const path = normalizeVaultPath(input.path, 'path');
     const {
@@ -119,9 +119,9 @@ export async function tasksUpdateCommand(config: VaultToolsConfig, input: TasksU
 
         assertExpectedHash(original, expectedHash, 'note');
 
-        const current = readEditableTask(original, line);
+        const current = readEditableReminder(original, line);
         const next = applyChanges(current, changes);
-        const fieldsError = findTaskFieldsError(next);
+        const fieldsError = findReminderFieldsError(next);
 
         if (fieldsError !== null) {
             throw invalidArguments(fieldsError);
@@ -129,8 +129,8 @@ export async function tasksUpdateCommand(config: VaultToolsConfig, input: TasksU
 
         const nextOccurrence = getNextOccurrence(current, next);
         const updated = replaceLine(original, line, [
-            serializeTask(next),
-            ...nextOccurrence === null ? [] : [serializeTask(nextOccurrence)],
+            serializeReminder(next),
+            ...nextOccurrence === null ? [] : [serializeReminder(nextOccurrence)],
         ]);
         const isChanged = updated !== original;
         const diff = await createFileDiffAsync(path, original, updated, execution);
@@ -146,11 +146,11 @@ export async function tasksUpdateCommand(config: VaultToolsConfig, input: TasksU
             path,
             hash,
             changed: isChanged,
-            task: readWrittenTask(path, hash, updated, line),
-            nextOccurrence: nextOccurrence === null ? null : readWrittenTask(path, hash, updated, line + 1),
+            reminder: readWrittenReminder(path, hash, updated, line),
+            nextOccurrence: nextOccurrence === null ? null : readWrittenReminder(path, hash, updated, line + 1),
             ...diff,
         };
     }, execution);
 }
 
-export type TasksUpdateCommandResult = Awaited<ReturnType<typeof tasksUpdateCommand>>;
+export type RemindersUpdateCommandResult = Awaited<ReturnType<typeof remindersUpdateCommand>>;

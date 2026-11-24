@@ -7,7 +7,7 @@ const NBSP = '\u00A0';
 /**
  * Renders the previous/current/next-day navigation row for `noteDate` into
  * `containerEl`: `⬅️ Weekday ➡️` (or `👈` if yesterday has an unchecked
- * task, `⏺️` if tomorrow's note doesn't exist yet). Clicking the weekday
+ * reminder, `⏺️` if tomorrow's note doesn't exist yet). Clicking the weekday
  * name always jumps to today's actual daily note.
  *
  * `containerEl` is cleared and repopulated on every call, so it's safe to
@@ -21,7 +21,7 @@ export function renderDailyHeaderWidget(app: App, containerEl: HTMLElement, note
 	if (nav.yesterday) {
 		const link = containerEl.createEl('a', {
 			cls: 'internal-link',
-			text: nav.yesterday.hasUndoneTask ? '👈' : '⬅️',
+			text: nav.yesterday.hasUndoneReminder ? '👈' : '⬅️',
 		});
 		attachInternalLink(app, link, nav.yesterday.path);
 		containerEl.createSpan({ text: NBSP });

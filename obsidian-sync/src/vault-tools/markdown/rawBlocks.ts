@@ -3,7 +3,7 @@ import { parseMarkdown } from 'senaev-utils/src/obsidianMarkdown/parseMarkdown';
 
 export type RawBlockKind = 'yaml' | 'code' | 'html' | 'table';
 
-/** A block whose lines are not Markdown text: a task line in it is not a task. */
+/** A block whose lines are not Markdown text: a reminder line in it is not a reminder. */
 export type RawBlock = {
     kind: RawBlockKind;
     /** 1-based, inclusive. */
