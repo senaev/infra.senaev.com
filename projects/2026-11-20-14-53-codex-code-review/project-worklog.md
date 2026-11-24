@@ -17,3 +17,11 @@ it. The `## Code Review Rules` section of `AGENTS.md` keeps only the same note w
 Codex still finds it. Before the move, a probe pull request (closed) got a P1 for a sleeping unit
 test and a P1 for a realistic bot token in a fixture, each citing the rule. Probe again after the
 move to check that Codex follows the link.
+
+## 2026-11-24 — Automatic review not available; review on request
+
+The automatic review never started (seven probe pull requests, all closed), with the repository
+toggle on, the trigger "On PR open", and the GitHub app reinstalled. Saving "Review: All PRs"
+fails with "Reviewing all PRs is not available on this plan" (Plus). `@codex review` works every
+time, in under a minute. So `AGENTS.md` now has a "Codex code review" section: when the user asks
+for a Codex review, the agent comments `@codex review` and waits for the whole review cycle.

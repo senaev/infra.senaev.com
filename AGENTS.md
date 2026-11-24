@@ -74,6 +74,24 @@ If you are an agent that does code review of a pull request (for example Codex o
 read [`CODE_REVIEW.md`](CODE_REVIEW.md) and apply every rule in it. Any other agent: do not read
 that file.
 
+## Codex code review
+
+Codex reviews pull requests of this repository only on request: the automatic review does not run
+on the user's plan. When the user asks to run, or to wait for, a Codex code review of a pull
+request:
+
+1. Leave a comment with exactly `@codex review` on the pull request
+   (`gh pr comment <number> --body "@codex review"`). Request it again after each new push that
+   should be reviewed: a review covers only the commit it names.
+2. Wait for the full review cycle; do not report before it ends. Codex reacts with 👀, then updates
+   its "Codex Review Summary" comment from "🔄 Running" to "✅ Completed" for the latest commit. A
+   review usually takes under 2 minutes; poll every 10-20 seconds and give up after 15 minutes.
+3. Read the result: a review by `chatgpt-codex-connector[bot]` with inline comments, each with a
+   P0, P1 or P2 badge (`gh api repos/<owner>/<repo>/pulls/<number>/comments`), or a "Didn't find
+   any major issues" comment with a 👍 reaction.
+4. Report every finding to the user with its badge and file, and say what you would change. Fix the
+   findings only if the user asked for it, then request a new review.
+
 ## Service Deployment
 
 Charts live under `provisioning/helm/<chart>/` or grouped as
