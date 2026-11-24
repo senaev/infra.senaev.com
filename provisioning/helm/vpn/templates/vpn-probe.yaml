@@ -143,6 +143,12 @@ spec:
       ports:
         - protocol: TCP
           port: 443
+        {{- if .Values.xrayHysteria.enabled }}
+        # Profile 6 (Hysteria2) is QUIC over UDP. Without this rule the probe's packets were
+        # dropped here, inside the cluster, and profile 6 looked blocked (2026-11-20).
+        - protocol: UDP
+          port: {{ .Values.xrayHysteria.port }}
+        {{- end }}
 {{- end }}
 
 {{- if .Values.vpnProbe.enabled }}

@@ -35,7 +35,7 @@ def client_config(link, base_uuid, public_key, port=1080, invalid=False):
     def derive(value):
         return str(uuid.UUID(hashlib.sha256(f"{base_uuid}:{value}".encode()).hexdigest()[:32]))
     # The first macro is the user credential; later ones (the Hysteria2 obfs password) are not.
-    link = link.replace(seed[0], str(uuid.uuid4()) if invalid else derive(seed[1]))
+    link = link.replace(seed[0], str(uuid.uuid4()) if invalid else derive(seed[1]), 1)
     link = re.sub(r"\{XRAY_USER_UUID:([^}]+)\}", lambda match: derive(match[1]), link)
     url = urlsplit(link.replace("{XRAY_REALITY_PUBLIC_KEY}", public_key))
     params = parse_qs(url.query, keep_blank_values=True)

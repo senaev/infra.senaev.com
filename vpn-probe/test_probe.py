@@ -84,6 +84,17 @@ class HysteriaConfigTests(unittest.TestCase):
             self.assertEqual(config['outbounds'][0]['streamSettings']['finalmask'], {
                 'udp': [{'type': 'salamander', 'settings': {'password': expected}}]})
 
+    def test_invalid_changes_only_the_credential_when_seeds_repeat(self):
+        link = HYSTERIA_LINK + '&obfs=salamander&obfs-password={XRAY_USER_UUID:6}'
+        good, _ = probe.client_config(link, 'base', 'public')
+        bad, _ = probe.client_config(link, 'base', 'public', invalid=True)
+        good_stream = good['outbounds'][0]['streamSettings']
+        bad_stream = bad['outbounds'][0]['streamSettings']
+        self.assertNotEqual(good_stream['hysteriaSettings']['auth'], bad_stream['hysteriaSettings']['auth'])
+        self.assertEqual(good_stream['finalmask'], bad_stream['finalmask'])
+        self.assertEqual(good_stream['finalmask']['udp'][0]['settings']['password'],
+                         good_stream['hysteriaSettings']['auth'])
+
     def test_rejects_insecure_or_incomplete_links(self):
         for link in [HYSTERIA_LINK + '&insecure=1', HYSTERIA_LINK.replace('?sni=senaev.com', ''),
                      HYSTERIA_LINK.replace(':443', ''), HYSTERIA_LINK + '&obfs=other&obfs-password=x',

@@ -32,6 +32,9 @@ the home ISP freezes TCP/TLS connections to hetzner for hours while UDP (Tailsca
 - Without the salamander password the server does not answer at all. A client with it but
   without the user password gets `https://senaev.com/` through the masquerade proxy.
 - Traefik binds only TCP 80/443 on hetzner; UDP 47443 is used only by this pod.
+- The `vpn-probe` NetworkPolicy allows public egress on TCP 443 and on UDP `xrayHysteria.port`
+  only. A probe for a new UDP transport needs its port there, or its packets are dropped inside
+  the cluster and the route looks blocked.
 
 ### vpn-subscription service
 

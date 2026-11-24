@@ -1,3 +1,19 @@
+## 2026-11-22 — Profile 6 "failures" were our NetworkPolicy, not the ISP
+
+After #261 (UDP 47443, salamander) the probe's Xray client logged for every attempt
+`proxy/hysteria: failed to find an available destination > timeout: no recent network
+activity`, and `xray-hysteria` logged no incoming attempt. On hetzner (user ran it):
+`iptables -t nat -S | grep 47443` shows the CNI hostPort DNAT to the pod
+(`-p udp --dport 47443 -j DNAT --to-destination 10.42.0.223:47443`); the Hetzner Cloud console
+has 0 firewalls. Cause: the `vpn-probe` NetworkPolicy allowed public egress only on TCP 443,
+so the probe's UDP packets were dropped inside the cluster on senaev-media. Both #260 and
+#261 results for profile 6 are therefore invalid; the ISP was never tested. Happ is not
+affected by this policy.
+
+Fix: egress UDP `xrayHysteria.port` for the probe pods. Also the CodeRabbit note on #261:
+`--invalid` replaces only the first credential macro, even when the obfs password uses the
+same seed.
+
 ## 2026-11-20 22:50 UTC — Profile 6 fails on UDP 443; add salamander and a high port
 
 #260 deployed 22:21 UTC (deploy run 44827767189 succeeded). `xray-hysteria` started cleanly
