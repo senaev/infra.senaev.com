@@ -1,7 +1,7 @@
 import { mkdir } from 'node:fs/promises';
 
 import { requireEnv } from 'senaev-utils/src/utils/env/requireEnv/requireEnv';
-import { installGracefulShutdown } from 'senaev-utils/src/utils/process/installGracefulShutdown';
+import { createShutdownController } from 'senaev-utils/src/utils/process/createShutdownController';
 
 import { logger } from './logger';
 import { createPromptRunner, spawnClaude } from './runPrompt';
@@ -23,10 +23,12 @@ const server = createPromptApiServer(createPromptRunner({
     timeoutMs: RUN_TIMEOUT_MS,
 }));
 
-const lifecycle = installGracefulShutdown({
-    stop: () => server.close(),
-    reportError: (error) => logger.error(error, '❌ Prompt API shutdown failed'),
-});
+const subscribeShutdown = createShutdownController(
+    process,
+    (error) => logger.error(error, '❌ Prompt API shutdown failed')
+);
+
+subscribeShutdown(() => server.close());
 
 async function main(): Promise<void> {
     await mkdir(RUN_DIRECTORY, { recursive: true });
@@ -38,9 +40,5 @@ async function main(): Promise<void> {
     logger.info({ port: PORT }, '✅ Prompt API listening');
 }
 
-main().catch(async (error) => {
-    if (!lifecycle.signal.aborted) {
-        logger.error(error, '❌ Prompt API exited');
-        await lifecycle.shutdown(1);
-    }
-});
+// A failed start is an unhandled rejection: Node prints it and exits with 1.
+void main();

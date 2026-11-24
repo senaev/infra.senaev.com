@@ -1,10 +1,10 @@
 import { posix } from 'node:path';
 
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
+import { type ExtractedLink, extractLinks } from 'senaev-utils/src/obsidianMarkdown/extractLinks';
 
 import { readVaultNotes } from '../access/readVaultNotes';
 import { normalizeVaultPath, resolveExistingNote } from '../access/vaultAccess';
-import { type ExtractedLink, extractLinks } from '../markdown/extractLinks';
 import {
     createLinkIndex, type LinkIndex, type LinkResolution, resolveLink,
 } from '../markdown/resolveLink';

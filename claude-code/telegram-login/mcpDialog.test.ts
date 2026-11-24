@@ -17,7 +17,7 @@ vi.mock('./logger', () => {
     };
 });
 
-describe('the /mcp command', () => {
+describe('the /claude_mcp command', () => {
     it('posts a message at once and turns it into the panel', async () => {
         const servers = [
             DATADOG_CONNECTED,
@@ -61,10 +61,10 @@ describe('the /mcp command', () => {
             },
         }));
 
-        await assistant.handleAuthCommand();
+        await assistant.handleClaudeButton('login', undefined);
         await assistant.handleMcpCommand();
 
-        expect(texts.at(-1)).toBe(plain('Could not list the MCP servers: claude mcp list failed with exit code 1. Send /mcp to try again.'));
+        expect(texts.at(-1)).toBe(plain('Could not list the MCP servers: claude mcp list failed with exit code 1. Send /claude_mcp to try again.'));
         expect(claudeLogin.cancel).not.toHaveBeenCalled();
         await expect(assistant.handleText('the-code#state')).resolves.toBe(true);
         expect(claudeLogin.submitCode).toHaveBeenCalledWith('the-code#state');
@@ -81,7 +81,7 @@ describe('the login button', () => {
             createSession(),
         ], [DATADOG_NEEDS_LOGIN]);
 
-        await assistant.handleAuthCommand();
+        await assistant.handleClaudeButton('login', undefined);
         const notice = await assistant.handleMcpButton('login', 'datadog', PANEL_ID);
 
         expect(notice).toBe('🔑 The login link is in the chat');
@@ -171,7 +171,7 @@ describe('a redirect URL for an MCP login', () => {
         await assistant.handleText('again');
 
         expect(editable[0]?.texts.at(-1)).toBe(plain('❌ The login to datadog failed: That doesn\'t look like a redirect URL for this sign-in'));
-        expect(sent.at(-1)).toBe(plain('No login is waiting for a code. Send /auth or /mcp to start one.'));
+        expect(sent.at(-1)).toBe(plain('No login is waiting for a code. Send /claude_auth or /claude_mcp to start one.'));
     });
 
     it('posts a new panel when the panel message is not known', async () => {

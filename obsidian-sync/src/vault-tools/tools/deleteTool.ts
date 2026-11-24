@@ -9,13 +9,13 @@ import { prepareNewFilePath } from 'senaev-utils/src/files/rootRelativePath';
 import { createFileExclusively } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
 import { withFileMutations } from 'senaev-utils/src/files/withFileMutation';
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
+import { extractLinks } from 'senaev-utils/src/obsidianMarkdown/extractLinks';
 
 import {
     assertByteHash, readFileBytes, resolveExistingFile,
 } from '../access/vaultFiles';
 import { normalizeVaultPath } from '../access/vaultAccess';
 import { readVaultNotes } from '../access/readVaultNotes';
-import { extractLinks } from '../markdown/extractLinks';
 import { createLinkIndex, resolveLink } from '../markdown/resolveLink';
 import { readVaultToolArguments } from '../toolArguments';
 import type { VaultToolsConfig } from '../vaultToolsConfig';

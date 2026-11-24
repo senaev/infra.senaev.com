@@ -11,6 +11,7 @@ const PACKAGES = [
     'cluster-helper',
     'code-tools',
     'media-server-helper',
+    'nextjs-app',
     'obsidian-sync',
     'senaev-utils',
     'vpn-subscription',
@@ -19,7 +20,6 @@ const PACKAGES = [
 // These packages validate their environment at import time, so their tests need values in
 // place before the module graph is evaluated.
 const SETUP_FILES: Record<string, string[]> = {
-    'code-tools': ['./vitest.setup.ts'],
     'obsidian-sync': ['./vitest.setup.ts'],
 };
 

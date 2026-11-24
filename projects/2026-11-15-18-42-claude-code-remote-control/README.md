@@ -1,6 +1,6 @@
 # 2026-11-15 — Claude Code server for the mobile app
 
-Run Claude Code (Pro subscription) in a container of the `senaev` LLM workspace, work on the same `/code` folder as the other containers, and drive it from the Claude mobile app.
+- [x] Run Claude Code (Pro subscription) in a container of the `senaev` LLM workspace, work on the same `/code` folder as the other containers, and drive it from the Claude mobile app.
 
 ## Goal
 

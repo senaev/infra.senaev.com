@@ -1,9 +1,10 @@
-- [ ] Collect container logs through OpenTelemetry into ClickHouse and visualize them in Grafana.
+- [x] Verify the Hetzner pilot and deploy OpenTelemetry container log collection on all seven Linux nodes.
+- [ ] Deploy and verify the smaller agent image and startup probe from [PR #287](https://github.com/senaev/infra.senaev.com/pull/287/changes).
 
 ## Stage
 
-Open; the original document describes a design and desired deployment but does not provide completed end-to-end rollout evidence.
+Cluster-wide collection is deployed. ClickHouse runs on `senaev-madrid`, the persistent OpenTelemetry gateway runs on Hetzner, and Grafana reads the 450-day logs table through **ClickHouse Logs**.
 
 ## Next steps
 
-Implement the OTel collector-to-ClickHouse pipeline and verify ingestion and Grafana queries.
+After PR #287 rolls out, check the DaemonSet, recent logs from every node and Datadog parity on shared nodes. See the [verification steps](README.md#verification).

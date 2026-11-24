@@ -33,7 +33,7 @@ export type ToolCallReply = {
  */
 export async function runToolCall({
     name, logger, run,
-}: { name: string; logger: Logger; run: () => Promise<Record<string, unknown>> }): Promise<ToolCallReply> {
+}: { name: string; logger: Pick<Logger, 'info' | 'error'>; run: () => Promise<Record<string, unknown>> }): Promise<ToolCallReply> {
     const startedAt = performance.now();
 
     try {

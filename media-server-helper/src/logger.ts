@@ -1,3 +1,6 @@
+import type { FastifyBaseLogger } from 'fastify';
 import { createLogger } from 'senaev-utils/src/utils/createLogger';
 
-export const logger = createLogger({ name: 'media-server-helper' });
+// Typed as `FastifyBaseLogger`: with pino's own type, the logger type of a Fastify instance would
+// change and the plain `FastifyInstance` would no longer match it.
+export const logger: FastifyBaseLogger = createLogger({ name: 'media-server-helper' });

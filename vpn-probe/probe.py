@@ -32,11 +32,15 @@ def client_config(link, base_uuid, public_key, port=1080, invalid=False):
     seed = re.search(r"\{XRAY_USER_UUID:([^}]+)\}", link)
     if not seed:
         raise ValueError("Missing subscription UUID macro")
-    derived = str(uuid.UUID(hashlib.sha256(
-        f"{base_uuid}:{seed[1]}".encode()).hexdigest()[:32]))
-    link = link.replace(seed[0], str(uuid.uuid4()) if invalid else derived)
+    def derive(value):
+        return str(uuid.UUID(hashlib.sha256(f"{base_uuid}:{value}".encode()).hexdigest()[:32]))
+    # The first macro is the user credential; later ones (the Hysteria2 obfs password) are not.
+    link = link.replace(seed[0], str(uuid.uuid4()) if invalid else derive(seed[1]))
+    link = re.sub(r"\{XRAY_USER_UUID:([^}]+)\}", lambda match: derive(match[1]), link)
     url = urlsplit(link.replace("{XRAY_REALITY_PUBLIC_KEY}", public_key))
     params = parse_qs(url.query, keep_blank_values=True)
+    if url.scheme == "hysteria2":
+        return hysteria_client_config(url, params, port), seed[1]
     if url.scheme != "vless" or not url.hostname or not url.port:
         raise ValueError("Invalid VLESS endpoint")
     transport, security = params.get("type"), params.get("security")
@@ -67,6 +71,30 @@ def client_config(link, base_uuid, public_key, port=1080, invalid=False):
         "outbounds": [{"protocol": "vless", "settings": {"vnext": [{
             "address": url.hostname, "port": url.port, "users": [user]}]},
             "streamSettings": stream}]}, seed[1]
+
+
+def hysteria_client_config(url, params, port):
+    """Hysteria2 over QUIC with a verified certificate; the password is the derived UUID."""
+    if not url.hostname or not url.port or not url.username or set(params) - {"sni", "obfs", "obfs-password"} \
+            or "sni" not in params:
+        raise ValueError("Hysteria2 requires host, port, auth and sni; only salamander obfs is allowed")
+    stream = {"network": "hysteria", "hysteriaSettings": {"version": 2, "auth": url.username},
+              "security": "tls",
+              "tlsSettings": {"serverName": params["sni"][0], "alpn": ["h3"], "allowInsecure": False}}
+    if "obfs" in params or "obfs-password" in params:
+        password = params.get("obfs-password", [""])[0]
+        if params.get("obfs") != ["salamander"] or not password:
+            raise ValueError("Hysteria2 obfs must be salamander with a password")
+        stream["finalmask"] = {"udp": [{"type": "salamander", "settings": {"password": password}}]}
+    return {
+        # Info: Xray logs Hysteria connection errors only at this level.
+        "log": {"access": "none", "error": "/dev/stderr", "loglevel": "info"},
+        "inbounds": [{"listen": "127.0.0.1", "port": port, "protocol": "socks",
+                      "settings": {"auth": "noauth", "udp": False}}],
+        # Deliberately no freedom/direct fallback outbound.
+        "outbounds": [{"protocol": "hysteria", "settings": {
+            "version": 2, "address": url.hostname, "port": url.port},
+            "streamSettings": stream}]}
 
 
 def request(url, proxy, max_bytes, expected_status=200, expected_bytes=None, timeout=8, head=False, text_limit=4096, http1=False, connect_timeout=3,

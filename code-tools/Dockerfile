@@ -30,5 +30,5 @@ WORKDIR /app/code-tools
 RUN npm ci --omit=dev
 COPY senaev-utils/src /app/senaev-utils/src
 COPY code-tools /app/code-tools
-EXPOSE 8080
+EXPOSE 8081 8443
 CMD ["./node_modules/.bin/tsx", "src/index.ts"]

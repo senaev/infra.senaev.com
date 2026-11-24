@@ -1,6 +1,6 @@
 # 2026-11-12 — Public Telegram notification path
 
-Give my laptop scripts a public, secret-protected way to send Telegram messages with the senaev.com bot.
+- [x] Give my laptop scripts a public, secret-protected way to send Telegram messages with the senaev.com bot.
 
 ## Goal
 

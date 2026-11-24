@@ -72,6 +72,12 @@ spec:
 {{ include "senaev-com.llmWorkspace.sshAgent.volumeMount" . | indent 12 }}
             - name: code
               mountPath: /code
+{{- if .Values.codex.remoteControl }}
+            # The daemon binds its control socket here, and CODEX_HOME has only a symlink to it:
+            # the Telegram helper of the claude-code pod mounts the same folder to reach it.
+            - name: daemon-socket
+              mountPath: /tmp/codex-daemon-0
+{{- end }}
             # start.sh links it as ~/.codex/AGENTS.md: Codex does not read the AGENTS.md of a
             # parent folder of /code, which is not a repository.
             - name: instructions
@@ -85,6 +91,13 @@ spec:
             path: {{ .Values.global.clusterRootPath }}/volumes/codex
             type: DirectoryOrCreate
 {{ include "senaev-com.llmWorkspace.sshAgent.volumes" (dict "context" . "secretName" (printf "%s-codex-env" .Values.name)) | indent 8 }}
+{{- if .Values.codex.remoteControl }}
+        # /tmp/codex-daemon-<uid> of the daemon (codex-rs/uds); start.sh makes it 0700.
+        - name: daemon-socket
+          hostPath:
+            path: {{ .Values.global.clusterRootPath }}/volumes/codex-daemon-socket
+            type: DirectoryOrCreate
+{{- end }}
         - name: code
           persistentVolumeClaim:
             claimName: {{ printf "%s-code" .Values.name }}

@@ -1,7 +1,6 @@
 # infra.senaev.com
 
-Infrastructure for my personal cluster, including personal website
-https://github.com/senaev/senaev.com
+Infrastructure for my personal cluster, including the [senaev.com Next.js app](nextjs-app/).
 
 ## Deploy cluster
 

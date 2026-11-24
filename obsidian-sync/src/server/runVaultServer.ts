@@ -1,44 +1,63 @@
-import { INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN, OBSIDIAN_VAULT_PATH } from '../env';
+import Fastify, { type FastifyInstance } from 'fastify';
+import { createMtlsFastifyServer } from 'senaev-utils/src/utils/mtls/createMtlsFastifyServer';
+import { watchTlsCredentials } from 'senaev-utils/src/utils/mtls/watchTlsCredentials';
+
 import { logger } from '../logger';
-import { createVaultToolsConfig } from '../vault-tools/vaultToolsConfig';
 import { PUBLIC_DIR } from '../vaultPaths';
 
-import { createVaultServer } from './createVaultServer';
-import { registerInternalTokenCheck } from './registerInternalTokenCheck';
-import { registerMilestoneRoutes } from './registerMilestoneRoutes';
-import { registerPublicFileRoutes } from './registerPublicFileRoutes';
-import { registerPublicStaticRoutes } from './registerPublicStaticRoutes';
-import { registerShortLinkRoutes } from './registerShortLinkRoutes';
-import { registerTaskRoutes } from './registerTaskRoutes';
-import { registerVaultToolRoutes } from './registerVaultToolRoutes';
-import { registerVaultMetricsRoutes } from './registerVaultMetricsRoutes';
+import { registerProtectedVaultRoutes, registerPublicVaultRoutes } from './registerVaultRoutes';
 
 const HOST = '0.0.0.0';
-const PORT = 8080;
+const PROTECTED_PORT = 8443;
+// TODO: remove this plain HTTP port when nextjs-app and vmagent use mTLS, see
+// projects/2026-11-15-11-00-inter-service-certificate-authentication/README.md
+const PUBLIC_PORT = 8080;
 
-/** Starts the vault HTTP API and resolves once it is accepting connections. */
-export async function runVaultServer() {
-    const server = createVaultServer();
-
-    // First, so the check covers every route registered below.
-    registerInternalTokenCheck(server, INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN);
-    registerVaultMetricsRoutes(server, OBSIDIAN_VAULT_PATH);
-    registerVaultToolRoutes(server, createVaultToolsConfig(OBSIDIAN_VAULT_PATH));
-    registerTaskRoutes(server);
-    registerShortLinkRoutes(server);
-    registerMilestoneRoutes(server);
-    registerPublicStaticRoutes(server);
-    // Registered last because it installs a catch-all GET route.
-    registerPublicFileRoutes(server);
-
-    await server.listen({
-        port: PORT,
-        host: HOST,
+/**
+ * Starts the two vault HTTP servers and resolves once both accept connections.
+ *
+ * The protected API (everything that reads or edits the vault) is on 8443 behind mTLS. The
+ * public instance on 8080 has only the published-file and metrics routes. They are separate
+ * Fastify instances, so no protected route can ever be reached over plain HTTP.
+ */
+export async function runVaultServer(): Promise<{ close: () => Promise<void> }> {
+    const certificates = await watchTlsCredentials({ logger });
+    const protectedServer = createMtlsFastifyServer({
+        Fastify,
+        logger,
+        credentials: certificates.credentials,
     });
-    logger.info({
-        port: PORT,
-        publicDir: PUBLIC_DIR,
-    }, '✅ Vault server listening');
+    const publicServer = Fastify({
+        loggerInstance: logger,
+    });
 
-    return server;
+    // Only the raw server type (HTTPS) differs from the plain instance; the routes do not use it.
+    registerProtectedVaultRoutes(protectedServer as unknown as FastifyInstance);
+    registerPublicVaultRoutes(publicServer);
+
+    await Promise.all([
+        protectedServer.listen({
+            port: PROTECTED_PORT,
+            host: HOST,
+        }),
+        publicServer.listen({
+            port: PUBLIC_PORT,
+            host: HOST,
+        }),
+    ]);
+    logger.info({
+        protectedPort: PROTECTED_PORT,
+        publicPort: PUBLIC_PORT,
+        publicDir: PUBLIC_DIR,
+    }, '✅ Vault servers listening');
+
+    return {
+        close: async () => {
+            certificates.stop();
+            await Promise.all([
+                protectedServer.close(),
+                publicServer.close(),
+            ]);
+        },
+    };
 }

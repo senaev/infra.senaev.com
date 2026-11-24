@@ -5,7 +5,7 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 import { requireEnv } from 'senaev-utils/src/utils/env/requireEnv/requireEnv';
-import { installGracefulShutdown } from 'senaev-utils/src/utils/process/installGracefulShutdown';
+import { createShutdownController } from 'senaev-utils/src/utils/process/createShutdownController';
 import { answerTelegramCallbackQuery } from 'senaev-utils/src/utils/TelegramApi/answerTelegramCallbackQuery';
 import { deleteTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/deleteTelegramMessage';
 import { editTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/editTelegramMessage';
@@ -13,9 +13,11 @@ import { pollTelegramMessages } from 'senaev-utils/src/utils/TelegramApi/pollTel
 import { sendTelegramEditableMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramEditableMessage';
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
 
-import { getAuthStatus, runCommand } from './claude';
 import {
-    isCodexLoggedIn, logoutCodex, spawnCodexDeviceLogin, startCodexDeviceLogin,
+    getAuthStatus, logoutClaude, runCommand,
+} from './claude';
+import {
+    isCodexLoggedIn, logoutCodex, readLastConnectionError, spawnCodexDeviceLogin, startCodexDeviceLogin, startCodexPairing,
 } from './codex';
 import { type CodexLogin, createCodexLogin } from './codexLogin';
 import { logger } from './logger';
@@ -62,6 +64,7 @@ if (!Number.isSafeInteger(allowedUserId)) {
 const assistant = createLoginAssistant({
     getAuthStatus: () => getAuthStatus(runCommand),
     startLogin: () => startLogin(spawnClaudeLogin),
+    logout: () => logoutClaude(runCommand),
     listMcpServers: () => listMcpServers(runCommand),
     // The CLI discovers the authorization server and may register a client before it prints the link.
     startMcpLogin: (serverName) => startLogin(() => spawnMcpLogin(serverName), {
@@ -120,12 +123,15 @@ const assistant = createLoginAssistant({
     now: () => new Date(),
 });
 // The Codex login folder is mounted, and CODEX_HOME set, only when the workspace enables Codex.
-const codexLogin: CodexLogin | undefined = process.env.CODEX_HOME === undefined
+const codexHome = process.env.CODEX_HOME;
+const codexLogin: CodexLogin | undefined = codexHome === undefined
     ? undefined
     : createCodexLogin({
         isLoggedIn: () => isCodexLoggedIn(runCommand),
         startLogin: () => startCodexDeviceLogin(spawnCodexDeviceLogin),
         logout: () => logoutCodex(runCommand),
+        startPairing: () => startCodexPairing(runCommand),
+        readLastConnectionError: () => readLastConnectionError(codexHome),
         sendMarkdown: async (markdown, replyMarkup) => {
             await sendTelegramMessage({
                 text: markdown,
@@ -164,14 +170,14 @@ const routerDependencies = {
 const routeMessage = createMessageRouter(routerDependencies);
 const routeCallbackQuery = createCallbackQueryRouter(routerDependencies);
 
-const lifecycle = installGracefulShutdown({
-    stop: () => {
-        assistant.stop();
-        codexLogin?.stop();
+const subscribeShutdown = createShutdownController(
+    process,
+    (error) => logger.error(error, '❌ Telegram login helper shutdown failed')
+);
 
-        return Promise.resolve();
-    },
-    reportError: (error) => logger.error(error, '❌ Telegram login helper shutdown failed'),
+subscribeShutdown(() => {
+    assistant.stop();
+    codexLogin?.stop();
 });
 
 // One step at a time: a login code must not be handled while a check still waits for its answer.
@@ -199,9 +205,13 @@ function main(): Promise<void> {
     checkAll();
     setInterval(checkAll, LOGIN_CHECK_INTERVAL_MS).unref();
 
+    const polling = new AbortController();
+
+    subscribeShutdown(() => polling.abort(new Error('Service stopping')));
+
     return pollTelegramMessages({
         token,
-        signal: lifecycle.signal,
+        signal: polling.signal,
         skipMessagesSentBeforeStart: true,
         onMessage: (message) => enqueue('Handling a message', () => routeMessage(message)),
         onCallbackQuery: (callbackQuery) => enqueue('Handling a button press', () => routeCallbackQuery(callbackQuery)),
@@ -209,9 +219,5 @@ function main(): Promise<void> {
     });
 }
 
-main().catch(async (error) => {
-    if (!lifecycle.signal.aborted) {
-        logger.error(error, '❌ Telegram login helper exited');
-        await lifecycle.shutdown(1);
-    }
-});
+// A failure of the polling is an unhandled rejection: Node prints it and exits with 1.
+void main();

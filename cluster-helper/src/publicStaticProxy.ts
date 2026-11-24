@@ -1,8 +1,8 @@
 import { posix } from 'node:path';
 import { Readable } from 'node:stream';
 
-import { OBSIDIAN_SYNC_URL } from './env';
-import { fetchObsidianSync } from './obsidianSyncApi';
+import { OBSIDIAN_SYNC_URL } from './mtlsServiceUrls';
+import type { ObsidianSyncApi } from './obsidianSyncApi';
 
 /** Trailing slash is load-bearing: see the prefix check in buildUpstreamPath. */
 const UPSTREAM_PREFIX = '/public-static/';
@@ -100,9 +100,11 @@ function buildUpstreamUrl(rawPath: string): URL | null {
  * process's memory.
  */
 export async function proxyPublicStaticFile({
+    obsidianSyncApi,
     path,
     requestHeaders,
 }: {
+    obsidianSyncApi: Pick<ObsidianSyncApi, 'fetchObsidianSync'>;
     path: string;
     requestHeaders: Record<string, string | string[] | undefined>;
 }): Promise<PublicStaticResult> {
@@ -126,7 +128,7 @@ export async function proxyPublicStaticFile({
         }
     }
 
-    const response = await fetchObsidianSync(upstreamUrl, { headers });
+    const response = await obsidianSyncApi.fetchObsidianSync(upstreamUrl, { headers });
 
     if (response.status === 404) {
         return {

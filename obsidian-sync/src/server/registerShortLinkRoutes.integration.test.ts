@@ -8,10 +8,11 @@ import {
 } from 'vitest';
 import { createCommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { withFileMutation } from 'senaev-utils/src/files/withFileMutation';
+import Fastify, { type FastifyInstance } from 'fastify';
 
 import { SHORT_LINKS_FILE_PATH } from '../vaultPaths';
+import { logger } from '../logger';
 
-import { createVaultServer, type VaultServer } from './createVaultServer';
 import { registerShortLinkRoutes } from './registerShortLinkRoutes';
 
 vi.mock('../vaultPaths', async () => {
@@ -29,11 +30,13 @@ const paths = {
     csv: SHORT_LINKS_FILE_PATH,
 };
 
-let server: VaultServer;
+let server: FastifyInstance;
 
 beforeEach(async () => {
     await mkdir(join(paths.vault, 'short_links'), { recursive: true });
-    server = createVaultServer();
+    server = Fastify({
+        loggerInstance: logger,
+    });
     registerShortLinkRoutes(server);
     await server.ready();
 });

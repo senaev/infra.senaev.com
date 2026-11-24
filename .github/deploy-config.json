@@ -5,6 +5,9 @@
     }
   },
   "services": {
+    "nextjs-app": {
+      "paths": ["tsconfig.base.json"]
+    },
     "vpn-subscription": {
       "chart": "vpn"
     },

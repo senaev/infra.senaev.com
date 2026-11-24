@@ -1,8 +1,6 @@
 # 2026-11-11 — Disk usage telemetry
 
-**Status: closed on 2026-11-18.** Low-space alerts name the VPS and match the k3s eviction
-threshold, and a heartbeat reports to Telegram when the alerting stack itself is down. The
-disk usage collector was not built.
+- [x] **Status: closed on 2026-11-18.** Low-space alerts name the VPS and match the k3s eviction threshold, and a heartbeat reports to Telegram when the alerting stack itself is down. The disk usage collector was not built.
 
 ## Goal
 

@@ -78,7 +78,7 @@ export function createMcpDialog(dependencies: McpDialogDependencies, slot: Pendi
         try {
             return renderMcpPanel(await dependencies.listMcpServers(), intro);
         } catch (error) {
-            const failure = `Could not list the MCP servers: ${stringifyUnknownError(error)}. Send /mcp to try again.`;
+            const failure = `Could not list the MCP servers: ${stringifyUnknownError(error)}. Send /claude_mcp to try again.`;
 
             return {
                 markdown: escapeTelegramMarkdown(intro === undefined ? failure : `${intro}\n\n${failure}`),
@@ -114,7 +114,7 @@ export function createMcpDialog(dependencies: McpDialogDependencies, slot: Pendi
         try {
             server = (await dependencies.listMcpServers()).find(({ name }) => name === serverName);
         } catch (error) {
-            await editLinkMessage(linkMessage, `The login command for ${serverName} finished, but the MCP servers could not be listed: ${stringifyUnknownError(error)}. Send /mcp to see them.`);
+            await editLinkMessage(linkMessage, `The login command for ${serverName} finished, but the MCP servers could not be listed: ${stringifyUnknownError(error)}. Send /claude_mcp to see them.`);
 
             return;
         }

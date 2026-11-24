@@ -1,6 +1,7 @@
 # 2026-10-18 — Buy a new home server within €1,000
 
 - [x] Select and buy a powerful home server with a capable GPU, at least 32 GB RAM and at least 1 TB SSD, for no more than €1,000 total.
+- [x] Set up the server: Proxmox, k3s workers, Windows VM recovery and backup, iGPU passthrough (done 2026-11-21).
 
 ## Goal
 
@@ -39,20 +40,40 @@ machines are preferred when competitively priced.
 User ordered the refurbished Dell OptiPlex Micro 7010 from VORPC, order **102889**.
 Confirmation screenshot: 32 GB RAM, 1 TB M.2 NVMe, **€599.89 total including VAT**,
 free shipping advertised in 48–72 hours, paid using Google Pay (WooPayments).
-As confirmed by the user on 2026-11-11, the order is being shipped to their office. Delivery is not yet confirmed.
-Advertised CPU is i5-13500T; verify the actual unit on arrival.
+User confirmed the server has arrived on 2026-11-13. BIOS hardware inventory and Dell diagnostic passes are recorded; Proxmox is now installed.
+Delivered CPU confirmed in BIOS: i5-13500T.
 The Dell supersedes the earlier SER8 preference and other shortlist candidates.
 See [Intel research and retailer checks](research-intel-options.md).
 
 ## Post-delivery follow-up (outside the completed purchase project)
 
-1. Await dispatch/delivery; retain invoice and confirm return/testing conditions.
-2. Check actual CPU, unlocked BIOS, RAM layout, SSD health and included power supply.
-3. Enable BIOS AC Recovery Power On; install Proxmox and configure VM autostart.
-4. Test headless AC restoration, wired networking, temperatures and living-room noise.
-5. Pass the iGPU to the Linux Jellyfin VM; prove hardware transcoding and repeat
-   guest reboot and VM shutdown/start cycles without rebooting the host.
-6. Migrate workloads only after acceptance checks pass.
+The server has arrived. Follow the [Windows backup and Proxmox installation plan](windows-backup-proxmox-plan.md)
+using Disk2vhd to the internal SSD, a verified cloud copy and one installer USB
+before erasing the internal SSD. Configure Windows remote access after import using
+Proxmox's noVNC console; no recapture is required solely for remote-access setup.
+The purchase remains complete. Proxmox installation and initial networking are
+complete: web/Shell and Tailscale DNS access work; vmbr0 uses DHCP after reboot.
+The router reused 192.168.0.23; an actual different-address test is not complete.
+The host joined the k3s cluster as worker `proxmox-madrid` (`make worker-proxmox-madrid`),
+with smokeping and iperf3 monitoring in vm-stack. It is a sensitive node in the
+repository `AGENTS.md`. See [cluster worker](windows-backup-proxmox-plan.md#k3s-cluster-worker--14-november-2026).
+The Debian VM exists as `senaev-madrid` (8 vCPUs, 24 GiB RAM since 2026-11-21, ~500 GiB disk) and is
+also a k3s worker and a sensitive node. See [senaev-madrid](windows-backup-proxmox-plan.md#k3s-worker-senaev-madrid-debian-vm--14-november-2026).
+VM 100 has autostart enabled; user reports QEMU Guest Agent checks work.
+An abrupt power-cut/restoration test passed: the host recovered and VM 100 started
+working automatically.
+The Windows VHDX is copied to Proxmox and its SHA-256 matches the original.
+Windows VM 101 `dell-windows` now boots successfully; internet, files and applications
+are confirmed present. Windows 11 Pro is activated (2026-11-20) with the Dell's own
+OEM key from its firmware; see [the plan](windows-backup-proxmox-plan.md#activate-with-the-dell-firmware-key).
+Windows is in English, has VirtIO drivers, the guest agent, a VirtIO NIC (192.168.0.28),
+`discard`/SSD on its disk, BitLocker off and no autostart. A verified backup from
+2026-11-20 (30.73 GB `vzdump`, plus `dell-msdm.bin`) is in the user's private cloud.
+VM 101 has no snapshots; the restore test was skipped and RDP is not needed (decisions).
+The iGPU is passed through to senaev-madrid (VM 100): VA-API works and a hardware HEVC
+transcode ran at 4.8x real time (2026-11-21). The ten-restart test, thin-pool alerting and
+moving Jellyfin were skipped or postponed by decision.
+See the plan for configuration, evidence and outstanding checks.
 
 ## Verification
 
@@ -67,12 +88,34 @@ See [Intel research and retailer checks](research-intel-options.md).
 
 Compact and quiet for the living room; SSD storage only; refurbished accepted. See
 [options and delivered-price comparison](research-options.md) and the
-[118-page source register](research-sources.md). Dell ordered; delivery and acceptance tests are pending.
+[118-page source register](research-sources.md). Dell received; Windows capture, Proxmox installation, Windows VM recovery and iGPU
+passthrough are complete.
 
 ## Result
 
 Completed and closed on 2026-11-11 at the user’s request. Purchased the refurbished
 Dell OptiPlex Micro 7010, 32 GB RAM / 1 TB NVMe, from VORPC for €599.89 including
-VAT and delivery (order 102889). The machine is being shipped to the user’s office.
-The purchase is €400.11 below the €1,000 budget. Hardware inspection, Proxmox setup
-and Jellyfin passthrough testing remain post-delivery work; they are not claimed complete.
+VAT and delivery (order 102889). The server has now arrived (user confirmation, 2026-11-13).
+The purchase is €400.11 below the €1,000 budget. BIOS inventory, diagnostic passes and AC Recovery testing are recorded. Proxmox installation, Tailscale access and DHCP
+after reboot are complete. The host is a k3s worker, `proxmox-madrid`, and its Debian VM is k3s worker
+`senaev-madrid`.
+
+### Server setup — done 2026-11-21
+
+Proxmox VE runs on the Dell (`proxmox-madrid`, k3s worker) with two VMs:
+
+- VM 100 `senaev-madrid`: Debian 13, 8 vCPUs, 24 GiB RAM, k3s worker, autostart, with the
+  Intel UHD 770 passed through (VA-API H.264/HEVC encode and decode work).
+- VM 101 `dell-windows`: Windows 11 Pro activated with the Dell's firmware OEM key, in
+  English, VirtIO drivers and guest agent, BitLocker off, no autostart. Backup of
+  2026-11-20 (`vzdump`, 30.73 GB, plus `dell-msdm.bin`) is in the user's private cloud.
+
+iperf3 from both Madrid nodes passes at the test's ~20 Mbit/s cap. Skipped or postponed by
+decision: moving Jellyfin, the ten-restart GPU test, the Windows restore test, RDP,
+thin-pool alerting, the different-LAN-address test and temperature/noise testing.
+
+## Delivered hardware record
+
+See [BIOS hardware inventory](hardware-inventory.md) for the observed CPU, RAM layout,
+firmware, identifiers, BIOS settings, diagnostic results and successful AC Recovery test
+recorded on 2026-11-14.

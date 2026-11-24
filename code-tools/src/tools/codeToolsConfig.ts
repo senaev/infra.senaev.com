@@ -1,9 +1,7 @@
 export type CodeToolsConfig = {
-    /** The environment of shell commands and of git; without the internal token. */
+    /** The environment of shell commands and of git. */
     commandEnv: NodeJS.ProcessEnv;
 };
-
-const SECRET_ENV_NAMES = ['INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS'];
 
 /**
  * `git rev-parse --local-env-vars`: they choose the repository instead of the working
@@ -40,10 +38,7 @@ export function createCommandEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
         PAGER: 'cat',
     };
 
-    for (const name of [
-        ...SECRET_ENV_NAMES,
-        ...GIT_REPOSITORY_ENV_NAMES,
-    ]) {
+    for (const name of GIT_REPOSITORY_ENV_NAMES) {
         delete commandEnv[name];
     }
 

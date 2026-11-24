@@ -1,4 +1,6 @@
-import { isIsoDay, isoDayToUtcDate } from '../obsidianTasks/isoDay';
+import { isIsoDay } from '../obsidianTasks/isoDay';
+
+import { type ReminderSource, renderReminders } from './dailyReminders';
 
 /**
  * The daily note template of the owner's vault. Shared by the senaev-personal-tools Obsidian
@@ -9,8 +11,11 @@ import { isIsoDay, isoDayToUtcDate } from '../obsidianTasks/isoDay';
 /** Vault-root folder that the daily notes live in, one `YYYY-MM-DD.md` file per day. */
 export const DAILY_NOTE_FOLDER = 'periodic/day/';
 
-/** The embed of the old diary stream file; every daily note has it. */
-export const DAILY_NOTE_STREAM_EMBED = '![[daily_note_stream]]';
+/**
+ * A line of its own in a daily note: new diary records go right above it, so the records
+ * of a day stay in the order they were written. The template puts it at the end of the diary block.
+ */
+export const DIARY_RECORD_MARKER = '⬆️ Daily Note ⬆️';
 
 /** A strict `YYYY-MM-DD` of a day that exists, e.g. `2026-08-01` but not `2026-02-30`. */
 export function isDailyNoteDate(value: string): boolean {
@@ -49,70 +54,26 @@ export function dailyNotePathForRootNote(path: string): string | null {
     return match?.[1] !== undefined && isDailyNoteDate(match[1]) ? `${DAILY_NOTE_FOLDER}${match[1]}.md` : null;
 }
 
-function renderDailyBody(day: string): string {
-    // Calendar fields of the day itself, so neither the clock nor the time zone matter.
-    const date = isoDayToUtcDate(day);
-    const weekday = date.getUTCDay();
-    const result: string[] = [];
-
-    if (weekday !== 0 && weekday !== 6) {
-        result.push('', '- [ ] Spend time solving [[Leetcode]] task', '');
-    }
-
-    if (date.getUTCDate() === 1) {
-        result.push('- [ ] Write [[LinkedIn]] post');
-    }
-
-    if (weekday === 6) {
-        result.push('- [ ] Write [[@senaev_speaks]] post', '', '- [ ] Call [[@mom]]');
-    }
-
-    if (weekday === 0) {
-        result.push('- [ ] [[🥞 Sunday Breakfast]]');
-    }
-
-    result.push('', '', '', '---');
-
-    const quarter = Math.floor(date.getUTCMonth() / 3) + 1;
-
-    result.push(`- [ ] [[Work achievements]] for [[${date.getUTCFullYear()}q${quarter}#${day}]]`);
-
-    return result.join('\n');
-}
-
 /** The complete editable daily note; headers and footers remain plugin widgets. */
-export function renderDailyNote(day: string): string {
-    if (!isDailyNoteDate(day)) {
-        throw new Error(`Invalid daily note date: ${day}`);
-    }
+export function renderDailyNote(day: string, reminders: ReminderSource = { notes: [] }): string {
+    const path = dailyNotePath(day);
 
     return `
-- [ ] [[⏰ Wake up consistently]]
-- [ ] [[🏋️ Full-body exercises]]
-- [ ] [[🚿 Cold shower]]
-\`\`\`tasks
+${renderReminders(day, 'morning', reminders, path)}\`\`\`tasks
 filter by function window.senaevPersonalTools.filterTasksForDaily({task, query})
 sort by function window.senaevPersonalTools.sortKeyForDaily({task})
 \`\`\`
 
 ---
 
-${renderDailyBody(day)}
-
+${renderReminders(day, 'day', reminders, path)}
 ---
-${DAILY_NOTE_STREAM_EMBED}
 
-
+${DIARY_RECORD_MARKER}
 
 ---
 
-- [ ] [[⏰ Plan the next day]]
-- [ ] [[🥣 Take care of breakfast and lunch]]
-- [ ] [[🫰 Give attention to @luli in the evening]]
-- [ ] [[🚭 Do not smoke]]
-- [ ] [[📵 More boredom (➕output) = less junk (➖input)]]
-- [ ] [[✍️ Daily Journaling]]
-`;
+${renderReminders(day, 'evening', reminders, path)}`;
 }
 
 const FRONTMATTER = /^(---\r?\n(?:[\s\S]*?\r?\n)?---(?:\r?\n|$))([\s\S]*)$/;
@@ -122,7 +83,7 @@ const FRONTMATTER = /^(---\r?\n(?:[\s\S]*?\r?\n)?---(?:\r?\n|$))([\s\S]*)$/;
  * frontmatter get the template. Any other content, and any path that is not a daily note, is returned
  * unchanged, so existing user text is never replaced.
  */
-export function initializeDailyNote(path: string, content: string): string {
+export function initializeDailyNote(path: string, content: string, reminders?: ReminderSource): string {
     const day = dailyDateFromPath(path);
 
     if (day === null) {
@@ -130,13 +91,13 @@ export function initializeDailyNote(path: string, content: string): string {
     }
 
     if (content.trim() === '') {
-        return renderDailyNote(day);
+        return renderDailyNote(day, reminders);
     }
 
     const frontmatter = FRONTMATTER.exec(content);
 
     if (frontmatter?.[1] !== undefined && frontmatter[2]?.trim() === '') {
-        return `${frontmatter[1]}\n${renderDailyNote(day)}`;
+        return `${frontmatter[1]}\n${renderDailyNote(day, reminders)}`;
     }
 
     return content;

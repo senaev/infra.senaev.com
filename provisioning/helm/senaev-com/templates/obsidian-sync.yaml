@@ -49,6 +49,9 @@ spec:
             - name: http
               containerPort: 8080
               protocol: TCP
+            - name: https
+              containerPort: 8443
+              protocol: TCP
           env:
             - name: OBSIDIAN_AUTH_TOKEN
               valueFrom:
@@ -72,20 +75,22 @@ spec:
                   name: senaev-com-kv-secrets
                   key: TG_TOKEN_SENAEV_COM_BOT
                   optional: false
-            - name: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN
-              valueFrom:
-                secretKeyRef:
-                  name: senaev-com-kv-secrets
-                  key: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN
-                  optional: false
           volumeMounts:
             - name: vault
               mountPath: {{ .Values.obsidianSync.containerVaultPath }}
+            # The whole directory, never subPath or env: only a directory mount follows renewals.
+            # The path is MTLS_DIRECTORY in senaev-utils, which the service reads.
+            - name: mtls
+              mountPath: /etc/mtls
+              readOnly: true
       volumes:
         - name: vault
           hostPath:
             path: {{ .Values.global.clusterRootPath }}/{{ .Values.obsidianSync.volumePath }}
             type: DirectoryOrCreate
+        - name: mtls
+          secret:
+            secretName: obsidian-sync-tls
 ---
 apiVersion: v1
 kind: Service
@@ -103,6 +108,10 @@ spec:
       port: 8080
       targetPort: 8080
       protocol: TCP
+    - name: https
+      port: 8443
+      targetPort: 8443
+      protocol: TCP
 ---
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMServiceScrape
@@ -117,9 +126,11 @@ spec:
     - port: http
       path: /metrics
 ---
-# Only its two application callers and vmagent can reach obsidian-sync.
-# Internal-token access: cluster-helper (all routes) and nextjs-app (public file routes).
-# vmagent can access only the unauthenticated /metrics route (other routes still require auth).
+# Only its two application callers and vmagent can reach obsidian-sync, each on its own port.
+# 8443 (mTLS, every route that reads or edits the vault): cluster-helper only. The server also
+# checks the client certificate of every request. NetworkPolicy limits ports and sources, not URL
+# paths, so the protected routes exist only on 8443.
+# 8080 (plain HTTP, only the published-file routes and /metrics): nextjs-app and vmagent.
 # Egress is not limited, because `ob sync` needs the internet. k3s enforces this with its
 # built-in kube-router policy controller.
 apiVersion: networking.k8s.io/v1
@@ -138,6 +149,10 @@ spec:
         - podSelector:
             matchLabels:
               app: cluster-helper
+      ports:
+        - protocol: TCP
+          port: 8443
+    - from:
         - podSelector:
             matchLabels:
               app: nextjs-app

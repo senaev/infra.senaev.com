@@ -1,6 +1,7 @@
 import { getTelegramCommandFromMessage } from 'senaev-utils/src/utils/TelegramApi/getTelegramCommandFromMessage/getTelegramCommandFromMessage';
 import type { TelegramCallbackQuery, TelegramMessage } from 'senaev-utils/src/utils/TelegramApi/types';
 
+import { parseClaudeButtonData } from './claudeLogin';
 import { CODEX_LOGOUT_BUTTON_DATA, type CodexLogin } from './codexLogin';
 import { logger } from './logger';
 import type { LoginAssistant } from './loginAssistant';
@@ -42,10 +43,18 @@ export function createMessageRouter(dependencies: MessageRouterDependencies): (m
 
         const command = getTelegramCommandFromMessage(text);
 
-        if (command?.commandName === 'mcp') {
-            logger.info({ messageId }, '👉 Handling the /mcp command');
+        if (command?.commandName === 'claude_mcp') {
+            logger.info({ messageId }, '👉 Handling the /claude_mcp command');
             await dependencies.assistant.handleMcpCommand();
-            logger.info({ messageId }, '✅ Handled the /mcp command');
+            logger.info({ messageId }, '✅ Handled the /claude_mcp command');
+
+            return;
+        }
+
+        if (command?.commandName === 'codex_pair' && dependencies.codexLogin !== undefined) {
+            logger.info({ messageId }, '👉 Handling the /codex_pair command');
+            await dependencies.codexLogin.handlePairCommand();
+            logger.info({ messageId }, '✅ Handled the /codex_pair command');
 
             return;
         }
@@ -59,7 +68,7 @@ export function createMessageRouter(dependencies: MessageRouterDependencies): (m
         }
 
         if (command !== undefined) {
-            if (command.commandName !== 'auth') {
+            if (command.commandName !== 'claude_auth') {
                 logger.info({
                     messageId,
                     command: command.commandName,
@@ -68,9 +77,9 @@ export function createMessageRouter(dependencies: MessageRouterDependencies): (m
                 return;
             }
 
-            logger.info({ messageId }, '👉 Handling the /auth command');
+            logger.info({ messageId }, '👉 Handling the /claude_auth command');
             await dependencies.assistant.handleAuthCommand();
-            logger.info({ messageId }, '✅ Handled the /auth command');
+            logger.info({ messageId }, '✅ Handled the /claude_auth command');
 
             return;
         }
@@ -125,6 +134,32 @@ export function createCallbackQueryRouter(dependencies: MessageRouterDependencie
                 userId: callbackQuery.from.id,
                 chatId,
             }, '⛔ Ignored a button press from a user or chat that is not allowed');
+
+            return;
+        }
+
+        const claudeAction = parseClaudeButtonData(callbackQuery.data ?? '');
+
+        if (claudeAction !== undefined) {
+            const context = {
+                callbackQueryId,
+                action: claudeAction,
+            };
+
+            logger.info(context, '👉 Handling a Claude login button');
+
+            try {
+                const notice = await dependencies.assistant.handleClaudeButton(claudeAction, callbackQuery.message?.message_id);
+
+                logger.info(context, '✅ Handled a Claude login button');
+                await answer(callbackQueryId, notice);
+            } catch (error) {
+                logger.error({
+                    ...context,
+                    err: error,
+                }, '❌ Could not handle a Claude login button');
+                await answer(callbackQueryId, '❌ Something went wrong, see the logs');
+            }
 
             return;
         }

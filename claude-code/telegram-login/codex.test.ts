@@ -2,7 +2,9 @@ import {
     afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
 
-import { isCodexLoggedIn, startCodexDeviceLogin } from './codex';
+import {
+    findLastConnectionError, isCodexLoggedIn, startCodexDeviceLogin, startCodexPairing,
+} from './codex';
 import type { LoginProcess } from './login';
 
 const TIMEOUTS = {
@@ -174,5 +176,83 @@ describe('isCodexLoggedIn', () => {
             'login',
             'status',
         ]);
+    });
+});
+
+describe('startCodexPairing', () => {
+    it('gives the manual code and the expiry from the JSON of the command', async () => {
+        const run = vi.fn().mockResolvedValue({
+            stdout: '{"pairingCode":"qr-payload","manualPairingCode":"ABCD-EFGH","environmentId":"env","expiresAt":1795201800}\n',
+            exitCode: 0,
+        });
+
+        await expect(startCodexPairing(run)).resolves.toEqual({
+            code: 'ABCD-EFGH',
+            expiresAt: new Date(1795201800 * 1000),
+        });
+        expect(run).toHaveBeenCalledWith('codex', [
+            'remote-control',
+            'pair',
+            '--json',
+        ]);
+    });
+
+    it('fails with the error and its causes on one line', async () => {
+        const run = vi.fn().mockResolvedValue({
+            stdout: '',
+            stderr: 'Error: failed to connect to /home/codex/.codex/app-server-control/app-server-control.sock\n\nCaused by:\n    No such file or directory (os error 2)\n',
+            exitCode: 1,
+        });
+
+        await expect(startCodexPairing(run)).rejects.toThrow(/^failed to connect to \/home\/codex\/\.codex\/app-server-control\/app-server-control\.sock: No such file or directory \(os error 2\)$/);
+    });
+
+    it('fails with the first line of the error of the command', async () => {
+        const run = vi.fn().mockResolvedValue({
+            stdout: '',
+            stderr: 'Error: remoteControl/pairing/start failed: remote control pairing is unavailable until enrollment completes\n',
+            exitCode: 1,
+        });
+
+        await expect(startCodexPairing(run)).rejects.toThrow(/^remoteControl\/pairing\/start failed: remote control pairing is unavailable until enrollment completes$/);
+    });
+
+    it('fails when the JSON has no manual code', async () => {
+        const run = vi.fn().mockResolvedValue({
+            stdout: '{"pairingCode":"qr-payload","expiresAt":1795201800}',
+            exitCode: 0,
+        });
+
+        await expect(startCodexPairing(run)).rejects.toThrow('no manual pairing code');
+    });
+});
+
+describe('findLastConnectionError', () => {
+    // Lines of daemon.stderr.log with RUST_LOG at info for the remote control module.
+    const failed = (error: string) => `2026-11-20T13:17:31.061051Z \u001b[33m WARN\u001b[0m codex_app_server_transport::transport::remote_control::websocket: failed to connect to app-server remote control websocket websocket_url=wss://chatgpt.com/backend-api/wham/remote/control/server server_name=senaev-codex error=${error} error_kind=Other reconnect_attempt=1`;
+
+    it('gives the error of the last failed connection, without colors', () => {
+        const log = [
+            failed('remote control requires ChatGPT authentication'),
+            '2026-11-20T13:17:31Z  INFO remote control websocket status changed',
+            failed('remote control server enrollment failed: HTTP 403 Forbidden, body: {"detail":"Multi-factor authentication required"}; retrying after auth recovery'),
+            '',
+        ].join('\n');
+
+        expect(findLastConnectionError(log)).toBe('remote control server enrollment failed: HTTP 403 Forbidden, body: {"detail":"Multi-factor authentication required"}; retrying after auth recovery');
+    });
+
+    it('gives nothing when a later connection succeeded', () => {
+        const log = [
+            failed('remote control server enrollment failed: HTTP 403 Forbidden'),
+            '2026-11-20T19:44:30.600962Z \u001b[32m INFO\u001b[0m codex_app_server_transport::transport::remote_control::websocket: connected to app-server remote control websocket server_name=senaev-codex',
+            '',
+        ].join('\n');
+
+        expect(findLastConnectionError(log)).toBeUndefined();
+    });
+
+    it('gives nothing when no connection failed', () => {
+        expect(findLastConnectionError('2026-11-20T13:17:31Z  INFO connected to app-server remote control websocket\n')).toBeUndefined();
     });
 });

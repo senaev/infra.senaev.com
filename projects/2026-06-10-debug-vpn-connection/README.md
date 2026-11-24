@@ -5,62 +5,56 @@
 
 ## Current status (updated every round)
 
-**Round 3 — 2026-11-19 22:10 UTC, PR "Measure the speed of each VPN leg from the servers".**
+**Round 4 — 2026-11-20 20:45 UTC, PR "Add a Hysteria2 (UDP) profile from home straight to Hetzner".**
 
-**Use profile 1 (`🇫🇮 1. firstvds → hetzner`), the first entry of the subscription.** It is the
-only profile that works from home all day. Profiles 3 and 4 (home → Hetzner directly) fail
-every evening.
+**Round 4 fix — 2026-11-20 22:50 UTC, PR "Hide Hysteria2 with salamander on UDP 47443".**
+Profile 6 as deployed by #260 (Hysteria2 on UDP 443, no obfuscation) failed every VPN check
+from home at once (curl exit 35, no TLS), while the server started cleanly with the
+certificate. Likely cause: the ISP drops QUIC on UDP 443 to foreign servers (QUIC shows the
+SNI in its first packet); Tailscale uses WireGuard on another port. The fix moves profile 6 to
+UDP 47443 with salamander obfuscation and turns on `info` logs on both ends, so the next
+failure, if any, shows where it stops. **Do not use profile 6 until its probe passes.**
 
-24 h after #233 (deployed 2026-11-18 22:58 UTC). VPN failure rate of the httpbingo parity
-checks (10 s setup budget), hourly:
+**Use profile 1 (`🇫🇮 1. firstvds → hetzner`).** It had no failures in the last 24 h. Profile 6
+(`⚡ 6. hetzner UDP → freedom`, new in round 4) is a test candidate.
 
-| profile | 23:00–14:00 UTC | 14:00–15:00 | 15:00–22:00 UTC |
-|---|---|---|---|
-| 1. firstvds → hetzner | 0 % | 6 % | 0–17 % (3 % overall) |
-| 3. hetzner → senaev-media | 0 % | 33 % | 94–100 % |
-| 4. hetzner → freedom | 0 % | 33 % | 94–100 % |
-| direct (all) | 0 % | 0 % | 0–2 % |
+The freeze to Hetzner is not tied to the time of day. Profiles 3/4 (home → Hetzner over TCP)
+failed 94–100 % from 2026-11-19 ~14:30 UTC to 2026-11-20 ~08:30 UTC (18 h, through the night),
+then worked again until now. Today's failures: 339 of 357 at `transfer`, ~20 KB received then
+nothing. Profile 1: 0 parity failures in 24 h.
 
-- Profiles 3/4 since ~14:30 UTC: 289 of 307 failures are `transfer` — TLS completes,
-  3.5–6 KB arrive, then the connection freezes until the timeout. This is the per-connection
-  freeze to Hetzner seen before 2026-11-18 13:30. The XHTTP route of profile 4 fails the same
-  way, while XHTTP from the FirstVDS and Hetzner source nodes keeps working. So the filter
-  sits between home and Hetzner and returns in the evening (two days: 17:00–20:00, then
-  14:30–22:00+ UTC).
-- Profile 1 enters at FirstVDS, a Russian address, and avoids that filter. In the evening
-  it still works but slower: TLS setup mean 1.6 s, p95 5.7 s; its 3 s transfer checks fail
-  14–38 %, its 10 s parity checks 3 %.
-- `senaev.ru` (FirstVDS) HEAD fails 8–10 % in the evening from home **and** from Hetzner:
-  FirstVDS itself is degraded at the same time.
+Uncapped Cloudflare 4 MiB, median seconds (VPN vs direct):
 
-Uncapped download time, median (p90), seconds:
+| profile | 2026-11-19 23:00 – 11-20 14:00 | 11-20 15:00 – 20:30 |
+|---|---|---|
+| 1. firstvds → hetzner | 1.41 vs 0.93 | 1.69 vs 1.20 |
+| 3. hetzner → senaev-media | 5.07 vs 0.98 (11 of 28 ok) | 4.77 vs 1.18 |
+| 4. hetzner → freedom | 1.47 vs 0.98 (10 of 28 ok) | 1.53 vs 1.20 |
 
-| route | 23:00–14:00: 1 MiB | 4 MiB | 15:00–22:00: 1 MiB | 4 MiB |
-|---|---|---|---|---|
-| direct (all profiles) | 0.67–0.70 | 0.94–0.96 | 0.77–0.87 | 1.04–1.09 |
-| profile 1 VPN | 0.98 (1.15) | 1.44 (1.59) | 1.90 (5.9) | 5.49 (8.2) |
-| profile 3 VPN | 1.94 (2.6) | 6.07 (7.9) | no successes | no successes |
-| profile 4 VPN | 1.15 (1.27) | 1.50 (2.8) | no successes | no successes |
+Legs from the servers (round 3), mean seconds: FirstVDS → Cloudflare 4 MiB 0.64–0.71 at night,
+0.86–1.13 in the evening; FirstVDS → senaev.com 512 KiB 0.33–0.52; Hetzner 0.26–0.33 and
+0.16–0.25. iperf3 Hetzner → FirstVDS stayed at 20 Mbit/s except two dips to 13.
+**iperf3 home → Hetzner over Tailscale (UDP) stayed at 19.9 Mbit/s for the whole 18 h TCP
+freeze.**
 
-Round 2 predictions: profiles 1 and 4 within ~1.5× direct at night — **confirmed**
-(1.5×, 1.55× for 4 MiB); profile 3 slower — **confirmed** (6.4×, exit through the home
-uplink). Time-of-day repeat — **confirmed**: it broke again, earlier (~14:30 UTC).
+Round 3 hypotheses: the profile 1 evening slowdown did not come back today, so neither
+"FirstVDS itself slow" nor "Hetzner → FirstVDS leg throttled" is settled; FirstVDS is somewhat
+slower in the evening (+30–60 % on Cloudflare), with no collapse.
 
 Hypotheses, ranked:
 
-1. In the evening a filter between home and Hetzner freezes every connection after a few
-   KB; a Russian entry avoids it. Strong: profile 1 vs 3/4, same exit. Fix: profile 1 as
-   the production route (already first in the subscription).
-2. Profile 1's evening slowness comes from FirstVDS itself (its website fails 8–10 % from
-   Hetzner too). Signal: FirstVDS → Cloudflare and FirstVDS → senaev.com slow in the
-   evening while Hetzner → Cloudflare stays fast. Fix: another Russian entry server.
-3. Or the FirstVDS → Hetzner leg is throttled in the evening. Signal: FirstVDS →
-   senaev.com slow but FirstVDS → Cloudflare fast. Fix: another transport or exit for the
-   middle leg.
+1. The ISP filter freezes TCP/TLS flows from home to Hetzner for hours at a time (not by time
+   of day), and does not touch UDP. Signal: profile 6 (Hysteria2, UDP 443) passes parity while
+   profiles 3/4 fail. Fix: profile 6 as a direct route to Hetzner, no FirstVDS hop.
+2. The filter also blocks QUIC/Hysteria2 (unlike Tailscale's WireGuard). Signal: profile 6
+   fails with 3/4. Then FirstVDS-entry profiles stay the only route.
+3. Profile 1 stays reliable but costs ~1.4–1.5× direct time; acceptable as the fallback.
 
-Round 3 adds uncapped downloads from the FirstVDS and Hetzner source-control nodes
-(Cloudflare 4 MiB, senaev.com endpoint 512 KiB, every ~30 min, ~0.4 GB/day) and a panel.
-**User test wanted:** Happ from home on profile 1, in the evening, a few sites and a video.
+Round 4 adds: `xray-hysteria` on Hetzner (Hysteria2 on UDP 443 with the senaev.com Let's
+Encrypt certificate, separate from the Reality servers), subscription profile 6, probe
+`vpn-probe-6` with the same parity and throughput checks, and iperf3 pairs hetzner →
+senaev-media and firstvds → senaev-media (download direction to home).
+**User test wanted:** profile 1 in the evening, and profile 6 once it is deployed.
 
 ## Round workflow
 

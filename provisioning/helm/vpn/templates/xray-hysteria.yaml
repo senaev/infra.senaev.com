@@ -1,0 +1,129 @@
+{{- if .Values.xrayHysteria.enabled }}
+{{- $hysteria := .Values.xrayHysteria }}
+# Separate from xray-vpn-<vps>: a failure here (certificate, UDP port) cannot affect the
+# VLESS/Reality profiles.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: xray-hysteria-config-template
+  namespace: {{ .Release.Namespace }}
+data:
+  full-config.json: |
+{{ include "vpn.xrayHysteriaConfig" . | indent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: xray-hysteria
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: xray-hysteria
+spec:
+  replicas: 1
+  # hostPort: the old pod must release the UDP port first.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: xray-hysteria
+  template:
+    metadata:
+      labels:
+        app: xray-hysteria
+      annotations:
+        secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
+        configmap.reloader.stakater.com/reload: "xray-hysteria-config-template"
+    spec:
+      nodeSelector:
+        vps: {{ $hysteria.vps }}
+      automountServiceAccountToken: false
+      initContainers:
+        - name: xray-config-subst
+          image: node:22-alpine
+          command:
+            - sh
+            - -c
+            - |
+{{ regexReplaceAll "(?m)^ +$" (include "vpn.renderXrayConfigScript" . | indent 14) "" }}
+          env:
+            - name: XRAY_USER_UUID
+              valueFrom:
+                secretKeyRef:
+                  name: senaev-com-kv-secrets
+                  key: XRAY_USER_UUID
+          volumeMounts:
+            - name: config-template
+              mountPath: /template
+              readOnly: true
+            - name: config
+              mountPath: /out
+        - name: certificate-init
+          image: node:22-alpine
+          command:
+            - sh
+            - -c
+            - |
+{{ regexReplaceAll "(?m)^ +$" (include "vpn.acmeCertificateScript" . | indent 14) "" }}
+              node /tmp/acme-certificate.mjs
+          env:
+            - name: SERVER_NAME
+              value: {{ $hysteria.serverName | quote }}
+          volumeMounts:
+            - name: acme
+              mountPath: /acme
+              readOnly: true
+            - name: tls
+              mountPath: /tls
+      containers:
+        - name: xray
+          image: teddysun/xray:26.9.30
+          ports:
+            - name: hysteria
+              containerPort: {{ $hysteria.port }}
+              hostPort: {{ $hysteria.port }}
+              protocol: UDP
+          volumeMounts:
+            - name: config
+              mountPath: /etc/xray
+              readOnly: true
+            - name: tls
+              mountPath: /tls
+              readOnly: true
+        # Traefik renews the certificate in acme.json; Xray reloads the files every hour.
+        - name: certificate-refresh
+          image: node:22-alpine
+          command:
+            - sh
+            - -c
+            - |
+{{ regexReplaceAll "(?m)^ +$" (include "vpn.acmeCertificateScript" . | indent 14) "" }}
+              while true; do
+                sleep 3600
+                node /tmp/acme-certificate.mjs || echo "Certificate refresh failed; keeping the current files"
+              done
+          env:
+            - name: SERVER_NAME
+              value: {{ $hysteria.serverName | quote }}
+          resources:
+            requests:
+              cpu: 1m
+              memory: 16Mi
+          volumeMounts:
+            - name: acme
+              mountPath: /acme
+              readOnly: true
+            - name: tls
+              mountPath: /tls
+      volumes:
+        - name: config-template
+          configMap:
+            name: xray-hysteria-config-template
+        - name: config
+          emptyDir: {}
+        - name: tls
+          emptyDir: {}
+        - name: acme
+          hostPath:
+            path: {{ $hysteria.acmeStoragePath }}
+            type: Directory
+{{- end }}

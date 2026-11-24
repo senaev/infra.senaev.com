@@ -33,8 +33,8 @@ afterEach(async () => {
 describe('diaryAppendTool', () => {
     it('writes the records of several days above the marker of each daily note, in order', async () => {
         const { config, path } = await vaultWith({
-            [DAY]: `Morning\n\n${MARKER}\n![[daily_note_stream]]\n`,
-            [OTHER_DAY]: 'Before\n![[daily_note_stream]]\nAfter\n',
+            [DAY]: `Morning\n\n${MARKER}\nEnd\n`,
+            [OTHER_DAY]: `Before\n${MARKER}\nAfter\n`,
         });
 
         const result = await diaryAppendTool(config, {
@@ -56,8 +56,8 @@ describe('diaryAppendTool', () => {
         const day = await readFile(path(DAY), 'utf8');
         const other = await readFile(path(OTHER_DAY), 'utf8');
 
-        expect(day).toMatch(new RegExp(`^Morning\\n\\n${record('2026-11-18', 'Мы гуляли\\.').source}\\n\\n${record('2026-11-18', 'Second\\.').source}\\n\\n${MARKER}\\n!\\[\\[daily_note_stream\\]\\]\\n$`));
-        expect(other).toMatch(new RegExp(`^Before\\n\\n${record('2026-11-17', 'Yesterday\\.').source}\\n\\n!\\[\\[daily_note_stream\\]\\]\\nAfter\\n$`));
+        expect(day).toMatch(new RegExp(`^Morning\\n\\n${record('2026-11-18', 'Мы гуляли\\.').source}\\n\\n${record('2026-11-18', 'Second\\.').source}\\n\\n${MARKER}\\nEnd\\n$`));
+        expect(other).toMatch(new RegExp(`^Before\\n\\n${record('2026-11-17', 'Yesterday\\.').source}\\n\\n${MARKER}\\nAfter\\n$`));
         expect(result.notes).toMatchObject([
             {
                 path: DAY,
@@ -75,8 +75,12 @@ describe('diaryAppendTool', () => {
         expect(result.notes[0]?.diff).not.toMatch(/^-(?!-- a\/)/m);
     });
 
-    it('creates a missing daily note from the template, with its folders', async () => {
-        const { config, path } = await vaultWith({});
+    it('creates a missing daily note with reminders from vault frontmatter', async () => {
+        const { config, path } = await vaultWith({
+            'habits/Reminder.md': '---\nday-reminder: Check the calendar\nday-reminder-schedule: FREQ=WEEKLY;BYDAY=WE\n---\n',
+            'archive/Reminder.md': 'Archive copy\n',
+            'habits/Read.md': '---\nmorning-reminder: Read\n---\n',
+        });
 
         const result = await diaryAppendTool(config, {
             records: [
@@ -92,8 +96,29 @@ describe('diaryAppendTool', () => {
             path: DAY,
             created: true,
         });
-        expect(content.replace(/\n\[\[2026-11-18\|.*✍️\n/, '')).toBe(renderDailyNote('2026-11-18').replace('---\n![[daily_note_stream]]', '---\n\n![[daily_note_stream]]'));
-        expect(content).toMatch(new RegExp(`---\\n\\n${record('2026-11-18', 'Мы гуляли\\.').source}\\n\\n!\\[\\[daily_note_stream\\]\\]`));
+        expect(content.replace(/\n\[\[2026-11-18\|.*✍️\n/, '')).toBe(renderDailyNote('2026-11-18', {
+            notePaths: [
+                'habits/Reminder.md',
+                'archive/Reminder.md',
+                'habits/Read.md',
+            ],
+            notes: [
+                {
+                    path: 'habits/Read.md',
+                    frontmatter: { 'morning-reminder': 'Read' },
+                },
+                {
+                    path: 'habits/Reminder.md',
+                    frontmatter: {
+                        'day-reminder': 'Check the calendar',
+                        'day-reminder-schedule': 'FREQ=WEEKLY;BYDAY=WE',
+                    },
+                },
+            ],
+        }));
+        expect(content).toContain('- [ ] [[Read]]');
+        expect(content).toContain('- [ ] [[habits/Reminder|Check the calendar]]');
+        expect(content).toMatch(new RegExp(`---\\n\\n${record('2026-11-18', 'Мы гуляли\\.').source}\\n\\n${MARKER}\\n\\n---`));
     });
 
     it('fills a blank existing daily note from the template', async () => {
@@ -108,7 +133,7 @@ describe('diaryAppendTool', () => {
             ],
         });
 
-        expect(await readFile(path(DAY), 'utf8')).toContain('[[⏰ Wake up consistently]]');
+        expect(await readFile(path(DAY), 'utf8')).toContain('window.senaevPersonalTools.filterTasksForDaily');
     });
 
     it('fails without writing anything when a note has no place for the record', async () => {
@@ -266,7 +291,7 @@ describe('diaryAppendTool', () => {
     });
 
     it('refuses to write through a symlinked folder', async () => {
-        const { config, path } = await vaultWith({ '.obsidian/day/2026-11-18.md': '![[daily_note_stream]]\n' });
+        const { config, path } = await vaultWith({ '.obsidian/day/2026-11-18.md': `${MARKER}\n` });
 
         await mkdir(path('periodic'));
         await symlink(path('.obsidian/day'), path('periodic/day'));
@@ -279,6 +304,6 @@ describe('diaryAppendTool', () => {
                 },
             ],
         })).rejects.toMatchObject({ code: 'forbidden_path' });
-        expect(await readFile(path('.obsidian/day/2026-11-18.md'), 'utf8')).toBe('![[daily_note_stream]]\n');
+        expect(await readFile(path('.obsidian/day/2026-11-18.md'), 'utf8')).toBe(`${MARKER}\n`);
     });
 });

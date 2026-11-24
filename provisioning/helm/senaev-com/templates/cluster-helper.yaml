@@ -88,6 +88,9 @@ spec:
               name: internal
             - containerPort: 3000
               name: webhook
+            # Needs a client certificate of the internal CA; only the services in ALLOWED_CALLERS may call it.
+            - containerPort: 8443
+              name: mtls
           env:
             - name: API_DOMAIN
               value: {{ .Values.clusterHelper.apiDomain }}
@@ -113,26 +116,10 @@ spec:
               value: http://prowlarr:{{ .Values.prowlarr.webuiPort }}
             - name: PROWLARR_CONFIG_FILE
               value: /prowlarr-config/config.xml
-            - name: OBSIDIAN_SYNC_URL
-              value: "http://obsidian-sync:8080"
-            - name: CODE_TOOLS_URL
-              value: "http://senaev-code-tools:8080"
-            - name: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
-              valueFrom:
-                secretKeyRef:
-                  name: senaev-com-kv-secrets
-                  key: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
-                  optional: false
             {{- if .Values.llmServer.enabled }}
             - name: LLM_SERVER_URL
               value: "http://llm-server:{{ .Values.llmServer.port }}"
             {{- end }}
-            - name: LLM_ENDPOINT_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: senaev-com-kv-secrets
-                  key: LLM_ENDPOINT_API_KEY
-                  optional: false
             - name: TELEGRAM_PUBLIC_API_SECRET
               valueFrom:
                 secretKeyRef:
@@ -177,12 +164,6 @@ spec:
                   name: senaev-com-kv-secrets
                   key: GOOGLE_OAUTH_ADMIN_EMAILS
                   optional: false
-            - name: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN
-              valueFrom:
-                secretKeyRef:
-                  name: senaev-com-kv-secrets
-                  key: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN
-                  optional: false
             - name: OPENROUTER_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -219,7 +200,7 @@ spec:
             failureThreshold: 24
           livenessProbe:
             httpGet:
-              path: /health/live
+              path: /health
               port: internal
             initialDelaySeconds: 5
             periodSeconds: 5
@@ -237,6 +218,11 @@ spec:
             - name: prowlarr-config
               mountPath: /prowlarr-config
               readOnly: true
+            # The whole directory, never subPath or env: only a directory mount follows renewals.
+            # The path is MTLS_DIRECTORY in senaev-utils, which the service reads.
+            - name: mtls
+              mountPath: /etc/mtls
+              readOnly: true
       volumes:
         - name: torrent-outbox
           hostPath:
@@ -248,6 +234,9 @@ spec:
           hostPath:
             path: {{ .Values.global.clusterRootPath }}/{{ .Values.prowlarr.volumePath }}/config
             type: DirectoryOrCreate
+        - name: mtls
+          secret:
+            secretName: cluster-helper-tls
 ---
 apiVersion: v1
 kind: Service
@@ -267,10 +256,14 @@ spec:
     - name: webhook
       port: 3000
       targetPort: 3000
+    - name: mtls
+      port: 8443
+      targetPort: 8443
 ---
 # The "internal" port has no authentication, and /telegram/send-message sends any text
 # from the bot, so only its known callers can reach it. The public "webhook" port is
-# reached through Traefik only.
+# reached through Traefik only. The "mtls" port 8443 is open only to vpn-subscription, which
+# the server also allows by the name in its certificate.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -290,10 +283,6 @@ spec:
           podSelector:
             matchLabels:
               app: traefik
-        # /llm, with the API key
-        - podSelector:
-            matchLabels:
-              app: n8n
       ports:
         - protocol: TCP
           port: 3000
@@ -305,16 +294,7 @@ spec:
           podSelector:
             matchLabels:
               app.kubernetes.io/name: vmalertmanager
-        # /telegram/send-message; retain the old caller during cutover/rollback.
-        - namespaceSelector:
-            matchExpressions:
-              - key: kubernetes.io/metadata.name
-                operator: In
-                values: [senaev-com, vpn]
-          podSelector:
-            matchLabels:
-              app: vpn-subscription
-        # /send-daily-overview
+        # /send-daily-overview, /telegram/send-message, /job-search/round-report
         - podSelector:
             matchLabels:
               app: n8n
@@ -325,4 +305,15 @@ spec:
       ports:
         - protocol: TCP
           port: 80
+    # mTLS: vpn-subscription, the only caller allowed by ALLOWED_CALLERS (cluster-helper/src/callers.ts).
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: vpn
+          podSelector:
+            matchLabels:
+              app: vpn-subscription
+      ports:
+        - protocol: TCP
+          port: 8443
 {{- end }}

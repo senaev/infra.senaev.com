@@ -1,3 +1,6 @@
+import { open } from 'node:fs/promises';
+import { join } from 'node:path';
+
 import type { CommandRunner } from './claude';
 import {
     type LoginProcess, type LoginResult, wrapChildProcess,
@@ -161,4 +164,113 @@ export function startCodexDeviceLogin(
             }
         },
     };
+}
+
+export type CodexPairing = {
+    code: string;
+    expiresAt: Date;
+};
+
+// The JSON of `codex remote-control pair --json` (RemoteControlPairingStartResponse): the code to
+// type on the phone, and its expiry in Unix seconds.
+export function parseCodexPairing(stdout: string): CodexPairing {
+    const parsed: unknown = JSON.parse(stdout);
+
+    if (typeof parsed !== 'object' || parsed === null) {
+        throw new Error('codex remote-control pair did not print a JSON object');
+    }
+
+    const { manualPairingCode, expiresAt } = parsed as Record<string, unknown>;
+
+    if (typeof manualPairingCode !== 'string' || manualPairingCode === '') {
+        throw new Error('codex remote-control pair printed no manual pairing code');
+    }
+
+    if (typeof expiresAt !== 'number') {
+        throw new Error('codex remote-control pair printed no expiry');
+    }
+
+    return {
+        code: manualPairingCode,
+        expiresAt: new Date(expiresAt * 1000),
+    };
+}
+
+// The CLI prints an anyhow error: the message, then "Caused by:" and the causes, one per line
+// (numbered when there are several). All of them, on one line: the cause says why, such as
+// "No such file or directory (os error 2)".
+export function describeCliError(stderr: string, exitCode: number): string {
+    const parts = stderr.replace(ANSI_PATTERN, '')
+        .split('\n')
+        .map((line) => line.trim().replace(/^Error: /, '').replace(/^\d+: /, ''))
+        .filter((line) => line !== '' && line !== 'Caused by:');
+
+    return parts.length === 0 ? `exit code ${exitCode}` : parts.join(': ').slice(0, 2 * MAX_REASON_LENGTH);
+}
+
+// Talks to the daemon of the codex container through the control socket in CODEX_HOME; it never
+// starts a daemon.
+export async function startCodexPairing(run: CommandRunner): Promise<CodexPairing> {
+    const {
+        stdout, stderr, exitCode,
+    } = await run('codex', [
+        'remote-control',
+        'pair',
+        '--json',
+    ]);
+
+    if (exitCode !== 0) {
+        throw new Error(describeCliError(stderr ?? '', exitCode));
+    }
+
+    return parseCodexPairing(stdout);
+}
+
+const LOG_TAIL_BYTES = 256 * 1024;
+const CONNECTION_ERROR_PATTERN = /failed to connect to app-server remote control websocket .*? error=(.+?) error_kind=/;
+const CONNECTED_PATTERN = /\bconnected to app-server remote control websocket\b/;
+
+// The reason of the last failed connection of remote control, from the log of the daemon; nothing
+// when a later connection succeeded. It is there only with RUST_LOG at info for the remote control
+// module, as the codex container sets it.
+export function findLastConnectionError(log: string): string | undefined {
+    const lines = log.replace(ANSI_PATTERN, '').split('\n');
+
+    for (let index = lines.length - 1; index >= 0; index--) {
+        const line = lines[index] ?? '';
+
+        if (CONNECTED_PATTERN.test(line)) {
+            return undefined;
+        }
+
+        const match = CONNECTION_ERROR_PATTERN.exec(line);
+
+        if (match?.[1] !== undefined) {
+            return match[1].slice(0, 2 * MAX_REASON_LENGTH);
+        }
+    }
+
+    return undefined;
+}
+
+export async function readLastConnectionError(codexHome: string): Promise<string | undefined> {
+    let file;
+
+    try {
+        file = await open(join(codexHome, 'app-server-daemon', 'daemon.stderr.log'), 'r');
+    } catch {
+        return undefined;
+    }
+
+    try {
+        const { size } = await file.stat();
+        const length = Math.min(size, LOG_TAIL_BYTES);
+        const buffer = Buffer.alloc(length);
+
+        await file.read(buffer, 0, length, size - length);
+
+        return findLastConnectionError(buffer.toString('utf8'));
+    } finally {
+        await file.close();
+    }
 }

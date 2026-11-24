@@ -6,7 +6,9 @@ import {
 } from 'vitest';
 import type { InlineKeyboardMarkup } from 'senaev-utils/src/utils/TelegramApi/types';
 
-import type { CodexDeviceLogin, CodexDevicePrompt } from './codex';
+import type {
+    CodexDeviceLogin, CodexDevicePrompt, CodexPairing,
+} from './codex';
 import { CODEX_LOGOUT_BUTTON_DATA, createCodexLogin } from './codexLogin';
 import type { LoginResult } from './login';
 
@@ -55,7 +57,12 @@ function createDeviceLogin(prompt: Promise<CodexDevicePrompt> = Promise.resolve(
     };
 }
 
-function setup(initiallyLoggedIn: boolean, logoutWorks = true) {
+type PairingSetup = {
+    pairing?: CodexPairing | Error;
+    connectionError?: string;
+};
+
+function setup(initiallyLoggedIn: boolean, logoutWorks = true, pairingSetup: PairingSetup = {}) {
     let loggedIn = initiallyLoggedIn;
     const logins: ReturnType<typeof createDeviceLogin>[] = [];
     const sent: string[] = [];
@@ -78,6 +85,14 @@ function setup(initiallyLoggedIn: boolean, logoutWorks = true) {
             return deviceLogin.login;
         },
         logout,
+        startPairing: () => {
+            const { pairing } = pairingSetup;
+
+            return pairing instanceof Error || pairing === undefined
+                ? Promise.reject(pairing ?? new Error('no pairing in this test'))
+                : Promise.resolve(pairing);
+        },
+        readLastConnectionError: () => Promise.resolve(pairingSetup.connectionError),
         sendMarkdown: (markdown, replyMarkup) => {
             sent.push(markdown);
             keyboards.push(replyMarkup);
@@ -189,6 +204,8 @@ describe('createCodexLogin', () => {
             isLoggedIn: () => Promise.resolve(false),
             startLogin: () => createDeviceLogin(Promise.reject(new Error('the login command did not print a link and a code in time'))).login,
             logout: () => Promise.resolve(),
+            startPairing: () => Promise.reject(new Error('not used')),
+            readLastConnectionError: () => Promise.resolve(undefined),
             sendMarkdown: (markdown) => {
                 sent.push(markdown);
 
@@ -318,5 +335,63 @@ describe('createCodexLogin', () => {
 
         await expect(codexLogin.handleLogoutButton(7)).resolves.toBe('❌ Still logged in, see the logs');
         expect(edits).toEqual([]);
+    });
+});
+
+describe('the /codex_pair command', () => {
+    it('sends the pairing code with its expiry and where to enter it', async () => {
+        const { codexLogin, sent } = setup(true, true, {
+            pairing: {
+                code: 'ABCD-EFGH',
+                expiresAt: new Date('2026-11-20T19:10:00.000Z'),
+            },
+        });
+
+        await codexLogin.handlePairCommand();
+
+        expect(sent).toEqual([
+            [
+                escapeTelegramMarkdown('🔗 Pairing code for Codex on the server:'),
+                telegramCode('ABCD-EFGH'),
+                escapeTelegramMarkdown('In the ChatGPT app: Codex → Connect computer → Start pairing → Pair manually. The code is valid until 19:10 UTC.'),
+            ].join('\n\n'),
+        ]);
+    });
+
+    it('says why there is no code, with the last error of the remote control connection', async () => {
+        const { codexLogin, sent } = setup(true, true, {
+            pairing: new Error('remoteControl/pairing/start failed: remote control pairing is unavailable until enrollment completes'),
+            connectionError: 'remote control server enrollment failed: HTTP 403 Forbidden, body: {"detail":"Multi-factor authentication required"}',
+        });
+
+        await codexLogin.handlePairCommand();
+
+        expect(sent).toEqual([
+            escapeTelegramMarkdown([
+                '❌ Could not create a pairing code: remoteControl/pairing/start failed: remote control pairing is unavailable until enrollment completes',
+                'The last error of the remote control connection: remote control server enrollment failed: HTTP 403 Forbidden, body: {"detail":"Multi-factor authentication required"}',
+            ].join('\n\n')),
+        ]);
+    });
+
+    it('says that remote control does not run when the daemon socket is missing', async () => {
+        const { codexLogin, sent } = setup(true, true, { pairing: new Error('failed to connect to /home/codex/.codex/app-server-control/app-server-control.sock') });
+
+        await codexLogin.handlePairCommand();
+
+        expect(sent[0]).toContain(escapeTelegramMarkdown('The helper cannot reach the Codex daemon'));
+    });
+
+    it('asks for a login first when Codex is logged out', async () => {
+        const { codexLogin, sent } = setup(false, true, {
+            pairing: {
+                code: 'ABCD-EFGH',
+                expiresAt: new Date(),
+            },
+        });
+
+        await codexLogin.handlePairCommand();
+
+        expect(sent).toEqual([escapeTelegramMarkdown('Codex is logged out. Send /codex_auth first, then /codex_pair.')]);
     });
 });

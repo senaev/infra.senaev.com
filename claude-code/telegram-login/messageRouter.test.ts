@@ -3,6 +3,7 @@ import {
     beforeEach, describe, expect, it, vi,
 } from 'vitest';
 
+import { CLAUDE_LOGIN_BUTTON_DATA, CLAUDE_LOGOUT_BUTTON_DATA } from './claudeLogin';
 import { CODEX_LOGOUT_BUTTON_DATA, type CodexLogin } from './codexLogin';
 import { logger } from './logger';
 import type { LoginAssistant } from './loginAssistant';
@@ -34,6 +35,7 @@ function setup(handleTextResult = true, withCodex = false) {
         handleAuthCommand: vi.fn(() => Promise.resolve()),
         handleMcpCommand: vi.fn(() => Promise.resolve()),
         handleMcpButton: vi.fn(() => Promise.resolve('🚪 Logged out')),
+        handleClaudeButton: vi.fn(() => Promise.resolve('🚪 Logged out')),
         handleText: vi.fn(() => Promise.resolve(handleTextResult)),
         checkLogin: vi.fn(() => Promise.resolve()),
         checkMcpServers: vi.fn(() => Promise.resolve()),
@@ -44,6 +46,7 @@ function setup(handleTextResult = true, withCodex = false) {
     const codexLogin: CodexLogin = {
         handleAuthCommand: vi.fn(() => Promise.resolve()),
         handleLogoutButton: vi.fn(() => Promise.resolve('🚪 Logged out')),
+        handlePairCommand: vi.fn(() => Promise.resolve()),
         checkLogin: vi.fn(() => Promise.resolve()),
         stop: vi.fn(),
     };
@@ -100,18 +103,32 @@ describe('the message router', () => {
         vi.mocked(logger.warn).mockClear();
     });
 
-    it('starts a login on /auth, also when the command names the bot', async () => {
+    it('starts a login on /claude_auth, also when the command names the bot', async () => {
         const { assistant, route } = setup();
 
-        await route(message({ text: '/auth' }));
-        await route(message({ text: '/auth@senaev_claude_helper_bot' }));
+        await route(message({ text: '/claude_auth' }));
+        await route(message({ text: '/claude_auth@senaev_claude_helper_bot' }));
 
         expect(assistant.handleAuthCommand).toHaveBeenCalledTimes(2);
         expect(loggedMessages()).toEqual([
-            '👉 Handling the /auth command',
-            '✅ Handled the /auth command',
-            '👉 Handling the /auth command',
-            '✅ Handled the /auth command',
+            '👉 Handling the /claude_auth command',
+            '✅ Handled the /claude_auth command',
+            '👉 Handling the /claude_auth command',
+            '✅ Handled the /claude_auth command',
+        ]);
+    });
+
+    it('ignores the old /auth and /mcp commands', async () => {
+        const { assistant, route } = setup();
+
+        await route(message({ text: '/auth' }));
+        await route(message({ text: '/mcp' }));
+
+        expect(assistant.handleAuthCommand).not.toHaveBeenCalled();
+        expect(assistant.handleMcpCommand).not.toHaveBeenCalled();
+        expect(loggedMessages()).toEqual([
+            '👉 Ignored an unknown command',
+            '👉 Ignored an unknown command',
         ]);
     });
 
@@ -130,6 +147,18 @@ describe('the message router', () => {
         ]);
     });
 
+    it('sends a pairing code on /codex_pair when Codex is enabled', async () => {
+        const { codexLogin, route } = setup(true, true);
+
+        await route(message({ text: '/codex_pair' }));
+
+        expect(codexLogin.handlePairCommand).toHaveBeenCalledTimes(1);
+        expect(loggedMessages()).toEqual([
+            '👉 Handling the /codex_pair command',
+            '✅ Handled the /codex_pair command',
+        ]);
+    });
+
     it('ignores /codex_auth as an unknown command when Codex is not enabled', async () => {
         const { codexLogin, route } = setup();
 
@@ -139,11 +168,11 @@ describe('the message router', () => {
         expect(loggedMessages()).toEqual(['👉 Ignored an unknown command']);
     });
 
-    it('posts the MCP panel on /mcp, with or without more words', async () => {
+    it('posts the MCP panel on /claude_mcp, with or without more words', async () => {
         const { assistant, route } = setup();
 
-        await route(message({ text: '/mcp' }));
-        await route(message({ text: '/mcp@senaev_claude_helper_bot datadog' }));
+        await route(message({ text: '/claude_mcp' }));
+        await route(message({ text: '/claude_mcp@senaev_claude_helper_bot datadog' }));
 
         expect(assistant.handleMcpCommand).toHaveBeenCalledTimes(2);
         expect(assistant.handleText).not.toHaveBeenCalled();
@@ -225,11 +254,11 @@ describe('the message router', () => {
 
         await route(message({
             userId: 1,
-            text: '/auth',
+            text: '/claude_auth',
         }));
         await route(message({
             chatId: -100,
-            text: '/auth',
+            text: '/claude_auth',
         }));
         await route(message({
             userId: 1,
@@ -290,6 +319,20 @@ describe('the button router', () => {
         await routeCallbackQuery(buttonPress({ data: 'mcp:logout:my-server' }));
 
         expect(assistant.handleMcpButton).toHaveBeenCalledWith('logout', 'my-server', 3);
+        expect(answerCallbackQuery).toHaveBeenCalledWith('query-1', '🚪 Logged out');
+    });
+
+    it('passes the Claude buttons with their message to the assistant, then answers with its notice', async () => {
+        const {
+            assistant, answerCallbackQuery, routeCallbackQuery,
+        } = setup();
+
+        await routeCallbackQuery(buttonPress({ data: CLAUDE_LOGOUT_BUTTON_DATA }));
+        await routeCallbackQuery(buttonPress({ data: CLAUDE_LOGIN_BUTTON_DATA }));
+
+        expect(assistant.handleClaudeButton).toHaveBeenNthCalledWith(1, 'logout', 3);
+        expect(assistant.handleClaudeButton).toHaveBeenNthCalledWith(2, 'login', 3);
+        expect(assistant.handleMcpButton).not.toHaveBeenCalled();
         expect(answerCallbackQuery).toHaveBeenCalledWith('query-1', '🚪 Logged out');
     });
 

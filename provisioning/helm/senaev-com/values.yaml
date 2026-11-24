@@ -251,8 +251,6 @@ llmWorkspaces:
         ompHtpasswd: OMP_WEB_HTPASSWD_HASH_WITH_USERNAME
     codeTools:
       enabled: true
-      secrets:
-        codeToolsToken: INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS
     claudeCode:
       enabled: true
       model: sonnet
@@ -266,16 +264,19 @@ llmWorkspaces:
           url: https://mcp.senaev.com/obsidian
         telegram:
           url: https://mcp.senaev.com/telegram
+        vas3k:
+          url: https://vas3k-mcp.rmbk.me/mcp
       # @senaev_claude_helper_bot. The chat is the private chat of the user with the bot: its id is the user id.
       telegram:
         token: TG_TOKEN_CLAUDE_HELPER_BOT
         user: TG_SENAEV_USER_ID
-    # Codex with the ChatGPT login. The Telegram helper of claude-code logs it in (/codex_auth).
-    # Remote control is off until it is available for the ChatGPT account (its enrollment answers
-    # 403 "Multi-factor authentication required"; the Android app shows no Codex).
+    # Codex with the ChatGPT login. The Telegram helper of claude-code logs it in (/codex_auth)
+    # and sends a code for Pair manually in the ChatGPT app (/codex_pair). Remote control runs in
+    # the Codex daemon; its enrollment answered 403 "Multi-factor authentication required" on
+    # 2026-11-20 (without MFA on the account): /codex_pair shows the current error.
     codex:
       enabled: true
-      remoteControl: false
+      remoteControl: true
   galkin:
     enabled: true
     vps: galkin

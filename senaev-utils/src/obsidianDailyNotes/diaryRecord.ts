@@ -1,12 +1,8 @@
 import { CommandError, invalidArguments } from '../commands/CommandError';
 
-import { DAILY_NOTE_STREAM_EMBED } from './dailyNoteTemplate';
+import { DIARY_RECORD_MARKER } from './dailyNoteTemplate';
 
-/**
- * A line of its own in a daily note: new diary records go right above it, so the records
- * of a day stay in the order they were written.
- */
-export const DIARY_RECORD_MARKER = '⬆️ Daily Note ⬆️';
+export { DIARY_RECORD_MARKER };
 
 const RECORD_TIME_ZONE = 'Europe/Madrid';
 
@@ -28,8 +24,8 @@ export function formatRecordTimestamp(now: Date, timeZone: string = RECORD_TIME_
 }
 
 /**
- * One diary record of `day`, as one paragraph without surrounding blank lines: a link to
- * the day with the time it was written, the text, and the ✍️ mark.
+ * Formats one diary record of `day` with a timestamp link at the start and a ✍️ mark at
+ * the end. Preserves paragraph breaks in the text.
  */
 export function formatDiaryRecord(day: string, text: string, now: Date): string {
     return `[[${day}|🎙️ ${formatRecordTimestamp(now)}]]: ${text} ✍️`;
@@ -84,36 +80,31 @@ function findAnchorLine(content: string, anchor: string): number | undefined {
 }
 
 /**
- * Where the next diary record goes: the start of the `⬆️ Daily Note ⬆️` line, else the start
- * of the `![[daily_note_stream]]` line. `undefined` when the note has neither.
+ * Where the next diary record goes: the start of the `⬆️ Daily Note ⬆️` line, or `undefined`
+ * when the note has none.
  */
 export function findDiaryRecordAnchor(content: string): number | undefined {
-    return findAnchorLine(content, DIARY_RECORD_MARKER) ?? findAnchorLine(content, DAILY_NOTE_STREAM_EMBED);
+    return findAnchorLine(content, DIARY_RECORD_MARKER);
 }
 
 /**
- * The anchor line that `text` contains, or `undefined`. A record must not contain one: the
- * next record would be inserted in the middle of it.
+ * Whether `text` contains the `⬆️ Daily Note ⬆️` line. A record must not: the next record
+ * would be inserted in the middle of it.
  */
-export function findAnchorLineInText(text: string): string | undefined {
-    return [
-        DIARY_RECORD_MARKER,
-        DAILY_NOTE_STREAM_EMBED,
-    ].find((anchor) => text.split('\n').some((line) => normalizeLine(line) === normalizeLine(anchor)));
+export function containsAnchorLine(text: string): boolean {
+    return text.split('\n').some((line) => normalizeLine(line) === normalizeLine(DIARY_RECORD_MARKER));
 }
 
 /**
- * Inserts `records`, in order, each as its own paragraph separated by blank lines, right
+ * Inserts `records`, in order, separated by blank lines and preserving their paragraphs, right
  * above the anchor line (see `findDiaryRecordAnchor`) of the note as it was before this call.
  * Later records land under earlier ones. Throws a `conflict` CommandError when the note has no
  * anchor, and `invalid_arguments` when a record contains an anchor line.
  */
 export function insertDiaryRecords(content: string, records: readonly string[], notePath: string): string {
     for (const record of records) {
-        const anchorInRecord = findAnchorLineInText(record);
-
-        if (anchorInRecord !== undefined) {
-            throw invalidArguments(`A diary record must not contain the line "${anchorInRecord}"`);
+        if (containsAnchorLine(record)) {
+            throw invalidArguments(`A diary record must not contain the line "${DIARY_RECORD_MARKER}"`);
         }
     }
 
@@ -122,7 +113,7 @@ export function insertDiaryRecords(content: string, records: readonly string[], 
     if (anchor === undefined) {
         throw new CommandError(
             'conflict',
-            `Daily note "${notePath}" has neither a "${DIARY_RECORD_MARKER}" line nor a "${DAILY_NOTE_STREAM_EMBED}" line, so there is no place for the diary record. Add one of them to the note.`
+            `Daily note "${notePath}" has no "${DIARY_RECORD_MARKER}" line, so there is no place for the diary record. Add the line where new records should go.`
         );
     }
 
@@ -135,7 +126,7 @@ export function insertDiaryRecords(content: string, records: readonly string[], 
         separator = '\n';
     }
 
-    const paragraphs = records.map((record) => `${record.replace(/^\n+|\n+$/g, '')}\n\n`).join('');
+    const separatedRecords = records.map((record) => `${record.replace(/^\n+|\n+$/g, '')}\n\n`).join('');
 
-    return `${before}${separator}${paragraphs}${content.slice(anchor)}`;
+    return `${before}${separator}${separatedRecords}${content.slice(anchor)}`;
 }

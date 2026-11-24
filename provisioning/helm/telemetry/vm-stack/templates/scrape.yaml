@@ -14,3 +14,24 @@ spec:
       - telemetry
   endpoints:
     - port: http
+---
+# The controller of the pki release. It is scraped from here because the VM operator CRDs come with
+# this release, and the pki namespace is deployed before telemetry.
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMServiceScrape
+metadata:
+  name: cert-manager
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cert-manager
+      app.kubernetes.io/component: controller
+  namespaceSelector:
+    matchNames:
+      - pki
+  endpoints:
+    - port: http-metrics
+      # The `namespace` label of a certmanager_certificate_* series is the namespace of the
+      # Certificate. Without this, the target label `namespace=pki` would replace it.
+      honorLabels: true

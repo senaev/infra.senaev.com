@@ -1,0 +1,42 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: internal-ca-bootstrap
+  namespace: {{ .Release.Namespace }}
+spec:
+  selfSigned: {}
+---
+# The root of the internal mTLS. Its key stays in this namespace; services get only their own
+# leaf key and the public CA certificate (ca.crt of their leaf Secret).
+# cert-manager renews the CA certificate by itself, a third of the lifetime before its end. With
+# rotationPolicy Never the renewal keeps the CA key, so every leaf of the old CA certificate is
+# still valid for the new one, and the services need no restart or manual step. Leaves get the
+# new CA certificate in `ca.crt` when they renew. The key changes only by hand, see the project README.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: internal-ca
+  namespace: {{ .Release.Namespace }}
+spec:
+  isCA: true
+  commonName: internal-ca.senaev.com
+  secretName: internal-ca
+  duration: 43800h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Never
+  issuerRef:
+    name: internal-ca-bootstrap
+    kind: Issuer
+    group: cert-manager.io
+---
+# Cluster-wide, because leaf Certificates live next to the Pods that mount them. Only the CI
+# deploy and cluster administrators may create Certificates that reference it.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: internal-ca
+spec:
+  ca:
+    secretName: internal-ca

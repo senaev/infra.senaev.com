@@ -1,0 +1,6 @@
+apiVersion: v2
+name: issuers
+description: Private CA of the cluster for internal mTLS (deployed after the cert-manager release of the same namespace)
+type: application
+version: 0.1.0
+kubeVersion: ">=1.25.0"

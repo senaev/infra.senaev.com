@@ -1,5 +1,105 @@
 # Worklog
 
+## 2026-11-20 23:15 UTC — The phone is paired: remote control works end to end
+
+PR #257 deployed (the socket folder shared with the helper). The user sent `/codex_pair`, entered
+the code in the ChatGPT app (Codex → Connect computer → Start pairing → Pair manually), and the
+server works from the phone.
+
+The user restarted the VM a few times between 22:35 and 22:56 (4 container restarts). After each,
+`start.sh` installed the daemon again and it connected with the same enrollment, with no new
+pairing:
+
+```
+22:43:28  Starting the Codex app-server daemon with remote control.
+22:43:28  Installing daemon from CLI version 0.170.0 into /home/codex/.codex/packages/app-server-daemon...
+22:43:28  This machine is available for remote control as senaev-codex.
+22:43:22  connected to app-server remote control websocket ... server_id=Some("srv_e_6b00...")
+```
+
+Earlier, at 20:12-20:15, the ChatGPT side answered `503 Service Unavailable` for a few minutes; the
+daemon retried by itself and reconnected.
+
+Noise, harmless: `WARN codex_app_server::transport: dropping message for disconnected connection`
+once a minute, from the `codex app-server daemon version` check of `start.sh`, which connects and
+leaves.
+
+
+## 2026-11-20 19:55 UTC — MFA on: the server enrolled; /codex_pair could not reach the daemon socket
+
+PR #256 deployed: the daemon runs, retries, and logs to Datadog. Without MFA every enrollment
+answered 403. The user turned on MFA at about 19:43; the next retry enrolled and connected, with the
+same login:
+
+```
+19:44:08  failed to connect ... HTTP 403 Forbidden ... {"detail":"Multi-factor authentication required"}  reconnect_attempt=93
+19:44:29  created new remote control enrollment: ... server_id=srv_e_6b00..., environment_id=env_e_6b00...
+19:44:30  connected to app-server remote control websocket ... server_name=senaev-codex
+```
+
+`/codex_pair` from the helper then failed:
+
+```
+❌ Could not create a pairing code: failed to connect to /home/codex/.codex/app-server-control/app-server-control.sock
+```
+
+The control socket in CODEX_HOME is only a symlink to `/tmp/codex-daemon-<uid>/<sha256 of the path>`
+(`app-server-transport/src/transport/unix_socket.rs`, `bind_private_daemon_socket`;
+`uds/src/daemon_directory.rs`), which is inside the codex container. Local check:
+
+```
+app-server-control.sock -> /tmp/codex-daemon-0/0094c215ef63ecbf354c3bb483057770185e5212a5ecc5b8b3aa8c5997ac6712
+```
+
+Both the daemon and the client require that folder to be owned by their uid with mode 0700; with
+0755 the daemon does not start. Fix: a host folder mounted at `/tmp/codex-daemon-0` in both
+containers, `chmod 700` in `start.sh`. The hash is of the same path in both pods, so the symlink
+resolves in the helper too. The bot message also showed the old 403 although a later connection had
+succeeded, and dropped the `Caused by` line of the CLI error; both fixed.
+
+
+## 2026-11-20 19:00 UTC — Pairing from the bot: /codex_pair and the Codex daemon
+
+The ChatGPT app on the user's Android phone now has a Codex tab: Connect computer → Start pairing
+→ Pair manually takes an 8-character code (`XXXX-XXXX`), the format of `manualPairingCode` of
+`codex remote-control pair`. The user wants to try without MFA first.
+
+`codex remote-control pair` talks only to the managed daemon, through
+`CODEX_HOME/app-server-control/app-server-control.sock`
+(`app_server_control_socket_path`), and never starts one (`start_remote_control_pairing`), so the
+helper in the claude-code pod can call it through the mounted login folder. Local test with a
+`ps` stand-in on `/proc` (no procps in the sandbox), without a login:
+
+```
+start: Error: Remote control is enabled on senaev-claude-code but the connection is errored.
+version: {"status":"running","backend":"pid",...,"socketPath":"/root/cxd/app-server-control/app-server-control.sock",...}
+pair: Error: remoteControl/pairing/start failed: remote control pairing is unavailable until enrollment completes
+```
+
+The daemon keeps running after a failed connection. With `RUST_LOG` (inherited by the daemon) its
+log has the reason, which the bot reads:
+
+```
+WARN ... failed to connect to app-server remote control websocket ... error=remote control requires ChatGPT authentication error_kind=PermissionDenied
+```
+
+A deleted package copy is not installed again while any of `daemon.pid`, `daemon.stderr.log`,
+`daemon-updater.pid`, `daemon-updater.stderr.log` exists (`prepare_install.rs`):
+
+```
+Error: daemon executable not found at .../packages/app-server-daemon/current/bin/codex; repair the existing installation, ...
+```
+
+So `start.sh` deletes all of them on each start. The whole `start.sh` against the real daemon:
+starts and installs it, starts it again when it is gone, stops it on SIGTERM, and starts it again
+in a second run with the files of the first. The helper code against a real daemon:
+
+```
+pair error: remoteControl/pairing/start failed: remote control pairing is unavailable until enrollment completes
+last connection error: remote control requires ChatGPT authentication
+```
+
+
 ## 2026-11-20 17:40 UTC — Telegram login verified: status, logout and login
 
 PR #251 (status and logout button on `/codex_auth`) deployed with the run of #250: the run of #251
@@ -15,7 +115,6 @@ tested the whole flow in the bot chat:
 ```
 
 The first `/codex_auth` (17:13:33 link, 17:14:36 logged in, before #251) also worked. Step 4 is done.
-
 
 ## 2026-11-20 17:15 UTC — Codex runs tasks and reaches the MCP servers of the ChatGPT account
 

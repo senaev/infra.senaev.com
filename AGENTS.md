@@ -68,6 +68,19 @@ Be extremely careful with these nodes and their networks:
 - When you show a pull request link to the user, link to its changes page, `https://github.com/<owner>/<repo>/pull/<number>/changes`, not to the main page of the pull request
 - Never log a whole request body or other external JSON (webhooks, API payloads). Log only the fields that the code uses, by name: a payload can hold IDs, tokens and personal data that the logs (Datadog, Loki) must not keep
 
+## Code Review
+
+### Code Review Rules
+
+If you are an agent that does code review of a pull request (for example Codex on `@codex review`),
+read [`CODE_REVIEW.md`](CODE_REVIEW.md) and apply every rule in it. Any other agent: do not read
+that file.
+
+### Codex code review
+
+- Create every pull request as a draft (`gh pr create --draft`).
+- When you open a pull request, and when the user asks for a Codex review, comment `@codex review`.
+
 ## Service Deployment
 
 Charts live under `provisioning/helm/<chart>/` or grouped as
@@ -189,16 +202,6 @@ minute and makes a new one if Grafana rejects it (for example after Grafana lost
 `mcp-grafana` reads the token file on every call, so it needs no restart. Only cluster-helper can reach its MCP port through the NetworkPolicy; no public ingress or shared internal bearer token is configured. OAuth is checked by cluster-helper, which strips client credentials before proxying. See
 [`projects/2026-10-18-15-00-grafana-mcp-for-chatgpt`](projects/2026-10-18-15-00-grafana-mcp-for-chatgpt/README.md).
 
-## LLM endpoint
-
-cluster-helper serves an OpenAI-compatible API for the models that run in the cluster, on
-the public port with no host constraint: `https://api.senaev.com/llm` from outside and
-`http://cluster-helper:3000/llm` inside (n8n is allowed by the NetworkPolicy). Routes:
-`GET /llm/models` and `POST /llm/chat/completions`; the body and the answer (also SSE) pass
-through unchanged. One API key for all clients, Vault `LLM_ENDPOINT_API_KEY`, checked
-before the body is read. The model list is `cluster-helper/src/llm/llmEndpointModels.ts`.
-See [`projects/2026-11-06-10-23-personal-llm-connector`](projects/2026-11-06-10-23-personal-llm-connector/README.md).
-
 ## Alerting heartbeat
 
 vmagent, VMSingle, vmalert and Alertmanager all run on senaev-madrid, so when that node or the
@@ -220,6 +223,53 @@ comes back unchanged. JSON only, up to 1 MiB. All methods and chats are allowed.
 `Authorization: Bearer <secret>`, Vault `TELEGRAM_PUBLIC_API_SECRET`, checked before the body
 is read. Code: `cluster-helper/src/telegramPublicApi.ts`. See
 [`projects/2026-11-12-14-15-public-telegram-notification-path`](projects/2026-11-12-14-15-public-telegram-notification-path/README.md).
+
+## Internal mTLS between the Node.js services
+
+The calls between our Node.js services use a client certificate, not a token:
+
+| Caller → callee | Port | Allowed caller (`callers.ts`) |
+|---|---|---|
+| cluster-helper → obsidian-sync (everything that reads or edits the vault) | 8443 | `obsidian-sync/src/server/callers.ts` |
+| cluster-helper → code-tools (`senaev-code-tools`, the tool routes) | 8443 | `code-tools/src/server/callers.ts` |
+| cluster-helper → media-server-helper (`POST /torrent-files`) | 8443 | `media-server-helper/src/callers.ts` |
+| vpn-subscription → cluster-helper (`POST /telegram/send-message`) | 8443 | `cluster-helper/src/callers.ts` |
+
+cert-manager (`provisioning/helm/pki/cert-manager`) and a private CA (`provisioning/helm/pki/issuers`,
+ClusterIssuer `internal-ca`, key only in the `pki` namespace) issue 7-day leaves: `cluster-helper-tls`
+(both usages), `obsidian-sync-tls`, `media-server-helper-tls` (`templates/internal-mtls.yaml`),
+`<workspace>-code-tools-tls` (`llm-workspace/_code-tools.tpl`) and `vpn-subscription-tls` (client only,
+in the `vpn` release, because a Secret is namespaced). Their common settings are in
+`global.internalMtlsCertificate` in `provisioning/helm/global-values.yaml`. The identity is a DNS SAN
+`<service>.<namespace>.svc.cluster.local`: a callee knows its callers by that name, and a client
+connects to a URL whose host is the callee's name. The URLs are constants in
+`cluster-helper/src/mtlsServiceUrls.ts` and `vpn-subscription/src/clusterHelperTelegramApi.ts`.
+Every service mounts its Secret as a directory at `/etc/mtls` (never subPath or env),
+polls the files and reloads without a restart
+(`senaev-utils/src/utils/mtls`). They fail closed: no fallback to HTTP or a token. cluster-helper has
+one `createMtlsClient` for each callee (a client sends its certificate to one origin only), all fed
+by one `watchTlsCredentials`.
+
+A service with a protected API has a Fastify instance of its own for it: `createMtlsFastifyServer`
+(senaev-utils) installs `registerMtlsAuthentication`, which rejects an invalid certificate (401), and the
+service adds `registerMtlsCallerAllowlist` (senaev-utils) with its `ALLOWED_CALLERS`, which allows only
+those services on every route of that instance (403). The list is for the whole instance, not for a
+route. Add new routes only to the function that registers the protected routes of that service
+(`registerProtectedVaultRoutes`, `registerProtectedCodeToolsRoutes`, `registerTorrentFileRoutes`,
+`createMtlsServer` of cluster-helper), and add a NetworkPolicy rule for the port. The kubelet cannot
+present a certificate, so obsidian-sync (8080) and code-tools (8081, only `/health`) also have a plain
+HTTP instance for what the kubelet or vmagent needs; media-server-helper has no plain port and no probe.
+The shell tools of code-tools run in its container, so they can read the server's private key (accepted).
+Three alerts watch the leaves (group `internal-certificates` in `senaev-com/templates/alerts.yaml`):
+`certificate-not-ready` (15 min), `certificate-expires-soon` (less than 2 days left; a leaf renews at 3 days)
+and `certificate-metrics-unavailable`. They read the cert-manager metrics, which the `cert-manager`
+`VMServiceScrape` in the `vm-stack` chart scrapes from the `pki` namespace.
+The `pki` namespace must sort before `senaev-com` (the CI deploys namespaces in sorted order). To replace
+the CA, see
+[`projects/2026-11-15-11-00-inter-service-certificate-authentication`](projects/2026-11-15-11-00-inter-service-certificate-authentication/README.md).
+The second project, [`projects/2026-11-22-01-00-mtls-between-node-services`](projects/2026-11-22-01-00-mtls-between-node-services/README.md),
+added the other three edges. Calls from n8n, Alertmanager, qbittorrent, vmagent, Traefik and the kubelet cannot
+present a certificate and stay plain HTTP (cluster-helper `:80`, obsidian-sync `:8080`).
 
 ## Shared Toolchain
 
@@ -261,7 +311,7 @@ package's own `node_modules`. A fresh clone therefore needs `npm ci` at the root
 every package. `npm run ci:all` (`scripts/ci-all.sh`) does both, for every folder with a
 committed `package-lock.json`; `.github/workflows/check.yml` runs it too.
 
-Config lives at the root: `eslint.config.mjs` (React rules scoped to senaev-utils),
+Config lives at the root: `eslint.config.mjs` (React rules scoped to nextjs-app and senaev-utils),
 `tsconfig.base.json` and `vitest.config.mts`.
 
 `vitest.config.mts` reuses thread workers only for an explicit allowlist of pure
@@ -350,7 +400,7 @@ does not run on that machine; then run `npm run ci:all` by hand.
 
 The services in this repo consume it **by path**: `"senaev-utils": "file:../senaev-utils"`, which npm links as a symlink into `node_modules`. A change to `senaev-utils/` is therefore picked up immediately, with no version bump and no publish step in between.
 
-It is **also published to npm**, because `supabase-list-notes` lives in a separate repo and pins an exact published version. `.github/workflows/publish-senaev-utils.yml` lints, tests and typechecks it, then publishes `1.0.0-ci.<run_id>.<attempt>` under the `ci` dist-tag on every push to `main` that touches `senaev-utils/**`. That external consumer is why publishing stays on npm, and why the package must keep `@types/node` in `dependencies` and must not raise `engines.node` past `>=18`.
+It is **also published to npm**, because `supabase-list-notes` lives in a separate repo and pins an exact published version. `.github/workflows/publish-senaev-utils.yml` lints, tests and typechecks it, then publishes `1.0.0-ci.<run_id>.<attempt>` under the `ci` dist-tag on every push to `main` that touches `senaev-utils/**`. That external consumer is why publishing stays on npm, and why the package must keep `@types/node` in `dependencies` and must not raise `engines.node` past `>=18`. For the same reason the mTLS client uses undici 6.x (`undici` 7 needs Node 20.18).
 
 Services linking the library use the repository root as their Docker context.
 The planner rebuilds packages declaring a `senaev-utils` dependency when the
@@ -383,6 +433,8 @@ bot stay in the `senaev-opencode-telegram` Deployment. Both pods, OMP and Claude
 workspace's `senaev-code` PVC at `/code`; only OMP also mounts its `senaev-projects` PVC at
 `/projects`. The workspace `vps` node selector puts them on one node. Code Tools and OpenCode use one replica
 and `Recreate`; a Code Tools update still has a short outage and loses in-memory operation IDs.
+cluster-helper is its only caller, over mTLS on 8443 (see Internal mTLS); the kubelet probes `/health` on
+the plain port 8081.
 
 The code tools take absolute paths and work in any folder. The repository layout under
 `/code` (`projects/<repo>` and `worktrees/<repo>/<branch>`) is described only in the
@@ -442,7 +494,7 @@ for compatibility after deployment.
 
 | Workspace | Node | Components | Ingress |
 |---|---|---|---|
-| `senaev` | senaev-madrid | OpenCode, OMP (`omp.senaev.com`), Code Tools, Claude Code, Codex (no remote control) | traefik-hetzner |
+| `senaev` | senaev-madrid | OpenCode, OMP (`omp.senaev.com`), Code Tools, Claude Code, Codex | traefik-hetzner |
 | `galkin` | galkin | OMP only (`omp.galkin.senaev.com`) | traefik-hetzner (DNS points to hetzner) |
 
 Do not rename the `senaev` entry: that replaces its PVCs, and cluster-helper calls
@@ -464,7 +516,14 @@ only in `senaev`.
   `senaev-utils` for the Telegram calls, the message formatting, the logger and the shutdown)
   renews the login from Telegram. The bot is @senaev_claude_helper_bot, with the
   token in Vault `TG_TOKEN_CLAUDE_HELPER_BOT`. It answers only in the private chat with the user
-  `claudeCode.telegram.user` (`TG_SENAEV_USER_ID`; the chat id is the user id). `/auth`
+  `claudeCode.telegram.user` (`TG_SENAEV_USER_ID`; the chat id is the user id). The commands
+  are `/claude_auth`, `/claude_mcp`, `/codex_auth` and `/codex_pair` (renamed from `/auth` and `/mcp` on
+  2026-11-20; the old names are ignored). `/claude_auth` first reads `claude auth status`: when
+  Claude Code is logged in, it answers `✅ Claude Code is logged in.` with the expiry date and two
+  buttons, `🔑 Renew login` (callback data `claude:login`: a new login while the old one still
+  works) and `🚪 Log out` (`claude:logout`: runs `claude auth logout`, checks the status, rewrites
+  the message; Remote Control and the prompt API then wait for the next login, and the bot sends no
+  logged-out notice for it). When Claude Code is logged out, or the status cannot be read, it
   sends a login link; the user opens it and sends the code from the page back; the bot deletes
   that message. When nobody is logged in it says so once, with no link. From 5 days before
   `loginExpiresAt` it warns once a day. When the workspace enables Codex, the same helper logs
@@ -486,7 +545,7 @@ only in `senaev`.
   a server added by hand is removed. Every server uses OAuth. The CLI login
   (`claude mcp login --no-browser <name>`) redirects to `http://localhost:<port>/callback`, and
   Claude Code has no setting for another redirect URI, so there is no public callback. In
-  Telegram, `/mcp` posts a message at once and turns it into the panel: a title and one button for
+  Telegram, `/claude_mcp` posts a message at once and turns it into the panel: a title and one button for
   each server, by its status in `claude mcp list` — `✅ <name>: log out` when connected,
   `🔑 <name>: log in` when it needs a login, `❌ <name>: log in` when it fails to connect
   (callback data `mcp:logout:<name>`, `mcp:login:<name>`). The dialog works like the torrent search in
@@ -510,11 +569,18 @@ only in `senaev`.
   fails, 409 while another prompt runs. One run at a time, at most 60 minutes. The runs have
   everything the container has: the login, the MCP logins, the git token, the SSH agent and
   `/code`. There is no token: the NetworkPolicy lets only the n8n pod of the namespace reach
-  port 8080, and nothing else reaches the pod. The n8n `job-search-round` workflow uses it every
-  day at 02:30 UTC: the prompt tells Claude to follow the note `LLM Job Search Round` of the
-  Obsidian vault, and n8n sends the answer to the Job Search Framework chat through
-  `http://cluster-helper/telegram/send-message` (Telegram Rich Markdown); errors go to the
-  cluster chat.
+  port 8080, and nothing else reaches the pod. The n8n `job-search-round` workflow uses it Monday
+  to Friday at 04:00 UTC: the prompt tells Claude to follow the note `LLM Job Search Playbook` of the
+  Obsidian vault. Then n8n makes one request, `POST http://cluster-helper/job-search/round-report`
+  with `{ date, time, text }` (the start time in UTC, also given in the prompt, and the answer).
+  cluster-helper (`registerJobSearchRoundReportRoute.ts`) does both deliveries at once, neither
+  waiting for the other: it posts the answer to the Job Search Framework chat (Telegram Rich
+  Markdown), with the Obsidian `[[links]]` turned into highlights, and adds the same text, links
+  unchanged, to the note `LLM Recommendations Log` through obsidian-sync, right under the `---`
+  line that ends the note's header, as `## [[date]] HH:MM UTC`. It answers 200 when both
+  succeed, 502 with a message naming the target that failed; the other one is still delivered.
+  n8n does not retry, because a retry would post the message twice, and sends errors to the
+  cluster chat. The log write alone is safe to repeat: a write that finds the heading adds nothing.
 - The Claude Code version is pinned in `claude-code/Dockerfile`. Raise it in a pull request.
 - The readiness probe checks only the prompt API, which starts before the login check, so a deploy does not wait for the login.
 
@@ -526,13 +592,33 @@ The `codex` component (`templates/llm-workspace/_codex.tpl`, image `codex/`) kee
 with the ChatGPT login of the user on the shared `/code` volume. It has no Ingress and no Service,
 and the NetworkPolicy has no ingress. Enabled only in `senaev`.
 
-- Remote control (`codex.remoteControl`) is **off since 2026-11-20**: the account cannot use it
-  yet. The server enrollment fails with `HTTP 403 ... {"detail":"Multi-factor authentication
-  required"}`, and the ChatGPT app on Android shows no Codex entry. When it is on, `start.sh` runs
-  `codex remote-control --no-daemon` in `/code` (outbound only,
-  `wss://chatgpt.com/backend-api/wham/remote/control/server`; device name: the hostname
-  `senaev-codex`); that server exits when its first connection fails, and the container restarts.
-  When it is off, `start.sh` waits for the login and then only sleeps.
+- Remote control (`codex.remoteControl: true`) runs in the Codex app-server daemon, not in the
+  foreground: `codex remote-control pair` talks only to the daemon, through its control socket
+  `CODEX_HOME/app-server-control/app-server-control.sock`. That path is only a symlink to the real
+  socket `/tmp/codex-daemon-0/<sha256 of the path>` (`bind_private_daemon_socket`), so
+  `/tmp/codex-daemon-0` is a host folder, `<clusterRootPath>/volumes/codex-daemon-socket`, mounted
+  in the codex container and in the `telegram-login` container. The daemon and the client accept it
+  only when it belongs to their user (root in both) with mode 0700: `start.sh` runs `chmod 700`,
+  because Kubernetes creates the host folder 0755. After the login, `start.sh` writes
+  `app-server-daemon/settings.json` (remote control on, no automatic updates), deletes the daemon
+  package copy and its pid and log files (only then does the daemon copy the pinned CLI of the image
+  again; `prepare_install.rs`), and checks every 60 seconds with `codex app-server daemon version`,
+  starting it again with `codex remote-control start` when it is gone. The daemon retries a failed
+  connection by itself, so the container does not restart for it. SIGTERM runs
+  `codex remote-control stop`. The daemon log `app-server-daemon/daemon.stderr.log` is copied to
+  the container output. The connection is outbound only
+  (`wss://chatgpt.com/backend-api/wham/remote/control/server`); the device name is the hostname
+  `senaev-codex`. The image has `procps`: the daemon checks its process with `ps`. With
+  `codex.remoteControl: false` the container only keeps the login.
+- Pairing: the ChatGPT app (Codex → Connect computer → Start pairing → Pair manually) takes an
+  8-character code. `/codex_pair` in the bot runs `codex remote-control pair --json` against the
+  daemon socket (in the login folder that the helper mounts), and sends `manualPairingCode` with its
+  expiry (`expiresAt`, Unix seconds). When there is no code, it sends the error with its causes,
+  and the last `error=` of `failed to connect to app-server remote control websocket` from the
+  daemon log, unless a later line says `connected to app-server remote control websocket`. On
+  2026-11-20 the enrollment of the server answered `HTTP 403 ... {"detail":"Multi-factor
+  authentication required"}` until the user turned on MFA; the next retry of the daemon enrolled
+  the server and connected, with the same login (no new login needed).
 - The login is the ChatGPT subscription; remote control rejects an API key. The `telegram-login`
   container of the claude-code pod logs Codex in, with the same bot and chat as Claude Code: the
   template mounts `<clusterRootPath>/volumes/codex` there and sets `CODEX_HOME`, and the

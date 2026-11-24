@@ -16,8 +16,6 @@ export const GOOGLE_OAUTH_ADMIN_EMAILS = requireEnv('GOOGLE_OAUTH_ADMIN_EMAILS')
 export const OPENROUTER_API_KEY = requireEnv('OPENROUTER_API_KEY');
 /** Optional: Helm sets it only when the home llm-server is enabled. */
 export const LLM_SERVER_URL = process.env.LLM_SERVER_URL || null;
-/** The one API key of the /llm endpoint, for all its clients. */
-export const LLM_ENDPOINT_API_KEY = requireEnv('LLM_ENDPOINT_API_KEY');
 export const GROQ_API_KEY = requireEnv('GROQ_API_KEY');
 export const SUPABASE_PROJECT_URL = requireEnv('SUPABASE_PROJECT_URL');
 export const SUPABASE_PUBLISHABLE_KEY = requireEnv('SUPABASE_PUBLISHABLE_KEY');
@@ -27,11 +25,6 @@ export const TG_VPN_SUBSCRIPTION_CHAT_ID = requireEnv('TG_VPN_SUBSCRIPTION_CHAT_
 export const OBSIDIAN_TASKS_CHAT_ID = requireEnv('OBSIDIAN_TASKS_CHAT_ID');
 export const TRICKY_DAD_CHAT_ID = requireEnv('TRICKY_DAD_CHAT_ID');
 export const JOB_SEARCH_FRAMEWORK_CHAT_ID = requireEnv('JOB_SEARCH_FRAMEWORK_CHAT_ID');
-export const OBSIDIAN_SYNC_URL = requireEnv('OBSIDIAN_SYNC_URL');
-export const INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN = requireEnv('INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_OBSIDIAN');
-/** code-tools runs in the opencode-serve container and serves the code-* MCP tools. */
-export const CODE_TOOLS_URL = requireEnv('CODE_TOOLS_URL');
-export const INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS = requireEnv('INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS');
 /** The streamable-HTTP endpoint of mcp-grafana, which the /grafana MCP endpoint proxies to. */
 export const MCP_GRAFANA_URL = requireEnv('MCP_GRAFANA_URL');
 export const TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID = requireEnv('TG_SENAEV_COM_BOT_DIRECT_MESSAGE_WITH_OWNER_CHAT_ID');
