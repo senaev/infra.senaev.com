@@ -29,6 +29,17 @@ were counted on shared nodes. The difference was 300 terminal-control-only lines
 net 15 rows with timestamps across the window boundaries. Agent working set averaged
 327 MiB before the rollout and 310 MiB after it, summed across all seven nodes.
 
+The rollout query (23:00–23:02 UTC) and the settled query (23:02–23:07 UTC) returned
+these per-node counts. Both queries reported zero rows requiring a node-label fallback.
+
+```text
+… "senaev-media":{"ch":86,"dd":86,"controls":0,"streams":7} …
+… "hetzner":{"ch":3378,"dd":3361,"controls":0,"streams":15} …
+… "senaev-madrid":{"ch":6297,"dd":5999,"controls":300,"streams":13} …
+… "senaev-media":{"ch":271,"dd":271,"controls":0,"streams":7} …
+… "fallback":{} …
+```
+
 ## 2026-11-22 22:20 UTC — Verified the smaller agents after image pulls
 
 [PR #287](https://github.com/senaev/infra.senaev.com/pull/287/changes) switched the
@@ -42,6 +53,22 @@ pod and container names and lacked `k8s.node.name` at replay time. All 136 Xray 
 in that interval matched by message fingerprint. The total agent working set dropped
 from 522 to 312 MiB in the five-minute samples.
 
+The 21:55–22:08 UTC ClickHouse query and the Xray fingerprint comparison returned the
+following. Datadog also counted 529 records across the same media pods.
+
+```json
+[{"records":529,"without_node":529}]
+```
+
+```tsv
+records
+529
+```
+
+```json
+{"ch":136,"dd":136,"matched":136}
+```
+
 ## 2026-11-22 21:35 UTC — Prepared the smaller node agent and startup probe
 
 The user chose the OpenTelemetry Collector Kubernetes `0.165.0` image and normal
@@ -53,6 +80,15 @@ In the local upgrade test the new build resumed the Contrib agent's on-disk queu
 offsets and delivered 24 queued records and one new record to ClickHouse. All 25 records
 were distinct. The fixture skipped Kubernetes API enrichment.
 [PR checks](https://github.com/senaev/infra.senaev.com/actions/runs/45072700999)
+
+On November 24 the local repeat forced the Contrib `0.165.0` agent to stop with the
+gateway offline, then started the Kubernetes `0.165.0` agent on the same disk queue.
+ClickHouse `26.8.43.13` returned all 24 queued records and one fresh record exactly once.
+
+```tsv
+total_records	distinct_records	queued_records	fresh_records
+25	25	24	1
+```
 
 ## 2026-11-22 21:08 UTC — Verified the cluster-wide rollout retry
 
@@ -78,6 +114,25 @@ in the 20:26–20:42 UTC sample. The `proxmox-madrid` agent has delivered logs.
 Kubelet reported zero changes in log file size for the other `proxmox` pods in the
 nine-minute verification window. A new `proxmox` log remains to be verified. PR #287
 was held after `firstvds` recovered.
+
+The historical queries returned the following counts on November 24. In the 21:00–21:02
+UTC media sample, the backends returned 85 and 90 records. Padding that window by ten
+seconds on both sides returned 113 records in each backend.
+
+| UTC window on November 22 | Filter | ClickHouse `records` | Datadog `records` |
+| --- | --- | ---: | ---: |
+| 20:26–20:42 | `senaev-media` | 0 | 664 |
+| 21:00–21:02 | `senaev-media` | 85 | 90 |
+| 20:59:50–21:02:10 | `senaev-media` | 113 | 113 |
+| 21:00–21:02 | Madrid log generator | 1199 | 1199 |
+| 20:58:20–21:00:20 | Hetzner `cluster-helper` | 136 | 136 |
+
+```text
+ClickHouse: [{"records":0}]
+Datadog TSV:
+records
+664
+```
 
 ## 2026-11-22 18:03 UTC — Verified the deployed Hetzner pilot
 
