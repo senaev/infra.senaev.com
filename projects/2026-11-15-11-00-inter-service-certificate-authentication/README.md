@@ -1,6 +1,6 @@
 # 2026-11-15 — Inter-service certificate authentication
 
-Replace shared-token authentication between cluster-helper and the Obsidian vault service with reusable internal mTLS authentication.
+- [x] Replace shared-token authentication between cluster-helper and the Obsidian vault service with reusable internal mTLS authentication.
 
 ## Goal
 

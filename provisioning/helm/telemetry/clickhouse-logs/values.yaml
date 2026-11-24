@@ -13,9 +13,9 @@ otel-agent:
   fullnameOverride: otel-agent
   mode: daemonset
   image:
-    repository: otel/opentelemetry-collector-contrib
+    repository: otel/opentelemetry-collector-k8s
   command:
-    name: otelcol-contrib
+    name: otelcol-k8s
     # Hand off records to the persistent queue before filelog advances its checkpoint.
     extraArgs:
       - --feature-gates=stanza.synchronousLogEmitter
@@ -23,6 +23,13 @@ otel-agent:
     app: otel-logs-agent
   nodeSelector:
     kubernetes.io/os: linux
+  # Give the Collector time to initialize before liveness can restart it.
+  startupProbe:
+    httpGet:
+      path: /
+      port: 13133
+    periodSeconds: 5
+    failureThreshold: 24
   presets:
     kubernetesAttributes:
       enabled: true
@@ -95,6 +102,9 @@ otel-agent:
         operators:
           - type: container
             max_log_size: 102400
+          - type: add
+            field: resource["k8s.node.name"]
+            value: "${env:K8S_NODE_NAME}"
     processors:
       memory_limiter:
         check_interval: 1s

@@ -1,13 +1,16 @@
-- [ ] Verify a fresh log from `proxmox` when a workload emits one.
-- [ ] Run the controlled ClickHouse outage check.
+- [x] Deploy OpenTelemetry container log collection across all seven Linux nodes.
+- [x] Deploy the smaller agent, startup probe and node label on replayed logs.
+- [x] Compare ClickHouse and Datadog on their three shared nodes.
+- [x] Verify delivery of a test log from `proxmox`.
 
 ## Stage
 
-The cluster-wide DaemonSet is deployed with seven ready agents. Datadog samples from
-Hetzner, `senaev-madrid`, and `senaev-media` matched ClickHouse after recovery.
-The [project result](README.md#result) records the earlier media-node gap.
+Completed on 2026-11-24. The DaemonSet has seven ready agents and all seven nodes have
+delivered labeled logs. ClickHouse on `senaev-madrid` retains logs for 450 days and
+Grafana reads the data through **ClickHouse Logs**. The user skipped the production
+recovery drill after local testing verified queue recovery.
 
-## Next steps
+## Evidence
 
-Use the [verification queries](README.md#verification) to confirm a new `proxmox` log
-and verify queue recovery during a controlled ClickHouse outage.
+The [worklog](project-worklog.md) records the `proxmox` probe, rollout checks and the
+Datadog comparison.

@@ -29,7 +29,11 @@ Link other files from `README.md` by relative path. Give the files names without
 The main document of the project. Keep it current: when the plan or the facts change,
 update the section — the history is in `project-worklog.md`. Structure:
 
-1. `# YYYY-MM-DD — <title>`, then one line: what the task must achieve.
+1. `# YYYY-MM-DD — <title>`, then a blank line and a Markdown checkbox with a one-line goal.
+   Keep this checkbox current in every project README. Start with `- [ ] <goal>` and
+   change it to `- [x] <goal>` when the agreed scope is complete and required verification
+   has passed. When a project is canceled, check the box and strike through everything
+   after it. Use `- [x] ~~<goal> **Canceled on YYYY-MM-DD.**~~`.
 2. `## Goal` — what we want, or what is wrong. Paste errors and logs verbatim.
 3. `## Context` — only the facts needed for this task. Link files by path; do not copy them.
 4. `## Plan` — the steps, or for an incident the ranked hypotheses

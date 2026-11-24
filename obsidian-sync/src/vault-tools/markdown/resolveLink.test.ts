@@ -1,8 +1,8 @@
 import {
     describe, expect, it,
 } from 'vitest';
+import { extractLinks } from 'senaev-utils/src/obsidianMarkdown/extractLinks';
 
-import { extractLinks } from './extractLinks';
 import { createLinkIndex, resolveLink } from './resolveLink';
 
 const FILES = [

@@ -1,4 +1,4 @@
-import { extractLinks } from '../../vault-tools/markdown/extractLinks';
+import { extractLinks } from './extractLinks';
 
 /** Render Obsidian wikilinks as Telegram rich Markdown highlights, preserving code. */
 export function replaceWikiLinksWithHighlights(body: string): string {

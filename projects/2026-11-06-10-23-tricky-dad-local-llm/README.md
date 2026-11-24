@@ -1,6 +1,6 @@
 # 2026-11-06 — tricky-dad on the home llm-server
 
-Make Tricky Dad easier to extend and evaluate whether the home LLM can handle its commands.
+- [x] Make Tricky Dad easier to extend and evaluate whether the home LLM can handle its commands.
 
 ## Goal
 

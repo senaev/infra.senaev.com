@@ -1,6 +1,6 @@
 # 2026-11-11 — Code Tools: any folder, and git worktrees
 
-Code Tools works in any folder by absolute paths. Repositories and worktrees have one documented layout under `/code`.
+- [x] Code Tools works in any folder by absolute paths. Repositories and worktrees have one documented layout under `/code`.
 
 ## Goal
 

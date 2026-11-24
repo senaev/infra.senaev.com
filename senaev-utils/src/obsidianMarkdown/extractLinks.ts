@@ -1,5 +1,6 @@
 import type { Nodes } from 'mdast';
-import { createLineLocator } from 'senaev-utils/src/files/textEdits';
+
+import { createLineLocator } from '../files/textEdits';
 
 import { parseMarkdown } from './parseMarkdown';
 

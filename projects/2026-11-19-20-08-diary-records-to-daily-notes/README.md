@@ -1,7 +1,6 @@
 # 2026-11-19 — Diary records straight into daily notes
 
-`obsidian-diary_append` writes each record into the daily note of its day instead of the
-shared stream file, and can write records for several days in one call.
+- [x] `obsidian-diary_append` writes each record into the daily note of its day instead of the shared stream file, and can write records for several days in one call.
 
 ## Goal
 

@@ -11,6 +11,7 @@ import { isNotFoundError } from 'senaev-utils/src/utils/Error/isNotFoundError/is
 import { createFileExclusively, replaceFileAtomically } from 'senaev-utils/src/utils/fs/atomicFileWrite/atomicFileWrite';
 import { type FileDiff } from 'senaev-utils/src/files/createFileDiff';
 import { invalidArguments, CommandError } from 'senaev-utils/src/commands/CommandError';
+import { extractLinks } from 'senaev-utils/src/obsidianMarkdown/extractLinks';
 
 import {
     assertByteHash, assertFilePath, decodeText, hashBytes, MAX_FILE_BYTES, prepareNewVaultFile, readFileBytes, resolveExistingFile,
@@ -19,7 +20,6 @@ import { readVaultNotes, type VaultNotes } from '../access/readVaultNotes';
 import {
     assertNotePath, isNotePath, normalizeVaultPath, prepareNewNote, resolveExistingNote,
 } from '../access/vaultAccess';
-import { extractLinks } from '../markdown/extractLinks';
 import { createLinkIndex, resolveLink } from '../markdown/resolveLink';
 import {
     applyTextEdits, pointsRelativelyAt, rewriteLinkTarget, type TextEdit,

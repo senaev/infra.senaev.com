@@ -68,6 +68,19 @@ Be extremely careful with these nodes and their networks:
 - When you show a pull request link to the user, link to its changes page, `https://github.com/<owner>/<repo>/pull/<number>/changes`, not to the main page of the pull request
 - Never log a whole request body or other external JSON (webhooks, API payloads). Log only the fields that the code uses, by name: a payload can hold IDs, tokens and personal data that the logs (Datadog, Loki) must not keep
 
+## Code Review
+
+### Code Review Rules
+
+If you are an agent that does code review of a pull request (for example Codex on `@codex review`),
+read [`CODE_REVIEW.md`](CODE_REVIEW.md) and apply every rule in it. Any other agent: do not read
+that file.
+
+### Codex code review
+
+- Create every pull request as a draft (`gh pr create --draft`).
+- When you open a pull request, and when the user asks for a Codex review, comment `@codex review`.
+
 ## Service Deployment
 
 Charts live under `provisioning/helm/<chart>/` or grouped as
@@ -298,7 +311,7 @@ package's own `node_modules`. A fresh clone therefore needs `npm ci` at the root
 every package. `npm run ci:all` (`scripts/ci-all.sh`) does both, for every folder with a
 committed `package-lock.json`; `.github/workflows/check.yml` runs it too.
 
-Config lives at the root: `eslint.config.mjs` (React rules scoped to senaev-utils),
+Config lives at the root: `eslint.config.mjs` (React rules scoped to nextjs-app and senaev-utils),
 `tsconfig.base.json` and `vitest.config.mts`.
 
 `vitest.config.mts` reuses thread workers only for an explicit allowlist of pure
@@ -556,17 +569,18 @@ only in `senaev`.
   fails, 409 while another prompt runs. One run at a time, at most 60 minutes. The runs have
   everything the container has: the login, the MCP logins, the git token, the SSH agent and
   `/code`. There is no token: the NetworkPolicy lets only the n8n pod of the namespace reach
-  port 8080, and nothing else reaches the pod. The n8n `job-search-round` workflow uses it every
-  day at 04:00 UTC: the prompt tells Claude to follow the note `LLM Job Search Round` of the
-  Obsidian vault, and n8n sends the answer to the Job Search Framework chat through
-  `http://cluster-helper/telegram/send-message` (Telegram Rich Markdown). At the same time it
-  adds the same text to the note `LLM Recommendations Log` through
-  `POST http://cluster-helper/job-search/recommendations` (`{ date, time, text }`, the start time
-  in UTC, also given in the prompt), which forwards to obsidian-sync: the record goes right
-  under the `---` line that ends the note's header, as `## [[date]] HH:MM UTC`; a retry that finds
-  that heading adds nothing. With the `v1` execution order n8n runs the two branches one after the
-  other, top to bottom on the canvas, so the Telegram node sits above the log node: a failed log
-  write cannot delay or stop the message. Errors go to the cluster chat.
+  port 8080, and nothing else reaches the pod. The n8n `job-search-round` workflow uses it Monday
+  to Friday at 04:00 UTC: the prompt tells Claude to follow the note `LLM Job Search Playbook` of the
+  Obsidian vault. Then n8n makes one request, `POST http://cluster-helper/job-search/round-report`
+  with `{ date, time, text }` (the start time in UTC, also given in the prompt, and the answer).
+  cluster-helper (`registerJobSearchRoundReportRoute.ts`) does both deliveries at once, neither
+  waiting for the other: it posts the answer to the Job Search Framework chat (Telegram Rich
+  Markdown), with the Obsidian `[[links]]` turned into highlights, and adds the same text, links
+  unchanged, to the note `LLM Recommendations Log` through obsidian-sync, right under the `---`
+  line that ends the note's header, as `## [[date]] HH:MM UTC`. It answers 200 when both
+  succeed, 502 with a message naming the target that failed; the other one is still delivered.
+  n8n does not retry, because a retry would post the message twice, and sends errors to the
+  cluster chat. The log write alone is safe to repeat: a write that finds the heading adds nothing.
 - The Claude Code version is pinned in `claude-code/Dockerfile`. Raise it in a pull request.
 - The readiness probe checks only the prompt API, which starts before the login check, so a deploy does not wait for the login.
 

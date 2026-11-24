@@ -1,6 +1,6 @@
 # 2026-11-13 — Remove secrets from URL paths
 
-Stop using secrets in URL paths, so that logs and traces cannot leak them.
+- [ ] Stop using secrets in URL paths, so that logs and traces cannot leak them.
 
 ## Goal
 

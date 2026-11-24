@@ -1,6 +1,6 @@
 # 2026-11-15 — Isolate sensitive secrets from LLM workspaces
 
-Agents in the LLM workspaces can use the credentials they need but cannot read them, so they cannot copy them out of the pod.
+- [ ] Agents in the LLM workspaces can use the credentials they need but cannot read them, so they cannot copy them out of the pod.
 
 ## Goal
 

@@ -25,7 +25,7 @@ spec:
         vps: {{ .Values.nextjs.vps }}
       containers:
         - name: nextjs-app
-          image: ghcr.io/senaev/senaev.com:latest
+          image: ghcr.io/senaev/nextjs-app:latest
           imagePullPolicy: Always
           env:
             - name: NODE_ENV
