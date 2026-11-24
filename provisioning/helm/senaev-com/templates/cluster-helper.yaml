@@ -294,7 +294,7 @@ spec:
           podSelector:
             matchLabels:
               app.kubernetes.io/name: vmalertmanager
-        # /send-daily-overview, /telegram/send-message, /job-search/recommendations
+        # /send-daily-overview, /telegram/send-message, /job-search/round-report
         - podSelector:
             matchLabels:
               app: n8n

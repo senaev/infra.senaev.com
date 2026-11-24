@@ -20,9 +20,9 @@ export const PUBLIC_STATIC_DIR = join(OBSIDIAN_VAULT_PATH, 'public-static');
 export const TASKS_FILE_PATH = join(OBSIDIAN_VAULT_PATH, '@senaev', 'tasks', 'tasks_stream.md');
 
 /**
- * Receives each job search round's answer through `POST /job-search/recommendations`: n8n
- * writes the exact text that it posts to Telegram, so the note never depends on an LLM
- * copying it.
+ * Receives each job search round's answer through `POST /job-search/recommendations`, from
+ * cluster-helper's `/job-search/round-report`, which posts the same text to Telegram: the note
+ * never depends on an LLM copying it.
  */
 export const JOB_SEARCH_RECOMMENDATIONS_LOG_PATH = join(
     OBSIDIAN_VAULT_PATH,

@@ -558,16 +558,16 @@ only in `senaev`.
   `/code`. There is no token: the NetworkPolicy lets only the n8n pod of the namespace reach
   port 8080, and nothing else reaches the pod. The n8n `job-search-round` workflow uses it every
   day at 04:00 UTC: the prompt tells Claude to follow the note `LLM Job Search Playbook` of the
-  Obsidian vault, and n8n sends the answer to the Job Search Framework chat through
-  `http://cluster-helper/telegram/send-message` (Telegram Rich Markdown) with `preprocess: { wikiLinks: 'highlight' }`,
-  which turns the Obsidian `[[links]]` of the answer into highlights. At the same time it
-  adds the same text, links unchanged, to the note `LLM Recommendations Log` through
-  `POST http://cluster-helper/job-search/recommendations` (`{ date, time, text }`, the start time
-  in UTC, also given in the prompt), which forwards to obsidian-sync: the record goes right
-  under the `---` line that ends the note's header, as `## [[date]] HH:MM UTC`; a retry that finds
-  that heading adds nothing. With the `v1` execution order n8n runs the two branches one after the
-  other, top to bottom on the canvas, so the Telegram node sits above the log node: a failed log
-  write cannot delay or stop the message. Errors go to the cluster chat.
+  Obsidian vault. Then n8n makes one request, `POST http://cluster-helper/job-search/round-report`
+  with `{ date, time, text }` (the start time in UTC, also given in the prompt, and the answer).
+  cluster-helper (`registerJobSearchRoundReportRoute.ts`) does both deliveries at once, neither
+  waiting for the other: it posts the answer to the Job Search Framework chat (Telegram Rich
+  Markdown), with the Obsidian `[[links]]` turned into highlights, and adds the same text, links
+  unchanged, to the note `LLM Recommendations Log` through obsidian-sync, right under the `---`
+  line that ends the note's header, as `## [[date]] HH:MM UTC`. It answers 200 when both
+  succeed, 502 with a message naming the target that failed; the other one is still delivered.
+  n8n does not retry, because a retry would post the message twice, and sends errors to the
+  cluster chat. The log write alone is safe to repeat: a write that finds the heading adds nothing.
 - The Claude Code version is pinned in `claude-code/Dockerfile`. Raise it in a pull request.
 - The readiness probe checks only the prompt API, which starts before the login check, so a deploy does not wait for the login.
 
