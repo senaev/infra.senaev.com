@@ -23,5 +23,6 @@ move to check that Codex follows the link.
 The automatic review never started (seven probe pull requests, all closed), with the repository
 toggle on, the trigger "On PR open", and the GitHub app reinstalled. Saving "Review: All PRs"
 fails with "Reviewing all PRs is not available on this plan" (Plus). `@codex review` works every
-time, in under a minute. So `AGENTS.md` now has a "Codex code review" section: when the user asks
-for a Codex review, the agent comments `@codex review` and waits for the whole review cycle.
+time, in under a minute. So `AGENTS.md` now has a "Codex code review" section: every pull request starts as a draft, the
+agent comments `@codex review` right away and waits for the whole review cycle, fixes the real
+findings, and marks the pull request ready when no P0 or P1 finding is open.
