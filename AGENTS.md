@@ -76,24 +76,11 @@ that file.
 
 ## Codex code review
 
-Every pull request gets a Codex review. The automatic review does not run on the user's plan, so
-the agent that opens the pull request asks for it:
-
-1. Create every pull request as a draft: `gh pr create --draft`.
-2. Right after creating it, leave a comment with exactly `@codex review`
-   (`gh pr comment <number> --body "@codex review"`). Do the same after each later push, and when
-   the user asks for a Codex review: a review covers only the commit it names.
-3. Wait for the full review cycle; do not report before it ends. Codex reacts with 👀, then updates
-   its "Codex Review Summary" comment from "🔄 Running" to "✅ Completed" for the latest commit. A
-   review usually takes under 2 minutes; poll every 10-20 seconds and give up after 15 minutes.
-4. Read the result: a review by `chatgpt-codex-connector[bot]` with inline comments, each with a
-   P0, P1 or P2 badge (`gh api repos/<owner>/<repo>/pulls/<number>/comments`), or a "Didn't find
-   any major issues" comment with a 👍 reaction.
-5. Fix the findings that are real, push, and request a new review. Tell the user about each finding
-   with its badge and file, and why you fixed it or left it.
-6. Mark the pull request ready (`gh pr ready <number>`) once the latest commit has a completed
-   review with no open P0 or P1 finding, then send the user its link. A ready pull request still
-   needs the user's approval to merge.
+- Create every pull request as a draft (`gh pr create --draft`).
+- After creating it and after each push, comment `@codex review` and wait until the "Codex Review
+  Summary" comment shows "✅ Completed" for the latest commit (usually under 2 minutes).
+- Fix the real findings (inline comments with P0/P1/P2 badges), then mark the pull request ready
+  (`gh pr ready <number>`).
 
 ## Service Deployment
 
