@@ -61,7 +61,7 @@ export function renderDailyNote(day: string, reminders: ReminderSource = { notes
     return `
 ${renderReminders(day, 'morning', reminders, path)}\`\`\`tasks
 filter by function window.senaevPersonalTools.filterRemindersForDaily({task, query})
-sort by function window.senaevPersonalTools.sortKeyForDaily({reminder})
+sort by function window.senaevPersonalTools.sortKeyForDaily({task})
 \`\`\`
 
 ---
