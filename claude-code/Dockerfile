@@ -23,6 +23,11 @@ RUN apt-get update \
 RUN npm install --global --no-audit --no-fund @anthropic-ai/claude-code@2.1.325 \
     && claude --version
 
+# The telegram-login container also logs Codex in (codex login --device-auth) with the login folder
+# of the codex container. Keep the same version as in codex/Dockerfile.
+RUN npm install --global --no-audit --no-fund @openai/codex@0.170.0 \
+    && codex --version
+
 ENV HOME=/home/claude \
     DISABLE_UPDATES=1
 

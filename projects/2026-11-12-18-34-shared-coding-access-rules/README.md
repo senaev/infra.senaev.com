@@ -1,6 +1,6 @@
 # 2026-11-12 — Shared coding container access rules
 
-Apply one reusable network and Kubernetes API access baseline without changing coding workflows.
+- [x] Apply one reusable network and Kubernetes API access baseline without changing coding workflows.
 
 ## Goal
 

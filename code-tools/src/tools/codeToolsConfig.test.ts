@@ -5,7 +5,7 @@ import {
 import { createCommandEnv } from './codeToolsConfig';
 
 describe('createCommandEnv', () => {
-    it('removes the variables that make git use another repository, and the internal token', () => {
+    it('removes the variables that make git use another repository', () => {
         const env = createCommandEnv({
             PATH: '/usr/bin',
             GIT_DIR: '/real/repo/.git/worktrees/x',
@@ -13,7 +13,6 @@ describe('createCommandEnv', () => {
             GIT_INDEX_FILE: '/real/repo/.git/index',
             GIT_COMMON_DIR: '/real/repo/.git',
             GIT_AUTHOR_NAME: 'Test',
-            INTERNAL_TOKEN_BETWEEN_CLUSTER_HELPER_AND_CODE_TOOLS: 'secret',
         });
 
         expect(env).toEqual({

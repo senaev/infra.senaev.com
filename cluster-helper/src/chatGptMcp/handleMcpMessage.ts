@@ -24,6 +24,8 @@ const JSON_RPC_METHOD_NOT_FOUND = -32601;
 const JSON_RPC_INVALID_PARAMS = -32602;
 
 export type McpServerOptions = {
+    /** `serverInfo.name` in the `initialize` result: each endpoint is its own server. */
+    serverName?: string;
     signal?: AbortSignal;
     /** Per-tool auth policy that ChatGPT reads to show its account linking UI. */
     securitySchemes?: readonly Record<string, unknown>[];
@@ -145,7 +147,9 @@ export function describeMcpExchange(message: unknown, response: JsonRpcResponse 
 export async function handleMcpMessage(
     message: unknown,
     families: readonly ToolFamily[],
-    { securitySchemes, signal }: McpServerOptions = {}
+    {
+        serverName = 'senaev', securitySchemes, signal,
+    }: McpServerOptions = {}
 ): Promise<JsonRpcResponse | null> {
     if (!isObject(message) || message.jsonrpc !== '2.0' || typeof message.method !== 'string') {
         return failure(null, JSON_RPC_INVALID_REQUEST, 'Invalid JSON-RPC message');
@@ -177,7 +181,7 @@ export async function handleMcpMessage(
                 ...families.some((family) => family.readResource !== undefined) && { resources: {} },
             },
             serverInfo: {
-                name: 'senaev-diary',
+                name: serverName,
                 version: '1.0.0',
             },
         });

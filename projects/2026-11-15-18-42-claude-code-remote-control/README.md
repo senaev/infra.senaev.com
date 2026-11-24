@@ -1,6 +1,6 @@
 # 2026-11-15 — Claude Code server for the mobile app
 
-Run Claude Code (Pro subscription) in a container of the `senaev` LLM workspace, work on the same `/code` folder as the other containers, and drive it from the Claude mobile app.
+- [x] Run Claude Code (Pro subscription) in a container of the `senaev` LLM workspace, work on the same `/code` folder as the other containers, and drive it from the Claude mobile app.
 
 ## Goal
 
@@ -57,6 +57,14 @@ Run Claude Code (Pro subscription) in a container of the `senaev` LLM workspace,
    - `/auth` starts `claude auth login`, sends the link, takes the code from the next message, deletes that message, and says until when the login is valid.
    - Every 10 minutes it checks `claude auth status`. Not logged in: it says so once, with no link, until the login is back and lost again. From 5 days before `loginExpiresAt`: a warning once a day. Both messages tell the user to send `/auth`.
    - The bot token is only in this container, not in the container where Claude Code runs without approvals. A renewal writes the login file in the shared `HOME`; if the running server does not take it, the server is expected to stop at the expiry, and the container restarts and reads it. This exit is not tested yet (see Open points).
+7. ✅ MCP servers with OAuth, logged in from Telegram. PRs [#211](https://github.com/senaev/infra.senaev.com/pull/211), [#213](https://github.com/senaev/infra.senaev.com/pull/213), [#214](https://github.com/senaev/infra.senaev.com/pull/214) and the follow-up PR with these notes.
+   - The list is the shared `agent.mcp` of the workspace: Datadog (EU, `toolsets=core,software-delivery`) and Grafana (`https://mcp.senaev.com/grafana`). Claude Code takes only the `url` of each. The Obsidian/code endpoint (`/chat-gpt`) is not connected, by the user's decision.
+   - `start.sh` writes the list from `WORKSPACE_MCP_SERVERS` as the user scope `mcpServers` in `~/.claude.json` on each start.
+   - The CLI login (`claude mcp login --no-browser <name>`) needs a terminal, so the helper runs it under `script`. It always redirects to `http://localhost:<port>/callback` (2.1.325 has no setting for another redirect URI), so there is no public callback: the user sends back the address of the localhost page that does not load.
+   - Claude Code identifies itself with the CIMD client id `https://claude.ai/oauth/claude-code-client-metadata` (loopback `/callback` only). cluster-helper allows it. Datadog registers a client by DCR.
+   - Telegram: `/mcp` posts the panel (a title and one button for each server: `✅ <name>: log out` when connected, `🔑 <name>: log in` or `❌ <name>: log in` otherwise), built like the torrent search dialog with the editable message helpers of `senaev-utils`. A button press is answered with a short notice and rewrites the panel in place; a login reports in its own reply. Every 10 minutes the bot posts the panel once when a server needs a login; the servers it told about are in `~/.claude/telegram-login/mcp-notices.json`.
+   - The tokens are in `~/.claude/.credentials.json` in `HOME`, readable by the sessions. Isolating them is a separate project: [`2026-11-16-20-55-isolate-mcp-credentials`](../2026-11-16-20-55-isolate-mcp-credentials/README.md).
+   - OpenCode reads the same list. With its configured public `redirect_uri` it does not use its CIMD client id but DCR, which cluster-helper does not offer; so the Grafana entry has the static `oauth.client_id: opencode.senaev.com`, allowed only with `https://opencode.senaev.com/auth/mcp/callback`.
 
 ## Open points
 
@@ -65,6 +73,8 @@ Run Claude Code (Pro subscription) in a container of the `senaev` LLM workspace,
 - ❓ Does a background refresh move `loginExpiresAt`? Check `claude auth status` after a few days. If not, the login needs a renewal every month. The login of 2026-11-15 was valid until 2026-12-12, which is 27 days, not 30.
 - ❓ Does the running server use a login that the Telegram flow renewed, with no restart? The first real renewal was made while the server ran. Check that the sessions stay connected, and whether the main container restarted.
 - ❓ Yolo mode plus the git credentials in the pod: a prompt injection could push to GitHub. Use a fine-grained token for this pod.
+- ❓ OMP reads the same `agent.mcp` and now gets `oauth.client_id: opencode.senaev.com` for Grafana. Whether OMP can log in to OAuth MCP servers at all is not checked.
+- ❓ A server name of 54 characters or more gets no buttons in the MCP panel (Telegram allows 64 bytes of callback data). The names are short today.
 - ❓ The server logs its status line again on each change, and Datadog keeps every redraw as a log line (360 lines in the busiest minute of the first test). Watch the volume; add an exclusion filter if it stays high.
 
 ## Verification

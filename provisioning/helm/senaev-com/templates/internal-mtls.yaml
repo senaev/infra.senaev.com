@@ -1,0 +1,56 @@
+# Leaf certificates for the mTLS between our Node.js services, issued by the private CA of the
+# pki namespace (provisioning/helm/pki). The DNS name is the identity: a server allows only the
+# names in its callers.ts, and a client checks the server name against the host of its URL. The
+# names are labels and need not exist in DNS. The cluster-helper certificate has both usages: it
+# is the client of obsidian-sync, code-tools and media-server-helper, and it is the certificate of
+# the mTLS port of cluster-helper itself. The code-tools certificate is in the llm-workspace
+# template, because its name follows the workspace; the vpn-subscription client certificate is in
+# the vpn release, because a Secret is namespaced.
+{{- if .Values.obsidianSync.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: obsidian-sync-tls
+  namespace: {{ .Release.Namespace }}
+spec:
+  secretName: obsidian-sync-tls
+  dnsNames:
+    - obsidian-sync.{{ .Release.Namespace }}.svc.cluster.local
+  usages:
+    - digital signature
+    - server auth
+  {{- toYaml .Values.global.internalMtlsCertificate | nindent 2 }}
+---
+{{- end }}
+{{- if .Values.mediaServerHelper.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: media-server-helper-tls
+  namespace: {{ .Release.Namespace }}
+spec:
+  secretName: media-server-helper-tls
+  dnsNames:
+    - media-server-helper.{{ .Release.Namespace }}.svc.cluster.local
+  usages:
+    - digital signature
+    - server auth
+  {{- toYaml .Values.global.internalMtlsCertificate | nindent 2 }}
+---
+{{- end }}
+{{- if .Values.clusterHelper.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cluster-helper-tls
+  namespace: {{ .Release.Namespace }}
+spec:
+  secretName: cluster-helper-tls
+  dnsNames:
+    - cluster-helper.{{ .Release.Namespace }}.svc.cluster.local
+  usages:
+    - digital signature
+    - client auth
+    - server auth
+  {{- toYaml .Values.global.internalMtlsCertificate | nindent 2 }}
+{{- end }}

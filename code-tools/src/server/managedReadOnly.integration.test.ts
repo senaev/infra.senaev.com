@@ -5,7 +5,6 @@ import { join } from 'node:path';
 
 import { createCommandExecution, type CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { withCommandExecution } from 'senaev-utils/src/commands/testing/withCommandExecution';
-import { createBearerAuthorizationHeader } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
 import {
     afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
@@ -16,7 +15,7 @@ import { listTool } from '../tools/listTool';
 import { searchTool } from '../tools/searchTool';
 import { parseRipgrepJson } from '../tools/searchCommand';
 
-import { createCodeToolsServer, type CodeToolsServer } from './createCodeToolsServer';
+import { createTestCodeToolsServer, type TestCodeToolsServer } from './createTestCodeToolsServer';
 
 const metadata = vi.hoisted(() => {
     return { beforeStat: (_path: unknown) => undefined as void };
@@ -35,8 +34,6 @@ vi.mock('node:fs/promises', async (importOriginal) => {
     };
 });
 
-const HEADERS = { authorization: createBearerAuthorizationHeader('read-only-test') };
-
 type Reply = {
     status: string; code?: string; files?: unknown[]; entries?: unknown[];
     operation: { id: string; state: string; startedAt: number | null; timeoutSeconds: number };
@@ -46,7 +43,7 @@ type Reply = {
 
 describe('managed search and list', () => {
     let repos: TestRepositories;
-    let server: CodeToolsServer;
+    let server: TestCodeToolsServer;
 
     beforeEach(async () => {
         repos = await createTestRepositories({
@@ -55,7 +52,7 @@ describe('managed search and list', () => {
                 'src/a.ts': 'needle\n',
             },
         });
-        server = createCodeToolsServer('read-only-test', repos.config);
+        server = createTestCodeToolsServer(repos.config);
     });
     afterEach(async () => {
         await server.close();
@@ -68,7 +65,6 @@ describe('managed search and list', () => {
         return server.inject({
             method: 'POST',
             url: `/code/${tool}`,
-            headers: HEADERS,
             payload,
         });
     }

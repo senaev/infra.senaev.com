@@ -1,7 +1,6 @@
 import { CommandError } from 'senaev-utils/src/commands/CommandError';
 import { createLineLocator } from 'senaev-utils/src/files/textEdits';
-
-import { parseMarkdown } from './parseMarkdown';
+import { parseMarkdown } from 'senaev-utils/src/obsidianMarkdown/parseMarkdown';
 
 export type Section = {
     /** Every heading from the outermost ancestor down to this one. */

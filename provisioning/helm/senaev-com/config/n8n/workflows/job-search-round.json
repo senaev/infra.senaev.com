@@ -1,0 +1,187 @@
+{
+  "id": "job-search-round",
+  "name": "Job search round: Claude Code follows LLM Job Search Playbook, cluster-helper sends the report to Telegram and Obsidian",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 4 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Monday to Friday at 04:00 UTC",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -680,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// One start time for the prompt and for the heading of the LLM Recommendations Log, so that the\n// round's records in both logs get the same date and time.\nconst iso = new Date().toISOString();\n\nreturn [{\n  json: {\n    date: iso.slice(0, 10),\n    time: iso.slice(11, 16),\n  },\n}];"
+      },
+      "id": "start-time",
+      "name": "Take the start time",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -460,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://senaev-claude-code:8080/run",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ prompt: \"Read the note \\\"LLM Job Search Playbook\\\" in the Obsidian vault with the obsidian MCP tools, and do one round exactly as it says. It is now \" + $json.date + \" \" + $json.time + \" UTC.\\n\\nAnswer only with the summary of its step 5.\" }) }}",
+        "options": {
+          "timeout": 3660000
+        }
+      },
+      "id": "run-prompt",
+      "name": "Run a job search round in Claude Code",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "onError": "continueErrorOutput",
+      "position": [
+        -240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://cluster-helper/job-search/round-report",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ date: $('Take the start time').item.json.date, time: $('Take the start time').item.json.time, text: $json.result }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "report-round",
+      "name": "Report the round to cluster-helper",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "onError": "continueErrorOutput",
+      "position": [
+        -20,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// The prompt API answers 502 with { status: 'error', message } when Claude Code fails,\n// 409 when another prompt runs, and the request fails when the pod is down.\n// cluster-helper answers 502 with { status: 'error', message } naming the target that failed\n// (Telegram, the LLM Recommendations Log or both); the other one was still delivered.\n// No retry: the message may already be in Telegram.\nconst item = $input.first().json;\nconst err = item.error ?? item;\nconst message = (err && err.message) ? err.message : JSON.stringify(err).slice(0, 300);\n\nreturn [{\n  json: {\n    text: `⚠️ Failed to run the job search round: ${message}`,\n  },\n}];"
+      },
+      "id": "format-error",
+      "name": "Format error message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TG_CLUSTER_CHAT_ID }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "telegram-notify-error",
+      "name": "Notify cluster chat",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        420,
+        200
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "senaev-com-bot",
+          "name": "senaev.com bot (provisioned)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Monday to Friday at 04:00 UTC": {
+      "main": [
+        [
+          {
+            "node": "Take the start time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run a job search round in Claude Code": {
+      "main": [
+        [
+          {
+            "node": "Report the round to cluster-helper",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format error message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format error message": {
+      "main": [
+        [
+          {
+            "node": "Notify cluster chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Take the start time": {
+      "main": [
+        [
+          {
+            "node": "Run a job search round in Claude Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Report the round to cluster-helper": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Format error message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "UTC"
+  },
+  "active": true
+}

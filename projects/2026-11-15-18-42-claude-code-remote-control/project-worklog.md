@@ -1,12 +1,18 @@
 # Worklog
 
-## 2026-11-15 21:16 UTC — Telegram login is deployed and works
+## 2026-11-16 20:55 UTC — MCP servers with a Telegram login, Grafana for OpenCode
 
-PR #207 (squash `873545df`) is merged, and the deploy passed; the smoke test passes and the logs of the pod have no errors. The user sent `/auth` to the bot while the old login was still active, took the link, logged in, and sent the code from the page. The helper logs show `/auth` handled, the text taken as a login code, and the message with the code deleted. The bot answered "Logged in. The login is valid until 2026-12-12" (27 days). A login that is still active does not need a logout first: `/auth` starts a new login next to it.
+Done and deployed: PR #211 (MCP list for Claude Code, `/mcp` login through `script`, cluster-helper allows the Claude Code CIMD client), #213 (MCP panel with login and logout buttons, edited in place like the torrent search; notice state in a file; the assistant split into `claudeLogin`, `mcpDialog`, `mcpPanel` and `pendingLogin`), #214 (Grafana in `agent.mcp`). The user logged in to Datadog and Grafana from the panel; in a new session `claude mcp list` shows both `✔ Connected`, the Grafana tools list the dashboards, and `count(up == 1) / count(up)` is `1`.
 
-Two things to remember. The deploy restarts the pod twice (Helm, then the step that refreshes rebuilt images), and the helper skips messages that came before its last start, so a message sent in the first minutes after a deploy is lost: send `/auth` again. Datadog files the helper logs under `service:claude-code`, the same as the main container; use `container_name:telegram-login` to read only them.
+Decisions: no public callback, because Claude Code 2.1.325 always redirects to localhost and has no setting for it; the user pastes the redirect URL. The Obsidian/code endpoint stays out of the list (user decision). MCP tokens in `HOME` are readable by the sessions: a new project, `2026-11-16-20-55-isolate-mcp-credentials`.
 
-Open: whether the running server uses the renewed login without a restart, and what happens at the expiry (see the README).
+OpenCode fix: OpenCode v2.2.3 chooses its MCP client as `static` when `oauth.client_id` is set, else `cimd` only when no `redirect_uri` is set, else `dcr`. Our OpenCode always has the public `redirect_uri`, so it tried DCR, which cluster-helper does not offer. The Grafana entry now has `oauth.client_id: opencode.senaev.com`, and cluster-helper allows that id only with `https://opencode.senaev.com/auth/mcp/callback`. Checked with the pinned v2.2.3 binary and the rendered config: `opencode mcp auth grafana` builds
+
+```
+https://auth.senaev.com/authorize?response_type=code&client_id=opencode.senaev.com&...&redirect_uri=https%3A%2F%2Fopencode.senaev.com%2Fauth%2Fmcp%2Fcallback&...&scope=mcp&resource=https%3A%2F%2Fmcp.senaev.com%2Fgrafana
+```
+
+which the deployed cluster-helper answers with `400` before this change.
 
 ## 2026-11-15 21:45 UTC — Polling loop moved to senaev-utils
 
@@ -21,6 +27,14 @@ The user asked for the shorter name. Only the new `claudeCode.telegram` block ch
 The user asked to reuse code that other containers already have. The first version had its own Telegram client, `requireEnv`, logger and shutdown. `claude-code` is now a service like `vpn-subscription` and `code-tools`: `senaev-utils` as a `file:` dependency, `tsx`, a lockfile, and the Dockerfile pattern with the repository root as context. Reused: `callTelegramApi` (`getUpdates`, `deleteMessage`), `sendTelegramMessage` (the Rich Markdown entry point of the repo, with `escapeTelegramMarkdown` and `telegramLink`), `getTelegramCommandFromMessage`, the Telegram types, `requireEnv`, `createLogger` (pino), `installGracefulShutdown`, `promiseTimeout`, `stringifyUnknownError`. Not reused, because nothing fits: the `getUpdates` polling loop (the other bots use a webhook), the runner of `claude auth login` (it needs stdin and the output as it comes; `runProcess` is private to `code-tools`) and the expiry logic. This removed about 100 lines. The messages are now Rich Markdown, and the login link is a clickable link.
 
 Checked: 36 tests, eslint and `tsc` pass; the image builds with the new layout, `tsx` starts the helper, and with a fake token the error is `HTTP 401` and has no token in it.
+
+## 2026-11-15 21:16 UTC — Telegram login is deployed and works
+
+PR #207 (squash `873545df`) is merged, and the deploy passed; the smoke test passes and the logs of the pod have no errors. The user sent `/auth` to the bot while the old login was still active, took the link, logged in, and sent the code from the page. The helper logs show `/auth` handled, the text taken as a login code, and the message with the code deleted. The bot answered "Logged in. The login is valid until 2026-12-12" (27 days). A login that is still active does not need a logout first: `/auth` starts a new login next to it.
+
+Two things to remember. The deploy restarts the pod twice (Helm, then the step that refreshes rebuilt images), and the helper skips messages that came before its last start, so a message sent in the first minutes after a deploy is lost: send `/auth` again. Datadog files the helper logs under `service:claude-code`, the same as the main container; use `container_name:telegram-login` to read only them.
+
+Open: whether the running server uses the renewed login without a restart, and what happens at the expiry (see the README).
 
 ## 2026-11-15 21:00 UTC — Logged-out notice without a link
 

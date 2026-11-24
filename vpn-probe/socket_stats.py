@@ -6,7 +6,8 @@ import time
 
 
 FIELDS = ("mss", "rcvmss", "advmss", "pmtu", "unacked", "lost",
-          "retrans", "bytes_acked", "bytes_received", "segs_out", "segs_in")
+          "retrans", "bytes_acked", "bytes_received", "segs_out", "segs_in",
+          "bytes_sent", "bytes_retrans", "notsent", "rcv_space", "snd_wnd")
 
 
 def parse_stats(output, pid, identities=None):
@@ -15,12 +16,18 @@ def parse_stats(output, pid, identities=None):
     owned = False
     identity = None
     state = None
+    queues = {}
     for line in output.splitlines():
         if line and not line[0].isspace():
             owned = f"pid={pid}," in line
             inode = re.search(r"\bino:(\d+)", line)
             identity = None
-            state = line.split()[0] if line.split() else None
+            columns = line.split()
+            state = columns[0] if columns else None
+            queues = {}
+            # ss TCP header: State Recv-Q Send-Q Local Peer; never retain addresses.
+            if len(columns) >= 3 and columns[1].isdigit() and columns[2].isdigit():
+                queues = {"recv_q": int(columns[1]), "send_q": int(columns[2])}
             if owned and identities is not None and inode:
                 identity = identities.setdefault(inode[1], len(identities) + 1)
         elif owned:
@@ -33,6 +40,7 @@ def parse_stats(output, pid, identities=None):
                         row["total_retrans"] = int(match[2])
             if row:
                 if identities is not None:
+                    row.update(queues)
                     row["socket_id"] = identity
                     row["state"] = state
                 rows.append(row)

@@ -4,15 +4,16 @@ import { completeOperation, awaitOperation } from 'senaev-utils/src/operations/t
 import {
     afterEach, describe, expect, it, vi,
 } from 'vitest';
+import Fastify, { type FastifyInstance } from 'fastify';
 
 import { createTestVault, type TestVault } from '../vault-tools/createTestVault';
 import { VAULT_TOOLS } from '../vault-tools/vaultTools';
+import { logger } from '../logger';
 
-import { createVaultServer, type VaultServer } from './createVaultServer';
 import { registerVaultToolRoutes } from './registerVaultToolRoutes';
 
 let vault: TestVault;
-let server: VaultServer;
+let server: FastifyInstance;
 
 afterEach(async () => {
     await server?.close();
@@ -21,9 +22,13 @@ afterEach(async () => {
     await vault?.remove();
 });
 
+const DAILY_NOTE = 'periodic/day/2026-11-18.md';
+
 async function setup() {
     vault = await createTestVault({ 'Note.md': '# Note\n' });
-    server = createVaultServer();
+    server = Fastify({
+        loggerInstance: logger,
+    });
     registerVaultToolRoutes(server, vault.config);
     await server.ready();
 }
@@ -109,7 +114,14 @@ describe('managed vault routes', { timeout: 60000 }, () => {
             ],
             [
                 'diary_append',
-                { text: 'record' },
+                {
+                    records: [
+                        {
+                            date: '2026-11-18',
+                            text: 'record',
+                        },
+                    ],
+                },
             ],
         ];
         const original = await completed('read', { paths: ['Note.md'] });
@@ -168,7 +180,12 @@ describe('managed vault routes', { timeout: 60000 }, () => {
     it('retains real mutations, retries diary append once, and detects policy conflicts', async () => {
         await setup();
         const args = {
-            text: 'One record.',
+            records: [
+                {
+                    date: '2026-11-18',
+                    text: 'One record.',
+                },
+            ],
             requestId: 'diary-retry',
             executionPolicy: 'parallel',
         };
@@ -179,20 +196,26 @@ describe('managed vault routes', { timeout: 60000 }, () => {
             backend: 'obsidian',
             state: 'completed',
             changedPaths: [
-                '@senaev',
-                vault.config.diaryDraftPath,
+                'periodic',
+                DAILY_NOTE,
             ],
         });
         expect(again).toEqual(first);
-        expect((await readFile(vault.path(vault.config.diaryDraftPath), 'utf8')).match(/One record\./g)).toHaveLength(1);
+        expect((await readFile(vault.path(DAILY_NOTE), 'utf8')).match(/One record\./g)).toHaveLength(1);
         expect(await call('diary_append', {
             ...args,
             executionPolicy: 'queued',
         })).toMatchObject({ code: 'conflict' });
         expect(await call('operation_result', { id: first.operation.id })).toMatchObject({
             result: {
-                path: vault.config.diaryDraftPath,
-                diff: first.diff,
+                notes: [
+                    {
+                        path: DAILY_NOTE,
+                        created: true,
+                        records: 1,
+                        diff: first.notes[0].diff,
+                    },
+                ],
             },
         });
         const created = await completed('create', {

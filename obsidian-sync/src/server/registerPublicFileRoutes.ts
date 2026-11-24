@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { basename, extname } from 'node:path';
 
-import type { FastifyReply } from 'fastify';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 
 import { findFileRecursively } from '../public-files/findFileRecursively';
 import {
@@ -10,8 +10,6 @@ import {
 } from '../public-files/getMimeTypeByExtension';
 import { logger } from '../logger';
 import { PUBLIC_DIR } from '../vaultPaths';
-
-import type { VaultServer } from './createVaultServer';
 
 type PublicFileQuery = {
     note?: unknown;
@@ -95,7 +93,7 @@ async function servePublicFile(
     return badRequest(reply, 'Missing required query parameter: "note" or "file"');
 }
 
-export function registerPublicFileRoutes(server: VaultServer): void {
+export function registerPublicFileRoutes(server: Pick<FastifyInstance, 'get'>): void {
     // Registered on both the root and a catch-all so any GET path with a
     // `note`/`file` query serves the vault file, matching the behaviour clients
     // (notably the senaev.com Next.js app) already rely on. The more specific
@@ -105,8 +103,6 @@ export function registerPublicFileRoutes(server: VaultServer): void {
         reply: FastifyReply
     ): Promise<FastifyReply> => servePublicFile(request.query, reply);
 
-    const options = { config: { isPublicWithoutInternalToken: true } };
-
-    server.get<{ Querystring: PublicFileQuery }>('/', options, handler);
-    server.get<{ Querystring: PublicFileQuery }>('/*', options, handler);
+    server.get<{ Querystring: PublicFileQuery }>('/', handler);
+    server.get<{ Querystring: PublicFileQuery }>('/*', handler);
 }

@@ -112,17 +112,9 @@ async function startTelegramPostSync(options: {
 }
 
 /** Fire-and-forget wrapper so a sync failure can never prevent the container starting. */
-export function startTelegramPostSyncInBackground(parentSignal: AbortSignal): { close: () => Promise<void> } {
+export function startTelegramPostSyncInBackground(): { close: () => Promise<void> } {
     const controller = new AbortController();
     const { signal } = controller;
-    const abort = () => controller.abort(parentSignal.reason);
-
-    if (parentSignal.aborted) {
-        abort();
-    } else {
-        parentSignal.addEventListener('abort', abort, { once: true });
-    }
-
     const pending = new Set<Promise<void>>();
     const resources = new Set<() => void>();
     const stopScheduling = () => {
@@ -158,7 +150,6 @@ export function startTelegramPostSyncInBackground(parentSignal: AbortSignal): { 
     return {
         close: async () => {
             controller.abort(new Error('Background sync stopping'));
-            parentSignal.removeEventListener('abort', abort);
             stopScheduling();
             signal.removeEventListener('abort', stopScheduling);
             await Promise.allSettled(pending);

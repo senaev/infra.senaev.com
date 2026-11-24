@@ -1,3 +1,223 @@
+## 2026-11-22 — Profile 6 "failures" were our NetworkPolicy, not the ISP
+
+After #261 (UDP 47443, salamander) the probe's Xray client logged for every attempt
+`proxy/hysteria: failed to find an available destination > timeout: no recent network
+activity`, and `xray-hysteria` logged no incoming attempt. On hetzner (user ran it):
+`iptables -t nat -S | grep 47443` shows the CNI hostPort DNAT to the pod
+(`-p udp --dport 47443 -j DNAT --to-destination 10.42.0.223:47443`); the Hetzner Cloud console
+has 0 firewalls. Cause: the `vpn-probe` NetworkPolicy allowed public egress only on TCP 443,
+so the probe's UDP packets were dropped inside the cluster on senaev-media. Both #260 and
+#261 results for profile 6 are therefore invalid; the ISP was never tested. Happ is not
+affected by this policy.
+
+Fix: egress UDP `xrayHysteria.port` for the probe pods. Also the CodeRabbit note on #261:
+`--invalid` replaces only the first credential macro, even when the obfs password uses the
+same seed.
+
+## 2026-11-20 22:50 UTC — Profile 6 fails on UDP 443; add salamander and a high port
+
+#260 deployed 22:21 UTC (deploy run 44827767189 succeeded). `xray-hysteria` started cleanly
+(Datadog `kube_deployment:xray-hysteria`):
+
+```
+22:21:23 certificate-init  Updated tls.crt for senaev.com
+22:21:23 certificate-init  Updated tls.key for senaev.com
+22:21:24 xray              [Warning] core: Xray 26.9.30 started
+```
+
+`vpn-probe-6`, every VPN check failed at once while direct passed:
+
+```
+22:21:50 parity_httpbingo_16384 vpn    ok=false curl_exit=35 bytes=0 tls_ms=0 stage=setup
+22:22:20 parity_httpbingo_16384 vpn    ok=false curl_exit=35 bytes=0 tls_ms=0 stage=setup
+22:22:41 parity_httpbingo_65536 vpn    ok=false curl_exit=35 bytes=0 tls_ms=0 stage=setup
+22:22:30 parity_httpbingo_16384 direct ok=true  bytes=16384
+```
+
+The client logged nothing at `warning`: in Xray 26.9.30 Hysteria errors are logged at `info`
+(`proxy/hysteria/client.go`). The three xray-vpn pods kept their names (not restarted).
+
+Decision (user approved "prepare fix"): salamander obfuscation (Xray `finalmask.udp`
+`salamander`, checked in the source at tag v26.9.30) with the password derived from seed
+`6-obfs`, port UDP 47443 instead of 443, `info` logs on the server and the probe client. The
+probe now derives every `{XRAY_USER_UUID:<seed>}` macro in a link; `--invalid` still changes
+only the first (the user credential).
+
+Prediction: profile 6 passes parity; if not, the `info` logs show whether the QUIC handshake
+times out (packets dropped) or is rejected.
+
+## 2026-11-20 20:45 UTC — Round 4: freeze is not daily; add a Hysteria2 (UDP) profile
+
+24 h after #240 (deployed 2026-11-19 22:25 UTC). Hourly VPN failure of httpbingo parity:
+profiles 3/4 94–100 % until 08:00, 33–50 % in 08:00–09:00, 0 % from 09:00 to
+20:30 UTC (profile 4: 11 % in two hours). Profile 1: 0 % every hour. Failure stages today
+(Datadog `@check:parity_* @route:vpn @ok:false`):
+
+```
+profile 3: transfer 169 (avg 22365 bytes), setup 7, response 1
+profile 4: transfer 170 (avg 19920 bytes), setup 6, response 4
+profile 1: setup 1
+```
+
+Cloudflare 4 MiB median ms, night 23:00–14:00 / evening 15:00–20:30: direct 925–983 /
+1176–1200; profile 1 VPN 1408 / 1686; profile 3 5066 / 4771; profile 4 1466 / 1526.
+Leg checks (VictoriaMetrics mean success duration, 3 h windows): FirstVDS Cloudflare 4 MiB
+0.64–0.71 s at night, 0.86–1.13 s 14:00–20:00; FirstVDS senaev.com 512 KiB 0.33–0.52 s;
+Hetzner 0.26–0.33 s and 0.16–0.25 s. FirstVDS pod logs are not in Datadog (no agent on that
+node); its leg results are only in VictoriaMetrics.
+
+iperf3 (2 h means): senaev-media → hetzner 19.80–19.86 Mbit/s all day, including 00:00–08:30
+while VLESS/TCP to Hetzner froze; hetzner → firstvds 20, dips to 13.0 in the windows ending
+10:00 and 20:00; firstvds → hetzner and senaev-media → firstvds 20.
+
+Decision (user approved the UDP idea on 2026-11-19): add Hysteria2 in Xray 26.9.30 (the
+release has `proxy/hysteria` and the `hysteria` transport, version 2, inbound and outbound;
+checked in the source at tag v26.9.30). Separate Deployment `xray-hysteria` on hetzner, UDP
+443 hostPort (Traefik binds only TCP 80/443), TLS from Traefik's Let's Encrypt `acme.json`
+(copied by an init container and an hourly sidecar; Xray reloads files hourly), auth = UUID
+seed 6, exit freedom. Subscription profile 6 and `vpn-probe-6` (parity, throughput, matrix).
+iperf3 pairs hetzner → senaev-media and firstvds → senaev-media added. The three xray-vpn
+Deployments render byte-identical to main (helm template diff), so the Reality profiles do
+not restart.
+
+Prediction: profile 6 passes parity during the next TCP freeze of profiles 3/4, and its 4 MiB
+time is within ~1.5× direct. iperf3 hetzner → senaev-media stays near 20 Mbit/s.
+
+## 2026-11-19 22:10 UTC — Round 3: evening Hetzner freeze is back; profile 1 survives
+
+24 h after #233 (deployed 2026-11-18 22:58 UTC). Parity counts 22:58–21:58 UTC (VPN
+success/total, direct always 130–131/131 or 44/44):
+
+```
+profile 1: httpbingo 16K 130/131, 64K 130/131, 256K 128/131; cloudflare 1M 44/44, 4M 43/44
+profile 3: httpbingo 16K 89/131, 64K 91/131, 256K 87/131;     cloudflare 1M 29/44, 4M 29/44
+profile 4: httpbingo 16K 90/131, 64K 89/131, 256K 89/131;     cloudflare 1M 28/44, 4M 29/44
+```
+
+Hourly VPN failure (httpbingo parity) on profiles 3/4: 0 until 14:00 UTC, 33 % in
+14:00–15:00, 94–100 % from 15:00 to now (22:00). Profile 1: 0–17 %, 3 % overall. Failure
+stages 14:00–22:00: profile 3 transfer 140, setup 12, response 2; profile 4 transfer 149,
+response 5, setup 1 (avg 3.5–6 KB received); profile 1 setup 6. Datadog
+`service:vpn-probe @check:parity_* @route:vpn @ok:false`.
+
+Uncapped Cloudflare download, median ms night (23:00–14:00) vs evening (15:00–22:00):
+direct 4 MiB ~950 vs ~1060; profile 1 VPN 4 MiB 1437 vs 5488 (p90 8187); profile 3 6065 vs
+none; profile 4 1495 vs none. Profile 1 successful parity TLS setup in the evening: mean
+1627 ms, p95 5712 ms. 7 h failure rates: `senaev.ru` HEAD from home 10.6 %, from Hetzner
+8.5 %; profile 1 `transfer_cloudflare_4096` (3 s budget) 38 %.
+
+Unrelated deploys at 21:48–21:58 UTC (#239 Codex, diary) restarted the VPN pods; all are
+Running with no restarts.
+
+Decision: profile 1 is the production route (already first in the subscription). Round 3
+measures where profile 1 loses speed in the evening: new `leg_cloudflare_4194304` and
+`leg_hetzner_524288` (uncapped, direct) on the FirstVDS and Hetzner source-control pods,
+every 30–31 min, plus a dashboard panel. The endpoint caps responses at 512 KiB.
+
+Prediction: in the evening FirstVDS downloads slow down (both targets) while Hetzner
+stays fast — FirstVDS itself is the bottleneck. If only FirstVDS → senaev.com slows, the
+middle leg is throttled.
+
+## 2026-11-18 22:30 UTC — Round 2: VPN recovered; measure speed
+
+Analysis of 2 h after #226 (deployed ~20:20 UTC) plus the day's trend (VictoriaMetrics
+`vpn_probe_checks_total`, Datadog `service:vpn-probe`).
+
+VPN-route failure rate, httpbingo and Cloudflare transfers, profiles 1/3/4, 20-minute
+windows ending at: 19:20 23 %, 19:40 17 %, 20:00 7 %, 20:20 8 %, 20:40 9 %, 21:00 0 %,
+21:20 0 %. Direct Cloudflare failure rate: ~50 % until 20:00, 6 % at 20:20, then 0 %. The
+recovery started before #226, which changed no path. Hourly VPN failure rate earlier in
+the day: 22–28 % 08:00–14:00, 7–20 % 14:00–17:00, 35–50 % 17:00–19:00.
+
+Parity since #226: 103/104 VPN vs 103/103 direct across profiles 1/3/4 and 16/64/256 KiB.
+VPN failures since 20:20: profile 1 `transfer_httpbingo_16384` and
+`transfer_cloudflare_65536` at 20:32 (curl 28, no TLS = setup stall); profile 4
+`parity_httpbingo_262144` at 21:16 (curl 28 after 61140 bytes = transfer stall). None
+after 21:17. `senaev.ru` failures fell to 0.5–1 %.
+
+Mean 256 KiB parity duration (ms): direct ~8700 on every profile (the probe's own 32 KiB/s
+cap); VPN 8850 (profile 1), 9740 (profile 3), 8900 (profile 4). Successful VPN setups take
+~1.3 s to TLS and ~1.6 s to first byte, far below the 10 s budget.
+
+Change: `request()` takes `limit_rate` (default 32768, unchanged for every existing
+check). New `parity_cloudflare_{1048576,4194304}` downloads run uncapped right after
+every third parity round in the same worker (no overlap with parity pairs), budget 10 s
+connect + size at 128 KiB/s (18 s / 42 s). New counter
+`vpn_probe_success_duration_seconds_total` gives mean successful download time; new
+dashboard panel compares it VPN vs direct. Traffic: ~30 MiB per run, ~1.4 GB/day.
+
+Prediction: uncapped downloads succeed on both routes; VPN time within ~1.5× direct on
+profiles 1 and 4 and slower on profile 3 (exit in Russia). If parity success drops again
+at a similar time in the next 24 h, the external change (likely ISP policy) is time-of-day
+dependent.
+
+## 2026-11-18 20:30 UTC — Round 1: ISP behaviour changed; measure production parity
+
+Agreed round workflow with the user (see README "Round workflow"). Retired
+`project-status.md`; its last content (stale since #165) is kept below.
+
+Analysis of the 3 days after #202 (Datadog logs, VictoriaMetrics). At ~13:30 UTC on
+2026-11-18, with no deploy, the home source changed. 15-minute timeline of direct
+`transfer_https_hetzner_65536` on vpn-probe-4:
+```
+13:15 false x3
+13:30 false x1, true x2
+13:45 true x2 ... 19:45 true x3   (one failure at 16:15)
+```
+6-hour counts before → after, home (vpn-probe-4) vs Hetzner source:
+```
+transfer_h1_fresh_endpoint_65536   home 0/34 -> 8/8      hetzner 34/34
+transfer_https_hetzner_65536       home 0/66 -> 65/66    hetzner 65/65
+transfer_cloudflare_16384 direct   home ok   -> 0/18 (curl 28, tls_ms 0)
+website_senaev_ru (all sources)    ~100% until 15:30, then 81-90% from home and hetzner
+```
+Every VPN-route failure after 14:00 on home is `curl_exit=28` with `tls_ms=0` (no
+partial transfers). Socket samples of a failed exit gate:
+```
+1.098: #1 ESTAB rx5993 tx2733/2732 rq0 sq0
+2.111: #1 ESTAB rx5993 tx2733/2732 rq0 sq0
+```
+So entry TLS completes and the inner request gets nothing back; no SYN-SENT sockets
+in any failed arm. The old ~20 KB freeze is gone; direct Cloudflare from home is now
+blocked, which invalidates every Cloudflare comparison.
+
+Decision: measure what "repaired" means directly. New `parity_loop` per production probe:
+every 600-660 s, httpbingo 16/64/256 KiB directly and through the profile, alternating
+order, 10 s setup budget, `failure_stage` (setup/response/transfer). Profile 3
+(hetzner → senaev-media) joins profiles 1 and 4; profile 5 (IPv6) stays off because home
+has no IPv6. New Grafana panel "Production parity". Planned bodies: 672 KiB per
+probe per round, ~3 probes x ~140 rounds/day ≈ 270 MiB/day. Existing diagnostics unchanged.
+126 Python tests pass; Helm renders replicas 1/3/4 = 1, 5 = 0.
+
+Previous `project-status.md`, verbatim:
+```
+- [ ] Restore reliable VPN access from the affected Russian ISPs.
+
+## Current stage
+
+#155 merged at0428b757; deployment43307488174 succeeded. All5 website smoke
+checks passed. Live Grafana has current-status/duration/age panels; fresh
+website_senaev_ru metrics show success for home and Hetzner. Logs confirm200,
+curl0, home879ms and Hetzner623ms at21:14 UTC. These are website availability
+results, not evidence that the VPN candidate is repaired.
+
+#158 fresh8KiB controls deployed. Before the availability rollout reset counters,
+home4/8KiB passed2/2 each and16KiB failed2/2; Hetzner all3 sizes passed3/3.
+Exit checks passed. Preliminary sample only; compare direct controls and more rounds.
+
+## Prepared next step
+
+PR #165 appends independent fresh12KiB after existing4/16/8KiB. Same exit,
+TLS/time/rate/byte-count and lifecycle guards; earlier failure does not suppress
+it. Adds28KiB planned response allowance per eligible cycle, not wire-byte limit.
+94 tests and local real-process integration pass; CI/review pending. Not merged
+or deployed. [Evidence and interpretation](H1-PAYLOAD-VALIDATION.md).
+
+No host networking, server/credential/privilege or production subscription changes.
+FirstVDS entry-only; Hetzner and senaev-media remain exits. Original failed
+candidate acceptance stays failed; no Happ profile promotion is justified.
+```
+
 ## 2026-11-14 19:38 UTC — Prioritized five-minute endpoint pair
 
 Prioritize the16KiB same-endpoint direct/XHTTP pair in a dedicated serial worker

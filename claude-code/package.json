@@ -1,12 +1,14 @@
 {
   "name": "claude-code",
   "version": "1.0.0",
-  "description": "Image of the claude-code pod: Claude Code Remote Control, and a Telegram helper that renews its login",
+  "description": "Image of the claude-code pod: Claude Code Remote Control, a Telegram helper that renews its login, and an HTTP API that runs prompts for n8n",
   "type": "commonjs",
   "scripts": {
-    "start:telegram-login": "tsx telegram-login/main.ts"
+    "start:telegram-login": "tsx telegram-login/main.ts",
+    "start:prompt-api": "tsx prompt-api/main.ts"
   },
   "dependencies": {
+    "fastify": "5.12.6",
     "senaev-utils": "file:../senaev-utils",
     "tsx": "4.23.15"
   }

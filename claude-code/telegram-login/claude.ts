@@ -8,6 +8,8 @@ export type AuthStatus = {
 export type CommandResult = {
     stdout: string;
     exitCode: number;
+    // Only where the caller reads it, such as the error of `codex remote-control pair`.
+    stderr?: string;
 };
 
 export type CommandRunner = (file: string, args: string[]) => Promise<CommandResult>;
@@ -15,7 +17,7 @@ export type CommandRunner = (file: string, args: string[]) => Promise<CommandRes
 const COMMAND_TIMEOUT_MS = 30_000;
 
 export const runCommand: CommandRunner = (file, args) => new Promise((resolve, reject) => {
-    execFile(file, args, { timeout: COMMAND_TIMEOUT_MS }, (error, stdout) => {
+    execFile(file, args, { timeout: COMMAND_TIMEOUT_MS }, (error, stdout, stderr) => {
         // A number is the exit code of a command that ran. Anything else, such as ENOENT or a timeout, is a failure to run it.
         if (error !== null && typeof error.code !== 'number') {
             reject(error);
@@ -25,6 +27,7 @@ export const runCommand: CommandRunner = (file, args) => new Promise((resolve, r
 
         resolve({
             stdout,
+            stderr,
             exitCode: error === null ? 0 : Number(error.code),
         });
     });
@@ -59,4 +62,16 @@ export async function getAuthStatus(run: CommandRunner): Promise<AuthStatus> {
     ]);
 
     return parseAuthStatus(stdout);
+}
+
+// Exits with 0 also when nobody was logged in, so the caller checks the status afterwards.
+export async function logoutClaude(run: CommandRunner): Promise<void> {
+    const { exitCode, stdout } = await run('claude', [
+        'auth',
+        'logout',
+    ]);
+
+    if (exitCode !== 0) {
+        throw new Error(`claude auth logout failed with exit code ${exitCode}: ${stdout.trim().slice(0, 200)}`);
+    }
 }

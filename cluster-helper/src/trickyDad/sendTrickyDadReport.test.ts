@@ -30,10 +30,6 @@ vi.mock('../logger', () => {
     };
 });
 
-vi.mock('../obsidianSyncApi', () => {
-    return { addObsidianTasks: vi.fn() };
-});
-
 vi.mock('./actions/addItemsToSupabaseGroceryList', () => {
     return { addItemsToSupabaseGroceryList: vi.fn() };
 });
@@ -49,7 +45,7 @@ function buildAction(type: string, emoji: string, reportChatId: string, entries:
 }
 
 const SHOPPING = buildAction('add_shopping_items', '🛒', 'tricky-dad-chat', ['Хлеб']);
-const TASKS = buildAction('add_tasks', '👉', 'tasks-chat', ['Позвонить в банк']);
+const REMINDERS = buildAction('add_reminders', '👉', 'tasks-chat', ['Позвонить в банк']);
 
 function buildResult(overrides: Partial<TrickyDadCommandResult> = {}): TrickyDadCommandResult {
     return {
@@ -81,11 +77,11 @@ describe('getTrickyDadReportChatIds', () => {
         expect(getTrickyDadReportChatIds(buildResult(), 'Tricky Dad Telegram chat')).toEqual(['tricky-dad-chat']);
     });
 
-    it('sends a task from the Tricky Dad chat to the tasks chat and back to the source chat', () => {
+    it('sends a reminder from the Tricky Dad chat to the tasks chat and back to the source chat', () => {
         const result = buildResult({
             actionResults: [
                 {
-                    action: TASKS,
+                    action: REMINDERS,
                     output: [],
                     durationMs: 1,
                     error: null,
@@ -193,7 +189,7 @@ describe('formatTrickyDadReport', () => {
                         error: null,
                     },
                     {
-                        action: TASKS,
+                        action: REMINDERS,
                         output: ['<found> 1'],
                         durationMs: 300,
                         error: null,
@@ -204,10 +200,10 @@ describe('formatTrickyDadReport', () => {
 
         expect(text).toContain('🛒 **Хлеб**');
         expect(text).toContain('- 👉 **Позвонить в банк**\n\n\\<found\\> 1');
-        expect(text).toContain('📍 Куда: 🛒 add\\_shopping\\_items, 👉 add\\_tasks');
+        expect(text).toContain('📍 Куда: 🛒 add\\_shopping\\_items, 👉 add\\_reminders');
         expect(text).toContain('🤖 LLM: llm\\-server 90000ms ❌ → openrouter 900ms ✅');
         expect(text).toContain('❌ llm\\-server: llm\\-server request timed out after 90000ms');
-        expect(text).toContain('🗄️ add\\_tasks: 300ms');
+        expect(text).toContain('🗄️ add\\_reminders: 300ms');
     });
 
     it('marks command fallback entries with ❌', () => {
@@ -240,7 +236,7 @@ describe('sendTrickyDadReport', () => {
         result: buildResult({
             actionResults: [
                 {
-                    action: TASKS,
+                    action: REMINDERS,
                     output: [],
                     durationMs: 2,
                     error: null,

@@ -36,5 +36,5 @@ IPv6 transport controls. TCP success alone is not VPN success.
 - Only Hetzner's IPv6 connect fails: investigate external IPv6 ingress.
 - Both IPv6 connects pass: investigate Reality/SNI next.
 
-The baseline is recorded in project-status.md and project-worklog.md.
+The baseline is recorded in project-worklog.md.
 Deployed in PR #138 (run 42537716826). The next step is the [controlled recovery experiment](RECOVERY-EXPERIMENT.md), which temporarily replaces this routine suite.

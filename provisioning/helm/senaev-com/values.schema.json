@@ -39,6 +39,13 @@
           },
           {
             "if": {
+              "required": ["codex"],
+              "properties": { "codex": { "properties": { "enabled": { "const": true } } } }
+            },
+            "then": { "required": ["git"] }
+          },
+          {
+            "if": {
               "required": ["codeTools"],
               "properties": { "codeTools": { "properties": { "enabled": { "const": true } } } }
             },
@@ -69,16 +76,11 @@
             "type": "object",
             "additionalProperties": false,
             "required": [
-              "mcp",
               "defaultModel",
               "connectors",
               "speechToText"
             ],
             "properties": {
-              "mcp": {
-                "description": "Free-form MCP server settings, passed to OpenCode and OMP",
-                "type": "object"
-              },
               "defaultModel": {
                 "type": "object",
                 "additionalProperties": false,
@@ -205,7 +207,7 @@
             "required": [
               "enabled",
               "hostname",
-              "mcpOAuth",
+              "mcp",
               "secrets"
             ],
             "properties": {
@@ -216,22 +218,15 @@
                 "type": "string",
                 "minLength": 1
               },
-              "mcpOAuth": {
+              "mcp": {
+                "description": "OpenCode remote MCP servers, by name, in the OpenCode config format. The template adds type remote and the OAuth redirect_uri and callback_port; set oauth.client_id for a server that needs a static client id",
                 "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "hostname",
-                  "callbackPort"
-                ],
-                "properties": {
-                  "hostname": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "callbackPort": {
-                    "type": "integer",
-                    "minimum": 1024,
-                    "maximum": 65535
+                "additionalProperties": {
+                  "type": "object",
+                  "required": ["url"],
+                  "properties": {
+                    "url": { "type": "string", "minLength": 1 },
+                    "oauth": { "type": "object" }
                   }
                 }
               },
@@ -292,6 +287,7 @@
             "required": [
               "enabled",
               "model",
+              "mcp",
               "telegram"
             ],
             "properties": {
@@ -302,6 +298,18 @@
                 "description": "The model of new sessions: an alias such as sonnet, or a full model name",
                 "type": "string",
                 "minLength": 1
+              },
+              "mcp": {
+                "description": "Claude Code HTTP MCP servers, by name. start.sh writes them into the user config; the telegram-login container logs in to them",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["url"],
+                  "properties": {
+                    "url": { "type": "string", "minLength": 1 }
+                  }
+                }
               },
               "telegram": {
                 "description": "The bot that sends the login link and the expiry warning, and takes the login code",
@@ -326,29 +334,29 @@
               }
             }
           },
-          "codeTools": {
+          "codex": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-              "enabled",
-              "secrets"
-            ],
+            "required": ["enabled", "remoteControl"],
             "properties": {
               "enabled": {
                 "type": "boolean"
               },
-              "secrets": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "codeToolsToken"
-                ],
-                "properties": {
-                  "codeToolsToken": {
-                    "type": "string",
-                    "minLength": 1
-                  }
-                }
+              "remoteControl": {
+                "description": "Run codex remote-control for the ChatGPT app; when false, the container only keeps the login",
+                "type": "boolean"
+              }
+            }
+          },
+          "codeTools": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "enabled"
+            ],
+            "properties": {
+              "enabled": {
+                "type": "boolean"
               }
             }
           }

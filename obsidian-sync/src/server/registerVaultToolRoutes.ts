@@ -3,16 +3,18 @@ import { createCommandExecution } from 'senaev-utils/src/commands/CommandExecuti
 import { VAULT_COMMAND_ARGUMENTS } from 'senaev-utils/src/obsidianVaultTools/vaultCommands';
 import { createManagedToolService } from 'senaev-utils/src/toolServer/createManagedToolService';
 import { runToolCall } from 'senaev-utils/src/toolServer/runToolCall';
+import type { FastifyInstance } from 'fastify';
 
 import { readVaultFileResource } from '../vault-tools/tools/downloadTool';
 import { logger } from '../logger';
 import { VAULT_TOOLS } from '../vault-tools/vaultTools';
 import type { VaultToolsConfig } from '../vault-tools/vaultToolsConfig';
 
-import type { VaultServer } from './createVaultServer';
-
-/** The vault tools behind cluster-helper's ChatGPT MCP endpoint. */
-export function registerVaultToolRoutes(server: VaultServer, config: VaultToolsConfig): void {
+/** The vault tools behind cluster-helper's Obsidian MCP endpoint (/obsidian). */
+export function registerVaultToolRoutes(
+    server: Pick<FastifyInstance, 'addHook' | 'post'>,
+    config: VaultToolsConfig
+): void {
     const service = createManagedToolService({
         backend: 'obsidian',
         logger,

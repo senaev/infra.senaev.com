@@ -53,7 +53,9 @@ spec:
           image: ghcr.io/senaev/media-server-helper:latest
           imagePullPolicy: Always
           ports:
-            - containerPort: 3000
+            # Needs a client certificate of the internal CA; only cluster-helper may call it.
+            - name: mtls
+              containerPort: 8443
           env:
             - name: PERCENT_TRIGGER_TO_REMOVE
               value: {{ .Values.mediaServerHelper.percentTriggerToRemove | quote }}
@@ -76,7 +78,15 @@ spec:
               mountPath: {{ .Values.qbittorrent.paths.completed }}
             - name: downloads-converted-for-mobile
               mountPath: /downloads/converted-for-mobile
+            # The whole directory, never subPath or env: only a directory mount follows renewals.
+            # The path is MTLS_DIRECTORY in senaev-utils, which the service reads.
+            - name: mtls
+              mountPath: /etc/mtls
+              readOnly: true
       volumes:
+        - name: mtls
+          secret:
+            secretName: media-server-helper-tls
         - name: watch-torrent-files
           hostPath:
             path: {{ .Values.global.mediaServerStoragePath }}/{{ .Values.qbittorrent.volumePath }}{{ .Values.qbittorrent.paths.watch }}
@@ -102,6 +112,29 @@ spec:
   selector:
     app: media-server-helper
   ports:
-    - port: 3000
-      targetPort: 3000
+    - name: mtls
+      port: 8443
+      targetPort: mtls
+---
+# Only cluster-helper reaches the mTLS port, and the server also allows it by the name in its
+# certificate. There is no plain HTTP port and no probe.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: media-server-helper
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: media-server-helper
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: cluster-helper
+      ports:
+        - protocol: TCP
+          port: 8443
 {{- end }}

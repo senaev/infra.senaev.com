@@ -4,7 +4,7 @@ import {
 
 import { describeMcpExchange, handleMcpMessage } from './handleMcpMessage';
 import {
-    type CallTool, createToolFamilies, listMcpTools, type ToolFamily,
+    type CallTool, createCodeToolFamily, createObsidianToolFamily, listMcpTools, type ToolFamily,
 } from './toolFamilies';
 
 function request(method: string, params?: unknown) {
@@ -17,11 +17,10 @@ function request(method: string, params?: unknown) {
 }
 
 function handlers(overrides: { callVaultTool?: CallTool; callCodeTool?: CallTool } = {}): ToolFamily[] {
-    return createToolFamilies({
-        callVaultTool: vi.fn(),
-        callCodeTool: vi.fn(),
-        ...overrides,
-    });
+    return [
+        createObsidianToolFamily({ callVaultTool: overrides.callVaultTool ?? vi.fn() }),
+        createCodeToolFamily({ callCodeTool: overrides.callCodeTool ?? vi.fn() }),
+    ];
 }
 
 const ALL_TOOLS = listMcpTools(handlers());
@@ -39,6 +38,12 @@ describe('handleMcpMessage', () => {
                 capabilities: { tools: {} },
             },
         });
+    });
+
+    it('names the server in serverInfo', async () => {
+        const response = await handleMcpMessage(request('initialize'), handlers(), { serverName: 'senaev-obsidian' });
+
+        expect(response).toMatchObject({ result: { serverInfo: { name: 'senaev-obsidian' } } });
     });
 
     it('initializes without calling obsidian-sync', async () => {
@@ -77,9 +82,9 @@ describe('handleMcpMessage', () => {
             'obsidian-patch',
             'obsidian-move',
             'obsidian-diary_append',
-            'obsidian-tasks_list',
-            'obsidian-tasks_create',
-            'obsidian-tasks_update',
+            'obsidian-reminders_list',
+            'obsidian-reminders_create',
+            'obsidian-reminders_update',
             'obsidian-operations',
             'obsidian-operation_status',
             'obsidian-operation_result',

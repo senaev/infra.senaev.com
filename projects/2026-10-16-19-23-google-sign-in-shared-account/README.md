@@ -275,6 +275,22 @@ Checked by the owner in production through ChatGPT: password login, Google login
 allowed account, and a denied Google account ("This Google account is not allowed.") all
 work.
 
+### 2026-11-17 — Password login removed
+
+The owner asked to remove the username and password login. Google is the only login method:
+`POST /authorize`, the password form, `AUTH_MY_USERNAME` and `AUTH_MY_PASSWORD` are gone. The
+signing key was `HMAC-SHA256(AUTH_TOKEN_SIGNING_SECRET, AUTH_MY_PASSWORD)`; it is now derived from
+`AUTH_TOKEN_SIGNING_SECRET` alone, so every token issued before, by either method, stopped working
+and every client logged in again with Google. Tokens without the Google provenance are rejected.
+The webview open point below now matters more: without the password, a login in an embedded
+webview cannot work at all.
+
+### 2026-11-18 — All clients logged in again with Google
+
+After the key change the owner logged in again with Google in every client: the ChatGPT
+connectors, Claude Code (Telegram MCP panel) and OpenCode. Google sign-in works for ChatGPT, also
+in the ChatGPT mobile app, so the webview open point is closed.
+
 ## Result
 
 Google sign-in works next to password login for the same shared account (`ceb0266`,
@@ -284,6 +300,7 @@ carry a hashed email, and refresh stops after the email is removed. Every login 
 goes to Telegram.
 
 Open points, not checked:
-- Login from the ChatGPT mobile app (Google can block OAuth in an embedded webview).
+- ~~Login from the ChatGPT mobile app (Google can block OAuth in an embedded webview).~~
+  Works, checked by the owner on 2026-11-18.
 - Two parallel logins in two tabs, and the refresh rejection after an email is removed
   (both covered by tests only).

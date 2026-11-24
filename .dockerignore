@@ -3,6 +3,11 @@
 **/node_modules
 **/npm-debug.log
 **/dist
+**/.next
+**/*.tsbuildinfo
+nextjs-app/.env
+nextjs-app/.env*.local
+nextjs-app/next-env.d.ts
 .git
 .gitignore
 .github
@@ -12,3 +17,6 @@ provisioning
 scripts
 **/Dockerfile
 .dockerignore
+
+# Next.js serves this tree verbatim, including vendored bundles under dist/.
+!nextjs-app/public/**

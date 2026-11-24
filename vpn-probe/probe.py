@@ -32,11 +32,15 @@ def client_config(link, base_uuid, public_key, port=1080, invalid=False):
     seed = re.search(r"\{XRAY_USER_UUID:([^}]+)\}", link)
     if not seed:
         raise ValueError("Missing subscription UUID macro")
-    derived = str(uuid.UUID(hashlib.sha256(
-        f"{base_uuid}:{seed[1]}".encode()).hexdigest()[:32]))
-    link = link.replace(seed[0], str(uuid.uuid4()) if invalid else derived)
+    def derive(value):
+        return str(uuid.UUID(hashlib.sha256(f"{base_uuid}:{value}".encode()).hexdigest()[:32]))
+    # The first macro is the user credential; later ones (the Hysteria2 obfs password) are not.
+    link = link.replace(seed[0], str(uuid.uuid4()) if invalid else derive(seed[1]), 1)
+    link = re.sub(r"\{XRAY_USER_UUID:([^}]+)\}", lambda match: derive(match[1]), link)
     url = urlsplit(link.replace("{XRAY_REALITY_PUBLIC_KEY}", public_key))
     params = parse_qs(url.query, keep_blank_values=True)
+    if url.scheme == "hysteria2":
+        return hysteria_client_config(url, params, port), seed[1]
     if url.scheme != "vless" or not url.hostname or not url.port:
         raise ValueError("Invalid VLESS endpoint")
     transport, security = params.get("type"), params.get("security")
@@ -69,7 +73,32 @@ def client_config(link, base_uuid, public_key, port=1080, invalid=False):
             "streamSettings": stream}]}, seed[1]
 
 
-def request(url, proxy, max_bytes, expected_status=200, expected_bytes=None, timeout=8, head=False, text_limit=4096, http1=False):
+def hysteria_client_config(url, params, port):
+    """Hysteria2 over QUIC with a verified certificate; the password is the derived UUID."""
+    if not url.hostname or not url.port or not url.username or set(params) - {"sni", "obfs", "obfs-password"} \
+            or "sni" not in params:
+        raise ValueError("Hysteria2 requires host, port, auth and sni; only salamander obfs is allowed")
+    stream = {"network": "hysteria", "hysteriaSettings": {"version": 2, "auth": url.username},
+              "security": "tls",
+              "tlsSettings": {"serverName": params["sni"][0], "alpn": ["h3"], "allowInsecure": False}}
+    if "obfs" in params or "obfs-password" in params:
+        password = params.get("obfs-password", [""])[0]
+        if params.get("obfs") != ["salamander"] or not password:
+            raise ValueError("Hysteria2 obfs must be salamander with a password")
+        stream["finalmask"] = {"udp": [{"type": "salamander", "settings": {"password": password}}]}
+    return {
+        # Info: Xray logs Hysteria connection errors only at this level.
+        "log": {"access": "none", "error": "/dev/stderr", "loglevel": "info"},
+        "inbounds": [{"listen": "127.0.0.1", "port": port, "protocol": "socks",
+                      "settings": {"auth": "noauth", "udp": False}}],
+        # Deliberately no freedom/direct fallback outbound.
+        "outbounds": [{"protocol": "hysteria", "settings": {
+            "version": 2, "address": url.hostname, "port": url.port},
+            "streamSettings": stream}]}
+
+
+def request(url, proxy, max_bytes, expected_status=200, expected_bytes=None, timeout=8, head=False, text_limit=4096, http1=False, connect_timeout=3,
+            limit_rate=32768):
     """Disable curlrc, redirects, retries and ambient proxy settings."""
     if text_limit not in (4096, 65536):
         raise ValueError("Unsupported response text limit")
@@ -77,8 +106,10 @@ def request(url, proxy, max_bytes, expected_status=200, expected_bytes=None, tim
         body = Path(folder) / "body"
         headers = Path(folder) / "headers"
         command = ["curl", "--disable", "--silent", "--show-error", "--fail",
-                   "--proto", "=https", "--ipv4", "--connect-timeout", "3", "--max-time", str(timeout),
-                   "--limit-rate", "32768"]
+                   "--proto", "=https", "--ipv4", "--connect-timeout", str(connect_timeout), "--max-time", str(timeout)]
+        # The bandwidth guard stays on unless a check measures throughput on purpose.
+        if limit_rate:
+            command += ["--limit-rate", str(limit_rate)]
         if http1:
             command += ["--http1.1"]
         # HEAD transfers no response body. Do not interpret Content-Length as
@@ -190,6 +221,135 @@ def endpoint_pair_loop(profile):
                                      endpoint=True, port=1084, tcp_max_seg=tcp_max_seg)
         mss_first = not mss_first
         if STOP.wait(max(0, started + random.uniform(300, 360) - time.monotonic())):
+            return
+
+
+PARITY_URL = "https://httpbingo.org/bytes/{}"
+PARITY_SIZES = (16384, 65536, 262144)
+PARITY_CONNECT_SECONDS = 10
+
+
+def failure_stage(result):
+    """Where a failed transfer stopped; curl reports 0 for phases it never reached."""
+    if result.get("ok"):
+        return None
+    if result.get("failure"):
+        return "probe"
+    if not result.get("tls_ms"):
+        return "setup"
+    if not result.get("bytes"):
+        return "response"
+    return "transfer"
+
+
+THROUGHPUT_URL = "https://speed.cloudflare.com/__down?bytes={}"
+THROUGHPUT_SIZES = (1048576, 4194304)
+# Slowest speed still counted as working: 128 KiB/s (1 Mbit/s).
+THROUGHPUT_FLOOR_BYTES_PER_SECOND = 131072
+THROUGHPUT_EVERY_ROUNDS = 3
+
+
+def parity_conditions():
+    """Small-object parity under the usual 32 KiB/s guard; 32 KiB/s needs 2 s per 64 KiB."""
+    return [(f"parity_httpbingo_{size}", PARITY_URL.format(size), size,
+             PARITY_CONNECT_SECONDS + max(2, -(-size // 32768) * 2), 32768)
+            for size in PARITY_SIZES]
+
+
+def throughput_conditions():
+    """Bulk download without the rate cap, so VPN and direct speed can be compared."""
+    return [(f"parity_cloudflare_{size}", THROUGHPUT_URL.format(size), size,
+             PARITY_CONNECT_SECONDS + max(5, -(-size // THROUGHPUT_FLOOR_BYTES_PER_SECOND)), None)
+            for size in THROUGHPUT_SIZES]
+
+
+def paired_round(profile, proxy, experiment_id, vpn_first, conditions):
+    """Each condition directly and through the production profile, back to back."""
+    passed = True
+    for check, url, size, timeout, limit_rate in conditions:
+        routes = [("vpn", proxy), ("direct", "")]
+        for route, address in routes if vpn_first else reversed(routes):
+            jitter = random.uniform(2, 7)
+            if STOP.wait(jitter):
+                return False
+            result, _ = request(url, address, size, expected_bytes=size, timeout=timeout,
+                                connect_timeout=PARITY_CONNECT_SECONDS, limit_rate=limit_rate)
+            stage = failure_stage(result)
+            emit(profile, check, route, {
+                **result, "experiment_id": experiment_id, "requested_bytes": size,
+                "vpn_first": vpn_first, "budget_seconds": timeout,
+                "connect_budget_seconds": PARITY_CONNECT_SECONDS,
+                "rate_limit_bytes_per_second": limit_rate or 0,
+                "request_jitter_seconds": jitter,
+                **({"failure_stage": stage} if stage else {})})
+            passed = result["ok"] and passed
+    return passed
+
+
+def parity_round(profile, proxy, experiment_id, vpn_first):
+    """Same public target and size directly and through the production profile."""
+    return paired_round(profile, proxy, experiment_id, vpn_first, parity_conditions())
+
+
+def throughput_round(profile, proxy, experiment_id, vpn_first):
+    return paired_round(profile, proxy, experiment_id, vpn_first, throughput_conditions())
+
+
+# Server-to-internet legs of the profiles, measured from the source-control nodes.
+# The endpoint caps responses at 512 KiB; Cloudflare has no practical cap.
+LEG_CONDITIONS = (
+    ("leg_cloudflare_4194304", THROUGHPUT_URL.format(4194304), 4194304, False),
+    ("leg_hetzner_524288", "https://senaev.com/api/vpn-test?bytes=524288", 524288, True),
+)
+
+
+def leg_throughput_round(profile, experiment_id):
+    """Uncapped direct downloads from a server, so each VPN leg's speed can be compared."""
+    passed = True
+    for check, url, size, http1 in LEG_CONDITIONS:
+        jitter = random.uniform(2, 7)
+        if STOP.wait(jitter):
+            return False
+        timeout = PARITY_CONNECT_SECONDS + max(5, -(-size // THROUGHPUT_FLOOR_BYTES_PER_SECOND))
+        result, _ = request(url, "", size, expected_bytes=size, timeout=timeout,
+                            connect_timeout=PARITY_CONNECT_SECONDS, limit_rate=None, http1=http1)
+        stage = failure_stage(result)
+        emit(profile, check, "direct", {
+            **result, "experiment_id": experiment_id, "requested_bytes": size,
+            "budget_seconds": timeout, "connect_budget_seconds": PARITY_CONNECT_SECONDS,
+            "rate_limit_bytes_per_second": 0, "request_jitter_seconds": jitter,
+            **({"failure_stage": stage} if stage else {})})
+        passed = result["ok"] and passed
+    return passed
+
+
+def leg_throughput_loop(profile):
+    """Thirty-minute start cadence with jitter, like the production throughput round."""
+    if STOP.wait(random.uniform(0, 300)):
+        return
+    while not STOP.is_set():
+        started = time.monotonic()
+        leg_throughput_round(profile, str(uuid.uuid4()))
+        if STOP.wait(max(0, started + random.uniform(1800, 1860) - time.monotonic())):
+            return
+
+
+def parity_loop(profile, proxy):
+    """Production-profile parity on a ten-minute start cadence; never catch up."""
+    if STOP.wait(random.uniform(0, 60)):
+        return
+    vpn_first = random.random() < 0.5
+    rounds = 0
+    while not STOP.is_set():
+        started = time.monotonic()
+        experiment_id = str(uuid.uuid4())
+        parity_round(profile, proxy, experiment_id, vpn_first)
+        # Throughput runs in the same worker, so it never overlaps a parity pair.
+        if rounds % THROUGHPUT_EVERY_ROUNDS == 0 and not STOP.is_set():
+            throughput_round(profile, proxy, experiment_id, vpn_first)
+        rounds += 1
+        vpn_first = not vpn_first
+        if STOP.wait(max(0, started + random.uniform(600, 660) - time.monotonic())):
             return
 
 
@@ -636,6 +796,15 @@ def experiment_loop(profile, proxy, once=False, child=None, xhttp_proxy=None, di
 
 
 
+def parity_guard(profile, proxy):
+    # A parity worker failure stops the pod for a normal Deployment restart.
+    try:
+        parity_loop(profile, proxy)
+    except Exception:
+        emit(profile, "parity_worker", "vpn", {"ok": False, "failure": "parity_worker_failed"})
+        STOP.set()
+
+
 def stop_client(child):
     if child.poll() is None:
         child.terminate()
@@ -740,6 +909,8 @@ def main():
     try:
         if os.environ.get("WEBSITE_CHECK") == "true":
             launch(lambda: website_loop(profile))
+        if source:
+            launch(lambda: leg_throughput_loop(profile))
         if diagnostics or source:
             launch(lambda: https_control_loop(profile))
             launch(lambda: endpoint_pair_loop(profile))
@@ -774,6 +945,10 @@ def run(args):
         proxy = f'socks5h://127.0.0.1:{config["inbounds"][0]["port"]}'
         try:
             if os.environ.get("CONTROLLED_EXPERIMENT") == "true":
+                if not args.once:
+                    parity = threading.Thread(target=parity_guard, args=(profile, proxy),
+                                              daemon=True)
+                    parity.start()
                 xhttp_proxy = None
                 if os.environ.get("XHTTP_PROFILE_LINK"):
                     try:

@@ -3,11 +3,25 @@
 global:
   clusterRootPath: /k3s-cluster
 
+  # Common cert-manager settings for the internal mTLS leaf certificates.
+  internalMtlsCertificate:
+    duration: 168h
+    renewBefore: 72h
+    privateKey:
+      algorithm: ECDSA
+      size: 256
+      rotationPolicy: Always
+    issuerRef:
+      name: internal-ca
+      kind: ClusterIssuer
+      group: cert-manager.io
+
   telegramClusterChatId: "-1003971743999"
   telegramMediaServerChatId: "-1003923897462"
   telegramVpnSubscriptionChatId: "-1003702952069"
   obsidianTasksChatId: "-5365516821"
   trickyDadChatId: "-5242876030"
+  jobSearchFrameworkChatId: "-5547996254"
   telegramSenaevComBotDirectMessageWithOwnerChatId: "184352484"
 
   # The vm-stack chart creates this Grafana admin; mcp-grafana in senaev-com logs in with it.

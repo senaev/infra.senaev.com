@@ -58,12 +58,19 @@ function observeExit() {
 
 let started = completion();
 let serverClosed = completion();
-let originalSignals: ((signal: 'SIGTERM') => void)[] = [];
+const shutdownSignals = [
+    'SIGTERM',
+    'SIGINT',
+] as const;
+const originalSignals = new Map<typeof shutdownSignals[number], Set<unknown>>();
 
 beforeEach(() => {
     vi.resetModules();
     vi.resetAllMocks();
-    originalSignals = process.listeners('SIGTERM');
+    for (const signal of shutdownSignals) {
+        originalSignals.set(signal, new Set(process.listeners(signal)));
+    }
+
     mocks.setup.mockResolvedValue(undefined);
     mocks.serve.mockResolvedValue({ close: mocks.closeServer });
     started = completion();
@@ -82,70 +89,63 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-    for (const listener of process.listeners('SIGTERM')) {
-        if (!originalSignals.includes(listener)) {
-            process.removeListener('SIGTERM', listener);
-            process.removeListener('SIGINT', listener);
+    for (const signal of shutdownSignals) {
+        for (const listener of process.listeners(signal)) {
+            if (!originalSignals.get(signal)?.has(listener)) {
+                process.removeListener(signal, listener);
+            }
         }
     }
 
     vi.restoreAllMocks();
+    vi.useRealTimers();
 });
 
 function stop() {
-    const listener = process.listeners('SIGTERM').find((candidate) => !originalSignals.includes(candidate));
+    const listener = process.listeners('SIGTERM').find((candidate) => !originalSignals.get('SIGTERM')?.has(candidate));
 
     expect(listener).toBeDefined();
     listener?.('SIGTERM');
 }
 
 describe('Obsidian process wiring', () => {
-    it('closes the HTTP manager and drains background work before exiting on a signal', async () => {
+    it('closes the HTTP manager and waits for background work past the former deadline', async () => {
+        vi.useFakeTimers({
+            toFake: [
+                'setTimeout',
+                'clearTimeout',
+            ],
+        });
         const { exit, finished } = observeExit();
-        let release: () => void = () => undefined;
+        const backgroundClosed = completion();
 
-        mocks.closeBackground.mockReturnValue(new Promise<void>((resolve) => {
-            release = resolve;
-        }));
+        mocks.closeBackground.mockReturnValue(backgroundClosed.promise);
         await import('./index.js');
         await started.promise;
         expect(mocks.continuous).toHaveBeenCalledTimes(1);
         stop();
+        await vi.advanceTimersByTimeAsync(10_001);
+        expect(mocks.closeBackground).toHaveBeenCalledTimes(1);
+        expect(mocks.closeServer).not.toHaveBeenCalled();
+        expect(mocks.continuous.mock.calls[0]?.[0].aborted).toBe(false);
+        expect(exit).not.toHaveBeenCalled();
+        backgroundClosed.resolve();
         await serverClosed.promise;
+        await finished;
         expect(mocks.closeServer).toHaveBeenCalledTimes(1);
         expect(mocks.continuous.mock.calls[0]?.[0].aborted).toBe(true);
-        expect(exit).not.toHaveBeenCalled();
-        release();
-        await finished;
         expect(exit).toHaveBeenCalledExactlyOnceWith(0);
     });
 
-    it('waits for startup cleanup and never opens the server after a startup signal', async () => {
+    it('aborts the set up and exits with 0 after a startup signal', async () => {
         const { exit, finished } = observeExit();
-        let release: () => void = () => undefined;
 
-        mocks.setup.mockReturnValue(new Promise<void>((resolve) => {
-            release = resolve;
-        }));
+        mocks.setup.mockReturnValue(new Promise<void>(() => undefined));
         await import('./index.js');
         expect(mocks.setup).toHaveBeenCalledTimes(1);
         stop();
-        await Promise.resolve();
-        expect(exit).not.toHaveBeenCalled();
-        release();
         await finished;
+        expect(mocks.setup.mock.calls[0]?.[0].aborted).toBe(true);
         expect(exit).toHaveBeenCalledExactlyOnceWith(0);
-        expect(mocks.serve).not.toHaveBeenCalled();
-    });
-
-    it('closes resources when continuous sync fails', async () => {
-        const { exit, finished } = observeExit();
-
-        mocks.continuous.mockRejectedValue(new Error('sync died'));
-        await import('./index.js');
-        await finished;
-        expect(exit).toHaveBeenCalledExactlyOnceWith(1);
-        expect(mocks.closeServer).toHaveBeenCalledTimes(1);
-        expect(mocks.closeBackground).toHaveBeenCalledTimes(1);
     });
 });

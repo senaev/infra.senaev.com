@@ -1,5 +1,6 @@
 import { stripFrontmatter } from 'senaev-utils/src/obsidianNotes/stripFrontmatter';
 import { TelegramRichMessageMedia } from 'senaev-utils/src/utils/TelegramApi/types';
+import { replaceWikiLinksWithHighlights } from 'senaev-utils/src/obsidianMarkdown/replaceWikiLinksWithHighlights';
 
 import { readFrontmatterList } from '../readFrontmatterList';
 
@@ -7,7 +8,6 @@ import { appendAliasesToTitle } from './appendAliasesToTitle';
 import { cutHistorySection } from './cutHistorySection';
 import { ensureEmptyLineAfterTables } from './ensureEmptyLineAfterTables';
 import { markTitleAsProvisioned } from './markTitleAsProvisioned';
-import { replaceWikiLinksWithHighlights } from './replaceWikiLinksWithHighlights';
 import { resolveImageEmbeds } from './resolveImageEmbeds';
 
 export type RenderedNote = {
@@ -20,7 +20,7 @@ export type RenderedNote = {
  * `InputRichMessage` expects.
  *
  * Telegram's rich markdown is GFM-compatible, so this is mostly a stripper rather than a
- * translator — headings, lists, task items, quotes, code fences and tables all pass
+ * translator — headings, lists, reminder items, quotes, code fences and tables all pass
  * through untouched.
  *
  * Step order matters in three places: embeds must be resolved before wikilinks, otherwise

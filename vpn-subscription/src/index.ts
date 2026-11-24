@@ -1,10 +1,16 @@
 import { createHash } from 'node:crypto';
 
 import Fastify, { type FastifyReply } from 'fastify';
+import { createMtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
+import { watchTlsCredentials } from 'senaev-utils/src/utils/mtls/watchTlsCredentials';
+import { createShutdownController } from 'senaev-utils/src/utils/process/createShutdownController';
 import {
     telegramBold, telegramCode, escapeTelegramMarkdown,
 } from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
 
+import {
+    CLUSTER_HELPER_URL, type ClusterHelperTelegramApi, createClusterHelperTelegramApi,
+} from './clusterHelperTelegramApi';
 import { logger } from './logger';
 import {
     PORT,
@@ -33,6 +39,9 @@ const server = Fastify({
 });
 
 server.setErrorHandler(logServerError);
+
+// Set in main() before the server listens, so a request always finds it.
+let clusterHelperTelegramApi: ClusterHelperTelegramApi | undefined;
 
 const macroValues: Record<string, string> = {
     XRAY_REALITY_PUBLIC_KEY,
@@ -231,15 +240,13 @@ server.post<{ Params: { secret: string } }>('/:secret', async (request, reply) =
         escapeTelegramMarkdown(message),
     ].join('\n');
 
-    const clusterHelperResponse = await fetch('http://cluster-helper/telegram/send-message', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            chatId: String(VPN_SUBSCRIPTION_CHAT_ID),
-            text: telegramMessage,
-        }),
+    if (!clusterHelperTelegramApi) {
+        throw new Error('The cluster-helper client is not started');
+    }
+
+    const clusterHelperResponse = await clusterHelperTelegramApi.sendMessage({
+        chatId: String(VPN_SUBSCRIPTION_CHAT_ID),
+        text: telegramMessage,
     });
 
     if (!clusterHelperResponse.ok) {
@@ -255,20 +262,30 @@ server.post<{ Params: { secret: string } }>('/:secret', async (request, reply) =
 });
 
 async function main(): Promise<void> {
+    const subscribeShutdown = createShutdownController(
+        process,
+        (error) => logger.error(error, '❌ Failed to close a part of the service')
+    );
+    const certificates = await watchTlsCredentials({ logger });
+
+    subscribeShutdown(() => certificates.stop());
+
+    const clusterHelperClient = createMtlsClient({
+        origin: CLUSTER_HELPER_URL,
+        credentials: certificates.credentials,
+    });
+
+    subscribeShutdown(() => clusterHelperClient.close());
+
+    clusterHelperTelegramApi = createClusterHelperTelegramApi(clusterHelperClient);
+    subscribeShutdown(() => server.close());
+
     await server.listen({
         port: PORT,
         host: '0.0.0.0',
     });
     logger.info(`✅ VPN subscription server listening on port=${PORT}`);
 }
-
-async function shutdown(): Promise<void> {
-    await server.close();
-    process.exit(0);
-}
-
-process.on('SIGTERM', shutdown);
-process.on('SIGINT', shutdown);
 
 main().catch((error: unknown) => {
     logger.error(error, '❌ Failed to start server');

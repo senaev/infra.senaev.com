@@ -1,8 +1,8 @@
 import { posix } from 'node:path';
 import { Readable } from 'node:stream';
 
-import { OBSIDIAN_SYNC_URL } from './env';
-import { fetchObsidianSync } from './obsidianSyncApi';
+import { OBSIDIAN_SYNC_URL } from './mtlsServiceUrls';
+import type { ObsidianSyncApi } from './obsidianSyncApi';
 
 /** Trailing slash is load-bearing: see the prefix check in buildUpstreamPath. */
 const UPSTREAM_PREFIX = '/public-static/';
@@ -37,7 +37,7 @@ export type PublicStaticResult = {
  * Builds the upstream URL and proves it stayed under the prefix, returning
  * `null` to reject the request.
  *
- * This is a security boundary, not tidying. obsidian-sync serves `POST /tasks`
+ * This is a security boundary, not tidying. obsidian-sync serves `POST /reminders`
  * and `/short_links` alongside the static files, so a `..` that survives to the
  * end would walk the request out of `/public-static/` and onto one of them.
  *
@@ -49,7 +49,7 @@ export type PublicStaticResult = {
  * - The URL parser, which `fetch` runs on whatever it is given, collapses all
  *   three.
  *
- * Checking only the first pass leaves `%252e%252e/tasks` reaching `/tasks`: one
+ * Checking only the first pass leaves `%252e%252e/reminders` reaching `/reminders`: one
  * decode turns it into `%2e%2e`, which `join` keeps and the URL parser then
  * resolves. Checking the parsed `pathname` closes that, because it inspects the
  * exact bytes that will go out.
@@ -100,9 +100,11 @@ function buildUpstreamUrl(rawPath: string): URL | null {
  * process's memory.
  */
 export async function proxyPublicStaticFile({
+    obsidianSyncApi,
     path,
     requestHeaders,
 }: {
+    obsidianSyncApi: Pick<ObsidianSyncApi, 'fetchObsidianSync'>;
     path: string;
     requestHeaders: Record<string, string | string[] | undefined>;
 }): Promise<PublicStaticResult> {
@@ -126,7 +128,7 @@ export async function proxyPublicStaticFile({
         }
     }
 
-    const response = await fetchObsidianSync(upstreamUrl, { headers });
+    const response = await obsidianSyncApi.fetchObsidianSync(upstreamUrl, { headers });
 
     if (response.status === 404) {
         return {

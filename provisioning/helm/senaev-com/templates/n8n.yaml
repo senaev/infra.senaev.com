@@ -124,9 +124,14 @@ spec:
               echo "Publishing scheduled workflows..."
               n8n publish:workflow --id=torrenteros-application-watcher || true
               n8n publish:workflow --id=daily-overview || true
+              n8n publish:workflow --id=job-search-round || true
 
               echo "Unpublishing manual-only workflows..."
               n8n unpublish:workflow --id=example-scrape-to-telegram || true
+
+              # Removed workflows stay in the db after their file is gone: keep them off.
+              echo "Unpublishing removed workflows..."
+              n8n unpublish:workflow --id=madrid-weather || true
 
               echo "Provisioning complete."
           volumeMounts:

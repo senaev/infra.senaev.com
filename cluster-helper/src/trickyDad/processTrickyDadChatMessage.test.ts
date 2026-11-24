@@ -51,6 +51,8 @@ const message = {
     },
 } as TelegramMessage;
 
+const obsidianSyncApi = { addObsidianReminders: vi.fn() };
+
 beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(parseTextOrAudioMessageFromTelegram).mockResolvedValue('Позвонить в банк');
@@ -71,9 +73,9 @@ describe('processTrickyDadChatMessage', () => {
     it('executes a command despite Telegram rejecting the acknowledgement reaction', async () => {
         vi.mocked(setTelegramMessageReaction).mockRejectedValue(new Error('reactions disabled'));
 
-        await processTrickyDadChatMessage(message, 'Tasks Telegram chat');
+        await processTrickyDadChatMessage(message, 'Tasks Telegram chat', obsidianSyncApi);
 
-        expect(runTrickyDadCommand).toHaveBeenCalledWith('Позвонить в банк', 'Tasks Telegram chat');
+        expect(runTrickyDadCommand).toHaveBeenCalledWith('Позвонить в банк', 'Tasks Telegram chat', obsidianSyncApi);
         expect(sendTrickyDadReport).toHaveBeenCalledWith(expect.objectContaining({
             command: 'Позвонить в банк',
             replyToMessageId: 42,

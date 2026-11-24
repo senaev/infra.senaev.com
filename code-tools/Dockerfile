@@ -12,6 +12,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         git openssh-client python3 \
         jq vim ripgrep fzf tree make unzip wget gh \
+    && curl -fsSL https://api.github.com/meta | jq -r '.ssh_keys[] | "github.com \(.)"' > /etc/ssh/ssh_known_hosts \
     && curl -fsSL "https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64" -o /usr/local/bin/yq \
     && chmod +x /usr/local/bin/yq \
     && curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash \
@@ -29,5 +30,5 @@ WORKDIR /app/code-tools
 RUN npm ci --omit=dev
 COPY senaev-utils/src /app/senaev-utils/src
 COPY code-tools /app/code-tools
-EXPOSE 8080
+EXPOSE 8081 8443
 CMD ["./node_modules/.bin/tsx", "src/index.ts"]

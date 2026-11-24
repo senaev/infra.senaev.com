@@ -13,34 +13,33 @@ export const PUBLIC_DIR = join(OBSIDIAN_VAULT_PATH, 'public');
 export const PUBLIC_STATIC_DIR = join(OBSIDIAN_VAULT_PATH, 'public-static');
 
 /**
- * Obsidian Tasks file that receives tasks created via `POST /tasks`. Mirrors
- * TASKS_FILE_PATH from the Obsidian plugin's (now removed) tasks-sync feature,
- * which that endpoint replaces.
+ * The note that receives reminders created via `POST /reminders`, the vault's
+ * default place for new reminders.
  */
-export const TASKS_FILE_PATH = join(OBSIDIAN_VAULT_PATH, '@senaev', 'tasks', 'tasks_stream.md');
+export const REMINDERS_FILE_PATH = join(OBSIDIAN_VAULT_PATH, '@senaev', 'reminders', 'reminders_stream.md');
+
+/**
+ * Receives each job search round's answer through `POST /job-search/recommendations`, from
+ * cluster-helper's `/job-search/round-report`, which posts the same text to Telegram: the note
+ * never depends on an LLM copying it.
+ */
+export const JOB_SEARCH_RECOMMENDATIONS_LOG_PATH = join(
+    OBSIDIAN_VAULT_PATH,
+    '@senaev',
+    'My Career',
+    'Job Search Framework',
+    'LLM Recommendations Log.md'
+);
 
 /** `id,url` table backing the short link routes; obsidian-csv_query can read and edit it. */
 export const SHORT_LINKS_FILE_PATH = join(OBSIDIAN_VAULT_PATH, 'short_links', 'short_links.csv');
-
-/**
- * Owned by the senaev-personal-tools Obsidian plugin. Its source is synced with the vault,
- * so reading the config from here keeps one source of truth for the milestone rules.
- */
-export const MILESTONES_CONFIG_FILE_PATH = join(
-    OBSIDIAN_VAULT_PATH,
-    'plugins',
-    'senaev-personal-tools',
-    'src',
-    'milestones',
-    'milestones.json'
-);
 
 /**
  * `note path -> pushed content hash` map that survives a restart, so a new pod does not
  * re-push every tracked note just to be told nothing changed.
  *
  * Deliberately not a markdown file and deliberately not next to any note: it is machine
- * state, and putting it under the personal tools folder keeps it out of search results,
+ * state, and keeping it under the vault plugins folder keeps it out of search results,
  * out of the graph, and out of the vault walk, which only looks at `.md`.
  */
 export const TELEGRAM_SYNC_HASHES_FILE_PATH = join(

@@ -1,0 +1,16 @@
+<clickhouse>
+    <logger>
+        <level>information</level>
+        <console>true</console>
+        <log remove="1"/>
+        <errorlog remove="1"/>
+    </logger>
+    <max_server_memory_usage_to_ram_ratio>0.75</max_server_memory_usage_to_ram_ratio>
+    <!-- ClickHouse's internal logs have an independent lifetime from the OTLP table. -->
+    <query_log><ttl>event_date + INTERVAL 7 DAY</ttl></query_log>
+    <part_log><ttl>event_date + INTERVAL 7 DAY</ttl></part_log>
+    <trace_log remove="1"/>
+    <text_log remove="1"/>
+    <metric_log remove="1"/>
+    <asynchronous_metric_log remove="1"/>
+</clickhouse>

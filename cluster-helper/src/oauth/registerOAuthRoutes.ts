@@ -20,7 +20,7 @@ import {
 const LOGIN_PAGE_CSP = [
     'default-src \'none\'',
     'style-src \'unsafe-inline\'',
-    'form-action \'self\' https://chatgpt.com https://accounts.google.com',
+    'form-action \'self\' https://accounts.google.com',
     'frame-ancestors \'none\'',
     'base-uri \'none\'',
 ].join('; ');
@@ -156,11 +156,6 @@ export const oauthRoutes: FastifyPluginAsync<OAuthRoutesOptions> = async (instan
 
     instance.get('/authorize', onAuthDomain, (request, reply) => sendAuthorizeOutcome(reply, authorizationServer.authorize(asParams(request.query))));
 
-    instance.post('/authorize', {
-        ...onAuthDomain,
-        ...httpRateLimit('login'),
-    }, (request, reply) => sendAuthorizeOutcome(reply, authorizationServer.login(asParams(request.body))));
-
     instance.get(GOOGLE_START_PATH, {
         ...onAuthDomain,
         ...httpRateLimit('google-start'),
@@ -197,7 +192,7 @@ export const oauthRoutes: FastifyPluginAsync<OAuthRoutesOptions> = async (instan
                 error: result.error instanceof Error ? result.error.message : 'unknown',
             }, 'Google sign-in failed');
 
-            return showLoginAgain(reply, result.request, 'Google sign-in failed. Try again, or sign in with the password.');
+            return showLoginAgain(reply, result.request, 'Google sign-in failed. Try again.');
         case 'denied':
             onLoginAttempt?.({
                 method: 'google',

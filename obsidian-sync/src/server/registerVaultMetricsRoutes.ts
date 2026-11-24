@@ -1,11 +1,11 @@
+import type { FastifyInstance } from 'fastify';
+
 import { logger } from '../logger';
 import { renderVaultMetrics, scanVaultInventory } from '../telemetry/vaultInventory';
 
-import type { VaultServer } from './createVaultServer';
-
 const METRICS_CACHE_MS = 15_000;
 
-export function registerVaultMetricsRoutes(server: VaultServer, root: string): void {
+export function registerVaultMetricsRoutes(server: Pick<FastifyInstance, 'get'>, root: string): void {
     let lastScanAt = 0;
     let lastSuccessfulScan = 0;
     let lastMetrics: string | undefined;
@@ -46,32 +46,11 @@ export function registerVaultMetricsRoutes(server: VaultServer, root: string): v
         return running;
     };
 
-    // Accessible to vmagent through Kubernetes NetworkPolicy only. Other vault
-    // routes still require the internal token; do not add a public ingress.
-    server.get('/metrics', { config: { isPublicWithoutInternalToken: true } }, (_request, reply) => {
+    // Accessible to vmagent through Kubernetes NetworkPolicy only, on the public HTTP
+    // instance: do not add a public ingress.
+    server.get('/metrics', (_request, reply) => {
         reply.type('text/plain; version=0.0.4; charset=utf-8');
 
         return metrics();
-    });
-
-    // Detailed filenames stay on the authenticated internal API (not Prometheus).
-    // ?path= is an exact-match lookup in the scanned, allowed vault file inventory.
-    server.get<{ Querystring: { path?: string } }>('/vault/file-stats', async (request, reply) => {
-        if (request.query.path === undefined) {
-            return scanVaultInventory(root);
-        }
-
-        const snapshot = await scanVaultInventory(root, true);
-        const file = snapshot.files?.find(({ path }) => path === request.query.path);
-
-        if (!file) {
-            return reply.code(404).send({
-                status: 'error',
-                code: 'not_found',
-                message: 'Vault file not found',
-            });
-        }
-
-        return file;
     });
 }

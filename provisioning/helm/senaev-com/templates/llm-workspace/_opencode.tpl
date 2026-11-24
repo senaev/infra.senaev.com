@@ -1,7 +1,6 @@
 {{- define "senaev-com.llmWorkspace.opencode" -}}
 {{- $agent := .Values.agent }}
 {{- if .Values.opencode.enabled }}
-{{- $oauth := .Values.opencode.mcpOAuth }}
 {{- $keys := list .Values.git.githubToken .Values.git.sshPrivateKey .Values.telegram.token .Values.telegram.allowedUser $agent.speechToText.secretKey }}
 {{- range $connector := $agent.connectors }}
 {{- $keys = append $keys $connector.secretKey }}
@@ -38,23 +37,9 @@ spec:
 {{ include "senaev-com.llmWorkspace.podAccess" . | indent 6 }}
       nodeSelector:
         vps: {{ .Values.vps }}
+      # The SSH key is only in the ssh-agent container: OpenCode signs through its socket.
       initContainers:
-        - name: git-init
-          securityContext:
-{{ include "senaev-com.llmWorkspace.containerAccess" . | indent 12 }}
-          image: alpine/git:latest
-          command: ["/bin/sh", "-c"]
-          args:
-            - |
-              cp /tmp/ssh/id_rsa /root/.ssh/id_rsa
-              chmod 600 /root/.ssh/id_rsa
-              ssh-keyscan github.com >> /root/.ssh/known_hosts 2>/dev/null
-          volumeMounts:
-            - name: ssh-key
-              mountPath: /tmp/ssh
-              readOnly: true
-            - name: ssh-dir
-              mountPath: /root/.ssh
+{{ include "senaev-com.llmWorkspace.sshAgent.container" . | indent 8 }}
       containers:
         # OpenCode web and API share native authentication; the bot uses localhost.
         - name: opencode-serve
@@ -104,6 +89,7 @@ spec:
                 secretKeyRef:
                   name: {{ printf "%s-opencode-env" $.Values.name }}
                   key: {{ .Values.git.githubToken }}
+{{ include "senaev-com.llmWorkspace.sshAgent.env" . | indent 12 }}
             - name: OPENCODE_WORKDIR
               value: /code
 {{- range $connector := $agent.connectors }}
@@ -115,9 +101,10 @@ spec:
 {{- end }}
             - name: OPENCODE_CONFIG_CONTENT
 {{- $servers := dict }}
-{{- range $name, $server := $agent.mcp }}
+{{- range $name, $server := .Values.opencode.mcp }}
 {{- $remote := merge (dict "type" "remote") (deepCopy $server) }}
-{{- $_ := set $remote "oauth" (merge (dict "redirect_uri" (printf "https://%s/auth/mcp/callback" $.Values.opencode.mcpOAuth.hostname) "callback_port" $.Values.opencode.mcpOAuth.callbackPort) $remote.oauth) }}
+{{- $remoteOAuth := merge (dict "redirect_uri" (printf "https://%s/auth/mcp/callback" $.Values.opencode.hostname) "callback_port" (include "senaev-com.opencodeMcpOAuthCallbackPort" $ | int)) (deepCopy ($remote.oauth | default dict)) }}
+{{- $_ := set $remote "oauth" $remoteOAuth }}
 {{- $_ := set $servers $name $remote }}
 {{- end }}
 {{- $providers := dict }}
@@ -128,8 +115,7 @@ spec:
           volumeMounts:
             - name: code
               mountPath: /code
-            - name: ssh-dir
-              mountPath: /root/.ssh
+{{ include "senaev-com.llmWorkspace.sshAgent.volumeMount" . | indent 12 }}
             - name: opencode-data
               mountPath: /root/.local/share/opencode
               subPath: opencode-sessions
@@ -236,15 +222,7 @@ spec:
           hostPath:
             path: {{ .Values.global.clusterRootPath }}/volumes/opencode-data
             type: DirectoryOrCreate
-        - name: ssh-key
-          secret:
-            secretName: {{ printf "%s-opencode-env" .Values.name }}
-            items:
-              - key: {{ .Values.git.sshPrivateKey }}
-                path: id_rsa
-                mode: 0600
-        - name: ssh-dir
-          emptyDir: {}
+{{ include "senaev-com.llmWorkspace.sshAgent.volumes" (dict "context" . "secretName" (printf "%s-opencode-env" .Values.name)) | indent 8 }}
         - name: code
           persistentVolumeClaim:
             claimName: {{ printf "%s-code" .Values.name }}
@@ -352,9 +330,9 @@ metadata:
 spec:
   ingressClassName: {{ printf "traefik-%s" .Values.traefik }}
   tls:
-    - hosts: [{{ $oauth.hostname | quote }}]
+    - hosts: [{{ .Values.opencode.hostname | quote }}]
   rules:
-    - host: {{ $oauth.hostname | quote }}
+    - host: {{ .Values.opencode.hostname | quote }}
       http:
         paths:
           - path: /auth/mcp/callback
@@ -391,6 +369,11 @@ spec:
                   number: 4096
 {{- end }}
 {{- end -}}
+{{- /* OpenCode's loopback listener for the OAuth callback of all remote MCP servers: they share
+it, so log in to one server at a time. nginx proxies https://<hostname>/auth/mcp/callback to it. */}}
+{{- define "senaev-com.opencodeMcpOAuthCallbackPort" -}}
+4100
+{{- end -}}
 {{- define "senaev-com.opencodeMcpOAuthNginx" -}}
 worker_processes 1;
 pid /tmp/nginx.pid;
@@ -410,7 +393,7 @@ http {
     location = /healthz { return 200 'ok'; }
     location = /auth/mcp/callback {
       limit_except GET { deny all; }
-      proxy_pass http://127.0.0.1:{{ .Values.opencode.mcpOAuth.callbackPort }};
+      proxy_pass http://127.0.0.1:{{ include "senaev-com.opencodeMcpOAuthCallbackPort" . }};
       proxy_set_header Host 127.0.0.1;
       proxy_set_header Authorization "";
       proxy_set_header Cookie "";
