@@ -1,32 +1,36 @@
 # 2026-11-20 — Codex code review for the repositories
 
-Turn on the built-in Codex code review on GitHub, with review rules written for each repository, starting with infra.senaev.com.
+- [x] Codex reviews the pull requests of infra.senaev.com on `@codex review`, with review rules written for the repository.
 
 ## Goal
 
-- Codex reviews the pull requests of the repositories by itself, and on `@codex review`.
-- Each repository has its own review rules (in infra.senaev.com: `CODE_REVIEW.md`, linked from `### Code Review Rules` under `## Code Review` in `AGENTS.md`), so the review checks what can really break there.
+- Codex reviews the pull requests of infra.senaev.com on `@codex review`; the agent that opens a pull request asks for it.
+- The repository has its own review rules, so the review checks what matters there.
 - First infra.senaev.com; the other repositories after the review quality is checked (decision of the user, 2026-11-20).
 
 ## Context
 
 - Docs: https://learn.chatgpt.com/docs/third-party/github and https://learn.chatgpt.com/use-cases/github-code-reviews.
-- Codex cloud must be set up for the repository; then code review is turned on per repository at `chatgpt.com/settings/code-review`. Automatic review ("Review trigger") needs push or admin permission on the repository.
-- `@codex review` in a pull request comment starts a review; `@codex review for <focus>` adds a focus for one review; `@codex security review` asks for a security review (research preview).
-- Codex flags only P0 and P1 issues in GitHub. The docs do not say that this can be changed.
-- Rules: a `## Code Review Rules` section in the `AGENTS.md` closest to the code they govern, grouped by `###` headings. Codex applies the root rules and the more specific ones for each changed file.
-- Not documented: which plans include it (the user has Plus), the usage limits, whether new pushes to a pull request trigger a new review, draft pull requests, the model.
+- Setup: the GitHub app "ChatGPT Codex Connector" installed on the repository (only infra.senaev.com is selected), and code review turned on for it at `chatgpt.com/settings/code-review`.
+- `@codex review` in a pull request comment starts a review, also on a draft; `@codex review for <focus>` adds a focus for one review. The review takes under a minute.
+- Codex posts a GitHub review with the state "commented": it does not approve or request changes, so it cannot block a merge. It flags only P0 and P1 issues in GitHub.
+- Rules: Codex reads `AGENTS.md` and follows links from it. Ours are in `CODE_REVIEW.md`, linked from `### Code Review Rules` under `## Code Review` in `AGENTS.md`; the link works under a `###` heading too.
+- The automatic review does not start on the user's plan (Plus): saving "Review: All PRs" fails with `Reviewing all PRs is not available on this plan`, and no probe pull request got an automatic review.
 - This runs in OpenAI's cloud, not in the cluster; it is separate from the Codex container of [`2026-11-19-21-17-codex-remote-control`](../2026-11-19-21-17-codex-remote-control/README.md).
 
 ## Plan
 
-1. ⏳ Rules for infra.senaev.com: in `CODE_REVIEW.md`, linked from `### Code Review Rules` under `## Code Review` in the root `AGENTS.md`, from the conventions already there (sensitive nodes, secrets, data loss on deploy, tests, the published library). One PR.
-2. The user: connect infra.senaev.com to Codex cloud (chatgpt.com/codex), then turn on code review for it at `chatgpt.com/settings/code-review`. Note what the plan allows and the "Review trigger" options.
-3. Test: `@codex review` on an open pull request, and the automatic review on a new one. Check that the review follows the rules, and what a new push does.
-4. Tune the rules after a few reviews (too noisy, or missing real problems).
-5. The other repositories: pick the next ones from the active list (obsidian-vault, dotfiles, senaev.com, supabase-list-notes, rclone-share, senaev-opencode-config, mitmproxy), write their rules, turn the review on.
+1. ✅ Rules for infra.senaev.com in `CODE_REVIEW.md` (PR [#249](https://github.com/senaev/infra.senaev.com/pull/249)): every secret or piece of sensitive data is P1; a utility duplicated in the repository is P5 (move it to `senaev-utils`).
+2. ✅ The user connected the repository and turned on code review (2026-11-22; app reinstalled on 2026-11-24).
+3. ✅ Test on probe pull requests (all closed): `@codex review` works, and Codex follows the rules in `CODE_REVIEW.md`. The automatic review does not start (plan limit), so `AGENTS.md` tells agents to create pull requests as drafts and comment `@codex review` when they open one, and when the user asks.
+4. ➡️ Not done: tune the rules after a few real reviews.
+5. ➡️ Not done: the other repositories (obsidian-vault, dotfiles, senaev.com, supabase-list-notes, rclone-share, senaev-opencode-config, mitmproxy).
 
 ## Verification
 
-- A pull request in infra.senaev.com gets a Codex review with no comment, and on `@codex review`.
-- A pull request that breaks a rule on purpose (for example, a secret in a test fixture, in a draft branch that is closed afterwards) gets a P0 or P1 comment that names the rule.
+- ✅ `@codex review` on a pull request in infra.senaev.com gets a review within a minute.
+- ✅ A probe pull request that broke a rule got a P1 that names the rule from `CODE_REVIEW.md`.
+
+## Result
+
+Done on 2026-11-24: Codex reviews infra.senaev.com on request, with the rules of `CODE_REVIEW.md`; agents open pull requests as drafts and ask for the review. Open points: no automatic review on the current plan; the rules are not tuned on real reviews yet; the other repositories are not set up.
