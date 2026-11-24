@@ -1,15 +1,31 @@
 {{- if .Values.vpnProbe.enabled }}
+{{- /* Home probes for every entry, plus remoteSources: the same entry from another node. */ -}}
+{{- $probes := list -}}
 {{- range $entry := .Values.vpnSubscription.entries }}
+  {{- $probes = append $probes (dict "entry" $entry "vps" $.Values.vpnProbe.vps "source" "") -}}
+{{- end -}}
+{{- range $remote := .Values.vpnProbe.remoteSources }}
+  {{- range $entry := $.Values.vpnSubscription.entries }}
+    {{- if eq (int $entry.probeIndex) (int $remote.probeIndex) }}
+      {{- $probes = append $probes (dict "entry" $entry "vps" $remote.vps "source" $remote.vps) -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- range $probe := $probes }}
+{{- $entry := $probe.entry }}
 {{- $index := int $entry.probeIndex }}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: vpn-probe-{{ $index }}
+  name: vpn-probe-{{ $index }}{{ if $probe.source }}-{{ $probe.source }}{{ end }}
   namespace: {{ $.Release.Namespace }}
   labels:
     app: vpn-probe
     vpn-profile: {{ $index | quote }}
+    {{- if $probe.source }}
+    vpn-source: {{ $probe.source }}
+    {{- end }}
 spec:
   replicas: {{ if and $.Values.vpnProbe.controlledExperiment (not (has $index (list 1 3 4 6))) }}0{{ else }}1{{ end }}
   strategy:
@@ -18,11 +34,17 @@ spec:
     matchLabels:
       app: vpn-probe
       vpn-profile: {{ $index | quote }}
+      {{- if $probe.source }}
+      vpn-source: {{ $probe.source }}
+      {{- end }}
   template:
     metadata:
       labels:
         app: vpn-probe
         vpn-profile: {{ $index | quote }}
+        {{- if $probe.source }}
+        vpn-source: {{ $probe.source }}
+        {{- end }}
         tags.datadoghq.com/service: vpn-probe
         tags.datadoghq.com/env: prod
       annotations:
@@ -30,7 +52,7 @@ spec:
         ad.datadoghq.com/probe.logs: '[{"source":"python","service":"vpn-probe"}]'
     spec:
       nodeSelector:
-        vps: {{ $.Values.vpnProbe.vps }}
+        vps: {{ $probe.vps }}
       automountServiceAccountToken: false
       terminationGracePeriodSeconds: {{ if and $.Values.vpnXhttpExperiment.enabled $.Values.vpnXhttpExperiment.diagnostics $.Values.vpnProbe.controlledExperiment $.Values.ingress.enabled (eq $index 4) }}45{{ else }}30{{ end }}
       securityContext:
@@ -67,7 +89,7 @@ spec:
             - name: PROFILE_INDEX
               value: {{ $index | quote }}
             - name: PROFILE_NAME
-              value: {{ $entry.name | quote }}
+              value: {{ if $probe.source }}{{ printf "%s (from %s)" $entry.name $probe.source | quote }}{{ else }}{{ $entry.name | quote }}{{ end }}
             - name: PROFILE_LINK
               value: {{ $entry.link | quote }}
             - name: EXPECTED_EXITS

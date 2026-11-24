@@ -35,6 +35,9 @@ the home ISP freezes TCP/TLS connections to hetzner for hours while UDP (Tailsca
 - The `vpn-probe` NetworkPolicy allows public egress on TCP 443 and on UDP `xrayHysteria.port`
   only. A probe for a new UDP transport needs its port there, or its packets are dropped inside
   the cluster and the route looks blocked.
+- `vpnProbe.remoteSources` runs the probe of a profile also on another node
+  (`vpn-probe-<index>-<vps>`, profile name with ` (from <vps>)`), to tell a home ISP block from
+  a server-side problem.
 
 ### vpn-subscription service
 
