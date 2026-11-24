@@ -37,7 +37,7 @@ export type PublicStaticResult = {
  * Builds the upstream URL and proves it stayed under the prefix, returning
  * `null` to reject the request.
  *
- * This is a security boundary, not tidying. obsidian-sync serves `POST /tasks`
+ * This is a security boundary, not tidying. obsidian-sync serves `POST /reminders`
  * and `/short_links` alongside the static files, so a `..` that survives to the
  * end would walk the request out of `/public-static/` and onto one of them.
  *
@@ -49,7 +49,7 @@ export type PublicStaticResult = {
  * - The URL parser, which `fetch` runs on whatever it is given, collapses all
  *   three.
  *
- * Checking only the first pass leaves `%252e%252e/tasks` reaching `/tasks`: one
+ * Checking only the first pass leaves `%252e%252e/reminders` reaching `/reminders`: one
  * decode turns it into `%2e%2e`, which `join` keeps and the URL parser then
  * resolves. Checking the parsed `pathname` closes that, because it inspects the
  * exact bytes that will go out.

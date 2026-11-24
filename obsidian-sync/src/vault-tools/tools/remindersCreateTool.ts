@@ -1,6 +1,6 @@
 import { createCommandAdapter } from 'senaev-utils/src/toolServer/createCommandAdapter';
-import { TASK_WRITE_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
-import { TASK_PRIORITIES } from 'senaev-utils/src/obsidianTasks/taskLine';
+import { REMINDER_WRITE_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
+import { REMINDER_PRIORITIES } from 'senaev-utils/src/obsidianReminders/reminderLine';
 import { readExpectedHash } from 'senaev-utils/src/toolServer/expectedHashArguments';
 import {
     optionalEnum, optionalInteger, optionalString, requiredNonEmptyString, type ToolArguments,
@@ -9,19 +9,19 @@ import { invalidArguments } from 'senaev-utils/src/commands/CommandError';
 
 import { optionalIsoDay, readVaultToolArguments } from '../toolArguments';
 
-import { type TasksCreateCommandInput, tasksCreateCommand } from './tasksCreateCommand';
+import { type RemindersCreateCommandInput, remindersCreateCommand } from './remindersCreateCommand';
 
 const DEFAULT_SOURCE = 'Agent';
 
 function readBlankLines(args: ToolArguments, key: string): number {
     return optionalInteger(args, key, {
         min: 0,
-        max: TASK_WRITE_LIMITS.maxBlankLines,
+        max: REMINDER_WRITE_LIMITS.maxBlankLines,
     }) ?? 0;
 }
 
-function parseTasksCreateInput(input: unknown): TasksCreateCommandInput {
-    const args = readVaultToolArguments(input, 'tasks_create');
+function parseRemindersCreateInput(input: unknown): RemindersCreateCommandInput {
+    const args = readVaultToolArguments(input, 'reminders_create');
     const afterLine = optionalInteger(args, 'afterLine', {
         min: 0,
         max: Number.MAX_SAFE_INTEGER,
@@ -37,16 +37,16 @@ function parseTasksCreateInput(input: unknown): TasksCreateCommandInput {
         afterLine,
         blankLinesBefore: readBlankLines(args, 'blankLinesBefore'),
         blankLinesAfter: readBlankLines(args, 'blankLinesAfter'),
-        task: {
+        reminder: {
             status: 'open',
-            description: requiredNonEmptyString(args, 'description', TASK_WRITE_LIMITS.maxDescriptionLength),
-            source: optionalString(args, 'source', TASK_WRITE_LIMITS.maxSourceLength) ?? DEFAULT_SOURCE,
-            priority: optionalEnum(args, 'priority', TASK_PRIORITIES) ?? 'normal',
-            dueDate: optionalIsoDay(args, 'dueDate') ?? null,
+            description: requiredNonEmptyString(args, 'description', REMINDER_WRITE_LIMITS.maxDescriptionLength),
+            source: optionalString(args, 'source', REMINDER_WRITE_LIMITS.maxSourceLength) ?? DEFAULT_SOURCE,
+            priority: optionalEnum(args, 'priority', REMINDER_PRIORITIES) ?? 'normal',
+            date: optionalIsoDay(args, 'date') ?? null,
             closedDate: null,
-            recurrence: optionalString(args, 'recurrence', TASK_WRITE_LIMITS.maxRecurrenceLength) ?? null,
+            recurrence: optionalString(args, 'recurrence', REMINDER_WRITE_LIMITS.maxRecurrenceLength) ?? null,
         },
     };
 }
 
-export const tasksCreateTool = createCommandAdapter(parseTasksCreateInput, tasksCreateCommand);
+export const remindersCreateTool = createCommandAdapter(parseRemindersCreateInput, remindersCreateCommand);

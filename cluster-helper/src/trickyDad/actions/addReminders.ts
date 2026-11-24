@@ -1,25 +1,25 @@
-import { isIsoDay } from 'senaev-utils/src/obsidianTasks/isoDay';
+import { isIsoDay } from 'senaev-utils/src/obsidianReminders/isoDay';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { isNonEmptyArray } from 'senaev-utils/src/utils/Array/isNonEmptyArray/isNonEmptyArray';
 import { isNonEmptyString } from 'senaev-utils/src/utils/String/NonEmptyString/NonEmptyString';
 
 import { OBSIDIAN_TASKS_CHAT_ID } from '../../env';
-import type { ObsidianTaskInput } from '../../obsidianSyncApi';
+import type { ObsidianReminderInput } from '../../obsidianSyncApi';
 
 import type { PlannedTrickyDadAction, TrickyDadAction } from './TrickyDadAction';
 
-const TYPE = 'add_tasks';
+const TYPE = 'add_reminders';
 
-type TaskWithDate = { title: string; date: string | null };
+type ReminderWithDate = { title: string; date: string | null };
 
-function planAddTasks(tasks: TaskWithDate[]): PlannedTrickyDadAction {
+function planAddReminders(reminders: ReminderWithDate[]): PlannedTrickyDadAction {
     return {
         type: TYPE,
         emoji: '👉',
         reportChatId: OBSIDIAN_TASKS_CHAT_ID,
-        entries: tasks.map(({ title }) => title),
+        entries: reminders.map(({ title }) => title),
         run: async ({ source, obsidianSyncApi }) => {
-            await obsidianSyncApi.addObsidianTasks(tasks.map(({ title, date }): ObsidianTaskInput => {
+            await obsidianSyncApi.addObsidianReminders(reminders.map(({ title, date }): ObsidianReminderInput => {
                 return {
                     title,
                     date,
@@ -32,21 +32,21 @@ function planAddTasks(tasks: TaskWithDate[]): PlannedTrickyDadAction {
     };
 }
 
-function parseTask(task: unknown): TaskWithDate {
-    if (!isObject(task) || Array.isArray(task)) {
-        throw new Error(`${TYPE}: every task must be an object, got [${JSON.stringify(task)}]`);
+function parseReminder(reminder: unknown): ReminderWithDate {
+    if (!isObject(reminder) || Array.isArray(reminder)) {
+        throw new Error(`${TYPE}: every reminder must be an object, got [${JSON.stringify(reminder)}]`);
     }
 
-    const { title, date } = task;
+    const { title, date } = reminder;
 
     const trimmedTitle = isNonEmptyString(title) ? title.trim() : '';
 
     if (!isNonEmptyString(trimmedTitle)) {
-        throw new Error(`${TYPE}: task title must be a non-empty string, got [${JSON.stringify(title)}]`);
+        throw new Error(`${TYPE}: reminder title must be a non-empty string, got [${JSON.stringify(title)}]`);
     }
 
     if (date !== null && (!isNonEmptyString(date) || !isIsoDay(date))) {
-        throw new Error(`${TYPE}: task date must be a real YYYY-MM-DD or null, got [${JSON.stringify(date)}]`);
+        throw new Error(`${TYPE}: reminder date must be a real YYYY-MM-DD or null, got [${JSON.stringify(date)}]`);
     }
 
     return {
@@ -55,17 +55,17 @@ function parseTask(task: unknown): TaskWithDate {
     };
 }
 
-export const ADD_TASKS_ACTION: TrickyDadAction = {
+export const ADD_REMINDERS_ACTION: TrickyDadAction = {
     type: TYPE,
     instructions: [
-        'Return each distinct action as a separate entry in tasks; never split a single action. Never return an empty tasks array.',
-        'Keep task titles as close to the original wording as possible, changing only what is necessary. Never summarize or drop details; every detail must appear in a title.',
+        'Return each distinct action as a separate entry in reminders; never split a single action. Never return an empty reminders array.',
+        'Keep reminder titles as close to the original wording as possible, changing only what is necessary. Never summarize or drop details; every detail must appear in a title.',
         'Preserve names, places, products, services, file names, commands, errors, IDs, numbers, amounts, times and quoted text exactly.',
         'Keep full URLs unchanged in the relevant title; a link applying to the whole message goes into every title.',
-        'Extract each relevant date as date (YYYY-MM-DD), or null if absent. A date may be a start date, due date or any other kind; do not assume its meaning. A date applying to the whole message applies to every task.',
+        'Extract each relevant date as date (YYYY-MM-DD), or null if absent. A date may be a start date, due date or any other kind; do not assume its meaning. A date applying to the whole message applies to every reminder.',
     ],
     argsProperties: {
-        tasks: {
+        reminders: {
             type: 'array',
             items: {
                 type: 'object',
@@ -86,14 +86,14 @@ export const ADD_TASKS_ACTION: TrickyDadAction = {
             },
         },
     },
-    parseArgs: ({ tasks }) => {
-        if (!isNonEmptyArray(tasks)) {
-            throw new Error(`${TYPE}: tasks must be a non-empty array, got [${JSON.stringify(tasks)}]`);
+    parseArgs: ({ reminders }) => {
+        if (!isNonEmptyArray(reminders)) {
+            throw new Error(`${TYPE}: reminders must be a non-empty array, got [${JSON.stringify(reminders)}]`);
         }
 
-        return planAddTasks(tasks.map(parseTask));
+        return planAddReminders(reminders.map(parseReminder));
     },
-    fromRawCommand: (command) => planAddTasks([
+    fromRawCommand: (command) => planAddReminders([
         {
             title: command,
             date: null,

@@ -37,12 +37,12 @@ export const TELEGRAM_MCP_CHANNELS: readonly TelegramMcpChannel[] = [
     },
     {
         name: 'obsidian-tasks',
-        description: 'the tasks chat, where messages to the bot become tasks in the Obsidian vault',
+        description: 'the tasks chat, where messages to the bot become reminders in the Obsidian vault',
         chatId: OBSIDIAN_TASKS_CHAT_ID,
     },
     {
         name: 'tricky-dad',
-        description: 'the Tricky Dad chat, where messages to the bot become shopping items and tasks',
+        description: 'the Tricky Dad chat, where messages to the bot become shopping items and reminders',
         chatId: TRICKY_DAD_CHAT_ID,
     },
     {

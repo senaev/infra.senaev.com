@@ -3,8 +3,8 @@ import {
 } from 'vitest';
 
 import {
-    compareTasks, type DailyTask, isActiveDailyDate, isTaskInDailyNote, isTaskPathExcluded,
-} from './dailyTasks';
+    compareReminders, type DailyReminder, isActiveDailyDate, isReminderInDailyNote, isReminderPathExcluded,
+} from './dailyReminderList';
 
 const TODAY = '2026-10-17';
 
@@ -13,11 +13,11 @@ const ACTIVE = {
     isActiveNote: true,
 };
 
-const TASK: DailyTask = {
+const REMINDER: DailyReminder = {
     path: 'notes/a.md',
     status: 'open',
     priority: 'normal',
-    dueDate: null,
+    date: null,
     closedDate: null,
 };
 
@@ -45,67 +45,67 @@ describe('isActiveDailyDate', () => {
     });
 });
 
-describe('isTaskInDailyNote', () => {
-    test('lists overdue and due-today open tasks, not future ones', () => {
-        expect(isTaskInDailyNote({
-            ...TASK,
-            dueDate: '2026-10-01',
+describe('isReminderInDailyNote', () => {
+    test('lists past and current open reminders, not future ones', () => {
+        expect(isReminderInDailyNote({
+            ...REMINDER,
+            date: '2026-10-01',
         }, ACTIVE)).toBe(true);
-        expect(isTaskInDailyNote({
-            ...TASK,
-            dueDate: TODAY,
+        expect(isReminderInDailyNote({
+            ...REMINDER,
+            date: TODAY,
         }, ACTIVE)).toBe(true);
-        expect(isTaskInDailyNote({
-            ...TASK,
-            dueDate: '2026-10-18',
+        expect(isReminderInDailyNote({
+            ...REMINDER,
+            date: '2026-10-18',
         }, ACTIVE)).toBe(false);
     });
 
-    test('lists undated open tasks unless their priority is low or lowest', () => {
-        expect(isTaskInDailyNote(TASK, ACTIVE)).toBe(true);
-        expect(isTaskInDailyNote({
-            ...TASK,
+    test('lists undated open reminders unless their priority is low or lowest', () => {
+        expect(isReminderInDailyNote(REMINDER, ACTIVE)).toBe(true);
+        expect(isReminderInDailyNote({
+            ...REMINDER,
             priority: 'low',
         }, ACTIVE)).toBe(false);
-        expect(isTaskInDailyNote({
-            ...TASK,
+        expect(isReminderInDailyNote({
+            ...REMINDER,
             priority: 'lowest',
         }, ACTIVE)).toBe(false);
     });
 
-    test('an inactive note lists only the tasks closed on its day', () => {
+    test('an inactive note lists only the reminders closed on its day', () => {
         const past = {
             noteDate: '2026-10-10',
             isActiveNote: false,
         };
 
-        expect(isTaskInDailyNote({
-            ...TASK,
-            dueDate: '2026-10-01',
+        expect(isReminderInDailyNote({
+            ...REMINDER,
+            date: '2026-10-01',
         }, past)).toBe(false);
-        expect(isTaskInDailyNote({
-            ...TASK,
+        expect(isReminderInDailyNote({
+            ...REMINDER,
             status: 'done',
             closedDate: '2026-10-10',
         }, past)).toBe(true);
-        expect(isTaskInDailyNote({
-            ...TASK,
+        expect(isReminderInDailyNote({
+            ...REMINDER,
             status: 'cancelled',
             closedDate: '2026-10-11',
         }, past)).toBe(false);
     });
 
-    test('never lists tasks of periodic notes', () => {
-        expect(isTaskInDailyNote({
-            ...TASK,
+    test('never lists reminders of periodic notes', () => {
+        expect(isReminderInDailyNote({
+            ...REMINDER,
             path: 'periodic/day/2026-10-17.md',
         }, ACTIVE)).toBe(false);
     });
 });
 
-describe('compareTasks', () => {
+describe('compareReminders', () => {
     test('sorts by priority, then path, then line', () => {
-        const tasks = [
+        const reminders = [
             {
                 priority: 'normal' as const,
                 path: 'b/x.md',
@@ -128,7 +128,7 @@ describe('compareTasks', () => {
             },
         ];
 
-        expect(tasks.sort(compareTasks).map(({ path, line }) => `${path}:${line}`)).toEqual([
+        expect(reminders.sort(compareReminders).map(({ path, line }) => `${path}:${line}`)).toEqual([
             'z.md:1',
             'a/z.md:9',
             'a/z.md:10',
@@ -137,13 +137,13 @@ describe('compareTasks', () => {
     });
 });
 
-describe('isTaskPathExcluded', () => {
+describe('isReminderPathExcluded', () => {
     test('excludes dot-folders and the excluded root folders', () => {
-        expect(isTaskPathExcluded('.obsidian/x.md')).toBe(true);
-        expect(isTaskPathExcluded('notes/.trash/x.md')).toBe(true);
-        expect(isTaskPathExcluded('_templates/Daily note template.md')).toBe(true);
-        expect(isTaskPathExcluded('plugins/senaev-personal-tools/README.md')).toBe(true);
-        expect(isTaskPathExcluded('notes/_templates/x.md')).toBe(false);
-        expect(isTaskPathExcluded('@senaev/tasks/tasks_stream.md')).toBe(false);
+        expect(isReminderPathExcluded('.obsidian/x.md')).toBe(true);
+        expect(isReminderPathExcluded('notes/.trash/x.md')).toBe(true);
+        expect(isReminderPathExcluded('_templates/Daily note template.md')).toBe(true);
+        expect(isReminderPathExcluded('plugins/senaev-personal-tools/README.md')).toBe(true);
+        expect(isReminderPathExcluded('notes/_templates/x.md')).toBe(false);
+        expect(isReminderPathExcluded('@senaev/reminders/reminders_stream.md')).toBe(false);
     });
 });

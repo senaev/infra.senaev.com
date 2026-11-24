@@ -1,4 +1,4 @@
-import { isoDayToUtcDate } from '../obsidianTasks/isoDay';
+import { isoDayToUtcDate } from '../obsidianReminders/isoDay';
 
 import { ruleOccursOn } from './ruleOccursOn';
 

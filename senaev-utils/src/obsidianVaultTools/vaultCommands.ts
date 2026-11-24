@@ -73,15 +73,15 @@ export const VAULT_COMMAND_ARGUMENTS = {
         'newPath',
     ],
     diary_append: ['records'],
-    tasks_list: [
+    reminders_list: [
         'dailyNote',
         'status',
         'priority',
         'queries',
         'match',
         'wholeWord',
-        'dueFrom',
-        'dueTo',
+        'dateFrom',
+        'dateTo',
         'closedFrom',
         'closedTo',
         'folder',
@@ -89,7 +89,7 @@ export const VAULT_COMMAND_ARGUMENTS = {
         'offset',
         'limit',
     ],
-    tasks_create: [
+    reminders_create: [
         'path',
         'expectedHash',
         'afterLine',
@@ -98,10 +98,10 @@ export const VAULT_COMMAND_ARGUMENTS = {
         'description',
         'source',
         'priority',
-        'dueDate',
+        'date',
         'recurrence',
     ],
-    tasks_update: [
+    reminders_update: [
         'path',
         'line',
         'expectedHash',
@@ -109,13 +109,13 @@ export const VAULT_COMMAND_ARGUMENTS = {
     ],
 } as const;
 
-/** The task fields that `tasks_update` can change. */
-export const TASK_CHANGE_FIELDS = [
+/** The reminder fields that `reminders_update` can change. */
+export const REMINDER_CHANGE_FIELDS = [
     'status',
     'description',
     'source',
     'priority',
-    'dueDate',
+    'date',
     'closedDate',
     'recurrence',
 ] as const;

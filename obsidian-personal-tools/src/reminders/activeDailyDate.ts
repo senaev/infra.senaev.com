@@ -1,4 +1,4 @@
-import { isActiveDailyDate } from 'senaev-utils/src/obsidianTasks/dailyTasks';
+import { isActiveDailyDate } from 'senaev-utils/src/obsidianReminders/dailyReminderList';
 import { formatDailyNoteBasename } from '../dailyNote/dailyNotePath';
 
 /** A predicate telling whether the daily note for `noteDate` is the active one. */

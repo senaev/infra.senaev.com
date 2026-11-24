@@ -133,7 +133,7 @@ describe('diaryAppendTool', () => {
             ],
         });
 
-        expect(await readFile(path(DAY), 'utf8')).toContain('window.senaevPersonalTools.filterTasksForDaily');
+        expect(await readFile(path(DAY), 'utf8')).toContain('window.senaevPersonalTools.filterRemindersForDaily');
     });
 
     it('fails without writing anything when a note has no place for the record', async () => {

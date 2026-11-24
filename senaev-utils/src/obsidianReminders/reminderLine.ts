@@ -1,22 +1,22 @@
 import { isIsoDay, type IsoDay } from './isoDay';
-import { validateRecurrence } from './taskRecurrence';
+import { validateRecurrence } from './reminderRecurrence';
 
-// A task line in the emoji format of the Obsidian Tasks plugin, e.g.
+// A reminder line in the emoji format of the Obsidian Tasks plugin, e.g.
 // `- [ ] Reimburse mobile phone 🌱 Agent ⏫ 🔁 every month 📅 2026-11-01`.
-// The parser reads every field the plugin reads, in the same way, so that a task means
+// The parser reads every field the plugin reads, in the same way, so that a reminder means
 // the same here and in Obsidian. The model keeps only the fields we support; a line with
 // any other field does not serialize back to itself and therefore cannot be edited.
 
-export const TASK_STATUSES = [
+export const REMINDER_STATUSES = [
     'open',
     'done',
     'cancelled',
 ] as const;
 
-export type TaskStatus = typeof TASK_STATUSES[number];
+export type ReminderStatus = typeof REMINDER_STATUSES[number];
 
 /** From the highest to the lowest, as the Tasks plugin numbers them (0 to 5). */
-export const TASK_PRIORITIES = [
+export const REMINDER_PRIORITIES = [
     'highest',
     'high',
     'medium',
@@ -25,27 +25,27 @@ export const TASK_PRIORITIES = [
     'lowest',
 ] as const;
 
-export type TaskPriority = typeof TASK_PRIORITIES[number];
+export type ReminderPriority = typeof REMINDER_PRIORITIES[number];
 
-export type TaskFields = {
-    status: TaskStatus;
+export type ReminderFields = {
+    status: ReminderStatus;
     description: string;
-    /** Who created the task: `🌱 <source>` at the end of the description. */
+    /** Who created the reminder: `🌱 <source>` at the end of the description. */
     source: string | null;
-    priority: TaskPriority;
+    priority: ReminderPriority;
     /** 📅 */
-    dueDate: IsoDay | null;
+    date: IsoDay | null;
     /** ✅ when done, ❌ when cancelled, `null` when open. */
     closedDate: IsoDay | null;
     /** 🔁, verbatim, including ` when done`. */
     recurrence: string | null;
 };
 
-export type TaskLineParseResult =
-    | { ok: true; task: TaskFields; isTopLevel: boolean }
+export type ReminderLineParseResult =
+    | { ok: true; reminder: ReminderFields; isTopLevel: boolean }
     | { ok: false; error: string };
 
-const PRIORITY_EMOJI: Record<TaskPriority, string> = {
+const PRIORITY_EMOJI: Record<ReminderPriority, string> = {
     highest: '🔺',
     high: '⏫',
     medium: '🔼',
@@ -54,13 +54,13 @@ const PRIORITY_EMOJI: Record<TaskPriority, string> = {
     lowest: '⏬',
 };
 
-const STATUS_SYMBOL: Record<TaskStatus, string> = {
+const STATUS_SYMBOL: Record<ReminderStatus, string> = {
     open: ' ',
     done: 'x',
     cancelled: '-',
 };
 
-const STATUS_BY_SYMBOL: Readonly<Record<string, TaskStatus>> = {
+const STATUS_BY_SYMBOL: Readonly<Record<string, ReminderStatus>> = {
     ' ': 'open',
     x: 'done',
     X: 'done',
@@ -69,8 +69,8 @@ const STATUS_BY_SYMBOL: Readonly<Record<string, TaskStatus>> = {
 
 const SOURCE_EMOJI = '🌱';
 
-/** The Tasks plugin task regex: indentation or callout `>`, a list marker, a checkbox. */
-const TASK_LINE = /^([\s\t>]*)([-*+]|[0-9]+[.)]) +\[(.)\] *(.*)$/u;
+/** The Tasks plugin reminder regex: indentation or callout `>`, a list marker, a checkbox. */
+const REMINDER_LINE = /^([\s\t>]*)([-*+]|[0-9]+[.)]) +\[(.)\] *(.*)$/u;
 
 const BLOCK_LINK = / \^[a-zA-Z0-9-]+$/u;
 
@@ -196,14 +196,15 @@ function findInvalidDate(fields: Partial<Record<FieldName, string>>): string | n
         const value = fields[name];
 
         if (isDate === true && value !== undefined && !isIsoDay(value)) {
-            return `invalid ${name} date "${value}"`;
+            // 📅 is the Tasks plugin's due date, which this code calls just "date".
+            return `invalid ${name === 'due' ? '' : `${name} `}date "${value}"`;
         }
     }
 
     return null;
 }
 
-function readClosedDate(status: TaskStatus, fields: Partial<Record<FieldName, string>>): IsoDay | null {
+function readClosedDate(status: ReminderStatus, fields: Partial<Record<FieldName, string>>): IsoDay | null {
     switch (status) {
     case 'done': return fields.done ?? null;
     case 'cancelled': return fields.cancelled ?? null;
@@ -211,9 +212,9 @@ function readClosedDate(status: TaskStatus, fields: Partial<Record<FieldName, st
     }
 }
 
-/** `null` when the line is not a task line at all. */
-export function parseTaskLine(line: string): TaskLineParseResult | null {
-    const match = TASK_LINE.exec(line);
+/** `null` when the line is not a reminder line at all. */
+export function parseReminderLine(line: string): ReminderLineParseResult | null {
+    const match = REMINDER_LINE.exec(line);
 
     if (match === null) {
         return null;
@@ -263,17 +264,17 @@ export function parseTaskLine(line: string): TaskLineParseResult | null {
         ...tags,
     ].filter((part) => part !== '').join(' '));
     const priorityEmoji = fields.priority;
-    const priority = TASK_PRIORITIES.find((name) => priorityEmoji !== undefined && PRIORITY_EMOJI[name] === priorityEmoji.replace('\uFE0F', '')) ?? 'normal';
+    const priority = REMINDER_PRIORITIES.find((name) => priorityEmoji !== undefined && PRIORITY_EMOJI[name] === priorityEmoji.replace('\uFE0F', '')) ?? 'normal';
 
     return {
         ok: true,
         isTopLevel: indentation === '' && listMarker === '-',
-        task: {
+        reminder: {
             status,
             description,
             source,
             priority,
-            dueDate: fields.due ?? null,
+            date: fields.due ?? null,
             closedDate: readClosedDate(status, fields),
             recurrence: fields.recurrence ?? null,
         },
@@ -281,37 +282,37 @@ export function parseTaskLine(line: string): TaskLineParseResult | null {
 }
 
 /** The line in the order the Tasks plugin itself writes the fields. */
-export function serializeTask(task: TaskFields): string {
-    const closedEmoji = task.status === 'cancelled' ? '❌' : '✅';
+export function serializeReminder(reminder: ReminderFields): string {
+    const closedEmoji = reminder.status === 'cancelled' ? '❌' : '✅';
     const parts = [
-        `- [${STATUS_SYMBOL[task.status]}] ${task.description}`,
-        task.source === null ? '' : ` ${SOURCE_EMOJI} ${task.source}`,
-        task.priority === 'normal' ? '' : ` ${PRIORITY_EMOJI[task.priority]}`,
-        task.recurrence === null ? '' : ` 🔁 ${task.recurrence}`,
-        task.dueDate === null ? '' : ` 📅 ${task.dueDate}`,
-        task.closedDate === null || task.status === 'open' ? '' : ` ${closedEmoji} ${task.closedDate}`,
+        `- [${STATUS_SYMBOL[reminder.status]}] ${reminder.description}`,
+        reminder.source === null ? '' : ` ${SOURCE_EMOJI} ${reminder.source}`,
+        reminder.priority === 'normal' ? '' : ` ${PRIORITY_EMOJI[reminder.priority]}`,
+        reminder.recurrence === null ? '' : ` 🔁 ${reminder.recurrence}`,
+        reminder.date === null ? '' : ` 📅 ${reminder.date}`,
+        reminder.closedDate === null || reminder.status === 'open' ? '' : ` ${closedEmoji} ${reminder.closedDate}`,
     ];
 
     return parts.join('');
 }
 
-export type TaskEditBlocker = {
+export type ReminderEditBlocker = {
     reason: string;
-    /** The line as this tool would write the parsed task. */
+    /** The line as this tool would write the parsed reminder. */
     expected: string;
     actual: string;
 };
 
 /**
- * A task can be edited only when it is a top-level `- [ ]` line in exactly our format,
+ * A reminder can be edited only when it is a top-level `- [ ]` line in exactly our format,
  * so that rewriting it cannot change or drop anything the owner wrote.
  */
-export function findTaskEditBlocker(line: string, parsed: Extract<TaskLineParseResult, { ok: true }>): TaskEditBlocker | null {
-    const expected = serializeTask(parsed.task);
+export function findReminderEditBlocker(line: string, parsed: Extract<ReminderLineParseResult, { ok: true }>): ReminderEditBlocker | null {
+    const expected = serializeReminder(parsed.reminder);
 
     if (!parsed.isTopLevel) {
         return {
-            reason: 'Only a top-level "- [ ]" task can be edited, not a nested, callout or numbered one',
+            reason: 'Only a top-level "- [ ]" reminder can be edited, not a nested, callout or numbered one',
             expected,
             actual: line,
         };
@@ -319,7 +320,7 @@ export function findTaskEditBlocker(line: string, parsed: Extract<TaskLineParseR
 
     if (expected !== line) {
         return {
-            reason: 'The task line is not in the format this tool writes (e.g. an unsupported field, another field order or extra spaces), so it cannot be edited safely',
+            reason: 'The reminder line is not in the format this tool writes (e.g. an unsupported field, another field order or extra spaces), so it cannot be edited safely',
             expected,
             actual: line,
         };
@@ -328,35 +329,35 @@ export function findTaskEditBlocker(line: string, parsed: Extract<TaskLineParseR
     return null;
 }
 
-const TASK_FIELD_KEYS: ReadonlyArray<keyof TaskFields> = [
+const REMINDER_FIELD_KEYS: ReadonlyArray<keyof ReminderFields> = [
     'status',
     'description',
     'source',
     'priority',
-    'dueDate',
+    'date',
     'closedDate',
     'recurrence',
 ];
 
-function isSameTask(a: TaskFields, b: TaskFields): boolean {
-    return TASK_FIELD_KEYS.every((key) => a[key] === b[key]);
+function isSameReminder(a: ReminderFields, b: ReminderFields): boolean {
+    return REMINDER_FIELD_KEYS.every((key) => a[key] === b[key]);
 }
 
 /**
- * Checks the fields of a task to write. The written line must read back as the same
+ * Checks the fields of a reminder to write. The written line must read back as the same
  * fields, so for example a description that ends with "📅 2026-01-01" is refused.
- * Returns an error message, or `null` when the task is valid.
+ * Returns an error message, or `null` when the reminder is valid.
  */
-export function findTaskFieldsError(task: TaskFields): string | null {
-    if (task.description.trim() === '' || task.description !== task.description.trim()) {
+export function findReminderFieldsError(reminder: ReminderFields): string | null {
+    if (reminder.description.trim() === '' || reminder.description !== reminder.description.trim()) {
         return '"description" must not be empty or start or end with spaces';
     }
 
-    if (/[\r\n]/.test(task.description) || (task.source !== null && /[\r\n]/.test(task.source))) {
+    if (/[\r\n]/.test(reminder.description) || (reminder.source !== null && /[\r\n]/.test(reminder.source))) {
         return '"description" and "source" must be one line';
     }
 
-    if (task.source !== null && (task.source.trim() !== task.source || task.source === '' || task.source.includes(SOURCE_EMOJI))) {
+    if (reminder.source !== null && (reminder.source.trim() !== reminder.source || reminder.source === '' || reminder.source.includes(SOURCE_EMOJI))) {
         return `"source" must not be empty, start or end with spaces, or contain ${SOURCE_EMOJI}`;
     }
 
@@ -365,12 +366,12 @@ export function findTaskFieldsError(task: TaskFields): string | null {
         value,
     ] of [
             [
-                'dueDate',
-                task.dueDate,
+                'date',
+                reminder.date,
             ],
             [
                 'closedDate',
-                task.closedDate,
+                reminder.closedDate,
             ],
         ] as const) {
         if (value !== null && !isIsoDay(value)) {
@@ -378,26 +379,26 @@ export function findTaskFieldsError(task: TaskFields): string | null {
         }
     }
 
-    if (task.status === 'open' && task.closedDate !== null) {
-        return '"closedDate" can be set only for a done or cancelled task';
+    if (reminder.status === 'open' && reminder.closedDate !== null) {
+        return '"closedDate" can be set only for a done or cancelled reminder';
     }
 
-    if (task.recurrence !== null) {
-        const recurrenceError = validateRecurrence(task.recurrence);
+    if (reminder.recurrence !== null) {
+        const recurrenceError = validateRecurrence(reminder.recurrence);
 
         if (recurrenceError !== null) {
             return `"recurrence": ${recurrenceError}`;
         }
 
-        if (task.dueDate === null) {
-            return 'A recurring task needs "dueDate"';
+        if (reminder.date === null) {
+            return 'A recurring reminder needs "date"';
         }
     }
 
-    const reread = parseTaskLine(serializeTask(task));
+    const reread = parseReminderLine(serializeReminder(reminder));
 
-    if (reread === null || !reread.ok || !isSameTask(reread.task, task)) {
-        return 'The task does not read back as the same fields: the description or source must not end with task fields (📅, 🔁, ⏫, ✅, #tags, …) or contain " 🌱 "';
+    if (reread === null || !reread.ok || !isSameReminder(reread.reminder, reminder)) {
+        return 'The reminder does not read back as the same fields: the description or source must not end with reminder fields (📅, 🔁, ⏫, ✅, #tags, …) or contain " 🌱 "';
     }
 
     return null;

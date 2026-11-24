@@ -20,7 +20,7 @@ export type RenderedNote = {
  * `InputRichMessage` expects.
  *
  * Telegram's rich markdown is GFM-compatible, so this is mostly a stripper rather than a
- * translator — headings, lists, task items, quotes, code fences and tables all pass
+ * translator — headings, lists, reminder items, quotes, code fences and tables all pass
  * through untouched.
  *
  * Step order matters in three places: embeds must be resolved before wikilinks, otherwise

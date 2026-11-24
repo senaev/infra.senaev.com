@@ -81,13 +81,13 @@ describe('planTrickyDadCommand', () => {
     it.each([
         'Tricky Dad Telegram chat',
         'Alisa',
-    ] as const)('asks only for shopping items, never for tasks, from %s', async (source) => {
+    ] as const)('asks only for shopping items, never for reminders, from %s', async (source) => {
         answerWith({ items: ['Арбуз'] });
 
         const plan = await planTrickyDadCommand('попроси умного папу купить арбуз', source);
 
         expect(getRequest().jsonSchema.name).toBe('add_shopping_items');
-        expect(getRequest().messages[0]?.content).not.toContain('add_tasks');
+        expect(getRequest().messages[0]?.content).not.toContain('add_reminders');
         expect(plan.isCommandFallback).toBe(false);
         expect(plan.llmProvider).toBe('openrouter');
         expect(plan.actions.map(({
@@ -105,9 +105,9 @@ describe('planTrickyDadCommand', () => {
         ]);
     });
 
-    it('asks only for tasks, never for shopping items, from the Tasks chat', async () => {
+    it('asks only for reminders, never for shopping items, from the Tasks chat', async () => {
         answerWith({
-            tasks: [
+            reminders: [
                 {
                     title: 'Купить хлеб',
                     date: null,
@@ -117,8 +117,8 @@ describe('planTrickyDadCommand', () => {
 
         const plan = await planTrickyDadCommand('купить хлеб', 'Tasks Telegram chat');
 
-        expect(plan.actions.map(({ type }) => type)).toEqual(['add_tasks']);
-        expect(getRequest().jsonSchema.name).toBe('add_tasks');
+        expect(plan.actions.map(({ type }) => type)).toEqual(['add_reminders']);
+        expect(getRequest().jsonSchema.name).toBe('add_reminders');
         expect(getRequest().messages[0]?.content).not.toContain('add_shopping_items');
     });
 
@@ -153,7 +153,7 @@ describe('planTrickyDadCommand', () => {
 
     it('rejects invalid arguments, so the next provider tries', async () => {
         answerWith({
-            tasks: [
+            reminders: [
                 {
                     title: 'Позвонить',
                     date: 'завтра',
@@ -170,7 +170,7 @@ describe('planTrickyDadCommand', () => {
         '2026-11-00',
     ])('rejects a nonexistent calendar date %s', async (date) => {
         answerWith({
-            tasks: [
+            reminders: [
                 {
                     title: 'Позвонить',
                     date,
@@ -183,7 +183,7 @@ describe('planTrickyDadCommand', () => {
 
     it('accepts a real leap day', async () => {
         answerWith({
-            tasks: [
+            reminders: [
                 {
                     title: 'Позвонить',
                     date: '2028-02-29',
@@ -216,7 +216,7 @@ describe('planTrickyDadCommand', () => {
         ]);
     });
 
-    it('saves the raw command as a task in Obsidian Tasks when no provider answers', async () => {
+    it('saves the raw command as a reminder in Obsidian Tasks when no provider answers', async () => {
         answerWithNothing();
 
         const plan = await planTrickyDadCommand('позвонить маме', 'Tasks Telegram chat');
@@ -227,7 +227,7 @@ describe('planTrickyDadCommand', () => {
             entries,
         ])).toEqual([
             [
-                'add_tasks',
+                'add_reminders',
                 ['позвонить маме'],
             ],
         ]);

@@ -48,27 +48,27 @@ function answerWith(answer: unknown): void {
     }) as ReturnType<typeof callLlmJson>);
 }
 
-const obsidianSyncApi = { addObsidianTasks: vi.fn() };
+const obsidianSyncApi = { addObsidianReminders: vi.fn() };
 
 beforeEach(() => {
     vi.clearAllMocks();
 });
 
 describe('runTrickyDadCommand', () => {
-    it('adds the shopping items from Alisa to the shopping list, and never a task', async () => {
+    it('adds the shopping items from Alisa to the shopping list, and never a reminder', async () => {
         answerWith({ items: ['Арбуз'] });
 
         const result = await runTrickyDadCommand('попроси умного папу купить арбуз', 'Alisa', obsidianSyncApi);
 
         expect(addItemsToSupabaseGroceryList).toHaveBeenCalledWith(['Арбуз']);
-        expect(obsidianSyncApi.addObsidianTasks).not.toHaveBeenCalled();
+        expect(obsidianSyncApi.addObsidianReminders).not.toHaveBeenCalled();
         expect(result.llmProvider).toBe('openrouter');
         expect(result.actionResults.map(({ error }) => error)).toEqual([null]);
     });
 
-    it('adds the tasks from the Tasks chat with their source, and never a shopping item', async () => {
+    it('adds the reminders from the Tasks chat with their source, and never a shopping item', async () => {
         answerWith({
-            tasks: [
+            reminders: [
                 {
                     title: 'Позвонить в банк',
                     date: null,
@@ -78,7 +78,7 @@ describe('runTrickyDadCommand', () => {
 
         await runTrickyDadCommand('позвонить в банк', 'Tasks Telegram chat', obsidianSyncApi);
 
-        expect(obsidianSyncApi.addObsidianTasks).toHaveBeenCalledWith([
+        expect(obsidianSyncApi.addObsidianReminders).toHaveBeenCalledWith([
             {
                 title: 'Позвонить в банк',
                 date: null,

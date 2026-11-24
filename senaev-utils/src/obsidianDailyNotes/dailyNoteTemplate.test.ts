@@ -50,7 +50,11 @@ describe('renderDailyNote', () => {
         expect(saturday).toContain('[[Alpha|Finish]]\n- [ ] [[Beta|Review]]');
         expect(saturday).toContain('[[Delta|Daily]]\n- [ ] [[Gamma|Weekly]]');
         expect(renderDailyNote('2026-08-02', { notes })).not.toContain('Weekly');
-        expect(saturday).toContain('window.senaevPersonalTools.filterTasksForDaily');
+        // The Tasks plugin gives each checkbox line to these expressions as `task`.
+        expect(saturday).toContain([
+            'filter by function window.senaevPersonalTools.filterRemindersForDaily({task, query})',
+            'sort by function window.senaevPersonalTools.sortKeyForDaily({task})',
+        ].join('\n'));
         expect(saturday).toContain('⬆️ Daily Note ⬆️');
     });
 

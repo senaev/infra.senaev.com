@@ -13,11 +13,10 @@ export const PUBLIC_DIR = join(OBSIDIAN_VAULT_PATH, 'public');
 export const PUBLIC_STATIC_DIR = join(OBSIDIAN_VAULT_PATH, 'public-static');
 
 /**
- * Obsidian Tasks file that receives tasks created via `POST /tasks`. Mirrors
- * TASKS_FILE_PATH from the Obsidian plugin's (now removed) tasks-sync feature,
- * which that endpoint replaces.
+ * The note that receives reminders created via `POST /reminders`, the vault's
+ * default place for new reminders.
  */
-export const TASKS_FILE_PATH = join(OBSIDIAN_VAULT_PATH, '@senaev', 'tasks', 'tasks_stream.md');
+export const REMINDERS_FILE_PATH = join(OBSIDIAN_VAULT_PATH, '@senaev', 'reminders', 'reminders_stream.md');
 
 /**
  * Receives each job search round's answer through `POST /job-search/recommendations`, from

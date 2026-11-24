@@ -35,7 +35,7 @@ vi.mock('./sendTrickyDadReport', () => {
     };
 });
 
-const obsidianSyncApi = { addObsidianTasks: vi.fn() };
+const obsidianSyncApi = { addObsidianReminders: vi.fn() };
 
 beforeEach(() => {
     vi.clearAllMocks();

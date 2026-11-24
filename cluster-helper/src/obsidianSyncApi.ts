@@ -8,7 +8,7 @@ import { readToolReply } from './chatGptMcp/callToolServer';
 import type { ToolReply } from './chatGptMcp/toolFamilies';
 import { OBSIDIAN_SYNC_URL } from './mtlsServiceUrls';
 
-export type ObsidianTaskInput = {
+export type ObsidianReminderInput = {
     title: string;
     date: string | null;
     source?: string;
@@ -130,21 +130,21 @@ export function createObsidianSyncApi(client: Pick<MtlsClient, 'fetch'>) {
     }
 
     /**
-     * Creates a task in the Obsidian vault by calling the obsidian-sync container's
-     * `POST /tasks` HTTP API, which appends a checkbox line to the Obsidian Tasks
+     * Creates a reminder in the Obsidian vault by calling the obsidian-sync container's
+     * `POST /reminders` HTTP API, which appends a checkbox line to the Obsidian Tasks
      * streaming file directly on disk.
      */
-    async function addObsidianTask(task: ObsidianTaskInput): Promise<void> {
-        const response = await fetchObsidianSync('/tasks', {
+    async function addObsidianReminder(reminder: ObsidianReminderInput): Promise<void> {
+        const response = await fetchObsidianSync('/reminders', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(task),
+            body: JSON.stringify(reminder),
         });
 
         await readStatusResponse(response).catch((error: unknown) => {
-            throw new Error(`Failed to add Obsidian task: ${stringifyUnknownError(error)}`, { cause: error });
+            throw new Error(`Failed to add Obsidian reminder: ${stringifyUnknownError(error)}`, { cause: error });
         });
     }
 
@@ -167,17 +167,17 @@ export function createObsidianSyncApi(client: Pick<MtlsClient, 'fetch'>) {
     }
 
     /**
-     * Creates several tasks in the Obsidian vault.
+     * Creates several reminders in the Obsidian vault.
      *
-     * The writes must stay sequential: `POST /tasks` does a read-modify-write of a
+     * The writes must stay sequential: `POST /reminders` does a read-modify-write of a
      * single vault file, so concurrent requests would overwrite each other and lose
-     * tasks. The list is also written back-to-front because each request prepends
-     * its line to the top of the file — writing in reverse leaves the tasks in the
+     * reminders. The list is also written back-to-front because each request prepends
+     * its line to the top of the file — writing in reverse leaves the reminders in the
      * vault in the same order the user said them.
      */
-    async function addObsidianTasks(tasks: ObsidianTaskInput[]): Promise<void> {
-        for (const task of [...tasks].reverse()) {
-            await addObsidianTask(task);
+    async function addObsidianReminders(reminders: ObsidianReminderInput[]): Promise<void> {
+        for (const reminder of [...reminders].reverse()) {
+            await addObsidianReminder(reminder);
         }
     }
 
@@ -197,7 +197,7 @@ export function createObsidianSyncApi(client: Pick<MtlsClient, 'fetch'>) {
         getMilestones,
         getShortLink,
         createShortLink,
-        addObsidianTasks,
+        addObsidianReminders,
         addJobSearchRecommendations,
         readVaultResource,
     };

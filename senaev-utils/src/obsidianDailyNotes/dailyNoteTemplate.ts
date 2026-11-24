@@ -1,4 +1,4 @@
-import { isIsoDay } from '../obsidianTasks/isoDay';
+import { isIsoDay } from '../obsidianReminders/isoDay';
 
 import { type ReminderSource, renderReminders } from './dailyReminders';
 
@@ -60,7 +60,7 @@ export function renderDailyNote(day: string, reminders: ReminderSource = { notes
 
     return `
 ${renderReminders(day, 'morning', reminders, path)}\`\`\`tasks
-filter by function window.senaevPersonalTools.filterTasksForDaily({task, query})
+filter by function window.senaevPersonalTools.filterRemindersForDaily({task, query})
 sort by function window.senaevPersonalTools.sortKeyForDaily({task})
 \`\`\`
 

@@ -43,9 +43,9 @@ describe('vault tool definitions', () => {
             'patch',
             'move',
             'diary_append',
-            'tasks_list',
-            'tasks_create',
-            'tasks_update',
+            'reminders_list',
+            'reminders_create',
+            'reminders_update',
         ]);
     });
 

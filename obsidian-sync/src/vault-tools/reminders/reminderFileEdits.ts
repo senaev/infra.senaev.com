@@ -1,9 +1,9 @@
 import { CommandError } from 'senaev-utils/src/commands/CommandError';
-import { parseTaskLine } from 'senaev-utils/src/obsidianTasks/taskLine';
+import { parseReminderLine } from 'senaev-utils/src/obsidianReminders/reminderLine';
 
 import { findRawBlocks, type RawBlockKind } from '../markdown/rawBlocks';
 
-import { toVaultTask, type VaultTask } from './scanVaultTasks';
+import { toVaultReminder, type VaultReminder } from './scanVaultReminders';
 
 const RAW_BLOCK_NAMES: Record<RawBlockKind, string> = {
     yaml: 'the frontmatter',
@@ -22,10 +22,10 @@ export function countLines(content: string): number {
 }
 
 /**
- * Refuses an insert after `afterLine` that would land inside a block where a task line is
- * not a task, or before the frontmatter, which must stay the first thing in the note.
+ * Refuses an insert after `afterLine` that would land inside a block where a reminder line is
+ * not a reminder, or before the frontmatter, which must stay the first thing in the note.
  */
-export function assertTaskInsertPosition(content: string, afterLine: number): void {
+export function assertReminderInsertPosition(content: string, afterLine: number): void {
     const lineCount = countLines(content);
 
     if (afterLine > lineCount) {
@@ -39,7 +39,7 @@ export function assertTaskInsertPosition(content: string, afterLine: number): vo
         if (isInside || isBeforeFrontmatter) {
             throw new CommandError(
                 'invalid_arguments',
-                `A task cannot be inserted after line ${afterLine}: it is inside ${RAW_BLOCK_NAMES[block.kind]} (lines ${block.startLine}-${block.endLine})${isBeforeFrontmatter ? '; use a line after the frontmatter' : ''}`
+                `A reminder cannot be inserted after line ${afterLine}: it is inside ${RAW_BLOCK_NAMES[block.kind]} (lines ${block.startLine}-${block.endLine})${isBeforeFrontmatter ? '; use a line after the frontmatter' : ''}`
             );
         }
     }
@@ -90,19 +90,19 @@ export function getLine(content: string, line: number): string | undefined {
     return line >= 1 && line <= countLines(content) ? content.split('\n')[line - 1] : undefined;
 }
 
-/** The task at `line` of the written file, in the format the task tools return. */
-export function readWrittenTask(path: string, hash: string, content: string, line: number): VaultTask {
+/** The reminder at `line` of the written file, in the format the reminder tools return. */
+export function readWrittenReminder(path: string, hash: string, content: string, line: number): VaultReminder {
     const raw = getLine(content, line) ?? '';
-    const parsed = parseTaskLine(raw);
+    const parsed = parseReminderLine(raw);
 
     if (parsed === null || !parsed.ok) {
-        throw new Error(`The written line ${line} of ${path} is not a valid task: ${raw}`);
+        throw new Error(`The written line ${line} of ${path} is not a valid reminder: ${raw}`);
     }
 
-    return toVaultTask(path, hash, {
+    return toVaultReminder(path, hash, {
         line,
         raw,
         parsed,
-        task: parsed.task,
+        reminder: parsed.reminder,
     });
 }

@@ -12,7 +12,7 @@ renders reminders from vault note properties alongside the Tasks query and the
 RRULE in `day-reminder-schedule`. The daily note filename supplies the calendar date.
 Header/footer widgets remain separate. To change the
 template, change senaev-utils, wait for the `ci` release, and update the exact version in
-`package.json`, as for the Tasks rules below.
+`package.json`, as for the reminder rules below.
 
 There is no template file: `_templates/Daily note template.md` was deleted.
 `registerDailyNoteCreation.ts` handles vault create/modify/rename and workspace file-open
@@ -26,7 +26,7 @@ A date-named note created in any other folder must be moved by hand. No whole-va
 The active note is checked once at layout readiness.
 
 Initialization fills whitespace-only files and frontmatter-only files, preserving frontmatter.
-Any other content, including existing body text and checked tasks, is left unchanged. Opening an
+Any other content, including existing body text and checked reminders, is left unchanged. Opening an
 old empty daily note intentionally initializes it. A nonempty note is never regenerated on rename.
 `Vault.process` atomically rechecks content before writing; a preliminary read avoids no-op modify
 loops. Per-file jobs serialize overlapping events and recheck changes received during a write.
@@ -41,14 +41,14 @@ The manifest requires Obsidian 1.4.0 for the atomic processing and folder APIs.
 Validation: run lint, typecheck, tests and build. The template itself is tested in senaev-utils,
 against fixtures captured from the retired template/script. For manual desktop
 and mobile QA, create a daily note via Periodic Notes/calendar, a full-path link, file explorer,
-rename/move, and the personal command; reopen it and check that task completion persists.
+rename/move, and the personal command; reopen it and check that reminder completion persists.
 Also open a synced note with diary content and verify that it is untouched.
 
 
 ## Features
 
 - **Daily note widgets** (`src/dailyNote/`) — injects a header (date heading → nav row → milestones) and a footer (milestones → nav row) into every `periodic/day/YYYY-MM-DD` note, in both Reading view and Live Preview. Needs no markup in the note itself. The milestones logic lives in `src/milestones/`.
-- **Global API for the Tasks plugin** (`src/tasks/`) — see below.
+- **Global API for the Tasks plugin** (`src/reminders/`) — see below.
 - **Commands** (`src/commands/`) — *Copy public link*, plus three that act on the editor selection: *Copy text to public*, *Search selection in Google*, *Translate selection in Google Translate*. The last three flatten wiki-links first via `src/utils/stripWikiLinks.ts`, because `[[...]]` syntax is meaningless outside the vault.
 
 ## Milestones — `src/milestones/`
@@ -121,23 +121,25 @@ Only the YAML boolean `true` hides. Any other value — `false`, the quoted stri
 
 ## Global API — `window.senaevPersonalTools`
 
-The Tasks plugin evaluates `filter by function` / `sort by function` expressions as plain JavaScript, so it can only reach plugin code through a global. `registerTasksGlobals` publishes one on load and deletes it on unload.
+The Tasks plugin evaluates `filter by function` / `sort by function` expressions as plain JavaScript, so it can only reach plugin code through a global. `registerRemindersGlobals` publishes one on load and deletes it on unload.
+
+The vault calls every checkbox line a *reminder*. The Tasks plugin still calls it a task: it passes each line to the functions as `task`, with fields such as `task.dueDate`, so those names stay.
 
 Daily notes call it like this:
 
 ```tasks
-filter by function window.senaevPersonalTools.filterTasksForDaily({task, query})
+filter by function window.senaevPersonalTools.filterRemindersForDaily({task, query})
 sort by function window.senaevPersonalTools.sortKeyForDaily({task})
 ```
 
-The rules themselves live in the `senaev-utils` npm package (`src/obsidianTasks/dailyTasks.ts` in the infra.senaev.com repo): `isTaskInDailyNote`, `isActiveDailyDate` and `getTaskSortKey`. The Obsidian MCP tools use the same code, so ChatGPT sees the same daily list. `filterTasksForDaily.ts` and `sortKeyForDaily.ts` here only convert the Tasks plugin `task` object (moment dates, priority names, 0-based line) to plain data. To change a rule, change senaev-utils, wait for the `ci` release, and update the exact version in `package.json`.
+The rules themselves live in the `senaev-utils` npm package (`src/obsidianReminders/dailyReminderList.ts` in the infra.senaev.com repo): `isReminderInDailyNote`, `isActiveDailyDate` and `getReminderSortKey`. The Obsidian MCP tools use the same code, so ChatGPT sees the same daily list. `filterRemindersForDaily.ts` and `sortKeyForDaily.ts` here only convert the Tasks plugin `task` object (moment dates, priority names, 0-based line) to plain data. To change a rule, change senaev-utils, wait for the `ci` release, and update the exact version in `package.json`.
 
-`filterTasksForDaily` splits daily notes into two roles:
+`filterRemindersForDaily` splits daily notes into two roles:
 
-- A **closed** task (done or cancelled) is listed on the note for the day it was closed on, so every past note stays a record of what was finished that day.
-- **Open** tasks are listed only on the *active* note, and only when due on or before its date, or undated and of normal-or-higher priority.
+- A **closed** reminder (done or cancelled) is listed on the note for the day it was closed on, so every past note stays a record of what was finished that day.
+- **Open** reminders are listed only on the *active* note, and only when their date is on or before the note's date, or undated and of normal-or-higher priority.
 
-Tasks inside `periodic/` are always excluded so daily notes never echo each other.
+Reminders inside `periodic/` are always excluded so daily notes never echo each other.
 
 `isActiveDailyDate` (senaev-utils) picks the active note: today and any future date (`noteDate >= today`). A past note never becomes active, even when today's note does not exist yet. Until 2026-10-27 the latest existing note took over in that case. `isActiveDailyDateFromToday` calls it with today's local date. `YYYY-MM-DD` compares chronologically as a plain string, so no date parsing is needed. A note whose name is not a date counts as active.
 
@@ -145,13 +147,13 @@ Without this scoping every past note repeats the whole open backlog, which is wh
 
 The check needs no vault scan and no cache. Today's date is read fresh on each call, so midnight needs no invalidation. A past note already open on screen keeps its old list until the Tasks plugin re-renders it, which reopening the note always does.
 
-`sortKeyForDaily` orders by priority (highest first), then file path, then line, so tasks keep their order in the note. (Until 2026-10-17 it was file name, then description.) All three tiers are packed into one `|`-separated string because the Tasks plugin accepts only a single scalar per `sort by function` and throws when two keys have different types — it has no hook for a real comparator, so a plugin cannot supply one. Details that matter if you change it:
+`sortKeyForDaily` orders by priority (highest first), then file path, then line, so reminders keep their order in the note. (Until 2026-10-17 it was file name, then description.) All three tiers are packed into one `|`-separated string because the Tasks plugin accepts only a single scalar per `sort by function` and throws when two keys have different types — it has no hook for a real comparator, so a plugin cannot supply one. Details that matter if you change it:
 
 - Priority leads as a single digit (`0` Highest … `5` Lowest), so plain ascending order already means highest-priority-first.
 - `|` is the separator because Obsidian forbids it in file names, keeping the path tier unambiguous, and because it is ordinary punctuation. A control character would be wrong here: the comparator calls `localeCompare` without `ignorePunctuation`, and control characters are collated away entirely.
-- The comparator uses `numeric: true`, so digit runs sort naturally (line `2` before line `10`) rather than lexicographically. This is not configurable from a note. senaev-utils' `compareTaskSortKeys` does the same comparison.
+- The comparator uses `numeric: true`, so digit runs sort naturally (line `2` before line `10`) rather than lexicographically. This is not configurable from a note. senaev-utils' `compareReminderSortKeys` does the same comparison.
 
-Renaming this global is a breaking change: ~649 notes and the daily-note template in senaev-utils reference it by name.
+Renaming a function of this global is a breaking change: about 750 daily notes call it by name. That is why `filterTasksForDaily`, the name before 2026-11-24, stays as an alias of `filterRemindersForDaily`; the daily-note template in senaev-utils writes the new name.
 
 ## Build
 
