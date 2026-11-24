@@ -1,10 +1,16 @@
-- [x] Verify the Hetzner pilot and deploy OpenTelemetry container log collection on all seven Linux nodes.
-- [ ] Deploy and verify the smaller agent image and startup probe from [PR #287](https://github.com/senaev/infra.senaev.com/pull/287/changes).
+- [x] Deploy OpenTelemetry container log collection across all seven Linux nodes.
+- [x] Deploy the smaller agent, startup probe and node label on replayed logs.
+- [x] Compare ClickHouse and Datadog on their three shared nodes.
+- [x] Verify delivery of a test log from `proxmox`.
 
 ## Stage
 
-Cluster-wide collection is deployed. ClickHouse runs on `senaev-madrid`, the persistent OpenTelemetry gateway runs on Hetzner, and Grafana reads the 450-day logs table through **ClickHouse Logs**.
+Completed on 2026-11-24. The DaemonSet has seven ready agents and all seven nodes have
+delivered labeled logs. ClickHouse on `senaev-madrid` retains logs for 450 days and
+Grafana reads the data through **ClickHouse Logs**. The user skipped the production
+recovery drill after local testing verified queue recovery.
 
-## Next steps
+## Evidence
 
-After PR #287 rolls out, check the DaemonSet, recent logs from every node and Datadog parity on shared nodes. See the [verification steps](README.md#verification).
+The [worklog](project-worklog.md) records the `proxmox` probe, rollout checks and the
+Datadog comparison.
