@@ -1,6 +1,5 @@
 import type { Node, Parent } from 'mdast';
-
-import { parseMarkdown } from './parseMarkdown';
+import { parseMarkdown } from 'senaev-utils/src/obsidianMarkdown/parseMarkdown';
 
 export type RawBlockKind = 'yaml' | 'code' | 'html' | 'table';
 

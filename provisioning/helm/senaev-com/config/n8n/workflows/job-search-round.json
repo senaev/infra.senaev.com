@@ -1,6 +1,6 @@
 {
   "id": "job-search-round",
-  "name": "Job search round: Claude Code follows LLM Job Search Playbook and sends its recommendations to Telegram",
+  "name": "Job search round: Claude Code follows LLM Job Search Playbook, cluster-helper sends the report to Telegram and Obsidian",
   "nodes": [
     {
       "parameters": {
@@ -59,31 +59,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://cluster-helper/telegram/send-message",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ chatId: $env.TG_JOB_SEARCH_FRAMEWORK_CHAT_ID, text: $json.result }) }}",
-        "options": {
-          "timeout": 60000
-        }
-      },
-      "id": "send-recommendations",
-      "name": "Send the recommendations to the Job Search Framework chat",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000,
-      "onError": "continueErrorOutput",
-      "position": [
-        -20,
-        -120
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "http://cluster-helper/job-search/recommendations",
+        "url": "http://cluster-helper/job-search/round-report",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ date: $('Take the start time').item.json.date, time: $('Take the start time').item.json.time, text: $json.result }) }}",
@@ -91,22 +67,19 @@
           "timeout": 60000
         }
       },
-      "id": "log-recommendations",
-      "name": "Add the recommendations to the LLM Recommendations Log",
+      "id": "report-round",
+      "name": "Report the round to cluster-helper",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000,
       "onError": "continueErrorOutput",
       "position": [
         -20,
-        40
+        0
       ]
     },
     {
       "parameters": {
-        "jsCode": "// The prompt API answers 502 with { status: 'error', message } when Claude Code fails,\n// 409 when another prompt runs, and the request fails when the pod is down.\n// The Telegram request fails when cluster-helper or Telegram is down; the log request fails\n// when obsidian-sync is down or the LLM Recommendations Log note is missing.\nconst item = $input.first().json;\nconst err = item.error ?? item;\nconst message = (err && err.message) ? err.message : JSON.stringify(err).slice(0, 300);\n\nreturn [{\n  json: {\n    text: `⚠️ Failed to run the job search round: ${message}`,\n  },\n}];"
+        "jsCode": "// The prompt API answers 502 with { status: 'error', message } when Claude Code fails,\n// 409 when another prompt runs, and the request fails when the pod is down.\n// cluster-helper answers 502 with { status: 'error', message } naming the target that failed\n// (Telegram, the LLM Recommendations Log or both); the other one was still delivered.\n// No retry: the message may already be in Telegram.\nconst item = $input.first().json;\nconst err = item.error ?? item;\nconst message = (err && err.message) ? err.message : JSON.stringify(err).slice(0, 300);\n\nreturn [{\n  json: {\n    text: `⚠️ Failed to run the job search round: ${message}`,\n  },\n}];"
       },
       "id": "format-error",
       "name": "Format error message",
@@ -157,28 +130,11 @@
       "main": [
         [
           {
-            "node": "Send the recommendations to the Job Search Framework chat",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Add the recommendations to the LLM Recommendations Log",
+            "node": "Report the round to cluster-helper",
             "type": "main",
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Format error message",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Send the recommendations to the Job Search Framework chat": {
-      "main": [
-        [],
         [
           {
             "node": "Format error message",
@@ -210,7 +166,7 @@
         ]
       ]
     },
-    "Add the recommendations to the LLM Recommendations Log": {
+    "Report the round to cluster-helper": {
       "main": [
         [],
         [

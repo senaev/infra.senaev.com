@@ -1,5 +1,6 @@
 import { stripFrontmatter } from 'senaev-utils/src/obsidianNotes/stripFrontmatter';
 import { TelegramRichMessageMedia } from 'senaev-utils/src/utils/TelegramApi/types';
+import { replaceWikiLinksWithHighlights } from 'senaev-utils/src/obsidianMarkdown/replaceWikiLinksWithHighlights';
 
 import { readFrontmatterList } from '../readFrontmatterList';
 
@@ -7,7 +8,6 @@ import { appendAliasesToTitle } from './appendAliasesToTitle';
 import { cutHistorySection } from './cutHistorySection';
 import { ensureEmptyLineAfterTables } from './ensureEmptyLineAfterTables';
 import { markTitleAsProvisioned } from './markTitleAsProvisioned';
-import { replaceWikiLinksWithHighlights } from './replaceWikiLinksWithHighlights';
 import { resolveImageEmbeds } from './resolveImageEmbeds';
 
 export type RenderedNote = {
