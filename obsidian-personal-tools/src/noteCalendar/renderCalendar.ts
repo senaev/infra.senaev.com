@@ -169,7 +169,18 @@ function renderHeader<Kind extends string>(
 		createNavButton(switcherEl, 'next', 'chevron-right', 'Next year', newer ? () => actions.selectYear(newer.year) : null);
 	}
 
-	const moreButton = switcherEl.createEl('button', {
+	// Expanded, the heading goes between the switcher (empty then) and the button, which keeps it in the middle.
+	if (expanded) {
+		const headingEl = headerEl.createDiv({ cls: 'senaev-calendar-heading' });
+		headingEl.createDiv({ cls: 'senaev-calendar-title', text: options.title });
+		headingEl.createDiv({
+			cls: 'senaev-calendar-totals',
+			text: formatCounts(model.kinds, model.counts, options.kindStyles) || options.emptyText,
+		});
+	}
+
+	// The button is at the right end of the header, away from the year switcher.
+	const moreButton = headerEl.createDiv({ cls: 'senaev-calendar-header-end' }).createEl('button', {
 		cls: expanded ? ['clickable-icon', 'senaev-calendar-more', 'is-active'] : ['clickable-icon', 'senaev-calendar-more'],
 		text: '⋯',
 		attr: {
@@ -178,18 +189,6 @@ function renderHeader<Kind extends string>(
 		},
 	});
 	moreButton.addEventListener('click', () => actions.toggleExpanded());
-
-	if (expanded) {
-		const headingEl = headerEl.createDiv({ cls: 'senaev-calendar-heading' });
-		headingEl.createDiv({ cls: 'senaev-calendar-title', text: options.title });
-		headingEl.createDiv({
-			cls: 'senaev-calendar-totals',
-			text: formatCounts(model.kinds, model.counts, options.kindStyles) || options.emptyText,
-		});
-
-		// Keeps the heading in the middle: the button on the left has a twin on the right.
-		headerEl.createDiv({ cls: 'senaev-calendar-header-end' });
-	}
 }
 
 function renderYear<Kind extends string>(
