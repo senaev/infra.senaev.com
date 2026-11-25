@@ -149,6 +149,18 @@ class WireguardConfigTests(unittest.TestCase):
             probe.client_config(WIREGUARD_LINK, 'base', 'unused')
         self.assertEqual(str(error.exception), 'wireguard_public_key_failed')
 
+    @patch('probe.subprocess.run', side_effect=probe.subprocess.TimeoutExpired(['xray', 'secret'], 10))
+    def test_public_key_timeout_does_not_carry_the_command_line(self, run):
+        with self.assertRaises(RuntimeError) as error:
+            probe.client_config(WIREGUARD_LINK, 'base', 'unused')
+        self.assertEqual(str(error.exception), 'wireguard_public_key_failed')
+        self.assertTrue(error.exception.__suppress_context__)
+
+    @patch('probe.subprocess.run', side_effect=x25519_output)
+    def test_ipv6_endpoint_is_bracketed(self, run):
+        config, _ = probe.client_config(WIREGUARD_LINK.replace('senaev.com', '[2001:db8::1]'), 'base', 'unused')
+        self.assertEqual(config['outbounds'][0]['settings']['peers'][0]['endpoint'], '[2001:db8::1]:41642')
+
     @patch('probe.subprocess.run', side_effect=x25519_output)
     def test_rejects_incomplete_or_extended_links(self, run):
         for link in [WIREGUARD_LINK.replace('&mtu=1280', ''), WIREGUARD_LINK.replace(':41642', ''),

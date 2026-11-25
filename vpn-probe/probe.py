@@ -42,8 +42,12 @@ def wireguard_private_key(base_uuid, seed):
 
 def wireguard_public_key(private_key):
     """X25519 public key, computed by the pinned Xray binary (no crypto library in the image)."""
-    run = subprocess.run(["xray", "x25519", "-i", private_key], env=PROXY_ENV,
-                         capture_output=True, text=True, timeout=10, check=False)
+    try:
+        run = subprocess.run(["xray", "x25519", "-i", private_key], env=PROXY_ENV,
+                             capture_output=True, text=True, timeout=10, check=False)
+    except subprocess.TimeoutExpired:
+        # Its message holds the command line, and with it the private key.
+        raise RuntimeError("wireguard_public_key_failed") from None
     match = re.search(r"^Password \(PublicKey\): ([A-Za-z0-9_-]{43})$", run.stdout, re.MULTILINE)
     if run.returncode != 0 or not match:
         raise RuntimeError("wireguard_public_key_failed")
@@ -112,6 +116,7 @@ def wireguard_client_config(url, params, port):
     """WireGuard in user space (no tun device, no capabilities in the probe pod)."""
     if not url.hostname or not url.port or not url.username or set(params) != {"publickey", "address", "mtu"}:
         raise ValueError("WireGuard requires host, port, key, publickey, address and mtu")
+    host = f"[{url.hostname}]" if ":" in url.hostname else url.hostname
     return {
         # Info: Xray logs WireGuard handshakes only at this level.
         "log": {"access": "none", "error": "/dev/stderr", "loglevel": "info"},
@@ -120,7 +125,7 @@ def wireguard_client_config(url, params, port):
         # Deliberately no freedom/direct fallback outbound.
         "outbounds": [{"protocol": "wireguard", "settings": {
             "secretKey": unquote(url.username), "address": [params["address"][0]],
-            "peers": [{"publicKey": params["publickey"][0], "endpoint": f"{url.hostname}:{url.port}"}],
+            "peers": [{"publicKey": params["publickey"][0], "endpoint": f"{host}:{url.port}"}],
             "mtu": int(params["mtu"][0]), "noKernelTun": True}}]}
 
 
@@ -1032,7 +1037,10 @@ def run(args):
                     due_light = time.monotonic() + random.uniform(30, 45)
                 if now >= due_heavy:
                     passed = heavy(profile, proxy, expected) and passed
-                    address = config["outbounds"][0]["settings"]["vnext"][0]["address"]
+                    outbound = config["outbounds"][0]
+                    # Only VLESS has vnext; the UDP profiles have no IPv6 controls.
+                    address = (outbound["settings"]["vnext"][0]["address"]
+                               if outbound["protocol"] == "vless" else "")
                     if ":" in address:
                         ipv6_controls(profile, address)
                     due_heavy = time.monotonic() + random.uniform(300, 360)
