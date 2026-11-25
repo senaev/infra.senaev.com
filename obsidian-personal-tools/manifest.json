@@ -3,7 +3,7 @@
 	"name": "Senaev Personal Tools",
 	"version": "0.1.4",
 	"minAppVersion": "1.4.0",
-	"description": "Personal tools for Andrei Senaev's Obsidian vault.",
+	"description": "Personal tools for Andrei Senaev's vault.",
 	"author": "Andrei Senaev",
 	"authorUrl": "https://github.com/senaev",
 	"isDesktopOnly": false
