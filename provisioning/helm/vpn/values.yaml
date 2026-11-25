@@ -121,12 +121,8 @@ vpnProbe:
   remoteSources:
     - probeIndex: 6
       vps: firstvds
-    - probeIndex: 7
-      vps: firstvds
-    - probeIndex: 8
-      vps: firstvds
-      # Its own WireGuard peer (xrayWireguard.peers), not the home probe's key.
-      link: "wireguard://{XRAY_WIREGUARD_PRIVATE_KEY:8-firstvds}@senaev.com:41642?publickey={XRAY_WIREGUARD_PUBLIC_KEY:8-server}&address=10.0.0.3/32&mtu=1280"
+    # Profiles 7 and 8 are not probed from FirstVDS: with their two probe pods the node (1 GB)
+    # went NotReady on 2026-11-25 ~18:00 UTC and senaev.ru went down.
   # UUID seeds identify subscription routes, including the IPv6 entry using seed 5.
   # "direct" compares the home exit to the probe's own public home IP.
   expectedExits:
