@@ -1,3 +1,30 @@
+## 2026-11-25 — Profile 6 passes from FirstVDS only; round 5 probes UDP 443 and WireGuard
+
+#304 deployed `vpn-probe-6-firstvds`. Parity over 24 h (VictoriaMetrics,
+`sum by (profile, result) (increase(vpn_probe_checks_total{check=~"parity_.*", route="vpn"}[24h]))`):
+
+```
+⚡ 6. hetzner UDP → freedom                 failure 509  success 0
+⚡ 6. hetzner UDP → freedom (from firstvds) failure 0    success 236
+🇫🇮 1. firstvds → hetzner                   failure 5    success 503
+🇷🇺 3. hetzner → senaev-media               failure 323  success 187
+💄 4. hetzner → freedom                     failure 322  success 185
+```
+
+The Hysteria2 server and config work; the home ISP drops Hysteria2 with salamander on UDP
+47443, while Tailscale's WireGuard to Hetzner passes. Happ docs list VLESS, VMess, Socks5,
+Trojan, Shadowsocks and Hysteria2 only, so WireGuard cannot be a Happ profile.
+
+Decision: test two UDP shapes at once, each from home and from FirstVDS: profile 7, Hysteria2 on
+UDP 443 without obfuscation (Happ-compatible; never really tested from home, #260 was blocked by
+our NetworkPolicy), and profile 8, WireGuard on UDP 41642 (probe only, `subscription: false`).
+Their results tell "unknown UDP is dropped" from "QUIC is dropped" from "only Tailscale passes".
+The xray-vpn servers render unchanged (helm template diff against main); the render script
+gets the WireGuard key macros only in `xray-wireguard`.
+
+The playbook is now in [VPN-REPAIR-PLAYBOOK.md](VPN-REPAIR-PLAYBOOK.md) (agreed with the user
+on 2026-11-25).
+
 ## 2026-11-24 22:25 UTC — UDP allowed, profile 6 still gets no answer; probe it from FirstVDS
 
 #281 deployed (run 45499675087, success): the probe NetworkPolicy allows UDP 47443. Profile 6

@@ -34,7 +34,14 @@ spec:
             - containerPort: 3000
           env:
             - name: SUBSCRIPTION_ENTRIES
-              value: {{ toJson .Values.vpnSubscription.entries | quote }}
+              {{- /* subscription: false marks a probe-only entry (a protocol Happ cannot import). */}}
+              {{- $entries := list }}
+              {{- range $entry := .Values.vpnSubscription.entries }}
+              {{- if ne $entry.subscription false }}
+              {{- $entries = append $entries $entry }}
+              {{- end }}
+              {{- end }}
+              value: {{ toJson $entries | quote }}
             - name: VPN_SUBSCRIPTION_CHAT_ID
               value: {{ .Values.global.telegramVpnSubscriptionChatId | quote }}
             - name: VPN_SUBSCRIPTION_SECRET

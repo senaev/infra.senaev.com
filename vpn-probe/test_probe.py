@@ -103,6 +103,60 @@ class HysteriaConfigTests(unittest.TestCase):
                 probe.client_config(link, 'b', 'p')
 
 
+WIREGUARD_LINK = ('wireguard://{XRAY_WIREGUARD_PRIVATE_KEY:8}@senaev.com:41642'
+                  '?publickey={XRAY_WIREGUARD_PUBLIC_KEY:8-server}&address=10.0.0.2/32&mtu=1280')
+# Computed by the server render script (Node.js) for XRAY_USER_UUID=base.
+NODE_PRIVATE_KEY_8 = 'gBDAxic3nmmxZ-bxic5bwiUDuG6dFraaPIb_FccZJ0Y'
+NODE_PRIVATE_KEY_8_SERVER = 'uMMtViQ4MP1h345JiSQBEr5bQtRlWGT6ThyNYMqT_VU'
+NODE_PUBLIC_KEY_8_SERVER = 'HWbRD0QPR6K8rX3oYvxSP3PqpUsW3mHevjAo92NixF8'
+
+
+def x25519_output(command, **kwargs):
+    keys = {NODE_PRIVATE_KEY_8_SERVER: NODE_PUBLIC_KEY_8_SERVER}
+    return Mock(returncode=0, stdout=f'PrivateKey: {command[-1]}\n'
+                f'Password (PublicKey): {keys[command[-1]]}\nHash32: x\n')
+
+
+class WireguardConfigTests(unittest.TestCase):
+    def test_private_key_matches_the_server_render_script(self):
+        self.assertEqual(probe.wireguard_private_key('base', '8'), NODE_PRIVATE_KEY_8)
+        self.assertEqual(probe.wireguard_private_key('base', '8-server'), NODE_PRIVATE_KEY_8_SERVER)
+
+    @patch('probe.subprocess.run', side_effect=x25519_output)
+    def test_user_space_client_with_derived_keys_and_no_direct_outbound(self, run):
+        config, seed = probe.client_config(WIREGUARD_LINK, 'base', 'unused', port=1081)
+        self.assertEqual(seed, '8')
+        self.assertEqual(config['outbounds'], [{'protocol': 'wireguard', 'settings': {
+            'secretKey': NODE_PRIVATE_KEY_8, 'address': ['10.0.0.2/32'],
+            'peers': [{'publicKey': NODE_PUBLIC_KEY_8_SERVER, 'endpoint': 'senaev.com:41642'}],
+            'mtu': 1280, 'noKernelTun': True}}])
+        self.assertEqual(config['inbounds'][0]['port'], 1081)
+        self.assertEqual(run.call_args.args[0], ['xray', 'x25519', '-i', NODE_PRIVATE_KEY_8_SERVER])
+
+    @patch('probe.subprocess.run', side_effect=x25519_output)
+    def test_invalid_credentials_change_only_the_client_key(self, run):
+        good, _ = probe.client_config(WIREGUARD_LINK, 'base', 'unused')
+        bad, _ = probe.client_config(WIREGUARD_LINK, 'base', 'unused', invalid=True)
+        good_settings, bad_settings = good['outbounds'][0]['settings'], bad['outbounds'][0]['settings']
+        self.assertNotEqual(good_settings['secretKey'], bad_settings['secretKey'])
+        self.assertEqual(len(bad_settings['secretKey']), 43)
+        bad_settings['secretKey'] = good_settings['secretKey']
+        self.assertEqual(good, bad)
+
+    @patch('probe.subprocess.run', return_value=Mock(returncode=1, stdout=''))
+    def test_public_key_failure_is_reported_without_the_key(self, run):
+        with self.assertRaises(RuntimeError) as error:
+            probe.client_config(WIREGUARD_LINK, 'base', 'unused')
+        self.assertEqual(str(error.exception), 'wireguard_public_key_failed')
+
+    @patch('probe.subprocess.run', side_effect=x25519_output)
+    def test_rejects_incomplete_or_extended_links(self, run):
+        for link in [WIREGUARD_LINK.replace('&mtu=1280', ''), WIREGUARD_LINK.replace(':41642', ''),
+                     WIREGUARD_LINK.replace('address=10.0.0.2/32&', ''), WIREGUARD_LINK + '&reserved=1,2,3']:
+            with self.assertRaises(ValueError):
+                probe.client_config(link, 'base', 'unused')
+
+
 class RequestTests(unittest.TestCase):
     @patch('probe.subprocess.run')
     def test_explicit_proxy_no_bypass_and_partial_body_rejected(self, run):

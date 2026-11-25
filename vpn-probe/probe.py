@@ -1,5 +1,6 @@
 """Bounded HTTPS probes through explicit loopback SOCKS; never change host routing."""
 import argparse
+import base64
 import fcntl
 import hashlib
 import ipaddress
@@ -14,7 +15,7 @@ import subprocess
 import tempfile
 import threading
 import time
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 import uuid
 
 from metrics import ProbeMetrics, start_server
@@ -27,20 +28,54 @@ PROXY_ENV = {key: value for key, value in os.environ.items()
              if key.lower() not in {"http_proxy", "https_proxy", "all_proxy", "no_proxy"}}
 
 
+CREDENTIAL_MACRO = re.compile(r"\{(XRAY_USER_UUID|XRAY_WIREGUARD_PRIVATE_KEY):([^}]+)\}")
+
+
+def wireguard_private_key(base_uuid, seed):
+    """Clamped X25519 key from the base secret; the same derivation as the server render script."""
+    key = bytearray(hashlib.sha256(f"{base_uuid}:wireguard:{seed}".encode()).digest())
+    key[0] &= 248
+    key[31] &= 127
+    key[31] |= 64
+    return base64.urlsafe_b64encode(bytes(key)).decode().rstrip("=")
+
+
+def wireguard_public_key(private_key):
+    """X25519 public key, computed by the pinned Xray binary (no crypto library in the image)."""
+    run = subprocess.run(["xray", "x25519", "-i", private_key], env=PROXY_ENV,
+                         capture_output=True, text=True, timeout=10, check=False)
+    match = re.search(r"^Password \(PublicKey\): ([A-Za-z0-9_-]{43})$", run.stdout, re.MULTILINE)
+    if run.returncode != 0 or not match:
+        raise RuntimeError("wireguard_public_key_failed")
+    return match[1]
+
+
 def client_config(link, base_uuid, public_key, port=1080, invalid=False):
     """Use the subscription's UUID derivation; reject unsupported transports."""
-    seed = re.search(r"\{XRAY_USER_UUID:([^}]+)\}", link)
+    seed = CREDENTIAL_MACRO.search(link)
     if not seed:
         raise ValueError("Missing subscription UUID macro")
     def derive(value):
         return str(uuid.UUID(hashlib.sha256(f"{base_uuid}:{value}".encode()).hexdigest()[:32]))
-    # The first macro is the user credential; later ones (the Hysteria2 obfs password) are not.
-    link = link.replace(seed[0], str(uuid.uuid4()) if invalid else derive(seed[1]), 1)
+    # The first macro is the user credential; later ones (the Hysteria2 obfs password, the
+    # WireGuard server key) are not.
+    if invalid:
+        replacement = (base64.urlsafe_b64encode(os.urandom(32)).decode().rstrip("=")
+                       if seed[1] == "XRAY_WIREGUARD_PRIVATE_KEY" else str(uuid.uuid4()))
+    elif seed[1] == "XRAY_WIREGUARD_PRIVATE_KEY":
+        replacement = wireguard_private_key(base_uuid, seed[2])
+    else:
+        replacement = derive(seed[2])
+    link = link.replace(seed[0], replacement, 1)
     link = re.sub(r"\{XRAY_USER_UUID:([^}]+)\}", lambda match: derive(match[1]), link)
+    link = re.sub(r"\{XRAY_WIREGUARD_PUBLIC_KEY:([^}]+)\}",
+                  lambda match: wireguard_public_key(wireguard_private_key(base_uuid, match[1])), link)
     url = urlsplit(link.replace("{XRAY_REALITY_PUBLIC_KEY}", public_key))
     params = parse_qs(url.query, keep_blank_values=True)
     if url.scheme == "hysteria2":
-        return hysteria_client_config(url, params, port), seed[1]
+        return hysteria_client_config(url, params, port), seed[2]
+    if url.scheme == "wireguard":
+        return wireguard_client_config(url, params, port), seed[2]
     if url.scheme != "vless" or not url.hostname or not url.port:
         raise ValueError("Invalid VLESS endpoint")
     transport, security = params.get("type"), params.get("security")
@@ -70,7 +105,23 @@ def client_config(link, base_uuid, public_key, port=1080, invalid=False):
         # Deliberately no freedom/direct fallback outbound.
         "outbounds": [{"protocol": "vless", "settings": {"vnext": [{
             "address": url.hostname, "port": url.port, "users": [user]}]},
-            "streamSettings": stream}]}, seed[1]
+            "streamSettings": stream}]}, seed[2]
+
+
+def wireguard_client_config(url, params, port):
+    """WireGuard in user space (no tun device, no capabilities in the probe pod)."""
+    if not url.hostname or not url.port or not url.username or set(params) != {"publickey", "address", "mtu"}:
+        raise ValueError("WireGuard requires host, port, key, publickey, address and mtu")
+    return {
+        # Info: Xray logs WireGuard handshakes only at this level.
+        "log": {"access": "none", "error": "/dev/stderr", "loglevel": "info"},
+        "inbounds": [{"listen": "127.0.0.1", "port": port, "protocol": "socks",
+                      "settings": {"auth": "noauth", "udp": False}}],
+        # Deliberately no freedom/direct fallback outbound.
+        "outbounds": [{"protocol": "wireguard", "settings": {
+            "secretKey": unquote(url.username), "address": [params["address"][0]],
+            "peers": [{"publicKey": params["publickey"][0], "endpoint": f"{url.hostname}:{url.port}"}],
+            "mtu": int(params["mtu"][0]), "noKernelTun": True}}]}
 
 
 def hysteria_client_config(url, params, port):
