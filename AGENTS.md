@@ -430,8 +430,8 @@ Code Tools has its own image (`code-tools/Dockerfile`,
 `ghcr.io/senaev/code-tools`), Deployment and Service
 (`provisioning/helm/senaev-com/templates/llm-workspace/_code-tools.tpl`). OpenCode and its Telegram
 bot stay in the `senaev-opencode-telegram` Deployment. Both pods, OMP and Claude Code mount the
-workspace's `senaev-code` PVC at `/code`; only OMP also mounts its `senaev-projects` PVC at
-`/projects`. The workspace `vps` node selector puts them on one node. Code Tools and OpenCode use one replica
+workspace's `senaev-code` PVC at `/code`. OMP keeps its state (`/root/.omp`) in the node folder
+`<clusterRootPath>/volumes/<name>-omp-web-state` (a `hostPath`, not a PVC). The workspace `vps` node selector puts them on one node. Code Tools and OpenCode use one replica
 and `Recreate`; a Code Tools update still has a short outage and loses in-memory operation IDs.
 cluster-helper is its only caller, over mTLS on 8443 (see Internal mTLS); the kubelet probes `/health` on
 the plain port 8081.

@@ -246,7 +246,6 @@
             "required": [
               "enabled",
               "hostname",
-              "storageSize",
               "secrets"
             ],
             "properties": {
@@ -254,10 +253,6 @@
                 "type": "boolean"
               },
               "hostname": {
-                "type": "string",
-                "minLength": 1
-              },
-              "storageSize": {
                 "type": "string",
                 "minLength": 1
               },
