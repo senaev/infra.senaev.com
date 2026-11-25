@@ -1,3 +1,18 @@
+## 2026-11-25 18:00–19:00 UTC — UDP to Hetzner stopped; FirstVDS overload took senaev.ru down
+
+- Profile 6 from FirstVDS passed every check until ~16:55 UTC, then failed everything. The
+  `xray-hysteria` server logged its last `tunnelling request` at 16:59:27 and nothing after, also
+  on UDP 443 and on `xray-wireguard` (41642) after #308. No deploy touched networking then
+  (#321 was the Obsidian plugin). Asked the user for `iptables -t nat` and `journalctl` on Hetzner.
+- The #308 deploy restarted 4 probe pods on FirstVDS (1 vCPU, 1 GB): CPU 100 % 17:56–18:03,
+  disk reads ~200 MB/s, node NotReady once; senaev.ru (Traefik on FirstVDS) timed out 17:54:30–
+  18:04:30. Underlying: since otel-agent arrived (2026-11-22 ~21:00 UTC) the node swaps 5–7 MB/s
+  each way, 1,200–1,800 major faults/s, 35–59 MB/s reads. #323 removed probes 7/8 there; this
+  change removes `vpn-probe-6-firstvds` and `vpn-source-control-firstvds` (~40 MB RSS, ~100 MB
+  working set); otel-agent's limit goes 256Mi → 128Mi in a separate PR.
+- iperf3 home → Hetzner over Tailscale is ~2 Mbit/s these hours, not 19.9: "Tailscale UDP passes
+  from home" does not hold right now.
+
 ## 2026-11-25 — Profile 6 passes from FirstVDS only; round 5 probes UDP 443 and WireGuard
 
 #304 deployed `vpn-probe-6-firstvds`. Parity over 24 h (VictoriaMetrics,

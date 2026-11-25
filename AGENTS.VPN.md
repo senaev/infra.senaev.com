@@ -43,7 +43,9 @@ that level.
   its port there, or its packets are dropped inside the cluster and the route looks blocked.
 - `vpnProbe.remoteSources` runs the probe of a profile also on another node
   (`vpn-probe-<index>-<vps>`, profile name with ` (from <vps>)`), to tell a home ISP block from
-  a server-side problem.
+  a server-side problem. None run now: firstvds (1 vCPU, 1 GB) was swapping, and probe
+  restarts during a deploy made senaev.ru (its Traefik) time out (2026-11-25). The XHTTP
+  source-control probe runs only on `vpnXhttpExperiment.sourceControlNodes` (hetzner).
 
 ### WireGuard server (UDP, probe only)
 
@@ -61,9 +63,9 @@ is a diagnostic (added 2026-11-25): Happ cannot import WireGuard, so the entry h
   private key in Python and the public key with `xray x25519 -i`. The probe image build checks
   that both give the same key pair. vpn-subscription does not know these macros.
 - An entry with `subscription: false` is probed but not sent to subscription clients.
-- Each probe source has its own peer (`xrayWireguard.peers`: seed `8` and `10.0.0.2` from home,
-  `8-firstvds` and `10.0.0.3` from FirstVDS, via `remoteSources[].link`). Two clients with one
-  key would take over each other's endpoint (WireGuard roaming).
+- Each probe source needs its own peer in `xrayWireguard.peers` (home: seed `8`, `10.0.0.2`), and
+  a remote source its own link (`remoteSources[].link`): two clients with one key would take over
+  each other's endpoint (WireGuard roaming).
 
 ### vpn-subscription service
 

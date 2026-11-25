@@ -71,9 +71,6 @@ xrayWireguard:
     - user: user-wireguard
       keySeed: "8"
       address: 10.0.0.2/32
-    - user: user-wireguard-firstvds
-      keySeed: 8-firstvds
-      address: 10.0.0.3/32
 
 vpnSubscription:
   enabled: true
@@ -118,11 +115,9 @@ vpnProbe:
   vps: senaev-media
   # The same profile probed from another node, outside the home ISP: tells an ISP block from a
   # server-side problem. Logs from firstvds are not in Datadog (no agent there); metrics are.
-  remoteSources:
-    - probeIndex: 6
-      vps: firstvds
-    # Profiles 7 and 8 are not probed from FirstVDS: with their two probe pods the node (1 GB)
-    # went NotReady on 2026-11-25 ~18:00 UTC and senaev.ru went down.
+  # Remote probes run on another node (vps) besides home, e.g. {probeIndex: 6, vps: firstvds};
+  # none now: firstvds has no memory to spare (2026-11-25).
+  remoteSources: []
   # UUID seeds identify subscription routes, including the IPv6 entry using seed 5.
   # "direct" compares the home exit to the probe's own public home IP.
   expectedExits:
@@ -132,11 +127,13 @@ vpnProbe:
     "6": senaev.com
     "7": senaev.com
     "8": senaev.com
-    "8-firstvds": senaev.com
 
 # Diagnostic only: never included in the user-facing subscription.
 vpnXhttpExperiment:
   enabled: true
   diagnostics: true
   sourceControl: true
+  # Nodes of the source-control probe. Not firstvds (1 vCPU, 1 GB): each probe there costs
+  # ~40-65 MB, and the node was swapping (2026-11-25). The hetzner one also checks senaev.ru.
+  sourceControlNodes: [hetzner]
   path: /_vpn-xhttp-test/
