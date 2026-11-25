@@ -495,7 +495,9 @@ for compatibility after deployment.
 | Workspace | Node | Components | Ingress |
 |---|---|---|---|
 | `senaev` | senaev-madrid | OpenCode, OMP (`omp.senaev.com`), Code Tools, Claude Code, Codex | traefik-hetzner |
-| `galkin` | galkin | OMP only (`omp.galkin.senaev.com`) | traefik-hetzner (DNS points to hetzner) |
+| `galkin` | senaev-madrid | OMP only (`omp.galkin.senaev.com`) | traefik-hetzner (DNS points to hetzner) |
+
+No workspace has a `/projects` volume; the code is in `/code`. The old `senaev-projects` PVC is kept (`resource-policy: keep`) but unused.
 
 Do not rename the `senaev` entry: that replaces its PVCs, and cluster-helper calls
 `senaev-code-tools`. Preserve its host data directory.
