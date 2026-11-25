@@ -3,6 +3,8 @@
 - [ ] Restore reliable VPN access from the affected Russian ISPs: through every production
   profile, the same public target and size succeed as often as directly from home.
 
+How we work in rounds: [VPN-REPAIR-PLAYBOOK.md](VPN-REPAIR-PLAYBOOK.md).
+
 ## Current status (updated every round)
 
 **Round 4 — 2026-11-20 20:45 UTC, PR "Add a Hysteria2 (UDP) profile from home straight to Hetzner".**
