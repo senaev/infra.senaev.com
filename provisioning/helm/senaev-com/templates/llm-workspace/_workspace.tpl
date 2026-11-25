@@ -9,18 +9,13 @@ data:
 {{ .Files.Get (printf "%s/AGENTS.md" .Values.instructionsPath) | required "Missing workspace AGENTS.md" | indent 4 }}
   CLAUDE.md: |
 {{ .Files.Get (printf "%s/CLAUDE.md" .Values.instructionsPath) | required "Missing workspace CLAUDE.md" | indent 4 }}
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: {{ printf "%s-code" .Values.name }}
-  namespace: {{ .Release.Namespace }}
-  annotations:
-    helm.sh/resource-policy: keep
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: {{ .Values.codeStorageSize }}
+{{- end -}}
+
+{{/* The /code volume of every coding component of the workspace: a folder on its node, shared by
+the pods through the workspace node selector. */}}
+{{- define "senaev-com.llmWorkspace.codeVolume" -}}
+- name: code
+  hostPath:
+    path: {{ printf "%s/volumes/%s-code" .Values.global.clusterRootPath .Values.name }}
+    type: DirectoryOrCreate
 {{- end -}}

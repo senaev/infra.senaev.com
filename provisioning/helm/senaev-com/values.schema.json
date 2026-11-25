@@ -17,7 +17,6 @@
           "enabled",
           "agent",
           "instructionsPath",
-          "codeStorageSize",
           "vps",
           "traefik"
         ],
@@ -60,10 +59,6 @@
             "description": "Explicitly enable or disable this workspace; disabling retains existing PVCs."
           },
           "instructionsPath": {
-            "type": "string",
-            "minLength": 1
-          },
-          "codeStorageSize": {
             "type": "string",
             "minLength": 1
           },
