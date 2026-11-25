@@ -32,19 +32,18 @@ wait for a new "OK".
    the strongest hypothesis: the next step that brings us closest to a working VPN from home.
 6. **Implement.** Make the change that tests the hypothesis, in a new worktree off the latest
    `origin/main`. Update the README "Current status" and the worklog (newest record first).
-7. **Pull request.** Open the pull request and let the automatic checks run.
+7. **Pull request.** Open the pull request (not a draft) and let the automatic checks run.
 8. **Code review loop.**
-   - Wait for the CodeRabbit review.
-   - If there is Codex quota left, request a Codex review (`@codex review`) and wait for it. A
-     usage-limit answer, or no answer in about 30 minutes, means no quota: continue without it.
+   - Request a Codex review (`@codex review`) and wait for it and for the CodeRabbit review.
+   - Wait up to 10 minutes for each review. No answer in 10 minutes, or an answer that the
+     quota is used up, means that review is skipped this time: continue without it.
    - Fix every comment that is valid, push, and request the reviews again. When a comment is
      wrong, answer it on the pull request with the reason, and mention it in the hand-over.
    - Repeat until the reviews have nothing left to change and the checks pass.
 9. **Hand over.** Send the user the link `https://github.com/senaev/infra.senaev.com/pull/<n>/changes`
    with a short summary: what the last round showed, the hypothesis, and what this round changes.
    Steps that only the user can do (for example, importing a profile on the phone) go into this
-   summary. The pull request stays a draft until the user's "OK"; then mark it ready and merge.
-   Then stop and wait for the user's answer.
+   summary.    Then stop and wait for the user's answer.
 
 ## Scope of changes
 
