@@ -53,11 +53,14 @@ If your plugin does not need CSS, delete this file.
 
 .senaev-calendar-heading {
 	text-align: center;
+	/* The middle column may shrink, so a long note name wraps instead of pushing the button out of view. */
+	min-width: 0;
 }
 
 .senaev-calendar-title {
 	font-weight: var(--font-semibold);
 	font-size: var(--font-ui-medium);
+	overflow-wrap: anywhere;
 }
 
 .senaev-calendar-switcher {
