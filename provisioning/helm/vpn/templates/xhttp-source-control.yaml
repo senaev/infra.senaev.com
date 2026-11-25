@@ -1,6 +1,8 @@
 {{- if and .Values.vpnXhttpExperiment.enabled .Values.vpnXhttpExperiment.diagnostics .Values.vpnXhttpExperiment.sourceControl .Values.vpnProbe.enabled .Values.vpnProbe.controlledExperiment .Values.ingress.enabled }}
 {{- $root := . }}
-{{- range $source := list (dict "node" "hetzner" "title" "Hetzner") (dict "node" "firstvds" "title" "FirstVDS") }}
+{{- $titles := dict "hetzner" "Hetzner" "firstvds" "FirstVDS" }}
+{{- range $node := .Values.vpnXhttpExperiment.sourceControlNodes }}
+{{- $source := dict "node" $node "title" (get $titles $node | default $node) }}
 ---
 # Distinct profile label avoids overlap with home probe Deployment selectors.
 apiVersion: apps/v1

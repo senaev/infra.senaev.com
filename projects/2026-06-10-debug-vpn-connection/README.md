@@ -32,7 +32,7 @@ Hypotheses, ranked:
    too; then the FirstVDS entry (profile 1) stays the route, and the next round tries making
    it faster.
 
-Round 5 adds, all on Hetzner and each probed from home and from FirstVDS:
+Round 5 adds, all on Hetzner and probed from home (the FirstVDS probes were removed, see below):
 
 - profile 7, `⚡ 7. hetzner UDP 443 → freedom`: Hysteria2 on UDP 443 without obfuscation, a
   second inbound of `xray-hysteria`. In the subscription: Happ supports Hysteria2. It was
@@ -43,6 +43,12 @@ Round 5 adds, all on Hetzner and each probed from home and from FirstVDS:
 
 **User test wanted:** profile 1 stays the one to use; profile 7 appears after a subscription
 refresh and can be tried once its probe passes.
+
+**Round 5 is paused (2026-11-25).** Since ~17:00 UTC no UDP reaches the VPN pods on Hetzner,
+even from FirstVDS (profile 6 from FirstVDS: 0 of 18 after 236 of 236), before #308 deployed.
+Waiting for the user's check of the hostPort NAT rules on Hetzner. FirstVDS (1 vCPU, 1 GB)
+swaps since otel-agent arrived (2026-11-22), and the #308 deploy, which restarted its probes,
+took senaev.ru down for 10 minutes; all VPN diagnostics on FirstVDS were removed.
 
 Older data (round 4): uncapped Cloudflare 4 MiB, median seconds (VPN vs direct):
 
