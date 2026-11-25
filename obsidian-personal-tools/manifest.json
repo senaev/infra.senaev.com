@@ -1,7 +1,7 @@
 {
 	"id": "senaev-personal-tools",
 	"name": "Senaev Personal Tools",
-	"version": "0.1.7",
+	"version": "0.1.8",
 	"minAppVersion": "1.4.0",
 	"description": "Personal tools for Andrei Senaev's vault.",
 	"author": "Andrei Senaev",

@@ -10,9 +10,12 @@ If your plugin does not need CSS, delete this file.
 /* Note calendars: `reminders-calendar: true` and `mentions-calendar: true` in the frontmatter. */
 
 .senaev-note-calendars {
-	--senaev-calendar-cell: 12px;
-	--senaev-calendar-gap: 3px;
-	--senaev-calendar-month-gap: var(--size-4-3);
+	--senaev-calendar-cell: 7px;
+	--senaev-calendar-gap: 1.5px;
+	/* No extra space between months: their columns are spaced like neighbouring cells, so the month names and the staggered first and last weeks tell them apart. Set 0 to make them touch. */
+	--senaev-calendar-month-gap: var(--senaev-calendar-gap);
+	--senaev-calendar-header-height: 14px;
+	--senaev-calendar-header-font-size: calc(var(--font-ui-smaller) - 1px);
 	--senaev-calendar-empty: var(--background-modifier-border);
 	--senaev-calendar-open: var(--text-normal);
 	--senaev-calendar-cancelled: rgb(253, 153, 12);
@@ -26,27 +29,38 @@ If your plugin does not need CSS, delete this file.
 	margin-bottom: var(--size-4-4);
 }
 
-/* Compact: only the switcher. Expanded: the button on the left, title and totals in the middle,
-   and an empty twin of the button on the right. */
+/* Compact: the year switcher on the left and the `⋯` button on the right, in one low row.
+   Expanded: the title and totals go between them, in the middle. */
 .senaev-calendar-header {
-	margin-bottom: var(--size-2-2);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	min-height: var(--senaev-calendar-header-height);
+	margin-bottom: var(--size-2-1);
 }
 
 .senaev-calendar-header.is-expanded {
 	display: grid;
 	grid-template-columns: 1fr auto 1fr;
-	align-items: center;
 	gap: var(--size-4-2);
 	margin-bottom: var(--size-4-2);
 }
 
+.senaev-calendar-header-end {
+	display: flex;
+	justify-content: flex-end;
+}
+
 .senaev-calendar-heading {
 	text-align: center;
+	/* The middle column may shrink, so a long note name wraps instead of pushing the button out of view. */
+	min-width: 0;
 }
 
 .senaev-calendar-title {
 	font-weight: var(--font-semibold);
 	font-size: var(--font-ui-medium);
+	overflow-wrap: anywhere;
 }
 
 .senaev-calendar-switcher {
@@ -58,6 +72,17 @@ If your plugin does not need CSS, delete this file.
 .senaev-calendar-year-label {
 	min-width: 3ch;
 	text-align: center;
+	font-size: var(--senaev-calendar-header-font-size);
+	line-height: var(--senaev-calendar-header-height);
+}
+
+/* The buttons are as low as the row: about half the height of a stock icon button. */
+.senaev-calendar-header .clickable-icon {
+	--icon-size: 12px;
+	height: var(--senaev-calendar-header-height);
+	padding: 0 var(--size-2-2);
+	font-size: var(--senaev-calendar-header-font-size);
+	line-height: 1;
 }
 
 .senaev-calendar-more.is-active {
@@ -122,6 +147,8 @@ If your plugin does not need CSS, delete this file.
 	font-size: var(--font-ui-smaller);
 	line-height: var(--size-4-4);
 	margin-bottom: var(--size-2-1);
+	/* The month is as wide as its grid, so the name sits in the middle of it. */
+	text-align: center;
 }
 
 /* One column per week, seven rows from the first day of the week down. */
@@ -134,7 +161,7 @@ If your plugin does not need CSS, delete this file.
 }
 
 .senaev-calendar-cell {
-	border-radius: 3px;
+	border-radius: 2px;
 	background-color: var(--senaev-calendar-empty);
 }
 
@@ -165,16 +192,4 @@ If your plugin does not need CSS, delete this file.
 
 a.senaev-calendar-cell:hover {
 	filter: brightness(1.15);
-}
-
-/* On a phone the switcher goes above the heading, which keeps the middle. */
-@media (max-width: 600px) {
-	.senaev-calendar-header.is-expanded {
-		grid-template-columns: 1fr;
-		justify-items: center;
-	}
-
-	.senaev-calendar-header-end {
-		display: none;
-	}
 }
