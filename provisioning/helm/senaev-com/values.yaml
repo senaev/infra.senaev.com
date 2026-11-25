@@ -279,7 +279,7 @@ llmWorkspaces:
       remoteControl: true
   galkin:
     enabled: true
-    vps: galkin
+    vps: senaev-madrid
     # DNS for the hostnames points to hetzner; Traefik reaches the pods over the tailnet.
     traefik: hetzner
     instructionsPath: config/galkin-llm-instructions-path
