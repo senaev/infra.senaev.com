@@ -1,5 +1,6 @@
 {{- if .Values.vpnProbe.enabled }}
-{{- /* Home probes for every entry, plus remoteSources: the same entry from another node. */ -}}
+{{- /* Home probes for every entry, plus remoteSources: the same entry from another node
+  (with its own link when the source needs its own credential). */ -}}
 {{- $probes := list -}}
 {{- range $entry := .Values.vpnSubscription.entries }}
   {{- $probes = append $probes (dict "entry" $entry "vps" $.Values.vpnProbe.vps "source" "") -}}
@@ -7,7 +8,7 @@
 {{- range $remote := .Values.vpnProbe.remoteSources }}
   {{- range $entry := $.Values.vpnSubscription.entries }}
     {{- if eq (int $entry.probeIndex) (int $remote.probeIndex) }}
-      {{- $probes = append $probes (dict "entry" $entry "vps" $remote.vps "source" $remote.vps) -}}
+      {{- $probes = append $probes (dict "entry" $entry "vps" $remote.vps "source" $remote.vps "link" $remote.link) -}}
     {{- end -}}
   {{- end -}}
 {{- end -}}
@@ -91,7 +92,7 @@ spec:
             - name: PROFILE_NAME
               value: {{ if $probe.source }}{{ printf "%s (from %s)" $entry.name $probe.source | quote }}{{ else }}{{ $entry.name | quote }}{{ end }}
             - name: PROFILE_LINK
-              value: {{ $entry.link | quote }}
+              value: {{ default $entry.link $probe.link | quote }}
             - name: EXPECTED_EXITS
               value: {{ toJson $.Values.vpnProbe.expectedExits | quote }}
             - name: XRAY_USER_UUID

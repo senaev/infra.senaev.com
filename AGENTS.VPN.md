@@ -61,6 +61,9 @@ is a diagnostic (added 2026-11-25): Happ cannot import WireGuard, so the entry h
   private key in Python and the public key with `xray x25519 -i`. The probe image build checks
   that both give the same key pair. vpn-subscription does not know these macros.
 - An entry with `subscription: false` is probed but not sent to subscription clients.
+- Each probe source has its own peer (`xrayWireguard.peers`: seed `8` and `10.0.0.2` from home,
+  `8-firstvds` and `10.0.0.3` from FirstVDS, via `remoteSources[].link`). Two clients with one
+  key would take over each other's endpoint (WireGuard roaming).
 
 ### vpn-subscription service
 
