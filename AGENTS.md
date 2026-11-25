@@ -86,6 +86,9 @@ that file.
 feedback, make the changes, and request a code review again. Repeat it until there are no more
 reasonable comments, or until the review agents run out of quota or do not respond within 10 minutes.
 
+Reply to every review comment, whether you accept it or reject it. For an accepted comment, say
+what you changed. For a rejected one, say why.
+
 ## Service Deployment
 
 Charts live under `provisioning/helm/<chart>/` or grouped as
