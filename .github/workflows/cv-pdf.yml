@@ -1,0 +1,53 @@
+name: CV PDF
+
+# Prints senaev.com/cv to PDF the way a browser does with default settings, so a
+# CV change can be checked without a browser: page count, the text an ATS reads,
+# screen and print previews, and the redirects of the old CV addresses.
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "nextjs-app/app/(iframes)/cv/**"
+      - "nextjs-app/app/(pages)/page.tsx"
+      - "nextjs-app/public/cv/**"
+      - "nextjs-app/const/**"
+      - "nextjs-app/components/**"
+      - "nextjs-app/next.config.mjs"
+      - "nextjs-app/scripts/render-cv-pdf.mjs"
+      - ".github/workflows/cv-pdf.yml"
+  workflow_dispatch:
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: nextjs-app
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: nextjs-app/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: Render the CV page to PDF
+        run: |
+          npx next start -p 3000 &
+          npx --yes wait-on --timeout 60000 http://localhost:3000/cv
+          node scripts/render-cv-pdf.mjs http://localhost:3000 cv-pdf
+      - name: Extract the PDF text, as an ATS reads it
+        run: |
+          sudo apt-get install -y poppler-utils
+          for f in cv-pdf/*.pdf; do
+            echo "== $f: $(pdfinfo "$f" | grep Pages)"
+            pdftotext -layout "$f" "${f%.pdf}.txt"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cv-pdf
+          path: nextjs-app/cv-pdf/
