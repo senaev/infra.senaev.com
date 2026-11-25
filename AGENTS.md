@@ -78,8 +78,13 @@ that file.
 
 ### Codex code review
 
-- Create every pull request as a draft (`gh pr create --draft`).
-- When you open a pull request, and when the user asks for a Codex review, comment `@codex review`.
+When you open a pull request, and when the user asks for a Codex review, comment `@codex review`.
+
+### Code Review Loop
+
+**Code Review Loop** is the cycle: request a code review, wait for the result, read and analyze the
+feedback, make the changes, and request a code review again. Repeat it until there are no more
+reasonable comments, or until the review agents run out of quota or do not respond within 10 minutes.
 
 ## Service Deployment
 
