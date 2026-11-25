@@ -78,8 +78,10 @@ that file.
 
 ### Codex code review
 
-- Create every pull request as a draft (`gh pr create --draft`).
-- When you open a pull request, and when the user asks for a Codex review, comment `@codex review`.
+- Open pull requests ready for review, not as drafts (CodeRabbit skips drafts).
+- Do not request a Codex review just because a pull request was opened. Comment `@codex review`
+  when the user asks for it, or when a project's workflow says so (for example the VPN repair
+  playbook).
 
 ## Service Deployment
 
