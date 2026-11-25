@@ -3,7 +3,8 @@
 How the agent and the user work on this project. The agent reads this file at the start of every
 round and follows it.
 
-**Goal:** the VPN works from home (the `senaev-media` node). Traffic through the VPN behaves like
+**Goal:** the VPN works from home. The probes on the `senaev-media` node stand in for the user's
+devices; a test on the phone only confirms. Through the VPN, traffic behaves like
 direct traffic: the same public targets and sizes succeed as often, at a similar speed.
 
 ## The user's "OK"
@@ -34,18 +35,23 @@ wait for a new "OK".
 7. **Pull request.** Open the pull request and let the automatic checks run.
 8. **Code review loop.**
    - Wait for the CodeRabbit review.
-   - If there is Codex quota left, request a Codex review (`@codex review`) and wait for it.
-   - Fix every comment that is valid, push, and request the reviews again.
+   - If there is Codex quota left, request a Codex review (`@codex review`) and wait for it. A
+     usage-limit answer, or no answer in about 30 minutes, means no quota: continue without it.
+   - Fix every comment that is valid, push, and request the reviews again. When a comment is
+     wrong, answer it on the pull request with the reason, and mention it in the hand-over.
    - Repeat until the reviews have nothing left to change and the checks pass.
 9. **Hand over.** Send the user the link `https://github.com/senaev/infra.senaev.com/pull/<n>/changes`
    with a short summary: what the last round showed, the hypothesis, and what this round changes.
+   Steps that only the user can do (for example, importing a profile on the phone) go into this
+   summary. The pull request stays a draft until the user's "OK"; then mark it ready and merge.
    Then stop and wait for the user's answer.
 
 ## Scope of changes
 
 A round's pull request changes only the VPN: the `vpn` namespace and VPN services (Xray servers,
-the subscription service, the VPN probes) and this project's documents. It must not affect any
-other service in the cluster.
+the subscription service, the VPN probes), the VPN documents (`AGENTS.VPN.md`, this project) and
+the telemetry needed for this problem (VPN and iperf3 dashboards, iperf3 pairs, probe metrics). It
+must not affect any other service in the cluster.
 
 ## When the agent contacts the user
 
