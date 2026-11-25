@@ -78,7 +78,7 @@ that file.
 
 ### Codex code review
 
-- When you open a pull request, and when the user asks for a Codex review, comment `@codex review`.
+When you open a pull request, and when the user asks for a Codex review, comment `@codex review`.
 
 ### Code Review Loop
 
