@@ -1,5 +1,21 @@
 # Worklog
 
+## 2026-11-25 07:45 UTC — Verified on the pull request: warnings in the log, 0 annotations
+
+A temporary commit (`4abe1656`, then removed) added an unused variable to
+`obsidian-personal-tools/src/settings.ts` and to `senaev-utils/src/obsidianDailyNotes/ruleOccursOn.ts`.
+Both lint jobs passed, with the warning in the log and no annotation:
+
+```
+check: completed success annotations=0
+  31:7  warning  'unusedForAnnotationCheck' is assigned a value but never used  @typescript-eslint/no-unused-vars
+check / Lint, Typecheck, Test, Syntax: success annotations=0
+[lint]   37:7  warning  'unusedForAnnotationCheck' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+```
+
+Before this change, the same kind of warning in the plugin gave annotations (the
+`obsidianmd/validate-license` warnings on #305).
+
 ## 2026-11-25 07:15 UTC — Changed: disable ESLint annotations everywhere
 
 The user changed the goal: no ESLint annotations at all, including the plugin. The branch was
