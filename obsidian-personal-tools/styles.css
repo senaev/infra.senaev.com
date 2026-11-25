@@ -6,3 +6,105 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
+
+/* Note calendars: `reminders-calendar: true` and `mentions-calendar: true` in the frontmatter. */
+
+.senaev-note-calendars {
+	--senaev-calendar-cell: 11px;
+	--senaev-calendar-gap: 2px;
+	--senaev-calendar-open: var(--color-blue);
+	--senaev-calendar-cancelled: rgb(253, 153, 12);
+	--senaev-calendar-done: rgb(75, 194, 107);
+	--senaev-calendar-mention: rgb(75, 194, 107);
+
+	margin-bottom: var(--size-4-4);
+}
+
+.senaev-calendar {
+	margin-bottom: var(--size-4-4);
+}
+
+.senaev-calendar-header,
+.senaev-calendar-year-header {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: var(--size-4-2);
+}
+
+.senaev-calendar-title {
+	font-weight: var(--font-semibold);
+	font-size: var(--font-ui-medium);
+}
+
+.senaev-calendar-year-name {
+	font-weight: var(--font-semibold);
+}
+
+.senaev-calendar-totals,
+.senaev-calendar-note {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.senaev-calendar-year {
+	margin-top: var(--size-4-2);
+}
+
+.senaev-calendar-months {
+	display: flex;
+	gap: var(--size-4-2);
+	overflow-x: auto;
+	padding-bottom: var(--size-2-1);
+}
+
+.senaev-calendar-month {
+	flex: none;
+}
+
+.senaev-calendar-month-name {
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+}
+
+/* One column per week, seven rows from the first day of the week down. */
+.senaev-calendar-grid {
+	display: grid;
+	grid-auto-flow: column;
+	grid-template-rows: repeat(7, var(--senaev-calendar-cell));
+	grid-auto-columns: var(--senaev-calendar-cell);
+	gap: var(--senaev-calendar-gap);
+}
+
+.senaev-calendar-cell {
+	border-radius: 2px;
+	background-color: var(--background-modifier-border);
+}
+
+.senaev-calendar-cell.is-outside {
+	background-color: transparent;
+}
+
+.senaev-calendar-cell.is-today {
+	outline: 1px solid var(--text-accent);
+}
+
+.senaev-calendar-cell.is-open {
+	background-color: var(--senaev-calendar-open);
+}
+
+.senaev-calendar-cell.is-cancelled {
+	background-color: var(--senaev-calendar-cancelled);
+}
+
+.senaev-calendar-cell.is-done {
+	background-color: var(--senaev-calendar-done);
+}
+
+.senaev-calendar-cell.is-mention {
+	background-color: var(--senaev-calendar-mention);
+}
+
+a.senaev-calendar-cell:hover {
+	filter: brightness(1.15);
+}

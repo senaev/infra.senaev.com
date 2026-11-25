@@ -33,7 +33,7 @@ export default defineConfig(
 	{
 		rules: {
 			'obsidianmd/ui/sentence-case': ['error', {
-				brands: ['Google', 'Google Translate'],
+				brands: ['Google', 'Google Translate', 'Tasks'],
 			}],
 		},
 	},

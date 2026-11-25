@@ -53,6 +53,7 @@ Also open a synced note with diary content and verify that it is untouched.
 ## Features
 
 - **Daily note widgets** (`src/dailyNote/`) — injects a header (date heading → nav row → milestones) and a footer (milestones → nav row) into every `periodic/day/YYYY-MM-DD` note, in both Reading view and Live Preview. Needs no markup in the note itself. The milestones logic lives in `src/milestones/`.
+- **Note calendars** (`src/noteCalendar/`) — a heatmap calendar at the top of a note whose frontmatter has `reminders-calendar: true` or `mentions-calendar: true`. See below.
 - **Global API for the Tasks plugin** (`src/reminders/`) — see below.
 - **Commands** (`src/commands/`) — *Copy public link*, plus three that act on the editor selection: *Copy text to public*, *Search selection in Google*, *Translate selection in Google Translate*. *Open work achievements* opens the `Work achievements` note, resolved like a wiki-link. The last three flatten wiki-links first via `src/utils/stripWikiLinks.ts`, because `[[...]]` syntax is meaningless outside the vault.
 
@@ -123,6 +124,16 @@ Two consequences of the emoji living inside the template:
 A note with `milestones-hidden: true` (the config's `hiddenProperty`) in its frontmatter shows none of its milestones, today's or tomorrow's, fixed or calculated. The note keeps its dates; only the widget skips it.
 
 Only the YAML boolean `true` hides. Any other value — `false`, the quoted string `"true"`, `yes`, `1` — is ignored, so a typo shows the milestone instead of silently hiding it.
+
+## Note calendars — `src/noteCalendar/`
+
+A note with `reminders-calendar: true` shows a calendar of the reminders that link to it, and one with `mentions-calendar: true` shows the daily notes that link to it. Both flags may be set; the reminders calendar comes first. Only the YAML boolean `true` counts, as for `milestones-hidden`. The calendar replaces the `dataviewjs` blocks that called `_scripts/dataview/fileTasksStatistics.js` and `fileMentionsStatistics.js`; it needs neither Dataview nor Heatmap Tracker.
+
+- **What counts.** A reminder counts when its text has `[[Note]]` or `[[Note#…`, and only when it lives in `periodic/day/YYYY-MM-DD.md`: that file name is its day. A reminder in any other file has no day and is ignored everywhere, totals included. The old script counted it in the totals but drew no cell for it. A mention is a daily note whose `metadataCache.resolvedLinks` entry has the note as a target.
+- **Display.** One row of 12 months per year, newest first, months separated, weeks start on Monday, each year headed by its totals. A cell links to the daily note. A day with several reminders takes the colour of the first kind present in the order open, cancelled, done, so open work shows through; the tooltip lists all counts. Colours are CSS variables in `styles.css`.
+- **Where the code is.** The logic that needs no Obsidian lives in `senaev-utils/src/obsidianCalendar/` (`noteCalendar.ts`: which reminders and mentions count; `calendarModel.ts`: grouping by day and year; `calendarGrid.ts`: the month grid), with tests, because it is plain data in and out. The plugin has the rest: `tasksPluginAdapter.ts` is the only file that reads the Tasks plugin (`getTasks()`, which is not a documented API, and its `obsidian-tasks-plugin:cache-update` event), `renderCalendar.ts` draws the DOM, and `registerNoteCalendars.ts` mounts it. The CodeMirror and Reading-view mounting stays here because senaev-utils has no Obsidian dependency.
+- **Mounting** copies the daily-note widgets: a block widget from a `StateField` in Live Preview and Source mode, and a sibling of the rendered note in Reading view. Metadata changes, the Tasks cache update and layout events refresh it, batched in 300 ms. A refresh bumps a revision that the editor widget compares in `eq`, then dispatches an empty transaction, so a flag typed into the frontmatter shows up at once.
+- **No Tasks plugin.** Until it has loaded, the reminders calendar says it is waiting, and the cache-update event draws it again.
 
 ## Global API — `window.senaevPersonalTools`
 
