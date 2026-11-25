@@ -37,7 +37,8 @@ export function renderNoteCalendars(app: App, containerEl: HTMLElement, file: TF
 				continue;
 			}
 
-			renderCalendar(app, sectionEl, buildReminderCalendar(reminders, file.basename), {
+			renderCalendar(app, sectionEl, buildReminderCalendar(reminders, { name: file.basename, path: file.path }, (linkpath, sourcePath) =>
+				app.metadataCache.getFirstLinkpathDest(linkpath, sourcePath)?.path ?? null), {
 				scrollKey: `${file.path}|reminders`,
 				title: `${file.basename}: reminders`,
 				emptyText: 'No reminders',

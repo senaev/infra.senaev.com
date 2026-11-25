@@ -101,6 +101,8 @@ export function renderCalendar<Kind extends string>(
 				}
 
 				classes.push(`is-${dayData.kind}`);
+				// Obsidian shows `aria-label` as its hover tooltip, so it is both the tooltip and the accessible
+				// name. `setTooltip` would do the same but needs Obsidian 1.4.4, and the plugin supports 1.4.0.
 				const cell = gridEl.createEl('a', {
 					cls: classes,
 					attr: {

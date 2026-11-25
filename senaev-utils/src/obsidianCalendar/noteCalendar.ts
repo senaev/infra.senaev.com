@@ -22,13 +22,38 @@ export type CalendarReminder = {
     status: ReminderStatus;
 };
 
-/** Whether a reminder text links to the note: `[[Name]]`, `[[Name#heading…` or `[[Name|alias]]`. */
-export function linksToNote(description: string, noteName: string): boolean {
-    return [
-        ']]',
-        '#',
-        '|',
-    ].some((end) => description.includes(`[[${noteName}${end}`));
+/** The note that a calendar is drawn for. */
+export type CalendarNote = {
+    /** Name without the extension, e.g. `Gym`: what a link to the note ends with. */
+    name: string;
+    /** Vault path, e.g. `health/Gym.md`. */
+    path: string;
+};
+
+/**
+ * Resolves the path of a wiki-link, e.g. `Gym`, `work/Calendar` or `../../Journal`, written in the
+ * note at `sourcePath`, to the vault path of the note it opens, or `null` when there is none.
+ * Obsidian's `metadataCache.getFirstLinkpathDest` does exactly this.
+ */
+export type ResolveLink = (linkpath: string, sourcePath: string) => string | null;
+
+/** The part of every `[[…]]` before a `#heading` or `|alias`: `[[Gym#Plan|Training]]` gives `Gym`. */
+export function wikiLinkPaths(text: string): string[] {
+    return [...text.matchAll(/\[\[([^\]|#]+)/gu)].map((match) => (match[1] ?? '').trim());
+}
+
+/**
+ * Whether the text has a link that opens the note. The daily-note template writes a path when two
+ * notes share a name (`[[work/Calendar|…]]`), so a link is resolved the way Obsidian does it
+ * rather than compared with the name. The name only skips the resolving of unrelated reminders.
+ */
+export function linksToNote(
+    description: string,
+    sourcePath: string,
+    note: CalendarNote,
+    resolveLink: ResolveLink
+): boolean {
+    return description.includes(note.name) && wikiLinkPaths(description).some((linkpath) => resolveLink(linkpath, sourcePath) === note.path);
 }
 
 /**
@@ -37,7 +62,8 @@ export function linksToNote(description: string, noteName: string): boolean {
  */
 export function reminderCalendarEntries(
     reminders: readonly CalendarReminder[],
-    noteName: string
+    note: CalendarNote,
+    resolveLink: ResolveLink
 ): CalendarEntry<ReminderStatus>[] {
     const entries: CalendarEntry<ReminderStatus>[] = [];
 
@@ -46,7 +72,7 @@ export function reminderCalendarEntries(
     } of reminders) {
         const day = dailyDateFromPath(path);
 
-        if (day !== null && linksToNote(description, noteName)) {
+        if (day !== null && linksToNote(description, path, note, resolveLink)) {
             entries.push({
                 day,
                 kind: status,
@@ -89,8 +115,12 @@ export function mentionCalendarEntries(
     return entries;
 }
 
-export function buildReminderCalendar(reminders: readonly CalendarReminder[], noteName: string) {
-    return buildCalendarModel(REMINDER_CALENDAR_KINDS, reminderCalendarEntries(reminders, noteName));
+export function buildReminderCalendar(
+    reminders: readonly CalendarReminder[],
+    note: CalendarNote,
+    resolveLink: ResolveLink
+) {
+    return buildCalendarModel(REMINDER_CALENDAR_KINDS, reminderCalendarEntries(reminders, note, resolveLink));
 }
 
 export function buildMentionCalendar(

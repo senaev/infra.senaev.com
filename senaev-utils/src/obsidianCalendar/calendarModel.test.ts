@@ -9,15 +9,67 @@ import {
     buildReminderCalendar,
     linksToNote,
     reminderCalendarEntries,
+    wikiLinkPaths,
+    type ResolveLink,
 } from './noteCalendar';
 
+/** A vault with two notes named Calendar, as Obsidian would resolve links in it. */
+const VAULT_LINKS: Record<string, string> = {
+    Gym: 'health/Gym.md',
+    'health/Gym': 'health/Gym.md',
+    Other: 'Other.md',
+    'work/Calendar': 'work/Calendar.md',
+    '../../Journal': 'Journal.md',
+};
+
+const resolveLink: ResolveLink = (linkpath) => VAULT_LINKS[linkpath] ?? null;
+
+const GYM = {
+    name: 'Gym',
+    path: 'health/Gym.md',
+};
+
+describe('wikiLinkPaths', () => {
+    it('takes the path before a heading or an alias', () => {
+        expect(wikiLinkPaths('[[Gym]] [[work/Calendar#Week 1|Plan]] [[Journal|J]] [[#here]]')).toEqual([
+            'Gym',
+            'work/Calendar',
+            'Journal',
+        ]);
+    });
+});
+
 describe('linksToNote', () => {
-    it('matches a plain, heading and aliased link, not another note or unlinked text', () => {
-        expect(linksToNote('Do [[Gym]] now', 'Gym')).toBe(true);
-        expect(linksToNote('[[Gym#2026-11-25|Gym]]', 'Gym')).toBe(true);
-        expect(linksToNote('[[Gym|Training]]', 'Gym')).toBe(true);
-        expect(linksToNote('[[Gym class]]', 'Gym')).toBe(false);
-        expect(linksToNote('Gym without a link', 'Gym')).toBe(false);
+    it('matches a plain, heading, aliased and path-qualified link to the note', () => {
+        expect(linksToNote('Do [[Gym]] now', 'periodic/day/2026-11-25.md', GYM, resolveLink)).toBe(true);
+        expect(linksToNote('[[Gym#2026-11-25|Gym]]', 'periodic/day/2026-11-25.md', GYM, resolveLink)).toBe(true);
+        expect(linksToNote('[[Gym|Training]]', 'periodic/day/2026-11-25.md', GYM, resolveLink)).toBe(true);
+        expect(linksToNote('[[health/Gym|Training]]', 'periodic/day/2026-11-25.md', GYM, resolveLink)).toBe(true);
+    });
+
+    it('resolves a path-qualified link of the template, not just its name', () => {
+        const calendar = {
+            name: 'Calendar',
+            path: 'work/Calendar.md',
+        };
+        const journal = {
+            name: 'Journal',
+            path: 'Journal.md',
+        };
+
+        expect(linksToNote('[[work/Calendar|Check the calendar]]', 'periodic/day/a.md', calendar, resolveLink)).toBe(true);
+        expect(linksToNote('[[../../Journal|Journal]]', 'periodic/day/a.md', journal, resolveLink)).toBe(true);
+    });
+
+    it('does not match another note with the same name, another note or unlinked text', () => {
+        const otherCalendar = {
+            name: 'Calendar',
+            path: 'home/Calendar.md',
+        };
+
+        expect(linksToNote('[[work/Calendar]]', 'periodic/day/a.md', otherCalendar, resolveLink)).toBe(false);
+        expect(linksToNote('[[Other]] Gym', 'periodic/day/a.md', GYM, resolveLink)).toBe(false);
+        expect(linksToNote('Gym without a link', 'periodic/day/a.md', GYM, resolveLink)).toBe(false);
     });
 });
 
@@ -56,7 +108,8 @@ describe('reminderCalendarEntries', () => {
                     status: 'open',
                 },
             ],
-            'Gym'
+            GYM,
+            resolveLink
         );
 
         expect(entries).toEqual([
@@ -93,7 +146,11 @@ describe('buildCalendarModel', () => {
                     status: 'cancelled',
                 },
             ],
-            'A'
+            {
+                name: 'A',
+                path: 'A.md',
+            },
+            () => 'A.md'
         );
 
         expect(model.counts).toEqual({
