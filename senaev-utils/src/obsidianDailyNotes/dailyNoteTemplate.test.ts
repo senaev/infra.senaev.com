@@ -88,6 +88,67 @@ describe('renderDailyNote', () => {
         expect(daily).toContain('- [ ] [[../../Journal|Journal]]\n');
     });
 
+    it('links reminders to the heading of the note day', () => {
+        const notes = [
+            {
+                path: 'work/Work achievements.md',
+                frontmatter: {
+                    'day-reminder': 'Work achievements',
+                    'day-reminder-heading': '{{day}}',
+                },
+            },
+            {
+                path: 'work/Calendar.md',
+                frontmatter: {
+                    'evening-reminder': 'Review the calendar',
+                    'evening-reminder-heading': 'Week of {{ day }}',
+                },
+            },
+        ];
+        const daily = renderDailyNote('2026-11-25', {
+            notes,
+            notePaths: [
+                ...notes.map(({ path }) => path),
+                'archive/Calendar.md',
+            ],
+        });
+
+        expect(daily).toContain('- [ ] [[Work achievements#2026-11-25|Work achievements]]\n');
+        expect(daily).toContain('- [ ] [[work/Calendar#Week of 2026-11-25|Review the calendar]]\n');
+    });
+
+    it('skips and reports reminders with an invalid heading', () => {
+        const invalid: string[][] = [];
+        const notes = [
+            '{{week}}',
+            '{{day}}#1',
+            '[[{{day}}]]',
+            '  ',
+            42,
+        ].map((heading, index) => {
+            return {
+                path: `Note ${index}.md`,
+                frontmatter: {
+                    'day-reminder': `Reminder ${index}`,
+                    'day-reminder-heading': heading,
+                },
+            };
+        });
+        const daily = renderDailyNote('2026-11-25', {
+            notes,
+            onInvalidReminder: (path, property) => invalid.push([
+                path,
+                property,
+            ]),
+        });
+
+        expect(daily).not.toContain('- [ ]');
+        expect(invalid).toEqual(notes.map(({ path }) => [
+            path,
+            'day-reminder-heading',
+        ]));
+    });
+
     it('rejects days that do not exist', () => {
         for (const value of [
             '2024-02-29',

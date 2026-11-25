@@ -89,8 +89,11 @@ async function readReminderSource(config: VaultToolsConfig, execution: CommandEx
     return {
         notes,
         notePaths,
-        onInvalidSchedule: (path) => {
-            logger.warn({ path }, 'Invalid daily reminder schedule');
+        onInvalidReminder: (path, property) => {
+            logger.warn({
+                path,
+                property,
+            }, 'Invalid daily reminder');
         },
     };
 }

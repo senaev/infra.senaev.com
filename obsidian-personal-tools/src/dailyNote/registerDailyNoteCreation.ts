@@ -41,7 +41,7 @@ function readReminders(app: App): ReminderSource {
 	return {
 		notes,
 		notePaths: files.map(file => file.path),
-		onInvalidSchedule: path => { console.warn('Invalid daily reminder schedule', path); },
+		onInvalidReminder: (path, property) => { console.warn('Invalid daily reminder', path, property); },
 	};
 }
 

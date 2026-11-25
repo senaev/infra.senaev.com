@@ -15,7 +15,7 @@ export function renderMilestonesWidget(app: App, containerEl: HTMLElement, noteD
 	const milestones = getDailyNoteMilestones(app, noteDate);
 
 	if (milestones.length === 0) {
-		containerEl.createSpan({ text: '🤷‍♂️ no events' });
+		containerEl.createSpan({ text: '🤷‍♂️ No events' });
 		return;
 	}
 
