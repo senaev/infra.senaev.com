@@ -204,7 +204,6 @@ llmWorkspaces:
     vps: senaev-madrid
     traefik: hetzner
     instructionsPath: config/senaev-llm-instructions-path
-    projectsStorageSize: 16Gi
     codeStorageSize: 16Gi
     agent:
       defaultModel:

@@ -180,10 +180,6 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 6
           volumeMounts:
-{{- if .Values.projectsStorageSize }}
-            - name: projects
-              mountPath: /projects
-{{- end }}
             - name: code
               mountPath: /code
             - name: state
@@ -228,11 +224,6 @@ spec:
             - name: proxy-tmp
               mountPath: /tmp
       volumes:
-{{- if .Values.projectsStorageSize }}
-        - name: projects
-          persistentVolumeClaim:
-            claimName: {{ printf "%s-projects" .Values.name }}
-{{- end }}
         - name: code
           persistentVolumeClaim:
             claimName: {{ printf "%s-code" .Values.name }}
