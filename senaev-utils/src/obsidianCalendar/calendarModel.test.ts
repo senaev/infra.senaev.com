@@ -12,9 +12,10 @@ import {
 } from './noteCalendar';
 
 describe('linksToNote', () => {
-    it('matches a plain link and a heading link, not another note or an alias-only text', () => {
+    it('matches a plain, heading and aliased link, not another note or unlinked text', () => {
         expect(linksToNote('Do [[Gym]] now', 'Gym')).toBe(true);
         expect(linksToNote('[[Gym#2026-11-25|Gym]]', 'Gym')).toBe(true);
+        expect(linksToNote('[[Gym|Training]]', 'Gym')).toBe(true);
         expect(linksToNote('[[Gym class]]', 'Gym')).toBe(false);
         expect(linksToNote('Gym without a link', 'Gym')).toBe(false);
     });

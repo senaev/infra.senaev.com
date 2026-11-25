@@ -11,6 +11,11 @@ export interface CalendarKindStyle {
 }
 
 export interface CalendarRenderOptions<Kind extends string> {
+	/**
+	 * Identifies the calendar across redraws and across the widgets that replace each other, so
+	 * the scroll position of its years survives a refresh. E.g. the note path and the kind.
+	 */
+	scrollKey: string;
 	title: string;
 	/** Shown when the model has no entries at all. */
 	emptyText: string;
@@ -28,6 +33,9 @@ function formatCounts<Kind extends string>(
 		.map((kind) => `${styles[kind].emoji} ${counts[kind]}`)
 		.join(' ');
 }
+
+/** Horizontal scroll of each year row, by calendar and year. A redraw builds new elements. */
+const scrollPositions = new Map<string, number>();
 
 function monthName(month: number): string {
 	return new Date(2000, month - 1, 1).toLocaleString(undefined, { month: 'short' });
@@ -66,6 +74,8 @@ export function renderCalendar<Kind extends string>(
 		});
 
 		const monthsEl = yearEl.createDiv({ cls: 'senaev-calendar-months' });
+		const scrollPositionKey = `${options.scrollKey}|${year.year}`;
+		monthsEl.addEventListener('scroll', () => scrollPositions.set(scrollPositionKey, monthsEl.scrollLeft));
 
 		for (const { month, weeks } of buildYearGrid(Number(year.year))) {
 			const monthEl = monthsEl.createDiv({ cls: 'senaev-calendar-month' });
@@ -99,6 +109,15 @@ export function renderCalendar<Kind extends string>(
 				});
 				attachInternalLink(app, cell, `${DAILY_NOTE_FOLDER}${day}`);
 			}
+		}
+
+		// The element is not in the page yet (an editor widget attaches it later), so wait a frame.
+		const savedScroll = scrollPositions.get(scrollPositionKey);
+
+		if (savedScroll) {
+			activeWindow.requestAnimationFrame(() => {
+				monthsEl.scrollLeft = savedScroll;
+			});
 		}
 	}
 }

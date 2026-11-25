@@ -107,8 +107,14 @@ export function registerNoteCalendars(plugin: Plugin): void {
 
 	// Reminder and link data change often and a draw is cheap but not free, so batch the events.
 	const refresh = debounce(() => refreshAll(plugin), 300, true);
+	let unloaded = false;
 
-	plugin.app.workspace.onLayoutReady(refresh);
+	// `onLayoutReady` may run its callback after an unload, so it checks first.
+	plugin.app.workspace.onLayoutReady(() => {
+		if (!unloaded) {
+			refresh();
+		}
+	});
 	plugin.registerEvent(plugin.app.workspace.on('file-open', refresh));
 	plugin.registerEvent(plugin.app.workspace.on('active-leaf-change', refresh));
 	plugin.registerEvent(plugin.app.workspace.on('layout-change', refresh));
@@ -117,6 +123,10 @@ export function registerNoteCalendars(plugin: Plugin): void {
 	plugin.registerEvent(onTasksCacheUpdate(plugin.app.workspace, refresh));
 
 	plugin.register(() => {
+		unloaded = true;
+		// A refresh still waiting in the debounce window would draw the calendars again.
+		refresh.cancel();
+
 		for (const leaf of plugin.app.workspace.getLeavesOfType('markdown')) {
 			if (leaf.view instanceof MarkdownView) {
 				leaf.view.previewMode?.containerEl

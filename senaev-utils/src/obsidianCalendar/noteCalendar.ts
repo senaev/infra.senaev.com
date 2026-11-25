@@ -22,9 +22,13 @@ export type CalendarReminder = {
     status: ReminderStatus;
 };
 
-/** Whether a reminder text links to the note: `[[Name]]`, or `[[Name#heading…`. */
+/** Whether a reminder text links to the note: `[[Name]]`, `[[Name#heading…` or `[[Name|alias]]`. */
 export function linksToNote(description: string, noteName: string): boolean {
-    return description.includes(`[[${noteName}]]`) || description.includes(`[[${noteName}#`);
+    return [
+        ']]',
+        '#',
+        '|',
+    ].some((end) => description.includes(`[[${noteName}${end}`));
 }
 
 /**

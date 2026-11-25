@@ -38,6 +38,7 @@ export function renderNoteCalendars(app: App, containerEl: HTMLElement, file: TF
 			}
 
 			renderCalendar(app, sectionEl, buildReminderCalendar(reminders, file.basename), {
+				scrollKey: `${file.path}|reminders`,
 				title: `${file.basename}: reminders`,
 				emptyText: 'No reminders',
 				kindStyles: REMINDER_STYLES,
@@ -48,6 +49,7 @@ export function renderNoteCalendars(app: App, containerEl: HTMLElement, file: TF
 				sectionEl,
 				buildMentionCalendar(app.metadataCache.resolvedLinks, file.path),
 				{
+					scrollKey: `${file.path}|mentions`,
 					title: `${file.basename}: mentions`,
 					emptyText: 'No mentions',
 					kindStyles: MENTION_STYLES,
