@@ -70,13 +70,17 @@ otel-agent:
   podSecurityContext:
     seccompProfile:
       type: RuntimeDefault
+  # The agent runs on every node, including firstvds (1 vCPU, 1 GB). Its own memory is ~40 MB;
+  # the rest of its working set is page cache (pod log files, the queue file). The limit makes
+  # the kernel reclaim that cache inside this cgroup instead of other pods' memory: at 256Mi,
+  # firstvds started swapping (2026-11-22). The chart sets GOMEMLIMIT to 80 % of the limit.
   resources:
     requests:
       cpu: 50m
       memory: 96Mi
     limits:
       cpu: 500m
-      memory: 256Mi
+      memory: 128Mi
   alternateConfig:
     extensions:
       health_check:
@@ -84,6 +88,11 @@ otel-agent:
       file_storage:
         directory: /var/lib/otelcol
         fsync: true
+        # Without compaction the queue file never shrinks; it is memory-mapped.
+        compaction:
+          directory: /var/lib/otelcol
+          on_rebound: true
+          cleanup_on_start: true
     receivers:
       file_log:
         include: [/var/log/pods/*/*/*.log]
@@ -108,8 +117,9 @@ otel-agent:
     processors:
       memory_limiter:
         check_interval: 1s
-        limit_mib: 200
-        spike_limit_mib: 50
+        # Below the 128Mi container limit, which also counts page cache.
+        limit_mib: 96
+        spike_limit_mib: 24
     exporters:
       otlp_grpc:
         endpoint: otel-gateway.telemetry.svc.cluster.local:4317
