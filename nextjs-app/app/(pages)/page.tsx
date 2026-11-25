@@ -1,5 +1,6 @@
 import {
-    SENAEV_AVAILABLE_CV_VERSIONS, SENAEV_CURRENT_DUTY,
+    SENAEV_CURRENT_DUTY,
+    SENAEV_CV_LINK,
     SENAEV_ELEVATOR_PITCH,
     SENAEV_FULL_NAME,
     SENEAV_CONTACTS,
@@ -80,14 +81,10 @@ export default function Page(): JSX.Element {
                         {'Resume'}
                     </h2>
                     <div>
-                        {
-                            SENAEV_AVAILABLE_CV_VERSIONS.map(({ id, name }, i) => <div key={i}>
-                                {'• '}
-                                <Link href={`/cv/${id}`}>
-                                    {name}
-                                </Link>
-                            </div>)
-                        }
+                        {'• '}
+                        <Link href={SENAEV_CV_LINK}>
+                            {'CV'}
+                        </Link>
                     </div>
                 </div>
             </div>
