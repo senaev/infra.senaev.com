@@ -279,7 +279,8 @@ npm run build
 
 ## Versioning & releases
 
-- Bump `version` in `manifest.json` (SemVer) and update `versions.json` to map plugin version → minimum app version.
+- **Every change to the plugin must bump the version**, because the release job publishes only a version that has no GitHub release yet; without a bump, BRAT never sees the change. Raise the last number each time (`0.1.4` → `0.1.5`), in the same PR as the change.
+- Bump `version` in `manifest.json` (SemVer), `package.json` and `package-lock.json` (first two entries), and update `versions.json` to map plugin version → minimum app version.
 - Create a GitHub release whose tag exactly matches `manifest.json`'s `version`. Do not use a leading `v`.
 - Attach `manifest.json`, `main.js`, and `styles.css` (if present) to the release as individual assets.
 - Merge the version bump into infra main to trigger the GitHub Actions release for BRAT.
