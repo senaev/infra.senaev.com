@@ -54,7 +54,7 @@ Also open a synced note with diary content and verify that it is untouched.
 
 - **Daily note widgets** (`src/dailyNote/`) — injects a header (date heading → nav row → milestones) and a footer (milestones → nav row) into every `periodic/day/YYYY-MM-DD` note, in both Reading view and Live Preview. Needs no markup in the note itself. The milestones logic lives in `src/milestones/`.
 - **Global API for the Tasks plugin** (`src/reminders/`) — see below.
-- **Commands** (`src/commands/`) — *Copy public link*, plus three that act on the editor selection: *Copy text to public*, *Search selection in Google*, *Translate selection in Google Translate*. The last three flatten wiki-links first via `src/utils/stripWikiLinks.ts`, because `[[...]]` syntax is meaningless outside the vault.
+- **Commands** (`src/commands/`) — *Copy public link*, plus three that act on the editor selection: *Copy text to public*, *Search selection in Google*, *Translate selection in Google Translate*. *Open work achievements* opens the `Work achievements` note, resolved like a wiki-link. The last three flatten wiki-links first via `src/utils/stripWikiLinks.ts`, because `[[...]]` syntax is meaningless outside the vault.
 
 ## Milestones — `src/milestones/`
 
