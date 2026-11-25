@@ -245,7 +245,6 @@ llmWorkspaces:
     ompWeb:
       enabled: true
       hostname: omp.senaev.com
-      storageSize: 8Gi
       secrets:
         ompHtpasswd: OMP_WEB_HTPASSWD_HASH_WITH_USERNAME
     codeTools:
@@ -298,7 +297,6 @@ llmWorkspaces:
     ompWeb:
       enabled: true
       hostname: omp.galkin.senaev.com
-      storageSize: 8Gi
       secrets:
         ompHtpasswd: GALKIN_OMP_WEB_HTPASSWD_HASH_WITH_USERNAME
 
