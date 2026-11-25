@@ -302,6 +302,11 @@ slowest one instead of their sum. Output is streamed live behind a coloured `[li
 check runs to completion even when another fails, so one push reports every problem at once;
 the exit code is non-zero if any of them failed.
 
+ESLint problems are not shown as pull request annotations: `check.yml` and
+`obsidian-personal-tools.yml` remove the `eslint-stylish` and `eslint-compact` problem matchers
+that `setup-node` registers. Read lint problems in the job log. A new workflow that runs ESLint
+after `setup-node` needs the same step.
+
 The concurrent check limits Vitest to half the available CPUs so native worker and
 child-process tests can make progress alongside lint and typecheck. Standalone
 `npm test` and `npm run test:all` continue to use all available CPUs when run alone.

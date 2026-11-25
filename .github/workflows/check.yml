@@ -22,6 +22,13 @@ jobs:
           cache: npm
           cache-dependency-path: "**/package-lock.json"
 
+      # setup-node registers problem matchers that turn ESLint output into pull request
+      # annotations. We do not want them: lint problems are read in the log.
+      - name: Turn off ESLint annotations
+        run: |
+          echo "::remove-matcher owner=eslint-stylish::"
+          echo "::remove-matcher owner=eslint-compact::"
+
       # code-tools searches with ripgrep, as it does in the code-tools image. Downloaded from the
       # GitHub release, not apt: an Ubuntu mirror outage blocked every check on 2026-11-11.
       - name: Install ripgrep

@@ -41,6 +41,15 @@ jobs:
           cache-dependency-path: |
             obsidian-personal-tools/package-lock.json
             senaev-utils/package-lock.json
+
+      # setup-node registers problem matchers that turn ESLint output into pull request
+      # annotations. We do not want them: lint problems are read in the log.
+      - name: Turn off ESLint annotations
+        if: steps.plugin.outputs.present == 'true'
+        run: |
+          echo "::remove-matcher owner=eslint-stylish::"
+          echo "::remove-matcher owner=eslint-compact::"
+
       - name: Validate and build plugin
         if: steps.plugin.outputs.present == 'true'
         id: build
