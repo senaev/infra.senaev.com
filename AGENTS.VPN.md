@@ -15,29 +15,55 @@ Inter-instance routing uses internal Socks proxies (port 1080). Instances chain 
 ### Hysteria2 server (UDP)
 
 `xray-hysteria` (`templates/xray-hysteria.yaml`, values `xrayHysteria`) is a separate Deployment on
-hetzner: Hysteria2 (QUIC) on UDP 47443 through a `hostPort`, exit straight to the internet there
-(freedom). Subscription profile 6, `hysteria2://{XRAY_USER_UUID:6}@senaev.com:47443?sni=senaev.com&obfs=salamander&obfs-password={XRAY_USER_UUID:6-obfs}`;
-the password is the UUID derived from seed 6, like the VLESS users, and the salamander
-obfuscation password (`finalmask.udp` in Xray) the UUID derived from seed `6-obfs`. Salamander
-makes every packet look like random bytes, so the QUIC handshake and its SNI are not visible.
-On UDP 443 without obfuscation no connection from home came up (2026-11-20). Server and probe
-log at `info` while profile 6 is being debugged: Xray logs Hysteria errors only at that level. Added on 2026-11-20 because
+hetzner: Hysteria2 (QUIC), one inbound per entry of `xrayHysteria.inbounds`, each on its UDP port
+through a `hostPort`, exit straight to the internet there (freedom). Added on 2026-11-20 because
 the home ISP freezes TCP/TLS connections to hetzner for hours while UDP (Tailscale) keeps working.
+
+| Profile | Port | Look on the wire | Link |
+|---|---|---|---|
+| 6 | UDP 47443 | random bytes (salamander) | `hysteria2://{XRAY_USER_UUID:6}@senaev.com:47443?sni=senaev.com&obfs=salamander&obfs-password={XRAY_USER_UUID:6-obfs}` |
+| 7 | UDP 443 | HTTP/3 to `senaev.com` | `hysteria2://{XRAY_USER_UUID:7}@senaev.com:443?sni=senaev.com` |
+
+The password is the UUID derived from the profile's seed, like the VLESS users; the salamander
+password (`finalmask.udp` in Xray, set when the inbound has `obfsPasswordMacro`) the UUID of seed
+`6-obfs`. Profile 6 passes from FirstVDS and gets no answer from home (2026-11-24). Server and
+probe log at `info` while the UDP profiles are being debugged: Xray logs Hysteria errors only at
+that level.
 
 - TLS uses the real Let's Encrypt certificate of `senaev.com`: the `certificate-init` init
   container and the `certificate-refresh` sidecar copy it from Traefik's `acme.json` (hostPath
   `/k3s-cluster/volumes/traefik/acme`, read-only) into an `emptyDir`; Xray reloads certificate
   files every hour. If the certificate is missing, only this pod fails; the Reality instances
   are separate.
-- Without the salamander password the server does not answer at all. A client with it but
+- Without the salamander password the server of profile 6 does not answer at all. A client
   without the user password gets `https://senaev.com/` through the masquerade proxy.
-- Traefik binds only TCP 80/443 on hetzner; UDP 47443 is used only by this pod.
-- The `vpn-probe` NetworkPolicy allows public egress on TCP 443 and on UDP `xrayHysteria.port`
-  only. A probe for a new UDP transport needs its port there, or its packets are dropped inside
-  the cluster and the route looks blocked.
+- Traefik binds only TCP 80/443 on hetzner; the UDP ports are used only by these pods.
+- The `vpn-probe` NetworkPolicy allows public egress on TCP 443 and on the UDP ports of
+  `xrayHysteria.inbounds` and `xrayWireguard.port` only. A probe for a new UDP transport needs
+  its port there, or its packets are dropped inside the cluster and the route looks blocked.
 - `vpnProbe.remoteSources` runs the probe of a profile also on another node
   (`vpn-probe-<index>-<vps>`, profile name with ` (from <vps>)`), to tell a home ISP block from
   a server-side problem.
+
+### WireGuard server (UDP, probe only)
+
+`xray-wireguard` (`templates/xray-wireguard.yaml`, values `xrayWireguard`) is a separate
+Deployment on hetzner: Xray's WireGuard inbound on UDP 41642 (`hostPort`), in user space (gVisor
+netstack, no tun device or `NET_ADMIN`), exit there. Profile 8,
+`wireguard://{XRAY_WIREGUARD_PRIVATE_KEY:8}@senaev.com:41642?publickey={XRAY_WIREGUARD_PUBLIC_KEY:8-server}&address=10.0.0.2/32&mtu=1280`,
+is a diagnostic (added 2026-11-25): Happ cannot import WireGuard, so the entry has
+`subscription: false` and only the probes use it.
+
+- Keys: `{XRAY_WIREGUARD_PRIVATE_KEY:<seed>}` is `sha256("<XRAY_USER_UUID>:wireguard:<seed>")`,
+  clamped for X25519, base64url without padding; `{XRAY_WIREGUARD_PUBLIC_KEY:<seed>}` its public
+  key. The render script derives both with Node.js crypto when included with
+  `(dict "wireguard" true)` (other callers keep the script unchanged); `vpn-probe` derives the
+  private key in Python and the public key with `xray x25519 -i`. The probe image build checks
+  that both give the same key pair. vpn-subscription does not know these macros.
+- An entry with `subscription: false` is probed but not sent to subscription clients.
+- Each probe source has its own peer (`xrayWireguard.peers`: seed `8` and `10.0.0.2` from home,
+  `8-firstvds` and `10.0.0.3` from FirstVDS, via `remoteSources[].link`). Two clients with one
+  key would take over each other's endpoint (WireGuard roaming).
 
 ### vpn-subscription service
 

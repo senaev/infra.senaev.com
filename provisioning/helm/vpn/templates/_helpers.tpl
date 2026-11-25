@@ -104,10 +104,13 @@
 {{- /*
   Renders /template/full-config.json into /out/config.json: {XRAY_USER_UUID:<seed>} becomes the
   derived UUID (the same derivation as vpn-subscription and vpn-probe), other macros their env value.
+  With (dict "wireguard" true), also {XRAY_WIREGUARD_PRIVATE_KEY:<seed>} and
+  {XRAY_WIREGUARD_PUBLIC_KEY:<seed>} (the same derivation as vpn-probe). Other callers pass the
+  root context, so their script, and their pods, stay unchanged.
 */ -}}
 {{- define "vpn.renderXrayConfigScript" -}}
 cat <<'EOF' >/tmp/render-config.mjs
-import { createHash } from "node:crypto";
+import { createHash{{ if .wireguard }}, createPrivateKey, createPublicKey{{ end }} } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 
 const macroValues = {
@@ -124,12 +127,45 @@ function deriveUuid(baseValue, seed) {
   return `${derivedSeed.substr(0, 8)}-${derivedSeed.substr(8, 4)}-${derivedSeed.substr(12, 4)}-${derivedSeed.substr(16, 4)}-${derivedSeed.substr(20)}`;
 }
 
+{{- if .wireguard }}
+
+// A clamped X25519 private key, base64url without padding (accepted by Xray as is).
+function wireguardPrivateKey(baseValue, seed) {
+  const key = createHash("sha256").update(`${baseValue}:wireguard:${seed}`).digest();
+  key[0] &= 248;
+  key[31] &= 127;
+  key[31] |= 64;
+
+  return key.toString("base64url");
+}
+
+// PKCS#8 DER header of a raw X25519 private key (RFC 8410).
+const X25519_PKCS8_PREFIX = Buffer.from("302e020100300506032b656e04220420", "hex");
+
+function wireguardPublicKey(privateKey) {
+  const der = Buffer.concat([X25519_PKCS8_PREFIX, Buffer.from(privateKey, "base64url")]);
+  const key = createPrivateKey({ key: der, format: "der", type: "pkcs8" });
+
+  return createPublicKey(key).export({ format: "jwk" }).x;
+}
+{{- end }}
+
 const template = readFileSync("/template/full-config.json", "utf8");
 
 const rendered = template.replace(/\{([A-Z0-9_]+)(?::([^}]*))?\}/g, (match, macroName, seed) => {
   if (macroName === "XRAY_USER_UUID" && seed !== undefined) {
     return deriveUuid(macroValues.XRAY_USER_UUID, seed);
   }
+{{- if .wireguard }}
+
+  if (macroName === "XRAY_WIREGUARD_PRIVATE_KEY" && seed !== undefined) {
+    return wireguardPrivateKey(macroValues.XRAY_USER_UUID, seed);
+  }
+
+  if (macroName === "XRAY_WIREGUARD_PUBLIC_KEY" && seed !== undefined) {
+    return wireguardPublicKey(wireguardPrivateKey(macroValues.XRAY_USER_UUID, seed));
+  }
+{{- end }}
 
   const replacement = macroValues[macroName];
   if (replacement === undefined) {
@@ -151,36 +187,78 @@ node /tmp/render-config.mjs
 */ -}}
 {{- define "vpn.xrayHysteriaConfig" -}}
 {{- $hysteria := .Values.xrayHysteria -}}
-{{- $clients := list -}}
-{{- range $profile := $hysteria.profiles }}
-  {{- $clients = append $clients (dict "auth" $profile.authMacro "email" $profile.user) -}}
+{{- $inbounds := list -}}
+{{- range $inbound := $hysteria.inbounds }}
+  {{- $clients := list -}}
+  {{- range $profile := $inbound.profiles }}
+    {{- $clients = append $clients (dict "auth" $profile.authMacro "email" $profile.user) -}}
+  {{- end -}}
+  {{- $streamSettings := dict
+    "network" "hysteria"
+    "hysteriaSettings" (dict
+      "version" 2
+      "masquerade" (dict "type" "proxy" "url" (printf "https://%s/" $hysteria.serverName))
+    )
+    "security" "tls"
+    "tlsSettings" (dict
+      "serverName" $hysteria.serverName
+      "alpn" (list "h3")
+      "certificates" (list (dict
+        "certificateFile" "/tls/tls.crt"
+        "keyFile" "/tls/tls.key"
+      ))
+    )
+  -}}
+  {{- if $inbound.obfsPasswordMacro }}
+    {{- $_ := set $streamSettings "finalmask" (dict "udp" (list (dict
+      "type" "salamander"
+      "settings" (dict "password" $inbound.obfsPasswordMacro)
+    ))) -}}
+  {{- end }}
+  {{- $inbounds = append $inbounds (dict
+    "tag" (printf "inbound-hysteria-%d" (int $inbound.port))
+    "port" (int $inbound.port)
+    "protocol" "hysteria"
+    "settings" (dict "version" 2 "clients" $clients)
+    "streamSettings" $streamSettings
+  ) -}}
 {{- end -}}
 {{- $config := dict
   "log" (dict "access" "none" "error" "/dev/stderr" "loglevel" (default "warning" $hysteria.logLevel))
+  "inbounds" $inbounds
+  "outbounds" (list (dict
+    "tag" "outbound-freedom"
+    "protocol" "freedom"
+    "streamSettings" (dict "sockopt" (dict "domainStrategy" "UseIPv4v6"))
+  ))
+-}}
+{{- $config | toPrettyJson -}}
+{{- end -}}
+
+{{- /*
+  WireGuard server with a direct exit at its node. Xray runs it in user space (gVisor netstack),
+  so the pod needs no tun device and no NET_ADMIN. Each peer is one client key.
+*/ -}}
+{{- define "vpn.xrayWireguardConfig" -}}
+{{- $wireguard := .Values.xrayWireguard -}}
+{{- $peers := list -}}
+{{- range $peer := $wireguard.peers }}
+  {{- $peers = append $peers (dict
+    "publicKey" (printf "{XRAY_WIREGUARD_PUBLIC_KEY:%s}" $peer.keySeed)
+    "allowedIPs" (list $peer.address)
+    "email" $peer.user
+  ) -}}
+{{- end -}}
+{{- $config := dict
+  "log" (dict "access" "none" "error" "/dev/stderr" "loglevel" "info")
   "inbounds" (list (dict
-    "tag" "inbound-hysteria"
-    "port" (int $hysteria.port)
-    "protocol" "hysteria"
-    "settings" (dict "version" 2 "clients" $clients)
-    "streamSettings" (dict
-      "network" "hysteria"
-      "hysteriaSettings" (dict
-        "version" 2
-        "masquerade" (dict "type" "proxy" "url" (printf "https://%s/" $hysteria.serverName))
-      )
-      "finalmask" (dict "udp" (list (dict
-        "type" "salamander"
-        "settings" (dict "password" $hysteria.obfsPasswordMacro)
-      )))
-      "security" "tls"
-      "tlsSettings" (dict
-        "serverName" $hysteria.serverName
-        "alpn" (list "h3")
-        "certificates" (list (dict
-          "certificateFile" "/tls/tls.crt"
-          "keyFile" "/tls/tls.key"
-        ))
-      )
+    "tag" "inbound-wireguard"
+    "port" (int $wireguard.port)
+    "protocol" "wireguard"
+    "settings" (dict
+      "secretKey" (printf "{XRAY_WIREGUARD_PRIVATE_KEY:%s}" $wireguard.serverKeySeed)
+      "peers" $peers
+      "mtu" (int $wireguard.mtu)
     )
   ))
   "outbounds" (list (dict
