@@ -78,7 +78,6 @@ that file.
 
 ### Codex code review
 
-- Create every pull request as a draft (`gh pr create --draft`).
 - When you open a pull request, and when the user asks for a Codex review, comment `@codex review`.
 
 ### Code Review Loop
