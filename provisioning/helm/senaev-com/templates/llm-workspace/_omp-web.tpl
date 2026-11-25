@@ -224,9 +224,7 @@ spec:
             - name: proxy-tmp
               mountPath: /tmp
       volumes:
-        - name: code
-          persistentVolumeClaim:
-            claimName: {{ printf "%s-code" .Values.name }}
+{{ include "senaev-com.llmWorkspace.codeVolume" . | indent 8 }}
         # Logins, sessions and settings of OMP: a folder on the node of the workspace.
         - name: state
           hostPath:

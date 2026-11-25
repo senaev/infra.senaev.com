@@ -98,9 +98,7 @@ spec:
             path: {{ .Values.global.clusterRootPath }}/volumes/codex-daemon-socket
             type: DirectoryOrCreate
 {{- end }}
-        - name: code
-          persistentVolumeClaim:
-            claimName: {{ printf "%s-code" .Values.name }}
+{{ include "senaev-com.llmWorkspace.codeVolume" . | indent 8 }}
         - name: instructions
           configMap:
             name: {{ printf "%s-instructions" .Values.name }}

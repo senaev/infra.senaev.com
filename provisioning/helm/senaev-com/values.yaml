@@ -204,7 +204,6 @@ llmWorkspaces:
     vps: senaev-madrid
     traefik: hetzner
     instructionsPath: config/senaev-llm-instructions-path
-    codeStorageSize: 16Gi
     agent:
       defaultModel:
         provider: openrouter
@@ -281,7 +280,6 @@ llmWorkspaces:
     # DNS for the hostnames points to hetzner; Traefik reaches the pods over the tailnet.
     traefik: hetzner
     instructionsPath: config/galkin-llm-instructions-path
-    codeStorageSize: 8Gi
     agent:
       defaultModel:
         provider: openrouter

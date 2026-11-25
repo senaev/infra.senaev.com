@@ -116,9 +116,7 @@ spec:
         - name: instructions
           configMap:
             name: {{ printf "%s-instructions" .Values.name }}
-        - name: code
-          persistentVolumeClaim:
-            claimName: {{ printf "%s-code" .Values.name }}
+{{ include "senaev-com.llmWorkspace.codeVolume" . | indent 8 }}
 ---
 apiVersion: v1
 kind: Service

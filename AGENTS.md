@@ -430,17 +430,17 @@ Code Tools has its own image (`code-tools/Dockerfile`,
 `ghcr.io/senaev/code-tools`), Deployment and Service
 (`provisioning/helm/senaev-com/templates/llm-workspace/_code-tools.tpl`). OpenCode and its Telegram
 bot stay in the `senaev-opencode-telegram` Deployment. Both pods, OMP and Claude Code mount the
-workspace's `senaev-code` PVC at `/code`. OMP keeps its state (`/root/.omp`) in the node folder
-`<clusterRootPath>/volumes/<name>-omp-web-state` (a `hostPath`, not a PVC). The workspace `vps` node selector puts them on one node. Code Tools and OpenCode use one replica
+workspace's `/code` folder, `<clusterRootPath>/volumes/<name>-code` on the node (a `hostPath`, not a PVC). OMP keeps its state (`/root/.omp`) in
+`<clusterRootPath>/volumes/<name>-omp-web-state`. The workspace `vps` node selector puts them on one node. Code Tools and OpenCode use one replica
 and `Recreate`; a Code Tools update still has a short outage and loses in-memory operation IDs.
 cluster-helper is its only caller, over mTLS on 8443 (see Internal mTLS); the kubelet probes `/health` on
 the plain port 8081.
 
 The code tools take absolute paths and work in any folder. The repository layout under
 `/code` (`projects/<repo>` and `worktrees/<repo>/<branch>`) is described only in the
-workspace instructions, `/AGENTS.md`. The PVCs use `local-path`, which does not enforce their
-size: worktrees with their own `node_modules` use the node's root disk. LLM workspaces have no container resource limits; scheduler memory
-requests remain. To preserve node-local data when moving nodes, copy it and rebind PVCs;
+workspace instructions, `/AGENTS.md`. The `/code` folder is a `hostPath`, so it has no size limit:
+worktrees with their own `node_modules` use the node's root disk. LLM workspaces have no container resource limits; scheduler memory
+requests remain. To preserve node-local data when moving nodes, copy the folders (`/k3s-cluster/volumes/<name>-*`) to the new node;
 see `projects/2026-11-14-21-40-llm-workspace-madrid/README.md`.
 
 OpenCode 2 serves its built-in web UI at `https://opencode.senaev.com` through the
@@ -460,13 +460,12 @@ all affected images are published. Helm handles both first installation and upda
 image refreshes run after Helm in the same coordinated job.
 
 Every workspace requires an explicit boolean `enabled`. `enabled: false` omits
-all its rendered resources; existing kept PVCs survive. Both current workspaces
+all its rendered resources; the node folders under `volumes/` survive. Both current workspaces
 are enabled.
 
 LLM workspace values live in `llmWorkspaces`, and the templates in
 `provisioning/helm/senaev-com/templates/llm-workspace/`. The entry name prefixes all
-resource names. Each workspace has its own code PVC (`<name>-code`), a projects PVC
-(`<name>-projects`, rendered only when OMP is enabled) and instructions ConfigMap (`<name>-instructions`, from `instructionsPath`), and enables any of
+resource names. Each workspace has its own code folder (`volumes/<name>-code`, a `hostPath`) and instructions ConfigMap (`<name>-instructions`, from `instructionsPath`), and enables any of
 OpenCode, OMP, Code Tools, Claude Code and Codex. OpenCode requires `git` and `telegram`; Code Tools
 requires OpenCode; Claude Code and Codex require `git`. A new entry inherits nothing from another; the schema is
 `provisioning/helm/senaev-com/values.schema.json`.
@@ -497,9 +496,9 @@ for compatibility after deployment.
 | `senaev` | senaev-madrid | OpenCode, OMP (`omp.senaev.com`), Code Tools, Claude Code, Codex | traefik-hetzner |
 | `galkin` | senaev-madrid | OMP only (`omp.galkin.senaev.com`) | traefik-hetzner (DNS points to hetzner) |
 
-No workspace has a `/projects` volume; the code is in `/code`. The old `senaev-projects` PVC is kept (`resource-policy: keep`) but unused.
+No workspace has a `/projects` volume; the code is in `/code`. No workspace uses PVCs.
 
-Do not rename the `senaev` entry: that replaces its PVCs, and cluster-helper calls
+Do not rename the `senaev` entry: that moves its host folders, and cluster-helper calls
 `senaev-code-tools`. Preserve its host data directory.
 
 ## Claude Code
