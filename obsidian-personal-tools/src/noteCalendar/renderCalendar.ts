@@ -23,6 +23,9 @@ export interface CalendarRenderOptions<Kind extends string> {
 	kindStyles: Readonly<Record<Kind, CalendarKindStyle>>;
 }
 
+/** Marks the header buttons, so that the focused one can be found again after a redraw. */
+const CONTROL_ATTRIBUTE = 'data-senaev-control';
+
 /** The year each calendar shows when compact. A redraw builds new elements, so it is kept here. */
 const selectedYears = new Map<string, string>();
 
@@ -61,10 +64,16 @@ function pickYear<Kind extends string>(model: CalendarModel<Kind>, key: string):
 	return saved !== undefined && years.includes(saved) ? saved : years[years.length - 1];
 }
 
-function createNavButton(parentEl: HTMLElement, icon: string, label: string, onClick: (() => void) | null): void {
+function createNavButton(
+	parentEl: HTMLElement,
+	control: string,
+	icon: string,
+	label: string,
+	onClick: (() => void) | null,
+): void {
 	const button = parentEl.createEl('button', {
 		cls: ['clickable-icon', 'senaev-calendar-nav'],
-		attr: { 'aria-label': label },
+		attr: { 'aria-label': label, [CONTROL_ATTRIBUTE]: control },
 	});
 	setIcon(button, icon);
 
@@ -92,7 +101,20 @@ export function renderCalendar<Kind extends string>(
 
 	const expanded = expandedCalendars.has(options.scrollKey);
 	const selectedYear = pickYear(model, options.scrollKey);
-	const redraw = () => renderCalendar(app, containerEl, model, options);
+	const redraw = () => {
+		// A redraw replaces every element, which would drop the focus of a keyboard user.
+		const focused = activeDocument.activeElement;
+		const focusedControl = containerEl.contains(focused) ? (focused?.getAttribute(CONTROL_ATTRIBUTE) ?? null) : null;
+
+		renderCalendar(app, containerEl, model, options);
+
+		if (focusedControl !== null) {
+			// The arrow that was pressed is disabled at the first or last year; the `⋯` button is always there.
+			const target = containerEl.querySelector<HTMLElement>(`[${CONTROL_ATTRIBUTE}="${focusedControl}"]:not([disabled])`)
+				?? containerEl.querySelector<HTMLElement>(`[${CONTROL_ATTRIBUTE}="more"]`);
+			target?.focus();
+		}
+	};
 
 	renderHeader(containerEl, model, options, expanded, selectedYear, {
 		selectYear: (year) => {
@@ -142,15 +164,18 @@ function renderHeader<Kind extends string>(
 		const older = model.years[index - 1];
 		const newer = model.years[index + 1];
 
-		createNavButton(switcherEl, 'chevron-left', 'Previous year', older ? () => actions.selectYear(older.year) : null);
+		createNavButton(switcherEl, 'previous', 'chevron-left', 'Previous year', older ? () => actions.selectYear(older.year) : null);
 		switcherEl.createSpan({ cls: 'senaev-calendar-year-label', text: selectedYear });
-		createNavButton(switcherEl, 'chevron-right', 'Next year', newer ? () => actions.selectYear(newer.year) : null);
+		createNavButton(switcherEl, 'next', 'chevron-right', 'Next year', newer ? () => actions.selectYear(newer.year) : null);
 	}
 
 	const moreButton = switcherEl.createEl('button', {
 		cls: expanded ? ['clickable-icon', 'senaev-calendar-more', 'is-active'] : ['clickable-icon', 'senaev-calendar-more'],
 		text: '⋯',
-		attr: { 'aria-label': expanded ? 'Show one year' : 'Show all years and statistics' },
+		attr: {
+			'aria-label': expanded ? 'Show one year' : 'Show all years and statistics',
+			[CONTROL_ATTRIBUTE]: 'more',
+		},
 	});
 	moreButton.addEventListener('click', () => actions.toggleExpanded());
 
