@@ -17,7 +17,6 @@
           "enabled",
           "agent",
           "instructionsPath",
-          "projectsStorageSize",
           "codeStorageSize",
           "vps",
           "traefik"

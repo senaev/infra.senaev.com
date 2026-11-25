@@ -497,6 +497,8 @@ for compatibility after deployment.
 | `senaev` | senaev-madrid | OpenCode, OMP (`omp.senaev.com`), Code Tools, Claude Code, Codex | traefik-hetzner |
 | `galkin` | senaev-madrid | OMP only (`omp.galkin.senaev.com`) | traefik-hetzner (DNS points to hetzner) |
 
+`projectsStorageSize` is optional: without it a workspace has no `/projects` volume (`galkin` has none).
+
 Do not rename the `senaev` entry: that replaces its PVCs, and cluster-helper calls
 `senaev-code-tools`. Preserve its host data directory.
 

@@ -283,7 +283,6 @@ llmWorkspaces:
     # DNS for the hostnames points to hetzner; Traefik reaches the pods over the tailnet.
     traefik: hetzner
     instructionsPath: config/galkin-llm-instructions-path
-    projectsStorageSize: 8Gi
     codeStorageSize: 8Gi
     agent:
       defaultModel:
