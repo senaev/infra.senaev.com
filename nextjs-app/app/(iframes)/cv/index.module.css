@@ -135,7 +135,7 @@
  */
 @media print {
     .CV__container {
-        font-size: 9.025pt; /* 95% of 9.5pt, to fit the CV on two pages */
+        font-size: 9pt;
         line-height: 1.45em;
         max-width: none;
         padding: 0;
