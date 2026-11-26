@@ -104,10 +104,6 @@ export const SENEAV_CONTACTS: Contact[] = [
         title: 'linkedin.com/in/senaev',
         link: 'https://www.linkedin.com/in/senaev/',
     },
-    {
-        header: 'Location',
-        title: SENAEV_LOCATION,
-    },
 ];
 
 type Education = {

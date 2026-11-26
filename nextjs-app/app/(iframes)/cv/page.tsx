@@ -8,6 +8,7 @@ import {
     SENAEV_EDUCATIONS,
     SENAEV_ELEVATOR_PITCH,
     SENAEV_LANGUAGE_LEVELS,
+    SENAEV_LOCATION,
     SENAEV_SKILLS,
     SENAEV_FULL_NAME,
     SENEAV_CONTACTS,
@@ -47,6 +48,9 @@ export default async function Page (): Promise<JSX.Element> {
             'CvPage_container'
         )}
     >
+        <div className={styles.PrintButtonContainer}>
+            <PrintButton/>
+        </div>
         <header className={styles.Header}>
             <Link
                 href={'/'}
@@ -89,6 +93,9 @@ export default async function Page (): Promise<JSX.Element> {
                         </li>)
                     }
                     <li>
+                        {`Location: ${SENAEV_LOCATION}`}
+                    </li>
+                    <li>
                         {`Languages: ${SENAEV_LANGUAGE_LEVELS.map(({ language, level }) => `${language} (${level})`).join(', ')}`}
                     </li>
                 </ul>
@@ -96,9 +103,6 @@ export default async function Page (): Promise<JSX.Element> {
         </header>
 
         <main className={styles.Content}>
-            <div className={styles.Content__noPrint}>
-                <PrintButton/>
-            </div>
             <MarkdownHeader
                 depth={2}
                 id={'about-me'}

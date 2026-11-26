@@ -1,6 +1,8 @@
 .Container {
     --line-width: 2px;
 
+    position: relative;
+
     font-size: 18px;
     line-height: 1.7em;
     max-width: 850px;
@@ -42,14 +44,15 @@
     margin: 0;
     font-size: 0.8em;
     line-height: 1.6em;
+    display: grid;
+    grid-template-columns: repeat(2, max-content);
+    column-gap: 2em;
 }
 
-.Header .Contacts li {
-    display: inline;
-}
-
-.Header .Contacts li:not(:last-child)::after {
-    content: " · ";
+.PrintButtonContainer {
+    position: absolute;
+    top: 1em;
+    right: 1.5em;
 }
 
 .Header .Contacts a {
@@ -108,6 +111,10 @@
 }
 
 @media (max-width: 600px) {
+    .Header .Contacts {
+        grid-template-columns: 1fr;
+    }
+
     .Header {
         flex-direction: column;
         align-items: flex-start;
@@ -121,14 +128,14 @@
  */
 @media print {
     .Container {
-        font-size: 10.5pt;
+        font-size: 9.5pt;
         line-height: 1.45em;
         max-width: none;
         padding: 0;
     }
 
     .Avatar,
-    .Content__noPrint {
+    .PrintButtonContainer {
         display: none;
     }
 

@@ -3,6 +3,7 @@ import {
     SENAEV_CV_LINK,
     SENAEV_ELEVATOR_PITCH,
     SENAEV_FULL_NAME,
+    SENAEV_LOCATION,
     SENEAV_CONTACTS,
 } from 'const/const';
 import { NON_BREAKING_SPACE } from 'const/NON_BREAKING_SPACE';
@@ -78,12 +79,15 @@ export default function Page(): JSX.Element {
                 </div>
                 <div className={styles.MainPage__resumeContainer}>
                     <h2>
-                        {'Resume'}
+                        {'Details'}
                     </h2>
                     <div>
-                        {'• '}
+                        {`Location:${NON_BREAKING_SPACE}${SENAEV_LOCATION}`}
+                    </div>
+                    <div>
+                        {`CV:${NON_BREAKING_SPACE}`}
                         <Link href={SENAEV_CV_LINK}>
-                            {'CV'}
+                            {'senaev.com/cv'}
                         </Link>
                     </div>
                 </div>
