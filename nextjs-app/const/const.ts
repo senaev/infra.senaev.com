@@ -80,9 +80,14 @@ export const SENEAV_CONTACTS: Contact[] = [
         link: SENAEV_SITE_URL,
     },
     {
-        header: 'Telegram',
-        title: `@${SENAEV_TELEGRAM_NICKNAME}`,
-        link: SENAEV_TELEGRAM_LINK,
+        header: 'LinkedIn',
+        title: 'linkedin.com/in/senaev',
+        link: 'https://www.linkedin.com/in/senaev/',
+    },
+    {
+        header: 'GitHub',
+        title: 'github.com/senaev',
+        link: 'https://github.com/senaev',
     },
     {
         header: 'Email',
@@ -95,14 +100,9 @@ export const SENEAV_CONTACTS: Contact[] = [
         link: SENAEV_PHONE_LINK,
     },
     {
-        header: 'GitHub',
-        title: 'github.com/senaev',
-        link: 'https://github.com/senaev',
-    },
-    {
-        header: 'LinkedIn',
-        title: 'linkedin.com/in/senaev',
-        link: 'https://www.linkedin.com/in/senaev/',
+        header: 'Telegram',
+        title: `@${SENAEV_TELEGRAM_NICKNAME}`,
+        link: SENAEV_TELEGRAM_LINK,
     },
 ];
 
