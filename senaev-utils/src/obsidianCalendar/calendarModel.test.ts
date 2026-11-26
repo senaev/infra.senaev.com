@@ -242,6 +242,21 @@ describe('buildYearGrid', () => {
         expect(november?.weeks.flat().filter((day) => day !== null)).toHaveLength(30);
     });
 
+    it('marks a month that starts right after a month that ends on the last row', () => {
+        const months = buildYearGrid(2026);
+
+        // 2026-05-31 is a Sunday, so June would touch May. No other month of 2026 ends on a Sunday.
+        expect(months.filter((month) => month.separated).map((month) => month.month)).toEqual([6]);
+        expect(months[0]?.separated).toBe(false);
+
+        // With Sunday-first weeks the last row is Saturday: 2026-01-31, 2026-02-28 and 2026-10-31 are Saturdays.
+        expect(buildYearGrid(2026, 0).filter((month) => month.separated).map((month) => month.month)).toEqual([
+            2,
+            3,
+            11,
+        ]);
+    });
+
     it('starts the week on Sunday on request and handles leap years', () => {
         const february = buildYearGrid(2024, 0)[1];
 

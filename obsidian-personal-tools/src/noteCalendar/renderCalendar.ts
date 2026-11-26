@@ -229,8 +229,11 @@ function renderYear<Kind extends string>(
 	const scrollPositionKey = `${options.scrollKey}|${year.year}`;
 	monthsEl.addEventListener('scroll', () => scrollPositions.set(scrollPositionKey, monthsEl.scrollLeft));
 
-	for (const { month, weeks } of buildYearGrid(Number(year.year))) {
-		const monthEl = monthsEl.createDiv({ cls: 'senaev-calendar-month' });
+	for (const { month, weeks, separated } of buildYearGrid(Number(year.year))) {
+		// A month that follows one ending on the last row of its week is moved one column away.
+		const monthEl = monthsEl.createDiv({
+			cls: separated ? ['senaev-calendar-month', 'is-separated'] : ['senaev-calendar-month'],
+		});
 		monthEl.createDiv({ cls: 'senaev-calendar-month-name', text: monthName(month) });
 		const gridEl = monthEl.createDiv({ cls: 'senaev-calendar-grid' });
 
