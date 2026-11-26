@@ -93,6 +93,13 @@ If your plugin does not need CSS, delete this file.
 	line-height: 1;
 }
 
+/* Obsidian's icon buttons keep the default cursor, so the enabled ones say they can be clicked.
+   A disabled arrow (the first or last year) keeps the default one. */
+.senaev-calendar-nav:not(:disabled),
+.senaev-calendar-more {
+	cursor: pointer;
+}
+
 .senaev-calendar-more.is-active {
 	background-color: var(--background-modifier-hover);
 	color: var(--text-normal);
