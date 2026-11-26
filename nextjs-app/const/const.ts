@@ -13,7 +13,7 @@ export const SENAEV_LOCATION = 'Madrid, Spain';
 
 export const SENAEV_TELEGRAM_NICKNAME = 'senaev';
 export const SENAEV_TELEGRAM_LINK = `https://t.me/${SENAEV_TELEGRAM_NICKNAME}`;
-export const SENAEV_LINKEDIN_LINK = 'https://www.linkedin.com/in/senaev/';
+export const SENAEV_LINKEDIN_LINK = 'https://linkedin.com/in/senaev/';
 export const SENAEV_GITHUB_LINK = 'https://github.com/senaev';
 export const SENAEV_SITE_DOMAIN = 'senaev.com';
 export const SENAEV_SITE_URL = `https://${SENAEV_SITE_DOMAIN}`;
