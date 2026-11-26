@@ -21,10 +21,7 @@ export const ME_PAGE_LINK = '/me';
 
 export const SENAEV_SITE_IMAGE_URL = '/img/avatar-head.webp';
 
-export const SENAEV_ELEVATOR_PITCH = [
-    'I\'m a Senior Full-Stack Engineer with over a decade of building revenue-critical systems in Ad Tech, Digital Media and Observability. At Datadog, I work on Flex Logs—a multi-tenant, multi-datacenter log storage that keeps petabyte-scale data queryable on demand.',
-    'Before that I spent ten years at Yandex, where I owned the video advertising player behind all Yandex services and authored the video creative standard still used company-wide, then built the interfaces of a new international advertising network from scratch—defining their architecture and growing the team that delivered them. I measure my work in money and reliability.',
-];
+export const SENAEV_ELEVATOR_PITCH = ['I\'m a Senior Full-Stack Engineer with 13 years of building revenue-critical systems in Ad Tech, Digital Media and Observability, now working on Flex Logs at Datadog. Before that I spent ten years at Yandex, where I owned the video advertising player behind all Yandex services, authored the video creative standard still used company-wide, and built the interfaces of a new international advertising network with a team I grew to 25 people. I measure my work in money and reliability.'];
 
 export const SENAEV_CV_LINK = '/cv';
 
@@ -151,25 +148,20 @@ export const SENAEV_LANGUAGE_LEVELS: {
 ];
 
 export const SENAEV_SKILLS: Record<string, string[]> = {
-    Hard: [
-        'Distributed Storage and Query Systems at Scale',
-        'Observability (Logs, Metrics, Tracing)',
+    Languages: [
         'Java / Kotlin / Go (Golang)',
+        'TypeScript / JavaScript / Node.js / React.js',
+    ],
+    Systems: [
+        'Distributed Storage and Query Systems at Scale',
         'Distributed Systems / Microservices',
-        'Kubernetes / Docker / Terraform',
-        'TypeScript / JavaScript / Node.js',
-        'React.js / Webpack / HTML / CSS',
+        'Observability (Logs, Metrics, Tracing)',
         'Performance Optimization and Telemetry',
         'A/B Testing, Availability, Incident Response',
-        'Multimedia in browser (MSE, DRM, Encoding)',
-        'Jest / Selenium / Playwright',
-
     ],
-    Soft: [
-        'Team Leadership / People and Project Management',
-        'Hiring / Technical Interviews',
-        'Mentoring',
-        'Public Speaking',
+    Infrastructure: [
+        'Kubernetes / Docker / Terraform',
+        'ClickHouse / YTsaurus',
     ],
 };
 
