@@ -1,20 +1,21 @@
 import { resolve } from 'path';
 
 import classNames from 'classnames';
-import { ErrorPage } from 'components/ErrorPage';
 import { MarkdownHeader } from 'components/MarkdownHeader';
 import { PrintButton } from 'components/PrintButton/PrintButton';
 import {
-    SENAEV_AVAILABLE_CV_VERSIONS,
     SENAEV_CURRENT_DUTY_SHORT,
     SENAEV_EDUCATIONS,
     SENAEV_ELEVATOR_PITCH,
     SENAEV_LANGUAGE_LEVELS,
+    SENAEV_LOCATION,
     SENAEV_SKILLS,
+    SENAEV_FULL_NAME,
     SENEAV_CONTACTS,
 } from 'const/const';
 import { FONT_MERRIWEATHER_CLASSNAMES } from 'const/FONT_MERRIWEATHER_CLASSNAMES/FONT_MERRIWEATHER_CLASSNAMES';
 import { NON_BREAKING_SPACE } from 'const/NON_BREAKING_SPACE';
+import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { JSX } from 'react';
@@ -26,67 +27,56 @@ import { getObjectEntries } from 'utils/Object/getObjectEntries';
 import './index.css';
 import styles from './index.module.css';
 
-const AVATAR_SIZE = 150;
+const AVATAR_SIZE = 120;
 
-export default async function Page ({
-    params,
-}: {
-    params: Promise<{id: string}>;
-}): Promise<JSX.Element> {
-    const { id } = await params;
+/** Browsers name a printed or saved PDF after the page title. */
+export const metadata: Metadata = {
+    title: `${SENAEV_FULL_NAME} - CV`,
+};
 
-    if (!SENAEV_AVAILABLE_CV_VERSIONS.find((cvVersion) => cvVersion.id === id)) {
-        return <ErrorPage message={`CV with id=[${id}] doesn't exist`}/>;
-    }
+export default async function Page (): Promise<JSX.Element> {
+    const markdownFilePath = resolve(getNextJsRootDirectory(), './public/cv/cv.md');
 
-    const readmeFilePath = resolve(getNextJsRootDirectory(), `./public/cv/${id}.md`);
-
-    const markdownContent = await getNoteByFilePath({ filePath: readmeFilePath });
+    const markdownContent = await getNoteByFilePath({ filePath: markdownFilePath });
 
     const markdownComponent = await renderNoteByMarkdownContent({ markdownContent });
 
     return <div
         className={classNames(
-            styles.Container,
+            styles.CV__container,
             FONT_MERRIWEATHER_CLASSNAMES,
             'CvPage_container'
         )}
     >
-        <aside className={styles.Sidebar}>
-            <div className={styles.AvatarContainer}>
-                <Link href={'/'}>
-                    <Image
-                        width={AVATAR_SIZE}
-                        height={AVATAR_SIZE}
-                        src={'/img/avatar-head.webp'}
-                        alt={'Profile Picture'}
-                    />
-                </Link>
-            </div>
-            <div className={styles.SidebarContent}>
-                <div>
-                    <div>
-                        <h1>
-                            {'Andrei Senaev'}
-                        </h1>
-                        <p className={styles.Title}>
-                            {SENAEV_CURRENT_DUTY_SHORT}
-                        </p>
-                    </div>
-                </div>
-                <div>
-                    <h2>
-                        {'Contact'}
-                    </h2>
+        <div className={styles.CV__printButtonContainer}>
+            <PrintButton/>
+        </div>
+        <header className={styles.CV__header}>
+            <Link
+                href={'/'}
+                className={styles.CV__avatar}
+            >
+                <Image
+                    width={AVATAR_SIZE}
+                    height={AVATAR_SIZE}
+                    src={'/img/avatar-head.webp'}
+                    alt={'Profile Picture'}
+                />
+            </Link>
+            <div>
+                <h1>
+                    {SENAEV_FULL_NAME}
+                </h1>
+                <p className={styles.CV__title}>
+                    {SENAEV_CURRENT_DUTY_SHORT}
+                </p>
+                <ul className={styles.CV__contacts}>
                     {
                         SENEAV_CONTACTS.map(({
                             header,
                             title,
                             link,
-                        }, i) => <div
-                            className={'contact'}
-                            key={i}
-                        >
+                        }, i) => <li key={i}>
                             {`${header}:`}
                             {NON_BREAKING_SPACE}
                             {
@@ -100,31 +90,19 @@ export default async function Page ({
                                     </a>
                                     : title
                             }
-                        </div>)
+                        </li>)
                     }
-                </div>
-                <div>
-                    <h2>
-                        {'Language'}
-                    </h2>
-                    <ul>
-                        {
-                            SENAEV_LANGUAGE_LEVELS.map(({
-                                language,
-                                level,
-                            }, i) => <li key={i}>
-                                {`${language} – ${level}`}
-                            </li>)
-                        }
-                    </ul>
-                </div>
+                    <li>
+                        {`Location: ${SENAEV_LOCATION}`}
+                    </li>
+                    <li>
+                        {`Languages: ${SENAEV_LANGUAGE_LEVELS.map(({ language, level }) => `${language} (${level})`).join(', ')}`}
+                    </li>
+                </ul>
             </div>
-        </aside>
+        </header>
 
-        <main className={styles.Content}>
-            <div className={styles.Content__noPrint}>
-                <PrintButton/>
-            </div>
+        <main className={styles.CV__content}>
             <MarkdownHeader
                 depth={2}
                 id={'about-me'}
@@ -150,10 +128,10 @@ export default async function Page ({
                     degree,
                     level,
                 }, i) => <div
-                    className={styles.EducationItem}
+                    className={styles.CV__educationItem}
                     key={i}
                 >
-                    <p className={styles.EducationItem__degree}>
+                    <p className={styles.CV__educationItemDegree}>
                         <strong>
                             {degree}
                         </strong>

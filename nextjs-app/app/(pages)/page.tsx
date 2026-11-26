@@ -1,8 +1,15 @@
 import {
-    SENAEV_AVAILABLE_CV_VERSIONS, SENAEV_CURRENT_DUTY,
+    SENAEV_CURRENT_DUTY,
+    SENAEV_CV_LINK,
     SENAEV_ELEVATOR_PITCH,
+    SENAEV_EMAIL,
+    SENAEV_EMAIL_LINK,
     SENAEV_FULL_NAME,
-    SENEAV_CONTACTS,
+    SENAEV_GITHUB_LINK,
+    SENAEV_LINKEDIN_LINK,
+    SENAEV_LOCATION,
+    SENAEV_TELEGRAM_LINK,
+    SENAEV_TELEGRAM_NICKNAME,
 } from 'const/const';
 import { NON_BREAKING_SPACE } from 'const/NON_BREAKING_SPACE';
 import Image from 'next/image';
@@ -15,28 +22,85 @@ import styles from './index.module.css';
 
 const AVATAR_SIZE = 150;
 
+/** Shown under the location as "Label: address", with the address as the link text, so it can be copied. */
+const HEADER_LINKS = [
+    {
+        label: 'Resume',
+        text: `senaev.com${SENAEV_CV_LINK}`,
+        link: SENAEV_CV_LINK,
+    },
+    {
+        label: 'LinkedIn',
+        text: 'linkedin.com/in/senaev',
+        link: SENAEV_LINKEDIN_LINK,
+    },
+    {
+        label: 'GitHub',
+        text: 'github.com/senaev',
+        link: SENAEV_GITHUB_LINK,
+    },
+    {
+        label: 'Email',
+        text: SENAEV_EMAIL,
+        link: SENAEV_EMAIL_LINK,
+    },
+    {
+        label: 'Telegram',
+        text: `@${SENAEV_TELEGRAM_NICKNAME}`,
+        link: SENAEV_TELEGRAM_LINK,
+    },
+];
+
 export default function Page(): JSX.Element {
     return <div className={styles.MainPage__container}>
-        <div className={styles.MainPage__container_center}>
-            <div className={styles.MainPage__photoAndTitle}>
-                <div className={styles.MainPage__avatarContainer}>
-                    <Image
-                        width={AVATAR_SIZE}
-                        height={AVATAR_SIZE}
-                        src={'/img/avatar-head.webp'}
-                        alt={'Profile Picture'}
-                    />
-                </div>
-                <div className={styles.MainPage__title}>
-                    <h1>
-                        {SENAEV_FULL_NAME}
-                    </h1>
-                    <p>
-                        {SENAEV_CURRENT_DUTY}
-                    </p>
-                </div>
-            </div>
-            <div>
+        <main className={styles.MainPage__column}>
+            <header className={styles.MainPage__header}>
+                <Image
+                    className={styles.MainPage__avatar}
+                    width={AVATAR_SIZE}
+                    height={AVATAR_SIZE}
+                    src={'/img/avatar-head.webp'}
+                    alt={'Profile Picture'}
+                />
+                <h1>
+                    {SENAEV_FULL_NAME}
+                </h1>
+                <p className={styles.MainPage__duty}>
+                    {SENAEV_CURRENT_DUTY}
+                </p>
+                <p className={styles.MainPage__location}>
+                    {SENAEV_LOCATION}
+                </p>
+            </header>
+
+            <nav className={styles.MainPage__links}>
+                {
+                    HEADER_LINKS.map(({
+                        label, text, link,
+                    }) => <span
+                        key={link}
+                        className={styles.MainPage__tag}
+                    >
+                        {`${label}:`}
+                        {NON_BREAKING_SPACE}
+                        {
+                            link.startsWith('/')
+                                ? <Link href={link}>
+                                    {text}
+                                </Link>
+                                : <a
+                                    href={link}
+                                    target={'_blank'}
+                                    rel={'noreferrer'}
+                                >
+                                    {text}
+                                </a>
+                        }
+                    </span>)
+                }
+            </nav>
+
+            <section className={styles.MainPage__about}>
                 <h2>
                     {'About Me'}
                 </h2>
@@ -45,52 +109,8 @@ export default function Page(): JSX.Element {
                         {info}
                     </p>)
                 }
-            </div>
-            <div className={styles.MainPage__contactsAndCv}>
-                <div>
-                    <h2>
-                        {'Contacts'}
-                    </h2>
-                    {
-                        SENEAV_CONTACTS.map(({
-                            header,
-                            title,
-                            link,
-                        }, i) => <div
-                            key={i}
-                        >
-                            {`${header}:`}
-                            {NON_BREAKING_SPACE}
-                            {
-                                link
-                                    ? <a
-                                        href={link}
-                                        target={'_blank'}
-                                        rel={'noreferrer'}
-                                    >
-                                        {title}
-                                    </a>
-                                    : title
-                            }
-                        </div>)
-                    }
-                </div>
-                <div className={styles.MainPage__resumeContainer}>
-                    <h2>
-                        {'Resume'}
-                    </h2>
-                    <div>
-                        {
-                            SENAEV_AVAILABLE_CV_VERSIONS.map(({ id, name }, i) => <div key={i}>
-                                {'• '}
-                                <Link href={`/cv/${id}`}>
-                                    {name}
-                                </Link>
-                            </div>)
-                        }
-                    </div>
-                </div>
-            </div>
-        </div>
+            </section>
+
+        </main>
     </div>;
 }
