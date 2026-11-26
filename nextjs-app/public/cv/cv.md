@@ -8,9 +8,10 @@
 
 I work on [Flex Logs](https://docs.datadoghq.com/logs/log_configuration/flex_logs/) – a multi-tenant, multi-datacenter log storage that keeps petabyte-scale data queryable on demand.
 
-- **Query Pool Observability:** how customers see and control the query capacity they pay for – picking the right capacity for a workload, showing how much of it is still free, deciding what happens to queries once it runs out, and measuring the storage and compute each customer uses so it can be billed correctly.
+- **Billing:** I own Flex Logs billing – measuring the storage and compute each customer uses so it can be billed correctly.
+- **Query Pool Observability:** how customers see and control the query capacity they pay for – picking the right capacity for a workload, showing how much of it is still free, and deciding what happens to queries once it runs out.
 - **Full-stack:** React and TypeScript interfaces, Java and Go services, and monitoring infrastructure as code in Terraform.
-- **Operations and design:** I own a set of service monitors and runbooks, take interrupt handler duty, and write RFCs on the evolution of the product.
+- I write RFCs on the evolution of the product.
 
 ### Yandex <time>Feb 8, 2016 — Apr 30, 2026</time>
 
