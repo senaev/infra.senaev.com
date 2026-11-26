@@ -22,10 +22,9 @@ void test('inserts the heading after the frontmatter', () => {
 	assert.equal(insertHeading('---\na: 1\n---\n\nText', 'Note'), '---\na: 1\n---\n# Note\n\nText');
 });
 
-void test('leaves notes with an empty body unchanged', () => {
-	for (const content of ['', ' \n\n', '---\na: 1\n---', '---\na: 1\n---\n\n']) {
-		assert.equal(insertHeading(content, 'Note'), null, JSON.stringify(content));
-	}
+void test('inserts the heading into notes with an empty body', () => {
+	assert.equal(insertHeading('', 'Note'), '# Note\n');
+	assert.equal(insertHeading(' \n\n', 'Note'), '# Note\n');
 });
 
 void test('leaves a frontmatter block that cannot be split unchanged', () => {

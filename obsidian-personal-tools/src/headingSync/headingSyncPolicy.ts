@@ -36,7 +36,7 @@ export function isIgnoredPath(path: string): boolean {
 		|| IGNORED_FILENAME_PARTS.some(part => filename.includes(part));
 }
 
-export const RENAME_DELAY_MS = 1000;
+export const RENAME_DELAY_MS = 500;
 
 // Filename Heading Sync 1.12.0 stock sanitization, without optional settings.
 // Hashes stay in the H1; Obsidian filenames cannot contain them.
