@@ -14,10 +14,6 @@ My main area is Query Pool Observability – how customers see and control the q
 
 I also own a set of service monitors and runbooks, maintain the project documentation and processes, take interrupt handler duty, and write RFCs on the evolution of the product.
 
-I found and removed about 3 PB of stored logs that customers could no longer access, with no impact on any customer.
-
-I also lead the alignment of public Logs API rate limits across data centers: I wrote the RFC and run the staged rollout.
-
 ### Yandex <time>Feb 8, 2016 — Apr 30, 2026</time>
 
 #### Leading Yandex International Advertising Interfaces <time>Dec 2022 - Apr 2026</time>
