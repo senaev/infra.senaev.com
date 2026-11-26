@@ -79,7 +79,8 @@ is a diagnostic (added 2026-11-25): Happ cannot import WireGuard, so the entry h
 Group `vpn` in `provisioning/helm/senaev-com/templates/alerts.yaml`, to the cluster Telegram chat:
 
 - `vpn-profile-1-failing`: more than half of profile 1's parity checks fail through the VPN in
-  30 minutes while the same checks without the VPN pass (10 minutes).
+  30 minutes, counting only the checks whose direct twin mostly passes in the same window (for 10
+  minutes), so a target outage does not fire it.
 - `vpn-firstvds-stalled`: the mean smokeping RTT over Tailscale to firstvds from all nodes is above
   0.5 s (normally 17–70 ms) for 5 minutes. On 2026-11-26 19:40–21:30 UTC the VM stalled at the
   provider (pings 0.5–16 s, CPU minutes with no time accounted) and profile 1 failed ~75 %.
