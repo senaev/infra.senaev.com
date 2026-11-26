@@ -19,7 +19,7 @@ const PAGES = [
 // Short link: cluster-helper → obsidian-sync.
 const SHORT_LINK = {
     url: 'https://s.senaev.com/1bxsl9',
-    location: 'https://senaev.com/cv/5min',
+    location: 'https://senaev.com/cv',
 };
 
 const REQUEST_TIMEOUT_MS = 15_000;
