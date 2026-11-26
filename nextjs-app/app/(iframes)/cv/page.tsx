@@ -173,7 +173,7 @@ export default async function Page (): Promise<JSX.Element> {
                         id={`skill-category-${skillCategory}`}
                         text={skillCategory}
                     />
-                    <ul>
+                    <ul className={styles.CV__skills}>
                         {skillsArray.map((skill, skillIndex) => <li key={skillIndex}>
                             {skill}
                         </li>)}
