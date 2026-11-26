@@ -46,7 +46,7 @@ If your plugin does not need CSS, delete this file.
 }
 
 /* The same low row in both views: the year switcher on the left (not drawn when expanded) and the `⋯`
-   button on the right. The title and the totals of the expanded view go below it. */
+   button on the right. The overall totals of the expanded view go below it. */
 .senaev-calendar-header {
 	display: flex;
 	align-items: center;
@@ -58,19 +58,6 @@ If your plugin does not need CSS, delete this file.
 .senaev-calendar-header-end {
 	display: flex;
 	justify-content: flex-end;
-}
-
-.senaev-calendar-heading {
-	margin-bottom: var(--size-4-2);
-	text-align: center;
-	/* The middle column may shrink, so a long note name wraps instead of pushing the button out of view. */
-	min-width: 0;
-}
-
-.senaev-calendar-title {
-	font-weight: var(--font-semibold);
-	font-size: var(--font-ui-medium);
-	overflow-wrap: anywhere;
 }
 
 .senaev-calendar-switcher {
@@ -117,6 +104,11 @@ If your plugin does not need CSS, delete this file.
 
 .senaev-calendar-year-name {
 	font-weight: var(--font-semibold);
+}
+
+/* The name of the overall row is written in capitals, unlike the years. */
+.senaev-calendar-year-header.is-overall .senaev-calendar-year-name {
+	text-transform: uppercase;
 }
 
 .senaev-calendar-totals,

@@ -40,7 +40,6 @@ export function renderNoteCalendars(app: App, containerEl: HTMLElement, file: TF
 			renderCalendar(app, sectionEl, buildReminderCalendar(reminders, { name: file.basename, path: file.path }, (linkpath, sourcePath) =>
 				app.metadataCache.getFirstLinkpathDest(linkpath, sourcePath)?.path ?? null), {
 				scrollKey: `${file.path}|reminders`,
-				title: file.basename,
 				emptyText: 'No reminders',
 				kindStyles: REMINDER_STYLES,
 			});
@@ -51,7 +50,6 @@ export function renderNoteCalendars(app: App, containerEl: HTMLElement, file: TF
 				buildMentionCalendar(app.metadataCache.resolvedLinks, file.path),
 				{
 					scrollKey: `${file.path}|mentions`,
-					title: `${file.basename}: mentions`,
 					emptyText: 'No mentions',
 					kindStyles: MENTION_STYLES,
 				},
