@@ -99,6 +99,10 @@ export function renderCalendar<Kind extends string>(
 	containerEl.empty();
 	containerEl.addClass('senaev-calendar');
 
+	// The header and the years share one box, as wide as the widest year and centred, so the year
+	// switcher and the `⋯` button sit above the left and right corners of the grid, not of the note.
+	const boxEl = containerEl.createDiv({ cls: 'senaev-calendar-box' });
+
 	const expanded = expandedCalendars.has(options.scrollKey);
 	const selectedYear = pickYear(model, options.scrollKey);
 	const redraw = () => {
@@ -116,7 +120,7 @@ export function renderCalendar<Kind extends string>(
 		}
 	};
 
-	renderHeader(containerEl, model, options, expanded, selectedYear, {
+	renderHeader(boxEl, model, options, expanded, selectedYear, {
 		selectYear: (year) => {
 			selectedYears.set(options.scrollKey, year);
 			redraw();
@@ -137,7 +141,7 @@ export function renderCalendar<Kind extends string>(
 		: model.years.filter((year) => year.year === selectedYear);
 
 	for (const year of shownYears) {
-		renderYear(app, containerEl, model, options, year, expanded, today);
+		renderYear(app, boxEl, model, options, year, expanded, today);
 	}
 }
 
