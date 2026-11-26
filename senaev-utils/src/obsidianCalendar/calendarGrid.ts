@@ -79,3 +79,32 @@ export function countGridColumns(months: readonly CalendarMonthGrid[]): { weekCo
         separators: months.filter((month) => month.separated).length,
     };
 }
+
+/**
+ * The size of the widest of several years, as the number of cell columns (week columns plus the
+ * separating empty ones) and the number of gaps between week columns inside the months. The grid is
+ * `columns` cells and `cellGaps` gaps wide, plus the gaps between the 12 months.
+ *
+ * Years are compared by columns first and by gaps second: a year with the same number of columns but
+ * fewer separators has more gaps, so it is wider, because a cell is wider than a gap. `null` when
+ * there are no years.
+ */
+export function widestGrid(years: readonly (readonly CalendarMonthGrid[])[]): { columns: number; cellGaps: number } | null {
+    let widest: { columns: number; cellGaps: number } | null = null;
+
+    for (const months of years) {
+        const { weekColumns, separators } = countGridColumns(months);
+        const size = {
+            columns: weekColumns + separators,
+            cellGaps: weekColumns - months.length,
+        };
+
+        if (
+            widest === null || size.columns > widest.columns || (size.columns === widest.columns && size.cellGaps > widest.cellGaps)
+        ) {
+            widest = size;
+        }
+    }
+
+    return widest;
+}

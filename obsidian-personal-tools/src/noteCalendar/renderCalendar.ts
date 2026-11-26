@@ -1,5 +1,5 @@
 import { setIcon, type App } from 'obsidian';
-import { buildYearGrid, countGridColumns } from 'senaev-utils/src/obsidianCalendar/calendarGrid';
+import { buildYearGrid, widestGrid } from 'senaev-utils/src/obsidianCalendar/calendarGrid';
 import type { CalendarModel, CalendarYear } from 'senaev-utils/src/obsidianCalendar/calendarModel';
 import { DAILY_NOTE_FOLDER } from 'senaev-utils/src/obsidianDailyNotes/dailyNoteTemplate';
 import { attachInternalLink } from '../dailyNote/internalLink';
@@ -65,21 +65,11 @@ function pickYear<Kind extends string>(model: CalendarModel<Kind>, key: string):
  * the two numbers into a width: `columns` cells and the gaps between them.
  */
 function sizeBox<Kind extends string>(boxEl: HTMLElement, model: CalendarModel<Kind>): void {
-	let widest = { columns: 0, gaps: 0 };
+	const widest = widestGrid(model.years.map((year) => buildYearGrid(Number(year.year))));
 
-	for (const year of model.years) {
-		const { weekColumns, separators } = countGridColumns(buildYearGrid(Number(year.year)));
-		const columns = weekColumns + separators;
-
-		if (columns > widest.columns) {
-			// Gaps between the week columns of a month are `gap`s, those between months are `month-gap`s.
-			widest = { columns, gaps: weekColumns - 12 };
-		}
-	}
-
-	if (widest.columns > 0) {
+	if (widest !== null) {
 		boxEl.style.setProperty('--senaev-calendar-columns', String(widest.columns));
-		boxEl.style.setProperty('--senaev-calendar-cell-gaps', String(widest.gaps));
+		boxEl.style.setProperty('--senaev-calendar-cell-gaps', String(widest.cellGaps));
 	}
 }
 
