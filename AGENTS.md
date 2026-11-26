@@ -98,12 +98,9 @@ reasonable comments, or until the review agents run out of quota or do not respo
 Reply to every review comment, whether you accept it or reject it. For an accepted comment, say
 what you changed. For a rejected one, say why.
 
-### ⚠️ Merging: never without the user's approval
+### Merging
 
-**IMPORTANT: Do not merge any pull request until the user approves that pull request.** A merge to
-`main` deploys to production. Open the pull request, send the user its link, and wait. Approval
-counts for one pull request only: "deploying is okay" for one change does not cover the follow-up
-pull requests of the same task, even small fixes or logging changes. Ask again for each one.
+Never merge a pull request without the user's approval of that exact pull request.
 
 Before merging, read all pull request comments and handle any open ones.
 
