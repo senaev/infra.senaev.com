@@ -14,6 +14,10 @@ Inter-instance routing uses internal Socks proxies (port 1080). Instances chain 
 
 ### Hysteria2 server (UDP)
 
+**Off since 2026-11-26** (`xrayHysteria.enabled: false`, subscription entries 6 and 7 removed): the
+home ISP drops both shapes below; profile 6 worked only from outside Russia. The templates stay for
+a later retry.
+
 `xray-hysteria` (`templates/xray-hysteria.yaml`, values `xrayHysteria`) is a separate Deployment on
 hetzner: Hysteria2 (QUIC), one inbound per entry of `xrayHysteria.inbounds`, each on its UDP port
 through a `hostPort`, exit straight to the internet there (freedom). Added on 2026-11-20 because
@@ -49,6 +53,9 @@ that level.
 
 ### WireGuard server (UDP, probe only)
 
+**Off since 2026-11-26** (`xrayWireguard.enabled: false`, entry 8 removed): no packet of profile 8
+reached Hetzner from home.
+
 `xray-wireguard` (`templates/xray-wireguard.yaml`, values `xrayWireguard`) is a separate
 Deployment on hetzner: Xray's WireGuard inbound on UDP 41642 (`hostPort`), in user space (gVisor
 netstack, no tun device or `NET_ADMIN`), exit there. Profile 8,
@@ -66,6 +73,16 @@ is a diagnostic (added 2026-11-25): Happ cannot import WireGuard, so the entry h
 - Each probe source needs its own peer in `xrayWireguard.peers` (home: seed `8`, `10.0.0.2`), and
   a remote source its own link (`remoteSources[].link`): two clients with one key would take over
   each other's endpoint (WireGuard roaming).
+
+### VPN alerts
+
+Group `vpn` in `provisioning/helm/senaev-com/templates/alerts.yaml`, to the cluster Telegram chat:
+
+- `vpn-profile-1-failing`: more than half of profile 1's parity checks fail through the VPN in
+  30 minutes while the same checks without the VPN pass (10 minutes).
+- `vpn-firstvds-stalled`: the mean smokeping RTT over Tailscale to firstvds from all nodes is above
+  0.5 s (normally 17–70 ms) for 5 minutes. On 2026-11-26 19:40–21:30 UTC the VM stalled at the
+  provider (pings 0.5–16 s, CPU minutes with no time accounted) and profile 1 failed ~75 %.
 
 ### vpn-subscription service
 

@@ -52,6 +52,45 @@ spec:
             route: senaev-com-alerts
           annotations:
             summary: "{{`{{ $value | humanizePercentage }}`}} free on {{`{{ $labels.mountpoint }}`}} ({{`{{ $labels.device }}`}}); k3s evicts pods below 5%"
+    # VPN profile 1 (home -> FirstVDS -> Tailscale -> Hetzner) is the route that works from home.
+    # See projects/2026-06-10-debug-vpn-connection/README.md
+    - name: vpn
+      rules:
+        # Through the VPN most parity checks fail while the same checks without the VPN pass, so it
+        # is the VPN path and not the home internet. About 6 checks in 30 minutes.
+        - alert: vpn-profile-1-failing
+          expr: |
+            (
+              sum(increase(vpn_probe_checks_total{profile_index="1", route="vpn", check=~"parity_.*", result="failure"}[30m]))
+              / sum(increase(vpn_probe_checks_total{profile_index="1", route="vpn", check=~"parity_.*"}[30m]))
+              > 0.5
+            )
+            and on() (sum(increase(vpn_probe_checks_total{profile_index="1", route="direct", check=~"parity_.*", result="success"}[30m])) > 0)
+          for: 10m
+          labels:
+            severity: warning
+            route: senaev-com-alerts
+          annotations:
+            summary: "{{`{{ $value | humanizePercentage }}`}} of VPN profile 1 checks fail from home in 30 minutes; direct checks pass"
+            description: "Check firstvds (vpn-firstvds-stalled) and the Tailscale link firstvds <-> hetzner (smokeping, iperf3)."
+        # Tailscale ping to firstvds from all nodes: normally 17-70 ms. On 2026-11-26 19:40-21:30 UTC
+        # it was 0.5-16 s (the VM stalled at the provider) and profile 1 failed.
+        - alert: vpn-firstvds-stalled
+          expr: |
+            label_replace(
+              avg(
+                rate(smokeping_response_duration_seconds_sum{host="firstvds"}[5m])
+                / rate(smokeping_response_duration_seconds_count{host="firstvds"}[5m])
+              ) > 0.5,
+              "node", "firstvds", "", ""
+            )
+          for: 5m
+          labels:
+            severity: warning
+            route: senaev-com-alerts
+          annotations:
+            summary: "Tailscale ping to firstvds takes {{`{{ $value | humanizeDuration }}`}} on average (normally under 0.1 s)"
+            description: "firstvds (VPN entry of profile 1, senaev.ru) stalls or is overloaded; VPN profile 1 likely fails."
     - name: obsidian-vault
       rules:
         - alert: obsidian-vault-file-too-large
