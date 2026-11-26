@@ -13,6 +13,8 @@ export const SENAEV_LOCATION = 'Madrid, Spain';
 
 export const SENAEV_TELEGRAM_NICKNAME = 'senaev';
 export const SENAEV_TELEGRAM_LINK = `https://t.me/${SENAEV_TELEGRAM_NICKNAME}`;
+export const SENAEV_LINKEDIN_LINK = 'https://www.linkedin.com/in/senaev/';
+export const SENAEV_GITHUB_LINK = 'https://github.com/senaev';
 export const SENAEV_SITE_DOMAIN = 'senaev.com';
 export const SENAEV_SITE_URL = `https://${SENAEV_SITE_DOMAIN}`;
 export const ME_PAGE_LINK = '/me';
@@ -49,7 +51,7 @@ export const SENAEV_SOCIALS: {
     },
     {
         name: 'LinkedIn',
-        link: 'https://www.linkedin.com/in/senaev/',
+        link: SENAEV_LINKEDIN_LINK,
     },
     {
         name: 'Habr',
@@ -57,7 +59,7 @@ export const SENAEV_SOCIALS: {
     },
     {
         name: 'GitHub',
-        link: 'https://github.com/senaev',
+        link: SENAEV_GITHUB_LINK,
     },
     {
         name: 'X (Twitter)',
@@ -82,12 +84,12 @@ export const SENEAV_CONTACTS: Contact[] = [
     {
         header: 'LinkedIn',
         title: 'linkedin.com/in/senaev',
-        link: 'https://www.linkedin.com/in/senaev/',
+        link: SENAEV_LINKEDIN_LINK,
     },
     {
         header: 'GitHub',
         title: 'github.com/senaev',
-        link: 'https://github.com/senaev',
+        link: SENAEV_GITHUB_LINK,
     },
     {
         header: 'Email',
