@@ -21,7 +21,7 @@ export const ME_PAGE_LINK = '/me';
 
 export const SENAEV_SITE_IMAGE_URL = '/img/avatar-head.webp';
 
-export const SENAEV_ELEVATOR_PITCH = ['I\'m a Senior Full-Stack Engineer with 13 years of building revenue-critical systems in Ad Tech, Digital Media and Observability, now working on Flex Logs at Datadog. Before that I spent ten years at Yandex, where I owned the video advertising player behind all Yandex services, authored the video creative standard still used company-wide, and built the interfaces of a new international advertising network with a team I grew to 20 people. I measure my work in money and reliability.'];
+export const SENAEV_ELEVATOR_PITCH = ['I\'m a Senior Full-Stack Engineer with 13 years of building revenue-critical systems in Ad Tech, Digital Media and Observability, now working on Flex Logs at Datadog. Before that I spent ten years at Yandex, where I owned the video advertising player behind all Yandex services, authored the video creative standard still used company-wide, and built the interfaces of a new international advertising network with a team I grew to 25 people. I measure my work in money and reliability.'];
 
 export const SENAEV_CV_LINK = '/cv';
 

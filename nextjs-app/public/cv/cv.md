@@ -20,7 +20,7 @@ Over ten years at Yandex, I conducted more than 250 job interviews, hired more t
 
 In Belgrade, Serbia, I built the team and the interfaces of Yandex's new international advertising network, leading both Frontend and Backend teams and owning recruitment and architectural decisions.
 
-- Grew the team from zero to 20 people: a working proof of concept of the advertiser accounts in four months, and an MVP by fall 2023.
+- Grew the team from zero to 25 people: a working proof of concept of the advertiser accounts in four months, and an MVP by fall 2023.
 - Decoupled our banner rendering infrastructure from Yandex's integrated tools within nine months, then built our own rendering, telemetry and A/B experiments, and moved banner serving closer to users across several regions.
 - Shipped self-service for advertisers and agencies: role-based access, CRM integration, automated billing with card payments, and self-registration.
 - Optimized our Prebid product, halving traffic acquisition costs without losing a single publisher, and contributed [User ID](https://docs.prebid.org/dev-docs/modules/userid-submodules/yandex.html) and [Analytics](https://docs.prebid.org/dev-docs/analytics/yandex.html) modules to the Prebid ecosystem.
