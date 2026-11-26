@@ -5,7 +5,7 @@
 }
 
 .MainPage__column {
-    max-width: 46em;
+    max-width: 36em;
     width: 100%;
     font-size: 18px;
     line-height: 1.7em;
@@ -13,17 +13,10 @@
 
 .MainPage__header {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 3em;
-    padding: 2.5em 0 2em 0;
-}
-
-.MainPage__identity {
-    display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
+    padding: 2.5em 0 1.5em 0;
 }
 
 .MainPage__avatar {
@@ -47,7 +40,9 @@
 .MainPage__links {
     display: flex;
     flex-direction: column;
-    gap: 0.2em;
+    align-items: center;
+    gap: 0.1em;
+    margin-bottom: 2em;
     font-size: 0.9em;
 }
 
@@ -64,17 +59,8 @@
     margin: 0.3em 0;
 }
 
-@media (max-width: 700px) {
+@media (max-width: 600px) {
     .MainPage__column {
         font-size: 16px;
-    }
-
-    .MainPage__header {
-        flex-direction: column;
-        gap: 1.5em;
-    }
-
-    .MainPage__links {
-        align-items: center;
     }
 }
