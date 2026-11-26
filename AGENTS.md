@@ -307,6 +307,8 @@ host with `nsenter --target 1 --all`. A command for hetzner runs there; a comman
 through `ssh` from hetzner with the SSH key of its root, which every host accepts (`nodeShell.sshDestinations`
 lists them; an unlisted host is refused). On the target, each command runs in a transient systemd unit
 `node-shell-<executionId>` with `RuntimeMaxSec`, which kills everything it started at the timeout.
+The unit's description is `node-shell <executionId>`, never the command, so the command stays out of the
+host journal; each `$` of the command is passed to systemd as `$$`, so `/bin/sh` gets it unchanged.
 
 - No `hostNetwork`: the API is mTLS on 8443, only for cluster-helper (NetworkPolicy and `callers.ts`). The
   pod network has no egress at all; ssh uses the host's network.

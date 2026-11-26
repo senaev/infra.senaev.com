@@ -4,7 +4,7 @@ import {
     describe, expect, it,
 } from 'vitest';
 
-import { buildNodeCommand } from './buildNodeCommand';
+import { buildNodeCommand, escapeForSystemd } from './buildNodeCommand';
 import { parseNodeHosts } from './nodeHosts';
 
 const hosts = parseNodeHosts('hetzner', '{"senaev-madrid":"root@senaev-madrid"}');
@@ -39,6 +39,6 @@ describe('buildNodeCommand through a real shell', () => {
         const remoteCommand = remote.at(-1) ?? '';
 
         expect(argumentsSeenByRemoteShell(remoteCommand)).toEqual(local.slice(7));
-        expect(argumentsSeenByRemoteShell(remoteCommand).at(-1)).toBe(command);
+        expect(argumentsSeenByRemoteShell(remoteCommand).at(-1)).toBe(escapeForSystemd(command));
     });
 });

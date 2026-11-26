@@ -53,12 +53,23 @@ export function systemdUnitName(executionId: string): string {
  * an SSH session alone would not kill them. The unit name follows the execution ID, so systemd
  * refuses a second unit for the same execution while the first one runs.
  */
+/**
+ * systemd expands `$NAME` and `${NAME}` in the command line of a unit before `/bin/sh` gets it, so
+ * the shell's own variables would vanish. `$$` is systemd's escape for one `$`, on every version
+ * (`--expand-environment=no` needs systemd 254).
+ */
+export function escapeForSystemd(command: string): string {
+    return command.replaceAll('$', '$$$$');
+}
+
 function buildSystemdRun({
     executionId, command, timeoutSeconds,
 }: NodeCommand): string[] {
     return [
         'systemd-run',
         `--unit=${systemdUnitName(executionId)}`,
+        // Without it the description is the command itself, and systemd writes it to the journal.
+        `--description=node-shell ${executionId}`,
         '--wait',
         '--pipe',
         '--collect',
@@ -68,7 +79,7 @@ function buildSystemdRun({
         '--',
         '/bin/sh',
         '-c',
-        command,
+        escapeForSystemd(command),
     ];
 }
 

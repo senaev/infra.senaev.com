@@ -2,7 +2,7 @@ import {
     describe, expect, it,
 } from 'vitest';
 
-import { buildNodeCommand } from './buildNodeCommand';
+import { buildNodeCommand, escapeForSystemd } from './buildNodeCommand';
 import { parseNodeHosts } from './nodeHosts';
 
 const hosts = parseNodeHosts('hetzner', '{"senaev-madrid":"root@senaev-madrid"}');
@@ -27,6 +27,7 @@ describe('buildNodeCommand', () => {
             '--',
             'systemd-run',
             '--unit=node-shell-abc-123',
+            '--description=node-shell abc-123',
             '--wait',
             '--pipe',
             '--collect',
@@ -61,8 +62,27 @@ describe('buildNodeCommand', () => {
         expect(argv.slice(-3)).toEqual([
             'root@senaev-madrid',
             '--',
-            '\'systemd-run\' \'--unit=node-shell-abc-123\' \'--wait\' \'--pipe\' \'--collect\' \'--quiet\' ' + '\'--service-type=exec\' \'--property=RuntimeMaxSec=30\' \'--\' \'/bin/sh\' \'-c\' ' + '\'echo \'\\\'\'hi\'\\\'\' && id\'',
+            '\'systemd-run\' \'--unit=node-shell-abc-123\' \'--description=node-shell abc-123\' \'--wait\' \'--pipe\' \'--collect\' \'--quiet\' ' + '\'--service-type=exec\' \'--property=RuntimeMaxSec=30\' \'--\' \'/bin/sh\' \'-c\' ' + '\'echo \'\\\'\'hi\'\\\'\' && id\'',
         ]);
+    });
+
+    it('keeps the command out of the unit description', () => {
+        const argv = buildNodeCommand(hosts, {
+            ...command,
+            host: 'hetzner',
+            command: 'curl -H "Authorization: secret-token" https://example.com',
+        });
+
+        expect(argv.filter((argument) => argument.startsWith('--description='))).toEqual(['--description=node-shell abc-123']);
+    });
+
+    it('escapes every $ for systemd, so the shell gets its own variables', () => {
+        expect(escapeForSystemd('v=ok; echo "${v}" $HOME $$')).toBe('v=ok; echo "$${v}" $$HOME $$$$');
+        expect(buildNodeCommand(hosts, {
+            ...command,
+            host: 'hetzner',
+            command: 'echo $HOME',
+        }).at(-1)).toBe('echo $$HOME');
     });
 
     it('refuses an unknown host', () => {
