@@ -1,5 +1,5 @@
 import { setIcon, type App } from 'obsidian';
-import { buildYearGrid } from 'senaev-utils/src/obsidianCalendar/calendarGrid';
+import { buildYearGrid, countGridColumns } from 'senaev-utils/src/obsidianCalendar/calendarGrid';
 import type { CalendarModel, CalendarYear } from 'senaev-utils/src/obsidianCalendar/calendarModel';
 import { DAILY_NOTE_FOLDER } from 'senaev-utils/src/obsidianDailyNotes/dailyNoteTemplate';
 import { attachInternalLink } from '../dailyNote/internalLink';
@@ -51,17 +51,36 @@ function monthName(month: number): string {
 	return new Date(2000, month - 1, 1).toLocaleString(undefined, { month: 'short' });
 }
 
-/** Short name of the weekday in row `row` of a Monday-first week. 2024-01-01 is a Monday. */
-function weekdayName(row: number): string {
-	return new Date(2024, 0, 1 + row).toLocaleString(undefined, { weekday: 'short' });
-}
-
 /** The saved year if it still exists, else the newest one. */
 function pickYear<Kind extends string>(model: CalendarModel<Kind>, key: string): string | undefined {
 	const saved = selectedYears.get(key);
 	const years = model.years.map((year) => year.year);
 
 	return saved !== undefined && years.includes(saved) ? saved : years[years.length - 1];
+}
+
+/**
+ * Gives the box the width of the widest year, in compact and in expanded view alike, so that the
+ * header, and with it the `⋯` button, stays where it is when the calendar expands. The CSS turns
+ * the two numbers into a width: `columns` cells and the gaps between them.
+ */
+function sizeBox<Kind extends string>(boxEl: HTMLElement, model: CalendarModel<Kind>): void {
+	let widest = { columns: 0, gaps: 0 };
+
+	for (const year of model.years) {
+		const { weekColumns, separators } = countGridColumns(buildYearGrid(Number(year.year)));
+		const columns = weekColumns + separators;
+
+		if (columns > widest.columns) {
+			// Gaps between the week columns of a month are `gap`s, those between months are `month-gap`s.
+			widest = { columns, gaps: weekColumns - 12 };
+		}
+	}
+
+	if (widest.columns > 0) {
+		boxEl.style.setProperty('--senaev-calendar-columns', String(widest.columns));
+		boxEl.style.setProperty('--senaev-calendar-cell-gaps', String(widest.gaps));
+	}
 }
 
 function createNavButton(
@@ -87,7 +106,8 @@ function createNavButton(
 /**
  * Draws a GitHub-style calendar into `containerEl`. Compact, it is a year switcher and the months
  * of one year, with nothing else. The `⋯` button opens every year, newest first, with the
- * title, the totals and the weekday names. A day with entries links to its daily note.
+ * title and the totals. The header row stays as it is: only the year switcher goes. A day with
+ * entries links to its daily note.
  * The container is cleared first, so calling this again refreshes it.
  */
 export function renderCalendar<Kind extends string>(
@@ -102,6 +122,7 @@ export function renderCalendar<Kind extends string>(
 	// The header and the years share one box, as wide as the widest year and centred, so the year
 	// switcher and the `⋯` button sit above the left and right corners of the grid, not of the note.
 	const boxEl = containerEl.createDiv({ cls: 'senaev-calendar-box' });
+	sizeBox(boxEl, model);
 
 	const expanded = expandedCalendars.has(options.scrollKey);
 	const selectedYear = pickYear(model, options.scrollKey);
@@ -153,9 +174,9 @@ function renderHeader<Kind extends string>(
 	selectedYear: string | undefined,
 	actions: { selectYear(year: string): void; toggleExpanded(): void },
 ): void {
-	const headerEl = containerEl.createDiv({
-		cls: expanded ? ['senaev-calendar-header', 'is-expanded'] : ['senaev-calendar-header'],
-	});
+	// The same row in both views: the year switcher on the left, `⋯` on the right. Expanded, the switcher
+	// is not drawn but its place stays, so the `⋯` button does not move.
+	const headerEl = containerEl.createDiv({ cls: 'senaev-calendar-header' });
 	const switcherEl = headerEl.createDiv({ cls: 'senaev-calendar-switcher' });
 
 	if (model.years.length === 0) {
@@ -173,17 +194,6 @@ function renderHeader<Kind extends string>(
 		createNavButton(switcherEl, 'next', 'chevron-right', 'Next year', newer ? () => actions.selectYear(newer.year) : null);
 	}
 
-	// Expanded, the heading goes between the switcher (empty then) and the button, which keeps it in the middle.
-	if (expanded) {
-		const headingEl = headerEl.createDiv({ cls: 'senaev-calendar-heading' });
-		headingEl.createDiv({ cls: 'senaev-calendar-title', text: options.title });
-		headingEl.createDiv({
-			cls: 'senaev-calendar-totals',
-			text: formatCounts(model.kinds, model.counts, options.kindStyles) || options.emptyText,
-		});
-	}
-
-	// The button is at the right end of the header, away from the year switcher.
 	const moreButton = headerEl.createDiv({ cls: 'senaev-calendar-header-end' }).createEl('button', {
 		cls: expanded ? ['clickable-icon', 'senaev-calendar-more', 'is-active'] : ['clickable-icon', 'senaev-calendar-more'],
 		text: '⋯',
@@ -193,6 +203,16 @@ function renderHeader<Kind extends string>(
 		},
 	});
 	moreButton.addEventListener('click', () => actions.toggleExpanded());
+
+	// Everything else goes below the header row.
+	if (expanded) {
+		const headingEl = containerEl.createDiv({ cls: 'senaev-calendar-heading' });
+		headingEl.createDiv({ cls: 'senaev-calendar-title', text: options.title });
+		headingEl.createDiv({
+			cls: 'senaev-calendar-totals',
+			text: formatCounts(model.kinds, model.counts, options.kindStyles) || options.emptyText,
+		});
+	}
 }
 
 function renderYear<Kind extends string>(
@@ -216,18 +236,6 @@ function renderYear<Kind extends string>(
 	}
 
 	const bodyEl = yearEl.createDiv({ cls: 'senaev-calendar-body' });
-
-	if (showDetails) {
-		// The weekday names stay put while the months scroll. Monday is the first row; every other
-		// row is named, so the labels are not crowded.
-		const weekdaysEl = bodyEl.createDiv({ cls: 'senaev-calendar-weekdays' });
-		weekdaysEl.createDiv({ cls: 'senaev-calendar-month-name', text: ' ' });
-		const weekdayRowsEl = weekdaysEl.createDiv({ cls: 'senaev-calendar-weekday-rows' });
-
-		for (let row = 0; row < 7; row++) {
-			weekdayRowsEl.createSpan({ cls: 'senaev-calendar-weekday', text: row % 2 === 1 ? weekdayName(row) : '' });
-		}
-	}
 
 	const monthsEl = bodyEl.createDiv({ cls: 'senaev-calendar-months' });
 	const scrollPositionKey = `${options.scrollKey}|${year.year}`;

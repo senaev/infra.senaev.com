@@ -66,3 +66,16 @@ export function buildYearGrid(year: number, weekStart: WeekStart = 1): CalendarM
 
     return months;
 }
+
+/**
+ * How many columns a calendar drawn from `months` has: the week columns of every month and the
+ * empty columns that separate a month from one that ends on the last row of its week.
+ * Together with the gaps, this is the width of the grid, so a calendar can give every year of a
+ * note the same width.
+ */
+export function countGridColumns(months: readonly CalendarMonthGrid[]): { weekColumns: number; separators: number } {
+    return {
+        weekColumns: months.reduce((sum, month) => sum + month.weeks.length, 0),
+        separators: months.filter((month) => month.separated).length,
+    };
+}
