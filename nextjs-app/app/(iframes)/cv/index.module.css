@@ -64,6 +64,14 @@
 }
 
 .CV__content ul {
+    padding-left: 1.2em;
+}
+
+.CV__content li {
+    margin: 0.3em 0;
+}
+
+.CV__content .CV__skills {
     padding-left: 0;
 }
 
@@ -91,7 +99,7 @@
     color: #3498db;
 }
 
-.CV__content li {
+.CV__content .CV__skills li {
     color: #fff;
     background: #3498db;
     border-radius: 0.7em;
@@ -151,7 +159,7 @@
         break-inside: avoid;
     }
 
-    .CV__content li {
+    .CV__content .CV__skills li {
         color: #000;
         background: none;
         border: 1px solid #3498db;
