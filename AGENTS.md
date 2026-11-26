@@ -89,10 +89,8 @@ reasonable comments, or until the review agents run out of quota or do not respo
 Reply to every review comment, whether you accept it or reject it. For an accepted comment, say
 what you changed. For a rejected one, say why.
 
-When the code is ready, that is, its checks pass, open the pull request and start the Code Review
-Loop yourself. Do not ask the user first whether to commit, push or open the pull request. When the
-loop is finished, tell the user to review the pull request. Merging stays the user's decision, see
-the rule at the top of this file.
+When the code is ready and local checks passed, open the pull request and run the Code Review Loop.
+When the loop is finished, tell the user to review the pull request. Merging stays the user's decision.
 
 ## Service Deployment
 
