@@ -13,6 +13,11 @@ Personal infrastructure for `infra.senaev.com` — a distributed K3s cluster acr
 counts for one pull request only: "deploying is okay" for one change does not cover the follow-up
 pull requests of the same task, even small fixes or logging changes. Ask again for each one.
 
+Before you merge an approved pull request, read all its comments: review comments, inline code
+comments, and general conversation comments, including ones that came after the approval. If a
+comment is still open (not answered, or asks for a change that was not made), do not merge. Handle
+it first, or tell the user about it and wait.
+
 ## Project flow
 
 Create a project only when the user explicitly asks for one, not automatically for
