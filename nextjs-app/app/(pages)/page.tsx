@@ -77,7 +77,10 @@ export default function Page(): JSX.Element {
                 {
                     HEADER_LINKS.map(({
                         label, text, link,
-                    }) => <span key={link}>
+                    }) => <span
+                        key={link}
+                        className={styles.MainPage__tag}
+                    >
                         {`${label}:`}
                         {NON_BREAKING_SPACE}
                         {

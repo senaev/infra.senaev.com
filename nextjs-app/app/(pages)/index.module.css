@@ -39,19 +39,29 @@
 
 .MainPage__links {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.1em;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5em;
     margin-bottom: 2em;
-    font-size: 0.9em;
+    font-size: 0.8em;
+    line-height: 1.5em;
 }
 
-.MainPage__links a {
-    color: #2980b9;
+/* Each link is a light tag: the label in grey, the address as the link. */
+.MainPage__tag {
+    padding: 0.2em 0.8em;
+    border-radius: 1em;
+    background: #eef3f8;
+    color: #666;
+    white-space: nowrap;
+}
+
+.MainPage__tag a {
+    color: #2c3e50;
     text-decoration: none;
 }
 
-.MainPage__links a:hover {
+.MainPage__tag a:hover {
     text-decoration: underline;
 }
 
