@@ -6,3 +6,199 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
+
+/* Note calendars: `reminders-calendar: true` and `mentions-calendar: true` in the frontmatter. */
+
+.senaev-note-calendars {
+	--senaev-calendar-cell: 10px;
+	--senaev-calendar-gap: 1.5px;
+	/* No extra space between months: their columns are spaced like neighbouring cells, so the month names and the staggered first and last weeks tell them apart. Set 0 to make them touch. */
+	--senaev-calendar-month-gap: var(--senaev-calendar-gap);
+	--senaev-calendar-header-height: 14px;
+	--senaev-calendar-header-font-size: calc(var(--font-ui-smaller) - 1px);
+	--senaev-calendar-empty: var(--background-modifier-border);
+	--senaev-calendar-open: var(--text-normal);
+	--senaev-calendar-cancelled: rgb(253, 153, 12);
+	--senaev-calendar-done: rgb(75, 194, 107);
+	--senaev-calendar-mention: rgb(75, 194, 107);
+
+	margin-bottom: var(--size-4-4);
+}
+
+.senaev-calendar {
+	margin-bottom: var(--size-4-4);
+}
+
+/* As wide as the widest year of the note, in compact and expanded view alike, and centred: the width is
+   `--senaev-calendar-columns` cells and the gaps between them, set by the renderer. Both views have the same
+   width, so the header does not move when the calendar expands. A grid wider than the note makes the box as
+   wide as the note (`min`), and the months scroll inside it. */
+.senaev-calendar-box {
+	width: min(
+		100%,
+		calc(
+			var(--senaev-calendar-cell) * var(--senaev-calendar-columns) +
+			var(--senaev-calendar-gap) * var(--senaev-calendar-cell-gaps) +
+			var(--senaev-calendar-month-gap) * 11
+		)
+	);
+	margin-inline: auto;
+}
+
+/* The same low row in both views: the year switcher on the left (not drawn when expanded) and the `⋯`
+   button on the right. The overall totals of the expanded view go below it. */
+.senaev-calendar-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	min-height: var(--senaev-calendar-header-height);
+	margin-bottom: var(--size-2-1);
+}
+
+.senaev-calendar-header-end {
+	display: flex;
+	justify-content: flex-end;
+}
+
+.senaev-calendar-switcher {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-2);
+}
+
+.senaev-calendar-year-label {
+	min-width: 3ch;
+	text-align: center;
+	font-size: var(--senaev-calendar-header-font-size);
+	line-height: var(--senaev-calendar-header-height);
+}
+
+/* The buttons are as low as the row: about half the height of a stock icon button. */
+.senaev-calendar-header .clickable-icon {
+	--icon-size: 12px;
+	height: var(--senaev-calendar-header-height);
+	padding: 0 var(--size-2-2);
+	font-size: var(--senaev-calendar-header-font-size);
+	line-height: 1;
+}
+
+/* Obsidian's icon buttons keep the default cursor, so the enabled ones say they can be clicked.
+   A disabled arrow (the first or last year) keeps the default one. */
+.senaev-calendar-nav:not(:disabled),
+.senaev-calendar-more {
+	cursor: pointer;
+}
+
+.senaev-calendar-more.is-active {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.senaev-calendar-year-header {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: var(--size-4-2);
+	margin-top: var(--size-4-2);
+}
+
+.senaev-calendar-year-name {
+	font-weight: var(--font-semibold);
+}
+
+/* The name of the overall row is written in capitals, unlike the years. */
+.senaev-calendar-year-header.is-overall .senaev-calendar-year-name {
+	text-transform: uppercase;
+}
+
+.senaev-calendar-totals,
+.senaev-calendar-note {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.senaev-calendar-body {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--size-4-2);
+}
+
+.senaev-calendar-months {
+	display: flex;
+	flex: 1 1 auto;
+	min-width: 0;
+	gap: var(--senaev-calendar-month-gap);
+	overflow-x: auto;
+	padding-bottom: var(--size-2-1);
+}
+
+/* Auto margins at both ends centre the months when they fit. When they do not, the margins are 0,
+   so the row scrolls from its left edge; `justify-content: center` would cut the left side off. */
+.senaev-calendar-months > :first-child {
+	margin-left: auto;
+}
+
+.senaev-calendar-months > :last-child {
+	margin-right: auto;
+}
+
+/* The previous month ends on the last row of its week: leave one empty column between the two. */
+.senaev-calendar-month.is-separated {
+	margin-left: var(--senaev-calendar-cell);
+}
+
+.senaev-calendar-month {
+	flex: none;
+}
+
+.senaev-calendar-month-name {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	line-height: var(--size-4-4);
+	margin-bottom: var(--size-2-1);
+	/* The month is as wide as its grid, so the name sits in the middle of it. */
+	text-align: center;
+}
+
+/* One column per week, seven rows from the first day of the week down. */
+.senaev-calendar-grid {
+	display: grid;
+	grid-auto-flow: column;
+	grid-template-rows: repeat(7, var(--senaev-calendar-cell));
+	grid-auto-columns: var(--senaev-calendar-cell);
+	gap: var(--senaev-calendar-gap);
+}
+
+.senaev-calendar-cell {
+	border-radius: 2px;
+	background-color: var(--senaev-calendar-empty);
+}
+
+.senaev-calendar-cell.is-outside {
+	background-color: transparent;
+}
+
+.senaev-calendar-cell.is-today {
+	outline: 1px solid var(--text-accent);
+	outline-offset: 1px;
+}
+
+.senaev-calendar-cell.is-open {
+	background-color: var(--senaev-calendar-open);
+}
+
+.senaev-calendar-cell.is-cancelled {
+	background-color: var(--senaev-calendar-cancelled);
+}
+
+.senaev-calendar-cell.is-done {
+	background-color: var(--senaev-calendar-done);
+}
+
+.senaev-calendar-cell.is-mention {
+	background-color: var(--senaev-calendar-mention);
+}
+
+a.senaev-calendar-cell:hover {
+	filter: brightness(1.15);
+}

@@ -17,8 +17,6 @@
           "enabled",
           "agent",
           "instructionsPath",
-          "projectsStorageSize",
-          "codeStorageSize",
           "vps",
           "traefik"
         ],
@@ -61,14 +59,6 @@
             "description": "Explicitly enable or disable this workspace; disabling retains existing PVCs."
           },
           "instructionsPath": {
-            "type": "string",
-            "minLength": 1
-          },
-          "projectsStorageSize": {
-            "type": "string",
-            "minLength": 1
-          },
-          "codeStorageSize": {
             "type": "string",
             "minLength": 1
           },
@@ -251,7 +241,6 @@
             "required": [
               "enabled",
               "hostname",
-              "storageSize",
               "secrets"
             ],
             "properties": {
@@ -259,10 +248,6 @@
                 "type": "boolean"
               },
               "hostname": {
-                "type": "string",
-                "minLength": 1
-              },
-              "storageSize": {
                 "type": "string",
                 "minLength": 1
               },

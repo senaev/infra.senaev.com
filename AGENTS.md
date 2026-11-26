@@ -6,13 +6,6 @@ This file provides guidance to any AI coding agent working with this repository.
 
 Personal infrastructure for `infra.senaev.com` — a distributed K3s cluster across multiple VPS providers, managed via Terraform, Helm, and shell scripts. Includes custom microservices and media server automation.
 
-## ⚠️ Never merge a pull request without the user's approval
-
-**IMPORTANT: Do not merge any pull request until the user approves that pull request.** A merge to
-`main` deploys to production. Open the pull request, send the user its link, and wait. Approval
-counts for one pull request only: "deploying is okay" for one change does not cover the follow-up
-pull requests of the same task, even small fixes or logging changes. Ask again for each one.
-
 ## Project flow
 
 Create a project only when the user explicitly asks for one, not automatically for
@@ -20,13 +13,6 @@ each request or command. Store it in [`projects/`](projects/) as a folder
 `YYYY-MM-DD-HH-mm-<short-slug>/`, using the UTC creation date and time.
 Keep existing folders unchanged. Follow [`projects/AGENTS.md`](projects/AGENTS.md)
 for the folder layout, the main document, the status and the worklog.
-
-## Main checkout and worktrees
-
-Never change anything in the main checkout of this repository: no edits, commits, branch
-switches or stashes. It stays on `main`, and several agents use it at the same time. Use it only
-to pull `main` and to add or remove worktrees. Do every task in its own worktree, made from the
-latest `main`.
 
 ## Sensitive nodes: `proxmox`, `senaev-media`, `proxmox-madrid` and `senaev-madrid`
 
@@ -68,18 +54,55 @@ Be extremely careful with these nodes and their networks:
 - When you show a pull request link to the user, link to its changes page, `https://github.com/<owner>/<repo>/pull/<number>/changes`, not to the main page of the pull request
 - Never log a whole request body or other external JSON (webhooks, API payloads). Log only the fields that the code uses, by name: a payload can hold IDs, tokens and personal data that the logs (Datadog, Loki) must not keep
 
-## Code Review
+## SDLC
 
-### Code Review Rules
+### Environment Setup
+
+The main checkout of this repository (`/code/projects/<repo>`) stays on `main`, and several agents
+use it at the same time. Never change anything in it: no edits, commits, branch switches or
+stashes. Use it only to pull `main` and to add or remove worktrees.
+
+Before any change to the code of the repository, in this order:
+
+1. Pull the latest `main` in the main checkout: `git pull --ff-only origin main`.
+2. Create a separate worktree for the task from that `main`:
+   `git worktree add -b <branch> /code/worktrees/<repo>/<branch> main`.
+3. Make all the changes, run the checks and commit in that worktree only.
+
+Do every task in its own worktree, even a small one. Remove the worktree when its pull request is
+merged or closed.
+
+### Implementation (Coding)
+
+When the code is ready and local checks passed, open the pull request and run the Code Review Loop.
+When the loop is finished, tell the user to review the pull request. Merging stays the user's decision.
+
+### Code Review
+
+#### Code Review Rules
 
 If you are an agent that does code review of a pull request (for example Codex on `@codex review`),
 read [`CODE_REVIEW.md`](CODE_REVIEW.md) and apply every rule in it. Any other agent: do not read
 that file.
 
-### Codex code review
+#### Codex code review
 
-- Create every pull request as a draft (`gh pr create --draft`).
-- When you open a pull request, and when the user asks for a Codex review, comment `@codex review`.
+When you open a pull request, and when the user asks for a Codex review, comment `@codex review`.
+
+#### Code Review Loop
+
+**Code Review Loop** is the cycle: request a code review, wait for the result, read and analyze the
+feedback, make the changes, and request a code review again. Repeat it until there are no more
+reasonable comments, or until the review agents run out of quota or do not respond within 10 minutes.
+
+Reply to every review comment, whether you accept it or reject it. For an accepted comment, say
+what you changed. For a rejected one, say why.
+
+### Merging
+
+Never merge a pull request without the user's approval of that exact pull request.
+
+Before merging, read all pull request comments and handle any open ones.
 
 ## Service Deployment
 
@@ -122,6 +145,7 @@ check. Config: `iperf3Monitor` in `provisioning/helm/telemetry/vm-stack/values.y
 - An agent with an iperf3 server (port 5201) runs on each node of `sourceVpsList`. The
   scheduler on senaev-madrid runs the `tests` pairs one by one, 300 s apart; each test is
   `iperf3 -c <target> -t 10 -b 20M`, so the source sends to the target, capped at 20 Mbit/s.
+  A test can set another cap with `bitrateMbps` (1–1000); FirstVDS ↔ Hetzner use 100.
 - Targets are node names that resolve to Tailscale addresses (100.x), so the traffic is
   WireGuard over UDP on the tailnet, not a public TCP connection. It can differ from what a
   public TCP/TLS connection (for example the VPN) gets on the same path.
@@ -405,21 +429,6 @@ git config --local --unset core.hooksPath
 Never leave `core.hooksPath` overridden: that silently disables the managed secret scanner
 for this repository.
 
-Lefthook also installs a `post-checkout` hook, `scripts/post-checkout.sh`: `git worktree add`
-runs `npm run ci:all` in the new worktree, so it is ready for the checks. Git runs this hook on
-every checkout, so the script acts only when the previous HEAD is the all-zeros commit, which
-happens only in a new worktree. Skip it with `SKIP_WORKTREE_INSTALL=1` or
-`git worktree add --no-checkout`. A new worktree has no `node_modules` yet, so the `lefthook`
-setting in `lefthook.yml` makes the hooks call the lefthook of the main checkout when the worktree
-has none: the main checkout needs its `node_modules`. Lefthook rewrites the shared hooks from the
-`lefthook.yml` of the worktree that runs them when its checksum differs, so a hook run in a
-worktree without this setting drops it, and the next new worktree prints "Can't find lefthook"
-and installs nothing; a hook can also fail once while it rewrites itself. Both stop once every
-worktree has the same `lefthook.yml`; until then run `npx lefthook install` in an up-to-date one. Hooks are shared by all worktrees, but a worktree created from
-a commit before this hook has no `post-checkout` entry in its `lefthook.yml`, so nothing runs
-there. If the managed global hooks do not chain `post-checkout` into the repo-level hook, it
-does not run on that machine; then run `npm run ci:all` by hand.
-
 ## Shared Package: senaev-utils
 
 `senaev-utils/` holds the shared TypeScript library, moved here from its own repo with its full history. It ships raw source (`files: ["src"]`, no build step), so consumers import the TypeScript directly.
@@ -456,17 +465,17 @@ Code Tools has its own image (`code-tools/Dockerfile`,
 `ghcr.io/senaev/code-tools`), Deployment and Service
 (`provisioning/helm/senaev-com/templates/llm-workspace/_code-tools.tpl`). OpenCode and its Telegram
 bot stay in the `senaev-opencode-telegram` Deployment. Both pods, OMP and Claude Code mount the
-workspace's `senaev-code` PVC at `/code`; only OMP also mounts its `senaev-projects` PVC at
-`/projects`. The workspace `vps` node selector puts them on one node. Code Tools and OpenCode use one replica
+workspace's `/code` folder, `<clusterRootPath>/volumes/<name>-code` on the node (a `hostPath`, not a PVC). OMP keeps its state (`/root/.omp`) in
+`<clusterRootPath>/volumes/<name>-omp-web-state`. The workspace `vps` node selector puts them on one node. Code Tools and OpenCode use one replica
 and `Recreate`; a Code Tools update still has a short outage and loses in-memory operation IDs.
 cluster-helper is its only caller, over mTLS on 8443 (see Internal mTLS); the kubelet probes `/health` on
 the plain port 8081.
 
 The code tools take absolute paths and work in any folder. The repository layout under
 `/code` (`projects/<repo>` and `worktrees/<repo>/<branch>`) is described only in the
-workspace instructions, `/AGENTS.md`. The PVCs use `local-path`, which does not enforce their
-size: worktrees with their own `node_modules` use the node's root disk. LLM workspaces have no container resource limits; scheduler memory
-requests remain. To preserve node-local data when moving nodes, copy it and rebind PVCs;
+workspace instructions, `/AGENTS.md`. The `/code` folder is a `hostPath`, so it has no size limit:
+worktrees with their own `node_modules` use the node's root disk. LLM workspaces have no container resource limits; scheduler memory
+requests remain. To preserve node-local data when moving nodes, copy the folders (`/k3s-cluster/volumes/<name>-*`) to the new node;
 see `projects/2026-11-14-21-40-llm-workspace-madrid/README.md`.
 
 OpenCode 2 serves its built-in web UI at `https://opencode.senaev.com` through the
@@ -486,13 +495,12 @@ all affected images are published. Helm handles both first installation and upda
 image refreshes run after Helm in the same coordinated job.
 
 Every workspace requires an explicit boolean `enabled`. `enabled: false` omits
-all its rendered resources; existing kept PVCs survive. Both current workspaces
+all its rendered resources; the node folders under `volumes/` survive. Both current workspaces
 are enabled.
 
 LLM workspace values live in `llmWorkspaces`, and the templates in
 `provisioning/helm/senaev-com/templates/llm-workspace/`. The entry name prefixes all
-resource names. Each workspace has its own code PVC (`<name>-code`), a projects PVC
-(`<name>-projects`, rendered only when OMP is enabled) and instructions ConfigMap (`<name>-instructions`, from `instructionsPath`), and enables any of
+resource names. Each workspace has its own code folder (`volumes/<name>-code`, a `hostPath`) and instructions ConfigMap (`<name>-instructions`, from `instructionsPath`), and enables any of
 OpenCode, OMP, Code Tools, Claude Code and Codex. OpenCode requires `git` and `telegram`; Code Tools
 requires OpenCode; Claude Code and Codex require `git`. A new entry inherits nothing from another; the schema is
 `provisioning/helm/senaev-com/values.schema.json`.
@@ -521,9 +529,11 @@ for compatibility after deployment.
 | Workspace | Node | Components | Ingress |
 |---|---|---|---|
 | `senaev` | senaev-madrid | OpenCode, OMP (`omp.senaev.com`), Code Tools, Claude Code, Codex | traefik-hetzner |
-| `galkin` | galkin | OMP only (`omp.galkin.senaev.com`) | traefik-hetzner (DNS points to hetzner) |
+| `galkin` | senaev-madrid | OMP only (`omp.galkin.senaev.com`) | traefik-hetzner (DNS points to hetzner) |
 
-Do not rename the `senaev` entry: that replaces its PVCs, and cluster-helper calls
+No workspace has a `/projects` volume; the code is in `/code`. No workspace uses PVCs.
+
+Do not rename the `senaev` entry: that moves its host folders, and cluster-helper calls
 `senaev-code-tools`. Preserve its host data directory.
 
 ## Claude Code

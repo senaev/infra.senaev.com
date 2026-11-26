@@ -221,8 +221,6 @@ llmWorkspaces:
     vps: senaev-madrid
     traefik: hetzner
     instructionsPath: config/senaev-llm-instructions-path
-    projectsStorageSize: 16Gi
-    codeStorageSize: 16Gi
     agent:
       defaultModel:
         provider: openrouter
@@ -263,7 +261,6 @@ llmWorkspaces:
     ompWeb:
       enabled: true
       hostname: omp.senaev.com
-      storageSize: 8Gi
       secrets:
         ompHtpasswd: OMP_WEB_HTPASSWD_HASH_WITH_USERNAME
     codeTools:
@@ -296,12 +293,10 @@ llmWorkspaces:
       remoteControl: true
   galkin:
     enabled: true
-    vps: galkin
+    vps: senaev-madrid
     # DNS for the hostnames points to hetzner; Traefik reaches the pods over the tailnet.
     traefik: hetzner
     instructionsPath: config/galkin-llm-instructions-path
-    projectsStorageSize: 8Gi
-    codeStorageSize: 8Gi
     agent:
       defaultModel:
         provider: openrouter
@@ -317,7 +312,6 @@ llmWorkspaces:
     ompWeb:
       enabled: true
       hostname: omp.galkin.senaev.com
-      storageSize: 8Gi
       secrets:
         ompHtpasswd: GALKIN_OMP_WEB_HTPASSWD_HASH_WITH_USERNAME
 

@@ -5,28 +5,46 @@
 
 ## Current status (updated every round)
 
-**Round 4 — 2026-11-20 20:45 UTC, PR "Add a Hysteria2 (UDP) profile from home straight to Hetzner".**
+**Round 6 — 2026-11-26, PR "Measure the FirstVDS ↔ Hetzner tunnel above 20 Mbit/s".**
 
-**Round 4 fix — 2026-11-20 22:50 UTC, PR "Hide Hysteria2 with salamander on UDP 47443".**
-Profile 6 as deployed by #260 (Hysteria2 on UDP 443, no obfuscation) failed every VPN check
-from home at once (curl exit 35, no TLS), while the server started cleanly with the
-certificate. Likely cause: the ISP drops QUIC on UDP 443 to foreign servers (QUIC shows the
-SNI in its first packet); Tailscale uses WireGuard on another port. The fix moves profile 6 to
-UDP 47443 with salamander obfuscation and turns on `info` logs on both ends, so the next
-failure, if any, shows where it stops. **Do not use profile 6 until its probe passes.**
-**Correction (2026-11-22):** the probe's failures after #260 and #261 came from our own
-NetworkPolicy (probe egress allowed only TCP 443), not from the ISP; the follow-up PR allows
-UDP to the Hysteria port.
+**Use profile 1 (`🇫🇮 1. firstvds → hetzner`).** It is the only route that works from home:
+61 of 61 parity checks in the last 3 h.
 
-**Use profile 1 (`🇫🇮 1. firstvds → hetzner`).** It had no failures in the last 24 h. Profile 6
-(`⚡ 6. hetzner UDP → freedom`, new in round 4) is a test candidate.
+Round 5 result (home): profiles 6, 7 and 8 fail every VPN check. The home ISP drops all three
+UDP shapes toward Hetzner: Hysteria2 with salamander (UDP 47443), Hysteria2 as plain HTTP/3
+(UDP 443) and WireGuard (UDP 41642). No packet of 7 or 8 reached Hetzner (no conntrack entry,
+DNAT counters flat). Only Tailscale's own traffic passes.
 
-The freeze to Hetzner is not tied to the time of day. Profiles 3/4 (home → Hetzner over TCP)
-failed 94–100 % from 2026-11-19 ~14:30 UTC to 2026-11-20 ~08:30 UTC (18 h, through the night),
-then worked again until now. Today's failures: 339 of 357 at `transfer`, ~20 KB received then
-nothing. Profile 1: 0 parity failures in 24 h.
+**Since 2026-11-25 ~17:00 UTC FirstVDS cannot reach Hetzner's public IP over TCP or plain UDP**
+(from FirstVDS: TCP 22/80/443 to `77.42.120.71` 10 of 10 time out; ping works; Cloudflare works;
+the same site over Tailscale 10 of 10 OK). Hetzner → senaev.ru fails ~50 %. No rule on Hetzner
+blocks FirstVDS. Most likely a filter at FirstVDS's provider. Profile 1 is not affected: its
+FirstVDS → Hetzner leg runs over Tailscale (cluster network).
 
-Uncapped Cloudflare 4 MiB, median seconds (VPN vs direct):
+Profile 1 speed, Cloudflare download, seconds (VPN vs direct); 3-hour means unless marked:
+
+| window | 1 MiB | 4 MiB |
+|---|---|---|
+| round 4 (2026-11-19/20), medians | — | 1.41–1.69 vs 0.93–1.20 |
+| 2026-11-24 12:00 – 11-25 21:00 (FirstVDS swapping) | 1.6–3.9 vs 0.74–0.96 | 2.4–6.9 vs 1.0–1.2 |
+| 2026-11-25 21:00 – 11-26 12:00 (after #324/#325) | 1.13–1.59 vs 0.77–0.89 | 1.76–2.12 vs 1.03–1.21 |
+
+From the 1 MiB and 4 MiB times, profile 1 tops out at ~30 Mbit/s against ~100 Mbit/s direct.
+
+Hypotheses for the ~30 Mbit/s limit, ranked:
+
+1. FirstVDS's single vCPU (with ~15 % steal): Tailscale's WireGuard runs in user space there and
+   carries every byte of profile 1. Signal: FirstVDS ↔ Hetzner iperf3 at 100 Mbit/s stays near
+   30, with FirstVDS CPU at 100 % during the test. Fix: a bigger FirstVDS plan, or another
+   Russian entry VPS (the user's decision).
+2. FirstVDS's network plan. Signal: the same plateau with CPU to spare.
+3. The home ↔ FirstVDS leg. Signal: the tunnel carries well over 30 Mbit/s.
+
+Round 6 changes only the iperf3 monitor: a test can set `bitrateMbps`, FirstVDS ↔ Hetzner run at
+100 Mbit/s (10 s each, about every 50 min), and the agent CPU limit is 0.5 core so iperf3 itself
+is not the cap.
+
+Older data (round 4): uncapped Cloudflare 4 MiB, median seconds (VPN vs direct):
 
 | profile | 2026-11-19 23:00 – 11-20 14:00 | 11-20 15:00 – 20:30 |
 |---|---|---|
@@ -34,36 +52,13 @@ Uncapped Cloudflare 4 MiB, median seconds (VPN vs direct):
 | 3. hetzner → senaev-media | 5.07 vs 0.98 (11 of 28 ok) | 4.77 vs 1.18 |
 | 4. hetzner → freedom | 1.47 vs 0.98 (10 of 28 ok) | 1.53 vs 1.20 |
 
-Legs from the servers (round 3), mean seconds: FirstVDS → Cloudflare 4 MiB 0.64–0.71 at night,
-0.86–1.13 in the evening; FirstVDS → senaev.com 512 KiB 0.33–0.52; Hetzner 0.26–0.33 and
-0.16–0.25. iperf3 Hetzner → FirstVDS stayed at 20 Mbit/s except two dips to 13.
-**iperf3 home → Hetzner over Tailscale (UDP) stayed at 19.9 Mbit/s for the whole 18 h TCP
-freeze.**
-
-Round 3 hypotheses: the profile 1 evening slowdown did not come back today, so neither
-"FirstVDS itself slow" nor "Hetzner → FirstVDS leg throttled" is settled; FirstVDS is somewhat
-slower in the evening (+30–60 % on Cloudflare), with no collapse.
-
-Hypotheses, ranked:
-
-1. The ISP filter freezes TCP/TLS flows from home to Hetzner for hours at a time (not by time
-   of day), and does not touch UDP. Signal: profile 6 (Hysteria2, UDP 443) passes parity while
-   profiles 3/4 fail. Fix: profile 6 as a direct route to Hetzner, no FirstVDS hop.
-2. The filter also blocks QUIC/Hysteria2 (unlike Tailscale's WireGuard). Signal: profile 6
-   fails with 3/4. Then FirstVDS-entry profiles stay the only route.
-3. Profile 1 stays reliable but costs ~1.4–1.5× direct time; acceptable as the fallback.
-
-Round 4 adds: `xray-hysteria` on Hetzner (Hysteria2 on UDP 443 with the senaev.com Let's
-Encrypt certificate, separate from the Reality servers), subscription profile 6, probe
-`vpn-probe-6` with the same parity and throughput checks, and iperf3 pairs hetzner →
-senaev-media and firstvds → senaev-media (download direction to home).
-**User test wanted:** profile 1 in the evening, and profile 6 once it is deployed.
+The freeze of profiles 3/4 (home → Hetzner over TCP) is not tied to the time of day: ~20 KB
+received, then nothing, for hours at a time.
 
 ## Round workflow
 
-Each round: user OK → merge the round PR → follow the deploy → collect 30 min–2 h of data →
-analyze → open the next PR. Status lives in this section and in
-[`project-worklog.md`](project-worklog.md); `project-status.md` was retired on 2026-11-18.
+See [VPN-REPAIR-PLAYBOOK.md](VPN-REPAIR-PLAYBOOK.md). Status lives in this section and in
+[`project-worklog.md`](project-worklog.md).
 
 ## Earlier history
 

@@ -254,11 +254,17 @@ iperf3Monitor:
     - senaev-media
     - proxmox-madrid
     - senaev-madrid
+  # Each test is capped at 20 Mbit/s unless it sets bitrateMbps (1-1000).
   tests:
+    # 100 Mbit/s (2026-11-26, VPN repair project): VPN profile 1 runs over this Tailscale link
+    # and tops out at ~30 Mbit/s; this shows whether the link (FirstVDS: 1 vCPU, userspace
+    # WireGuard) is the limit.
     - source: hetzner
       target: firstvds
+      bitrateMbps: 100
     - source: firstvds
       target: hetzner
+      bitrateMbps: 100
     - source: senaev-media
       target: hetzner
     - source: senaev-media
@@ -297,8 +303,9 @@ iperf3Monitor:
       requests:
         cpu: 10m
         memory: 32Mi
+      # Enough for iperf3 itself at 100 Mbit/s; used only during a 10 s test.
       limits:
-        cpu: 100m
+        cpu: 500m
         memory: 128Mi
   server:
     port: 5201

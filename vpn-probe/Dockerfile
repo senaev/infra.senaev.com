@@ -13,5 +13,9 @@ RUN python -c 'import json,probe,xhttp_server; path="/_vpn-xhttp-test/"; link="v
     && xray run -test -config /tmp/client.json \
     && xray run -test -config /tmp/server.json \
     && python -c 'from pathlib import Path; Path("/tmp/client.json").unlink(); Path("/tmp/server.json").unlink()'
+# The probe and the server render script (Node.js) must derive the same WireGuard key pair.
+RUN python -c 'import probe; assert probe.wireguard_public_key(probe.wireguard_private_key("base", "8-server")) == "HWbRD0QPR6K8rX3oYvxSP3PqpUsW3mHevjAo92NixF8"; link="wireguard://{XRAY_WIREGUARD_PRIVATE_KEY:8}@example.com:41642?publickey={XRAY_WIREGUARD_PUBLIC_KEY:8-server}&address=10.0.0.2/32&mtu=1280"; import json; open("/tmp/client.json","w").write(json.dumps(probe.client_config(link,"build-test","unused")[0]))' \
+    && xray run -test -config /tmp/client.json \
+    && python -c 'from pathlib import Path; Path("/tmp/client.json").unlink()'
 USER 10001:10001
 CMD ["python", "/app/probe.py"]

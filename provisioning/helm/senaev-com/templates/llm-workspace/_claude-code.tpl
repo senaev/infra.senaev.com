@@ -159,9 +159,7 @@ spec:
 {{- end }}
 {{- end }}
 {{ include "senaev-com.llmWorkspace.sshAgent.volumes" (dict "context" . "secretName" (printf "%s-claude-code-env" .Values.name)) | indent 8 }}
-        - name: code
-          persistentVolumeClaim:
-            claimName: {{ printf "%s-code" .Values.name }}
+{{ include "senaev-com.llmWorkspace.codeVolume" . | indent 8 }}
         - name: instructions
           configMap:
             name: {{ printf "%s-instructions" .Values.name }}

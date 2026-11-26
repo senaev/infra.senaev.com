@@ -15,3 +15,9 @@
 - For every utility the change adds or changes, check whether the same code already exists
   elsewhere in the repository. If it does, flag it as P5: move the code to `senaev-utils` and reuse
   it from there.
+
+## Re-exports
+
+- Flag every re-export the change adds as P5: `export { x } from './y'`, `export * from './y'`,
+  or an import that is only exported again. Importers must import from the file that defines the
+  symbol. Barrel `index` files that only re-export are the same.

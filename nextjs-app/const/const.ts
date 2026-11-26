@@ -13,27 +13,17 @@ export const SENAEV_LOCATION = 'Madrid, Spain';
 
 export const SENAEV_TELEGRAM_NICKNAME = 'senaev';
 export const SENAEV_TELEGRAM_LINK = `https://t.me/${SENAEV_TELEGRAM_NICKNAME}`;
+export const SENAEV_LINKEDIN_LINK = 'https://linkedin.com/in/senaev/';
+export const SENAEV_GITHUB_LINK = 'https://github.com/senaev';
 export const SENAEV_SITE_DOMAIN = 'senaev.com';
 export const SENAEV_SITE_URL = `https://${SENAEV_SITE_DOMAIN}`;
 export const ME_PAGE_LINK = '/me';
 
 export const SENAEV_SITE_IMAGE_URL = '/img/avatar-head.webp';
 
-export const SENAEV_ELEVATOR_PITCH = [
-    'I\'m a Senior Full-Stack Engineer with over a decade of building revenue-critical systems in Ad Tech, Digital Media and Observability. At Datadog, I work on Flex Logs—a multi-tenant, multi-datacenter log storage that keeps petabyte-scale data queryable on demand.',
-    'Before that I spent ten years at Yandex, where I owned the video advertising player behind all Yandex services and authored the video creative standard still used company-wide, then built a new international advertising network from scratch—defining its architecture and growing the team that delivered it.',
-];
+export const SENAEV_ELEVATOR_PITCH = ['I\'m a Senior Full-Stack Engineer with 13 years of building revenue-critical systems in Ad Tech, Digital Media and Observability, now working on Flex Logs at Datadog. Before that I spent ten years at Yandex, where I owned the video advertising player behind all Yandex services, authored the video creative standard still used company-wide, and built the interfaces of a new international advertising network with a team I grew to 25 people. I measure my work in money and reliability.'];
 
-export const SENAEV_AVAILABLE_CV_VERSIONS = [
-    {
-        name: 'Short',
-        id: '1min',
-    },
-    {
-        name: 'Detailed',
-        id: '5min',
-    },
-];
+export const SENAEV_CV_LINK = '/cv';
 
 export const SENAEV_CURRENT_DUTY = 'Senior Full-Stack Engineer at Datadog';
 export const SENAEV_CURRENT_DUTY_SHORT = 'Senior Full-Stack Engineer';
@@ -58,7 +48,7 @@ export const SENAEV_SOCIALS: {
     },
     {
         name: 'LinkedIn',
-        link: 'https://www.linkedin.com/in/senaev/',
+        link: SENAEV_LINKEDIN_LINK,
     },
     {
         name: 'Habr',
@@ -66,7 +56,7 @@ export const SENAEV_SOCIALS: {
     },
     {
         name: 'GitHub',
-        link: 'https://github.com/senaev',
+        link: SENAEV_GITHUB_LINK,
     },
     {
         name: 'X (Twitter)',
@@ -89,9 +79,14 @@ export const SENEAV_CONTACTS: Contact[] = [
         link: SENAEV_SITE_URL,
     },
     {
-        header: 'Telegram',
-        title: `@${SENAEV_TELEGRAM_NICKNAME}`,
-        link: SENAEV_TELEGRAM_LINK,
+        header: 'LinkedIn',
+        title: 'linkedin.com/in/senaev',
+        link: SENAEV_LINKEDIN_LINK,
+    },
+    {
+        header: 'GitHub',
+        title: 'github.com/senaev',
+        link: SENAEV_GITHUB_LINK,
     },
     {
         header: 'Email',
@@ -104,8 +99,9 @@ export const SENEAV_CONTACTS: Contact[] = [
         link: SENAEV_PHONE_LINK,
     },
     {
-        header: 'Location',
-        title: SENAEV_LOCATION,
+        header: 'Telegram',
+        title: `@${SENAEV_TELEGRAM_NICKNAME}`,
+        link: SENAEV_TELEGRAM_LINK,
     },
 ];
 
@@ -152,24 +148,20 @@ export const SENAEV_LANGUAGE_LEVELS: {
 ];
 
 export const SENAEV_SKILLS: Record<string, string[]> = {
-    Hard: [
+    Languages: [
+        'Java / Kotlin / Go (Golang)',
+        'TypeScript / JavaScript / Node.js / React.js',
+    ],
+    Systems: [
         'Distributed Storage and Query Systems at Scale',
+        'Distributed Systems / Microservices',
         'Observability (Logs, Metrics, Tracing)',
-        'Java / Kotlin / Go',
-        'Kubernetes / Docker / Terraform',
-        'TypeScript / JavaScript / Node.js',
-        'React.js / Webpack / HTML / CSS',
         'Performance Optimization and Telemetry',
         'A/B Testing, Availability, Incident Response',
-        'Multimedia in browser (MSE, DRM, Encoding)',
-        'Jest / Selenium / Playwright',
-
     ],
-    Soft: [
-        'Team Leadership / People and Project Management',
-        'Hiring / Technical Interviews',
-        'Mentoring',
-        'Public Speaking',
+    Infrastructure: [
+        'Kubernetes / Docker / Terraform',
+        'ClickHouse / YTsaurus',
     ],
 };
 

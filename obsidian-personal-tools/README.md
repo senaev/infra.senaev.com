@@ -10,6 +10,11 @@ renders reminders from vault note properties alongside the Tasks query and the
 `morning-reminder`, `day-reminder`, or `evening-reminder` for checkbox text. The matching
 `*-reminder-order` property sets ascending numeric order. A daytime reminder can specify an
 RRULE in `day-reminder-schedule`. The daily note filename supplies the calendar date.
+The matching `*-reminder-heading` property links the reminder to a heading of its note, and is a
+template: `{{day}}` is the date of the daily note. With `day-reminder: Work achievements` and
+`day-reminder-heading: "{{day}}"`, the note of 2026-11-25 gets
+`- [ ] [[Work achievements#2026-11-25|Work achievements]]`. An unknown macro, or a heading with
+`#`, `|`, `^`, `[`, `]` or braces, skips the reminder and logs a warning.
 Header/footer widgets remain separate. To change the
 template, change senaev-utils, wait for the `ci` release, and update the exact version in
 `package.json`, as for the reminder rules below.

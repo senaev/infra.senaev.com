@@ -18,6 +18,22 @@ const nextConfig = {
         ],
     },
 
+    redirects() {
+        // The short (1min) and detailed (5min) CVs were merged into one page at /cv.
+        return Promise.resolve([
+            {
+                source: '/cv/5min',
+                destination: '/cv',
+                permanent: true,
+            },
+            {
+                source: '/cv/1min',
+                destination: '/cv',
+                permanent: true,
+            },
+        ]);
+    },
+
     rewrites() {
         return Promise.resolve([
             {

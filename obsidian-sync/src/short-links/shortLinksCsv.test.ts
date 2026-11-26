@@ -8,7 +8,7 @@ import {
 
 describe('isAllowedShortLinkTarget', () => {
     it.each([
-        'https://senaev.com/cv/5min',
+        'https://senaev.com/cv',
         'http://example.com',
     ])('allows %s', (url) => {
         expect(isAllowedShortLinkTarget(url)).toBe(true);
@@ -30,7 +30,7 @@ describe('parseShortLinksCsv', () => {
     it('reads the id and url columns by name, keeps other columns, and skips bad rows', () => {
         const table = parseShortLinksCsv([
             '\uFEFFcomment,url,id',
-            'CV,https://senaev.com/cv/5min,1bxsl9',
+            'CV,https://senaev.com/cv,1bxsl9',
             '"a, b",javascript:alert(1),bad001',
             ',https://example.com,',
             '',
@@ -46,7 +46,7 @@ describe('parseShortLinksCsv', () => {
         expect(table.links).toEqual(new Map([
             [
                 '1bxsl9',
-                'https://senaev.com/cv/5min',
+                'https://senaev.com/cv',
             ],
             [
                 'q1',

@@ -10,6 +10,11 @@ renders reminders from vault note properties alongside the Tasks query and the
 `morning-reminder`, `day-reminder`, or `evening-reminder` for checkbox text. The matching
 `*-reminder-order` property sets ascending numeric order. A daytime reminder can specify an
 RRULE in `day-reminder-schedule`. The daily note filename supplies the calendar date.
+The matching `*-reminder-heading` property links the reminder to a heading of its note, and is a
+template: `{{day}}` is the date of the daily note. With `day-reminder: Work achievements` and
+`day-reminder-heading: "{{day}}"`, the note of 2026-11-25 gets
+`- [ ] [[Work achievements#2026-11-25|Work achievements]]`. An unknown macro, or a heading with
+`#`, `|`, `^`, `[`, `]` or braces, skips the reminder and logs a warning.
 Header/footer widgets remain separate. To change the
 template, change senaev-utils, wait for the `ci` release, and update the exact version in
 `package.json`, as for the reminder rules below.
@@ -48,8 +53,9 @@ Also open a synced note with diary content and verify that it is untouched.
 ## Features
 
 - **Daily note widgets** (`src/dailyNote/`) — injects a header (date heading → nav row → milestones) and a footer (milestones → nav row) into every `periodic/day/YYYY-MM-DD` note, in both Reading view and Live Preview. Needs no markup in the note itself. The milestones logic lives in `src/milestones/`.
+- **Note calendars** (`src/noteCalendar/`) — a heatmap calendar at the top of a note whose frontmatter has `reminders-calendar: true` or `mentions-calendar: true`. See below.
 - **Global API for the Tasks plugin** (`src/reminders/`) — see below.
-- **Commands** (`src/commands/`) — *Copy public link*, plus three that act on the editor selection: *Copy text to public*, *Search selection in Google*, *Translate selection in Google Translate*. The last three flatten wiki-links first via `src/utils/stripWikiLinks.ts`, because `[[...]]` syntax is meaningless outside the vault.
+- **Commands** (`src/commands/`) — *Copy public link*, plus three that act on the editor selection: *Copy text to public*, *Search selection in Google*, *Translate selection in Google Translate*. *Open work achievements* opens the `Work achievements` note, resolved like a wiki-link. The last three flatten wiki-links first via `src/utils/stripWikiLinks.ts`, because `[[...]]` syntax is meaningless outside the vault.
 
 ## Milestones — `src/milestones/`
 
@@ -118,6 +124,16 @@ Two consequences of the emoji living inside the template:
 A note with `milestones-hidden: true` (the config's `hiddenProperty`) in its frontmatter shows none of its milestones, today's or tomorrow's, fixed or calculated. The note keeps its dates; only the widget skips it.
 
 Only the YAML boolean `true` hides. Any other value — `false`, the quoted string `"true"`, `yes`, `1` — is ignored, so a typo shows the milestone instead of silently hiding it.
+
+## Note calendars — `src/noteCalendar/`
+
+A note with `reminders-calendar: true` shows a calendar of the reminders that link to it, and one with `mentions-calendar: true` shows the daily notes that link to it. Both flags may be set; the reminders calendar comes first. Only the YAML boolean `true` counts, as for `milestones-hidden`. The calendar replaces the `dataviewjs` blocks that called `_scripts/dataview/fileTasksStatistics.js` and `fileMentionsStatistics.js`; it needs neither Dataview nor Heatmap Tracker.
+
+- **What counts.** A reminder counts when its text has a wiki-link that opens the note (`[[Note]]`, `[[Note#heading]]`, `[[Note|alias]]` or a path such as `[[work/Calendar|…]]`, which the daily-note template writes when two notes share a name). The link is resolved with `metadataCache.getFirstLinkpathDest` from the daily note that holds it, so a same-named note elsewhere does not match. A reminder counts only when it lives in `periodic/day/YYYY-MM-DD.md`: that file name is its day. A reminder in any other file has no day and is ignored everywhere, totals included. The old script counted it in the totals but drew no cell for it. A mention is a daily note whose `metadataCache.resolvedLinks` entry has the note as a target.
+- **Display.** Compact by default: a low header row with the year switcher (`◀ 2026 ▶`) on the left and the `⋯` button on the right, and the 12 months of the newest year, weeks starting on Monday, months named above their middle, and nothing else. The header and the years share one box (`senaev-calendar-box`), centred and as wide as the widest year of the note in compact and expanded view alike (`sizeBox` sets `--senaev-calendar-columns` and `--senaev-calendar-cell-gaps` from `countGridColumns`, the CSS turns them into a width, capped at the width of the note). The year switcher and `⋯` therefore sit above the left and right corners of the grid, not of the note, and do not move when the calendar expands. The months are centred inside the box when a year is narrower than the widest one, and scroll from the left when the grid is wider than the note (auto margins on the first and last month: `justify-content: center` would cut the left side off). A month that follows one ending on the last row of its week (a Sunday) is moved one column away (`separated` in `buildYearGrid`), so the two do not touch; other months are spaced like neighbouring cells. `⋯` opens the full view: the header row stays exactly where it is, only the year switcher is not drawn, and below it come an `OVERALL` row on the left with the overall totals (with emoji), like the row of a year, then every year, newest first, each headed by its totals. There is no note name and there are no weekday names. `⋯` again closes it. The year and the open state are kept per note and kind, with the scroll position, in module-level maps in `renderCalendar.ts`, so a refresh does not reset them (they reset when Obsidian restarts). A cell links to the daily note. A day with several reminders takes the colour of the first kind present in the order open, cancelled, done, so open work shows through; the tooltip lists all counts. Colours are CSS variables in `styles.css`; open is the theme's text colour, so it reads on light and dark themes.
+- **Where the code is.** The logic that needs no Obsidian lives in `senaev-utils/src/obsidianCalendar/` (`noteCalendar.ts`: which reminders and mentions count; `calendarModel.ts`: grouping by day and year; `calendarGrid.ts`: the month grid), with tests, because it is plain data in and out. The plugin has the rest: `tasksPluginAdapter.ts` is the only file that reads the Tasks plugin (`getTasks()`, which is not a documented API, and its `obsidian-tasks-plugin:cache-update` event), `renderCalendar.ts` draws the DOM, and `registerNoteCalendars.ts` mounts it. The CodeMirror and Reading-view mounting stays here because senaev-utils has no Obsidian dependency.
+- **Mounting** copies the daily-note widgets: a block widget from a `StateField` in Live Preview and Source mode, and a sibling of the rendered note in Reading view. Metadata changes, the Tasks cache update and layout events refresh it, batched in 300 ms. A refresh bumps a revision that the editor widget compares in `eq`, then dispatches an empty transaction, so a flag typed into the frontmatter shows up at once.
+- **No Tasks plugin.** Until it has loaded, the reminders calendar says it is waiting, and the cache-update event draws it again.
 
 ## Global API — `window.senaevPersonalTools`
 
@@ -274,7 +290,8 @@ npm run build
 
 ## Versioning & releases
 
-- Bump `version` in `manifest.json` (SemVer) and update `versions.json` to map plugin version → minimum app version.
+- **Every change to the plugin must bump the version**, because the release job publishes only a version that has no GitHub release yet; without a bump, BRAT never sees the change. Raise the last number each time (`0.1.4` → `0.1.5`), in the same PR as the change.
+- Bump `version` in `manifest.json` (SemVer), `package.json` and `package-lock.json` (first two entries), and update `versions.json` to map plugin version → minimum app version.
 - Create a GitHub release whose tag exactly matches `manifest.json`'s `version`. Do not use a leading `v`.
 - Attach `manifest.json`, `main.js`, and `styles.css` (if present) to the release as individual assets.
 - Merge the version bump into infra main to trigger the GitHub Actions release for BRAT.

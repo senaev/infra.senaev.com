@@ -1,9 +1,8 @@
-import tseslint from 'typescript-eslint';
 import obsidianmd from 'eslint-plugin-obsidianmd';
 import globals from 'globals';
-import { globalIgnores } from 'eslint/config';
+import { defineConfig, globalIgnores } from 'eslint/config';
 
-export default tseslint.config(
+export default defineConfig(
 	globalIgnores([
 		'node_modules',
 		'dist',
@@ -34,7 +33,7 @@ export default tseslint.config(
 	{
 		rules: {
 			'obsidianmd/ui/sentence-case': ['error', {
-				brands: ['Google', 'Google Translate'],
+				brands: ['Google', 'Google Translate', 'Tasks'],
 			}],
 		},
 	},

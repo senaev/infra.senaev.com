@@ -9,15 +9,15 @@ export function headingFromFilename(basename: string): string | null {
 }
 
 /**
- * Returns the content with `# heading` after the frontmatter, or null when the body is empty
- * or the note starts with a block that stripFrontmatter cannot split (unterminated, CRLF).
+ * Returns the content with `# heading` after the frontmatter (an empty body gets just the heading),
+ * or null when the note starts with a block that stripFrontmatter cannot split (unterminated, CRLF).
  */
 export function insertHeading(content: string, heading: string): string | null {
 	const { body } = stripFrontmatter(content);
 	if (body === content && content.startsWith('---')) return null;
-	if (!body.trim()) return null;
 	const frontmatter = content.slice(0, content.length - body.length);
 	const eol = content.includes('\r\n') ? '\r\n' : '\n';
+	if (!body.trim()) return `${frontmatter}${frontmatter && !/\n$/.test(frontmatter) ? eol : ''}# ${heading}${eol}`;
 	const separator = /^[ \t]*\r?\n/.test(body) ? '' : eol;
 	return `${frontmatter}# ${heading}${eol}${separator}${body}`;
 }

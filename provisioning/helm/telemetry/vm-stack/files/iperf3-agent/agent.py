@@ -169,7 +169,20 @@ def read_json_request(handler):
     return json.loads(handler.rfile.read(length).decode("utf-8"))
 
 
-def run_iperf3(target):
+DEFAULT_BITRATE_MBPS = 20
+MAX_BITRATE_MBPS = 1000
+
+
+def parse_bitrate_mbps(value):
+    """Bitrate cap of one test in Mbit/s: a whole number from 1 to 1000, 20 when absent."""
+    if value is None:
+        return DEFAULT_BITRATE_MBPS
+    if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= MAX_BITRATE_MBPS:
+        raise ValueError("bitrateMbps must be an integer from 1 to 1000")
+    return value
+
+
+def run_iperf3(target, bitrate_mbps=DEFAULT_BITRATE_MBPS):
     started_at = time.time()
     args = [
         "iperf3",
@@ -180,7 +193,7 @@ def run_iperf3(target):
         "-t",
         str(ENVS["IPERF3_PERIOD_SECONDS"]),
         "-b",
-        "20M",
+        f"{bitrate_mbps}M",
         "--json",
     ]
 
@@ -302,13 +315,20 @@ class Handler(BaseHTTPRequestHandler):
                 logger.error("❌ Respond 400 as there is no target in the request")
                 return
 
+            try:
+                bitrate_mbps = parse_bitrate_mbps(input_body.get("bitrateMbps"))
+            except ValueError as error:
+                write_json_response(self, 400, {"ok": False, "error": str(error)})
+                logger.error(f"❌ Respond 400 as bitrateMbps is invalid value=[{input_body.get('bitrateMbps')}]")
+                return
+
             if not TEST_LOCK.acquire(blocking=False):
                 write_json_response(self, 409, {"ok": False, "error": "test_already_running"})
                 logger.error("❌ Respond 409 as another iperf3 test is already running")
                 return
 
             try:
-                result = run_iperf3(target)
+                result = run_iperf3(target, bitrate_mbps)
             finally:
                 TEST_LOCK.release()
 

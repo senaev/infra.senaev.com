@@ -1,0 +1,39 @@
+.CvPage_container .MarkdownContainer_anchor {
+    opacity: 0;
+    top: 0.1em;
+}
+
+.CvPage_container :is(h1, h2, h3, h4, h5, h6):hover .MarkdownContainer_anchor {
+    opacity: 1;
+}
+
+.CvPage_container :is(h1, h2, h3, h4, h5, h6) time {
+    float: right;
+}
+
+.CvPage_container time {
+    font-weight: 600;
+    font-size: 0.65em;
+    font-family: 'Ubuntu Mono', monospace;
+    color: #333;
+}
+
+/* No fixed paper size: a page forced to A4 is shrunk onto Letter paper, with wide side margins. */
+@page {
+    margin: 12mm;
+}
+
+@media print {
+    /* The hidden "#" heading anchors would stay in the PDF text and in what an ATS reads. */
+    .CvPage_container .MarkdownContainer_anchor {
+        display: none;
+    }
+
+    .CvPage_container :is(h1, h2, h3, h4, h5, h6) {
+        break-after: avoid;
+    }
+
+    .CvPage_container a {
+        color: inherit;
+    }
+}

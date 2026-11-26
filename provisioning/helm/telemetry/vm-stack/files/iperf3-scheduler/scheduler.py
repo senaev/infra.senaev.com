@@ -130,7 +130,7 @@ def run_scheduler():
                 SCHEDULER_STATE["currentTest"] = current_test
 
             logger.info(f"👉 Run scheduled test=[{current_test}]")
-            result = call_agent(source, target)
+            result = call_agent(source, target, test.get("bitrateMbps"))
             store_result(source, target, result)
 
             if result["ok"]:
@@ -147,10 +147,14 @@ def run_scheduler():
             time.sleep(pause_between_tests)
 
 
-def call_agent(source, target):
+def call_agent(source, target, bitrate_mbps=None):
     started_at = time.time()
     url = f"http://iperf3-agent-{source}:{CONFIG['agentPort']}/check"
-    body = json.dumps({"target": target}).encode("utf-8")
+    # Without bitrateMbps the agent uses its default cap (20 Mbit/s).
+    request_body = {"target": target}
+    if bitrate_mbps is not None:
+        request_body["bitrateMbps"] = bitrate_mbps
+    body = json.dumps(request_body).encode("utf-8")
     request = urllib.request.Request(
         url,
         data=body,

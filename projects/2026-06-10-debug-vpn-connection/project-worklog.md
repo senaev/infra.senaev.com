@@ -1,3 +1,78 @@
+## 2026-11-26 — Round 5 result; FirstVDS ↔ Hetzner public path blocked; round 6 measures the tunnel
+
+- Home: profiles 6, 7, 8 fail everything. On Hetzner (user ran it) no conntrack entry for UDP
+  47443/443/41642 and the hostPort DNAT counters stay flat for a minute; Tailscale's UDP 41641
+  flows (also from FirstVDS) are `[ASSURED]`. The home ISP drops all three UDP shapes.
+- From FirstVDS (user ran it): `000 connect=0.000000` 10 of 10 to https://senaev.com/ (public IP),
+  `200 connect≈0.02` 10 of 10 with `--resolve senaev.com:443:100.120.76.115` (Tailscale); TCP 22
+  and 80 to 77.42.120.71 fail; ping 17 ms OK; Cloudflare 200. Hetzner: no rule with `157.22`, no
+  fail2ban/crowdsec. A filter on the path, most likely at FirstVDS's provider, since ~17:00 UTC.
+- Profile 1 after the FirstVDS fix: 4 MiB 1.76–2.12 s vs 1.03–1.21 s direct, ~30 Mbit/s ceiling.
+  Decision: measure the FirstVDS ↔ Hetzner Tailscale link at 100 Mbit/s with the iperf3 monitor
+  (per-test `bitrateMbps`, agent CPU limit 0.5) to tell CPU/plan from the home leg.
+
+## 2026-11-25 18:00–19:00 UTC — UDP to Hetzner stopped; FirstVDS overload took senaev.ru down
+
+- Profile 6 from FirstVDS passed every check until ~16:55 UTC, then failed everything. The
+  `xray-hysteria` server logged its last `tunnelling request` at 16:59:27 and nothing after, also
+  on UDP 443 and on `xray-wireguard` (41642) after #308. No deploy touched networking then
+  (#321 was the Obsidian plugin). Asked the user for `iptables -t nat` and `journalctl` on Hetzner.
+- The #308 deploy restarted 4 probe pods on FirstVDS (1 vCPU, 1 GB): CPU 100 % 17:56–18:03,
+  disk reads ~200 MB/s, node NotReady once; senaev.ru (Traefik on FirstVDS) timed out 17:54:30–
+  18:04:30. Underlying: since otel-agent arrived (2026-11-22 ~21:00 UTC) the node swaps 5–7 MB/s
+  each way, 1,200–1,800 major faults/s, 35–59 MB/s reads. #323 removed probes 7/8 there; this
+  change removes `vpn-probe-6-firstvds` and `vpn-source-control-firstvds` (~40 MB RSS, ~100 MB
+  working set); otel-agent's limit goes 256Mi → 128Mi in a separate PR.
+- iperf3 home → Hetzner over Tailscale is ~2 Mbit/s these hours, not 19.9: "Tailscale UDP passes
+  from home" does not hold right now.
+
+## 2026-11-25 — Profile 6 passes from FirstVDS only; round 5 probes UDP 443 and WireGuard
+
+#304 deployed `vpn-probe-6-firstvds`. Parity over 24 h (VictoriaMetrics,
+`sum by (profile, result) (increase(vpn_probe_checks_total{check=~"parity_.*", route="vpn"}[24h]))`):
+
+```
+⚡ 6. hetzner UDP → freedom                 failure 509  success 0
+⚡ 6. hetzner UDP → freedom (from firstvds) failure 0    success 236
+🇫🇮 1. firstvds → hetzner                   failure 5    success 503
+🇷🇺 3. hetzner → senaev-media               failure 323  success 187
+💄 4. hetzner → freedom                     failure 322  success 185
+```
+
+The Hysteria2 server and config work; the home ISP drops Hysteria2 with salamander on UDP
+47443, while Tailscale's WireGuard to Hetzner passes. Happ docs list VLESS, VMess, Socks5,
+Trojan, Shadowsocks and Hysteria2 only, so WireGuard cannot be a Happ profile.
+
+Decision: test two UDP shapes at once, each from home and from FirstVDS: profile 7, Hysteria2 on
+UDP 443 without obfuscation (Happ-compatible; never really tested from home, #260 was blocked by
+our NetworkPolicy), and profile 8, WireGuard on UDP 41642 (probe only, `subscription: false`).
+Their results tell "unknown UDP is dropped" from "QUIC is dropped" from "only Tailscale passes".
+The xray-vpn servers render unchanged (helm template diff against main); the render script
+gets the WireGuard key macros only in `xray-wireguard`.
+
+The playbook is now in [VPN-REPAIR-PLAYBOOK.md](VPN-REPAIR-PLAYBOOK.md) (agreed with the user
+on 2026-11-25).
+
+## 2026-11-24 22:25 UTC — UDP allowed, profile 6 still gets no answer; probe it from FirstVDS
+
+#281 deployed (run 45499675087, success): the probe NetworkPolicy allows UDP 47443. Profile 6
+still fails every VPN check from home, with the same client error at `info`:
+
+```
+22:16:42 app/proxyman/outbound: failed to process outbound traffic > proxy/hysteria: failed to find an available destination > timeout: no recent network activity
+```
+
+`xray-hysteria` logged nothing in 3 h besides its start. Parity over 6 h (Datadog
+`@check:parity_* @route:vpn`): profile 1 130/131, profile 3 48/131, profile 4 50/129, profile 6
+0/133. Hetzner side is ruled out as far as visible: hostPort DNAT in iptables, no Hetzner Cloud
+firewall.
+
+Decision: probe profile 6 also from firstvds (`vpnProbe.remoteSources`), outside the home ISP.
+If it passes there, the home ISP drops this UDP; if it fails there too, the problem is on the
+Hetzner side or in the config. The existing probe Deployments render unchanged (helm template
+diff); only `vpn-probe-6-firstvds` is added. Its logs are not in Datadog (no agent on
+firstvds); the result is in VictoriaMetrics, profile `⚡ 6. hetzner UDP → freedom (from firstvds)`.
+
 ## 2026-11-22 — Profile 6 "failures" were our NetworkPolicy, not the ISP
 
 After #261 (UDP 47443, salamander) the probe's Xray client logged for every attempt

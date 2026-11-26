@@ -9,6 +9,7 @@ import {
 import { registerCommands } from './commands';
 import { registerDailyNoteWidgets } from './dailyNote/dailyNoteWidgetsManager';
 import { registerRemindersGlobals } from './reminders/registerRemindersGlobals';
+import { registerNoteCalendars } from './noteCalendar/registerNoteCalendars';
 
 export default class SenaevPersonalTools extends Plugin {
 	settings!: SenaevPluginSettings;
@@ -22,6 +23,7 @@ export default class SenaevPersonalTools extends Plugin {
 		registerHeadingSync(this);
 		registerDailyNoteWidgets(this);
 		registerRemindersGlobals(this);
+		registerNoteCalendars(this);
 	}
 
 	async loadSettings() {

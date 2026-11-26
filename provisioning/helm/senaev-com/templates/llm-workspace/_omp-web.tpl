@@ -180,8 +180,6 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 6
           volumeMounts:
-            - name: projects
-              mountPath: /projects
             - name: code
               mountPath: /code
             - name: state
@@ -226,15 +224,12 @@ spec:
             - name: proxy-tmp
               mountPath: /tmp
       volumes:
-        - name: projects
-          persistentVolumeClaim:
-            claimName: {{ printf "%s-projects" .Values.name }}
-        - name: code
-          persistentVolumeClaim:
-            claimName: {{ printf "%s-code" .Values.name }}
+{{ include "senaev-com.llmWorkspace.codeVolume" . | indent 8 }}
+        # Logins, sessions and settings of OMP: a folder on the node of the workspace.
         - name: state
-          persistentVolumeClaim:
-            claimName: {{ printf "%s-omp-web-state" .Values.name }}
+          hostPath:
+            path: {{ printf "%s/volumes/%s-omp-web-state" .Values.global.clusterRootPath .Values.name }}
+            type: DirectoryOrCreate
 {{- if .Values.git }}
 {{ include "senaev-com.llmWorkspace.sshAgent.volumes" (dict "context" . "secretName" (printf "%s-omp-web-env" .Values.name)) | indent 8 }}
 {{- end }}
@@ -246,19 +241,6 @@ spec:
             name: {{ printf "%s-instructions" .Values.name }}
         - name: proxy-tmp
           emptyDir: {}
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: {{ printf "%s-omp-web-state" .Values.name }}
-  namespace: {{ .Release.Namespace }}
-  annotations:
-    helm.sh/resource-policy: keep
-spec:
-  accessModes: [ReadWriteOnce]
-  resources:
-    requests:
-      storage: {{ .Values.ompWeb.storageSize }}
 ---
 apiVersion: v1
 kind: Service

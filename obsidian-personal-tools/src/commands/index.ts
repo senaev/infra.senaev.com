@@ -4,6 +4,7 @@ import { copyTextToPublic } from './copyTextToPublic';
 import { searchSelectionInGoogle } from './searchSelectionInGoogle';
 import { translateSelection } from './translateSelection';
 import { insertCurrentDateLink } from './insertCurrentDateLink';
+import { openWorkAchievements } from './openWorkAchievements';
 
 /** Registers all user-facing commands for the plugin. */
 export function registerCommands(plugin: Plugin): void {
@@ -35,5 +36,11 @@ export function registerCommands(plugin: Plugin): void {
 		id: 'translate-selection-in-google-translate',
 		name: 'Translate selection in Google Translate',
 		editorCallback: (editor) => translateSelection(editor),
+	});
+
+	plugin.addCommand({
+		id: 'open-work-achievements',
+		name: 'Open work achievements',
+		callback: () => void openWorkAchievements(plugin.app),
 	});
 }
