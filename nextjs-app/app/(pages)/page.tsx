@@ -55,47 +55,49 @@ export default function Page(): JSX.Element {
     return <div className={styles.MainPage__container}>
         <main className={styles.MainPage__column}>
             <header className={styles.MainPage__header}>
-                <Image
-                    className={styles.MainPage__avatar}
-                    width={AVATAR_SIZE}
-                    height={AVATAR_SIZE}
-                    src={'/img/avatar-head.webp'}
-                    alt={'Profile Picture'}
-                />
-                <h1>
-                    {SENAEV_FULL_NAME}
-                </h1>
-                <p className={styles.MainPage__duty}>
-                    {SENAEV_CURRENT_DUTY}
-                </p>
-                <p className={styles.MainPage__location}>
-                    {SENAEV_LOCATION}
-                </p>
-            </header>
+                <div className={styles.MainPage__identity}>
+                    <Image
+                        className={styles.MainPage__avatar}
+                        width={AVATAR_SIZE}
+                        height={AVATAR_SIZE}
+                        src={'/img/avatar-head.webp'}
+                        alt={'Profile Picture'}
+                    />
+                    <h1>
+                        {SENAEV_FULL_NAME}
+                    </h1>
+                    <p className={styles.MainPage__duty}>
+                        {SENAEV_CURRENT_DUTY}
+                    </p>
+                    <p className={styles.MainPage__location}>
+                        {SENAEV_LOCATION}
+                    </p>
+                </div>
 
-            <nav className={styles.MainPage__links}>
-                {
-                    HEADER_LINKS.map(({
-                        label, text, link,
-                    }) => <span key={link}>
-                        {`${label}:`}
-                        {NON_BREAKING_SPACE}
-                        {
-                            link.startsWith('/')
-                                ? <Link href={link}>
-                                    {text}
-                                </Link>
-                                : <a
-                                    href={link}
-                                    target={'_blank'}
-                                    rel={'noreferrer'}
-                                >
-                                    {text}
-                                </a>
-                        }
-                    </span>)
-                }
-            </nav>
+                <nav className={styles.MainPage__links}>
+                    {
+                        HEADER_LINKS.map(({
+                            label, text, link,
+                        }) => <span key={link}>
+                            {`${label}:`}
+                            {NON_BREAKING_SPACE}
+                            {
+                                link.startsWith('/')
+                                    ? <Link href={link}>
+                                        {text}
+                                    </Link>
+                                    : <a
+                                        href={link}
+                                        target={'_blank'}
+                                        rel={'noreferrer'}
+                                    >
+                                        {text}
+                                    </a>
+                            }
+                        </span>)
+                    }
+                </nav>
+            </header>
 
             <section className={styles.MainPage__about}>
                 <h2>
