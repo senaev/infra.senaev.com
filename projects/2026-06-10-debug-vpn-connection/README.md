@@ -21,11 +21,11 @@ the same site over Tailscale 10 of 10 OK). Hetzner → senaev.ru fails ~50 %. No
 blocks FirstVDS. Most likely a filter at FirstVDS's provider. Profile 1 is not affected: its
 FirstVDS → Hetzner leg runs over Tailscale (cluster network).
 
-Profile 1 speed, Cloudflare download, mean seconds (VPN vs direct):
+Profile 1 speed, Cloudflare download, seconds (VPN vs direct); 3-hour means unless marked:
 
 | window | 1 MiB | 4 MiB |
 |---|---|---|
-| round 4 (2026-11-19/20) | — | 1.41–1.69 vs 0.93–1.20 |
+| round 4 (2026-11-19/20), medians | — | 1.41–1.69 vs 0.93–1.20 |
 | 2026-11-24 12:00 – 11-25 21:00 (FirstVDS swapping) | 1.6–3.9 vs 0.74–0.96 | 2.4–6.9 vs 1.0–1.2 |
 | 2026-11-25 21:00 – 11-26 12:00 (after #324/#325) | 1.13–1.59 vs 0.77–0.89 | 1.76–2.12 vs 1.03–1.21 |
 
