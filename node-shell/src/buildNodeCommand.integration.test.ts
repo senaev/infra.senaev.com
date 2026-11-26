@@ -38,7 +38,7 @@ describe('buildNodeCommand through a real shell', () => {
         });
         const remoteCommand = remote.at(-1) ?? '';
 
-        expect(argumentsSeenByRemoteShell(remoteCommand)).toEqual(local.slice(5));
+        expect(argumentsSeenByRemoteShell(remoteCommand)).toEqual(local.slice(7));
         expect(argumentsSeenByRemoteShell(remoteCommand).at(-1)).toBe(command);
     });
 });

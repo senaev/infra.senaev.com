@@ -1,12 +1,19 @@
 import type { NodeHosts } from './nodeHosts';
 import { shellQuote } from './shellQuote';
 
-/** Enters every namespace of the host's PID 1, so the rest runs as the host's root. */
+/**
+ * Enters every namespace of the host's PID 1, and takes its root directory and working
+ * directory, so the rest runs as the host's root, with the host's binaries, `/etc/passwd`,
+ * `/root/.ssh` and `known_hosts`. Joining the mount namespace already resets both, but saying it
+ * keeps the command right without that detail.
+ */
 const ENTER_HOST = [
     'nsenter',
     '--target',
     '1',
     '--all',
+    '--root',
+    '--wd',
     '--',
 ];
 

@@ -107,11 +107,13 @@ describe('createExecutionManager', () => {
             record: { status: 'running' },
         });
         expect(run).toHaveBeenCalledOnce();
-        expect(run.mock.lastCall?.[0].argv.slice(0, 6)).toEqual([
+        expect(run.mock.lastCall?.[0].argv.slice(0, 8)).toEqual([
             'nsenter',
             '--target',
             '1',
             '--all',
+            '--root',
+            '--wd',
             '--',
             'systemd-run',
         ]);
@@ -172,6 +174,55 @@ describe('createExecutionManager', () => {
         expect(store.records.has('one-more')).toBe(false);
 
         pending.resolve(result);
+        await manager.idle();
+    });
+
+    it('keeps the limit when many starts arrive at once and the store answers later', async () => {
+        const pending = deferred<CommandResult>();
+        const createNow = store.create;
+
+        // A store that yields before it answers, like the file store.
+        store.create = (record) => new Promise((resolve) => {
+            setImmediate(() => resolve(createNow(record)));
+        });
+        run.mockReturnValue(pending.promise);
+
+        const starts = Array.from({ length: MAX_CONCURRENT_EXECUTIONS * 2 }, (_, index) => manager.start({
+            ...request,
+            executionId: `e${index}`,
+        }));
+        const results = await Promise.all(starts);
+
+        expect(results.filter(({ kind }) => kind === 'started')).toHaveLength(MAX_CONCURRENT_EXECUTIONS);
+        expect(results.filter(({ kind }) => kind === 'busy')).toHaveLength(MAX_CONCURRENT_EXECUTIONS);
+        expect(run).toHaveBeenCalledTimes(MAX_CONCURRENT_EXECUTIONS);
+
+        pending.resolve(result);
+        await manager.idle();
+
+        await expect(manager.start({
+            ...request,
+            executionId: 'after',
+        })).resolves.toMatchObject({ kind: 'started' });
+        await manager.idle();
+    });
+
+    it('gives the slot back when a start loses the race for its ID', async () => {
+        const createNow = store.create;
+
+        store.create = () => Promise.resolve(false);
+
+        for (let index = 0; index <= MAX_CONCURRENT_EXECUTIONS; index += 1) {
+            await expect(manager.start({
+                ...request,
+                executionId: `lost${index}`,
+            })).resolves.toEqual({ kind: 'conflict' });
+        }
+
+        store.create = createNow;
+        run.mockResolvedValue(result);
+
+        await expect(manager.start(request)).resolves.toMatchObject({ kind: 'started' });
         await manager.idle();
     });
 

@@ -22,6 +22,8 @@ describe('buildNodeCommand', () => {
             '--target',
             '1',
             '--all',
+            '--root',
+            '--wd',
             '--',
             'systemd-run',
             '--unit=node-shell-abc-123',
@@ -44,11 +46,13 @@ describe('buildNodeCommand', () => {
             host: 'senaev-madrid',
         });
 
-        expect(argv.slice(0, 6)).toEqual([
+        expect(argv.slice(0, 8)).toEqual([
             'nsenter',
             '--target',
             '1',
             '--all',
+            '--root',
+            '--wd',
             '--',
             'ssh',
         ]);

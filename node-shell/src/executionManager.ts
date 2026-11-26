@@ -60,6 +60,9 @@ export function createExecutionManager({
     now?: () => Date;
 }): ExecutionManager {
     const running = new Set<Promise<void>>();
+    // Taken synchronously right after the check, before any await, so concurrent starts cannot
+    // all pass the check; given back when the command ends or never starts.
+    let reservedSlots = 0;
 
     const existingResult = (record: ExecutionRecord, requestHash: string): StartResult => (record.requestHash === requestHash
         ? {
@@ -124,9 +127,11 @@ export function createExecutionManager({
                 return existingResult(existing, requestHash);
             }
 
-            if (running.size >= MAX_CONCURRENT_EXECUTIONS) {
+            if (reservedSlots >= MAX_CONCURRENT_EXECUTIONS) {
                 return { kind: 'busy' };
             }
+
+            reservedSlots += 1;
 
             const record: ExecutionRecord = {
                 executionId: nodeCommand.executionId,
@@ -138,7 +143,18 @@ export function createExecutionManager({
 
             // Saved before the command starts: if node-shell restarts now, the ID is taken and the
             // command is not started a second time.
-            if (!await store.create(record)) {
+            let created: boolean;
+
+            try {
+                created = await store.create(record);
+            } catch (error) {
+                reservedSlots -= 1;
+                throw error;
+            }
+
+            if (!created) {
+                reservedSlots -= 1;
+
                 const raced = await store.read(nodeCommand.executionId);
 
                 return raced === undefined ? { kind: 'conflict' } : existingResult(raced, requestHash);
@@ -158,6 +174,7 @@ export function createExecutionManager({
                     }, '❌ Failed to save the result of a node command');
                 })
                 .finally(() => {
+                    reservedSlots -= 1;
                     running.delete(execution);
                 });
 
