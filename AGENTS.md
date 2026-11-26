@@ -137,6 +137,7 @@ check. Config: `iperf3Monitor` in `provisioning/helm/telemetry/vm-stack/values.y
 - An agent with an iperf3 server (port 5201) runs on each node of `sourceVpsList`. The
   scheduler on senaev-madrid runs the `tests` pairs one by one, 300 s apart; each test is
   `iperf3 -c <target> -t 10 -b 20M`, so the source sends to the target, capped at 20 Mbit/s.
+  A test can set another cap with `bitrateMbps` (1–1000); FirstVDS ↔ Hetzner use 100.
 - Targets are node names that resolve to Tailscale addresses (100.x), so the traffic is
   WireGuard over UDP on the tailnet, not a public TCP connection. It can differ from what a
   public TCP/TLS connection (for example the VPN) gets on the same path.

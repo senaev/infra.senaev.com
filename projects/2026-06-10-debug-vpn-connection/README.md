@@ -5,50 +5,44 @@
 
 ## Current status (updated every round)
 
-**Round 5 — 2026-11-25, PR "Probe Hysteria2 on UDP 443 and WireGuard from home".**
+**Round 6 — 2026-11-26, PR "Measure the FirstVDS ↔ Hetzner tunnel above 20 Mbit/s".**
 
-**Use profile 1 (`🇫🇮 1. firstvds → hetzner`).** Parity over the last 24 h (VPN route):
+**Use profile 1 (`🇫🇮 1. firstvds → hetzner`).** It is the only route that works from home:
+61 of 61 parity checks in the last 3 h.
 
-| profile | from home | from FirstVDS |
+Round 5 result (home): profiles 6, 7 and 8 fail every VPN check. The home ISP drops all three
+UDP shapes toward Hetzner: Hysteria2 with salamander (UDP 47443), Hysteria2 as plain HTTP/3
+(UDP 443) and WireGuard (UDP 41642). No packet of 7 or 8 reached Hetzner (no conntrack entry,
+DNAT counters flat). Only Tailscale's own traffic passes.
+
+**Since 2026-11-25 ~17:00 UTC FirstVDS cannot reach Hetzner's public IP over TCP or plain UDP**
+(from FirstVDS: TCP 22/80/443 to `77.42.120.71` 10 of 10 time out; ping works; Cloudflare works;
+the same site over Tailscale 10 of 10 OK). Hetzner → senaev.ru fails ~50 %. No rule on Hetzner
+blocks FirstVDS. Most likely a filter at FirstVDS's provider. Profile 1 is not affected: its
+FirstVDS → Hetzner leg runs over Tailscale (cluster network).
+
+Profile 1 speed, Cloudflare download, seconds (VPN vs direct); 3-hour means unless marked:
+
+| window | 1 MiB | 4 MiB |
 |---|---|---|
-| 1. firstvds → hetzner | 503 of 508 | — |
-| 3. hetzner → senaev-media | 187 of 510 | — |
-| 4. hetzner → freedom | 185 of 507 | — |
-| 6. Hysteria2, UDP 47443, salamander | **0 of 509** | **236 of 236** |
+| round 4 (2026-11-19/20), medians | — | 1.41–1.69 vs 0.93–1.20 |
+| 2026-11-24 12:00 – 11-25 21:00 (FirstVDS swapping) | 1.6–3.9 vs 0.74–0.96 | 2.4–6.9 vs 1.0–1.2 |
+| 2026-11-25 21:00 – 11-26 12:00 (after #324/#325) | 1.13–1.59 vs 0.77–0.89 | 1.76–2.12 vs 1.03–1.21 |
 
-Profile 6 works from FirstVDS (4 MiB from Cloudflare: 1.99 s vs 0.76 s direct; 1 MiB 0.96 s
-vs 0.45 s), so the server and the config are right: **the home ISP drops this UDP traffic**.
-Over the same hours iperf3 home → Hetzner over Tailscale (WireGuard, UDP 41641) keeps
-19.9 Mbit/s. So UDP to Hetzner as such is not blocked; this kind of UDP, or this port, is.
+From the 1 MiB and 4 MiB times, profile 1 tops out at ~30 Mbit/s against ~100 Mbit/s direct.
 
-Hypotheses, ranked:
+Hypotheses for the ~30 Mbit/s limit, ranked:
 
-1. The filter passes UDP that looks like a known protocol and drops unknown UDP (salamander
-   makes every packet random bytes). Signals: profile 8 (WireGuard, UDP 41642) passes from
-   home; profile 7 (plain HTTP/3 look on UDP 443) passes if QUIC to foreign servers is allowed.
-2. The filter blocks QUIC to foreign servers. Signal: profile 7 fails from home, passes from
-   FirstVDS.
-3. Only Tailscale's traffic passes (its port or its peers). Signal: profile 8 fails from home
-   too; then the FirstVDS entry (profile 1) stays the route, and the next round tries making
-   it faster.
+1. FirstVDS's single vCPU (with ~15 % steal): Tailscale's WireGuard runs in user space there and
+   carries every byte of profile 1. Signal: FirstVDS ↔ Hetzner iperf3 at 100 Mbit/s stays near
+   30, with FirstVDS CPU at 100 % during the test. Fix: a bigger FirstVDS plan, or another
+   Russian entry VPS (the user's decision).
+2. FirstVDS's network plan. Signal: the same plateau with CPU to spare.
+3. The home ↔ FirstVDS leg. Signal: the tunnel carries well over 30 Mbit/s.
 
-Round 5 adds, all on Hetzner and probed from home (the FirstVDS probes were removed, see below):
-
-- profile 7, `⚡ 7. hetzner UDP 443 → freedom`: Hysteria2 on UDP 443 without obfuscation, a
-  second inbound of `xray-hysteria`. In the subscription: Happ supports Hysteria2. It was
-  never tested from home: the first try (#260) was blocked by our own NetworkPolicy.
-- profile 8, `🧪 8. hetzner WireGuard → freedom`: `xray-wireguard`, WireGuard on UDP 41642,
-  MTU 1280. Probe only: Happ cannot import WireGuard. If it passes, a later round gives a
-  config for the WireGuard app or another client.
-
-**User test wanted:** profile 1 stays the one to use; profile 7 appears after a subscription
-refresh and can be tried once its probe passes.
-
-**Round 5 is paused (2026-11-25).** Since ~17:00 UTC no UDP reaches the VPN pods on Hetzner,
-even from FirstVDS (profile 6 from FirstVDS: 0 of 18 after 236 of 236), before #308 deployed.
-Waiting for the user's check of the hostPort NAT rules on Hetzner. FirstVDS (1 vCPU, 1 GB)
-swaps since otel-agent arrived (2026-11-22), and the #308 deploy, which restarted its probes,
-took senaev.ru down for 10 minutes; all VPN diagnostics on FirstVDS were removed.
+Round 6 changes only the iperf3 monitor: a test can set `bitrateMbps`, FirstVDS ↔ Hetzner run at
+100 Mbit/s (10 s each, about every 50 min), and the agent CPU limit is 0.5 core so iperf3 itself
+is not the cap.
 
 Older data (round 4): uncapped Cloudflare 4 MiB, median seconds (VPN vs direct):
 

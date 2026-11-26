@@ -1,3 +1,16 @@
+## 2026-11-26 — Round 5 result; FirstVDS ↔ Hetzner public path blocked; round 6 measures the tunnel
+
+- Home: profiles 6, 7, 8 fail everything. On Hetzner (user ran it) no conntrack entry for UDP
+  47443/443/41642 and the hostPort DNAT counters stay flat for a minute; Tailscale's UDP 41641
+  flows (also from FirstVDS) are `[ASSURED]`. The home ISP drops all three UDP shapes.
+- From FirstVDS (user ran it): `000 connect=0.000000` 10 of 10 to https://senaev.com/ (public IP),
+  `200 connect≈0.02` 10 of 10 with `--resolve senaev.com:443:100.120.76.115` (Tailscale); TCP 22
+  and 80 to 77.42.120.71 fail; ping 17 ms OK; Cloudflare 200. Hetzner: no rule with `157.22`, no
+  fail2ban/crowdsec. A filter on the path, most likely at FirstVDS's provider, since ~17:00 UTC.
+- Profile 1 after the FirstVDS fix: 4 MiB 1.76–2.12 s vs 1.03–1.21 s direct, ~30 Mbit/s ceiling.
+  Decision: measure the FirstVDS ↔ Hetzner Tailscale link at 100 Mbit/s with the iperf3 monitor
+  (per-test `bitrateMbps`, agent CPU limit 0.5) to tell CPU/plan from the home leg.
+
 ## 2026-11-25 18:00–19:00 UTC — UDP to Hetzner stopped; FirstVDS overload took senaev.ru down
 
 - Profile 6 from FirstVDS passed every check until ~16:55 UTC, then failed everything. The
