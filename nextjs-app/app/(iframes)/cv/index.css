@@ -18,9 +18,9 @@
     color: #333;
 }
 
+/* No fixed paper size: a page forced to A4 is shrunk onto Letter paper, with wide side margins. */
 @page {
-    size: A4;
-    margin: 15mm;
+    margin: 12mm;
 }
 
 @media print {
