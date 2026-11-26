@@ -29,16 +29,24 @@ If your plugin does not need CSS, delete this file.
 	margin-bottom: var(--size-4-4);
 }
 
-/* As wide as the widest year, centred. A grid wider than the note makes the box as wide as the note
-   (`max-width`), and the months scroll inside it. */
+/* As wide as the widest year of the note, in compact and expanded view alike, and centred: the width is
+   `--senaev-calendar-columns` cells and the gaps between them, set by the renderer. Both views have the same
+   width, so the header does not move when the calendar expands. A grid wider than the note makes the box as
+   wide as the note (`min`), and the months scroll inside it. */
 .senaev-calendar-box {
-	width: fit-content;
-	max-width: 100%;
+	width: min(
+		100%,
+		calc(
+			var(--senaev-calendar-cell) * var(--senaev-calendar-columns) +
+			var(--senaev-calendar-gap) * var(--senaev-calendar-cell-gaps) +
+			var(--senaev-calendar-month-gap) * 11
+		)
+	);
 	margin-inline: auto;
 }
 
-/* Compact: the year switcher on the left and the `⋯` button on the right, in one low row.
-   Expanded: the title and totals go between them, in the middle. */
+/* The same low row in both views: the year switcher on the left (not drawn when expanded) and the `⋯`
+   button on the right. The title and the totals of the expanded view go below it. */
 .senaev-calendar-header {
 	display: flex;
 	align-items: center;
@@ -47,19 +55,13 @@ If your plugin does not need CSS, delete this file.
 	margin-bottom: var(--size-2-1);
 }
 
-.senaev-calendar-header.is-expanded {
-	display: grid;
-	grid-template-columns: 1fr auto 1fr;
-	gap: var(--size-4-2);
-	margin-bottom: var(--size-4-2);
-}
-
 .senaev-calendar-header-end {
 	display: flex;
 	justify-content: flex-end;
 }
 
 .senaev-calendar-heading {
+	margin-bottom: var(--size-4-2);
 	text-align: center;
 	/* The middle column may shrink, so a long note name wraps instead of pushing the button out of view. */
 	min-width: 0;
@@ -93,6 +95,13 @@ If your plugin does not need CSS, delete this file.
 	line-height: 1;
 }
 
+/* Obsidian's icon buttons keep the default cursor, so the enabled ones say they can be clicked.
+   A disabled arrow (the first or last year) keeps the default one. */
+.senaev-calendar-nav:not(:disabled),
+.senaev-calendar-more {
+	cursor: pointer;
+}
+
 .senaev-calendar-more.is-active {
 	background-color: var(--background-modifier-hover);
 	color: var(--text-normal);
@@ -120,23 +129,6 @@ If your plugin does not need CSS, delete this file.
 	display: flex;
 	align-items: flex-start;
 	gap: var(--size-4-2);
-}
-
-/* The weekday names have the height of the month names and the rows of the grid. */
-.senaev-calendar-weekdays {
-	flex: none;
-}
-
-.senaev-calendar-weekday-rows {
-	display: grid;
-	grid-template-rows: repeat(7, var(--senaev-calendar-cell));
-	gap: var(--senaev-calendar-gap);
-}
-
-.senaev-calendar-weekday {
-	color: var(--text-muted);
-	font-size: var(--font-ui-smaller);
-	line-height: var(--senaev-calendar-cell);
 }
 
 .senaev-calendar-months {

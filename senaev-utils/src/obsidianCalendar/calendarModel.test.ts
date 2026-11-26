@@ -2,7 +2,9 @@ import {
     describe, expect, it,
 } from 'vitest';
 
-import { buildYearGrid } from './calendarGrid';
+import {
+    buildYearGrid, countGridColumns, widestGrid,
+} from './calendarGrid';
 import { buildCalendarModel } from './calendarModel';
 import {
     buildMentionCalendar,
@@ -255,6 +257,49 @@ describe('buildYearGrid', () => {
             3,
             11,
         ]);
+    });
+
+    it('counts the week columns and the separators of a year', () => {
+        const months = buildYearGrid(2026);
+        const { weekColumns, separators } = countGridColumns(months);
+
+        // Every month has its own columns: a month of 28 to 31 days spans 5 or 6 week columns, and 4 when it
+        // is a February that starts on the first day of the week.
+        expect(weekColumns).toBe(months.reduce((sum, month) => sum + month.weeks.length, 0));
+        expect(weekColumns).toBeGreaterThanOrEqual(12 * 4);
+        expect(weekColumns).toBeLessThanOrEqual(12 * 6);
+        expect(separators).toBe(1);
+        expect(countGridColumns([])).toEqual({
+            weekColumns: 0,
+            separators: 0,
+        });
+    });
+
+    it('picks the widest of several years, breaking a tie in columns by the gaps', () => {
+        // A grid is `columns` cells and `cellGaps` gaps wide, plus 11 gaps between months.
+        const cell = 10;
+        const gap = 1.5;
+        const years = [
+            2021,
+            2022,
+            2023,
+            2024,
+            2025,
+            2026,
+        ].map((year) => buildYearGrid(year));
+        const widthOf = (months: ReturnType<typeof buildYearGrid>) => {
+            const size = widestGrid([months]);
+
+            return size === null ? 0 : size.columns * cell + size.cellGaps * gap + 11 * gap;
+        };
+        const widest = widestGrid(years);
+
+        // Several of these years have the same number of columns, so only the gaps tell them apart.
+        expect(new Set(years.map((months) => widestGrid([months])?.columns)).size).toBeLessThan(years.length);
+        expect(widest).not.toBeNull();
+        expect(widest === null ? 0 : widest.columns * cell + widest.cellGaps * gap + 11 * gap)
+            .toBe(Math.max(...years.map(widthOf)));
+        expect(widestGrid([])).toBeNull();
     });
 
     it('starts the week on Sunday on request and handles leap years', () => {
