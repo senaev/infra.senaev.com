@@ -29,6 +29,14 @@ If your plugin does not need CSS, delete this file.
 	margin-bottom: var(--size-4-4);
 }
 
+/* As wide as the widest year, centred. A grid wider than the note makes the box as wide as the note
+   (`max-width`), and the months scroll inside it. */
+.senaev-calendar-box {
+	width: fit-content;
+	max-width: 100%;
+	margin-inline: auto;
+}
+
 /* Compact: the year switcher on the left and the `⋯` button on the right, in one low row.
    Expanded: the title and totals go between them, in the middle. */
 .senaev-calendar-header {
