@@ -1,4 +1,4 @@
-.Container {
+.CV__container {
     --line-width: 2px;
 
     position: relative;
@@ -10,34 +10,34 @@
     padding: 2em 1.5em 3em 1.5em;
 }
 
-.Header {
+.CV__header {
     display: flex;
     gap: 1.5em;
     align-items: center;
     padding-bottom: 1em;
 }
 
-.Header h1 {
+.CV__header h1 {
     font-size: 2em;
     margin: 0;
     color: #2c3e50;
 }
 
-.Title {
+.CV__title {
     font-style: italic;
     margin: 0.1em 0 0.4em 0;
 }
 
-.Avatar {
+.CV__avatar {
     flex: 0 0 auto;
 }
 
-.Avatar img {
+.CV__avatar img {
     border-radius: 50%;
     display: block;
 }
 
-.Header .Contacts {
+.CV__header .CV__contacts {
     list-style: none;
     padding: 0;
     margin: 0;
@@ -48,50 +48,50 @@
     column-gap: 2em;
 }
 
-.PrintButtonContainer {
+.CV__printButtonContainer {
     position: absolute;
     top: 1em;
     right: 1.5em;
 }
 
-.Header .Contacts a {
+.CV__header .CV__contacts a {
     color: #2980b9;
     text-decoration: none;
 }
 
-.Header .Contacts a:hover {
+.CV__header .CV__contacts a:hover {
     text-decoration: underline;
 }
 
-.Content ul {
+.CV__content ul {
     padding-left: 0;
 }
 
-.Content .EducationItem {
+.CV__content .CV__educationItem {
     margin: 1em 0;
 }
 
-.Content .EducationItem p {
+.CV__content .CV__educationItem p {
     margin: 0;
 }
 
-.Content .EducationItem__degree {
+.CV__content .CV__educationItemDegree {
     display: flex;
     justify-content: space-between;
 }
 
-.Content h2 {
+.CV__content h2 {
     border-bottom: var(--line-width) solid #3498db;
     padding-bottom: 0.2em;
     color: #2c3e50;
 }
 
-.Content h3 {
+.CV__content h3 {
     margin: 0.2em 0;
     color: #3498db;
 }
 
-.Content li {
+.CV__content li {
     color: #fff;
     background: #3498db;
     border-radius: 0.7em;
@@ -104,17 +104,17 @@
 }
 
 @media (max-width: 850px) {
-    .Container {
+    .CV__container {
         font-size: 16px;
     }
 }
 
 @media (max-width: 600px) {
-    .Header .Contacts {
+    .CV__header .CV__contacts {
         grid-template-columns: 1fr;
     }
 
-    .Header {
+    .CV__header {
         flex-direction: column;
         align-items: flex-start;
     }
@@ -126,32 +126,32 @@
  * a background colour.
  */
 @media print {
-    .Container {
+    .CV__container {
         font-size: 9.5pt;
         line-height: 1.45em;
         max-width: none;
         padding: 0;
     }
 
-    .Avatar,
-    .PrintButtonContainer {
+    .CV__avatar,
+    .CV__printButtonContainer {
         display: none;
     }
 
-    .Header .Contacts a {
+    .CV__header .CV__contacts a {
         color: #000;
     }
 
-    .Content h2,
-    .Content h3 {
+    .CV__content h2,
+    .CV__content h3 {
         break-after: avoid;
     }
 
-    .Content .EducationItem {
+    .CV__content .CV__educationItem {
         break-inside: avoid;
     }
 
-    .Content li {
+    .CV__content li {
         color: #000;
         background: none;
         border: 1px solid #3498db;

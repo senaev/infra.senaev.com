@@ -43,18 +43,18 @@ export default async function Page (): Promise<JSX.Element> {
 
     return <div
         className={classNames(
-            styles.Container,
+            styles.CV__container,
             FONT_MERRIWEATHER_CLASSNAMES,
             'CvPage_container'
         )}
     >
-        <div className={styles.PrintButtonContainer}>
+        <div className={styles.CV__printButtonContainer}>
             <PrintButton/>
         </div>
-        <header className={styles.Header}>
+        <header className={styles.CV__header}>
             <Link
                 href={'/'}
-                className={styles.Avatar}
+                className={styles.CV__avatar}
             >
                 <Image
                     width={AVATAR_SIZE}
@@ -67,10 +67,10 @@ export default async function Page (): Promise<JSX.Element> {
                 <h1>
                     {SENAEV_FULL_NAME}
                 </h1>
-                <p className={styles.Title}>
+                <p className={styles.CV__title}>
                     {SENAEV_CURRENT_DUTY_SHORT}
                 </p>
-                <ul className={styles.Contacts}>
+                <ul className={styles.CV__contacts}>
                     {
                         SENEAV_CONTACTS.map(({
                             header,
@@ -102,7 +102,7 @@ export default async function Page (): Promise<JSX.Element> {
             </div>
         </header>
 
-        <main className={styles.Content}>
+        <main className={styles.CV__content}>
             <MarkdownHeader
                 depth={2}
                 id={'about-me'}
@@ -128,10 +128,10 @@ export default async function Page (): Promise<JSX.Element> {
                     degree,
                     level,
                 }, i) => <div
-                    className={styles.EducationItem}
+                    className={styles.CV__educationItem}
                     key={i}
                 >
-                    <p className={styles.EducationItem__degree}>
+                    <p className={styles.CV__educationItemDegree}>
                         <strong>
                             {degree}
                         </strong>
