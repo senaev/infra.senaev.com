@@ -1,15 +1,15 @@
-import classNames from 'classnames';
 import {
     SENAEV_CURRENT_DUTY,
     SENAEV_CV_LINK,
     SENAEV_ELEVATOR_PITCH,
+    SENAEV_EMAIL,
     SENAEV_EMAIL_LINK,
     SENAEV_FULL_NAME,
     SENAEV_GITHUB_LINK,
     SENAEV_LINKEDIN_LINK,
     SENAEV_LOCATION,
-    SENAEV_SOCIALS,
     SENAEV_TELEGRAM_LINK,
+    SENAEV_TELEGRAM_NICKNAME,
 } from 'const/const';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -21,28 +21,29 @@ import styles from './index.module.css';
 
 const AVATAR_SIZE = 150;
 
-/** External profiles shown as buttons after the CV; the CV button comes first. */
-const PROFILE_BUTTONS = [
+/** Shown under the location as plain links, with the address itself as the text, so it can be copied. */
+const HEADER_LINKS = [
     {
-        name: 'LinkedIn',
+        text: `senaev.com${SENAEV_CV_LINK}`,
+        link: SENAEV_CV_LINK,
+    },
+    {
+        text: 'linkedin.com/in/senaev',
         link: SENAEV_LINKEDIN_LINK,
     },
     {
-        name: 'GitHub',
+        text: 'github.com/senaev',
         link: SENAEV_GITHUB_LINK,
     },
     {
-        name: 'Email',
+        text: SENAEV_EMAIL,
         link: SENAEV_EMAIL_LINK,
     },
     {
-        name: 'Telegram',
+        text: `@${SENAEV_TELEGRAM_NICKNAME}`,
         link: SENAEV_TELEGRAM_LINK,
     },
 ];
-
-/** The other public links, in one quiet line; LinkedIn and GitHub are already buttons. */
-const MORE_LINKS = SENAEV_SOCIALS.filter(({ link }) => link !== SENAEV_LINKEDIN_LINK && link !== SENAEV_GITHUB_LINK);
 
 export default function Page(): JSX.Element {
     return <div className={styles.MainPage__container}>
@@ -66,23 +67,23 @@ export default function Page(): JSX.Element {
                 </p>
             </header>
 
-            <nav className={styles.MainPage__buttons}>
-                <Link
-                    href={SENAEV_CV_LINK}
-                    className={classNames(styles.MainPage__button, styles.MainPage__button_primary)}
-                >
-                    {'CV'}
-                </Link>
+            <nav className={styles.MainPage__links}>
                 {
-                    PROFILE_BUTTONS.map(({ name, link }) => <a
-                        key={name}
-                        href={link}
-                        target={'_blank'}
-                        rel={'noreferrer'}
-                        className={styles.MainPage__button}
-                    >
-                        {name}
-                    </a>)
+                    HEADER_LINKS.map(({ text, link }) => link.startsWith('/')
+                        ? <Link
+                            key={link}
+                            href={link}
+                        >
+                            {text}
+                        </Link>
+                        : <a
+                            key={link}
+                            href={link}
+                            target={'_blank'}
+                            rel={'noreferrer'}
+                        >
+                            {text}
+                        </a>)
                 }
             </nav>
 
@@ -97,21 +98,6 @@ export default function Page(): JSX.Element {
                 }
             </section>
 
-            <footer className={styles.MainPage__more}>
-                {'More: '}
-                {
-                    MORE_LINKS.map(({ name, link }, i) => <span key={link}>
-                        {i > 0 ? ' · ' : null}
-                        <a
-                            href={link}
-                            target={link.startsWith('/') ? undefined : '_blank'}
-                            rel={'noreferrer'}
-                        >
-                            {name}
-                        </a>
-                    </span>)
-                }
-            </footer>
         </main>
     </div>;
 }

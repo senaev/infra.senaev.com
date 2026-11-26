@@ -37,47 +37,26 @@
     color: #666;
 }
 
-.MainPage__buttons {
+.MainPage__links {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 0.6em;
+    gap: 0.2em 1.4em;
     margin-bottom: 2em;
+    font-size: 0.9em;
 }
 
-.MainPage__button {
-    padding: 0.35em 1.1em;
-    border: 2px solid #2c3e50;
-    border-radius: 2em;
-    color: #2c3e50;
+.MainPage__links a {
+    color: #2980b9;
     text-decoration: none;
-    font-weight: 600;
-    white-space: nowrap;
 }
 
-.MainPage__button:hover {
-    background: #2c3e50;
-    color: #fff;
-}
-
-.MainPage__button_primary {
-    background: #2c3e50;
-    color: #fff;
-}
-
-.MainPage__button_primary:hover {
-    background: #3498db;
-    border-color: #3498db;
+.MainPage__links a:hover {
+    text-decoration: underline;
 }
 
 .MainPage__about h2 {
     margin: 0.3em 0;
-}
-
-.MainPage__more {
-    margin-top: 2em;
-    font-size: 0.85em;
-    color: #666;
 }
 
 @media (max-width: 600px) {
