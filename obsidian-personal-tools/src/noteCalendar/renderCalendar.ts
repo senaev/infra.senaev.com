@@ -17,7 +17,6 @@ export interface CalendarRenderOptions<Kind extends string> {
 	 * E.g. the note path and the kind.
 	 */
 	scrollKey: string;
-	title: string;
 	/** Shown when there is nothing to count. */
 	emptyText: string;
 	kindStyles: Readonly<Record<Kind, CalendarKindStyle>>;
@@ -96,8 +95,8 @@ function createNavButton(
 /**
  * Draws a GitHub-style calendar into `containerEl`. Compact, it is a year switcher and the months
  * of one year, with nothing else. The `⋯` button opens every year, newest first, with the
- * title and the totals. The header row stays as it is: only the year switcher goes. A day with
- * entries links to its daily note.
+ * overall totals on the left, before the first year. The header row stays as it is: only the year
+ * switcher goes. A day with entries links to its daily note.
  * The container is cleared first, so calling this again refreshes it.
  */
 export function renderCalendar<Kind extends string>(
@@ -194,11 +193,12 @@ function renderHeader<Kind extends string>(
 	});
 	moreButton.addEventListener('click', () => actions.toggleExpanded());
 
-	// Everything else goes below the header row.
+	// Everything else goes below the header row. The overall totals come first, on the left, as a row
+	// like the one of each year.
 	if (expanded) {
-		const headingEl = containerEl.createDiv({ cls: 'senaev-calendar-heading' });
-		headingEl.createDiv({ cls: 'senaev-calendar-title', text: options.title });
-		headingEl.createDiv({
+		const overallEl = containerEl.createDiv({ cls: ['senaev-calendar-year-header', 'is-overall'] });
+		overallEl.createSpan({ cls: 'senaev-calendar-year-name', text: 'Overall' });
+		overallEl.createSpan({
 			cls: 'senaev-calendar-totals',
 			text: formatCounts(model.kinds, model.counts, options.kindStyles) || options.emptyText,
 		});
