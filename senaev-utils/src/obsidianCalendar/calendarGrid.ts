@@ -8,6 +8,12 @@ export type CalendarMonthGrid = {
      * the month is `null`, so every column has the same height.
      */
     weeks: readonly (readonly (IsoDay | null)[])[];
+    /**
+     * Whether the previous month ends on the last row of its last column, e.g. on a Sunday when
+     * weeks start on Monday. This month starts in the next column then, so the two would touch
+     * with nothing between them; a calendar leaves one empty column. Always `false` for January.
+     */
+    separated: boolean;
 };
 
 /** 0 is Sunday, 1 is Monday: the day a calendar week starts on. */
@@ -49,9 +55,12 @@ export function buildYearGrid(year: number, weekStart: WeekStart = 1): CalendarM
             weeks.push(slots.slice(index, index + 7));
         }
 
+        const previousLastWeek = months[months.length - 1]?.weeks.at(-1);
+
         months.push({
             month,
             weeks,
+            separated: previousLastWeek !== undefined && previousLastWeek[6] !== null,
         });
     }
 

@@ -10,7 +10,7 @@ If your plugin does not need CSS, delete this file.
 /* Note calendars: `reminders-calendar: true` and `mentions-calendar: true` in the frontmatter. */
 
 .senaev-note-calendars {
-	--senaev-calendar-cell: 7px;
+	--senaev-calendar-cell: 10px;
 	--senaev-calendar-gap: 1.5px;
 	/* No extra space between months: their columns are spaced like neighbouring cells, so the month names and the staggered first and last weeks tell them apart. Set 0 to make them touch. */
 	--senaev-calendar-month-gap: var(--senaev-calendar-gap);
@@ -133,9 +133,26 @@ If your plugin does not need CSS, delete this file.
 
 .senaev-calendar-months {
 	display: flex;
+	flex: 1 1 auto;
+	min-width: 0;
 	gap: var(--senaev-calendar-month-gap);
 	overflow-x: auto;
 	padding-bottom: var(--size-2-1);
+}
+
+/* Auto margins at both ends centre the months when they fit. When they do not, the margins are 0,
+   so the row scrolls from its left edge; `justify-content: center` would cut the left side off. */
+.senaev-calendar-months > :first-child {
+	margin-left: auto;
+}
+
+.senaev-calendar-months > :last-child {
+	margin-right: auto;
+}
+
+/* The previous month ends on the last row of its week: leave one empty column between the two. */
+.senaev-calendar-month.is-separated {
+	margin-left: var(--senaev-calendar-cell);
 }
 
 .senaev-calendar-month {
