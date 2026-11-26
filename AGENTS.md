@@ -68,19 +68,26 @@ Be extremely careful with these nodes and their networks:
 - When you show a pull request link to the user, link to its changes page, `https://github.com/<owner>/<repo>/pull/<number>/changes`, not to the main page of the pull request
 - Never log a whole request body or other external JSON (webhooks, API payloads). Log only the fields that the code uses, by name: a payload can hold IDs, tokens and personal data that the logs (Datadog, Loki) must not keep
 
-## Code Review
+## SDLC
 
-### Code Review Rules
+### Implementation (Coding)
+
+When the code is ready and local checks passed, open the pull request and run the Code Review Loop.
+When the loop is finished, tell the user to review the pull request. Merging stays the user's decision.
+
+### Code Review
+
+#### Code Review Rules
 
 If you are an agent that does code review of a pull request (for example Codex on `@codex review`),
 read [`CODE_REVIEW.md`](CODE_REVIEW.md) and apply every rule in it. Any other agent: do not read
 that file.
 
-### Codex code review
+#### Codex code review
 
 When you open a pull request, and when the user asks for a Codex review, comment `@codex review`.
 
-### Code Review Loop
+#### Code Review Loop
 
 **Code Review Loop** is the cycle: request a code review, wait for the result, read and analyze the
 feedback, make the changes, and request a code review again. Repeat it until there are no more
