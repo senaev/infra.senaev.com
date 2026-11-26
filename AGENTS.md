@@ -21,13 +21,6 @@ each request or command. Store it in [`projects/`](projects/) as a folder
 Keep existing folders unchanged. Follow [`projects/AGENTS.md`](projects/AGENTS.md)
 for the folder layout, the main document, the status and the worklog.
 
-## Main checkout and worktrees
-
-Never change anything in the main checkout of this repository: no edits, commits, branch
-switches or stashes. It stays on `main`, and several agents use it at the same time. Use it only
-to pull `main` and to add or remove worktrees. Do every task in its own worktree, made from the
-latest `main`.
-
 ## Sensitive nodes: `proxmox`, `senaev-media`, `proxmox-madrid` and `senaev-madrid`
 
 `proxmox` (bare metal) and `senaev-media` (VM 100 on it) are at home, behind the home
@@ -74,6 +67,37 @@ Be extremely careful with these nodes and their networks:
 
 When the code is ready and local checks passed, open the pull request and run the Code Review Loop.
 When the loop is finished, tell the user to review the pull request. Merging stays the user's decision.
+
+### Worktrees
+
+The main checkout of this repository (`/code/projects/<repo>`) stays on `main`, and several agents
+use it at the same time. Never change anything in it: no edits, commits, branch switches or
+stashes. Use it only to pull `main` and to add or remove worktrees.
+
+Before any change to the code of the repository, in this order:
+
+1. Pull the latest `main` in the main checkout: `git pull --ff-only origin main`.
+2. Create a separate worktree for the task from that `main`:
+   `git worktree add -b <branch> /code/worktrees/<repo>/<branch> main`.
+3. Make all the changes, run the checks and commit in that worktree only.
+
+Do every task in its own worktree, even a small one. Remove the worktree when its pull request is
+merged or closed.
+
+Lefthook also installs a `post-checkout` hook, `scripts/post-checkout.sh`: `git worktree add`
+runs `npm run ci:all` in the new worktree, so it is ready for the checks. Git runs this hook on
+every checkout, so the script acts only when the previous HEAD is the all-zeros commit, which
+happens only in a new worktree. Skip it with `SKIP_WORKTREE_INSTALL=1` or
+`git worktree add --no-checkout`. A new worktree has no `node_modules` yet, so the `lefthook`
+setting in `lefthook.yml` makes the hooks call the lefthook of the main checkout when the worktree
+has none: the main checkout needs its `node_modules`. Lefthook rewrites the shared hooks from the
+`lefthook.yml` of the worktree that runs them when its checksum differs, so a hook run in a
+worktree without this setting drops it, and the next new worktree prints "Can't find lefthook"
+and installs nothing; a hook can also fail once while it rewrites itself. Both stop once every
+worktree has the same `lefthook.yml`; until then run `npx lefthook install` in an up-to-date one.
+Hooks are shared by all worktrees, but a worktree created from a commit before this hook has no
+`post-checkout` entry in its `lefthook.yml`, so nothing runs there. If the managed global hooks do not chain `post-checkout` into the repo-level hook, it
+does not run on that machine; then run `npm run ci:all` by hand.
 
 ### Code Review
 
@@ -393,21 +417,6 @@ git config --local --unset core.hooksPath
 
 Never leave `core.hooksPath` overridden: that silently disables the managed secret scanner
 for this repository.
-
-Lefthook also installs a `post-checkout` hook, `scripts/post-checkout.sh`: `git worktree add`
-runs `npm run ci:all` in the new worktree, so it is ready for the checks. Git runs this hook on
-every checkout, so the script acts only when the previous HEAD is the all-zeros commit, which
-happens only in a new worktree. Skip it with `SKIP_WORKTREE_INSTALL=1` or
-`git worktree add --no-checkout`. A new worktree has no `node_modules` yet, so the `lefthook`
-setting in `lefthook.yml` makes the hooks call the lefthook of the main checkout when the worktree
-has none: the main checkout needs its `node_modules`. Lefthook rewrites the shared hooks from the
-`lefthook.yml` of the worktree that runs them when its checksum differs, so a hook run in a
-worktree without this setting drops it, and the next new worktree prints "Can't find lefthook"
-and installs nothing; a hook can also fail once while it rewrites itself. Both stop once every
-worktree has the same `lefthook.yml`; until then run `npx lefthook install` in an up-to-date one. Hooks are shared by all worktrees, but a worktree created from
-a commit before this hook has no `post-checkout` entry in its `lefthook.yml`, so nothing runs
-there. If the managed global hooks do not chain `post-checkout` into the repo-level hook, it
-does not run on that machine; then run `npm run ci:all` by hand.
 
 ## Shared Package: senaev-utils
 
