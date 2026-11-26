@@ -63,12 +63,7 @@ Be extremely careful with these nodes and their networks:
 
 ## SDLC
 
-### Implementation (Coding)
-
-When the code is ready and local checks passed, open the pull request and run the Code Review Loop.
-When the loop is finished, tell the user to review the pull request. Merging stays the user's decision.
-
-### Worktrees
+### Environment Setup
 
 The main checkout of this repository (`/code/projects/<repo>`) stays on `main`, and several agents
 use it at the same time. Never change anything in it: no edits, commits, branch switches or
@@ -84,20 +79,10 @@ Before any change to the code of the repository, in this order:
 Do every task in its own worktree, even a small one. Remove the worktree when its pull request is
 merged or closed.
 
-Lefthook also installs a `post-checkout` hook, `scripts/post-checkout.sh`: `git worktree add`
-runs `npm run ci:all` in the new worktree, so it is ready for the checks. Git runs this hook on
-every checkout, so the script acts only when the previous HEAD is the all-zeros commit, which
-happens only in a new worktree. Skip it with `SKIP_WORKTREE_INSTALL=1` or
-`git worktree add --no-checkout`. A new worktree has no `node_modules` yet, so the `lefthook`
-setting in `lefthook.yml` makes the hooks call the lefthook of the main checkout when the worktree
-has none: the main checkout needs its `node_modules`. Lefthook rewrites the shared hooks from the
-`lefthook.yml` of the worktree that runs them when its checksum differs, so a hook run in a
-worktree without this setting drops it, and the next new worktree prints "Can't find lefthook"
-and installs nothing; a hook can also fail once while it rewrites itself. Both stop once every
-worktree has the same `lefthook.yml`; until then run `npx lefthook install` in an up-to-date one.
-Hooks are shared by all worktrees, but a worktree created from a commit before this hook has no
-`post-checkout` entry in its `lefthook.yml`, so nothing runs there. If the managed global hooks do not chain `post-checkout` into the repo-level hook, it
-does not run on that machine; then run `npm run ci:all` by hand.
+### Implementation (Coding)
+
+When the code is ready and local checks passed, open the pull request and run the Code Review Loop.
+When the loop is finished, tell the user to review the pull request. Merging stays the user's decision.
 
 ### Code Review
 
