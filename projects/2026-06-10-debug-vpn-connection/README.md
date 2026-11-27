@@ -5,6 +5,21 @@
 
 ## Current status (updated every round)
 
+**Round 10 — 2026-11-27, PR "Recommend VPN profile 10 and turn off profile 9".**
+
+**Use profile 10 (`🇫🇮⚡ 10. firstvds UDP obfs → hetzner`), first in the subscription; profile 1 is
+the TCP fallback.** Round 9 result, home probes 12:05–15:05 UTC (VPN route, all checks):
+
+| profile | VPN checks OK | Cloudflare 1 MiB (VPN / direct) | Cloudflare 4 MiB (VPN / direct) |
+|---|---|---|---|
+| 10. firstvds UDP obfs → hetzner | 247 of 247 | 0.80 / 0.89 s | 1.79 / 1.03 s |
+| 1. firstvds → hetzner | 247 of 247 | 1.38 / 0.73 s | 2.22 / 1.02 s |
+| 9. firstvds UDP → hetzner | 15 of 166 | — | — |
+
+Profile 9 works on mobile data (user), not from home. Round 10: profile 10 first in the
+subscription, profile 9 off (entry, probe, UDP 443 inbound), and the alert `vpn-profile-failing`
+covers profiles 10 and 1 (was `vpn-profile-1-failing`). The ufw rule `443/udp` on firstvds can go.
+
 **Round 9 — 2026-11-27, PR "Add profile 10: Hysteria2 with salamander to FirstVDS".**
 
 Round 8 result: on the host network the server answers each Initial with its handshake (3 × 1280 B

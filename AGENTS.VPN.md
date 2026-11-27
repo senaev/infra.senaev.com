@@ -23,7 +23,7 @@ every hour. If the certificate is missing, only that pod fails. `hostNetwork: tr
 runs the pod on the node's network: the pod MTU (~1280, flannel VXLAN over tailscale0) is smaller
 than QUIC's handshake packets (1280 bytes of UDP payload, 1308 on the wire; Xray cannot lower it),
 so in the pod network the server never sent its certificate. On the host network the port goes
-through the node's INPUT chain, so the node firewall must allow it (`ufw allow 443/udp` and `ufw allow 47443/udp` on firstvds). A client without the user password gets
+through the node's INPUT chain, so the node firewall must allow it (`ufw allow 47443/udp` on firstvds). A client without the user password gets
 `https://<serverName>/` through the masquerade proxy. `exit` is where traffic leaves: `freedom` when it
 is the instance's own node, otherwise the SOCKS inbound (1080) of the xray-vpn instance on that node,
 over the cluster network (Tailscale), as profile 1 does.
@@ -31,8 +31,7 @@ over the cluster network (Tailscale), as profile 1 does.
 | Instance | Profiles | Port | State |
 |---|---|---|---|
 | `hetzner` | 6 (UDP 47443, salamander), 7 (UDP 443) | Hetzner, exit Hetzner | **off since 2026-11-26**: the home ISP drops both; profile 6 worked only from outside Russia |
-| `firstvds` | 9 `hysteria2://{XRAY_USER_UUID:9}@senaev.ru:443?sni=senaev.ru` | FirstVDS UDP 443 (Traefik uses only TCP 443), exit Hetzner | added 2026-11-27: profile 1's chain with a UDP first leg inside Russia; the handshake replies are dropped after FirstVDS (round 8) |
-| `firstvds` | 10 `hysteria2://{XRAY_USER_UUID:10}@senaev.ru:47443?sni=senaev.ru&obfs=salamander&obfs-password={XRAY_USER_UUID:10-obfs}` | FirstVDS UDP 47443, salamander, exit Hetzner | added 2026-11-27 (round 9): profile 9 with packets that do not look like QUIC |
+| `firstvds` | 10 `hysteria2://{XRAY_USER_UUID:10}@senaev.ru:47443?sni=senaev.ru&obfs=salamander&obfs-password={XRAY_USER_UUID:10-obfs}` | FirstVDS UDP 47443, salamander, exit Hetzner | added 2026-11-27 (round 9), **recommended from home** since round 10; profile 9 (the same on UDP 443 without salamander) is off: its QUIC handshake replies were dropped on the way home |
 
 The password is the UUID derived from the profile's seed, like the VLESS users; the salamander
 password (`finalmask.udp`, set when an inbound has `obfsPasswordMacro`) the UUID of seed `6-obfs` (`10-obfs` for profile 10).
@@ -74,8 +73,9 @@ is a diagnostic (added 2026-11-25): Happ cannot import WireGuard, so the entry h
 
 Group `vpn` in `provisioning/helm/senaev-com/templates/alerts.yaml`, to the cluster Telegram chat:
 
-- `vpn-profile-1-failing`: more than half of profile 1's parity checks fail through the VPN in
-  30 minutes, counting only the checks whose direct twin mostly passes in the same window (for 10
+- `vpn-profile-failing` (per `profile_index`, profiles 10 and 1; was `vpn-profile-1-failing`
+  until round 10): more than half of a profile's parity checks fail through the VPN in 30
+  minutes, counting only the checks whose direct twin mostly passes in the same window (for 10
   minutes), so a target outage does not fire it.
 - `vpn-firstvds-stalled`: the mean smokeping RTT over Tailscale to firstvds from all nodes is above
   0.5 s (normally 17–70 ms) for 5 minutes. On 2026-11-26 19:40–21:30 UTC the VM stalled at the

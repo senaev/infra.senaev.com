@@ -1,3 +1,14 @@
+## 2026-11-27 15:10 UTC — Round 9 result: profile 10 works from home and beats profile 1
+
+Home probes, 3 h after #348 (`increase(vpn_probe_checks_total[3h])`, VPN route): profile 10
+247 success / 0 failure, profile 1 247 / 0, profile 9 15 / 151. Mean durations of the parity checks
+(`avg_over_time(vpn_probe_duration_seconds[3h])`, VPN vs direct): Cloudflare 1 MiB 0.80 vs 0.89 s
+(profile 10) and 1.38 vs 0.73 s (profile 1); 4 MiB 1.79 vs 1.03 and 2.22 vs 1.02; httpbingo 64 KiB
+0.59 vs 1.30 and 1.55 vs 1.68. The user: profiles 9 and 10 work on mobile data. So salamander passes
+where plain QUIC is dropped on the way home. Decision (round 10): profile 10 first in the
+subscription, profile 9 off, the profile 1 alert generalized per profile to 1 and 10; the new
+expression, run on live data with profile 9 included, gave 0 for 1 and 10 and 1 for 9.
+
 ## 2026-11-27 11:50 UTC — Round 8 result: the server answers, the QUIC handshake is dropped after FirstVDS
 
 #347 deployed at 10:27 UTC; `xray-hysteria-firstvds` runs with `host_network="true"`. The h3 test
