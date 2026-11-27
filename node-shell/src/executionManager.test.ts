@@ -586,6 +586,42 @@ describe('stop', () => {
         })).resolves.toMatchObject({ kind: 'started' });
     });
 
+    it('stops a command whose record is still being created', async () => {
+        const created = deferred<undefined>();
+        const { create } = store;
+
+        store.create = async (record) => {
+            const isNew = await create(record);
+
+            await created.promise;
+
+            return isNew;
+        };
+
+        run.mockImplementation(({ argv }) => Promise.resolve(isStop(argv)
+            ? {
+                ...result,
+                exitCode: 5,
+            }
+            : {
+                ...result,
+                exitCode: 143,
+            }));
+
+        const started = manager.start(request);
+
+        await settle();
+        await expect(manager.stop('e1')).resolves.toMatchObject({ kind: 'stopped' });
+        created.resolve(undefined);
+        await started;
+        await settle();
+
+        expect(store.records.get('e1')).toMatchObject({
+            status: 'stopped',
+            stoppedAt: NOW.toISOString(),
+        });
+    });
+
     it('treats a unit that is already gone as stopped', async () => {
         const pending = deferred<CommandResult>();
 

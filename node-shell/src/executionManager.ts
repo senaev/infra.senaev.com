@@ -287,18 +287,28 @@ export function createExecutionManager({
                 endsBy: new Date(startedAt.getTime() + nodeCommand.timeoutSeconds * 1000 + DEADLINE_GRACE_MS).toISOString(),
             };
 
+            // Active before the save: a stop that sees the new record goes through the stop marker.
+            active.set(record.executionId, target);
+
+            const release = () => {
+                reservedSlots -= 1;
+                active.delete(record.executionId);
+                stops.delete(record.executionId);
+                finalizing.delete(record.executionId);
+            };
+
             // Saved before the command starts, so a restart never starts it again.
             let created: boolean;
 
             try {
                 created = await store.create(record);
             } catch (error) {
-                reservedSlots -= 1;
+                release();
                 throw error;
             }
 
             if (!created) {
-                reservedSlots -= 1;
+                release();
 
                 const raced = await store.read(nodeCommand.executionId);
 
@@ -311,7 +321,6 @@ export function createExecutionManager({
                 timeoutSeconds: nodeCommand.timeoutSeconds,
             }, '▶️ Node command started');
 
-            active.set(record.executionId, target);
             void execute(nodeCommand, target, record)
                 .catch((error: unknown) => {
                     logger.error({
@@ -319,12 +328,7 @@ export function createExecutionManager({
                         executionId: record.executionId,
                     }, '❌ A node command failed unexpectedly');
                 })
-                .finally(() => {
-                    reservedSlots -= 1;
-                    active.delete(record.executionId);
-                    stops.delete(record.executionId);
-                    finalizing.delete(record.executionId);
-                });
+                .finally(release);
 
             return {
                 kind: 'started',
