@@ -5,6 +5,16 @@
 
 ## Current status (updated every round)
 
+**Round 9 — 2026-11-27, PR "Add profile 10: Hysteria2 with salamander to FirstVDS".**
+
+Round 8 result: on the host network the server answers each Initial with its handshake (3 × 1280 B
+from UDP 443, tcpdump on ens3), but the replies never arrive, at home or abroad; the 45-byte close
+does. Random UDP from FirstVDS (port 40000) of 100–1472 B, also with a QUIC long header, arrives.
+So the real QUIC handshake is recognized and dropped after FirstVDS, not cut by size. Round 9 adds
+profile 10 (`🇫🇮⚡ 10. firstvds UDP obfs → hetzner`): the same server and exit, with salamander on UDP
+47443, so no packet looks like QUIC. Profile 9 stays as the control. ufw on firstvds must allow
+`47443/udp`. Signal: profile 10's VPN checks succeed from home while profile 9's fail.
+
 **Round 8 — 2026-11-27, PR "Run the FirstVDS Hysteria2 server on the host network".**
 
 Profile 9 failed everywhere (home, mobile data): the server's QUIC handshake packets (1308 bytes on

@@ -1,3 +1,27 @@
+## 2026-11-27 11:50 UTC — Round 8 result: the server answers, the QUIC handshake is dropped after FirstVDS
+
+#347 deployed at 10:27 UTC; `xray-hysteria-firstvds` runs with `host_network="true"`. The h3 test
+from outside Russia still gets no reply (43 of 43), h2 still gets its close. tcpdump on firstvds
+(user) while the test ran:
+
+```
+14:30:28.623156 ens3  In  IP 47.58.178.47.52269 > 157.22.197.112.443: UDP, length 1200
+14:30:28.710379 ens3  Out IP 157.22.197.112.443 > 47.58.178.47.52269: UDP, length 1280
+14:30:28.710422 ens3  Out IP 157.22.197.112.443 > 47.58.178.47.52269: UDP, length 1280
+14:30:28.710457 ens3  Out IP 157.22.197.112.443 > 47.58.178.47.52269: UDP, length 1280
+...
+IpFragFails 2, UdpSndbufErrors 0; ens3 mtu 1500
+```
+
+So the host-network fix was needed (in the pod nothing of this size left), but the replies are lost
+after ens3. A size test: a Python sender on firstvds UDP 40000 answered each packet of a receiver
+here with random packets of 100–1472 B and two with a QUIC long header (0xc3, version 1), 600 and
+1280 B. All sizes and both QUIC-shaped packets arrived (11:43 UTC). Profile 9 from home: VPN checks
+fail as before (about 26 of 28 per 30 min; the 2–3 successes per window were there before the
+deploy). The drop needs the real QUIC handshake, which anyone can decrypt (the Initial keys come from
+the client's connection ID) to see the TLS ServerHello. Decision (round 9): profile 10, the same
+server with salamander on UDP 47443; profile 9 stays as the control.
+
 ## 2026-11-27 — Round 8: profile 9 fails because the pod MTU drops the QUIC handshake
 
 Profile 9 fails from home (probe: `handshake did not complete in time`) and on the user's phone over

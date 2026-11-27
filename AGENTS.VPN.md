@@ -23,7 +23,7 @@ every hour. If the certificate is missing, only that pod fails. `hostNetwork: tr
 runs the pod on the node's network: the pod MTU (~1280, flannel VXLAN over tailscale0) is smaller
 than QUIC's handshake packets (1280 bytes of UDP payload, 1308 on the wire; Xray cannot lower it),
 so in the pod network the server never sent its certificate. On the host network the port goes
-through the node's INPUT chain, so the node firewall must allow it (`ufw allow 443/udp` on firstvds). A client without the user password gets
+through the node's INPUT chain, so the node firewall must allow it (`ufw allow 443/udp` and `ufw allow 47443/udp` on firstvds). A client without the user password gets
 `https://<serverName>/` through the masquerade proxy. `exit` is where traffic leaves: `freedom` when it
 is the instance's own node, otherwise the SOCKS inbound (1080) of the xray-vpn instance on that node,
 over the cluster network (Tailscale), as profile 1 does.
@@ -31,10 +31,11 @@ over the cluster network (Tailscale), as profile 1 does.
 | Instance | Profiles | Port | State |
 |---|---|---|---|
 | `hetzner` | 6 (UDP 47443, salamander), 7 (UDP 443) | Hetzner, exit Hetzner | **off since 2026-11-26**: the home ISP drops both; profile 6 worked only from outside Russia |
-| `firstvds` | 9 `hysteria2://{XRAY_USER_UUID:9}@senaev.ru:443?sni=senaev.ru` | FirstVDS UDP 443 (Traefik uses only TCP 443), exit Hetzner | added 2026-11-27: profile 1's chain with a UDP first leg inside Russia |
+| `firstvds` | 9 `hysteria2://{XRAY_USER_UUID:9}@senaev.ru:443?sni=senaev.ru` | FirstVDS UDP 443 (Traefik uses only TCP 443), exit Hetzner | added 2026-11-27: profile 1's chain with a UDP first leg inside Russia; the handshake replies are dropped after FirstVDS (round 8) |
+| `firstvds` | 10 `hysteria2://{XRAY_USER_UUID:10}@senaev.ru:47443?sni=senaev.ru&obfs=salamander&obfs-password={XRAY_USER_UUID:10-obfs}` | FirstVDS UDP 47443, salamander, exit Hetzner | added 2026-11-27 (round 9): profile 9 with packets that do not look like QUIC |
 
 The password is the UUID derived from the profile's seed, like the VLESS users; the salamander
-password (`finalmask.udp`, set when an inbound has `obfsPasswordMacro`) the UUID of seed `6-obfs`.
+password (`finalmask.udp`, set when an inbound has `obfsPasswordMacro`) the UUID of seed `6-obfs` (`10-obfs` for profile 10).
 Server and probe log at `info`: Xray logs Hysteria errors only at that level.
 
 - The `vpn-probe` NetworkPolicy allows public egress on TCP 443 and on the UDP ports of the enabled

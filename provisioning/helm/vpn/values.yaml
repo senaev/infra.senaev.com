@@ -70,6 +70,16 @@ xrayHysteria:
           profiles:
             - user: user-hysteria-firstvds
               authMacro: "{XRAY_USER_UUID:9}"
+        # Profile 10 (round 9, 2026-11-27): the same server with salamander, so no packet looks
+        # like QUIC. With hostNetwork the server sends its handshake (3 x 1280 B from UDP 443),
+        # but it never arrives, from home or abroad; random UDP of up to 1472 B, also shaped like
+        # a QUIC header, passes from FirstVDS. Not 443: an obfuscated flow on the HTTP/3 port is
+        # odd. ufw on firstvds must allow 47443/udp.
+        - port: 47443
+          obfsPasswordMacro: "{XRAY_USER_UUID:10-obfs}"
+          profiles:
+            - user: user-hysteria-firstvds-obfs
+              authMacro: "{XRAY_USER_UUID:10}"
 
 # WireGuard from the client straight to hetzner, exit there: the protocol that Tailscale uses
 # from home to hetzner at full speed. A diagnostic for now: Happ cannot import WireGuard, so
@@ -109,6 +119,9 @@ vpnSubscription:
     - probeIndex: 9
       name: "🇫🇮⚡ 9. firstvds UDP → hetzner"
       link: "hysteria2://{XRAY_USER_UUID:9}@senaev.ru:443?sni=senaev.ru"
+    - probeIndex: 10
+      name: "🇫🇮⚡ 10. firstvds UDP obfs → hetzner"
+      link: "hysteria2://{XRAY_USER_UUID:10}@senaev.ru:47443?sni=senaev.ru&obfs=salamander&obfs-password={XRAY_USER_UUID:10-obfs}"
     # IPv6 literal of hetzner (there are no AAAA records). It changes only if the server is
     # recreated. See projects/2026-10-04-k3s-dual-stack-ipv6/README.md
     - probeIndex: 5
@@ -121,7 +134,7 @@ ingress:
 
 vpnProbe:
   enabled: true
-  # Temporary controlled experiment (profiles 1, 3, 4, 9) with production parity checks;
+  # Temporary controlled experiment (profiles 1, 3, 4, 9, 10) with production parity checks;
   # false restores the routine profiles.
   controlledExperiment: true
   vps: senaev-media
@@ -137,6 +150,7 @@ vpnProbe:
     "3": direct
     "5": senaev.com
     "9": senaev.com
+    "10": senaev.com
 
 # Diagnostic only: never included in the user-facing subscription.
 vpnXhttpExperiment:
