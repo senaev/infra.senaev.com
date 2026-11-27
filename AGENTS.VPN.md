@@ -19,7 +19,11 @@ enabled instance, on its node (`vps`), one Hysteria2 (QUIC) inbound per port thr
 TLS uses the Let's Encrypt certificate that Traefik keeps on the same node for `serverName`: the
 `certificate-init` init container and the `certificate-refresh` sidecar copy it from `acme.json`
 (hostPath `xrayHysteria.acmeStoragePath`, read-only) into an `emptyDir`; Xray reloads certificate files
-every hour. If the certificate is missing, only that pod fails. A client without the user password gets
+every hour. If the certificate is missing, only that pod fails. `hostNetwork: true` (on `firstvds`)
+runs the pod on the node's network: the pod MTU (~1280, flannel VXLAN over tailscale0) is smaller
+than QUIC's handshake packets (1280 bytes of UDP payload, 1308 on the wire; Xray cannot lower it),
+so in the pod network the server never sent its certificate. On the host network the port goes
+through the node's INPUT chain, so the node firewall must allow it (`ufw allow 443/udp` on firstvds). A client without the user password gets
 `https://<serverName>/` through the masquerade proxy. `exit` is where traffic leaves: `freedom` when it
 is the instance's own node, otherwise the SOCKS inbound (1080) of the xray-vpn instance on that node,
 over the cluster network (Tailscale), as profile 1 does.
