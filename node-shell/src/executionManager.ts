@@ -68,6 +68,9 @@ export function createExecutionManager({
     // Taken synchronously right after the check, before any await, so concurrent starts cannot
     // all pass the check; given back when the command ends or never starts.
     let reservedSlots = 0;
+    // No new command before this time: a command whose end node-shell could not see (an earlier
+    // process, or an ssh that ended without the command's own exit) may still run on its host.
+    let holdUntil = busyUntil;
     // Results the store failed to save: served from here, and saved again on the next read, so a
     // transient write failure does not leave the record `running`.
     const unsaved = new Map<string, ExecutionRecord>();
@@ -105,6 +108,7 @@ export function createExecutionManager({
             host: record.host,
         };
         let finished: ExecutionRecord;
+        let unitMayRun = false;
 
         try {
             const result = await run({
@@ -113,6 +117,9 @@ export function createExecutionManager({
                 maxOutputBytes: MAX_OUTPUT_BYTES,
             });
 
+            // ssh exits 255 when the connection fails or drops; then, or when the client was killed,
+            // the remote unit can still run until `endsBy` (the command's own 255 is held too).
+            unitMayRun = target.kind === 'ssh' && (result.exitCode === 255 || result.exitCode === null);
             finished = {
                 ...record,
                 status: result.deadlineExceeded ? 'failed' : 'completed',
@@ -131,6 +138,19 @@ export function createExecutionManager({
                 finishedAt: now().toISOString(),
                 error: toError(error).message,
             };
+        }
+
+        if (unitMayRun) {
+            const endsBy = new Date(record.endsBy);
+
+            if (holdUntil === undefined || endsBy > holdUntil) {
+                holdUntil = endsBy;
+            }
+
+            logger.info({
+                ...logFields,
+                endsBy: record.endsBy,
+            }, '⏳ ssh ended without the exit of the command; no new command until its unit has surely ended');
         }
 
         try {
@@ -178,7 +198,7 @@ export function createExecutionManager({
 
             const startedAt = now();
 
-            if (reservedSlots >= MAX_CONCURRENT_EXECUTIONS || (busyUntil !== undefined && startedAt < busyUntil)) {
+            if (reservedSlots >= MAX_CONCURRENT_EXECUTIONS || (holdUntil !== undefined && startedAt < holdUntil)) {
                 return { kind: 'busy' };
             }
 

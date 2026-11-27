@@ -301,6 +301,63 @@ describe('createExecutionManager', () => {
         });
     });
 
+    it('holds the slot until endsBy when ssh ends without the exit of the command', async () => {
+        let clock = NOW;
+        const remote = {
+            ...request,
+            host: 'senaev-madrid',
+        };
+
+        manager = createExecutionManager({
+            store,
+            hosts: createHostResolver({
+                localHost: 'hetzner',
+                sshUser: 'root',
+                listNodes: () => Promise.resolve([
+                    'hetzner',
+                    'senaev-madrid',
+                ]),
+            }),
+            run,
+            logger,
+            now: () => clock,
+        });
+        run.mockResolvedValueOnce({
+            ...result,
+            exitCode: 255,
+        }).mockResolvedValue(result);
+
+        const started = await manager.start(remote);
+
+        await manager.idle();
+        expect(started).toMatchObject({ kind: 'started' });
+
+        const endsBy = new Date(started.kind === 'started' ? started.record.endsBy : 0);
+
+        await expect(manager.start({
+            ...request,
+            executionId: 'e2',
+        })).resolves.toEqual({ kind: 'busy' });
+
+        clock = endsBy;
+        await expect(manager.start({
+            ...request,
+            executionId: 'e2',
+        })).resolves.toMatchObject({ kind: 'started' });
+        await manager.idle();
+
+        // A local command, or a remote one with its own exit code, frees the slot at once.
+        await expect(manager.start({
+            ...remote,
+            executionId: 'e3',
+        })).resolves.toMatchObject({ kind: 'started' });
+        await manager.idle();
+        await expect(manager.start({
+            ...request,
+            executionId: 'e4',
+        })).resolves.toMatchObject({ kind: 'started' });
+    });
+
     it('saves a command that cannot start as failed', async () => {
         run.mockRejectedValue(new Error('spawn nsenter ENOENT'));
 
