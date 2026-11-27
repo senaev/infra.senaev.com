@@ -103,6 +103,10 @@ approval or the command:
 4. Implement persistent request/approval state in cluster-helper, with the asynchronous
    `submit` / `status` API (see Asynchronous API). Only the authorized
    Telegram user can approve; rejection returns `USER_REJECTED`, expiry `APPROVAL_EXPIRED`.
+   Each approval gets a new random execution ID, and cluster-helper sends (or retries) its
+   `PUT` to node-shell only within 1 hour of the approval. node-shell forgets an ID after
+   24 hours, so a later `PUT` with the same ID would run the command again; one whose outcome
+   is unknown after that hour is reported as unknown, never resent.
 5. **Done in [`node-shell/`](../../node-shell/) (not deployed yet).** Implement the executor: authenticated API, `nsenter` into the hetzner host, then SSH; bounded
    connect time and output, runtime bounded on the node by the systemd unit (see Context);
    returns stdout, stderr and exit code.

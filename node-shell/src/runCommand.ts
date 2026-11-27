@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { StringDecoder } from 'node:string_decoder';
 
 export type CommandResult = {
     /** `null` when a signal ended the process. */
@@ -18,10 +19,34 @@ type OutputBuffer = {
 };
 
 /**
+ * The text of a stream within `maxBytes` of UTF-8: invalid bytes decode to U+FFFD, which is
+ * longer than the byte it replaces, so the limit is applied again after decoding.
+ */
+function decodeWithin(buffer: OutputBuffer, maxBytes: number): { text: string; truncated: boolean } {
+    const text = Buffer.concat(buffer.chunks).toString('utf8');
+    const encoded = Buffer.from(text, 'utf8');
+
+    if (encoded.length <= maxBytes) {
+        return {
+            text,
+            truncated: false,
+        };
+    }
+
+    // StringDecoder holds back an incomplete last character, so the text ends on a whole one.
+    return {
+        text: new StringDecoder('utf8').write(encoded.subarray(0, maxBytes)),
+        truncated: true,
+    };
+}
+
+/**
  * Spawns `argv` without a shell, collects up to `maxOutputBytes` of each output stream, and
  * kills the process at `deadlineMs`. The deadline is only a backstop for the local process (ssh
  * or nsenter): the systemd unit on the target host enforces the command timeout itself.
- * Rejects only when the process cannot start.
+ * The process gets its own process group, and the deadline kills the whole group (nsenter forks
+ * before it runs ssh or systemd-run), then stops reading the output, so a descendant that still
+ * holds the pipes cannot keep the execution open. Rejects only when the process cannot start.
  */
 export function runCommand({
     argv, deadlineMs, maxOutputBytes,
@@ -41,6 +66,7 @@ export function runCommand({
 
     return new Promise((resolve, reject) => {
         const child = spawn(file, args, {
+            detached: true,
             stdio: [
                 'ignore',
                 'pipe',
@@ -78,7 +104,19 @@ export function runCommand({
 
         const timer = setTimeout(() => {
             deadlineExceeded = true;
-            child.kill('SIGKILL');
+
+            try {
+                if (child.pid === undefined) {
+                    throw new Error('No pid');
+                }
+
+                process.kill(-child.pid, 'SIGKILL');
+            } catch {
+                child.kill('SIGKILL');
+            }
+
+            child.stdout.destroy();
+            child.stderr.destroy();
         }, deadlineMs);
 
         child.once('error', (error) => {
@@ -88,12 +126,16 @@ export function runCommand({
 
         child.once('close', (exitCode, signal) => {
             clearTimeout(timer);
+
+            const stdoutText = decodeWithin(stdout, maxOutputBytes);
+            const stderrText = decodeWithin(stderr, maxOutputBytes);
+
             resolve({
                 exitCode,
                 signal,
-                stdout: Buffer.concat(stdout.chunks).toString('utf8'),
-                stderr: Buffer.concat(stderr.chunks).toString('utf8'),
-                outputTruncated,
+                stdout: stdoutText.text,
+                stderr: stderrText.text,
+                outputTruncated: outputTruncated || stdoutText.truncated || stderrText.truncated,
                 deadlineExceeded,
             });
         });

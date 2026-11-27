@@ -65,6 +65,29 @@ export function createExecutionManager({
     // Taken synchronously right after the check, before any await, so concurrent starts cannot
     // all pass the check; given back when the command ends or never starts.
     let reservedSlots = 0;
+    // Results the store failed to save: served from here, and saved again on the next read, so a
+    // transient write failure does not leave the record `running`.
+    const unsaved = new Map<string, ExecutionRecord>();
+
+    const read = async (executionId: string): Promise<ExecutionRecord | undefined> => {
+        const pending = unsaved.get(executionId);
+
+        if (pending === undefined) {
+            return store.read(executionId);
+        }
+
+        try {
+            await store.update(pending);
+            unsaved.delete(executionId);
+        } catch (error) {
+            logger.error({
+                err: toError(error),
+                executionId,
+            }, '❌ Failed again to save the result of a node command');
+        }
+
+        return pending;
+    };
 
     const existingResult = (record: ExecutionRecord, requestHash: string): StartResult => (record.requestHash === requestHash
         ? {
@@ -107,7 +130,16 @@ export function createExecutionManager({
             };
         }
 
-        await store.update(finished);
+        try {
+            await store.update(finished);
+        } catch (error) {
+            unsaved.set(finished.executionId, finished);
+            logger.error({
+                ...logFields,
+                err: toError(error),
+            }, '❌ Failed to save the result of a node command; kept in memory until it is saved');
+        }
+
         // No command and no output in the logs: they can hold secrets.
         logger.info({
             ...logFields,
@@ -118,6 +150,15 @@ export function createExecutionManager({
 
     return {
         async start(nodeCommand) {
+            const requestHash = hashRequest(nodeCommand);
+            // A repeated request gets its saved record even when its host is no longer a node or
+            // the node list cannot be read now: only a new execution needs the host.
+            const existing = await read(nodeCommand.executionId);
+
+            if (existing !== undefined) {
+                return existingResult(existing, requestHash);
+            }
+
             let target: HostTarget | undefined;
 
             try {
@@ -130,13 +171,6 @@ export function createExecutionManager({
 
             if (target === undefined) {
                 return { kind: 'unknown-host' };
-            }
-
-            const requestHash = hashRequest(nodeCommand);
-            const existing = await store.read(nodeCommand.executionId);
-
-            if (existing !== undefined) {
-                return existingResult(existing, requestHash);
             }
 
             if (reservedSlots >= MAX_CONCURRENT_EXECUTIONS) {
@@ -183,7 +217,7 @@ export function createExecutionManager({
                     logger.error({
                         err: toError(error),
                         executionId: record.executionId,
-                    }, '❌ Failed to save the result of a node command');
+                    }, '❌ A node command failed unexpectedly');
                 })
                 .finally(() => {
                     reservedSlots -= 1;
@@ -197,7 +231,7 @@ export function createExecutionManager({
                 record,
             };
         },
-        get: (executionId) => store.read(executionId),
+        get: read,
         async idle() {
             await Promise.all(running);
         },

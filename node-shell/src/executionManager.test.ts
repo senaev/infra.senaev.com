@@ -254,6 +254,53 @@ describe('createExecutionManager', () => {
         expect(run).not.toHaveBeenCalled();
     });
 
+    it('returns a saved execution again even when its host can no longer be resolved', async () => {
+        run.mockResolvedValue(result);
+        await manager.start({
+            ...request,
+            host: 'senaev-madrid',
+        });
+        await manager.idle();
+
+        const removed = createExecutionManager({
+            store,
+            hosts: createHostResolver({
+                localHost: 'hetzner',
+                sshUser: 'root',
+                listNodes: () => Promise.reject(new Error('kubectl failed')),
+            }),
+            run,
+            logger,
+            now: () => NOW,
+        });
+
+        await expect(removed.start({
+            ...request,
+            host: 'senaev-madrid',
+        })).resolves.toMatchObject({
+            kind: 'existing',
+            record: { status: 'completed' },
+        });
+        expect(run).toHaveBeenCalledOnce();
+    });
+
+    it('keeps a result the store failed to save, serves it, and saves it on the next read', async () => {
+        const update = vi.spyOn(store, 'update').mockRejectedValueOnce(new Error('disk full'));
+
+        run.mockResolvedValue(result);
+        await manager.start(request);
+        await manager.idle();
+
+        expect(store.records.get('e1')?.status).toBe('running');
+        await expect(manager.get('e1')).resolves.toMatchObject({ status: 'completed' });
+        expect(update).toHaveBeenCalledTimes(2);
+        expect(store.records.get('e1')?.status).toBe('completed');
+        await expect(manager.start(request)).resolves.toMatchObject({
+            kind: 'existing',
+            record: { status: 'completed' },
+        });
+    });
+
     it('saves a command that cannot start as failed', async () => {
         run.mockRejectedValue(new Error('spawn nsenter ENOENT'));
 

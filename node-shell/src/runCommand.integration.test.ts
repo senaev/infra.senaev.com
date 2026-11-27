@@ -56,6 +56,38 @@ describe('runCommand', () => {
         expect(result.exitCode).toBeNull();
     });
 
+    it('ends at the deadline even when a descendant keeps the output open', async () => {
+        const startedAt = Date.now();
+        const result = await runCommand({
+            argv: [
+                '/bin/sh',
+                '-c',
+                'sleep 10 & setsid sleep 10 & exec sleep 10',
+            ],
+            deadlineMs: 100,
+            maxOutputBytes: 1024,
+        });
+
+        expect(result.deadlineExceeded).toBe(true);
+        expect(Date.now() - startedAt).toBeLessThan(3000);
+    });
+
+    it('keeps the output within maxOutputBytes after UTF-8 decoding', async () => {
+        const result = await runCommand({
+            argv: [
+                '/bin/sh',
+                '-c',
+                'printf \'\\377\\377\\377\\377\\377\\377\'',
+            ],
+            deadlineMs: 5000,
+            maxOutputBytes: 6,
+        });
+
+        expect(Buffer.byteLength(result.stdout)).toBeLessThanOrEqual(6);
+        expect(result.stdout).toBe('\uFFFD\uFFFD');
+        expect(result.outputTruncated).toBe(true);
+    });
+
     it('rejects when the program does not exist', async () => {
         await expect(runCommand({
             argv: ['/nonexistent/program'],

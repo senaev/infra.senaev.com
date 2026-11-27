@@ -1,3 +1,14 @@
+## 2026-11-27 13:55 UTC — CodeRabbit round on node-shell
+
+Fixed: a repeated `PUT` reads its saved record before the host is resolved (so a removed node
+or an unreadable node list no longer hides the result); a result the store failed to save is
+kept in memory, served by `GET` and saved again on the next read; the deadline kills the whole
+process group and stops reading the output, so a descendant holding the pipes cannot keep the
+execution open (seen: the old code waited 3 s for such a descendant); the output limit is
+applied again after UTF-8 decoding. Not changed in node-shell: replay protection after the
+24-hour retention. It is a rule for cluster-helper instead (plan step 4): new random ID per
+approval, `PUT` only within 1 hour of it.
+
 ## 2026-11-27 13:40 UTC — One command at a time
 
 The user decided: no commands in parallel. node-shell runs at most one command at a time, on all
