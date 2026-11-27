@@ -8,6 +8,10 @@ export type HostTarget = { kind: 'local' } | { kind: 'ssh'; destination: string 
 // A `vps` label, which is also the host's tailnet name: nothing that ssh could read as an option.
 const HOST_NAME = /^[a-z0-9][a-z0-9-]*$/;
 
+if (!HOST_NAME.test(NODE_SHELL_LOCAL_HOST)) {
+    throw new Error(`Invalid NODE_SHELL_LOCAL_HOST: ${NODE_SHELL_LOCAL_HOST}`);
+}
+
 // As the host's root: node-shell needs no service account.
 export const LIST_NODES_ARGV: readonly string[] = [
     ...ENTER_HOST,
@@ -28,6 +32,11 @@ async function listClusterNodes(): Promise<string[]> {
 
     if (result.exitCode !== 0) {
         throw new Error(`kubectl get nodes failed with exit code ${String(result.exitCode)}: ${result.stderr.trim()}`);
+    }
+
+    // A node past the limit would read as unknown.
+    if (result.outputTruncated) {
+        throw new Error('kubectl get nodes printed more than the limit');
     }
 
     const nodes = result.stdout.split('\n').map((line) => line.trim()).filter((name) => HOST_NAME.test(name));

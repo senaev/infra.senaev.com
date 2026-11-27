@@ -352,7 +352,8 @@ export function createExecutionManager({
             }
 
             const finishing = finalizing.get(executionId);
-            const activeTarget = finishing === undefined ? active.get(executionId) : undefined;
+            // Only for a record of the running attempt: a finished one belongs to an earlier attempt.
+            const activeTarget = finishing === undefined && record.status === 'running' ? active.get(executionId) : undefined;
 
             if (activeTarget !== undefined) {
                 // A repeated stop reuses the last one, so a failed retry cannot undo a confirmed stop.
@@ -416,8 +417,21 @@ export function createExecutionManager({
             };
 
             holds.delete(executionId);
-            unsaved.delete(executionId);
-            await save(stopped);
+            // Kept in memory until it is saved, so a retried stop does not reach the host again.
+            unsaved.set(executionId, stopped);
+
+            try {
+                await save(stopped);
+
+                if (unsaved.get(executionId) === stopped) {
+                    unsaved.delete(executionId);
+                }
+            } catch (error) {
+                logger.error({
+                    err: wrapError(error),
+                    executionId,
+                }, '❌ Failed to save a stopped node command; kept in memory until it is saved');
+            }
 
             return {
                 kind: 'stopped',

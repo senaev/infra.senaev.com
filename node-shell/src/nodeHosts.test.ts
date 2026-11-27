@@ -33,6 +33,15 @@ describe('resolveHost', () => {
         vi.mocked(runCommand).mockReset().mockResolvedValue(listed('hetzner\nsenaev-madrid\n\n-oProxyCommand=id\nfirstvds\n', 0));
     });
 
+    it('rejects a node list cut at the output limit', async () => {
+        vi.mocked(runCommand).mockResolvedValue({
+            ...listed('hetzner\n', 0),
+            outputTruncated: true,
+        });
+
+        await expect(resolveHost('senaev-madrid')).rejects.toThrow('more than the limit');
+    });
+
     it('runs the local host locally without reading the node list', async () => {
         await expect(resolveHost('hetzner')).resolves.toEqual({ kind: 'local' });
         expect(runCommand).not.toHaveBeenCalled();

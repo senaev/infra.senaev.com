@@ -8,7 +8,7 @@ import {
 } from './executionManager';
 import type { ExecutionRecord } from './executionRecord';
 import type { ExecutionStore } from './executionStore';
-import { resolveHost } from './nodeHosts';
+import { type HostTarget, resolveHost } from './nodeHosts';
 import type { CommandResult } from './runCommand';
 
 vi.mock('./nodeHosts', () => {
@@ -100,13 +100,19 @@ beforeEach(() => {
     vi.setSystemTime(NOW);
     store = createMemoryStore();
     run = vi.fn();
-    vi.mocked(resolveHost).mockReset().mockImplementation((host) => Promise.resolve(({
-        hetzner: { kind: 'local' },
-        'senaev-madrid': {
-            kind: 'ssh',
-            destination: 'root@senaev-madrid',
-        },
-    } as const)[host]));
+    vi.mocked(resolveHost).mockReset().mockImplementation((host) => Promise.resolve(new Map<string, HostTarget>([
+        [
+            'hetzner',
+            { kind: 'local' },
+        ],
+        [
+            'senaev-madrid',
+            {
+                kind: 'ssh',
+                destination: 'root@senaev-madrid',
+            },
+        ],
+    ]).get(host)));
     manager = createExecutionManager({
         store,
         run,
@@ -704,6 +710,44 @@ describe('stop', () => {
         expect(store.records.get('e1')).not.toHaveProperty('mayStillRun');
     });
 
+    it('sends no stop for a finished record of an earlier attempt while a new attempt is created', async () => {
+        const { create } = store;
+        const created = deferred<undefined>();
+
+        store.records.set('e1', {
+            executionId: 'e1',
+            host: 'hetzner',
+            requestHash: 'hash',
+            status: 'completed',
+            startedAt: NOW.toISOString(),
+            endsBy: NOW.toISOString(),
+        });
+
+        const { read } = store;
+        let reads = 0;
+
+        // The start finds no record, as when it read before the earlier attempt saved it.
+        store.read = (executionId) => {
+            reads += 1;
+
+            return reads === 1 ? Promise.resolve(undefined) : read(executionId);
+        };
+
+        store.create = async (record) => {
+            await created.promise;
+
+            return create(record);
+        };
+
+        const started = manager.start(request);
+
+        await settle();
+        await expect(manager.stop('e1')).resolves.toMatchObject({ kind: 'not-running' });
+        created.resolve(undefined);
+        await started;
+        expect(run).not.toHaveBeenCalled();
+    });
+
     it('treats a unit that is already gone as stopped', async () => {
         const pending = deferred<CommandResult>();
 
@@ -956,6 +1000,42 @@ describe('stop', () => {
 
         expect(store.records.get('e1')).toMatchObject({ stoppedAt: NOW.toISOString() });
         expect(store.records.get('e1')).not.toHaveProperty('mayStillRun');
+    });
+
+    it('keeps a confirmed stop in memory when it fails to save, and stops only once', async () => {
+        const endsBy = new Date(NOW.getTime() + 60_000);
+        const { update } = store;
+
+        store.records.set('old', {
+            executionId: 'old',
+            host: 'senaev-madrid',
+            requestHash: 'hash',
+            status: 'interrupted',
+            startedAt: NOW.toISOString(),
+            endsBy: endsBy.toISOString(),
+            mayStillRun: true,
+        });
+        manager = createExecutionManager({
+            store,
+            run,
+            logger,
+            holds: new Map([
+                [
+                    'old',
+                    endsBy,
+                ],
+            ]),
+        });
+        store.update = () => Promise.reject(new Error('disk full'));
+        run.mockResolvedValue(result);
+
+        await expect(manager.stop('old')).resolves.toMatchObject({ kind: 'stopped' });
+        await expect(manager.stop('old')).resolves.toMatchObject({ kind: 'not-running' });
+        expect(run).toHaveBeenCalledTimes(1);
+
+        store.update = update;
+        await expect(manager.get('old')).resolves.toMatchObject({ stoppedAt: NOW.toISOString() });
+        expect(store.records.get('old')).not.toHaveProperty('mayStillRun');
     });
 
     it('keeps new commands out when the stop of an earlier unit fails', async () => {
