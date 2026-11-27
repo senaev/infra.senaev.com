@@ -1,15 +1,15 @@
 import { watchTlsCredentials } from 'senaev-utils/src/utils/mtls/watchTlsCredentials';
 import { createShutdownController } from 'senaev-utils/src/utils/process/createShutdownController';
 
-import {
-    NODE_SHELL_LOCAL_HOST, NODE_SHELL_STATE_DIRECTORY,
-} from './env';
+import { NODE_SHELL_LOCAL_HOST } from './env';
 import { createExecutionManager, markInterruptedExecutions } from './executionManager';
 import { createExecutionStore } from './executionStore';
 import { logger } from './logger';
 import { createNodeShellServer, PORT } from './nodeShellServer';
 import { runCommand } from './runCommand';
 
+// In the node folder that the pod mounts at /state.
+const STATE_DIRECTORY = '/state/executions';
 // Longer than the approval window and the longest command.
 const RECORD_RETENTION_MS = 24 * 60 * 60 * 1000;
 const CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
@@ -19,7 +19,7 @@ const subscribeShutdown = createShutdownController(
 );
 
 async function main(): Promise<void> {
-    const store = await createExecutionStore(NODE_SHELL_STATE_DIRECTORY);
+    const store = await createExecutionStore(STATE_DIRECTORY);
 
     const busyUntil = await markInterruptedExecutions(store, logger);
 
