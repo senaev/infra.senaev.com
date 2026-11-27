@@ -52,29 +52,30 @@ spec:
             route: senaev-com-alerts
           annotations:
             summary: "{{`{{ $value | humanizePercentage }}`}} free on {{`{{ $labels.mountpoint }}`}} ({{`{{ $labels.device }}`}}); k3s evicts pods below 5%"
-    # VPN profile 1 (home -> FirstVDS -> Tailscale -> Hetzner) is the route that works from home.
-    # See projects/2026-06-10-debug-vpn-connection/README.md
+    # VPN profiles 10 (Hysteria2 with salamander) and 1 (VLESS/Reality) work from home; both go
+    # home -> FirstVDS -> Tailscale -> Hetzner. See projects/2026-06-10-debug-vpn-connection/README.md
     - name: vpn
       rules:
-        # More than half of profile 1's parity checks fail through the VPN in 30 minutes. Only the
-        # checks whose direct twin (same target and size, without the VPN) mostly passes in the same
-        # window count, so an outage of a target or of the home internet does not fire it.
-        - alert: vpn-profile-1-failing
+        # More than half of a profile's parity checks fail through the VPN in 30 minutes, per
+        # profile. Only the checks whose direct twin (same target and size, without the VPN) mostly
+        # passes in the same window count, so an outage of a target or of the home internet does
+        # not fire it.
+        - alert: vpn-profile-failing
           expr: |
             (
-              sum(
-                sum by (check) (increase(vpn_probe_checks_total{profile_index="1", route="vpn", check=~"parity_.*", result="failure"}[30m]))
-                and on(check) (
-                  sum by (check) (increase(vpn_probe_checks_total{profile_index="1", route="direct", check=~"parity_.*", result="success"}[30m]))
-                  / sum by (check) (increase(vpn_probe_checks_total{profile_index="1", route="direct", check=~"parity_.*"}[30m]))
+              sum by (profile_index) (
+                sum by (profile_index, check) (increase(vpn_probe_checks_total{profile_index=~"1|10", route="vpn", check=~"parity_.*", result="failure"}[30m]))
+                and on(profile_index, check) (
+                  sum by (profile_index, check) (increase(vpn_probe_checks_total{profile_index=~"1|10", route="direct", check=~"parity_.*", result="success"}[30m]))
+                  / sum by (profile_index, check) (increase(vpn_probe_checks_total{profile_index=~"1|10", route="direct", check=~"parity_.*"}[30m]))
                   > 0.5
                 )
               )
-              / sum(
-                sum by (check) (increase(vpn_probe_checks_total{profile_index="1", route="vpn", check=~"parity_.*"}[30m]))
-                and on(check) (
-                  sum by (check) (increase(vpn_probe_checks_total{profile_index="1", route="direct", check=~"parity_.*", result="success"}[30m]))
-                  / sum by (check) (increase(vpn_probe_checks_total{profile_index="1", route="direct", check=~"parity_.*"}[30m]))
+              / sum by (profile_index) (
+                sum by (profile_index, check) (increase(vpn_probe_checks_total{profile_index=~"1|10", route="vpn", check=~"parity_.*"}[30m]))
+                and on(profile_index, check) (
+                  sum by (profile_index, check) (increase(vpn_probe_checks_total{profile_index=~"1|10", route="direct", check=~"parity_.*", result="success"}[30m]))
+                  / sum by (profile_index, check) (increase(vpn_probe_checks_total{profile_index=~"1|10", route="direct", check=~"parity_.*"}[30m]))
                   > 0.5
                 )
               )
@@ -84,7 +85,7 @@ spec:
             severity: warning
             route: senaev-com-alerts
           annotations:
-            summary: "{{`{{ $value | humanizePercentage }}`}} of VPN profile 1 checks fail from home in 30 minutes; the same checks pass directly"
+            summary: "{{`{{ $value | humanizePercentage }}`}} of VPN profile {{`{{ $labels.profile_index }}`}} checks fail from home in 30 minutes; the same checks pass directly"
             description: "Check firstvds (vpn-firstvds-stalled) and the Tailscale link firstvds <-> hetzner (smokeping, iperf3)."
         # Tailscale ping to firstvds from all nodes: normally 17-70 ms. On 2026-11-26 19:40-21:30 UTC
         # it was 0.5-16 s (the VM stalled at the provider) and profile 1 failed.
