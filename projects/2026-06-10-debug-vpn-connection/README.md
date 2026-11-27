@@ -27,6 +27,11 @@ Round 7 changes:
 - Profiles 6, 7 and 8 off (Hysteria2 and WireGuard servers, their probes and subscription entries):
   the home ISP drops all of them. Templates kept.
 
+**Profile 9 (2026-11-27, user request, stacked on round 7):** `🇫🇮⚡ 9. firstvds UDP → hetzner`, profile
+1's chain with Hysteria2 (UDP 443, HTTP/3 look, senaev.ru certificate) instead of VLESS/Reality on
+the home → FirstVDS leg; FirstVDS → Hetzner stays the SOCKS hop over Tailscale. The UDP blocks seen so
+far were toward Hetzner (abroad); FirstVDS is inside Russia, so this leg may pass. Probed from home.
+
 Remaining risk: profile 1 depends on one small VPS (1 vCPU, 1 GB) at one provider, which stalls
 sometimes and whose path to Hetzner's public IP is filtered (Tailscale still passes). A second
 Russian entry VPS at another provider, as profile 2, would remove the single point of failure.

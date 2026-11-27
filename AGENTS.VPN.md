@@ -12,39 +12,30 @@ Each instance runs as a Kubernetes Deployment in the `vpn` namespace (release `v
 
 Inter-instance routing uses internal Socks proxies (port 1080). Instances chain traffic to each other before exiting to the internet.
 
-### Hysteria2 server (UDP)
+### Hysteria2 servers (UDP)
 
-**Off since 2026-11-26** (`xrayHysteria.enabled: false`, subscription entries 6 and 7 removed): the
-home ISP drops both shapes below; profile 6 worked only from outside Russia. The templates stay for
-a later retry.
+`xrayHysteria.instances` (`templates/xray-hysteria.yaml`): one Deployment `xray-hysteria-<name>` per
+enabled instance, on its node (`vps`), one Hysteria2 (QUIC) inbound per port through a UDP `hostPort`.
+TLS uses the Let's Encrypt certificate that Traefik keeps on the same node for `serverName`: the
+`certificate-init` init container and the `certificate-refresh` sidecar copy it from `acme.json`
+(hostPath `xrayHysteria.acmeStoragePath`, read-only) into an `emptyDir`; Xray reloads certificate files
+every hour. If the certificate is missing, only that pod fails. A client without the user password gets
+`https://<serverName>/` through the masquerade proxy. `exit` is where traffic leaves: `freedom` when it
+is the instance's own node, otherwise the SOCKS inbound (1080) of the xray-vpn instance on that node,
+over the cluster network (Tailscale), as profile 1 does.
 
-`xray-hysteria` (`templates/xray-hysteria.yaml`, values `xrayHysteria`) is a separate Deployment on
-hetzner: Hysteria2 (QUIC), one inbound per entry of `xrayHysteria.inbounds`, each on its UDP port
-through a `hostPort`, exit straight to the internet there (freedom). Added on 2026-11-20 because
-the home ISP freezes TCP/TLS connections to hetzner for hours while UDP (Tailscale) keeps working.
-
-| Profile | Port | Look on the wire | Link |
+| Instance | Profiles | Port | State |
 |---|---|---|---|
-| 6 | UDP 47443 | random bytes (salamander) | `hysteria2://{XRAY_USER_UUID:6}@senaev.com:47443?sni=senaev.com&obfs=salamander&obfs-password={XRAY_USER_UUID:6-obfs}` |
-| 7 | UDP 443 | HTTP/3 to `senaev.com` | `hysteria2://{XRAY_USER_UUID:7}@senaev.com:443?sni=senaev.com` |
+| `hetzner` | 6 (UDP 47443, salamander), 7 (UDP 443) | Hetzner, exit Hetzner | **off since 2026-11-26**: the home ISP drops both; profile 6 worked only from outside Russia |
+| `firstvds` | 9 `hysteria2://{XRAY_USER_UUID:9}@senaev.ru:443?sni=senaev.ru` | FirstVDS UDP 443 (Traefik uses only TCP 443), exit Hetzner | added 2026-11-27: profile 1's chain with a UDP first leg inside Russia |
 
 The password is the UUID derived from the profile's seed, like the VLESS users; the salamander
-password (`finalmask.udp` in Xray, set when the inbound has `obfsPasswordMacro`) the UUID of seed
-`6-obfs`. Profile 6 passes from FirstVDS and gets no answer from home (2026-11-24). Server and
-probe log at `info` while the UDP profiles are being debugged: Xray logs Hysteria errors only at
-that level.
+password (`finalmask.udp`, set when an inbound has `obfsPasswordMacro`) the UUID of seed `6-obfs`.
+Server and probe log at `info`: Xray logs Hysteria errors only at that level.
 
-- TLS uses the real Let's Encrypt certificate of `senaev.com`: the `certificate-init` init
-  container and the `certificate-refresh` sidecar copy it from Traefik's `acme.json` (hostPath
-  `/k3s-cluster/volumes/traefik/acme`, read-only) into an `emptyDir`; Xray reloads certificate
-  files every hour. If the certificate is missing, only this pod fails; the Reality instances
-  are separate.
-- Without the salamander password the server of profile 6 does not answer at all. A client
-  without the user password gets `https://senaev.com/` through the masquerade proxy.
-- Traefik binds only TCP 80/443 on hetzner; the UDP ports are used only by these pods.
-- The `vpn-probe` NetworkPolicy allows public egress on TCP 443 and on the UDP ports of
-  `xrayHysteria.inbounds` and `xrayWireguard.port` only. A probe for a new UDP transport needs
-  its port there, or its packets are dropped inside the cluster and the route looks blocked.
+- The `vpn-probe` NetworkPolicy allows public egress on TCP 443 and on the UDP ports of the enabled
+  instances (and `xrayWireguard.port`) only. A probe for a new UDP transport needs its port there, or
+  its packets are dropped inside the cluster and the route looks blocked.
 - `vpnProbe.remoteSources` runs the probe of a profile also on another node
   (`vpn-probe-<index>-<vps>`, profile name with ` (from <vps>)`), to tell a home ISP block from
   a server-side problem. None run now: firstvds (1 vCPU, 1 GB) was swapping, and probe

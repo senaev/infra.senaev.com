@@ -1,3 +1,10 @@
+## 2026-11-27 — Profile 9: Hysteria2 to FirstVDS, exit Hetzner (user request)
+
+The user asked for profile 1's route with Hysteria as the FirstVDS entry. `xrayHysteria` became a list
+of instances (node, certificate, exit); the Hetzner instance stays off, the new `firstvds` instance
+listens on UDP 443 with the senaev.ru certificate from Traefik on firstvds and sends traffic to
+`xray-vpn-hetzner:1080`, like profile 1. Stacked on round 7 (#341), which turns off profiles 6–8.
+
 ## 2026-11-26 23:30 UTC — Round 6 result: profile 1 at parity when FirstVDS is healthy; FirstVDS stalled 2 h
 
 - iperf3 at 100 Mbit/s (#332): firstvds → hetzner 99.8 Mbit/s (cap); hetzner → firstvds 38.5

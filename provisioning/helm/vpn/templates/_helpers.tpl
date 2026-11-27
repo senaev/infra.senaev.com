@@ -181,14 +181,19 @@ node /tmp/render-config.mjs
 {{- end -}}
 
 {{- /*
-  Hysteria2 (QUIC over UDP) server with a direct exit at its node. It reuses the Let's Encrypt
-  certificate that Traefik keeps for serverName; clients verify it as usual. Unauthenticated
-  QUIC requests get senaev.com through the masquerade proxy, like a normal HTTP/3 site.
+  Hysteria2 (QUIC over UDP) server of one xrayHysteria instance. It reuses the Let's Encrypt
+  certificate that Traefik keeps for serverName on the same node; clients verify it as usual.
+  Unauthenticated QUIC requests get the website through the masquerade proxy, like a normal
+  HTTP/3 site. Traffic leaves through `exit`: freedom on the instance's own node, otherwise the
+  SOCKS inbound (1080) of the xray-vpn instance on that node, as profile 1 does.
+  Called with (dict "root" $ "instance" $instance).
 */ -}}
 {{- define "vpn.xrayHysteriaConfig" -}}
-{{- $hysteria := .Values.xrayHysteria -}}
+{{- $root := .root -}}
+{{- $instance := .instance -}}
+{{- $hysteria := $root.Values.xrayHysteria -}}
 {{- $inbounds := list -}}
-{{- range $inbound := $hysteria.inbounds }}
+{{- range $inbound := $instance.inbounds }}
   {{- $clients := list -}}
   {{- range $profile := $inbound.profiles }}
     {{- $clients = append $clients (dict "auth" $profile.authMacro "email" $profile.user) -}}
@@ -197,11 +202,11 @@ node /tmp/render-config.mjs
     "network" "hysteria"
     "hysteriaSettings" (dict
       "version" 2
-      "masquerade" (dict "type" "proxy" "url" (printf "https://%s/" $hysteria.serverName))
+      "masquerade" (dict "type" "proxy" "url" (printf "https://%s/" $instance.serverName))
     )
     "security" "tls"
     "tlsSettings" (dict
-      "serverName" $hysteria.serverName
+      "serverName" $instance.serverName
       "alpn" (list "h3")
       "certificates" (list (dict
         "certificateFile" "/tls/tls.crt"
@@ -223,14 +228,33 @@ node /tmp/render-config.mjs
     "streamSettings" $streamSettings
   ) -}}
 {{- end -}}
-{{- $config := dict
-  "log" (dict "access" "none" "error" "/dev/stderr" "loglevel" (default "warning" $hysteria.logLevel))
-  "inbounds" $inbounds
-  "outbounds" (list (dict
+{{- $outbound := dict -}}
+{{- if eq $instance.exit $instance.vps }}
+  {{- $outbound = dict
     "tag" "outbound-freedom"
     "protocol" "freedom"
     "streamSettings" (dict "sockopt" (dict "domainStrategy" "UseIPv4v6"))
-  ))
+  -}}
+{{- else }}
+  {{- $exitName := "" -}}
+  {{- range $xrayInstance := $root.Values.xrayVpn.instances }}
+    {{- if and (eq $xrayInstance.vps $instance.exit) (ne $xrayInstance.exitEnabled false) }}
+      {{- $exitName = $xrayInstance.name -}}
+    {{- end }}
+  {{- end }}
+  {{- if not $exitName }}
+    {{- fail (printf "xrayHysteria instance %s: no xray-vpn instance with an exit on %s" $instance.name $instance.exit) }}
+  {{- end }}
+  {{- $outbound = dict
+    "tag" (printf "outbound-%s" $instance.exit)
+    "protocol" "socks"
+    "settings" (dict "servers" (list (dict "address" $exitName "port" 1080)))
+  -}}
+{{- end }}
+{{- $config := dict
+  "log" (dict "access" "none" "error" "/dev/stderr" "loglevel" (default "warning" $hysteria.logLevel))
+  "inbounds" $inbounds
+  "outbounds" (list $outbound)
 -}}
 {{- $config | toPrettyJson -}}
 {{- end -}}
