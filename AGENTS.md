@@ -259,8 +259,7 @@ and [`projects/2026-11-22-01-00-mtls-between-node-services`](projects/2026-11-22
 
 ## Node shell
 
-`node-shell` runs Telegram-approved commands as root on the cluster nodes
-([project](projects/2026-11-15-10-44-approved-node-commands/README.md)). It is the most privileged
+`node-shell` runs Telegram-approved commands as root on the cluster nodes. It is the most privileged
 workload of the cluster. Only cluster-helper may call it, and only after the user's approval. Never log
 a command or its output.
 
