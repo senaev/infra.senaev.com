@@ -66,7 +66,7 @@ spec:
             - name: CLAUDE_CODE_MODEL
               value: {{ .Values.claudeCode.model | quote }}
             - name: CLAUDE_CODE_AUTO_COMPACT_PERCENT
-              value: {{ required "claudeCode.autoCompactPercent is required" .Values.claudeCode.autoCompactPercent | quote }}
+              value: {{ .Values.claudeCode.autoCompactPercent | quote }}
             - name: CLAUDE_REMOTE_CONTROL_SESSION_NAME_PREFIX
               value: {{ .Values.name | quote }}
             # start.sh writes them into the user config; the telegram-login container logs in to them.

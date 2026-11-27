@@ -49,7 +49,7 @@ spec:
             - name: CODEX_REMOTE_CONTROL
               value: {{ .Values.codex.remoteControl | quote }}
             - name: CODEX_AUTO_COMPACT_TOKEN_LIMIT
-              value: {{ required "codex.autoCompactTokenLimit is required" .Values.codex.autoCompactTokenLimit | quote }}
+              value: {{ .Values.codex.autoCompactTokenLimit | quote }}
             # Without it the server prints only "the connection is errored", not why. The remote
             # control module logs each connection attempt and its error at info.
             - name: RUST_LOG
