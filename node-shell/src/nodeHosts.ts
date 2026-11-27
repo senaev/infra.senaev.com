@@ -8,9 +8,6 @@ export type HostTarget = { kind: 'local' } | { kind: 'ssh'; destination: string 
 // A `vps` label, which is also the host's tailnet name: nothing that ssh could read as an option.
 const HOST_NAME = /^[a-z0-9][a-z0-9-]*$/;
 
-const LIST_NODES_DEADLINE_MS = 30_000;
-const LIST_NODES_MAX_OUTPUT_BYTES = 64 * 1024;
-
 // As the host's root: node-shell needs no service account.
 export const LIST_NODES_ARGV: readonly string[] = [
     ...ENTER_HOST,
@@ -25,8 +22,8 @@ export const LIST_NODES_ARGV: readonly string[] = [
 async function listClusterNodes(): Promise<string[]> {
     const result = await runCommand({
         argv: LIST_NODES_ARGV,
-        deadlineMs: LIST_NODES_DEADLINE_MS,
-        maxOutputBytes: LIST_NODES_MAX_OUTPUT_BYTES,
+        deadlineMs: 30_000,
+        maxOutputBytes: 64 * 1024,
     });
 
     if (result.exitCode !== 0) {
@@ -57,9 +54,11 @@ export async function resolveHost(host: string): Promise<HostTarget | undefined>
         return undefined;
     }
 
-    if (host === NODE_SHELL_LOCAL_HOST || (await listClusterNodes()).includes(host)) {
+    if (host === NODE_SHELL_LOCAL_HOST) {
         return hostTarget(host);
     }
 
-    return undefined;
+    const isClusterNode = (await listClusterNodes()).includes(host);
+
+    return isClusterNode ? hostTarget(host) : undefined;
 }
