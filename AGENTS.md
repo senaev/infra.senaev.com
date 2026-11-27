@@ -251,24 +251,18 @@ is read. Code: `cluster-helper/src/telegramPublicApi.ts`. See
 
 ## Internal mTLS between the Node.js services
 
-Our Node.js services call each other with client certificates from a private CA (cert-manager,
-`provisioning/helm/pki`), not tokens. A service accepts a request only with a valid certificate,
-and only from the services it allows, by the service name in the certificate. Certificates are mounted as a directory at `/etc/mtls` (never subPath or env) and reloaded without a
-restart (`senaev-utils/src/utils/mtls`). The `pki` namespace must sort before `senaev-com` (CI deploys
-namespaces in sorted order). Fail closed: never fall back to plain HTTP or a token. A protected
-route goes only on the service's mTLS server, together with a NetworkPolicy rule for its port. Callers
-that cannot present a certificate (the kubelet, vmagent, n8n, Traefik, ...) use a separate plain HTTP
-port. Details are in
+Our Node.js services call each other with mTLS, not tokens. A service accepts a request only with a
+valid client certificate of our private CA, and only from the services it allows. Fail closed: never
+fall back to plain HTTP or a token. Details are in
 [`projects/2026-11-15-11-00-inter-service-certificate-authentication`](projects/2026-11-15-11-00-inter-service-certificate-authentication/README.md)
 and [`projects/2026-11-22-01-00-mtls-between-node-services`](projects/2026-11-22-01-00-mtls-between-node-services/README.md).
 
 ## Node shell
 
-`node-shell` (`node-shell/`) runs Telegram-approved commands as root on the cluster nodes
+`node-shell` runs Telegram-approved commands as root on the cluster nodes
 ([project](projects/2026-11-15-10-44-approved-node-commands/README.md)). It is the most privileged
-workload: a privileged pod on hetzner that enters the host and reaches the other nodes over ssh.
-Only cluster-helper may call it (mTLS), and cluster-helper must get the user's approval first.
-Never log a command or its output. Details are in the code and the project README.
+workload of the cluster. Only cluster-helper may call it, and only after the user's approval. Never log
+a command or its output.
 
 ## Shared Toolchain
 
