@@ -1,4 +1,4 @@
-import { type HostTarget, NODE_LIST_JSONPATH } from './nodeHosts';
+import type { HostTarget } from './nodeHosts';
 import { shellQuote } from './shellQuote';
 
 // Run as the host's root, with its binaries, /root/.ssh and known_hosts.
@@ -91,14 +91,3 @@ export function buildNodeCommand(target: HostTarget, nodeCommand: NodeCommand): 
         systemdRun.map(shellQuote).join(' '),
     ];
 }
-
-// As the host's root: node-shell needs no service account.
-export const LIST_NODES_ARGV: readonly string[] = [
-    ...ENTER_HOST,
-    'k3s',
-    'kubectl',
-    'get',
-    'nodes',
-    '--output',
-    NODE_LIST_JSONPATH,
-];

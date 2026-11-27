@@ -8,8 +8,12 @@ import {
 } from './executionManager';
 import type { ExecutionRecord } from './executionRecord';
 import type { ExecutionStore } from './executionStore';
-import { createHostResolver } from './nodeHosts';
+import { resolveHost } from './nodeHosts';
 import type { CommandResult } from './runCommand';
+
+vi.mock('./nodeHosts', () => {
+    return { resolveHost: vi.fn() };
+});
 
 // The command and the store answer at once: one macrotask lets every started command end.
 const settle = () => new Promise<void>((resolve) => {
@@ -88,16 +92,15 @@ beforeEach(() => {
     vi.setSystemTime(NOW);
     store = createMemoryStore();
     run = vi.fn();
+    vi.mocked(resolveHost).mockReset().mockImplementation((host) => Promise.resolve(({
+        hetzner: { kind: 'local' },
+        'senaev-madrid': {
+            kind: 'ssh',
+            destination: 'root@senaev-madrid',
+        },
+    } as const)[host]));
     manager = createExecutionManager({
         store,
-        hosts: createHostResolver({
-            localHost: 'hetzner',
-            sshUser: 'root',
-            listNodes: () => Promise.resolve([
-                'hetzner',
-                'senaev-madrid',
-            ]),
-        }),
         run,
         logger,
         busyUntil: undefined,
@@ -245,17 +248,7 @@ describe('createExecutionManager', () => {
     });
 
     it('answers hosts-unavailable without saving anything when the node list cannot be read', async () => {
-        manager = createExecutionManager({
-            store,
-            hosts: createHostResolver({
-                localHost: 'hetzner',
-                sshUser: 'root',
-                listNodes: () => Promise.reject(new Error('kubectl failed')),
-            }),
-            run,
-            logger,
-            busyUntil: undefined,
-        });
+        vi.mocked(resolveHost).mockRejectedValue(new Error('kubectl failed'));
 
         await expect(manager.start({
             ...request,
@@ -273,19 +266,9 @@ describe('createExecutionManager', () => {
         });
         await settle();
 
-        const removed = createExecutionManager({
-            store,
-            hosts: createHostResolver({
-                localHost: 'hetzner',
-                sshUser: 'root',
-                listNodes: () => Promise.reject(new Error('kubectl failed')),
-            }),
-            run,
-            logger,
-            busyUntil: undefined,
-        });
+        vi.mocked(resolveHost).mockRejectedValue(new Error('kubectl failed'));
 
-        await expect(removed.start({
+        await expect(manager.start({
             ...request,
             host: 'senaev-madrid',
         })).resolves.toMatchObject({
@@ -320,14 +303,6 @@ describe('createExecutionManager', () => {
 
         manager = createExecutionManager({
             store,
-            hosts: createHostResolver({
-                localHost: 'hetzner',
-                sshUser: 'root',
-                listNodes: () => Promise.resolve([
-                    'hetzner',
-                    'senaev-madrid',
-                ]),
-            }),
             run,
             logger,
             busyUntil: undefined,
@@ -557,11 +532,6 @@ describe('markInterruptedExecutions', () => {
     it('keeps new commands out until an interrupted command can no longer run', async () => {
         manager = createExecutionManager({
             store,
-            hosts: createHostResolver({
-                localHost: 'hetzner',
-                sshUser: 'root',
-                listNodes: () => Promise.resolve(['hetzner']),
-            }),
             run,
             logger,
             busyUntil: later(100),

@@ -15,6 +15,11 @@ import type { ExecutionManager } from './executionManager';
 import type { ExecutionRecord } from './executionRecord';
 import { createNodeShellServer } from './nodeShellServer';
 
+// The routes need only the limits of the manager, not the hosts: no env here.
+vi.mock('./nodeHosts', () => {
+    return { resolveHost: vi.fn() };
+});
+
 const record: ExecutionRecord = {
     executionId: 'e1',
     host: 'hetzner',

@@ -1,77 +1,59 @@
-export type HostTarget = { kind: 'local' } | { kind: 'ssh'; destination: string };
+import { ENTER_HOST } from './buildNodeCommand';
+import { NODE_SHELL_LOCAL_HOST, NODE_SHELL_SSH_USER } from './env';
+import { logger } from './logger';
+import { runCommand } from './runCommand';
 
-export type HostResolver = {
-    /** `undefined` for a host that is not a node; rejects when the node list cannot be read. */
-    resolve: (host: string) => Promise<HostTarget | undefined>;
-};
+export type HostTarget = { kind: 'local' } | { kind: 'ssh'; destination: string };
 
 // A `vps` label, which is also the host's tailnet name: nothing that ssh could read as an option.
 const HOST_NAME = /^[a-z0-9][a-z0-9-]*$/;
-const SSH_USER = /^[a-z_][a-z0-9_-]*$/;
 
-export const NODE_LIST_TTL_MS = 60_000;
+const LIST_NODES_DEADLINE_MS = 30_000;
+const LIST_NODES_MAX_OUTPUT_BYTES = 64 * 1024;
 
-export function parseNodeList(output: string): string[] {
-    return [...new Set(output.split('\n').map((line) => line.trim()).filter((name) => HOST_NAME.test(name)))];
+// As the host's root: node-shell needs no service account.
+export const LIST_NODES_ARGV: readonly string[] = [
+    ...ENTER_HOST,
+    'k3s',
+    'kubectl',
+    'get',
+    'nodes',
+    '--output',
+    'jsonpath={range .items[*]}{.metadata.labels.vps}{"\\n"}{end}',
+];
+
+async function listClusterNodes(): Promise<string[]> {
+    const result = await runCommand({
+        argv: LIST_NODES_ARGV,
+        deadlineMs: LIST_NODES_DEADLINE_MS,
+        maxOutputBytes: LIST_NODES_MAX_OUTPUT_BYTES,
+    });
+
+    if (result.exitCode !== 0) {
+        throw new Error(`kubectl get nodes failed with exit code ${String(result.exitCode)}: ${result.stderr.trim()}`);
+    }
+
+    const nodes = result.stdout.split('\n').map((line) => line.trim()).filter((name) => HOST_NAME.test(name));
+
+    logger.info({ nodes }, '🗂️ Read the cluster nodes');
+
+    return nodes;
 }
 
-export const NODE_LIST_JSONPATH = 'jsonpath={range .items[*]}{.metadata.labels.vps}{"\\n"}{end}';
-
-export function createHostResolver({
-    localHost, sshUser, listNodes,
-}: {
-    localHost: string;
-    sshUser: string;
-    listNodes: () => Promise<string[]>;
-}): HostResolver {
-    if (!HOST_NAME.test(localHost)) {
-        throw new Error(`Invalid local host name: ${localHost}`);
+/** `undefined` for a host that is not a cluster node; rejects when the node list cannot be read. */
+export async function resolveHost(host: string): Promise<HostTarget | undefined> {
+    if (!HOST_NAME.test(host)) {
+        return undefined;
     }
 
-    if (!SSH_USER.test(sshUser)) {
-        throw new Error(`Invalid SSH user: ${sshUser}`);
+    if (host === NODE_SHELL_LOCAL_HOST) {
+        return { kind: 'local' };
     }
 
-    let cached: { names: ReadonlySet<string>; readAt: number } | undefined;
-    let reading: Promise<ReadonlySet<string>> | undefined;
-
-    const nodeNames = (): Promise<ReadonlySet<string>> => {
-        if (cached !== undefined && Date.now() - cached.readAt < NODE_LIST_TTL_MS) {
-            return Promise.resolve(cached.names);
+    return (await listClusterNodes()).includes(host)
+        ? {
+            kind: 'ssh',
+            destination: `${NODE_SHELL_SSH_USER}@${host}`,
         }
-
-        reading ??= listNodes()
-            .then((names) => {
-                cached = {
-                    names: new Set(names),
-                    readAt: Date.now(),
-                };
-
-                return cached.names;
-            })
-            .finally(() => {
-                reading = undefined;
-            });
-
-        return reading;
-    };
-
-    return {
-        async resolve(host) {
-            if (!HOST_NAME.test(host)) {
-                return undefined;
-            }
-
-            if (host === localHost) {
-                return { kind: 'local' };
-            }
-
-            return (await nodeNames()).has(host)
-                ? {
-                    kind: 'ssh',
-                    destination: `${sshUser}@${host}`,
-                }
-                : undefined;
-        },
-    };
+        : undefined;
 }

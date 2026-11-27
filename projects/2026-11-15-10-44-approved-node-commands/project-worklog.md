@@ -1,3 +1,10 @@
+## 2026-11-27 20:00 UTC — The node list is read for every command, with no cache
+
+The user decided: drop `createHostResolver` and its one-minute cache. `resolveHost` validates the
+name, runs hetzner itself locally, and otherwise reads the nodes with `k3s kubectl get nodes` on
+every `PUT`. Commands are rare and approved one by one, so the extra second does not matter, and
+a node that joins or leaves is seen at once.
+
 ## 2026-11-27 14:10 UTC — The one-command limit holds across restarts
 
 Codex: after a restart the new process saw a free slot while the old command's systemd unit could

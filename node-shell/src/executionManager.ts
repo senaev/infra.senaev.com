@@ -9,7 +9,7 @@ import {
 } from './buildNodeCommand';
 import type { ExecutionRecord } from './executionRecord';
 import type { ExecutionStore } from './executionStore';
-import type { HostResolver, HostTarget } from './nodeHosts';
+import { type HostTarget, resolveHost } from './nodeHosts';
 import type { CommandResult } from './runCommand';
 
 export const MAX_TIMEOUT_SECONDS = 3600;
@@ -43,11 +43,10 @@ function hashRequest({
 }
 
 export function createExecutionManager({
-    store, hosts, run, logger, busyUntil,
+    store, run, logger, busyUntil,
 }: {
     store: ExecutionStore;
     busyUntil: Date | undefined;
-    hosts: HostResolver;
     run: (options: { argv: readonly string[]; deadlineMs: number; maxOutputBytes: number }) => Promise<CommandResult>;
     logger: Pick<FastifyBaseLogger, 'info' | 'error'>;
 }): ExecutionManager {
@@ -178,7 +177,7 @@ export function createExecutionManager({
             let target: HostTarget | undefined;
 
             try {
-                target = await hosts.resolve(nodeCommand.host);
+                target = await resolveHost(nodeCommand.host);
             } catch (error) {
                 logger.error({ err: wrapError(error) }, '❌ Failed to read the cluster nodes');
 

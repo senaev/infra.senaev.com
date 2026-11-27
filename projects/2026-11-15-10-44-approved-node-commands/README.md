@@ -20,7 +20,7 @@ Approve / Reject buttons before running a command on the chosen node.
     tailnet by Tailscale hostname, with the SSH key of hetzner's root, which every node
     already accepts (confirmed by the user, 2026-11-20).
   - The nodes are not listed in the chart: the executor reads their `vps` labels with
-    hetzner's `k3s kubectl get nodes`, cached for a minute (2026-11-27). A host that is
+    hetzner's `k3s kubectl get nodes` for every command (2026-11-27). A host that is
     not a cluster node is refused, so a node that joins or leaves needs no change.
 - No SSH key in Kubernetes: not in Vault, a Secret or an `ssh-agent` sidecar. The key
   stays on hetzner's disk, and no node needs a change. SSH starts in the host network
