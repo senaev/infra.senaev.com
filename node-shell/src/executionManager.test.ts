@@ -12,7 +12,15 @@ import { resolveHost } from './nodeHosts';
 import type { CommandResult } from './runCommand';
 
 vi.mock('./nodeHosts', () => {
-    return { resolveHost: vi.fn() };
+    return {
+        resolveHost: vi.fn(),
+        hostTarget: (host: string) => (host === 'hetzner'
+            ? { kind: 'local' }
+            : {
+                kind: 'ssh',
+                destination: `root@${host}`,
+            }),
+    };
 });
 
 // The command and the store answer at once: one macrotask lets every started command end.
@@ -439,6 +447,114 @@ describe('createExecutionManager', () => {
         await settle();
 
         expect(JSON.stringify(logger.info.mock.calls)).not.toMatch(/secret/);
+    });
+});
+
+describe('stop', () => {
+    const isStop = (argv: readonly string[]) => argv.some((arg) => arg.includes('systemctl'));
+
+    it('stops a running command, then saves it as stopped', async () => {
+        const pending = deferred<CommandResult>();
+
+        run.mockImplementation(({ argv }) => (isStop(argv)
+            ? Promise.resolve({
+                ...result,
+                stdout: '',
+            })
+            : pending.promise));
+        await manager.start(request);
+
+        await expect(manager.stop('e1')).resolves.toMatchObject({
+            kind: 'stopped',
+            record: { status: 'running' },
+        });
+        expect(run.mock.lastCall?.[0].argv.slice(7)).toEqual([
+            'systemctl',
+            'stop',
+            'node-shell-e1',
+        ]);
+
+        pending.resolve({
+            ...result,
+            exitCode: 143,
+        });
+        await settle();
+
+        expect(store.records.get('e1')).toMatchObject({
+            status: 'stopped',
+            exitCode: 143,
+            stoppedAt: NOW.toISOString(),
+        });
+    });
+
+    it('treats a unit that is already gone as stopped', async () => {
+        const pending = deferred<CommandResult>();
+
+        run.mockImplementation(({ argv }) => (isStop(argv)
+            ? Promise.resolve({
+                ...result,
+                exitCode: 5,
+            })
+            : pending.promise));
+        await manager.start(request);
+
+        await expect(manager.stop('e1')).resolves.toMatchObject({ kind: 'stopped' });
+        pending.resolve(result);
+        await settle();
+    });
+
+    it('answers stop-failed when systemctl fails, and keeps the command running', async () => {
+        const pending = deferred<CommandResult>();
+
+        run.mockImplementation(({ argv }) => (isStop(argv)
+            ? Promise.resolve({
+                ...result,
+                exitCode: 255,
+            })
+            : pending.promise));
+        await manager.start({
+            ...request,
+            host: 'senaev-madrid',
+        });
+
+        await expect(manager.stop('e1')).resolves.toEqual({ kind: 'stop-failed' });
+        expect(store.records.get('e1')?.status).toBe('running');
+        pending.resolve(result);
+        await settle();
+    });
+
+    it('runs nothing for a finished execution, and answers not-found for an unknown one', async () => {
+        run.mockResolvedValue(result);
+        await manager.start(request);
+        await settle();
+        run.mockClear();
+
+        await expect(manager.stop('e1')).resolves.toMatchObject({
+            kind: 'not-running',
+            record: { status: 'completed' },
+        });
+        await expect(manager.stop('unknown')).resolves.toEqual({ kind: 'not-found' });
+        expect(run).not.toHaveBeenCalled();
+    });
+
+    it('stops the unit of an earlier process that may still run', async () => {
+        store.records.set('old', {
+            executionId: 'old',
+            host: 'senaev-madrid',
+            requestHash: 'hash',
+            status: 'interrupted',
+            startedAt: NOW.toISOString(),
+            endsBy: new Date(NOW.getTime() + 60_000).toISOString(),
+            mayStillRun: true,
+        });
+        run.mockResolvedValue(result);
+
+        await expect(manager.stop('old')).resolves.toMatchObject({ kind: 'stopped' });
+        expect(run.mock.lastCall?.[0].argv.slice(-3)).toEqual([
+            'root@senaev-madrid',
+            '--',
+            '\'systemctl\' \'stop\' \'node-shell-old\'',
+        ]);
     });
 });
 

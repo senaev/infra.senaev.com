@@ -40,20 +40,25 @@ async function listClusterNodes(): Promise<string[]> {
     return nodes;
 }
 
+/** The target of a host that was already checked, as in a saved execution. */
+export function hostTarget(host: string): HostTarget {
+    return host === NODE_SHELL_LOCAL_HOST
+        ? { kind: 'local' }
+        : {
+            kind: 'ssh',
+            destination: `${NODE_SHELL_SSH_USER}@${host}`,
+        };
+}
+
 /** `undefined` for a host that is not a cluster node; rejects when the node list cannot be read. */
 export async function resolveHost(host: string): Promise<HostTarget | undefined> {
     if (!HOST_NAME.test(host)) {
         return undefined;
     }
 
-    if (host === NODE_SHELL_LOCAL_HOST) {
-        return { kind: 'local' };
+    if (host === NODE_SHELL_LOCAL_HOST || (await listClusterNodes()).includes(host)) {
+        return hostTarget(host);
     }
 
-    return (await listClusterNodes()).includes(host)
-        ? {
-            kind: 'ssh',
-            destination: `${NODE_SHELL_SSH_USER}@${host}`,
-        }
-        : undefined;
+    return undefined;
 }

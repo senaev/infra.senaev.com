@@ -32,6 +32,7 @@ const record: ExecutionRecord = {
 const manager = {
     start: vi.fn<ExecutionManager['start']>(),
     get: vi.fn<ExecutionManager['get']>(),
+    stop: vi.fn<ExecutionManager['stop']>(),
 };
 
 let server: ReturnType<typeof createNodeShellServer>;
@@ -222,6 +223,45 @@ describe('createNodeShellServer', () => {
             },
         });
         expect(missing.status).toBe(404);
+    });
+
+    it.each([
+        [
+            'stopped',
+            202,
+        ],
+        [
+            'not-running',
+            200,
+        ],
+    ] as const)('answers a %s DELETE with %i and the execution', async (kind, status) => {
+        manager.stop.mockResolvedValue({
+            kind,
+            record,
+        });
+
+        const response = await clusterHelperClient.fetch(`${origin}/executions/e1`, { method: 'DELETE' });
+
+        expect(response.status).toBe(status);
+        await expect(response.json()).resolves.toMatchObject({ execution: { executionId: 'e1' } });
+        expect(manager.stop).toHaveBeenCalledExactlyOnceWith('e1');
+    });
+
+    it.each([
+        [
+            'not-found',
+            404,
+        ],
+        [
+            'stop-failed',
+            502,
+        ],
+    ] as const)('answers a %s DELETE with %i', async (kind, status) => {
+        manager.stop.mockResolvedValue({ kind });
+
+        const response = await clusterHelperClient.fetch(`${origin}/executions/e1`, { method: 'DELETE' });
+
+        expect(response.status).toBe(status);
     });
 
     it('refuses another service with a valid certificate and starts nothing', async () => {

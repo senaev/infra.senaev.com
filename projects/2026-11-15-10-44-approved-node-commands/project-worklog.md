@@ -1,3 +1,13 @@
+## 2026-11-27 21:00 UTC — Stop a command with DELETE
+
+The user asked for a way to stop a running command. `DELETE /executions/:id` runs
+`systemctl stop node-shell-<id>` on the command's host (locally or through ssh), which kills the
+unit's whole cgroup (SIGTERM, then SIGKILL after `TimeoutStopSec`) and waits for it. Answers: 202
+with the record when it was stopped (the record is saved as `stopped` with `stoppedAt` soon
+after), 200 when nothing runs any more, 404 for an unknown ID, 502 when `systemctl` fails. A unit
+that is already gone (`systemctl` exit 5) counts as stopped. A record of an earlier process with
+`mayStillRun` can be stopped too; its hold on new commands still ends at `endsBy`.
+
 ## 2026-11-27 20:00 UTC — The node list is read for every command, with no cache
 
 The user decided: drop `createHostResolver` and its one-minute cache. `resolveHost` validates the

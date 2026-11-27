@@ -5,8 +5,9 @@
  * - `failed`: the process could not start, or node-shell killed it at its deadline.
  * - `interrupted`: node-shell restarted while it ran. The outcome is unknown, and it is never
  *   retried; the systemd unit on the host still ends at its own timeout.
+ * - `stopped`: a `DELETE` stopped it before it ended by itself.
  */
-export type ExecutionStatus = 'running' | 'completed' | 'failed' | 'interrupted';
+export type ExecutionStatus = 'running' | 'completed' | 'failed' | 'interrupted' | 'stopped';
 
 export type ExecutionRecord = {
     executionId: string;
@@ -20,6 +21,7 @@ export type ExecutionRecord = {
     /** node-shell did not see the command end, so its unit may run until `endsBy`. */
     mayStillRun?: true;
     finishedAt?: string;
+    stoppedAt?: string;
     exitCode?: number | null;
     signal?: string | null;
     stdout?: string;

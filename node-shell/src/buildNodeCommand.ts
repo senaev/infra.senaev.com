@@ -72,13 +72,11 @@ function buildSystemdRun({
 }
 
 // ssh joins its arguments into one string for the remote shell, so each one is quoted.
-export function buildNodeCommand(target: HostTarget, nodeCommand: NodeCommand): string[] {
-    const systemdRun = buildSystemdRun(nodeCommand);
-
+function onHost(target: HostTarget, argv: string[]): string[] {
     if (target.kind === 'local') {
         return [
             ...ENTER_HOST,
-            ...systemdRun,
+            ...argv,
         ];
     }
 
@@ -88,6 +86,19 @@ export function buildNodeCommand(target: HostTarget, nodeCommand: NodeCommand): 
         ...SSH_OPTIONS,
         target.destination,
         '--',
-        systemdRun.map(shellQuote).join(' '),
+        argv.map(shellQuote).join(' '),
     ];
+}
+
+export function buildNodeCommand(target: HostTarget, nodeCommand: NodeCommand): string[] {
+    return onHost(target, buildSystemdRun(nodeCommand));
+}
+
+// systemctl waits until the unit has stopped: SIGTERM, then SIGKILL after `TimeoutStopSec`.
+export function buildStopCommand(target: HostTarget, executionId: string): string[] {
+    return onHost(target, [
+        'systemctl',
+        'stop',
+        systemdUnitName(executionId),
+    ]);
 }

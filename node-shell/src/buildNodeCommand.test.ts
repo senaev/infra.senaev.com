@@ -2,7 +2,9 @@ import {
     describe, expect, it,
 } from 'vitest';
 
-import { buildNodeCommand, escapeForSystemd } from './buildNodeCommand';
+import {
+    buildNodeCommand, buildStopCommand, escapeForSystemd,
+} from './buildNodeCommand';
 import type { HostTarget } from './nodeHosts';
 
 const local: HostTarget = { kind: 'local' };
@@ -15,6 +17,27 @@ const command = {
     command: 'echo \'hi\' && id',
     timeoutSeconds: 30,
 };
+
+describe('buildStopCommand', () => {
+    it('stops the unit of the execution on the local host', () => {
+        expect(buildStopCommand({ kind: 'local' }, 'abc-123').slice(7)).toEqual([
+            'systemctl',
+            'stop',
+            'node-shell-abc-123',
+        ]);
+    });
+
+    it('stops it through ssh on another host', () => {
+        expect(buildStopCommand({
+            kind: 'ssh',
+            destination: 'root@senaev-madrid',
+        }, 'abc-123').slice(-3)).toEqual([
+            'root@senaev-madrid',
+            '--',
+            '\'systemctl\' \'stop\' \'node-shell-abc-123\'',
+        ]);
+    });
+});
 
 describe('buildNodeCommand', () => {
     it('runs the command of the local host in the host, in a systemd unit', () => {

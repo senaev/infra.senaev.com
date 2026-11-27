@@ -48,7 +48,7 @@ function errorBody(code: string, message: string) {
 }
 
 export function registerExecutionRoutes(
-    server: Pick<FastifyInstance, 'addHook' | 'get' | 'put'>,
+    server: Pick<FastifyInstance, 'addHook' | 'delete' | 'get' | 'put'>,
     manager: ExecutionManager
 ): void {
     // First, so it covers every route below.
@@ -108,5 +108,26 @@ export function registerExecutionRoutes(
         }
 
         return reply.send({ execution: toPublicExecution(record) });
+    });
+
+    server.delete<{ Params: { executionId: string } }>('/executions/:executionId', async (request, reply) => {
+        const { executionId } = request.params;
+
+        if (!EXECUTION_ID.test(executionId)) {
+            return reply.code(404).send(errorBody('not_found', 'No such execution'));
+        }
+
+        const result = await manager.stop(executionId);
+
+        if (result.kind === 'not-found') {
+            return reply.code(404).send(errorBody('not_found', 'No such execution'));
+        }
+
+        if (result.kind === 'stop-failed') {
+            return reply.code(502).send(errorBody('stop_failed', 'The command could not be stopped on its host; try again'));
+        }
+
+        // 202: the command has stopped, and its result is saved soon after; 200: nothing ran any more.
+        return reply.code(result.kind === 'stopped' ? 202 : 200).send({ execution: toPublicExecution(result.record) });
     });
 }

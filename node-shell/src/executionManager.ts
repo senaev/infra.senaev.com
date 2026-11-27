@@ -5,11 +5,13 @@ import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnk
 import { wrapError } from 'senaev-utils/src/utils/Error/wrapError';
 
 import {
-    buildNodeCommand, type NodeCommand, SSH_CONNECT_TIMEOUT_SECONDS, UNIT_STOP_TIMEOUT_SECONDS,
+    buildNodeCommand, buildStopCommand, type NodeCommand, SSH_CONNECT_TIMEOUT_SECONDS, UNIT_STOP_TIMEOUT_SECONDS,
 } from './buildNodeCommand';
 import type { ExecutionRecord } from './executionRecord';
 import type { ExecutionStore } from './executionStore';
-import { type HostTarget, resolveHost } from './nodeHosts';
+import {
+    type HostTarget, hostTarget, resolveHost,
+} from './nodeHosts';
 import type { CommandResult } from './runCommand';
 
 export const MAX_TIMEOUT_SECONDS = 3600;
@@ -17,6 +19,9 @@ export const MAX_CONCURRENT_EXECUTIONS = 1;
 export const MAX_OUTPUT_BYTES = 1024 * 1024;
 // ssh connect + unit stop + margin, so the client outlives the unit.
 const DEADLINE_GRACE_MS = (SSH_CONNECT_TIMEOUT_SECONDS + UNIT_STOP_TIMEOUT_SECONDS + 45) * 1000;
+const STOP_DEADLINE_MS = (SSH_CONNECT_TIMEOUT_SECONDS + UNIT_STOP_TIMEOUT_SECONDS + 15) * 1000;
+// `systemctl stop` of a unit that is already gone: the command has ended by itself.
+const UNIT_NOT_LOADED_EXIT_CODE = 5;
 
 export type StartResult =
     | { kind: 'started'; record: ExecutionRecord }
@@ -26,10 +31,18 @@ export type StartResult =
     | { kind: 'hosts-unavailable' }
     | { kind: 'busy' };
 
+export type StopResult =
+    | { kind: 'stopped'; record: ExecutionRecord }
+    | { kind: 'not-running'; record: ExecutionRecord }
+    | { kind: 'not-found' }
+    | { kind: 'stop-failed' };
+
 export type ExecutionManager = {
     /** Starts the command once per execution ID and returns at once. */
     start: (nodeCommand: NodeCommand) => Promise<StartResult>;
     get: (executionId: string) => Promise<ExecutionRecord | undefined>;
+    /** Stops the systemd unit of a command that may still run; returns when it has stopped. */
+    stop: (executionId: string) => Promise<StopResult>;
 };
 
 function hashRequest({
@@ -56,6 +69,9 @@ export function createExecutionManager({
     let holdUntil = busyUntil;
     // Results the store failed to save; saved again on the next read.
     const unsaved = new Map<string, ExecutionRecord>();
+    // The commands of this process that run now, and when a stop of one of them was asked for.
+    const active = new Map<string, HostTarget>();
+    const stopRequestedAt = new Map<string, string>();
 
     const read = async (executionId: string): Promise<ExecutionRecord | undefined> => {
         const pending = unsaved.get(executionId);
@@ -112,9 +128,20 @@ export function createExecutionManager({
 
             // A signal ended the waiter, or ssh exited 255 (a dropped connection): the unit may still run.
             unitMayRun = result.exitCode === null || (target.kind === 'ssh' && result.exitCode === 255);
+
+            const stoppedAt = stopRequestedAt.get(record.executionId);
+            let status: ExecutionRecord['status'] = 'completed';
+
+            if (result.deadlineExceeded) {
+                status = 'failed';
+            } else if (stoppedAt !== undefined) {
+                status = 'stopped';
+            }
+
             finished = {
                 ...record,
-                status: result.deadlineExceeded ? 'failed' : 'completed',
+                status,
+                ...stoppedAt === undefined ? {} : { stoppedAt },
                 finishedAt: new Date().toISOString(),
                 exitCode: result.exitCode,
                 signal: result.signal,
@@ -229,6 +256,7 @@ export function createExecutionManager({
                 timeoutSeconds: nodeCommand.timeoutSeconds,
             }, '▶️ Node command started');
 
+            active.set(record.executionId, target);
             void execute(nodeCommand, target, record)
                 .catch((error: unknown) => {
                     logger.error({
@@ -238,6 +266,8 @@ export function createExecutionManager({
                 })
                 .finally(() => {
                     reservedSlots -= 1;
+                    active.delete(record.executionId);
+                    stopRequestedAt.delete(record.executionId);
                 });
 
             return {
@@ -246,6 +276,65 @@ export function createExecutionManager({
             };
         },
         get: read,
+        async stop(executionId) {
+            const record = await read(executionId);
+
+            if (record === undefined) {
+                return { kind: 'not-found' };
+            }
+
+            // A command of an earlier process has no waiter here, but its unit may still run.
+            const target = active.get(executionId) ?? (record.mayStillRun === true && new Date(record.endsBy) > new Date() ? hostTarget(record.host) : undefined);
+
+            if (target === undefined) {
+                return {
+                    kind: 'not-running',
+                    record,
+                };
+            }
+
+            const logFields = {
+                executionId,
+                host: record.host,
+            };
+
+            if (active.has(executionId) && !stopRequestedAt.has(executionId)) {
+                stopRequestedAt.set(executionId, new Date().toISOString());
+            }
+
+            logger.info(logFields, '⏹️ Stopping a node command');
+
+            let exitCode: number | null;
+
+            try {
+                ({ exitCode } = await run({
+                    argv: buildStopCommand(target, executionId),
+                    deadlineMs: STOP_DEADLINE_MS,
+                    maxOutputBytes: MAX_OUTPUT_BYTES,
+                }));
+            } catch (error) {
+                logger.error({
+                    ...logFields,
+                    err: wrapError(error),
+                }, '❌ Failed to stop a node command');
+
+                return { kind: 'stop-failed' };
+            }
+
+            if (exitCode !== 0 && exitCode !== UNIT_NOT_LOADED_EXIT_CODE) {
+                logger.error({
+                    ...logFields,
+                    exitCode,
+                }, '❌ Failed to stop a node command');
+
+                return { kind: 'stop-failed' };
+            }
+
+            return {
+                kind: 'stopped',
+                record: await read(executionId) ?? record,
+            };
+        },
     };
 }
 
