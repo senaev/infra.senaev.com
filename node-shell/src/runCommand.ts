@@ -18,10 +18,7 @@ type OutputBuffer = {
     size: number;
 };
 
-/**
- * The text of a stream within `maxBytes` of UTF-8: invalid bytes decode to U+FFFD, which is
- * longer than the byte it replaces, so the limit is applied again after decoding.
- */
+// Invalid bytes decode to the longer U+FFFD, so the limit is applied again after decoding.
 function decodeWithin(buffer: OutputBuffer, maxBytes: number): { text: string; truncated: boolean } {
     const text = Buffer.concat(buffer.chunks).toString('utf8');
     const encoded = Buffer.from(text, 'utf8');
@@ -40,14 +37,7 @@ function decodeWithin(buffer: OutputBuffer, maxBytes: number): { text: string; t
     };
 }
 
-/**
- * Spawns `argv` without a shell, collects up to `maxOutputBytes` of each output stream, and
- * kills the process at `deadlineMs`. The deadline is only a backstop for the local process (ssh
- * or nsenter): the systemd unit on the target host enforces the command timeout itself.
- * The process gets its own process group, and the deadline kills the whole group (nsenter forks
- * before it runs ssh or systemd-run), then stops reading the output, so a descendant that still
- * holds the pipes cannot keep the execution open. Rejects only when the process cannot start.
- */
+// At the deadline, kill the whole process group (nsenter forks) and stop reading the output.
 export function runCommand({
     argv, deadlineMs, maxOutputBytes,
 }: {

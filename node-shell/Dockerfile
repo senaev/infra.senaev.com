@@ -1,7 +1,6 @@
 FROM node:24-alpine
 
-# nsenter enters the namespaces of the hetzner host. Everything else (ssh, systemd-run, the
-# command itself) runs from the host's own filesystem, so the image needs nothing more.
+# nsenter
 RUN apk add --no-cache util-linux-misc
 
 WORKDIR /app

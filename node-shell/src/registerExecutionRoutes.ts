@@ -28,21 +28,11 @@ function errorBody(code: string, message: string) {
     };
 }
 
-/**
- * The API of node-shell, only on the mTLS instance: only the services in `ALLOWED_CALLERS` may
- * call any route. The caller asks the user for approval first; node-shell runs what it gets.
- *
- * - `PUT /executions/:executionId` starts the command and answers at once (202), or returns the
- *   saved execution of a repeated request (200). It never runs one execution ID twice.
- * - `GET /executions/:executionId` returns the execution: status, and when it has ended, the
- *   exit code and the output.
- */
 export function registerExecutionRoutes(
     server: Pick<FastifyInstance, 'addHook' | 'get' | 'put'>,
     manager: ExecutionManager
 ): void {
-    // First, so the check covers every route registered below. The caller is already
-    // authenticated by `createMtlsFastifyServer`.
+    // First, so it covers every route below.
     registerMtlsCallerAllowlist(server, ALLOWED_CALLERS);
 
     server.put<{ Params: { executionId: string }; Body: unknown }>('/executions/:executionId', async (request, reply) => {

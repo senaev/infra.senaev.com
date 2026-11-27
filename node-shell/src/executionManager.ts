@@ -11,12 +11,9 @@ import type { HostResolver, HostTarget } from './nodeHosts';
 import type { CommandResult } from './runCommand';
 
 export const MAX_TIMEOUT_SECONDS = 3600;
-// One command at a time on all hosts: a second one waits for the first to finish (429).
 export const MAX_CONCURRENT_EXECUTIONS = 1;
 export const MAX_OUTPUT_BYTES = 1024 * 1024;
-// The local process gets this long after the command timeout before node-shell kills it: the
-// SSH connection, the stop of the systemd unit on the host (SIGTERM, then SIGKILL after
-// `TimeoutStopSec`), and a margin. So the slot is free only once the command has ended.
+// ssh connect + unit stop + margin, so the client outlives the unit.
 const DEADLINE_GRACE_MS = (SSH_CONNECT_TIMEOUT_SECONDS + UNIT_STOP_TIMEOUT_SECONDS + 45) * 1000;
 
 export type StartResult =
@@ -28,14 +25,10 @@ export type StartResult =
     | { kind: 'busy' };
 
 export type ExecutionManager = {
-    /**
-     * Starts the command once per execution ID and returns at once. A repeated request with the
-     * same ID returns the saved execution and never starts the command again, also after a
-     * restart; the same ID with another request is a conflict.
-     */
+    /** Starts the command once per execution ID and returns at once. */
     start: (nodeCommand: NodeCommand) => Promise<StartResult>;
     get: (executionId: string) => Promise<ExecutionRecord | undefined>;
-    /** Resolves when every command started by this process has ended. For tests and shutdown. */
+    /** For tests and shutdown. */
     idle: () => Promise<void>;
 };
 
@@ -57,7 +50,6 @@ export function createExecutionManager({
     store, hosts, run, logger, busyUntil, now = () => new Date(),
 }: {
     store: ExecutionStore;
-    /** A command of an earlier process may still run on its host until then (see `markInterruptedExecutions`). */
     busyUntil?: Date | undefined;
     hosts: HostResolver;
     run: (options: { argv: readonly string[]; deadlineMs: number; maxOutputBytes: number }) => Promise<CommandResult>;
@@ -65,14 +57,11 @@ export function createExecutionManager({
     now?: () => Date;
 }): ExecutionManager {
     const running = new Set<Promise<void>>();
-    // Taken synchronously right after the check, before any await, so concurrent starts cannot
-    // all pass the check; given back when the command ends or never starts.
+    // Taken before any await, so concurrent starts cannot all pass the check.
     let reservedSlots = 0;
-    // No new command before this time: a command whose end node-shell could not see (an earlier
-    // process, or an ssh that ended without the command's own exit) may still run on its host.
+    // No new command before this time: an earlier command may still run on its host.
     let holdUntil = busyUntil;
-    // Results the store failed to save: served from here, and saved again on the next read, so a
-    // transient write failure does not leave the record `running`.
+    // Results the store failed to save; saved again on the next read.
     const unsaved = new Map<string, ExecutionRecord>();
 
     const read = async (executionId: string): Promise<ExecutionRecord | undefined> => {
@@ -117,8 +106,7 @@ export function createExecutionManager({
                 maxOutputBytes: MAX_OUTPUT_BYTES,
             });
 
-            // ssh exits 255 when the connection fails or drops; then, or when the client was killed,
-            // the remote unit can still run until `endsBy` (the command's own 255 is held too).
+            // ssh exits 255 when the connection drops: the remote unit may still run.
             unitMayRun = target.kind === 'ssh' && (result.exitCode === 255 || result.exitCode === null);
             finished = {
                 ...record,
@@ -175,8 +163,7 @@ export function createExecutionManager({
     return {
         async start(nodeCommand) {
             const requestHash = hashRequest(nodeCommand);
-            // A repeated request gets its saved record even when its host is no longer a node or
-            // the node list cannot be read now: only a new execution needs the host.
+            // Before the host: a repeated request needs no node list.
             const existing = await read(nodeCommand.executionId);
 
             if (existing !== undefined) {
@@ -214,8 +201,7 @@ export function createExecutionManager({
                 endsBy: new Date(startedAt.getTime() + nodeCommand.timeoutSeconds * 1000 + DEADLINE_GRACE_MS).toISOString(),
             };
 
-            // Saved before the command starts: if node-shell restarts now, the ID is taken and the
-            // command is not started a second time.
+            // Saved before the command starts, so a restart never starts it again.
             let created: boolean;
 
             try {
@@ -266,10 +252,8 @@ export function createExecutionManager({
 }
 
 /**
- * At startup, no command of this process runs yet: a record still `running` was left by an
- * earlier process. Its outcome is unknown, it is marked `interrupted` and `mayStillRun`, and it is
- * not retried. Returns the latest `endsBy` still ahead among the records that may still run (also
- * those of earlier restarts and dropped ssh connections): no new command starts before it.
+ * Records left `running` by an earlier process become `interrupted`, never retried. Returns the
+ * latest `endsBy` of a command that may still run: no new command starts before it.
  */
 export async function markInterruptedExecutions(
     store: ExecutionStore,

@@ -12,8 +12,7 @@ import { createHostResolver, parseNodeList } from './nodeHosts';
 import { createNodeShellServer, PORT } from './nodeShellServer';
 import { runCommand } from './runCommand';
 
-// Longer than the 10-minute approval and the 1-hour longest command, so a repeated request with
-// the same ID still finds its record. Then the caller has long had the result.
+// Longer than the approval window and the longest command.
 const RECORD_RETENTION_MS = 24 * 60 * 60 * 1000;
 const CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
 const LIST_NODES_DEADLINE_MS = 30_000;

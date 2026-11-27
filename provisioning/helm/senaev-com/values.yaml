@@ -183,7 +183,6 @@ mediaServerHelper:
 nodeShell:
   enabled: true
   vps: hetzner
-  # Host directory for the executions, so a restart never runs a command again.
   volumePath: volumes/node-shell
   sshUser: root
 

@@ -15,16 +15,9 @@ export type ExecutionRecord = {
     requestHash: string;
     status: ExecutionStatus;
     startedAt: string;
-    /**
-     * The latest time the command can still run on its host: its timeout, plus the stop of the
-     * systemd unit and the SSH connection. After a restart, no new command starts before it.
-     */
+    /** The latest time the command can still run on its host. */
     endsBy: string;
-    /**
-     * node-shell did not see the command end (a restart, or an ssh that ended with 255 or a
-     * signal): its unit may still run until `endsBy`. Kept in the record, so the hold on new
-     * commands survives later restarts.
-     */
+    /** node-shell did not see the command end, so its unit may run until `endsBy`. */
     mayStillRun?: true;
     finishedAt?: string;
     exitCode?: number | null;
@@ -35,7 +28,6 @@ export type ExecutionRecord = {
     error?: string;
 };
 
-/** What the API returns: everything except the internal request hash. */
 export type PublicExecution = Omit<ExecutionRecord, 'requestHash'>;
 
 export function toPublicExecution({ requestHash: _requestHash, ...execution }: ExecutionRecord): PublicExecution {

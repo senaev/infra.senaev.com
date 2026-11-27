@@ -1,11 +1,7 @@
-/** Where a command for a host runs: in the local host itself, or through ssh from there. */
 export type HostTarget = { kind: 'local' } | { kind: 'ssh'; destination: string };
 
 export type HostResolver = {
-    /**
-     * The target of a host name, or `undefined` for a host that does not accept commands.
-     * Rejects when the list of nodes cannot be read.
-     */
+    /** `undefined` for a host that is not a node; rejects when the node list cannot be read. */
     resolve: (host: string) => Promise<HostTarget | undefined>;
 };
 
@@ -13,25 +9,14 @@ export type HostResolver = {
 const HOST_NAME = /^[a-z0-9][a-z0-9-]*$/;
 const SSH_USER = /^[a-z_][a-z0-9_-]*$/;
 
-/** The hosts are the cluster nodes: newer nodes than this need no change of node-shell. */
 export const NODE_LIST_TTL_MS = 60_000;
 
-/**
- * The `vps` labels of the cluster nodes, as printed by `kubectl get nodes` with
- * `NODE_LIST_JSONPATH`: one per line. A node without a valid label is left out.
- */
 export function parseNodeList(output: string): string[] {
     return [...new Set(output.split('\n').map((line) => line.trim()).filter((name) => HOST_NAME.test(name)))];
 }
 
 export const NODE_LIST_JSONPATH = 'jsonpath={range .items[*]}{.metadata.labels.vps}{"\\n"}{end}';
 
-/**
- * Resolves host names against the cluster nodes, by their `vps` label: the node that node-shell
- * runs on is `localHost`, and every other node is `sshUser@<label>`, reached with ssh from the local
- * host by its tailnet name. The list is read with `listNodes` and kept for `ttlMs`, so a node that
- * joins or leaves the cluster is seen within a minute, and concurrent requests share one read.
- */
 export function createHostResolver({
     localHost, sshUser, listNodes, ttlMs = NODE_LIST_TTL_MS, now = Date.now,
 }: {

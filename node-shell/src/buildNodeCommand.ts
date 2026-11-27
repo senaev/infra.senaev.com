@@ -1,12 +1,7 @@
 import { type HostTarget, NODE_LIST_JSONPATH } from './nodeHosts';
 import { shellQuote } from './shellQuote';
 
-/**
- * Enters every namespace of the host's PID 1, and takes its root directory and working
- * directory, so the rest runs as the host's root, with the host's binaries, `/etc/passwd`,
- * `/root/.ssh` and `known_hosts`. Joining the mount namespace already resets both, but saying it
- * keeps the command right without that detail.
- */
+// Run as the host's root, with its binaries, /root/.ssh and known_hosts.
 export const ENTER_HOST = [
     'nsenter',
     '--target',
@@ -18,11 +13,10 @@ export const ENTER_HOST = [
 ];
 
 export const SSH_CONNECT_TIMEOUT_SECONDS = 10;
-/** After SIGTERM at the timeout, systemd waits this long before SIGKILL (its default is 90 s). */
+// SIGKILL this long after SIGTERM (systemd's default is 90 s).
 export const UNIT_STOP_TIMEOUT_SECONDS = 15;
 
-// No prompt of any kind (a password, an unknown host key), and a dead connection is noticed.
-// The host key must already be in the host's known_hosts: a changed key fails the command.
+// The host key must already be in the host's known_hosts.
 const SSH_OPTIONS = [
     '-n',
     '-T',
@@ -49,17 +43,8 @@ export function systemdUnitName(executionId: string): string {
     return `node-shell-${executionId}`;
 }
 
-/**
- * Runs the command in a transient systemd unit on the target host. At `RuntimeMaxSec` systemd
- * stops the whole cgroup of the unit, also the processes that left the process group: closing
- * an SSH session alone would not kill them. The unit name follows the execution ID, so systemd
- * refuses a second unit for the same execution while the first one runs.
- */
-/**
- * systemd expands `$NAME` and `${NAME}` in the command line of a unit before `/bin/sh` gets it, so
- * the shell's own variables would vanish. `$$` is systemd's escape for one `$`, on every version
- * (`--expand-environment=no` needs systemd 254).
- */
+// systemd stops the unit's whole cgroup at RuntimeMaxSec; closing ssh alone would not.
+// systemd expands `$` in a unit's command line; `$$` is its escape (`--expand-environment=no` needs systemd 254).
 export function escapeForSystemd(command: string): string {
     return command.replaceAll('$', '$$$$');
 }
@@ -86,11 +71,7 @@ function buildSystemdRun({
     ];
 }
 
-/**
- * The argv to spawn in the node-shell container. The command of the local host runs there
- * directly; any other host gets it through ssh, which sends one string that the remote shell
- * parses again, so every argument is quoted.
- */
+// ssh joins its arguments into one string for the remote shell, so each one is quoted.
 export function buildNodeCommand(target: HostTarget, nodeCommand: NodeCommand): string[] {
     const systemdRun = buildSystemdRun(nodeCommand);
 
@@ -111,10 +92,7 @@ export function buildNodeCommand(target: HostTarget, nodeCommand: NodeCommand): 
     ];
 }
 
-/**
- * Lists the `vps` labels of the cluster nodes with the kubectl of k3s on the local host, the
- * control plane, as its root: node-shell needs no service account and no Kubernetes RBAC.
- */
+// As the host's root: node-shell needs no service account.
 export const LIST_NODES_ARGV: readonly string[] = [
     ...ENTER_HOST,
     'k3s',

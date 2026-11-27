@@ -11,7 +11,6 @@ export type ExecutionStore = {
     read: (executionId: string) => Promise<ExecutionRecord | undefined>;
     update: (record: ExecutionRecord) => Promise<void>;
     list: () => Promise<ExecutionRecord[]>;
-    /** Deletes the records whose file is older than `maxAgeMs`; returns how many. */
     removeOlderThan: (maxAgeMs: number, now: Date) => Promise<number>;
 };
 
@@ -25,13 +24,7 @@ function isNotFound(error: unknown): boolean {
     return error instanceof Error && 'code' in error && error.code === 'ENOENT';
 }
 
-/**
- * One JSON file per execution, in a host directory that survives restarts of the pod. Every
- * write goes to a temporary file first, so a record is never half written. `create` links the
- * temporary file to the final name, which fails when the name exists: of two requests with the
- * same ID only one starts the command, also across restarts. The files hold the output, so the
- * directory is readable only by root on the host.
- */
+// Written through a temporary file; `create` links it, which fails when the ID exists.
 export async function createExecutionStore(directory: string): Promise<ExecutionStore> {
     await mkdir(directory, {
         recursive: true,

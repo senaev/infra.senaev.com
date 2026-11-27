@@ -1,14 +1,4 @@
 {{- if .Values.nodeShell.enabled }}
-# Runs approved commands as root on the cluster nodes (node-shell/, and
-# projects/2026-11-15-10-44-approved-node-commands). This is the most privileged workload of the
-# cluster: it is root on its host, the control plane, and through that host's SSH key root on
-# every other host. So:
-# - privileged with hostPID: `nsenter --target 1 --all` enters every namespace of the host, and
-#   ssh, systemd-run and the command run from the host's own filesystem and network;
-# - no hostNetwork: the API stays in the pod network, behind the NetworkPolicy below;
-# - one container, no sidecar, no service account token, no Secret except its own certificate,
-#   and no Datadog injection;
-# - its only input is the mTLS API, and only cluster-helper may call it.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -44,8 +34,6 @@ spec:
             runAsUser: 0
             runAsGroup: 0
           ports:
-            # Needs a client certificate of the internal CA; only cluster-helper may call it.
-            # There is no plain port and no probe.
             - name: mtls
               containerPort: 8443
           env:
@@ -58,8 +46,6 @@ spec:
           volumeMounts:
             - name: state
               mountPath: /state
-            # The whole directory, never subPath or env: only a directory mount follows renewals.
-            # The path is MTLS_DIRECTORY in senaev-utils, which the service reads.
             - name: mtls
               mountPath: /etc/mtls
               readOnly: true
@@ -88,9 +74,7 @@ spec:
       port: 8443
       targetPort: mtls
 ---
-# Only cluster-helper reaches the mTLS port, and the server also allows it by the name in its
-# certificate. The pod itself makes no connection: ssh runs in the host's network namespace,
-# so all egress of the pod network is closed, DNS included.
+# ssh runs in the host's network, so the pod itself needs no egress at all.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
