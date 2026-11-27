@@ -300,36 +300,11 @@ present a certificate and stay plain HTTP (cluster-helper `:80`, obsidian-sync `
 
 ## Node shell
 
-`node-shell` (`node-shell/`, template `senaev-com/templates/node-shell.yaml`) runs commands as root on
-the cluster hosts, for the Telegram-approved node commands of
-[`projects/2026-11-15-10-44-approved-node-commands`](projects/2026-11-15-10-44-approved-node-commands/README.md).
-It is the most privileged workload: one pod on hetzner, `privileged` with `hostPID`, that enters the
-host with `nsenter --target 1 --all`. A command for hetzner runs there; a command for another host goes
-through `ssh root@<host>` from hetzner with the SSH key of its root, which every host accepts. The hosts
-are the cluster nodes by their `vps` label, read with hetzner's `k3s kubectl get nodes` (cached for a
-minute; no service account), so there is no host list to keep: a host that is not a node is refused. On the target, each command runs in a transient systemd unit
-`node-shell-<executionId>` with `RuntimeMaxSec`, which kills everything it started at the timeout
-(SIGTERM, then SIGKILL after `TimeoutStopSec=15`; node-shell keeps its one slot until then).
-The unit's description is `node-shell <executionId>`, never the command, so the command stays out of the
-host journal; each `$` of the command is passed to systemd as `$$`, so `/bin/sh` gets it unchanged.
-
-- No `hostNetwork`: the API is mTLS on 8443, only for cluster-helper (NetworkPolicy and `callers.ts`). The
-  pod network has no egress at all; ssh uses the host's network.
-- It does not ask for approval: cluster-helper must ask the user before `PUT /executions/:id`
-  (`{ host, command, timeoutSeconds ≤ 3600 }`), which answers 202 at once. `GET /executions/:id` gives
-  the status (`running`, `completed`, `failed`, `interrupted`), the exit code and up to 1 MiB of each
-  output stream. Exit code 255 can also be ssh's own error (for example, an unreachable host).
-- An execution ID runs at most once. Its record is a file in `<clusterRootPath>/volumes/node-shell`,
-  created before the command starts and kept 24 hours; a repeated `PUT` returns it, the same ID with
-  another request is 409. After a restart, a record still `running` becomes `interrupted`, never retried.
-- One command at a time, on all hosts together: another one gets 429 until it finishes. An execution ID
-  is remembered for 24 hours; cluster-helper must not send a `PUT` later than 1 hour after the approval.
-  Each record has `endsBy` (timeout + unit stop + SSH margin); after a restart, a command left `running`
-  becomes `interrupted` and no new command starts before its `endsBy`, since its unit may still run. The
-  same hold follows a remote command whose ssh ended with 255 or a signal (a dropped connection). Such
-  records get `mayStillRun: true`, and every start restores the hold from them, so it survives restarts. The logs have the execution ID, host, status and exit code, never the
-  command or its output.
-- Not done yet: the Telegram approval and the `submit`/`status` API in cluster-helper, and the workspace skill.
+`node-shell` (`node-shell/`) runs Telegram-approved commands as root on the cluster nodes
+([project](projects/2026-11-15-10-44-approved-node-commands/README.md)). It is the most privileged
+workload: a privileged pod on hetzner that enters the host and reaches the other nodes over ssh.
+Only cluster-helper may call it (mTLS), and cluster-helper must get the user's approval first.
+Never log a command or its output. Details are in the code and the project README.
 
 ## Shared Toolchain
 
