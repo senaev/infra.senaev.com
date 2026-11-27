@@ -75,6 +75,10 @@ merged or closed.
 ### Implementation (Coding)
 
 When the code is ready and local checks passed, open the pull request and run the Code Review Loop.
+Right after you open the pull request, send its link to the user in the chat, before the loop
+starts, so the user can look at the changes while the loop runs. Then start the loop anyway, without
+waiting for an answer. If you can run a sub-agent in the background, run the loop in it, so the
+message reaches the user at once; otherwise send the message and run the loop yourself.
 When the loop is finished, tell the user to review the pull request. Merging stays the user's decision.
 
 ### Code Review
