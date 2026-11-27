@@ -22,9 +22,7 @@
   or an import that is only exported again. Importers must import from the file that defines the
   symbol. Barrel `index` files that only re-export are the same.
 
-## Tests
+## Test arguments
 
-- Flag optional parameters. Make a parameter required, or remove it and use the value directly.
-- Flag parameters that exist only for tests (a clock, a TTL, a dependency to swap). The code should use
-  the real thing directly, and the test should mock it: timers with `vi.useFakeTimers()` and
-  `vi.setSystemTime()`, modules with `vi.mock()`, functions with `vi.spyOn()`.
+- Flag optional parameters.
+- Flag parameters that exist only for tests. Tests should mock timers or any other dependency instead.
