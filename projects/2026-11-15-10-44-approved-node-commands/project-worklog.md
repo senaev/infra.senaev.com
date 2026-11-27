@@ -6,7 +6,14 @@ unit's whole cgroup (SIGTERM, then SIGKILL after `TimeoutStopSec`) and waits for
 with the record when it was stopped (the record is saved as `stopped` with `stoppedAt` soon
 after), 200 when nothing runs any more, 404 for an unknown ID, 502 when `systemctl` fails. A unit
 that is already gone (`systemctl` exit 5) counts as stopped. A record of an earlier process with
-`mayStillRun` can be stopped too; its hold on new commands still ends at `endsBy`.
+`mayStillRun` can be stopped too.
+
+Codex review of the stop: a stop could come before systemd created the unit, find no unit and
+report a success while the command still started. Now the stop first creates
+`/run/node-shell-<id>.stop` on the host, and the unit's shell exits 143 without running the
+command when that file exists. Only a confirmed stop marks a record `stopped`; a failed one
+leaves its own result. A confirmed stop of an earlier record removes its `mayStillRun`, and the
+hold on new commands is computed again from the remaining records.
 
 ## 2026-11-27 20:00 UTC — The node list is read for every command, with no cache
 

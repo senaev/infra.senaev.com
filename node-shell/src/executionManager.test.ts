@@ -469,9 +469,9 @@ describe('stop', () => {
             record: { status: 'running' },
         });
         expect(run.mock.lastCall?.[0].argv.slice(7)).toEqual([
-            'systemctl',
-            'stop',
-            'node-shell-e1',
+            '/bin/sh',
+            '-c',
+            'touch /run/node-shell-e1.stop && systemctl stop node-shell-e1',
         ]);
 
         pending.resolve({
@@ -521,6 +521,9 @@ describe('stop', () => {
         expect(store.records.get('e1')?.status).toBe('running');
         pending.resolve(result);
         await settle();
+
+        expect(store.records.get('e1')?.status).toBe('completed');
+        expect(store.records.get('e1')).not.toHaveProperty('stoppedAt');
     });
 
     it('runs nothing for a finished execution, and answers not-found for an unknown one', async () => {
@@ -537,24 +540,67 @@ describe('stop', () => {
         expect(run).not.toHaveBeenCalled();
     });
 
-    it('stops the unit of an earlier process that may still run', async () => {
+    it('stops the unit of an earlier process that may still run, then lets new commands start', async () => {
+        const endsBy = new Date(NOW.getTime() + 60_000);
+
         store.records.set('old', {
             executionId: 'old',
             host: 'senaev-madrid',
             requestHash: 'hash',
             status: 'interrupted',
             startedAt: NOW.toISOString(),
-            endsBy: new Date(NOW.getTime() + 60_000).toISOString(),
+            endsBy: endsBy.toISOString(),
             mayStillRun: true,
+        });
+        manager = createExecutionManager({
+            store,
+            run,
+            logger,
+            busyUntil: endsBy,
         });
         run.mockResolvedValue(result);
 
+        await expect(manager.start(request)).resolves.toEqual({ kind: 'busy' });
         await expect(manager.stop('old')).resolves.toMatchObject({ kind: 'stopped' });
         expect(run.mock.lastCall?.[0].argv.slice(-3)).toEqual([
             'root@senaev-madrid',
             '--',
-            '\'systemctl\' \'stop\' \'node-shell-old\'',
+            '\'/bin/sh\' \'-c\' \'touch /run/node-shell-old.stop && systemctl stop node-shell-old\'',
         ]);
+        expect(store.records.get('old')).toMatchObject({
+            status: 'interrupted',
+            stoppedAt: NOW.toISOString(),
+        });
+        expect(store.records.get('old')).not.toHaveProperty('mayStillRun');
+        await expect(manager.start(request)).resolves.toMatchObject({ kind: 'started' });
+    });
+
+    it('keeps new commands out when the stop of an earlier unit fails', async () => {
+        const endsBy = new Date(NOW.getTime() + 60_000);
+
+        store.records.set('old', {
+            executionId: 'old',
+            host: 'senaev-madrid',
+            requestHash: 'hash',
+            status: 'interrupted',
+            startedAt: NOW.toISOString(),
+            endsBy: endsBy.toISOString(),
+            mayStillRun: true,
+        });
+        manager = createExecutionManager({
+            store,
+            run,
+            logger,
+            busyUntil: endsBy,
+        });
+        run.mockResolvedValue({
+            ...result,
+            exitCode: 255,
+        });
+
+        await expect(manager.stop('old')).resolves.toEqual({ kind: 'stop-failed' });
+        expect(store.records.get('old')?.mayStillRun).toBe(true);
+        await expect(manager.start(request)).resolves.toEqual({ kind: 'busy' });
     });
 });
 

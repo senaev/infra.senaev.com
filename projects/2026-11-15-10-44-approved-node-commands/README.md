@@ -37,7 +37,7 @@ Approve / Reject buttons before running a command on the chosen node.
   `systemd-run --wait --pipe --collect -p RuntimeMaxSec=<timeout> -- /bin/sh -c <shell-quoted command>`.
   systemd stops the unit's whole cgroup at the limit (SIGTERM, then SIGKILL after the stop
   timeout), including children that left the process group. Every node runs systemd (k3s).
-  Cancelling the request runs `systemctl stop` on the unit by its name, derived from the execution ID.
+  `DELETE /executions/:id` creates a stop marker on the host and runs `systemctl stop` on the unit by its name, derived from the execution ID; a unit that starts after the marker exits without running the command.
 - SSH can also reach machines outside Kubernetes, such as the `proxmox-madrid` host.
   Which hosts the executor accepts is an explicit list in its configuration.
 - Restrict executor API ingress with NetworkPolicy to cluster-helper's pod and the API port.

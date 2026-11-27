@@ -49,6 +49,16 @@ export function escapeForSystemd(command: string): string {
     return command.replaceAll('$', '$$$$');
 }
 
+// On the host's tmpfs, so a reboot removes it. A stop creates it before `systemctl stop`.
+export function stopMarkerPath(executionId: string): string {
+    return `/run/node-shell-${executionId}.stop`;
+}
+
+// Runs in the unit: a stop that came before the unit existed finds no unit, so the unit checks.
+export function guardCommand(markerPath: string): string {
+    return `if [ -e ${markerPath} ]; then exit 143; fi; exec /bin/sh -c "$0"`;
+}
+
 function buildSystemdRun({
     executionId, command, timeoutSeconds,
 }: NodeCommand): string[] {
@@ -67,6 +77,7 @@ function buildSystemdRun({
         '--',
         '/bin/sh',
         '-c',
+        escapeForSystemd(guardCommand(stopMarkerPath(executionId))),
         escapeForSystemd(command),
     ];
 }
@@ -94,11 +105,12 @@ export function buildNodeCommand(target: HostTarget, nodeCommand: NodeCommand): 
     return onHost(target, buildSystemdRun(nodeCommand));
 }
 
-// systemctl waits until the unit has stopped: SIGTERM, then SIGKILL after `TimeoutStopSec`.
+// The marker first: either the unit exists and systemctl stops it (waiting for SIGTERM, then
+// SIGKILL after `TimeoutStopSec`), or the unit starts later and its guard exits.
 export function buildStopCommand(target: HostTarget, executionId: string): string[] {
     return onHost(target, [
-        'systemctl',
-        'stop',
-        systemdUnitName(executionId),
+        '/bin/sh',
+        '-c',
+        `touch ${stopMarkerPath(executionId)} && systemctl stop ${systemdUnitName(executionId)}`,
     ]);
 }
