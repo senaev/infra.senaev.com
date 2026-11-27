@@ -75,22 +75,27 @@ export function registerExecutionRoutes(
             timeoutSeconds: request.body.timeoutSeconds,
         });
 
-        switch (result.kind) {
-        case 'started':
+        if (result.kind === 'started') {
             return reply.code(202).send({ execution: toPublicExecution(result.record) });
-        case 'existing':
-            return reply.code(200).send({ execution: toPublicExecution(result.record) });
-        case 'conflict':
-            return reply.code(409).send(errorBody('execution_id_conflict', 'This execution ID was used for another request'));
-        case 'hosts-unavailable':
-            return reply.code(503).send(errorBody('hosts_unavailable', 'The list of cluster nodes cannot be read; try again later'));
-        case 'unknown-host':
-            return reply.code(400).send(errorBody('unknown_host', 'This host is not a node of the cluster'));
-        case 'busy':
-            break;
         }
 
-        return reply.code(429).send(errorBody('busy', 'Too many commands are running; try again later'));
+        if (result.kind === 'existing') {
+            return reply.code(200).send({ execution: toPublicExecution(result.record) });
+        }
+
+        if (result.kind === 'conflict') {
+            return reply.code(409).send(errorBody('execution_id_conflict', 'This execution ID was used for another request'));
+        }
+
+        if (result.kind === 'hosts-unavailable') {
+            return reply.code(503).send(errorBody('hosts_unavailable', 'The list of cluster nodes cannot be read; try again later'));
+        }
+
+        if (result.kind === 'unknown-host') {
+            return reply.code(400).send(errorBody('unknown_host', 'This host is not a node of the cluster'));
+        }
+
+        return reply.code(429).send(errorBody('busy', 'Another command is running; try again later'));
     });
 
     server.get<{ Params: { executionId: string } }>('/executions/:executionId', async (request, reply) => {
