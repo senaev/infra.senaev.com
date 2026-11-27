@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import type { FastifyBaseLogger } from 'fastify';
 
 import {
-    buildNodeCommand, type NodeCommand, SSH_CONNECT_TIMEOUT_SECONDS,
+    buildNodeCommand, type NodeCommand, SSH_CONNECT_TIMEOUT_SECONDS, UNIT_STOP_TIMEOUT_SECONDS,
 } from './buildNodeCommand';
 import type { ExecutionRecord } from './executionRecord';
 import type { ExecutionStore } from './executionStore';
@@ -15,8 +15,9 @@ export const MAX_TIMEOUT_SECONDS = 3600;
 export const MAX_CONCURRENT_EXECUTIONS = 1;
 export const MAX_OUTPUT_BYTES = 1024 * 1024;
 // The local process gets this long after the command timeout before node-shell kills it: the
-// SSH connection, and the stop of the systemd unit on the host (SIGTERM, then SIGKILL).
-const DEADLINE_GRACE_MS = (SSH_CONNECT_TIMEOUT_SECONDS + 60) * 1000;
+// SSH connection, the stop of the systemd unit on the host (SIGTERM, then SIGKILL after
+// `TimeoutStopSec`), and a margin. So the slot is free only once the command has ended.
+const DEADLINE_GRACE_MS = (SSH_CONNECT_TIMEOUT_SECONDS + UNIT_STOP_TIMEOUT_SECONDS + 45) * 1000;
 
 export type StartResult =
     | { kind: 'started'; record: ExecutionRecord }

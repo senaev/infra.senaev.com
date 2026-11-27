@@ -38,6 +38,7 @@ describe('buildNodeCommand', () => {
             '--quiet',
             '--service-type=exec',
             '--property=RuntimeMaxSec=30',
+            '--property=TimeoutStopSec=15',
             '--',
             '/bin/sh',
             '-c',
@@ -66,7 +67,7 @@ describe('buildNodeCommand', () => {
         expect(argv.slice(-3)).toEqual([
             'root@senaev-madrid',
             '--',
-            '\'systemd-run\' \'--unit=node-shell-abc-123\' \'--description=node-shell abc-123\' \'--wait\' \'--pipe\' \'--collect\' \'--quiet\' ' + '\'--service-type=exec\' \'--property=RuntimeMaxSec=30\' \'--\' \'/bin/sh\' \'-c\' ' + '\'echo \'\\\'\'hi\'\\\'\' && id\'',
+            '\'systemd-run\' \'--unit=node-shell-abc-123\' \'--description=node-shell abc-123\' \'--wait\' \'--pipe\' \'--collect\' \'--quiet\' ' + '\'--service-type=exec\' \'--property=RuntimeMaxSec=30\' \'--property=TimeoutStopSec=15\' \'--\' \'/bin/sh\' \'-c\' ' + '\'echo \'\\\'\'hi\'\\\'\' && id\'',
         ]);
     });
 

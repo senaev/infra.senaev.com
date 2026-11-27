@@ -308,7 +308,8 @@ host with `nsenter --target 1 --all`. A command for hetzner runs there; a comman
 through `ssh root@<host>` from hetzner with the SSH key of its root, which every host accepts. The hosts
 are the cluster nodes by their `vps` label, read with hetzner's `k3s kubectl get nodes` (cached for a
 minute; no service account), so there is no host list to keep: a host that is not a node is refused. On the target, each command runs in a transient systemd unit
-`node-shell-<executionId>` with `RuntimeMaxSec`, which kills everything it started at the timeout.
+`node-shell-<executionId>` with `RuntimeMaxSec`, which kills everything it started at the timeout
+(SIGTERM, then SIGKILL after `TimeoutStopSec=15`; node-shell keeps its one slot until then).
 The unit's description is `node-shell <executionId>`, never the command, so the command stays out of the
 host journal; each `$` of the command is passed to systemd as `$$`, so `/bin/sh` gets it unchanged.
 

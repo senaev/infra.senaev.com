@@ -18,6 +18,8 @@ export const ENTER_HOST = [
 ];
 
 export const SSH_CONNECT_TIMEOUT_SECONDS = 10;
+/** After SIGTERM at the timeout, systemd waits this long before SIGKILL (its default is 90 s). */
+export const UNIT_STOP_TIMEOUT_SECONDS = 15;
 
 // No prompt of any kind (a password, an unknown host key), and a dead connection is noticed.
 // The host key must already be in the host's known_hosts: a changed key fails the command.
@@ -76,6 +78,7 @@ function buildSystemdRun({
         '--quiet',
         '--service-type=exec',
         `--property=RuntimeMaxSec=${timeoutSeconds}`,
+        `--property=TimeoutStopSec=${UNIT_STOP_TIMEOUT_SECONDS}`,
         '--',
         '/bin/sh',
         '-c',
