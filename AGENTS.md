@@ -321,7 +321,7 @@ host journal; each `$` of the command is passed to systemd as `$$`, so `/bin/sh`
 - An execution ID runs at most once. Its record is a file in `<clusterRootPath>/volumes/node-shell`,
   created before the command starts and kept 24 hours; a repeated `PUT` returns it, the same ID with
   another request is 409. After a restart, a record still `running` becomes `interrupted`, never retried.
-- At most 4 commands at once (429). The logs have the execution ID, host, status and exit code, never the
+- One command at a time, on all hosts together: another one gets 429 until it finishes. The logs have the execution ID, host, status and exit code, never the
   command or its output.
 - Not done yet: the Telegram approval and the `submit`/`status` API in cluster-helper, and the workspace skill.
 

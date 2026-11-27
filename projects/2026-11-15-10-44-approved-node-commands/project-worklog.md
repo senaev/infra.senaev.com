@@ -1,3 +1,8 @@
+## 2026-11-27 13:40 UTC — One command at a time
+
+The user decided: no commands in parallel. node-shell runs at most one command at a time, on all
+hosts together; a new `PUT` while one is running is 429 `busy`, and nothing is saved for it.
+
 ## 2026-11-27 13:06 UTC — Read the hosts from the cluster nodes
 
 galkin is no longer a node, and `nodeShell.sshDestinations` repeated the node list. Removed it:

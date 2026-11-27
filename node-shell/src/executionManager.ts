@@ -11,7 +11,8 @@ import type { HostResolver, HostTarget } from './nodeHosts';
 import type { CommandResult } from './runCommand';
 
 export const MAX_TIMEOUT_SECONDS = 3600;
-export const MAX_CONCURRENT_EXECUTIONS = 4;
+// One command at a time on all hosts: a second one waits for the first to finish (429).
+export const MAX_CONCURRENT_EXECUTIONS = 1;
 export const MAX_OUTPUT_BYTES = 1024 * 1024;
 // The local process gets this long after the command timeout before node-shell kills it: the
 // SSH connection, and the stop of the systemd unit on the host (SIGTERM, then SIGKILL).
