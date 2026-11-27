@@ -11,6 +11,11 @@ import type { ExecutionStore } from './executionStore';
 import { createHostResolver } from './nodeHosts';
 import type { CommandResult } from './runCommand';
 
+// The command and the store answer at once: one macrotask lets every started command end.
+const settle = () => new Promise<void>((resolve) => {
+    setImmediate(resolve);
+});
+
 const NOW = new Date('2026-11-22T10:00:00.000Z');
 
 function createMemoryStore(): ExecutionStore & { records: Map<string, ExecutionRecord> } {
@@ -131,7 +136,7 @@ describe('createExecutionManager', () => {
         ]);
 
         pending.resolve(result);
-        await manager.idle();
+        await settle();
 
         expect(store.records.get('e1')).toMatchObject({
             status: 'completed',
@@ -145,7 +150,7 @@ describe('createExecutionManager', () => {
         run.mockResolvedValue(result);
 
         await manager.start(request);
-        await manager.idle();
+        await settle();
 
         await expect(manager.start(request)).resolves.toMatchObject({
             kind: 'existing',
@@ -186,7 +191,7 @@ describe('createExecutionManager', () => {
         expect(store.records.has('one-more')).toBe(false);
 
         pending.resolve(result);
-        await manager.idle();
+        await settle();
     });
 
     it('keeps the limit when many starts arrive at once and the store answers later', async () => {
@@ -210,13 +215,13 @@ describe('createExecutionManager', () => {
         expect(run).toHaveBeenCalledTimes(MAX_CONCURRENT_EXECUTIONS);
 
         pending.resolve(result);
-        await manager.idle();
+        await settle();
 
         await expect(manager.start({
             ...request,
             executionId: 'after',
         })).resolves.toMatchObject({ kind: 'started' });
-        await manager.idle();
+        await settle();
     });
 
     it('gives the slot back when a start loses the race for its ID', async () => {
@@ -235,7 +240,7 @@ describe('createExecutionManager', () => {
         run.mockResolvedValue(result);
 
         await expect(manager.start(request)).resolves.toMatchObject({ kind: 'started' });
-        await manager.idle();
+        await settle();
     });
 
     it('answers hosts-unavailable without saving anything when the node list cannot be read', async () => {
@@ -264,7 +269,7 @@ describe('createExecutionManager', () => {
             ...request,
             host: 'senaev-madrid',
         });
-        await manager.idle();
+        await settle();
 
         const removed = createExecutionManager({
             store,
@@ -292,7 +297,7 @@ describe('createExecutionManager', () => {
 
         run.mockResolvedValue(result);
         await manager.start(request);
-        await manager.idle();
+        await settle();
 
         expect(store.records.get('e1')?.status).toBe('running');
         await expect(manager.get('e1')).resolves.toMatchObject({ status: 'completed' });
@@ -330,7 +335,7 @@ describe('createExecutionManager', () => {
 
         const started = await manager.start(remote);
 
-        await manager.idle();
+        await settle();
         expect(started).toMatchObject({ kind: 'started' });
 
         const endsBy = new Date(started.kind === 'started' ? started.record.endsBy : 0);
@@ -345,14 +350,14 @@ describe('createExecutionManager', () => {
             ...request,
             executionId: 'e2',
         })).resolves.toMatchObject({ kind: 'started' });
-        await manager.idle();
+        await settle();
 
         // A local command, or a remote one with its own exit code, frees the slot at once.
         await expect(manager.start({
             ...remote,
             executionId: 'e3',
         })).resolves.toMatchObject({ kind: 'started' });
-        await manager.idle();
+        await settle();
         await expect(manager.start({
             ...request,
             executionId: 'e4',
@@ -363,7 +368,7 @@ describe('createExecutionManager', () => {
         run.mockRejectedValue(new Error('spawn nsenter ENOENT'));
 
         await manager.start(request);
-        await manager.idle();
+        await settle();
 
         expect(store.records.get('e1')).toMatchObject({
             status: 'failed',
@@ -380,7 +385,7 @@ describe('createExecutionManager', () => {
         });
 
         await manager.start(request);
-        await manager.idle();
+        await settle();
 
         expect(store.records.get('e1')).toMatchObject({
             status: 'failed',
@@ -399,7 +404,7 @@ describe('createExecutionManager', () => {
             ...request,
             command: 'echo secret-command',
         });
-        await manager.idle();
+        await settle();
 
         expect(JSON.stringify(logger.info.mock.calls)).not.toMatch(/secret/);
     });
@@ -479,7 +484,7 @@ describe('markInterruptedExecutions', () => {
             ...request,
             host: 'senaev-madrid',
         });
-        await manager.idle();
+        await settle();
 
         expect(store.records.get('e1')).toMatchObject({
             status: 'completed',

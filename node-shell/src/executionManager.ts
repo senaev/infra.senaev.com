@@ -28,8 +28,6 @@ export type ExecutionManager = {
     /** Starts the command once per execution ID and returns at once. */
     start: (nodeCommand: NodeCommand) => Promise<StartResult>;
     get: (executionId: string) => Promise<ExecutionRecord | undefined>;
-    /** For tests and shutdown. */
-    idle: () => Promise<void>;
 };
 
 function hashRequest({
@@ -55,7 +53,6 @@ export function createExecutionManager({
     run: (options: { argv: readonly string[]; deadlineMs: number; maxOutputBytes: number }) => Promise<CommandResult>;
     logger: Pick<FastifyBaseLogger, 'info' | 'error'>;
 }): ExecutionManager {
-    const running = new Set<Promise<void>>();
     // Taken before any await, so concurrent starts cannot all pass the check.
     let reservedSlots = 0;
     // No new command before this time: an earlier command may still run on its host.
@@ -224,7 +221,7 @@ export function createExecutionManager({
                 timeoutSeconds: nodeCommand.timeoutSeconds,
             }, '▶️ Node command started');
 
-            const execution = execute(nodeCommand, target, record)
+            void execute(nodeCommand, target, record)
                 .catch((error: unknown) => {
                     logger.error({
                         err: toError(error),
@@ -233,10 +230,7 @@ export function createExecutionManager({
                 })
                 .finally(() => {
                     reservedSlots -= 1;
-                    running.delete(execution);
                 });
-
-            running.add(execution);
 
             return {
                 kind: 'started',
@@ -244,9 +238,6 @@ export function createExecutionManager({
             };
         },
         get: read,
-        async idle() {
-            await Promise.all(running);
-        },
     };
 }
 

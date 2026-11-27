@@ -27,7 +27,6 @@ const record: ExecutionRecord = {
 const manager = {
     start: vi.fn<ExecutionManager['start']>(),
     get: vi.fn<ExecutionManager['get']>(),
-    idle: vi.fn<ExecutionManager['idle']>(),
 };
 
 let server: ReturnType<typeof createNodeShellServer>;
