@@ -3,6 +3,9 @@ import {
 } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { isAlreadyExistsError } from 'senaev-utils/src/utils/Error/isAlreadyExistsError/isAlreadyExistsError';
+import { isNotFoundError } from 'senaev-utils/src/utils/Error/isNotFoundError/isNotFoundError';
+
 import type { ExecutionRecord } from './executionRecord';
 
 export type ExecutionStore = {
@@ -15,14 +18,6 @@ export type ExecutionStore = {
 };
 
 const SUFFIX = '.json';
-
-function isAlreadyExists(error: unknown): boolean {
-    return error instanceof Error && 'code' in error && error.code === 'EEXIST';
-}
-
-function isNotFound(error: unknown): boolean {
-    return error instanceof Error && 'code' in error && error.code === 'ENOENT';
-}
 
 // Written through a temporary file; `create` links it, which fails when the ID exists.
 export async function createExecutionStore(directory: string): Promise<ExecutionStore> {
@@ -47,7 +42,7 @@ export async function createExecutionStore(directory: string): Promise<Execution
         try {
             return JSON.parse(await readFile(pathOf(executionId), 'utf8')) as ExecutionRecord;
         } catch (error) {
-            if (isNotFound(error)) {
+            if (isNotFoundError(error)) {
                 return undefined;
             }
 
@@ -64,7 +59,7 @@ export async function createExecutionStore(directory: string): Promise<Execution
 
                 return true;
             } catch (error) {
-                if (isAlreadyExists(error)) {
+                if (isAlreadyExistsError(error)) {
                     return false;
                 }
 
@@ -95,7 +90,7 @@ export async function createExecutionStore(directory: string): Promise<Execution
                         removed += 1;
                     }
                 } catch (error) {
-                    if (!isNotFound(error)) {
+                    if (!isNotFoundError(error)) {
                         throw error;
                     }
                 }

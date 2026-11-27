@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 
 import type { FastifyBaseLogger } from 'fastify';
+import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
+import { wrapError } from 'senaev-utils/src/utils/Error/wrapError';
 
 import {
     buildNodeCommand, type NodeCommand, SSH_CONNECT_TIMEOUT_SECONDS, UNIT_STOP_TIMEOUT_SECONDS,
@@ -40,10 +42,6 @@ function hashRequest({
     ])).digest('hex');
 }
 
-function toError(error: unknown): Error {
-    return error instanceof Error ? error : new Error(String(error));
-}
-
 export function createExecutionManager({
     store, hosts, run, logger, busyUntil,
 }: {
@@ -72,7 +70,7 @@ export function createExecutionManager({
             unsaved.delete(executionId);
         } catch (error) {
             logger.error({
-                err: toError(error),
+                err: wrapError(error),
                 executionId,
             }, '❌ Failed again to save the result of a node command');
         }
@@ -121,7 +119,7 @@ export function createExecutionManager({
                 ...record,
                 status: 'failed',
                 finishedAt: new Date().toISOString(),
-                error: toError(error).message,
+                error: stringifyUnknownError(error),
             };
         }
 
@@ -144,7 +142,7 @@ export function createExecutionManager({
             unsaved.set(finished.executionId, finished);
             logger.error({
                 ...logFields,
-                err: toError(error),
+                err: wrapError(error),
             }, '❌ Failed to save the result of a node command; kept in memory until it is saved');
         }
 
@@ -171,7 +169,7 @@ export function createExecutionManager({
             try {
                 target = await hosts.resolve(nodeCommand.host);
             } catch (error) {
-                logger.error({ err: toError(error) }, '❌ Failed to read the cluster nodes');
+                logger.error({ err: wrapError(error) }, '❌ Failed to read the cluster nodes');
 
                 return { kind: 'hosts-unavailable' };
             }
@@ -224,7 +222,7 @@ export function createExecutionManager({
             void execute(nodeCommand, target, record)
                 .catch((error: unknown) => {
                     logger.error({
-                        err: toError(error),
+                        err: wrapError(error),
                         executionId: record.executionId,
                     }, '❌ A node command failed unexpectedly');
                 })
