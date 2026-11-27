@@ -870,6 +870,53 @@ describe('stop', () => {
         })).resolves.toEqual({ kind: 'busy' });
     });
 
+    it('keeps a confirmed stop when a read saves the older result again at the same time', async () => {
+        const retried = deferred<undefined>();
+        const { update } = store;
+        let olderWrites = 0;
+
+        // The result fails to save, then the retry by the read is slow, and the one by the stop is not.
+        store.update = async (record) => {
+            if (record.executionId === 'e1' && record.stoppedAt === undefined && record.status !== 'running') {
+                olderWrites += 1;
+
+                if (olderWrites === 1) {
+                    throw new Error('disk full');
+                }
+
+                if (olderWrites === 2) {
+                    await retried.promise;
+                }
+            }
+
+            return update(record);
+        };
+
+        run.mockImplementation(({ argv }) => Promise.resolve(isStop(argv)
+            ? result
+            : {
+                ...result,
+                exitCode: 255,
+            }));
+        await manager.start({
+            ...request,
+            host: 'senaev-madrid',
+        });
+        await settle();
+
+        const read = manager.get('e1');
+        const stopped = manager.stop('e1');
+
+        await settle();
+        retried.resolve(undefined);
+        await read;
+        await expect(stopped).resolves.toMatchObject({ kind: 'stopped' });
+        await settle();
+
+        expect(store.records.get('e1')).toMatchObject({ stoppedAt: NOW.toISOString() });
+        expect(store.records.get('e1')).not.toHaveProperty('mayStillRun');
+    });
+
     it('keeps new commands out when the stop of an earlier unit fails', async () => {
         const endsBy = new Date(NOW.getTime() + 60_000);
 

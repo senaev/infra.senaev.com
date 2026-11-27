@@ -113,6 +113,23 @@ export function createExecutionManager({
 
     const isHeld = (now: Date): boolean => [...holds.values()].some((endsBy) => endsBy > now);
 
+    // The writes of one execution run one after another, in the order they were asked for, so an
+    // older result saved again by a read cannot overwrite a newer one.
+    const writes = new Map<string, Promise<void>>();
+    const save = (record: ExecutionRecord): Promise<void> => {
+        const written = (writes.get(record.executionId) ?? Promise.resolve())
+            .catch(() => undefined)
+            .then(() => store.update(record));
+
+        writes.set(record.executionId, written);
+
+        return written.finally(() => {
+            if (writes.get(record.executionId) === written) {
+                writes.delete(record.executionId);
+            }
+        });
+    };
+
     const read = async (executionId: string): Promise<ExecutionRecord | undefined> => {
         const pending = unsaved.get(executionId);
 
@@ -121,7 +138,7 @@ export function createExecutionManager({
         }
 
         try {
-            await store.update(pending);
+            await save(pending);
             unsaved.delete(executionId);
         } catch (error) {
             logger.error({
@@ -218,7 +235,7 @@ export function createExecutionManager({
         }
 
         try {
-            await store.update(finished);
+            await save(finished);
         } catch (error) {
             unsaved.set(finished.executionId, finished);
             logger.error({
@@ -399,7 +416,7 @@ export function createExecutionManager({
 
             holds.delete(executionId);
             unsaved.delete(executionId);
-            await store.update(stopped);
+            await save(stopped);
 
             return {
                 kind: 'stopped',
