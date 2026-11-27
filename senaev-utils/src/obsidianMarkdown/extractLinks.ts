@@ -73,7 +73,7 @@ function decodeUrlPath(value: string): string {
  * Code is masked with spaces of the same length, so a `[[link]]` inside a code block is not
  * a link but the offsets of everything else stay valid.
  */
-function maskCode(content: string, root: Nodes): string {
+export function maskCode(content: string, root: Nodes): string {
     const parts: string[] = [];
     let position = 0;
 

@@ -46,4 +46,9 @@ describe('replaceWikiLinksWithHighlights', () => {
         expect(replaceWikiLinksWithHighlights('a \\== b [[Note]]'))
             .toBe('a \\== b ==Note==');
     });
+
+    it('ignores highlight markers inside inline code when checking for an open highlight', () => {
+        expect(replaceWikiLinksWithHighlights('`a == b` [[Note]]'))
+            .toBe('`a == b` ==Note==');
+    });
 });

@@ -1,10 +1,16 @@
-import { ExtractedLink, extractLinks } from './extractLinks';
+import {
+    ExtractedLink, extractLinks, maskCode,
+} from './extractLinks';
+import { parseMarkdown } from './parseMarkdown';
 
 const HIGHLIGHT_MARKER = /(?<!\\)==/g;
 
-/** The body with every link blanked out, so `==` inside a link label is not a highlight marker. */
-function maskLinks(body: string, links: ExtractedLink[]): string {
-    let masked = body;
+/**
+ * The body with every link and code span blanked out, so `==` inside a link label or
+ * inside code is not a highlight marker.
+ */
+function maskLinksAndCode(body: string, links: ExtractedLink[]): string {
+    let masked = maskCode(body, parseMarkdown(body));
 
     for (const link of links) {
         masked = masked.slice(0, link.offset) + ' '.repeat(link.raw.length) + masked.slice(link.offset + link.raw.length);
@@ -24,7 +30,12 @@ function isInsideHighlight(masked: string, offset: number): boolean {
 /** Render Obsidian wikilinks as Telegram rich Markdown highlights, preserving code. */
 export function replaceWikiLinksWithHighlights(body: string): string {
     const links = extractLinks(body);
-    const masked = maskLinks(body, links);
+
+    if (links.length === 0) {
+        return body;
+    }
+
+    const masked = maskLinksAndCode(body, links);
     let result = body;
 
     // Replace backwards so the original offsets remain valid.
