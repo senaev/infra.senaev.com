@@ -252,8 +252,8 @@ is read. Code: `cluster-helper/src/telegramPublicApi.ts`. See
 ## Internal mTLS between the Node.js services
 
 Our Node.js services call each other with client certificates from a private CA (cert-manager,
-`provisioning/helm/pki`), not tokens. A service knows its callers by their DNS name and allows only
-those in its `callers.ts`. Certificates are mounted as a directory at `/etc/mtls` (never subPath or env) and reloaded without a
+`provisioning/helm/pki`), not tokens. A service accepts a request only with a valid certificate,
+and only from the services it allows, by the service name in the certificate. Certificates are mounted as a directory at `/etc/mtls` (never subPath or env) and reloaded without a
 restart (`senaev-utils/src/utils/mtls`). The `pki` namespace must sort before `senaev-com` (CI deploys
 namespaces in sorted order). Fail closed: never fall back to plain HTTP or a token. A protected
 route goes only on the service's mTLS server, together with a NetworkPolicy rule for its port. Callers
