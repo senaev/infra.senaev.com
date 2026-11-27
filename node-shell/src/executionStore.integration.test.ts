@@ -86,7 +86,7 @@ describe('createExecutionStore', () => {
             'e1',
             'e2',
         ]);
-        await expect(store.removeOlderThan(24 * 60 * 60 * 1000, new Date())).resolves.toBe(1);
+        await expect(store.removeOlderThan(24 * 60 * 60 * 1000, new Date())).resolves.toEqual(['e1']);
         expect((await store.list()).map(({ executionId }) => executionId)).toEqual(['e2']);
     });
 });

@@ -8,7 +8,7 @@ import {
     buildNodeCommand, buildStopCommand, type NodeCommand, SSH_CONNECT_TIMEOUT_SECONDS, UNIT_STOP_TIMEOUT_SECONDS,
 } from './buildNodeCommand';
 import type { ExecutionRecord } from './executionRecord';
-import type { ExecutionStore } from './executionStore';
+import type { ExecutionRecords } from './executionRecords';
 import {
     type HostTarget, hostTarget, resolveHost,
 } from './nodeHosts';
@@ -40,7 +40,7 @@ export type StopResult =
 export type ExecutionManager = {
     /** Starts the command once per execution ID and returns at once. */
     start: (nodeCommand: NodeCommand) => Promise<StartResult>;
-    get: (executionId: string) => Promise<ExecutionRecord | undefined>;
+    get: (executionId: string) => ExecutionRecord | undefined;
     /** Stops the systemd unit of a command that may still run; returns when it has stopped. */
     stop: (executionId: string) => Promise<StopResult>;
 };
@@ -56,9 +56,9 @@ function hashRequest({
 }
 
 export function createExecutionManager({
-    store, run, logger, holds: initialHolds,
+    records, run, logger, holds: initialHolds,
 }: {
-    store: ExecutionStore;
+    records: ExecutionRecords;
     holds: ReadonlyMap<string, Date>;
     run: (options: { argv: readonly string[]; deadlineMs: number; maxOutputBytes: number }) => Promise<CommandResult>;
     logger: Pick<FastifyBaseLogger, 'info' | 'error'>;
@@ -68,15 +68,10 @@ export function createExecutionManager({
     // The commands that may still run on their host, by execution ID, until their `endsBy`: no new
     // command starts before. Changed only synchronously, by the execution it belongs to.
     const holds = new Map(initialHolds);
-    // Results the store failed to save; saved again on the next read.
-    const unsaved = new Map<string, ExecutionRecord>();
     // The commands of this process that run now, and the last stop of each: when it was asked for,
     // and whether it was confirmed. Only a confirmed stop makes the result `stopped`.
     const active = new Map<string, HostTarget>();
     const stops = new Map<string, { requestedAt: string; confirmed: Promise<boolean> }>();
-    // The commands whose waiter has ended and whose result is being saved: a stop now waits for the
-    // save, then handles the saved record like one of an earlier process.
-    const finalizing = new Map<string, Promise<void>>();
 
     const runStop = async (target: HostTarget, record: ExecutionRecord): Promise<boolean> => {
         const logFields = {
@@ -111,44 +106,27 @@ export function createExecutionManager({
         return false;
     };
 
-    const isHeld = (now: Date): boolean => [...holds.values()].some((endsBy) => endsBy > now);
+    // When the confirmed stop of the execution was asked for. A failed stop that a retry replaced
+    // meanwhile gives way to the retry.
+    const confirmedStopAt = async (executionId: string): Promise<string | undefined> => {
+        for (;;) {
+            const stop = stops.get(executionId);
 
-    // The writes of one execution run one after another, in the order they were asked for, so an
-    // older result saved again by a read cannot overwrite a newer one.
-    const writes = new Map<string, Promise<void>>();
-    const save = (record: ExecutionRecord): Promise<void> => {
-        const written = (writes.get(record.executionId) ?? Promise.resolve())
-            .catch(() => undefined)
-            .then(() => store.update(record));
-
-        writes.set(record.executionId, written);
-
-        return written.finally(() => {
-            if (writes.get(record.executionId) === written) {
-                writes.delete(record.executionId);
+            if (stop === undefined) {
+                return undefined;
             }
-        });
+
+            if (await stop.confirmed) {
+                return stop.requestedAt;
+            }
+
+            if (stops.get(executionId) === stop) {
+                return undefined;
+            }
+        }
     };
 
-    const read = async (executionId: string): Promise<ExecutionRecord | undefined> => {
-        const pending = unsaved.get(executionId);
-
-        if (pending === undefined) {
-            return store.read(executionId);
-        }
-
-        try {
-            await save(pending);
-            unsaved.delete(executionId);
-        } catch (error) {
-            logger.error({
-                err: wrapError(error),
-                executionId,
-            }, '❌ Failed again to save the result of a node command');
-        }
-
-        return pending;
-    };
+    const isHeld = (now: Date): boolean => [...holds.values()].some((endsBy) => endsBy > now);
 
     const existingResult = (record: ExecutionRecord, requestHash: string): StartResult => (record.requestHash === requestHash
         ? {
@@ -183,8 +161,7 @@ export function createExecutionManager({
                 maxOutputBytes: MAX_OUTPUT_BYTES,
             });
 
-            const stop = stops.get(record.executionId);
-            const stoppedAt = stop !== undefined && await stop.confirmed ? stop.requestedAt : undefined;
+            const stoppedAt = await confirmedStopAt(record.executionId);
 
             // A signal ended the waiter, or ssh exited 255 (a dropped connection): the unit may still
             // run, unless a confirmed stop ended it.
@@ -219,11 +196,8 @@ export function createExecutionManager({
             };
         }
 
-        let finalized!: () => void;
-
-        finalizing.set(record.executionId, new Promise<void>((resolve) => {
-            finalized = resolve;
-        }));
+        // The result and the hold change together, so a stop sees both or neither.
+        records.update(finished);
 
         if (unitMayRun) {
             holds.set(record.executionId, new Date(record.endsBy));
@@ -233,18 +207,6 @@ export function createExecutionManager({
                 endsBy: record.endsBy,
             }, '⏳ ssh ended without the exit of the command; no new command until its unit has surely ended');
         }
-
-        try {
-            await save(finished);
-        } catch (error) {
-            unsaved.set(finished.executionId, finished);
-            logger.error({
-                ...logFields,
-                err: wrapError(error),
-            }, '❌ Failed to save the result of a node command; kept in memory until it is saved');
-        }
-
-        finalized();
 
         // No command and no output in the logs: they can hold secrets.
         logger.info({
@@ -258,7 +220,7 @@ export function createExecutionManager({
         async start(nodeCommand) {
             const requestHash = hashRequest(nodeCommand);
             // Before the host: a repeated request needs no node list.
-            const existing = await read(nodeCommand.executionId);
+            const existing = records.get(nodeCommand.executionId);
 
             if (existing !== undefined) {
                 return existingResult(existing, requestHash);
@@ -302,14 +264,13 @@ export function createExecutionManager({
                 reservedSlots -= 1;
                 active.delete(record.executionId);
                 stops.delete(record.executionId);
-                finalizing.delete(record.executionId);
             };
 
             // Saved before the command starts, so a restart never starts it again.
             let created: boolean;
 
             try {
-                created = await store.create(record);
+                created = await records.create(record);
             } catch (error) {
                 release();
                 throw error;
@@ -318,7 +279,7 @@ export function createExecutionManager({
             if (!created) {
                 release();
 
-                const raced = await store.read(nodeCommand.executionId);
+                const raced = records.get(nodeCommand.executionId);
 
                 return raced === undefined ? { kind: 'conflict' } : existingResult(raced, requestHash);
             }
@@ -343,17 +304,16 @@ export function createExecutionManager({
                 record,
             };
         },
-        get: read,
+        get: records.get,
         async stop(executionId) {
-            let record = await read(executionId);
+            const record = records.get(executionId);
 
             if (record === undefined) {
                 return { kind: 'not-found' };
             }
 
-            const finishing = finalizing.get(executionId);
-            // Only for a record of the running attempt: a finished one belongs to an earlier attempt.
-            const activeTarget = finishing === undefined && record.status === 'running' ? active.get(executionId) : undefined;
+            // Only while the record is `running`: a finished one is no longer the active command's.
+            const activeTarget = record.status === 'running' ? active.get(executionId) : undefined;
 
             if (activeTarget !== undefined) {
                 // A repeated stop reuses the last one, so a failed retry cannot undo a confirmed stop.
@@ -363,7 +323,7 @@ export function createExecutionManager({
                     if (await previous.confirmed) {
                         return {
                             kind: 'stopped',
-                            record: await read(executionId) ?? record,
+                            record: records.get(executionId) ?? record,
                         };
                     }
 
@@ -388,14 +348,8 @@ export function createExecutionManager({
 
                 return {
                     kind: 'stopped',
-                    record: await read(executionId) ?? record,
+                    record: records.get(executionId) ?? record,
                 };
-            }
-
-            // Waits for a result being saved. A `running` record read before the command ended is old: read again.
-            if (finishing !== undefined || record.status === 'running') {
-                await finishing;
-                record = await read(executionId) ?? record;
             }
 
             // A command whose end node-shell did not see (a restart, a dropped ssh) may still run.
@@ -410,28 +364,15 @@ export function createExecutionManager({
                 return { kind: 'stop-failed' };
             }
 
-            const { mayStillRun: _mayStillRun, ...rest } = record;
+            // The latest record: another stop may have changed it during this one.
+            const { mayStillRun: _mayStillRun, ...rest } = records.get(executionId) ?? record;
             const stopped: ExecutionRecord = {
                 ...rest,
                 stoppedAt: new Date().toISOString(),
             };
 
             holds.delete(executionId);
-            // Kept in memory until it is saved, so a retried stop does not reach the host again.
-            unsaved.set(executionId, stopped);
-
-            try {
-                await save(stopped);
-
-                if (unsaved.get(executionId) === stopped) {
-                    unsaved.delete(executionId);
-                }
-            } catch (error) {
-                logger.error({
-                    err: wrapError(error),
-                    executionId,
-                }, '❌ Failed to save a stopped node command; kept in memory until it is saved');
-            }
+            records.update(stopped);
 
             return {
                 kind: 'stopped',
@@ -445,14 +386,14 @@ export function createExecutionManager({
  * Records left `running` by an earlier process become `interrupted`, never retried. Returns the
  * `endsBy` of each command that may still run, by execution ID: no new command starts before it.
  */
-export async function markInterruptedExecutions(
-    store: ExecutionStore,
+export function markInterruptedExecutions(
+    records: ExecutionRecords,
     logger: Pick<FastifyBaseLogger, 'warn'>
-): Promise<Map<string, Date>> {
+): Map<string, Date> {
     const now = new Date();
     const holds = new Map<string, Date>();
 
-    for (const record of await store.list()) {
+    for (const record of records.list()) {
         const endsBy = new Date(record.endsBy);
 
         if ((record.status === 'running' || record.mayStillRun === true) && endsBy > now) {
@@ -460,7 +401,7 @@ export async function markInterruptedExecutions(
         }
 
         if (record.status === 'running') {
-            await store.update({
+            records.update({
                 ...record,
                 status: 'interrupted',
                 finishedAt: now.toISOString(),

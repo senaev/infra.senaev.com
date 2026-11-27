@@ -1,3 +1,17 @@
+## 2026-11-27 22:30 UTC — Records in memory, saved in the background
+
+The user asked to move the write logic out of the execution manager into its own entity, with
+an asynchronous interface only where it is needed. `executionRecords.ts` loads all records at
+startup and keeps them in memory; the JSON files of `executionStore.ts` are only for restarts.
+`get`, `list` and `update` are synchronous: an update changes the record at once, and its write
+runs in the background, one write at a time per execution and always of the latest record; a
+failed write is logged and tried again after 5 seconds. `create` resolves once the record is on
+disk, so a restart never starts a command again, and `removeOlderThan` removes the records from
+the disk and then from memory. The manager no longer has the map of unsaved results, the chain
+of writes, the wait for a result being saved or the second read of an old `running` record:
+it always sees the latest state. A failed stop replaced by a retry while the command ends now
+gives way to the retry.
+
 ## 2026-11-27 21:00 UTC — Stop a command with DELETE
 
 The user asked for a way to stop a running command. `DELETE /executions/:id` runs

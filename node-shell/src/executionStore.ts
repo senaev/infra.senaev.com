@@ -14,7 +14,8 @@ export type ExecutionStore = {
     read: (executionId: string) => Promise<ExecutionRecord | undefined>;
     update: (record: ExecutionRecord) => Promise<void>;
     list: () => Promise<ExecutionRecord[]>;
-    removeOlderThan: (maxAgeMs: number, now: Date) => Promise<number>;
+    /** Removes the files not changed for `maxAgeMs`; returns the IDs of the removed records. */
+    removeOlderThan: (maxAgeMs: number, now: Date) => Promise<string[]>;
 };
 
 const SUFFIX = '.json';
@@ -79,7 +80,7 @@ export async function createExecutionStore(directory: string): Promise<Execution
             return records.filter((record) => record !== undefined);
         },
         async removeOlderThan(maxAgeMs, now) {
-            let removed = 0;
+            const removed: string[] = [];
 
             for (const name of await readdir(directory)) {
                 const path = join(directory, name);
@@ -87,7 +88,10 @@ export async function createExecutionStore(directory: string): Promise<Execution
                 try {
                     if (now.getTime() - (await stat(path)).mtimeMs > maxAgeMs) {
                         await rm(path, { force: true });
-                        removed += 1;
+
+                        if (name.endsWith(SUFFIX) && !name.startsWith('.')) {
+                            removed.push(name.slice(0, -SUFFIX.length));
+                        }
                     }
                 } catch (error) {
                     if (!isNotFoundError(error)) {

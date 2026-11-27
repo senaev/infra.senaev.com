@@ -98,9 +98,9 @@ export function registerExecutionRoutes(
         return reply.code(429).send(errorBody('busy', 'Another command is running; try again later'));
     });
 
-    server.get<{ Params: { executionId: string } }>('/executions/:executionId', async (request, reply) => {
+    server.get<{ Params: { executionId: string } }>('/executions/:executionId', (request, reply) => {
         const record = EXECUTION_ID.test(request.params.executionId)
-            ? await manager.get(request.params.executionId)
+            ? manager.get(request.params.executionId)
             : undefined;
 
         if (record === undefined) {

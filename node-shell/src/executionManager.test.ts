@@ -7,6 +7,7 @@ import {
     createExecutionManager, type ExecutionManager, markInterruptedExecutions, MAX_CONCURRENT_EXECUTIONS,
 } from './executionManager';
 import type { ExecutionRecord } from './executionRecord';
+import { loadExecutionRecords } from './executionRecords';
 import type { ExecutionStore } from './executionStore';
 import { type HostTarget, resolveHost } from './nodeHosts';
 import type { CommandResult } from './runCommand';
@@ -51,7 +52,7 @@ function createMemoryStore(): ExecutionStore & { records: Map<string, ExecutionR
             return Promise.resolve();
         },
         list: () => Promise.resolve([...records.values()]),
-        removeOlderThan: () => Promise.resolve(0),
+        removeOlderThan: () => Promise.resolve([]),
     };
 }
 
@@ -95,7 +96,19 @@ const logger = {
     warn: vi.fn(),
 };
 
-beforeEach(() => {
+async function createManager(holds: ReadonlyMap<string, Date>): Promise<ExecutionManager> {
+    return createExecutionManager({
+        records: await loadExecutionRecords({
+            store,
+            logger,
+        }),
+        run,
+        logger,
+        holds,
+    });
+}
+
+beforeEach(async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(NOW);
     store = createMemoryStore();
@@ -113,12 +126,7 @@ beforeEach(() => {
             },
         ],
     ]).get(host)));
-    manager = createExecutionManager({
-        store,
-        run,
-        logger,
-        holds: new Map(),
-    });
+    manager = await createManager(new Map());
 });
 
 afterEach(() => {
@@ -242,16 +250,16 @@ describe('createExecutionManager', () => {
         await settle();
     });
 
-    it('gives the slot back when a start loses the race for its ID', async () => {
+    it('gives the slot back when the record of a start cannot be saved', async () => {
         const createNow = store.create;
 
-        store.create = () => Promise.resolve(false);
+        store.create = () => Promise.reject(new Error('disk full'));
 
         for (let index = 0; index <= MAX_CONCURRENT_EXECUTIONS; index += 1) {
             await expect(manager.start({
                 ...request,
                 executionId: `lost${index}`,
-            })).resolves.toEqual({ kind: 'conflict' });
+            })).rejects.toThrow('disk full');
         }
 
         store.create = createNow;
@@ -292,35 +300,13 @@ describe('createExecutionManager', () => {
         expect(run).toHaveBeenCalledOnce();
     });
 
-    it('keeps a result the store failed to save, serves it, and saves it on the next read', async () => {
-        const update = vi.spyOn(store, 'update').mockRejectedValueOnce(new Error('disk full'));
-
-        run.mockResolvedValue(result);
-        await manager.start(request);
-        await settle();
-
-        expect(store.records.get('e1')?.status).toBe('running');
-        await expect(manager.get('e1')).resolves.toMatchObject({ status: 'completed' });
-        expect(update).toHaveBeenCalledTimes(2);
-        expect(store.records.get('e1')?.status).toBe('completed');
-        await expect(manager.start(request)).resolves.toMatchObject({
-            kind: 'existing',
-            record: { status: 'completed' },
-        });
-    });
-
     it('holds the slot until endsBy when ssh ends without the exit of the command', async () => {
         const remote = {
             ...request,
             host: 'senaev-madrid',
         };
 
-        manager = createExecutionManager({
-            store,
-            run,
-            logger,
-            holds: new Map(),
-        });
+        manager = await createManager(new Map());
         run.mockResolvedValueOnce({
             ...result,
             exitCode: 255,
@@ -658,8 +644,9 @@ describe('stop', () => {
         await expect(second).resolves.toMatchObject({ kind: 'stopped' });
         await settle();
 
+        // The retry is confirmed while the command is still active, so the result is `stopped`.
         expect(store.records.get('e1')).toMatchObject({
-            status: 'completed',
+            status: 'stopped',
             stoppedAt: NOW.toISOString(),
         });
         expect(store.records.get('e1')).not.toHaveProperty('mayStillRun');
@@ -667,85 +654,6 @@ describe('stop', () => {
             ...request,
             executionId: 'e2',
         })).resolves.toMatchObject({ kind: 'started' });
-    });
-
-    it('stops a command that ended with a dropped ssh while the stop read its record', async () => {
-        const pending = deferred<CommandResult>();
-        const readStarted = deferred<undefined>();
-        const { read } = store;
-        let reads = 0;
-
-        store.read = async (executionId) => {
-            const record = await read(executionId);
-
-            reads += 1;
-
-            if (reads === 2) {
-                await readStarted.promise;
-            }
-
-            return record;
-        };
-
-        run.mockImplementation(({ argv }) => (isStop(argv)
-            ? Promise.resolve(result)
-            : pending.promise));
-        await manager.start({
-            ...request,
-            host: 'senaev-madrid',
-        });
-
-        const stopped = manager.stop('e1');
-
-        await settle();
-        pending.resolve({
-            ...result,
-            exitCode: 255,
-        });
-        await settle();
-        readStarted.resolve(undefined);
-
-        await expect(stopped).resolves.toMatchObject({ kind: 'stopped' });
-        expect(run.mock.calls.filter(([{ argv }]) => isStop(argv))).toHaveLength(1);
-        expect(store.records.get('e1')).not.toHaveProperty('mayStillRun');
-    });
-
-    it('sends no stop for a finished record of an earlier attempt while a new attempt is created', async () => {
-        const { create } = store;
-        const created = deferred<undefined>();
-
-        store.records.set('e1', {
-            executionId: 'e1',
-            host: 'hetzner',
-            requestHash: 'hash',
-            status: 'completed',
-            startedAt: NOW.toISOString(),
-            endsBy: NOW.toISOString(),
-        });
-
-        const { read } = store;
-        let reads = 0;
-
-        // The start finds no record, as when it read before the earlier attempt saved it.
-        store.read = (executionId) => {
-            reads += 1;
-
-            return reads === 1 ? Promise.resolve(undefined) : read(executionId);
-        };
-
-        store.create = async (record) => {
-            await created.promise;
-
-            return create(record);
-        };
-
-        const started = manager.start(request);
-
-        await settle();
-        await expect(manager.stop('e1')).resolves.toMatchObject({ kind: 'not-running' });
-        created.resolve(undefined);
-        await started;
-        expect(run).not.toHaveBeenCalled();
     });
 
     it('treats a unit that is already gone as stopped', async () => {
@@ -813,17 +721,12 @@ describe('stop', () => {
             endsBy: endsBy.toISOString(),
             mayStillRun: true,
         });
-        manager = createExecutionManager({
-            store,
-            run,
-            logger,
-            holds: new Map([
-                [
-                    'old',
-                    endsBy,
-                ],
-            ]),
-        });
+        manager = await createManager(new Map([
+            [
+                'old',
+                endsBy,
+            ],
+        ]));
         run.mockResolvedValue(result);
 
         await expect(manager.start(request)).resolves.toEqual({ kind: 'busy' });
@@ -856,17 +759,12 @@ describe('stop', () => {
             endsBy: endsBy.toISOString(),
             mayStillRun: true,
         });
-        manager = createExecutionManager({
-            store,
-            run,
-            logger,
-            holds: new Map([
-                [
-                    'old',
-                    endsBy,
-                ],
-            ]),
-        });
+        manager = await createManager(new Map([
+            [
+                'old',
+                endsBy,
+            ],
+        ]));
         run.mockReturnValueOnce(firstStop.promise).mockReturnValueOnce(secondStop.promise);
 
         const first = manager.stop('old');
@@ -914,17 +812,12 @@ describe('stop', () => {
             endsBy: endsBy.toISOString(),
             mayStillRun: true,
         });
-        manager = createExecutionManager({
-            store,
-            run,
-            logger,
-            holds: new Map([
-                [
-                    'old',
-                    endsBy,
-                ],
-            ]),
-        });
+        manager = await createManager(new Map([
+            [
+                'old',
+                endsBy,
+            ],
+        ]));
         run.mockReturnValueOnce(firstStop.promise).mockReturnValueOnce(secondStop.promise);
 
         const first = manager.stop('old');
@@ -955,89 +848,6 @@ describe('stop', () => {
         })).resolves.toEqual({ kind: 'busy' });
     });
 
-    it('keeps a confirmed stop when a read saves the older result again at the same time', async () => {
-        const retried = deferred<undefined>();
-        const { update } = store;
-        let olderWrites = 0;
-
-        // The result fails to save, then the retry by the read is slow, and the one by the stop is not.
-        store.update = async (record) => {
-            if (record.executionId === 'e1' && record.stoppedAt === undefined && record.status !== 'running') {
-                olderWrites += 1;
-
-                if (olderWrites === 1) {
-                    throw new Error('disk full');
-                }
-
-                if (olderWrites === 2) {
-                    await retried.promise;
-                }
-            }
-
-            return update(record);
-        };
-
-        run.mockImplementation(({ argv }) => Promise.resolve(isStop(argv)
-            ? result
-            : {
-                ...result,
-                exitCode: 255,
-            }));
-        await manager.start({
-            ...request,
-            host: 'senaev-madrid',
-        });
-        await settle();
-
-        const read = manager.get('e1');
-        const stopped = manager.stop('e1');
-
-        await settle();
-        retried.resolve(undefined);
-        await read;
-        await expect(stopped).resolves.toMatchObject({ kind: 'stopped' });
-        await settle();
-
-        expect(store.records.get('e1')).toMatchObject({ stoppedAt: NOW.toISOString() });
-        expect(store.records.get('e1')).not.toHaveProperty('mayStillRun');
-    });
-
-    it('keeps a confirmed stop in memory when it fails to save, and stops only once', async () => {
-        const endsBy = new Date(NOW.getTime() + 60_000);
-        const { update } = store;
-
-        store.records.set('old', {
-            executionId: 'old',
-            host: 'senaev-madrid',
-            requestHash: 'hash',
-            status: 'interrupted',
-            startedAt: NOW.toISOString(),
-            endsBy: endsBy.toISOString(),
-            mayStillRun: true,
-        });
-        manager = createExecutionManager({
-            store,
-            run,
-            logger,
-            holds: new Map([
-                [
-                    'old',
-                    endsBy,
-                ],
-            ]),
-        });
-        store.update = () => Promise.reject(new Error('disk full'));
-        run.mockResolvedValue(result);
-
-        await expect(manager.stop('old')).resolves.toMatchObject({ kind: 'stopped' });
-        await expect(manager.stop('old')).resolves.toMatchObject({ kind: 'not-running' });
-        expect(run).toHaveBeenCalledTimes(1);
-
-        store.update = update;
-        await expect(manager.get('old')).resolves.toMatchObject({ stoppedAt: NOW.toISOString() });
-        expect(store.records.get('old')).not.toHaveProperty('mayStillRun');
-    });
-
     it('keeps new commands out when the stop of an earlier unit fails', async () => {
         const endsBy = new Date(NOW.getTime() + 60_000);
 
@@ -1050,17 +860,12 @@ describe('stop', () => {
             endsBy: endsBy.toISOString(),
             mayStillRun: true,
         });
-        manager = createExecutionManager({
-            store,
-            run,
-            logger,
-            holds: new Map([
-                [
-                    'old',
-                    endsBy,
-                ],
-            ]),
-        });
+        manager = await createManager(new Map([
+            [
+                'old',
+                endsBy,
+            ],
+        ]));
         run.mockResolvedValue({
             ...result,
             exitCode: 255,
@@ -1073,6 +878,17 @@ describe('stop', () => {
 });
 
 describe('markInterruptedExecutions', () => {
+    // As at a start: the records are loaded again from the store, and their writes are awaited.
+    const markInterrupted = async () => {
+        const holds = markInterruptedExecutions(await loadExecutionRecords({
+            store,
+            logger,
+        }), logger);
+
+        await settle();
+
+        return holds;
+    };
     const later = (seconds: number) => new Date(NOW.getTime() + seconds * 1000);
 
     it('marks the records left running by an earlier process as interrupted', async () => {
@@ -1101,7 +917,7 @@ describe('markInterruptedExecutions', () => {
             endsBy: later(500).toISOString(),
         });
 
-        await expect(markInterruptedExecutions(store, logger)).resolves.toEqual(new Map([
+        expect(await markInterrupted()).toEqual(new Map([
             [
                 'old',
                 later(100),
@@ -1135,7 +951,7 @@ describe('markInterruptedExecutions', () => {
             mayStillRun: true,
         });
 
-        await expect(markInterruptedExecutions(store, logger)).resolves.toEqual(new Map([
+        expect(await markInterrupted()).toEqual(new Map([
             [
                 'old',
                 later(100),
@@ -1146,14 +962,14 @@ describe('markInterruptedExecutions', () => {
             ],
         ]));
         store.records.delete('dropped');
-        await expect(markInterruptedExecutions(store, logger)).resolves.toEqual(new Map([
+        expect(await markInterrupted()).toEqual(new Map([
             [
                 'old',
                 later(100),
             ],
         ]));
         vi.setSystemTime(later(100));
-        await expect(markInterruptedExecutions(store, logger)).resolves.toEqual(new Map());
+        expect(await markInterrupted()).toEqual(new Map());
     });
 
     it('saves mayStillRun for a remote command whose ssh ended with 255', async () => {
@@ -1171,7 +987,7 @@ describe('markInterruptedExecutions', () => {
             status: 'completed',
             mayStillRun: true,
         });
-        await expect(markInterruptedExecutions(store, logger)).resolves.toEqual(new Map([
+        expect(await markInterrupted()).toEqual(new Map([
             [
                 'e1',
                 new Date(store.records.get('e1')?.endsBy ?? 0),
@@ -1180,21 +996,16 @@ describe('markInterruptedExecutions', () => {
     });
 
     it('returns no hold when no interrupted command can still run', async () => {
-        await expect(markInterruptedExecutions(store, logger)).resolves.toEqual(new Map());
+        expect(await markInterrupted()).toEqual(new Map());
     });
 
     it('keeps new commands out until an interrupted command can no longer run', async () => {
-        manager = createExecutionManager({
-            store,
-            run,
-            logger,
-            holds: new Map([
-                [
-                    'old',
-                    later(100),
-                ],
-            ]),
-        });
+        manager = await createManager(new Map([
+            [
+                'old',
+                later(100),
+            ],
+        ]));
         run.mockResolvedValue(result);
 
         await expect(manager.start(request)).resolves.toEqual({ kind: 'busy' });

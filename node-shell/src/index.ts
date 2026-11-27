@@ -3,6 +3,7 @@ import { createShutdownController } from 'senaev-utils/src/utils/process/createS
 
 import { NODE_SHELL_LOCAL_HOST } from './env';
 import { createExecutionManager, markInterruptedExecutions } from './executionManager';
+import { loadExecutionRecords } from './executionRecords';
 import { createExecutionStore } from './executionStore';
 import { logger } from './logger';
 import { createNodeShellServer, PORT } from './nodeShellServer';
@@ -19,12 +20,14 @@ const subscribeShutdown = createShutdownController(
 );
 
 async function main(): Promise<void> {
-    const store = await createExecutionStore(STATE_DIRECTORY);
-
-    const holds = await markInterruptedExecutions(store, logger);
+    const records = await loadExecutionRecords({
+        store: await createExecutionStore(STATE_DIRECTORY),
+        logger,
+    });
+    const holds = markInterruptedExecutions(records, logger);
 
     const cleanUp = () => {
-        store.removeOlderThan(RECORD_RETENTION_MS, new Date())
+        records.removeOlderThan(RECORD_RETENTION_MS, new Date())
             .then((removed) => logger.info({ removed }, '🧹 Removed old node command records'))
             .catch((error: unknown) => logger.error(error, '❌ Failed to remove old node command records'));
     };
@@ -33,7 +36,7 @@ async function main(): Promise<void> {
 
     const cleanupTimer = setInterval(cleanUp, CLEANUP_INTERVAL_MS);
     const manager = createExecutionManager({
-        store,
+        records,
         run: runCommand,
         holds,
         logger,

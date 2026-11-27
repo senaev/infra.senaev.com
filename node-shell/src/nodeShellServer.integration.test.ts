@@ -202,7 +202,7 @@ describe('createNodeShellServer', () => {
     });
 
     it('returns a saved execution, and 404 for an unknown one', async () => {
-        manager.get.mockImplementation((executionId) => Promise.resolve(executionId === 'e1'
+        manager.get.mockImplementation((executionId) => (executionId === 'e1'
             ? {
                 ...record,
                 status: 'completed',
