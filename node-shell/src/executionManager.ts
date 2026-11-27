@@ -348,17 +348,32 @@ export function createExecutionManager({
 
             if (activeTarget !== undefined) {
                 // A repeated stop reuses the last one, so a failed retry cannot undo a confirmed stop.
-                let stop = stops.get(executionId);
+                const previous = stops.get(executionId);
 
-                if (stop === undefined || !await stop.confirmed) {
-                    stop = {
-                        requestedAt: new Date().toISOString(),
-                        confirmed: runStop(activeTarget, record),
-                    };
-                    stops.set(executionId, stop);
+                if (previous !== undefined) {
+                    if (await previous.confirmed) {
+                        return {
+                            kind: 'stopped',
+                            record: await read(executionId) ?? record,
+                        };
+                    }
+
+                    // It failed, and the command may have ended meanwhile: start over from its state now.
+                    if (stops.get(executionId) === previous) {
+                        stops.delete(executionId);
+                    }
+
+                    return this.stop(executionId);
                 }
 
-                if (!await stop.confirmed) {
+                const confirmed = runStop(activeTarget, record);
+
+                stops.set(executionId, {
+                    requestedAt: new Date().toISOString(),
+                    confirmed,
+                });
+
+                if (!await confirmed) {
                     return { kind: 'stop-failed' };
                 }
 
