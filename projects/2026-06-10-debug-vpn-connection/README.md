@@ -5,10 +5,32 @@
 
 ## Current status (updated every round)
 
-**Round 6 — 2026-11-26, PR "Measure the FirstVDS ↔ Hetzner tunnel above 20 Mbit/s".**
+**Round 7 — 2026-11-26, PR "Alert on VPN profile 1 failures and turn off the UDP experiments".**
 
-**Use profile 1 (`🇫🇮 1. firstvds → hetzner`).** It is the only route that works from home:
-61 of 61 parity checks in the last 3 h.
+**Use profile 1 (`🇫🇮 1. firstvds → hetzner`).** With FirstVDS healthy it is at parity with direct
+traffic: Cloudflare 4 MiB 1.57–1.68 s through the VPN vs 1.72 s mean direct (last 6 h); only
+connection setup costs ~+150 ms (two extra hops). The ~30 Mbit/s ceiling of round 6 was FirstVDS
+swapping and stalling, not a fixed limit: the Tailscale link FirstVDS ↔ Hetzner carries 77–83 Mbit/s
+(iperf3, Hetzner → FirstVDS) with FirstVDS's single CPU at ~85–100 % during the test.
+
+Round 6 result: FirstVDS stalled at the provider on 2026-11-26 19:40–21:30 UTC. Tailscale ping to it
+from every node rose from 17–70 ms to 0.5–16 s; ping to its public IP from Hetzner 17 → 70–80 ms;
+CPU samples show whole minutes with no time accounted (a paused VM); Hetzner's other links stayed
+normal. Profile 1 failed 28 of ~50 checks in that window and nothing outside it. Steal fell from
+~15 % to ~1.5 % after 21:28 (likely moved to another host). The same pattern, shorter, on
+2026-11-23 (pings up to 3.6 s). Otherwise one stall in a week.
+
+Round 7 changes:
+
+- Alerts `vpn-profile-1-failing` and `vpn-firstvds-stalled` (Telegram). Checked against the
+  incident: both would have fired 19:50–21:30 only.
+- Profiles 6, 7 and 8 off (Hysteria2 and WireGuard servers, their probes and subscription entries):
+  the home ISP drops all of them. Templates kept.
+
+Remaining risk: profile 1 depends on one small VPS (1 vCPU, 1 GB) at one provider, which stalls
+sometimes and whose path to Hetzner's public IP is filtered (Tailscale still passes). A second
+Russian entry VPS at another provider, as profile 2, would remove the single point of failure.
+That is the user's decision (cost); it is the proposed next step.
 
 Round 5 result (home): profiles 6, 7 and 8 fail every VPN check. The home ISP drops all three
 UDP shapes toward Hetzner: Hysteria2 with salamander (UDP 47443), Hysteria2 as plain HTTP/3

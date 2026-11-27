@@ -1,3 +1,17 @@
+## 2026-11-26 23:30 UTC — Round 6 result: profile 1 at parity when FirstVDS is healthy; FirstVDS stalled 2 h
+
+- iperf3 at 100 Mbit/s (#332): firstvds → hetzner 99.8 Mbit/s (cap); hetzner → firstvds 38.5
+  (20:39, during the stall), 83.0 (21:33), 76.3 (22:25) Mbit/s. From 30 s CPU windows FirstVDS ran
+  ~85–100 % during the 10 s tests: the CPU caps the tunnel at ~80 Mbit/s, above profile 1's needs.
+- Profile 1 parity, 6 h (Datadog): Cloudflare 4 MiB VPN 1.57–1.68 s when healthy vs direct 1.72 s mean;
+  `tls_ms` ~730–770 vs ~590 direct (connection setup +150 ms); 28 failures, all 10 s timeouts, all
+  in 19:40–21:30.
+- 19:40–21:30: smokeping to firstvds from hetzner/madrid/home 0.5–16 s (normally 17–70 ms); hetzner →
+  senaev.ru public 70–80 ms; FirstVDS CPU minutes with busy=1 and steal=0 (paused VM). Hetzner's other
+  links normal. After 21:28 steal ~1.5 % (was ~15 %). Not caused by our tests (19:43 timeout came first).
+- Decision (round 7): alerts for profile 1 failures and FirstVDS stalls; turn off profiles 6/7/8.
+  Propose a second Russian entry VPS to the user.
+
 ## 2026-11-26 — Round 5 result; FirstVDS ↔ Hetzner public path blocked; round 6 measures the tunnel
 
 - Home: profiles 6, 7, 8 fail everything. On Hetzner (user ran it) no conntrack entry for UDP
