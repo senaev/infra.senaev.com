@@ -251,6 +251,8 @@ llmWorkspaces:
     claudeCode:
       enabled: true
       model: sonnet
+      # Auto-compact starts at this percent of the context window, not near the limit.
+      autoCompactPercent: 35
       # HTTP MCP servers with OAuth; Claude Code logs in with its own client id.
       mcp:
         datadog:
@@ -274,6 +276,9 @@ llmWorkspaces:
     codex:
       enabled: true
       remoteControl: true
+      # Auto-compact starts at this many tokens: Codex takes no percent. 175k is 35% of the 500k
+      # window of the default model (gpt-6.2-sol); change it with the model.
+      autoCompactTokenLimit: 175000
   galkin:
     enabled: true
     vps: senaev-madrid
