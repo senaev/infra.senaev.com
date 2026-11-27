@@ -24,6 +24,7 @@
 
 ## Tests
 
-- Flag an optional parameter that exists only so tests can control time (`now`, `clock`, a TTL or
-  delay override): the code should use `Date` and timers directly, and the test should mock them with
-  `vi.useFakeTimers()` and `vi.setSystemTime()`.
+- Flag optional parameters. Make a parameter required, or remove it and use the value directly.
+- Flag parameters that exist only for tests (a clock, a TTL, a dependency to swap). The code should use
+  the real thing directly, and the test should mock it: timers with `vi.useFakeTimers()` and
+  `vi.setSystemTime()`, modules with `vi.mock()`, functions with `vi.spyOn()`.
