@@ -51,4 +51,14 @@ describe('replaceWikiLinksWithHighlights', () => {
         expect(replaceWikiLinksWithHighlights('`a == b` [[Note]]'))
             .toBe('`a == b` ==Note==');
     });
+
+    it('keeps the highlight of a link after an unmatched highlight marker', () => {
+        expect(replaceWikiLinksWithHighlights('a == b; see [[Note]]'))
+            .toBe('a == b; see ==Note==');
+    });
+
+    it('keeps the line breaks of a multi-line Markdown link when checking for an open highlight', () => {
+        expect(replaceWikiLinksWithHighlights('==prefix [site\nname](https://example.com) [[Note]]'))
+            .toBe('==prefix [site\nname](https://example.com) ==Note==');
+    });
 });

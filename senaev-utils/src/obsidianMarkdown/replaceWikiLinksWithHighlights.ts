@@ -13,18 +13,37 @@ function maskLinksAndCode(body: string, links: ExtractedLink[]): string {
     let masked = maskCode(body, parseMarkdown(body));
 
     for (const link of links) {
-        masked = masked.slice(0, link.offset) + ' '.repeat(link.raw.length) + masked.slice(link.offset + link.raw.length);
+        // Newlines are kept: a Markdown link can span lines, and the line of a wikilink
+        // must not start before them.
+        const blank = link.raw.replace(/[^\n]/g, ' ');
+
+        masked = masked.slice(0, link.offset) + blank + masked.slice(link.offset + link.raw.length);
     }
 
     return masked;
 }
 
-/** True when the line before `offset` opens an `==highlight==` that is not closed yet. */
+/**
+ * True when `offset` is inside an `==highlight==` of its line: between an opening `==`
+ * and the closing one. Markers are paired from the line start, so an unmatched `==`
+ * opens nothing.
+ */
 function isInsideHighlight(masked: string, offset: number): boolean {
     const lineStart = masked.lastIndexOf('\n', offset - 1) + 1;
-    const markers = masked.slice(lineStart, offset).match(HIGHLIGHT_MARKER)?.length ?? 0;
+    const lineEnd = masked.indexOf('\n', offset);
+    const line = masked.slice(lineStart, lineEnd === -1 ? masked.length : lineEnd);
+    const markers = [...line.matchAll(HIGHLIGHT_MARKER)].map((match) => lineStart + match.index);
 
-    return markers % 2 === 1;
+    for (let index = 0; index + 1 < markers.length; index += 2) {
+        const open = markers[index] ?? 0;
+        const close = markers[index + 1] ?? 0;
+
+        if (open < offset && offset < close) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /** Render Obsidian wikilinks as Telegram rich Markdown highlights, preserving code. */
