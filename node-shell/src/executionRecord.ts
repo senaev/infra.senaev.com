@@ -20,6 +20,12 @@ export type ExecutionRecord = {
      * systemd unit and the SSH connection. After a restart, no new command starts before it.
      */
     endsBy: string;
+    /**
+     * node-shell did not see the command end (a restart, or an ssh that ended with 255 or a
+     * signal): its unit may still run until `endsBy`. Kept in the record, so the hold on new
+     * commands survives later restarts.
+     */
+    mayStillRun?: true;
     finishedAt?: string;
     exitCode?: number | null;
     signal?: string | null;

@@ -434,9 +434,56 @@ describe('markInterruptedExecutions', () => {
         });
 
         await expect(markInterruptedExecutions(store, logger, NOW)).resolves.toEqual(later(100));
-        expect(store.records.get('old')?.status).toBe('interrupted');
+        expect(store.records.get('old')).toMatchObject({
+            status: 'interrupted',
+            mayStillRun: true,
+        });
         expect(store.records.get('older')?.status).toBe('interrupted');
         expect(store.records.get('done')?.status).toBe('completed');
+    });
+
+    it('keeps the hold over later restarts, also for a dropped ssh connection', async () => {
+        store.records.set('old', {
+            executionId: 'old',
+            host: 'hetzner',
+            requestHash: 'hash',
+            status: 'running',
+            startedAt: NOW.toISOString(),
+            endsBy: later(100).toISOString(),
+        });
+        store.records.set('dropped', {
+            executionId: 'dropped',
+            host: 'senaev-madrid',
+            requestHash: 'hash',
+            status: 'completed',
+            startedAt: NOW.toISOString(),
+            endsBy: later(200).toISOString(),
+            exitCode: 255,
+            mayStillRun: true,
+        });
+
+        await expect(markInterruptedExecutions(store, logger, NOW)).resolves.toEqual(later(200));
+        store.records.delete('dropped');
+        await expect(markInterruptedExecutions(store, logger, NOW)).resolves.toEqual(later(100));
+        await expect(markInterruptedExecutions(store, logger, later(100))).resolves.toBeUndefined();
+    });
+
+    it('saves mayStillRun for a remote command whose ssh ended with 255', async () => {
+        run.mockResolvedValue({
+            ...result,
+            exitCode: 255,
+        });
+        await manager.start({
+            ...request,
+            host: 'senaev-madrid',
+        });
+        await manager.idle();
+
+        expect(store.records.get('e1')).toMatchObject({
+            status: 'completed',
+            mayStillRun: true,
+        });
+        await expect(markInterruptedExecutions(store, logger, NOW)).resolves.toEqual(new Date(store.records.get('e1')?.endsBy ?? 0));
     });
 
     it('returns nothing when no interrupted command can still run', async () => {

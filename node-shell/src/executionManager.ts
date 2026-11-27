@@ -130,6 +130,7 @@ export function createExecutionManager({
                 stderr: result.stderr,
                 outputTruncated: result.outputTruncated,
                 ...result.deadlineExceeded ? { error: 'node-shell killed the command at its deadline' } : {},
+                ...unitMayRun ? { mayStillRun: true as const } : {},
             };
         } catch (error) {
             finished = {
@@ -266,8 +267,9 @@ export function createExecutionManager({
 
 /**
  * At startup, no command of this process runs yet: a record still `running` was left by an
- * earlier process. Its outcome is unknown, and it is not retried. Its systemd unit can still run
- * on the host until `endsBy`, so the latest such time is returned: no new command starts before.
+ * earlier process. Its outcome is unknown, it is marked `interrupted` and `mayStillRun`, and it is
+ * not retried. Returns the latest `endsBy` still ahead among the records that may still run (also
+ * those of earlier restarts and dropped ssh connections): no new command starts before it.
  */
 export async function markInterruptedExecutions(
     store: ExecutionStore,
@@ -278,23 +280,24 @@ export async function markInterruptedExecutions(
 
     for (const record of await store.list()) {
         if (record.status === 'running') {
-            const endsBy = new Date(record.endsBy);
-
-            if (endsBy > now && (busyUntil === undefined || endsBy > busyUntil)) {
-                busyUntil = endsBy;
-            }
-
             await store.update({
                 ...record,
                 status: 'interrupted',
                 finishedAt: now.toISOString(),
                 error: 'node-shell restarted while the command ran; the outcome is unknown',
+                mayStillRun: true,
             });
             logger.warn({
                 executionId: record.executionId,
                 host: record.host,
                 endsBy: record.endsBy,
             }, '⚠️ Marked a node command as interrupted by a restart');
+        }
+
+        const endsBy = new Date(record.endsBy);
+
+        if ((record.status === 'running' || record.mayStillRun === true) && endsBy > now && (busyUntil === undefined || endsBy > busyUntil)) {
+            busyUntil = endsBy;
         }
     }
 

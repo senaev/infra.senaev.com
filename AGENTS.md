@@ -326,7 +326,8 @@ host journal; each `$` of the command is passed to systemd as `$$`, so `/bin/sh`
   is remembered for 24 hours; cluster-helper must not send a `PUT` later than 1 hour after the approval.
   Each record has `endsBy` (timeout + unit stop + SSH margin); after a restart, a command left `running`
   becomes `interrupted` and no new command starts before its `endsBy`, since its unit may still run. The
-  same hold follows a remote command whose ssh ended with 255 or a signal (a dropped connection). The logs have the execution ID, host, status and exit code, never the
+  same hold follows a remote command whose ssh ended with 255 or a signal (a dropped connection). Such
+  records get `mayStillRun: true`, and every start restores the hold from them, so it survives restarts. The logs have the execution ID, host, status and exit code, never the
   command or its output.
 - Not done yet: the Telegram approval and the `submit`/`status` API in cluster-helper, and the workspace skill.
 
