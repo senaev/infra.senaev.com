@@ -111,7 +111,7 @@ beforeEach(() => {
         store,
         run,
         logger,
-        busyUntil: undefined,
+        holds: new Map(),
     });
 });
 
@@ -313,7 +313,7 @@ describe('createExecutionManager', () => {
             store,
             run,
             logger,
-            busyUntil: undefined,
+            holds: new Map(),
         });
         run.mockResolvedValueOnce({
             ...result,
@@ -732,7 +732,12 @@ describe('stop', () => {
             store,
             run,
             logger,
-            busyUntil: endsBy,
+            holds: new Map([
+                [
+                    'old',
+                    endsBy,
+                ],
+            ]),
         });
         run.mockResolvedValue(result);
 
@@ -770,7 +775,12 @@ describe('stop', () => {
             store,
             run,
             logger,
-            busyUntil: endsBy,
+            holds: new Map([
+                [
+                    'old',
+                    endsBy,
+                ],
+            ]),
         });
         run.mockReturnValueOnce(firstStop.promise).mockReturnValueOnce(secondStop.promise);
 
@@ -795,6 +805,71 @@ describe('stop', () => {
         })).resolves.toMatchObject({ kind: 'started' });
     });
 
+    it('keeps the hold of a new command whose ssh dropped while an overlapping stop of an earlier unit ran', async () => {
+        const endsBy = new Date(NOW.getTime() + 60_000);
+        const firstStop = deferred<CommandResult>();
+        const secondStop = deferred<CommandResult>();
+        const saved = deferred<undefined>();
+        const { update } = store;
+
+        store.update = async (record) => {
+            if (record.executionId === 'e1' && record.status !== 'running') {
+                await saved.promise;
+            }
+
+            return update(record);
+        };
+
+        store.records.set('old', {
+            executionId: 'old',
+            host: 'senaev-madrid',
+            requestHash: 'hash',
+            status: 'interrupted',
+            startedAt: NOW.toISOString(),
+            endsBy: endsBy.toISOString(),
+            mayStillRun: true,
+        });
+        manager = createExecutionManager({
+            store,
+            run,
+            logger,
+            holds: new Map([
+                [
+                    'old',
+                    endsBy,
+                ],
+            ]),
+        });
+        run.mockReturnValueOnce(firstStop.promise).mockReturnValueOnce(secondStop.promise);
+
+        const first = manager.stop('old');
+        const second = manager.stop('old');
+
+        await settle();
+        firstStop.resolve(result);
+        await expect(first).resolves.toMatchObject({ kind: 'stopped' });
+
+        run.mockResolvedValueOnce({
+            ...result,
+            exitCode: 255,
+        });
+        await expect(manager.start({
+            ...request,
+            host: 'senaev-madrid',
+        })).resolves.toMatchObject({ kind: 'started' });
+        await settle();
+        secondStop.resolve(result);
+        await expect(second).resolves.toMatchObject({ kind: 'stopped' });
+        saved.resolve(undefined);
+        await settle();
+
+        expect(store.records.get('e1')?.mayStillRun).toBe(true);
+        await expect(manager.start({
+            ...request,
+            executionId: 'e2',
+        })).resolves.toEqual({ kind: 'busy' });
+    });
+
     it('keeps new commands out when the stop of an earlier unit fails', async () => {
         const endsBy = new Date(NOW.getTime() + 60_000);
 
@@ -811,7 +886,12 @@ describe('stop', () => {
             store,
             run,
             logger,
-            busyUntil: endsBy,
+            holds: new Map([
+                [
+                    'old',
+                    endsBy,
+                ],
+            ]),
         });
         run.mockResolvedValue({
             ...result,
@@ -853,7 +933,12 @@ describe('markInterruptedExecutions', () => {
             endsBy: later(500).toISOString(),
         });
 
-        await expect(markInterruptedExecutions(store, logger)).resolves.toEqual(later(100));
+        await expect(markInterruptedExecutions(store, logger)).resolves.toEqual(new Map([
+            [
+                'old',
+                later(100),
+            ],
+        ]));
         expect(store.records.get('old')).toMatchObject({
             status: 'interrupted',
             mayStillRun: true,
@@ -882,11 +967,25 @@ describe('markInterruptedExecutions', () => {
             mayStillRun: true,
         });
 
-        await expect(markInterruptedExecutions(store, logger)).resolves.toEqual(later(200));
+        await expect(markInterruptedExecutions(store, logger)).resolves.toEqual(new Map([
+            [
+                'old',
+                later(100),
+            ],
+            [
+                'dropped',
+                later(200),
+            ],
+        ]));
         store.records.delete('dropped');
-        await expect(markInterruptedExecutions(store, logger)).resolves.toEqual(later(100));
+        await expect(markInterruptedExecutions(store, logger)).resolves.toEqual(new Map([
+            [
+                'old',
+                later(100),
+            ],
+        ]));
         vi.setSystemTime(later(100));
-        await expect(markInterruptedExecutions(store, logger)).resolves.toBeUndefined();
+        await expect(markInterruptedExecutions(store, logger)).resolves.toEqual(new Map());
     });
 
     it('saves mayStillRun for a remote command whose ssh ended with 255', async () => {
@@ -904,11 +1003,16 @@ describe('markInterruptedExecutions', () => {
             status: 'completed',
             mayStillRun: true,
         });
-        await expect(markInterruptedExecutions(store, logger)).resolves.toEqual(new Date(store.records.get('e1')?.endsBy ?? 0));
+        await expect(markInterruptedExecutions(store, logger)).resolves.toEqual(new Map([
+            [
+                'e1',
+                new Date(store.records.get('e1')?.endsBy ?? 0),
+            ],
+        ]));
     });
 
-    it('returns nothing when no interrupted command can still run', async () => {
-        await expect(markInterruptedExecutions(store, logger)).resolves.toBeUndefined();
+    it('returns no hold when no interrupted command can still run', async () => {
+        await expect(markInterruptedExecutions(store, logger)).resolves.toEqual(new Map());
     });
 
     it('keeps new commands out until an interrupted command can no longer run', async () => {
@@ -916,7 +1020,12 @@ describe('markInterruptedExecutions', () => {
             store,
             run,
             logger,
-            busyUntil: later(100),
+            holds: new Map([
+                [
+                    'old',
+                    later(100),
+                ],
+            ]),
         });
         run.mockResolvedValue(result);
 

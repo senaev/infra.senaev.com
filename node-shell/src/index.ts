@@ -21,7 +21,7 @@ const subscribeShutdown = createShutdownController(
 async function main(): Promise<void> {
     const store = await createExecutionStore(STATE_DIRECTORY);
 
-    const busyUntil = await markInterruptedExecutions(store, logger);
+    const holds = await markInterruptedExecutions(store, logger);
 
     const cleanUp = () => {
         store.removeOlderThan(RECORD_RETENTION_MS, new Date())
@@ -35,7 +35,7 @@ async function main(): Promise<void> {
     const manager = createExecutionManager({
         store,
         run: runCommand,
-        busyUntil,
+        holds,
         logger,
     });
     const certificates = await watchTlsCredentials({ logger });

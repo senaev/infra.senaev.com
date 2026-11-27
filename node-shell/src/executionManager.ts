@@ -56,17 +56,18 @@ function hashRequest({
 }
 
 export function createExecutionManager({
-    store, run, logger, busyUntil,
+    store, run, logger, holds: initialHolds,
 }: {
     store: ExecutionStore;
-    busyUntil: Date | undefined;
+    holds: ReadonlyMap<string, Date>;
     run: (options: { argv: readonly string[]; deadlineMs: number; maxOutputBytes: number }) => Promise<CommandResult>;
     logger: Pick<FastifyBaseLogger, 'info' | 'error'>;
 }): ExecutionManager {
     // Taken before any await, so concurrent starts cannot all pass the check.
     let reservedSlots = 0;
-    // No new command before this time: an earlier command may still run on its host.
-    let holdUntil = busyUntil;
+    // The commands that may still run on their host, by execution ID, until their `endsBy`: no new
+    // command starts before. Changed only synchronously, by the execution it belongs to.
+    const holds = new Map(initialHolds);
     // Results the store failed to save; saved again on the next read.
     const unsaved = new Map<string, ExecutionRecord>();
     // The commands of this process that run now, and the last stop of each: when it was asked for,
@@ -110,14 +111,7 @@ export function createExecutionManager({
         return false;
     };
 
-    // Every hold comes from a record with `mayStillRun`, so it is computed again after a stop. A
-    // command of this process that still runs holds its slot instead.
-    const recomputeHold = async (): Promise<void> => {
-        holdUntil = latestHold([
-            ...await store.list(),
-            ...unsaved.values(),
-        ].filter((record) => !(record.status === 'running' && active.has(record.executionId))), new Date());
-    };
+    const isHeld = (now: Date): boolean => [...holds.values()].some((endsBy) => endsBy > now);
 
     const read = async (executionId: string): Promise<ExecutionRecord | undefined> => {
         const pending = unsaved.get(executionId);
@@ -215,11 +209,7 @@ export function createExecutionManager({
         }));
 
         if (unitMayRun) {
-            const endsBy = new Date(record.endsBy);
-
-            if (holdUntil === undefined || endsBy > holdUntil) {
-                holdUntil = endsBy;
-            }
+            holds.set(record.executionId, new Date(record.endsBy));
 
             logger.info({
                 ...logFields,
@@ -273,7 +263,7 @@ export function createExecutionManager({
 
             const startedAt = new Date();
 
-            if (reservedSlots >= MAX_CONCURRENT_EXECUTIONS || (holdUntil !== undefined && startedAt < holdUntil)) {
+            if (reservedSlots >= MAX_CONCURRENT_EXECUTIONS || isHeld(startedAt)) {
                 return { kind: 'busy' };
             }
 
@@ -407,9 +397,9 @@ export function createExecutionManager({
                 stoppedAt: new Date().toISOString(),
             };
 
+            holds.delete(executionId);
             unsaved.delete(executionId);
             await store.update(stopped);
-            await recomputeHold();
 
             return {
                 kind: 'stopped',
@@ -419,33 +409,24 @@ export function createExecutionManager({
     };
 }
 
-// The latest `endsBy` still ahead among the records whose command may still run.
-function latestHold(records: readonly ExecutionRecord[], now: Date): Date | undefined {
-    let latest: Date | undefined;
-
-    for (const record of records) {
-        const endsBy = new Date(record.endsBy);
-
-        if ((record.status === 'running' || record.mayStillRun === true) && endsBy > now && (latest === undefined || endsBy > latest)) {
-            latest = endsBy;
-        }
-    }
-
-    return latest;
-}
-
 /**
  * Records left `running` by an earlier process become `interrupted`, never retried. Returns the
- * latest `endsBy` of a command that may still run: no new command starts before it.
+ * `endsBy` of each command that may still run, by execution ID: no new command starts before it.
  */
 export async function markInterruptedExecutions(
     store: ExecutionStore,
     logger: Pick<FastifyBaseLogger, 'warn'>
-): Promise<Date | undefined> {
+): Promise<Map<string, Date>> {
     const now = new Date();
-    const records = await store.list();
+    const holds = new Map<string, Date>();
 
-    for (const record of records) {
+    for (const record of await store.list()) {
+        const endsBy = new Date(record.endsBy);
+
+        if ((record.status === 'running' || record.mayStillRun === true) && endsBy > now) {
+            holds.set(record.executionId, endsBy);
+        }
+
         if (record.status === 'running') {
             await store.update({
                 ...record,
@@ -462,5 +443,5 @@ export async function markInterruptedExecutions(
         }
     }
 
-    return latestHold(records, now);
+    return holds;
 }

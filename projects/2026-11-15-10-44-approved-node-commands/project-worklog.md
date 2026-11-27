@@ -13,7 +13,15 @@ report a success while the command still started. Now the stop first creates
 `/run/node-shell-<id>.stop` on the host, and the unit's shell exits 143 without running the
 command when that file exists. Only a confirmed stop marks a record `stopped`; a failed one
 leaves its own result. A confirmed stop of an earlier record removes its `mayStillRun`, and the
-hold on new commands is computed again from the remaining records.
+hold on new commands is released.
+
+More Codex rounds found races between overlapping stops, the end of a command and the save of
+its result. Each stop and finish step now works on in-memory state of its own execution:
+a stop during the record creation or the result save reaches the stop marker or waits for the
+save; a repeated stop reuses a confirmed one and starts over after a failed one. The holds are a
+map from execution ID to `endsBy`, built at startup from the records with `mayStillRun`; a
+dropped ssh adds its own entry, and a confirmed stop removes only its own. Nothing rebuilds the
+holds from a store snapshot, which a command finishing at the same time could make stale.
 
 ## 2026-11-27 20:00 UTC — The node list is read for every command, with no cache
 
