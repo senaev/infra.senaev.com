@@ -168,11 +168,12 @@ export function createExecutionManager({
                 maxOutputBytes: MAX_OUTPUT_BYTES,
             });
 
-            // A signal ended the waiter, or ssh exited 255 (a dropped connection): the unit may still run.
-            unitMayRun = result.exitCode === null || (target.kind === 'ssh' && result.exitCode === 255);
-
             const stop = stops.get(record.executionId);
             const stoppedAt = stop !== undefined && await stop.confirmed ? stop.requestedAt : undefined;
+
+            // A signal ended the waiter, or ssh exited 255 (a dropped connection): the unit may still
+            // run, unless a confirmed stop ended it.
+            unitMayRun = stoppedAt === undefined && (result.exitCode === null || (target.kind === 'ssh' && result.exitCode === 255));
             let status: ExecutionRecord['status'] = 'completed';
 
             if (result.deadlineExceeded) {
