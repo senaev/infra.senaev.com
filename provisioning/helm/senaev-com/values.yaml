@@ -184,7 +184,6 @@ nodeShell:
   enabled: true
   vps: hetzner
   volumePath: volumes/node-shell
-  sshUser: root
 
 obsidianSync:
   enabled: true

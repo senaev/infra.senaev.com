@@ -51,7 +51,7 @@ hosts together; a new `PUT` while one is running is 429 `busy`, and nothing is s
 galkin is no longer a node, and `nodeShell.sshDestinations` repeated the node list. Removed it:
 node-shell now reads the nodes' `vps` labels with `k3s kubectl get nodes` in the hetzner host
 (through the same `nsenter`, so still no service account token), keeps the list for a minute and
-reaches every node except hetzner as `ssh <nodeShell.sshUser>@<label>` (`sshUser: root`). A host
+reaches every node except hetzner as `ssh root@<label>`. A host
 that is not a node gets 400 `unknown_host`; if the list cannot be read, 503 `hosts_unavailable`
 and nothing is saved.
 

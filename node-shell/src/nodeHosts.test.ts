@@ -8,7 +8,6 @@ import { runCommand } from './runCommand';
 vi.mock('./env', () => {
     return {
         NODE_SHELL_LOCAL_HOST: 'hetzner',
-        NODE_SHELL_SSH_USER: 'root',
     };
 });
 vi.mock('./logger', () => {

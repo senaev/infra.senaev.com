@@ -1,5 +1,5 @@
 import { ENTER_HOST } from './buildNodeCommand';
-import { NODE_SHELL_LOCAL_HOST, NODE_SHELL_SSH_USER } from './env';
+import { NODE_SHELL_LOCAL_HOST } from './env';
 import { logger } from './logger';
 import { runCommand } from './runCommand';
 
@@ -46,7 +46,8 @@ export function hostTarget(host: string): HostTarget {
         ? { kind: 'local' }
         : {
             kind: 'ssh',
-            destination: `${NODE_SHELL_SSH_USER}@${host}`,
+            // root: the commands run in system units of systemd.
+            destination: `root@${host}`,
         };
 }
 
