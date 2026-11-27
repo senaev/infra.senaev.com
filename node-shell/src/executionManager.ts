@@ -46,7 +46,7 @@ export function createExecutionManager({
     store, hosts, run, logger, busyUntil,
 }: {
     store: ExecutionStore;
-    busyUntil?: Date | undefined;
+    busyUntil: Date | undefined;
     hosts: HostResolver;
     run: (options: { argv: readonly string[]; deadlineMs: number; maxOutputBytes: number }) => Promise<CommandResult>;
     logger: Pick<FastifyBaseLogger, 'info' | 'error'>;
@@ -92,16 +92,27 @@ export function createExecutionManager({
         };
         let finished: ExecutionRecord;
         let unitMayRun = false;
+        const endsByMs = new Date(record.endsBy).getTime();
+        // The record is saved before the command starts: the command gets only what is left of its
+        // timeout, so it always ends by `endsBy`, however long the save took.
+        const timeoutSeconds = Math.ceil((endsByMs - DEADLINE_GRACE_MS - Date.now()) / 1000);
 
         try {
+            if (timeoutSeconds < 1) {
+                throw new Error('The execution was saved too late to start the command');
+            }
+
             const result = await run({
-                argv: buildNodeCommand(target, nodeCommand),
-                deadlineMs: nodeCommand.timeoutSeconds * 1000 + DEADLINE_GRACE_MS,
+                argv: buildNodeCommand(target, {
+                    ...nodeCommand,
+                    timeoutSeconds,
+                }),
+                deadlineMs: endsByMs - Date.now(),
                 maxOutputBytes: MAX_OUTPUT_BYTES,
             });
 
-            // ssh exits 255 when the connection drops: the remote unit may still run.
-            unitMayRun = target.kind === 'ssh' && (result.exitCode === 255 || result.exitCode === null);
+            // A signal ended the waiter, or ssh exited 255 (a dropped connection): the unit may still run.
+            unitMayRun = result.exitCode === null || (target.kind === 'ssh' && result.exitCode === 255);
             finished = {
                 ...record,
                 status: result.deadlineExceeded ? 'failed' : 'completed',
