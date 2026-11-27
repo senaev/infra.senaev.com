@@ -391,7 +391,8 @@ export function createExecutionManager({
                 };
             }
 
-            if (finishing !== undefined) {
+            // Waits for a result being saved. A `running` record read before the command ended is old: read again.
+            if (finishing !== undefined || record.status === 'running') {
                 await finishing;
                 record = await read(executionId) ?? record;
             }
