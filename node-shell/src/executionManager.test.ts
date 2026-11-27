@@ -1,5 +1,5 @@
 import {
-    beforeEach, describe, expect, it, vi,
+    afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
 
 import type { NodeCommand } from './buildNodeCommand';
@@ -79,6 +79,8 @@ const logger = {
 };
 
 beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(NOW);
     store = createMemoryStore();
     run = vi.fn();
     manager = createExecutionManager({
@@ -93,8 +95,11 @@ beforeEach(() => {
         }),
         run,
         logger,
-        now: () => NOW,
     });
+});
+
+afterEach(() => {
+    vi.useRealTimers();
 });
 
 describe('createExecutionManager', () => {
@@ -243,7 +248,6 @@ describe('createExecutionManager', () => {
             }),
             run,
             logger,
-            now: () => NOW,
         });
 
         await expect(manager.start({
@@ -271,7 +275,6 @@ describe('createExecutionManager', () => {
             }),
             run,
             logger,
-            now: () => NOW,
         });
 
         await expect(removed.start({
@@ -302,7 +305,6 @@ describe('createExecutionManager', () => {
     });
 
     it('holds the slot until endsBy when ssh ends without the exit of the command', async () => {
-        let clock = NOW;
         const remote = {
             ...request,
             host: 'senaev-madrid',
@@ -320,7 +322,6 @@ describe('createExecutionManager', () => {
             }),
             run,
             logger,
-            now: () => clock,
         });
         run.mockResolvedValueOnce({
             ...result,
@@ -339,7 +340,7 @@ describe('createExecutionManager', () => {
             executionId: 'e2',
         })).resolves.toEqual({ kind: 'busy' });
 
-        clock = endsBy;
+        vi.setSystemTime(endsBy);
         await expect(manager.start({
             ...request,
             executionId: 'e2',
@@ -433,7 +434,7 @@ describe('markInterruptedExecutions', () => {
             endsBy: later(500).toISOString(),
         });
 
-        await expect(markInterruptedExecutions(store, logger, NOW)).resolves.toEqual(later(100));
+        await expect(markInterruptedExecutions(store, logger)).resolves.toEqual(later(100));
         expect(store.records.get('old')).toMatchObject({
             status: 'interrupted',
             mayStillRun: true,
@@ -462,10 +463,11 @@ describe('markInterruptedExecutions', () => {
             mayStillRun: true,
         });
 
-        await expect(markInterruptedExecutions(store, logger, NOW)).resolves.toEqual(later(200));
+        await expect(markInterruptedExecutions(store, logger)).resolves.toEqual(later(200));
         store.records.delete('dropped');
-        await expect(markInterruptedExecutions(store, logger, NOW)).resolves.toEqual(later(100));
-        await expect(markInterruptedExecutions(store, logger, later(100))).resolves.toBeUndefined();
+        await expect(markInterruptedExecutions(store, logger)).resolves.toEqual(later(100));
+        vi.setSystemTime(later(100));
+        await expect(markInterruptedExecutions(store, logger)).resolves.toBeUndefined();
     });
 
     it('saves mayStillRun for a remote command whose ssh ended with 255', async () => {
@@ -483,16 +485,14 @@ describe('markInterruptedExecutions', () => {
             status: 'completed',
             mayStillRun: true,
         });
-        await expect(markInterruptedExecutions(store, logger, NOW)).resolves.toEqual(new Date(store.records.get('e1')?.endsBy ?? 0));
+        await expect(markInterruptedExecutions(store, logger)).resolves.toEqual(new Date(store.records.get('e1')?.endsBy ?? 0));
     });
 
     it('returns nothing when no interrupted command can still run', async () => {
-        await expect(markInterruptedExecutions(store, logger, NOW)).resolves.toBeUndefined();
+        await expect(markInterruptedExecutions(store, logger)).resolves.toBeUndefined();
     });
 
     it('keeps new commands out until an interrupted command can no longer run', async () => {
-        let clock = NOW;
-
         manager = createExecutionManager({
             store,
             hosts: createHostResolver({
@@ -503,14 +503,13 @@ describe('markInterruptedExecutions', () => {
             run,
             logger,
             busyUntil: later(100),
-            now: () => clock,
         });
         run.mockResolvedValue(result);
 
         await expect(manager.start(request)).resolves.toEqual({ kind: 'busy' });
         expect(store.records.size).toBe(0);
 
-        clock = later(100);
+        vi.setSystemTime(later(100));
         await expect(manager.start(request)).resolves.toMatchObject({ kind: 'started' });
     });
 });

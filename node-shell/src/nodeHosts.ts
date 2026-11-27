@@ -18,13 +18,11 @@ export function parseNodeList(output: string): string[] {
 export const NODE_LIST_JSONPATH = 'jsonpath={range .items[*]}{.metadata.labels.vps}{"\\n"}{end}';
 
 export function createHostResolver({
-    localHost, sshUser, listNodes, ttlMs = NODE_LIST_TTL_MS, now = Date.now,
+    localHost, sshUser, listNodes,
 }: {
     localHost: string;
     sshUser: string;
     listNodes: () => Promise<string[]>;
-    ttlMs?: number;
-    now?: () => number;
 }): HostResolver {
     if (!HOST_NAME.test(localHost)) {
         throw new Error(`Invalid local host name: ${localHost}`);
@@ -38,7 +36,7 @@ export function createHostResolver({
     let reading: Promise<ReadonlySet<string>> | undefined;
 
     const nodeNames = (): Promise<ReadonlySet<string>> => {
-        if (cached !== undefined && now() - cached.readAt < ttlMs) {
+        if (cached !== undefined && Date.now() - cached.readAt < NODE_LIST_TTL_MS) {
             return Promise.resolve(cached.names);
         }
 
@@ -46,7 +44,7 @@ export function createHostResolver({
             .then((names) => {
                 cached = {
                     names: new Set(names),
-                    readAt: now(),
+                    readAt: Date.now(),
                 };
 
                 return cached.names;

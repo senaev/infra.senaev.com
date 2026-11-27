@@ -47,14 +47,13 @@ function toError(error: unknown): Error {
 }
 
 export function createExecutionManager({
-    store, hosts, run, logger, busyUntil, now = () => new Date(),
+    store, hosts, run, logger, busyUntil,
 }: {
     store: ExecutionStore;
     busyUntil?: Date | undefined;
     hosts: HostResolver;
     run: (options: { argv: readonly string[]; deadlineMs: number; maxOutputBytes: number }) => Promise<CommandResult>;
     logger: Pick<FastifyBaseLogger, 'info' | 'error'>;
-    now?: () => Date;
 }): ExecutionManager {
     const running = new Set<Promise<void>>();
     // Taken before any await, so concurrent starts cannot all pass the check.
@@ -111,7 +110,7 @@ export function createExecutionManager({
             finished = {
                 ...record,
                 status: result.deadlineExceeded ? 'failed' : 'completed',
-                finishedAt: now().toISOString(),
+                finishedAt: new Date().toISOString(),
                 exitCode: result.exitCode,
                 signal: result.signal,
                 stdout: result.stdout,
@@ -124,7 +123,7 @@ export function createExecutionManager({
             finished = {
                 ...record,
                 status: 'failed',
-                finishedAt: now().toISOString(),
+                finishedAt: new Date().toISOString(),
                 error: toError(error).message,
             };
         }
@@ -184,7 +183,7 @@ export function createExecutionManager({
                 return { kind: 'unknown-host' };
             }
 
-            const startedAt = now();
+            const startedAt = new Date();
 
             if (reservedSlots >= MAX_CONCURRENT_EXECUTIONS || (holdUntil !== undefined && startedAt < holdUntil)) {
                 return { kind: 'busy' };
@@ -257,9 +256,9 @@ export function createExecutionManager({
  */
 export async function markInterruptedExecutions(
     store: ExecutionStore,
-    logger: Pick<FastifyBaseLogger, 'warn'>,
-    now = new Date()
+    logger: Pick<FastifyBaseLogger, 'warn'>
 ): Promise<Date | undefined> {
+    const now = new Date();
     let busyUntil: Date | undefined;
 
     for (const record of await store.list()) {

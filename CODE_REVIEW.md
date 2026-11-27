@@ -21,3 +21,9 @@
 - Flag every re-export the change adds as P5: `export { x } from './y'`, `export * from './y'`,
   or an import that is only exported again. Importers must import from the file that defines the
   symbol. Barrel `index` files that only re-export are the same.
+
+## Tests
+
+- Flag an optional parameter that exists only so tests can control time (`now`, `clock`, a TTL or
+  delay override): the code should use `Date` and timers directly, and the test should mock them with
+  `vi.useFakeTimers()` and `vi.setSystemTime()`.

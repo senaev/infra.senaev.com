@@ -1,5 +1,5 @@
 import {
-    beforeEach, describe, expect, it, vi,
+    afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
 
 import {
@@ -17,22 +17,25 @@ describe('parseNodeList', () => {
 });
 
 describe('createHostResolver', () => {
-    let clock: number;
     const listNodes = vi.fn<() => Promise<string[]>>();
     const create = () => createHostResolver({
         localHost: 'hetzner',
         sshUser: 'root',
         listNodes,
-        now: () => clock,
     });
 
     beforeEach(() => {
-        clock = 0;
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(0);
         listNodes.mockReset().mockResolvedValue([
             'hetzner',
             'senaev-madrid',
             'firstvds',
         ]);
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
     });
 
     it('runs the local host locally, other nodes through ssh, and refuses the rest', async () => {
@@ -54,7 +57,7 @@ describe('createHostResolver', () => {
             hosts.resolve('firstvds'),
             hosts.resolve('senaev-madrid'),
         ]);
-        clock = NODE_LIST_TTL_MS - 1;
+        vi.setSystemTime(NODE_LIST_TTL_MS - 1);
         await hosts.resolve('firstvds');
         expect(listNodes).toHaveBeenCalledOnce();
 
@@ -63,7 +66,7 @@ describe('createHostResolver', () => {
             'firstvds',
             'new-node',
         ]);
-        clock = NODE_LIST_TTL_MS;
+        vi.setSystemTime(NODE_LIST_TTL_MS);
         await expect(hosts.resolve('new-node')).resolves.toEqual({
             kind: 'ssh',
             destination: 'root@new-node',
