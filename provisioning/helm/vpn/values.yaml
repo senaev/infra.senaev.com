@@ -23,36 +23,48 @@ xrayVpn:
       vps: senaev-media
       profiles: []
 
-# Hysteria2 (QUIC over UDP) from the client straight to hetzner, exit there. Added
-# 2026-11-20: the home ISP sometimes freezes TCP/TLS connections to hetzner for hours while
-# UDP (Tailscale) keeps full speed. One pod, one inbound per port. See
-# projects/2026-06-10-debug-vpn-connection/README.md
-# Off since 2026-11-26 (round 7): the home ISP drops Hysteria2 on UDP 47443 (salamander) and on
-# UDP 443 (plain HTTP/3); profile 6 worked only from outside Russia. Kept for a later retry.
+# Hysteria2 (QUIC over UDP) servers. One Deployment per enabled instance (xray-hysteria-<name>),
+# one inbound per port. The TLS certificate is the Let's Encrypt one that Traefik keeps on the
+# same node for serverName. `exit` is the node where traffic leaves: the instance's own node
+# (freedom) or another xray-vpn instance's SOCKS inbound over the cluster network (Tailscale).
+# See projects/2026-06-10-debug-vpn-connection/README.md
 xrayHysteria:
-  enabled: false
-  vps: hetzner
-  # Temporary while the UDP profiles are being debugged: Hysteria errors are logged only at info.
+  # Hysteria errors are logged only at info.
   logLevel: info
-  # Traefik on hetzner holds its Let's Encrypt certificate (senaev.com ingress).
-  serverName: senaev.com
-  # Same as acmeStoragePath of the traefik chart; mounted read-only.
+  # Same as acmeStoragePath of the traefik chart, on every Traefik node; mounted read-only.
   acmeStoragePath: /k3s-cluster/volumes/traefik/acme
-  inbounds:
-    # Profile 6. Salamander obfuscation: packets look like random bytes. Passes from FirstVDS,
-    # gets no answer from home (2026-11-24).
-    - port: 47443
-      obfsPasswordMacro: "{XRAY_USER_UUID:6-obfs}"
-      profiles:
-        - user: user-hysteria
-          authMacro: "{XRAY_USER_UUID:6}"
-    # Profile 7. Plain HTTP/3 look on UDP 443 (QUIC with SNI senaev.com, a real certificate,
-    # the website for anyone without the password). Never tested from home before: the first
-    # try (#260) was blocked by our own NetworkPolicy. Traefik does not use UDP 443.
-    - port: 443
-      profiles:
-        - user: user-hysteria-443
-          authMacro: "{XRAY_USER_UUID:7}"
+  instances:
+    # Off since 2026-11-26 (round 7): the home ISP drops Hysteria2 to Hetzner on UDP 47443
+    # (salamander) and on UDP 443 (plain HTTP/3); profile 6 worked only from outside Russia.
+    - name: hetzner
+      enabled: false
+      vps: hetzner
+      serverName: senaev.com
+      exit: hetzner
+      inbounds:
+        - port: 47443
+          obfsPasswordMacro: "{XRAY_USER_UUID:6-obfs}"
+          profiles:
+            - user: user-hysteria
+              authMacro: "{XRAY_USER_UUID:6}"
+        - port: 443
+          profiles:
+            - user: user-hysteria-443
+              authMacro: "{XRAY_USER_UUID:7}"
+    # Profile 9 (2026-11-27): profile 1's chain with a UDP first leg. Home -> FirstVDS (inside
+    # Russia) over Hysteria2 on UDP 443 (HTTP/3 look, senaev.ru certificate), then the SOCKS
+    # inbound of xray-vpn-hetzner over Tailscale, exit at Hetzner. Traefik on firstvds uses only
+    # TCP 443.
+    - name: firstvds
+      enabled: true
+      vps: firstvds
+      serverName: senaev.ru
+      exit: hetzner
+      inbounds:
+        - port: 443
+          profiles:
+            - user: user-hysteria-firstvds
+              authMacro: "{XRAY_USER_UUID:9}"
 
 # WireGuard from the client straight to hetzner, exit there: the protocol that Tailscale uses
 # from home to hetzner at full speed. A diagnostic for now: Happ cannot import WireGuard, so
@@ -89,6 +101,9 @@ vpnSubscription:
     - probeIndex: 4
       name: "💄 4. hetzner → freedom"
       link: "vless://{XRAY_USER_UUID:5}@senaev.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=senaev.com&pbk={XRAY_REALITY_PUBLIC_KEY}&sid="
+    - probeIndex: 9
+      name: "🇫🇮⚡ 9. firstvds UDP → hetzner"
+      link: "hysteria2://{XRAY_USER_UUID:9}@senaev.ru:443?sni=senaev.ru"
     # IPv6 literal of hetzner (there are no AAAA records). It changes only if the server is
     # recreated. See projects/2026-10-04-k3s-dual-stack-ipv6/README.md
     - probeIndex: 5
@@ -101,7 +116,7 @@ ingress:
 
 vpnProbe:
   enabled: true
-  # Temporary controlled experiment (profiles 1, 3, 4) with production parity checks;
+  # Temporary controlled experiment (profiles 1, 3, 4, 9) with production parity checks;
   # false restores the routine profiles.
   controlledExperiment: true
   vps: senaev-media
@@ -116,6 +131,7 @@ vpnProbe:
     "1": senaev.com
     "3": direct
     "5": senaev.com
+    "9": senaev.com
 
 # Diagnostic only: never included in the user-facing subscription.
 vpnXhttpExperiment:
