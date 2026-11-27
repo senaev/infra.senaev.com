@@ -180,16 +180,11 @@ mediaServerHelper:
   percentTriggerToRemove: 98
   percentRemoveTarget: 95
 
-# Runs the commands that the user approved in Telegram on the cluster nodes, as root
-# (projects/2026-11-15-10-44-approved-node-commands). It enters the host of `vps` and reaches the
-# other hosts with ssh from there, with the SSH key of that host's root. Only cluster-helper calls it.
 nodeShell:
   enabled: true
   vps: hetzner
   # Host directory for the executions, so a restart never runs a command again.
   volumePath: volumes/node-shell
-  # Every other cluster node, by its `vps` label, is reached as `ssh <sshUser>@<label>` from the
-  # host of `vps`. The nodes are read from the cluster, so a new node needs no change here.
   sshUser: root
 
 obsidianSync:
