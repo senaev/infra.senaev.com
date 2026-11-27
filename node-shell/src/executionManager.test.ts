@@ -513,6 +513,48 @@ describe('stop', () => {
         })).resolves.toMatchObject({ kind: 'started' });
     });
 
+    it('stops a unit whose ssh dropped while its result is being saved, and releases the hold', async () => {
+        const saved = deferred<undefined>();
+        const { update } = store;
+
+        store.update = async (record) => {
+            if (record.status === 'completed') {
+                await saved.promise;
+            }
+
+            return update(record);
+        };
+
+        run.mockImplementation(({ argv }) => Promise.resolve(isStop(argv)
+            ? result
+            : {
+                ...result,
+                exitCode: 255,
+            }));
+        await manager.start({
+            ...request,
+            host: 'senaev-madrid',
+        });
+        await settle();
+
+        const stopped = manager.stop('e1');
+
+        await settle();
+        saved.resolve(undefined);
+
+        await expect(stopped).resolves.toMatchObject({ kind: 'stopped' });
+        expect(store.records.get('e1')).toMatchObject({
+            status: 'completed',
+            stoppedAt: NOW.toISOString(),
+        });
+        expect(store.records.get('e1')).not.toHaveProperty('mayStillRun');
+        await settle();
+        await expect(manager.start({
+            ...request,
+            executionId: 'e2',
+        })).resolves.toMatchObject({ kind: 'started' });
+    });
+
     it('treats a unit that is already gone as stopped', async () => {
         const pending = deferred<CommandResult>();
 

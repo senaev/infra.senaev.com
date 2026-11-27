@@ -73,6 +73,9 @@ export function createExecutionManager({
     // and whether it was confirmed. Only a confirmed stop makes the result `stopped`.
     const active = new Map<string, HostTarget>();
     const stops = new Map<string, { requestedAt: string; confirmed: Promise<boolean> }>();
+    // The commands whose waiter has ended and whose result is being saved: a stop now waits for the
+    // save, then handles the saved record like one of an earlier process.
+    const finalizing = new Map<string, Promise<void>>();
 
     const runStop = async (target: HostTarget, record: ExecutionRecord): Promise<boolean> => {
         const logFields = {
@@ -204,6 +207,12 @@ export function createExecutionManager({
             };
         }
 
+        let finalized!: () => void;
+
+        finalizing.set(record.executionId, new Promise<void>((resolve) => {
+            finalized = resolve;
+        }));
+
         if (unitMayRun) {
             const endsBy = new Date(record.endsBy);
 
@@ -226,6 +235,8 @@ export function createExecutionManager({
                 err: wrapError(error),
             }, '❌ Failed to save the result of a node command; kept in memory until it is saved');
         }
+
+        finalized();
 
         // No command and no output in the logs: they can hold secrets.
         logger.info({
@@ -312,6 +323,7 @@ export function createExecutionManager({
                     reservedSlots -= 1;
                     active.delete(record.executionId);
                     stops.delete(record.executionId);
+                    finalizing.delete(record.executionId);
                 });
 
             return {
@@ -321,13 +333,14 @@ export function createExecutionManager({
         },
         get: read,
         async stop(executionId) {
-            const record = await read(executionId);
+            let record = await read(executionId);
 
             if (record === undefined) {
                 return { kind: 'not-found' };
             }
 
-            const activeTarget = active.get(executionId);
+            const finishing = finalizing.get(executionId);
+            const activeTarget = finishing === undefined ? active.get(executionId) : undefined;
 
             if (activeTarget !== undefined) {
                 const confirmed = runStop(activeTarget, record);
@@ -345,6 +358,11 @@ export function createExecutionManager({
                     kind: 'stopped',
                     record: await read(executionId) ?? record,
                 };
+            }
+
+            if (finishing !== undefined) {
+                await finishing;
+                record = await read(executionId) ?? record;
             }
 
             // A command whose end node-shell did not see (a restart, a dropped ssh) may still run.
