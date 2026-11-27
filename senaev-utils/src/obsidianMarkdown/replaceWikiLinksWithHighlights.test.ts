@@ -36,4 +36,14 @@ describe('replaceWikiLinksWithHighlights', () => {
         expect(replaceWikiLinksWithHighlights('[[Note|a*b==c]] [[Фёдор]] [[Фёдор]]'))
             .toBe('==a\\*b\\=\\=c== ==Фёдор== ==Фёдор==');
     });
+
+    it('does not nest a highlight inside a highlight that the note already has', () => {
+        expect(replaceWikiLinksWithHighlights('==[[@fedya]]==\n- ==Go with [[Note|Pasha]] and [[Anna]]== then [[Later]]'))
+            .toBe('==@fedya==\n- ==Go with Pasha and Anna== then ==Later==');
+    });
+
+    it('ignores escaped highlight markers when checking for an open highlight', () => {
+        expect(replaceWikiLinksWithHighlights('a \\== b [[Note]]'))
+            .toBe('a \\== b ==Note==');
+    });
 });
