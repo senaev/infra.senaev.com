@@ -253,9 +253,7 @@ is read. Code: `cluster-helper/src/telegramPublicApi.ts`. See
 
 Our Node.js services call each other with mTLS, not tokens. A service accepts a request only with a
 valid client certificate of our private CA, and only from the services it allows. Fail closed: never
-fall back to plain HTTP or a token. Details are in
-[`projects/2026-11-15-11-00-inter-service-certificate-authentication`](projects/2026-11-15-11-00-inter-service-certificate-authentication/README.md)
-and [`projects/2026-11-22-01-00-mtls-between-node-services`](projects/2026-11-22-01-00-mtls-between-node-services/README.md).
+fall back to plain HTTP or a token.
 
 ## Node shell
 
