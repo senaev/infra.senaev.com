@@ -62,6 +62,9 @@ export function guardCommand(markerPath: string): string {
 function buildSystemdRun({
     executionId, command, timeoutSeconds,
 }: NodeCommand): string[] {
+    const markerPath = stopMarkerPath(executionId);
+    const guard = guardCommand(markerPath);
+
     return [
         'systemd-run',
         `--unit=${systemdUnitName(executionId)}`,
@@ -77,7 +80,7 @@ function buildSystemdRun({
         '--',
         '/bin/sh',
         '-c',
-        escapeForSystemd(guardCommand(stopMarkerPath(executionId))),
+        escapeForSystemd(guard),
         escapeForSystemd(command),
     ];
 }
