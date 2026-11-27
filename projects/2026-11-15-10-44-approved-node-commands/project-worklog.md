@@ -1,3 +1,11 @@
+## 2026-11-27 14:10 UTC — The one-command limit holds across restarts
+
+Codex: after a restart the new process saw a free slot while the old command's systemd unit could
+still run. Each record now has `endsBy` (start + timeout + `TimeoutStopSec` + SSH and margin);
+`markInterruptedExecutions` returns the latest `endsBy` of the commands it marks `interrupted`, and
+the manager answers `busy` until then. Also `TimeoutStopSec=15` on the unit (systemd's default 90 s
+was longer than the client deadline grace).
+
 ## 2026-11-27 13:55 UTC — CodeRabbit round on node-shell
 
 Fixed: a repeated `PUT` reads its saved record before the host is resolved (so a removed node

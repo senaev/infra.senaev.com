@@ -323,7 +323,9 @@ host journal; each `$` of the command is passed to systemd as `$$`, so `/bin/sh`
   created before the command starts and kept 24 hours; a repeated `PUT` returns it, the same ID with
   another request is 409. After a restart, a record still `running` becomes `interrupted`, never retried.
 - One command at a time, on all hosts together: another one gets 429 until it finishes. An execution ID
-  is remembered for 24 hours; cluster-helper must not send a `PUT` later than 1 hour after the approval. The logs have the execution ID, host, status and exit code, never the
+  is remembered for 24 hours; cluster-helper must not send a `PUT` later than 1 hour after the approval.
+  Each record has `endsBy` (timeout + unit stop + SSH margin); after a restart, a command left `running`
+  becomes `interrupted` and no new command starts before its `endsBy`, since its unit may still run. The logs have the execution ID, host, status and exit code, never the
   command or its output.
 - Not done yet: the Telegram approval and the `submit`/`status` API in cluster-helper, and the workspace skill.
 

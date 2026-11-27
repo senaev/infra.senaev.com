@@ -17,6 +17,7 @@ const record: ExecutionRecord = {
     requestHash: 'hash',
     status: 'running',
     startedAt: '2026-11-22T00:00:00.000Z',
+    endsBy: '2026-11-22T00:01:40.000Z',
 };
 
 let directory: string;

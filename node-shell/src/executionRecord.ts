@@ -15,6 +15,11 @@ export type ExecutionRecord = {
     requestHash: string;
     status: ExecutionStatus;
     startedAt: string;
+    /**
+     * The latest time the command can still run on its host: its timeout, plus the stop of the
+     * systemd unit and the SSH connection. After a restart, no new command starts before it.
+     */
+    endsBy: string;
     finishedAt?: string;
     exitCode?: number | null;
     signal?: string | null;

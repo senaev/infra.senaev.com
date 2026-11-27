@@ -348,6 +348,8 @@ describe('createExecutionManager', () => {
 });
 
 describe('markInterruptedExecutions', () => {
+    const later = (seconds: number) => new Date(NOW.getTime() + seconds * 1000);
+
     it('marks the records left running by an earlier process as interrupted', async () => {
         store.records.set('old', {
             executionId: 'old',
@@ -355,6 +357,15 @@ describe('markInterruptedExecutions', () => {
             requestHash: 'hash',
             status: 'running',
             startedAt: NOW.toISOString(),
+            endsBy: later(100).toISOString(),
+        });
+        store.records.set('older', {
+            executionId: 'older',
+            host: 'hetzner',
+            requestHash: 'hash',
+            status: 'running',
+            startedAt: NOW.toISOString(),
+            endsBy: later(-1).toISOString(),
         });
         store.records.set('done', {
             executionId: 'done',
@@ -362,11 +373,40 @@ describe('markInterruptedExecutions', () => {
             requestHash: 'hash',
             status: 'completed',
             startedAt: NOW.toISOString(),
+            endsBy: later(500).toISOString(),
         });
 
-        await markInterruptedExecutions(store, logger, NOW);
-
+        await expect(markInterruptedExecutions(store, logger, NOW)).resolves.toEqual(later(100));
         expect(store.records.get('old')?.status).toBe('interrupted');
+        expect(store.records.get('older')?.status).toBe('interrupted');
         expect(store.records.get('done')?.status).toBe('completed');
+    });
+
+    it('returns nothing when no interrupted command can still run', async () => {
+        await expect(markInterruptedExecutions(store, logger, NOW)).resolves.toBeUndefined();
+    });
+
+    it('keeps new commands out until an interrupted command can no longer run', async () => {
+        let clock = NOW;
+
+        manager = createExecutionManager({
+            store,
+            hosts: createHostResolver({
+                localHost: 'hetzner',
+                sshUser: 'root',
+                listNodes: () => Promise.resolve(['hetzner']),
+            }),
+            run,
+            logger,
+            busyUntil: later(100),
+            now: () => clock,
+        });
+        run.mockResolvedValue(result);
+
+        await expect(manager.start(request)).resolves.toEqual({ kind: 'busy' });
+        expect(store.records.size).toBe(0);
+
+        clock = later(100);
+        await expect(manager.start(request)).resolves.toMatchObject({ kind: 'started' });
     });
 });

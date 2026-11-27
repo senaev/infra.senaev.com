@@ -21,6 +21,7 @@ const record: ExecutionRecord = {
     requestHash: 'internal',
     status: 'running',
     startedAt: '2026-11-22T10:00:00.000Z',
+    endsBy: '2026-11-22T10:01:40.000Z',
 };
 
 const manager = {
@@ -109,6 +110,7 @@ describe('createNodeShellServer', () => {
                 host: 'hetzner',
                 status: 'running',
                 startedAt: '2026-11-22T10:00:00.000Z',
+                endsBy: '2026-11-22T10:01:40.000Z',
             },
         });
         expect(manager.start).toHaveBeenCalledExactlyOnceWith({

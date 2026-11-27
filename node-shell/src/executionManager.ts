@@ -54,9 +54,11 @@ function toError(error: unknown): Error {
 }
 
 export function createExecutionManager({
-    store, hosts, run, logger, now = () => new Date(),
+    store, hosts, run, logger, busyUntil, now = () => new Date(),
 }: {
     store: ExecutionStore;
+    /** A command of an earlier process may still run on its host until then (see `markInterruptedExecutions`). */
+    busyUntil?: Date | undefined;
     hosts: HostResolver;
     run: (options: { argv: readonly string[]; deadlineMs: number; maxOutputBytes: number }) => Promise<CommandResult>;
     logger: Pick<FastifyBaseLogger, 'info' | 'error'>;
@@ -174,7 +176,9 @@ export function createExecutionManager({
                 return { kind: 'unknown-host' };
             }
 
-            if (reservedSlots >= MAX_CONCURRENT_EXECUTIONS) {
+            const startedAt = now();
+
+            if (reservedSlots >= MAX_CONCURRENT_EXECUTIONS || (busyUntil !== undefined && startedAt < busyUntil)) {
                 return { kind: 'busy' };
             }
 
@@ -185,7 +189,8 @@ export function createExecutionManager({
                 host: nodeCommand.host,
                 requestHash,
                 status: 'running',
-                startedAt: now().toISOString(),
+                startedAt: startedAt.toISOString(),
+                endsBy: new Date(startedAt.getTime() + nodeCommand.timeoutSeconds * 1000 + DEADLINE_GRACE_MS).toISOString(),
             };
 
             // Saved before the command starts: if node-shell restarts now, the ID is taken and the
@@ -241,15 +246,24 @@ export function createExecutionManager({
 
 /**
  * At startup, no command of this process runs yet: a record still `running` was left by an
- * earlier process. Its outcome is unknown, and it is not retried.
+ * earlier process. Its outcome is unknown, and it is not retried. Its systemd unit can still run
+ * on the host until `endsBy`, so the latest such time is returned: no new command starts before.
  */
 export async function markInterruptedExecutions(
     store: ExecutionStore,
     logger: Pick<FastifyBaseLogger, 'warn'>,
     now = new Date()
-): Promise<void> {
+): Promise<Date | undefined> {
+    let busyUntil: Date | undefined;
+
     for (const record of await store.list()) {
         if (record.status === 'running') {
+            const endsBy = new Date(record.endsBy);
+
+            if (endsBy > now && (busyUntil === undefined || endsBy > busyUntil)) {
+                busyUntil = endsBy;
+            }
+
             await store.update({
                 ...record,
                 status: 'interrupted',
@@ -259,7 +273,10 @@ export async function markInterruptedExecutions(
             logger.warn({
                 executionId: record.executionId,
                 host: record.host,
+                endsBy: record.endsBy,
             }, '⚠️ Marked a node command as interrupted by a restart');
         }
     }
+
+    return busyUntil;
 }

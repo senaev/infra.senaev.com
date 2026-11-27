@@ -50,7 +50,7 @@ async function main(): Promise<void> {
     });
     const store = await createExecutionStore(NODE_SHELL_STATE_DIRECTORY);
 
-    await markInterruptedExecutions(store, logger);
+    const busyUntil = await markInterruptedExecutions(store, logger);
 
     const cleanUp = () => {
         store.removeOlderThan(RECORD_RETENTION_MS, new Date())
@@ -65,6 +65,7 @@ async function main(): Promise<void> {
         store,
         hosts,
         run: runCommand,
+        busyUntil,
         logger,
     });
     const certificates = await watchTlsCredentials({ logger });
