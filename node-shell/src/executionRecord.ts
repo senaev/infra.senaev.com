@@ -7,9 +7,14 @@
  *   retried; the systemd unit on the host still ends at its own timeout.
  * - `stopped`: a `DELETE` stopped it before it ended by itself.
  */
+import type { CommandResult } from './runCommand';
+
 export type ExecutionStatus = 'running' | 'completed' | 'failed' | 'interrupted' | 'stopped';
 
-export type ExecutionRecord = {
+/** The result of the command, once it ended; a deadline shows as `failed` with an `error`. */
+type ExecutionOutput = Partial<Omit<CommandResult, 'deadlineExceeded'>>;
+
+export type ExecutionRecord = ExecutionOutput & {
     executionId: string;
     host: string;
     /** SHA-256 of the request, to tell a repeated request from a different one with the same ID. */
@@ -22,11 +27,6 @@ export type ExecutionRecord = {
     mayStillRun?: true;
     finishedAt?: string;
     stoppedAt?: string;
-    exitCode?: number | null;
-    signal?: string | null;
-    stdout?: string;
-    stderr?: string;
-    outputTruncated?: boolean;
     error?: string;
 };
 

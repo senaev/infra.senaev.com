@@ -174,17 +174,15 @@ export function createExecutionManager({
                 status = 'stopped';
             }
 
+            const { deadlineExceeded, ...output } = result;
+
             finished = {
                 ...record,
+                ...output,
                 status,
                 ...stoppedAt === undefined ? {} : { stoppedAt },
                 finishedAt: new Date().toISOString(),
-                exitCode: result.exitCode,
-                signal: result.signal,
-                stdout: result.stdout,
-                stderr: result.stderr,
-                outputTruncated: result.outputTruncated,
-                ...result.deadlineExceeded ? { error: 'node-shell killed the command at its deadline' } : {},
+                ...deadlineExceeded ? { error: 'node-shell killed the command at its deadline' } : {},
                 ...unitMayRun ? { mayStillRun: true as const } : {},
             };
         } catch (error) {
