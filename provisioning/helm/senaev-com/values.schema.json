@@ -272,6 +272,7 @@
             "required": [
               "enabled",
               "model",
+              "autoCompactPercent",
               "mcp",
               "telegram"
             ],
@@ -283,6 +284,12 @@
                 "description": "The model of new sessions: an alias such as sonnet, or a full model name",
                 "type": "string",
                 "minLength": 1
+              },
+              "autoCompactPercent": {
+                "description": "Auto-compact starts at this percent of the context window (CLAUDE_AUTOCOMPACT_PCT_OVERRIDE)",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
               },
               "mcp": {
                 "description": "Claude Code HTTP MCP servers, by name. start.sh writes them into the user config; the telegram-login container logs in to them",
@@ -322,7 +329,7 @@
           "codex": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["enabled", "remoteControl"],
+            "required": ["enabled", "remoteControl", "autoCompactTokenLimit"],
             "properties": {
               "enabled": {
                 "type": "boolean"
@@ -330,6 +337,11 @@
               "remoteControl": {
                 "description": "Run codex remote-control for the ChatGPT app; when false, the container only keeps the login",
                 "type": "boolean"
+              },
+              "autoCompactTokenLimit": {
+                "description": "Auto-compact starts at this many tokens (model_auto_compact_token_limit in config.toml)",
+                "type": "integer",
+                "minimum": 1
               }
             }
           },
