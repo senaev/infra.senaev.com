@@ -45,8 +45,11 @@ if ! claude auth status > /dev/null 2>&1; then
     echo "Claude Code is logged in."
 fi
 
+# Remote Control passes these settings to every session it spawns. Auto-compact starts at 35% of
+# the context window instead of near the limit, so long sessions stay small and cheap.
 settings=/tmp/server-settings.json
-jq -n --arg model "$CLAUDE_CODE_MODEL" '{model: $model}' > "$settings"
+jq -n --arg model "$CLAUDE_CODE_MODEL" \
+    '{model: $model, env: {CLAUDE_AUTOCOMPACT_PCT_OVERRIDE: "35"}}' > "$settings"
 
 cd "$workdir"
 claude remote-control \
