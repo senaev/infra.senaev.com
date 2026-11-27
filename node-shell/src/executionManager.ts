@@ -110,12 +110,13 @@ export function createExecutionManager({
         return false;
     };
 
-    // Every hold comes from a record with `mayStillRun`, so it is computed again after a stop.
+    // Every hold comes from a record with `mayStillRun`, so it is computed again after a stop. A
+    // command of this process that still runs holds its slot instead.
     const recomputeHold = async (): Promise<void> => {
         holdUntil = latestHold([
             ...await store.list(),
             ...unsaved.values(),
-        ], new Date());
+        ].filter((record) => !(record.status === 'running' && active.has(record.executionId))), new Date());
     };
 
     const read = async (executionId: string): Promise<ExecutionRecord | undefined> => {

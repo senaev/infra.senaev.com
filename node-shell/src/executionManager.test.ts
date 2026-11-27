@@ -751,6 +751,50 @@ describe('stop', () => {
         await expect(manager.start(request)).resolves.toMatchObject({ kind: 'started' });
     });
 
+    it('adds no hold for a new command when an overlapping stop of an earlier unit ends after it started', async () => {
+        const endsBy = new Date(NOW.getTime() + 60_000);
+        const firstStop = deferred<CommandResult>();
+        const secondStop = deferred<CommandResult>();
+        const pending = deferred<CommandResult>();
+
+        store.records.set('old', {
+            executionId: 'old',
+            host: 'senaev-madrid',
+            requestHash: 'hash',
+            status: 'interrupted',
+            startedAt: NOW.toISOString(),
+            endsBy: endsBy.toISOString(),
+            mayStillRun: true,
+        });
+        manager = createExecutionManager({
+            store,
+            run,
+            logger,
+            busyUntil: endsBy,
+        });
+        run.mockReturnValueOnce(firstStop.promise).mockReturnValueOnce(secondStop.promise);
+
+        const first = manager.stop('old');
+        const second = manager.stop('old');
+
+        await settle();
+        firstStop.resolve(result);
+        await expect(first).resolves.toMatchObject({ kind: 'stopped' });
+
+        run.mockReturnValueOnce(pending.promise);
+        await expect(manager.start(request)).resolves.toMatchObject({ kind: 'started' });
+        secondStop.resolve(result);
+        await expect(second).resolves.toMatchObject({ kind: 'stopped' });
+        pending.resolve(result);
+        await settle();
+
+        run.mockResolvedValue(result);
+        await expect(manager.start({
+            ...request,
+            executionId: 'e2',
+        })).resolves.toMatchObject({ kind: 'started' });
+    });
+
     it('keeps new commands out when the stop of an earlier unit fails', async () => {
         const endsBy = new Date(NOW.getTime() + 60_000);
 
