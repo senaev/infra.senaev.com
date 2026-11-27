@@ -343,14 +343,18 @@ export function createExecutionManager({
             const activeTarget = finishing === undefined ? active.get(executionId) : undefined;
 
             if (activeTarget !== undefined) {
-                const confirmed = runStop(activeTarget, record);
+                // A repeated stop reuses the last one, so a failed retry cannot undo a confirmed stop.
+                let stop = stops.get(executionId);
 
-                stops.set(executionId, {
-                    requestedAt: new Date().toISOString(),
-                    confirmed,
-                });
+                if (stop === undefined || !await stop.confirmed) {
+                    stop = {
+                        requestedAt: new Date().toISOString(),
+                        confirmed: runStop(activeTarget, record),
+                    };
+                    stops.set(executionId, stop);
+                }
 
-                if (!await confirmed) {
+                if (!await stop.confirmed) {
                     return { kind: 'stop-failed' };
                 }
 

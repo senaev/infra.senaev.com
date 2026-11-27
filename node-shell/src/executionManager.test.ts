@@ -555,6 +555,37 @@ describe('stop', () => {
         })).resolves.toMatchObject({ kind: 'started' });
     });
 
+    it('keeps a confirmed stop when the same stop is asked for again', async () => {
+        const pending = deferred<CommandResult>();
+
+        run.mockImplementation(({ argv }) => (isStop(argv)
+            ? Promise.resolve(result)
+            : pending.promise));
+        await manager.start({
+            ...request,
+            host: 'senaev-madrid',
+        });
+
+        await expect(manager.stop('e1')).resolves.toMatchObject({ kind: 'stopped' });
+        run.mockImplementation(() => Promise.resolve({
+            ...result,
+            exitCode: 255,
+        }));
+        await expect(manager.stop('e1')).resolves.toMatchObject({ kind: 'stopped' });
+        pending.resolve({
+            ...result,
+            exitCode: 255,
+        });
+        await settle();
+
+        expect(store.records.get('e1')).toMatchObject({ status: 'stopped' });
+        expect(store.records.get('e1')).not.toHaveProperty('mayStillRun');
+        await expect(manager.start({
+            ...request,
+            executionId: 'e2',
+        })).resolves.toMatchObject({ kind: 'started' });
+    });
+
     it('treats a unit that is already gone as stopped', async () => {
         const pending = deferred<CommandResult>();
 
