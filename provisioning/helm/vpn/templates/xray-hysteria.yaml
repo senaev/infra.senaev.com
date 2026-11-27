@@ -39,6 +39,13 @@ spec:
     spec:
       nodeSelector:
         vps: {{ $instance.vps }}
+      {{- if $instance.hostNetwork }}
+      # The pod network's MTU (~1280, flannel VXLAN over tailscale0) is below the size of QUIC
+      # handshake packets (1280 bytes of UDP payload, not configurable in Xray), so the server's
+      # certificate never left the pod. The node's own interface has MTU 1500.
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      {{- end }}
       automountServiceAccountToken: false
       initContainers:
         - name: xray-config-subst

@@ -1,3 +1,27 @@
+## 2026-11-27 — Round 8: profile 9 fails because the pod MTU drops the QUIC handshake
+
+Profile 9 fails from home (probe: `handshake did not complete in time`) and on the user's phone over
+mobile data, where profile 1 works. tcpdump on firstvds (user): home Initials (1250 B) reach the pod
+through the hostPort DNAT; only small packets (96 B, 37 B) go back; the client resends its Initial.
+
+A hand-built QUIC v1 Initial (Node, [`sources/quic-initial-probe.mjs`](sources/quic-initial-probe.mjs), decrypts the server's Initial) from
+a cloud host outside Russia, checked first on cloudflare.com (ServerHello + 3 Handshake packets):
+
+```
+== 157.22.197.112 443 senaev.ru h3
+no reply in 4 s
+== 157.22.197.112 443 senaev.ru h2
+<- 45 B from 157.22.197.112:443
+   Initial pn=0 45 B: CONNECTION_CLOSE(code=0x178 (TLS alert 120), frame=0, reason="")
+```
+
+Xray answers small packets at once, but sends nothing when it must send its certificate flight. The
+pod MTU is ~1280 (tailscale0 1350 minus VXLAN), and quic-go's packets are 1280 bytes of UDP payload
+(1308 on the wire); Xray's Hysteria listener does not set `InitialPacketSize` (hub.go), and quic-go
+allows no less than 1200. TCP (profile 1) adapts its MSS, so only QUIC is hit. Fix: the firstvds
+instance runs with `hostNetwork` (ens3, MTU 1500). UDP 443 then goes through the INPUT chain, where
+ufw must allow it.
+
 ## 2026-11-27 — Profile 9: Hysteria2 to FirstVDS, exit Hetzner (user request)
 
 The user asked for profile 1's route with Hysteria as the FirstVDS entry. `xrayHysteria` became a list

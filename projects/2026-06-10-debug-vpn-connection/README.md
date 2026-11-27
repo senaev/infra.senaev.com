@@ -5,6 +5,14 @@
 
 ## Current status (updated every round)
 
+**Round 8 — 2026-11-27, PR "Run the FirstVDS Hysteria2 server on the host network".**
+
+Profile 9 failed everywhere (home, mobile data): the server's QUIC handshake packets (1308 bytes on
+the wire) did not fit the pod MTU (~1280, flannel over Tailscale) and never left the pod. A test
+from outside Russia: wrong ALPN → 45-byte close at once; ALPN h3 → no answer. Round 8 runs
+`xray-hysteria-firstvds` with `hostNetwork` (MTU 1500); ufw on firstvds must allow `443/udp`.
+Signal: profile 9 probe checks succeed from home, and `node sources/quic-initial-probe.mjs 157.22.197.112` gets a ServerHello. See the worklog.
+
 **Round 7 — 2026-11-26, PR "Alert on VPN profile 1 failures and turn off the UDP experiments".**
 
 **Use profile 1 (`🇫🇮 1. firstvds → hetzner`).** With FirstVDS healthy it is at parity with direct

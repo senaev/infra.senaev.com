@@ -55,8 +55,13 @@ xrayHysteria:
     # Russia) over Hysteria2 on UDP 443 (HTTP/3 look, senaev.ru certificate), then the SOCKS
     # inbound of xray-vpn-hetzner over Tailscale, exit at Hetzner. Traefik on firstvds uses only
     # TCP 443.
+    # hostNetwork (round 8, 2026-11-27): in the pod network the server's handshake packets were
+    # dropped as too big (pod MTU ~1280 < 1308 bytes on the wire); from outside Russia an h3
+    # Initial got no answer at all, a wrong ALPN got the 45-byte close at once. On the host
+    # network UDP 443 hits the node's INPUT chain: ufw must allow 443/udp.
     - name: firstvds
       enabled: true
+      hostNetwork: true
       vps: firstvds
       serverName: senaev.ru
       exit: hetzner
