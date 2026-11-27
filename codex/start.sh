@@ -2,6 +2,7 @@
 set -euo pipefail
 umask 077
 
+: "${CODEX_AUTO_COMPACT_TOKEN_LIMIT:?CODEX_AUTO_COMPACT_TOKEN_LIMIT is required}"
 workdir=/code
 codex_home="${CODEX_HOME:-$HOME/.codex}"
 mkdir -p "$codex_home"
@@ -13,6 +14,7 @@ cat > "$codex_home/config.toml" <<TOML
 approval_policy = "never"
 sandbox_mode = "danger-full-access"
 check_for_update_on_startup = false
+model_auto_compact_token_limit = $CODEX_AUTO_COMPACT_TOKEN_LIMIT
 
 [projects."$workdir"]
 trust_level = "trusted"

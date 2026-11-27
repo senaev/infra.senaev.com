@@ -1,23 +1,26 @@
-{{- if .Values.xrayHysteria.enabled }}
 {{- $hysteria := .Values.xrayHysteria }}
+{{- range $instance := $hysteria.instances }}
+{{- if $instance.enabled }}
+{{- $name := printf "xray-hysteria-%s" $instance.name }}
+---
 # Separate from xray-vpn-<vps>: a failure here (certificate, UDP port) cannot affect the
 # VLESS/Reality profiles.
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: xray-hysteria-config-template
-  namespace: {{ .Release.Namespace }}
+  name: {{ $name }}-config-template
+  namespace: {{ $.Release.Namespace }}
 data:
   full-config.json: |
-{{ include "vpn.xrayHysteriaConfig" . | indent 4 }}
+{{ include "vpn.xrayHysteriaConfig" (dict "root" $ "instance" $instance) | indent 4 }}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: xray-hysteria
-  namespace: {{ .Release.Namespace }}
+  name: {{ $name }}
+  namespace: {{ $.Release.Namespace }}
   labels:
-    app: xray-hysteria
+    app: {{ $name }}
 spec:
   replicas: 1
   # hostPort: the old pod must release the UDP port first.
@@ -25,17 +28,24 @@ spec:
     type: Recreate
   selector:
     matchLabels:
-      app: xray-hysteria
+      app: {{ $name }}
   template:
     metadata:
       labels:
-        app: xray-hysteria
+        app: {{ $name }}
       annotations:
         secret.reloader.stakater.com/reload: "senaev-com-kv-secrets"
-        configmap.reloader.stakater.com/reload: "xray-hysteria-config-template"
+        configmap.reloader.stakater.com/reload: "{{ $name }}-config-template"
     spec:
       nodeSelector:
-        vps: {{ $hysteria.vps }}
+        vps: {{ $instance.vps }}
+      {{- if $instance.hostNetwork }}
+      # The pod network's MTU (~1280, flannel VXLAN over tailscale0) is below the size of QUIC
+      # handshake packets (1280 bytes of UDP payload, not configurable in Xray), so the server's
+      # certificate never left the pod. The node's own interface has MTU 1500.
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      {{- end }}
       automountServiceAccountToken: false
       initContainers:
         - name: xray-config-subst
@@ -44,7 +54,7 @@ spec:
             - sh
             - -c
             - |
-{{ regexReplaceAll "(?m)^ +$" (include "vpn.renderXrayConfigScript" . | indent 14) "" }}
+{{ regexReplaceAll "(?m)^ +$" (include "vpn.renderXrayConfigScript" $ | indent 14) "" }}
           env:
             - name: XRAY_USER_UUID
               valueFrom:
@@ -63,11 +73,11 @@ spec:
             - sh
             - -c
             - |
-{{ regexReplaceAll "(?m)^ +$" (include "vpn.acmeCertificateScript" . | indent 14) "" }}
+{{ regexReplaceAll "(?m)^ +$" (include "vpn.acmeCertificateScript" $ | indent 14) "" }}
               node /tmp/acme-certificate.mjs
           env:
             - name: SERVER_NAME
-              value: {{ $hysteria.serverName | quote }}
+              value: {{ $instance.serverName | quote }}
           volumeMounts:
             - name: acme
               mountPath: /acme
@@ -78,7 +88,7 @@ spec:
         - name: xray
           image: teddysun/xray:26.9.30
           ports:
-            {{- range $inbound := $hysteria.inbounds }}
+            {{- range $inbound := $instance.inbounds }}
             - name: hysteria-{{ $inbound.port }}
               containerPort: {{ $inbound.port }}
               hostPort: {{ $inbound.port }}
@@ -98,14 +108,14 @@ spec:
             - sh
             - -c
             - |
-{{ regexReplaceAll "(?m)^ +$" (include "vpn.acmeCertificateScript" . | indent 14) "" }}
+{{ regexReplaceAll "(?m)^ +$" (include "vpn.acmeCertificateScript" $ | indent 14) "" }}
               while true; do
                 sleep 3600
                 node /tmp/acme-certificate.mjs || echo "Certificate refresh failed; keeping the current files"
               done
           env:
             - name: SERVER_NAME
-              value: {{ $hysteria.serverName | quote }}
+              value: {{ $instance.serverName | quote }}
           resources:
             requests:
               cpu: 1m
@@ -119,7 +129,7 @@ spec:
       volumes:
         - name: config-template
           configMap:
-            name: xray-hysteria-config-template
+            name: {{ $name }}-config-template
         - name: config
           emptyDir: {}
         - name: tls
@@ -128,4 +138,5 @@ spec:
           hostPath:
             path: {{ $hysteria.acmeStoragePath }}
             type: Directory
+{{- end }}
 {{- end }}

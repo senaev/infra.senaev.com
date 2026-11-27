@@ -74,8 +74,9 @@ merged or closed.
 
 ### Implementation (Coding)
 
-When the code is ready and local checks passed, open the pull request and run the Code Review Loop.
-When the loop is finished, tell the user to review the pull request. Merging stays the user's decision.
+When the code is ready and local checks passed, open the pull request and send its link to the user
+in the chat. Then, without waiting for an answer, run the Code Review Loop, in a background sub-agent
+if you can. When it is finished, tell the user to review the pull request; merging is their decision.
 
 ### Code Review
 
@@ -576,7 +577,10 @@ only in `senaev`.
   container. The git token of the workspace is in its env. The SSH key is not in the container:
   the `ssh-agent` sidecar (`templates/llm-workspace/_ssh-agent.tpl`) holds it, and Claude Code
   signs through `SSH_AUTH_SOCK=/ssh-agent/agent.sock`, a read-only mount. The model of new
-  sessions is `claudeCode.model`; the phone can change it with `/model`.
+  sessions is `claudeCode.model`; the phone can change it with `/model`. Sessions auto-compact at
+  `claudeCode.autoCompactPercent` of the context window: `start.sh` puts it as
+  `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` in the `env` of the settings that Remote Control passes to
+  every session.
 - MCP servers: `claudeCode.mcp` of the workspace, a `url` for each server (now Datadog,
   Grafana, Obsidian and Telegram). The template passes them as `WORKSPACE_MCP_SERVERS`, and `start.sh`
   writes them as `mcpServers` in `~/.claude.json` (user scope) on each start, replacing that list:
@@ -675,7 +679,8 @@ and the NetworkPolicy has no ingress. Enabled only in `senaev`.
 - `<clusterRootPath>/volumes/codex` is mounted as `HOME`; `~/.codex` holds the login, the remote
   control enrollment and the sessions. Do not delete it.
 - `start.sh` writes `~/.codex/config.toml` on each start (no approvals, `danger-full-access`, no
-  update check, `/code` trusted), replacing changes made by hand, and links `/AGENTS.md` as
+  update check, `/code` trusted, `model_auto_compact_token_limit` from `codex.autoCompactTokenLimit`:
+  a token count, not a percent, so it changes with the model), replacing changes made by hand, and links `/AGENTS.md` as
   `~/.codex/AGENTS.md`: Codex does not read the `AGENTS.md` of a parent folder outside a repository.
   The remote control module is logged at info (`RUST_LOG`).
 - MCP servers: none in `config.toml`. With the ChatGPT login, Codex gets the apps (connectors) of

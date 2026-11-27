@@ -1,3 +1,72 @@
+## 2026-11-27 11:50 UTC — Round 8 result: the server answers, the QUIC handshake is dropped after FirstVDS
+
+#347 deployed at 10:27 UTC; `xray-hysteria-firstvds` runs with `host_network="true"`. The h3 test
+from outside Russia still gets no reply (43 of 43), h2 still gets its close. tcpdump on firstvds
+(user) while the test ran:
+
+```
+14:30:28.623156 ens3  In  IP 47.58.178.47.52269 > 157.22.197.112.443: UDP, length 1200
+14:30:28.710379 ens3  Out IP 157.22.197.112.443 > 47.58.178.47.52269: UDP, length 1280
+14:30:28.710422 ens3  Out IP 157.22.197.112.443 > 47.58.178.47.52269: UDP, length 1280
+14:30:28.710457 ens3  Out IP 157.22.197.112.443 > 47.58.178.47.52269: UDP, length 1280
+...
+IpFragFails 2, UdpSndbufErrors 0; ens3 mtu 1500
+```
+
+So the host-network fix was needed (in the pod nothing of this size left), but the replies are lost
+after ens3. A size test: a Python sender on firstvds UDP 40000 answered each packet of a receiver
+here with random packets of 100–1472 B and two with a QUIC long header (0xc3, version 1), 600 and
+1280 B. All sizes and both QUIC-shaped packets arrived (11:43 UTC). Profile 9 from home: VPN checks
+fail as before (about 26 of 28 per 30 min; the 2–3 successes per window were there before the
+deploy). The drop needs the real QUIC handshake, which anyone can decrypt (the Initial keys come from
+the client's connection ID) to see the TLS ServerHello. Decision (round 9): profile 10, the same
+server with salamander on UDP 47443; profile 9 stays as the control.
+
+## 2026-11-27 — Round 8: profile 9 fails because the pod MTU drops the QUIC handshake
+
+Profile 9 fails from home (probe: `handshake did not complete in time`) and on the user's phone over
+mobile data, where profile 1 works. tcpdump on firstvds (user): home Initials (1250 B) reach the pod
+through the hostPort DNAT; only small packets (96 B, 37 B) go back; the client resends its Initial.
+
+A hand-built QUIC v1 Initial (Node, [`sources/quic-initial-probe.mjs`](sources/quic-initial-probe.mjs), decrypts the server's Initial) from
+a cloud host outside Russia, checked first on cloudflare.com (ServerHello + 3 Handshake packets):
+
+```
+== 157.22.197.112 443 senaev.ru h3
+no reply in 4 s
+== 157.22.197.112 443 senaev.ru h2
+<- 45 B from 157.22.197.112:443
+   Initial pn=0 45 B: CONNECTION_CLOSE(code=0x178 (TLS alert 120), frame=0, reason="")
+```
+
+Xray answers small packets at once, but sends nothing when it must send its certificate flight. The
+pod MTU is ~1280 (tailscale0 1350 minus VXLAN), and quic-go's packets are 1280 bytes of UDP payload
+(1308 on the wire); Xray's Hysteria listener does not set `InitialPacketSize` (hub.go), and quic-go
+allows no less than 1200. TCP (profile 1) adapts its MSS, so only QUIC is hit. Fix: the firstvds
+instance runs with `hostNetwork` (ens3, MTU 1500). UDP 443 then goes through the INPUT chain, where
+ufw must allow it.
+
+## 2026-11-27 — Profile 9: Hysteria2 to FirstVDS, exit Hetzner (user request)
+
+The user asked for profile 1's route with Hysteria as the FirstVDS entry. `xrayHysteria` became a list
+of instances (node, certificate, exit); the Hetzner instance stays off, the new `firstvds` instance
+listens on UDP 443 with the senaev.ru certificate from Traefik on firstvds and sends traffic to
+`xray-vpn-hetzner:1080`, like profile 1. Stacked on round 7 (#341), which turns off profiles 6–8.
+
+## 2026-11-26 23:30 UTC — Round 6 result: profile 1 at parity when FirstVDS is healthy; FirstVDS stalled 2 h
+
+- iperf3 at 100 Mbit/s (#332): firstvds → hetzner 99.8 Mbit/s (cap); hetzner → firstvds 38.5
+  (20:39, during the stall), 83.0 (21:33), 76.3 (22:25) Mbit/s. From 30 s CPU windows FirstVDS ran
+  ~85–100 % during the 10 s tests: the CPU caps the tunnel at ~80 Mbit/s, above profile 1's needs.
+- Profile 1 parity, 6 h (Datadog): Cloudflare 4 MiB VPN 1.57–1.68 s when healthy vs direct 1.72 s mean;
+  `tls_ms` ~730–770 vs ~590 direct (connection setup +150 ms); 28 failures, all 10 s timeouts, all
+  in 19:40–21:30.
+- 19:40–21:30: smokeping to firstvds from hetzner/madrid/home 0.5–16 s (normally 17–70 ms); hetzner →
+  senaev.ru public 70–80 ms; FirstVDS CPU minutes with busy=1 and steal=0 (paused VM). Hetzner's other
+  links normal. After 21:28 steal ~1.5 % (was ~15 %). Not caused by our tests (19:43 timeout came first).
+- Decision (round 7): alerts for profile 1 failures and FirstVDS stalls; turn off profiles 6/7/8.
+  Propose a second Russian entry VPS to the user.
+
 ## 2026-11-26 — Round 5 result; FirstVDS ↔ Hetzner public path blocked; round 6 measures the tunnel
 
 - Home: profiles 6, 7, 8 fail everything. On Hetzner (user ran it) no conntrack entry for UDP

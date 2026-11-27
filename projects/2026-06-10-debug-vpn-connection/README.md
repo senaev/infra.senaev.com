@@ -5,10 +5,55 @@
 
 ## Current status (updated every round)
 
-**Round 6 — 2026-11-26, PR "Measure the FirstVDS ↔ Hetzner tunnel above 20 Mbit/s".**
+**Round 9 — 2026-11-27, PR "Add profile 10: Hysteria2 with salamander to FirstVDS".**
 
-**Use profile 1 (`🇫🇮 1. firstvds → hetzner`).** It is the only route that works from home:
-61 of 61 parity checks in the last 3 h.
+Round 8 result: on the host network the server answers each Initial with its handshake (3 × 1280 B
+from UDP 443, tcpdump on ens3), but the replies never arrive, at home or abroad; the 45-byte close
+does. Random UDP from FirstVDS (port 40000) of 100–1472 B, also with a QUIC long header, arrives.
+So the real QUIC handshake is recognized and dropped after FirstVDS, not cut by size. Round 9 adds
+profile 10 (`🇫🇮⚡ 10. firstvds UDP obfs → hetzner`): the same server and exit, with salamander on UDP
+47443, so no packet looks like QUIC. Profile 9 stays as the control. ufw on firstvds must allow
+`47443/udp`. Signal: profile 10's VPN checks succeed from home while profile 9's fail.
+
+**Round 8 — 2026-11-27, PR "Run the FirstVDS Hysteria2 server on the host network".**
+
+Profile 9 failed everywhere (home, mobile data): the server's QUIC handshake packets (1308 bytes on
+the wire) did not fit the pod MTU (~1280, flannel over Tailscale) and never left the pod. A test
+from outside Russia: wrong ALPN → 45-byte close at once; ALPN h3 → no answer. Round 8 runs
+`xray-hysteria-firstvds` with `hostNetwork` (MTU 1500); ufw on firstvds must allow `443/udp`.
+Signal: profile 9 probe checks succeed from home, and `node sources/quic-initial-probe.mjs 157.22.197.112` gets a ServerHello. See the worklog.
+
+**Round 7 — 2026-11-26, PR "Alert on VPN profile 1 failures and turn off the UDP experiments".**
+
+**Use profile 1 (`🇫🇮 1. firstvds → hetzner`).** With FirstVDS healthy it is at parity with direct
+traffic: Cloudflare 4 MiB 1.57–1.68 s through the VPN vs 1.72 s mean direct (last 6 h); only
+connection setup costs ~+150 ms (two extra hops). The ~30 Mbit/s ceiling of round 6 was FirstVDS
+swapping and stalling, not a fixed limit: the Tailscale link FirstVDS ↔ Hetzner carries 77–83 Mbit/s
+(iperf3, Hetzner → FirstVDS) with FirstVDS's single CPU at ~85–100 % during the test.
+
+Round 6 result: FirstVDS stalled at the provider on 2026-11-26 19:40–21:30 UTC. Tailscale ping to it
+from every node rose from 17–70 ms to 0.5–16 s; ping to its public IP from Hetzner 17 → 70–80 ms;
+CPU samples show whole minutes with no time accounted (a paused VM); Hetzner's other links stayed
+normal. Profile 1 failed 28 of ~50 checks in that window and nothing outside it. Steal fell from
+~15 % to ~1.5 % after 21:28 (likely moved to another host). The same pattern, shorter, on
+2026-11-23 (pings up to 3.6 s). Otherwise one stall in a week.
+
+Round 7 changes:
+
+- Alerts `vpn-profile-1-failing` and `vpn-firstvds-stalled` (Telegram). Checked against the
+  incident: both would have fired 19:50–21:30 only.
+- Profiles 6, 7 and 8 off (Hysteria2 and WireGuard servers, their probes and subscription entries):
+  the home ISP drops all of them. Templates kept.
+
+**Profile 9 (2026-11-27, user request, stacked on round 7):** `🇫🇮⚡ 9. firstvds UDP → hetzner`, profile
+1's chain with Hysteria2 (UDP 443, HTTP/3 look, senaev.ru certificate) instead of VLESS/Reality on
+the home → FirstVDS leg; FirstVDS → Hetzner stays the SOCKS hop over Tailscale. The UDP blocks seen so
+far were toward Hetzner (abroad); FirstVDS is inside Russia, so this leg may pass. Probed from home.
+
+Remaining risk: profile 1 depends on one small VPS (1 vCPU, 1 GB) at one provider, which stalls
+sometimes and whose path to Hetzner's public IP is filtered (Tailscale still passes). A second
+Russian entry VPS at another provider, as profile 2, would remove the single point of failure.
+That is the user's decision (cost); it is the proposed next step.
 
 Round 5 result (home): profiles 6, 7 and 8 fail every VPN check. The home ISP drops all three
 UDP shapes toward Hetzner: Hysteria2 with salamander (UDP 47443), Hysteria2 as plain HTTP/3

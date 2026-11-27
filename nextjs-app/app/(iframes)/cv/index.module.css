@@ -128,14 +128,9 @@
     }
 }
 
-/*
- * Print and "Save as PDF": the same one column on white, without the photo.
- * Browsers drop backgrounds by default when printing, so nothing may rely on
- * a background colour.
- */
 @media print {
     .CV__container {
-        font-size: 9.5pt;
+        font-size: 9pt;
         line-height: 1.45em;
         max-width: none;
         padding: 0;
