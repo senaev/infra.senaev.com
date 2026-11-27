@@ -5,9 +5,6 @@ import {
 } from 'vitest';
 
 import { buildNodeCommand, escapeForSystemd } from './buildNodeCommand';
-import { parseNodeHosts } from './nodeHosts';
-
-const hosts = parseNodeHosts('hetzner', '{"senaev-madrid":"root@senaev-madrid"}');
 
 // What the login shell on the remote host does with the one string that ssh sends: split it into
 // arguments. Each argument is printed with a NUL after it, so newlines inside stay visible.
@@ -28,11 +25,14 @@ describe('buildNodeCommand through a real shell', () => {
             command,
             timeoutSeconds: 5,
         };
-        const local = buildNodeCommand(hosts, {
+        const local = buildNodeCommand({ kind: 'local' }, {
             ...nodeCommand,
             host: 'hetzner',
         });
-        const remote = buildNodeCommand(hosts, {
+        const remote = buildNodeCommand({
+            kind: 'ssh',
+            destination: 'root@senaev-madrid',
+        }, {
             ...nodeCommand,
             host: 'senaev-madrid',
         });

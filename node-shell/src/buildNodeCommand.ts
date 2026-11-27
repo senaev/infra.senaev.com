@@ -1,4 +1,4 @@
-import type { NodeHosts } from './nodeHosts';
+import { type HostTarget, NODE_LIST_JSONPATH } from './nodeHosts';
 import { shellQuote } from './shellQuote';
 
 /**
@@ -7,7 +7,7 @@ import { shellQuote } from './shellQuote';
  * `/root/.ssh` and `known_hosts`. Joining the mount namespace already resets both, but saying it
  * keeps the command right without that detail.
  */
-const ENTER_HOST = [
+export const ENTER_HOST = [
     'nsenter',
     '--target',
     '1',
@@ -88,28 +88,36 @@ function buildSystemdRun({
  * directly; any other host gets it through ssh, which sends one string that the remote shell
  * parses again, so every argument is quoted.
  */
-export function buildNodeCommand(hosts: NodeHosts, nodeCommand: NodeCommand): string[] {
+export function buildNodeCommand(target: HostTarget, nodeCommand: NodeCommand): string[] {
     const systemdRun = buildSystemdRun(nodeCommand);
 
-    if (nodeCommand.host === hosts.localHost) {
+    if (target.kind === 'local') {
         return [
             ...ENTER_HOST,
             ...systemdRun,
         ];
     }
 
-    const destination = hosts.sshDestinations.get(nodeCommand.host);
-
-    if (destination === undefined) {
-        throw new Error(`Unknown host: ${nodeCommand.host}`);
-    }
-
     return [
         ...ENTER_HOST,
         'ssh',
         ...SSH_OPTIONS,
-        destination,
+        target.destination,
         '--',
         systemdRun.map(shellQuote).join(' '),
     ];
 }
+
+/**
+ * Lists the `vps` labels of the cluster nodes with the kubectl of k3s on the local host, the
+ * control plane, as its root: node-shell needs no service account and no Kubernetes RBAC.
+ */
+export const LIST_NODES_ARGV: readonly string[] = [
+    ...ENTER_HOST,
+    'k3s',
+    'kubectl',
+    'get',
+    'nodes',
+    '--output',
+    NODE_LIST_JSONPATH,
+];

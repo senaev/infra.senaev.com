@@ -131,6 +131,10 @@ describe('createNodeShellServer', () => {
             400,
         ],
         [
+            'hosts-unavailable',
+            503,
+        ],
+        [
             'busy',
             429,
         ],

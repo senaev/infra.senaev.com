@@ -8,7 +8,7 @@ import {
 } from './executionManager';
 import type { ExecutionRecord } from './executionRecord';
 import type { ExecutionStore } from './executionStore';
-import { parseNodeHosts } from './nodeHosts';
+import { createHostResolver } from './nodeHosts';
 import type { CommandResult } from './runCommand';
 
 const NOW = new Date('2026-11-22T10:00:00.000Z');
@@ -83,7 +83,14 @@ beforeEach(() => {
     run = vi.fn();
     manager = createExecutionManager({
         store,
-        hosts: parseNodeHosts('hetzner', '{"senaev-madrid":"root@senaev-madrid"}'),
+        hosts: createHostResolver({
+            localHost: 'hetzner',
+            sshUser: 'root',
+            listNodes: () => Promise.resolve([
+                'hetzner',
+                'senaev-madrid',
+            ]),
+        }),
         run,
         logger,
         now: () => NOW,
@@ -224,6 +231,27 @@ describe('createExecutionManager', () => {
 
         await expect(manager.start(request)).resolves.toMatchObject({ kind: 'started' });
         await manager.idle();
+    });
+
+    it('answers hosts-unavailable without saving anything when the node list cannot be read', async () => {
+        manager = createExecutionManager({
+            store,
+            hosts: createHostResolver({
+                localHost: 'hetzner',
+                sshUser: 'root',
+                listNodes: () => Promise.reject(new Error('kubectl failed')),
+            }),
+            run,
+            logger,
+            now: () => NOW,
+        });
+
+        await expect(manager.start({
+            ...request,
+            host: 'senaev-madrid',
+        })).resolves.toEqual({ kind: 'hosts-unavailable' });
+        expect(store.records.size).toBe(0);
+        expect(run).not.toHaveBeenCalled();
     });
 
     it('saves a command that cannot start as failed', async () => {

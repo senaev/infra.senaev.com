@@ -7,7 +7,7 @@ import {
 } from './buildNodeCommand';
 import type { ExecutionRecord } from './executionRecord';
 import type { ExecutionStore } from './executionStore';
-import { isKnownHost, type NodeHosts } from './nodeHosts';
+import type { HostResolver, HostTarget } from './nodeHosts';
 import type { CommandResult } from './runCommand';
 
 export const MAX_TIMEOUT_SECONDS = 3600;
@@ -22,6 +22,7 @@ export type StartResult =
     | { kind: 'existing'; record: ExecutionRecord }
     | { kind: 'conflict' }
     | { kind: 'unknown-host' }
+    | { kind: 'hosts-unavailable' }
     | { kind: 'busy' };
 
 export type ExecutionManager = {
@@ -54,7 +55,7 @@ export function createExecutionManager({
     store, hosts, run, logger, now = () => new Date(),
 }: {
     store: ExecutionStore;
-    hosts: NodeHosts;
+    hosts: HostResolver;
     run: (options: { argv: readonly string[]; deadlineMs: number; maxOutputBytes: number }) => Promise<CommandResult>;
     logger: Pick<FastifyBaseLogger, 'info' | 'error'>;
     now?: () => Date;
@@ -71,7 +72,7 @@ export function createExecutionManager({
         }
         : { kind: 'conflict' });
 
-    const execute = async (nodeCommand: NodeCommand, record: ExecutionRecord): Promise<void> => {
+    const execute = async (nodeCommand: NodeCommand, target: HostTarget, record: ExecutionRecord): Promise<void> => {
         const logFields = {
             executionId: record.executionId,
             host: record.host,
@@ -80,7 +81,7 @@ export function createExecutionManager({
 
         try {
             const result = await run({
-                argv: buildNodeCommand(hosts, nodeCommand),
+                argv: buildNodeCommand(target, nodeCommand),
                 deadlineMs: nodeCommand.timeoutSeconds * 1000 + DEADLINE_GRACE_MS,
                 maxOutputBytes: MAX_OUTPUT_BYTES,
             });
@@ -116,7 +117,17 @@ export function createExecutionManager({
 
     return {
         async start(nodeCommand) {
-            if (!isKnownHost(hosts, nodeCommand.host)) {
+            let target: HostTarget | undefined;
+
+            try {
+                target = await hosts.resolve(nodeCommand.host);
+            } catch (error) {
+                logger.error({ err: toError(error) }, '❌ Failed to read the cluster nodes');
+
+                return { kind: 'hosts-unavailable' };
+            }
+
+            if (target === undefined) {
                 return { kind: 'unknown-host' };
             }
 
@@ -166,7 +177,7 @@ export function createExecutionManager({
                 timeoutSeconds: nodeCommand.timeoutSeconds,
             }, '▶️ Node command started');
 
-            const execution = execute(nodeCommand, record)
+            const execution = execute(nodeCommand, target, record)
                 .catch((error: unknown) => {
                     logger.error({
                         err: toError(error),

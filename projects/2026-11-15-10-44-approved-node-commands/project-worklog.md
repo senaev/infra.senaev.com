@@ -1,3 +1,12 @@
+## 2026-11-27 13:06 UTC — Read the hosts from the cluster nodes
+
+galkin is no longer a node, and `nodeShell.sshDestinations` repeated the node list. Removed it:
+node-shell now reads the nodes' `vps` labels with `k3s kubectl get nodes` in the hetzner host
+(through the same `nsenter`, so still no service account token), keeps the list for a minute and
+reaches every node except hetzner as `ssh <nodeShell.sshUser>@<label>` (`sshUser: root`). A host
+that is not a node gets 400 `unknown_host`; if the list cannot be read, 503 `hosts_unavailable`
+and nothing is saved.
+
 ## 2026-11-22 17:18 UTC — Implement the executor as node-shell
 
 mTLS is in `main`, so the open authentication question is closed: cluster-helper → executor is

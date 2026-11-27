@@ -51,8 +51,8 @@ spec:
           env:
             - name: NODE_SHELL_LOCAL_HOST
               value: {{ .Values.nodeShell.vps | quote }}
-            - name: NODE_SHELL_SSH_DESTINATIONS
-              value: {{ .Values.nodeShell.sshDestinations | toJson | quote }}
+            - name: NODE_SHELL_SSH_USER
+              value: {{ .Values.nodeShell.sshUser | quote }}
             - name: NODE_SHELL_STATE_DIRECTORY
               value: /state/executions
           volumeMounts:

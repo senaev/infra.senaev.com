@@ -1,54 +1,94 @@
-import { isObject } from 'senaev-utils/src/types/Object/Object';
+/** Where a command for a host runs: in the local host itself, or through ssh from there. */
+export type HostTarget = { kind: 'local' } | { kind: 'ssh'; destination: string };
 
-/**
- * The hosts that accept commands. node-shell runs on `localHost` and enters that host itself;
- * it reaches each of the others with `ssh <destination>` from there, with the SSH key of the
- * host's root.
- */
-export type NodeHosts = {
-    localHost: string;
-    sshDestinations: ReadonlyMap<string, string>;
+export type HostResolver = {
+    /**
+     * The target of a host name, or `undefined` for a host that does not accept commands.
+     * Rejects when the list of nodes cannot be read.
+     */
+    resolve: (host: string) => Promise<HostTarget | undefined>;
 };
 
+// A `vps` label, which is also the host's tailnet name: nothing that ssh could read as an option.
 const HOST_NAME = /^[a-z0-9][a-z0-9-]*$/;
-// `user@host`, nothing that ssh could read as an option or a second argument.
-const SSH_DESTINATION = /^[a-z_][a-z0-9_-]*@[a-z0-9][a-z0-9.-]*$/;
+const SSH_USER = /^[a-z_][a-z0-9_-]*$/;
 
-/** Reads the Helm values: the local host name and a JSON object `{ "<host>": "<user@host>" }`. */
-export function parseNodeHosts(localHost: string, sshDestinationsJson: string): NodeHosts {
+/** The hosts are the cluster nodes: newer nodes than this need no change of node-shell. */
+export const NODE_LIST_TTL_MS = 60_000;
+
+/**
+ * The `vps` labels of the cluster nodes, as printed by `kubectl get nodes` with
+ * `NODE_LIST_JSONPATH`: one per line. A node without a valid label is left out.
+ */
+export function parseNodeList(output: string): string[] {
+    return [...new Set(output.split('\n').map((line) => line.trim()).filter((name) => HOST_NAME.test(name)))];
+}
+
+export const NODE_LIST_JSONPATH = 'jsonpath={range .items[*]}{.metadata.labels.vps}{"\\n"}{end}';
+
+/**
+ * Resolves host names against the cluster nodes, by their `vps` label: the node that node-shell
+ * runs on is `localHost`, and every other node is `sshUser@<label>`, reached with ssh from the local
+ * host by its tailnet name. The list is read with `listNodes` and kept for `ttlMs`, so a node that
+ * joins or leaves the cluster is seen within a minute, and concurrent requests share one read.
+ */
+export function createHostResolver({
+    localHost, sshUser, listNodes, ttlMs = NODE_LIST_TTL_MS, now = Date.now,
+}: {
+    localHost: string;
+    sshUser: string;
+    listNodes: () => Promise<string[]>;
+    ttlMs?: number;
+    now?: () => number;
+}): HostResolver {
     if (!HOST_NAME.test(localHost)) {
         throw new Error(`Invalid local host name: ${localHost}`);
     }
 
-    const parsed: unknown = JSON.parse(sshDestinationsJson);
-
-    if (!isObject(parsed) || Array.isArray(parsed)) {
-        throw new Error('The SSH destinations must be a JSON object');
+    if (!SSH_USER.test(sshUser)) {
+        throw new Error(`Invalid SSH user: ${sshUser}`);
     }
 
-    const sshDestinations = new Map<string, string>();
+    let cached: { names: ReadonlySet<string>; readAt: number } | undefined;
+    let reading: Promise<ReadonlySet<string>> | undefined;
 
-    for (const [
-        host,
-        destination,
-    ] of Object.entries(parsed)) {
-        if (!HOST_NAME.test(host) || typeof destination !== 'string' || !SSH_DESTINATION.test(destination)) {
-            throw new Error(`Invalid SSH destination for host ${host}`);
+    const nodeNames = (): Promise<ReadonlySet<string>> => {
+        if (cached !== undefined && now() - cached.readAt < ttlMs) {
+            return Promise.resolve(cached.names);
         }
 
-        if (host === localHost) {
-            throw new Error(`The local host ${host} must not have an SSH destination`);
-        }
+        reading ??= listNodes()
+            .then((names) => {
+                cached = {
+                    names: new Set(names),
+                    readAt: now(),
+                };
 
-        sshDestinations.set(host, destination);
-    }
+                return cached.names;
+            })
+            .finally(() => {
+                reading = undefined;
+            });
+
+        return reading;
+    };
 
     return {
-        localHost,
-        sshDestinations,
-    };
-}
+        async resolve(host) {
+            if (!HOST_NAME.test(host)) {
+                return undefined;
+            }
 
-export function isKnownHost(hosts: NodeHosts, host: string): boolean {
-    return host === hosts.localHost || hosts.sshDestinations.has(host);
+            if (host === localHost) {
+                return { kind: 'local' };
+            }
+
+            return (await nodeNames()).has(host)
+                ? {
+                    kind: 'ssh',
+                    destination: `${sshUser}@${host}`,
+                }
+                : undefined;
+        },
+    };
 }

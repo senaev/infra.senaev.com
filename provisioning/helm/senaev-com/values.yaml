@@ -188,14 +188,9 @@ nodeShell:
   vps: hetzner
   # Host directory for the executions, so a restart never runs a command again.
   volumePath: volumes/node-shell
-  # The other hosts that accept commands: name -> ssh destination, from the host of `vps`.
-  sshDestinations:
-    firstvds: root@firstvds
-    galkin: root@galkin
-    proxmox: root@proxmox
-    proxmox-madrid: root@proxmox-madrid
-    senaev-madrid: root@senaev-madrid
-    senaev-media: root@senaev-media
+  # Every other cluster node, by its `vps` label, is reached as `ssh <sshUser>@<label>` from the
+  # host of `vps`. The nodes are read from the cluster, so a new node needs no change here.
+  sshUser: root
 
 obsidianSync:
   enabled: true

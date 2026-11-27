@@ -3,9 +3,13 @@ import {
 } from 'vitest';
 
 import { buildNodeCommand, escapeForSystemd } from './buildNodeCommand';
-import { parseNodeHosts } from './nodeHosts';
+import type { HostTarget } from './nodeHosts';
 
-const hosts = parseNodeHosts('hetzner', '{"senaev-madrid":"root@senaev-madrid"}');
+const local: HostTarget = { kind: 'local' };
+const remote: HostTarget = {
+    kind: 'ssh',
+    destination: 'root@senaev-madrid',
+};
 const command = {
     executionId: 'abc-123',
     command: 'echo \'hi\' && id',
@@ -14,7 +18,7 @@ const command = {
 
 describe('buildNodeCommand', () => {
     it('runs the command of the local host in the host, in a systemd unit', () => {
-        expect(buildNodeCommand(hosts, {
+        expect(buildNodeCommand(local, {
             ...command,
             host: 'hetzner',
         })).toEqual([
@@ -42,7 +46,7 @@ describe('buildNodeCommand', () => {
     });
 
     it('sends the command of another host through ssh from the host, quoted for the remote shell', () => {
-        const argv = buildNodeCommand(hosts, {
+        const argv = buildNodeCommand(remote, {
             ...command,
             host: 'senaev-madrid',
         });
@@ -67,7 +71,7 @@ describe('buildNodeCommand', () => {
     });
 
     it('keeps the command out of the unit description', () => {
-        const argv = buildNodeCommand(hosts, {
+        const argv = buildNodeCommand(local, {
             ...command,
             host: 'hetzner',
             command: 'curl -H "Authorization: secret-token" https://example.com',
@@ -78,17 +82,10 @@ describe('buildNodeCommand', () => {
 
     it('escapes every $ for systemd, so the shell gets its own variables', () => {
         expect(escapeForSystemd('v=ok; echo "${v}" $HOME $$')).toBe('v=ok; echo "$${v}" $$HOME $$$$');
-        expect(buildNodeCommand(hosts, {
+        expect(buildNodeCommand(local, {
             ...command,
             host: 'hetzner',
             command: 'echo $HOME',
         }).at(-1)).toBe('echo $$HOME');
-    });
-
-    it('refuses an unknown host', () => {
-        expect(() => buildNodeCommand(hosts, {
-            ...command,
-            host: 'galkin',
-        })).toThrow('Unknown host: galkin');
     });
 });

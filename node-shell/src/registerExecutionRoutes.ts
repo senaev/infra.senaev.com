@@ -73,8 +73,10 @@ export function registerExecutionRoutes(
             return reply.code(200).send({ execution: toPublicExecution(result.record) });
         case 'conflict':
             return reply.code(409).send(errorBody('execution_id_conflict', 'This execution ID was used for another request'));
+        case 'hosts-unavailable':
+            return reply.code(503).send(errorBody('hosts_unavailable', 'The list of cluster nodes cannot be read; try again later'));
         case 'unknown-host':
-            return reply.code(400).send(errorBody('unknown_host', 'This host does not accept commands'));
+            return reply.code(400).send(errorBody('unknown_host', 'This host is not a node of the cluster'));
         case 'busy':
             break;
         }
