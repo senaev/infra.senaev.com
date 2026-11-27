@@ -17,7 +17,27 @@ type ExecutionRequestBody = {
 };
 
 function isExecutionRequestBody(value: unknown): value is ExecutionRequestBody {
-    return isObject(value) && typeof value.host === 'string' && typeof value.command === 'string' && value.command.length > 0 && Buffer.byteLength(value.command) <= MAX_COMMAND_BYTES && typeof value.timeoutSeconds === 'number' && Number.isInteger(value.timeoutSeconds) && value.timeoutSeconds >= 1 && value.timeoutSeconds <= MAX_TIMEOUT_SECONDS;
+    if (!isObject(value)) {
+        return false;
+    }
+
+    const {
+        host, command, timeoutSeconds,
+    } = value;
+
+    if (typeof host !== 'string') {
+        return false;
+    }
+
+    if (typeof command !== 'string' || command.length === 0 || Buffer.byteLength(command) > MAX_COMMAND_BYTES) {
+        return false;
+    }
+
+    if (typeof timeoutSeconds !== 'number' || !Number.isInteger(timeoutSeconds)) {
+        return false;
+    }
+
+    return timeoutSeconds >= 1 && timeoutSeconds <= MAX_TIMEOUT_SECONDS;
 }
 
 function errorBody(code: string, message: string) {
