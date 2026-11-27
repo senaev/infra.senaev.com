@@ -1,5 +1,8 @@
 import type { FastifyInstance } from 'fastify';
+import { isPositiveInteger } from 'senaev-utils/src/types/Number/PositiveInteger';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { isString } from 'senaev-utils/src/utils/String/isString';
+import { isNonEmptyString } from 'senaev-utils/src/utils/String/NonEmptyString/NonEmptyString';
 import { registerMtlsCallerAllowlist } from 'senaev-utils/src/utils/mtls/registerMtlsCallerAllowlist';
 
 import { ALLOWED_CALLERS } from './callers';
@@ -25,19 +28,15 @@ function isExecutionRequestBody(value: unknown): value is ExecutionRequestBody {
         host, command, timeoutSeconds,
     } = value;
 
-    if (typeof host !== 'string') {
+    if (!isString(host)) {
         return false;
     }
 
-    if (typeof command !== 'string' || command.length === 0 || Buffer.byteLength(command) > MAX_COMMAND_BYTES) {
+    if (!isNonEmptyString(command) || Buffer.byteLength(command) > MAX_COMMAND_BYTES) {
         return false;
     }
 
-    if (typeof timeoutSeconds !== 'number' || !Number.isInteger(timeoutSeconds)) {
-        return false;
-    }
-
-    return timeoutSeconds >= 1 && timeoutSeconds <= MAX_TIMEOUT_SECONDS;
+    return isPositiveInteger(timeoutSeconds) && timeoutSeconds <= MAX_TIMEOUT_SECONDS;
 }
 
 function errorBody(code: string, message: string) {
