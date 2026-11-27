@@ -18,7 +18,7 @@ vi.mock('./runCommand', () => {
     return { runCommand: vi.fn() };
 });
 
-const listed = (stdout: string, exitCode = 0) => {
+const listed = (stdout: string, exitCode: number) => {
     return {
         exitCode,
         signal: null,
@@ -31,7 +31,7 @@ const listed = (stdout: string, exitCode = 0) => {
 
 describe('resolveHost', () => {
     beforeEach(() => {
-        vi.mocked(runCommand).mockReset().mockResolvedValue(listed('hetzner\nsenaev-madrid\n\n-oProxyCommand=id\nfirstvds\n'));
+        vi.mocked(runCommand).mockReset().mockResolvedValue(listed('hetzner\nsenaev-madrid\n\n-oProxyCommand=id\nfirstvds\n', 0));
     });
 
     it('runs the local host locally without reading the node list', async () => {
