@@ -13,6 +13,9 @@ cat > "$codex_home/config.toml" <<TOML
 approval_policy = "never"
 sandbox_mode = "danger-full-access"
 check_for_update_on_startup = false
+# Auto-compact at about 35% of the context window. Codex takes only a token count, so this is 35%
+# of the 500k window of the default model (gpt-6.2-sol); change it with the model.
+model_auto_compact_token_limit = 175000
 
 [projects."$workdir"]
 trust_level = "trusted"
