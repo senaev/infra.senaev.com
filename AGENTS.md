@@ -251,52 +251,15 @@ is read. Code: `cluster-helper/src/telegramPublicApi.ts`. See
 
 ## Internal mTLS between the Node.js services
 
-The calls between our Node.js services use a client certificate, not a token:
-
-| Caller → callee | Port | Allowed caller (`callers.ts`) |
-|---|---|---|
-| cluster-helper → obsidian-sync (everything that reads or edits the vault) | 8443 | `obsidian-sync/src/server/callers.ts` |
-| cluster-helper → code-tools (`senaev-code-tools`, the tool routes) | 8443 | `code-tools/src/server/callers.ts` |
-| cluster-helper → media-server-helper (`POST /torrent-files`) | 8443 | `media-server-helper/src/callers.ts` |
-| vpn-subscription → cluster-helper (`POST /telegram/send-message`) | 8443 | `cluster-helper/src/callers.ts` |
-| cluster-helper → node-shell (`PUT`/`GET /executions/:id`, root commands on the nodes) | 8443 | `node-shell/src/callers.ts` |
-
-cert-manager (`provisioning/helm/pki/cert-manager`) and a private CA (`provisioning/helm/pki/issuers`,
-ClusterIssuer `internal-ca`, key only in the `pki` namespace) issue 7-day leaves: `cluster-helper-tls`
-(both usages), `obsidian-sync-tls`, `media-server-helper-tls`, `node-shell-tls` (`templates/internal-mtls.yaml`),
-`<workspace>-code-tools-tls` (`llm-workspace/_code-tools.tpl`) and `vpn-subscription-tls` (client only,
-in the `vpn` release, because a Secret is namespaced). Their common settings are in
-`global.internalMtlsCertificate` in `provisioning/helm/global-values.yaml`. The identity is a DNS SAN
-`<service>.<namespace>.svc.cluster.local`: a callee knows its callers by that name, and a client
-connects to a URL whose host is the callee's name. The URLs are constants in
-`cluster-helper/src/mtlsServiceUrls.ts` and `vpn-subscription/src/clusterHelperTelegramApi.ts`.
-Every service mounts its Secret as a directory at `/etc/mtls` (never subPath or env),
-polls the files and reloads without a restart
-(`senaev-utils/src/utils/mtls`). They fail closed: no fallback to HTTP or a token. cluster-helper has
-one `createMtlsClient` for each callee (a client sends its certificate to one origin only), all fed
-by one `watchTlsCredentials`.
-
-A service with a protected API has a Fastify instance of its own for it: `createMtlsFastifyServer`
-(senaev-utils) installs `registerMtlsAuthentication`, which rejects an invalid certificate (401), and the
-service adds `registerMtlsCallerAllowlist` (senaev-utils) with its `ALLOWED_CALLERS`, which allows only
-those services on every route of that instance (403). The list is for the whole instance, not for a
-route. Add new routes only to the function that registers the protected routes of that service
-(`registerProtectedVaultRoutes`, `registerProtectedCodeToolsRoutes`, `registerTorrentFileRoutes`,
-`registerExecutionRoutes` of node-shell, `createMtlsServer` of cluster-helper), and add a
-NetworkPolicy rule for the port. The kubelet cannot present a certificate, so obsidian-sync (8080)
-and code-tools (8081, only `/health`) also have a plain HTTP instance for what the kubelet or vmagent
-needs; media-server-helper and node-shell have no plain port and no probe.
-The shell tools of code-tools run in its container, so they can read the server's private key (accepted).
-Three alerts watch the leaves (group `internal-certificates` in `senaev-com/templates/alerts.yaml`):
-`certificate-not-ready` (15 min), `certificate-expires-soon` (less than 2 days left; a leaf renews at 3 days)
-and `certificate-metrics-unavailable`. They read the cert-manager metrics, which the `cert-manager`
-`VMServiceScrape` in the `vm-stack` chart scrapes from the `pki` namespace.
-The `pki` namespace must sort before `senaev-com` (the CI deploys namespaces in sorted order). To replace
-the CA, see
-[`projects/2026-11-15-11-00-inter-service-certificate-authentication`](projects/2026-11-15-11-00-inter-service-certificate-authentication/README.md).
-The second project, [`projects/2026-11-22-01-00-mtls-between-node-services`](projects/2026-11-22-01-00-mtls-between-node-services/README.md),
-added the other three edges. Calls from n8n, Alertmanager, qbittorrent, vmagent, Traefik and the kubelet cannot
-present a certificate and stay plain HTTP (cluster-helper `:80`, obsidian-sync `:8080`).
+Our Node.js services call each other with client certificates from a private CA (cert-manager,
+`provisioning/helm/pki`), not tokens. A service knows its callers by their DNS name and allows only
+those in its `callers.ts`. Certificates are mounted at `/etc/mtls` and reloaded without a restart
+(`senaev-utils/src/utils/mtls`). Fail closed: never fall back to plain HTTP or a token. A protected
+route goes only on the service's mTLS server, together with a NetworkPolicy rule for its port. Callers
+that cannot present a certificate (the kubelet, vmagent, n8n, Traefik, ...) use a separate plain HTTP
+port. Details are in
+[`projects/2026-11-15-11-00-inter-service-certificate-authentication`](projects/2026-11-15-11-00-inter-service-certificate-authentication/README.md)
+and [`projects/2026-11-22-01-00-mtls-between-node-services`](projects/2026-11-22-01-00-mtls-between-node-services/README.md).
 
 ## Node shell
 
