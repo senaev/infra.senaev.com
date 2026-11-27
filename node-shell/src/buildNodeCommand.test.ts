@@ -23,7 +23,7 @@ describe('buildStopCommand', () => {
         expect(buildStopCommand({ kind: 'local' }, 'abc-123').slice(7)).toEqual([
             '/bin/sh',
             '-c',
-            'touch /run/node-shell-abc-123.stop && systemctl stop node-shell-abc-123',
+            'touch \'/run/node-shell-abc-123.stop\' && systemctl stop node-shell-abc-123',
         ]);
     });
 
@@ -34,7 +34,7 @@ describe('buildStopCommand', () => {
         }, 'abc-123').slice(-3)).toEqual([
             'root@senaev-madrid',
             '--',
-            '\'/bin/sh\' \'-c\' \'touch /run/node-shell-abc-123.stop && systemctl stop node-shell-abc-123\'',
+            '\'/bin/sh\' \'-c\' \'touch \'\\\'\'/run/node-shell-abc-123.stop\'\\\'\' && systemctl stop node-shell-abc-123\'',
         ]);
     });
 });
@@ -65,7 +65,7 @@ describe('buildNodeCommand', () => {
             '--',
             '/bin/sh',
             '-c',
-            'if [ -e /run/node-shell-abc-123.stop ]; then exit 143; fi; exec /bin/sh -c "$$0"',
+            'if [ -e \'/run/node-shell-abc-123.stop\' ]; then exit 143; fi; exec /bin/sh -c "$$0"',
             'echo \'hi\' && id',
         ]);
     });
@@ -91,7 +91,7 @@ describe('buildNodeCommand', () => {
         expect(argv.slice(-3)).toEqual([
             'root@senaev-madrid',
             '--',
-            '\'systemd-run\' \'--unit=node-shell-abc-123\' \'--description=node-shell abc-123\' \'--wait\' \'--pipe\' \'--collect\' \'--quiet\' ' + '\'--service-type=exec\' \'--property=RuntimeMaxSec=30\' \'--property=TimeoutStopSec=15\' \'--\' \'/bin/sh\' \'-c\' ' + '\'if [ -e /run/node-shell-abc-123.stop ]; then exit 143; fi; exec /bin/sh -c "$$0"\' ' + '\'echo \'\\\'\'hi\'\\\'\' && id\'',
+            '\'systemd-run\' \'--unit=node-shell-abc-123\' \'--description=node-shell abc-123\' \'--wait\' \'--pipe\' \'--collect\' \'--quiet\' ' + '\'--service-type=exec\' \'--property=RuntimeMaxSec=30\' \'--property=TimeoutStopSec=15\' \'--\' \'/bin/sh\' \'-c\' ' + '\'if [ -e \'\\\'\'/run/node-shell-abc-123.stop\'\\\'\' ]; then exit 143; fi; exec /bin/sh -c "$$0"\' ' + '\'echo \'\\\'\'hi\'\\\'\' && id\'',
         ]);
     });
 

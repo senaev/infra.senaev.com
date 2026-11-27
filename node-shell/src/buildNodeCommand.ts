@@ -56,7 +56,7 @@ export function stopMarkerPath(executionId: string): string {
 
 // Runs in the unit: a stop that came before the unit existed finds no unit, so the unit checks.
 export function guardCommand(markerPath: string): string {
-    return `if [ -e ${markerPath} ]; then exit 143; fi; exec /bin/sh -c "$0"`;
+    return `if [ -e ${shellQuote(markerPath)} ]; then exit 143; fi; exec /bin/sh -c "$0"`;
 }
 
 function buildSystemdRun({
@@ -111,6 +111,6 @@ export function buildStopCommand(target: HostTarget, executionId: string): strin
     return onHost(target, [
         '/bin/sh',
         '-c',
-        `touch ${stopMarkerPath(executionId)} && systemctl stop ${systemdUnitName(executionId)}`,
+        `touch ${shellQuote(stopMarkerPath(executionId))} && systemctl stop ${systemdUnitName(executionId)}`,
     ]);
 }

@@ -52,7 +52,7 @@ describe('buildNodeCommand through a real shell', () => {
 
 describe('guardCommand in a real shell', () => {
     it('runs the command without a stop marker, and exits 143 without running it after a stop', () => {
-        const directory = mkdtempSync(join(tmpdir(), 'node-shell-guard-'));
+        const directory = mkdtempSync(join(tmpdir(), 'node-shell guard-'));
         const marker = join(directory, 'e1.stop');
         const run = () => spawnSync('/bin/sh', [
             '-c',

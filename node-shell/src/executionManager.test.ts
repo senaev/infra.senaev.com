@@ -471,7 +471,7 @@ describe('stop', () => {
         expect(run.mock.lastCall?.[0].argv.slice(7)).toEqual([
             '/bin/sh',
             '-c',
-            'touch /run/node-shell-e1.stop && systemctl stop node-shell-e1',
+            'touch \'/run/node-shell-e1.stop\' && systemctl stop node-shell-e1',
         ]);
 
         pending.resolve({
@@ -787,7 +787,7 @@ describe('stop', () => {
         expect(run.mock.lastCall?.[0].argv.slice(-3)).toEqual([
             'root@senaev-madrid',
             '--',
-            '\'/bin/sh\' \'-c\' \'touch /run/node-shell-old.stop && systemctl stop node-shell-old\'',
+            '\'/bin/sh\' \'-c\' \'touch \'\\\'\'/run/node-shell-old.stop\'\\\'\' && systemctl stop node-shell-old\'',
         ]);
         expect(store.records.get('old')).toMatchObject({
             status: 'interrupted',
