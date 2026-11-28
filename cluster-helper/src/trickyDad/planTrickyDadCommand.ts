@@ -1,4 +1,4 @@
-import { isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
+import { isObject } from 'senaev-utils/src/types/Object/Object';
 
 import { callLlmJson, type LlmAttempt } from '../llm/callLlmJson';
 import { getLlmProviderFallbackOrder } from '../llm/llmProviders';
@@ -29,7 +29,7 @@ type LlmRequest<T> = {
 const JSON_ONLY_LINE = 'Return only JSON matching the schema, preserving the original language in all text fields.';
 
 function requireObject(value: unknown, what: string): Record<string, unknown> {
-    if (!isObjectOrArray(value) || Array.isArray(value)) {
+    if (!isObject(value)) {
         throw new Error(`${what} must be an object, got [${JSON.stringify(value)}]`);
     }
 

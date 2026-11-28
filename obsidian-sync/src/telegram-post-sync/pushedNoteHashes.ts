@@ -3,6 +3,7 @@ import {
 } from 'node:fs';
 import { dirname } from 'node:path';
 
+import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { isNotFoundError } from 'senaev-utils/src/utils/Error/isNotFoundError/isNotFoundError';
 
 import { logger } from '../logger';
@@ -64,7 +65,7 @@ export function loadPushedNoteHashes(): void {
         return;
     }
 
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    if (!isObject(parsed)) {
         logger.warn(
             { path: TELEGRAM_SYNC_HASHES_FILE_PATH },
             '⚠️ Pushed note hashes file is not an object, starting from an empty map'

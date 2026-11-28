@@ -1,5 +1,5 @@
 import type { ToolDefinition } from 'senaev-utils/src/toolServer/toolDefinition';
-import { isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
+import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 
 import type { ToolFamily, ToolReply } from '../chatGptMcp/toolFamilies';
@@ -92,7 +92,7 @@ function error(message: string): ToolReply {
 }
 
 function parseSendMessageArguments(args: unknown, channels: readonly TelegramMcpChannel[]): { channel: TelegramMcpChannel; text: string } | string {
-    if (!isObjectOrArray(args) || Array.isArray(args)) {
+    if (!isObject(args)) {
         return 'The arguments must be an object with "channel" and "text"';
     }
 

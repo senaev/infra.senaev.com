@@ -7,6 +7,13 @@ export function isObjectOrArray<T extends Record<string, unknown> = Record<strin
     return Boolean(value) && (type === 'object' || type === 'function');
 }
 
+/**
+ * Returns true for non-null, non-array objects and for functions.
+ */
+export function isObject<T extends Record<string, unknown> = Record<string, unknown>>(value: unknown): value is T {
+    return isObjectOrArray<T>(value) && !Array.isArray(value);
+}
+
 export function assertObject<T extends Record<string, unknown> = Record<string, unknown>>(
     value: unknown,
     message?: string

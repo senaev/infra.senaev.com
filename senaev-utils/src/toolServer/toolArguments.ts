@@ -1,4 +1,4 @@
-import { isObjectOrArray } from '../types/Object/Object';
+import { isObject } from '../types/Object/Object';
 import { invalidArguments } from '../commands/CommandError';
 
 export type ToolArguments = Record<string, unknown>;
@@ -10,7 +10,7 @@ export type ToolArguments = Record<string, unknown>;
 export function readToolArguments(value: unknown, allowedKeys: readonly string[]): ToolArguments {
     const args = value ?? {};
 
-    if (!isObjectOrArray(args) || Array.isArray(args)) {
+    if (!isObject(args)) {
         throw invalidArguments('Arguments must be a JSON object');
     }
 
@@ -160,7 +160,7 @@ export function optionalObject(args: ToolArguments, key: string): ToolArguments 
         return undefined;
     }
 
-    if (!isObjectOrArray(value) || Array.isArray(value)) {
+    if (!isObject(value)) {
         throw invalidArguments(`"${key}" must be a JSON object`);
     }
 

@@ -1,4 +1,4 @@
-import { isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
+import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { createAbortSignalWithTimeout } from 'senaev-utils/src/utils/Abort/createAbortSignalWithTimeout/createAbortSignalWithTimeout';
 import type { MtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
 
@@ -11,7 +11,7 @@ import type { ToolReply } from './toolFamilies';
 export async function readToolReply(response: Response, serverName: string): Promise<ToolReply> {
     const body: unknown = await response.json();
 
-    if (!isObjectOrArray(body) || Array.isArray(body)) {
+    if (!isObject(body)) {
         throw new Error(`${serverName} answered HTTP ${response.status} with a body that is not a JSON object`);
     }
 
