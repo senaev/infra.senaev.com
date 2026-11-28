@@ -35,14 +35,6 @@ export type StopResult =
     | { kind: 'not-found' }
     | { kind: 'stop-failed' };
 
-export type ExecutionManager = {
-    /** Starts the command once per execution ID and returns at once. */
-    start: (nodeCommand: NodeCommand) => Promise<StartResult>;
-    get: (executionId: string) => ExecutionRecord | undefined;
-    /** Stops the systemd unit of a command that this process runs; returns when it has stopped. */
-    stop: (executionId: string) => Promise<StopResult>;
-};
-
 function hashRequest({
     host, command, timeoutSeconds,
 }: NodeCommand): string {
@@ -53,26 +45,188 @@ function hashRequest({
     ])).digest('hex');
 }
 
-export function createExecutionManager({
-    records, logger,
-}: {
-    records: ExecutionRecords;
-    logger: Pick<FastifyBaseLogger, 'info' | 'error'>;
-}): ExecutionManager {
+function existingResult(record: ExecutionRecord, requestHash: string): StartResult {
+    return record.requestHash === requestHash
+        ? {
+            kind: 'existing',
+            record,
+        }
+        : { kind: 'conflict' };
+}
+
+export class ExecutionManager {
+    private readonly records: ExecutionRecords;
+    private readonly logger: Pick<FastifyBaseLogger, 'info' | 'error'>;
     // Taken before any await, so concurrent starts cannot all pass the check.
-    let reservedSlots = 0;
+    private reservedSlots = 0;
     // The commands of this process that run now, and the last stop of each: when it was asked for,
     // and whether it was confirmed. Only a confirmed stop makes the result `stopped`.
-    const active = new Map<string, HostTarget>();
-    const stops = new Map<string, { requestedAt: string; confirmed: Promise<boolean> }>();
+    private readonly active = new Map<string, HostTarget>();
+    private readonly stops = new Map<string, { requestedAt: string; confirmed: Promise<boolean> }>();
 
-    const runStop = async (target: HostTarget, record: ExecutionRecord): Promise<boolean> => {
+    public constructor({
+        records, logger,
+    }: {
+        records: ExecutionRecords;
+        logger: Pick<FastifyBaseLogger, 'info' | 'error'>;
+    }) {
+        this.records = records;
+        this.logger = logger;
+    }
+
+    /** Starts the command once per execution ID and returns at once. */
+    public async start(nodeCommand: NodeCommand): Promise<StartResult> {
+        const requestHash = hashRequest(nodeCommand);
+        // Before the host: a repeated request needs no node list.
+        const existing = this.records.get(nodeCommand.executionId);
+
+        if (existing !== undefined) {
+            return existingResult(existing, requestHash);
+        }
+
+        let target: HostTarget | undefined;
+
+        try {
+            target = await resolveHost(nodeCommand.host);
+        } catch (error) {
+            this.logger.error({ err: wrapError(error) }, '❌ Failed to read the cluster nodes');
+
+            return { kind: 'hosts-unavailable' };
+        }
+
+        if (target === undefined) {
+            return { kind: 'unknown-host' };
+        }
+
+        const startedAt = new Date();
+
+        if (this.reservedSlots >= MAX_CONCURRENT_EXECUTIONS) {
+            return { kind: 'busy' };
+        }
+
+        this.reservedSlots += 1;
+
+        const record: ExecutionRecord = {
+            executionId: nodeCommand.executionId,
+            host: nodeCommand.host,
+            requestHash,
+            status: 'running',
+            startedAt: startedAt.toISOString(),
+            endsBy: new Date(startedAt.getTime() + nodeCommand.timeoutSeconds * 1000 + DEADLINE_GRACE_MS).toISOString(),
+        };
+
+        // Active before the save: a stop that sees the new record goes through the stop marker.
+        this.active.set(record.executionId, target);
+
+        const release = () => {
+            this.reservedSlots -= 1;
+            this.active.delete(record.executionId);
+            this.stops.delete(record.executionId);
+        };
+
+        // Saved before the command starts, so a restart never starts it again.
+        let created: boolean;
+
+        try {
+            created = await this.records.create(record);
+        } catch (error) {
+            release();
+            throw error;
+        }
+
+        if (!created) {
+            release();
+
+            const raced = this.records.get(nodeCommand.executionId);
+
+            return raced === undefined ? { kind: 'conflict' } : existingResult(raced, requestHash);
+        }
+
+        this.logger.info({
+            executionId: record.executionId,
+            host: record.host,
+            timeoutSeconds: nodeCommand.timeoutSeconds,
+        }, '▶️ Node command started');
+
+        void this.execute(nodeCommand, target, record)
+            .catch((error: unknown) => {
+                this.logger.error({
+                    err: wrapError(error),
+                    executionId: record.executionId,
+                }, '❌ A node command failed unexpectedly');
+            })
+            .finally(release);
+
+        return {
+            kind: 'started',
+            record,
+        };
+    }
+
+    public get(executionId: string): ExecutionRecord | undefined {
+        return this.records.get(executionId);
+    }
+
+    /** Stops the systemd unit of a command that this process runs; returns when it has stopped. */
+    public async stop(executionId: string): Promise<StopResult> {
+        const record = this.records.get(executionId);
+
+        if (record === undefined) {
+            return { kind: 'not-found' };
+        }
+
+        // Only while the record is `running`: a finished one is no longer the active command's.
+        const target = record.status === 'running' ? this.active.get(executionId) : undefined;
+
+        if (target === undefined) {
+            return {
+                kind: 'not-running',
+                record,
+            };
+        }
+
+        // A repeated stop waits for the last one, and tries again only when that one failed.
+        const previous = this.stops.get(executionId);
+
+        if (previous !== undefined) {
+            if (await previous.confirmed) {
+                return {
+                    kind: 'stopped',
+                    record: this.records.get(executionId) ?? record,
+                };
+            }
+
+            if (this.stops.get(executionId) === previous) {
+                this.stops.delete(executionId);
+            }
+
+            return this.stop(executionId);
+        }
+
+        const confirmed = this.runStop(target, record);
+
+        this.stops.set(executionId, {
+            requestedAt: new Date().toISOString(),
+            confirmed,
+        });
+
+        if (!await confirmed) {
+            return { kind: 'stop-failed' };
+        }
+
+        return {
+            kind: 'stopped',
+            record: this.records.get(executionId) ?? record,
+        };
+    }
+
+    private async runStop(target: HostTarget, record: ExecutionRecord): Promise<boolean> {
         const logFields = {
             executionId: record.executionId,
             host: record.host,
         };
 
-        logger.info(logFields, '⏹️ Stopping a node command');
+        this.logger.info(logFields, '⏹️ Stopping a node command');
 
         try {
             const { exitCode } = await runCommand({
@@ -85,28 +239,21 @@ export function createExecutionManager({
                 return true;
             }
 
-            logger.error({
+            this.logger.error({
                 ...logFields,
                 exitCode,
             }, '❌ Failed to stop a node command');
         } catch (error) {
-            logger.error({
+            this.logger.error({
                 ...logFields,
                 err: wrapError(error),
             }, '❌ Failed to stop a node command');
         }
 
         return false;
-    };
+    }
 
-    const existingResult = (record: ExecutionRecord, requestHash: string): StartResult => (record.requestHash === requestHash
-        ? {
-            kind: 'existing',
-            record,
-        }
-        : { kind: 'conflict' });
-
-    const execute = async (nodeCommand: NodeCommand, target: HostTarget, record: ExecutionRecord): Promise<void> => {
+    private async execute(nodeCommand: NodeCommand, target: HostTarget, record: ExecutionRecord): Promise<void> {
         const logFields = {
             executionId: record.executionId,
             host: record.host,
@@ -119,7 +266,7 @@ export function createExecutionManager({
                 deadlineMs: nodeCommand.timeoutSeconds * 1000 + DEADLINE_GRACE_MS,
                 maxOutputBytes: MAX_OUTPUT_BYTES,
             });
-            const stop = stops.get(record.executionId);
+            const stop = this.stops.get(record.executionId);
             const stoppedAt = stop !== undefined && await stop.confirmed ? stop.requestedAt : undefined;
             const error = failureOf(target, output, deadlineExceeded, record.endsBy);
             let status: ExecutionRecord['status'] = error === undefined ? 'completed' : 'failed';
@@ -145,157 +292,15 @@ export function createExecutionManager({
             };
         }
 
-        records.update(finished);
+        this.records.update(finished);
 
         // No command and no output in the logs: they can hold secrets.
-        logger.info({
+        this.logger.info({
             ...logFields,
             status: finished.status,
             exitCode: finished.exitCode,
         }, '🏁 Node command finished');
-    };
-
-    return {
-        async start(nodeCommand) {
-            const requestHash = hashRequest(nodeCommand);
-            // Before the host: a repeated request needs no node list.
-            const existing = records.get(nodeCommand.executionId);
-
-            if (existing !== undefined) {
-                return existingResult(existing, requestHash);
-            }
-
-            let target: HostTarget | undefined;
-
-            try {
-                target = await resolveHost(nodeCommand.host);
-            } catch (error) {
-                logger.error({ err: wrapError(error) }, '❌ Failed to read the cluster nodes');
-
-                return { kind: 'hosts-unavailable' };
-            }
-
-            if (target === undefined) {
-                return { kind: 'unknown-host' };
-            }
-
-            const startedAt = new Date();
-
-            if (reservedSlots >= MAX_CONCURRENT_EXECUTIONS) {
-                return { kind: 'busy' };
-            }
-
-            reservedSlots += 1;
-
-            const record: ExecutionRecord = {
-                executionId: nodeCommand.executionId,
-                host: nodeCommand.host,
-                requestHash,
-                status: 'running',
-                startedAt: startedAt.toISOString(),
-                endsBy: new Date(startedAt.getTime() + nodeCommand.timeoutSeconds * 1000 + DEADLINE_GRACE_MS).toISOString(),
-            };
-
-            // Active before the save: a stop that sees the new record goes through the stop marker.
-            active.set(record.executionId, target);
-
-            const release = () => {
-                reservedSlots -= 1;
-                active.delete(record.executionId);
-                stops.delete(record.executionId);
-            };
-
-            // Saved before the command starts, so a restart never starts it again.
-            let created: boolean;
-
-            try {
-                created = await records.create(record);
-            } catch (error) {
-                release();
-                throw error;
-            }
-
-            if (!created) {
-                release();
-
-                const raced = records.get(nodeCommand.executionId);
-
-                return raced === undefined ? { kind: 'conflict' } : existingResult(raced, requestHash);
-            }
-
-            logger.info({
-                executionId: record.executionId,
-                host: record.host,
-                timeoutSeconds: nodeCommand.timeoutSeconds,
-            }, '▶️ Node command started');
-
-            void execute(nodeCommand, target, record)
-                .catch((error: unknown) => {
-                    logger.error({
-                        err: wrapError(error),
-                        executionId: record.executionId,
-                    }, '❌ A node command failed unexpectedly');
-                })
-                .finally(release);
-
-            return {
-                kind: 'started',
-                record,
-            };
-        },
-        get: records.get,
-        async stop(executionId) {
-            const record = records.get(executionId);
-
-            if (record === undefined) {
-                return { kind: 'not-found' };
-            }
-
-            // Only while the record is `running`: a finished one is no longer the active command's.
-            const target = record.status === 'running' ? active.get(executionId) : undefined;
-
-            if (target === undefined) {
-                return {
-                    kind: 'not-running',
-                    record,
-                };
-            }
-
-            // A repeated stop waits for the last one, and tries again only when that one failed.
-            const previous = stops.get(executionId);
-
-            if (previous !== undefined) {
-                if (await previous.confirmed) {
-                    return {
-                        kind: 'stopped',
-                        record: records.get(executionId) ?? record,
-                    };
-                }
-
-                if (stops.get(executionId) === previous) {
-                    stops.delete(executionId);
-                }
-
-                return this.stop(executionId);
-            }
-
-            const confirmed = runStop(target, record);
-
-            stops.set(executionId, {
-                requestedAt: new Date().toISOString(),
-                confirmed,
-            });
-
-            if (!await confirmed) {
-                return { kind: 'stop-failed' };
-            }
-
-            return {
-                kind: 'stopped',
-                record: records.get(executionId) ?? record,
-            };
-        },
-    };
+    }
 }
 
 // Why a command that was not stopped failed. A dropped ssh or a signal to the waiter hides the

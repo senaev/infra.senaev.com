@@ -9,7 +9,7 @@ import { registerExecutionRoutes } from './registerExecutionRoutes';
 
 export const PORT = 8443;
 
-export function createNodeShellServer(credentials: Signal<TlsCredentials>, manager: ExecutionManager) {
+export function createNodeShellServer(credentials: Signal<TlsCredentials>, manager: Pick<ExecutionManager, 'start' | 'get' | 'stop'>) {
     const server = createMtlsFastifyServer({
         Fastify,
         logger,

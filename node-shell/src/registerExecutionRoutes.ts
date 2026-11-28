@@ -49,7 +49,7 @@ function errorBody(code: string, message: string) {
 
 export function registerExecutionRoutes(
     server: Pick<FastifyInstance, 'addHook' | 'delete' | 'get' | 'put'>,
-    manager: ExecutionManager
+    manager: Pick<ExecutionManager, 'start' | 'get' | 'stop'>
 ): void {
     // First, so it covers every route below.
     registerMtlsCallerAllowlist(server, ALLOWED_CALLERS);

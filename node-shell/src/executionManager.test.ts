@@ -4,7 +4,7 @@ import {
 
 import type { NodeCommand } from './buildNodeCommand';
 import {
-    createExecutionManager, type ExecutionManager, markInterruptedExecutions, MAX_CONCURRENT_EXECUTIONS,
+    ExecutionManager, markInterruptedExecutions, MAX_CONCURRENT_EXECUTIONS,
 } from './executionManager';
 import type { ExecutionRecord } from './executionRecord';
 import { loadExecutionRecords } from './executionRecords';
@@ -94,7 +94,7 @@ const logger = {
 };
 
 async function createManager(): Promise<ExecutionManager> {
-    return createExecutionManager({
+    return new ExecutionManager({
         records: await loadExecutionRecords({
             store,
             logger,
@@ -128,7 +128,7 @@ afterEach(() => {
     vi.useRealTimers();
 });
 
-describe('createExecutionManager', () => {
+describe('ExecutionManager', () => {
     it('saves the execution as running before the command, then saves the result', async () => {
         const pending = deferred<CommandResult>();
 
