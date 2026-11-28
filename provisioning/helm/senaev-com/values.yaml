@@ -180,6 +180,10 @@ mediaServerHelper:
   percentTriggerToRemove: 98
   percentRemoveTarget: 95
 
+nodeShell:
+  enabled: true
+  vps: hetzner
+
 obsidianSync:
   enabled: true
   vps: hetzner

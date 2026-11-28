@@ -1,0 +1,88 @@
+{{- if .Values.nodeShell.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-shell
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: node-shell
+spec:
+  replicas: 1
+  # Never two processes at once: the one-command limit and the execution IDs are in memory.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: node-shell
+  template:
+    metadata:
+      labels:
+        app: node-shell
+        vps: {{ .Values.nodeShell.vps }}
+    spec:
+      nodeSelector:
+        vps: {{ .Values.nodeShell.vps }}
+      hostPID: true
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      containers:
+        - name: node-shell
+          image: ghcr.io/senaev/node-shell:latest
+          imagePullPolicy: Always
+          securityContext:
+            privileged: true
+            runAsUser: 0
+            runAsGroup: 0
+          ports:
+            - name: mtls
+              containerPort: 8443
+          env:
+            - name: NODE_SHELL_LOCAL_HOST
+              value: {{ .Values.nodeShell.vps | quote }}
+          volumeMounts:
+            - name: mtls
+              mountPath: /etc/mtls
+              readOnly: true
+      volumes:
+        - name: mtls
+          secret:
+            secretName: node-shell-tls
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: node-shell
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: node-shell
+spec:
+  type: ClusterIP
+  selector:
+    app: node-shell
+  ports:
+    - name: mtls
+      port: 8443
+      targetPort: mtls
+---
+# ssh runs in the host's network, so the pod itself needs no egress at all.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: node-shell
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: node-shell
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: cluster-helper
+      ports:
+        - protocol: TCP
+          port: 8443
+{{- end }}

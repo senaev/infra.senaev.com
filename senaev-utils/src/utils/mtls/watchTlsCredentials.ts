@@ -1,5 +1,6 @@
 import type { Logger } from 'pino';
 
+import { wrapError } from '../Error/wrapError';
 import { Signal } from '../Signal/Signal';
 
 import {
@@ -27,10 +28,6 @@ type WatchOptions = {
 };
 
 const FILES_UNUSABLE_MESSAGE = '❌ mTLS certificate files cannot be used, keeping the last valid ones';
-
-function toError(error: unknown): Error {
-    return error instanceof Error ? error : new Error(String(error));
-}
 
 /**
  * Loads the files that cert-manager keeps renewed in a mounted Secret, and polls them. Kubelet
@@ -100,7 +97,7 @@ export async function watchTlsCredentials({ logger }: WatchOptions): Promise<Tls
             logger.info({ validTo: renewed.validTo.toISOString() }, '🔐 Loaded the renewed mTLS certificate');
             credentials.dispatch(renewed);
         } catch (error) {
-            logger.error({ err: toError(error) }, FILES_UNUSABLE_MESSAGE);
+            logger.error({ err: wrapError(error) }, FILES_UNUSABLE_MESSAGE);
         } finally {
             polling = false;
         }

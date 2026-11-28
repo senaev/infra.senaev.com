@@ -12,6 +12,7 @@ const PACKAGES = [
     'code-tools',
     'media-server-helper',
     'nextjs-app',
+    'node-shell',
     'obsidian-sync',
     'senaev-utils',
     'vpn-subscription',
