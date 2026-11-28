@@ -577,8 +577,8 @@ export default [
                 },
                 {
                     selector: [
-                        'BinaryExpression[operator=/^[!=]==?$/][left.type="UnaryExpression"][left.operator="typeof"][right.value=/^(string|number|boolean|function)$/]',
-                        'BinaryExpression[operator=/^[!=]==?$/][right.type="UnaryExpression"][right.operator="typeof"][left.value=/^(string|number|boolean|function)$/]',
+                        'BinaryExpression[operator=/^[!=]==?$/][left.type="UnaryExpression"][left.operator="typeof"]:matches([right.value=/^(string|number|boolean|function)$/], [right.type="TemplateLiteral"][right.expressions.length=0][right.quasis.0.value.cooked=/^(string|number|boolean|function)$/])',
+                        'BinaryExpression[operator=/^[!=]==?$/][right.type="UnaryExpression"][right.operator="typeof"]:matches([left.value=/^(string|number|boolean|function)$/], [left.type="TemplateLiteral"][left.expressions.length=0][left.quasis.0.value.cooked=/^(string|number|boolean|function)$/])',
                     ].join(', '),
                     message: 'Use the corresponding senaev-utils guard (isString, isNumber, isBoolean, or isFunction).',
                 },
