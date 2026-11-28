@@ -9,10 +9,8 @@ import tseslint from 'typescript-eslint';
 
 const INDENT = 4;
 
-const REACT_FILES = [
-    'nextjs-app/**/*.{ts,tsx,jsx}',
-    'senaev-utils/**/*.{ts,tsx,jsx}',
-];
+const REACT_FILES = ['**/*.{jsx,tsx}'];
+const REACT_HOOKS_FILES = ['**/*.{js,jsx,ts,tsx}'];
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
@@ -66,7 +64,7 @@ export default [
         },
     },
     {
-        files: REACT_FILES,
+        files: REACT_HOOKS_FILES,
         ...pluginReactHooks.configs.flat.recommended,
     },
     {
