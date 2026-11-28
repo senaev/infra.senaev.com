@@ -9,8 +9,8 @@ import tseslint from 'typescript-eslint';
 
 const INDENT = 4;
 
-const REACT_FILES = ['**/*.{jsx,tsx}'];
-const REACT_HOOKS_FILES = ['**/*.{js,jsx,ts,tsx}'];
+const reactRecommended = pluginReact.configs.flat.recommended;
+const reactHooksRecommended = pluginReactHooks.configs.flat.recommended;
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
@@ -55,21 +55,20 @@ export default [
         },
     },
     {
-        files: REACT_FILES,
-        ...pluginReact.configs.flat.recommended,
+        files: ['**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}'],
+        languageOptions: reactRecommended.languageOptions,
+        plugins: {
+            ...reactRecommended.plugins,
+            ...reactHooksRecommended.plugins,
+        },
         settings: {
             react: {
                 version: 'detect',
             },
         },
-    },
-    {
-        files: REACT_HOOKS_FILES,
-        ...pluginReactHooks.configs.flat.recommended,
-    },
-    {
-        files: REACT_FILES,
         rules: {
+            ...reactRecommended.rules,
+            ...reactHooksRecommended.rules,
             'react/jsx-boolean-value': [
                 'error',
                 'always',
