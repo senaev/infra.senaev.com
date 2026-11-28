@@ -1,3 +1,6 @@
+import { fileURLToPath } from 'node:url';
+
+import { includeIgnoreFile } from '@eslint/compat';
 import pluginJs from '@eslint/js';
 import stylistic from '@stylistic/eslint-plugin';
 import pluginImportX from 'eslint-plugin-import-x';
@@ -14,16 +17,14 @@ const reactHooksRecommended = pluginReactHooks.configs.flat.recommended;
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
+    includeIgnoreFile(fileURLToPath(new URL('.gitignore', import.meta.url))),
     {
         ignores: [
             '**/dist/**',
-            'nextjs-app/.next/**',
-            'nextjs-app/next-env.d.ts',
             // Vendored browser scripts and static demos are served as-is.
             'nextjs-app/public/**',
             // The Obsidian plugin uses its own ESLint rules in the release workflow.
             'obsidian-personal-tools/**',
-            '**/node_modules/**',
         ],
     },
     { files: ['**/*.{js,mjs,cjs,ts,jsx,tsx}'] },
