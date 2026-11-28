@@ -2,9 +2,27 @@ import {
     describe, expect, test,
 } from 'vitest';
 
-import { assertObject } from './Object';
+import { assertObject, isObject } from './Object';
 
-// `isObject` itself is covered by ./isObject.spec.ts.
+describe('isObject', () => {
+    test('accepts objects and functions', () => {
+        expect(isObject({ foo: 'bar' })).toBe(true);
+        expect(isObject(() => undefined)).toBe(true);
+    });
+
+    test('rejects arrays', () => {
+        expect(isObject([])).toBe(false);
+        expect(isObject([1])).toBe(false);
+    });
+
+    test('rejects null and primitives', () => {
+        expect(isObject(null)).toBe(false);
+        expect(isObject(undefined)).toBe(false);
+        expect(isObject('foobar')).toBe(false);
+    });
+});
+
+// `isObjectOrArray` itself is covered by ./isObjectOrArray.spec.ts.
 describe('assertObject', () => {
     const testCases = [
         {

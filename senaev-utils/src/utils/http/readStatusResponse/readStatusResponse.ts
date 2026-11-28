@@ -5,7 +5,7 @@ function parseJsonObject(text: string): Record<string, unknown> | null {
     try {
         const value: unknown = JSON.parse(text);
 
-        return isObject(value) && !Array.isArray(value) ? value : null;
+        return isObject(value) ? value : null;
     } catch {
         return null;
     }

@@ -3,7 +3,7 @@ import { Readable } from 'node:stream';
 import type {
     FastifyPluginCallback, FastifyReply, FastifyRequest,
 } from 'fastify';
-import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
 import { isString } from 'senaev-utils/src/utils/String/isString';
 
 import type { AccessTokenCheck } from '../oauth/authorizationServer';
@@ -50,7 +50,7 @@ function parseJsonRpcMessage(body: unknown): Record<string, unknown> | undefined
     try {
         const message: unknown = JSON.parse(body.toString('utf8'));
 
-        return isObject(message) ? message : undefined;
+        return isObjectOrArray(message) ? message : undefined;
     } catch {
         return undefined;
     }
@@ -63,7 +63,7 @@ function describeJsonRpcMessage(message: Record<string, unknown> | undefined) {
 
     return {
         method: message.method,
-        tool: isObject(message.params) ? message.params.name : undefined,
+        tool: isObjectOrArray(message.params) ? message.params.name : undefined,
     };
 }
 

@@ -1,7 +1,7 @@
 import {
     findReminderFieldsError, serializeReminder, type ReminderFields,
 } from 'senaev-utils/src/obsidianReminders/reminderLine';
-import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
 import type { FastifyInstance } from 'fastify';
 import { isString } from 'senaev-utils/src/utils/String/isString';
 
@@ -12,7 +12,7 @@ export function registerReminderRoutes(server: Pick<FastifyInstance, 'post'>): v
     server.post<{ Body: unknown }>('/reminders', async (request, reply) => {
         const { body } = request;
 
-        if (!isObject(body)) {
+        if (!isObjectOrArray(body)) {
             return reply.code(400).type('text/plain').send('Request body must be a JSON object');
         }
 

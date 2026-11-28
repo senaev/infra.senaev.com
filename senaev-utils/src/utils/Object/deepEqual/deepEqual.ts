@@ -1,4 +1,4 @@
-import { isObject } from '../../../types/Object/Object';
+import { isObjectOrArray } from '../../../types/Object/Object';
 import { getObjectKeys } from '../getObjectKeys/getObjectKeys';
 
 /**
@@ -16,7 +16,7 @@ export function deepEqual<T>(actual: unknown, expected: T): actual is T {
         return true;
     }
 
-    if (!isObject(actual) || !isObject(expected)) {
+    if (!isObjectOrArray(actual) || !isObjectOrArray(expected)) {
         return false;
     }
 

@@ -2,7 +2,7 @@ import { posix } from 'node:path';
 
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { CommandError } from 'senaev-utils/src/commands/CommandError';
-import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
 import { isString } from 'senaev-utils/src/utils/String/isString';
 import { isNumber } from 'senaev-utils/src/types/Number/Number';
 
@@ -43,7 +43,7 @@ function shortenLine(text: string, matchStart: number): string {
 }
 
 function readText(value: unknown): string | null {
-    return isObject(value) && isString(value.text) ? value.text : null;
+    return isObjectOrArray(value) && isString(value.text) ? value.text : null;
 }
 
 /** Groups ripgrep's `--json` events by file. Paths that are not valid UTF-8 are skipped. */
@@ -70,11 +70,11 @@ export async function parseRipgrepJson(output: string, execution: CommandExecuti
             continue;
         }
 
-        if (!isObject(event)) {
+        if (!isObjectOrArray(event)) {
             continue;
         }
 
-        if ((event.type !== 'match' && event.type !== 'context') || !isObject(event.data)) {
+        if ((event.type !== 'match' && event.type !== 'context') || !isObjectOrArray(event.data)) {
             continue;
         }
 
@@ -87,7 +87,7 @@ export async function parseRipgrepJson(output: string, execution: CommandExecuti
         }
 
         const firstSubmatch = Array.isArray(data.submatches) ? data.submatches[0] : undefined;
-        const matchStart = isObject(firstSubmatch) && isNumber(firstSubmatch.start) ? firstSubmatch.start : 0;
+        const matchStart = isObjectOrArray(firstSubmatch) && isNumber(firstSubmatch.start) ? firstSubmatch.start : 0;
         const file = files.get(path) ?? {
             path,
             lines: [],

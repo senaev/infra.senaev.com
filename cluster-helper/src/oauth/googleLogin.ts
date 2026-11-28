@@ -2,7 +2,7 @@ import { createHmac } from 'node:crypto';
 
 import { EncryptJWT, jwtDecrypt } from 'jose';
 import * as oidc from 'openid-client';
-import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
 import { isString } from 'senaev-utils/src/utils/String/isString';
 
 import type { AuthorizeRequest } from './authorizationServer';
@@ -96,7 +96,7 @@ export function parseGoogleAdminEmails(value: string): ReadonlySet<string> {
 // The payload is authenticated, so it is the object that `start` encrypted; this only
 // restores its type.
 function readTransaction(payload: unknown): Transaction | null {
-    if (!isObject(payload) || !isObject(payload.request)) {
+    if (!isObjectOrArray(payload) || !isObjectOrArray(payload.request)) {
         return null;
     }
 
