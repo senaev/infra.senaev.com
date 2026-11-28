@@ -529,8 +529,8 @@ describe('removeFinishedOlderThan', () => {
             executionId: 'e2',
         });
 
-        expect(manager.removeFinishedOlderThan(60_000, new Date(NOW.getTime() + 60_000))).toBe(0);
-        expect(manager.removeFinishedOlderThan(59_999, new Date(NOW.getTime() + 60_000))).toBe(1);
+        expect(manager.removeFinishedOlderThan(60_000)).toBe(0);
+        expect(manager.removeFinishedOlderThan(59_999)).toBe(1);
         expect(manager.get('e1')).toBeUndefined();
         expect(manager.get('e2')?.status).toBe('running');
 

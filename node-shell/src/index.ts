@@ -17,7 +17,7 @@ const subscribeShutdown = createShutdownController(
 async function main(): Promise<void> {
     const manager = new ExecutionManager({ logger });
     const cleanUp = () => {
-        const removed = manager.removeFinishedOlderThan(RECORD_RETENTION_MS, new Date());
+        const removed = manager.removeFinishedOlderThan(RECORD_RETENTION_MS);
 
         logger.info({ removed }, '🧹 Removed old node command records');
     };

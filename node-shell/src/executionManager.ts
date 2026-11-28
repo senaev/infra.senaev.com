@@ -150,14 +150,15 @@ export class ExecutionManager {
     }
 
     /** Forgets the finished commands that ended more than `maxAgeMs` ago; returns how many. */
-    public removeFinishedOlderThan(maxAgeMs: number, now: Date): number {
+    public removeFinishedOlderThan(maxAgeMs: number): number {
+        const now = Date.now();
         let removed = 0;
 
         for (const [
             executionId,
             { finishedAt },
         ] of this.records) {
-            if (finishedAt !== undefined && now.getTime() - Date.parse(finishedAt) > maxAgeMs) {
+            if (finishedAt !== undefined && now - Date.parse(finishedAt) > maxAgeMs) {
                 this.records.delete(executionId);
                 removed += 1;
             }
