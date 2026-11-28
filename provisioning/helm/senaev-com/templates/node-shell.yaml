@@ -8,7 +8,7 @@ metadata:
     app: node-shell
 spec:
   replicas: 1
-  # Never two processes at once: each marks the executions left running as interrupted at start.
+  # Never two processes at once: the one-command limit and the execution IDs are in memory.
   strategy:
     type: Recreate
   selector:
@@ -40,16 +40,10 @@ spec:
             - name: NODE_SHELL_LOCAL_HOST
               value: {{ .Values.nodeShell.vps | quote }}
           volumeMounts:
-            - name: state
-              mountPath: /state
             - name: mtls
               mountPath: /etc/mtls
               readOnly: true
       volumes:
-        - name: state
-          hostPath:
-            path: {{ .Values.global.clusterRootPath }}/{{ .Values.nodeShell.volumePath }}
-            type: DirectoryOrCreate
         - name: mtls
           secret:
             secretName: node-shell-tls

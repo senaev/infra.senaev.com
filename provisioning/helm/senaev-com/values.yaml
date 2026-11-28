@@ -183,7 +183,6 @@ mediaServerHelper:
 nodeShell:
   enabled: true
   vps: hetzner
-  volumePath: volumes/node-shell
 
 obsidianSync:
   enabled: true

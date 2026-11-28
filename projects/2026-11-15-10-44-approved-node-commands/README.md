@@ -105,14 +105,16 @@ approval or the command:
    Telegram user can approve; rejection returns `USER_REJECTED`, expiry `APPROVAL_EXPIRED`.
    The `requestId` is also the execution ID: a request runs at most once, so it needs no other
    ID. It uses the execution ID format of node-shell (`[A-Za-z0-9-]`, at most 64 characters).
-   cluster-helper sends (or retries) its `PUT` to node-shell only within 1 hour of the approval. node-shell forgets an ID after
-   24 hours, so a later `PUT` with the same ID would run the command again; one whose outcome
-   is unknown after that hour is reported as unknown, never resent.
+   node-shell keeps its execution IDs only in memory: after a restart, or 24 hours after the
+   end, it does not know an ID, and a `PUT` with it runs the command again. So cluster-helper
+   sends the `PUT` of a request once, and never again when it got no answer: that outcome is
+   reported as unknown, never resent. It saves that it sent the `PUT` before sending it.
 5. **Done in [`node-shell/`](../../node-shell/) (not deployed yet).** Implement the executor: authenticated API, `nsenter` into the hetzner host, then SSH; bounded
    output, runtime bounded on the node by the systemd unit (see Context);
    returns stdout, stderr and exit code.
-6. Persist execution IDs before starting a command so duplicate dispatch cannot rerun
-   it after restart. Unknown execution outcomes must not trigger automatic retries.
+6. ~~Persist execution IDs in node-shell~~: dropped on 2026-11-28. node-shell keeps them in
+   memory; cluster-helper prevents a second run (step 4). Unknown execution outcomes must not
+   trigger automatic retries.
 7. Add the workspace client/skill (submit, then poll `status` with `wait`) and narrowly
    scoped network access to cluster-helper.
 
@@ -140,10 +142,10 @@ approval or the command:
 
 ## Result
 
-The executor is implemented as `node-shell` (steps 3, 5 and 6 on the executor's side; see
+The executor is implemented as `node-shell` (steps 3 and 5; see
 "Node shell" in [AGENTS.md](../../AGENTS.md)). Its API, `PUT` / `GET /executions/:executionId`, is
-already asynchronous: `PUT` answers at once, and the execution ID is saved before the command
-starts. Not deployed or verified on the cluster yet. Still to do: the Telegram approval with the
+already asynchronous: `PUT` answers at once. Executions are kept in memory only: a restart
+forgets them, and a command that still runs goes on by itself on its host. Not deployed or verified on the cluster yet. Still to do: the Telegram approval with the
 `submit` / `status` API in cluster-helper (step 4), and the workspace skill (step 7).
 
 ## Confirmed execution decisions
@@ -161,6 +163,9 @@ starts. Not deployed or verified on the cluster yet. Still to do: the Telegram a
   or automatic execution when the node returns. Connection failure detection is bounded by the TCP connect timeout and the command's deadline.
 - Use existing cluster logging and its retention for operational/audit history.
   Do not build a separate history database, history UI or long-term output archive.
+- node-shell keeps no state across restarts (2026-11-28): after a restart it forgets every
+  execution, and a command that still runs goes on by itself on its host. cluster-helper
+  alone keeps what prevents a second run.
 - Persist only operational state required for pending approvals, execution status,
   result delivery and duplicate prevention across restarts. This is execution safety
   state, not a separate historical record. Retain deduplication state through the

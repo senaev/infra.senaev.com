@@ -8,7 +8,6 @@ import {
     buildNodeCommand, buildStopCommand, type NodeCommand, UNIT_STOP_TIMEOUT_SECONDS,
 } from './buildNodeCommand';
 import type { ExecutionRecord } from './executionRecord';
-import type { ExecutionRecords } from './executionRecords';
 import { type HostTarget, resolveHost } from './nodeHosts';
 import { runCommand } from './runCommand';
 
@@ -55,7 +54,8 @@ function existingResult(record: ExecutionRecord, requestHash: string): StartResu
 }
 
 export class ExecutionManager {
-    private readonly records: ExecutionRecords;
+    // In memory only: after a restart node-shell forgets every command, also one that still runs.
+    private readonly records = new Map<string, ExecutionRecord>();
     private readonly logger: Pick<FastifyBaseLogger, 'info' | 'error'>;
     // Taken before any await, so concurrent starts cannot all pass the check.
     private reservedSlots = 0;
@@ -64,13 +64,7 @@ export class ExecutionManager {
     private readonly active = new Map<string, HostTarget>();
     private readonly stops = new Map<string, { requestedAt: string; confirmed: Promise<boolean> }>();
 
-    public constructor({
-        records, logger,
-    }: {
-        records: ExecutionRecords;
-        logger: Pick<FastifyBaseLogger, 'info' | 'error'>;
-    }) {
-        this.records = records;
+    public constructor({ logger }: { logger: Pick<FastifyBaseLogger, 'info' | 'error'> }) {
         this.logger = logger;
     }
 
@@ -98,7 +92,12 @@ export class ExecutionManager {
             return { kind: 'unknown-host' };
         }
 
-        const startedAt = new Date();
+        // Again after the await: another start of the same ID may have come meanwhile.
+        const raced = this.records.get(nodeCommand.executionId);
+
+        if (raced !== undefined) {
+            return existingResult(raced, requestHash);
+        }
 
         if (this.reservedSlots >= MAX_CONCURRENT_EXECUTIONS) {
             return { kind: 'busy' };
@@ -106,6 +105,7 @@ export class ExecutionManager {
 
         this.reservedSlots += 1;
 
+        const startedAt = new Date();
         const record: ExecutionRecord = {
             executionId: nodeCommand.executionId,
             host: nodeCommand.host,
@@ -115,7 +115,7 @@ export class ExecutionManager {
             endsBy: new Date(startedAt.getTime() + nodeCommand.timeoutSeconds * 1000 + DEADLINE_GRACE_MS).toISOString(),
         };
 
-        // Active before the save: a stop that sees the new record goes through the stop marker.
+        this.records.set(record.executionId, record);
         this.active.set(record.executionId, target);
 
         const release = () => {
@@ -123,24 +123,6 @@ export class ExecutionManager {
             this.active.delete(record.executionId);
             this.stops.delete(record.executionId);
         };
-
-        // Saved before the command starts, so a restart never starts it again.
-        let created: boolean;
-
-        try {
-            created = await this.records.create(record);
-        } catch (error) {
-            release();
-            throw error;
-        }
-
-        if (!created) {
-            release();
-
-            const raced = this.records.get(nodeCommand.executionId);
-
-            return raced === undefined ? { kind: 'conflict' } : existingResult(raced, requestHash);
-        }
 
         this.logger.info({
             executionId: record.executionId,
@@ -165,6 +147,23 @@ export class ExecutionManager {
 
     public get(executionId: string): ExecutionRecord | undefined {
         return this.records.get(executionId);
+    }
+
+    /** Forgets the finished commands that ended more than `maxAgeMs` ago; returns how many. */
+    public removeFinishedOlderThan(maxAgeMs: number, now: Date): number {
+        let removed = 0;
+
+        for (const [
+            executionId,
+            { finishedAt },
+        ] of this.records) {
+            if (finishedAt !== undefined && now.getTime() - Date.parse(finishedAt) > maxAgeMs) {
+                this.records.delete(executionId);
+                removed += 1;
+            }
+        }
+
+        return removed;
     }
 
     /** Stops the systemd unit of a command that this process runs; returns when it has stopped. */
@@ -292,7 +291,7 @@ export class ExecutionManager {
             };
         }
 
-        this.records.update(finished);
+        this.records.set(finished.executionId, finished);
 
         // No command and no output in the logs: they can hold secrets.
         this.logger.info({
@@ -324,28 +323,4 @@ function failureOf(
     }
 
     return undefined;
-}
-
-/** Records left `running` by an earlier process become `interrupted`, never retried. */
-export function closeRecordsOfPreviousProcess(
-    records: ExecutionRecords,
-    logger: Pick<FastifyBaseLogger, 'warn'>
-): void {
-    const now = new Date().toISOString();
-
-    for (const record of records.list()) {
-        if (record.status === 'running') {
-            records.update({
-                ...record,
-                status: 'interrupted',
-                finishedAt: now,
-                error: `node-shell restarted while the command ran; it may still run on the host until ${record.endsBy}`,
-            });
-            logger.warn({
-                executionId: record.executionId,
-                host: record.host,
-                endsBy: record.endsBy,
-            }, '⚠️ Marked a node command as interrupted by a restart');
-        }
-    }
 }

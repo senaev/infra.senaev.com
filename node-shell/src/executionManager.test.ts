@@ -3,12 +3,7 @@ import {
 } from 'vitest';
 
 import type { NodeCommand } from './buildNodeCommand';
-import {
-    ExecutionManager, closeRecordsOfPreviousProcess, MAX_CONCURRENT_EXECUTIONS,
-} from './executionManager';
-import type { ExecutionRecord } from './executionRecord';
-import { loadExecutionRecords } from './executionRecords';
-import type { ExecutionStore } from './executionStore';
+import { ExecutionManager, MAX_CONCURRENT_EXECUTIONS } from './executionManager';
 import { type HostTarget, resolveHost } from './nodeHosts';
 import { type CommandResult, runCommand } from './runCommand';
 
@@ -21,37 +16,12 @@ vi.mock('./nodeHosts', () => {
     };
 });
 
-// The command and the store answer at once: one macrotask lets every started command end.
+// The command answers at once: one macrotask lets every started command end.
 const settle = () => new Promise<void>((resolve) => {
     setImmediate(resolve);
 });
 
 const NOW = new Date('2026-11-22T10:00:00.000Z');
-
-function createMemoryStore(): ExecutionStore & { records: Map<string, ExecutionRecord> } {
-    const records = new Map<string, ExecutionRecord>();
-
-    return {
-        records,
-        create: (record) => {
-            if (records.has(record.executionId)) {
-                return Promise.resolve(false);
-            }
-
-            records.set(record.executionId, record);
-
-            return Promise.resolve(true);
-        },
-        read: (executionId) => Promise.resolve(records.get(executionId)),
-        update: (record) => {
-            records.set(record.executionId, record);
-
-            return Promise.resolve();
-        },
-        list: () => Promise.resolve([...records.values()]),
-        removeOlderThan: () => Promise.resolve([]),
-    };
-}
 
 function deferred<T>() {
     let resolve!: (value: T) => void;
@@ -84,7 +54,6 @@ const request: NodeCommand = {
     timeoutSeconds: 30,
 };
 
-let store: ReturnType<typeof createMemoryStore>;
 const run = vi.mocked(runCommand);
 let manager: ExecutionManager;
 const logger = {
@@ -93,20 +62,9 @@ const logger = {
     warn: vi.fn(),
 };
 
-async function createManager(): Promise<ExecutionManager> {
-    return new ExecutionManager({
-        records: await loadExecutionRecords({
-            store,
-            logger,
-        }),
-        logger,
-    });
-}
-
-beforeEach(async () => {
+beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(NOW);
-    store = createMemoryStore();
     run.mockReset();
     vi.mocked(resolveHost).mockReset().mockImplementation((host) => Promise.resolve(new Map<string, HostTarget>([
         [
@@ -121,7 +79,7 @@ beforeEach(async () => {
             },
         ],
     ]).get(host)));
-    manager = await createManager();
+    manager = new ExecutionManager({ logger });
 });
 
 afterEach(() => {
@@ -129,11 +87,11 @@ afterEach(() => {
 });
 
 describe('ExecutionManager', () => {
-    it('saves the execution as running before the command, then saves the result', async () => {
+    it('records the execution as running before the command, then the result', async () => {
         const pending = deferred<CommandResult>();
 
         run.mockImplementation(() => {
-            expect(store.records.get('e1')?.status).toBe('running');
+            expect(manager.get('e1')?.status).toBe('running');
 
             return pending.promise;
         });
@@ -159,7 +117,7 @@ describe('ExecutionManager', () => {
         pending.resolve(result);
         await settle();
 
-        expect(store.records.get('e1')).toMatchObject({
+        expect(manager.get('e1')).toMatchObject({
             status: 'completed',
             exitCode: 0,
             stdout: 'hetzner\n',
@@ -184,12 +142,32 @@ describe('ExecutionManager', () => {
         expect(run).toHaveBeenCalledOnce();
     });
 
-    it('refuses an unknown host without saving anything', async () => {
+    it('runs one command when two starts of the same ID arrive at once', async () => {
+        const pending = deferred<CommandResult>();
+
+        run.mockReturnValue(pending.promise);
+
+        const results = await Promise.all([
+            manager.start(request),
+            manager.start(request),
+        ]);
+
+        expect(results.map(({ kind }) => kind).sort()).toEqual([
+            'existing',
+            'started',
+        ]);
+        expect(run).toHaveBeenCalledOnce();
+
+        pending.resolve(result);
+        await settle();
+    });
+
+    it('refuses an unknown host without recording anything', async () => {
         await expect(manager.start({
             ...request,
             host: 'galkin',
         })).resolves.toEqual({ kind: 'unknown-host' });
-        expect(store.records.size).toBe(0);
+        expect(manager.get('e1')).toBeUndefined();
         expect(run).not.toHaveBeenCalled();
     });
 
@@ -209,20 +187,15 @@ describe('ExecutionManager', () => {
             ...request,
             executionId: 'one-more',
         })).resolves.toEqual({ kind: 'busy' });
-        expect(store.records.has('one-more')).toBe(false);
+        expect(manager.get('one-more')).toBeUndefined();
 
         pending.resolve(result);
         await settle();
     });
 
-    it('keeps the limit when many starts arrive at once and the store answers later', async () => {
+    it('keeps the limit when many starts arrive at once', async () => {
         const pending = deferred<CommandResult>();
-        const createNow = store.create;
 
-        // A store that yields before it answers, like the file store.
-        store.create = (record) => new Promise((resolve) => {
-            setImmediate(() => resolve(createNow(record)));
-        });
         run.mockReturnValue(pending.promise);
 
         const starts = Array.from({ length: MAX_CONCURRENT_EXECUTIONS * 2 }, (_, index) => manager.start({
@@ -244,34 +217,14 @@ describe('ExecutionManager', () => {
         })).resolves.toMatchObject({ kind: 'started' });
         await settle();
     });
-
-    it('gives the slot back when the record of a start cannot be saved', async () => {
-        const createNow = store.create;
-
-        store.create = () => Promise.reject(new Error('disk full'));
-
-        for (let index = 0; index <= MAX_CONCURRENT_EXECUTIONS; index += 1) {
-            await expect(manager.start({
-                ...request,
-                executionId: `lost${index}`,
-            })).rejects.toThrow('disk full');
-        }
-
-        store.create = createNow;
-        run.mockResolvedValue(result);
-
-        await expect(manager.start(request)).resolves.toMatchObject({ kind: 'started' });
-        await settle();
-    });
-
-    it('answers hosts-unavailable without saving anything when the node list cannot be read', async () => {
+    it('answers hosts-unavailable without recording anything when the node list cannot be read', async () => {
         vi.mocked(resolveHost).mockRejectedValue(new Error('kubectl failed'));
 
         await expect(manager.start({
             ...request,
             host: 'senaev-madrid',
         })).resolves.toEqual({ kind: 'hosts-unavailable' });
-        expect(store.records.size).toBe(0);
+        expect(manager.get('e1')).toBeUndefined();
         expect(run).not.toHaveBeenCalled();
     });
 
@@ -295,7 +248,7 @@ describe('ExecutionManager', () => {
         expect(run).toHaveBeenCalledOnce();
     });
 
-    it('saves a remote command whose ssh ended with 255 as failed, and frees the slot at once', async () => {
+    it('records a remote command whose ssh ended with 255 as failed, and frees the slot at once', async () => {
         run.mockResolvedValueOnce({
             ...result,
             exitCode: 255,
@@ -308,7 +261,7 @@ describe('ExecutionManager', () => {
 
         await settle();
 
-        expect(store.records.get('e1')).toMatchObject({
+        expect(manager.get('e1')).toMatchObject({
             status: 'failed',
             exitCode: 255,
             error: `ssh exited with 255: the connection failed, or the command exited with 255; it may still run on the host until ${started.kind === 'started' ? started.record.endsBy : ''}`,
@@ -319,7 +272,7 @@ describe('ExecutionManager', () => {
         })).resolves.toMatchObject({ kind: 'started' });
     });
 
-    it('saves a command whose wait a signal ended as failed', async () => {
+    it('records a command whose wait a signal ended as failed', async () => {
         run.mockResolvedValueOnce({
             ...result,
             exitCode: null,
@@ -329,21 +282,14 @@ describe('ExecutionManager', () => {
         await manager.start(request);
         await settle();
 
-        expect(store.records.get('e1')).toMatchObject({
+        expect(manager.get('e1')).toMatchObject({
             status: 'failed',
             signal: 'SIGTERM',
             error: expect.stringMatching(/^A signal ended the wait for the command; it may still run on the host until /) as unknown,
         });
     });
 
-    it('gives the command its whole timeout, also after a slow save', async () => {
-        const create = store.create.bind(store);
-
-        vi.spyOn(store, 'create').mockImplementation((record) => {
-            vi.setSystemTime(NOW.getTime() + 40_000);
-
-            return create(record);
-        });
+    it('gives the command its whole timeout', async () => {
         run.mockResolvedValue(result);
 
         await manager.start(request);
@@ -351,22 +297,22 @@ describe('ExecutionManager', () => {
 
         expect(run.mock.lastCall?.[0].argv).toContain('--property=RuntimeMaxSec=30');
         expect(run.mock.lastCall?.[0].deadlineMs).toBe(30_000 + 70_000);
-        expect(store.records.get('e1')?.status).toBe('completed');
+        expect(manager.get('e1')?.status).toBe('completed');
     });
 
-    it('saves a command that cannot start as failed', async () => {
+    it('records a command that cannot start as failed', async () => {
         run.mockRejectedValue(new Error('spawn nsenter ENOENT'));
 
         await manager.start(request);
         await settle();
 
-        expect(store.records.get('e1')).toMatchObject({
+        expect(manager.get('e1')).toMatchObject({
             status: 'failed',
             error: 'spawn nsenter ENOENT',
         });
     });
 
-    it('saves a command killed at its deadline as failed, with its output', async () => {
+    it('records a command killed at its deadline as failed, with its output', async () => {
         run.mockResolvedValue({
             ...result,
             exitCode: null,
@@ -377,7 +323,7 @@ describe('ExecutionManager', () => {
         await manager.start(request);
         await settle();
 
-        expect(store.records.get('e1')).toMatchObject({
+        expect(manager.get('e1')).toMatchObject({
             status: 'failed',
             signal: 'SIGKILL',
             stdout: 'hetzner\n',
@@ -403,7 +349,7 @@ describe('ExecutionManager', () => {
 describe('stop', () => {
     const isStop = (argv: readonly string[]) => argv.some((arg) => arg.includes('systemctl'));
 
-    it('stops a running command, then saves it as stopped', async () => {
+    it('stops a running command, then records it as stopped', async () => {
         const pending = deferred<CommandResult>();
 
         run.mockImplementation(({ argv }) => (isStop(argv)
@@ -430,14 +376,14 @@ describe('stop', () => {
         });
         await settle();
 
-        expect(store.records.get('e1')).toMatchObject({
+        expect(manager.get('e1')).toMatchObject({
             status: 'stopped',
             exitCode: 143,
             stoppedAt: NOW.toISOString(),
         });
     });
 
-    it('saves a confirmed stop as stopped, also when ssh then ends with 255', async () => {
+    it('records a confirmed stop as stopped, also when ssh then ends with 255', async () => {
         const pending = deferred<CommandResult>();
 
         run.mockImplementation(({ argv }) => (isStop(argv)
@@ -455,8 +401,8 @@ describe('stop', () => {
         });
         await settle();
 
-        expect(store.records.get('e1')).toMatchObject({ status: 'stopped' });
-        expect(store.records.get('e1')).not.toHaveProperty('error');
+        expect(manager.get('e1')).toMatchObject({ status: 'stopped' });
+        expect(manager.get('e1')).not.toHaveProperty('error');
     });
 
     it('keeps a confirmed stop when the same stop is asked for again', async () => {
@@ -482,49 +428,12 @@ describe('stop', () => {
         });
         await settle();
 
-        expect(store.records.get('e1')).toMatchObject({ status: 'stopped' });
+        expect(manager.get('e1')).toMatchObject({ status: 'stopped' });
         await expect(manager.start({
             ...request,
             executionId: 'e2',
         })).resolves.toMatchObject({ kind: 'started' });
     });
-
-    it('stops a command whose record is still being created', async () => {
-        const created = deferred<undefined>();
-        const { create } = store;
-
-        store.create = async (record) => {
-            const isNew = await create(record);
-
-            await created.promise;
-
-            return isNew;
-        };
-
-        run.mockImplementation(({ argv }) => Promise.resolve(isStop(argv)
-            ? {
-                ...result,
-                exitCode: 5,
-            }
-            : {
-                ...result,
-                exitCode: 143,
-            }));
-
-        const started = manager.start(request);
-
-        await settle();
-        await expect(manager.stop('e1')).resolves.toMatchObject({ kind: 'stopped' });
-        created.resolve(undefined);
-        await started;
-        await settle();
-
-        expect(store.records.get('e1')).toMatchObject({
-            status: 'stopped',
-            stoppedAt: NOW.toISOString(),
-        });
-    });
-
     it('tries a stop again when the last one failed', async () => {
         const pending = deferred<CommandResult>();
 
@@ -550,7 +459,7 @@ describe('stop', () => {
         });
         await settle();
 
-        expect(store.records.get('e1')).toMatchObject({ status: 'stopped' });
+        expect(manager.get('e1')).toMatchObject({ status: 'stopped' });
     });
 
     it('treats a unit that is already gone as stopped', async () => {
@@ -584,12 +493,12 @@ describe('stop', () => {
         });
 
         await expect(manager.stop('e1')).resolves.toEqual({ kind: 'stop-failed' });
-        expect(store.records.get('e1')?.status).toBe('running');
+        expect(manager.get('e1')?.status).toBe('running');
         pending.resolve(result);
         await settle();
 
-        expect(store.records.get('e1')?.status).toBe('completed');
-        expect(store.records.get('e1')).not.toHaveProperty('stoppedAt');
+        expect(manager.get('e1')?.status).toBe('completed');
+        expect(manager.get('e1')).not.toHaveProperty('stoppedAt');
     });
 
     it('runs nothing for a finished execution, and answers not-found for an unknown one', async () => {
@@ -605,55 +514,27 @@ describe('stop', () => {
         await expect(manager.stop('unknown')).resolves.toEqual({ kind: 'not-found' });
         expect(run).not.toHaveBeenCalled();
     });
-
-    it('answers not-running for a command interrupted by a restart, without contacting its host', async () => {
-        store.records.set('old', {
-            executionId: 'old',
-            host: 'senaev-madrid',
-            requestHash: 'hash',
-            status: 'interrupted',
-            startedAt: NOW.toISOString(),
-            endsBy: new Date(NOW.getTime() + 60_000).toISOString(),
-        });
-        manager = await createManager();
-
-        await expect(manager.stop('old')).resolves.toMatchObject({ kind: 'not-running' });
-        expect(run).not.toHaveBeenCalled();
-    });
 });
 
-describe('closeRecordsOfPreviousProcess', () => {
-    it('marks the records left running by an earlier process as interrupted', async () => {
-        const endsBy = new Date(NOW.getTime() + 100_000).toISOString();
+describe('removeFinishedOlderThan', () => {
+    it('forgets only the commands that finished before the retention', async () => {
+        const pending = deferred<CommandResult>();
 
-        store.records.set('old', {
-            executionId: 'old',
-            host: 'hetzner',
-            requestHash: 'hash',
-            status: 'running',
-            startedAt: NOW.toISOString(),
-            endsBy,
-        });
-        store.records.set('done', {
-            executionId: 'done',
-            host: 'hetzner',
-            requestHash: 'hash',
-            status: 'completed',
-            startedAt: NOW.toISOString(),
-            endsBy,
-        });
-
-        closeRecordsOfPreviousProcess(await loadExecutionRecords({
-            store,
-            logger,
-        }), logger);
+        run.mockResolvedValueOnce(result).mockReturnValue(pending.promise);
+        await manager.start(request);
         await settle();
-
-        expect(store.records.get('old')).toMatchObject({
-            status: 'interrupted',
-            finishedAt: NOW.toISOString(),
-            error: `node-shell restarted while the command ran; it may still run on the host until ${endsBy}`,
+        vi.setSystemTime(NOW.getTime() + 60_000);
+        await manager.start({
+            ...request,
+            executionId: 'e2',
         });
-        expect(store.records.get('done')?.status).toBe('completed');
+
+        expect(manager.removeFinishedOlderThan(60_000, new Date(NOW.getTime() + 60_000))).toBe(0);
+        expect(manager.removeFinishedOlderThan(59_999, new Date(NOW.getTime() + 60_000))).toBe(1);
+        expect(manager.get('e1')).toBeUndefined();
+        expect(manager.get('e2')?.status).toBe('running');
+
+        pending.resolve(result);
+        await settle();
     });
 });
