@@ -36,7 +36,9 @@ function isInRange(day: string | null, { from, to }: DayRange): boolean {
         return true;
     }
 
-    return day !== null && (from === undefined || day >= from) && (to === undefined || day <= to);
+    const meetsStart = day !== null && (from === undefined || day >= from);
+
+    return meetsStart && (to === undefined || day <= to);
 }
 
 function createDailyNoteFilter(dailyNote: string) {
@@ -66,7 +68,23 @@ export async function remindersListCommand(config: VaultToolsConfig, input: Remi
     const scan = await scanVaultReminders(config, scope, execution);
     const dailyNote = input.dailyNote === undefined ? null : createDailyNoteFilter(input.dailyNote);
     const matchesText = textQuery === undefined ? null : createTextMatcher(textQuery);
-    const reminders = scan.reminders.filter((reminder) => (statuses === undefined || statuses.includes(reminder.status)) && (priorities === undefined || priorities.includes(reminder.priority)) && (matchesText === null || matchesText(reminder.description)) && isInRange(reminder.date, dates) && isInRange(reminder.status === 'open' ? null : reminder.closedDate, closed) && (dailyNote === null || dailyNote.matches(reminder)));
+    const reminders = scan.reminders.filter((reminder) => {
+        if (statuses !== undefined && !statuses.includes(reminder.status)) {
+            return false;
+        }
+
+        if (priorities !== undefined && !priorities.includes(reminder.priority)) {
+            return false;
+        }
+
+        if (matchesText !== null && !matchesText(reminder.description)) {
+            return false;
+        }
+
+        const matchesDates = isInRange(reminder.date, dates) && isInRange(reminder.status === 'open' ? null : reminder.closedDate, closed);
+
+        return matchesDates && (dailyNote === null || dailyNote.matches(reminder));
+    });
 
     reminders.sort(compareReminders);
 

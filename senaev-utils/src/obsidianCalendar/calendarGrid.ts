@@ -99,9 +99,9 @@ export function widestGrid(years: readonly (readonly CalendarMonthGrid[])[]): { 
             cellGaps: weekColumns - months.length,
         };
 
-        if (
-            widest === null || size.columns > widest.columns || (size.columns === widest.columns && size.cellGaps > widest.cellGaps)
-        ) {
+        const winsTie = widest !== null && size.columns === widest.columns && size.cellGaps > widest.cellGaps;
+
+        if (widest === null || size.columns > widest.columns || winsTie) {
             widest = size;
         }
     }

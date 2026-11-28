@@ -569,6 +569,13 @@ export default [
             'no-restricted-syntax': [
                 'error',
                 {
+                    selector: [
+                        'LogicalExpression[operator=/^[&|]{2}$/] > LogicalExpression[operator=/^[&|]{2}$/] > LogicalExpression[operator=/^[&|]{2}$/]',
+                        'LogicalExpression[operator=/^[&|]{2}$/][left.operator=/^[&|]{2}$/][right.operator=/^[&|]{2}$/]',
+                    ].join(', '),
+                    message: 'Use at most two && or || operators per expression. Split this into smaller conditions.',
+                },
+                {
                     selector: 'CallExpression[callee.name=onBeforeMount]',
                     message:
             'Affecting template in onBeforeMount can lead to rehydration mismatches',

@@ -26,7 +26,9 @@ function parseReadInput(input: unknown): ReadCommandInput {
         max: Number.MAX_SAFE_INTEGER,
     }) ?? 0;
 
-    if ((section !== undefined || startChar > 0) && (paths === undefined || paths.length !== 1)) {
+    const readsExcerpt = section !== undefined || startChar > 0;
+
+    if (readsExcerpt && (paths === undefined || paths.length !== 1)) {
         throw invalidArguments('"section" and "startChar" can only be used when reading exactly one path');
     }
 

@@ -18,7 +18,10 @@ function respond(request: Request, head: boolean) {
     const value = params.get('bytes') ?? '16384';
     const bytes = Number(value);
 
-    if ([...params.keys()].some((key) => key !== 'bytes') || params.getAll('bytes').length > 1 || !/^[1-9]\d{0,5}$/.test(value) || bytes > MAX_BYTES || request.headers.has('range')) {
+    const invalidQuery = [...params.keys()].some((key) => key !== 'bytes') || params.getAll('bytes').length > 1;
+    const invalidSize = invalidQuery || !/^[1-9]\d{0,5}$/.test(value) || bytes > MAX_BYTES;
+
+    if (invalidSize || request.headers.has('range')) {
         return new Response(head ? null : 'Use bytes=1..524288; Range is unsupported.\n', {
             status: 400,
             headers: { 'Cache-Control': 'no-store' },

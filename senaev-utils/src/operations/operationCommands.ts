@@ -35,7 +35,9 @@ export function readOperationArguments(name: OperationToolName, value: unknown):
     ]) {
         const argument = args[key];
 
-        if (argument !== undefined && (typeof argument !== 'number' || !Number.isFinite(argument) || !Number.isInteger(argument) || argument < 0)) {
+        const invalidInteger = argument !== undefined && (typeof argument !== 'number' || !Number.isInteger(argument));
+
+        if (invalidInteger || (argument !== undefined && argument < 0)) {
             throw invalidArguments(`${key} must be a nonnegative integer`);
         }
     }

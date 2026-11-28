@@ -68,7 +68,11 @@ export async function parseRipgrepJson(output: string, execution: CommandExecuti
             continue;
         }
 
-        if (!isObject(event) || (event.type !== 'match' && event.type !== 'context') || !isObject(event.data)) {
+        if (!isObject(event)) {
+            continue;
+        }
+
+        if ((event.type !== 'match' && event.type !== 'context') || !isObject(event.data)) {
             continue;
         }
 

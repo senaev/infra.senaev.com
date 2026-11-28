@@ -110,7 +110,9 @@ function parseChunk(input: unknown) {
         throw invalidArguments('expectedHash must be a lowercase SHA-256 hex digest');
     }
 
-    if (typeof chunkIndex !== 'number' || !Number.isSafeInteger(chunkIndex) || chunkIndex < 0 || chunkIndex >= Math.ceil(MAX_FILE_BYTES / DOWNLOAD_CHUNK_BYTES)) {
+    const isInteger = typeof chunkIndex === 'number' && Number.isSafeInteger(chunkIndex);
+
+    if (!isInteger || chunkIndex < 0 || chunkIndex >= Math.ceil(MAX_FILE_BYTES / DOWNLOAD_CHUNK_BYTES)) {
         throw invalidArguments('chunkIndex must be a zero-based integer within the maximum file size');
     }
 
