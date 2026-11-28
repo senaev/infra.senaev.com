@@ -56,6 +56,8 @@ Be extremely careful with these nodes and their networks:
 
 ## SDLC
 
+When writing or reviewing code, follow [`CODING_GUIDELINES.md`](CODING_GUIDELINES.md).
+
 ### Environment Setup
 
 The main checkout of this repository (`/code/projects/<repo>`) stays on `main`, and several agents
@@ -79,12 +81,6 @@ in the chat. Then, without waiting for an answer, run the Code Review Loop, in a
 if you can. When it is finished, tell the user to review the pull request; merging is their decision.
 
 ### Code Review
-
-#### Code Review Rules
-
-If you are an agent that does code review of a pull request (for example Codex on `@codex review`),
-read [`CODE_REVIEW.md`](CODE_REVIEW.md) and apply every rule in it. Any other agent: do not read
-that file.
 
 #### Codex code review
 
