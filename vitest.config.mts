@@ -28,7 +28,7 @@ const SETUP_FILES: Record<string, string[]> = {
 // environment mutations, DOM, filesystem and process tests isolated. New directories
 // stay isolated until reviewed; do not turn isolation off for an entire service.
 const REUSABLE_UTIL_TESTS = [
-    'src/types/**/*.{test,spec}.ts',
+    'src/types/**/*.test.ts',
     ...[
         'Array',
         'CircularBuffer',
@@ -52,7 +52,7 @@ const REUSABLE_UTIL_TESTS = [
         'binarySearchClosest',
         'getPrimeNumbersWithEratosthenesSieve',
         'random',
-    ].map((folder) => `src/utils/${folder}/**/*.{test,spec}.ts`),
+    ].map((folder) => `src/utils/${folder}/**/*.test.ts`),
 ];
 
 export default defineConfig({
@@ -65,6 +65,7 @@ export default defineConfig({
                     slowTestThreshold: 100,
                     root: `./${name}`,
                     environment: 'node',
+                    include: ['**/*.test.?(c|m)[jt]s?(x)'],
                     exclude: [
                         ...configDefaults.exclude,
                         '**/*.integration.test.ts',

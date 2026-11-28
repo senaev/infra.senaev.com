@@ -310,7 +310,7 @@ environment mutations, DOM, filesystem or process behavior in the isolated proje
 Review isolation requirements before adding tests to an allowlisted directory.
 Use `npm run test:all -- --project='senaev-utils*'` to run all library projects.
 
-Integration files end in `.integration.test.ts`; all others belong to unit projects.
+Test files end in `.test.ts`. Use `.integration.test.ts` for the integration suite.
 Keep real filesystem security, atomicity, process signals and worker cancellation in
 the integration suite. Higher-level code/vault file tests use the synchronous diff
 core as a double for native workers, keeping actual diff output and cooperative

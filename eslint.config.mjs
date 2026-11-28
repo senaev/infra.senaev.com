@@ -614,7 +614,6 @@ export default [
         ],
         ignores: [
             '**/*.test.ts',
-            '**/*.spec.ts',
             '**/testing/**',
         ],
         rules: {
