@@ -10,8 +10,11 @@ import type { ExecutionRecord } from './executionRecord';
 import { loadExecutionRecords } from './executionRecords';
 import type { ExecutionStore } from './executionStore';
 import { type HostTarget, resolveHost } from './nodeHosts';
-import type { CommandResult } from './runCommand';
+import { type CommandResult, runCommand } from './runCommand';
 
+vi.mock('./runCommand', () => {
+    return { runCommand: vi.fn() };
+});
 vi.mock('./nodeHosts', () => {
     return {
         resolveHost: vi.fn(),
@@ -88,7 +91,7 @@ const request: NodeCommand = {
 };
 
 let store: ReturnType<typeof createMemoryStore>;
-let run: ReturnType<typeof vi.fn<(options: { argv: readonly string[]; deadlineMs: number; maxOutputBytes: number }) => Promise<CommandResult>>>;
+const run = vi.mocked(runCommand);
 let manager: ExecutionManager;
 const logger = {
     info: vi.fn(),
@@ -102,7 +105,6 @@ async function createManager(holds: ReadonlyMap<string, Date>): Promise<Executio
             store,
             logger,
         }),
-        run,
         logger,
         holds,
     });
@@ -112,7 +114,7 @@ beforeEach(async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(NOW);
     store = createMemoryStore();
-    run = vi.fn();
+    run.mockReset();
     vi.mocked(resolveHost).mockReset().mockImplementation((host) => Promise.resolve(new Map<string, HostTarget>([
         [
             'hetzner',

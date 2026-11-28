@@ -12,7 +12,7 @@ import type { ExecutionRecords } from './executionRecords';
 import {
     type HostTarget, hostTarget, resolveHost,
 } from './nodeHosts';
-import type { CommandResult } from './runCommand';
+import { runCommand } from './runCommand';
 
 export const MAX_TIMEOUT_SECONDS = 3600;
 export const MAX_CONCURRENT_EXECUTIONS = 1;
@@ -56,11 +56,10 @@ function hashRequest({
 }
 
 export function createExecutionManager({
-    records, run, logger, holds: initialHolds,
+    records, logger, holds: initialHolds,
 }: {
     records: ExecutionRecords;
     holds: ReadonlyMap<string, Date>;
-    run: (options: { argv: readonly string[]; deadlineMs: number; maxOutputBytes: number }) => Promise<CommandResult>;
     logger: Pick<FastifyBaseLogger, 'info' | 'error'>;
 }): ExecutionManager {
     // Taken before any await, so concurrent starts cannot all pass the check.
@@ -82,7 +81,7 @@ export function createExecutionManager({
         logger.info(logFields, '⏹️ Stopping a node command');
 
         try {
-            const { exitCode } = await run({
+            const { exitCode } = await runCommand({
                 argv: buildStopCommand(target, record.executionId),
                 deadlineMs: STOP_DEADLINE_MS,
                 maxOutputBytes: MAX_OUTPUT_BYTES,
@@ -152,7 +151,7 @@ export function createExecutionManager({
                 throw new Error('The execution was saved too late to start the command');
             }
 
-            const result = await run({
+            const result = await runCommand({
                 argv: buildNodeCommand(target, {
                     ...nodeCommand,
                     timeoutSeconds,

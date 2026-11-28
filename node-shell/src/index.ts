@@ -7,7 +7,6 @@ import { loadExecutionRecords } from './executionRecords';
 import { createExecutionStore } from './executionStore';
 import { logger } from './logger';
 import { createNodeShellServer, PORT } from './nodeShellServer';
-import { runCommand } from './runCommand';
 
 // In the node folder that the pod mounts at /state.
 const STATE_DIRECTORY = '/state/executions';
@@ -37,7 +36,6 @@ async function main(): Promise<void> {
     const cleanupTimer = setInterval(cleanUp, CLEANUP_INTERVAL_MS);
     const manager = createExecutionManager({
         records,
-        run: runCommand,
         holds,
         logger,
     });
