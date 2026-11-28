@@ -107,9 +107,10 @@ function readTransaction(payload: unknown): Transaction | null {
     } = request;
     const requestState = request.state;
 
-    if (
-        typeof state !== 'string' || typeof nonce !== 'string' || typeof codeVerifier !== 'string' || typeof clientId !== 'string' || typeof redirectUri !== 'string' || typeof codeChallenge !== 'string' || typeof resource !== 'string'
-    ) {
+    const invalidState = typeof state !== 'string' || typeof nonce !== 'string' || typeof codeVerifier !== 'string';
+    const invalidClient = typeof clientId !== 'string' || typeof redirectUri !== 'string' || typeof codeChallenge !== 'string';
+
+    if (invalidState || invalidClient || typeof resource !== 'string') {
         return null;
     }
 
@@ -185,7 +186,9 @@ export function createGoogleLogin(config: GoogleLoginConfig) {
     }
 
     function isAllowedEmail(email: string | undefined, isVerified: boolean): email is string {
-        return isVerified && email !== undefined && GMAIL_ADDRESS.test(email) && adminEmails.has(email);
+        const hasVerifiedEmail = isVerified && email !== undefined;
+
+        return hasVerifiedEmail && GMAIL_ADDRESS.test(email) && adminEmails.has(email);
     }
 
     return {

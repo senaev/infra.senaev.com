@@ -69,7 +69,11 @@ function fileType(name: string): string {
 
 /** The bigger file wins; equal sizes go to the path that sorts first, so the result does not depend on the scan order. */
 function isLarger(candidate: VaultFileStat, current: VaultFileStat | null): boolean {
-    return !current || candidate.bytes > current.bytes || candidate.bytes === current.bytes && candidate.path.localeCompare(current.path) < 0;
+    if (!current || candidate.bytes > current.bytes) {
+        return true;
+    }
+
+    return candidate.bytes === current.bytes && candidate.path.localeCompare(current.path) < 0;
 }
 
 /** Read metadata only. Never follow symbolic links, including directory links. */

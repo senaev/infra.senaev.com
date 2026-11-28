@@ -32,7 +32,10 @@ export function validateDownloadUrl(input: string): URL {
     const host = url.hostname.toLowerCase();
     const allowed = host === 'oaiusercontent.com' || host.endsWith('.oaiusercontent.com');
 
-    if (url.protocol !== 'https:' || url.username !== '' || url.password !== '' || (url.port !== '' && url.port !== '443') || !allowed) {
+    const invalidOrigin = url.protocol !== 'https:' || url.username !== '' || url.password !== '';
+    const validPort = url.port === '' || url.port === '443';
+
+    if (invalidOrigin || !validPort || !allowed) {
         throw invalidArguments('File download URL must use HTTPS on an approved OpenAI file storage host');
     }
 

@@ -51,12 +51,16 @@ export function parseCsvQuery(input: unknown) {
             throw invalidArguments('Supply either folder or paths for each table, not both');
         }
 
-        if (hasFolder && (typeof folder !== 'string' || !folder.trim() || table.expectedHash !== undefined)) {
+        const invalidFolder = hasFolder && (typeof folder !== 'string' || !folder.trim());
+
+        if (invalidFolder || (hasFolder && table.expectedHash !== undefined)) {
             throw invalidArguments('folder must be a nonempty read-only directory without expectedHash');
         }
 
-        if (!hasFolder && (!Array.isArray(table.paths) || table.paths.length < 1 || table.paths.length > 16)) {
-            throw invalidArguments('Each table requires 1..16 CSV paths');
+        if (!hasFolder) {
+            if (!Array.isArray(table.paths) || table.paths.length < 1 || table.paths.length > 16) {
+                throw invalidArguments('Each table requires 1..16 CSV paths');
+            }
         }
 
         const paths = (hasFolder ? [] : table.paths as unknown[]).map((path: unknown) => {
@@ -79,7 +83,10 @@ export function parseCsvQuery(input: unknown) {
 
         const { expectedHash } = table;
 
-        if (expectedHash !== undefined && (paths.length !== 1 || (expectedHash !== null && (typeof expectedHash !== 'string' || !/^[a-f0-9]{64}$/.test(expectedHash))))) {
+        const needsHashValidation = expectedHash !== undefined && paths.length === 1 && expectedHash !== null;
+        const invalidHash = needsHashValidation && (typeof expectedHash !== 'string' || !/^[a-f0-9]{64}$/.test(expectedHash));
+
+        if ((expectedHash !== undefined && paths.length !== 1) || invalidHash) {
             throw invalidArguments('expectedHash requires one CSV path and a lowercase SHA-256 digest, or null to create a missing file');
         }
 
@@ -114,7 +121,9 @@ export function parseCsvQuery(input: unknown) {
         throw invalidArguments('Serialized params must fit within 64 KiB total');
     }
 
-    if (typeof maxRows !== 'number' || !Number.isInteger(maxRows) || maxRows < 1 || maxRows > 1000) {
+    const isInteger = typeof maxRows === 'number' && Number.isInteger(maxRows);
+
+    if (!isInteger || maxRows < 1 || maxRows > 1000) {
         throw invalidArguments('maxRows must be 1..1000');
     }
 
@@ -260,9 +269,11 @@ const executeCsvQuery = createCommandAdapter(parseCsvQuery, async (config: Vault
 
         if (mutation) {
             const table = expandedTables.find((candidate) => candidate.name === mutation.table);
+            const expectedHash = table?.expectedHash;
             const original = originals.get(mutation.path);
+            const hasMutationInputs = table !== undefined && expectedHash !== undefined && original !== undefined;
 
-            if (!table || table.expectedHash === undefined || original === undefined || table.paths.length !== 1 || table.paths[0] !== mutation.path) {
+            if (!hasMutationInputs || table.paths.length !== 1 || table.paths[0] !== mutation.path) {
                 throw new CommandError('command_failed', 'Invalid CSV mutation result');
             }
 
@@ -271,7 +282,7 @@ const executeCsvQuery = createCommandAdapter(parseCsvQuery, async (config: Vault
 
             publication = await publishCsv(config, {
                 path: mutation.path,
-                expectedHash: table.expectedHash,
+                expectedHash,
                 original,
                 csv,
                 paramsHash: paramsHashes.get(mutation.path)!,

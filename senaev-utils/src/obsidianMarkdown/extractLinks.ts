@@ -81,7 +81,9 @@ export function maskCode(content: string, root: Nodes): string {
         const start = node.position?.start.offset;
         const end = node.position?.end.offset;
 
-        if ((node.type === 'code' || node.type === 'inlineCode') && start !== undefined && end !== undefined) {
+        const isCode = node.type === 'code' || node.type === 'inlineCode';
+
+        if (isCode && start !== undefined && end !== undefined) {
             // Newlines are kept, so a wikilink can never match across a masked block.
             parts.push(content.slice(position, start), content.slice(start, end).replace(/[^\n]/g, ' '));
             position = end;
@@ -138,7 +140,9 @@ export function extractLinks(content: string): ExtractedLink[] {
     }
 
     const visit = (node: Nodes): void => {
-        if ((node.type === 'link' || node.type === 'image' || node.type === 'definition') && node.position?.start.offset !== undefined) {
+        const hasUrl = node.type === 'link' || node.type === 'image' || node.type === 'definition';
+
+        if (hasUrl && node.position?.start.offset !== undefined) {
             const { url } = node;
             const isExternal = URL_SCHEME.test(url);
             const raw = content.slice(node.position.start.offset, node.position.end.offset);

@@ -89,7 +89,9 @@ export function renderReminders(day: string, section: Section, source: ReminderS
         const label = frontmatter[`${section}-reminder`];
         const target = path.replace(/\.md$/i, '');
 
-        if (typeof label !== 'string' || !label.trim() || /[[\]|\r\n]/u.test(label) || /[[\]|#\r\n]/u.test(target)) {
+        const invalidLabel = typeof label !== 'string' || !label.trim() || /[[\]|\r\n]/u.test(label);
+
+        if (invalidLabel || /[[\]|#\r\n]/u.test(target)) {
             continue;
         }
 

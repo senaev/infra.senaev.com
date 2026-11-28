@@ -19,9 +19,11 @@ export interface TorrentEvent {
 }
 
 export function isTorrentEvent(value: unknown): value is TorrentEvent {
-    return (
-        typeof value === 'object' && value !== null && 'event' in value && ((value as TorrentEvent).event === 'torrent_added' || (value as TorrentEvent).event === 'torrent_finished')
-    );
+    if (typeof value !== 'object' || value === null || !('event' in value)) {
+        return false;
+    }
+
+    return value.event === 'torrent_added' || value.event === 'torrent_finished';
 }
 
 function extractTrackerDomain(tracker: string): string {

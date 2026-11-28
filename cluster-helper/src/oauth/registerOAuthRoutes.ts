@@ -132,8 +132,9 @@ export const oauthRoutes: FastifyPluginAsync<OAuthRoutesOptions> = async (instan
             return reply.send(error);
         }
 
-        const status = isObjectOrArray(error) && typeof error.statusCode === 'number' && error.statusCode >= 400 && error.statusCode <= 599
-            ? error.statusCode
+        const statusCode = isObjectOrArray(error) ? error.statusCode : undefined;
+        const status = typeof statusCode === 'number' && statusCode >= 400 && statusCode <= 599
+            ? statusCode
             : 500;
         let message = 'The sign-in request could not be read. Return to the app and start the connection again.';
 

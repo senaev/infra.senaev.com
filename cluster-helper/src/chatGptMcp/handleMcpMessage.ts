@@ -93,13 +93,23 @@ async function forwardToolCall(family: ToolFamily, toolName: string, args: unkno
     // Only promote resource links from our download command, including its completed operation result.
     let payload: Record<string, unknown> | null = null;
 
-    if (family.prefix === 'obsidian-' && toolName === 'download') {
+    const isObsidian = family.prefix === 'obsidian-';
+
+    if (isObsidian && toolName === 'download') {
         payload = reply.body;
-    } else if (family.prefix === 'obsidian-' && toolName === 'operation_result' && isObjectOrArray(reply.body.operation) && reply.body.operation.tool === 'download' && isObjectOrArray(reply.body.result)) {
-        payload = reply.body.result;
+    } else if (isObsidian && toolName === 'operation_result') {
+        const { operation } = reply.body;
+
+        if (isObjectOrArray(operation) && operation.tool === 'download' && isObjectOrArray(reply.body.result)) {
+            payload = reply.body.result;
+        }
     }
 
-    if (!reply.isError && payload !== null && isObjectOrArray(payload.resource) && payload.resource.type === 'resource_link') {
+    if (reply.isError || payload === null) {
+        return result;
+    }
+
+    if (isObjectOrArray(payload.resource) && payload.resource.type === 'resource_link') {
         return {
             ...result,
             content: [

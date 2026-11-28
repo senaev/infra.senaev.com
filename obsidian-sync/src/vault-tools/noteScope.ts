@@ -32,7 +32,9 @@ export function isInDiaryRange(
 ): boolean {
     const date = getDiaryDate(config, path);
 
-    return date !== null && (diaryFrom === undefined || date >= diaryFrom) && (diaryTo === undefined || date <= diaryTo);
+    const meetsStart = date !== null && (diaryFrom === undefined || date >= diaryFrom);
+
+    return meetsStart && (diaryTo === undefined || date <= diaryTo);
 }
 
 /** Folder is already applied by the walk; this checks the file-level filters. */

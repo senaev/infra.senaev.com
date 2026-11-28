@@ -86,7 +86,9 @@ export function optionalInteger(
         return undefined;
     }
 
-    if (typeof value !== 'number' || !Number.isInteger(value) || value < min || value > max) {
+    const isInteger = typeof value === 'number' && Number.isInteger(value);
+
+    if (!isInteger || value < min || value > max) {
         throw invalidArguments(`"${key}" must be an integer from ${min} to ${max}`);
     }
 
