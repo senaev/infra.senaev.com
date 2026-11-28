@@ -1,3 +1,11 @@
+## 2026-11-28 11:00 UTC — No ssh connect timeout
+
+The user removed the ssh `ConnectTimeout` (10 s): the command's deadline bounds a slow
+connection anyway. An unreachable host now fails when the kernel's TCP connect gives up (about
+2 minutes), or at the command's deadline if that comes first. `TimeoutStopSec` (15 s) stays, so
+node-shell's wait still outlives the unit: the margins keep their totals, 70 s after the
+timeout for a command and 40 s for a stop.
+
 ## 2026-11-28 10:30 UTC — The command gets its whole timeout
 
 Without the holds, nothing needs `endsBy` to be exact, so the command no longer gets only what

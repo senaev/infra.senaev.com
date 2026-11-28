@@ -109,7 +109,7 @@ approval or the command:
    24 hours, so a later `PUT` with the same ID would run the command again; one whose outcome
    is unknown after that hour is reported as unknown, never resent.
 5. **Done in [`node-shell/`](../../node-shell/) (not deployed yet).** Implement the executor: authenticated API, `nsenter` into the hetzner host, then SSH; bounded
-   connect time and output, runtime bounded on the node by the systemd unit (see Context);
+   output, runtime bounded on the node by the systemd unit (see Context);
    returns stdout, stderr and exit code.
 6. Persist execution IDs before starting a command so duplicate dispatch cannot rerun
    it after restart. Unknown execution outcomes must not trigger automatic retries.
@@ -120,7 +120,7 @@ approval or the command:
 
 - No command starts before approval; rejection, expiry and wrong-user callbacks do not execute.
 - Approval validity never exceeds 10 minutes; shorter TTLs are honored and late approvals fail.
-- An unreachable node fails within the SSH connect timeout, without queuing.
+- An unreachable node fails without queuing: when the TCP connection gives up (about 2 minutes), or at the command's deadline if that is sooner.
 - Commands execute as root on every cluster node, including hetzner itself.
 - Existing cluster logs expose execution events; no separate history store is introduced.
 - Telegram displays node, exact command, context, action description and expected outcome.
@@ -158,7 +158,7 @@ starts. Not deployed or verified on the cluster yet. Still to do: the Telegram a
   creation, honoring shorter requested TTLs. Check expiry again before execution;
   approval must not extend validity. Execution timeout remains a separate field.
 - Fail immediately when the selected node is unreachable; no offline queue
-  or automatic execution when the node returns. Connection failure detection is bounded.
+  or automatic execution when the node returns. Connection failure detection is bounded by the TCP connect timeout and the command's deadline.
 - Use existing cluster logging and its retention for operational/audit history.
   Do not build a separate history database, history UI or long-term output archive.
 - Persist only operational state required for pending approvals, execution status,

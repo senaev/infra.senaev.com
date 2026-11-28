@@ -12,7 +12,6 @@ export const ENTER_HOST = [
     '--',
 ];
 
-export const SSH_CONNECT_TIMEOUT_SECONDS = 10;
 // SIGKILL this long after SIGTERM (systemd's default is 90 s).
 export const UNIT_STOP_TIMEOUT_SECONDS = 15;
 
@@ -24,8 +23,6 @@ const SSH_OPTIONS = [
     'BatchMode=yes',
     '-o',
     'StrictHostKeyChecking=yes',
-    '-o',
-    `ConnectTimeout=${SSH_CONNECT_TIMEOUT_SECONDS}`,
     '-o',
     'ServerAliveInterval=15',
     '-o',

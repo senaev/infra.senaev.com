@@ -5,7 +5,7 @@ import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnk
 import { wrapError } from 'senaev-utils/src/utils/Error/wrapError';
 
 import {
-    buildNodeCommand, buildStopCommand, type NodeCommand, SSH_CONNECT_TIMEOUT_SECONDS, UNIT_STOP_TIMEOUT_SECONDS,
+    buildNodeCommand, buildStopCommand, type NodeCommand, UNIT_STOP_TIMEOUT_SECONDS,
 } from './buildNodeCommand';
 import type { ExecutionRecord } from './executionRecord';
 import type { ExecutionRecords } from './executionRecords';
@@ -15,9 +15,9 @@ import { runCommand } from './runCommand';
 export const MAX_TIMEOUT_SECONDS = 3600;
 export const MAX_CONCURRENT_EXECUTIONS = 1;
 export const MAX_OUTPUT_BYTES = 1024 * 1024;
-// ssh connect + unit stop + margin, so the client outlives the unit.
-const DEADLINE_GRACE_MS = (SSH_CONNECT_TIMEOUT_SECONDS + UNIT_STOP_TIMEOUT_SECONDS + 45) * 1000;
-const STOP_DEADLINE_MS = (SSH_CONNECT_TIMEOUT_SECONDS + UNIT_STOP_TIMEOUT_SECONDS + 15) * 1000;
+// Unit stop + margin (also for the ssh connection), so the client outlives the unit.
+const DEADLINE_GRACE_MS = (UNIT_STOP_TIMEOUT_SECONDS + 55) * 1000;
+const STOP_DEADLINE_MS = (UNIT_STOP_TIMEOUT_SECONDS + 25) * 1000;
 // `systemctl stop` of a unit that is already gone: the command has ended by itself.
 const UNIT_NOT_LOADED_EXIT_CODE = 5;
 
