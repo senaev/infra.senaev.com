@@ -4,7 +4,7 @@ import {
 
 import type { NodeCommand } from './buildNodeCommand';
 import {
-    ExecutionManager, markInterruptedExecutions, MAX_CONCURRENT_EXECUTIONS,
+    ExecutionManager, closeRecordsOfPreviousProcess, MAX_CONCURRENT_EXECUTIONS,
 } from './executionManager';
 import type { ExecutionRecord } from './executionRecord';
 import { loadExecutionRecords } from './executionRecords';
@@ -622,7 +622,7 @@ describe('stop', () => {
     });
 });
 
-describe('markInterruptedExecutions', () => {
+describe('closeRecordsOfPreviousProcess', () => {
     it('marks the records left running by an earlier process as interrupted', async () => {
         const endsBy = new Date(NOW.getTime() + 100_000).toISOString();
 
@@ -643,7 +643,7 @@ describe('markInterruptedExecutions', () => {
             endsBy,
         });
 
-        markInterruptedExecutions(await loadExecutionRecords({
+        closeRecordsOfPreviousProcess(await loadExecutionRecords({
             store,
             logger,
         }), logger);

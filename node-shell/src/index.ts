@@ -2,7 +2,7 @@ import { watchTlsCredentials } from 'senaev-utils/src/utils/mtls/watchTlsCredent
 import { createShutdownController } from 'senaev-utils/src/utils/process/createShutdownController';
 
 import { NODE_SHELL_LOCAL_HOST } from './env';
-import { ExecutionManager, markInterruptedExecutions } from './executionManager';
+import { ExecutionManager, closeRecordsOfPreviousProcess } from './executionManager';
 import { loadExecutionRecords } from './executionRecords';
 import { createExecutionStore } from './executionStore';
 import { logger } from './logger';
@@ -24,7 +24,7 @@ async function main(): Promise<void> {
         logger,
     });
 
-    markInterruptedExecutions(records, logger);
+    closeRecordsOfPreviousProcess(records, logger);
 
     const cleanUp = () => {
         records.removeOlderThan(RECORD_RETENTION_MS, new Date())

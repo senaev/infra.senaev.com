@@ -327,7 +327,7 @@ function failureOf(
 }
 
 /** Records left `running` by an earlier process become `interrupted`, never retried. */
-export function markInterruptedExecutions(
+export function closeRecordsOfPreviousProcess(
     records: ExecutionRecords,
     logger: Pick<FastifyBaseLogger, 'warn'>
 ): void {
