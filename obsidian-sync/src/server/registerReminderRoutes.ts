@@ -3,6 +3,7 @@ import {
 } from 'senaev-utils/src/obsidianReminders/reminderLine';
 import { isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
 import type { FastifyInstance } from 'fastify';
+import { isString } from 'senaev-utils/src/utils/String/isString';
 
 import { logger } from '../logger';
 import { prependReminderLine } from '../reminders/prependReminderLine';
@@ -19,21 +20,21 @@ export function registerReminderRoutes(server: Pick<FastifyInstance, 'post'>): v
             title, date, source,
         } = body;
 
-        if (typeof title !== 'string' || title.trim() === '') {
+        if (!isString(title) || title.trim() === '') {
             return reply
                 .code(400)
                 .type('text/plain')
                 .send('Field "title" is required and must be a non-empty string');
         }
 
-        if (date !== undefined && date !== null && typeof date !== 'string') {
+        if (date !== undefined && date !== null && !isString(date)) {
             return reply
                 .code(400)
                 .type('text/plain')
                 .send('Field "date" must be a string or null');
         }
 
-        if (source !== undefined && source !== null && typeof source !== 'string') {
+        if (source !== undefined && source !== null && !isString(source)) {
             return reply.code(400).type('text/plain').send('Field "source" must be a string or null');
         }
 
@@ -42,7 +43,7 @@ export function registerReminderRoutes(server: Pick<FastifyInstance, 'post'>): v
             description: title.trim(),
             source: source ?? null,
             priority: 'normal',
-            date: typeof date === 'string' && date.trim() !== '' ? date.trim() : null,
+            date: isString(date) && date.trim() !== '' ? date.trim() : null,
             closedDate: null,
             recurrence: null,
         };

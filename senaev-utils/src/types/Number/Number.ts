@@ -1,4 +1,5 @@
 export function isNumber(value: unknown): value is number {
+    // eslint-disable-next-line no-restricted-syntax -- Implementation of the type guard.
     return typeof value === 'number';
 }
 

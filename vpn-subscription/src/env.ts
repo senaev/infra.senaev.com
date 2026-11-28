@@ -1,4 +1,5 @@
 import { requireEnv } from 'senaev-utils/src/utils/env/requireEnv/requireEnv';
+import { isString } from 'senaev-utils/src/utils/String/isString';
 
 type SubscriptionEntry = {
     name: string;
@@ -19,11 +20,11 @@ function parseEntries(raw: string): SubscriptionEntry[] {
 
         const { name, link } = entry as Record<string, unknown>;
 
-        if (typeof name !== 'string' || name.length === 0) {
+        if (!isString(name) || name.length === 0) {
             throw new Error(`Subscription entry at index ${index} must have a non-empty string name`);
         }
 
-        if (typeof link !== 'string' || link.length === 0) {
+        if (!isString(link) || link.length === 0) {
             throw new Error(`Subscription entry at index ${index} must have a non-empty string link`);
         }
 

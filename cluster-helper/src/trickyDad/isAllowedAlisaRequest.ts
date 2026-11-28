@@ -1,4 +1,5 @@
 import { isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
+import { isString } from 'senaev-utils/src/utils/String/isString';
 
 /** Not a secret: the ID of the "Умный Папа" skill in the Yandex Dialogs console. */
 export const ALISA_SKILL_ID = 'e456585c-55dc-435e-9294-5312dc94b497';
@@ -33,5 +34,5 @@ export function isAllowedAlisaRequest(body: unknown, allowedUserIds: ReadonlySet
 
     const userId = session.user.user_id;
 
-    return typeof userId === 'string' && allowedUserIds.has(userId);
+    return isString(userId) && allowedUserIds.has(userId);
 }

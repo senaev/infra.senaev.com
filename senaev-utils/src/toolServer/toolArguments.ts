@@ -1,3 +1,6 @@
+import { isString } from '../utils/String/isString';
+import { isBoolean } from '../types/Boolean';
+import { isNumber } from '../types/Number/Number';
 import { isObject } from '../types/Object/Object';
 import { invalidArguments } from '../commands/CommandError';
 
@@ -30,7 +33,7 @@ export function optionalString(args: ToolArguments, key: string, maxLength = Inf
         return undefined;
     }
 
-    if (typeof value !== 'string') {
+    if (!isString(value)) {
         throw invalidArguments(`"${key}" must be a string`);
     }
 
@@ -68,7 +71,7 @@ export function optionalBoolean(args: ToolArguments, key: string): boolean | und
         return undefined;
     }
 
-    if (typeof value !== 'boolean') {
+    if (!isBoolean(value)) {
         throw invalidArguments(`"${key}" must be a boolean`);
     }
 
@@ -86,7 +89,7 @@ export function optionalInteger(
         return undefined;
     }
 
-    const isInteger = typeof value === 'number' && Number.isInteger(value);
+    const isInteger = isNumber(value) && Number.isInteger(value);
 
     if (!isInteger || value < min || value > max) {
         throw invalidArguments(`"${key}" must be an integer from ${min} to ${max}`);
@@ -105,7 +108,7 @@ export function optionalCappedInteger(
     { min, max }: { min: number; max: number }
 ): number | undefined {
     const value = args[key];
-    const capped = typeof value === 'number' && Number.isInteger(value) && value > max ? max : value;
+    const capped = isNumber(value) && Number.isInteger(value) && value > max ? max : value;
 
     return optionalInteger({ [key]: capped }, key, {
         min,
@@ -120,7 +123,7 @@ export function optionalEnum<T extends string>(args: ToolArguments, key: string,
         return undefined;
     }
 
-    if (typeof value !== 'string' || !(values as readonly string[]).includes(value)) {
+    if (!isString(value) || !(values as readonly string[]).includes(value)) {
         throw invalidArguments(`"${key}" must be one of: ${values.join(', ')}`);
     }
 
@@ -143,7 +146,7 @@ export function optionalStringArray(
     }
 
     return value.map((item, index) => {
-        if (typeof item !== 'string' || item === '') {
+        if (!isString(item) || item === '') {
             throw invalidArguments(`"${key}[${index}]" must be a non-empty string`);
         }
 

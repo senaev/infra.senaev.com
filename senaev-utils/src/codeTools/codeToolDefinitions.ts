@@ -1,3 +1,4 @@
+import { isString } from '../utils/String/isString';
 import {
     DIFF_PRESENTATION_DESCRIPTION, MUTATION_CANCELLATION_DESCRIPTION, PAGED_RESULT_DESCRIPTION,
 } from '../toolServer/toolDescriptions';
@@ -332,7 +333,7 @@ export type CodeToolName = CodeCommandName;
 export const CODE_TOOL_NAMES = Object.keys(CODE_TOOL_DEFINITIONS) as CodeToolName[];
 
 export function isCodeToolName(name: unknown): name is CodeToolName {
-    return typeof name === 'string' && Object.hasOwn(CODE_TOOL_DEFINITIONS, name);
+    return isString(name) && Object.hasOwn(CODE_TOOL_DEFINITIONS, name);
 }
 
 export function getCodeToolArgumentKeys(name: CodeToolName): string[] {

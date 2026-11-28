@@ -5,6 +5,7 @@ import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 import { httpRateLimit } from 'senaev-utils/src/utils/http/httpRateLimit';
 import { registerHttpRequestSupport } from 'senaev-utils/src/utils/http/registerHttpRequestSupport';
 import { isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
+import { isNumber } from 'senaev-utils/src/types/Number/Number';
 
 import type {
     AuthorizationServer, AuthorizeOutcome, AuthorizeRequest, LoginAttempt,
@@ -133,7 +134,7 @@ export const oauthRoutes: FastifyPluginAsync<OAuthRoutesOptions> = async (instan
         }
 
         const statusCode = isObjectOrArray(error) ? error.statusCode : undefined;
-        const status = typeof statusCode === 'number' && statusCode >= 400 && statusCode <= 599
+        const status = isNumber(statusCode) && statusCode >= 400 && statusCode <= 599
             ? statusCode
             : 500;
         let message = 'The sign-in request could not be read. Return to the app and start the connection again.';

@@ -2,6 +2,8 @@ import {
     describe, expect, it,
 } from 'vitest';
 
+import { isNumber } from '../../../types/Number/Number';
+
 import { simpleMovingAverageUsingAccFabric } from './simpleMovingAverageUsingAccFabric';
 
 describe('simpleMovingAverageFabric', () => {
@@ -57,6 +59,6 @@ describe('simpleMovingAverageFabric', () => {
 
         expect(results.slice(0, 10_000).every((value) => value === undefined)).toBe(true);
         expect(results.slice(10_000).every((value, index) =>
-            typeof value === 'number' && Math.abs(value - (index + 5000)) <= 1e-10)).toBe(true);
+            isNumber(value) && Math.abs(value - (index + 5000)) <= 1e-10)).toBe(true);
     });
 });

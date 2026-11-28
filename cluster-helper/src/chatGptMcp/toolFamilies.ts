@@ -1,6 +1,7 @@
 import { CODE_MCP_TOOL_DEFINITIONS, CODE_TOOL_PREFIX } from 'senaev-utils/src/codeTools/codeToolDefinitions';
 import { OBSIDIAN_TOOL_PREFIX, VAULT_MCP_TOOL_DEFINITIONS } from 'senaev-utils/src/obsidianVaultTools/vaultToolDefinitions';
 import type { ToolDefinition } from 'senaev-utils/src/toolServer/toolDefinition';
+import { isString } from 'senaev-utils/src/utils/String/isString';
 
 export type ToolReply = {
     isError: boolean;
@@ -61,7 +62,7 @@ export function listMcpTools(families: readonly ToolFamily[]): McpTool[] {
 
 /** The family and backend tool behind an MCP tool name, or `null` for a name that is not ours. */
 export function findTool(families: readonly ToolFamily[], mcpToolName: unknown): { family: ToolFamily; toolName: string } | null {
-    if (typeof mcpToolName !== 'string') {
+    if (!isString(mcpToolName)) {
         return null;
     }
 

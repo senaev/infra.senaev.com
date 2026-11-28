@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
 import { registerMtlsCallerAllowlist } from 'senaev-utils/src/utils/mtls/registerMtlsCallerAllowlist';
+import { isString } from 'senaev-utils/src/utils/String/isString';
 
 import { ALLOWED_CALLERS } from './callers';
 import { logger } from './logger';
@@ -12,7 +13,7 @@ type TorrentFileRequestBody = {
 
 function isTorrentFileRequestBody(value: unknown): value is TorrentFileRequestBody {
     return (
-        isObjectOrArray(value) && typeof value.fileName === 'string' && typeof value.contentBase64 === 'string'
+        isObjectOrArray(value) && isString(value.fileName) && isString(value.contentBase64)
     );
 }
 

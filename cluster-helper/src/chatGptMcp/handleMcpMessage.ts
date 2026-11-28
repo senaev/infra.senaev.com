@@ -1,6 +1,8 @@
 import { parseVaultFileResourceUri } from 'senaev-utils/src/obsidianVaultTools/vaultFileResource';
 import { isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
+import { isString } from 'senaev-utils/src/utils/String/isString';
+import { isNumber } from 'senaev-utils/src/types/Number/Number';
 
 import { logger } from '../logger';
 
@@ -161,7 +163,7 @@ export async function handleMcpMessage(
         serverName = 'senaev', securitySchemes, signal,
     }: McpServerOptions = {}
 ): Promise<JsonRpcResponse | null> {
-    if (!isObjectOrArray(message) || message.jsonrpc !== '2.0' || typeof message.method !== 'string') {
+    if (!isObjectOrArray(message) || message.jsonrpc !== '2.0' || !isString(message.method)) {
         return failure(null, JSON_RPC_INVALID_REQUEST, 'Invalid JSON-RPC message');
     }
 
@@ -173,14 +175,14 @@ export async function handleMcpMessage(
         return null;
     }
 
-    if (typeof id !== 'string' && typeof id !== 'number') {
+    if (!isString(id) && !isNumber(id)) {
         return failure(null, JSON_RPC_INVALID_REQUEST, 'Invalid JSON-RPC id');
     }
 
     switch (method) {
     case 'initialize': {
         const requested = isObjectOrArray(params) ? params.protocolVersion : undefined;
-        const protocolVersion = typeof requested === 'string' && SUPPORTED_PROTOCOL_VERSIONS.includes(requested)
+        const protocolVersion = isString(requested) && SUPPORTED_PROTOCOL_VERSIONS.includes(requested)
             ? requested
             : LATEST_PROTOCOL_VERSION;
 
@@ -206,7 +208,7 @@ export async function handleMcpMessage(
     case 'resources/read': {
         const reader = families.find((family) => family.prefix === 'obsidian-' && family.readResource !== undefined)?.readResource;
 
-        if (reader === undefined || !isObjectOrArray(params) || typeof params.uri !== 'string') {
+        if (reader === undefined || !isObjectOrArray(params) || !isString(params.uri)) {
             return failure(id, JSON_RPC_INVALID_PARAMS, 'Expected a vault resource URI');
         }
 
@@ -215,7 +217,7 @@ export async function handleMcpMessage(
             const reply = await reader(params.uri, signal);
 
             if (reply.isError) {
-                return failure(id, -32002, typeof reply.body.message === 'string' ? reply.body.message : 'File resource unavailable');
+                return failure(id, -32002, isString(reply.body.message) ? reply.body.message : 'File resource unavailable');
             }
 
             return success(id, { contents: reply.body.contents });

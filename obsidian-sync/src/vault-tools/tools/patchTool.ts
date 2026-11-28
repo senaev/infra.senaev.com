@@ -7,6 +7,7 @@ import {
     optionalString, readToolArguments, requiredNonEmptyString, requiredString,
 } from 'senaev-utils/src/toolServer/toolArguments';
 import { invalidArguments } from 'senaev-utils/src/commands/CommandError';
+import { isString } from 'senaev-utils/src/utils/String/isString';
 
 import { readVaultToolArguments } from '../toolArguments';
 
@@ -24,7 +25,7 @@ function readOperations(value: unknown): PatchOperation[] {
     return value.map((item: unknown, index): PatchOperation => {
         const type = isObjectOrArray(item) ? item.type : undefined;
 
-        if (typeof type !== 'string' || !Object.hasOwn(PATCH_OPERATION_FIELDS, type)) {
+        if (!isString(type) || !Object.hasOwn(PATCH_OPERATION_FIELDS, type)) {
             throw invalidArguments(`"operations[${index}].type" must be one of: ${Object.keys(PATCH_OPERATION_FIELDS).join(', ')}`);
         }
 

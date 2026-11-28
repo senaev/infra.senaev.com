@@ -1,3 +1,4 @@
+import { isString } from '../../String/isString';
 import { isObject } from '../../../types/Object/Object';
 
 function parseJsonObject(text: string): Record<string, unknown> | null {
@@ -26,7 +27,7 @@ export async function readStatusResponse(response: Response): Promise<Record<str
         return body ?? {};
     }
 
-    const message = typeof body?.message === 'string' && body.message !== ''
+    const message = isString(body?.message) && body.message !== ''
         ? body.message
         : `HTTP ${response.status}${text === '' ? '' : ` ${text}`}`;
 

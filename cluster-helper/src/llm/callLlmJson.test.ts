@@ -1,6 +1,7 @@
 import {
     beforeEach, describe, expect, it, vi,
 } from 'vitest';
+import { isString } from 'senaev-utils/src/utils/String/isString';
 
 import { callLlmJson } from './callLlmJson';
 import type { LlmProvider } from './llmProviders';
@@ -37,7 +38,7 @@ const REMOTE = buildProvider('remote');
 function parseAnswer(value: unknown): string {
     const { answer } = value as { answer?: unknown };
 
-    if (typeof answer !== 'string') {
+    if (!isString(answer)) {
         throw new Error('answer is not a string');
     }
 

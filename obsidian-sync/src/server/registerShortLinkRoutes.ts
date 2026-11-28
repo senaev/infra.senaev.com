@@ -1,6 +1,7 @@
 import { CommandError } from 'senaev-utils/src/commands/CommandError';
 import { isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
 import type { FastifyInstance } from 'fastify';
+import { isString } from 'senaev-utils/src/utils/String/isString';
 
 import { logger } from '../logger';
 import { isAllowedShortLinkTarget } from '../short-links/shortLinksCsv';
@@ -23,7 +24,7 @@ export function registerShortLinkRoutes(server: Pick<FastifyInstance, 'get' | 'p
 
         const { link } = body;
 
-        if (typeof link !== 'string' || link.trim() === '') {
+        if (!isString(link) || link.trim() === '') {
             return reply.code(400).send({
                 status: 'error',
                 message: 'Field "link" is required and must be a non-empty string',

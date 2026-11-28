@@ -3,6 +3,7 @@ import { createHmac } from 'node:crypto';
 import { EncryptJWT, jwtDecrypt } from 'jose';
 import * as oidc from 'openid-client';
 import { isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
+import { isString } from 'senaev-utils/src/utils/String/isString';
 
 import type { AuthorizeRequest } from './authorizationServer';
 
@@ -107,10 +108,10 @@ function readTransaction(payload: unknown): Transaction | null {
     } = request;
     const requestState = request.state;
 
-    const invalidState = typeof state !== 'string' || typeof nonce !== 'string' || typeof codeVerifier !== 'string';
-    const invalidClient = typeof clientId !== 'string' || typeof redirectUri !== 'string' || typeof codeChallenge !== 'string';
+    const invalidState = !isString(state) || !isString(nonce) || !isString(codeVerifier);
+    const invalidClient = !isString(clientId) || !isString(redirectUri) || !isString(codeChallenge);
 
-    if (invalidState || invalidClient || typeof resource !== 'string') {
+    if (invalidState || invalidClient || !isString(resource)) {
         return null;
     }
 
@@ -118,7 +119,7 @@ function readTransaction(payload: unknown): Transaction | null {
         request: {
             clientId,
             redirectUri,
-            state: typeof requestState === 'string' ? requestState : undefined,
+            state: isString(requestState) ? requestState : undefined,
             codeChallenge,
             resource,
         },
@@ -277,7 +278,7 @@ export function createGoogleLogin(config: GoogleLoginConfig) {
                 });
             }
 
-            const email = typeof claims?.email === 'string' ? claims.email.trim().toLowerCase() : undefined;
+            const email = isString(claims?.email) ? claims.email.trim().toLowerCase() : undefined;
 
             return finish(isAllowedEmail(email, claims?.email_verified === true)
                 ? {

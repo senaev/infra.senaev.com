@@ -5,6 +5,7 @@ import {
 } from 'yaml';
 import { CommandError } from 'senaev-utils/src/commands/CommandError';
 import { stripFrontmatter } from 'senaev-utils/src/obsidianNotes/stripFrontmatter';
+import { isString } from 'senaev-utils/src/utils/String/isString';
 
 import { parseNoteFrontmatter } from '../../markdown/parseNoteFrontmatter';
 
@@ -51,7 +52,7 @@ export function readAliases(frontmatter: Record<string, unknown> | null): string
     const value = frontmatter.aliases ?? frontmatter.alias;
     const list = Array.isArray(value) ? value : [value];
 
-    return list.filter((alias): alias is string => typeof alias === 'string' && alias.trim() !== '').map((alias) => alias.trim());
+    return list.filter((alias): alias is string => isString(alias) && alias.trim() !== '').map((alias) => alias.trim());
 }
 
 /**

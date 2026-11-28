@@ -1,4 +1,5 @@
 export function isBoolean(value: unknown): value is boolean {
+    // eslint-disable-next-line no-restricted-syntax -- Implementation of the type guard.
     return typeof value === 'boolean';
 }
 

@@ -2,6 +2,7 @@ import type {
     FastifyBaseLogger, FastifyInstance, RawReplyDefaultExpression, RawRequestDefaultExpression, RawServerBase,
 } from 'fastify';
 import { replaceWikiLinksWithHighlights } from 'senaev-utils/src/obsidianMarkdown/replaceWikiLinksWithHighlights';
+import { isString } from 'senaev-utils/src/utils/String/isString';
 
 import { logger } from './logger';
 
@@ -25,7 +26,7 @@ function isJobSearchRoundReport(body: unknown): body is JobSearchRoundReport {
         date, time, text,
     } = (body ?? {}) as Record<string, unknown>;
 
-    return typeof date === 'string' && typeof time === 'string' && typeof text === 'string';
+    return isString(date) && isString(time) && isString(text);
 }
 
 /**
