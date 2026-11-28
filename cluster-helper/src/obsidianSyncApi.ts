@@ -3,6 +3,7 @@ import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnk
 import { readStatusResponse } from 'senaev-utils/src/utils/http/readStatusResponse/readStatusResponse';
 import { createAbortSignalWithTimeout } from 'senaev-utils/src/utils/Abort/createAbortSignalWithTimeout/createAbortSignalWithTimeout';
 import type { MtlsClient } from 'senaev-utils/src/utils/mtls/mtlsClient';
+import { isString } from 'senaev-utils/src/utils/String/isString';
 
 import { readToolReply } from './chatGptMcp/callToolServer';
 import type { ToolReply } from './chatGptMcp/toolFamilies';
@@ -43,7 +44,7 @@ export type ObsidianSyncApi = ReturnType<typeof createObsidianSyncApi>;
  */
 export function createObsidianSyncApi(client: Pick<MtlsClient, 'fetch'>) {
     function fetchObsidianSync(pathOrUrl: string | URL, init: RequestInit = {}): Promise<Response> {
-        const url = typeof pathOrUrl === 'string' ? `${OBSIDIAN_SYNC_URL}${pathOrUrl}` : pathOrUrl;
+        const url = isString(pathOrUrl) ? `${OBSIDIAN_SYNC_URL}${pathOrUrl}` : pathOrUrl;
 
         return client.fetch(url, init);
     }

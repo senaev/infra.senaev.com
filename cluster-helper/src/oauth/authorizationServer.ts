@@ -3,6 +3,7 @@ import { createHmac, randomBytes } from 'node:crypto';
 import { jwtVerify, SignJWT } from 'jose';
 import { parseBearerToken } from 'senaev-utils/src/utils/auth/bearerToken/bearerToken';
 import { sha256 } from 'senaev-utils/src/utils/crypto/sha256/sha256';
+import { isString } from 'senaev-utils/src/utils/String/isString';
 
 // A minimal OAuth 2.1 authorization server for one user, shaped by what ChatGPT needs
 // from an MCP server: authorization code + PKCE S256, CIMD client ids, RFC 9207 `iss`
@@ -127,7 +128,7 @@ type TokenGrant = {
 function readString(params: Params, name: string): string | undefined {
     const value = params[name];
 
-    return typeof value === 'string' && value !== '' ? value : undefined;
+    return isString(value) && value !== '' ? value : undefined;
 }
 
 function isAllowedClient(clientId: string, redirectUri: string): boolean {
@@ -160,7 +161,7 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
     const now = config.now ?? Date.now;
 
     function isKnownResource(value: unknown): value is string {
-        return typeof value === 'string' && resources.includes(value);
+        return isString(value) && resources.includes(value);
     }
 
     // Changing AUTH_TOKEN_SIGNING_SECRET in Vault revokes every token at once. That is the only
@@ -282,7 +283,7 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
     }
 
     function readProvenance(payload: Record<string, unknown>): TokenProvenance | null {
-        return payload.idp === 'google' && typeof payload.email_hash === 'string'
+        return payload.idp === 'google' && isString(payload.email_hash)
             ? {
                 idp: 'google',
                 emailHash: payload.email_hash,
@@ -352,7 +353,7 @@ export function createAuthorizationServer(config: AuthorizationServerConfig) {
 
             const provenance = readProvenance(payload);
 
-            return typeof payload.client_id === 'string' && provenance !== null && isKnownResource(payload.aud)
+            return isString(payload.client_id) && provenance !== null && isKnownResource(payload.aud)
                 ? {
                     clientId: payload.client_id,
                     provenance,

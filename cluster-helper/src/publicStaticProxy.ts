@@ -1,6 +1,8 @@
 import { posix } from 'node:path';
 import { Readable } from 'node:stream';
 
+import { isString } from 'senaev-utils/src/utils/String/isString';
+
 import { OBSIDIAN_SYNC_URL } from './mtlsServiceUrls';
 import type { ObsidianSyncApi } from './obsidianSyncApi';
 
@@ -123,7 +125,7 @@ export async function proxyPublicStaticFile({
     for (const name of FORWARDED_REQUEST_HEADERS) {
         const value = requestHeaders[name];
 
-        if (typeof value === 'string') {
+        if (isString(value)) {
             headers[name] = value;
         }
     }

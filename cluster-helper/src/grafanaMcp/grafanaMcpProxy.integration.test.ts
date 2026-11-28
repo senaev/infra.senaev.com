@@ -2,6 +2,7 @@ import Fastify, { FastifyInstance } from 'fastify';
 import {
     afterEach, beforeEach, describe, expect, it,
 } from 'vitest';
+import { isString } from 'senaev-utils/src/utils/String/isString';
 
 import type { AccessTokenCheck } from '../oauth/authorizationServer';
 
@@ -90,7 +91,7 @@ beforeEach(async () => {
             receivedRequests.push({
                 method: request.method,
                 headers: request.headers,
-                body: typeof request.body === 'string' ? request.body : '',
+                body: isString(request.body) ? request.body : '',
             });
 
             if (upstreamStatus !== 200) {

@@ -8,6 +8,7 @@ import {
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
 import { formatUtcDateTime } from 'senaev-utils/src/utils/Date/formatUtcDateTime/formatUtcDateTime';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
+import { isString } from 'senaev-utils/src/utils/String/isString';
 
 import { TG_CLUSTER_CHAT_ID, TG_TOKEN_SENAEV_COM_BOT } from '../env';
 import { logger } from '../logger';
@@ -64,7 +65,7 @@ const TELEGRAM_LINE_BREAK = '  \n';
 function getStringField(record: object, key: string): string | null {
     const value = (record as Record<string, unknown>)[key];
 
-    return typeof value === 'string' && value !== '' ? value : null;
+    return isString(value) && value !== '' ? value : null;
 }
 
 /** One `Name: value` line, or null when the alert has no such value. */
@@ -114,11 +115,11 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): AlertIt
             throw new Error(`❌ Received Alertmanager webhook with invalid alert status=[${status}]`);
         }
 
-        if (typeof startsAt !== 'string' || typeof endsAt !== 'string') {
+        if (!isString(startsAt) || !isString(endsAt)) {
             throw new Error(`❌ Received Alertmanager webhook with invalid alert startsAt=[${startsAt}] or endsAt=[${endsAt}]`);
         }
 
-        if (typeof generatorURL !== 'string') {
+        if (!isString(generatorURL)) {
             throw new Error(`❌ Received Alertmanager webhook with invalid alert generatorURL=[${generatorURL}]`);
         }
 
@@ -128,7 +129,7 @@ export function handleAlertmanagerWebhookInternal(requestBody: unknown): AlertIt
 
         const { severity, alertname } = labels as Record<string, unknown>;
 
-        if (typeof alertname !== 'string') {
+        if (!isString(alertname)) {
             throw new Error(`❌ Received Alertmanager webhook with invalid alertname label=[${alertname}]`);
         }
 

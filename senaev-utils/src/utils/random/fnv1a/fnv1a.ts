@@ -1,3 +1,5 @@
+import { isString } from '../../String/isString';
+
 /**
  * FNV-1a hash generation init value.
  * More info: https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function#FNV_hash_parameters
@@ -83,7 +85,7 @@ export function fnv1a(
         throw new Error('The `size` option must be one of 32, 64, 128, 256, 512, or 1024');
     }
 
-    if (typeof value === 'string') {
+    if (isString(value)) {
         if (utf8Buffer) {
             return fnv1aEncodeInto(value, size, utf8Buffer);
         }

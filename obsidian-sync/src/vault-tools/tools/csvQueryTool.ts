@@ -4,6 +4,8 @@ import { join } from 'node:path/posix';
 import { CommandError, invalidArguments } from 'senaev-utils/src/commands/CommandError';
 import { createCommandAdapter } from 'senaev-utils/src/toolServer/createCommandAdapter';
 import { readToolArguments, requiredNonEmptyString } from 'senaev-utils/src/toolServer/toolArguments';
+import { isString } from 'senaev-utils/src/utils/String/isString';
+import { isNumber } from 'senaev-utils/src/types/Number/Number';
 
 import { normalizeVaultPath, resolveExistingFolder } from '../access/vaultAccess';
 import { readDownloadFile } from '../access/readDownloadBytes';
@@ -51,7 +53,7 @@ export function parseCsvQuery(input: unknown) {
             throw invalidArguments('Supply either folder or paths for each table, not both');
         }
 
-        const invalidFolder = hasFolder && (typeof folder !== 'string' || !folder.trim());
+        const invalidFolder = hasFolder && (!isString(folder) || !folder.trim());
 
         if (invalidFolder || (hasFolder && table.expectedHash !== undefined)) {
             throw invalidArguments('folder must be a nonempty read-only directory without expectedHash');
@@ -64,7 +66,7 @@ export function parseCsvQuery(input: unknown) {
         }
 
         const paths = (hasFolder ? [] : table.paths as unknown[]).map((path: unknown) => {
-            if (typeof path !== 'string' || path.length > 1024) {
+            if (!isString(path) || path.length > 1024) {
                 throw invalidArguments('CSV paths must be strings up to 1024 characters');
             }
 
@@ -84,7 +86,7 @@ export function parseCsvQuery(input: unknown) {
         const { expectedHash } = table;
 
         const needsHashValidation = expectedHash !== undefined && paths.length === 1 && expectedHash !== null;
-        const invalidHash = needsHashValidation && (typeof expectedHash !== 'string' || !/^[a-f0-9]{64}$/.test(expectedHash));
+        const invalidHash = needsHashValidation && (!isString(expectedHash) || !/^[a-f0-9]{64}$/.test(expectedHash));
 
         if ((expectedHash !== undefined && paths.length !== 1) || invalidHash) {
             throw invalidArguments('expectedHash requires one CSV path and a lowercase SHA-256 digest, or null to create a missing file');
@@ -113,7 +115,7 @@ export function parseCsvQuery(input: unknown) {
     const params = args.params === undefined ? [] : args.params;
     const maxRows = args.maxRows === undefined ? 200 : args.maxRows;
 
-    if (!Array.isArray(params) || params.length > 100 || params.some((value) => value !== null && (typeof value !== 'string' || value.length > 65536))) {
+    if (!Array.isArray(params) || params.length > 100 || params.some((value) => value !== null && (!isString(value) || value.length > 65536))) {
         throw invalidArguments('params must contain at most 100 strings (up to 65536 characters) or null values');
     }
 
@@ -121,7 +123,7 @@ export function parseCsvQuery(input: unknown) {
         throw invalidArguments('Serialized params must fit within 64 KiB total');
     }
 
-    const isInteger = typeof maxRows === 'number' && Number.isInteger(maxRows);
+    const isInteger = isNumber(maxRows) && Number.isInteger(maxRows);
 
     if (!isInteger || maxRows < 1 || maxRows > 1000) {
         throw invalidArguments('maxRows must be 1..1000');

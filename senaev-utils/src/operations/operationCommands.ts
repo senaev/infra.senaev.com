@@ -1,3 +1,4 @@
+import { isNumber } from '../types/Number/Number';
 import { readToolArguments, requiredNonEmptyString } from '../toolServer/toolArguments';
 import { invalidArguments } from '../commands/CommandError';
 
@@ -35,7 +36,7 @@ export function readOperationArguments(name: OperationToolName, value: unknown):
     ]) {
         const argument = args[key];
 
-        const invalidInteger = argument !== undefined && (typeof argument !== 'number' || !Number.isInteger(argument));
+        const invalidInteger = argument !== undefined && (!isNumber(argument) || !Number.isInteger(argument));
 
         if (invalidInteger || (argument !== undefined && argument < 0)) {
             throw invalidArguments(`${key} must be a nonnegative integer`);

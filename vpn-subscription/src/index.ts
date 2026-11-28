@@ -7,6 +7,8 @@ import { createShutdownController } from 'senaev-utils/src/utils/process/createS
 import {
     telegramBold, telegramCode, escapeTelegramMarkdown,
 } from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
+import { isFunction } from 'senaev-utils/src/utils/Function/isFunction';
+import { isString } from 'senaev-utils/src/utils/String/isString';
 
 import {
     CLUSTER_HELPER_URL, type ClusterHelperTelegramApi, createClusterHelperTelegramApi,
@@ -178,7 +180,7 @@ server.get<{ Params: { secret: string } }>('/:secret', (request, reply) => {
             header,
             value,
         ]) => {
-            reply.header(header, typeof value === 'function' ? value() : value);
+            reply.header(header, isFunction(value) ? value() : value);
         });
 
         return reply
@@ -219,7 +221,7 @@ server.post<{ Params: { secret: string } }>('/:secret', async (request, reply) =
 
     const { message } = body as { message?: unknown };
 
-    if (!message || typeof message !== 'string') {
+    if (!message || !isString(message)) {
         return reply.code(400).type('application/json; charset=utf-8').send({
             status: 'error',
             message: 'Missing or invalid \'message\' field in request body',

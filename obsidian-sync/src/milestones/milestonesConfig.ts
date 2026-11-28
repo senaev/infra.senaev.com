@@ -1,4 +1,6 @@
 import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { isString } from 'senaev-utils/src/utils/String/isString';
+import { isNumber } from 'senaev-utils/src/types/Number/Number';
 
 /**
  * Mirrors `milestones.schema.json` of the senaev-personal-tools Obsidian plugin, which owns
@@ -23,7 +25,7 @@ const SUPPORTED_VERSION = 1;
 function requireNonEmptyString(source: Record<string, unknown>, key: string): string {
     const value = source[key];
 
-    if (typeof value !== 'string' || value === '') {
+    if (!isString(value) || value === '') {
         throw new Error(`Milestones config: "${key}" must be a non-empty string`);
     }
 
@@ -58,7 +60,7 @@ export function parseMilestonesConfig(value: unknown): MilestonesConfig {
 
     const { minKnownYear, types } = value;
 
-    if (typeof minKnownYear !== 'number' || !Number.isInteger(minKnownYear)) {
+    if (!isNumber(minKnownYear) || !Number.isInteger(minKnownYear)) {
         throw new Error('Milestones config: "minKnownYear" must be an integer');
     }
 

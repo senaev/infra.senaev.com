@@ -1,5 +1,9 @@
 import { execFile } from 'node:child_process';
 
+import { isNumber } from 'senaev-utils/src/types/Number/Number';
+import { isBoolean } from 'senaev-utils/src/types/Boolean';
+import { isString } from 'senaev-utils/src/utils/String/isString';
+
 export type AuthStatus = {
     loggedIn: boolean;
     loginExpiresAt: Date | null;
@@ -19,7 +23,7 @@ const COMMAND_TIMEOUT_MS = 30_000;
 export const runCommand: CommandRunner = (file, args) => new Promise((resolve, reject) => {
     execFile(file, args, { timeout: COMMAND_TIMEOUT_MS }, (error, stdout, stderr) => {
         // A number is the exit code of a command that ran. Anything else, such as ENOENT or a timeout, is a failure to run it.
-        if (error !== null && typeof error.code !== 'number') {
+        if (error !== null && !isNumber(error.code)) {
             reject(error);
 
             return;
@@ -42,11 +46,11 @@ export function parseAuthStatus(stdout: string): AuthStatus {
 
     const { loggedIn, loginExpiresAt } = parsed as Record<string, unknown>;
 
-    if (typeof loggedIn !== 'boolean') {
+    if (!isBoolean(loggedIn)) {
         throw new Error('claude auth status did not print the loggedIn field');
     }
 
-    const expiresAt = typeof loginExpiresAt === 'string' ? new Date(loginExpiresAt) : null;
+    const expiresAt = isString(loginExpiresAt) ? new Date(loginExpiresAt) : null;
 
     return {
         loggedIn,

@@ -1,3 +1,4 @@
+import { isNumber } from '../../../types/Number/Number';
 import { IterableWithIndexAccess } from '../../../types/IterableWithIndexAccess';
 
 /**
@@ -18,12 +19,12 @@ export function sum(x: IterableWithIndexAccess<number>): number {
 
     let transition: number;
 
-    if (typeof sumResult !== 'number') {
+    if (!isNumber(sumResult)) {
         return Number.NaN;
     }
 
     for (let i = 1; i < x.length; i++) {
-        if (typeof x.at(i) !== 'number') {
+        if (!isNumber(x.at(i))) {
             return Number.NaN;
         }
 

@@ -1,6 +1,7 @@
 import type { ToolDefinition } from 'senaev-utils/src/toolServer/toolDefinition';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
+import { isString } from 'senaev-utils/src/utils/String/isString';
 
 import type { ToolFamily, ToolReply } from '../chatGptMcp/toolFamilies';
 
@@ -108,7 +109,7 @@ function parseSendMessageArguments(args: unknown, channels: readonly TelegramMcp
         return `Unknown channel, the channels are: ${channels.map(({ name }) => name).join(', ')}`;
     }
 
-    if (typeof args.text !== 'string' || args.text.trim() === '') {
+    if (!isString(args.text) || args.text.trim() === '') {
         return '"text" must be a non-empty string';
     }
 
@@ -138,7 +139,7 @@ export function createTelegramToolFamily({
 
             const parsed = parseSendMessageArguments(args, channels);
 
-            if (typeof parsed === 'string') {
+            if (isString(parsed)) {
                 return error(parsed);
             }
 

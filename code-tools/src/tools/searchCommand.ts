@@ -3,6 +3,8 @@ import { posix } from 'node:path';
 import type { CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { CommandError } from 'senaev-utils/src/commands/CommandError';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { isString } from 'senaev-utils/src/utils/String/isString';
+import { isNumber } from 'senaev-utils/src/types/Number/Number';
 
 import { runProcess } from '../process/runProcess';
 
@@ -41,7 +43,7 @@ function shortenLine(text: string, matchStart: number): string {
 }
 
 function readText(value: unknown): string | null {
-    return isObject(value) && typeof value.text === 'string' ? value.text : null;
+    return isObject(value) && isString(value.text) ? value.text : null;
 }
 
 /** Groups ripgrep's `--json` events by file. Paths that are not valid UTF-8 are skipped. */
@@ -80,12 +82,12 @@ export async function parseRipgrepJson(output: string, execution: CommandExecuti
         const path = readText(data.path)?.replace(/^\.\//, '');
         const text = readText(data.lines)?.replace(/\r?\n$/, '');
 
-        if (path === undefined || text === undefined || typeof data.line_number !== 'number') {
+        if (path === undefined || text === undefined || !isNumber(data.line_number)) {
             continue;
         }
 
         const firstSubmatch = Array.isArray(data.submatches) ? data.submatches[0] : undefined;
-        const matchStart = isObject(firstSubmatch) && typeof firstSubmatch.start === 'number' ? firstSubmatch.start : 0;
+        const matchStart = isObject(firstSubmatch) && isNumber(firstSubmatch.start) ? firstSubmatch.start : 0;
         const file = files.get(path) ?? {
             path,
             lines: [],

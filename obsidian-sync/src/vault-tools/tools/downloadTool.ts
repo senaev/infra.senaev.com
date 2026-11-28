@@ -5,6 +5,7 @@ import { createCommandAdapter } from 'senaev-utils/src/toolServer/createCommandA
 import { readToolArguments, requiredNonEmptyString } from 'senaev-utils/src/toolServer/toolArguments';
 import { createCommandExecution, type CommandExecution } from 'senaev-utils/src/commands/CommandExecution';
 import { parseVaultFileResourceUri, vaultFileResourceUri } from 'senaev-utils/src/obsidianVaultTools/vaultFileResource';
+import { isNumber } from 'senaev-utils/src/types/Number/Number';
 
 import {
     MAX_FILE_BYTES,
@@ -110,7 +111,7 @@ function parseChunk(input: unknown) {
         throw invalidArguments('expectedHash must be a lowercase SHA-256 hex digest');
     }
 
-    const isInteger = typeof chunkIndex === 'number' && Number.isSafeInteger(chunkIndex);
+    const isInteger = isNumber(chunkIndex) && Number.isSafeInteger(chunkIndex);
 
     if (!isInteger || chunkIndex < 0 || chunkIndex >= Math.ceil(MAX_FILE_BYTES / DOWNLOAD_CHUNK_BYTES)) {
         throw invalidArguments('chunkIndex must be a zero-based integer within the maximum file size');

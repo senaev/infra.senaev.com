@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { basename, extname } from 'node:path';
 
 import type { FastifyInstance, FastifyReply } from 'fastify';
+import { isString } from 'senaev-utils/src/utils/String/isString';
 
 import { findFileRecursively } from '../public-files/findFileRecursively';
 import {
@@ -38,7 +39,7 @@ async function servePublicFile(
     }
 
     if (note !== undefined) {
-        if (typeof note !== 'string' || note.trim() === '') {
+        if (!isString(note) || note.trim() === '') {
             return badRequest(reply, 'Parameter "note" must not be empty');
         }
 
@@ -62,7 +63,7 @@ async function servePublicFile(
     }
 
     if (file !== undefined) {
-        if (typeof file !== 'string' || file.trim() === '') {
+        if (!isString(file) || file.trim() === '') {
             return badRequest(reply, 'Parameter "file" must not be empty');
         }
 

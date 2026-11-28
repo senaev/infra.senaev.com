@@ -12,6 +12,7 @@ import { editTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/editTele
 import { pollTelegramMessages } from 'senaev-utils/src/utils/TelegramApi/pollTelegramMessages';
 import { sendTelegramEditableMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramEditableMessage';
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
+import { isString } from 'senaev-utils/src/utils/String/isString';
 
 import {
     getAuthStatus, logoutClaude, runCommand,
@@ -38,7 +39,7 @@ async function readMcpNotices(): Promise<string[]> {
     try {
         const parsed: unknown = JSON.parse(await readFile(MCP_NOTICES_PATH, 'utf8'));
 
-        return Array.isArray(parsed) ? parsed.filter((name) => typeof name === 'string') : [];
+        return Array.isArray(parsed) ? parsed.filter((name) => isString(name)) : [];
     } catch (error) {
         // No file yet, or a broken one: at worst the notice comes once more.
         if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {

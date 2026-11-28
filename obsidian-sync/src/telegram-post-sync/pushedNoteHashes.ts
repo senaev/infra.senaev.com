@@ -4,6 +4,7 @@ import {
 import { dirname } from 'node:path';
 
 import { isNotFoundError } from 'senaev-utils/src/utils/Error/isNotFoundError/isNotFoundError';
+import { isString } from 'senaev-utils/src/utils/String/isString';
 
 import { logger } from '../logger';
 import { TELEGRAM_SYNC_HASHES_FILE_PATH } from '../vaultPaths';
@@ -77,7 +78,7 @@ export function loadPushedNoteHashes(): void {
         relativePath,
         hash,
     ] of Object.entries(parsed)) {
-        if (typeof hash === 'string') {
+        if (isString(hash)) {
             pushedNoteHashes.set(relativePath, hash);
         }
     }

@@ -1,3 +1,4 @@
+import { isString } from '../utils/String/isString';
 import {
     DIFF_PRESENTATION_DESCRIPTION, MUTATION_CANCELLATION_DESCRIPTION, PAGED_RESULT_DESCRIPTION,
 } from '../toolServer/toolDescriptions';
@@ -993,7 +994,7 @@ export type VaultToolName = VaultCommandName;
 export const VAULT_TOOL_NAMES = Object.keys(VAULT_TOOL_DEFINITIONS) as VaultToolName[];
 
 export function isVaultToolName(name: unknown): name is VaultToolName {
-    return typeof name === 'string' && Object.hasOwn(VAULT_TOOL_DEFINITIONS, name);
+    return isString(name) && Object.hasOwn(VAULT_TOOL_DEFINITIONS, name);
 }
 
 /** The argument keys a tool accepts: exactly the properties of its input schema. */
