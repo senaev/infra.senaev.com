@@ -9,9 +9,7 @@ import {
 } from './buildNodeCommand';
 import type { ExecutionRecord } from './executionRecord';
 import type { ExecutionRecords } from './executionRecords';
-import {
-    type HostTarget, hostTarget, resolveHost,
-} from './nodeHosts';
+import { type HostTarget, resolveHost } from './nodeHosts';
 import { runCommand } from './runCommand';
 
 export const MAX_TIMEOUT_SECONDS = 3600;
@@ -41,7 +39,7 @@ export type ExecutionManager = {
     /** Starts the command once per execution ID and returns at once. */
     start: (nodeCommand: NodeCommand) => Promise<StartResult>;
     get: (executionId: string) => ExecutionRecord | undefined;
-    /** Stops the systemd unit of a command that may still run; returns when it has stopped. */
+    /** Stops the systemd unit of a command that this process runs; returns when it has stopped. */
     stop: (executionId: string) => Promise<StopResult>;
 };
 
@@ -56,17 +54,13 @@ function hashRequest({
 }
 
 export function createExecutionManager({
-    records, logger, holds: initialHolds,
+    records, logger,
 }: {
     records: ExecutionRecords;
-    holds: ReadonlyMap<string, Date>;
     logger: Pick<FastifyBaseLogger, 'info' | 'error'>;
 }): ExecutionManager {
     // Taken before any await, so concurrent starts cannot all pass the check.
     let reservedSlots = 0;
-    // The commands that may still run on their host, by execution ID, until their `endsBy`: no new
-    // command starts before. Changed only synchronously, by the execution it belongs to.
-    const holds = new Map(initialHolds);
     // The commands of this process that run now, and the last stop of each: when it was asked for,
     // and whether it was confirmed. Only a confirmed stop makes the result `stopped`.
     const active = new Map<string, HostTarget>();
@@ -105,28 +99,6 @@ export function createExecutionManager({
         return false;
     };
 
-    // When the confirmed stop of the execution was asked for. A failed stop that a retry replaced
-    // meanwhile gives way to the retry.
-    const confirmedStopAt = async (executionId: string): Promise<string | undefined> => {
-        for (;;) {
-            const stop = stops.get(executionId);
-
-            if (stop === undefined) {
-                return undefined;
-            }
-
-            if (await stop.confirmed) {
-                return stop.requestedAt;
-            }
-
-            if (stops.get(executionId) === stop) {
-                return undefined;
-            }
-        }
-    };
-
-    const isHeld = (now: Date): boolean => [...holds.values()].some((endsBy) => endsBy > now);
-
     const existingResult = (record: ExecutionRecord, requestHash: string): StartResult => (record.requestHash === requestHash
         ? {
             kind: 'existing',
@@ -140,7 +112,6 @@ export function createExecutionManager({
             host: record.host,
         };
         let finished: ExecutionRecord;
-        let unitMayRun = false;
         const endsByMs = new Date(record.endsBy).getTime();
         // The record is saved before the command starts: the command gets only what is left of its
         // timeout, so it always ends by `endsBy`, however long the save took.
@@ -151,7 +122,7 @@ export function createExecutionManager({
                 throw new Error('The execution was saved too late to start the command');
             }
 
-            const result = await runCommand({
+            const { deadlineExceeded, ...output } = await runCommand({
                 argv: buildNodeCommand(target, {
                     ...nodeCommand,
                     timeoutSeconds,
@@ -159,30 +130,22 @@ export function createExecutionManager({
                 deadlineMs: endsByMs - Date.now(),
                 maxOutputBytes: MAX_OUTPUT_BYTES,
             });
+            const stop = stops.get(record.executionId);
+            const stoppedAt = stop !== undefined && await stop.confirmed ? stop.requestedAt : undefined;
+            const error = failureOf(target, output, deadlineExceeded, record.endsBy);
+            let status: ExecutionRecord['status'] = error === undefined ? 'completed' : 'failed';
 
-            const stoppedAt = await confirmedStopAt(record.executionId);
-
-            // A signal ended the waiter, or ssh exited 255 (a dropped connection): the unit may still
-            // run, unless a confirmed stop ended it.
-            unitMayRun = stoppedAt === undefined && (result.exitCode === null || (target.kind === 'ssh' && result.exitCode === 255));
-            let status: ExecutionRecord['status'] = 'completed';
-
-            if (result.deadlineExceeded) {
-                status = 'failed';
-            } else if (stoppedAt !== undefined) {
+            if (stoppedAt !== undefined) {
                 status = 'stopped';
             }
-
-            const { deadlineExceeded, ...output } = result;
 
             finished = {
                 ...record,
                 ...output,
                 status,
                 ...stoppedAt === undefined ? {} : { stoppedAt },
+                ...stoppedAt === undefined && error !== undefined ? { error } : {},
                 finishedAt: new Date().toISOString(),
-                ...deadlineExceeded ? { error: 'node-shell killed the command at its deadline' } : {},
-                ...unitMayRun ? { mayStillRun: true as const } : {},
             };
         } catch (error) {
             finished = {
@@ -193,17 +156,7 @@ export function createExecutionManager({
             };
         }
 
-        // The result and the hold change together, so a stop sees both or neither.
         records.update(finished);
-
-        if (unitMayRun) {
-            holds.set(record.executionId, new Date(record.endsBy));
-
-            logger.info({
-                ...logFields,
-                endsBy: record.endsBy,
-            }, '⏳ ssh ended without the exit of the command; no new command until its unit has surely ended');
-        }
 
         // No command and no output in the logs: they can hold secrets.
         logger.info({
@@ -239,7 +192,7 @@ export function createExecutionManager({
 
             const startedAt = new Date();
 
-            if (reservedSlots >= MAX_CONCURRENT_EXECUTIONS || isHeld(startedAt)) {
+            if (reservedSlots >= MAX_CONCURRENT_EXECUTIONS) {
                 return { kind: 'busy' };
             }
 
@@ -310,100 +263,89 @@ export function createExecutionManager({
             }
 
             // Only while the record is `running`: a finished one is no longer the active command's.
-            const activeTarget = record.status === 'running' ? active.get(executionId) : undefined;
+            const target = record.status === 'running' ? active.get(executionId) : undefined;
 
-            if (activeTarget !== undefined) {
-                // A repeated stop reuses the last one, so a failed retry cannot undo a confirmed stop.
-                const previous = stops.get(executionId);
-
-                if (previous !== undefined) {
-                    if (await previous.confirmed) {
-                        return {
-                            kind: 'stopped',
-                            record: records.get(executionId) ?? record,
-                        };
-                    }
-
-                    // It failed, and the command may have ended meanwhile: start over from its state now.
-                    if (stops.get(executionId) === previous) {
-                        stops.delete(executionId);
-                    }
-
-                    return this.stop(executionId);
-                }
-
-                const confirmed = runStop(activeTarget, record);
-
-                stops.set(executionId, {
-                    requestedAt: new Date().toISOString(),
-                    confirmed,
-                });
-
-                if (!await confirmed) {
-                    return { kind: 'stop-failed' };
-                }
-
-                return {
-                    kind: 'stopped',
-                    record: records.get(executionId) ?? record,
-                };
-            }
-
-            // A command whose end node-shell did not see (a restart, a dropped ssh) may still run.
-            if (record.mayStillRun !== true || new Date(record.endsBy) <= new Date()) {
+            if (target === undefined) {
                 return {
                     kind: 'not-running',
                     record,
                 };
             }
 
-            if (!await runStop(hostTarget(record.host), record)) {
+            // A repeated stop waits for the last one, and tries again only when that one failed.
+            const previous = stops.get(executionId);
+
+            if (previous !== undefined) {
+                if (await previous.confirmed) {
+                    return {
+                        kind: 'stopped',
+                        record: records.get(executionId) ?? record,
+                    };
+                }
+
+                if (stops.get(executionId) === previous) {
+                    stops.delete(executionId);
+                }
+
+                return this.stop(executionId);
+            }
+
+            const confirmed = runStop(target, record);
+
+            stops.set(executionId, {
+                requestedAt: new Date().toISOString(),
+                confirmed,
+            });
+
+            if (!await confirmed) {
                 return { kind: 'stop-failed' };
             }
 
-            // The latest record: another stop may have changed it during this one.
-            const { mayStillRun: _mayStillRun, ...rest } = records.get(executionId) ?? record;
-            const stopped: ExecutionRecord = {
-                ...rest,
-                stoppedAt: new Date().toISOString(),
-            };
-
-            holds.delete(executionId);
-            records.update(stopped);
-
             return {
                 kind: 'stopped',
-                record: stopped,
+                record: records.get(executionId) ?? record,
             };
         },
     };
 }
 
-/**
- * Records left `running` by an earlier process become `interrupted`, never retried. Returns the
- * `endsBy` of each command that may still run, by execution ID: no new command starts before it.
- */
+// Why a command that was not stopped failed. A dropped ssh or a signal to the waiter hides the
+// end of the command, which may then still run on its host.
+function failureOf(
+    target: HostTarget,
+    { exitCode }: { exitCode: number | null },
+    deadlineExceeded: boolean,
+    endsBy: string
+): string | undefined {
+    if (deadlineExceeded) {
+        return 'node-shell killed the command at its deadline';
+    }
+
+    if (exitCode === null) {
+        return `A signal ended the wait for the command; it may still run on the host until ${endsBy}`;
+    }
+
+    if (target.kind === 'ssh' && exitCode === 255) {
+        return `ssh exited with 255: the connection failed, or the command exited with 255; it may still run on the host until ${endsBy}`;
+    }
+
+    return undefined;
+}
+
+/** Records left `running` by an earlier process become `interrupted`, never retried. */
 export function markInterruptedExecutions(
     records: ExecutionRecords,
     logger: Pick<FastifyBaseLogger, 'warn'>
-): Map<string, Date> {
-    const now = new Date();
-    const holds = new Map<string, Date>();
+): void {
+    const now = new Date().toISOString();
 
     for (const record of records.list()) {
-        const endsBy = new Date(record.endsBy);
-
-        if ((record.status === 'running' || record.mayStillRun === true) && endsBy > now) {
-            holds.set(record.executionId, endsBy);
-        }
-
         if (record.status === 'running') {
             records.update({
                 ...record,
                 status: 'interrupted',
-                finishedAt: now.toISOString(),
-                error: 'node-shell restarted while the command ran; the outcome is unknown',
-                mayStillRun: true,
+                finishedAt: now,
+                error: `node-shell restarted while the command ran; it may still run on the host until ${record.endsBy}`,
             });
             logger.warn({
                 executionId: record.executionId,
@@ -412,6 +354,4 @@ export function markInterruptedExecutions(
             }, '⚠️ Marked a node command as interrupted by a restart');
         }
     }
-
-    return holds;
 }

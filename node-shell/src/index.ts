@@ -23,7 +23,8 @@ async function main(): Promise<void> {
         store: await createExecutionStore(STATE_DIRECTORY),
         logger,
     });
-    const holds = markInterruptedExecutions(records, logger);
+
+    markInterruptedExecutions(records, logger);
 
     const cleanUp = () => {
         records.removeOlderThan(RECORD_RETENTION_MS, new Date())
@@ -36,7 +37,6 @@ async function main(): Promise<void> {
     const cleanupTimer = setInterval(cleanUp, CLEANUP_INTERVAL_MS);
     const manager = createExecutionManager({
         records,
-        holds,
         logger,
     });
     const certificates = await watchTlsCredentials({ logger });

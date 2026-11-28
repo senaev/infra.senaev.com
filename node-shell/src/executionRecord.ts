@@ -1,10 +1,11 @@
 /**
  * - `running`: started and not finished yet.
- * - `completed`: the local process (ssh, or systemd-run on the local host) ended by itself;
- *   `exitCode` is the command's, or 255 when ssh itself failed (for example, an unreachable host).
- * - `failed`: the process could not start, or node-shell killed it at its deadline.
+ * - `completed`: the command ended by itself; `exitCode` is its own.
+ * - `failed`: the command could not start, node-shell killed it at its deadline, or node-shell did
+ *   not see its end (ssh exited with 255, or a signal ended the wait). In the last case the unit
+ *   may still run on the host until `endsBy`; `error` says so.
  * - `interrupted`: node-shell restarted while it ran. The outcome is unknown, and it is never
- *   retried; the systemd unit on the host still ends at its own timeout.
+ *   retried; the unit may still run on the host until `endsBy`.
  * - `stopped`: a `DELETE` stopped it before it ended by itself.
  */
 import type { CommandResult } from './runCommand';
@@ -23,8 +24,6 @@ export type ExecutionRecord = ExecutionOutput & {
     startedAt: string;
     /** The latest time the command can still run on its host. */
     endsBy: string;
-    /** node-shell did not see the command end, so its unit may run until `endsBy`. */
-    mayStillRun?: true;
     finishedAt?: string;
     stoppedAt?: string;
     error?: string;

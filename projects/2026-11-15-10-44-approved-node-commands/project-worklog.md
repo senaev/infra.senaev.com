@@ -1,3 +1,16 @@
+## 2026-11-28 10:00 UTC — No tracking of commands whose end node-shell did not see
+
+The user decided to drop the corner cases of commands whose end node-shell does not see: ssh
+exits with 255 (a dropped connection, or the command's own 255), a signal ends the wait, or
+node-shell restarts while a command runs. Such a command is now `failed` (or `interrupted` after
+a restart), and its `error` says that it may still run on the host until `endsBy`. There is no
+`mayStillRun`, no hold on new commands and no stop of an earlier process's unit: `DELETE` stops
+only a command that this process runs, and answers `not-running` for any other. The trade-off,
+accepted because each command is approved in Telegram and these cases are rare: in them, the
+next command can run while the earlier one still runs on its host, and it can be stopped only
+with an approved `systemctl stop node-shell-<id>`. A repeated `DELETE` still waits for the last
+stop and tries again only after a failed one.
+
 ## 2026-11-28 09:00 UTC — The request ID is the execution ID
 
 The user decided that cluster-helper uses the `requestId` of a request as its execution ID in

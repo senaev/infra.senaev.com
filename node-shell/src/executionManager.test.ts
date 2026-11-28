@@ -18,12 +18,6 @@ vi.mock('./runCommand', () => {
 vi.mock('./nodeHosts', () => {
     return {
         resolveHost: vi.fn(),
-        hostTarget: (host: string) => (host === 'hetzner'
-            ? { kind: 'local' }
-            : {
-                kind: 'ssh',
-                destination: `root@${host}`,
-            }),
     };
 });
 
@@ -99,14 +93,13 @@ const logger = {
     warn: vi.fn(),
 };
 
-async function createManager(holds: ReadonlyMap<string, Date>): Promise<ExecutionManager> {
+async function createManager(): Promise<ExecutionManager> {
     return createExecutionManager({
         records: await loadExecutionRecords({
             store,
             logger,
         }),
         logger,
-        holds,
     });
 }
 
@@ -128,7 +121,7 @@ beforeEach(async () => {
             },
         ],
     ]).get(host)));
-    manager = await createManager(new Map());
+    manager = await createManager();
 });
 
 afterEach(() => {
@@ -302,50 +295,31 @@ describe('createExecutionManager', () => {
         expect(run).toHaveBeenCalledOnce();
     });
 
-    it('holds the slot until endsBy when ssh ends without the exit of the command', async () => {
-        const remote = {
-            ...request,
-            host: 'senaev-madrid',
-        };
-
-        manager = await createManager(new Map());
+    it('saves a remote command whose ssh ended with 255 as failed, and frees the slot at once', async () => {
         run.mockResolvedValueOnce({
             ...result,
             exitCode: 255,
         }).mockResolvedValue(result);
 
-        const started = await manager.start(remote);
+        const started = await manager.start({
+            ...request,
+            host: 'senaev-madrid',
+        });
 
         await settle();
-        expect(started).toMatchObject({ kind: 'started' });
 
-        const endsBy = new Date(started.kind === 'started' ? started.record.endsBy : 0);
-
+        expect(store.records.get('e1')).toMatchObject({
+            status: 'failed',
+            exitCode: 255,
+            error: `ssh exited with 255: the connection failed, or the command exited with 255; it may still run on the host until ${started.kind === 'started' ? started.record.endsBy : ''}`,
+        });
         await expect(manager.start({
             ...request,
             executionId: 'e2',
-        })).resolves.toEqual({ kind: 'busy' });
-
-        vi.setSystemTime(endsBy);
-        await expect(manager.start({
-            ...request,
-            executionId: 'e2',
-        })).resolves.toMatchObject({ kind: 'started' });
-        await settle();
-
-        // A local command, or a remote one with its own exit code, frees the slot at once.
-        await expect(manager.start({
-            ...remote,
-            executionId: 'e3',
-        })).resolves.toMatchObject({ kind: 'started' });
-        await settle();
-        await expect(manager.start({
-            ...request,
-            executionId: 'e4',
         })).resolves.toMatchObject({ kind: 'started' });
     });
 
-    it('holds the slot when a signal ends a local command', async () => {
+    it('saves a command whose wait a signal ended as failed', async () => {
         run.mockResolvedValueOnce({
             ...result,
             exitCode: null,
@@ -355,11 +329,11 @@ describe('createExecutionManager', () => {
         await manager.start(request);
         await settle();
 
-        expect(store.records.get('e1')).toMatchObject({ mayStillRun: true });
-        await expect(manager.start({
-            ...request,
-            executionId: 'e2',
-        })).resolves.toEqual({ kind: 'busy' });
+        expect(store.records.get('e1')).toMatchObject({
+            status: 'failed',
+            signal: 'SIGTERM',
+            error: expect.stringMatching(/^A signal ended the wait for the command; it may still run on the host until /) as unknown,
+        });
     });
 
     it('gives the command only what is left of its timeout after a slow save', async () => {
@@ -481,7 +455,7 @@ describe('stop', () => {
         });
     });
 
-    it('holds nothing after a confirmed stop, when ssh then ends with 255', async () => {
+    it('saves a confirmed stop as stopped, also when ssh then ends with 255', async () => {
         const pending = deferred<CommandResult>();
 
         run.mockImplementation(({ argv }) => (isStop(argv)
@@ -500,53 +474,7 @@ describe('stop', () => {
         await settle();
 
         expect(store.records.get('e1')).toMatchObject({ status: 'stopped' });
-        expect(store.records.get('e1')).not.toHaveProperty('mayStillRun');
-        await expect(manager.start({
-            ...request,
-            executionId: 'e2',
-        })).resolves.toMatchObject({ kind: 'started' });
-    });
-
-    it('stops a unit whose ssh dropped while its result is being saved, and releases the hold', async () => {
-        const saved = deferred<undefined>();
-        const { update } = store;
-
-        store.update = async (record) => {
-            if (record.status === 'completed') {
-                await saved.promise;
-            }
-
-            return update(record);
-        };
-
-        run.mockImplementation(({ argv }) => Promise.resolve(isStop(argv)
-            ? result
-            : {
-                ...result,
-                exitCode: 255,
-            }));
-        await manager.start({
-            ...request,
-            host: 'senaev-madrid',
-        });
-        await settle();
-
-        const stopped = manager.stop('e1');
-
-        await settle();
-        saved.resolve(undefined);
-
-        await expect(stopped).resolves.toMatchObject({ kind: 'stopped' });
-        expect(store.records.get('e1')).toMatchObject({
-            status: 'completed',
-            stoppedAt: NOW.toISOString(),
-        });
-        expect(store.records.get('e1')).not.toHaveProperty('mayStillRun');
-        await settle();
-        await expect(manager.start({
-            ...request,
-            executionId: 'e2',
-        })).resolves.toMatchObject({ kind: 'started' });
+        expect(store.records.get('e1')).not.toHaveProperty('error');
     });
 
     it('keeps a confirmed stop when the same stop is asked for again', async () => {
@@ -573,7 +501,6 @@ describe('stop', () => {
         await settle();
 
         expect(store.records.get('e1')).toMatchObject({ status: 'stopped' });
-        expect(store.records.get('e1')).not.toHaveProperty('mayStillRun');
         await expect(manager.start({
             ...request,
             executionId: 'e2',
@@ -616,46 +543,32 @@ describe('stop', () => {
         });
     });
 
-    it('retries a failed stop from the state after it, when ssh dropped meanwhile', async () => {
+    it('tries a stop again when the last one failed', async () => {
         const pending = deferred<CommandResult>();
-        const firstStop = deferred<CommandResult>();
 
         run.mockImplementation(({ argv }) => (isStop(argv)
-            ? firstStop.promise
+            ? Promise.resolve({
+                ...result,
+                exitCode: 255,
+            })
             : pending.promise));
         await manager.start({
             ...request,
             host: 'senaev-madrid',
         });
 
-        const first = manager.stop('e1');
-        const second = manager.stop('e1');
+        await expect(manager.stop('e1')).resolves.toEqual({ kind: 'stop-failed' });
+        run.mockImplementation(({ argv }) => (isStop(argv) ? Promise.resolve(result) : pending.promise));
+        await expect(manager.stop('e1')).resolves.toMatchObject({ kind: 'stopped' });
+        expect(run.mock.calls.filter(([{ argv }]) => isStop(argv))).toHaveLength(2);
 
-        await settle();
         pending.resolve({
             ...result,
-            exitCode: 255,
+            exitCode: 143,
         });
-        run.mockImplementation(() => Promise.resolve(result));
-        firstStop.resolve({
-            ...result,
-            exitCode: 255,
-        });
-
-        await expect(first).resolves.toEqual({ kind: 'stop-failed' });
-        await expect(second).resolves.toMatchObject({ kind: 'stopped' });
         await settle();
 
-        // The retry is confirmed while the command is still active, so the result is `stopped`.
-        expect(store.records.get('e1')).toMatchObject({
-            status: 'stopped',
-            stoppedAt: NOW.toISOString(),
-        });
-        expect(store.records.get('e1')).not.toHaveProperty('mayStillRun');
-        await expect(manager.start({
-            ...request,
-            executionId: 'e2',
-        })).resolves.toMatchObject({ kind: 'started' });
+        expect(store.records.get('e1')).toMatchObject({ status: 'stopped' });
     });
 
     it('treats a unit that is already gone as stopped', async () => {
@@ -711,204 +624,33 @@ describe('stop', () => {
         expect(run).not.toHaveBeenCalled();
     });
 
-    it('stops the unit of an earlier process that may still run, then lets new commands start', async () => {
-        const endsBy = new Date(NOW.getTime() + 60_000);
-
+    it('answers not-running for a command interrupted by a restart, without contacting its host', async () => {
         store.records.set('old', {
             executionId: 'old',
             host: 'senaev-madrid',
             requestHash: 'hash',
             status: 'interrupted',
             startedAt: NOW.toISOString(),
-            endsBy: endsBy.toISOString(),
-            mayStillRun: true,
+            endsBy: new Date(NOW.getTime() + 60_000).toISOString(),
         });
-        manager = await createManager(new Map([
-            [
-                'old',
-                endsBy,
-            ],
-        ]));
-        run.mockResolvedValue(result);
+        manager = await createManager();
 
-        await expect(manager.start(request)).resolves.toEqual({ kind: 'busy' });
-        await expect(manager.stop('old')).resolves.toMatchObject({ kind: 'stopped' });
-        expect(run.mock.lastCall?.[0].argv.slice(-3)).toEqual([
-            'root@senaev-madrid',
-            '--',
-            '\'/bin/sh\' \'-c\' \'touch \'\\\'\'/run/node-shell-old.stop\'\\\'\' && systemctl stop node-shell-old\'',
-        ]);
-        expect(store.records.get('old')).toMatchObject({
-            status: 'interrupted',
-            stoppedAt: NOW.toISOString(),
-        });
-        expect(store.records.get('old')).not.toHaveProperty('mayStillRun');
-        await expect(manager.start(request)).resolves.toMatchObject({ kind: 'started' });
-    });
-
-    it('adds no hold for a new command when an overlapping stop of an earlier unit ends after it started', async () => {
-        const endsBy = new Date(NOW.getTime() + 60_000);
-        const firstStop = deferred<CommandResult>();
-        const secondStop = deferred<CommandResult>();
-        const pending = deferred<CommandResult>();
-
-        store.records.set('old', {
-            executionId: 'old',
-            host: 'senaev-madrid',
-            requestHash: 'hash',
-            status: 'interrupted',
-            startedAt: NOW.toISOString(),
-            endsBy: endsBy.toISOString(),
-            mayStillRun: true,
-        });
-        manager = await createManager(new Map([
-            [
-                'old',
-                endsBy,
-            ],
-        ]));
-        run.mockReturnValueOnce(firstStop.promise).mockReturnValueOnce(secondStop.promise);
-
-        const first = manager.stop('old');
-        const second = manager.stop('old');
-
-        await settle();
-        firstStop.resolve(result);
-        await expect(first).resolves.toMatchObject({ kind: 'stopped' });
-
-        run.mockReturnValueOnce(pending.promise);
-        await expect(manager.start(request)).resolves.toMatchObject({ kind: 'started' });
-        secondStop.resolve(result);
-        await expect(second).resolves.toMatchObject({ kind: 'stopped' });
-        pending.resolve(result);
-        await settle();
-
-        run.mockResolvedValue(result);
-        await expect(manager.start({
-            ...request,
-            executionId: 'e2',
-        })).resolves.toMatchObject({ kind: 'started' });
-    });
-
-    it('keeps the hold of a new command whose ssh dropped while an overlapping stop of an earlier unit ran', async () => {
-        const endsBy = new Date(NOW.getTime() + 60_000);
-        const firstStop = deferred<CommandResult>();
-        const secondStop = deferred<CommandResult>();
-        const saved = deferred<undefined>();
-        const { update } = store;
-
-        store.update = async (record) => {
-            if (record.executionId === 'e1' && record.status !== 'running') {
-                await saved.promise;
-            }
-
-            return update(record);
-        };
-
-        store.records.set('old', {
-            executionId: 'old',
-            host: 'senaev-madrid',
-            requestHash: 'hash',
-            status: 'interrupted',
-            startedAt: NOW.toISOString(),
-            endsBy: endsBy.toISOString(),
-            mayStillRun: true,
-        });
-        manager = await createManager(new Map([
-            [
-                'old',
-                endsBy,
-            ],
-        ]));
-        run.mockReturnValueOnce(firstStop.promise).mockReturnValueOnce(secondStop.promise);
-
-        const first = manager.stop('old');
-        const second = manager.stop('old');
-
-        await settle();
-        firstStop.resolve(result);
-        await expect(first).resolves.toMatchObject({ kind: 'stopped' });
-
-        run.mockResolvedValueOnce({
-            ...result,
-            exitCode: 255,
-        });
-        await expect(manager.start({
-            ...request,
-            host: 'senaev-madrid',
-        })).resolves.toMatchObject({ kind: 'started' });
-        await settle();
-        secondStop.resolve(result);
-        await expect(second).resolves.toMatchObject({ kind: 'stopped' });
-        saved.resolve(undefined);
-        await settle();
-
-        expect(store.records.get('e1')?.mayStillRun).toBe(true);
-        await expect(manager.start({
-            ...request,
-            executionId: 'e2',
-        })).resolves.toEqual({ kind: 'busy' });
-    });
-
-    it('keeps new commands out when the stop of an earlier unit fails', async () => {
-        const endsBy = new Date(NOW.getTime() + 60_000);
-
-        store.records.set('old', {
-            executionId: 'old',
-            host: 'senaev-madrid',
-            requestHash: 'hash',
-            status: 'interrupted',
-            startedAt: NOW.toISOString(),
-            endsBy: endsBy.toISOString(),
-            mayStillRun: true,
-        });
-        manager = await createManager(new Map([
-            [
-                'old',
-                endsBy,
-            ],
-        ]));
-        run.mockResolvedValue({
-            ...result,
-            exitCode: 255,
-        });
-
-        await expect(manager.stop('old')).resolves.toEqual({ kind: 'stop-failed' });
-        expect(store.records.get('old')?.mayStillRun).toBe(true);
-        await expect(manager.start(request)).resolves.toEqual({ kind: 'busy' });
+        await expect(manager.stop('old')).resolves.toMatchObject({ kind: 'not-running' });
+        expect(run).not.toHaveBeenCalled();
     });
 });
 
 describe('markInterruptedExecutions', () => {
-    // As at a start: the records are loaded again from the store, and their writes are awaited.
-    const markInterrupted = async () => {
-        const holds = markInterruptedExecutions(await loadExecutionRecords({
-            store,
-            logger,
-        }), logger);
-
-        await settle();
-
-        return holds;
-    };
-    const later = (seconds: number) => new Date(NOW.getTime() + seconds * 1000);
-
     it('marks the records left running by an earlier process as interrupted', async () => {
+        const endsBy = new Date(NOW.getTime() + 100_000).toISOString();
+
         store.records.set('old', {
             executionId: 'old',
             host: 'hetzner',
             requestHash: 'hash',
             status: 'running',
             startedAt: NOW.toISOString(),
-            endsBy: later(100).toISOString(),
-        });
-        store.records.set('older', {
-            executionId: 'older',
-            host: 'hetzner',
-            requestHash: 'hash',
-            status: 'running',
-            startedAt: NOW.toISOString(),
-            endsBy: later(-1).toISOString(),
+            endsBy,
         });
         store.records.set('done', {
             executionId: 'done',
@@ -916,104 +658,20 @@ describe('markInterruptedExecutions', () => {
             requestHash: 'hash',
             status: 'completed',
             startedAt: NOW.toISOString(),
-            endsBy: later(500).toISOString(),
+            endsBy,
         });
 
-        expect(await markInterrupted()).toEqual(new Map([
-            [
-                'old',
-                later(100),
-            ],
-        ]));
-        expect(store.records.get('old')).toMatchObject({
-            status: 'interrupted',
-            mayStillRun: true,
-        });
-        expect(store.records.get('older')?.status).toBe('interrupted');
-        expect(store.records.get('done')?.status).toBe('completed');
-    });
-
-    it('keeps the hold over later restarts, also for a dropped ssh connection', async () => {
-        store.records.set('old', {
-            executionId: 'old',
-            host: 'hetzner',
-            requestHash: 'hash',
-            status: 'running',
-            startedAt: NOW.toISOString(),
-            endsBy: later(100).toISOString(),
-        });
-        store.records.set('dropped', {
-            executionId: 'dropped',
-            host: 'senaev-madrid',
-            requestHash: 'hash',
-            status: 'completed',
-            startedAt: NOW.toISOString(),
-            endsBy: later(200).toISOString(),
-            exitCode: 255,
-            mayStillRun: true,
-        });
-
-        expect(await markInterrupted()).toEqual(new Map([
-            [
-                'old',
-                later(100),
-            ],
-            [
-                'dropped',
-                later(200),
-            ],
-        ]));
-        store.records.delete('dropped');
-        expect(await markInterrupted()).toEqual(new Map([
-            [
-                'old',
-                later(100),
-            ],
-        ]));
-        vi.setSystemTime(later(100));
-        expect(await markInterrupted()).toEqual(new Map());
-    });
-
-    it('saves mayStillRun for a remote command whose ssh ended with 255', async () => {
-        run.mockResolvedValue({
-            ...result,
-            exitCode: 255,
-        });
-        await manager.start({
-            ...request,
-            host: 'senaev-madrid',
-        });
+        markInterruptedExecutions(await loadExecutionRecords({
+            store,
+            logger,
+        }), logger);
         await settle();
 
-        expect(store.records.get('e1')).toMatchObject({
-            status: 'completed',
-            mayStillRun: true,
+        expect(store.records.get('old')).toMatchObject({
+            status: 'interrupted',
+            finishedAt: NOW.toISOString(),
+            error: `node-shell restarted while the command ran; it may still run on the host until ${endsBy}`,
         });
-        expect(await markInterrupted()).toEqual(new Map([
-            [
-                'e1',
-                new Date(store.records.get('e1')?.endsBy ?? 0),
-            ],
-        ]));
-    });
-
-    it('returns no hold when no interrupted command can still run', async () => {
-        expect(await markInterrupted()).toEqual(new Map());
-    });
-
-    it('keeps new commands out until an interrupted command can no longer run', async () => {
-        manager = await createManager(new Map([
-            [
-                'old',
-                later(100),
-            ],
-        ]));
-        run.mockResolvedValue(result);
-
-        await expect(manager.start(request)).resolves.toEqual({ kind: 'busy' });
-        expect(store.records.size).toBe(0);
-
-        vi.setSystemTime(later(100));
-        await expect(manager.start(request)).resolves.toMatchObject({ kind: 'started' });
+        expect(store.records.get('done')?.status).toBe('completed');
     });
 });

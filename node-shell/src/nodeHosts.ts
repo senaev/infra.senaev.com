@@ -46,8 +46,7 @@ async function listClusterNodes(): Promise<string[]> {
     return nodes;
 }
 
-/** The target of a host that was already checked, as in a saved execution. */
-export function hostTarget(host: string): HostTarget {
+function hostTarget(host: string): HostTarget {
     return host === NODE_SHELL_LOCAL_HOST
         ? { kind: 'local' }
         : {
