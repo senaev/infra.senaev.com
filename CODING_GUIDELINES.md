@@ -8,8 +8,8 @@
 
 ## Shared library
 
-- Before adding or changing a utility, look for an equivalent implementation in the repository.
-  If you find one, share it through `senaev-utils`, moving it there if needed.
+- Check `senaev-utils` before writing a new utility. Reuse an existing helper if it does what
+  you need.
 
 ## Imports and exports
 
