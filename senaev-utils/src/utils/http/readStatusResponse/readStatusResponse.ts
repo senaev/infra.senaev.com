@@ -1,10 +1,10 @@
-import { isObject } from '../../../types/Object/Object';
+import { isObjectOrArray } from '../../../types/Object/Object';
 
 function parseJsonObject(text: string): Record<string, unknown> | null {
     try {
         const value: unknown = JSON.parse(text);
 
-        return isObject(value) && !Array.isArray(value) ? value : null;
+        return isObjectOrArray(value) && !Array.isArray(value) ? value : null;
     } catch {
         return null;
     }

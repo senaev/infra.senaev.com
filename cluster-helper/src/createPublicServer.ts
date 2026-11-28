@@ -1,6 +1,6 @@
 import Fastify, { type FastifyReply } from 'fastify';
 import { ResourceReadGate } from 'senaev-utils/src/toolServer/ResourceReadGate';
-import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
 import { createTelegramApiBaseUrl } from 'senaev-utils/src/utils/TelegramApi/createTelegramApiBaseUrl';
 import { escapeTelegramMarkdown } from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
@@ -186,7 +186,7 @@ export async function createPublicServer({
 
         const update = request.body;
 
-        if (!isObject(update)) {
+        if (!isObjectOrArray(update)) {
             logger.warn(
                 {
                     path: TELEGRAM_WEBHOOK_PATH,
@@ -271,7 +271,7 @@ export async function createPublicServer({
     async function replyToMcpMessage(message: unknown, reply: FastifyReply, {
         families, options, logMessage,
     }: LocalMcpServer) {
-        const isResourceRead = isObject(message) && message.method === 'resources/read';
+        const isResourceRead = isObjectOrArray(message) && message.method === 'resources/read';
         const transfer = isResourceRead ? resourceReads.begin(reply.raw, 65_000) : null;
 
         if (isResourceRead && transfer === null) {

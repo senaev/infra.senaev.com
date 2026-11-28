@@ -4,7 +4,7 @@ import {
 
 import { assertObject } from './Object';
 
-// `isObject` itself is covered by ./isObject.spec.ts.
+// `isObjectOrArray` itself is covered by ./isObjectOrArray.spec.ts.
 describe('assertObject', () => {
     const testCases = [
         {

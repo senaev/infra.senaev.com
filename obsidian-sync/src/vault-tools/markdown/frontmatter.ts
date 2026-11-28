@@ -1,4 +1,4 @@
-import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 import {
     Document, isMap, isScalar, parseDocument,
@@ -117,7 +117,7 @@ export function setFrontmatterProperties(content: string, properties: Record<str
     // Empty contents are fine: `set` creates the map on first use.
     const existing: unknown = document.toJS();
 
-    if (existing !== null && (!isObject(existing) || Array.isArray(existing))) {
+    if (existing !== null && (!isObjectOrArray(existing) || Array.isArray(existing))) {
         throw new CommandError('conflict', 'The frontmatter is not a set of properties');
     }
 
@@ -134,7 +134,7 @@ export function setFrontmatterProperties(content: string, properties: Record<str
 
     const updated: unknown = document.toJS();
     const hasComments = Boolean(document.comment) || Boolean(document.commentBefore);
-    const isEmpty = (!isObject(updated) || Object.keys(updated).length === 0) && !hasComments;
+    const isEmpty = (!isObjectOrArray(updated) || Object.keys(updated).length === 0) && !hasComments;
 
     return isEmpty ? body : `---\n${document.toString()}---\n${body}`;
 }

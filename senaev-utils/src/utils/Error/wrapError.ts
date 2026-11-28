@@ -1,4 +1,4 @@
-import { isObject } from '../../types/Object/Object';
+import { isObjectOrArray } from '../../types/Object/Object';
 import { isFunction } from '../Function/isFunction';
 import { isString } from '../String/isString';
 
@@ -13,7 +13,7 @@ export function wrapError(error: unknown, {
         resultError = error;
     } else {
         resultError = new Error('DEFAULT_ERROR_MESSAGE');
-        if (isObject(error)) {
+        if (isObjectOrArray(error)) {
             if (isString(error.message)) {
                 resultError.message = error.message;
             }

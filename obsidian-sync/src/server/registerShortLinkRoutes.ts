@@ -1,5 +1,5 @@
 import { CommandError } from 'senaev-utils/src/commands/CommandError';
-import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
 import type { FastifyInstance } from 'fastify';
 
 import { logger } from '../logger';
@@ -12,7 +12,7 @@ export function registerShortLinkRoutes(server: Pick<FastifyInstance, 'get' | 'p
     server.post<{ Body: unknown }>('/short_links', async (request, reply) => {
         const { body } = request;
 
-        if (!isObject(body)) {
+        if (!isObjectOrArray(body)) {
             return reply
                 .code(400)
                 .send({

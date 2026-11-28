@@ -1,5 +1,5 @@
 import { parseVaultFileResourceUri } from 'senaev-utils/src/obsidianVaultTools/vaultFileResource';
-import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 
 import { logger } from '../logger';
@@ -95,11 +95,11 @@ async function forwardToolCall(family: ToolFamily, toolName: string, args: unkno
 
     if (family.prefix === 'obsidian-' && toolName === 'download') {
         payload = reply.body;
-    } else if (family.prefix === 'obsidian-' && toolName === 'operation_result' && isObject(reply.body.operation) && reply.body.operation.tool === 'download' && isObject(reply.body.result)) {
+    } else if (family.prefix === 'obsidian-' && toolName === 'operation_result' && isObjectOrArray(reply.body.operation) && reply.body.operation.tool === 'download' && isObjectOrArray(reply.body.result)) {
         payload = reply.body.result;
     }
 
-    if (!reply.isError && payload !== null && isObject(payload.resource) && payload.resource.type === 'resource_link') {
+    if (!reply.isError && payload !== null && isObjectOrArray(payload.resource) && payload.resource.type === 'resource_link') {
         return {
             ...result,
             content: [
@@ -113,9 +113,9 @@ async function forwardToolCall(family: ToolFamily, toolName: string, args: unkno
 }
 
 function callTool(params: unknown, families: readonly ToolFamily[]) {
-    const found = isObject(params) ? findTool(families, params.name) : null;
+    const found = isObjectOrArray(params) ? findTool(families, params.name) : null;
 
-    return found === null || !isObject(params)
+    return found === null || !isObjectOrArray(params)
         ? null
         : forwardToolCall(found.family, found.toolName, params.arguments);
 }
@@ -125,8 +125,8 @@ function callTool(params: unknown, families: readonly ToolFamily[]) {
  * text, file contents, secrets written to a file, and signed download URLs.
  */
 export function describeMcpExchange(message: unknown, response: JsonRpcResponse | null) {
-    const request = isObject(message) ? message : {};
-    const params = isObject(request.params) ? request.params : {};
+    const request = isObjectOrArray(message) ? message : {};
+    const params = isObjectOrArray(request.params) ? request.params : {};
 
     return {
         method: request.method,
@@ -134,7 +134,7 @@ export function describeMcpExchange(message: unknown, response: JsonRpcResponse 
         protocolVersion: params.protocolVersion,
         clientInfo: params.clientInfo,
         error: response !== null && 'error' in response ? response.error : undefined,
-        isToolError: response !== null && 'result' in response && isObject(response.result)
+        isToolError: response !== null && 'result' in response && isObjectOrArray(response.result)
             ? response.result.isError
             : undefined,
     };
@@ -151,7 +151,7 @@ export async function handleMcpMessage(
         serverName = 'senaev', securitySchemes, signal,
     }: McpServerOptions = {}
 ): Promise<JsonRpcResponse | null> {
-    if (!isObject(message) || message.jsonrpc !== '2.0' || typeof message.method !== 'string') {
+    if (!isObjectOrArray(message) || message.jsonrpc !== '2.0' || typeof message.method !== 'string') {
         return failure(null, JSON_RPC_INVALID_REQUEST, 'Invalid JSON-RPC message');
     }
 
@@ -169,7 +169,7 @@ export async function handleMcpMessage(
 
     switch (method) {
     case 'initialize': {
-        const requested = isObject(params) ? params.protocolVersion : undefined;
+        const requested = isObjectOrArray(params) ? params.protocolVersion : undefined;
         const protocolVersion = typeof requested === 'string' && SUPPORTED_PROTOCOL_VERSIONS.includes(requested)
             ? requested
             : LATEST_PROTOCOL_VERSION;
@@ -196,7 +196,7 @@ export async function handleMcpMessage(
     case 'resources/read': {
         const reader = families.find((family) => family.prefix === 'obsidian-' && family.readResource !== undefined)?.readResource;
 
-        if (reader === undefined || !isObject(params) || typeof params.uri !== 'string') {
+        if (reader === undefined || !isObjectOrArray(params) || typeof params.uri !== 'string') {
             return failure(id, JSON_RPC_INVALID_PARAMS, 'Expected a vault resource URI');
         }
 

@@ -1,4 +1,4 @@
-import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
 import { TelegramMessage, TelegramUser } from 'senaev-utils/src/utils/TelegramApi/types';
 
 import { describeTelegramUpdate } from './describeTelegramUpdate';
@@ -33,10 +33,10 @@ export async function processTelegramWebhookData({
     logger.info('👉 processTelegramWebhookData');
     const { callback_query, message } = update;
 
-    if (isObject(callback_query)) {
+    if (isObjectOrArray(callback_query)) {
         const { message: callbackMessage } = callback_query;
 
-        if (!isObject(callbackMessage) || !isObject(callbackMessage.chat)) {
+        if (!isObjectOrArray(callbackMessage) || !isObjectOrArray(callbackMessage.chat)) {
             throw new Error('❌ Telegram callback query has no message chat information');
         }
 
@@ -57,13 +57,13 @@ export async function processTelegramWebhookData({
         return;
     }
 
-    if (!isObject(message)) {
+    if (!isObjectOrArray(message)) {
         throw new Error(`❌ Unsupported Telegram update type received in Webhook Data topic [${JSON.stringify(describeTelegramUpdate(update))}]`);
     }
 
     const { chat, from } = message;
 
-    if (!isObject(from)) {
+    if (!isObjectOrArray(from)) {
         throw new Error('❌ Telegram message has no sender information');
     }
 
@@ -79,7 +79,7 @@ export async function processTelegramWebhookData({
         return;
     }
 
-    if (!isObject(chat)) {
+    if (!isObjectOrArray(chat)) {
         throw new Error('❌ Telegram message has no chat information');
     }
 

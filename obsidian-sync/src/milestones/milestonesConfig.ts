@@ -1,4 +1,4 @@
-import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
 
 /**
  * Mirrors `milestones.schema.json` of the senaev-personal-tools Obsidian plugin, which owns
@@ -31,7 +31,7 @@ function requireNonEmptyString(source: Record<string, unknown>, key: string): st
 }
 
 function parseMilestoneType(value: unknown, index: number): MilestoneType {
-    if (!isObject(value)) {
+    if (!isObjectOrArray(value)) {
         throw new Error(`Milestones config: types[${index}] must be an object`);
     }
 
@@ -48,7 +48,7 @@ function parseMilestoneType(value: unknown, index: number): MilestoneType {
 }
 
 export function parseMilestonesConfig(value: unknown): MilestonesConfig {
-    if (!isObject(value)) {
+    if (!isObjectOrArray(value)) {
         throw new Error('Milestones config must be a JSON object');
     }
 

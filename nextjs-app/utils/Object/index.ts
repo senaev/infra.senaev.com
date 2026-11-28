@@ -1,1 +1,1 @@
-export { isObject } from './isObject';
+export { isObjectOrArray } from './isObjectOrArray';

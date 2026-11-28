@@ -1,5 +1,5 @@
 import { isIsoDay } from 'senaev-utils/src/obsidianReminders/isoDay';
-import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
 import { isNonEmptyArray } from 'senaev-utils/src/utils/Array/isNonEmptyArray/isNonEmptyArray';
 import { isNonEmptyString } from 'senaev-utils/src/utils/String/NonEmptyString/NonEmptyString';
 
@@ -33,7 +33,7 @@ function planAddReminders(reminders: ReminderWithDate[]): PlannedTrickyDadAction
 }
 
 function parseReminder(reminder: unknown): ReminderWithDate {
-    if (!isObject(reminder) || Array.isArray(reminder)) {
+    if (!isObjectOrArray(reminder) || Array.isArray(reminder)) {
         throw new Error(`${TYPE}: every reminder must be an object, got [${JSON.stringify(reminder)}]`);
     }
 

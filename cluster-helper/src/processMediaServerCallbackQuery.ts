@@ -3,7 +3,7 @@ import {
     assertUnsignedInteger,
     isUnsignedInteger,
 } from 'senaev-utils/src/types/Number/UnsignedInteger';
-import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 import { callTelegramApi } from 'senaev-utils/src/utils/TelegramApi/callTelegramApi';
 import { createTelegramRichMessage } from 'senaev-utils/src/utils/TelegramApi/createTelegramRichMessage';
@@ -150,7 +150,7 @@ async function processMediaServerCallbackQueryInternal({
         throw new Error('Missing value');
     }
 
-    if (!message || !isObject(message.chat)) {
+    if (!message || !isObjectOrArray(message.chat)) {
         throw new Error('Search message is gone');
     }
 

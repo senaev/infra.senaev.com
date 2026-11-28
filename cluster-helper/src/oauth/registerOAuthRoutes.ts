@@ -4,7 +4,7 @@ import type { CookieSerializeOptions } from '@fastify/cookie';
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 import { httpRateLimit } from 'senaev-utils/src/utils/http/httpRateLimit';
 import { registerHttpRequestSupport } from 'senaev-utils/src/utils/http/registerHttpRequestSupport';
-import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
 
 import type {
     AuthorizationServer, AuthorizeOutcome, AuthorizeRequest, LoginAttempt,
@@ -46,7 +46,7 @@ const TRANSACTION_COOKIE_OPTIONS: CookieSerializeOptions = {
 };
 
 function asParams(value: unknown): Record<string, unknown> {
-    return isObject(value) ? value : {};
+    return isObjectOrArray(value) ? value : {};
 }
 
 function sendAuthorizationError(reply: FastifyReply, status: number, message: string, continueUrl?: string) {
@@ -132,7 +132,7 @@ export const oauthRoutes: FastifyPluginAsync<OAuthRoutesOptions> = async (instan
             return reply.send(error);
         }
 
-        const status = isObject(error) && typeof error.statusCode === 'number' && error.statusCode >= 400 && error.statusCode <= 599
+        const status = isObjectOrArray(error) && typeof error.statusCode === 'number' && error.statusCode >= 400 && error.statusCode <= 599
             ? error.statusCode
             : 500;
         let message = 'The sign-in request could not be read. Return to the app and start the connection again.';
