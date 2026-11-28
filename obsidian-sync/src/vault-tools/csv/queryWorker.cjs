@@ -173,7 +173,17 @@ function query(input) {
 
                 const info = db.prepare(`PRAGMA table_xinfo(${quote(mutation.name)})`).all();
 
-                if (info.some((column) => column.hidden || (column.type !== '' && column.type.toUpperCase() !== 'TEXT') || column.pk || column.dflt_value !== null || column.notnull)) {
+                const hasUnsupportedColumn = info.some((column) => {
+                    const hasUnsupportedType = column.hidden || (column.type !== '' && column.type.toUpperCase() !== 'TEXT');
+
+                    if (hasUnsupportedType) {
+                        return true;
+                    }
+
+                    return Boolean(column.pk || column.dflt_value !== null || column.notnull);
+                });
+
+                if (hasUnsupportedColumn) {
                     fail('CREATE TABLE supports plain column names with optional TEXT only');
                 }
 
@@ -341,7 +351,10 @@ function classifyAndPrepare(db, input, sources) {
         if (action === constants.SQLITE_ALTER_TABLE) {
             const target = tables.get(second?.toLowerCase());
 
-            if (alter && first === 'main' && target?.headers && target.name.toLowerCase() === alter.table.toLowerCase() && target.sources.length === 1 && Object.hasOwn(target, 'expectedHash')) {
+            const targetsExistingTable = alter && first === 'main' && target?.headers;
+            const matchesAlter = targetsExistingTable && target.name.toLowerCase() === alter.table.toLowerCase() && target.sources.length === 1;
+
+            if (matchesAlter && Object.hasOwn(target, 'expectedHash')) {
                 mutation = target;
                 altering = true;
             }
@@ -371,7 +384,9 @@ function classifyAndPrepare(db, input, sources) {
             constants.SQLITE_DELETE,
             constants.SQLITE_CREATE_TABLE,
         ].includes(action)) {
-            if (!table || table.sources.length !== 1 || !Object.hasOwn(table, 'expectedHash') || (database !== 'main' && database !== null)) {
+            const invalidTarget = !table || table.sources.length !== 1 || !Object.hasOwn(table, 'expectedHash');
+
+            if (invalidTarget || (database !== 'main' && database !== null)) {
                 return constants.SQLITE_DENY;
             }
 
@@ -397,8 +412,12 @@ function classifyAndPrepare(db, input, sources) {
             return constants.SQLITE_OK;
         }
 
-        if (action === constants.SQLITE_READ && ((database === 'main' && table) || (database === null && !first.toLowerCase().startsWith('sqlite_')))) {
-            return constants.SQLITE_OK;
+        if (action === constants.SQLITE_READ) {
+            const readsKnownTable = database === 'main' && table;
+
+            if (readsKnownTable || (database === null && !first.toLowerCase().startsWith('sqlite_'))) {
+                return constants.SQLITE_OK;
+            }
         }
 
         if (action === constants.SQLITE_FUNCTION && allowedFunctions.has(second)) {
@@ -474,7 +493,10 @@ function exportMutation(db, table, sources, {
 
     // Settings are untrusted SQL expressions: never prepare them with authorization off.
     db.setAuthorizer((action, first, second, database) => {
-        if (action === constants.SQLITE_SELECT || (action === constants.SQLITE_READ && database === 'main' && first === table.name) || (action === constants.SQLITE_FUNCTION && allowedFunctions.has(second))) {
+        const readsMain = action === constants.SQLITE_READ && database === 'main';
+        const canRead = action === constants.SQLITE_SELECT || (readsMain && first === table.name);
+
+        if (canRead || (action === constants.SQLITE_FUNCTION && allowedFunctions.has(second))) {
             return constants.SQLITE_OK;
         }
 
@@ -665,7 +687,9 @@ function applyColumnAlter(db, table, alter) {
     const headers = db.prepare(`PRAGMA table_xinfo(${quote(table.name)})`).all().map((column) => column.name);
     const names = headers.map((name) => name.toLowerCase());
 
-    if (!headers.length || headers.length > 100 || new Set(names).size !== names.length || names.some((name) => reserved.has(name))) {
+    const invalidHeaders = !headers.length || headers.length > 100 || new Set(names).size !== names.length;
+
+    if (invalidHeaders || names.some((name) => reserved.has(name))) {
         fail('CSV requires 1..100 unique, nonreserved columns');
     }
 
@@ -690,12 +714,20 @@ function parseSort(text) {
         fail('CSV params must be valid JSON');
     }
 
-    if (!params || typeof params !== 'object' || Array.isArray(params) || Object.keys(params).some((key) => key !== 'sort') || !Array.isArray(params.sort) || params.sort.length > 16) {
+    const invalidParams = !params || typeof params !== 'object' || Array.isArray(params);
+    const invalidSortParams = invalidParams || Object.keys(params).some((key) => key !== 'sort');
+
+    if (invalidSortParams || !Array.isArray(params.sort) || params.sort.length > 16) {
         fail('CSV params require a sort array with at most 16 entries');
     }
 
     return params.sort.map((item) => {
-        if (!item || typeof item !== 'object' || Array.isArray(item) || Object.keys(item).some((key) => key !== 'expression' && key !== 'direction') || typeof item.expression !== 'string' || !item.expression.trim() || item.expression.length > 1000 || item.expression.includes('\0') || typeof item.direction !== 'string' || ![
+        const invalidItem = !item || typeof item !== 'object' || Array.isArray(item);
+        const invalidFields = invalidItem || Object.keys(item).some((key) => key !== 'expression' && key !== 'direction');
+        const invalidExpression = invalidFields || typeof item.expression !== 'string' || !item.expression.trim();
+        const unsupportedExpression = invalidExpression || item.expression.length > 1000 || item.expression.includes('\0');
+
+        if (unsupportedExpression || typeof item.direction !== 'string' || ![
             'ASC',
             'DESC',
         ].includes(item.direction.toUpperCase())) {

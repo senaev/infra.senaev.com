@@ -357,7 +357,10 @@ export function findReminderFieldsError(reminder: ReminderFields): string | null
         return '"description" and "source" must be one line';
     }
 
-    if (reminder.source !== null && (reminder.source.trim() !== reminder.source || reminder.source === '' || reminder.source.includes(SOURCE_EMOJI))) {
+    const { source } = reminder;
+    const invalidSpacing = source !== null && (source.trim() !== source || source === '');
+
+    if (invalidSpacing || (source !== null && source.includes(SOURCE_EMOJI))) {
         return `"source" must not be empty, start or end with spaces, or contain ${SOURCE_EMOJI}`;
     }
 

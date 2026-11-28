@@ -93,7 +93,9 @@ export function executionTimeout(value: unknown): number {
         return DEFAULT_TIMEOUT_SECONDS;
     }
 
-    if (typeof value !== 'number' || !Number.isFinite(value) || !Number.isInteger(value) || value < 1) {
+    const isInteger = typeof value === 'number' && Number.isInteger(value);
+
+    if (!isInteger || value < 1) {
         throw invalidArguments('timeoutSeconds must be a positive integer number of seconds');
     }
 
@@ -180,7 +182,9 @@ export class OperationManager {
 
         const { requestId } = args;
 
-        if (requestId !== undefined && (typeof requestId !== 'string' || requestId.length === 0 || requestId.length > 200)) {
+        const invalidRequestId = requestId !== undefined && (typeof requestId !== 'string' || requestId.length === 0);
+
+        if (invalidRequestId || (requestId !== undefined && requestId.length > 200)) {
             throw invalidArguments('requestId must be a nonempty string of at most 200 characters');
         }
 
@@ -303,7 +307,9 @@ export class OperationManager {
 
         const cursor = args.cursor ?? 0;
 
-        if (typeof cursor !== 'number' || !Number.isInteger(cursor) || cursor < 0 || cursor > entry.data.nextCursor) {
+        const isInteger = typeof cursor === 'number' && Number.isInteger(cursor);
+
+        if (!isInteger || cursor < 0 || cursor > entry.data.nextCursor) {
             throw invalidArguments('cursor must be an integer from 0 to nextCursor');
         }
 
@@ -387,7 +393,9 @@ export class OperationManager {
             const serialized = entry.data.resultJson;
             const offset = args.offset ?? 0;
 
-            if (typeof offset !== 'number' || !Number.isInteger(offset) || offset < 0 || offset > serialized.length) {
+            const isIntegerOffset = typeof offset === 'number' && Number.isInteger(offset);
+
+            if (!isIntegerOffset || offset < 0 || offset > serialized.length) {
                 throw invalidArguments('offset must be an integer within the serialized result');
             }
 

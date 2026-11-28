@@ -120,7 +120,9 @@ async function searchNote(path: string, content: string, options: SearchOptions,
 }
 
 function byRelevance(a: FileMatch, b: FileMatch): number {
-    return b.matchedQueries.length - a.matchedQueries.length || Number(b.titleMatched) - Number(a.titleMatched) || b.hitCount - a.hitCount || a.path.localeCompare(b.path);
+    const matchOrder = b.matchedQueries.length - a.matchedQueries.length || Number(b.titleMatched) - Number(a.titleMatched);
+
+    return matchOrder || b.hitCount - a.hitCount || a.path.localeCompare(b.path);
 }
 
 export type SearchCommandInput = {
