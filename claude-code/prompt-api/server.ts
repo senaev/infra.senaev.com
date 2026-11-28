@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import { createHealthServer } from 'senaev-utils/src/utils/http/createHealthServer';
+import { isString } from 'senaev-utils/src/utils/String/isString';
 
 import { logger } from './logger';
 import { PromptRunner } from './runPrompt';
@@ -22,7 +23,7 @@ export function createPromptApiServer(runPrompt: PromptRunner) {
         const body = request.body as { prompt?: unknown } | null;
         const prompt = body?.prompt;
 
-        if (typeof prompt !== 'string' || prompt.trim() === '' || prompt.length > MAX_PROMPT_LENGTH) {
+        if (!isString(prompt) || prompt.trim() === '' || prompt.length > MAX_PROMPT_LENGTH) {
             return reply.code(400).send({
                 status: 'error',
                 message: `The body must be { "prompt": "<text up to ${MAX_PROMPT_LENGTH} characters>" }`,

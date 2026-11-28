@@ -9,6 +9,7 @@ export function tryCatch<T extends Fn, E extends Cb>(
     try {
         return fn() as ReturnType<T>;
     } catch (e) {
+        // eslint-disable-next-line no-restricted-syntax -- This standalone Next.js app does not depend on senaev-utils.
         if (typeof onError === 'function') {
             onError(e);
         }

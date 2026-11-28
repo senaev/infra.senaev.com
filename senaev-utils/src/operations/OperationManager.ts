@@ -1,5 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 
+import { isNumber } from '../types/Number/Number';
+import { isString } from '../utils/String/isString';
 import { CommandError, invalidArguments } from '../commands/CommandError';
 import { scheduleDeadline } from '../utils/process/scheduleDeadline';
 import { createCommandExecution, type CommandExecution } from '../commands/CommandExecution';
@@ -93,7 +95,7 @@ export function executionTimeout(value: unknown): number {
         return DEFAULT_TIMEOUT_SECONDS;
     }
 
-    const isInteger = typeof value === 'number' && Number.isInteger(value);
+    const isInteger = isNumber(value) && Number.isInteger(value);
 
     if (!isInteger || value < 1) {
         throw invalidArguments('timeoutSeconds must be a positive integer number of seconds');
@@ -182,7 +184,7 @@ export class OperationManager {
 
         const { requestId } = args;
 
-        const invalidRequestId = requestId !== undefined && (typeof requestId !== 'string' || requestId.length === 0);
+        const invalidRequestId = requestId !== undefined && (!isString(requestId) || requestId.length === 0);
 
         if (invalidRequestId || (requestId !== undefined && requestId.length > 200)) {
             throw invalidArguments('requestId must be a nonempty string of at most 200 characters');
@@ -232,7 +234,7 @@ export class OperationManager {
                 logChars: 0,
                 logHead: 0,
                 truncated: false,
-                ...typeof requestId === 'string' && { requestId },
+                ...isString(requestId) && { requestId },
             };
             let finish: () => void = () => undefined;
             const done = new Promise<void>((resolve) => {
@@ -307,7 +309,7 @@ export class OperationManager {
 
         const cursor = args.cursor ?? 0;
 
-        const isInteger = typeof cursor === 'number' && Number.isInteger(cursor);
+        const isInteger = isNumber(cursor) && Number.isInteger(cursor);
 
         if (!isInteger || cursor < 0 || cursor > entry.data.nextCursor) {
             throw invalidArguments('cursor must be an integer from 0 to nextCursor');
@@ -393,7 +395,7 @@ export class OperationManager {
             const serialized = entry.data.resultJson;
             const offset = args.offset ?? 0;
 
-            const isIntegerOffset = typeof offset === 'number' && Number.isInteger(offset);
+            const isIntegerOffset = isNumber(offset) && Number.isInteger(offset);
 
             if (!isIntegerOffset || offset < 0 || offset > serialized.length) {
                 throw invalidArguments('offset must be an integer within the serialized result');

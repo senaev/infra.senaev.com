@@ -1,3 +1,5 @@
+import { isString } from 'senaev-utils/src/utils/String/isString';
+
 import type { LlmProvider } from './llmProviders';
 
 export type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
@@ -60,7 +62,7 @@ export async function requestChatCompletion({
         const data = (await response.json()) as ChatCompletionResponse;
         const content = data.choices?.[0]?.message?.content;
 
-        if (typeof content !== 'string') {
+        if (!isString(content)) {
             throw new Error(`${provider.name} response did not contain message content`);
         }
 

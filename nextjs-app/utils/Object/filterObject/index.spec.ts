@@ -19,6 +19,7 @@ describe('filterObject', () => {
         {
             name: 'should remain numbers',
             filter(value: unknown) {
+                // eslint-disable-next-line no-restricted-syntax -- This standalone Next.js app does not depend on senaev-utils.
                 return typeof value === 'number';
             },
             result: {
