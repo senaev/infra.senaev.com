@@ -1,4 +1,4 @@
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 
 import { includeIgnoreFile } from '@eslint/compat';
 import pluginJs from '@eslint/js';
@@ -17,7 +17,7 @@ const reactHooksRecommended = pluginReactHooks.configs.flat.recommended;
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
-    includeIgnoreFile(fileURLToPath(new URL('.gitignore', import.meta.url))),
+    includeIgnoreFile(join(import.meta.dirname, '.gitignore')),
     {
         ignores: [
             '**/dist/**',
