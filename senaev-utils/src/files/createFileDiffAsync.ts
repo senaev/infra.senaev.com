@@ -14,10 +14,10 @@ export async function createFileDiffAsync(path: string, before: string, after: s
     // These bounded cases only format equal/inserted/deleted lines: there is no
     // competing edit search to isolate. Avoid worker startup for small creates.
     // Keep arbitrary edits and large inputs cancellable in a disposable worker.
-    const isTrivial = before === after || before === '' || after === '';
-
-    if (before.length + after.length <= 16_384 && isTrivial) {
-        return createFileDiff(path, before, after);
+    if (before.length + after.length <= 16_384) {
+        if (before === after || before === '' || after === '') {
+            return createFileDiff(path, before, after);
+        }
     }
 
     const { signal } = execution;
