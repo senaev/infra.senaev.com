@@ -103,8 +103,9 @@ approval or the command:
 4. Implement persistent request/approval state in cluster-helper, with the asynchronous
    `submit` / `status` API (see Asynchronous API). Only the authorized
    Telegram user can approve; rejection returns `USER_REJECTED`, expiry `APPROVAL_EXPIRED`.
-   Each approval gets a new random execution ID, and cluster-helper sends (or retries) its
-   `PUT` to node-shell only within 1 hour of the approval. node-shell forgets an ID after
+   The `requestId` is also the execution ID: a request runs at most once, so it needs no other
+   ID. It uses the execution ID format of node-shell (`[A-Za-z0-9-]`, at most 64 characters).
+   cluster-helper sends (or retries) its `PUT` to node-shell only within 1 hour of the approval. node-shell forgets an ID after
    24 hours, so a later `PUT` with the same ID would run the command again; one whose outcome
    is unknown after that hour is reported as unknown, never resent.
 5. **Done in [`node-shell/`](../../node-shell/) (not deployed yet).** Implement the executor: authenticated API, `nsenter` into the hetzner host, then SSH; bounded
@@ -149,6 +150,8 @@ starts. Not deployed or verified on the cluster yet. Still to do: the Telegram a
 
 - Run approved commands as root on all Kubernetes nodes without exceptions.
 - Asynchronous API: `submit` returns `requestId` at once; agents poll `status` (2026-11-20).
+- The `requestId` is the execution ID of node-shell. A request never runs again, and it is
+  fine that the ID exists before the approval (2026-11-28).
 - One privileged executor on hetzner (`hostPID: true`, `nsenter` into the host) reaches the
   other nodes over SSH with the existing key of hetzner's root; no DaemonSet (2026-11-20).
 - Reuse the request expiry/TTL field; cap approval validity at 10 minutes from request

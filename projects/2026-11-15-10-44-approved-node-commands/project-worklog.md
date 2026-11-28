@@ -1,3 +1,11 @@
+## 2026-11-28 09:00 UTC — The request ID is the execution ID
+
+The user decided that cluster-helper uses the `requestId` of a request as its execution ID in
+node-shell. A request must never run again, so one ID per request is enough, and node-shell's
+"once per ID" rule then also guarantees it. The ID is known to the agent before the approval;
+the user confirmed that this is fine: only cluster-helper can call node-shell, and the ID is no
+secret. Plan step 4 and the confirmed decisions in the README now say so.
+
 ## 2026-11-27 22:30 UTC — Records in memory, saved in the background
 
 The user asked to move the write logic out of the execution manager into its own entity, with
