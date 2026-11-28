@@ -22,7 +22,7 @@ describe('isObject', () => {
     });
 });
 
-// `isObjectOrArray` itself is covered by ./isObjectOrArray.spec.ts.
+// `isObjectOrArray` itself is covered by ./isObjectOrArray.test.ts.
 describe('assertObject', () => {
     const testCases = [
         {
