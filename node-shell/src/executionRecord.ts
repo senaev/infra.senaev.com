@@ -22,7 +22,7 @@ export type ExecutionRecord = ExecutionOutput & {
     requestHash: string;
     status: ExecutionStatus;
     startedAt: string;
-    /** The latest time the command can still run on its host. */
+    /** About the latest time the command can still run on its host: later by the time its save took. */
     endsBy: string;
     finishedAt?: string;
     stoppedAt?: string;

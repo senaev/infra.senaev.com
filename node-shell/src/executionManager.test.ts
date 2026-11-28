@@ -336,11 +336,11 @@ describe('createExecutionManager', () => {
         });
     });
 
-    it('gives the command only what is left of its timeout after a slow save', async () => {
+    it('gives the command its whole timeout, also after a slow save', async () => {
         const create = store.create.bind(store);
 
         vi.spyOn(store, 'create').mockImplementation((record) => {
-            vi.setSystemTime(NOW.getTime() + 10_000);
+            vi.setSystemTime(NOW.getTime() + 40_000);
 
             return create(record);
         });
@@ -349,27 +349,9 @@ describe('createExecutionManager', () => {
         await manager.start(request);
         await settle();
 
-        expect(run.mock.lastCall?.[0].argv).toContain('--property=RuntimeMaxSec=20');
-        expect(run.mock.lastCall?.[0].deadlineMs).toBe(new Date(store.records.get('e1')?.endsBy ?? 0).getTime() - NOW.getTime() - 10_000);
-    });
-
-    it('fails without running a command whose save took longer than its timeout', async () => {
-        const create = store.create.bind(store);
-
-        vi.spyOn(store, 'create').mockImplementation((record) => {
-            vi.setSystemTime(NOW.getTime() + 30_000);
-
-            return create(record);
-        });
-
-        await manager.start(request);
-        await settle();
-
-        expect(run).not.toHaveBeenCalled();
-        expect(store.records.get('e1')).toMatchObject({
-            status: 'failed',
-            error: 'The execution was saved too late to start the command',
-        });
+        expect(run.mock.lastCall?.[0].argv).toContain('--property=RuntimeMaxSec=30');
+        expect(run.mock.lastCall?.[0].deadlineMs).toBe(30_000 + 70_000);
+        expect(store.records.get('e1')?.status).toBe('completed');
     });
 
     it('saves a command that cannot start as failed', async () => {

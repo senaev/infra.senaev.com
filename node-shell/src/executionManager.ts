@@ -112,22 +112,11 @@ export function createExecutionManager({
             host: record.host,
         };
         let finished: ExecutionRecord;
-        const endsByMs = new Date(record.endsBy).getTime();
-        // The record is saved before the command starts: the command gets only what is left of its
-        // timeout, so it always ends by `endsBy`, however long the save took.
-        const timeoutSeconds = Math.ceil((endsByMs - DEADLINE_GRACE_MS - Date.now()) / 1000);
 
         try {
-            if (timeoutSeconds < 1) {
-                throw new Error('The execution was saved too late to start the command');
-            }
-
             const { deadlineExceeded, ...output } = await runCommand({
-                argv: buildNodeCommand(target, {
-                    ...nodeCommand,
-                    timeoutSeconds,
-                }),
-                deadlineMs: endsByMs - Date.now(),
+                argv: buildNodeCommand(target, nodeCommand),
+                deadlineMs: nodeCommand.timeoutSeconds * 1000 + DEADLINE_GRACE_MS,
                 maxOutputBytes: MAX_OUTPUT_BYTES,
             });
             const stop = stops.get(record.executionId);

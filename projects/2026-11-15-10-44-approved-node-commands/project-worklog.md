@@ -1,3 +1,11 @@
+## 2026-11-28 10:30 UTC — The command gets its whole timeout
+
+Without the holds, nothing needs `endsBy` to be exact, so the command no longer gets only what
+is left of its timeout after the record is saved. It always gets `timeoutSeconds`, and the
+error "The execution was saved too late to start the command" is gone. `endsBy` is computed
+before the save, so it is early by the save time; it is used only in the note "it may still
+run on the host until".
+
 ## 2026-11-28 10:00 UTC — No tracking of commands whose end node-shell did not see
 
 The user decided to drop the corner cases of commands whose end node-shell does not see: ssh
