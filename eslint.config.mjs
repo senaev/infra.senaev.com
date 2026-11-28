@@ -1,3 +1,6 @@
+import { join } from 'node:path';
+
+import { includeIgnoreFile } from '@eslint/compat';
 import pluginJs from '@eslint/js';
 import stylistic from '@stylistic/eslint-plugin';
 import pluginImportX from 'eslint-plugin-import-x';
@@ -9,23 +12,19 @@ import tseslint from 'typescript-eslint';
 
 const INDENT = 4;
 
-const REACT_FILES = [
-    'nextjs-app/**/*.{ts,tsx,jsx}',
-    'senaev-utils/**/*.{ts,tsx,jsx}',
-];
+const reactRecommended = pluginReact.configs.flat.recommended;
+const reactHooksRecommended = pluginReactHooks.configs.flat.recommended;
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
+    includeIgnoreFile(join(import.meta.dirname, '.gitignore')),
     {
         ignores: [
             '**/dist/**',
-            'nextjs-app/.next/**',
-            'nextjs-app/next-env.d.ts',
             // Vendored browser scripts and static demos are served as-is.
             'nextjs-app/public/**',
             // The Obsidian plugin uses its own ESLint rules in the release workflow.
             'obsidian-personal-tools/**',
-            '**/node_modules/**',
         ],
     },
     { files: ['**/*.{js,mjs,cjs,ts,jsx,tsx}'] },
@@ -57,21 +56,20 @@ export default [
         },
     },
     {
-        files: REACT_FILES,
-        ...pluginReact.configs.flat.recommended,
+        files: ['**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}'],
+        languageOptions: reactRecommended.languageOptions,
+        plugins: {
+            ...reactRecommended.plugins,
+            ...reactHooksRecommended.plugins,
+        },
         settings: {
             react: {
                 version: 'detect',
             },
         },
-    },
-    {
-        files: REACT_FILES,
-        ...pluginReactHooks.configs.flat.recommended,
-    },
-    {
-        files: REACT_FILES,
         rules: {
+            ...reactRecommended.rules,
+            ...reactHooksRecommended.rules,
             'react/jsx-boolean-value': [
                 'error',
                 'always',
