@@ -22,6 +22,12 @@
   or an import that is only exported again. Importers must import from the file that defines the
   symbol. Barrel `index` files that only re-export are the same.
 
+## Early exits
+
+- Prefer early exits when they simplify control flow, such as using a guard clause to reduce
+  nesting. When a change misses such an opportunity, leave an inline review comment suggesting a
+  behavior-preserving early exit.
+
 ## Test arguments
 
 - Flag optional parameters.
