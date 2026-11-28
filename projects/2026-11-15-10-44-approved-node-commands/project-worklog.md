@@ -5,9 +5,9 @@ in memory only, and a command that still runs on its host goes on by itself. Rem
 store (`executionStore.ts`), the write-behind cache (`executionRecords.ts`), the marking of
 records left `running` as `interrupted` (and the `interrupted` status), the `/state` hostPath
 volume and the `nodeShell.volumePath` value. The manager drops records 24 hours after their end.
-Because of this, a `PUT` after a restart runs its command again, so preventing a second run is
-cluster-helper's job: it sends the `PUT` of a request once and never resends one without an
-answer (README, step 4). `Recreate` stays: the one-command limit and the IDs are per process.
+A `PUT` after a restart would run its command again; the user decided that cluster-helper
+gets no logic for repeated requests either: one approval sends one `PUT`, and the single
+approval is what keeps a command from running twice. `Recreate` stays: the one-command limit and the IDs are per process.
 
 ## 2026-11-28 11:00 UTC — No ssh connect timeout
 

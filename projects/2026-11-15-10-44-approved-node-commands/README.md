@@ -105,16 +105,14 @@ approval or the command:
    Telegram user can approve; rejection returns `USER_REJECTED`, expiry `APPROVAL_EXPIRED`.
    The `requestId` is also the execution ID: a request runs at most once, so it needs no other
    ID. It uses the execution ID format of node-shell (`[A-Za-z0-9-]`, at most 64 characters).
-   node-shell keeps its execution IDs only in memory: after a restart, or 24 hours after the
-   end, it does not know an ID, and a `PUT` with it runs the command again. So cluster-helper
-   sends the `PUT` of a request once, and never again when it got no answer: that outcome is
-   reported as unknown, never resent. It saves that it sent the `PUT` before sending it.
+   One approval sends one `PUT`. cluster-helper has no logic for repeated requests: a command
+   runs once because the user approves it once. A `PUT` without an answer is reported as
+   failed, not resent.
 5. **Done in [`node-shell/`](../../node-shell/) (not deployed yet).** Implement the executor: authenticated API, `nsenter` into the hetzner host, then SSH; bounded
    output, runtime bounded on the node by the systemd unit (see Context);
    returns stdout, stderr and exit code.
 6. ~~Persist execution IDs in node-shell~~: dropped on 2026-11-28. node-shell keeps them in
-   memory; cluster-helper prevents a second run (step 4). Unknown execution outcomes must not
-   trigger automatic retries.
+   memory; a command runs once because the user approves it once. No automatic retries.
 7. Add the workspace client/skill (submit, then poll `status` with `wait`) and narrowly
    scoped network access to cluster-helper.
 
@@ -164,8 +162,9 @@ forgets them, and a command that still runs goes on by itself on its host. Not d
 - Use existing cluster logging and its retention for operational/audit history.
   Do not build a separate history database, history UI or long-term output archive.
 - node-shell keeps no state across restarts (2026-11-28): after a restart it forgets every
-  execution, and a command that still runs goes on by itself on its host. cluster-helper
-  alone keeps what prevents a second run.
+  execution, and a command that still runs goes on by itself on its host. Neither side has
+  logic for repeated requests: the user approves a command once, and that approval is what
+  keeps it from running twice.
 - Persist only operational state required for pending approvals, execution status,
   result delivery and duplicate prevention across restarts. This is execution safety
   state, not a separate historical record. Retain deduplication state through the
