@@ -1,3 +1,5 @@
+import { isString } from 'senaev-utils/src/utils/String/isString';
+
 import {
     addDays, type CalendarDay, formatIsoCalendarDay,
 } from './calendarDay';
@@ -40,7 +42,7 @@ function parseFrontmatterDate(value: unknown): CalendarDay | null {
         };
     }
 
-    if (typeof value === 'string') {
+    if (isString(value)) {
         const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
 
         if (!match) {
@@ -86,7 +88,7 @@ function matchMilestone(
 
     const rule = type.ruleProperty === undefined ? undefined : note.frontmatter[type.ruleProperty];
 
-    if (typeof rule !== 'string') {
+    if (!isString(rule)) {
         return null;
     }
 

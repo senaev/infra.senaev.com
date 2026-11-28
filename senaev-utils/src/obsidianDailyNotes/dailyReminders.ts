@@ -1,3 +1,5 @@
+import { isString } from '../utils/String/isString';
+import { isNumber } from '../types/Number/Number';
 import { isoDayToUtcDate } from '../obsidianReminders/isoDay';
 
 import { ruleOccursOn } from './ruleOccursOn';
@@ -22,7 +24,7 @@ export function hasReminder(frontmatter: ReminderNote['frontmatter']): boolean {
         'morning',
         'day',
         'evening',
-    ] as const).some((section) => typeof frontmatter[`${section}-reminder`] === 'string');
+    ] as const).some((section) => isString(frontmatter[`${section}-reminder`]));
 }
 
 const MACRO = /\{\{([^{}]*)\}\}/gu;
@@ -89,7 +91,7 @@ export function renderReminders(day: string, section: Section, source: ReminderS
         const label = frontmatter[`${section}-reminder`];
         const target = path.replace(/\.md$/i, '');
 
-        const invalidLabel = typeof label !== 'string' || !label.trim() || /[[\]|\r\n]/u.test(label);
+        const invalidLabel = !isString(label) || !label.trim() || /[[\]|\r\n]/u.test(label);
 
         if (invalidLabel || /[[\]|#\r\n]/u.test(target)) {
             continue;
@@ -99,7 +101,7 @@ export function renderReminders(day: string, section: Section, source: ReminderS
 
         if (schedule !== undefined && schedule !== null) {
             try {
-                if (typeof schedule !== 'string') {
+                if (!isString(schedule)) {
                     throw new Error('Expected a recurrence rule');
                 }
 
@@ -117,7 +119,7 @@ export function renderReminders(day: string, section: Section, source: ReminderS
         let heading: string | undefined;
 
         if (headingTemplate !== undefined && headingTemplate !== null) {
-            heading = typeof headingTemplate === 'string' ? expandReminderHeading(headingTemplate, day) : undefined;
+            heading = isString(headingTemplate) ? expandReminderHeading(headingTemplate, day) : undefined;
 
             if (heading === undefined) {
                 source.onInvalidReminder?.(path, headingProperty);
@@ -131,7 +133,7 @@ export function renderReminders(day: string, section: Section, source: ReminderS
             target,
             heading,
             label: label.trim(),
-            order: typeof order === 'number' && Number.isFinite(order) ? order : Infinity,
+            order: isNumber(order) && Number.isFinite(order) ? order : Infinity,
         });
     }
 

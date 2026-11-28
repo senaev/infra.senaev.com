@@ -4,6 +4,7 @@ import type {
     FastifyPluginCallback, FastifyReply, FastifyRequest,
 } from 'fastify';
 import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { isString } from 'senaev-utils/src/utils/String/isString';
 
 import type { AccessTokenCheck } from '../oauth/authorizationServer';
 import { sendBearerChallenge } from '../oauth/sendBearerChallenge';
@@ -85,7 +86,7 @@ function forwardedRequestHeaders(request: FastifyRequest): Record<string, string
     for (const name of FORWARDED_REQUEST_HEADERS) {
         const value = request.headers[name];
 
-        if (typeof value === 'string') {
+        if (isString(value)) {
             headers[name] = value;
         }
     }

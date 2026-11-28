@@ -1,5 +1,9 @@
 import { spawn } from 'node:child_process';
 
+import { isBoolean } from 'senaev-utils/src/types/Boolean';
+import { isString } from 'senaev-utils/src/utils/String/isString';
+import { isNumber } from 'senaev-utils/src/types/Number/Number';
+
 export type PromptResult = {
     /** The last message of Claude: the answer. */
     result: string;
@@ -23,17 +27,17 @@ export function parsePromptResult(stdout: string): PromptResult {
         result, is_error: isError, duration_ms: durationMs, num_turns: numTurns, total_cost_usd: costUsd,
     } = parsed as Record<string, unknown>;
 
-    if (typeof isError !== 'boolean') {
+    if (!isBoolean(isError)) {
         throw new Error('claude -p did not print the is_error field');
     }
 
     return {
         // A run that fails before the answer, for example on the turn limit, has no result.
-        result: typeof result === 'string' ? result : '',
+        result: isString(result) ? result : '',
         isError,
-        durationMs: typeof durationMs === 'number' ? durationMs : 0,
-        numTurns: typeof numTurns === 'number' ? numTurns : 0,
-        costUsd: typeof costUsd === 'number' ? costUsd : null,
+        durationMs: isNumber(durationMs) ? durationMs : 0,
+        numTurns: isNumber(numTurns) ? numTurns : 0,
+        costUsd: isNumber(costUsd) ? costUsd : null,
     };
 }
 

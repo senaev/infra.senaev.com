@@ -1,6 +1,7 @@
 import { stringifyUnknownError } from 'senaev-utils/src/utils/Error/stringifyUnknownError/stringifyUnknownError';
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
 import { escapeTelegramMarkdown } from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
+import { isString } from 'senaev-utils/src/utils/String/isString';
 
 import { TG_TOKEN_SENAEV_COM_BOT, OBSIDIAN_TASKS_CHAT_ID } from '../env';
 import { getRandomValueFromArray } from '../getRandomValueFromArray';
@@ -31,7 +32,7 @@ export function handleAlisaRequest(body: unknown, obsidianSyncApi: TrickyDadObsi
 
         const { command } = request as Record<string, unknown>;
 
-        if (typeof command !== 'string') {
+        if (!isString(command)) {
             throw new Error('Missing command field in request');
         }
 

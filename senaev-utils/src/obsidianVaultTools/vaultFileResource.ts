@@ -1,3 +1,4 @@
+import { isString } from '../utils/String/isString';
 import { invalidArguments } from '../commands/CommandError';
 
 /** Resource URIs identify a vault file version; authorization still comes from MCP OAuth. */
@@ -7,7 +8,7 @@ export function vaultFileResourceUri(path: string, hash: string): string {
 
 /** Accept only our exact URI format, never arbitrary HTTP URLs or filesystem locations. */
 export function parseVaultFileResourceUri(value: unknown): { path: string; hash: string } {
-    if (typeof value !== 'string') {
+    if (!isString(value)) {
         throw invalidArguments('Expected a vault file resource URI');
     }
 

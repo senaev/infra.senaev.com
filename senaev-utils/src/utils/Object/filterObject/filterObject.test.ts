@@ -2,6 +2,8 @@ import {
     describe, expect, it,
 } from 'vitest';
 
+import { isNumber } from '../../../types/Number/Number';
+
 import { filterObject } from './filterObject';
 
 describe('filterObject', () => {
@@ -17,7 +19,7 @@ describe('filterObject', () => {
         {
             name: 'should remain numbers',
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            filter: (value: any) => typeof value === 'number',
+            filter: (value: any) => isNumber(value),
             result: {
                 first: 1,
                 second: 2,

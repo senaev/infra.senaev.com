@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 
+import { isString } from '../../String/isString';
 import { sha256 } from '../../crypto/sha256/sha256';
 
 const BEARER_HEADER = /^Bearer (\S+)$/i;
@@ -11,7 +12,7 @@ export function createBearerAuthorizationHeader(token: string): string {
 
 /** The token of a `Bearer <token>` header, or `undefined` for anything else. */
 export function parseBearerToken(header: unknown): string | undefined {
-    return typeof header === 'string' ? BEARER_HEADER.exec(header)?.[1] : undefined;
+    return isString(header) ? BEARER_HEADER.exec(header)?.[1] : undefined;
 }
 
 /**

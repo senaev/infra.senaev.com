@@ -1,6 +1,9 @@
 import { open } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { isString } from 'senaev-utils/src/utils/String/isString';
+import { isNumber } from 'senaev-utils/src/types/Number/Number';
+
 import type { CommandRunner } from './claude';
 import {
     type LoginProcess, type LoginResult, wrapChildProcess,
@@ -182,11 +185,11 @@ export function parseCodexPairing(stdout: string): CodexPairing {
 
     const { manualPairingCode, expiresAt } = parsed as Record<string, unknown>;
 
-    if (typeof manualPairingCode !== 'string' || manualPairingCode === '') {
+    if (!isString(manualPairingCode) || manualPairingCode === '') {
         throw new Error('codex remote-control pair printed no manual pairing code');
     }
 
-    if (typeof expiresAt !== 'number') {
+    if (!isNumber(expiresAt)) {
         throw new Error('codex remote-control pair printed no expiry');
     }
 

@@ -2,6 +2,8 @@ import {
     describe, expect, it,
 } from 'vitest';
 
+import { isNumber } from '../../../types/Number/Number';
+
 import { separateArray } from './separateArray';
 
 describe('separateArray', () => {
@@ -27,7 +29,7 @@ describe('separateArray', () => {
             '7',
             8,
             '9',
-        ], (val) => typeof val === 'number');
+        ], (val) => isNumber(val));
 
         expect(numbers).to.eql([
             0,

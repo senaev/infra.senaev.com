@@ -5,6 +5,8 @@ import { createTelegramApiBaseUrl } from 'senaev-utils/src/utils/TelegramApi/cre
 import { escapeTelegramMarkdown } from 'senaev-utils/src/utils/TelegramApi/formatTelegramMarkdown/formatTelegramMarkdown';
 import { sendTelegramMessage } from 'senaev-utils/src/utils/TelegramApi/sendTelegramMessage';
 import { TelegramUpdate, TelegramUser } from 'senaev-utils/src/utils/TelegramApi/types';
+import { isString } from 'senaev-utils/src/utils/String/isString';
+import { isNumber } from 'senaev-utils/src/types/Number/Number';
 
 import {
     describeMcpExchange, handleMcpMessage, McpServerOptions,
@@ -277,7 +279,7 @@ export async function createPublicServer({
         if (isResourceRead && transfer === null) {
             return reply.code(429).header('Retry-After', '1').send({
                 jsonrpc: '2.0',
-                id: typeof message.id === 'string' || typeof message.id === 'number' ? message.id : null,
+                id: isString(message.id) || isNumber(message.id) ? message.id : null,
                 error: {
                     code: -32000,
                     message: 'Another file transfer is active; retry shortly',

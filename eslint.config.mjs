@@ -576,6 +576,13 @@ export default [
                     message: 'Use at most two && or || operators per expression. Split this into smaller conditions.',
                 },
                 {
+                    selector: [
+                        'BinaryExpression[operator=/^[!=]==?$/][left.type="UnaryExpression"][left.operator="typeof"]:matches([right.value=/^(string|number|boolean|function)$/], [right.type="TemplateLiteral"][right.expressions.length=0][right.quasis.0.value.cooked=/^(string|number|boolean|function)$/])',
+                        'BinaryExpression[operator=/^[!=]==?$/][right.type="UnaryExpression"][right.operator="typeof"]:matches([left.value=/^(string|number|boolean|function)$/], [left.type="TemplateLiteral"][left.expressions.length=0][left.quasis.0.value.cooked=/^(string|number|boolean|function)$/])',
+                    ].join(', '),
+                    message: 'Use the corresponding senaev-utils guard (isString, isNumber, isBoolean, or isFunction).',
+                },
+                {
                     selector: 'CallExpression[callee.name=onBeforeMount]',
                     message:
             'Affecting template in onBeforeMount can lead to rehydration mismatches',

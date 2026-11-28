@@ -21,6 +21,7 @@ function query(input) {
     });
 
     try {
+        // eslint-disable-next-line no-restricted-syntax -- This standalone CommonJS worker runs without application modules.
         if (!db.limits || typeof db.setAuthorizer !== 'function') {
             fail('Node 24.22 or newer is required');
         }
@@ -262,6 +263,7 @@ function query(input) {
                     fail('BLOB results are unsupported; use hex() or CAST AS TEXT');
                 }
 
+                // eslint-disable-next-line no-restricted-syntax -- This standalone CommonJS worker runs without application modules.
                 if (typeof value === 'number' && !Number.isFinite(value)) {
                     fail('Non-finite results are unsupported');
                 }
@@ -529,6 +531,7 @@ function exportMutation(db, table, sources, {
             fail('Edited CSV exceeds 50000 records');
         }
 
+        // eslint-disable-next-line no-restricted-syntax -- This standalone CommonJS worker runs without application modules.
         if (row.some((cell) => typeof cell !== 'string')) {
             fail('Edited CSV cells must be text; NULL and BLOB values are unsupported');
         }
@@ -724,9 +727,11 @@ function parseSort(text) {
     return params.sort.map((item) => {
         const invalidItem = !item || typeof item !== 'object' || Array.isArray(item);
         const invalidFields = invalidItem || Object.keys(item).some((key) => key !== 'expression' && key !== 'direction');
+        // eslint-disable-next-line no-restricted-syntax -- This standalone CommonJS worker runs without application modules.
         const invalidExpression = invalidFields || typeof item.expression !== 'string' || !item.expression.trim();
         const unsupportedExpression = invalidExpression || item.expression.length > 1000 || item.expression.includes('\0');
 
+        // eslint-disable-next-line no-restricted-syntax -- This standalone CommonJS worker runs without application modules.
         if (unsupportedExpression || typeof item.direction !== 'string' || ![
             'ASC',
             'DESC',
