@@ -1,17 +1,50 @@
 import type { Nodes } from 'mdast';
 import { parseMarkdown } from 'senaev-utils/src/obsidianMarkdown/parseMarkdown';
 
+function addSoftBreakLines(lines: Set<number>, startLine: number, endLine: number): void {
+    for (let line = startLine; line < endLine; line++) {
+        lines.add(line);
+    }
+}
+
 function collectSoftBreakLines(node: Nodes, lines: Set<number>, inParagraph: boolean): void {
-    if (inParagraph && node.type === 'text' && node.position !== undefined) {
-        for (let { line } = node.position.start; line < node.position.end.line; line++) {
-            lines.add(line);
-        }
+    const { position } = node;
+
+    if (position === undefined) {
+        return;
     }
 
-    if ('children' in node) {
-        for (const child of node.children) {
-            collectSoftBreakLines(child, lines, inParagraph || node.type === 'paragraph');
+    if (inParagraph && node.type === 'text') {
+        addSoftBreakLines(lines, position.start.line, position.end.line);
+    }
+
+    if (!('children' in node)) {
+        return;
+    }
+
+    const inParagraphContent = inParagraph || node.type === 'paragraph';
+    let previousEndLine = position.start.line;
+    let hasUnpositionedText = false;
+
+    // GFM autolinks can split a text node into children without source positions.
+    // Their source range runs between the nearest positioned siblings or parent bounds.
+    for (const child of node.children) {
+        if (child.position === undefined) {
+            hasUnpositionedText = inParagraphContent;
+            continue;
         }
+
+        if (hasUnpositionedText) {
+            addSoftBreakLines(lines, previousEndLine, child.position.start.line);
+        }
+
+        collectSoftBreakLines(child, lines, inParagraphContent);
+        previousEndLine = child.position.end.line;
+        hasUnpositionedText = false;
+    }
+
+    if (hasUnpositionedText) {
+        addSoftBreakLines(lines, previousEndLine, position.end.line);
     }
 }
 

@@ -36,6 +36,32 @@ describe('renderNoteForTelegram', () => {
         ].join('\n'));
     });
 
+    it('preserves paragraph breaks around escaped autolinks', () => {
+        const note = [
+            '# Song',
+            '',
+            'First',
+            'www&#46;example.com',
+            '`code on',
+            'two lines`',
+            'Existing\\',
+            'www&#46;example.com',
+            'Last',
+        ].join('\n');
+
+        expect(renderNoteForTelegram(note).markdown).toBe([
+            '# 🪨 Song',
+            '',
+            'First  ',
+            'www&#46;example.com  ',
+            '`code on',
+            'two lines`  ',
+            'Existing\\',
+            'www&#46;example.com  ',
+            'Last',
+        ].join('\n'));
+    });
+
     it('keeps existing hard breaks and block structure around paragraph breaks', () => {
         const note = [
             '# Song',
