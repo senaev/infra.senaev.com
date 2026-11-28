@@ -11,7 +11,7 @@ import type { ToolReply } from './toolFamilies';
 export async function readToolReply(response: Response, serverName: string): Promise<ToolReply> {
     const body: unknown = await response.json();
 
-    if (!isObject(body) || Array.isArray(body)) {
+    if (!isObject(body)) {
         throw new Error(`${serverName} answered HTTP ${response.status} with a body that is not a JSON object`);
     }
 

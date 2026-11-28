@@ -93,7 +93,7 @@ function error(message: string): ToolReply {
 }
 
 function parseSendMessageArguments(args: unknown, channels: readonly TelegramMcpChannel[]): { channel: TelegramMcpChannel; text: string } | string {
-    if (!isObject(args) || Array.isArray(args)) {
+    if (!isObject(args)) {
         return 'The arguments must be an object with "channel" and "text"';
     }
 

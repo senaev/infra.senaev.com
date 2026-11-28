@@ -33,7 +33,7 @@ function planAddReminders(reminders: ReminderWithDate[]): PlannedTrickyDadAction
 }
 
 function parseReminder(reminder: unknown): ReminderWithDate {
-    if (!isObject(reminder) || Array.isArray(reminder)) {
+    if (!isObject(reminder)) {
         throw new Error(`${TYPE}: every reminder must be an object, got [${JSON.stringify(reminder)}]`);
     }
 

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
 import { isString } from 'senaev-utils/src/utils/String/isString';
 
 import { prependRecommendationsRecord } from '../jobSearch/prependRecommendationsRecord';
@@ -20,7 +20,7 @@ function isValidTime(time: unknown): time is string {
 export function registerJobSearchRoutes(server: Pick<FastifyInstance, 'post'>): void {
     // cluster-helper's /job-search/round-report: the answer of a job search round, as posted to Telegram.
     server.post<{ Body: unknown }>('/job-search/recommendations', async (request, reply) => {
-        const body = isObject(request.body) ? request.body : {};
+        const body = isObjectOrArray(request.body) ? request.body : {};
         const {
             date, time, text,
         } = body;

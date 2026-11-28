@@ -1,4 +1,4 @@
-import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
 import { isString } from 'senaev-utils/src/utils/String/isString';
 import { isNumber } from 'senaev-utils/src/types/Number/Number';
 
@@ -33,7 +33,7 @@ function requireNonEmptyString(source: Record<string, unknown>, key: string): st
 }
 
 function parseMilestoneType(value: unknown, index: number): MilestoneType {
-    if (!isObject(value)) {
+    if (!isObjectOrArray(value)) {
         throw new Error(`Milestones config: types[${index}] must be an object`);
     }
 
@@ -50,7 +50,7 @@ function parseMilestoneType(value: unknown, index: number): MilestoneType {
 }
 
 export function parseMilestonesConfig(value: unknown): MilestonesConfig {
-    if (!isObject(value)) {
+    if (!isObjectOrArray(value)) {
         throw new Error('Milestones config must be a JSON object');
     }
 

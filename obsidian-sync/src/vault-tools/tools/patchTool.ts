@@ -1,7 +1,7 @@
 import { createCommandAdapter } from 'senaev-utils/src/toolServer/createCommandAdapter';
 import { PATCH_OPERATION_FIELDS } from 'senaev-utils/src/obsidianVaultTools/vaultCommands';
 import { PATCH_LIMITS } from 'senaev-utils/src/obsidianVaultTools/vaultToolLimits';
-import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { isObject, isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
 import { readExpectedHash } from 'senaev-utils/src/toolServer/expectedHashArguments';
 import {
     optionalString, readToolArguments, requiredNonEmptyString, requiredString,
@@ -23,7 +23,7 @@ function readOperations(value: unknown): PatchOperation[] {
     }
 
     return value.map((item: unknown, index): PatchOperation => {
-        const type = isObject(item) ? item.type : undefined;
+        const type = isObjectOrArray(item) ? item.type : undefined;
 
         if (!isString(type) || !Object.hasOwn(PATCH_OPERATION_FIELDS, type)) {
             throw invalidArguments(`"operations[${index}].type" must be one of: ${Object.keys(PATCH_OPERATION_FIELDS).join(', ')}`);
@@ -54,7 +54,7 @@ function readOperations(value: unknown): PatchOperation[] {
         case 'setFrontmatter': {
             const { properties } = args;
 
-            if (!isObject(properties) || Array.isArray(properties) || Object.keys(properties).length === 0) {
+            if (!isObject(properties) || Object.keys(properties).length === 0) {
                 throw invalidArguments('"properties" must be a non-empty JSON object; use null as a value to delete a property');
             }
 

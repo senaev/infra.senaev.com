@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { isPositiveInteger } from 'senaev-utils/src/types/Number/PositiveInteger';
-import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
 import { isString } from 'senaev-utils/src/utils/String/isString';
 import { isNonEmptyString } from 'senaev-utils/src/utils/String/NonEmptyString/NonEmptyString';
 import { registerMtlsCallerAllowlist } from 'senaev-utils/src/utils/mtls/registerMtlsCallerAllowlist';
@@ -20,7 +20,7 @@ type ExecutionRequestBody = {
 };
 
 function isExecutionRequestBody(value: unknown): value is ExecutionRequestBody {
-    if (!isObject(value)) {
+    if (!isObjectOrArray(value)) {
         return false;
     }
 

@@ -4,7 +4,7 @@ import type { CookieSerializeOptions } from '@fastify/cookie';
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 import { httpRateLimit } from 'senaev-utils/src/utils/http/httpRateLimit';
 import { registerHttpRequestSupport } from 'senaev-utils/src/utils/http/registerHttpRequestSupport';
-import { isObject } from 'senaev-utils/src/types/Object/Object';
+import { isObjectOrArray } from 'senaev-utils/src/types/Object/Object';
 import { isNumber } from 'senaev-utils/src/types/Number/Number';
 
 import type {
@@ -47,7 +47,7 @@ const TRANSACTION_COOKIE_OPTIONS: CookieSerializeOptions = {
 };
 
 function asParams(value: unknown): Record<string, unknown> {
-    return isObject(value) ? value : {};
+    return isObjectOrArray(value) ? value : {};
 }
 
 function sendAuthorizationError(reply: FastifyReply, status: number, message: string, continueUrl?: string) {
@@ -133,7 +133,7 @@ export const oauthRoutes: FastifyPluginAsync<OAuthRoutesOptions> = async (instan
             return reply.send(error);
         }
 
-        const statusCode = isObject(error) ? error.statusCode : undefined;
+        const statusCode = isObjectOrArray(error) ? error.statusCode : undefined;
         const status = isNumber(statusCode) && statusCode >= 400 && statusCode <= 599
             ? statusCode
             : 500;

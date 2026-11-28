@@ -4,9 +4,9 @@ import {
     it,
 } from 'vitest';
 
-import { isObject } from './';
+import { isObjectOrArray } from './';
 
-describe('isObject', () => {
+describe('isObjectOrArray', () => {
     const testCases = [
         {
             input: {},
@@ -14,6 +14,10 @@ describe('isObject', () => {
         },
         {
             input: { foo: 'bar' },
+            output: true,
+        },
+        {
+            input: [1],
             output: true,
         },
         {
@@ -41,8 +45,8 @@ describe('isObject', () => {
     ];
 
     testCases.forEach(({ input, output }) => {
-        it(`isObject(${JSON.stringify(input)}) -> ${String(output)}`, () => {
-            expect(isObject(input)).toEqual(output);
+        it(`isObjectOrArray(${JSON.stringify(input)}) -> ${String(output)}`, () => {
+            expect(isObjectOrArray(input)).toEqual(output);
         });
     });
 });
